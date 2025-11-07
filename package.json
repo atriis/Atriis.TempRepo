@@ -1,0 +1,28 @@
+{
+  "name": "atriisautomation-mcp-playwright",
+  "version": "1.0.0",
+  "description": "MCP-enhanced Playwright test automation for flight search",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:flight": "playwright test gtp-flight-search.spec.js --headed",
+    "test:debug": "playwright test --debug"
+  },
+  "keywords": [
+    "playwright",
+    "automation",
+    "testing",
+    "mcp",
+    "natural-language",
+    "flight-search"
+  ],
+  "author": "ATRIIS Automation Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
