@@ -5,7 +5,7 @@ module.exports = defineConfig({
   timeout: 120000,
   use: {
     screenshot: 'only-on-failure',
-    viewport: { width: 1920, height: 1080 },
+    viewport: null,
     contextOptions: {
       ignoreHTTPSErrors: true
     }
@@ -16,7 +16,6 @@ module.exports = defineConfig({
     {
       name: 'Google Chrome',
       use: { 
-        ...devices['Desktop Chrome'],
         channel: 'chrome',
         viewport: null,
         launchOptions: {
