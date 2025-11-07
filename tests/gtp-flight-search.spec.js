@@ -86,11 +86,27 @@ test.describe('GTP Staging Flight Search with MCP', () => {
     const addToTripVisible = await newPage.isVisible('text="Add to trip"', { timeout: 10000 }).catch(() => false);
     console.log(`✅ "Add to trip" button is ${addToTripVisible ? 'visible' : 'NOT visible'}`);
     
-    console.log('🎯 Step 17: Take final screenshot');
-    await newPage.mcp.screenshot('flight-search-lhr-mad-results');
+    console.log('🎯 Step 17: Click "Add to trip" button');
+    await newPage.click('text="Add to trip"');
+    await newPage.waitForTimeout(2000);
     
-    console.log('⏸️  Pausing for 10 seconds to review results...');
+    console.log('🎯 Step 18: Handle modal if it appears and click proceed');
+    const modalVisible = await newPage.isVisible('text="Proceed"', { timeout: 3000 }).catch(() => false);
+    if (modalVisible) {
+      await newPage.click('text="Proceed"');
+      console.log('✅ Clicked Proceed in modal');
+      await newPage.waitForTimeout(2000);
+    }
+    
+    console.log('🎯 Step 19: Validate "pending booking" text in cart page');
+    const pendingBookingVisible = await newPage.isVisible('text="pending booking"', { timeout: 10000 }).catch(() => false);
+    console.log(`✅ "Pending booking" text is ${pendingBookingVisible ? 'visible' : 'NOT visible'}`);
+    
+    console.log('⏸️  Step 20: Pausing for 10 seconds to review results...');
     await newPage.mcp.waitFor('10');
+    
+    console.log('📸 Step 21: Take final screenshot');
+    await newPage.mcp.screenshot('flight-search-lhr-mad-results');
     
     console.log('✅ Test completed successfully!');
   });
