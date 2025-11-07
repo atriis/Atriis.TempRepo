@@ -16,13 +16,18 @@ module.exports = defineConfig({
     {
       name: 'Google Chrome',
       use: { 
-        ...devices['Desktop Chrome'], 
+        ...devices['Desktop Chrome'],
         channel: 'chrome',
+        viewport: null,
         launchOptions: {
-          args: ['--incognito', '--start-maximized']
-        }
+          args: [
+            '--incognito',
+            '--start-maximized',
+            '--window-size=1920,1080'
+          ],
+        },
       },
-    },
+    }
   ],
 
   /* Run your local dev server before starting the tests */
