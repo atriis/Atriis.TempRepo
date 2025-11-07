@@ -76,9 +76,10 @@ test.describe('GTP Staging Flight Search with MCP', () => {
     
     // Click first available date that is visible
     await newPage.locator('td.available:visible').first().click();
+    await newPage.waitForTimeout(1000);
     
     console.log('🎯 Step 15: Click Search button');
-    await newPage.click('button:has-text("Search")');
+    await newPage.locator('button.search-btn').click();
     await newPage.mcp.waitFor('5');
     
     console.log('🎯 Step 16: Validate "Add to trip" button is displayed');
