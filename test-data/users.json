@@ -1,0 +1,14 @@
+{
+  "_comment": "All users across all companies share the same password",
+  "amadeus": {
+    "userOne": "ruimariano@amadeus.com",
+    "userTwo": "ruimendes@amadeus.com"
+  },
+  "galileo": {
+    "userOne": "beatrizpamplonacorp@galileo.com"
+  },
+  "sabre": {
+    "userOne": "robsoncruz@sabrecargdg.com"
+  },
+  "sharedPassword": "NextLevelAtriis25!"
+}

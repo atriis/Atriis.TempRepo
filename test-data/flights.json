@@ -1,0 +1,23 @@
+{
+  "routes": {
+    "lhrToMad": {
+      "origin": "LHR",
+      "destination": "MAD",
+      "tripType": "one way",
+      "description": "London Heathrow to Madrid"
+    },
+    "nycToLax": {
+      "origin": "NYC",
+      "destination": "LAX",
+      "tripType": "one way",
+      "description": "New York to Los Angeles"
+    },
+    "parToLon": {
+      "origin": "CDG",
+      "destination": "LHR",
+      "tripType": "round trip",
+      "description": "Paris to London round trip"
+    }
+  },
+  "defaultRoute": "lhrToMad"
+}

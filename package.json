@@ -6,7 +6,12 @@
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",
-    "test:flight": "playwright test gtp-flight-search.spec.js --headed",
+    "test:flight": "playwright test tests/gtp-flight-search.spec.js --headed",
+    "test:pom": "playwright test tests/gtp-flight-search-pom.spec.js --headed",
+    "test:staging": "playwright test",
+    "test:dev": "cross-env TEST_ENV=dev playwright test",
+    "test:staging:headed": "playwright test --headed",
+    "test:dev:headed": "cross-env TEST_ENV=dev playwright test --headed",
     "test:debug": "playwright test --debug"
   },
   "keywords": [

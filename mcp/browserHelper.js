@@ -11,7 +11,7 @@ class McpBrowserHelper {
 
   // Smart navigation - understands different ways to describe sites
   async navigate(description) {
-    console.log(`🌐 MCP: Navigating to ${description}...`);
+    console.log(`MCP: Navigating to ${description}...`);
     
     // Smart URL mapping based on description
     const urlMap = {
@@ -24,12 +24,12 @@ class McpBrowserHelper {
     const url = urlMap[description.toLowerCase()] || description;
     await this.page.goto(url);
     await this.page.waitForLoadState('networkidle');
-    console.log(`✅ MCP: Successfully navigated to ${description}`);
+    console.log(`MCP: Successfully navigated to ${description}`);
   }
 
   // Smart click - finds elements by human description
   async click(description) {
-    console.log(`🖱️ MCP: Looking for "${description}" to click...`);
+    console.log(`MCP: Looking for "${description}" to click...`);
     
     // Special handling for date fields
     if (description.toLowerCase().includes('date') || description.toLowerCase().includes('depart')) {
@@ -45,7 +45,7 @@ class McpBrowserHelper {
       for (const strategy of dateStrategies) {
         try {
           await strategy();
-          console.log(`✅ MCP: Successfully clicked "${description}"`);
+          console.log(`MCP: Successfully clicked "${description}"`);
           await this.page.waitForTimeout(1000);
           return;
         } catch (error) {
@@ -66,7 +66,7 @@ class McpBrowserHelper {
       for (const strategy of loginStrategies) {
         try {
           await strategy();
-          console.log(`✅ MCP: Successfully clicked "${description}"`);
+          console.log(`MCP: Successfully clicked "${description}"`);
           await this.page.waitForTimeout(1000);
           return;
         } catch (error) {
@@ -87,7 +87,7 @@ class McpBrowserHelper {
       for (const strategy of searchStrategies) {
         try {
           await strategy();
-          console.log(`✅ MCP: Successfully clicked "${description}"`);
+          console.log(`MCP: Successfully clicked "${description}"`);
           await this.page.waitForTimeout(1000);
           return;
         } catch (error) {
@@ -113,7 +113,7 @@ class McpBrowserHelper {
     for (const strategy of strategies) {
       try {
         await strategy();
-        console.log(`✅ MCP: Successfully clicked "${description}"`);
+        console.log(`MCP: Successfully clicked "${description}"`);
         await this.page.waitForTimeout(1000); // Smart wait
         return;
       } catch (error) {
@@ -121,12 +121,12 @@ class McpBrowserHelper {
       }
     }
     
-    throw new Error(`❌ MCP: Could not find "${description}" to click`);
+    throw new Error(`MCP: Could not find "${description}" to click`);
   }
 
   // Smart fill - finds form fields by description
   async fill(description, text) {
-    console.log(`📝 MCP: Looking for "${description}" to fill with "${text}"...`);
+    console.log(`MCP: Looking for "${description}" to fill with "${text}"...`);
     
     // Special handling for common field types
     if (description.toLowerCase().includes('email') || description.toLowerCase().includes('username') || description.toLowerCase().includes('user name')) {
@@ -140,7 +140,7 @@ class McpBrowserHelper {
       for (const strategy of emailStrategies) {
         try {
           await strategy();
-          console.log(`✅ MCP: Successfully filled "${description}" with "${text}"`);
+          console.log(`MCP: Successfully filled "${description}" with "${text}"`);
           await this.page.waitForTimeout(500);
           return;
         } catch (error) {
@@ -160,7 +160,7 @@ class McpBrowserHelper {
       for (const strategy of passwordStrategies) {
         try {
           await strategy();
-          console.log(`✅ MCP: Successfully filled "${description}" with "${text}"`);
+          console.log(`MCP: Successfully filled "${description}" with "${text}"`);
           await this.page.waitForTimeout(500);
           return;
         } catch (error) {
@@ -182,7 +182,7 @@ class McpBrowserHelper {
     for (const strategy of fieldStrategies) {
       try {
         await strategy();
-        console.log(`✅ MCP: Successfully filled "${description}" with "${text}"`);
+        console.log(`MCP: Successfully filled "${description}" with "${text}"`);
         await this.page.waitForTimeout(500);
         return;
       } catch (error) {
@@ -190,12 +190,12 @@ class McpBrowserHelper {
       }
     }
     
-    throw new Error(`❌ MCP: Could not find field "${description}" to fill`);
+    throw new Error(`MCP: Could not find field "${description}" to fill`);
   }
 
   // Smart date selection (assumes date picker is already open)
   async selectDate(description, date) {
-    console.log(`📅 MCP: Selecting date "${date}" from calendar...`);
+    console.log(`MCP: Selecting date "${date}" from calendar...`);
     
     await this.page.waitForTimeout(1000);
     
@@ -230,7 +230,7 @@ class McpBrowserHelper {
       const dayMatch = date.match(/(\d+)/);
       if (dayMatch) {
         const day = dayMatch[1];
-        console.log(`🎯 MCP: Looking for day ${day} in calendar...`);
+        console.log(`MCP: Looking for day ${day} in calendar...`);
         
         const dayStrategies = [
           () => this.page.click(`[role="gridcell"]:has-text("${day}"):not([disabled])`),
@@ -243,25 +243,25 @@ class McpBrowserHelper {
         for (const strategy of dayStrategies) {
           try {
             await strategy();
-            console.log(`✅ MCP: Successfully clicked day ${day}`);
+            console.log(`MCP: Successfully clicked day ${day}`);
             await this.page.waitForTimeout(500);
             return;
           } catch (error) {
-            console.log(`⚠️ MCP: Strategy failed, trying next...`);
+            console.log(`MCP: Strategy failed, trying next...`);
             continue;
           }
         }
         
-        throw new Error(`❌ MCP: Could not find day ${day} in calendar`);
+        throw new Error(`MCP: Could not find day ${day} in calendar`);
       }
     }
     
-    console.log(`⚠️ MCP: Could not parse date "${date}"`);
+    console.log(`MCP: Could not parse date "${date}"`);
   }
 
   // Smart wait with natural language
   async waitFor(description, seconds = 3) {
-    console.log(`⏳ MCP: Waiting for "${description}"...`);
+    console.log(`MCP: Waiting for "${description}"...`);
     
     if (description.toLowerCase().includes('page') || description.toLowerCase().includes('load')) {
       await this.page.waitForLoadState('networkidle');
@@ -277,25 +277,25 @@ class McpBrowserHelper {
       }
     }
     
-    console.log(`✅ MCP: Finished waiting for "${description}"`);
+    console.log(`MCP: Finished waiting for "${description}"`);
   }
 
   // Smart screenshot with natural naming
   async screenshot(description = 'page') {
     const filename = description.toLowerCase().replace(/\s+/g, '-') + '.png';
-    console.log(`📸 MCP: Taking screenshot: ${filename}`);
+    console.log(`MCP: Taking screenshot: ${filename}`);
     
     await this.page.screenshot({ 
       path: filename, 
       fullPage: true 
     });
     
-    console.log(`✅ MCP: Screenshot saved as ${filename}`);
+    console.log(`MCP: Screenshot saved as ${filename}`);
   }
 
   // Smart trip type selection
   async selectTripType(type) {
-    console.log(`✈️ MCP: Selecting trip type: "${type}"...`);
+    console.log(`MCP: Selecting trip type: "${type}"...`);
     
     const normalizedType = type.toLowerCase();
     if (normalizedType.includes('one way') || normalizedType.includes('oneway')) {
@@ -306,12 +306,12 @@ class McpBrowserHelper {
       await this.click('Multi city');
     }
     
-    console.log(`✅ MCP: Selected trip type: "${type}"`);
+    console.log(`MCP: Selected trip type: "${type}"`);
   }
 
   // Smart autocomplete selection - handles dropdown lists
   async selectFromDropdown(description = 'first option') {
-    console.log(`🎯 MCP: Selecting "${description}" from dropdown...`);
+    console.log(`MCP: Selecting "${description}" from dropdown...`);
     
     await this.page.waitForTimeout(1000); // Wait for dropdown to appear
     
@@ -327,7 +327,7 @@ class McpBrowserHelper {
     for (const strategy of strategies) {
       try {
         await strategy();
-        console.log(`✅ MCP: Successfully selected "${description}"`);
+        console.log(`MCP: Successfully selected "${description}"`);
         await this.page.waitForTimeout(500);
         return;
       } catch (error) {
@@ -338,9 +338,9 @@ class McpBrowserHelper {
     // Fallback: just press Enter to select highlighted option
     try {
       await this.page.keyboard.press('Enter');
-      console.log(`✅ MCP: Selected option using Enter key`);
+      console.log(`MCP: Selected option using Enter key`);
     } catch {
-      throw new Error(`❌ MCP: Could not select from dropdown`);
+      throw new Error(`MCP: Could not select from dropdown`);
     }
   }
 }
