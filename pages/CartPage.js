@@ -84,8 +84,8 @@ class CartPage {
           } catch (e) {
             elementText = 'Could not extract text';
           }
-          console.log(`✅ Found "Pending" booking with selector: ${foundSelector}`);
-          console.log(`📝 Element text: "${elementText}"`);
+          console.log(`Found "Pending" booking with selector: ${foundSelector}`);
+          console.log(`Element text: "${elementText}"`);
           break;
         }
       } catch (error) {
@@ -95,7 +95,7 @@ class CartPage {
     
     // Additional debugging if not found
     if (!pendingBookingVisible) {
-      console.log('🔍 Debugging: Checking page content...');
+      console.log('Debugging: Checking page content...');
       try {
         const bodyText = await this.page.textContent('body');
         console.log('Page contains "Pending":', bodyText.includes('Pending'));
