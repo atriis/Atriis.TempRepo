@@ -105,14 +105,16 @@ test.describe('Search One Way Flight and Add it to Trip', () => {
     }
     
     console.log('Step 19: Validate "pending booking" text in cart page');
-    const pendingBookingVisible = await newPage.isVisible('text="pending booking"', { timeout: 10000 }).catch(() => false);
+    
+    // Wait for booking to be processed like the POM test does
+    await newPage.waitForTimeout(5000);
+    await newPage.waitForLoadState('networkidle');
+    
+    const pendingBookingVisible = await newPage.isVisible('text="Pending booking"', { timeout: 10000 }).catch(() => false);
     console.log(`"Pending booking" text is ${pendingBookingVisible ? 'visible' : 'NOT visible'}`);
     
-    console.log('Step 20: Pausing for 10 seconds to review results...');
-    await newPage.mcp.waitFor('10');
-    
-    console.log('Step 21: Take final screenshot');
-    await newPage.mcp.screenshot('flight-search-lhr-mad-results');
+    // Assert that pending booking is visible - will fail test if not found
+    expect(pendingBookingVisible).toBeTruthy();
     
     console.log('Test completed successfully!');
   });

@@ -1,173 +1,191 @@
-# MCP-Enhanced Playwright Flight Search Automation
+# Atriis Test Automation Project
 
-A sophisticated test automation project that uses **natural language** to write Playwright tests through MCP (Model Context Protocol) integration with **Page Object Model** architecture.
+**A demonstration project exploring different Playwright test automation approaches.** Created to help the team transition from Testim.io, this project exemplifies how to test flight booking functionality using standard Playwright, a hybrid Page Object Model that combines MCP integration with standard Playwright, and pure MCP automation.
 
-## 🎯 What This Project Does
+## 🎯 Project Purpose
 
-**Write tests like this:**
-```javascript
-await loginPage.navigate('staging');
-await loginPage.login('amadeus', 'userOne');
-await searchPage.addTravellerImTheTraveller();
-await flightSearchPage.fillOrigin('LHR');
-await searchPage.clickSearchButton();
-```
+This project was created because of the need to move away from Testim.io. It contains a basic add flight to trip flow and demonstrates Playwright, JavaScript, and MCP server usage in different configurations.
 
-**Instead of this:**
-```javascript
-await page.goto('https://ui.gtp-staging.com/');
-await page.waitForSelector('div.welcome.center > h1', { timeout: 10000 });
-await page.fill('input[placeholder*="From"]', 'London LHR');
-// ... 50+ lines of CSS selectors
-```
+The main goal is to provide different options and approaches for testing, with clear explanations and suggestions to help the team choose the best approach for their needs. This is meant as a demonstration and learning resource to explore what's possible with modern test automation tools, not a full production framework.
+
+
+## 🤖 What is MCP Server?
+
+**MCP (Model Context Protocol)** is a smart automation layer that allows you to interact with web elements using natural language descriptions instead of complex CSS selectors or XPath expressions.
+
+**Why we're using MCP in this project:**
+- **Self-healing tests**: When UI elements change, MCP can often still find them using intelligent strategies
+- **Natural language**: Write `click('login button')` instead of `click('#complex-dynamic-selector-123')`
+- **Resilient automation**: Tests are less brittle when the interface changes
+
+**Why MCP could be a good option:**
+MCP makes tests more readable and maintainable, especially for a team that wants automation that's closer to how humans would describe interactions with a website. It's particularly useful when dealing with dynamic applications where traditional selectors frequently break.
 
 ## 📁 Project Structure
 
 ```
 AtriisAutomation/
-├── tests/
-│   ├── gtp-flight-search.spec.js         # Original MCP test
-│   └── gtp-flight-search-pom.spec.js     # Page Object Model test
-├── pages/
-│   ├── LoginPage.js                      # Login functionality
-│   ├── MenuPage.js                       # Main menu navigation
-│   ├── SearchPage.js                     # Search and traveller functions
-│   ├── FlightSearchPage.js               # Flight form filling
-│   └── CartPage.js                       # Cart and booking validation
-├── test-data/
-│   ├── config.json                       # Environment URLs
-│   ├── users.json                        # User credentials by company
-│   └── flights.json                      # Flight test data
-├── mcp/
-│   └── browserHelper.js                  # MCP magic helper functions
-├── playwright.config.js                  # Playwright configuration
-└── package.json                          # Dependencies and scripts
+├── tests/                           # All test files
+│   ├── gtp-flight-search.spec.js       # Standard Playwright test
+│   ├── gtp-flight-search-pom.spec.js   # Hybrid POM + MCP test
+│   └── gtp-flight-search-mcp-only.spec.js  # Pure MCP test
+├── pages/                           # Page Object Model classes
+│   ├── LoginPage.js                    # Login functionality
+│   ├── MenuPage.js                     # Navigation handling
+│   ├── SearchPage.js                   # Search interactions
+│   ├── FlightSearchPage.js             # Flight form handling
+│   └── CartPage.js                     # Booking validation
+├── mcp/                            # MCP automation helper
+│   └── browserHelper.js               # Natural language automation
+├── test-data/                      # Test configuration and data
+│   ├── config.json                     # Environment URLs
+│   ├── users.json                      # Test user accounts
+│   └── flights.json                    # Flight route data
+├── playwright.config.js            # Playwright configuration
+└── package.json                   # Dependencies and scripts
 ```
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-2. **Run tests by environment:**
-   ```bash
-   # Staging (default)
-   npm run test:staging:headed
-   
-   # Dev environment
-   npm run test:dev:headed
-   
-   # Page Object Model test
-   npm run test:pom
-   ```
-
-3. **Available test scripts:**
-   ```bash
-   npm run test                    # All tests headless
-   npm run test:headed            # All tests with browser
-   npm run test:flight            # Original flight test
-   npm run test:pom               # Page Object Model test
-   npm run test:staging           # Staging environment
-   npm run test:dev               # Dev environment
-   npm run test:debug             # Debug mode
-   ```
-
-## 🌍 Environment Configuration
-
-**Switch environments easily:**
+### Installation
 ```bash
-# PowerShell
-$env:TEST_ENV = "dev"; npm test
-
-# Command line
-TEST_ENV=dev npm test
+npm install
 ```
 
-**Supported environments:**
-- `staging` (default): https://gtp.staging.amadeus.com
-- `dev`: https://ui-dev.gtp-staging.com/
+### Running Individual Tests
 
-## 👥 Multi-Company User Support
+**All tests can be run in either headless or headed mode:**
 
-**User structure in `test-data/users.json`:**
-```json
-{
-  "amadeus": { "userOne": "ruimariano@amadeus.com" },
-  "galileo": { "userOne": "beatrizpamplonacorp@galileo.com" },
-  "sabre": { "userOne": "robsoncruz@sabrecargdg.com" },
-  "sharedPassword": "NextLevelAtriis25!"
-}
+**Headed mode** (shows the browser window - great for debugging and watching what happens):
+```bash
+# Standard Playwright test
+npx playwright test tests/gtp-flight-search.spec.js --headed
+
+# Hybrid POM + MCP test  
+npx playwright test tests/gtp-flight-search-pom.spec.js --headed
+
+# Pure MCP test
+npx playwright test tests/gtp-flight-search-mcp-only.spec.js --headed
 ```
 
-**Usage in tests:**
-```javascript
-await loginPage.login('amadeus', 'userOne');
-await loginPage.login('galileo', 'userOne');
-await loginPage.login('sabre', 'userOne');
+**Headless mode** (runs in the background without browser window - faster for automated runs):
+```bash
+# Standard Playwright test
+npx playwright test tests/gtp-flight-search.spec.js
+
+# Hybrid POM + MCP test  
+npx playwright test tests/gtp-flight-search-pom.spec.js
+
+# Pure MCP test
+npx playwright test tests/gtp-flight-search-mcp-only.spec.js
 ```
 
-## ✈️ Flight Test Data
-
-**Configurable flight routes in `test-data/flights.json`:**
-```json
-{
-  "routes": {
-    "lhrToMad": { "origin": "LHR", "destination": "MAD" },
-    "nycToLax": { "origin": "NYC", "destination": "LAX" },
-    "parToLon": { "origin": "CDG", "destination": "LHR" }
-  },
-  "defaultRoute": "lhrToMad"
-}
+### Running All Tests
+```bash
+npm test                 # All tests in headless mode
+npm test -- --headed     # All tests in headed mode
 ```
 
-## 🪄 The Magic Features
+## 🔍 The Three Test Approaches
 
-- ✅ **Page Object Model** - Maintainable and scalable test architecture
-- ✅ **Natural Language MCP** - Write tests like talking to a human
-- ✅ **Multi-Environment** - Easy staging/dev switching
-- ✅ **Multi-Company Users** - Test with different user types
-- ✅ **Smart Element Finding** - Automatically finds buttons/fields by description
-- ✅ **Self-Healing** - Adapts when UI changes
-- ✅ **Auto-Screenshots** - Captures results automatically
-- ✅ **Intelligent Waits** - No manual timeout calculations
+### Test 1: Standard Playwright (`gtp-flight-search.spec.js`)
+**What it does:** A straightforward Playwright test that directly interacts with web elements using standard selectors and some MCP helper calls.
 
-## 🎯 Test Scenarios
+**When to use:** 
+- Simple test scenarios
+- Quick prototyping
+- When you want minimal abstraction
 
-**Current Tests:**
-- **Original Test:** Direct MCP automation (London LHR → Madrid)
-- **POM Test:** Page Object Model architecture (configurable routes)
+**Advantages:**
+- ✅ Easy to understand and write
+- ✅ Direct control over every interaction
+- ✅ Good for one-off tests
+- ✅ Minimal setup required
 
-**Easy to extend:**
-```javascript
-// Different route test
-const testRoute = flightData.routes.nycToLax;
-await flightSearchPage.fillOrigin(testRoute.origin);
+**Disadvantages:**
+- ❌ Code duplication across tests
+- ❌ Hard to maintain when UI changes
+- ❌ No reusable components
+- ❌ Mixed abstraction levels
 
-// Different user test
-await loginPage.login('galileo', 'userOne');
+### Test 2: Hybrid POM Standard Playwright + MCP (`gtp-flight-search-pom.spec.js`)
+**What it does:** Uses the Page Object Model pattern for organization while incorporating MCP helpers for intelligent element finding and natural language interactions.
 
-// Different environment
-await loginPage.navigate('dev');
-```
+**When to use:**
+- Complex applications with many pages
+- Team environments requiring maintainable code
+- When you need both structure and smart automation
 
-## 🛠️ Configuration
+**Advantages:**
+- ✅ Highly organized and maintainable
+- ✅ Reusable page components
+- ✅ Smart element detection through MCP
+- ✅ Good separation of concerns
+- ✅ Excellent for large test suites
 
-- **Browser:** Chrome with incognito mode
-- **Viewport:** Maximized window (1920x1080)
-- **Timeout:** 2 minutes per test
-- **Screenshots:** On failure + end of successful tests
+**Disadvantages:**
+- ❌ More initial setup required
+- ❌ Steeper learning curve
+- ❌ Can be overkill for simple tests
+- ❌ Requires understanding of both POM and MCP
 
-## 📊 Architecture Benefits
+### Test 3: Pure MCP (`gtp-flight-search-mcp-only.spec.js`)
+**What it does:** Relies primarily on MCP (Model Context Protocol) helpers that use natural language descriptions to find and interact with web elements.
 
-**Page Object Model provides:**
-- 🔧 **Maintainability:** Changes in UI only affect page objects
-- 🎯 **Reusability:** Page methods used across multiple tests
-- 📖 **Readability:** Tests read like business workflows
-- 🧪 **Testability:** Easy to mock and unit test page objects
-- 📈 **Scalability:** Simple to add new pages and tests
+**When to use:**
+- When UI elements frequently change
+- Testing applications with dynamic interfaces
+- When you want self-healing test capabilities
 
-## 🎉 Perfect for AI-Driven Testing
+**Advantages:**
+- ✅ Natural language element selection
+- ✅ More resilient to UI changes
+- ✅ Self-healing capabilities
+- ✅ Easier to read and understand intent
+- ✅ Less brittle than hardcoded selectors
 
-This project combines the power of **MCP natural language automation** with **robust Page Object architecture**. Just describe what you want to test, and the framework handles the rest!
+**Disadvantages:**
+- ❌ Less precise control
+- ❌ Potential performance overhead
+- ❌ May require fallback strategies
+- ❌ Debugging can be more complex
+
+## ⚖️ Approach Comparison Summary
+
+| Aspect | Standard Playwright | Hybrid POM + MCP | Pure MCP |
+|--------|-------------------|------------------|----------|
+| **Setup Complexity** | Low | High | Medium |
+| **Maintainability** | Low | High | Medium |
+| **UI Change Resilience** | Low | Medium | High |
+| **Learning Curve** | Low | High | Medium |
+| **Team Collaboration** | Medium | High | Medium |
+| **Performance** | High | Medium | Medium |
+| **Debugging Ease** | High | Medium | Low |
+
+## 🧪 Test Data and Configuration
+
+The project uses JSON files for test configuration:
+- **Environment URLs** (staging, dev) 
+- **User accounts** for different suppliers (Amadeus, Galileo, Sabre)
+- **Flight route data** (LHR→MAD, NYC→LAX, etc.)
+
+## 📸 Screenshots and Reporting
+
+Tests are configured to automatically capture screenshots on failure. Results and artifacts are saved in the `test-results/` folder.
+
+## 🔮 Next Steps
+
+**Realistic improvements based on the current project:**
+- Add more products and suppliers
+- Create smoke suite 
+- Create additional page objects
+- Add more test data
+
+## 🎓 Learning Outcomes
+
+This project demonstrates:
+- How different test automation patterns solve different problems
+- The trade-offs between simplicity and maintainability
+- When to choose structure vs. flexibility
+- How MCP can make tests more resilient to UI changes
+- Best practices for organizing test code and data

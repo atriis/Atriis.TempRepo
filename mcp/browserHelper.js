@@ -15,10 +15,8 @@ class McpBrowserHelper {
     
     // Smart URL mapping based on description
     const urlMap = {
-      'gtp staging': 'https://ui.gtp-staging.com/',
-      'travel site': 'https://ui.gtp-staging.com/',
       'staging environment': 'https://ui.gtp-staging.com/',
-      'gtp staging site': 'https://ui.gtp-staging.com/'
+      'development environment': 'https://ui-dev.gtp-staging.com/'
     };
     
     const url = urlMap[description.toLowerCase()] || description;

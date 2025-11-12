@@ -65,7 +65,6 @@ test.describe('Search One Way Flight and Add it to Trip - Page Object Model', ()
     // Step 8: Handle modal if needed and validate 'Pending Booking' in Cart Page
     await cartPage.handleConflictQuoteModalIfVisible();
     await cartPage.validatePendingBooking();
-    await cartPage.waitAndTakeScreenshot();
   });
 
 });
