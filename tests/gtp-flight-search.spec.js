@@ -89,12 +89,40 @@ test.describe('Search One Way Flight and Add it to Trip', () => {
     await newPage.mcp.waitFor('5');
     
     console.log('Step 16: Validate "Add to trip" button is displayed');
-    const addToTripVisible = await newPage.isVisible('text="Add to trip"', { timeout: 10000 }).catch(() => false);
+    
+    // Wait for search results to load completely
+    await newPage.waitForLoadState('networkidle');
+    await newPage.waitForTimeout(3000);
+    
+    // Try multiple strategies to find the Add to trip button
+    let addToTripVisible = false;
+    const addToTripStrategies = [
+      () => newPage.isVisible('text="Add to trip"', { timeout: 8000 }),
+      () => newPage.isVisible('button:has-text("Add to trip")', { timeout: 3000 }),
+      () => newPage.isVisible('button:has-text("Add")', { timeout: 3000 })
+    ];
+    
+    for (const strategy of addToTripStrategies) {
+      try {
+        addToTripVisible = await strategy().catch(() => false);
+        if (addToTripVisible) {
+          console.log('Found Add to trip button');
+          break;
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+    
     console.log(`"Add to trip" button is ${addToTripVisible ? 'visible' : 'NOT visible'}`);
+    
+    // Assert that the button is visible - fail test if not found
+    expect(addToTripVisible).toBeTruthy();
     
     console.log('Step 17: Click "Add to trip" button');
     await newPage.click('text="Add to trip"');
-    await newPage.waitForTimeout(2000);
+    // Wait longer for potential modal to appear
+    await newPage.waitForTimeout(4000);
     
     console.log('Step 18: Handle modal if it appears and click proceed');
     const modalVisible = await newPage.isVisible('text="Proceed"', { timeout: 3000 }).catch(() => false);
@@ -102,15 +130,25 @@ test.describe('Search One Way Flight and Add it to Trip', () => {
       await newPage.click('text="Proceed"');
       console.log('Clicked Proceed in modal');
       await newPage.waitForTimeout(2000);
+    } else {
+      console.log('No conflicting quote modal detected');
     }
     
     console.log('Step 19: Validate "pending booking" text in cart page');
     
-    // Wait for booking to be processed like the POM test does
-    await newPage.waitForTimeout(5000);
+    // Extended wait for headless mode compatibility
+    await newPage.waitForTimeout(8000);
     await newPage.waitForLoadState('networkidle');
     
-    const pendingBookingVisible = await newPage.isVisible('text="Pending booking"', { timeout: 10000 }).catch(() => false);
+    // Use specific selector like in the POM test
+    const pendingBookingVisible = await newPage.isVisible('p.app-label--quote.pending-booking', { timeout: 15000 }).catch(() => false);
+    
+    if (pendingBookingVisible) {
+      const elementText = await newPage.locator('p.app-label--quote.pending-booking').first().textContent();
+      console.log(`Found "Pending" booking with selector: p.app-label--quote.pending-booking`);
+      console.log(`Element text: "${elementText}"`);
+    }
+    
     console.log(`"Pending booking" text is ${pendingBookingVisible ? 'visible' : 'NOT visible'}`);
     
     // Assert that pending booking is visible - will fail test if not found

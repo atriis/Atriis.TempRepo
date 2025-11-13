@@ -8,11 +8,39 @@ class CartPage {
    */
   async handleConflictQuoteModalIfVisible() {
     console.log("Handle 'Conflicting Quote' modal if it appears and click 'Proceed");
-    const modalVisible = await this.page.isVisible('text=Proceed', { timeout: 3000 }).catch(() => false);
+    
+    // Check multiple ways to detect the modal
+    let modalVisible = false;
+    const modalStrategies = [
+      () => this.page.isVisible('text=Proceed', { timeout: 3000 }),
+      () => this.page.isVisible('button:has-text("Proceed")', { timeout: 2000 }),
+      () => this.page.isVisible('[data-testid*="proceed"]', { timeout: 1000 })
+    ];
+    
+    for (const strategy of modalStrategies) {
+      try {
+        modalVisible = await strategy().catch(() => false);
+        if (modalVisible) {
+          console.log('Modal detected, clicking Proceed');
+          break;
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+    
     if (modalVisible) {
-      await this.page.click('text=Proceed');
+      // Try MCP click first, fallback to standard click
+      try {
+        await this.page.mcp.click('Proceed');
+      } catch (error) {
+        await this.page.click('text=Proceed');
+      }
       console.log("Clicked 'Proceed' in modal");
-      await this.page.waitForTimeout(2000);
+      // Extended wait after modal for headless mode
+      await this.page.waitForTimeout(3000);
+    } else {
+      console.log('No conflicting quote modal detected');
     }
   }
 
@@ -23,111 +51,28 @@ class CartPage {
   async validatePendingBooking() {
     console.log("Validate 'Pending Booking' after adding flight to trip");
     
-    // Wait for the booking to be processed
-    await this.page.waitForTimeout(5000);
+    // Extended wait for headless mode compatibility (8 seconds)
+    await this.page.waitForTimeout(8000);
     
-    // Wait for page to fully load after adding to trip
+    // Wait for network to be idle to ensure all content is loaded
     await this.page.waitForLoadState('networkidle');
     
-    // More specific and stable selectors for "Pending Booking"
-    const stableSelectors = [
-      // Direct text matches
-      'text="Pending Booking"',
-      'text="Pending booking"', 
-      'text="PENDING BOOKING"',
-      
-      // Partial text matches
-      'text*="Pending Booking"',
-      'text*="Pending booking"',
-      'text*="pending booking"',
-      
-      // Element with specific classes or data attributes
-      '[class*="pending"]',
-      '[class*="booking"]',
-      '[data-testid*="pending"]',
-      '[data-testid*="booking"]',
-      '[data-status="pending"]',
-      '[data-booking-status="pending"]',
-      
-      // Common booking status containers
-      '.booking-status:has-text("Pending")',
-      '.trip-status:has-text("Pending")',
-      '.cart-item:has-text("Pending")',
-      '.booking-item:has-text("Pending")',
-      
-      // Generic containers with pending text
-      'div:has-text("Pending Booking")',
-      'span:has-text("Pending Booking")',
-      'p:has-text("Pending Booking")',
-      'td:has-text("Pending")',
-      'li:has-text("Pending")',
-      
-      // Broader pending text search
-      '*:has-text("Pending")'
-    ];
+    // Use specific pending booking selector
+    const selector = 'p.app-label--quote.pending-booking';
     
-    let pendingBookingVisible = false;
-    let foundSelector = '';
-    let elementText = '';
+    console.log(`Looking for pending booking with selector: ${selector}`);
     
-    console.log('Searching for "Pending Booking" with multiple selectors...');
+    const pendingBookingVisible = await this.page.isVisible(selector, { timeout: 15000 });
     
-    for (const selector of stableSelectors) {
-      try {
-        pendingBookingVisible = await this.page.isVisible(selector, { timeout: 3000 });
-        if (pendingBookingVisible) {
-          foundSelector = selector;
-          // Get the actual text content for verification
-          try {
-            const element = this.page.locator(selector).first();
-            elementText = await element.textContent();
-          } catch (e) {
-            elementText = 'Could not extract text';
-          }
-          console.log(`Found "Pending" booking with selector: ${foundSelector}`);
-          console.log(`Element text: "${elementText}"`);
-          break;
-        }
-      } catch (error) {
-        // Continue to next selector
-      }
+    if (pendingBookingVisible) {
+      const elementText = await this.page.locator(selector).first().textContent();
+      console.log(`Found "Pending" booking with selector: ${selector}`);
+      console.log(`Element text: "${elementText}"`);
+      return { found: true, selector: selector, text: elementText };
+    } else {
+      console.log(`Pending booking not found with selector: ${selector}`);
+      throw new Error(`Expected "Pending Booking" element with selector "${selector}" to be visible after adding flight to trip, but it was not found`);
     }
-    
-    // Additional debugging if not found
-    if (!pendingBookingVisible) {
-      console.log('Debugging: Checking page content...');
-      try {
-        const bodyText = await this.page.textContent('body');
-        console.log('Page contains "Pending":', bodyText.includes('Pending'));
-        console.log('Page contains "Booking":', bodyText.includes('Booking'));
-        console.log('Page contains "pending":', bodyText.includes('pending'));
-        console.log('Page contains "booking":', bodyText.includes('booking'));
-        
-        // Log visible text in potential cart areas
-        const cartSelectors = ['.cart', '.trip', '.booking', '#cart', '#trip-list'];
-        for (const cartSelector of cartSelectors) {
-          try {
-            const cartText = await this.page.textContent(cartSelector);
-            if (cartText) {
-              console.log(`Content in ${cartSelector}:`, cartText.substring(0, 200));
-            }
-          } catch (e) {
-            // Selector doesn't exist, continue
-          }
-        }
-      } catch (e) {
-        console.log('Could not extract page content for debugging');
-      }
-    }
-    
-    console.log(`"Pending Booking" is ${pendingBookingVisible ? `visible (found with: ${foundSelector})` : 'NOT visible on current page'}`);
-    
-    // Assert that "Pending Booking" is visible - fail the test if not found
-    if (!pendingBookingVisible) {
-      throw new Error('Expected "Pending Booking" to be visible after adding flight to trip, but it was not found after checking multiple selectors');
-    }
-    
-    return { found: true, selector: foundSelector, text: elementText };
   }
 
   async waitAndTakeScreenshot() {

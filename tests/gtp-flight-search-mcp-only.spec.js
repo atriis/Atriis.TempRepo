@@ -90,11 +90,36 @@ test.describe('Search One Way Flight and Add it to Trip - Pure MCP', () => {
     console.log('Step 10: Click search button');
     // Use standard locator for search button reliability
     await newPage.locator('button.search-btn').click();
-    await newPage.mcp.waitFor('5');
+    
+    // Wait longer for search results in headless mode
+    console.log('Waiting for flight search results...');
+    await newPage.waitForLoadState('networkidle');
+    await newPage.mcp.waitFor('8');
     
     // Step 11: Validate and click 'Add to Trip' using MCP
     console.log('Step 11: Validate Add to trip button and click');
-    const addToTripVisible = await newPage.isVisible('text="Add to trip"', { timeout: 10000 }).catch(() => false);
+    
+    // Try multiple strategies to find the Add to trip button
+    let addToTripVisible = false;
+    const addToTripStrategies = [
+      () => newPage.isVisible('text="Add to trip"', { timeout: 5000 }),
+      () => newPage.isVisible('button:has-text("Add to trip")', { timeout: 3000 }),
+      () => newPage.isVisible('[data-testid*="add"]', { timeout: 3000 }),
+      () => newPage.isVisible('button:has-text("Add")', { timeout: 3000 })
+    ];
+    
+    for (const strategy of addToTripStrategies) {
+      try {
+        addToTripVisible = await strategy().catch(() => false);
+        if (addToTripVisible) {
+          console.log('Found Add to trip button');
+          break;
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+    
     console.log(`"Add to trip" button is ${addToTripVisible ? 'visible' : 'NOT visible'}`);
     expect(addToTripVisible).toBeTruthy();
     
@@ -113,53 +138,27 @@ test.describe('Search One Way Flight and Add it to Trip - Pure MCP', () => {
     // Step 13: Validate pending booking using MCP
     console.log('Step 13: Validate pending booking in cart');
     
-    // Wait longer for page to fully load after adding to trip
-    await newPage.mcp.waitFor('5');
+    // Extended wait for headless mode compatibility
+    await newPage.mcp.waitFor('8');
     
     // Wait for any loading indicators to disappear
     await newPage.waitForLoadState('networkidle');
     
-    // Try multiple variations of the pending booking text
-    const pendingBookingStrategies = [
-      () => newPage.isVisible('text="pending booking"', { timeout: 8000 }),
-      () => newPage.isVisible('text="Pending booking"', { timeout: 3000 }),
-      () => newPage.isVisible('text*="pending"', { timeout: 3000 }),
-      () => newPage.isVisible('text*="booking"', { timeout: 3000 }),
-      () => newPage.isVisible('[class*="pending"]', { timeout: 3000 }),
-      () => newPage.isVisible('[data-testid*="booking"]', { timeout: 3000 }),
-      () => newPage.locator('text*="pending"').isVisible({ timeout: 3000 }),
-      () => newPage.locator('text*="booking"').isVisible({ timeout: 3000 })
-    ];
+    // Use only the specific pending booking selector
+    const selector = 'p.app-label--quote.pending-booking';
+    console.log(`Looking for pending booking with selector: ${selector}`);
     
-    let pendingBookingVisible = false;
-    for (const strategy of pendingBookingStrategies) {
-      try {
-        pendingBookingVisible = await strategy().catch(() => false);
-        if (pendingBookingVisible) {
-          console.log('Found pending booking indicator');
-          break;
-        }
-      } catch (error) {
-        continue;
-      }
+    const pendingBookingVisible = await newPage.isVisible(selector, { timeout: 15000 });
+    
+    if (pendingBookingVisible) {
+      const elementText = await newPage.locator(selector).first().textContent();
+      console.log(`Found "Pending" booking with selector: ${selector}`);
+      console.log(`Element text: "${elementText}"`);
     }
     
     console.log(`"Pending booking" text is ${pendingBookingVisible ? 'visible' : 'NOT visible'}`);
     
-    // Always assert that pending booking should be visible
-    if (!pendingBookingVisible) {
-      console.log('Pending booking text not found, checking for other cart indicators...');
-      
-      // Check if we're actually on the cart page by looking for cart indicators
-      const cartIndicators = await newPage.locator('text*="cart", text*="trip", text*="booking"').count();
-      if (cartIndicators > 0) {
-        console.log(`Found ${cartIndicators} cart-related elements - flight was successfully added`);
-      } else {
-        console.log('Note: Could not confirm cart page, but test flow completed');
-      }
-    }
-    
-    // This will fail the test if pending booking is not found
+    // Assert that pending booking is visible - will fail test if not found
     expect(pendingBookingVisible).toBeTruthy();
     
     // Step 14: Final validation complete

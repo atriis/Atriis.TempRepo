@@ -3,6 +3,7 @@ const { defineConfig, devices } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: './tests',
   timeout: 120000,
+  workers: 1, // Run tests sequentially to avoid resource contention
   use: {
     screenshot: 'only-on-failure',
     viewport: null,
@@ -22,7 +23,9 @@ module.exports = defineConfig({
           args: [
             '--incognito',
             '--start-maximized',
-            '--window-size=1920,1080'
+            '--window-size=1920,1080',
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor'
           ],
         },
       },

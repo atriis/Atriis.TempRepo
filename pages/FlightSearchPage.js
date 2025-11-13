@@ -65,12 +65,42 @@ class FlightSearchPage {
 
   async validateAndAddToTrip() {
     console.log("Validate 'Add to trip' button is displayed");
-    const addToTripVisible = await this.page.isVisible('text="Add to trip"', { timeout: 10000 }).catch(() => false);
+    
+    // Wait longer for search results to load completely
+    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForTimeout(3000);
+    
+    // Try multiple strategies to find the Add to trip button
+    let addToTripVisible = false;
+    const addToTripStrategies = [
+      () => this.page.isVisible('text="Add to trip"', { timeout: 8000 }),
+      () => this.page.isVisible('button:has-text("Add to trip")', { timeout: 3000 }),
+      () => this.page.isVisible('button:has-text("Add")', { timeout: 3000 })
+    ];
+    
+    for (const strategy of addToTripStrategies) {
+      try {
+        addToTripVisible = await strategy().catch(() => false);
+        if (addToTripVisible) {
+          console.log('Found Add to trip button');
+          break;
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+    
     console.log(`"Add to trip" button is ${addToTripVisible ? 'visible' : 'NOT visible'}`);
+    
+    // Only proceed if button is actually visible
+    if (!addToTripVisible) {
+      throw new Error('Add to trip button not found after search');
+    }
 
     console.log("Click 'Add to trip' button");
     await this.page.click('text="Add to trip"');
-    await this.page.waitForTimeout(2000);
+    // Wait longer for potential modal to appear
+    await this.page.waitForTimeout(4000);
   }
 
   async fillFlightDetails(origin, destination, tripType = 'one way') {
