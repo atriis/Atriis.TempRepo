@@ -1,5 +1,5 @@
 // tests/flight-booking.spec.js
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('../fixtures/testWithFixtures');
 
 // DSL imports
 const App = require('../dsl/App');
@@ -11,54 +11,48 @@ const Checkout = require('../dsl/Checkout');
 const TripOverview = require('../dsl/TripOverview');
 
 // Test data imports
-const config = require('../test-data/config.json');
-const users = require('../test-data/users.json');
+const config = require('../test-data/config');
 
-test.describe('Flight Booking End-to-End Flow', () => {
-  test('should complete full flight booking flow with cancellation', async ({ page }) => {
+test.describe('@smoke Flight Booking End-to-End Flow', () => {
+  test('should complete full flight booking flow with cancellation', async ({ newTripPage }) => {
     // Step 1: Login
-    console.log('Step 1: Login');
-    await page.goto(config.stagingURL);
-    await App.loginAs(page, users.amadeus.userOne);
-
-    // Step 2: Book a new trip (opens new tab)
-    console.log('Step 2: Book a new trip');
-    const tripPage = await App.bookANewTrip(page);
+    console.log('Step 1 & 2: Login + Book a New Trip handled by fixtures');
+    const page = newTripPage;
 
     // Step 3: Add traveller - I'm the traveller
     console.log('Step 3: Add traveller - I am the traveller');
-    await Search.addTravelerImTheTraveller(tripPage);
+    await Search.addTravelerImTheTraveller(page);
 
     // Step 4: Search one-way LHR → DOH
     console.log('Step 4: Search one-way flight LHR → DOH');
-    await FlightSearch.searchFlightsOneWay(tripPage, 'lhrToDoh');
-
+    await FlightSearch.searchFlightsOneWay(page, 'lhrToDoh');
+    
     // Step 5: Add first flight and handle conflict modal if appears
     console.log('Step 5: Add first flight to cart');
-    await FlightResults.addFirstFlightToCart(tripPage);
+    await FlightResults.addFirstFlightToCart(page);
 
     // Step 6: Assert Pending booking (assertion in spec, not DSL)
     console.log('Step 6: Assert Pending booking');
-    await expect(tripPage.getByText('Pending booking')).toBeVisible();
-
+    await expect(page.getByText('Pending booking')).toBeVisible();
+    
     // Step 7: Accept terms → Proceed to Checkout
     console.log('Step 7: Accept terms and proceed to checkout');
-    await Cart.acceptTermsAndConditionsAndProceedToCheckout(tripPage);
+    await Cart.acceptTermsAndConditionsAndProceedToCheckout(page);
 
     // Step 8: Wait for checkout page and proceed (let DSL handle the page validation)
     console.log('Step 8: Proceeding to checkout page');
 
     // Step 9: Book & Finalize (DSL)
     console.log('Step 9: Book and finalize booking');
-    await Checkout.bookAndFinalize(tripPage);
+    await Checkout.bookAndFinalize(page);
 
     // Step 10: Assert finalizing status in trip overview
     console.log('Step 10: Assert finalizing status');
-    expect(await TripOverview.isBookingFinalizing(tripPage)).toBe(true);
-
+    expect(await TripOverview.isBookingFinalizing(page)).toBe(true);
+    
     // Step 11: Cancel flight trip with complete validation
     console.log('Step 11: Cancel flight booking');
-    await TripOverview.cancelFlightTrip(tripPage);
+    await TripOverview.cancelFlightTrip(page);
 
     console.log('Flight booking and cancellation flow completed successfully!');
   });

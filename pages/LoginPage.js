@@ -15,16 +15,16 @@ class LoginPage {
     console.log('Login page visible');
   }
 
-  // Fill username
-  async fillUsername() {
-    console.log('Filling username');
-    await this.page.fill('#email', 'ruimariano@amadeus.com');
+  // Fill email
+  async fillEmail(email) {
+    console.log('Filling email');
+    await this.page.fill('#email', email);
   }
 
   // Fill password (hardcoded like shared step)
-  async fillPassword() {
+  async fillPassword(password) {
     console.log('Filling password');
-    await this.page.fill('#psw', 'NextLevelAtriis25!');
+    await this.page.fill('#psw', password);
   }
 
   // Click Login button

@@ -4,12 +4,12 @@ const Menu = require('./Menu');
 
 const App = {
   // High-level login action
-  async loginAs(page, username) {
+  async loginAs(page, { email, password }) {
     const loginPage = new LoginPage(page);
 
     await loginPage.waitForLoginPage();
-    await loginPage.fillUsername(username);
-    await loginPage.fillPassword();
+    await loginPage.fillEmail(email);
+    await loginPage.fillPassword(password);
     await loginPage.clickLoginButton();
     await loginPage.waitForLogoutIcon();
 

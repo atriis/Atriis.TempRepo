@@ -65,25 +65,43 @@ async clickCalendarNextArrow(times = 3) {
 }
 
 async selectDefaultCheckInDate() {
-  const monthTable = this.page.locator('table.el-date-table').first();
+  // Make sure the check-in field is clicked before this is called
+  // (otherwise the picker might not be visible at all)
+  // e.g.: await this.page.locator('input[placeholder="Check-in"]').click();
+
+  const picker = this.page.locator('.el-picker-panel:visible').first();
+
+  // Scope to the first month table inside the visible picker
+  const monthTable = picker.locator('table.el-date-table').first();
 
   const days = monthTable.locator(
-    'td.available > div.el-date-table-cell > span.el-date-table-cell__text'
+    'td.available .el-date-table-cell__text'
   );
 
+  await days.first().waitFor({ state: 'visible' });
   await days.first().click();
-  console.log('Selected check-in date (day 1)');
+
+  console.log('Selected default check-in date (first available)');
 }
 
 async selectDefaultCheckOutDate() {
-  const monthTable = this.page.locator('table.el-date-table').first();
+  const picker = this.page.locator('.el-picker-panel:visible').first();
+  const monthTable = picker.locator('table.el-date-table').first();
 
+  // Re-query after check-in (DOM might have changed)
   const days = monthTable.locator(
-    'td.available > div.el-date-table-cell > span.el-date-table-cell__text'
+    'td.available .el-date-table-cell__text'
   );
 
+  const count = await days.count();
+  if (count < 2) {
+    throw new Error(`Not enough available dates. Found only ${count} available day(s) in visible calendar.`);
+  }
+
+  await days.nth(1).waitFor({ state: 'visible' });
   await days.nth(1).click();
-  console.log('Selected check-out date (day 2)');
+
+  console.log('Selected default check-out date (second available)');
 }
 }
 

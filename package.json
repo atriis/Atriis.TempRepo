@@ -6,10 +6,8 @@
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
-
     "test:dev": "cross-env TEST_ENV=dev playwright test",
     "test:dev:headed": "cross-env TEST_ENV=dev playwright test --headed",
-
     "test:staging": "playwright test",
     "test:staging:headed": "playwright test --headed"
   },
@@ -23,7 +21,8 @@
   "license": "MIT",
   "devDependencies": {
     "@playwright/test": "^1.40.0",
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "dotenv": "^17.2.3"
   },
   "engines": {
     "node": ">=18.0.0"
