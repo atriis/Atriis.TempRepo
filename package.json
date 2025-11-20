@@ -1,31 +1,29 @@
 {
-  "name": "atriisautomation-mcp-playwright",
+  "name": "atriisautomation-playwright",
   "version": "1.0.0",
-  "description": "MCP-enhanced Playwright test automation for flight search",
-  "main": "index.js",
+  "description": "Playwright end-to-end automation framework",
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",
-    "test:flight": "playwright test tests/gtp-flight-search.spec.js --headed",
-    "test:pom": "playwright test tests/gtp-flight-search-pom.spec.js --headed",
-    "test:staging": "playwright test",
+    "test:debug": "playwright test --debug",
+
     "test:dev": "cross-env TEST_ENV=dev playwright test",
-    "test:staging:headed": "playwright test --headed",
     "test:dev:headed": "cross-env TEST_ENV=dev playwright test --headed",
-    "test:debug": "playwright test --debug"
+
+    "test:staging": "playwright test",
+    "test:staging:headed": "playwright test --headed"
   },
   "keywords": [
     "playwright",
     "automation",
     "testing",
-    "mcp",
-    "natural-language",
-    "flight-search"
+    "e2e"
   ],
   "author": "ATRIIS Automation Team",
   "license": "MIT",
   "devDependencies": {
-    "@playwright/test": "^1.40.0"
+    "@playwright/test": "^1.40.0",
+    "cross-env": "^7.0.3"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -1,55 +1,43 @@
-const { McpBrowserHelper } = require('../mcp/browserHelper');
-const config = require('../test-data/config.json');
-const users = require('../test-data/users.json');
+// pages/LoginPage.js
+const { waitForText } = require('../utils/wait');
+
 
 class LoginPage {
   constructor(page) {
     this.page = page;
-    this.page.mcp = new McpBrowserHelper(page);
   }
 
-  /**
-   * Navigate to the specified environment
-   * @param {string} environment - 'staging' or 'dev'
-   */
-  async navigate(environment = 'staging') {
-    console.log(`Navigating to ${environment} environment`);
-    const url = environment === 'dev' ? config.devURL : config.stagingURL;
-    await this.page.goto(url);
-    await this.page.mcp.waitFor('page to load');
-    console.log(`Successfully navigated to ${environment}`);
+  // Wait for login page fields to be visible
+  async waitForLoginPage() {
+    console.log('Waiting for Login page...');
+    await this.page.waitForSelector('#email', { state: 'visible' });
+    await this.page.waitForSelector('#psw', { state: 'visible' });
+    console.log('Login page visible');
   }
 
-  /**
-   * Fill login credentials
-   * @param {string} email - User email
-   * @param {string} password - User password
-   */
-  async fillCredentials(email, password) {
-    console.log('Fill login credentials');
-    await this.page.mcp.fill('email', email);
-    await this.page.mcp.fill('password', password);
+  // Fill username
+  async fillUsername() {
+    console.log('Filling username');
+    await this.page.fill('#email', 'ruimariano@amadeus.com');
   }
 
-  /**
-   * Click the login button
-   */
-  async clickLogin() {
-    console.log('Click login button');
-    await this.page.mcp.click('login button');
-    await this.page.mcp.waitFor('3');
+  // Fill password (hardcoded like shared step)
+  async fillPassword() {
+    console.log('Filling password');
+    await this.page.fill('#psw', 'NextLevelAtriis25!');
   }
 
-  /**
-   * Complete login process
-   * @param {string} userType - Company type ('amadeus', 'galileo', 'sabre')
-   * @param {string} userName - User name ('userOne', 'userTwo')
-   */
-  async login(userType = 'amadeus', userName = 'userOne') {
-    const email = users[userType][userName];
-    const password = users.sharedPassword;
-    await this.fillCredentials(email, password);
-    await this.clickLogin();
+  // Click Login button
+  async clickLoginButton() {
+    console.log('Clicking login button');
+    await this.page.click('#resetText');
+  }
+
+  // Wait for logout icon to confirm login
+  async waitForLogoutIcon() {
+    console.log('Waiting for logout icon...');
+    await waitForText(this.page, '.logout-icon', 'logout');
+    console.log('Logout icon visible — login successful');
   }
 }
 

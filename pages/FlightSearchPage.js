@@ -3,111 +3,48 @@ class FlightSearchPage {
     this.page = page;
   }
 
-  /**
-   * Validate that 'One way' option is visible
-   * @returns {boolean} - True if visible
-   */
-  async validateOneWayVisible() {
-    console.log("Validate 'One way' is displayed");
-    const oneWayVisible = await this.page.isVisible('text="One way"');
-    console.log(`"One way" is ${oneWayVisible ? 'visible' : 'NOT visible'}`);
-    return oneWayVisible;
+  // Click on the "Flights" tab
+  async clickFlightTab() {
+    await this.page.click("#tab-flight > div");
   }
 
-  /**
-   * Fill origin airport and select from dropdown
-   * @param {string} airport - Airport code (e.g., 'LHR')
-   */
-  async fillOrigin(airport) {
-    console.log(`Type "${airport}" in From field`);
-    await this.page.mcp.fill('From', airport);
-    await this.page.waitForTimeout(3000);
-
-    console.log('Select first option for departure');
-    await this.page.mcp.selectFromDropdown('first airport option');
+  // Select the "One way" radio option
+  async selectOneWayTrip() {
+    await this.page.click(
+      ".search-options-wrapper > :nth-child(1) [role='radiogroup'] > :nth-child(2) .el-radio__label"
+    );
   }
 
-  /**
-   * Fill destination airport and select from dropdown
-   * @param {string} airport - Airport code (e.g., 'MAD')
-   */
-  async fillDestination(airport) {
-    console.log(`Type "${airport}" in To field`);
-    await this.page.mcp.fill('To', airport);
-    await this.page.waitForTimeout(3000);
-
-    console.log('Select first option for destination');
-    await this.page.mcp.selectFromDropdown('first airport option');
+  // Fill the "From... Departure" field and tab out
+  async fillFromDeparture(from) {
+    await this.page.type("[placeholder='From... Departure']", from);
+    await this.page.keyboard.press("Tab");
   }
 
-  async selectTripType(type = 'one way') {
-    console.log(`Click "${type}"`);
-    await this.page.mcp.selectTripType(type);
+  // Fill the "To... Destination" field and tab out
+  async fillToDestination(to) {
+    await this.page.type("[placeholder='To... Destination']", to);
+    await this.page.keyboard.press("Tab");
   }
 
-  async selectDepartureDate() {
-    console.log("Click departure date field and select date 2 months ahead");
-    
-    // Click the date input field
-    await this.page.locator('input[placeholder="Departure date"]').click();
+  // Click the departure date field to open the date picker
+  async clickDepartureDateField() {
+    await this.page.click("[placeholder='Departure date']");
     await this.page.waitForTimeout(1500);
-    
-    // Navigate 2 months ahead
+  }
+
+  // Click the "next month" arrow in the date picker
+  async goToNextMonthInCalendar() {
     await this.page.locator('.el-date-picker__next-btn').last().click();
     await this.page.waitForTimeout(500);
     await this.page.locator('.el-date-picker__next-btn').last().click();
     await this.page.waitForTimeout(500);
-    
-    // Click first available date that is visible
+  }
+
+  // Select a specific departure date cell (same as your original selector)
+  async selectDepartureDate() {
     await this.page.locator('td.available:visible').first().click();
-    await this.page.waitForTimeout(1000);
-  }
-
-  async validateAndAddToTrip() {
-    console.log("Validate 'Add to trip' button is displayed");
-    
-    // Wait longer for search results to load completely
-    await this.page.waitForLoadState('networkidle');
-    await this.page.waitForTimeout(3000);
-    
-    // Try multiple strategies to find the Add to trip button
-    let addToTripVisible = false;
-    const addToTripStrategies = [
-      () => this.page.isVisible('text="Add to trip"', { timeout: 8000 }),
-      () => this.page.isVisible('button:has-text("Add to trip")', { timeout: 3000 }),
-      () => this.page.isVisible('button:has-text("Add")', { timeout: 3000 })
-    ];
-    
-    for (const strategy of addToTripStrategies) {
-      try {
-        addToTripVisible = await strategy().catch(() => false);
-        if (addToTripVisible) {
-          console.log('Found Add to trip button');
-          break;
-        }
-      } catch (error) {
-        continue;
-      }
-    }
-    
-    console.log(`"Add to trip" button is ${addToTripVisible ? 'visible' : 'NOT visible'}`);
-    
-    // Only proceed if button is actually visible
-    if (!addToTripVisible) {
-      throw new Error('Add to trip button not found after search');
-    }
-
-    console.log("Click 'Add to trip' button");
-    await this.page.click('text="Add to trip"');
-    // Wait longer for potential modal to appear
-    await this.page.waitForTimeout(4000);
-  }
-
-  async fillFlightDetails(origin, destination, tripType = 'one way') {
-    await this.fillOrigin(origin);
-    await this.fillDestination(destination);
-    await this.selectTripType(tripType);
-    await this.selectDepartureDate();
+    await this.page.waitForTimeout(1000);;
   }
 }
 

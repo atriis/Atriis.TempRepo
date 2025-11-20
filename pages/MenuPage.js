@@ -1,23 +1,26 @@
+// pages/MenuPage.js
 class MenuPage {
   constructor(page) {
     this.page = page;
-    // Ensure MCP is initialized
-    if (!this.page.mcp) {
-      const { McpBrowserHelper } = require('../mcp/browserHelper');
-      this.page.mcp = new McpBrowserHelper(page);
-    }
   }
 
-  /**
-   * Click 'Book a New Trip' and wait for new tab to load
-   */
-  async bookANewTrip() {
-    console.log("Click 'Book a new trip'");
-    await this.page.mcp.click('Book a New Trip');
+  // Wait for "Book a New Trip" icon
+  async waitForBookANewTripIcon() {
+    console.log('Waiting for "Book a New Trip" icon...');
+    await this.page.waitForTimeout(2000);
+    await this.page.waitForTimeout(1000);
+  }
 
-    console.log("Wait for new tab to load");
-    await this.page.mcp.waitFor('page to load');
-    await this.page.mcp.waitFor('2');
+  // Click "Book a New Trip"
+  async clickBookANewTrip() {
+    console.log('Click "Book a New Trip"');
+    await this.page.click('.top-container > :nth-child(4) .material-symbols-outlined');
+  }
+
+  // High-level action: wait and then click
+  async bookANewTrip() {
+    await this.waitForBookANewTripIcon();
+    await this.clickBookANewTrip();
   }
 }
 
