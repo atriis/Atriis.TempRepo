@@ -1,7 +1,6 @@
-// fixtures/testWithFixtures.js
 const base = require('@playwright/test');
-const config = require('../test-data/config');
-const App = require('../dsl/App');
+const config = require('../../src/config/config');
+const App = require('../../src/dsl/App');
 
 // Extend the base Playwright test with our own fixtures
 const test = base.test.extend({

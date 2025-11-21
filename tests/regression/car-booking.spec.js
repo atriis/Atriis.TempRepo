@@ -1,10 +1,10 @@
 const { test, expect } = require('../fixtures/testWithFixtures');
 
 // DSL imports
-const Search = require('../dsl/Search');
-const CarSearch = require('../dsl/CarSearch');
-const CarResults = require('../dsl/CarResults');
-const Cart = require('../dsl/Cart');
+const Search = require('../../src/dsl/Search')
+const CarSearch = require('../../src/dsl/CarSearch');
+const CarResults = require('../../src/dsl/CarResults');
+const Cart = require('../../src/dsl/Cart'); 
 
 test.describe('Car Booking End-to-End Flow', () => {
   test('Car Booking – Should search, add a car, and validate pending booking', async ({ newTripPage }) => {

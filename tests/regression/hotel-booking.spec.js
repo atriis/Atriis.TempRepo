@@ -1,11 +1,11 @@
 const { test, expect } = require('../fixtures/testWithFixtures');
 
 // DSL imports
-const Search = require('../dsl/Search');
-const HotelSearch = require('../dsl/HotelSearch');
-const HotelResults = require('../dsl/HotelLevelResults');
-const RoomLevelResults = require('../dsl/RoomLevelResults');
-const Cart = require('../dsl/Cart');
+const Search = require('../../src/dsl/Search');
+const HotelSearch = require('../../src/dsl/HotelSearch');
+const HotelLevelResults = require('../../src/dsl/HotelLevelResults');
+const RoomLevelResults = require('../../src/dsl/RoomLevelResults');
+const Cart = require('../../src/dsl/Cart');
 
 test.describe('Hotel Booking End-to-End Flow', () => {
   test('should complete full hotel booking flow', async ({ newTripPage }) => {
@@ -23,7 +23,7 @@ test.describe('Hotel Booking End-to-End Flow', () => {
 
     // Step 4: Navigate to hotel level and add a refundable hotel to cart
     console.log('Step 4: Select first hotel option');
-    await HotelResults.clickFirstHotelOption(page);
+    await HotelLevelResults.clickFirstHotelOption(page);
 
     // Step 5: Add a refundable hotel to cart
     console.log('Step 5: Add refundable hotel to cart');

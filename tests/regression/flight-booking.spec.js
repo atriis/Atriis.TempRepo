@@ -1,12 +1,12 @@
 const { test, expect } = require('../fixtures/testWithFixtures');
 
 // DSL imports
-const Search = require('../dsl/Search');
-const FlightSearch = require('../dsl/FlightSearch');
-const FlightResults = require('../dsl/FlightResults');
-const Cart = require('../dsl/Cart');
-const Checkout = require('../dsl/Checkout');
-const TripOverview = require('../dsl/TripOverview');
+const Search = require('../../src/dsl/Search');
+const FlightSearch = require('../../src/dsl/FlightSearch');
+const FlightResults = require('../../src/dsl/FlightResults');
+const Cart = require('../../src/dsl/Cart');
+const Checkout = require('../../src/dsl/Checkout');
+const TripOverview = require('../../src/dsl/TripOverview');
 
 test.describe('Flight Booking End-to-End Flow', () => {
   test('should complete full flight booking flow with cancellation', async ({ newTripPage }) => {

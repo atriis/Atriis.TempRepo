@@ -1,6 +1,6 @@
 const FlightSearchPage = require("../pages/FlightSearchPage");
 const SearchPage = require("../pages/SearchPage");
-const flightRoutes = require("../test-data/flights.json");
+const flightRoutes = require("../data/flights.json");
 
 const FlightSearch = {
   /**

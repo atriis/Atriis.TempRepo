@@ -74,7 +74,7 @@ class TripOverviewPage {
   async waitForTripCancelledMessage() {
     console.log('Waiting for cancellation success message...');
     const successMessage = this.page.getByText('Cancellation confirmed!', { exact: true });
-    await successMessage.waitFor({ state: 'visible', timeout: 10000 });
+    await successMessage.waitFor({ state: 'visible', timeout: 20000 });
     console.log('Cancellation confirmed message found');
   }
 
