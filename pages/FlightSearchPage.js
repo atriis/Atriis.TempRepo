@@ -5,7 +5,7 @@ class FlightSearchPage {
 
   // Click on the "Flights" tab
   async clickFlightTab() {
-    await this.page.click("#tab-flight > div");
+    await this.page.click("#tab-flight");
   }
 
   // Select the "One way" radio option
@@ -44,7 +44,7 @@ class FlightSearchPage {
   // Select a specific departure date cell (same as your original selector)
   async selectDepartureDate() {
     await this.page.locator('td.available:visible').first().click();
-    await this.page.waitForTimeout(1000);;
+    await this.page.waitForTimeout(1000);
   }
 }
 

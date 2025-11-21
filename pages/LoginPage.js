@@ -1,7 +1,3 @@
-// pages/LoginPage.js
-const { waitForText } = require('../utils/wait');
-
-
 class LoginPage {
   constructor(page) {
     this.page = page;
@@ -21,7 +17,7 @@ class LoginPage {
     await this.page.fill('#email', email);
   }
 
-  // Fill password (hardcoded like shared step)
+  // Fill password
   async fillPassword(password) {
     console.log('Filling password');
     await this.page.fill('#psw', password);
@@ -31,13 +27,6 @@ class LoginPage {
   async clickLoginButton() {
     console.log('Clicking login button');
     await this.page.click('#resetText');
-  }
-
-  // Wait for logout icon to confirm login
-  async waitForLogoutIcon() {
-    console.log('Waiting for logout icon...');
-    await waitForText(this.page, '.logout-icon', 'logout');
-    console.log('Logout icon visible — login successful');
   }
 }
 

@@ -1,8 +1,9 @@
-// dsl/RoomLevelResults.js
 const RoomLevelResultsPage = require('../pages/RoomLevelResultsPage');
 const Cart = require('./Cart');
 
 const RoomLevelResults = {
+  // Adds a refundable hotel room from room level to cart
+  // Handles conflict quote modal if it appears
   async addRefundableHotelRoomLevelToCart(page) {
     console.log('Adding refundable hotel from room level to cart...');
     const roomLevelResultsPage = new RoomLevelResultsPage(page);

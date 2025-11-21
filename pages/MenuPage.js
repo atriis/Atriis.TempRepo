@@ -1,4 +1,5 @@
-// pages/MenuPage.js
+const { waitForText } = require('../utils/wait');
+
 class MenuPage {
   constructor(page) {
     this.page = page;
@@ -17,10 +18,11 @@ class MenuPage {
     await this.page.click('.top-container > :nth-child(4) .material-symbols-outlined');
   }
 
-  // High-level action: wait and then click
-  async bookANewTrip() {
-    await this.waitForBookANewTripIcon();
-    await this.clickBookANewTrip();
+  // Wait for logout icon text
+  async waitForLogoutIcon() {
+    console.log('Waiting for logout icon...');
+    await waitForText(this.page, '.logout-icon', 'logout');
+    console.log('Logout icon visible');
   }
 }
 

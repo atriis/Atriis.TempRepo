@@ -1,59 +1,34 @@
-// tests/flight-booking.spec.js
 const { test, expect } = require('../fixtures/testWithFixtures');
 
 // DSL imports
-const App = require('../dsl/App');
 const Search = require('../dsl/Search');
-const FlightSearch = require('../dsl/FlightSearch');
-const FlightResults = require('../dsl/FlightResults');
+const CarSearch = require('../dsl/CarSearch');
+const CarResults = require('../dsl/CarResults');
 const Cart = require('../dsl/Cart');
-const Checkout = require('../dsl/Checkout');
-const TripOverview = require('../dsl/TripOverview');
 
-// Test data imports
-const config = require('../test-data/config');
-
-test.describe('@smoke Flight Booking End-to-End Flow', () => {
-  test('should complete full flight booking flow with cancellation', async ({ newTripPage }) => {
+test.describe('Car Booking End-to-End Flow', () => {
+  test('Car Booking – Should search, add a car, and validate pending booking', async ({ newTripPage }) => {
+    
     // Step 1: Login
-    console.log('Step 1 & 2: Login + Book a New Trip handled by fixtures');
+    console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPage;
 
-    // Step 3: Add traveller - I'm the traveller
-    console.log('Step 3: Add traveller - I am the traveller');
+    // Step 2: Add traveller - I'm the traveller
+    console.log('Step 2: Add traveller - I am the traveller');
     await Search.addTravelerImTheTraveller(page);
 
-    // Step 4: Search one-way LHR → DOH
-    console.log('Step 4: Search one-way flight LHR → DOH');
-    await FlightSearch.searchFlightsOneWay(page, 'lhrToDoh');
-    
-    // Step 5: Add first flight and handle conflict modal if appears
-    console.log('Step 5: Add first flight to cart');
-    await FlightResults.addFirstFlightToCart(page);
+    // Step 3: Search car in LHR
+    console.log('Step 3: Search car in LHR');
+    await CarSearch.searchCarByPlace(page, { place: 'LHR' });
 
-    // Step 6: Assert Pending booking (assertion in spec, not DSL)
-    console.log('Step 6: Assert Pending booking');
-    await expect(page.getByText('Pending booking')).toBeVisible();
-    
-    // Step 7: Accept terms → Proceed to Checkout
-    console.log('Step 7: Accept terms and proceed to checkout');
-    await Cart.acceptTermsAndConditionsAndProceedToCheckout(page);
+    // Step 4: Add first car and handle conflict modal if appears
+    console.log('Step 4: Add first car to cart');
+    await CarResults.addCarFromResultsPageToCart(page);
 
-    // Step 8: Wait for checkout page and proceed (let DSL handle the page validation)
-    console.log('Step 8: Proceeding to checkout page');
+    // Step 5: Assert Pending booking (assertion in spec, not DSL)
+    console.log('Step 5: Assert Quote is "Pending booking"');
+    expect(await Cart.isQuotePendingBooking(page)).toBe(true);
 
-    // Step 9: Book & Finalize (DSL)
-    console.log('Step 9: Book and finalize booking');
-    await Checkout.bookAndFinalize(page);
-
-    // Step 10: Assert finalizing status in trip overview
-    console.log('Step 10: Assert finalizing status');
-    expect(await TripOverview.isBookingFinalizing(page)).toBe(true);
-    
-    // Step 11: Cancel flight trip with complete validation
-    console.log('Step 11: Cancel flight booking');
-    await TripOverview.cancelFlightTrip(page);
-
-    console.log('Flight booking and cancellation flow completed successfully!');
+    console.log('Car search and add-to-cart flow completed successfully.');
   });
 });

@@ -1,17 +1,22 @@
-// dsl/FlightSearch.js
-
 const FlightSearchPage = require("../pages/FlightSearchPage");
 const SearchPage = require("../pages/SearchPage");
 const flightRoutes = require("../test-data/flights.json");
 
 const FlightSearch = {
   /**
-   * High-level DSL:
-   * Search a one-way flight using a named route from flights.json
-   *
-   * Example:
+   * Performs a complete one-way flight search using predefined route configuration
+   * Handles flight tab selection, route setup, date selection, and search execution
+   * Uses route data from flights.json for consistent and maintainable test scenarios
+   * 
+   * @param {Object} page - Playwright page instance
+   * @param {string} routeName - Named route from flights.json (defaults to defaultRoute)
+   * @returns {Object} - Search result object with status, route name, and airport codes
+   * 
+   * Examples:
    *   await FlightSearch.searchFlightsOneWay(page, "lhrToMad");
    *   await FlightSearch.searchFlightsOneWay(page); // uses defaultRoute
+   * 
+   * @throws {Error} - When specified route name is not found in flights.json
    */
   async searchFlightsOneWay(page, routeName = flightRoutes.defaultRoute) {
     // Look up route by name in flights.json

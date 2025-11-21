@@ -6,7 +6,9 @@ class CartPage {
     this.page = page;
   }
 
-   async handleConflictQuoteModalIfVisible() {
+  // Handles the "Conflicting Quotes" modal that may appear during booking
+  // Automatically clicks "Proceed" if the modal is visible, otherwise continues silently
+  async handleConflictQuoteModalIfVisible() {
     console.log("Handle 'Conflicting Quotes' modal if it appears");
 
     // Try to detect any element that clearly belongs to the modal
@@ -23,23 +25,24 @@ class CartPage {
     console.log("'Proceed' button visible, clicking it...");
     await proceedButton.click();
 
-    // Optional: wait for modal to disappear
+    // Extra wait to ensure stability
     await this.page.waitForTimeout(1000);
-
-    // If the modal has a container, you can replace the timeout with:
-    // await this.page.locator('text=Conflicting Quotes').first().waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
 
     console.log("Conflicting Quotes modal handled");
     return true;
   }
 
+  // Accepts the terms and conditions by clicking the checkbox
+  // Required step before proceeding to checkout in the booking flow
   async acceptTermsAndConditions() {
     const checkbox = this.page.locator(".el-checkbox__inner").first();
-  await checkbox.waitFor({ state: "visible" });
+    await checkbox.waitFor({ state: "visible" });
 
-  await checkbox.click();
-}
+    await checkbox.click();
+  }
 
+  // Waits for the "Proceed to Checkout" button to be ready for interaction
+  // Handles text validation to ensure proper button state before proceeding
   async waitForProceedToCheckout() {
     const text = await getText(this.page, ".btn-container span");
 
@@ -48,17 +51,33 @@ class CartPage {
     }
   }
 
+  // Clicks the "Proceed to Checkout" button to advance to the checkout page
   async clickProceedToCheckout() {
     await this.page.click(".btn-container span");
   }
 
+  // Waits for the "Pending booking" text to appear, indicating booking is being processed
   async waitForPendingBookingText() {
+    console.log('Waiting for "Pending booking" text...');
+
     await waitForText(this.page, ".app-label", "Pending booking");
+
+    console.log('"Pending booking" text found');
   }
 
-async waitForHotelRefundableText() {
-await this.page.locator('div.cancellation-terms.refundable:has-text("Refundable")').waitFor({ state: 'visible' });
-}
+  // Waits for the "Refundable" text to appear in hotel cancellation terms
+  // Confirms that the selected hotel booking has refundable cancellation policy
+  async waitForHotelRefundableText() {
+    console.log('Waiting for hotel refundable text...');
+
+    const refundable = this.page
+      .locator('div.refundable', { hasText: /Refundable/i })
+      .first();
+
+    await refundable.waitFor({ state: 'visible', timeout: 10000 });
+
+    console.log('Refundable hotel text found in cart');
+  }
 }
 
 module.exports = CartPage;

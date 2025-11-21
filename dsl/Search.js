@@ -1,12 +1,8 @@
 const SearchPage = require('../pages/SearchPage');
-const { generateRandomGuestData } = require('../utils/test-data');
+const { generateRandomGuestData } = require('../utils/data/generateRandomGuestData.js');
 
 const Search = {
-  
-  /**
-   * High-level DSL action:
-   * Add "I am the traveler"
-   */
+  // Sets the logged user as the traveler for the booking
   async addTravelerImTheTraveller(page) {
     const searchPage = new SearchPage(page);
 
@@ -17,18 +13,12 @@ const Search = {
     return { added: true };
   },
 
-  /**
-   * High-level DSL action:
-   * Add first random guest traveler
-   * (values must be generated before calling)
-   */
-
-   //Not working yet, use addTravelerImTheTraveller instead
-    async addFirstRandomGuest(page) {
+  // Adds a guest with random data as the traveler for the booking
+  async addFirstRandomGuest(page) {
     const searchPage = new SearchPage(page);
 
     const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
-    
+
     await searchPage.clickTravelerIcon();
     await searchPage.clickGuestTypeModal();
 

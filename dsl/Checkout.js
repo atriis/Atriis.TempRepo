@@ -1,9 +1,8 @@
-// dsl/Checkout.js
-
 const CheckoutPage = require('../pages/CheckoutPage');
 const TripOverviewPage = require('../pages/TripOverviewPage');
 
 const Checkout = {
+  // Completes the entire booking finalization process from checkout to trip overview
   async bookAndFinalize(page) {
     const checkoutPage = new CheckoutPage(page);
     const tripOverviewPage = new TripOverviewPage(page);

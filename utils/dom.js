@@ -27,7 +27,6 @@ async function scrollToElement(page, selector) {
   });
 }
 
-
 module.exports = {
   getText,
   scrollToElement,
