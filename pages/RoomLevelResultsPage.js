@@ -1,6 +1,16 @@
 const { waitForText } = require('../utils/wait');
 const { scrollToElement } = require('../utils/dom');
 
+// Centralized selectors for easy maintenance
+const SELECTORS = {
+  viewHotelOnMapButton: "button.map-btn.is-paddingless",
+  addToTripButton: "button.add-to-trip-btn",
+  refundableCheckboxLabel: "label.el-checkbox",
+  refundableCheckboxInner: ".el-checkbox__inner",
+  refundableCheckboxInput: "input.el-checkbox__original",
+  refundableTag: "div.refundable:has-text('Refundable')"
+};
+
 class RoomLevelResultsPage {
   constructor(page) {
     this.page = page;
@@ -8,11 +18,7 @@ class RoomLevelResultsPage {
 
   // Waits for the "View hotel on map" button to become visible
   async waitForViewHotelOnMapText() {
-    await this.page.locator(
-      'button.map-btn.is-paddingless',
-      { hasText: 'View hotel on map' }
-    ).waitFor({ state: 'visible' });
-
+    await this.page.locator(SELECTORS.viewHotelOnMapButton, { hasText: 'View hotel on map' }).waitFor({ state: 'visible' });
     console.log("Map button is now visible");
   }
 
@@ -20,29 +26,18 @@ class RoomLevelResultsPage {
   // Combines scrolling and text verification for stable element interaction
   async waitForAddToTripText() {
     console.log("Waiting for 'Add to trip' button...");
-
-    // 1. Scroll to the element
-    await scrollToElement(this.page, "button.add-to-trip-btn");
-
-    // 2. Wait for the exact text using your helper
-    await waitForText(
-      this.page,
-      "button.add-to-trip-btn",
-      "Add to trip"
-    );
-
+    await scrollToElement(this.page, SELECTORS.addToTripButton);
+    await waitForText(this.page, SELECTORS.addToTripButton, "Add to trip");
     console.log("'Add to trip' button found");
   }
 
   // Clicks the refundable filter checkbox to show only refundable room rates
   async clickRefundableCheckbox() {
-    const root = this.page
-      .locator('label.el-checkbox', {
-        has: this.page.locator('p.filter-title[title="Refundable"]'),
-      });
-
-    const inner = root.locator('.el-checkbox__inner');
-    const input = root.locator('input.el-checkbox__original');
+    const root = this.page.locator(SELECTORS.refundableCheckboxLabel, {
+      has: this.page.locator("p.filter-title[title='Refundable']")
+    });
+    const inner = root.locator(SELECTORS.refundableCheckboxInner);
+    const input = root.locator(SELECTORS.refundableCheckboxInput);
 
     await inner.scrollIntoViewIfNeeded();
     await inner.waitFor({ state: 'visible' });
@@ -56,11 +51,8 @@ class RoomLevelResultsPage {
   // Confirms that the refundable filter has been applied successfully
   async verifyRefundableTagIsVisible() {
     console.log("Checking for refundable tag...");
-
-    const locator = this.page.locator("div.refundable:has-text('Refundable')").first();
-
+    const locator = this.page.locator(SELECTORS.refundableTag).first();
     await locator.waitFor({ state: "visible" });
-
     console.log("Refundable tag is visible.");
   }
 
@@ -68,20 +60,9 @@ class RoomLevelResultsPage {
   // Combines scrolling, text verification, and selection for the first available room
   async clickAddToTripTextFirstRoom() {
     console.log("Clicking first 'Add to trip' button...");
-
-    // 1. Scroll to the element
-    await scrollToElement(this.page, "button.add-to-trip-btn");
-
-    // 2. Wait for text using your helper
-    await waitForText(
-      this.page,
-      "button.add-to-trip-btn",
-      "Add to trip"
-    );
-
-    // 3. Click the first one
-    await this.page.locator("button.add-to-trip-btn").first().click();
-
+    await scrollToElement(this.page, SELECTORS.addToTripButton);
+    await waitForText(this.page, SELECTORS.addToTripButton, "Add to trip");
+    await this.page.locator(SELECTORS.addToTripButton).first().click();
     console.log("First 'Add to trip' clicked");
   }
 }
