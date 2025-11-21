@@ -4,10 +4,10 @@ module.exports = defineConfig({
   testDir: './tests',
   timeout: 120000,
 
-  // Enable parallel execution (different workers for CI vs local)
+  // Enable parallel execution
   workers: process.env.CI ? 2 : 4,
 
-  // Reporters: console, JUnit for CI, HTML for local debugging
+  // Reporters for CI/CD and local debugging
   reporter: [
     ['list'],
     ['junit', { outputFile: 'test-results/results.xml' }],
@@ -15,11 +15,9 @@ module.exports = defineConfig({
   ],
 
   use: {
-    // Diagnostics for debugging failures
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
     video: 'retain-on-failure',
-
     viewport: null,
     ignoreHTTPSErrors: true
   },
