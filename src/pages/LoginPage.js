@@ -1,8 +1,10 @@
+
 // Centralized selectors for easy maintenance
 const SELECTORS = {
   emailInput: '#email',
   passwordInput: '#psw',
-  loginButton: '#resetText'
+  loginButton: '#resetText',
+  forgotPasswordText: '#forgotPsw'
 };
 
 class LoginPage {
@@ -17,6 +19,13 @@ class LoginPage {
     await this.page.waitForSelector(SELECTORS.emailInput, { state: 'visible' });
     await this.page.waitForSelector(SELECTORS.passwordInput, { state: 'visible' });
     console.log('Login page visible');
+  }
+
+  // NEW: Waits for "Forgot password?" text to be visible
+  async waitForgotPasswordText() {
+    console.log('Waiting for "Forgot password?" text...');
+    await this.page.waitForSelector(SELECTORS.forgotPasswordText, { state: 'visible' });
+    console.log('"Forgot password?" text is visible');
   }
 
   // Fills the email field with the provided email address

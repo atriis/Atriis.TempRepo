@@ -12,7 +12,7 @@
       "from": "NYC",
       "to": "LAX"
     },
-    "parToLon": {
+    "cdgToLhr": {
       "from": "CDG",
       "to": "LHR"
     }

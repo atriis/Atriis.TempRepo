@@ -3,7 +3,8 @@ const { waitForText } = require('../utils/wait');
 // Centralized selectors for easy maintenance
 const SELECTORS = {
   bookNewTripIcon: '.top-container > :nth-child(4) .material-symbols-outlined',
-  logoutIcon: '.logout-icon'
+  logoutIcon: '.logout-icon',
+  tripsIcon: 'a[href="/trips"]'
 };
 
 class MenuPage {
@@ -15,8 +16,8 @@ class MenuPage {
   // Includes extra timeout for stability before interaction
   async waitForBookANewTripIcon() {
     console.log('Waiting for "Book a New Trip" icon...');
-    await this.page.waitForTimeout(2000);
-    await this.page.waitForTimeout(1000);
+    await this.page.waitForTimeout(3000);
+    await this.page.locator(SELECTORS.bookNewTripIcon).waitFor({state: 'visible', timeout: 10000});
   }
 
   // Clicks the "Book a New Trip" icon to start a new booking flow
@@ -27,10 +28,21 @@ class MenuPage {
 
   // Waits for the logout icon text to appear
   // Confirms that the logout option is visible and ready for interaction
-  async waitForLogoutIcon() {
+  async waitForLogoutIcon() { //Needs to me moved to HeaderPage.js
     console.log('Waiting for logout icon...');
     await waitForText(this.page, SELECTORS.logoutIcon, 'logout');
     console.log('Logout icon visible');
+  }
+
+    async clickLogout() { //Needs to me moved to HeaderPage.js
+    console.log('Click Logout icon');
+    await this.page.click(SELECTORS.logoutIcon);
+  }
+
+  // Clicks the "Trips" icon to navigate to the trips page
+  async clickTrips() {
+    console.log('Click "Trips"');
+    await this.page.click(SELECTORS.tripsIcon);
   }
 }
 

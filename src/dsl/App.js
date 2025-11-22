@@ -1,4 +1,5 @@
 const LoginPage = require('../pages/LoginPage');
+const LogoutPage = require('../pages/LogoutPage');
 const MenuPage = require('../pages/MenuPage');
 
 const App = {
@@ -33,6 +34,21 @@ const App = {
 
     console.log('New trip tab opened');
     return newTripPage;
+  },
+
+  // Logs out the current user and waits for login page to load
+  // Handles complete logout workflow and confirms redirect to login page
+  async logout(page) {
+    const menuPage = new MenuPage(page);
+    const loginPage = new LoginPage(page);
+    const logoutPage = new LogoutPage(page);
+
+    await menuPage.waitForLogoutIcon();
+    await menuPage.clickLogout();
+    await logoutPage.waitForLogoutSuccessMessage();
+    await loginPage.waitForgotPasswordText();
+
+    console.log('User logout completed');
   },
 };
 
