@@ -8,8 +8,8 @@ const Cart = require('../../src/dsl/Cart');
 const Checkout = require('../../src/dsl/Checkout');
 const TripOverview = require('../../src/dsl/TripOverview');
 
-test.describe('Flight Booking End-to-End Flow', () => {
-  amadeusUserOneTest('should complete full flight booking flow with cancellation', async ({ newTripPageAMADEUS_USER_ONE }) => {
+test.describe('[@regression] Flight Booking End-to-End Flow', () => {
+  amadeusUserOneTest('[@priority:critical] Flight Booking – Should complete full flight booking flow with cancellation', async ({ newTripPageAMADEUS_USER_ONE }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPageAMADEUS_USER_ONE;
@@ -36,7 +36,7 @@ test.describe('Flight Booking End-to-End Flow', () => {
     console.log('Step 7: Book and finalize booking');
     await Checkout.bookAndFinalize(page);
 
-    // Step 8: Assert finalizing status in trip overview (assertion in spec, not DSL)
+    // Step 8: Assert finalizing status in trip overview 
     console.log('Step 8: Assert finalizing status');
     expect(await TripOverview.isBookingFinalizing(page)).toBe(true);
     

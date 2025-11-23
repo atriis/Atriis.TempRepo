@@ -1,3 +1,4 @@
+
 /**
  * Playwright Defaults:
  * - headless: true (browser runs without UI)
@@ -28,30 +29,44 @@ const dotenv = require('dotenv');
 // In CI, env vars will come from the pipeline and this is harmless.
 dotenv.config();
 
-const config = {
-  baseUrl: process.env.AUTOMATION_APP_BASEURL,
+/**
+ * Minimal helper: returns the env var value or throws a clear error.
+ * This avoids undefined values breaking page.goto(config.baseUrl) and logins.
+ */
+function getEnv(name) {
+  const val = process.env[name];
+  if (!val || String(val).trim() === '') {
+    throw new Error(`Missing required env var: ${name}`);
+  }
+  return val;
+}
 
- users: {
+const config = {
+  //Use getEnv so baseUrl is guaranteed to be a non-empty string
+  baseUrl: getEnv('AUTOMATION_APP_BASEURL'),
+
+  users: {
     amadeus: {
       user_one: {
-        email: process.env.AMADEUS_USER_ONE_EMAIL,
-        password: process.env.GENERAL_PASSWORD
+        //Use getEnv to ensure email/password are defined at runtime
+        email: getEnv('AMADEUS_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD')
       },
       user_two: {
-        email: process.env.AMADEUS_USER_TWO_EMAIL,
-        password: process.env.GENERAL_PASSWORD
+        email: getEnv('AMADEUS_USER_TWO_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD')
       }
     },
     ratehawk: {
       user_one: {
-        email: process.env.RATEHAWK_USER_ONE_EMAIL,
-        password: process.env.GENERAL_PASSWORD
+        email: getEnv('RATEHAWK_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD')
       }
     },
     sabre: {
       user_one: {
-        email: process.env.SABRE_USER_ONE_EMAIL,
-        password: process.env.GENERAL_PASSWORD
+        email: getEnv('SABRE_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD')
       }
     }
     // Later you can add more users here
@@ -59,4 +74,3 @@ const config = {
 };
 
 module.exports = config;
-

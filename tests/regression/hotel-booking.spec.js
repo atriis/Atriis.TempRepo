@@ -9,8 +9,8 @@ const Cart = require('../../src/dsl/Cart');
 const Checkout = require('../../src/dsl/Checkout');
 const TripOverview = require('../../src/dsl/TripOverview');
 
-test.describe('Hotel Booking End-to-End Flow', () => {
-  ratehawkUserOneTest('should complete full hotel booking flow', async ({ newTripPageRATEHAWK_USER_ONE }) => {
+test.describe('[@regression] Hotel Booking End-to-End Flow', () => {
+  ratehawkUserOneTest('[@priority:critical] Hotel Booking – Should complete full hotel booking flow with cancellation', async ({ newTripPageRATEHAWK_USER_ONE }) => {
     // Step 1: Login with Amadeus user one
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPageRATEHAWK_USER_ONE;
@@ -31,7 +31,7 @@ test.describe('Hotel Booking End-to-End Flow', () => {
     console.log('Step 5: Add refundable hotel to cart');
     await RoomLevelResults.addRefundableHotelRoomLevelToCart(page);
 
-   // Step 6: Assert refundable hotel appears in cart before booking (assertion in spec, not DSL)
+   // Step 6: Assert refundable hotel appears in cart before booking
    console.log('Step 6: Assert refundable hotel in cart');
    expect(await Cart.isHotelRefundable(page)).toBe(true);
 
@@ -45,7 +45,7 @@ test.describe('Hotel Booking End-to-End Flow', () => {
     console.log('Step 9: Book and finalize booking');
     await Checkout.bookAndFinalize(page);
 
-   // Step 10: Assert refundable hotel appears in cart after booking (assertion in spec, not DSL)
+   // Step 10: Assert refundable hotel appears in cart after booking
    console.log('Step 10: Assert refundable hotel in cart');
    expect(await Cart.isHotelRefundable(page)).toBe(true);
     

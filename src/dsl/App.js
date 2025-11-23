@@ -14,6 +14,7 @@ const App = {
     await loginPage.fillEmail(email);
     await loginPage.fillPassword(password);
     await loginPage.clickLoginButton();
+    await page.waitForLoadState('networkidle');
     await menuPage.waitForLogoutIcon();
 
     console.log('Login completed');

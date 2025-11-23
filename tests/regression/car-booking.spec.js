@@ -8,8 +8,8 @@ const Cart = require('../../src/dsl/Cart');
 const Checkout = require('../../src/dsl/Checkout');
 const TripOverview = require('../../src/dsl/TripOverview');
 
-test.describe('Car Booking End-to-End Flow', () => {
-  sabreUserOneTest('Car Booking – Should search, add a car, and validate pending booking', async ({ newTripPageSABRE_USER_ONE }) => {
+test.describe('[@regression] Car Booking End-to-End Flow', () => {
+  sabreUserOneTest('[@priority:critical] Car Booking – Should complete full car booking flow with cancellation', async ({ newTripPageSABRE_USER_ONE }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPageSABRE_USER_ONE;
@@ -26,8 +26,8 @@ test.describe('Car Booking End-to-End Flow', () => {
     console.log('Step 4: Add first car to cart');
     await CarResults.addCarFromResultsPageToCart(page);
 
-    // Step 5: Assert Pending booking (assertion in spec, not DSL)
-    console.log('Step 5: Assert Quote is "Pending booking"');
+    // Step 5: Assert Pending booking
+    console.log('Step 5: Quote is "Pending booking" status');
     expect(await Cart.isQuotePendingBooking(page)).toBe(true);
 
        // Step 7: Accept terms → Proceed to Checkout
@@ -40,7 +40,7 @@ test.describe('Car Booking End-to-End Flow', () => {
     console.log('Step 9: Book and finalize booking');
     await Checkout.bookAndFinalize(page);
 
-    // Step 10: Assert confirmed status in trip overview (assertion in spec, not DSL)
+    // Step 10: Assert confirmed status in trip overview 
     console.log('Step 10: Assert confirmed status');
     expect(await TripOverview.isBookingConfirmed(page)).toBe(true);
 
