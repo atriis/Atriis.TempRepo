@@ -1,7 +1,5 @@
 const { test, expect } = require('../fixtures/testWithFixtures');
 
-//NEED TO ADJUST ASSERTIONS
-
 // DSL imports
 const Search = require('../../src/dsl/Search');
 const FlightSearch = require('../../src/dsl/FlightSearch');
@@ -13,26 +11,28 @@ test.describe('Smoke Tests', () => {
   test('Smoke - Application Loads', async ({ newTripPage }) => {
     const page = newTripPage;
 
-    // Step 1: Verify application URL is not empty
-    const currentUrl = await page.url();
-    expect(currentUrl).not.toBe('');
-    console.log(`Application URL: ${currentUrl}`);
+    // Step 1: Assert application loads successfully
+    console.log('Step 1: Assert application loads successfully');
+    expect(await page.url()).not.toBe('');
 
-    // Step 2: Verify page title is not empty
-    const title = await page.title();
-    expect(title).not.toBe('');
-    console.log(`Page title: ${title}`);
+    // Step 2: Assert page title is loaded
+    console.log('Step 2: Assert page title is loaded');
+    expect(await page.title()).not.toBe('');
+    console.log(`Application URL: ${await page.url()}`);
+    console.log(`Page title: ${await page.title()}`);
   });
 
   test('Smoke - Login and Navigate to "Trips"', async ({ loggedInPage }) => {
     const page = loggedInPage;
 
     // Step 1: Navigate to Trips page
+    console.log('Step 1: Navigate to Trips page');
     await Trips.navigateToTripsPage(page);
 
-    // Step 2: Verify we are on the Trips page (title not empty)
+    // Step 2: Assert trips page is loaded
+    console.log('Step 2: Assert trips page is loaded');
+    expect(await page.title()).not.toBe('');
     const title = await page.title();
-    expect(title).not.toBe('');
     console.log(`Trips page title: ${title}`);
   });
 
@@ -59,10 +59,9 @@ test.describe('Smoke Tests', () => {
     console.log('Step 1: Logout from application');
     await App.logout(page);
 
-    // Step 2: Verify we are redirected to login page
-    console.log('Step 2: Verify login page is displayed');
-    const currentUrl = await page.url();
-    expect(currentUrl).toContain('login');
-    console.log(`Post-logout URL: ${currentUrl}`);
+    // Step 2: Assert redirected to login page
+    console.log('Step 2: Assert redirected to login page');
+    expect(await page.url()).toContain('login');
+    console.log(`Post-logout URL: ${await page.url()}`);
   });
 });

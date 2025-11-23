@@ -30,6 +30,9 @@ jobs:
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
+          AMADEUS_USER_TWO_EMAIL: ${{ secrets.AMADEUS_USER_TWO_EMAIL }}
+          FUSION_USER_ONE_EMAIL: ${{ secrets.FUSION_USER_ONE_EMAIL }}
+          RATEHAWK_USER_ONE_EMAIL: ${{ secrets.RATEHAWK_USER_ONE_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload test results (XML)

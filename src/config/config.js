@@ -31,11 +31,29 @@ dotenv.config();
 const config = {
   baseUrl: process.env.AUTOMATION_APP_BASEURL,
 
-  users: {
-    amadeusUserOne: {
-      email: process.env.AMADEUS_USER_ONE_EMAIL,
-      password: process.env.GENERAL_PASSWORD,
+ users: {
+    amadeus: {
+      userOne: {
+        email: process.env.AMADEUS_USER_ONE_EMAIL,
+        password: process.env.GENERAL_PASSWORD
+      },
+      userTwo: {
+        email: process.env.AMADEUS_USER_TWO_EMAIL,
+        password: process.env.GENERAL_PASSWORD
+      }
     },
+    ratehawk: {
+      userOne: {
+        email: process.env.RATEHAWK_USER_ONE_EMAIL,
+        password: process.env.GENERAL_PASSWORD
+      }
+    },
+    fusion: {
+      userOne: {
+        email: process.env.FUSION_USER_ONE_EMAIL,
+        password: process.env.GENERAL_PASSWORD
+      }
+    }
     // Later you can add more users here
   },
 };
