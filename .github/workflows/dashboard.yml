@@ -1,0 +1,83 @@
+name: Dashboard
+
+on:
+  workflow_run:
+    workflows: ["Test Suite"]
+    types:
+      - completed
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: test-results
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Parse JSON and Generate Summary
+        id: parse
+        run: |
+          json_file=$(find test-results -name "results.json" | head -n 1 || true)
+
+          if [ -z "${json_file:-}" ] || [ ! -f "$json_file" ]; then
+            echo "PASSED=0" >> $GITHUB_OUTPUT
+            echo "FAILED=0" >> $GITHUB_OUTPUT
+            echo "SKIPPED=0" >> $GITHUB_OUTPUT
+            echo "### ⚠️ No test results found" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          passed=$(jq '[.suites[]?.specs[]? | .tests[]? | select(.status=="passed")] | length' "$json_file")
+          failed=$(jq '[.suites[]?.specs[]? | .tests[]? | select(.status=="failed")] | length' "$json_file")
+          skipped=$(jq '[.suites[]?.specs[]? | .tests[]? | select(.status=="skipped" or .status=="timedOut")] | length' "$json_file")
+
+          echo "PASSED=$passed" >> $GITHUB_OUTPUT
+          echo "FAILED=$failed" >> $GITHUB_OUTPUT
+          echo "SKIPPED=$skipped" >> $GITHUB_OUTPUT
+
+          echo "### ✅ Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "!Passed" >> $GITHUB_STEP_SUMMARY
+          echo "!Failed" >> $GITHUB_STEP_SUMMARY
+          echo "![Skipped](https://img.shields.io/badge/Skipped-${skipped}-yellow ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "#### ❌ Failing Tests" >> $GITHUB_STEP_SUMMARY
+            jq -r '[.suites[]?.specs[]? | .tests[]? | select(.status=="failed") | "- " + .title] | .[]' "$json_file" >> $GITHUB_STEP_SUMMARY
+
+      - name: Generate Dashboard HTML
+        run: |
+          mkdir -p dashboard
+          echo "<html><body><h1>Playwright Dashboard</h1>" > dashboard/index.html
+          echo "<p><strong>Passed:</strong> ${{ steps.parse.outputs.PASSED }}</p>" >> dashboard/index.html
+          echo "<p><strong>Failed:</strong> ${{ steps.parse.outputs.FAILED }}</p>" >> dashboard/index.html
+          echo "<p><strong>Skipped:</strong> ${{ steps.parse.outputs.SKIPPED }}</p>" >> dashboard/index.html
+          echo "<h2>Failing Tests</h2><ul>" >> dashboard/index.html
+          json_file=$(find test-results -name "results.json" | head -n 1 || true)
+          if [ -n "$json_file" ]; then
+            jq -r '[.suites[]?.specs[]? | .tests[]? | select(.status=="failed") | "<li>" + .title + "</li>"] | .[]' "$json_file" >> dashboard/index.html
+          fi
+          echo "</ul><p><a href=\"./playwright-report/index.html\">View Full HTML Report</a></p></body></html>" >> dashboard/index.html
+
+          # Copy Playwright HTML report into dashboard folder
+          if [ -d "playwright-report" ]; then
+            cp -r playwright-report dashboard/playwright-report
+          elif [ -d "test-results/playwright-report" ]; then
+            cp -r test-results/playwright-report dashboard/playwright-report
+          fi
+
+      - uses: actions/configure-pages@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard
+      - uses: actions/deploy-pages@v4
