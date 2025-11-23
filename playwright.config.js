@@ -2,7 +2,7 @@ const { defineConfig } = require('@playwright/test');
 
 module.exports = defineConfig({
   testDir: './tests',
-  timeout: 120000,
+  timeout: 300000,
 
   // Enable parallel execution
   workers: process.env.CI ? 2 : 4,

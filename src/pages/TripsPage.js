@@ -20,12 +20,14 @@ class TripsPage {
     await this.page.waitForTimeout(2000);
     // Use Playwright's text locator instead of CSS selector with :has-text()
     await this.page.locator('text=Found').first().waitFor({ state: 'visible', timeout: 10000 });
+    console.log('Found trips text located successfully');
   }
 
   // Wait for the "Trip Status" section title
   async tripStatusFilterTextDisplayed() {
     console.log('Waiting for Filter "Trip Status" text...');
     await this.page.locator(SELECTORS.tripStatusFilterIcon).waitFor({ state: 'visible' });
+    console.log('Trip Status filter text displayed successfully');
   }
 }
 

@@ -1,4 +1,4 @@
-const { test, expect } = require('../fixtures/testWithFixtures');
+const { test, expect, amadeusUserOneTest } = require('../fixtures/testWithFixtures');
 
 // DSL imports
 const Search = require('../../src/dsl/Search');
@@ -9,10 +9,10 @@ const Checkout = require('../../src/dsl/Checkout');
 const TripOverview = require('../../src/dsl/TripOverview');
 
 test.describe('Flight Booking End-to-End Flow', () => {
-  test('should complete full flight booking flow with cancellation', async ({ newTripPage }) => {
+  amadeusUserOneTest('should complete full flight booking flow with cancellation', async ({ newTripPageAMADEUS_USER_ONE }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = newTripPageAMADEUS_USER_ONE;
 
     // Step 2: Add traveller - I'm the traveller
     console.log('Step 2: Add traveller - I am the traveller');
@@ -30,19 +30,19 @@ test.describe('Flight Booking End-to-End Flow', () => {
     console.log('Step 5: Accept terms and proceed to checkout');
     await Cart.acceptTermsAndConditionsAndProceedToCheckout(page);
 
-    // Step 6: Wait for checkout page and proceed (let DSL handle the page validation)
+    // Step 6: Wait for checkout page and proceed 
     console.log('Step 6: Proceeding to checkout page');
     // Step 7: Book & Finalize (DSL)
     console.log('Step 7: Book and finalize booking');
     await Checkout.bookAndFinalize(page);
 
-    // Step 8: Assert finalizing status in trip overview
+    // Step 8: Assert finalizing status in trip overview (assertion in spec, not DSL)
     console.log('Step 8: Assert finalizing status');
     expect(await TripOverview.isBookingFinalizing(page)).toBe(true);
     
     // Step 9: Cancel flight trip with complete validation
     console.log('Step 9: Cancel flight booking');
-    await TripOverview.cancelFlightTrip(page);
+    await TripOverview.cancelTrip(page);
 
     console.log('Flight booking and cancellation flow completed successfully.');
   });

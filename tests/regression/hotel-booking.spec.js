@@ -1,4 +1,4 @@
-const { test, expect } = require('../fixtures/testWithFixtures');
+const { test, expect, ratehawkUserOneTest } = require('../fixtures/testWithFixtures');
 
 // DSL imports
 const Search = require('../../src/dsl/Search');
@@ -6,18 +6,20 @@ const HotelSearch = require('../../src/dsl/HotelSearch');
 const HotelLevelResults = require('../../src/dsl/HotelLevelResults');
 const RoomLevelResults = require('../../src/dsl/RoomLevelResults');
 const Cart = require('../../src/dsl/Cart');
+const Checkout = require('../../src/dsl/Checkout');
+const TripOverview = require('../../src/dsl/TripOverview');
 
 test.describe('Hotel Booking End-to-End Flow', () => {
-  test('should complete full hotel booking flow', async ({ newTripPage }) => {
+  ratehawkUserOneTest('should complete full hotel booking flow', async ({ newTripPageRATEHAWK_USER_ONE }) => {
     // Step 1: Login with Amadeus user one
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = newTripPageRATEHAWK_USER_ONE;
 
     // Step 2: Add traveler - I'm the traveler
     console.log('Step 2: Add traveler - I am the traveler');
     await Search.addTravelerImTheTraveller(page);
 
-    // Step 3: Search a hotel in London, UK for 1 night (using tripPage)
+    // Step 3: Search a hotel in London, UK for 1 night
     console.log('Step 3: Search hotel in London, UK for 1 night');
     await HotelSearch.searchHotelOneNight(page, { where: 'London, UK' });
 
@@ -29,10 +31,28 @@ test.describe('Hotel Booking End-to-End Flow', () => {
     console.log('Step 5: Add refundable hotel to cart');
     await RoomLevelResults.addRefundableHotelRoomLevelToCart(page);
 
-   // Step 6: Assert refundable hotel appears in cart
+   // Step 6: Assert refundable hotel appears in cart before booking (assertion in spec, not DSL)
    console.log('Step 6: Assert refundable hotel in cart');
    expect(await Cart.isHotelRefundable(page)).toBe(true);
 
-   console.log('Hotel flow completed successfully!');
+   // Step 7: Accept terms → Proceed to Checkout
+    console.log('Step 7: Accept terms and proceed to checkout');
+    await Cart.acceptTermsAndConditionsAndProceedToCheckout(page);
+
+    // Step 8: Wait for checkout page and proceed 
+    console.log('Step 8: Proceeding to checkout page');
+    // Step 9: Book & Finalize 
+    console.log('Step 9: Book and finalize booking');
+    await Checkout.bookAndFinalize(page);
+
+   // Step 10: Assert refundable hotel appears in cart after booking (assertion in spec, not DSL)
+   console.log('Step 10: Assert refundable hotel in cart');
+   expect(await Cart.isHotelRefundable(page)).toBe(true);
+    
+    // Step 11: Cancel hotel trip with complete validation
+    console.log('Step 11: Cancel hotel booking');
+    await TripOverview.cancelTrip(page);
+
+    console.log('Hotel booking and cancellation flow completed successfully.');
   });
 });

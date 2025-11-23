@@ -5,6 +5,11 @@ const TripOverview = {
   async cancelTrip(page) {
     const tripOverviewPage = new TripOverviewPage(page);
 
+    console.log('Starting trip cancellation with "Details" validation...');
+    // Wait for '"Details' text display to confirm correct page state
+    await tripOverviewPage.waitForDetailsText();
+    console.log('"Details" loaded - Trip overview page is ready');
+
     console.log('Starting trip cancellation flow...');
 
     // Ensure we are on the Trip overview page
@@ -35,24 +40,19 @@ const TripOverview = {
     return { cancelled: true };
   },
 
-  // Specialized flight trip cancellation with content validation to ensure correct page state
-  async cancelFlightTrip(page) {
-    const tripOverviewPage = new TripOverviewPage(page);
-
-    console.log('Starting flight trip cancellation with validation...');
-
-    // Wait for 'Flight Details' text display to confirm correct page state
-    await tripOverviewPage.waitForFlightDetailsText();
-    console.log('Flight details confirmed - Trip overview page is ready');
-
-    // Reuse generic cancellation flow
-    return this.cancelTrip(page);
-  },
-
   // Checks if a booking is currently in the finalization process
   async isBookingFinalizing(page) {
     const tripOverviewPage = new TripOverviewPage(page);
     return tripOverviewPage.waitForFinalizingText();
+  },
+
+  // Checks if a booking is confirmed
+  async isBookingConfirmed(page) {
+    console.log('Checking if booking is confirmed...');
+    const tripOverviewPage = new TripOverviewPage(page);
+    await tripOverviewPage.waitForConfirmedText();
+    console.log('Booking confirmed successfully');
+    return true;
   }
 };
 

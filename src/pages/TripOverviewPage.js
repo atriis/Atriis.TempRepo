@@ -4,6 +4,8 @@ const { waitForText } = require('../utils/wait');
 const SELECTORS = {
   tripOverviewTitle: ".payments-title",
   flightDetailsButton: ".more-details-btn",
+  moreDetailsHotelButton: ".more-details",
+  moreDetailsCarButton: ".more-details.is-flex",
   tripActionsDropdownIcon: ".dropdowns-container .expand-icon",
   cancelTripOption: ".el-dropdown-menu__item span.mr-2",
   tripCancellationDialogTitle: "[aria-label='Trip cancellation'] .el-dialog__title",
@@ -19,13 +21,44 @@ class TripOverviewPage {
 
   // Waits for the "Trip overview" title to appear, confirming page load
   async waitForTripOverviewTitle() {
+    console.log('Waiting for Trip overview title...');
     await waitForText(this.page, SELECTORS.tripOverviewTitle, "Trip overview");
+    console.log('Trip overview title found');
   }
 
-  // Waits for the "Flight details" text to appear, indicating flight trip content is loaded
-  async waitForFlightDetailsText() {
-    await waitForText(this.page, SELECTORS.flightDetailsButton, "Flight details");
+  // Waits for generic "Details" text to appear
+  // Provides broader compatibility for different products (car, hotel, flight)
+  async waitForDetailsText() {
+    console.log('Waiting for text containing "details"...');
+
+    const candidateLocators = [
+      SELECTORS.flightDetailsButton,           
+      SELECTORS.moreDetailsHotelButton,                                        
+      SELECTORS.moreDetailsCarButton                                      
+    ];
+
+    let found = false;
+
+    for (const selector of candidateLocators) {
+      try {
+        await this.page
+          .locator(selector, { hasText: /details/i })
+          .waitFor({ timeout: 1500 });
+
+        console.log(`"details" found using locator: ${selector}`);
+        found = true;
+        break;
+
+      } catch (e) {
+        continue; // Try next locator
+      }
+    }
+
+    if (!found) {
+      throw new Error('Unable to find any element containing "details" (case-insensitive).');
+    }
   }
+
 
   // Hovers over the trip actions dropdown (three dots menu) to reveal action options
   async hoverTripActionsDropdownIcon() {
@@ -90,6 +123,22 @@ class TripOverviewPage {
       return text.toLowerCase().includes('finalizing');
     } catch {
       console.log('Finalizing status not found');
+      return false;
+    }
+  }
+
+  // Checks for booking status text indicating trip is Confirmed
+  // Focuses specifically on "Confirmed" status for precise booking state detection
+  async waitForConfirmedText() {
+    console.log('Checking for booking status...');
+    const locator = this.page.locator(SELECTORS.bookingStatusLabel);
+    try {
+      await locator.waitFor({ state: 'visible', timeout: 5000 });
+      const text = (await locator.innerText()).trim();
+      console.log(`Found status text: "${text}"`);
+      return text.toLowerCase().includes('confirmed');
+    } catch {
+      console.log('Confirmed status not found');
       return false;
     }
   }

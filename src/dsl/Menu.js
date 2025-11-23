@@ -4,6 +4,7 @@ const Menu = {
   // Opens a new trip booking page by navigating through the main menu
   // Handles new browser tab creation and waits for complete page loading
   async bookANewTrip(page) {
+    console.log('Opening new trip booking through menu...');
     const menuPage = new MenuPage(page);
 
     // Wait for new page to be created when clicking "Book a New Trip"

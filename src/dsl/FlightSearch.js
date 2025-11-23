@@ -19,6 +19,7 @@ const FlightSearch = {
    * @throws {Error} - When specified route name is not found in flights.json
    */
   async searchFlightsOneWay(page, routeName = flightRoutes.defaultRoute) {
+    console.log(`Starting one-way flight search for route: ${routeName}`);
     // Look up route by name in flights.json
     const route = flightRoutes.routes[routeName];
 
@@ -27,6 +28,7 @@ const FlightSearch = {
     }
 
     const { from, to } = route;
+    console.log(`Flight route: ${from} → ${to}`);
 
     const flightSearchPage = new FlightSearchPage(page);
     const searchPage = new SearchPage(page);
@@ -41,6 +43,7 @@ const FlightSearch = {
     await flightSearchPage.selectDepartureDate();
     await searchPage.clickSearchButton();
 
+    console.log('Flight search completed successfully');
     return { searched: true, routeName, from, to };
   },
 };

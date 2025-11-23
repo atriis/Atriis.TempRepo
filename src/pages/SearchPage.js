@@ -22,63 +22,87 @@ class SearchPage {
 
   // Clicks the traveler icon to open traveler options
   async clickTravelerIcon() {
+    console.log('Clicking traveler icon...');
     await this.page.click(SELECTORS.travelerIcon);
+    console.log('Traveler icon clicked successfully');
   }
 
   // Clicks the "I am the traveler" button to confirm traveler identity
   async clickImTheTraveler() {
+    console.log('Clicking "I am the traveler" button...');
     await this.page.click(SELECTORS.imTheTravelerButton);
+    console.log('"I am the traveler" button clicked successfully');
   }
 
   // Waits for the star icon to appear, confirming page readiness
   async waitForStarIcon() {
+    console.log('Waiting for star icon...');
     await this.page.waitForSelector(SELECTORS.starIcon, { state: "visible" });
+    console.log('Star icon found successfully');
   }
 
   // Executes search by clicking the search button
   async clickSearchButton() {
+    console.log('Clicking search button...');
     await this.page.locator(SELECTORS.searchButton).click();
+    console.log('Search button clicked successfully');
   }
 
   // Opens the guest information modal to add traveler details
   async clickGuestTypeModal() {
+    console.log('Clicking guest type modal...');
     await this.page.click(SELECTORS.guestTypeModalButton);
+    console.log('Guest type modal opened successfully');
   }
 
   // Fills in the traveler's random first name in the guest information form
   async fillInRandomFirstName(firstName) {
+    console.log(`Filling first name: ${firstName}`);
     await this.page.fill(SELECTORS.firstNameInput, firstName);
+    console.log('First name filled successfully');
   }
 
   // Fills in the traveler's random last name in the guest information form
   async fillInRandonLastName(lastName) {
+    console.log(`Filling last name: ${lastName}`);
     await this.page.fill(SELECTORS.lastNameInput, lastName);
+    console.log('Last name filled successfully');
   }
 
   // Selects "Male" from the gender dropdown in the guest information form
   async selectGenderMale() {
+    console.log('Selecting gender Male...');
     await this.page.locator(SELECTORS.genderDropdown).click();
     await this.page.getByRole('option', { name: 'Male' }).first().click();
+    console.log('Gender Male selected successfully');
   }
 
   // Fills in the traveler's random date of birth in DD/MM/YYYY format
   async fillInRandomDateOfBirth(dateOfBirth) {
+    console.log(`Filling date of birth: ${dateOfBirth}`);
     await this.page.fill(SELECTORS.dateOfBirthInput, dateOfBirth);
+    console.log('Date of birth filled successfully');
   }
 
   // Fills in the traveler's random email address for booking confirmation
   async fillInRandomEmail(email) {
+    console.log(`Filling email: ${email}`);
     await this.page.fill(SELECTORS.emailInput, email);
+    console.log('Email filled successfully');
   }
 
   // Fills in the traveler's random phone number for contact purposes
   async fillInRandomPhone(phoneNumber) {
+    console.log(`Filling phone number: ${phoneNumber}`);
     await this.page.fill(SELECTORS.phoneInput, phoneNumber);
+    console.log('Phone number filled successfully');
   }
 
   // Clicks the "Add Guest" button to confirm guest information entry
   async clickToAddGuestModal() {
+    console.log('Clicking "Add Guest" button...');
     await this.page.click(SELECTORS.addGuestModalButton);
+    console.log('"Add Guest" button clicked successfully');
   }
 }
 

@@ -33,24 +33,24 @@ const config = {
 
  users: {
     amadeus: {
-      userOne: {
+      user_one: {
         email: process.env.AMADEUS_USER_ONE_EMAIL,
         password: process.env.GENERAL_PASSWORD
       },
-      userTwo: {
+      user_two: {
         email: process.env.AMADEUS_USER_TWO_EMAIL,
         password: process.env.GENERAL_PASSWORD
       }
     },
     ratehawk: {
-      userOne: {
+      user_one: {
         email: process.env.RATEHAWK_USER_ONE_EMAIL,
         password: process.env.GENERAL_PASSWORD
       }
     },
-    fusion: {
-      userOne: {
-        email: process.env.FUSION_USER_ONE_EMAIL,
+    sabre: {
+      user_one: {
+        email: process.env.SABRE_USER_ONE_EMAIL,
         password: process.env.GENERAL_PASSWORD
       }
     }

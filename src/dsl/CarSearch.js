@@ -4,6 +4,7 @@ const SearchPage = require('../pages/SearchPage');
 const CarSearch = {
   // Performs a complete car rental search by location with default date range
   async searchCarByPlace(page, { place }) {
+    console.log(`Searching for car rental in: ${place}`);
     const carSearchPage = new CarSearchPage(page);
     const searchPage = new SearchPage(page);
 
@@ -21,6 +22,7 @@ const CarSearch = {
 
     await searchPage.clickSearchButton();
 
+    console.log('Car search completed successfully');
     return { searched: true };
   },
 };

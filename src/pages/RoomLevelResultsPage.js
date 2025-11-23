@@ -18,6 +18,7 @@ class RoomLevelResultsPage {
 
   // Waits for the "View hotel on map" button to become visible
   async waitForViewHotelOnMapText() {
+    console.log('Waiting for "View hotel on map" button...');
     await this.page.locator(SELECTORS.viewHotelOnMapButton, { hasText: 'View hotel on map' }).waitFor({ state: 'visible' });
     console.log("Map button is now visible");
   }
@@ -33,6 +34,7 @@ class RoomLevelResultsPage {
 
   // Clicks the refundable filter checkbox to show only refundable room rates
   async clickRefundableCheckbox() {
+    console.log('Clicking refundable checkbox...');
     const root = this.page.locator(SELECTORS.refundableCheckboxLabel, {
       has: this.page.locator("p.filter-title[title='Refundable']")
     });
@@ -45,6 +47,7 @@ class RoomLevelResultsPage {
 
     // Wait until it becomes checked
     await this.page.waitForFunction(el => el.checked, await input.elementHandle());
+    console.log('Refundable checkbox clicked successfully');
   }
 
   // Verifies that the "Refundable" tag is visible on room listings

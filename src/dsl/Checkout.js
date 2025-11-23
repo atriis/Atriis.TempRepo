@@ -4,6 +4,7 @@ const TripOverviewPage = require('../pages/TripOverviewPage');
 const Checkout = {
   // Completes the entire booking finalization process from checkout to trip overview
   async bookAndFinalize(page) {
+    console.log('Starting booking finalization process...');
     const checkoutPage = new CheckoutPage(page);
     const tripOverviewPage = new TripOverviewPage(page);
 
@@ -15,6 +16,7 @@ const Checkout = {
     await checkoutPage.clickGoToTrip();
     await tripOverviewPage.waitForTripOverviewTitle();
 
+    console.log('Booking finalization completed successfully');
     return { finalized: true };
   }
 };

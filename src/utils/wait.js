@@ -1,5 +1,5 @@
 // utils/wait.js
-async function waitForText(page, selector, expectedText) {
+async function waitForText(page, selector, expectedText, timeout = 30000) {
   await page.waitForFunction(
     ([selector, expectedText]) => {
       const element = document.querySelector(selector);
@@ -11,7 +11,8 @@ async function waitForText(page, selector, expectedText) {
 
       return text === expectedText.trim();
     },
-    [selector, expectedText]
+    [selector, expectedText],
+    { timeout }
   );
 }
 

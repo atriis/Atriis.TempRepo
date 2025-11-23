@@ -1,4 +1,4 @@
-const { test, expect } = require('../fixtures/testWithFixtures');
+const {amadeusUserOneTest, amadeusUserTwoTest, test, expect} = require('../fixtures/testWithFixtures');
 
 // DSL imports
 const Search = require('../../src/dsl/Search');
@@ -8,8 +8,9 @@ const Trips = require('../../src/dsl/Trips');
 const App = require('../../src/dsl/App');
 
 test.describe('Smoke Tests', () => {
-  test('Smoke - Application Loads', async ({ newTripPage }) => {
-    const page = newTripPage;
+  // Test 1: Amadeus User One
+  amadeusUserOneTest('Smoke - Application Loads', async ({ newTripPageAMADEUS_USER_ONE }) => {
+    const page = newTripPageAMADEUS_USER_ONE;
 
     // Step 1: Assert application loads successfully
     console.log('Step 1: Assert application loads successfully');
@@ -18,12 +19,11 @@ test.describe('Smoke Tests', () => {
     // Step 2: Assert page title is loaded
     console.log('Step 2: Assert page title is loaded');
     expect(await page.title()).not.toBe('');
-    console.log(`Application URL: ${await page.url()}`);
-    console.log(`Page title: ${await page.title()}`);
   });
 
-  test('Smoke - Login and Navigate to "Trips"', async ({ loggedInPage }) => {
-    const page = loggedInPage;
+  // Test 2: Amadeus User One
+  amadeusUserOneTest('Smoke - Login and Navigate to Trips', async ({ loggedInPageAMADEUS_USER_ONE }) => {
+    const page = loggedInPageAMADEUS_USER_ONE;
 
     // Step 1: Navigate to Trips page
     console.log('Step 1: Navigate to Trips page');
@@ -32,12 +32,11 @@ test.describe('Smoke Tests', () => {
     // Step 2: Assert trips page is loaded
     console.log('Step 2: Assert trips page is loaded');
     expect(await page.title()).not.toBe('');
-    const title = await page.title();
-    console.log(`Trips page title: ${title}`);
   });
 
-  test('Smoke - Flight Search and Verify Results', async ({ newTripPage }) => {
-    const page = newTripPage;
+  // Test 3: Amadeus User Two
+  amadeusUserTwoTest('Smoke - Flight Search and Verify Results', async ({ newTripPageAMADEUS_USER_TWO }) => {
+    const page = newTripPageAMADEUS_USER_TWO;
 
     // Step 1: Add traveler (I am the traveler)
     console.log('Step 1: Add traveler');
@@ -52,8 +51,9 @@ test.describe('Smoke Tests', () => {
     expect(await FlightResults.isResultDisplayed(page)).toBe(true);
   });
 
-  test('Smoke - Logout', async ({ loggedInPage }) => {
-    const page = loggedInPage;
+  // Test 4: Amadeus User Two
+  amadeusUserTwoTest('Smoke - Logout', async ({ loggedInPageAMADEUS_USER_TWO }) => {
+    const page = loggedInPageAMADEUS_USER_TWO;
 
     // Step 1: Logout from application
     console.log('Step 1: Logout from application');
@@ -62,6 +62,5 @@ test.describe('Smoke Tests', () => {
     // Step 2: Assert redirected to login page
     console.log('Step 2: Assert redirected to login page');
     expect(await page.url()).toContain('login');
-    console.log(`Post-logout URL: ${await page.url()}`);
   });
 });

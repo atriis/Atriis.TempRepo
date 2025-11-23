@@ -2,44 +2,57 @@ const base = require('@playwright/test');
 const config = require('../../src/config/config');
 const App = require('../../src/dsl/App');
 
-// Extend the base Playwright test with our own fixtures
-const test = base.test.extend({
-  /**
-   * loggedInPage fixture
-   * - Creates a new page (Playwright does that)
-   * - Navigates to baseUrl
-   * - Logs in using App.loginAs + env-based user
-   * - Gives the logged-in page to the test
-   */
-  loggedInPage: async ({ page }, use) => {
-    console.log('Fixture: logging in as amadeusUserOne');
+// Helper to parse user string (e.g., "amadeus.userOne")
+function getUser(userString) {
+  const [provider, userKey] = userString.split('.');
+  const user = config.users[provider]?.[userKey];
+  
+  if (!user) {
+    const availableUsers = Object.keys(config.users)
+      .map(p => Object.keys(config.users[p]).map(u => `${p}.${u}`))
+      .flat()
+      .join(', ');
+    throw new Error(`User "${userString}" not found in config. Available: ${availableUsers}`);
+  }
+  
+  return user;
+}
 
-    await page.goto(config.baseUrl);
-    await App.loginAs(page, config.users.amadeusUserOne);
+// Create test function with user parameter
+function createTestWithUser(userString) {
+  const user = getUser(userString);
+  const testName = userString.toUpperCase().replace('.', '_');
+  
+  return base.test.extend({
+    [`newTripPage${testName}`]: async ({ page }, use) => {
+      console.log(`Fixture: logging in as ${userString} and opening new trip`);
+      await page.goto(config.baseUrl);
+      await App.loginAs(page, user);
+      const tripPage = await App.bookANewTrip(page);
+      await use(tripPage);
+    },
 
-    // Hand the prepared page to the test
-    await use(page);
-    // Page/context cleanup is handled automatically by Playwright after the test
-  },
+    [`loggedInPage${testName}`]: async ({ page }, use) => {
+      console.log(`Fixture: logging in as ${userString}`);
+      await page.goto(config.baseUrl);
+      await App.loginAs(page, user);
+      await use(page);
+    },
+  });
+}
 
-  /**
-   * newTripPage fixture
-   * - Starts from a logged-in page
-   * - Clicks "Book a New Trip" (via your DSL)
-   * - Waits for and returns the new tab Page
-   */
-  newTripPage: async ({ loggedInPage }, use) => {
-    console.log('Fixture: opening Book a New Trip and switching to second tab');
-
-    // App.bookANewTrip should return the Page for the new tab
-    const tripPage = await App.bookANewTrip(loggedInPage);
-
-    await use(tripPage);
-    // Cleanup again is automatic after the test finishes
-  },
-});
-
+// Export test functions for each user
 module.exports = {
-  test,
+  // Amadeus users
+  amadeusUserOneTest: createTestWithUser('amadeus.user_one'),
+  amadeusUserTwoTest: createTestWithUser('amadeus.user_two'),
+  
+  // Ratehawk users  
+  ratehawkUserOneTest: createTestWithUser('ratehawk.user_one'),
+  
+  // Sabre users
+  sabreUserOneTest: createTestWithUser('sabre.user_one'),
+  
+  test: base.test,
   expect: base.expect,
 };

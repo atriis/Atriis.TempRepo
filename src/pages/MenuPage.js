@@ -18,12 +18,14 @@ class MenuPage {
     console.log('Waiting for "Book a New Trip" icon...');
     await this.page.waitForTimeout(3000);
     await this.page.locator(SELECTORS.bookNewTripIcon).waitFor({state: 'visible', timeout: 10000});
+    console.log('"Book a New Trip" icon is now visible');
   }
 
   // Clicks the "Book a New Trip" icon to start a new booking flow
   async clickBookANewTrip() {
     console.log('Click "Book a New Trip"');
     await this.page.click(SELECTORS.bookNewTripIcon);
+    console.log('Successfully clicked "Book a New Trip" icon');
   }
 
   // Waits for the logout icon text to appear
@@ -37,12 +39,14 @@ class MenuPage {
     async clickLogout() { //Needs to me moved to HeaderPage.js
     console.log('Click Logout icon');
     await this.page.click(SELECTORS.logoutIcon);
+    console.log('Successfully clicked Logout icon');
   }
 
   // Clicks the "Trips" icon to navigate to the trips page
   async clickTrips() {
     console.log('Click "Trips"');
     await this.page.click(SELECTORS.tripsIcon);
+    console.log('Successfully clicked "Trips" icon');
   }
 }
 

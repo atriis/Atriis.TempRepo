@@ -4,20 +4,24 @@ const { generateRandomGuestData } = require('../utils/data/generateRandomGuestDa
 const Search = {
   // Sets the logged user as the traveler for the booking
   async addTravelerImTheTraveller(page) {
+    console.log('Adding logged-in user as the traveler...');
     const searchPage = new SearchPage(page);
 
     await searchPage.clickTravelerIcon();
     await searchPage.clickImTheTraveler();
     await searchPage.waitForStarIcon();
 
+    console.log('Successfully set logged-in user as traveler');
     return { added: true };
   },
 
   // Adds a guest with random data as the traveler for the booking
   async addFirstRandomGuest(page) {
+    console.log('Adding random guest as traveler...');
     const searchPage = new SearchPage(page);
 
     const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
+    console.log(`Generated guest data: ${firstName} ${lastName}`);
 
     await searchPage.clickTravelerIcon();
     await searchPage.clickGuestTypeModal();
@@ -32,6 +36,7 @@ const Search = {
     await searchPage.clickToAddGuestModal();
     await searchPage.waitForStarIcon();
 
+    console.log('Successfully added random guest as traveler');
     return {
       added: true,
       guestData: { firstName, lastName, dateOfBirth, email, phone },
