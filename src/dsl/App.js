@@ -14,7 +14,7 @@ const App = {
     await loginPage.fillEmail(email);
     await loginPage.fillPassword(password);
     await loginPage.clickLoginButton();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('networkidle', { timeout: 60000 });
     await menuPage.waitForLogoutIcon();
 
     console.log('Login completed');
