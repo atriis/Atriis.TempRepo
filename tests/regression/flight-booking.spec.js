@@ -8,8 +8,8 @@ const Cart = require('../../src/dsl/Cart');
 const Checkout = require('../../src/dsl/Checkout');
 const TripOverview = require('../../src/dsl/TripOverview');
 
-test.describe('[@regression] Flight Booking End-to-End Flow', () => {
-  amadeusUserOneTest('[@priority:critical] Flight Booking – Should complete full flight booking flow with cancellation', async ({ newTripPageAMADEUS_USER_ONE }) => {
+test.describe('[@regression] One Way Flight Booking End-to-End Flow', () => {
+  amadeusUserOneTest('[@priority:critical] One Way Flight Booking – Should complete full flight booking flow with cancellation', async ({ newTripPageAMADEUS_USER_ONE }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPageAMADEUS_USER_ONE;
