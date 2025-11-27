@@ -20,28 +20,26 @@ test.describe('[@regression] One Way Flight Booking End-to-End Flow', () => {
 
     // Step 3: Search one-way LHR → DOH
     console.log('Step 3: Search one-way flight LHR → DOH');
-    await FlightSearch.searchFlightsOneWay(page, 'lhrToDoh');
+    await FlightSearch.searchFlightOneWay(page, 'lhrToDoh');
     
     // Step 4: Add first flight and handle conflict modal if appears
     console.log('Step 4: Add first flight to cart');
-    await FlightResults.addFirstFlightToCart(page); 
+    await FlightResults.addFirstFlightToCart(page);
     
     // Step 5: Accept terms → Proceed to Checkout
     console.log('Step 5: Accept terms and proceed to checkout');
     await Cart.acceptTermsAndConditionsAndProceedToCheckout(page);
-
-    // Step 6: Wait for checkout page and proceed 
-    console.log('Step 6: Proceeding to checkout page');
-    // Step 7: Book & Finalize (DSL)
-    console.log('Step 7: Book and finalize booking');
+    
+    // Step 6: Book & Finalize
+    console.log('Step 6: Book and finalize booking');
     await Checkout.bookAndFinalize(page);
 
-    // Step 8: Assert finalizing status in trip overview 
-    console.log('Step 8: Assert finalizing status');
+    // Step 7: Assert finalizing status in trip overview 
+    console.log('Step 7: Assert finalizing status');
     expect(await TripOverview.isBookingFinalizing(page)).toBe(true);
     
-    // Step 9: Cancel flight trip with complete validation
-    console.log('Step 9: Cancel flight booking');
+    // Step 8: Cancel flight trip with complete validation
+    console.log('Step 8: Cancel flight booking');
     await TripOverview.cancelTrip(page);
 
     console.log('Flight booking and cancellation flow completed successfully.');

@@ -1,7 +1,36 @@
 const HotelSearchPage = require('../pages/HotelSearchPage');
 const SearchPage = require('../pages/SearchPage');
+const { SELECTORS } = require('../pages/SearchPage');
 
 const HotelSearch = {
+  // Selects the first available date in the check-in calendar
+  // Assumes the date picker is already open from clicking the check-in field
+  async selectDefaultCheckInDate(page) {
+    console.log(`Searching for default check-in date...`);
+    const picker = page.locator(SELECTORS.datePickerPanel).first();
+    const datePickerPanelMonthTable = picker.locator(SELECTORS.datePickerMonthTable).first();
+    const days = datePickerPanelMonthTable.locator(SELECTORS.datePickerAvailableDayCell);
+    await days.first().waitFor({ state: 'visible' });
+    await days.first().click();
+    console.log('Selected default check-in date (first available)');
+  },
+
+  // Selects the second available date as the check-out date
+  // Ensures one-night stay duration for the hotel booking
+  async selectDefaultCheckOutDate(page) {
+    console.log(`Searching for default check-out date...`);
+    const picker = page.locator(SELECTORS.datePickerPanel).first();
+    const datePickerPanelMonthTable = picker.locator(SELECTORS.datePickerMonthTable).first();
+    const days = datePickerPanelMonthTable.locator(SELECTORS.datePickerAvailableDayCell);
+    const count = await days.count();
+    if (count < 2) {
+      throw new Error(`Not enough available dates. Found only ${count} available day(s) in visible calendar.`);
+    }
+    await days.nth(1).waitFor({ state: 'visible' });
+    await days.nth(1).click();
+    console.log('Selected default check-out date (second available)');
+  },
+
   // Performs a complete hotel search for a one-night stay at specified destination
   // Uses default date selection for check-in/check-out with one night duration
   async searchHotelOneNight(page, { where }) {
@@ -19,9 +48,9 @@ const HotelSearch = {
 
     // Handle calendar selection
     await hotelSearchPage.clickCheckInField();
-    await hotelSearchPage.clickCalendarNextArrow();
-    await hotelSearchPage.selectDefaultCheckInDate();
-    await hotelSearchPage.selectDefaultCheckOutDate();
+    await searchPage.clickCalendarNextArrow();
+    await HotelSearch.selectDefaultCheckInDate(page);
+    await HotelSearch.selectDefaultCheckOutDate(page);
 
     // Execute search
     await searchPage.clickSearchButton();

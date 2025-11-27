@@ -22,7 +22,7 @@ test.describe('[@regression] Hotel Booking End-to-End Flow', () => {
     // Step 3: Search a hotel in London, UK for 1 night
     console.log('Step 3: Search hotel in London, UK for 1 night');
     await HotelSearch.searchHotelOneNight(page, { where: 'London, UK' });
-
+    
     // Step 4: Navigate to hotel level and add a refundable hotel to cart
     console.log('Step 4: Select first hotel option');
     await HotelLevelResults.clickFirstHotelOption(page);
@@ -31,23 +31,24 @@ test.describe('[@regression] Hotel Booking End-to-End Flow', () => {
     console.log('Step 5: Add refundable hotel to cart');
     await RoomLevelResults.addRefundableHotelRoomLevelToCart(page);
 
-   // Step 6: Assert refundable hotel appears in cart before booking
-   console.log('Step 6: Assert refundable hotel in cart');
-   expect(await Cart.isHotelRefundable(page)).toBe(true);
+    // Step 6: Assert refundable hotel appears in cart before booking
+    console.log('Step 6: Assert refundable hotel in cart');
+    expect(await Cart.isHotelRefundable(page)).toBe(true);
 
-   // Step 7: Accept terms → Proceed to Checkout
+    // Step 7: Accept terms → Proceed to Checkout
     console.log('Step 7: Accept terms and proceed to checkout');
     await Cart.acceptTermsAndConditionsAndProceedToCheckout(page);
 
     // Step 8: Wait for checkout page and proceed 
     console.log('Step 8: Proceeding to checkout page');
+    
     // Step 9: Book & Finalize 
     console.log('Step 9: Book and finalize booking');
     await Checkout.bookAndFinalize(page);
 
-   // Step 10: Assert refundable hotel appears in cart after booking
-   console.log('Step 10: Assert refundable hotel in cart');
-   expect(await Cart.isHotelRefundable(page)).toBe(true);
+    // Step 10: Assert refundable hotel appears in cart after booking
+    console.log('Step 10: Assert refundable hotel in cart');
+    expect(await Cart.isHotelRefundable(page)).toBe(true);
     
     // Step 11: Cancel hotel trip with complete validation
     console.log('Step 11: Cancel hotel booking');

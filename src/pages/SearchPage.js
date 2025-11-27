@@ -12,7 +12,11 @@ const SELECTORS = {
   dateOfBirthInput: "[placeholder='DD/MM/YYYY']",
   emailInput: "[placeholder='Enter email address']",
   phoneInput: "[placeholder='Enter phone number']",
-  addGuestModalButton: ".app-footer .add-guest-btn"
+  addGuestModalButton: ".app-footer .add-guest-btn",
+  datePickerPanel: ".el-picker-panel:visible",
+  datePickerCalendarNextArrow: "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
+  datePickerMonthTable: "table.el-date-table",
+  datePickerAvailableDayCell: "td.available .el-date-table-cell__text"
 };
 
 class SearchPage {
@@ -104,6 +108,20 @@ class SearchPage {
     await this.page.click(SELECTORS.addGuestModalButton);
     console.log('"Add Guest" button clicked successfully');
   }
+
+  // Navigates forward in the date calendar by clicking next month arrow
+  // Default: advances 3 months
+  async clickCalendarNextArrow(times = 3) {
+    console.log('Clicking visible calendar next arrow', times, 'times...');
+    const nextArrow = this.page.locator(SELECTORS.datePickerCalendarNextArrow);
+    await nextArrow.waitFor({ state: 'visible' });
+    for (let i = 0; i < times; i++) {
+      await nextArrow.click();
+      await this.page.waitForTimeout(300);
+    }
+    console.log('Clicked visible calendar next arrow', times, 'times');
+  }
 }
 
 module.exports = SearchPage;
+module.exports.SELECTORS = SELECTORS;
