@@ -44,7 +44,7 @@ test.describe('[@smoke] Smoke Tests', () => {
 
     // Step 2: Search one-way flight CDG → LHR
     console.log('Step 2: Search one-way flight CDG → LHR');
-    await FlightSearch.searchFlightsOneWay(page, 'cdgToLhr');
+    await FlightSearch.searchFlightOneWay(page, 'cdgToLhr');
 
     // Step 3: Assert flight results are displayed
     console.log('Step 3: Assert flight results are displayed');
