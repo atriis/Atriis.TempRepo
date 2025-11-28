@@ -1,7 +1,38 @@
 const CarSearchPage = require('../pages/CarSearchPage');
 const SearchPage = require('../pages/SearchPage');
+const { SELECTORS } = require('../pages/SearchPage');
 
 const CarSearch = {
+
+  // Selects the first available date in the pickup calendar
+  // Assumes the date picker is already open and visible
+  async selectDefaultPickupDate(page) {
+    const picker = page.locator(SELECTORS.datePickerPanel).first();
+    const monthTable = picker.locator(SELECTORS.datePickerMonthTable).first();
+    const days = monthTable.locator(SELECTORS.datePickerAvailableDayCell);
+    await days.first().waitFor({ state: 'visible' });
+    await days.first().click();
+    console.log('Selected default pickup date (first available)');
+  },
+
+  // Selects a dropoff date that is 5 days after the pickup date
+  // Uses the 6th available day (index 5) to ensure proper rental duration
+  async selectDefaultDropoffDate(page) {
+    const picker = page.locator(SELECTORS.datePickerPanel).first();
+    const monthTable = picker.locator(SELECTORS.datePickerMonthTable).first();
+    const days = monthTable.locator(SELECTORS.datePickerAvailableDayCell);
+    const targetIndex = 5;
+    const count = await days.count();
+    if (count <= targetIndex) {
+      throw new Error(
+        `Not enough available dates. Found only ${count} available day(s); need at least ${targetIndex + 1}.`
+      );
+    }
+    await days.nth(targetIndex).waitFor({ state: 'visible' });
+    await days.nth(targetIndex).click();
+    console.log('Selected default drop-off date (pickup + 5 days / 6th available)');
+  },
+
   // Performs a complete car rental search by location with default date range
   async searchCarByPlace(page, { place }) {
     console.log(`Searching for car rental in: ${place}`);
@@ -13,13 +44,12 @@ const CarSearch = {
     await carSearchPage.tabOutFromCarAutocomplete();
 
     await carSearchPage.clickPickupDateField();
-    await carSearchPage.clickPickupFirstCalendarNextMonthArrow();
-    await carSearchPage.selectDefaultPickupDate();
+    await searchPage.clickCalendarNextArrow();
+    await CarSearch.selectDefaultPickupDate(page);
 
     await carSearchPage.clickDropoffDateField();
     await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
-    await carSearchPage.selectDefaultDropoffDate();
-
+    await CarSearch.selectDefaultDropoffDate(page);
     await searchPage.clickSearchButton();
 
     console.log('Car search completed successfully');
