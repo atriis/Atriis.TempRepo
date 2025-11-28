@@ -16,6 +16,7 @@ class LoginPage {
   // Confirms that the login form is ready for interaction
   async waitForLoginPage() {
     console.log('Waiting for Login page...');
+    await this.page.waitForLoadState('networkidle');
     await this.page.waitForSelector(SELECTORS.emailInput, { state: 'visible' });
     await this.page.waitForSelector(SELECTORS.passwordInput, { state: 'visible' });
     console.log('Login page visible');
