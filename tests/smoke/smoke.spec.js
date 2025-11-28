@@ -40,7 +40,7 @@ test.describe('[@smoke] Smoke Tests', () => {
 
     // Step 1: Add traveler (I am the traveler)
     console.log('Step 1: Add traveler');
-    await Search.addTravelerImTheTraveller(page);
+    await Search.addTravellerImTheTraveller(page);
 
     // Step 2: Search one-way flight CDG → LHR
     console.log('Step 2: Search one-way flight CDG → LHR');
