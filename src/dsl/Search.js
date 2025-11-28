@@ -3,7 +3,7 @@ const { generateRandomGuestData } = require('../utils/data/generateRandomGuestDa
 
 const Search = {
   // Sets the logged user as the traveler for the booking
-  async addTravelerImTheTraveller(page) {
+  async addTravellerImTheTraveller(page) {
     console.log('Adding logged-in user as the traveler...');
     const searchPage = new SearchPage(page);
 
@@ -12,6 +12,21 @@ const Search = {
     await searchPage.waitForStarIcon();
 
     console.log('Successfully set logged-in user as traveler');
+    return { added: true };
+  },
+
+  // Sets specific user as the traveler for the booking
+  async addTravellerByName(page, name) {
+    console.log('Adding traveller by name...');
+    const searchPage = new SearchPage(page);
+
+    await searchPage.clickTravelerIcon();
+    await searchPage.waitForImTheTravelerButton();
+    await searchPage.fillInTravellerName(name);
+    await searchPage.selectFirstTravellerOption();
+    await searchPage.waitForStarIcon();
+
+    console.log('Successfully added traveller by name');
     return { added: true };
   },
 

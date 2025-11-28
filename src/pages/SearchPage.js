@@ -16,7 +16,9 @@ const SELECTORS = {
   datePickerPanel: ".el-picker-panel:visible",
   datePickerCalendarNextArrow: "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
   datePickerMonthTable: "table.el-date-table",
-  datePickerAvailableDayCell: "td.available .el-date-table-cell__text"
+  datePickerAvailableDayCell: "td.available .el-date-table-cell__text",
+  travellerNameField: "[placeholder='Search by name, user group, username or email']",
+  firstTravellerOption: "[id*='item-0']"
 };
 
 class SearchPage {
@@ -29,6 +31,13 @@ class SearchPage {
     console.log('Clicking traveler icon...');
     await this.page.click(SELECTORS.travelerIcon);
     console.log('Traveler icon clicked successfully');
+  }
+
+  // Waits for "I am the traveler" button to load
+  async waitForImTheTravelerButton() {
+    console.log('Waiting for "I am the traveler" button to be visible...');
+    await this.page.waitForSelector(SELECTORS.imTheTravelerButton, { state: "visible" });
+    console.log('"I am the traveler" button is now visible');
   }
 
   // Clicks the "I am the traveler" button to confirm traveler identity
@@ -45,29 +54,36 @@ class SearchPage {
     console.log('Star icon found successfully');
   }
 
-  // Executes search by clicking the search button
-  async clickSearchButton() {
-    console.log('Clicking search button...');
-    await this.page.locator(SELECTORS.searchButton).click();
-    console.log('Search button clicked successfully');
+  // Type in the traveller name
+  async fillInTravellerName(name) {
+    console.log(`Filling traveller name: ${name}`);
+    await this.page.fill(SELECTORS.travellerNameField, name);
+    console.log('Traveller name filled successfully');
   }
 
-  // Opens the guest information modal to add traveler details
+  // Select the first traveller from the autocomplete suggestions
+  async selectFirstTravellerOption() {
+    console.log('Selecting first traveller option...');
+    await this.page.click(SELECTORS.firstTravellerOption);
+    console.log('First traveller option selected successfully');
+  }
+
+  // Opens the guest information modal to add traveller details
   async clickGuestTypeModal() {
     console.log('Clicking guest type modal...');
     await this.page.click(SELECTORS.guestTypeModalButton);
     console.log('Guest type modal opened successfully');
   }
 
-  // Fills in the traveler's random first name in the guest information form
+  // Fills in the traveller's random first name in the guest information form
   async fillInRandomFirstName(firstName) {
     console.log(`Filling first name: ${firstName}`);
     await this.page.fill(SELECTORS.firstNameInput, firstName);
     console.log('First name filled successfully');
   }
 
-  // Fills in the traveler's random last name in the guest information form
-  async fillInRandonLastName(lastName) {
+  // Fills in the traveller's random last name in the guest information form
+  async fillInRandomLastName(lastName) {
     console.log(`Filling last name: ${lastName}`);
     await this.page.fill(SELECTORS.lastNameInput, lastName);
     console.log('Last name filled successfully');
@@ -120,6 +136,13 @@ class SearchPage {
       await this.page.waitForTimeout(300);
     }
     console.log('Clicked visible calendar next arrow', times, 'times');
+  }
+
+  // Executes search by clicking the search button
+  async clickSearchButton() {
+    console.log('Clicking search button...');
+    await this.page.locator(SELECTORS.searchButton).click();
+    console.log('Search button clicked successfully');
   }
 }
 

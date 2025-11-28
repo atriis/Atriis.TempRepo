@@ -17,7 +17,7 @@ test.describe('[@regression] Hotel Booking End-to-End Flow', () => {
 
     // Step 2: Add traveler - I'm the traveler
     console.log('Step 2: Add traveler - I am the traveler');
-    await Search.addTravelerImTheTraveller(page);
+    await Search.addTravellerImTheTraveller(page);
 
     // Step 3: Search a hotel in London, UK for 1 night
     console.log('Step 3: Search hotel in London, UK for 1 night');

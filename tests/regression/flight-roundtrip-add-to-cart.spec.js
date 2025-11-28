@@ -14,7 +14,7 @@ test.describe('[@regression] Add Round Trip Flight to Cart Flow', () => {
 
     // Step 2: Add traveller - I'm the traveller
     console.log('Step 2: Add traveller - I am the traveller');
-    await Search.addTravelerImTheTraveller(page);
+    await Search.addTravellerImTheTraveller(page);
 
     // Step 3: Search round-trip LHR → DOH
     console.log('Step 3: Search round-trip flight LHR → DOH');
