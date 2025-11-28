@@ -6,6 +6,9 @@ const SELECTORS = {
   dropoffDateInput: "[placeholder='Drop-off Date']",
   pickupNextArrow: "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
   dropoffNextArrow: "span.el-date-picker__next-btn button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']",
+  dropoffDifferentLocationCheckbox: ".car-form .el-checkbox__inner",
+  rentalAgencyDropdownField: ".car-search-inputs .el-select__selection",
+  rentalAgencyDropdownOption: (agencyName) => `li.el-select-dropdown__item span:text("${agencyName}")`
 };
 
 class CarSearchPage {
@@ -18,6 +21,13 @@ class CarSearchPage {
     console.log('Clicking car tab...');
     await this.page.click(SELECTORS.carTab);
     console.log('Car tab clicked successfully');
+  }
+
+  // Clicks 'Drop-off at a different location' checkbox
+  async clickDropoffDifferentLocationCheckbox() {
+    console.log('Clicking drop-off at a different location checkbox...');
+    await this.page.click(SELECTORS.dropoffDifferentLocationCheckbox);
+    console.log('Drop-off at a different location checkbox clicked successfully');
   }
 
   // Types the pickup location in the car search form
@@ -63,6 +73,21 @@ class CarSearchPage {
     await this.page.click(SELECTORS.dropoffDateInput);
     console.log('Dropoff date field clicked successfully');
   }
+
+  // Type Rental Agency name in the dropdown field
+  async typeRentalAgencyName(agencyName) {
+  await this.page.waitForTimeout(500); // Ensure field is ready
+  console.log(`Typing rental agency name: ${agencyName}`);
+  await this.page.type(SELECTORS.rentalAgencyDropdownField, agencyName);
+  console.log(`Rental agency name "${agencyName}" typed successfully`);
+}
+  
+  // Clicks Rental Agency dropdown option by text
+  async clickRentalAgencyDropdownOption(agencyName) {
+  console.log(`Selecting rental agency: ${agencyName}`);
+  await this.page.locator(SELECTORS.rentalAgencyDropdownOption(agencyName)).click();
+  console.log(`Rental agency "${agencyName}" selected successfully`);
+}
 }
 
 module.exports = CarSearchPage;

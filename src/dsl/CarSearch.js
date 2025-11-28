@@ -33,6 +33,15 @@ const CarSearch = {
     console.log('Selected default drop-off date (pickup + 5 days / 6th available)');
   },
 
+  // Selects Rental Agency by name from dropdown options
+  async selectRentalAgencyByName(page, agencyName) {
+    console.log(`Selecting rental agency: ${agencyName}`);
+    const carSearchPage = new CarSearchPage(page);
+    await carSearchPage.typeRentalAgencyName(agencyName);
+    await carSearchPage.clickRentalAgencyDropdownOption(agencyName);
+    console.log(`Rental agency "${agencyName}" selected successfully`);
+  },
+
   // Performs a complete car rental search by location with default date range
   async searchCarByPlace(page, { place }) {
     console.log(`Searching for car rental in: ${place}`);
@@ -54,6 +63,18 @@ const CarSearch = {
 
     console.log('Car search completed successfully');
     return { searched: true };
+  },
+  
+  // Performs a complete car rental search by location and rental agency
+  async searchCarByPlaceAndRentalAgency(page, { place, agencyName }) {
+    console.log(`Searching for car rental in: ${place} with agency: ${agencyName}`);
+    const carSearchPage = new CarSearchPage(page);
+
+    await carSearchPage.clickCarTab();
+    await CarSearch.selectRentalAgencyByName(page, agencyName);
+    await CarSearch.searchCarByPlace(page, { place });
+
+    console.log(`Car search with rental agency completed successfully`);
   },
 };
 
