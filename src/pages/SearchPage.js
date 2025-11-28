@@ -18,7 +18,8 @@ const SELECTORS = {
   datePickerMonthTable: "table.el-date-table",
   datePickerAvailableDayCell: "td.available .el-date-table-cell__text",
   travellerNameField: "[placeholder='Search by name, user group, username or email']",
-  firstTravellerOption: "[id*='item-0']"
+  firstTravellerOption: "[id*='item-0']",
+  addAnotherTravellerButton: ".add-btn .material-symbols-outlined"
 };
 
 class SearchPage {
@@ -31,6 +32,13 @@ class SearchPage {
     console.log('Clicking traveler icon...');
     await this.page.click(SELECTORS.travelerIcon);
     console.log('Traveler icon clicked successfully');
+  }
+  
+  // Clicks the "Add Another Traveller" button to add more travelers
+  async clickAnotherTravellerButton() {
+    console.log('Clicking "Add Another Traveller" button...');
+    await this.page.click(SELECTORS.addAnotherTravellerButton);
+    console.log('"Add Another Traveller" button clicked successfully');
   }
 
   // Waits for "I am the traveler" button to load
