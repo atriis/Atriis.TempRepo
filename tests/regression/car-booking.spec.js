@@ -24,7 +24,7 @@ test.describe('[@regression] Car Booking End-to-End Flow', () => {
 
     // Step 4: Add first car and handle conflict modal if appears
     console.log('Step 4: Add first car to cart');
-    await CarResults.addCarFromResultsPageToCart(page);
+    await CarResults.addCarAirportFromResultsPageToCart(page);
 
     // Step 5: Assert Pending booking
     console.log('Step 5: Quote is "Pending booking" status');

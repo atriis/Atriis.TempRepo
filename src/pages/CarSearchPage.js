@@ -7,7 +7,7 @@ const SELECTORS = {
   pickupNextArrow: "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
   dropoffNextArrow: "span.el-date-picker__next-btn button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']",
   dropoffDifferentLocationCheckbox: ".car-form .el-checkbox__inner",
-  rentalAgencyDropdownField: ".car-search-inputs .el-select__selection",
+  rentalAgencyDropdownField: "//span[normalize-space()='Rental agency']/parent::div[contains(@class,'el-select__placeholder')]/preceding-sibling::div[contains(@class,'el-select__input-wrapper')]//input", //Had to use XPath due to complex structure
   rentalAgencyDropdownOption: (agencyName) => `li.el-select-dropdown__item span:text("${agencyName}")`
 };
 

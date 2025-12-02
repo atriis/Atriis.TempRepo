@@ -69,10 +69,12 @@ const CarSearch = {
   async searchCarByPlaceAndRentalAgency(page, { place, agencyName }) {
     console.log(`Searching for car rental in: ${place} with agency: ${agencyName}`);
     const carSearchPage = new CarSearchPage(page);
+    const searchPage = new SearchPage(page);
 
     await carSearchPage.clickCarTab();
     await CarSearch.selectRentalAgencyByName(page, agencyName);
     await CarSearch.searchCarByPlace(page, { place });
+    await searchPage.clickSearchButton();
 
     console.log(`Car search with rental agency completed successfully`);
   },
