@@ -1,0 +1,26 @@
+{
+  "routes": {
+    "bebmiToNlasc": {
+      "from": "BEBMI",
+      "to": "NLASC"
+    },
+    "bebmiToNlabk": {
+      "from": "BEBMI",
+      "to": "NLABK"
+    },
+    "bebmiToFrpno": {
+      "from": "BEBMI",
+      "to": "FRPNO"
+    },
+    "nlmttToBeabt": {
+      "from": "NLMTT",
+      "to": "BEABT"
+    },
+    "debhfToBebmi": {
+      "from": "DEBHF",
+      "to": "BEBMI"
+    }
+
+  },
+  "defaultRoute": "bebmiToNlasc"
+}

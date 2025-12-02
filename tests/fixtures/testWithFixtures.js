@@ -72,6 +72,9 @@ module.exports = {
   // Sabre users
   sabreUserOneTest: createTestWithUser('sabre.user_one'),
 
+  // Benerail users
+  benerailUserOneTest: createTestWithUser('benerail.user_one'),
+
   test: base.test,
   expect: base.expect,
 };

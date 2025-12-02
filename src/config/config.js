@@ -68,6 +68,12 @@ const config = {
         email: getEnv('SABRE_USER_ONE_EMAIL'),
         password: getEnv('GENERAL_PASSWORD')
       }
+    },
+    benerail: {
+      user_one: {
+        email: getEnv('BENERAIL_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD')
+      }
     }
     // Later you can add more users here
   },
