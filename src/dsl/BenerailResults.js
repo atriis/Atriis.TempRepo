@@ -103,27 +103,69 @@ const BenerailResults = {
   },
 
   /**
-   * Complete workflow to add a Benerail option to the current trip
-   * Performs selection of first Benerail option and then adds it to trip
-   * Combines both selection and add-to-trip actions in a single method
+   * Complete workflow to add a Benerail roundtrip option to the current trip
+   * Selects first route, then selects second route for complete journey
+   * Handles the two-step selection process required for Benerail roundtrip bookings
    * 
    * @param {Object} page - Playwright page instance
-   * @returns {Object} - Result object confirming the option was added to trip
+   * @returns {Object} - Result object confirming the roundtrip option was added to trip
    * 
    * Examples:
-   *   await BenerailResults.addBenerailToTrip(page);
+   *   await BenerailResults.addBenerailRoundtripToTrip(page);
    * 
-   * @throws {Error} - When selection or add-to-trip step fails
+   * @throws {Error} - When first or second route selection fails
    */
-  async addBenerailToTrip(page) {
-    console.log('Adding Benerail to trip...');
+  async addBenerailRoundtripToTrip(page) {
+    console.log('Adding Benerail roundtrip to trip...');
     const benerailResultsPage = new BenerailResultsPage(page);
-    await BenerailResults.waitAndSelectFirstBenerailOption(page);
-    await page.waitForTimeout(3000); // Ensure option is displayed
-    await BenerailResults.waitAndSelectFirstBenerailOption(page);
-    await benerailResultsPage.waitForAddToTripText();
-    await benerailResultsPage.clickAddToTripButton();
-    console.log('Benerail added to trip successfully');
+    
+    // First selection - select first route
+    console.log('Selecting first route...');
+    await benerailResultsPage.waitForSelectText();
+    await benerailResultsPage.clickSelectFirstBenerailOption();
+    console.log('First route selected successfully');
+    
+    // Wait for page to update and show second route options
+    await page.waitForTimeout(500); // Extra wait to ensure stability
+    console.log('Waiting for second route options...');
+    
+    // Second selection - select second route
+    console.log('Selecting second route...');
+    await benerailResultsPage.waitForSelectText();
+    await benerailResultsPage.clickSelectFirstBenerailOption();
+    console.log('Second route selected successfully');
+
+    await BenerailResults.clickAddToTripBenerail(page);
+
+    console.log('Benerail round trip added to trip successfully');
+    return { addedToTrip: true };
+  },
+
+  /**
+   * Complete workflow to add a Benerail one-way option to the current trip
+   * Selects the single route for one-way journey completion
+   * Handles the single-step selection process required for Benerail one-way bookings
+   * 
+   * @param {Object} page - Playwright page instance
+   * @returns {Object} - Result object confirming the one-way option was added to trip
+   * 
+   * Examples:
+   *   await BenerailResults.addBenerailOneWayToTrip(page);
+   * 
+   * @throws {Error} - When route selection or add-to-trip step fails
+   */
+  async addBenerailOneWayToTrip(page) {
+    console.log('Adding Benerail one way to trip...');
+    const benerailResultsPage = new BenerailResultsPage(page);
+    
+    // Selection - select one-way route
+    console.log('Selecting one-way route...');
+    await benerailResultsPage.waitForSelectText();
+    await benerailResultsPage.clickSelectFirstBenerailOption();
+    console.log('One-way route selected successfully');
+    
+    await BenerailResults.clickAddToTripBenerail(page);
+    console.log('Benerail one way added to trip successfully');
     return { addedToTrip: true };
   }
 };

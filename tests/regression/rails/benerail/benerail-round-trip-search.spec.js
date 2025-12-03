@@ -22,7 +22,7 @@ test.describe('[@regression] Round Trip Benerail Search Flow', () => {
     
     // Step 4: Add Benerail to trip
     console.log('Step 4: Add Benerail to trip');   
-    await BenerailResults.addBenerailToTrip(page);
+    await BenerailResults.addBenerailRoundtripToTrip(page);
 
     // Step 5: Assert Pending booking
     console.log('Step 5: Quote is "Pending booking" status');
