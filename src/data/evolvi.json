@@ -1,0 +1,26 @@
+{
+  "routes": {
+    "ldsToDon": {
+      "from": "LDS",
+      "to": "DON"
+    },
+    "licToMcr": {
+      "from": "LIC",
+      "to": "MCR"
+    },
+    "bthToPad": {
+      "from": "BTH",
+      "to": "PAD"
+    },
+    "licTo105": {
+      "from": "LIC",
+      "to": "105"
+    },
+    "plgToVic": {
+      "from": "PLG",
+      "to": "VIC"
+    }
+
+  },
+  "defaultRoute": "licTo105"
+}
