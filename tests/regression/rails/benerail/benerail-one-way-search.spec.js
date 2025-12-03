@@ -12,12 +12,13 @@ test.describe('[@regression] One Way Benerail Search Flow', () => {
 
     // Step 2: Add traveler - I'm the traveler
     console.log('Step 2: Add traveler - I am the traveler');
-    await Search.addTravelerImTheTraveler(page);
+    await Search.addTravellerImTheTraveller(page);
 
     // Step 3: Search one-way BEBMI → NLASC
     console.log('Step 3: Search one-way Benerail BEBMI → NLASC');
     await BenerailSearch.searchBenerailOneWay(page, 'bebmiToNlasc');
 
+    await page.pause()
     console.log('Benerail one way search flow completed successfully.');
   });
 });
