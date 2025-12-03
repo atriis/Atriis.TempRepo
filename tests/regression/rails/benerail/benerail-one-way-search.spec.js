@@ -5,6 +5,7 @@ const Search = require('../../../../src/dsl/Search');
 const BenerailSearch = require('../../../../src/dsl/BenerailSearch');
 const BenerailResults = require('../../../../src/dsl/BenerailResults');
 const Cart = require('../../../../src/dsl/Cart');
+const Cart = require('../../../../src/dsl/Cart');
 
 test.describe('[@regression] One Way Benerail Search Flow', () => {
   benerailUserOneTest('[@priority:critical] One Way Benerail Search – Should complete full benerail one way search flow', async ({ newTripPageBENERAIL_USER_ONE }) => {

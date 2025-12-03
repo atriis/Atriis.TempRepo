@@ -18,6 +18,18 @@ const BenerailSearch = {
     console.log('Selected default departure date (tenth available)');
   },
 
+  // Selects the 13th available date in the return calendar
+  // Assumes the date picker is already open from clicking the return field
+  async selectDefaultReturnDate(page) {
+    console.log('Searching for default return date...');
+    const picker = page.locator(SELECTORS.datePickerPanel).first();
+    const datePickerPanelMonthTable = picker.locator(SELECTORS.datePickerMonthTable).first();
+    const days = datePickerPanelMonthTable.locator(SELECTORS.datePickerAvailableDayCell);
+    await days.nth(12).waitFor({ state: 'visible' });
+    await days.nth(12).click();
+    console.log('Selected default return date (thirteenth available)');
+  },
+
   /**
    * Performs a complete one-way Benerail search using predefined route configuration
    * Handles rail tab selection, route setup, date selection, and search execution
@@ -56,6 +68,37 @@ const BenerailSearch = {
     await benerailPage.clickDepartureField();
     await searchPage.clickCalendarNextArrow();
     await BenerailSearch.selectDefaultDepartureDate(page);
+    await searchPage.clickSearchButton();
+
+    console.log('Benerail search completed successfully');
+    return { searched: true, routeName, from, to };
+  },
+
+  async searchBenerailRoundTrip(page, routeName = benerailRoutes.defaultRoute) {
+    console.log(`Starting Benerail round trip search for route: ${routeName}`);
+    // Look up route by name in benerail.json
+    const route = benerailRoutes.routes[routeName];
+
+    if (!route) {
+      throw new Error(`Route "${routeName}" not found in benerail.json`);
+    }
+
+    const { from, to } = route;
+    console.log(`Benerail route: ${from} → ${to}`);
+
+    const benerailPage = new BenerailSearchPage(page);
+    const searchPage = new SearchPage(page);
+
+    // Simple, readable sequence of actions
+    await benerailPage.clickRailTab();
+    await benerailPage.selectRoundTrip();
+    await benerailPage.fillFromStationLocation(from);
+    await benerailPage.fillToStationLocation(to);
+    await benerailPage.clickDepartureField();
+    await searchPage.clickCalendarNextArrow();
+    await BenerailSearch.selectDefaultDepartureDate(page);
+    await benerailPage.clickReturnField();
+    await BenerailSearch.selectDefaultReturnDate(page);
     await searchPage.clickSearchButton();
 
     console.log('Benerail search completed successfully');

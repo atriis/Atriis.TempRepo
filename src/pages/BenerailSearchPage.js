@@ -38,6 +38,13 @@ class BenerailSearchPage {
     console.log('One-way trip selected successfully');
   }
 
+  // Selects the "Round trip" trip option for rail booking
+  async selectRoundTrip() {
+    console.log('Selecting round trip...');
+    await this.page.click(SELECTORS.roundTripButton);
+    console.log('Round trip selected successfully');
+  }
+
   // Fills the "From" station location field and tabs out to dismiss suggestions
   // Ensures proper focus handling and allows autocomplete dropdown to close
   async fillFromStationLocation(from) {

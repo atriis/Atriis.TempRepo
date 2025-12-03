@@ -119,6 +119,9 @@ const BenerailResults = {
     console.log('Adding Benerail to trip...');
     const benerailResultsPage = new BenerailResultsPage(page);
     await BenerailResults.waitAndSelectFirstBenerailOption(page);
+    await page.waitForTimeout(3000); // Ensure option is displayed
+    await BenerailResults.waitAndSelectFirstBenerailOption(page);
+    await benerailResultsPage.waitForAddToTripText();
     await benerailResultsPage.clickAddToTripButton();
     console.log('Benerail added to trip successfully');
     return { addedToTrip: true };
