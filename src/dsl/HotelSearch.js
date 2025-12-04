@@ -7,9 +7,9 @@ const HotelSearch = {
   // Assumes the date picker is already open from clicking the check-in field
   async selectDefaultCheckInDate(page) {
     console.log(`Searching for default check-in date...`);
-    const picker = page.locator(SELECTORS.datePickerPanel).first();
-    const datePickerPanelMonthTable = picker.locator(SELECTORS.datePickerMonthTable).first();
-    const days = datePickerPanelMonthTable.locator(SELECTORS.datePickerAvailableDayCell);
+    const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
+    const datePickerPanelMonthTable = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).first();
+    const days = datePickerPanelMonthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
     await days.first().waitFor({ state: 'visible' });
     await days.first().click();
     console.log('Selected default check-in date (first available)');
@@ -19,9 +19,9 @@ const HotelSearch = {
   // Ensures one-night stay duration for the hotel booking
   async selectDefaultCheckOutDate(page) {
     console.log(`Searching for default check-out date...`);
-    const picker = page.locator(SELECTORS.datePickerPanel).first();
-    const datePickerPanelMonthTable = picker.locator(SELECTORS.datePickerMonthTable).first();
-    const days = datePickerPanelMonthTable.locator(SELECTORS.datePickerAvailableDayCell);
+    const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
+    const datePickerPanelMonthTable = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).first();
+    const days = datePickerPanelMonthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
     const count = await days.count();
     if (count < 2) {
       throw new Error(`Not enough available dates. Found only ${count} available day(s) in visible calendar.`);

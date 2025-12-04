@@ -2,11 +2,11 @@ const { waitForText } = require('../utils/wait');
 
 // Centralized selectors for easy maintenance
 const SELECTORS = {
-  bookingDetailsHeading: 'h1.mb-5',
-  finalizeButton: "button:has-text('Finalize')",
-  bookAndFinalizeButton: "button:has-text('Book and Finalize')",
-  fallbackButton: '.btn-container button',
-  goToTripButton: '.btn-container > :nth-child(1)'
+  BOOKING_DETAILS_HEADING: 'h1.mb-5',
+  FINALIZE_BUTTON: "button:has-text('Finalize')",
+  BOOK_AND_FINALIZE_BUTTON: "button:has-text('Book and Finalize')",
+  FALLBACK_BUTTON: '.btn-container button',
+  GO_TO_TRIP_BUTTON: '.btn-container > :nth-child(1)'
 };
 
 class CheckoutPage {
@@ -18,7 +18,7 @@ class CheckoutPage {
   // Confirms that the page has loaded and booking details are being displayed
   async waitForBookingDetailsText() {
     console.log('Waiting for Booking Details page...');
-    await waitForText(this.page, SELECTORS.bookingDetailsHeading, 'Booking details');
+    await waitForText(this.page, SELECTORS.BOOKING_DETAILS_HEADING, 'Booking details');
     console.log('Booking Details text verified');
   }
 
@@ -27,7 +27,7 @@ class CheckoutPage {
   async waitForBookAndFinalizeButton() {
     console.log('Waiting for booking/finalize button...');
     await this.page.waitForSelector(
-      `${SELECTORS.finalizeButton}, ${SELECTORS.bookAndFinalizeButton}`,
+      `${SELECTORS.FINALIZE_BUTTON}, ${SELECTORS.BOOK_AND_FINALIZE_BUTTON}`,
       { timeout: 10000 }
     );
     console.log('Booking/finalize button found');
@@ -38,8 +38,8 @@ class CheckoutPage {
   // Includes fallback logic for edge cases
   async clickBookAndFinalizeButton() {
     console.log('Clicking booking/finalize button');
-    const finalizeBtn = this.page.locator(SELECTORS.finalizeButton).first();
-    const bookFinalizeBtn = this.page.locator(SELECTORS.bookAndFinalizeButton).first();
+    const finalizeBtn = this.page.locator(SELECTORS.FINALIZE_BUTTON).first();
+    const bookFinalizeBtn = this.page.locator(SELECTORS.BOOK_AND_FINALIZE_BUTTON).first();
 
     if (await finalizeBtn.isVisible()) {
       console.log('Clicking "Finalize" button');
@@ -49,7 +49,7 @@ class CheckoutPage {
       await bookFinalizeBtn.click();
     } else {
       console.log('Clicking fallback button in container');
-      await this.page.click(SELECTORS.fallbackButton);
+      await this.page.click(SELECTORS.FALLBACK_BUTTON);
     }
   }
 
@@ -57,9 +57,9 @@ class CheckoutPage {
   // Waits for and clicks the "Go to trip" button to view the finalized booking
   async clickGoToTrip() {
     console.log('Waiting for "Go to trip" button...');
-    await waitForText(this.page, SELECTORS.goToTripButton, 'Go to trip');
+    await waitForText(this.page, SELECTORS.GO_TO_TRIP_BUTTON, 'Go to trip');
     console.log('Clicking "Go to trip"');
-    await this.page.click(SELECTORS.goToTripButton);
+    await this.page.click(SELECTORS.GO_TO_TRIP_BUTTON);
     console.log('Navigated to Trip page');
   }
 }

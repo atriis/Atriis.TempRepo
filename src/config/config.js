@@ -74,6 +74,12 @@ const config = {
         email: getEnv('BENERAIL_USER_ONE_EMAIL'),
         password: getEnv('GENERAL_PASSWORD')
       }
+    },
+    evolvi: {
+      user_one: {
+        email: getEnv('EVOLVI_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD')
+      }
     }
     // Later you can add more users here
   },

@@ -10,9 +10,9 @@ const BenerailSearch = {
   // Assumes the date picker is already open from clicking the departure field
   async selectDefaultDepartureDate(page) {
     console.log('Searching for default departure date...');
-    const picker = page.locator(SELECTORS.datePickerPanel).first();
-    const datePickerPanelMonthTable = picker.locator(SELECTORS.datePickerMonthTable).first();
-    const days = datePickerPanelMonthTable.locator(SELECTORS.datePickerAvailableDayCell);
+    const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
+    const datePickerPanelMonthTable = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).first();
+    const days = datePickerPanelMonthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
     await days.nth(9).waitFor({ state: 'visible' });
     await days.nth(9).click();
     console.log('Selected default departure date (tenth available)');
@@ -22,9 +22,9 @@ const BenerailSearch = {
   // Assumes the date picker is already open from clicking the return field
   async selectDefaultReturnDate(page) {
     console.log('Searching for default return date...');
-    const picker = page.locator(SELECTORS.datePickerPanel).first();
-    const datePickerPanelMonthTable = picker.locator(SELECTORS.datePickerMonthTable).first();
-    const days = datePickerPanelMonthTable.locator(SELECTORS.datePickerAvailableDayCell);
+    const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
+    const datePickerPanelMonthTable = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).first();
+    const days = datePickerPanelMonthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
     await days.nth(12).waitFor({ state: 'visible' });
     await days.nth(12).click();
     console.log('Selected default return date (thirteenth available)');

@@ -7,9 +7,9 @@ const CarSearch = {
   // Selects the first available date in the pickup calendar
   // Assumes the date picker is already open and visible
   async selectDefaultPickupDate(page) {
-    const picker = page.locator(SELECTORS.datePickerPanel).first();
-    const monthTable = picker.locator(SELECTORS.datePickerMonthTable).first();
-    const days = monthTable.locator(SELECTORS.datePickerAvailableDayCell);
+    const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
+    const monthTable = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).first();
+    const days = monthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
     await days.first().waitFor({ state: 'visible' });
     await days.first().click();
     console.log('Selected default pickup date (first available)');
@@ -18,9 +18,9 @@ const CarSearch = {
   // Selects a dropoff date that is 5 days after the pickup date
   // Uses the 6th available day (index 5) to ensure proper rental duration
   async selectDefaultDropoffDate(page) {
-    const picker = page.locator(SELECTORS.datePickerPanel).first();
-    const monthTable = picker.locator(SELECTORS.datePickerMonthTable).first();
-    const days = monthTable.locator(SELECTORS.datePickerAvailableDayCell);
+    const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
+    const monthTable = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).first();
+    const days = monthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
     const targetIndex = 5;
     const count = await days.count();
     if (count <= targetIndex) {

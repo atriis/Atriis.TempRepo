@@ -75,6 +75,9 @@ module.exports = {
   // Benerail users
   benerailUserOneTest: createTestWithUser('benerail.user_one'),
 
+  // Evolvi users
+  evolviUserOneTest: createTestWithUser('evolvi.user_one'),
+
   test: base.test,
   expect: base.expect,
 };

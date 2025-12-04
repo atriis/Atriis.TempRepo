@@ -2,16 +2,16 @@ const { waitForText } = require('../utils/wait');
 
 // Centralized selectors for easy maintenance
 const SELECTORS = {
-  tripOverviewTitle: ".payments-title",
-  flightDetailsButton: ".more-details-btn",
-  moreDetailsHotelButton: ".more-details",
-  moreDetailsCarButton: ".more-details.is-flex",
-  tripActionsDropdownIcon: ".dropdowns-container .expand-icon",
-  cancelTripOption: ".el-dropdown-menu__item span.mr-2",
-  tripCancellationDialogTitle: "[aria-label='Trip cancellation'] .el-dialog__title",
-  confirmCancelButton: "role=button[name='Cancel trip']",
-  cancellationSuccessMessage: "text='Cancellation confirmed!'",
-  bookingStatusLabel: ".app-label--quote"
+  TRIP_OVERVIEW_TITLE: ".payments-title",
+  FLIGHT_DETAILS_BUTTON: ".more-details-btn",
+  MORE_DETAILS_HOTEL_BUTTON: ".more-details",
+  MORE_DETAILS_CAR_BUTTON: ".more-details.is-flex",
+  TRIP_ACTIONS_DROPDOWN_ICON: ".dropdowns-container .expand-icon",
+  CANCEL_TRIP_OPTION: ".el-dropdown-menu__item span.mr-2",
+  TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label='Trip cancellation'] .el-dialog__title",
+  CONFIRM_CANCEL_BUTTON: "role=button[name='Cancel trip']",
+  CANCELLATION_SUCCESS_MESSAGE: "text='Cancellation confirmed!'",
+  BOOKING_STATUS_LABEL: ".app-label--quote"
 };
 
 class TripOverviewPage {
@@ -22,7 +22,7 @@ class TripOverviewPage {
   // Waits for the "Trip overview" title to appear, confirming page load
   async waitForTripOverviewTitle() {
     console.log('Waiting for Trip overview title...');
-    await waitForText(this.page, SELECTORS.tripOverviewTitle, "Trip overview");
+    await waitForText(this.page, SELECTORS.TRIP_OVERVIEW_TITLE, "Trip overview");
     console.log('Trip overview title found');
   }
 
@@ -32,9 +32,9 @@ class TripOverviewPage {
     console.log('Waiting for text containing "details"...');
 
     const candidateLocators = [
-      SELECTORS.flightDetailsButton,           
-      SELECTORS.moreDetailsHotelButton,                                        
-      SELECTORS.moreDetailsCarButton                                      
+      SELECTORS.FLIGHT_DETAILS_BUTTON,           
+      SELECTORS.MORE_DETAILS_HOTEL_BUTTON,                                        
+      SELECTORS.MORE_DETAILS_CAR_BUTTON                                      
     ];
 
     let found = false;
@@ -63,7 +63,7 @@ class TripOverviewPage {
   // Hovers over the trip actions dropdown (three dots menu) to reveal action options
   async hoverTripActionsDropdownIcon() {
     console.log('Hovering trip actions dropdown...');
-    const icon = this.page.locator(SELECTORS.tripActionsDropdownIcon).first();
+    const icon = this.page.locator(SELECTORS.TRIP_ACTIONS_DROPDOWN_ICON).first();
     await icon.waitFor({ state: 'visible', timeout: 5000 });
     await icon.hover();
     await this.page.waitForTimeout(500); // Allow dropdown animation
@@ -74,14 +74,14 @@ class TripOverviewPage {
   // Specifically looks for the "Cancel trip" option to confirm menu is ready
   async waitForDropdownMenu() {
     console.log('Waiting for dropdown menu to appear...');
-    await this.page.locator(SELECTORS.cancelTripOption, { hasText: 'Cancel trip' }).waitFor({ state: 'visible', timeout: 5000 });
+    await this.page.locator(SELECTORS.CANCEL_TRIP_OPTION, { hasText: 'Cancel trip' }).waitFor({ state: 'visible', timeout: 5000 });
     console.log('Dropdown with "Cancel trip" is visible');
   }
 
   // Clicks the "Cancel trip" option from the dropdown menu
   async clickCancelTripOption() {
     console.log('Clicking cancel trip option...');
-    const cancelOption = this.page.locator(SELECTORS.cancelTripOption, { hasText: 'Cancel trip' });
+    const cancelOption = this.page.locator(SELECTORS.CANCEL_TRIP_OPTION, { hasText: 'Cancel trip' });
     await cancelOption.waitFor({ state: 'visible', timeout: 5000 });
     await cancelOption.click();
     console.log('Successfully clicked "Cancel trip"');
@@ -90,7 +90,7 @@ class TripOverviewPage {
   // Waits for the trip cancellation confirmation dialog to appear
   async waitForTripCancellationDialogTitle() {
     console.log('Waiting for cancellation dialog...');
-    await waitForText(this.page, SELECTORS.tripCancellationDialogTitle, 'Trip cancellation');
+    await waitForText(this.page, SELECTORS.TRIP_CANCELLATION_DIALOG_TITLE, 'Trip cancellation');
     console.log('Found cancellation dialog');
   }
 
@@ -115,7 +115,7 @@ class TripOverviewPage {
   // Focuses specifically on "Finalizing" status for precise booking state detection
   async waitForFinalizingText() {
     console.log('Checking for booking status...');
-    const locator = this.page.locator(SELECTORS.bookingStatusLabel);
+    const locator = this.page.locator(SELECTORS.BOOKING_STATUS_LABEL);
     try {
       await locator.waitFor({ state: 'visible', timeout: 5000 });
       const text = (await locator.innerText()).trim();
@@ -131,7 +131,7 @@ class TripOverviewPage {
   // Focuses specifically on "Confirmed" status for precise booking state detection
   async waitForConfirmedText() {
     console.log('Checking for booking status...');
-    const locator = this.page.locator(SELECTORS.bookingStatusLabel);
+    const locator = this.page.locator(SELECTORS.BOOKING_STATUS_LABEL);
     try {
       await locator.waitFor({ state: 'visible', timeout: 5000 });
       const text = (await locator.innerText()).trim();
