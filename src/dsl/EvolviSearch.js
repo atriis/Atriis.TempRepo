@@ -24,6 +24,7 @@ const SearchPage = require("../pages/SearchPage");
 const evolviRoutes = require("../data/evolvi.json");
 const { SELECTORS } = require('../pages/SearchPage');
 const { SELECTORS: EVOLVI_SELECTORS } = require('../pages/EvolviSearchPage');
+const { pressTab } = require("../utils/dom");
 
 const EvolviSearch = {
 

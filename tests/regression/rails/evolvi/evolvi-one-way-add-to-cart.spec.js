@@ -1,18 +1,6 @@
-/**
- * Evolvi One Way Add to Cart Test
- * 
- * This test validates the complete flow of searching for and adding an Evolvi one-way train
- * ticket to the cart. It covers login, traveler setup, search functionality, and cart validation.
- * 
- * Test Flow:
- * 1. Login with Evolvi user and book new trip
- * 2. Add logged-in user as the traveler
- * 3. Search for one-way Evolvi train from LIC to 105
- * 4. Add first available train option to cart
- * 5. Verify quote status is "Pending booking"
- */
-
 const { test, expect, evolviUserOneTest } = require('../../../fixtures/testWithFixtures');
+
+//⚠️ FAILING TEST - NEEDS REVIEW TO FIX THE ISSUES!!!!!
 
 // DSL imports
 const Search = require('../../../../src/dsl/Search');

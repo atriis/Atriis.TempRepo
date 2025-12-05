@@ -92,7 +92,7 @@ const BenerailSearch = {
     await benerailPage.selectOneWayTrip();
     await searchPage.fillInOrField(from, 1); // first "or" field
     await searchPage.fillInOrField(to, 2);   // second "or" field
-    await benerailPage.clickDepartureField();
+    await searchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await BenerailSearch.selectDefaultDepartureDate(page);
     await searchPage.clickSearchButton();
@@ -137,10 +137,10 @@ const BenerailSearch = {
     await benerailPage.selectRoundTrip();
     await searchPage.fillInOrField(from, 1); // first "or" field
     await searchPage.fillInOrField(to, 2);   // second "or" field
-    await benerailPage.clickDepartureField();
+    await searchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await BenerailSearch.selectDefaultDepartureDate(page);
-    await benerailPage.clickReturnField();
+    await searchPage.clickReturnDateField();
     await BenerailSearch.selectDefaultReturnDate(page);
     await searchPage.clickSearchButton();
 

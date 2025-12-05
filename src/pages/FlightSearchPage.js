@@ -59,22 +59,6 @@ class FlightSearchPage {
     console.log('"Multi-city" option selected successfully');
   }
 
-  // Click the departure date field to open the date picker
-  async clickDepartureDateField() {
-    console.log('Clicking "Departure Date" field');
-    await this.page.locator(SELECTORS.DEPARTURE_DATE_INPUT).nth(1).click();
-    await this.page.waitForTimeout(1500); // Extra wait for calendar stability
-    console.log('"Departure Date" field clicked successfully');
-  }
-
-  // Click the return date field to open the date picker
-  async clickReturnDateField() {
-    console.log('Clicking "Return Date" field');
-    await this.page.click(SELECTORS.RETURN_DATE_INPUT);
-    await this.page.waitForTimeout(1500); // Extra wait for calendar stability
-    console.log('"Return Date" field clicked successfully');
-  }
-
   // Click the "Advanced Search" button to expand advanced options
   async clickAdvancedSearchButton() {
     console.log('Starting clickAdvancedSearchButton');

@@ -1,5 +1,6 @@
 const {
-  typeIntoNthAvailableInput
+  typeIntoNthAvailableInput, 
+  pressTab
 } = require('../utils/dom');
 
 // Centralized selectors for SearchPage functionality
@@ -22,6 +23,7 @@ const SELECTORS = {
   EMAIL_INPUT: "[placeholder='Enter email address']",
   PHONE_INPUT: "[placeholder='Enter phone number']",
   ADD_GUEST_MODAL_BUTTON: ".app-footer .add-guest-btn",
+  
   // Date picker field selectors for calendar interaction
   DATE_PICKER_PANEL: ".el-picker-panel:visible",
   DATE_PICKER_CALENDAR_NEXT_ARROW: "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
@@ -36,8 +38,10 @@ const SELECTORS = {
   // General transportation tabs
   GENERAL_RAIL_TAB: "#tab-rails",
 
+  // Autocomplete suggestion list selector
+  AUTOCOMPLETE_LIST: '.el-scrollbar__view.el-autocomplete-suggestion__list li[id*="item-0"]:visible', 
+  
   // Location input field selectors with fallback options
-
   // Flights, Benerail
   FROM_PLACEHOLDER: [
     "input[placeholder='From... Station or Location' i]",
@@ -57,8 +61,13 @@ const SELECTORS = {
     "input[placeholder='Enter station or location' i]",
     "input[placeholder='Airport, City or Address' i]",
     "input[placeholder*='or' i]"
-  ]
+  ],
 
+  // Departure field
+  DEPARTURE_PLACEHOLDER: "input[placeholder*='Depart']",
+
+  // Return field
+  RETURN_PLACEHOLDER: "input[placeholder*='Return']"
 };
 
 /**
@@ -181,8 +190,7 @@ class SearchPage {
     console.log(`Filling in "From" field with value: ${from}`);
     const fromSelectors = SELECTORS.FROM_PLACEHOLDER; 
     await typeIntoNthAvailableInput(this.page, from, fromSelectors, 0);
-    await this.page.waitForTimeout(500); // Ensure option is displayed
-    await this.page.keyboard.press("Tab");
+    await this.page.waitForTimeout(1000);
     console.log('"From" field filled successfully');
   }
 
@@ -190,38 +198,66 @@ class SearchPage {
   async fillInToField(to) {
     console.log(`Filling in "To" field with value: ${to}`);
     const toSelectors = SELECTORS.TO_PLACEHOLDER; 
+
     await typeIntoNthAvailableInput(this.page, to, toSelectors, 0);
-    await this.page.waitForTimeout(500); // Ensure option is displayed
-    await this.page.keyboard.press("Tab");
-    console.log('"To" field filled successfully');
+
+    // Wait for the suggestion list to appear, adjust selector to your DOM
+    const suggestions = this.page.locator(SELECTORS.AUTOCOMPLETE_LIST).first();
+    await suggestions.waitFor({ state: 'visible', timeout: 3000 });
+
+    // Now Tab will actually select the first suggestion instead of leaving the field
+    await pressTab(this.page);
+
+    await this.page.waitForTimeout(500);
+    console.log('"To" field filled and first suggestion selected successfully');
   }
 
-  // Page Object method
+  // Fills in location into the "or" field with specified occurrence
   async fillInOrField(or, occurrence = 1) {
     console.log(`Filling in occurrence #${occurrence} of "or" field with value: ${or}`);
     const orSelectors = SELECTORS.OR_PLACEHOLDER;
 
-  // dom.js helper: 0-based index
-  await typeIntoNthAvailableInput(this.page, or, orSelectors, occurrence - 1);
+    // dom.js helper: 0-based index
+    await typeIntoNthAvailableInput(this.page, or, orSelectors, occurrence - 1);
 
-  console.log(`Occurrence #${occurrence} of "or" field filled successfully`);
+    console.log(`Occurrence #${occurrence} of "or" field filled successfully`);
 
-    await this.page.keyboard.press('Tab');
+    await pressTab(this.page);
+
     await this.page.waitForTimeout(500); // Ensure option is displayed
-}
+  }
 
-  // Navigates forward in the date calendar by clicking next month arrow
-  // Default: advances 3 months
-  async clickCalendarNextArrow(times = 3) {
-    console.log('Clicking visible calendar next arrow', times, 'times...');
-    const nextArrow = this.page.locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW);
+  // Click the departure date field to open the date picker
+  async clickDepartureDateField() {
+    console.log('Clicking "Departure Date" field');
+    await this.page.locator(SELECTORS.DEPARTURE_PLACEHOLDER).nth(1).click();
+    await this.page.waitForTimeout(4000); // Extra wait for calendar stability
+    console.log('"Departure Date" field clicked successfully');
+  }
+
+  // Click the return date field to open the date picker
+  async clickReturnDateField() {
+    console.log('Clicking "Return Date" field');
+    await this.page.locator(SELECTORS.RETURN_PLACEHOLDER).click();
+    await this.page.waitForTimeout(1500); // Extra wait for calendar stability
+    console.log('"Return Date" field clicked successfully');
+  }
+
+  // Clicks the calendar "next month" arrow; you can set how many months to advance (0 = same month, default = 3)
+  async clickCalendarNextArrow(monthsAhead = 3) {
+    console.log(`Advancing calendar ${monthsAhead} month(s)...`);
+
+    const nextArrow = this.page.locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW).first();
     await nextArrow.waitFor({ state: 'visible' });
-    for (let i = 0; i < times; i++) {
+
+    for (let i = 0; i < monthsAhead; i++) {
       await nextArrow.click();
       await this.page.waitForTimeout(300);
     }
-    console.log('Clicked visible calendar next arrow', times, 'times');
+
+    console.log(`Calendar advanced ${monthsAhead} month(s)`);
   }
+
 
   // Executes search by clicking the search button
   async clickSearchButton() {

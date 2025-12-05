@@ -69,8 +69,7 @@ async function typeIntoNthAvailableInput(page, value, selectors, nth = 0) {
       console.log(`Typing "${value}" into ${nth + 1}º match of: ${selector}`);
       await target.click();
       await target.fill(value);
-      await page.waitForTimeout(800);
-      await page.keyboard.press("Tab");
+      await page.waitForTimeout(800); // Wait for any UI updates
       return selector;
     }
   }
@@ -78,8 +77,21 @@ async function typeIntoNthAvailableInput(page, value, selectors, nth = 0) {
   throw new Error(`No selector with index ${nth} found to type: "${value}"`);
 }
 
+/**
+ * Presses the Tab key to move focus to the next focusable element.
+ * Adds a small delay for UI transitions.
+ * 
+ * @param {Object} page - Playwright page instance
+ * @returns {Promise<void>}
+ */
+async function pressTab(page) {
+  await page.keyboard.press("Tab");
+  await page.waitForTimeout(500);
+}
+
 module.exports = {
   getText,
   scrollToElement,
   typeIntoNthAvailableInput,
+  pressTab
 };
