@@ -1,11 +1,34 @@
+/**
+ * FlightSearch DSL Module
+ * 
+ * Provides high-level DSL functions for flight search functionality.
+ * Handles one-way and round-trip flight searches with configurable routes from flights.json.
+ * Includes date selection, field population, and search execution workflows.
+ * 
+ * Key Features:
+ * - Route-based search configuration using flights.json
+ * - Support for one-way and round-trip flights
+ * - Default date selection strategies
+ * - Comprehensive logging for debugging
+ * 
+ * Dependencies:
+ * - FlightSearchPage: Page object for flight-specific interactions
+ * - SearchPage: Common search functionality across booking types
+ * - flights.json: Route configuration data
+ */
+
 const FlightSearchPage = require("../pages/FlightSearchPage");
 const SearchPage = require("../pages/SearchPage");
 const flightRoutes = require("../data/flights.json");
 const { SELECTORS } = require('../pages/SearchPage');
 
 const FlightSearch = {
-  // Selects the 5th available date in the departure calendar
-  // Assumes the date picker is already open from clicking the departure field
+  /**
+   * Selects the 5th available date in the departure calendar
+   * Assumes the date picker is already open from clicking the departure field
+   * 
+   * @param {Object} page - Playwright page instance
+   */
   async selectDefaultDepartureDate(page) {
     console.log(`Searching for default departure date...`);
     const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
@@ -16,17 +39,24 @@ const FlightSearch = {
     console.log('Selected default departure date (fifth available)');
   },
 
-  // Selects the 12th available date as the return date
-  // Ensures one week stay duration for the flight booking
+  /**
+   * Selects the 12th available date as the return date
+   * Ensures one week stay duration for the flight booking
+   * 
+   * @param {Object} page - Playwright page instance
+   * @throws {Error} When not enough available dates are found
+   */
   async selectDefaultReturnDate(page) {
     console.log(`Searching for default return date...`);
     const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
     const datePickerPanelMonthTable = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).first();
     const days = datePickerPanelMonthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
     const count = await days.count();
+    
     if (count < 12) {
       throw new Error(`Not enough available dates. Found only ${count} available day(s) in visible calendar.`);
     }
+    
     await days.nth(11).waitFor({ state: 'visible' });
     await days.nth(11).click();
     console.log('Selected default return date (twelfth available)');
@@ -63,8 +93,8 @@ const FlightSearch = {
 
     await flightSearchPage.clickFlightTab();
     await flightSearchPage.selectOneWayTrip();
-    await flightSearchPage.fillFromDeparture(from);
-    await flightSearchPage.fillToDestination(to);
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
     await flightSearchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await FlightSearch.selectDefaultDepartureDate(page);
@@ -106,8 +136,8 @@ const FlightSearch = {
     
     await flightSearchPage.clickFlightTab();
     await flightSearchPage.selectRoundTrip();
-    await flightSearchPage.fillFromDeparture(from);
-    await flightSearchPage.fillToDestination(to);
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
     await flightSearchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await FlightSearch.selectDefaultDepartureDate(page);

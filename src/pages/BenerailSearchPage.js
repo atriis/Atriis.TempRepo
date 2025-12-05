@@ -4,8 +4,6 @@ const SELECTORS = {
   RAIL_TAB: "#tab-rails",
   ONE_WAY_BUTTON: ".eu-rail-search-inputs > :nth-child(1) [role='radiogroup'] > :nth-child(2) .el-radio__label",
   ROUND_TRIP_BUTTON: ".eu-rail-search-inputs > :nth-child(1) [role='radiogroup'] > :nth-child(1) .el-radio__label",
-  FROM_STATION_LOCATION_INPUT: "[placeholder='From... Station or Location']",
-  TO_STATION_LOCATION_INPUT: "[placeholder='To... Station or Location']",
   DEPARTURE_FIELD: "[placeholder='Departure']",
   RETURN_FIELD: "[placeholder='Return']"
 };
@@ -43,26 +41,6 @@ class BenerailSearchPage {
     console.log('Selecting round trip...');
     await this.page.click(SELECTORS.ROUND_TRIP_BUTTON);
     console.log('Round trip selected successfully');
-  }
-
-  // Fills the "From" station location field and tabs out to dismiss suggestions
-  // Ensures proper focus handling and allows autocomplete dropdown to close
-  async fillFromStationLocation(from) {
-    console.log(`Filling 'From' station location with: ${from}`);
-    await this.page.type(SELECTORS.FROM_STATION_LOCATION_INPUT, from);
-    await this.page.waitForTimeout(1000); // Ensure option is displayed
-    await this.page.keyboard.press('Tab');
-    console.log('From station location filled successfully');
-  }
-
-  // Fills the "To" station location field and tabs out to dismiss suggestions
-  // Ensures proper focus handling and allows autocomplete dropdown to close
-  async fillToStationLocation(to) {
-    console.log(`Filling 'To' station location with: ${to}`);
-    await this.page.type(SELECTORS.TO_STATION_LOCATION_INPUT, to);
-    await this.page.waitForTimeout(1000); // Ensure option is displayed
-    await this.page.keyboard.press('Tab');
-    console.log('To station location filled successfully');
   }
 
   // Clicks the departure date field to open the date picker calendar

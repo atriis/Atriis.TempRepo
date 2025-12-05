@@ -1,13 +1,12 @@
-// ------------------------------------------------------------------------ CONTINUE FROM HERE ------------------------------------------------------------------------
+const { SELECTORS: SEARCH_SELECTORS } = require('./SearchPage');
 
 // Centralized selectors for easy maintenance
 const SELECTORS = {
-  railTab: "#tab-rails",
-  oneWayButton: ".uk-rail-search > :nth-child(1) [role='radiogroup'] > :nth-child(2) .el-radio__label",
-  returnButton: ".uk-rail-search > :nth-child(1) [role='radiogroup'] > :nth-child(1) .el-radio__label",
-  fromAndToStationLocationInput: "[placeholder='Enter station or location']",
-  departureField: "[placeholder='Departure']",
-  returnField: "[placeholder='Return']"
+  ONE_WAY_BUTTON: ".uk-rail-search > :nth-child(1) [role='radiogroup'] > :nth-child(2) .el-radio__label",
+  RETURN_BUTTON: ".uk-rail-search > :nth-child(1) [role='radiogroup'] > :nth-child(1) .el-radio__label",
+  DEPARTURE_FIELD: "[placeholder='Departure']",
+  RETURN_FIELD: "[placeholder='Return']",
+  SPLIT_TICKET_CHECKBOX: "label[data-track='evolvi-search-split-ticket'] .el-checkbox__inner"
 };
 
 class EvolviSearchPage {
@@ -16,21 +15,13 @@ class EvolviSearchPage {
   }
 
   /**
-   * Clicks on the rail tab to switch to rail booking mode
-   */
-  async clickRailTab() { // _____________________________ NEED TO REMOVE DUPLICATE METHOD _____________________________
-    console.log('Clicking rail tab...');
-    await this.page.click(SELECTORS.railTab);
-    console.log('Rail tab clicked successfully');
-  }
-
-  /**
    * Selects Evolvi search option from the rail dropdown
    * Clicks rail tab first, then selects 'UK Rail' option from the dropdown
    */
   async selectEvolviSearch() {
     console.log('Selecting Evolvi search...');
-    await this.page.click(SELECTORS.railTab);
+    await this.page.click(SEARCH_SELECTORS.GENERAL_RAIL_TAB);
+    await this.page.waitForTimeout(1000); // Ensure dropdown is displayed
     await this.page.getByRole('option', { name: 'UK Rail' }).click();
     console.log('Evolvi search selected successfully');
   }
@@ -40,7 +31,7 @@ class EvolviSearchPage {
    */
   async selectOneWayTrip() {
     console.log('Selecting one-way trip...');
-    await this.page.click(SELECTORS.oneWayButton);
+    await this.page.click(SELECTORS.ONE_WAY_BUTTON);
     console.log('One-way trip selected successfully');
   }
 
@@ -49,36 +40,8 @@ class EvolviSearchPage {
    */
   async selectRoundTrip() {
     console.log('Selecting round trip...');
-    await this.page.click(SELECTORS.returnButton);
+    await this.page.click(SELECTORS.RETURN_BUTTON);
     console.log('Round trip selected successfully');
-  }
-
-  /**
-   * Fills the "From" station location field and tabs out to dismiss suggestions
-   * Ensures proper focus handling and allows autocomplete dropdown to close
-   * 
-   * @param {string} from - Station location to fill in the From field
-   */
-  async fillFromStationLocation(from) {
-    console.log(`Filling 'From' station location with: ${from}`);
-    await this.page.type(SELECTORS.fromAndToStationLocationInput, from);
-    await this.page.waitForTimeout(1000); // Ensure option is displayed
-    await this.page.keyboard.press('Tab');
-    console.log('From station location filled successfully');
-  }
-
-  /**
-   * Fills the "To" station location field and tabs out to dismiss suggestions
-   * Ensures proper focus handling and allows autocomplete dropdown to close
-   * 
-   * @param {string} to - Station location to fill in the To field
-   */
-  async fillToStationLocation(to) {
-    console.log(`Filling 'To' station location with: ${to}`);
-    await this.page.type(SELECTORS.fromAndToStationLocationInput, to);
-    await this.page.waitForTimeout(1000); // Ensure option is displayed
-    await this.page.keyboard.press('Tab');
-    console.log('To station location filled successfully');
   }
 
   /**
@@ -86,7 +49,7 @@ class EvolviSearchPage {
    */
   async clickDepartureField() {
     console.log('Clicking departure field...');
-    await this.page.locator(SELECTORS.departureField).click();
+    await this.page.locator(SELECTORS.DEPARTURE_FIELD).click();
     await this.page.waitForTimeout(1500); // Extra wait for calendar stability
     console.log('Departure field clicked successfully');
   }
@@ -96,10 +59,20 @@ class EvolviSearchPage {
    */
   async clickReturnField() {
     console.log('Clicking return field...');
-    await this.page.locator(SELECTORS.returnField).click();
+    await this.page.locator(SELECTORS.RETURN_FIELD).click();
     await this.page.waitForTimeout(1500); // Extra wait for calendar stability
     console.log('Return field clicked successfully');
   } 
+
+  /**
+   * Toggles the split ticket checkbox
+   */
+  async toggleSplitTicketCheckbox() {
+    console.log('Toggling split ticket checkbox...');
+    await this.page.click(SELECTORS.SPLIT_TICKET_CHECKBOX);
+    console.log('Split ticket checkbox toggled successfully');
+  }
 }
 
 module.exports = EvolviSearchPage;
+module.exports.SELECTORS = SELECTORS;

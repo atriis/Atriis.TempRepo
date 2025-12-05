@@ -4,8 +4,6 @@ const SELECTORS = {
   ONE_WAY_BUTTON: ".search-options-wrapper > :nth-child(1) [role='radiogroup'] > :nth-child(2) .el-radio__label",
   ROUND_TRIP_BUTTON: ".search-options-wrapper > :nth-child(1) [role='radiogroup'] > :nth-child(1) .el-radio__label",
   MULTI_CITY_BUTTON: ".search-options-wrapper > :nth-child(1) [role='radiogroup'] > :nth-child(3) .el-radio__label",
-  FROM_DEPARTURE_INPUT: "[placeholder='From... Departure']",
-  TO_DESTINATION_INPUT: "[placeholder='To... Destination']",
   DEPARTURE_DATE_INPUT: "input[placeholder*='Depart']",
   RETURN_DATE_INPUT: "[placeholder='Return Date']",
   COMPLETE_TRIP_BUTTON: "label.el-radio input.el-radio__original[value='completeTrip']",
@@ -59,24 +57,6 @@ class FlightSearchPage {
     console.log('Selecting "Multi-city" option...');
     await this.page.click(SELECTORS.MULTI_CITY_BUTTON);
     console.log('"Multi-city" option selected successfully');
-  }
-
-  // Fill the "From... Departure" field and tab out to dismiss suggestions
-  async fillFromDeparture(from) {
-    console.log(`Filling "From... Departure" field with value: ${from}`);
-    await this.page.type(SELECTORS.FROM_DEPARTURE_INPUT, from);
-    await this.page.waitForTimeout(500); // Ensure option is displayed
-    await this.page.keyboard.press("Tab");
-    console.log('"From... Departure" field filled successfully');
-  }
-
-  // Fill the "To... Destination" field and tab out to dismiss suggestions
-  async fillToDestination(to) {
-    console.log(`Filling "To... Destination" field with value: ${to}`);
-    await this.page.type(SELECTORS.TO_DESTINATION_INPUT, to);
-    await this.page.waitForTimeout(500); // Ensure option is displayed
-    await this.page.keyboard.press("Tab");
-    console.log('"To... Destination" field filled successfully');
   }
 
   // Click the departure date field to open the date picker

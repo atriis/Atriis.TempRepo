@@ -1,7 +1,6 @@
 // Centralized selectors for easy maintenance
 const SELECTORS = {
   CAR_TAB: '#tab-car',
-  CAR_PICKUP_INPUT: "[placeholder='Airport, City or Address']",
   PICKUP_DATE_INPUT: "[placeholder='Pick-up Date']",
   DROPOFF_DATE_INPUT: "[placeholder='Drop-off Date']",
   PICKUP_NEXT_ARROW: "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
@@ -28,23 +27,6 @@ class CarSearchPage {
     console.log('Clicking drop-off at a different location checkbox...');
     await this.page.click(SELECTORS.DROPOFF_DIFFERENT_LOCATION_CHECKBOX);
     console.log('Drop-off at a different location checkbox clicked successfully');
-  }
-
-  // Types the pickup location in the car search form
-  async typeCarPickupPlace(place) {
-    console.log(`Typing car pickup location: ${place}`);
-    await this.page.type(SELECTORS.CAR_PICKUP_INPUT, place);
-    console.log('Car pickup location typed successfully');
-  }
-
-  // Tabs out of the car pickup location autocomplete field to dismiss suggestions
-  // Ensures proper focus handling and allows autocomplete dropdown to close
-  async tabOutFromCarAutocomplete() {
-    console.log('Tabbing out of car autocomplete field...');
-    await this.page.focus(SELECTORS.CAR_PICKUP_INPUT);
-    await this.page.keyboard.press('Tab');
-    await this.page.waitForTimeout(1000);
-    console.log('Tabbed out of car autocomplete field successfully');
   }
 
   // Clicks on the pickup date field to open the date picker calendar

@@ -4,8 +4,7 @@ const { waitForText } = require('../utils/wait');
 const SELECTORS = {
   HOTEL_TAB: '#tab-hotel',
   HOTEL_HEADING: '#pane-hotel > h4',
-  HOTEL_DESTINATION_INPUT: "[placeholder*='Where']",
-  HOTEL_AUTOCOMPLETE_INPUT: "[placeholder='Where would you like to stay?']",
+  HOTEL_DESTINATION_FIELD: "[placeholder='Where would you like to stay?']",
   CHECK_IN_INPUT: "[placeholder='Check in']",
 };
 
@@ -33,20 +32,12 @@ class HotelSearchPage {
   async typeHotelDestination(where) {
     console.log(`Typing hotel destination: ${where}`);
     await this.page.waitForTimeout(2000); // Ensure option is displayed
-    await this.page.waitForSelector(SELECTORS.HOTEL_DESTINATION_INPUT, { timeout: 5000, state: 'visible' });
-    await this.page.click(SELECTORS.HOTEL_DESTINATION_INPUT); // Focus the field first
-    await this.page.fill(SELECTORS.HOTEL_DESTINATION_INPUT, where);
-    console.log(`Successfully typed destination: ${where}`);
-  }
-
-  // Tabs out of the hotel destination autocomplete field to dismiss suggestions
-  // Ensures proper focus handling and allows autocomplete dropdown to close
-  async tabOutFromHotelAutocomplete() {
-    console.log('Tabbing out of hotel autocomplete field...');
-    await this.page.focus(SELECTORS.HOTEL_AUTOCOMPLETE_INPUT);
+    await this.page.waitForSelector(SELECTORS.HOTEL_DESTINATION_FIELD, { timeout: 5000, state: 'visible' });
+    await this.page.click(SELECTORS.HOTEL_DESTINATION_FIELD); // Focus the field first
+    await this.page.fill(SELECTORS.HOTEL_DESTINATION_FIELD, where);
     await this.page.keyboard.press('Tab');
-    await this.page.waitForTimeout(1000);
-    console.log('Tabbed out of hotel autocomplete field successfully');
+    await this.page.waitForTimeout(5000);
+    console.log(`Successfully typed destination: ${where}`);
   }
 
   // Clicks on the check-in date field to open the date picker calendar
