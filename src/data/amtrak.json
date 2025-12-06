@@ -1,0 +1,13 @@
+{
+  "routes": {
+    "nypToWas": {
+      "from": "NYP",
+      "to": "WAS"
+    },
+    "bosToNyp": {
+      "from": "BOS",
+      "to": "NYP"
+    }
+  },
+  "defaultRoute": "nypToWas"
+}

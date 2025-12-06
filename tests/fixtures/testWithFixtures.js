@@ -78,6 +78,9 @@ module.exports = {
   // Evolvi users
   evolviUserOneTest: createTestWithUser('evolvi.user_one'),
 
+  // Amtrak users
+  amtrakUserOneTest: createTestWithUser('amtrak.user_one'),
+
   test: base.test,
   expect: base.expect,
 };

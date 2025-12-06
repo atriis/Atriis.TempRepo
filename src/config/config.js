@@ -80,8 +80,13 @@ const config = {
         email: getEnv('EVOLVI_USER_ONE_EMAIL'),
         password: getEnv('GENERAL_PASSWORD')
       }
-    }
-    // Later you can add more users here
+    },
+    amtrak: {
+      user_one: {
+        email: getEnv('AMTRAK_USER_ONE_EMAIL'), 
+        password: getEnv('GENERAL_PASSWORD')
+      }
+    },
   },
 };
 
