@@ -88,11 +88,10 @@ const BenerailSearch = {
     const searchPage = new SearchPage(page);
 
     // Simple, readable sequence of actions
-    await benerailPage.clickRailTab();
+    await benerailPage.selectBenerailSearch();
     await benerailPage.selectOneWayTrip();
     await searchPage.fillInOrField(from, 1); // first "or" field
     await searchPage.fillInOrField(to, 2);   // second "or" field
-    await searchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await BenerailSearch.selectDefaultDepartureDate(page);
     await searchPage.clickSearchButton();
@@ -133,15 +132,13 @@ const BenerailSearch = {
     const searchPage = new SearchPage(page);
 
     // Execute round trip search workflow with proper sequencing
-    await benerailPage.clickRailTab();
+    await benerailPage.selectBenerailSearch();
     await benerailPage.selectRoundTrip();
     await searchPage.fillInOrField(from, 1); // first "or" field
-    await searchPage.fillInOrField(to, 2);   // second "or" field
-    await searchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await BenerailSearch.selectDefaultDepartureDate(page);
-    await searchPage.clickReturnDateField();
-    await BenerailSearch.selectDefaultReturnDate(page);
+    await searchPage.fillInOrField(to, 2);   // second "or" field
+    await BenerailSearch.selectDefaultReturnDate(page);  // second "or" field
     await searchPage.clickSearchButton();
 
     console.log('Benerail search completed successfully');
