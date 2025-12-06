@@ -4,8 +4,6 @@ const { SELECTORS: SEARCH_SELECTORS } = require('./SearchPage');
 const SELECTORS = {
   ONE_WAY_BUTTON: ".uk-rail-search > :nth-child(1) [role='radiogroup'] > :nth-child(2) .el-radio__label",
   RETURN_BUTTON: ".uk-rail-search > :nth-child(1) [role='radiogroup'] > :nth-child(1) .el-radio__label",
-  DEPARTURE_FIELD: "[placeholder='Departure']",
-  RETURN_FIELD: "[placeholder='Return']",
   SPLIT_TICKET_CHECKBOX: "label[data-track='evolvi-search-split-ticket'] .el-checkbox__inner"
 };
 
@@ -43,26 +41,6 @@ class EvolviSearchPage {
     await this.page.click(SELECTORS.RETURN_BUTTON);
     console.log('Round trip selected successfully');
   }
-
-  /**
-   * Clicks the departure date field to open the date picker calendar
-   */
-  async clickDepartureField() {
-    console.log('Clicking departure field...');
-    await this.page.locator(SELECTORS.DEPARTURE_FIELD).click();
-    await this.page.waitForTimeout(1500); // Extra wait for calendar stability
-    console.log('Departure field clicked successfully');
-  }
-
-  /**
-   * Clicks the return date field to open the date picker calendar
-   */
-  async clickReturnField() {
-    console.log('Clicking return field...');
-    await this.page.locator(SELECTORS.RETURN_FIELD).click();
-    await this.page.waitForTimeout(1500); // Extra wait for calendar stability
-    console.log('Return field clicked successfully');
-  } 
 
   /**
    * Toggles the split ticket checkbox

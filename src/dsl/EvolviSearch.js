@@ -134,7 +134,6 @@ const EvolviSearch = {
     await EvolviSearch.ensureSplitTicketIsUnchecked(page);
     await searchPage.fillInOrField(from, 1); // first "or" field
     await searchPage.fillInOrField(to, 2);   // second "or" field
-    await evolviPage.clickDepartureField();
     await searchPage.clickCalendarNextArrow();
     await EvolviSearch.selectDefaultDepartureDate(page);
     await searchPage.clickSearchButton();
@@ -179,11 +178,9 @@ const EvolviSearch = {
     await evolviPage.selectRoundTrip();
     await EvolviSearch.ensureSplitTicketIsUnchecked(page);
     await searchPage.fillInOrField(from, 1); // first "or" field
-    await searchPage.fillInOrField(to, 2);   // second "or" field
-    await evolviPage.clickDepartureField();
     await searchPage.clickCalendarNextArrow();
     await EvolviSearch.selectDefaultDepartureDate(page);
-    await evolviPage.clickReturnField();
+    await searchPage.fillInOrField(to, 2);   // second "or" field
     await EvolviSearch.selectDefaultReturnDate(page);
     await searchPage.clickSearchButton();
 

@@ -1,7 +1,5 @@
 const { test, expect, evolviUserOneTest } = require('../../../fixtures/testWithFixtures');
 
-//⚠️ FAILING TEST - NEEDS REVIEW TO FIX THE ISSUES!!!!!
-
 // DSL imports
 const Search = require('../../../../src/dsl/Search');
 const EvolviSearch = require('../../../../src/dsl/EvolviSearch');
