@@ -191,6 +191,7 @@ class SearchPage {
     const fromSelectors = SELECTORS.FROM_PLACEHOLDER; 
     await typeIntoNthAvailableInput(this.page, from, fromSelectors, 0);
     await this.page.waitForTimeout(1000);
+    await pressTab(this.page);
     console.log('"From" field filled successfully');
   }
 
@@ -257,7 +258,6 @@ class SearchPage {
 
     console.log(`Calendar advanced ${monthsAhead} month(s)`);
   }
-
 
   // Executes search by clicking the search button
   async clickSearchButton() {

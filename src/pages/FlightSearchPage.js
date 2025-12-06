@@ -4,8 +4,6 @@ const SELECTORS = {
   ONE_WAY_BUTTON: ".search-options-wrapper > :nth-child(1) [role='radiogroup'] > :nth-child(2) .el-radio__label",
   ROUND_TRIP_BUTTON: ".search-options-wrapper > :nth-child(1) [role='radiogroup'] > :nth-child(1) .el-radio__label",
   MULTI_CITY_BUTTON: ".search-options-wrapper > :nth-child(1) [role='radiogroup'] > :nth-child(3) .el-radio__label",
-  DEPARTURE_DATE_INPUT: "input[placeholder*='Depart']",
-  RETURN_DATE_INPUT: "[placeholder='Return Date']",
   COMPLETE_TRIP_BUTTON: "label.el-radio input.el-radio__original[value='completeTrip']",
   BY_SCHEDULE_BUTTON: "label.el-radio input.el-radio__original[value='bySchedule']",
   ADVANCED_SEARCH_BUTTON: ".advanced-search-container .btn",

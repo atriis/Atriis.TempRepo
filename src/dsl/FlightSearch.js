@@ -21,7 +21,6 @@ const FlightSearchPage = require("../pages/FlightSearchPage");
 const SearchPage = require("../pages/SearchPage");
 const flightRoutes = require("../data/flights.json");
 const { SELECTORS } = require('../pages/SearchPage');
-const { pressTab } = require("../utils/dom");
 
 const FlightSearch = {
   /**
@@ -95,7 +94,6 @@ const FlightSearch = {
     await flightSearchPage.clickFlightTab();
     await flightSearchPage.selectOneWayTrip();
     await searchPage.fillInFromField(from);
-    await pressTab(page);
     await searchPage.fillInToField(to);
     await searchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
@@ -139,9 +137,7 @@ const FlightSearch = {
     await flightSearchPage.clickFlightTab();
     await flightSearchPage.selectRoundTrip();
     await searchPage.fillInFromField(from);
-    await pressTab(page);
     await searchPage.fillInToField(to);
-    await searchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await FlightSearch.selectDefaultDepartureDate(page);
     await FlightSearch.selectDefaultReturnDate(page);
