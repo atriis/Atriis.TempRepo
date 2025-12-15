@@ -32,6 +32,7 @@ jobs:
           SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
           BENERAIL_USER_ONE_EMAIL: ${{ secrets.BENERAIL_USER_ONE_EMAIL }}
           EVOLVI_USER_ONE_EMAIL: ${{ secrets.EVOLVI_USER_ONE_EMAIL }}
+          AMTRAK_USER_ONE_EMAIL: ${{ secrets.AMTRAK_USER_ONE_EMAIL }} 
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Smoke Results
