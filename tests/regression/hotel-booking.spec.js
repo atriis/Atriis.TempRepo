@@ -21,7 +21,7 @@ test.describe('[@regression] Hotel Booking End-to-End Flow', () => {
 
     // Step 3: Search a hotel in London, UK for 1 night
     console.log('Step 3: Search hotel in London, UK for 1 night');
-    await HotelSearch.searchHotelOneNight(page, { where: 'London, UK' });
+    await HotelSearch.searchHotelByNights(page, { where: 'London, UK' });
     
     // Step 4: Navigate to hotel level and add a refundable hotel to cart
     console.log('Step 4: Select first hotel option');

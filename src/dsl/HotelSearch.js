@@ -1,97 +1,64 @@
 /**
  * HotelSearch DSL Module
- * 
+ *
  * Provides high-level DSL functions for hotel search functionality.
- * Handles location-based hotel searches with configurable check-in and check-out dates.
- * Includes date selection strategies and comprehensive search workflows.
- * 
- * Key Features:
- * - Location-based hotel searches
- * - Default check-in and check-out date selection (one-night stay)
- * - Comprehensive logging for debugging
- * - Automatic calendar navigation
- * 
+ * Handles location-based hotel searches with configurable check-in/check-out dates.
+ *
  * Dependencies:
- * - HotelSearchPage: Page object for hotel-specific interactions
- * - SearchPage: Common search functionality across booking types
+ * - HotelSearchPage
+ * - SearchPage
+ * - calendar.helper.js
  */
 
 const HotelSearchPage = require('../pages/HotelSearchPage');
 const SearchPage = require('../pages/SearchPage');
-const { SELECTORS } = require('../pages/SearchPage');
+const { selectDatesByNthAvailable } = require('../utils/calendar.helper');
+
+const DEFAULT_NIGHTS = 1;
 
 const HotelSearch = {
   /**
-   * Selects the first available date in the check-in calendar
-   * Assumes the date picker is already open from clicking the check-in field
-   * 
+   * Performs a hotel search.
+   * Default stay: 1 night.
+   *
+   * Date strategy (nth available):
+   * - Check-in  = nth(0)
+   * - Check-out = nth(nights)
+   *
    * @param {Object} page - Playwright page instance
+   * @param {Object} params
+   * @param {string} params.where - Destination
+   * @param {number} [params.nights=1] - Number of nights (>= 1)
+   * @returns {Object}
    */
-  async selectDefaultCheckInDate(page) {
-    console.log(`Searching for default check-in date...`);
-    const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
-    const datePickerPanelMonthTable = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).first();
-    const days = datePickerPanelMonthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
-    await days.first().waitFor({ state: 'visible' });
-    await days.first().click();
-    console.log('Selected default check-in date (first available)');
-  },
+  async searchHotelByNights(page, { where, nights = DEFAULT_NIGHTS }) {
+    if (!where) throw new Error('HotelSearch.searchHotelByNights requires "where"');
+    if (nights < 1) throw new Error(`"nights" must be >= 1. Got ${nights}`);
 
-  /**
-   * Selects the second available date as the check-out date
-   * Ensures one-night stay duration for the hotel booking
-   * 
-   * @param {Object} page - Playwright page instance
-   * @throws {Error} When not enough available dates are found
-   */
-  async selectDefaultCheckOutDate(page) {
-    console.log(`Searching for default check-out date...`);
-    const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
-    const datePickerPanelMonthTable = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).first();
-    const days = datePickerPanelMonthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
-    const count = await days.count();
-    
-    if (count < 2) {
-      throw new Error(`Not enough available dates. Found only ${count} available day(s) in visible calendar.`);
-    }
-    
-    await days.nth(1).waitFor({ state: 'visible' });
-    await days.nth(1).click();
-    console.log('Selected default check-out date (second available)');
-  },
+    console.log(`Searching for hotel in ${where} for ${nights} night(s)...`);
 
-  /**
-   * Performs a complete hotel search for a one-night stay at specified destination
-   * Uses default date selection for check-in/check-out with one night duration
-   * 
-   * @param {Object} page - Playwright page instance
-   * @param {Object} params - Search parameters
-   * @param {string} params.where - Destination location for hotel search
-   * @returns {Object} - Search result object with status confirmation
-   */
-  async searchHotelOneNight(page, { where }) {
-    console.log(`Searching for hotel in ${where} for 1 night...`);
     const hotelSearchPage = new HotelSearchPage(page);
     const searchPage = new SearchPage(page);
 
-    // Click hotel tab and wait for it to be active
+    // Open hotel tab
     await hotelSearchPage.clickHotelTab();
     await hotelSearchPage.waitForBookAndStayAtYourHotelText();
 
-    // Type destination and handle autocomplete
+    // Destination
     await hotelSearchPage.typeHotelDestination(where);
 
-    // Handle calendar selection
+    // Calendar must be opened by clicking check-in
     await hotelSearchPage.clickCheckInField();
     await searchPage.clickCalendarNextArrow();
-    await HotelSearch.selectDefaultCheckInDate(page);
-    await HotelSearch.selectDefaultCheckOutDate(page);
 
-    // Execute search
+    // Select check-in + check-out in ONE call
+    await selectDatesByNthAvailable(page, { startIndex: 0, endIndex: nights });
+
+    // Search
     await searchPage.clickSearchButton();
 
     console.log('Hotel search completed successfully');
-    return { searched: true };
+    return { searched: true, where, nights };
   },
 };
 
