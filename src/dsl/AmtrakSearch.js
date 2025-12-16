@@ -1,23 +1,3 @@
-
-/**
- * AmtrakSearch DSL Module
- * 
- * Provides high-level DSL functions for Amtrak (US Rail) search functionality.
- * Handles one-way and round-trip searches with configurable routes from amtrak.json.
- * Includes date selection, field population, and search execution workflows.
- * 
- * Key Features:
- * - Route-based search configuration using amtrak.json
- * - Default date selection strategies for departure and return
- * - Comprehensive logging for debugging
- * - Support for both one-way and round-trip journeys
- * 
- * Dependencies:
- * - AmtrakSearchPage: Page object for Amtrak-specific interactions
- * - SearchPage: Common search functionality across booking types
- * - amtrak.json: Route configuration data
- */
-
 const AmtrakSearchPage = require("../pages/AmtrakSearchPage");
 const SearchPage = require("../pages/SearchPage");
 const amtrakRoutes = require("../data/amtrak.json");

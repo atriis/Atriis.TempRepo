@@ -1,30 +1,8 @@
-/**
- * EvolviSearch DSL Module
- * 
- * Provides high-level DSL functions for Evolvi train search functionality.
- * Handles one-way and round-trip searches with configurable routes from evolvi.json.
- * Includes date selection, field population, and search execution workflows.
- * 
- * Key Features:
- * - Route-based search configuration using evolvi.json
- * - Automatic split ticket checkbox management
- * - Default date selection strategies
- * - Comprehensive logging for debugging
- * 
- * Dependencies:
- * - EvolviSearchPage: Page object for Evolvi-specific interactions
- * - SearchPage: Common search functionality across booking types
- * - evolvi.json: Route configuration data
- */
-
-// ------------------------------------------------------------------------ CONTINUE FROM HERE ------------------------------------------------------------------------
-
 const EvolviSearchPage = require("../pages/EvolviSearchPage");
 const SearchPage = require("../pages/SearchPage");
 const evolviRoutes = require("../data/evolvi.json");
 const { SELECTORS } = require('../pages/SearchPage');
 const { SELECTORS: EVOLVI_SELECTORS } = require('../pages/EvolviSearchPage');
-const { pressTab } = require("../utils/dom");
 
 const EvolviSearch = {
 

@@ -1,15 +1,3 @@
-/**
- * HotelSearch DSL Module
- *
- * Provides high-level DSL functions for hotel search functionality.
- * Handles location-based hotel searches with configurable check-in/check-out dates.
- *
- * Dependencies:
- * - HotelSearchPage
- * - SearchPage
- * - calendar.helper.js
- */
-
 const HotelSearchPage = require('../pages/HotelSearchPage');
 const SearchPage = require('../pages/SearchPage');
 const { selectDatesByNthAvailable } = require('../utils/calendar.helper');

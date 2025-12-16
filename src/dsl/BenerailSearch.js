@@ -1,23 +1,3 @@
-
-/**
- * BenerailSearch DSL Module
- * 
- * Provides high-level DSL functions for Benerail (EU Rail) search functionality.
- * Handles one-way and round-trip searches with configurable routes from benerail.json.
- * Includes date selection, field population, and search execution workflows.
- * 
- * Key Features:
- * - Route-based search configuration using benerail.json
- * - Default date selection strategies for departure and return
- * - Comprehensive logging for debugging
- * - Support for both one-way and round-trip journeys
- * 
- * Dependencies:
- * - BenerailSearchPage: Page object for Benerail-specific interactions
- * - SearchPage: Common search functionality across booking types
- * - benerail.json: Route configuration data
- */
-
 const BenerailSearchPage = require("../pages/BenerailSearchPage");
 const SearchPage = require("../pages/SearchPage");
 const benerailRoutes = require("../data/benerail.json");

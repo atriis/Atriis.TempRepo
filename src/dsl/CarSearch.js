@@ -1,44 +1,12 @@
-/**
- * CarSearch DSL Module
- *
- * Provides high-level DSL functions for car rental search functionality.
- * Supports location-based searches with configurable pickup/dropoff dates and rental agencies.
- *
- * Features:
- * - Place-based car rental searches
- * - Rental agency selection
- * - Default nth-based date selection for pickup/dropoff
- * - Combined place + agency searches
- *
- * Dependencies:
- * - CarSearchPage
- * - SearchPage
- * - calendar.helper.js
- */
-
 const CarSearchPage = require('../pages/CarSearchPage');
 const SearchPage = require('../pages/SearchPage');
-const { SELECTORS } = require('../pages/SearchPage');
 const { selectDatesByNthAvailable } = require('../utils/calendar.helper');
 
-const CarSearch = {
-  /**
-   * Selects the default pickup date (first available date).
-   * @param {Object} page - The Playwright page object
-   */
-  async selectDefaultPickupDate(page) {
-    await selectDatesByNthAvailable(page, { startIndex: 0 });
-    console.log('Selected default pickup date (first available)');
-  },
+// Default nth-based date strategy
+const DEFAULT_PICKUP_INDEX = 0;  // 1st available date
+const DEFAULT_DROPOFF_INDEX = 5; // 6th available date (pickup + 5 days)
 
-  /**
-   * Selects the default dropoff date (pickup + 5 days / 6th available).
-   * @param {Object} page - The Playwright page object
-   */
-  async selectDefaultDropoffDate(page) {
-    await selectDatesByNthAvailable(page, { startIndex: 5 });
-    console.log('Selected default drop-off date (pickup + 5 days / 6th available)');
-  },
+const CarSearch = {
 
   /**
    * Selects a rental agency by name from the dropdown.
@@ -56,51 +24,91 @@ const CarSearch = {
   },
 
   /**
-   * Performs a car rental search by place with default date selection.
+   * Performs a car rental search by place.
+   * Default rental period: pickup on 1st available date, dropoff on 6th available date (5-day rental).
+   *
+   * Date strategy (nth available):
+   * - Pickup  = nth(0)  [1st available]
+   * - Dropoff = nth(5)  [6th available, i.e., pickup + 5 days]
+   *
    * @param {Object} page - The Playwright page object
-   * @param {Object} options - Search options
-   * @param {string} options.place - The location to search for car rentals
+   * @param {Object} params
+   * @param {string} params.place - The location to search for car rentals
+   * @param {number} [params.pickupIndex] - nth available pickup date
+   * @param {number} [params.dropoffIndex] - nth available dropoff date
    * @returns {Object} Search result status
    */
-  async searchCarByPlace(page, { place }) {
-    console.log(`Searching for car rental in: ${place}`);
+  async searchCarByPlace(page, { 
+    place, 
+    pickupIndex = DEFAULT_PICKUP_INDEX, 
+    dropoffIndex = DEFAULT_DROPOFF_INDEX 
+  }) {
+    if (!place) throw new Error('CarSearch.searchCarByPlace requires "place"');
+    
+    console.log(`Searching for car rental in: ${place} (pickup: nth(${pickupIndex}), dropoff: nth(${dropoffIndex}))`);
+    
     const carSearchPage = new CarSearchPage(page);
     const searchPage = new SearchPage(page);
 
     await carSearchPage.clickCarTab();
     await searchPage.fillInOrField(place, 1);
 
+    // Pickup date selection
     await carSearchPage.clickPickupDateField();
     await searchPage.clickCalendarNextArrow();
-    await CarSearch.selectDefaultPickupDate(page);
+    
+    // Select pickup date only (endIndex: null for single date selection)
+    await selectDatesByNthAvailable(page, { 
+      startIndex: pickupIndex, 
+      endIndex: null 
+    });
 
+    // Dropoff date selection
     await carSearchPage.clickDropoffDateField();
     await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
-    await CarSearch.selectDefaultDropoffDate(page);
+    
+    // Select dropoff date only
+    await selectDatesByNthAvailable(page, { 
+      startIndex: dropoffIndex, 
+      endIndex: null 
+    });
 
     await searchPage.clickSearchButton();
 
     console.log('Car search completed successfully');
-    return { searched: true };
+    return { searched: true, place, pickupIndex, dropoffIndex };
   },
 
   /**
    * Performs a car rental search by place and specific rental agency.
+   * Uses the same default date logic as searchCarByPlace.
+   *
    * @param {Object} page - The Playwright page object
-   * @param {Object} options - Search options
-   * @param {string} options.place - The location to search for car rentals
-   * @param {string} options.agencyName - The rental agency to filter by
+   * @param {Object} params
+   * @param {string} params.place - The location to search for car rentals
+   * @param {string} params.agencyName - The rental agency to filter by
+   * @param {number} [params.pickupIndex] - nth available pickup date
+   * @param {number} [params.dropoffIndex] - nth available dropoff date
    * @returns {Object} Search result status
    */
-  async searchCarByPlaceAndRentalAgency(page, { place, agencyName }) {
+  async searchCarByPlaceAndRentalAgency(page, { 
+    place, 
+    agencyName, 
+    pickupIndex = DEFAULT_PICKUP_INDEX, 
+    dropoffIndex = DEFAULT_DROPOFF_INDEX 
+  }) {
+    if (!place) throw new Error('CarSearch.searchCarByPlaceAndRentalAgency requires "place"');
+    if (!agencyName) throw new Error('CarSearch.searchCarByPlaceAndRentalAgency requires "agencyName"');
+    
     console.log(`Searching for car rental in: ${place} with agency: ${agencyName}`);
+    
     const carSearchPage = new CarSearchPage(page);
 
     await carSearchPage.clickCarTab();
     await CarSearch.selectRentalAgencyByName(page, agencyName);
 
-    // Reuse full flow, including the single search click
-    return CarSearch.searchCarByPlace(page, { place });
+    // Use the main search flow with date parameters
+    return CarSearch.searchCarByPlace(page, { place, pickupIndex, dropoffIndex });
   },
 };
 

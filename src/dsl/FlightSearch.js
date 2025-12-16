@@ -1,21 +1,3 @@
-/**
- * FlightSearch DSL Module
- *
- * Provides high-level DSL functions for flight search functionality.
- * Supports one-way and round-trip searches.
- *
- * Features:
- * - Route resolution via flights.json OR inline route object
- * - Default nth-based date selection
- * - Per-test override of departure / return dates
- *
- * Dependencies:
- * - FlightSearchPage
- * - SearchPage
- * - flights.json
- * - calendar.helper.js
- */
-
 const FlightSearchPage = require("../pages/FlightSearchPage");
 const SearchPage = require("../pages/SearchPage");
 const flightRoutes = require("../data/flights.json");
