@@ -1,12 +1,12 @@
-const { test, expect, sabreUserOneTest } = require('../fixtures/testWithFixtures');
+const { test, expect, sabreUserOneTest } = require('../../../fixtures/testWithFixtures');
 
 // DSL imports
-const Search = require('../../src/dsl/Search')
-const CarSearch = require('../../src/dsl/CarSearch');
-const CarResults = require('../../src/dsl/CarResults');
-const Cart = require('../../src/dsl/Cart'); 
-const Checkout = require('../../src/dsl/Checkout');
-const TripOverview = require('../../src/dsl/TripOverview');
+const Search = require('../../../../src/dsl/Search')
+const CarSearch = require('../../../../src/dsl/CarSearch');
+const CarResults = require('../../../../src/dsl/CarResults');
+const Cart = require('../../../../src/dsl/Cart'); 
+const Checkout = require('../../../../src/dsl/Checkout');
+const TripOverview = require('../../../../src/dsl/TripOverview');
 
 test.describe('[@regression] Car Booking End-to-End Flow', () => {
   sabreUserOneTest('[@priority:critical] Car Booking – Should complete full car booking flow with cancellation', async ({ newTripPageSABRE_USER_ONE }) => {

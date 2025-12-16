@@ -1,8 +1,10 @@
-const { test, sabreUserOneTest } = require('../fixtures/testWithFixtures');
+const { test, sabreUserOneTest } = require('../../../fixtures/testWithFixtures');
 
 // DSL imports
-const Search = require('../../src/dsl/Search')
-const CarSearch = require('../../src/dsl/CarSearch');
+const Search = require('../../../../src/dsl/Search')
+const CarSearch = require('../../../../src/dsl/CarSearch');
+const CarResults = require('../../../../src/dsl/CarResults');
+const Cart = require('../../../../src/dsl/Cart');
 
 test.describe('[@regression] Car City Center Search by Rental Agency', () => {
   sabreUserOneTest('[@priority:high] Car Search – Should complete full city center car search by rental agency', async ({ newTripPageSABRE_USER_ONE }) => {
