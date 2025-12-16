@@ -1,12 +1,12 @@
-const { test, expect, amadeusUserOneTest } = require('../fixtures/testWithFixtures');
+const { test, expect, amadeusUserOneTest } = require('../../fixtures/testWithFixtures');
 
 // DSL imports
-const Search = require('../../src/dsl/Search');
-const FlightSearch = require('../../src/dsl/FlightSearch');
-const FlightResults = require('../../src/dsl/FlightResults');
-const Cart = require('../../src/dsl/Cart');
-const Checkout = require('../../src/dsl/Checkout');
-const TripOverview = require('../../src/dsl/TripOverview');
+const Search = require('../../../src/dsl/Search');
+const FlightSearch = require('../../../src/dsl/FlightSearch');
+const FlightResults = require('../../../src/dsl/FlightResults');
+const Cart = require('../../../src/dsl/Cart');
+const Checkout = require('../../../src/dsl/Checkout');
+const TripOverview = require('../../../src/dsl/TripOverview');
 
 test.describe('[@regression] One Way Flight Booking End-to-End Flow', () => {
   amadeusUserOneTest('[@priority:critical] One Way Flight Booking – Should complete full flight booking flow with cancellation', async ({ newTripPageAMADEUS_USER_ONE }) => {

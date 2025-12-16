@@ -1,10 +1,10 @@
-const { test, expect, amadeusUserOneTest } = require('../fixtures/testWithFixtures');
+const { test, expect, amadeusUserOneTest } = require('../../fixtures/testWithFixtures');
 
 // DSL imports
-const Search = require('../../src/dsl/Search');
-const FlightSearch = require('../../src/dsl/FlightSearch');
-const FlightResults = require('../../src/dsl/FlightResults');
-const Cart = require('../../src/dsl/Cart');
+const Search = require('../../../src/dsl/Search');
+const FlightSearch = require('../../../src/dsl/FlightSearch');
+const FlightResults = require('../../../src/dsl/FlightResults');
+const Cart = require('../../../src/dsl/Cart');
 
 test.describe('[@regression] Add Round Trip Flight to Cart Flow', () => {
   amadeusUserOneTest('[@priority:critical] Add Round Trip Flight to Cart – Should complete full add to cart flow', async ({ newTripPageAMADEUS_USER_ONE }) => {

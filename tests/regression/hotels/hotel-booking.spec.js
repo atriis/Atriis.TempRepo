@@ -1,13 +1,13 @@
-const { test, expect, ratehawkUserOneTest } = require('../fixtures/testWithFixtures');
+const { test, expect, ratehawkUserOneTest } = require('../../fixtures/testWithFixtures');
 
 // DSL imports
-const Search = require('../../src/dsl/Search');
-const HotelSearch = require('../../src/dsl/HotelSearch');
-const HotelLevelResults = require('../../src/dsl/HotelLevelResults');
-const RoomLevelResults = require('../../src/dsl/RoomLevelResults');
-const Cart = require('../../src/dsl/Cart');
-const Checkout = require('../../src/dsl/Checkout');
-const TripOverview = require('../../src/dsl/TripOverview');
+const Search = require('../../../src/dsl/Search');
+const HotelSearch = require('../../../src/dsl/HotelSearch');
+const HotelLevelResults = require('../../../src/dsl/HotelLevelResults');
+const RoomLevelResults = require('../../../src/dsl/RoomLevelResults');
+const Cart = require('../../../src/dsl/Cart');
+const Checkout = require('../../../src/dsl/Checkout');
+const TripOverview = require('../../../src/dsl/TripOverview');
 
 test.describe('[@regression] Hotel Booking End-to-End Flow', () => {
   ratehawkUserOneTest('[@priority:critical] Hotel Booking – Should complete full hotel booking flow with cancellation', async ({ newTripPageRATEHAWK_USER_ONE }) => {
