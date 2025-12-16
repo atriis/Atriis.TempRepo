@@ -1,0 +1,50 @@
+{
+  "locations": {
+    "london": {
+      "place": "London"
+    },
+    "paris": {
+      "place": "Paris"
+    },
+    "madrid": {
+      "place": "Madrid"
+    },
+    "berlin": {
+      "place": "Berlin"
+    },
+    "rome": {
+      "place": "Rome"
+    },
+    "amsterdam": {
+      "place": "Amsterdam"
+    },
+    "barcelona": {
+      "place": "Barcelona"
+    },
+    "dublin": {
+      "place": "Dublin"
+    },
+    "manchester": {
+      "place": "Manchester"
+    },
+    "newYork": {
+      "place": "New York"
+    },
+    "losAngeles": {
+      "place": "Los Angeles"
+    },
+    "chicago": {
+      "place": "Chicago"
+    },
+    "miami": {
+      "place": "Miami"
+    },
+    "lasVegas": {
+      "place": "Las Vegas"
+    },
+    "orlando": {
+      "place": "Orlando"
+    }
+  },
+  "defaultLocation": "london"
+}

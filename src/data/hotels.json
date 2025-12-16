@@ -1,0 +1,35 @@
+{
+  "locations": {
+    "london": {
+      "destination": "London"
+    },
+    "paris": {
+      "destination": "Paris"
+    },
+    "madrid": {
+      "destination": "Madrid"
+    },
+    "berlin": {
+      "destination": "Berlin"
+    },
+    "rome": {
+      "destination": "Rome"
+    },
+    "amsterdam": {
+      "destination": "Amsterdam"
+    },
+    "barcelona": {
+      "destination": "Barcelona"
+    },
+    "dublin": {
+      "destination": "Dublin"
+    },
+    "manchester": {
+      "destination": "Manchester"
+    },
+    "newYork": {
+      "destination": "New York"
+    }
+  },
+  "defaultLocation": "london"
+}

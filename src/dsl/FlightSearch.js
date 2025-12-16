@@ -2,41 +2,8 @@ const FlightSearchPage = require("../pages/FlightSearchPage");
 const SearchPage = require("../pages/SearchPage");
 const flightRoutes = require("../data/flights.json");
 const { selectDatesByNthAvailable } = require("../utils/calendar.helper");
-
-// Default nth-based date strategy
-const DEFAULT_DEPARTURE_INDEX = 4; // 5th available date
-const DEFAULT_RETURN_INDEX = 11;   // 12th available date
-
-/**
- * Resolves route input.
- * Accepts either:
- * - route key (string) → resolved from flights.json
- * - inline route object → { from, to }
- */
-function resolveRoute(routeInput) {
-  // Route key from JSON
-  if (typeof routeInput === "string") {
-    const route = flightRoutes.routes[routeInput];
-    if (!route) {
-      throw new Error(`Route "${routeInput}" not found in flights.json`);
-    }
-    return route;
-  }
-
-  // Inline route object
-  if (
-    typeof routeInput === "object" &&
-    routeInput !== null &&
-    routeInput.from &&
-    routeInput.to
-  ) {
-    return routeInput;
-  }
-
-  throw new Error(
-    'Invalid route input. Expected route key (string) or { from, to } object.'
-  );
-}
+const { resolveRoute } = require("../utils/route.helper");
+const { SEARCH_DEFAULTS } = require("../utils/search.constants");
 
 const FlightSearch = {
   /**
@@ -50,9 +17,9 @@ const FlightSearch = {
   async searchFlightOneWay(
     page,
     routeInput = flightRoutes.defaultRoute,
-    { departureIndex = DEFAULT_DEPARTURE_INDEX } = {}
+    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX } = {}
   ) {
-    const { from, to } = resolveRoute(routeInput);
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
     console.log(`Starting one-way flight search: ${from} → ${to}`);
 
     const flightSearchPage = new FlightSearchPage(page);
@@ -96,11 +63,11 @@ const FlightSearch = {
     page,
     routeInput = flightRoutes.defaultRoute,
     {
-      departureIndex = DEFAULT_DEPARTURE_INDEX,
-      returnIndex = DEFAULT_RETURN_INDEX,
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
     } = {}
   ) {
-    const { from, to } = resolveRoute(routeInput);
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
     console.log(`Starting round-trip flight search: ${from} → ${to}`);
 
     const flightSearchPage = new FlightSearchPage(page);

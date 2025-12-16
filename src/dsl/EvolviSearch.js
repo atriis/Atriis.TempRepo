@@ -1,59 +1,12 @@
 const EvolviSearchPage = require("../pages/EvolviSearchPage");
 const SearchPage = require("../pages/SearchPage");
 const evolviRoutes = require("../data/evolvi.json");
-const { SELECTORS } = require('../pages/SearchPage');
 const { SELECTORS: EVOLVI_SELECTORS } = require('../pages/EvolviSearchPage');
+const { selectDatesByNthAvailable } = require('../utils/calendar.helper');
+const { resolveRoute } = require('../utils/route.helper');
+const { SEARCH_DEFAULTS } = require('../utils/search.constants');
 
 const EvolviSearch = {
-
-  /**
-   * Selects the 10th available date in the departure calendar
-   * Assumes the date picker is already open from clicking the departure field
-   * 
-   * @param {Object} page - Playwright page instance
-   */
-  async selectDefaultDepartureDate(page) {
-    console.log('Searching for default departure date...');
-    const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
-    const datePickerPanelMonthTable = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).first();
-    const days = datePickerPanelMonthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
-    await days.nth(9).waitFor({ state: 'visible' });
-    await days.nth(9).click();
-    console.log('Selected default departure date (tenth available)');
-  },
-
-  /**
-   * Selects the 13th available date in the return calendar
-   * Assumes the date picker is already open from clicking the return field
-   * 
-   * @param {Object} page - Playwright page instance
-   */
-  async selectDefaultReturnDate(page) {
-    console.log('Searching for default return date...');
-    const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
-    const datePickerPanelMonthTable = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).first();
-    const days = datePickerPanelMonthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
-    await days.nth(12).waitFor({ state: 'visible' });
-    await days.nth(12).click();
-    console.log('Selected default return date (thirteenth available)');
-  },
-
-  /**
-   * Performs a complete one-way Evolvi search using predefined route configuration
-   * Handles rail tab selection, route setup, date selection, and search execution
-   * Uses route data from evolvi.json for consistent and maintainable test scenarios
-   * 
-   * @param {Object} page - Playwright page instance
-   * @param {string} routeName - Named route from evolvi.json (defaults to defaultRoute)
-   * @returns {Object} - Search result object with status, route name, and station codes
-   * 
-   * Examples:
-   *   await EvolviSearch.searchEvolviOneWay(page, "ldsToDon");
-   *   await EvolviSearch.searchEvolviOneWay(page); // uses defaultRoute
-   * 
-   * @throws {Error} - When specified route name is not found in evolvi.json
-   */
-
   /**
    * Ensures the "Request Split Ticket" checkbox is unchecked
    * Verifies the current state and toggles if necessary to ensure unchecked state
@@ -76,30 +29,31 @@ const EvolviSearch = {
   },
 
   /**
-   * Performs a complete one-way Evolvi search using predefined route configuration
-   * Handles Evolvi search selection, route setup, date selection, and search execution
-   * Uses route data from evolvi.json for consistent and maintainable test scenarios
-   * 
+   * Performs a complete one-way Evolvi search using predefined route configuration.
+   * Default departure: 10th available date.
+   *
+   * Date strategy (nth available):
+   * - Departure = nth(9)  [10th available]
+   *
    * @param {Object} page - Playwright page instance
-   * @param {string} routeName - Named route from evolvi.json (defaults to defaultRoute)
+   * @param {string|Object} [routeInput] - route key OR { from, to } object
+   * @param {Object} [options] - Search options
+   * @param {number} [options.departureIndex] - nth available departure date
    * @returns {Object} - Search result object with status, route name, and station codes
    * 
    * Examples:
    *   await EvolviSearch.searchEvolviOneWay(page, "ldsToDon");
+   *   await EvolviSearch.searchEvolviOneWay(page, { from: "London", to: "Manchester" });
+   *   await EvolviSearch.searchEvolviOneWay(page, "ldsToDon", { departureIndex: 5 });
    *   await EvolviSearch.searchEvolviOneWay(page); // uses defaultRoute
    * 
    * @throws {Error} - When specified route name is not found in evolvi.json
    */
-  async searchEvolviOneWay(page, routeName = evolviRoutes.defaultRoute) {
-    console.log(`Starting Evolvi one-way search for route: ${routeName}`);
+  async searchEvolviOneWay(page, routeInput = evolviRoutes.defaultRoute, { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {}) {
+    console.log(`Starting Evolvi one-way search for route: ${JSON.stringify(routeInput)} (departure: nth(${departureIndex}))`);
     
-    // Look up route by name in evolvi.json
-    const route = evolviRoutes.routes[routeName];
-    if (!route) {
-      throw new Error(`Route "${routeName}" not found in evolvi.json`);
-    }
-
-    const { from, to } = route;
+    // Resolve route using shared resolveRoute function
+    const { from, to } = resolveRoute(routeInput, evolviRoutes.routes, "evolvi");
     console.log(`Evolvi route: ${from} → ${to}`);
     
     // Initialize page objects
@@ -113,38 +67,50 @@ const EvolviSearch = {
     await searchPage.fillInOrField(from, 1); // first "or" field
     await searchPage.fillInOrField(to, 2);   // second "or" field
     await searchPage.clickCalendarNextArrow();
-    await EvolviSearch.selectDefaultDepartureDate(page);
+    
+    // Select departure date using nth-available strategy
+    await selectDatesByNthAvailable(page, { 
+      startIndex: departureIndex, 
+      endIndex: null 
+    });
+    
     await searchPage.clickSearchButton();
 
     console.log('Evolvi one-way search completed successfully');
-    return { searched: true, routeName, from, to };
+    return { searched: true, routeInput, from, to, departureIndex };
   },
 
   /**
-   * Performs a complete round trip Evolvi search using predefined route configuration
-   * Handles Evolvi search selection, route setup, departure and return date selection, and search execution
-   * Uses route data from evolvi.json for consistent and maintainable test scenarios
-   * 
+   * Performs a complete round trip Evolvi search using predefined route configuration.
+   * Default dates: departure on 10th available date, return on 13th available date.
+   *
+   * Date strategy (nth available):
+   * - Departure = nth(9)   [10th available]
+   * - Return    = nth(12)  [13th available]
+   *
    * @param {Object} page - Playwright page instance
-   * @param {string} routeName - Named route from evolvi.json (defaults to defaultRoute)
+   * @param {string|Object} [routeInput] - route key OR { from, to } object
+   * @param {Object} [options] - Search options
+   * @param {number} [options.departureIndex] - nth available departure date
+   * @param {number} [options.returnIndex] - nth available return date
    * @returns {Object} - Search result object with status, route name, and station codes
    * 
    * Examples:
    *   await EvolviSearch.searchEvolviRoundTrip(page, "ldsToDon");
+   *   await EvolviSearch.searchEvolviRoundTrip(page, { from: "London", to: "Manchester" });
+   *   await EvolviSearch.searchEvolviRoundTrip(page, "ldsToDon", { departureIndex: 5, returnIndex: 10 });
    *   await EvolviSearch.searchEvolviRoundTrip(page); // uses defaultRoute
    * 
    * @throws {Error} - When specified route name is not found in evolvi.json
    */
-  async searchEvolviRoundTrip(page, routeName = evolviRoutes.defaultRoute) {
-    console.log(`Starting Evolvi round trip search for route: ${routeName}`);
+  async searchEvolviRoundTrip(page, routeInput = evolviRoutes.defaultRoute, { 
+    departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX, 
+    returnIndex = SEARCH_DEFAULTS.RAIL.RETURN_INDEX 
+  } = {}) {
+    console.log(`Starting Evolvi round trip search for route: ${JSON.stringify(routeInput)} (departure: nth(${departureIndex}), return: nth(${returnIndex}))`);
     
-    // Look up route by name in evolvi.json
-    const route = evolviRoutes.routes[routeName];
-    if (!route) {
-      throw new Error(`Route "${routeName}" not found in evolvi.json`);
-    }
-
-    const { from, to } = route;
+    // Resolve route using shared resolveRoute function
+    const { from, to } = resolveRoute(routeInput, evolviRoutes.routes, "evolvi");
     console.log(`Evolvi route: ${from} → ${to}`);
     
     // Initialize page objects
@@ -157,13 +123,25 @@ const EvolviSearch = {
     await EvolviSearch.ensureSplitTicketIsUnchecked(page);
     await searchPage.fillInOrField(from, 1); // first "or" field
     await searchPage.clickCalendarNextArrow();
-    await EvolviSearch.selectDefaultDepartureDate(page);
+    
+    // Select departure date using nth-available strategy
+    await selectDatesByNthAvailable(page, { 
+      startIndex: departureIndex, 
+      endIndex: null 
+    });
+    
     await searchPage.fillInOrField(to, 2);   // second "or" field
-    await EvolviSearch.selectDefaultReturnDate(page);
+    
+    // Select return date using nth-available strategy
+    await selectDatesByNthAvailable(page, { 
+      startIndex: returnIndex, 
+      endIndex: null 
+    });
+    
     await searchPage.clickSearchButton();
 
     console.log('Evolvi round trip search completed successfully');
-    return { searched: true, routeName, from, to };
+    return { searched: true, routeInput, from, to, departureIndex, returnIndex };
   },
 };
 

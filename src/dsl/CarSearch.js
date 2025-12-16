@@ -1,10 +1,9 @@
 const CarSearchPage = require('../pages/CarSearchPage');
 const SearchPage = require('../pages/SearchPage');
 const { selectDatesByNthAvailable } = require('../utils/calendar.helper');
-
-// Default nth-based date strategy
-const DEFAULT_PICKUP_INDEX = 0;  // 1st available date
-const DEFAULT_DROPOFF_INDEX = 5; // 6th available date (pickup + 5 days)
+const { resolveLocation } = require('../utils/route.helper');
+const { SEARCH_DEFAULTS } = require('../utils/search.constants');
+const carLocations = require('../data/cars.json');
 
 const CarSearch = {
 
@@ -32,19 +31,24 @@ const CarSearch = {
    * - Dropoff = nth(5)  [6th available, i.e., pickup + 5 days]
    *
    * @param {Object} page - The Playwright page object
-   * @param {Object} params
-   * @param {string} params.place - The location to search for car rentals
-   * @param {number} [params.pickupIndex] - nth available pickup date
-   * @param {number} [params.dropoffIndex] - nth available dropoff date
+   * @param {string|Object} placeInput - JSON config key OR location string OR { place } or { location } object
+   * @param {Object} [options] - Search options
+   * @param {number} [options.pickupIndex] - nth available pickup date
+   * @param {number} [options.dropoffIndex] - nth available dropoff date
    * @returns {Object} Search result status
+   * 
+   * Examples:
+   *   await CarSearch.searchCarByPlace(page, carLocations.defaultLocation); // Use JSON config
+   *   await CarSearch.searchCarByPlace(page, "london"); // Use JSON config key
+   *   await CarSearch.searchCarByPlace(page, "London"); // Direct string
+   *   await CarSearch.searchCarByPlace(page, { place: "London" }); // Object format
+   *   await CarSearch.searchCarByPlace(page, "London", { pickupIndex: 2, dropoffIndex: 7 });
    */
-  async searchCarByPlace(page, { 
-    place, 
-    pickupIndex = DEFAULT_PICKUP_INDEX, 
-    dropoffIndex = DEFAULT_DROPOFF_INDEX 
-  }) {
-    if (!place) throw new Error('CarSearch.searchCarByPlace requires "place"');
-    
+  async searchCarByPlace(page, placeInput = carLocations.defaultLocation, { 
+    pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX, 
+    dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX 
+  } = {}) {
+    const place = resolveLocation(placeInput, ['place', 'location'], carLocations);
     console.log(`Searching for car rental in: ${place} (pickup: nth(${pickupIndex}), dropoff: nth(${dropoffIndex}))`);
     
     const carSearchPage = new CarSearchPage(page);
@@ -76,7 +80,7 @@ const CarSearch = {
     await searchPage.clickSearchButton();
 
     console.log('Car search completed successfully');
-    return { searched: true, place, pickupIndex, dropoffIndex };
+    return { searched: true, placeInput, place, pickupIndex, dropoffIndex };
   },
 
   /**
@@ -84,22 +88,26 @@ const CarSearch = {
    * Uses the same default date logic as searchCarByPlace.
    *
    * @param {Object} page - The Playwright page object
-   * @param {Object} params
-   * @param {string} params.place - The location to search for car rentals
-   * @param {string} params.agencyName - The rental agency to filter by
-   * @param {number} [params.pickupIndex] - nth available pickup date
-   * @param {number} [params.dropoffIndex] - nth available dropoff date
+   * @param {string|Object} placeInput - JSON config key OR location string OR { place } or { location } object
+   * @param {string} agencyName - The rental agency to filter by
+   * @param {Object} [options] - Search options
+   * @param {number} [options.pickupIndex] - nth available pickup date
+   * @param {number} [options.dropoffIndex] - nth available dropoff date
    * @returns {Object} Search result status
+   * 
+   * Examples:
+   *   await CarSearch.searchCarByPlaceAndRentalAgency(page, carLocations.defaultLocation, "Hertz"); // Use JSON config
+   *   await CarSearch.searchCarByPlaceAndRentalAgency(page, "london", "Hertz"); // Use JSON config key
+   *   await CarSearch.searchCarByPlaceAndRentalAgency(page, "London", "Hertz"); // Direct string
+   *   await CarSearch.searchCarByPlaceAndRentalAgency(page, { place: "London" }, "Hertz"); // Object format
    */
-  async searchCarByPlaceAndRentalAgency(page, { 
-    place, 
-    agencyName, 
-    pickupIndex = DEFAULT_PICKUP_INDEX, 
-    dropoffIndex = DEFAULT_DROPOFF_INDEX 
-  }) {
-    if (!place) throw new Error('CarSearch.searchCarByPlaceAndRentalAgency requires "place"');
+  async searchCarByPlaceAndRentalAgency(page, placeInput = carLocations.defaultLocation, agencyName, { 
+    pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX, 
+    dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX 
+  } = {}) {
     if (!agencyName) throw new Error('CarSearch.searchCarByPlaceAndRentalAgency requires "agencyName"');
     
+    const place = resolveLocation(placeInput, ['place', 'location'], carLocations);
     console.log(`Searching for car rental in: ${place} with agency: ${agencyName}`);
     
     const carSearchPage = new CarSearchPage(page);
@@ -108,7 +116,7 @@ const CarSearch = {
     await CarSearch.selectRentalAgencyByName(page, agencyName);
 
     // Use the main search flow with date parameters
-    return CarSearch.searchCarByPlace(page, { place, pickupIndex, dropoffIndex });
+    return CarSearch.searchCarByPlace(page, placeInput, { pickupIndex, dropoffIndex });
   },
 };
 
