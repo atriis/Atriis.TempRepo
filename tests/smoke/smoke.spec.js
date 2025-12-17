@@ -1,6 +1,5 @@
-const {amadeusUserOneTest, amadeusUserTwoTest, test, expect} = require('../fixtures/testWithFixtures');
+const { test, expect } = require('../fixtures/supplierTest');
 
-// DSL imports
 const Search = require('../../src/dsl/Search');
 const FlightSearch = require('../../src/dsl/FlightSearch');
 const FlightResults = require('../../src/dsl/FlightResults');
@@ -8,9 +7,9 @@ const Trips = require('../../src/dsl/Trips');
 const App = require('../../src/dsl/App');
 
 test.describe('[@smoke] Smoke Tests', () => {
-  // Test 1: Amadeus User One
-  amadeusUserOneTest('[@priority:medium] Smoke - Application Loads', async ({ newTripPageAMADEUS_USER_ONE }) => {
-    const page = newTripPageAMADEUS_USER_ONE;
+  // Test 1: Application Load Test
+  test('[@priority:medium] Smoke - Application Loads', async ({ newTripPage }) => {
+    const page = newTripPage;
 
     // Step 1: Assert application loads successfully
     console.log('Step 1: Assert application loads successfully');
@@ -21,9 +20,9 @@ test.describe('[@smoke] Smoke Tests', () => {
     expect(await page.title()).not.toBe(''); //Need to improve the assertion and add it to the DSL
   });
 
-  // Test 2: Amadeus User One
-  amadeusUserOneTest('[@priority:critical] Smoke - Login and Navigate to Trips', async ({ loggedInPageAMADEUS_USER_ONE }) => {
-    const page = loggedInPageAMADEUS_USER_ONE;
+  // Test 2: Login and Navigation Test
+  test('[@priority:critical] Smoke - Login and Navigate to Trips', async ({ loggedInPage }) => {
+    const page = loggedInPage;
 
     // Step 1: Navigate to Trips page
     console.log('Step 1: Navigate to Trips page');
@@ -34,9 +33,9 @@ test.describe('[@smoke] Smoke Tests', () => {
     expect(await page.title()).not.toBe('');
   });
 
-  // Test 3: Amadeus User Two
-  amadeusUserTwoTest('[@priority:critical] Smoke - Flight Search and Verify Results', async ({ newTripPageAMADEUS_USER_TWO }) => {
-    const page = newTripPageAMADEUS_USER_TWO;
+  // Test 3: Flight Search Test
+  test('[@priority:critical] Smoke - Flight Search and Verify Results', async ({ newTripPage }) => {
+    const page = newTripPage;
 
     // Step 1: Add traveler (I am the traveler)
     console.log('Step 1: Add traveler');
@@ -51,9 +50,9 @@ test.describe('[@smoke] Smoke Tests', () => {
     expect(await FlightResults.isResultDisplayed(page)).toBe(true);
   });
 
-  // Test 4: Amadeus User Two
-  amadeusUserTwoTest('[@priority:high] Smoke - Logout', async ({ loggedInPageAMADEUS_USER_TWO }) => {
-    const page = loggedInPageAMADEUS_USER_TWO;
+  // Test 4: Logout Test
+  test('[@priority:high] Smoke - Logout', async ({ loggedInPage }) => {
+    const page = loggedInPage;
 
     // Step 1: Logout from application
     console.log('Step 1: Logout from application');

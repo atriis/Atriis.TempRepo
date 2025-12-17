@@ -1,16 +1,13 @@
-const { test, amtrakUserOneTest } = require('../../../fixtures/testWithFixtures');
+const { test } = require('../../../fixtures/supplierTest');
 
-// NEED TO ADD USER IN GITHUB!!!!
-
-// DSL imports
 const Search = require('../../../../src/dsl/Search');
 const AmtrakSearch = require('../../../../src/dsl/AmtrakSearch');
 
 test.describe('[@regression] Round Trip Amtrak Search Flow', () => {
-  amtrakUserOneTest('[@priority:critical] Round Trip Amtrak Search – Should complete full amtrak round trip search flow', async ({ newTripPageAMTRAK_USER_ONE }) => {
+  test('[@priority:critical] Round Trip Amtrak Search – Should complete full amtrak round trip search flow', async ({ newTripPage }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPageAMTRAK_USER_ONE;
+    const page = newTripPage;
 
     // Step 2: Add traveler - I'm the traveler
     console.log('Step 2: Add traveler - I am the traveler');
@@ -21,7 +18,5 @@ test.describe('[@regression] Round Trip Amtrak Search Flow', () => {
     await AmtrakSearch.searchAmtrakRoundTrip(page, 'nypToWas');
     
     console.log('Amtrak round trip search flow completed successfully.');
-
-    await page.pause();
   });
 });

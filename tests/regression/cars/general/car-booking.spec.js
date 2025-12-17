@@ -1,7 +1,6 @@
-const { test, expect, sabreUserOneTest } = require('../../../fixtures/testWithFixtures');
+const { test, expect } = require('../../../fixtures/supplierTest');
 
-// DSL imports
-const Search = require('../../../../src/dsl/Search')
+const Search = require('../../../../src/dsl/Search');
 const CarSearch = require('../../../../src/dsl/CarSearch');
 const CarResults = require('../../../../src/dsl/CarResults');
 const Cart = require('../../../../src/dsl/Cart'); 
@@ -9,10 +8,10 @@ const Checkout = require('../../../../src/dsl/Checkout');
 const TripOverview = require('../../../../src/dsl/TripOverview');
 
 test.describe('[@regression] Car Booking End-to-End Flow', () => {
-  sabreUserOneTest('[@priority:critical] Car Booking – Should complete full car booking flow with cancellation', async ({ newTripPageSABRE_USER_ONE }) => {
+  test('[@priority:critical] Car Booking – Should complete full car booking flow with cancellation', async ({ newTripPage }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPageSABRE_USER_ONE;
+    const page = newTripPage;
 
     // Step 2: Add traveller - I'm the traveller
     console.log('Step 2: Add traveller - I am the traveller');
@@ -30,22 +29,23 @@ test.describe('[@regression] Car Booking End-to-End Flow', () => {
     console.log('Step 5: Quote is "Pending booking" status');
     expect(await Cart.isQuotePendingBooking(page)).toBe(true);
 
-       // Step 7: Accept terms → Proceed to Checkout
-    console.log('Step 7: Accept terms and proceed to checkout');
+    // Step 6: Accept terms → Proceed to Checkout
+    console.log('Step 6: Accept terms and proceed to checkout');
     await Cart.acceptTermsAndConditionsAndProceedToCheckout(page);
 
-    // Step 8: Wait for checkout page and proceed 
-    console.log('Step 8: Proceeding to checkout page');
-    // Step 9: Book & Finalize
-    console.log('Step 9: Book and finalize booking');
+    // Step 7: Wait for checkout page and proceed 
+    console.log('Step 7: Proceeding to checkout page');
+    
+    // Step 8: Book & Finalize
+    console.log('Step 8: Book and finalize booking');
     await Checkout.bookAndFinalize(page);
 
-    // Step 10: Assert confirmed status in trip overview 
-    console.log('Step 10: Assert confirmed status');
+    // Step 9: Assert confirmed status in trip overview 
+    console.log('Step 9: Assert confirmed status');
     expect(await TripOverview.isBookingConfirmed(page)).toBe(true);
-
-    // Step 11: Cancel car trip with complete validation
-    console.log('Step 11: Cancel car booking');
+    
+    // Step 10: Cancel car trip with complete validation
+    console.log('Step 10: Cancel car booking');
     await TripOverview.cancelTrip(page);
 
     console.log('Car booking and cancellation flow completed successfully.');

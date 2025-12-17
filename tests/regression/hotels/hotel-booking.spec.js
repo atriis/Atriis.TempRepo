@@ -1,6 +1,5 @@
-const { test, expect, ratehawkUserOneTest } = require('../../fixtures/testWithFixtures');
+const { test, expect } = require('../../fixtures/supplierTest');
 
-// DSL imports
 const Search = require('../../../src/dsl/Search');
 const HotelSearch = require('../../../src/dsl/HotelSearch');
 const HotelLevelResults = require('../../../src/dsl/HotelLevelResults');
@@ -10,10 +9,10 @@ const Checkout = require('../../../src/dsl/Checkout');
 const TripOverview = require('../../../src/dsl/TripOverview');
 
 test.describe('[@regression] Hotel Booking End-to-End Flow', () => {
-  ratehawkUserOneTest('[@priority:critical] Hotel Booking – Should complete full hotel booking flow with cancellation', async ({ newTripPageRATEHAWK_USER_ONE }) => {
-    // Step 1: Login with Amadeus user one
+  test('[@priority:critical] Hotel Booking – Should complete full hotel booking flow with cancellation', async ({ newTripPage }) => {
+    // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPageRATEHAWK_USER_ONE;
+    const page = newTripPage;
 
     // Step 2: Add traveler - I'm the traveler
     console.log('Step 2: Add traveler - I am the traveler');

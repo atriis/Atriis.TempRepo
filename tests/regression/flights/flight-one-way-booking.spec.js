@@ -1,6 +1,5 @@
-const { test, expect, amadeusUserOneTest } = require('../../fixtures/testWithFixtures');
+const { test, expect } = require('../../fixtures/supplierTest');
 
-// DSL imports
 const Search = require('../../../src/dsl/Search');
 const FlightSearch = require('../../../src/dsl/FlightSearch');
 const FlightResults = require('../../../src/dsl/FlightResults');
@@ -9,10 +8,10 @@ const Checkout = require('../../../src/dsl/Checkout');
 const TripOverview = require('../../../src/dsl/TripOverview');
 
 test.describe('[@regression] One Way Flight Booking End-to-End Flow', () => {
-  amadeusUserOneTest('[@priority:critical] One Way Flight Booking – Should complete full flight booking flow with cancellation', async ({ newTripPageAMADEUS_USER_ONE }) => {
+  test('[@priority:critical] One Way Flight Booking – Should complete full flight booking flow with cancellation', async ({ newTripPage }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPageAMADEUS_USER_ONE;
+    const page = newTripPage;
 
     // Step 2: Add traveller - I'm the traveller
     console.log('Step 2: Add traveller - I am the traveller');

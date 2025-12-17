@@ -1,16 +1,15 @@
-const { test, expect, evolviUserOneTest } = require('../../../fixtures/testWithFixtures');
+const { test, expect } = require('../../../fixtures/supplierTest');
 
-// DSL imports
 const Search = require('../../../../src/dsl/Search');
 const EvolviSearch = require('../../../../src/dsl/EvolviSearch');
 const EvolviResults = require('../../../../src/dsl/EvolviResults');
 const Cart = require('../../../../src/dsl/Cart');
 
 test.describe('[@regression] Evolvi Round Trip Add to Cart Flow', () => {
-  evolviUserOneTest('[@priority:critical] Search and Add Evolvi Round Trip Train to Cart – Should complete full add to cart flow', async ({ newTripPageEVOLVI_USER_ONE }) => {
+  test('[@priority:critical] Search and Add Evolvi Round Trip Train to Cart – Should complete full add to cart flow', async ({ newTripPage }) => {
     // Step 1: Initialize test with logged-in user and new trip page
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPageEVOLVI_USER_ONE;
+    const page = newTripPage;
 
     // Step 2: Configure traveler - set logged-in user as the traveler
     console.log('Step 2: Add traveller - I am the traveller');

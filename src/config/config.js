@@ -1,38 +1,7 @@
-
-/**
- * Playwright Defaults:
- * - headless: true (browser runs without UI)
- * - timeout: 30,000 ms (30 seconds for actions)
- * - browserType: chromium
- * - slowMo: 0 (no delay)
- * - tracing: off (must enable manually)
- * - screenshots: off (must enable manually)
- * - artifactsDir: playwright-report
- *
- * In this project, we only configure:
- * - baseUrl (application under test)
- * - Amadeus user email and password
- *
- * Optional parameters you can override if needed:
- * - headless: Set to false for local debugging
- * - timeoutMs: Increase if your app is slow (e.g., 90000)
- * - browserType: Change to 'firefox' or 'webkit'
- * - enableTracing: true to capture Playwright traces
- * - captureScreenshots: true to save screenshots on failure
- * - slowMo: Add delay for debugging (e.g., 100 ms)
- * - artifactsDir: Custom folder for test results
- */
-
 const dotenv = require('dotenv');
 
-// Load variables from .env into process.env (local runs).
-// In CI, env vars will come from the pipeline and this is harmless.
 dotenv.config();
 
-/**
- * Minimal helper: returns the env var value or throws a clear error.
- * This avoids undefined values breaking page.goto(config.baseUrl) and logins.
- */
 function getEnv(name) {
   const val = process.env[name];
   if (!val || String(val).trim() === '') {
@@ -42,50 +11,193 @@ function getEnv(name) {
 }
 
 const config = {
-  //Use getEnv so baseUrl is guaranteed to be a non-empty string
   baseUrl: getEnv('AUTOMATION_APP_BASEURL'),
 
   users: {
     amadeus: {
       user_one: {
-        //Use getEnv to ensure email/password are defined at runtime
         email: getEnv('AMADEUS_USER_ONE_EMAIL'),
-        password: getEnv('GENERAL_PASSWORD')
+        password: getEnv('GENERAL_PASSWORD'),
       },
       user_two: {
         email: getEnv('AMADEUS_USER_TWO_EMAIL'),
-        password: getEnv('GENERAL_PASSWORD')
-      }
+        password: getEnv('GENERAL_PASSWORD'),
+      },
     },
-    ratehawk: {
-      user_one: {
-        email: getEnv('RATEHAWK_USER_ONE_EMAIL'),
-        password: getEnv('GENERAL_PASSWORD')
-      }
-    },
+
     sabre: {
       user_one: {
         email: getEnv('SABRE_USER_ONE_EMAIL'),
-        password: getEnv('GENERAL_PASSWORD')
-      }
+        password: getEnv('GENERAL_PASSWORD'),
+      },
     },
+
+    galileo: {
+      user_one: {
+        email: getEnv('GALILEO_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    ratehawk: {
+      user_one: {
+        email: getEnv('RATEHAWK_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    expedia: {
+      user_one: {
+        email: getEnv('EXPEDIA_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    bookingcom: {
+      user_one: {
+        email: getEnv('BOOKINGCOM_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    ehotel: {
+      user_one: {
+        email: getEnv('EHOTEL_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    travelodge: {
+      user_one: {
+        email: getEnv('TRAVELODGE_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    premierinn: {
+      user_one: {
+        email: getEnv('PREMIER_INN_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    afkl: {
+      user_one: {
+        email: getEnv('AFKL_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    lufthansa: {
+      user_one: {
+        email: getEnv('LUFTHANSA_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    britishairways: {
+      user_one: {
+        email: getEnv('BRITISH_AIRWAYS_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    united: {
+      user_one: {
+        email: getEnv('UNITED_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    americanairlines: {
+      user_one: {
+        email: getEnv('AMERICAN_AIRLINES_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    iberia: {
+      user_one: {
+        email: getEnv('IBERIA_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    sunny: {
+      user_one: {
+        email: getEnv('SUNNY_CARS_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    fusion: {
+      user_one: {
+        email: getEnv('FUSION_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    ypsilon: {
+      user_one: {
+        email: getEnv('YPSILON_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    amadeuslightticketing: {
+      user_one: {
+        email: getEnv('AMADEUS_LIGHT_TICKETING_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    galileoach: {
+      user_one: {
+        email: getEnv('GALILEO_ACH_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
     benerail: {
       user_one: {
         email: getEnv('BENERAIL_USER_ONE_EMAIL'),
-        password: getEnv('GENERAL_PASSWORD')
-      }
+        password: getEnv('GENERAL_PASSWORD'),
+      },
     },
+
     evolvi: {
       user_one: {
         email: getEnv('EVOLVI_USER_ONE_EMAIL'),
-        password: getEnv('GENERAL_PASSWORD')
-      }
+        password: getEnv('GENERAL_PASSWORD'),
+      },
     },
+
     amtrak: {
       user_one: {
-        email: getEnv('AMTRAK_USER_ONE_EMAIL'), 
-        password: getEnv('GENERAL_PASSWORD')
-      }
+        email: getEnv('AMTRAK_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    groundscope: {
+      user_one: {
+        email: getEnv('GROUNDSCOPE_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    transferz: {
+      user_one: {
+        email: getEnv('TRANSFERZ_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
+    },
+
+    ukparking: {
+      user_one: {
+        email: getEnv('UK_PARKING_USER_ONE_EMAIL'),
+        password: getEnv('GENERAL_PASSWORD'),
+      },
     },
   },
 };

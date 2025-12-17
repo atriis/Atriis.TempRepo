@@ -26,13 +26,42 @@ jobs:
         run: npx playwright test --project=Smoke --workers=4
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
+          # GDS Suppliers
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           AMADEUS_USER_TWO_EMAIL: ${{ secrets.AMADEUS_USER_TWO_EMAIL }}
-          RATEHAWK_USER_ONE_EMAIL: ${{ secrets.RATEHAWK_USER_ONE_EMAIL }}
           SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
+          GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
+          # Hotel Suppliers
+          RATEHAWK_USER_ONE_EMAIL: ${{ secrets.RATEHAWK_USER_ONE_EMAIL }}
+          EXPEDIA_USER_ONE_EMAIL: ${{ secrets.EXPEDIA_USER_ONE_EMAIL }}
+          BOOKINGCOM_USER_ONE_EMAIL: ${{ secrets.BOOKINGCOM_USER_ONE_EMAIL }}
+          EHOTEL_USER_ONE_EMAIL: ${{ secrets.EHOTEL_USER_ONE_EMAIL }}
+          TRAVELODGE_USER_ONE_EMAIL: ${{ secrets.TRAVELODGE_USER_ONE_EMAIL }}
+          PREMIER_INN_USER_ONE_EMAIL: ${{ secrets.PREMIER_INN_USER_ONE_EMAIL }}
+          # Flights NDC Suppliers
+          AFKL_USER_ONE_EMAIL: ${{ secrets.AFKL_USER_ONE_EMAIL }}
+          LUFTHANSA_USER_ONE_EMAIL: ${{ secrets.LUFTHANSA_USER_ONE_EMAIL }}
+          BRITISH_AIRWAYS_USER_ONE_EMAIL: ${{ secrets.BRITISH_AIRWAYS_USER_ONE_EMAIL }}
+          UNITED_USER_ONE_EMAIL: ${{ secrets.UNITED_USER_ONE_EMAIL }}
+          AMERICAN_AIRLINES_USER_ONE_EMAIL: ${{ secrets.AMERICAN_AIRLINES_USER_ONE_EMAIL }}
+          IBERIA_USER_ONE_EMAIL: ${{ secrets.IBERIA_USER_ONE_EMAIL }}
+          # Cars Suppliers
+          SUNNY_CARS_USER_ONE_EMAIL: ${{ secrets.SUNNY_CARS_USER_ONE_EMAIL }}
+          # Flights Low Cost Suppliers
+          FUSION_USER_ONE_EMAIL: ${{ secrets.FUSION_USER_ONE_EMAIL }}
+          YPSILON_USER_ONE_EMAIL: ${{ secrets.YPSILON_USER_ONE_EMAIL }}
+          AMADEUS_LIGHT_TICKETING_USER_ONE_EMAIL: ${{ secrets.AMADEUS_LIGHT_TICKETING_USER_ONE_EMAIL }}
+          GALILEO_ACH_USER_ONE_EMAIL: ${{ secrets.GALILEO_ACH_USER_ONE_EMAIL }}
+          # Rail Suppliers
           BENERAIL_USER_ONE_EMAIL: ${{ secrets.BENERAIL_USER_ONE_EMAIL }}
           EVOLVI_USER_ONE_EMAIL: ${{ secrets.EVOLVI_USER_ONE_EMAIL }}
-          AMTRAK_USER_ONE_EMAIL: ${{ secrets.AMTRAK_USER_ONE_EMAIL }} 
+          AMTRAK_USER_ONE_EMAIL: ${{ secrets.AMTRAK_USER_ONE_EMAIL }}
+          # Ground Transport Suppliers
+          GROUNDSCOPE_USER_ONE_EMAIL: ${{ secrets.GROUNDSCOPE_USER_ONE_EMAIL }}
+          TRANSFERZ_USER_ONE_EMAIL: ${{ secrets.TRANSFERZ_USER_ONE_EMAIL }}
+          # Parking Suppliers
+          UK_PARKING_USER_ONE_EMAIL: ${{ secrets.UK_PARKING_USER_ONE_EMAIL }}
+          # General
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Smoke Results
@@ -66,16 +95,46 @@ jobs:
   #
   #     - run: npx playwright install --with-deps
   #
-  #     - name: Run Regression Tests
-  #       run: npx playwright test --project=Regression --workers=4
+  #     - name: Run Default Regression Tests
+  #       run: npx playwright test --project=flights:default --project=hotels:default --project=cars:default --project=rails:default --workers=4
   #       env:
   #         AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
+  #         # GDS Suppliers
   #         AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
   #         AMADEUS_USER_TWO_EMAIL: ${{ secrets.AMADEUS_USER_TWO_EMAIL }}
-  #         RATEHAWK_USER_ONE_EMAIL: ${{ secrets.RATEHAWK_USER_ONE_EMAIL }}
   #         SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
+  #         GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
+  #         # Hotel Suppliers
+  #         RATEHAWK_USER_ONE_EMAIL: ${{ secrets.RATEHAWK_USER_ONE_EMAIL }}
+  #         EXPEDIA_USER_ONE_EMAIL: ${{ secrets.EXPEDIA_USER_ONE_EMAIL }}
+  #         BOOKINGCOM_USER_ONE_EMAIL: ${{ secrets.BOOKINGCOM_USER_ONE_EMAIL }}
+  #         EHOTEL_USER_ONE_EMAIL: ${{ secrets.EHOTEL_USER_ONE_EMAIL }}
+  #         TRAVELODGE_USER_ONE_EMAIL: ${{ secrets.TRAVELODGE_USER_ONE_EMAIL }}
+  #         PREMIER_INN_USER_ONE_EMAIL: ${{ secrets.PREMIER_INN_USER_ONE_EMAIL }}
+  #         # Flights NDC Suppliers
+  #         AFKL_USER_ONE_EMAIL: ${{ secrets.AFKL_USER_ONE_EMAIL }}
+  #         LUFTHANSA_USER_ONE_EMAIL: ${{ secrets.LUFTHANSA_USER_ONE_EMAIL }}
+  #         BRITISH_AIRWAYS_USER_ONE_EMAIL: ${{ secrets.BRITISH_AIRWAYS_USER_ONE_EMAIL }}
+  #         UNITED_USER_ONE_EMAIL: ${{ secrets.UNITED_USER_ONE_EMAIL }}
+  #         AMERICAN_AIRLINES_USER_ONE_EMAIL: ${{ secrets.AMERICAN_AIRLINES_USER_ONE_EMAIL }}
+  #         IBERIA_USER_ONE_EMAIL: ${{ secrets.IBERIA_USER_ONE_EMAIL }}
+  #         # Cars Suppliers
+  #         SUNNY_CARS_USER_ONE_EMAIL: ${{ secrets.SUNNY_CARS_USER_ONE_EMAIL }}
+  #         # Flights Low Cost Suppliers
+  #         FUSION_USER_ONE_EMAIL: ${{ secrets.FUSION_USER_ONE_EMAIL }}
+  #         YPSILON_USER_ONE_EMAIL: ${{ secrets.YPSILON_USER_ONE_EMAIL }}
+  #         AMADEUS_LIGHT_TICKETING_USER_ONE_EMAIL: ${{ secrets.AMADEUS_LIGHT_TICKETING_USER_ONE_EMAIL }}
+  #         GALILEO_ACH_USER_ONE_EMAIL: ${{ secrets.GALILEO_ACH_USER_ONE_EMAIL }}
+  #         # Rail Suppliers
   #         BENERAIL_USER_ONE_EMAIL: ${{ secrets.BENERAIL_USER_ONE_EMAIL }}
   #         EVOLVI_USER_ONE_EMAIL: ${{ secrets.EVOLVI_USER_ONE_EMAIL }}
+  #         AMTRAK_USER_ONE_EMAIL: ${{ secrets.AMTRAK_USER_ONE_EMAIL }}
+  #         # Ground Transport Suppliers
+  #         GROUNDSCOPE_USER_ONE_EMAIL: ${{ secrets.GROUNDSCOPE_USER_ONE_EMAIL }}
+  #         TRANSFERZ_USER_ONE_EMAIL: ${{ secrets.TRANSFERZ_USER_ONE_EMAIL }}
+  #         # Parking Suppliers
+  #         UK_PARKING_USER_ONE_EMAIL: ${{ secrets.UK_PARKING_USER_ONE_EMAIL }}
+  #         # General
   #         GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
   #
   #     - name: Upload Regression Results

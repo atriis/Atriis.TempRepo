@@ -1,16 +1,15 @@
-const { test, sabreUserOneTest } = require('../../../fixtures/testWithFixtures');
+const { test, expect } = require('../../../fixtures/supplierTest');
 
-// DSL imports
-const Search = require('../../../../src/dsl/Search')
+const Search = require('../../../../src/dsl/Search');
 const CarSearch = require('../../../../src/dsl/CarSearch');
 const CarResults = require('../../../../src/dsl/CarResults');
 const Cart = require('../../../../src/dsl/Cart');
 
 test.describe('[@regression] Car City Center Search by Rental Agency', () => {
-  sabreUserOneTest('[@priority:high] Car Search – Should complete full city center car search by rental agency', async ({ newTripPageSABRE_USER_ONE }) => {
+  test('[@priority:high] Car Search – Should complete full city center car search by rental agency', async ({ newTripPage }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPageSABRE_USER_ONE;
+    const page = newTripPage;
 
     // Step 2: Add traveller - I'm the traveller
     console.log('Step 2: Add traveller - I am the traveller');

@@ -1,16 +1,15 @@
-const { test, expect, benerailUserOneTest } = require('../../../fixtures/testWithFixtures');
+const { test, expect } = require('../../../fixtures/supplierTest');
 
-// DSL imports
 const Search = require('../../../../src/dsl/Search');
 const BenerailSearch = require('../../../../src/dsl/BenerailSearch');
 const BenerailResults = require('../../../../src/dsl/BenerailResults');
 const Cart = require('../../../../src/dsl/Cart');
 
 test.describe('[@regression] Round Trip Benerail Search Flow', () => {
-  benerailUserOneTest('[@priority:critical] Round Trip Benerail Search – Should complete full benerail round trip search flow', async ({ newTripPageBENERAIL_USER_ONE }) => {
+  test('[@priority:critical] Round Trip Benerail Search – Should complete full benerail round trip search flow', async ({ newTripPage }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPageBENERAIL_USER_ONE;
+    const page = newTripPage;
 
     // Step 2: Add traveler - I'm the traveler
     console.log('Step 2: Add traveler - I am the traveler');
