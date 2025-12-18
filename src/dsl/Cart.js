@@ -1,46 +1,57 @@
 const CartPage = require('../pages/CartPage');
 
+/**
+ * Cart DSL
+ *
+ * High-level business actions performed in the cart.
+ * This is the only place that:
+ * - explains intent
+ * - logs behavior
+ * - returns business-level results
+ */
 const Cart = {
-  // Handles conflicting quotes modal that may appear during booking process
-  // Automatically proceeds if modal is visible, otherwise continues silently
+  /**
+   * Handles the "Conflicting Quotes" modal if it appears.
+   * Safe to call even if no modal is shown.
+   */
   async clickProceedConflictQuoteModal(page) {
-    console.log('Handling conflict quote modal...');
     const cartPage = new CartPage(page);
+
     const proceeded = await cartPage.handleConflictQuoteModalIfVisible();
-    console.log(`Conflict quote modal handled. Proceeded: ${proceeded}`);
     return { proceeded };
   },
 
-  // Completes the cart checkout process by accepting terms and proceeding
+  /**
+   * Accepts terms and proceeds to checkout.
+   * Used by Flights, Hotels and Cars.
+   */
   async acceptTermsAndConditionsAndProceedToCheckout(page) {
-    console.log('Accepting terms and proceeding to checkout...');
     const cartPage = new CartPage(page);
 
     await cartPage.acceptTermsAndConditions();
+    await cartPage.waitForProceedToCheckout();
     await cartPage.clickProceedToCheckout();
 
-    console.log('Successfully proceeded to checkout');
     return { proceeded: true };
   },
 
-  // Verifies that a hotel booking has refundable cancellation policy
-  // Waits for the refundable text to appear in the cart to confirm booking flexibility
+  /**
+   * Confirms that a hotel booking is refundable.
+   */
   async isHotelRefundable(page) {
-    console.log('Checking if hotel booking is refundable...');
     const cartPage = new CartPage(page);
 
     await cartPage.waitForHotelRefundableText();
-    console.log('Hotel booking confirmed as refundable');
     return true;
   },
 
-  // Checks if a quote is 'Pending booking' in the cart
+  /**
+   * Confirms that a quote is in "Pending booking" state.
+   */
   async isQuotePendingBooking(page) {
-    console.log('Checking if quote is pending booking...');
     const cartPage = new CartPage(page);
-    await cartPage.waitForPendingBookingText();
 
-    console.log('Quote confirmed as pending booking');
+    await cartPage.waitForPendingBookingText();
     return true;
   }
 };

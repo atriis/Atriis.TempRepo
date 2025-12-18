@@ -9,7 +9,13 @@
     "test:dev": "cross-env TEST_ENV=dev playwright test",
     "test:dev:headed": "cross-env TEST_ENV=dev playwright test --headed",
     "test:staging": "playwright test",
-    "test:staging:headed": "playwright test --headed"
+    "test:staging:headed": "playwright test --headed",
+    
+    "test:default": "playwright test --grep='@supplier:default' --project='*:default'",
+    "test:all": "playwright test --grep='@supplier:all'",
+    "test:gds": "playwright test --grep='@supplier:gds' --project='*:gds:*'",
+    "test:ndc": "playwright test --grep='@supplier:ndc' --project='*:ndc:*'",
+    "test:comprehensive": "playwright test --grep='@supplier:all|@priority:critical'"
   },
   "keywords": [
     "playwright",

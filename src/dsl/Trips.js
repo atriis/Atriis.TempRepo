@@ -1,22 +1,32 @@
 const MenuPage = require('../pages/MenuPage');
 const TripsPage = require('../pages/TripsPage');
 
+/**
+ * Trips DSL
+ *
+ * High-level actions related to the Trips section.
+ * Describes WHAT the user does, not HOW the UI works.
+ */
 const Trips = {
-  // Navigates to the Trips page from any page in the application
-  // Confirms successful navigation by waiting for key page elements to load
+  /**
+   * Navigates to the Trips page from anywhere in the app.
+   *
+   * Confirmation strategy:
+   * - "Found trips" text is visible
+   * - "Trip Status" filter section is visible
+   */
   async navigateToTripsPage(page) {
-    console.log('Navigating to Trips page...');
     const menuPage = new MenuPage(page);
     const tripsPage = new TripsPage(page);
 
-    // Navigate to Trips via menu
+    // User action: open Trips via the top menu
     await menuPage.clickTrips();
-    
-    // Wait for page to load and verify we're on the correct page
+
+    // Page is considered loaded when these key elements are visible
     await tripsPage.waitForFoundTripsText();
-    await tripsPage.tripStatusFilterTextDisplayed();
+    await tripsPage.waitForTripStatusFilter();
     
-    console.log('Successfully navigated to Trips page');
+    return { navigated: true };
   }
 };
 

@@ -1,32 +1,58 @@
 /**
  * Search Default Constants
  *
- * Centralized constants for search functionality across all DSL modules.
- * Provides consistent default values for date indices and search parameters.
+ * This file defines default values used by search DSLs
+ * across all products (Flights, Hotels, Cars, Rails).
+ *
+ * Why this exists:
+ * - Avoids hardcoded numbers in test logic
+ * - Keeps search behavior consistent
+ * - Makes it easy to update defaults in one place
+ *
+ * IMPORTANT:
+ * These values are NOT business rules.
+ * They are test defaults chosen for stability.
  */
 
 const SEARCH_DEFAULTS = {
-  // Rail search defaults (Evolvi, Benerail, Amtrak)
+  /**
+   * Rail search defaults
+   *
+   * Used by Evolvi, Benerail and Amtrak searches.
+   * Indices refer to the "nth available day" in the calendar.
+   */
   RAIL: {
-    DEPARTURE_INDEX: 9,  // 10th available date
-    RETURN_INDEX: 12,    // 13th available date
+    DEPARTURE_INDEX: 9,  // Selects the 10th available date
+    RETURN_INDEX: 12,    // Selects the 13th available date
   },
 
-  // Flight search defaults
+  /**
+   * Flight search defaults
+   *
+   * Designed to avoid very near dates, which are often unavailable.
+   */
   FLIGHT: {
-    DEPARTURE_INDEX: 4,  // 5th available date
-    RETURN_INDEX: 11,    // 12th available date
+    DEPARTURE_INDEX: 4,  // Selects the 5th available date
+    RETURN_INDEX: 11,    // Selects the 12th available date
   },
 
-  // Car search defaults
+  /**
+   * Car rental defaults
+   *
+   * Pick-up and drop-off are based on available calendar days.
+   */
   CAR: {
-    PICKUP_INDEX: 0,     // 1st available date
-    DROPOFF_INDEX: 5,    // 6th available date (pickup + 5 days)
+    PICKUP_INDEX: 0,     // First available date
+    DROPOFF_INDEX: 5,    // Five days after pick-up
   },
 
-  // Hotel search defaults
+  /**
+   * Hotel booking defaults
+   *
+   * Uses number of nights instead of calendar indices.
+   */
   HOTEL: {
-    NIGHTS: 1,           // Default stay: 1 night
+    NIGHTS: 1,           // Default stay length
   },
 };
 

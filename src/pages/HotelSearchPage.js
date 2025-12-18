@@ -1,6 +1,9 @@
 const { waitForText } = require('../utils/wait');
 
-// Centralized selectors for easy maintenance
+/**
+ * Page Object for hotel search form.
+ * Handles only UI interactions.
+ */
 const SELECTORS = {
   HOTEL_TAB: '#tab-hotel',
   HOTEL_HEADING: '#pane-hotel > h4',
@@ -13,38 +16,41 @@ class HotelSearchPage {
     this.page = page;
   }
 
-  // Clicks on the hotel tab to switch to hotel booking mode
+  /** Switches UI to Hotel search */
   async clickHotelTab() {
-    console.log('Clicking on Hotel tab...');
     await this.page.click(SELECTORS.HOTEL_TAB);
-    console.log('Clicked on Hotel tab');
   }
 
-  // Waits for the hotel booking section heading to appear
-  // Confirms that the hotel tab interface has loaded properly
+  /** Confirms hotel search UI is loaded */
   async waitForBookAndStayAtYourHotelText() {
-    console.log('Waiting for Book and stay at your hotel text...');
-    await waitForText(this.page, SELECTORS.HOTEL_HEADING, "Book and stay at your hotel");
-    console.log('Book and stay at your hotel text is visible');
+    await waitForText(
+      this.page,
+      SELECTORS.HOTEL_HEADING,
+      "Book and stay at your hotel"
+    );
   }
 
-  // Types the hotel destination in the search form
+  /**
+   * Types hotel destination and confirms selection.
+   * Uses Tab to accept autocomplete suggestion.
+   */
   async typeHotelDestination(where) {
-    console.log(`Typing hotel destination: ${where}`);
-    await this.page.waitForTimeout(2000); // Ensure option is displayed
-    await this.page.waitForSelector(SELECTORS.HOTEL_DESTINATION_FIELD, { timeout: 5000, state: 'visible' });
-    await this.page.click(SELECTORS.HOTEL_DESTINATION_FIELD); // Focus the field first
+    await this.page.waitForSelector(
+      SELECTORS.HOTEL_DESTINATION_FIELD,
+      { state: 'visible', timeout: 5000 }
+    );
+
+    await this.page.click(SELECTORS.HOTEL_DESTINATION_FIELD);
     await this.page.fill(SELECTORS.HOTEL_DESTINATION_FIELD, where);
     await this.page.keyboard.press('Tab');
+
+    // Allow autocomplete resolution
     await this.page.waitForTimeout(5000);
-    console.log(`Successfully typed destination: ${where}`);
   }
 
-  // Clicks on the check-in date field to open the date picker calendar
+  /** Opens the calendar by clicking check-in field */
   async clickCheckInField() {
-    console.log('Clicking on Check in field...');
     await this.page.click(SELECTORS.CHECK_IN_INPUT);
-    console.log('Clicked on Check in field');
   }
 }
 

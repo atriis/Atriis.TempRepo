@@ -1,57 +1,58 @@
 const TripOverviewPage = require('../pages/TripOverviewPage');
 
+/**
+ * TripOverview DSL
+ *
+ * High-level business actions and checks on the Trip Overview.
+ * This file describes WHAT the user does, not HOW the UI works.
+ */
 const TripOverview = {
-  // Performs trip cancellation workflow for any product type
+  /**
+   * Cancels a trip.
+   *
+   * This flow:
+   * - confirms we are on the Trip Overview page
+   * - opens the actions menu
+   * - confirms cancellation
+   * - waits for success message
+   */
   async cancelTrip(page) {
     const tripOverviewPage = new TripOverviewPage(page);
 
-    console.log('Starting trip cancellation with "Details" validation...');
-    // Wait for '"Details' text display to confirm correct page state
+    // Confirm correct page state
     await tripOverviewPage.waitForDetailsText();
-    console.log('"Details" loaded - Trip overview page is ready');
-
-    console.log('Starting trip cancellation flow...');
-
-    // Ensure we are on the Trip overview page
     await tripOverviewPage.waitForTripOverviewTitle();
 
-    // Hover the three dots menu
+    // Open actions menu and cancel
     await tripOverviewPage.hoverTripActionsDropdownIcon();
-
-    // Wait for dropdown to be visible
     await tripOverviewPage.waitForDropdownMenu();
-
-    // Click cancel trip option
     await tripOverviewPage.clickCancelTripOption();
 
-    // Wait for confirmation modal
+    // Confirm cancellation
     await tripOverviewPage.waitForTripCancellationDialogTitle();
-
-    // Click confirm button
     await tripOverviewPage.clickConfirmTripCancellationButton();
-
-    // Wait for success message and page to settle
     await tripOverviewPage.waitForTripCancelledMessage();
 
-    // Extra wait to ensure stability
+    // Allow backend and UI to settle
     await page.waitForLoadState('networkidle');
 
-    console.log('Trip cancellation completed successfully');
     return { cancelled: true };
   },
 
-  // Checks if a booking is currently in the finalization process
+  /**
+   * Checks if a booking is currently being finalized.
+   */
   async isBookingFinalizing(page) {
     const tripOverviewPage = new TripOverviewPage(page);
     return tripOverviewPage.waitForFinalizingText();
   },
 
-  // Checks if a booking is confirmed
+  /**
+   * Checks if a booking is confirmed.
+   */
   async isBookingConfirmed(page) {
-    console.log('Checking if booking is confirmed...');
     const tripOverviewPage = new TripOverviewPage(page);
     await tripOverviewPage.waitForConfirmedText();
-    console.log('Booking confirmed successfully');
     return true;
   }
 };

@@ -8,52 +8,57 @@ const SELECTORS = {
   ADD_TO_TRIP_BUTTON: '.btn.btn--primary'
 };
 
+/**
+ * EvolviResultsPage
+ *
+ * Low-level UI interactions on Evolvi results.
+ * Quiet and mechanical by design.
+ */
 class EvolviResultsPage {
   constructor(page) {
     this.page = page;
   }
 
-  // Waits for the "Outbound" text to appear on the Evolvi results page
-  // Confirms that search results have loaded and are ready for interaction
+  /** Confirms Evolvi results page is loaded */
   async waitForOutboundText() {
-    console.log('Waiting for Outbound text to appear...');
     await waitForText(this.page, SELECTORS.OUTBOUND_TEXT, 'Outbound');
-    await this.page.waitForTimeout(4000); // Extra wait for stability
-    console.log('Outbound text appeared successfully');
+    await this.page.waitForTimeout(4000); // keep stability wait
   }
 
-  // Waits for the "Suggested fares" text to appear in the price container
-  // Indicates that fare options have loaded and are available for selection
+  /** Waits until suggested fares are visible */
   async waitForSuggestedFaresText() {
-    console.log('Waiting for Suggested Fares text to appear...');
-    await waitForText(this.page, SELECTORS.SUGGESTED_FARES_TEXT, 'Suggested fares');
+    await waitForText(
+      this.page,
+      SELECTORS.SUGGESTED_FARES_TEXT,
+      'Suggested fares'
+    );
     await this.page.waitForTimeout(4000);
-    console.log('Suggested Fares text appeared successfully');
   }
 
-  // Clicks the cheapest suggested fare option from the available fare recommendations
-  // Selects the most cost-effective fare option for the Evolvi journey
+  /** Clicks the cheapest suggested fare option */
   async clickCheapestSuggestedFareOption() {
-    console.log('Clicking Suggested Fare option...');
-    await this.page.locator(SELECTORS.CHEAPEST_SUGGESTED_FARE).click();
-    console.log('Suggested Fare option clicked successfully');
+    await this.page
+      .locator(SELECTORS.CHEAPEST_SUGGESTED_FARE)
+      .first()
+      .click();
   }
 
-  // Waits for the "Add to trip" button to appear and become ready for interaction
-  // Confirms that the Evolvi option can be added to the current trip booking
+  /** Waits until "Add to trip" button is ready */
   async waitForAddToTripButton() {
-    console.log('Waiting for Add to trip button to appear...');
-    await waitForText(this.page, SELECTORS.ADD_TO_TRIP_BUTTON, 'Add to trip');
-    await this.page.waitForTimeout(4000); // Extra wait for stability
-    console.log('Add to trip button appeared successfully');
+    await waitForText(
+      this.page,
+      SELECTORS.ADD_TO_TRIP_BUTTON,
+      'Add to trip'
+    );
+    await this.page.waitForTimeout(4000);
   }
 
-  // Clicks the "Add to trip" button to add the selected Evolvi option to the current trip
-  // Completes the process of adding the chosen train journey to the booking
+  /** Clicks the "Add to trip" button */
   async clickAddToTripButton() {
-    console.log('Clicking Evolvi Add to trip button...');
-    await this.page.locator(SELECTORS.ADD_TO_TRIP_BUTTON).click();
-    console.log('Evolvi option added to trip successfully');
+    await this.page
+      .locator(SELECTORS.ADD_TO_TRIP_BUTTON)
+      .first()
+      .click();
   }
 }
 

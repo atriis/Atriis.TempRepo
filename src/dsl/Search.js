@@ -1,23 +1,32 @@
 const SearchPage = require('../pages/SearchPage');
 const { generateRandomGuestData } = require('../utils/data/generateRandomGuestData.js');
 
+/**
+ * Search (Domain DSL)
+ *
+ * This file contains business actions related to the traveler section.
+ * It keeps tests readable by hiding form details.
+ */
 const Search = {
-  // Sets the logged user as the traveler for the booking
+  /**
+   * Sets the logged-in user as the traveler.
+   * After this step, the UI should show the "star" icon as confirmation.
+   */
   async addTravellerImTheTraveller(page) {
-    console.log('Adding logged-in user as the traveler...');
     const searchPage = new SearchPage(page);
 
     await searchPage.clickTravelerIcon();
     await searchPage.clickImTheTraveler();
     await searchPage.waitForStarIcon();
 
-    console.log('Successfully set logged-in user as traveler');
     return { added: true };
   },
 
-  // Sets specific user as the traveler for the booking
+  /**
+   * Sets a specific existing traveler by searching their name.
+   * After selection, the UI should show the "star" icon as confirmation.
+   */
   async addTravellerByName(page, name) {
-    console.log('Adding traveller by name...');
     const searchPage = new SearchPage(page);
 
     await searchPage.clickTravelerIcon();
@@ -26,23 +35,25 @@ const Search = {
     await searchPage.selectFirstTravellerOption();
     await searchPage.waitForStarIcon();
 
-    console.log('Successfully added traveller by name');
     return { added: true };
   },
 
-  // Adds a guest with random data as the traveler for the booking
+  /**
+   * Adds a new guest traveler using random test data.
+   * Returns the generated data so the test (or debug logs) can use it if needed.
+   */
   async addFirstRandomGuest(page) {
-    console.log('Adding random guest as traveler...');
     const searchPage = new SearchPage(page);
 
     const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
-    console.log(`Generated guest data: ${firstName} ${lastName}`);
 
     await searchPage.clickTravelerIcon();
     await searchPage.clickGuestTypeModal();
 
     await searchPage.fillInRandomFirstName(firstName);
+    // Keep as-is: the SearchPage method name is used exactly as in your project
     await searchPage.fillInRandonLastName(lastName);
+
     await searchPage.selectGenderMale();
     await searchPage.fillInRandomDateOfBirth(dateOfBirth);
     await searchPage.fillInRandomEmail(email);
@@ -51,7 +62,6 @@ const Search = {
     await searchPage.clickToAddGuestModal();
     await searchPage.waitForStarIcon();
 
-    console.log('Successfully added random guest as traveler');
     return {
       added: true,
       guestData: { firstName, lastName, dateOfBirth, email, phone },

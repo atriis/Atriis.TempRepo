@@ -1,4 +1,3 @@
-
 // Centralized selectors for easy maintenance
 const SELECTORS = {
   EMAIL_INPUT: '#email',
@@ -7,43 +6,47 @@ const SELECTORS = {
   FORGOT_PASSWORD_TEXT: '#forgotPsw'
 };
 
+/**
+ * LoginPage
+ *
+ * Low-level UI actions on the login screen.
+ * This file should be quiet (no heavy logs).
+ */
 class LoginPage {
   constructor(page) {
     this.page = page;
   }
 
-  // Waits for login page fields to be visible
-  // Confirms that the login form is ready for interaction
+  /**
+   * Waits for the login page fields to be visible.
+   * This confirms the login form is ready to use.
+   */
   async waitForLoginPage() {
-    console.log('Waiting for Login page...');
     await this.page.waitForLoadState('networkidle');
     await this.page.waitForSelector(SELECTORS.EMAIL_INPUT, { state: 'visible' });
     await this.page.waitForSelector(SELECTORS.PASSWORD_INPUT, { state: 'visible' });
-    console.log('Login page visible');
   }
 
-  // NEW: Waits for "Forgot password?" text to be visible
+  /**
+   * Waits for "Forgot password?" text.
+   * Used after logout to confirm we are back on the login page.
+   */
   async waitForgotPasswordText() {
-    console.log('Waiting for "Forgot password?" text...');
     await this.page.waitForSelector(SELECTORS.FORGOT_PASSWORD_TEXT, { state: 'visible' });
-    console.log('"Forgot password?" text is visible');
   }
 
-  // Fills the email field with the provided email address
+  /** Types email into the email field */
   async fillEmail(email) {
-    console.log('Filling email');
     await this.page.fill(SELECTORS.EMAIL_INPUT, email);
   }
 
-  // Fills the password field with the provided password
+  /** Types password into the password field */
   async fillPassword(password) {
-    console.log('Filling password');
     await this.page.fill(SELECTORS.PASSWORD_INPUT, password);
   }
 
-  // Clicks the Login button to submit the login form
+  /** Clicks the login button */
   async clickLoginButton() {
-    console.log('Clicking login button');
     await this.page.click(SELECTORS.LOGIN_BUTTON);
   }
 }

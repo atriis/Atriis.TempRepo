@@ -2,11 +2,26 @@ const LoginPage = require('../pages/LoginPage');
 const LogoutPage = require('../pages/LogoutPage');
 const MenuPage = require('../pages/MenuPage');
 
+/**
+ * App (Application Facade)
+ *
+ * This file contains actions that span multiple pages/screens.
+ * It represents "what the user does in the application", like:
+ * - log in
+ * - open a new trip (new tab)
+ * - log out
+ *
+ * These are not single UI clicks; they are complete workflows.
+ */
 const App = {
-  // Performs complete user authentication workflow
-  // Handles login form submission and waits for successful authentication confirmation
+  /**
+   * Logs the user into the application.
+   * - Waits for the login form
+   * - Fills email and password
+   * - Submits
+   * - Waits until the menu shows the logout icon (meaning login worked)
+   */
   async loginAs(page, { email, password }) {
-    console.log(`Starting login process for user: ${email}`);
     const loginPage = new LoginPage(page);
     const menuPage = new MenuPage(page);
 
@@ -14,45 +29,48 @@ const App = {
     await loginPage.fillEmail(email);
     await loginPage.fillPassword(password);
     await loginPage.clickLoginButton();
-    await page.waitForLoadState('networkidle', { timeout: 60000 });
-    await menuPage.waitForLogoutIcon();
 
-    console.log('Login completed');
+    // Keep as-is: app needs time to finish authentication and loading
+    await page.waitForLoadState('networkidle', { timeout: 60000 });
+
+    await menuPage.waitForLogoutIcon();
   },
 
-  // Opens a new trip booking page in a separate tab
-  // Handles new page creation and waits for proper loading before returning
+  /**
+   * Opens the "Book a New Trip" flow in a separate tab.
+   * Returns the newly opened tab (new Playwright page object).
+   */
   async bookANewTrip(page) {
-    console.log('Opening new trip booking page...');
     const menuPage = new MenuPage(page);
 
     await menuPage.waitForBookANewTripIcon();
 
+    // We wait for a new tab/page to open while clicking the UI button.
     const [newTripPage] = await Promise.all([
       page.context().waitForEvent('page'),
       menuPage.clickBookANewTrip(),
     ]);
 
     await newTripPage.waitForLoadState();
-
-    console.log('New trip tab opened');
     return newTripPage;
   },
 
-  // Logs out the current user and waits for login page to load
-  // Handles complete logout workflow and confirms redirect to login page
+  /**
+   * Logs out the user and confirms we are back on the login page.
+   */
   async logout(page) {
-    console.log('Starting logout process...');
     const menuPage = new MenuPage(page);
     const loginPage = new LoginPage(page);
     const logoutPage = new LogoutPage(page);
 
     await menuPage.waitForLogoutIcon();
     await menuPage.clickLogout();
-    await logoutPage.waitForLogoutSuccessMessage();
-    await loginPage.waitForgotPasswordText();
 
-    console.log('User logout completed');
+    // Confirms logout message is shown
+    await logoutPage.waitForLogoutSuccessMessage();
+
+    // Confirms login screen is visible again
+    await loginPage.waitForgotPasswordText();
   },
 };
 

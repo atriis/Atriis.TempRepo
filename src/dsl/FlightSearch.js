@@ -9,10 +9,12 @@ const FlightSearch = {
   /**
    * One-way flight search
    *
-   * @param {Object} page
-   * @param {string|Object} routeInput - route key OR { from, to }
-   * @param {Object} [options]
-   * @param {number} [options.departureIndex] - nth available departure date
+   * This function does a full one-way search:
+   * 1) opens flight tab
+   * 2) selects one-way
+   * 3) fills From/To
+   * 4) selects a departure date
+   * 5) clicks Search
    */
   async searchFlightOneWay(
     page,
@@ -31,11 +33,11 @@ const FlightSearch = {
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
 
-    // One-way flow: departure field opens calendar
+    // One-way: user opens the calendar by clicking the departure date field
     await searchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
 
-    // Select only departure date
+    // Select only the departure date
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
       endIndex: null,
@@ -43,21 +45,14 @@ const FlightSearch = {
 
     await searchPage.clickSearchButton();
 
-    console.log("One-way flight search completed");
     return { searched: true, from, to, tripType: "oneWay" };
   },
 
   /**
    * Round-trip flight search
    *
-   * IMPORTANT:
-   * selectRoundTrip() already opens the calendar
-   *
-   * @param {Object} page
-   * @param {string|Object} routeInput - route key OR { from, to }
-   * @param {Object} [options]
-   * @param {number} [options.departureIndex] - nth available departure date
-   * @param {number} [options.returnIndex] - nth available return date
+   * NOTE: In your UI flow, selecting "Round trip" opens the calendar automatically.
+   * If that UI behavior changes in the future, this is the first place to revisit.
    */
   async searchFlightRoundTrip(
     page,
@@ -75,13 +70,13 @@ const FlightSearch = {
 
     await flightSearchPage.clickFlightTab();
 
-    // Opens calendar
+    // Round-trip selection opens the calendar (based on your current UI)
     await flightSearchPage.selectRoundTrip();
 
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
 
-    // Calendar already open
+    // Calendar is already open, so we can move to the next month if needed
     await searchPage.clickCalendarNextArrow();
 
     // Select departure + return in one call
@@ -92,7 +87,6 @@ const FlightSearch = {
 
     await searchPage.clickSearchButton();
 
-    console.log("Round-trip flight search completed");
     return { searched: true, from, to, tripType: "roundTrip" };
   },
 };

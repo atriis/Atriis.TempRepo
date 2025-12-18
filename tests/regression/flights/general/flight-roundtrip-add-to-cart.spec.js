@@ -1,9 +1,9 @@
-const { test, expect } = require('../../fixtures/supplierTest');
+const { test, expect } = require('../../../fixtures/supplierTest');
 
-const Search = require('../../../src/dsl/Search');
-const FlightSearch = require('../../../src/dsl/FlightSearch');
-const FlightResults = require('../../../src/dsl/FlightResults');
-const Cart = require('../../../src/dsl/Cart');
+const Search = require('../../../../src/dsl/Search');
+const FlightSearch = require('../../../../src/dsl/FlightSearch');
+const FlightResults = require('../../../../src/dsl/FlightResults');
+const Cart = require('../../../../src/dsl/Cart');
 
 test.describe('[@regression] Add Round Trip Flight to Cart Flow', () => {
   test('[@priority:critical] Add Round Trip Flight to Cart – Should complete full add to cart flow', async ({ newTripPage }) => {

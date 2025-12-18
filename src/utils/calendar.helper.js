@@ -1,50 +1,80 @@
 /**
- * Calendar helper
+ * Calendar Helper
  *
- * Reusable UI patterns for selecting dates from the calendar.
- * This file does NOT know about hotel/flight/rail rules — only how to click dates.
+ * This file contains reusable logic for selecting dates from the UI calendar.
  *
- * Supported strategies:
- * 1) Nth-available selection (robust for CI)
- * 2) Fixed-date selection (deterministic) via a configurable selector builder
+ * IMPORTANT:
+ * - This helper does NOT open the calendar
+ * - It assumes the calendar is already visible
+ * - It contains no product rules (flight, hotel, rail, etc.)
+ *
+ * Why this exists:
+ * - Calendars are one of the most fragile UI components
+ * - Centralizing this logic reduces flakiness
  */
 
 const { SELECTORS } = require('../pages/SearchPage');
 
 /**
- * Selects dates from the currently open calendar using "nth available day" logic.
+ * Selects dates using the "nth available day" strategy.
  *
- * @param {Object} page
+ * Why this strategy is preferred:
+ * - Works reliably in CI
+ * - Avoids timezone issues
+ * - Avoids month boundary problems
+ * - Does not depend on real calendar dates
+ *
+ * Examples:
+ * - One-way search → startIndex only
+ * - Round-trip search → startIndex + endIndex
+ *
+ * @param {Object} page - Playwright page instance
  * @param {Object} opts
- * @param {number} [opts.startIndex=0] - index for the first click (usually 0)
- * @param {number|null} [opts.endIndex=null] - index for the second click; if null, selects only one date (one-way)
+ * @param {number} [opts.startIndex=0] - index of the first selectable day
+ * @param {number|null} [opts.endIndex=null] - index of the second selectable day
  */
-async function selectDatesByNthAvailable(page, { startIndex = 0, endIndex = null } = {}) {
-  if (startIndex < 0) throw new Error(`startIndex must be >= 0. Got ${startIndex}`);
-  if (endIndex !== null && endIndex < 0) throw new Error(`endIndex must be >= 0. Got ${endIndex}`);
-
-  // Calendar must already be open before calling this helper
-  const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
-  const monthTable = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).first();
-  const days = monthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
-
-  // Ensure we have enough selectable dates for requested indices
-  const count = await days.count();
-  const maxIndexNeeded = endIndex === null ? startIndex : Math.max(startIndex, endIndex);
-
-  if (count <= maxIndexNeeded) {
-    throw new Error(`Not enough available dates. Found ${count}, need at least ${maxIndexNeeded + 1}.`);
+async function selectDatesByNthAvailable(
+  page,
+  { startIndex = 0, endIndex = null } = {}
+) {
+  if (startIndex < 0) {
+    throw new Error(`startIndex must be >= 0. Received: ${startIndex}`);
   }
 
-  // Select start date
+  if (endIndex !== null && endIndex < 0) {
+    throw new Error(`endIndex must be >= 0. Received: ${endIndex}`);
+  }
+
+  // The calendar must already be open before calling this helper
+  const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
+  const monthTable = picker
+    .locator(SELECTORS.DATE_PICKER_MONTH_TABLE)
+    .first();
+
+  const days = monthTable.locator(
+    SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL
+  );
+
+  // Ensure there are enough selectable days available
+  const count = await days.count();
+  const maxIndexNeeded =
+    endIndex === null ? startIndex : Math.max(startIndex, endIndex);
+
+  if (count <= maxIndexNeeded) {
+    throw new Error(
+      `Not enough available dates in the calendar. Found ${count}, need at least ${maxIndexNeeded + 1}.`
+    );
+  }
+
+  // Select the start date
   const start = days.nth(startIndex);
   await start.waitFor({ state: 'visible' });
   await start.click();
 
-  // If no end date needed (one-way flows), stop here
+  // One-way flows stop here
   if (endIndex === null) return;
 
-  // Select end date
+  // Select the end date
   const end = days.nth(endIndex);
   await end.waitFor({ state: 'visible' });
   await end.click();
@@ -53,34 +83,53 @@ async function selectDatesByNthAvailable(page, { startIndex = 0, endIndex = null
 /**
  * Default selector builder for fixed-date selection.
  *
- * IMPORTANT:
- * Replace this implementation to match your calendar DOM (data attributes, aria-labels, etc.).
+ * This function converts a date value into a CSS selector
+ * that matches a specific calendar day.
  *
- * @param {string} dateStr - date in the format YOUR CALENDAR EXPECTS (example: "2025-04-19")
- * @returns {string} selector for the calendar day cell
+ * IMPORTANT:
+ * This is only an example.
+ * Replace it if your calendar uses different attributes.
+ *
+ * @param {string} dateStr - date in the format expected by the UI
+ * @returns {string} selector for the calendar day
  */
 function defaultDateSelectorBuilder(dateStr) {
-  // [Unverified] Example selector only. Update to match your app.
+  // [Unverified] Example selector only.
   return `[data-date="${dateStr}"]`;
 }
 
 /**
- * Selects dates by explicit (hardcoded) date values.
- * Assumes the calendar is open.
+ * Selects dates using explicit (fixed) date values.
  *
- * @param {Object} page
+ * When to use this:
+ * - Smoke tests
+ * - Very specific scenarios
+ * - Debugging or demos
+ *
+ * When NOT to use this:
+ * - Large CI matrices
+ * - Tests sensitive to date changes
+ *
+ * @param {Object} page - Playwright page instance
  * @param {Object} opts
  * @param {string} opts.startDate - required
  * @param {string|null} [opts.endDate=null] - optional
- * @param {(dateStr:string)=>string} [opts.dateSelectorBuilder] - optional override for how to locate a day cell
+ * @param {(dateStr:string)=>string} [opts.dateSelectorBuilder]
  */
 async function selectDatesByValue(
   page,
-  { startDate, endDate = null, dateSelectorBuilder = defaultDateSelectorBuilder } = {}
+  {
+    startDate,
+    endDate = null,
+    dateSelectorBuilder = defaultDateSelectorBuilder,
+  } = {}
 ) {
   if (!startDate) {
-    throw new Error('startDate is required when using fixed-date selection');
+    throw new Error(
+      'startDate is required when using fixed-date calendar selection'
+    );
   }
+
   if (typeof dateSelectorBuilder !== 'function') {
     throw new Error('dateSelectorBuilder must be a function');
   }
@@ -103,5 +152,5 @@ async function selectDatesByValue(
 module.exports = {
   selectDatesByNthAvailable,
   selectDatesByValue,
-  defaultDateSelectorBuilder, // exported so you can reuse/replace in tests if you want
+  defaultDateSelectorBuilder,
 };

@@ -1,42 +1,49 @@
 /**
  * DOM Utility Functions
- * 
- * This module provides utility functions for interacting with DOM elements
- * in Playwright tests, including text extraction, scrolling, and input handling.
+ *
+ * This file contains low-level helpers used across the entire test suite.
+ * These helpers handle unstable or varying UI structures in a safe way.
+ *
+ * IMPORTANT:
+ * - This file is intentionally defensive
+ * - Timeouts and waits are intentional
+ * - Behavior must remain stable
  */
 
 /**
- * Extracts text content from the first matching element
- * Waits for the element to be visible before retrieving text
- * 
+ * Reads visible text from the first matching element.
+ *
+ * Why this exists:
+ * - Ensures the element is visible before reading
+ * - Avoids flaky reads from hidden or detached elements
+ *
  * @param {Object} page - Playwright page instance
- * @param {string} selector - CSS selector to locate the element
- * @returns {Promise<string>} The text content of the element
+ * @param {string} selector - CSS selector for the element
+ * @returns {Promise<string>} Visible text content
  */
 async function getText(page, selector) {
   const locator = page.locator(selector).first();
-
   await locator.waitFor({ state: 'visible' });
-
-  const text = await locator.textContent();
-  return text;
+  return locator.textContent();
 }
 
 /**
- * Scrolls an element into view within the viewport
- * Ensures element is attached and visible before scrolling
- * 
+ * Scrolls an element into the visible area of the screen.
+ *
+ * Why this exists:
+ * - Some elements are present in the DOM but not visible
+ * - Scrolling prevents click and hover failures
+ *
  * @param {Object} page - Playwright page instance
- * @param {string} selector - CSS selector to locate the element to scroll to
- * @returns {Promise<void>}
+ * @param {string} selector - CSS selector for the element
  */
 async function scrollToElement(page, selector) {
   const el = page.locator(selector).first();
 
-  // First wait for element to exist in DOM
+  // Wait until element exists in the DOM
   await el.waitFor({ state: 'attached' });
 
-  // Then wait for it to be visible onscreen
+  // Then ensure it is actually visible
   await el.waitFor({ state: 'visible' });
 
   await el.evaluate((node) => {
@@ -49,15 +56,22 @@ async function scrollToElement(page, selector) {
 }
 
 /**
- * Types a value into the nth available input element from a list of selectors
- * Tries each selector in order until finding one with sufficient matching elements
- * 
+ * Types a value into the nth available input found using fallback selectors.
+ *
+ * Why this exists:
+ * - Different suppliers use different placeholders
+ * - Some pages render multiple similar inputs
+ * - This logic safely finds the correct one
+ *
+ * Example:
+ * - selectors = [selectorA, selectorB]
+ * - nth = 1 → second matching input
+ *
  * @param {Object} page - Playwright page instance
- * @param {string} value - Value to type into the input field
- * @param {string[]} selectors - Array of CSS selectors to try
- * @param {number} nth - Index of the element to target (0-based, defaults to 0)
- * @returns {Promise<string>} The selector that was successfully used
- * @throws {Error} When no selector has enough matching elements
+ * @param {string} value - Value to type
+ * @param {string[]} selectors - List of selectors to try
+ * @param {number} nth - 0-based index of the input to use
+ * @returns {Promise<string>} Selector that was successfully used
  */
 async function typeIntoNthAvailableInput(page, value, selectors, nth = 0) {
   for (const selector of selectors) {
@@ -66,23 +80,33 @@ async function typeIntoNthAvailableInput(page, value, selectors, nth = 0) {
 
     if (count > nth) {
       const target = locator.nth(nth);
-      console.log(`Typing "${value}" into ${nth + 1}º match of: ${selector}`);
+
+      // Logged on purpose to help debug selector mismatches
+      console.log(`Typing "${value}" into ${nth + 1}º match of selector: ${selector}`);
+
       await target.click();
       await target.fill(value);
-      await page.waitForTimeout(800); // Wait for any UI updates
+
+      // Intentional wait to allow UI suggestions/autocomplete to react
+      await page.waitForTimeout(800);
+
       return selector;
     }
   }
 
-  throw new Error(`No selector with index ${nth} found to type: "${value}"`);
+  throw new Error(
+    `Unable to find an input for "${value}" at position ${nth}. No selector matched.`
+  );
 }
 
 /**
- * Presses the Tab key to move focus to the next focusable element.
- * Adds a small delay for UI transitions.
- * 
+ * Simulates pressing the Tab key.
+ *
+ * Why this exists:
+ * - Many autocomplete fields confirm selection on Tab
+ * - Adds a small delay to allow UI focus changes
+ *
  * @param {Object} page - Playwright page instance
- * @returns {Promise<void>}
  */
 async function pressTab(page) {
   await page.keyboard.press("Tab");

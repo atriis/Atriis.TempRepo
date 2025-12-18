@@ -1,7 +1,9 @@
 const { waitForText } = require('../utils/wait');
 const { scrollToElement } = require('../utils/dom');
 
-// Centralized selectors for easy maintenance
+/**
+ * Page Object for room-level hotel results.
+ */
 const SELECTORS = {
   VIEW_HOTEL_ON_MAP_BUTTON: "button.map-btn.is-paddingless",
   ADD_TO_TRIP_BUTTON: "button.add-to-trip-btn",
@@ -16,28 +18,29 @@ class RoomLevelResultsPage {
     this.page = page;
   }
 
-  // Waits for the "View hotel on map" button to become visible
+  /** Confirms room results page is loaded */
   async waitForViewHotelOnMapText() {
-    console.log('Waiting for "View hotel on map" button...');
-    await this.page.locator(SELECTORS.VIEW_HOTEL_ON_MAP_BUTTON, { hasText: 'View hotel on map' }).waitFor({ state: 'visible' });
-    console.log("Map button is now visible");
+    await this.page
+      .locator(SELECTORS.VIEW_HOTEL_ON_MAP_BUTTON, { hasText: 'View hotel on map' })
+      .waitFor({ state: 'visible' });
   }
 
-  // Waits for the "Add to trip" button to appear and scrolls to ensure visibility
-  // Combines scrolling and text verification for stable element interaction
+  /** Ensures Add to trip buttons are visible and clickable */
   async waitForAddToTripText() {
-    console.log("Waiting for 'Add to trip' button...");
     await scrollToElement(this.page, SELECTORS.ADD_TO_TRIP_BUTTON);
     await waitForText(this.page, SELECTORS.ADD_TO_TRIP_BUTTON, "Add to trip");
-    console.log("'Add to trip' button found");
   }
 
-  // Clicks the refundable filter checkbox to show only refundable room rates
+  /**
+   * Enables the "Refundable" filter.
+   * Waits until the checkbox state is confirmed.
+   */
   async clickRefundableCheckbox() {
-    console.log('Clicking refundable checkbox...');
-    const root = this.page.locator(SELECTORS.REFUNDABLE_CHECKBOX_LABEL, {
-      has: this.page.locator("p.filter-title[title='Refundable']")
-    });
+    const root = this.page.locator(
+      SELECTORS.REFUNDABLE_CHECKBOX_LABEL,
+      { has: this.page.locator("p.filter-title[title='Refundable']") }
+    );
+
     const inner = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INNER);
     const input = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INPUT);
 
@@ -45,28 +48,25 @@ class RoomLevelResultsPage {
     await inner.waitFor({ state: 'visible' });
     await inner.click();
 
-    // Wait until it becomes checked
-    await this.page.waitForFunction(el => el.checked, await input.elementHandle());
-    console.log('Refundable checkbox clicked successfully');
+    await this.page.waitForFunction(
+      el => el.checked,
+      await input.elementHandle()
+    );
   }
 
-  // Verifies that the "Refundable" tag is visible on room listings
-  // Confirms that the refundable filter has been applied successfully
+  /** Verifies refundable tag appears on room cards */
   async verifyRefundableTagIsVisible() {
-    console.log("Checking for refundable tag...");
-    const locator = this.page.locator(SELECTORS.REFUNDABLE_TAG).first();
-    await locator.waitFor({ state: "visible" });
-    console.log("Refundable tag is visible.");
+    await this.page
+      .locator(SELECTORS.REFUNDABLE_TAG)
+      .first()
+      .waitFor({ state: 'visible' });
   }
 
-  // Clicks the "Add to trip" button for the first room in the results
-  // Combines scrolling, text verification, and selection for the first available room
+  /** Adds the first available room to the trip */
   async clickAddToTripTextFirstRoom() {
-    console.log("Clicking first 'Add to trip' button...");
     await scrollToElement(this.page, SELECTORS.ADD_TO_TRIP_BUTTON);
     await waitForText(this.page, SELECTORS.ADD_TO_TRIP_BUTTON, "Add to trip");
     await this.page.locator(SELECTORS.ADD_TO_TRIP_BUTTON).first().click();
-    console.log("First 'Add to trip' clicked");
   }
 }
 

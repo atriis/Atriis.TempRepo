@@ -1,33 +1,46 @@
 /**
- * Input Resolution Utility
+ * Route & Location Resolution Helpers
  *
- * Provides shared functions for resolving various types of input across different search DSLs.
- * Supports both configuration keys from JSON files and inline objects.
+ * These helpers normalize input so DSLs can accept
+ * flexible formats without duplicating validation logic.
+ *
+ * Why this exists:
+ * - Tests may use predefined routes from JSON files
+ * - Tests may also define routes inline for flexibility
+ * - DSLs should not care where the data comes from
  */
 
 /**
- * Resolves route input for search operations.
- * Accepts either:
- * - route key (string) → resolved from provided routes object
- * - inline route object → { from, to }
+ * Resolves a route used in search operations.
  *
- * @param {string|Object} routeInput - route key OR { from, to } object
- * @param {Object} routesConfig - routes configuration object (e.g., flightRoutes.routes)
- * @param {string} routeType - type of route for error messages (e.g., "flight", "evolvi", "amtrak")
- * @returns {Object} - resolved route object with { from, to } properties
- * @throws {Error} - When route key is not found or input format is invalid
+ * Supported inputs:
+ * 1) String key → resolved from a routes configuration file
+ *    Example: "LIS_NYC"
+ *
+ * 2) Inline object → used directly
+ *    Example: { from: "LIS", to: "NYC" }
+ *
+ * @param {string|Object} routeInput - route key OR { from, to }
+ * @param {Object} routesConfig - routes loaded from JSON
+ * @param {string} routeType - label used in error messages
+ * @returns {{ from: string, to: string }}
  */
 function resolveRoute(routeInput, routesConfig, routeType = "route") {
-  // Route key from JSON
+  // Route defined by key (preferred for reuse and consistency)
   if (typeof routeInput === "string") {
     const route = routesConfig[routeInput];
+
     if (!route) {
-      throw new Error(`Route "${routeInput}" not found in ${routeType}.json`);
+      throw new Error(
+        `Route "${routeInput}" was not found in ${routeType}.json. ` +
+        `Check that the key exists and is spelled correctly.`
+      );
     }
+
     return route;
   }
 
-  // Inline route object
+  // Route defined inline (useful for one-off scenarios)
   if (
     typeof routeInput === "object" &&
     routeInput !== null &&
@@ -38,28 +51,34 @@ function resolveRoute(routeInput, routesConfig, routeType = "route") {
   }
 
   throw new Error(
-    'Invalid route input. Expected route key (string) or { from, to } object.'
+    'Invalid route input. Provide either a route key (string) ' +
+    'or an object with { from, to }.'
   );
 }
 
 /**
- * Resolves location/place input for search operations.
- * Accepts either:
- * - location string → used directly
- * - location object → extracts from specified property keys
+ * Resolves a single location value from flexible input.
  *
- * @param {string|Object} locationInput - location string OR object with location property
- * @param {string[]} [propertyKeys=['where', 'place', 'location', 'destination']] - property keys to check in object
- * @returns {string} - resolved location string
- * @throws {Error} - When input format is invalid or no valid property found
+ * Supported inputs:
+ * 1) String → used directly
+ * 2) Object → extracts the first matching property
+ *
+ * This is useful when different DSLs use slightly different naming.
+ *
+ * @param {string|Object} locationInput
+ * @param {string[]} [propertyKeys=['where','place','location','destination']]
+ * @returns {string}
  */
-function resolveLocation(locationInput, propertyKeys = ['where', 'place', 'location', 'destination']) {
-  // Direct string location
+function resolveLocation(
+  locationInput,
+  propertyKeys = ['where', 'place', 'location', 'destination']
+) {
+  // Direct string input (most common case)
   if (typeof locationInput === "string") {
     return locationInput;
   }
 
-  // Location object with specified properties
+  // Object input with one of the supported properties
   if (typeof locationInput === "object" && locationInput !== null) {
     for (const key of propertyKeys) {
       if (locationInput[key]) {
@@ -68,9 +87,9 @@ function resolveLocation(locationInput, propertyKeys = ['where', 'place', 'locat
     }
   }
 
-  const keyList = propertyKeys.map(k => `{ ${k} }`).join(' or ');
+  const expectedKeys = propertyKeys.map(k => `{ ${k} }`).join(' or ');
   throw new Error(
-    `Invalid location input. Expected location string or ${keyList} object.`
+    `Invalid location input. Provide a string or an object containing ${expectedKeys}.`
   );
 }
 

@@ -2,26 +2,43 @@ const FlightResultsPage = require('../pages/FlightResultsPage');
 const CartPage = require('../pages/CartPage');
 const Cart = require('./Cart');
 
+/**
+ * FlightResults DSL
+ *
+ * High-level actions related to flight search results.
+ * Describes WHAT the user does, not HOW the UI works.
+ */
 const FlightResults = {
-  // Checks if flight search results are displayed on the page
-  // Returns true if at least one flight result is visible, false otherwise
+  /**
+   * Checks whether flight results are available.
+   *
+   * Useful for:
+   * - conditional flows
+   * - negative test scenarios
+   */
   async isResultDisplayed(page) {
     const flightResultsPage = new FlightResultsPage(page);
-    
+
     try {
-      // Check if "Add to Trip" text is visible (indicates results are loaded)
       await flightResultsPage.waitForAddToTripText();
-      console.log('Flight results loaded successfully');
       return true;
     } catch {
-      console.log('No flight results found');
       return false;
     }
   },
 
-  // Adds the first flight option from search results to the shopping cart
-  // Handles conflict quote modal if it appears
-  // Includes conflict modal handling and waits for 'Pending Booking' text
+  /**
+   * Adds the first flight result to the cart.
+   *
+   * This flow:
+   * - waits for results
+   * - adds the first flight
+   * - handles conflict quote modal if it appears
+   * - waits until the cart shows "Pending booking"
+   *
+   * Returns a simple status object so callers can assert intent,
+   * not UI details.
+   */
   async addFirstFlightToCart(page) {
     const flightResultsPage = new FlightResultsPage(page);
     const cartPage = new CartPage(page);
@@ -29,10 +46,10 @@ const FlightResults = {
     await flightResultsPage.waitForAddToTripText();
     await flightResultsPage.clickAddToTripFirstFlight();
 
-    // Handle conflict modal if it appears, otherwise continue
+    // Some suppliers show a conflict modal; handle it defensively
     await Cart.clickProceedConflictQuoteModal(page);
 
-    // Wait for pending booking to appear in cart
+    // Ensure the flight is now present in the cart
     await cartPage.waitForPendingBookingText();
 
     return { added: true };

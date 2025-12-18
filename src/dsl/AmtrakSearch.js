@@ -5,119 +5,110 @@ const { selectDatesByNthAvailable } = require('../utils/calendar.helper');
 const { resolveRoute } = require('../utils/route.helper');
 const { SEARCH_DEFAULTS } = require('../utils/search.constants');
 
+/**
+ * AmtrakSearch DSL
+ *
+ * High-level business actions for Amtrak rail searches.
+ * Describes WHAT the user does, not HOW the UI works.
+ */
 const AmtrakSearch = {
-  
-
 
   /**
-   * Performs a complete one-way Amtrak search using predefined route configuration.
-   * Default departure: 10th available date.
+   * Performs a one-way Amtrak search.
    *
-   * Date strategy (nth available):
-   * - Departure = nth(9)  [10th available]
-   *
-   * @param {Object} page - Playwright page instance
-   * @param {string|Object} [routeInput] - route key OR { from, to } object
-   * @param {Object} [options] - Search options
-   * @param {number} [options.departureIndex] - nth available departure date
-   * @returns {Object} - Search result object with status, route name, and station codes
-   * 
-   * Examples:
-   *   await AmtrakSearch.searchAmtrakOneWay(page, "nypToWas");
-   *   await AmtrakSearch.searchAmtrakOneWay(page, { from: "New York", to: "Washington" });
-   *   await AmtrakSearch.searchAmtrakOneWay(page); // uses defaultRoute
-   * 
-   * @throws {Error} - When specified route name is not found in amtrak.json
+   * Default behavior:
+   * - Uses default route from amtrak.json
+   * - Selects the 10th available departure date
    */
-  async searchAmtrakOneWay(page, routeInput = amtrakRoutes.defaultRoute, { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {}) {
-    console.log(`Starting Amtrak one-way search for route: ${JSON.stringify(routeInput)} (departure: nth(${departureIndex}))`);
-    
-    // Resolve route using shared resolveRoute function
-    const { from, to } = resolveRoute(routeInput, amtrakRoutes.routes, "amtrak");
-    console.log(`Amtrak route: ${from} → ${to}`);
-    
+  async searchAmtrakOneWay(
+    page,
+    routeInput = amtrakRoutes.defaultRoute,
+    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {}
+  ) {
+    // Resolve route (key or inline object)
+    const { from, to } = resolveRoute(
+      routeInput,
+      amtrakRoutes.routes,
+      "amtrak"
+    );
+
     const amtrakPage = new AmtrakSearchPage(page);
     const searchPage = new SearchPage(page);
 
-    // Simple, readable sequence of actions
+    // Provider + trip type
     await amtrakPage.selectAmtrakSearch();
     await amtrakPage.selectOneWayTrip();
-    await searchPage.fillInFromField(from); // first "or" field
-    await searchPage.fillInToField(to);   // second "or" field
+
+    // Route selection
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+
+    // Calendar flow
     await searchPage.clickCalendarNextArrow();
-    
-    // Select departure date using nth-available strategy
-    await selectDatesByNthAvailable(page, { 
-      startIndex: departureIndex, 
-      endIndex: null 
+    await selectDatesByNthAvailable(page, {
+      startIndex: departureIndex,
+      endIndex: null
     });
-    
+
     await searchPage.clickSearchButton();
 
-    console.log('Amtrak search completed successfully');
     return { searched: true, routeInput, from, to, departureIndex };
   },
 
   /**
-   * Performs a complete round trip Amtrak search using predefined route configuration.
-   * Default dates: departure on 10th available date, return on 13th available date.
+   * Performs a round-trip Amtrak search.
    *
-   * Date strategy (nth available):
-   * - Departure = nth(9)   [10th available]
-   * - Return    = nth(12)  [13th available]
-   *
-   * @param {Object} page - Playwright page instance
-   * @param {string|Object} [routeInput] - route key OR { from, to } object
-   * @param {Object} [options] - Search options
-   * @param {number} [options.departureIndex] - nth available departure date
-   * @param {number} [options.returnIndex] - nth available return date
-   * @returns {Object} - Search result object with status, route name, and station codes
-   * 
-   * Examples:
-   *   await AmtrakSearch.searchAmtrakRoundTrip(page, "nypToWas");
-   *   await AmtrakSearch.searchAmtrakRoundTrip(page, { from: "New York", to: "Washington" });
-   *   await AmtrakSearch.searchAmtrakRoundTrip(page); // uses defaultRoute
-   * 
-   * @throws {Error} - When specified route name is not found in amtrak.json
+   * Default behavior:
+   * - Departure: 10th available date
+   * - Return: 13th available date
    */
-  async searchAmtrakRoundTrip(page, routeInput = amtrakRoutes.defaultRoute, { 
-    departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX, 
-    returnIndex = SEARCH_DEFAULTS.RAIL.RETURN_INDEX 
-  } = {}) {
-    console.log(`Starting Amtrak round trip search for route: ${JSON.stringify(routeInput)} (departure: nth(${departureIndex}), return: nth(${returnIndex}))`);
-    
-    // Resolve route using shared resolveRoute function
-    const { from, to } = resolveRoute(routeInput, amtrakRoutes.routes, "amtrak");
-    console.log(`Amtrak route: ${from} → ${to}`);
-    
-    // Initialize page objects
+  async searchAmtrakRoundTrip(
+    page,
+    routeInput = amtrakRoutes.defaultRoute,
+    {
+      departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.RAIL.RETURN_INDEX
+    } = {}
+  ) {
+    // Resolve route (key or inline object)
+    const { from, to } = resolveRoute(
+      routeInput,
+      amtrakRoutes.routes,
+      "amtrak"
+    );
+
     const amtrakPage = new AmtrakSearchPage(page);
     const searchPage = new SearchPage(page);
 
-    // Execute round trip search workflow with proper sequencing
+    // Provider + trip type
     await amtrakPage.selectAmtrakSearch();
     await amtrakPage.selectRoundTrip();
-    await searchPage.fillInFromField(from); // first "or" field
+
+    // Departure flow
+    await searchPage.fillInFromField(from);
     await searchPage.clickCalendarNextArrow();
-    
-    // Select departure date using nth-available strategy
-    await selectDatesByNthAvailable(page, { 
-      startIndex: departureIndex, 
-      endIndex: null 
+    await selectDatesByNthAvailable(page, {
+      startIndex: departureIndex,
+      endIndex: null
     });
-    
-    await searchPage.fillInToField(to);   // second "or" field
-    
-    // Select return date using nth-available strategy
-    await selectDatesByNthAvailable(page, { 
-      startIndex: returnIndex, 
-      endIndex: null 
+
+    // Return flow
+    await searchPage.fillInToField(to);
+    await selectDatesByNthAvailable(page, {
+      startIndex: returnIndex,
+      endIndex: null
     });
-    
+
     await searchPage.clickSearchButton();
 
-    console.log('Amtrak search completed successfully');
-    return { searched: true, routeInput, from, to, departureIndex, returnIndex };
+    return {
+      searched: true,
+      routeInput,
+      from,
+      to,
+      departureIndex,
+      returnIndex
+    };
   },
 };
 

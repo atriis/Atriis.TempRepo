@@ -5,43 +5,55 @@ const SELECTORS = {
   SELECT_OR_ADD_TO_TRIP_BUTTON: '.btn.btn--primary'
 };
 
+/**
+ * BenerailResultsPage
+ *
+ * Low-level UI interactions on Benerail results.
+ * No logging, no business decisions.
+ */
 class BenerailResultsPage {
   constructor(page) {
     this.page = page;
   }
 
-  // Waits for the "Select" button to appear and become ready for interaction
-  // Includes additional timeout to ensure stable element state
+  /** Waits until the "Select" button is visible */
   async waitForSelectText() {
-    console.log('Waiting for Select button text to appear...');
-    await waitForText(this.page, SELECTORS.SELECT_OR_ADD_TO_TRIP_BUTTON, 'Select');
-    await this.page.waitForTimeout(4000); // Extra wait for stability
-    console.log('Select button text appeared successfully');
+    await waitForText(
+      this.page,
+      SELECTORS.SELECT_OR_ADD_TO_TRIP_BUTTON,
+      'Select'
+    );
+
+    // Extra wait kept for UI stability
+    await this.page.waitForTimeout(4000);
   }
 
-  // Clicks the "Select" button for the first Benerail option in the search results
-  // Selects the first available Benerail option and adds it to the current trip
+  /** Clicks the first available "Select" button */
   async clickSelectFirstBenerailOption() {
-    console.log('Clicking Select button for first Benerail option...');
-    await this.page.locator(SELECTORS.SELECT_OR_ADD_TO_TRIP_BUTTON).first().click();
-    console.log('First Benerail option selected successfully');
+    await this.page
+      .locator(SELECTORS.SELECT_OR_ADD_TO_TRIP_BUTTON)
+      .first()
+      .click();
   }
 
-  // Waits for the "Add to trip" button to appear and become ready for interaction
-  // Includes additional timeout to ensure stable element state
+  /** Waits until the "Add to trip" button is visible */
   async waitForAddToTripText() {
-    console.log('Waiting for Add to trip button text to appear...');
-    await waitForText(this.page, SELECTORS.SELECT_OR_ADD_TO_TRIP_BUTTON, 'Add to trip');
-    await this.page.waitForTimeout(4000); // Extra wait for stability
-    console.log('Add to trip button text appeared successfully');
+    await waitForText(
+      this.page,
+      SELECTORS.SELECT_OR_ADD_TO_TRIP_BUTTON,
+      'Add to trip'
+    );
+
+    // Extra wait kept for UI stability
+    await this.page.waitForTimeout(4000);
   }
 
-  // Clicks the "Add to trip" button for the first Benerail option in the search results
-  // Selects the first available Benerail option and adds it to the current trip
+  /** Clicks the first available "Add to trip" button */
   async clickAddToTripButton() {
-    console.log('Clicking Benerail Add to trip button...');
-    await this.page.locator(SELECTORS.SELECT_OR_ADD_TO_TRIP_BUTTON).first().click();
-    console.log('First Benerail option added to trip successfully');
+    await this.page
+      .locator(SELECTORS.SELECT_OR_ADD_TO_TRIP_BUTTON)
+      .first()
+      .click();
   }
 }
 
