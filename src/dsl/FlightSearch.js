@@ -7,52 +7,95 @@ const { SEARCH_DEFAULTS } = require("../utils/search.constants");
 
 const FlightSearch = {
   /**
-   * One-way flight search
+   * General flight search with configurable parameters
    *
-   * This function does a full one-way search:
-   * 1) opens flight tab
-   * 2) selects one-way
-   * 3) fills From/To
-   * 4) selects a departure date
-   * 5) clicks Search
+   * @param {Object} page - Playwright page object
+   * @param {string} routeInput - Route identifier (defaults to flightRoutes.defaultRoute)
+   * @param {Object} options - Search configuration (required)
+   * @param {string} options.searchType - 'completeTrip' or 'bySchedule' (required)
+   * @param {string} options.tripType - 'roundTrip' or 'oneWay' (required)
+   * @param {number} options.departureIndex - Departure date index (default: from SEARCH_DEFAULTS)
+   * @param {number} options.returnIndex - Return date index (default: from SEARCH_DEFAULTS)
+   */
+  async searchFlight(
+    page,
+    routeInput = flightRoutes.defaultRoute,
+    {
+      searchType,
+      tripType,
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    }
+  ) {
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
+    console.log(`Starting ${tripType} flight search (${searchType}): ${from} → ${to}`);
+
+    const flightSearchPage = new FlightSearchPage(page);
+    const searchPage = new SearchPage(page);
+
+    await flightSearchPage.clickFlightTab();
+
+    // Select trip type (oneWay or roundTrip)
+    if (tripType === 'oneWay') {
+      await flightSearchPage.selectOneWayTrip();
+    } else {
+      await flightSearchPage.selectRoundTrip();
+    }
+
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+
+    // Handle calendar interaction based on trip type
+    if (tripType === 'oneWay') {
+      // One-way: user opens the calendar by clicking the departure date field
+      await searchPage.clickDepartureDateField();
+      await searchPage.clickCalendarNextArrow();
+      
+      // Select only the departure date
+      await selectDatesByNthAvailable(page, {
+        startIndex: departureIndex,
+        endIndex: null,
+      });
+    } else {
+      // Round-trip: calendar may open automatically with round-trip selection
+      await searchPage.clickCalendarNextArrow();
+      
+      // Select departure + return in one call
+      await selectDatesByNthAvailable(page, {
+        startIndex: departureIndex,
+        endIndex: returnIndex,
+      });
+    }
+
+    // Select search type (completeTrip or bySchedule) - last action before search
+    if (searchType === 'bySchedule') {
+      await flightSearchPage.selectBySchedule();
+    } else {
+      await flightSearchPage.selectCompleteTrip();
+    }
+
+    await searchPage.clickSearchButton();
+
+    return { searched: true, from, to, tripType, searchType };
+  },
+
+  /**
+   * One-way flight search: completeTrip + oneWay + routes
    */
   async searchFlightOneWay(
     page,
     routeInput = flightRoutes.defaultRoute,
     { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX } = {}
   ) {
-    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
-    console.log(`Starting one-way flight search: ${from} → ${to}`);
-
-    const flightSearchPage = new FlightSearchPage(page);
-    const searchPage = new SearchPage(page);
-
-    await flightSearchPage.clickFlightTab();
-    await flightSearchPage.selectOneWayTrip();
-
-    await searchPage.fillInFromField(from);
-    await searchPage.fillInToField(to);
-
-    // One-way: user opens the calendar by clicking the departure date field
-    await searchPage.clickDepartureDateField();
-    await searchPage.clickCalendarNextArrow();
-
-    // Select only the departure date
-    await selectDatesByNthAvailable(page, {
-      startIndex: departureIndex,
-      endIndex: null,
+    return await this.searchFlight(page, routeInput, {
+      searchType: 'completeTrip',
+      tripType: 'oneWay',
+      departureIndex
     });
-
-    await searchPage.clickSearchButton();
-
-    return { searched: true, from, to, tripType: "oneWay" };
   },
 
   /**
-   * Round-trip flight search
-   *
-   * NOTE: In your UI flow, selecting "Round trip" opens the calendar automatically.
-   * If that UI behavior changes in the future, this is the first place to revisit.
+   * Round-trip flight search: completeTrip + roundTrip + default route from routes
    */
   async searchFlightRoundTrip(
     page,
@@ -62,32 +105,31 @@ const FlightSearch = {
       returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
     } = {}
   ) {
-    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
-    console.log(`Starting round-trip flight search: ${from} → ${to}`);
-
-    const flightSearchPage = new FlightSearchPage(page);
-    const searchPage = new SearchPage(page);
-
-    await flightSearchPage.clickFlightTab();
-
-    // Round-trip selection opens the calendar (based on your current UI)
-    await flightSearchPage.selectRoundTrip();
-
-    await searchPage.fillInFromField(from);
-    await searchPage.fillInToField(to);
-
-    // Calendar is already open, so we can move to the next month if needed
-    await searchPage.clickCalendarNextArrow();
-
-    // Select departure + return in one call
-    await selectDatesByNthAvailable(page, {
-      startIndex: departureIndex,
-      endIndex: returnIndex,
+    return await this.searchFlight(page, routeInput, {
+      searchType: 'completeTrip',
+      tripType: 'roundTrip',
+      departureIndex,
+      returnIndex
     });
+  },
 
-    await searchPage.clickSearchButton();
-
-    return { searched: true, from, to, tripType: "roundTrip" };
+  /**
+   * Flight search by schedule: bySchedule + roundTrip + default route
+   */
+  async searchFlightBySchedule(
+    page,
+    routeInput = flightRoutes.defaultRoute,
+    {
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    } = {}
+  ) {
+    return await this.searchFlight(page, routeInput, {
+      searchType: 'bySchedule',
+      tripType: 'roundTrip',
+      departureIndex,
+      returnIndex
+    });
   },
 };
 

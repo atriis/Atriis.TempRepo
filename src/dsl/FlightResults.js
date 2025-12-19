@@ -54,6 +54,25 @@ const FlightResults = {
 
     return { added: true };
   },
+
+  async selectOneSegmentBySchedule(page) {
+    const flightResultsPage = new FlightResultsPage(page);  
+    await flightResultsPage.waitForSelectText();
+    await flightResultsPage.clickAddToTripFirstFlight();
+  },
+
+  async selectSegmentsBySchedule(page) {
+    const flightResultsPage = new FlightResultsPage(page);
+    
+    // Select first segment
+    await this.selectOneSegmentBySchedule(page);
+    await flightResultsPage.waitForChangeFlightButton();
+    
+    // Select second segment
+    await this.selectOneSegmentBySchedule(page);
+    
+    return { selected: true };
+  }
 };
 
 module.exports = FlightResults;

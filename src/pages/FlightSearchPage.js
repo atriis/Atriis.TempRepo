@@ -5,8 +5,7 @@ const SELECTORS = {
   ONE_WAY_BUTTON: ".search-options-wrapper > :nth-child(1) [role='radiogroup'] > :nth-child(2) .el-radio__label",
   ROUND_TRIP_BUTTON: ".search-options-wrapper > :nth-child(1) [role='radiogroup'] > :nth-child(1) .el-radio__label",
   MULTI_CITY_BUTTON: ".search-options-wrapper > :nth-child(1) [role='radiogroup'] > :nth-child(3) .el-radio__label",
-  COMPLETE_TRIP_BUTTON: "label.el-radio input.el-radio__original[value='completeTrip']",
-  BY_SCHEDULE_BUTTON: "label.el-radio input.el-radio__original[value='bySchedule']",
+  TRIP_TYPE: ".search-for-select  .el-radio",
   ADVANCED_SEARCH_BUTTON: ".advanced-search-container .btn",
   ALLOW_NEARBY_AIRPORTS_CHECKBOX: ".advanced-search-container .el-checkbox__inner",
 };
@@ -23,12 +22,12 @@ class FlightSearchPage {
 
   // Chooses the "Complete Trip" option (a flight search mode)
   async selectCompleteTrip() {
-    await this.page.locator(SELECTORS.COMPLETE_TRIP_BUTTON).click();
+    await this.page.locator(SELECTORS.TRIP_TYPE).first.click();
   }
 
   // Chooses the "By Schedule" option (a flight search mode)
   async selectBySchedule() {
-    await this.page.locator(SELECTORS.BY_SCHEDULE_BUTTON).click();
+    await this.page.locator(SELECTORS.TRIP_TYPE).nth(1).click();
   }
 
   // Chooses "One Way" (one departure, no return)
