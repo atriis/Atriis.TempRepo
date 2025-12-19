@@ -22,7 +22,7 @@ class FlightSearchPage {
 
   // Chooses the "Complete Trip" option (a flight search mode)
   async selectCompleteTrip() {
-    await this.page.locator(SELECTORS.TRIP_TYPE).first.click();
+    await this.page.locator(SELECTORS.TRIP_TYPE).nth(0).click();
   }
 
   // Chooses the "By Schedule" option (a flight search mode)

@@ -1,9 +1,5 @@
 const { waitForText } = require('../utils/wait');
 
-/**
- * Selectors for the Flight Results screen.
- * Kept minimal on purpose.
- */
 const SELECTORS = {
   ADD_TO_TRIP_BUTTON: '.btns-container .add-to-trip',
   CHANGE_FLIGHT_BUTTON: '.change-flight-btn-wrapper'
