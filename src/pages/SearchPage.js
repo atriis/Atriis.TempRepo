@@ -72,8 +72,23 @@ const SELECTORS = {
     "input[placeholder*='or' i]"
   ],
 
-  DEPARTURE_PLACEHOLDER: "input[placeholder*='Depart']",
-  RETURN_PLACEHOLDER: "input[placeholder*='Return']"
+  PICK_UP_PLACEHOLDER: [
+    "input[placeholder*='Pick-up']",
+  ],
+
+  DROP_OFF_PLACEHOLDER: [
+    "input[placeholder*='Drop-off']",
+  ],
+
+  DEPARTURE_PLACEHOLDER: [
+    "input[placeholder*='Depart']",
+  ],
+
+  RETURN_PLACEHOLDER: [
+    "input[placeholder*='Return']",
+  ],
+
+  PICK_UP_DATE_INPUT: "[placeholder='Pick-up Date']", //Same locator used for Cars and GroundScope/Transferz
 };
 
 /**

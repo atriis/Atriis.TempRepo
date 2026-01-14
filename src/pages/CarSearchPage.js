@@ -2,9 +2,10 @@
  * Page Object for car search form.
  * Contains only UI-level interactions.
  */
+const { SELECTORS: SEARCH_SELECTORS } = require('./SearchPage');
+
 const SELECTORS = {
   CAR_TAB: '#tab-car',
-  PICKUP_DATE_INPUT: "[placeholder='Pick-up Date']",
   DROPOFF_DATE_INPUT: "[placeholder='Drop-off Date']",
   PICKUP_NEXT_ARROW: "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
   DROPOFF_NEXT_ARROW: "span.el-date-picker__next-btn button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']",
@@ -35,7 +36,7 @@ class CarSearchPage {
 
   /** Opens pickup date calendar */
   async clickPickupDateField() {
-    await this.page.click(SELECTORS.PICKUP_DATE_INPUT);
+    await this.page.click(SEARCH_SELECTORS.PICK_UP_DATE_INPUT);
   }
 
   /**
