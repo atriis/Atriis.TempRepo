@@ -1,0 +1,32 @@
+const { test, expect } = require('../../../fixtures/supplierTest');
+
+const Search = require('../../../../src/dsl/Search');
+const GroundTransportSearch = require('../../../../src/dsl/GroundTransportSearch');
+const Results = require('../../../../src/dsl/Results');
+const Cart = require('../../../../src/dsl/Cart');
+
+test.describe('[@regression] Search GroundScope Flow', () => {
+  test('[@priority:critical] Search GroundScope – Should complete search flow', async ({ newTripPage }) => {
+    // Step 1: Login
+    console.log('Step 1: Login + Book a New Trip (fixtures)');
+    const page = newTripPage;
+
+    // Step 2: Add traveller - I'm the traveller
+    console.log('Step 2: Add traveller - I am the traveller');
+    await Search.addTravellerImTheTraveller(page);
+
+    // Step 3: Search ground transport LHR → Emirates Stadium
+    console.log('Step 3: Search ground transport LHR → Emirates Stadium, Hornsey Road, London, UK');
+    await GroundTransportSearch.searchGroundTransportFromAirportToSpecificAddress(page);
+
+    // Step 4: Add first ground transport to cart
+    console.log('Step 4: Add first ground transport to cart');
+    await Results.waitAndClickAddToTripButton(page);
+
+    // Step 5: Assert Pending booking
+    console.log('Step 5: Quote is "Pending booking" status');
+    expect(await Cart.isQuotePendingBooking(page)).toBe(true);
+
+    console.log('Ground transport search flow completed successfully.');
+  });
+});

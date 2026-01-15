@@ -54,6 +54,10 @@ const SEARCH_DEFAULTS = {
   HOTEL: {
     NIGHTS: 1,           // Default stay length
   },
+
+  GROUND_TRANSPORT: {
+    PICKUP_INDEX: 2,     // Selects the 3rd available date
+  },
 };
 
 module.exports = {

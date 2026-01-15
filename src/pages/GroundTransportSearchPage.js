@@ -1,21 +1,20 @@
-const {
-  typeIntoNthAvailableInput,
-  pressTab
-} = require('../utils/dom');
-const { SELECTORS: SEARCH_SELECTORS } = require('./SearchPage');
-
 /**
  * Page Object for ground transport search form.
  * Contains only UI-level interactions.
  */
+
 const SELECTORS = {
   GROUND_TRANSPORT_TAB: '#tab-groundService',
-  VEHICLE_TYPE: ".el-select__input-wrapper:has-text('Vehicle Type')",
   LOCATION_CONTAINER: 'section.location-container',
   FROM_SPECIFIC_ADDRESS_TEXT: 'From specific address',
   TO_SPECIFIC_ADDRESS_TEXT: 'To specific address',
   FROM_AIRPORT_TEXT: 'From airport',
   TO_AIRPORT_TEXT: 'To airport',
+  VEHICLE_TYPE_FIELD:  '.el-select__selection:has(.el-select__placeholder span:has-text("Vehicle Type")) input[role="combobox"]',
+  VEHICLE_TYPE_DROPDOWN_OPTION: (vehicleType) => `li.el-select-dropdown__item span:text("${vehicleType}")`,
+  TRAVELLER_DROPDOWN: '.el-select__wrapper:has-text("Traveller")',
+  TRAVELLER_DROPDOWN_OPTION:
+    (travellerNumbers) => `li.el-select-dropdown__item span:text("${travellerNumbers}")`
 };
 
 class GroundTransportSearchPage {
@@ -28,34 +27,64 @@ class GroundTransportSearchPage {
     await this.page.click(SELECTORS.GROUND_TRANSPORT_TAB);
   }
 
-  /** Opens vehicle type dropdown */
-  async clickVehicleTypeDropdown() {
-    await this.page.locator(SELECTORS.VEHICLE_TYPE).click();
+  /** Selects "From airport" option for pickup location */
+  async clickFromAirport() {
+    await this.page
+      .locator(SELECTORS.LOCATION_CONTAINER)
+      .nth(0)
+      .getByText(SELECTORS.FROM_AIRPORT_TEXT)
+      .click();
   }
 
   /** Selects "From specific address" option for pickup location */
-  async typeFromSpecificAddressPickup(fromSpecificAddress) {
-    await typeIntoNthAvailableInput(
-      this.page,
-      fromSpecificAddress,
-      SEARCH_SELECTORS.PICK_UP_PLACEHOLDER,
-      0
-    );
-    await this.page.waitForTimeout(1000);
-    await pressTab(this.page);
+  async clickFromSpecificAddress() {
+    await this.page
+      .locator(SELECTORS.LOCATION_CONTAINER)
+      .nth(0)
+      .getByText(SELECTORS.FROM_SPECIFIC_ADDRESS_TEXT)
+      .click();
+  }
+
+  /** Selects "To airport" option for dropoff location */
+  async clickToAirport() {
+    await this.page
+      .locator(SELECTORS.LOCATION_CONTAINER)
+      .nth(1)
+      .getByText(SELECTORS.TO_AIRPORT_TEXT)
+      .click();
   }
 
   /** Selects "To specific address" option for dropoff location */
-  async typeToSpecificAddressDropoff(toSpecificAddress) {
-    await typeIntoNthAvailableInput(
-      this.page,
-      toSpecificAddress,
-      SEARCH_SELECTORS.DROP_OFF_PLACEHOLDER,
-      0
-    );
-    await this.page.waitForTimeout(1000);
-    await pressTab(this.page);
+  async clickToSpecificAddress() {
+    await this.page
+      .locator(SELECTORS.LOCATION_CONTAINER)
+      .nth(1)
+      .getByText(SELECTORS.TO_SPECIFIC_ADDRESS_TEXT)
+      .click();
   }
+
+  /** Selects vehicle type from dropdown */
+  async selectVehicleType(vehicleType) {
+    await this.page.waitForTimeout(500);
+    // Click to open dropdown
+    await this.page.click(SELECTORS.VEHICLE_TYPE_FIELD);
+    await this.page.waitForTimeout(500);
+    // Type to filter
+    await this.page.fill(SELECTORS.VEHICLE_TYPE_FIELD, vehicleType);
+    await this.page.waitForTimeout(500);
+    // Click the option
+    await this.page
+      .locator(SELECTORS.VEHICLE_TYPE_DROPDOWN_OPTION(vehicleType))
+      .first().click();
+  }
+
+  /** Selects traveller number from dropdown */
+async selectTravellerNumber(travellerNumbers) {
+  await this.page.locator(SELECTORS.TRAVELLER_DROPDOWN).click();
+  await this.page
+    .getByRole('option', { name: String(travellerNumbers), exact: true })
+    .click();
+}
 }
 
 module.exports = GroundTransportSearchPage;

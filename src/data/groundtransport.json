@@ -1,0 +1,15 @@
+{
+  "routes": {
+    "airportLhrToAddressEmiratesStadium": {
+      "from": "LHR",
+      "to": "Emirates Stadium, Hornsey Road, London, UK"
+    }
+  },
+  "defaultRoute": "airportLhrToAddressEmiratesStadium",
+  "vehicleTypes": {
+    "all": "All vehicle types",
+    "standardSedan": "Standard Sedan",
+    "suv": "SUV"
+  },
+  "defaultVehicleType": "all"
+}
