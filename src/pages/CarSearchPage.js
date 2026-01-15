@@ -2,7 +2,6 @@
  * Page Object for car search form.
  * Contains only UI-level interactions.
  */
-const { SELECTORS: SEARCH_SELECTORS } = require('./SearchPage');
 
 const SELECTORS = {
   CAR_TAB: '#tab-car',
@@ -32,11 +31,6 @@ class CarSearchPage {
   /** Enables "Drop-off at a different location" option */
   async clickDropoffDifferentLocationCheckbox() {
     await this.page.click(SELECTORS.DROPOFF_DIFFERENT_LOCATION_CHECKBOX);
-  }
-
-  /** Opens pickup date calendar */
-  async clickPickupDateField() {
-    await this.page.click(SEARCH_SELECTORS.PICK_UP_DATE_INPUT);
   }
 
   /**

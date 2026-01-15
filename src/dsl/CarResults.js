@@ -1,5 +1,5 @@
 const CarResultsPage = require('../pages/CarResultsPage');
-const Cart = require('./Cart');
+const Results = require('./Results');
 
 /**
  * CarResults DSL
@@ -17,7 +17,7 @@ const CarResults = {
     await carResultsPage.clickCarAddToTripButton();
 
     // Handle optional conflict modal
-    await Cart.clickProceedConflictQuoteModal(page);
+    await Results.clickProceedConflictQuoteModal(page);
 
     return { added: true };
   },
@@ -35,7 +35,7 @@ const CarResults = {
     await carResultsPage.waitForCarAddToTripText();
     await carResultsPage.clickCarAddToTripButton();
 
-    await Cart.clickProceedConflictQuoteModal(page);
+    await Results.clickProceedConflictQuoteModal(page);
 
     return { added: true };
   },

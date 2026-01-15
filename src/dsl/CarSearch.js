@@ -45,7 +45,7 @@ const CarSearch = {
     await searchPage.fillInOrField(place, 1);
 
     // Pickup date
-    await carSearchPage.clickPickupDateField();
+    await searchPage.clickPickupDateField();
     await searchPage.clickCalendarNextArrow();
 
     await selectDatesByNthAvailable(page, {
