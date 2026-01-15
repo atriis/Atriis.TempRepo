@@ -1,5 +1,5 @@
 const RoomLevelResultsPage = require('../pages/RoomLevelResultsPage');
-const Cart = require('./Cart');
+const ResultsPage = require('../pages/ResultsPage');
 
 /**
  * RoomLevelResults DSL
@@ -12,17 +12,19 @@ const RoomLevelResults = {
    */
   async addRefundableHotelRoomLevelToCart(page) {
     const roomLevelResultsPage = new RoomLevelResultsPage(page);
+    const resultsPage = new ResultsPage(page);
 
     await roomLevelResultsPage.waitForViewHotelOnMapText();
-    await roomLevelResultsPage.waitForAddToTripText();
+    await resultsPage.scrollToFirstAddToTripButton();
+    await resultsPage.waitForAddToTripText();
 
     await roomLevelResultsPage.clickRefundableCheckbox();
     await roomLevelResultsPage.verifyRefundableTagIsVisible();
 
-    await roomLevelResultsPage.clickAddToTripTextFirstRoom();
+    await resultsPage.clickFirstAddToTripButton();
 
     // Handle optional conflict modal
-    await Cart.clickProceedConflictQuoteModal(page);
+    await resultsPage.handleConflictQuoteModalIfVisible();
 
     return { added: true };
   },

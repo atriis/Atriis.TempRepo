@@ -18,11 +18,11 @@ const EvolviSearch = {
    * Safe to call even if it is already unchecked.
    */
   async ensureSplitTicketIsUnchecked(page) {
-    const evolviPage = new EvolviSearchPage(page);
+    const evolviSearchPage = new EvolviSearchPage(page);
     const checkbox = page.locator(EVOLVI_SELECTORS.SPLIT_TICKET_CHECKBOX);
 
     if (await checkbox.isChecked()) {
-      await evolviPage.toggleSplitTicketCheckbox();
+      await evolviSearchPage.toggleSplitTicketCheckbox();
     }
   },
 
@@ -40,11 +40,11 @@ const EvolviSearch = {
       "evolvi"
     );
 
-    const evolviPage = new EvolviSearchPage(page);
+    const evolviSearchPage = new EvolviSearchPage(page);
     const searchPage = new SearchPage(page);
 
-    await evolviPage.selectEvolviSearch();
-    await evolviPage.selectOneWayTrip();
+    await evolviSearchPage.selectEvolviSearch();
+    await evolviSearchPage.selectOneWayTrip();
     await EvolviSearch.ensureSplitTicketIsUnchecked(page);
 
     await searchPage.fillInOrField(from, 1);
@@ -78,11 +78,11 @@ const EvolviSearch = {
       "evolvi"
     );
 
-    const evolviPage = new EvolviSearchPage(page);
+    const evolviSearchPage = new EvolviSearchPage(page);
     const searchPage = new SearchPage(page);
 
-    await evolviPage.selectEvolviSearch();
-    await evolviPage.selectRoundTrip();
+    await evolviSearchPage.selectEvolviSearch();
+    await evolviSearchPage.selectRoundTrip();
     await EvolviSearch.ensureSplitTicketIsUnchecked(page);
 
     await searchPage.fillInOrField(from, 1);

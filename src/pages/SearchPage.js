@@ -72,21 +72,13 @@ const SELECTORS = {
     "input[placeholder*='or' i]"
   ],
 
-  PICK_UP_PLACEHOLDER: [
-    "input[placeholder*='Pick-up']",
-  ],
+  PICK_UP_PLACEHOLDER: "input[placeholder*='Pick-up']",
 
-  DROP_OFF_PLACEHOLDER: [
-    "input[placeholder*='Drop-off']",
-  ],
+  DROP_OFF_PLACEHOLDER: "input[placeholder*='Drop-off']",
 
-  DEPARTURE_PLACEHOLDER: [
-    "input[placeholder*='Depart']",
-  ],
+  DEPARTURE_PLACEHOLDER: "input[placeholder*='Depart']",
 
-  RETURN_PLACEHOLDER: [
-    "input[placeholder*='Return']",
-  ],
+  RETURN_PLACEHOLDER: "input[placeholder*='Return']",
 
   PICK_UP_DATE_INPUT: "[placeholder='Pick-up Date']", //Same locator used for Cars and GroundScope/Transferz
 };
@@ -267,6 +259,11 @@ class SearchPage {
   // Switches to rail search
   async clickRailTab() {
     await this.page.click(SELECTORS.GENERAL_RAIL_TAB);
+  }
+
+  // "Pick-up Date" field (used by Cars and Ground Transport)
+  async clickPickupDateField() {
+    await this.page.click(SELECTORS.PICK_UP_DATE_INPUT);
   }
 }
 

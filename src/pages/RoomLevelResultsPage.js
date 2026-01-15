@@ -1,12 +1,8 @@
-const { waitForText } = require('../utils/wait');
-const { scrollToElement } = require('../utils/dom');
-
 /**
  * Page Object for room-level hotel results.
  */
 const SELECTORS = {
   VIEW_HOTEL_ON_MAP_BUTTON: "button.map-btn.is-paddingless",
-  ADD_TO_TRIP_BUTTON: "button.add-to-trip-btn",
   REFUNDABLE_CHECKBOX_LABEL: "label.el-checkbox",
   REFUNDABLE_CHECKBOX_INNER: ".el-checkbox__inner",
   REFUNDABLE_CHECKBOX_INPUT: "input.el-checkbox__original",
@@ -23,12 +19,6 @@ class RoomLevelResultsPage {
     await this.page
       .locator(SELECTORS.VIEW_HOTEL_ON_MAP_BUTTON, { hasText: 'View hotel on map' })
       .waitFor({ state: 'visible' });
-  }
-
-  /** Ensures Add to trip buttons are visible and clickable */
-  async waitForAddToTripText() {
-    await scrollToElement(this.page, SELECTORS.ADD_TO_TRIP_BUTTON);
-    await waitForText(this.page, SELECTORS.ADD_TO_TRIP_BUTTON, "Add to trip");
   }
 
   /**
@@ -60,13 +50,6 @@ class RoomLevelResultsPage {
       .locator(SELECTORS.REFUNDABLE_TAG)
       .first()
       .waitFor({ state: 'visible' });
-  }
-
-  /** Adds the first available room to the trip */
-  async clickAddToTripTextFirstRoom() {
-    await scrollToElement(this.page, SELECTORS.ADD_TO_TRIP_BUTTON);
-    await waitForText(this.page, SELECTORS.ADD_TO_TRIP_BUTTON, "Add to trip");
-    await this.page.locator(SELECTORS.ADD_TO_TRIP_BUTTON).first().click();
   }
 }
 

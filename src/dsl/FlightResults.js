@@ -1,6 +1,6 @@
 const FlightResultsPage = require('../pages/FlightResultsPage');
 const CartPage = require('../pages/CartPage');
-const Cart = require('./Cart');
+const Results = require('./Results');
 
 /**
  * FlightResults DSL
@@ -40,14 +40,12 @@ const FlightResults = {
    * not UI details.
    */
   async addFirstFlightToCart(page) {
-    const flightResultsPage = new FlightResultsPage(page);
     const cartPage = new CartPage(page);
 
-    await flightResultsPage.waitForAddToTripText();
-    await flightResultsPage.clickAddToTripFirstFlight();
+    await Results.waitAndClickAddToTripButton(page);
 
     // Some suppliers show a conflict modal; handle it defensively
-    await Cart.clickProceedConflictQuoteModal(page);
+    await Results.clickProceedConflictQuoteModal(page);
 
     // Ensure the flight is now present in the cart
     await cartPage.waitForPendingBookingText();
@@ -56,9 +54,9 @@ const FlightResults = {
   },
 
   async selectOneSegmentBySchedule(page) {
-    const flightResultsPage = new FlightResultsPage(page);  
-    await flightResultsPage.waitForSelectText();
-    await flightResultsPage.clickAddToTripFirstFlight();
+    await Results.waitAndClickSelectButton(page);
+
+    return { selected: true };
   },
 
   async selectSegmentsBySchedule(page) {

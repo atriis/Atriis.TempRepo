@@ -11,7 +11,6 @@ const { getText } = require('../utils/dom');
  * - no assertions
  */
 const SELECTORS = {
-  PROCEED_BUTTON: "button:has-text('Proceed')",
   TERMS_CHECKBOX: ".el-checkbox__inner",
   PROCEED_TO_CHECKOUT_TEXT: ".btn-container span",
   PENDING_BOOKING_LABEL: ".app-label",
@@ -22,31 +21,7 @@ class CartPage {
   constructor(page) {
     this.page = page;
   }
-
-  /**
-   * Handles the "Conflicting Quotes" modal if it appears.
-   *
-   * Returns:
-   * - true  → modal was shown and handled
-   * - false → modal did not appear
-   */
-  async handleConflictQuoteModalIfVisible() {
-    const proceedButton = this.page.locator(SELECTORS.PROCEED_BUTTON).first();
-
-    try {
-      // Short wait: if not visible, assume modal did not appear
-      await proceedButton.waitFor({ state: 'visible', timeout: 8000 });
-    } catch {
-      return false;
-    }
-
-    await proceedButton.click();
-
-    // Extra wait kept for UI stability
-    await this.page.waitForTimeout(1000);
-    return true;
-  }
-
+  
   /**
    * Accepts Terms & Conditions.
    * Required before checkout is enabled.

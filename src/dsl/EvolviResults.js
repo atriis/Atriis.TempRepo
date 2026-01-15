@@ -1,4 +1,5 @@
 const EvolviResultsPage = require('../pages/EvolviResultsPage');
+const Results = require('./Results');
 
 /**
  * EvolviResults DSL
@@ -13,20 +14,9 @@ const EvolviResults = {
 
     await resultsPage.waitForSuggestedFaresText();
     await resultsPage.clickCheapestSuggestedFareOption();
-    await resultsPage.waitForAddToTripButton();
-    await resultsPage.clickAddToTripButton();
+    await Results.waitAndClickAddToTripButton(page);
 
     return { selected: true };
-  },
-
-  /** Adds the currently selected Evolvi option to the trip */
-  async clickAddToTripEvolvi(page) {
-    const resultsPage = new EvolviResultsPage(page);
-
-    await resultsPage.waitForAddToTripButton();
-    await resultsPage.clickAddToTripButton();
-
-    return { workflowCompleted: true, selected: true };
   },
 
   /**

@@ -1,36 +1,51 @@
-const { waitForText } = require('../utils/wait');
+const { SELECTORS: RESULTS_SELECTORS } = require('./ResultsPage');
 
-/**
- * Page Object for hotel-level search results.
- * Handles interactions at the property (hotel) list level.
- */
+// Centralized selectors for easy maintenance
 const SELECTORS = {
-  VIEW_RATES_LINK: ".hotel-list > :nth-child(1) .extra-info a",
-  VIEW_RATES_BUTTON: ".hotel-list > :nth-child(1) .btn--primary"
+  RESULTS_BUTTON: RESULTS_SELECTORS.RESULTS_BUTTON,
 };
 
+/**
+ * HotelLevelResultsPage
+ *
+ * Low-level UI interactions on hotel-level results.
+ * No logging, no business decisions.
+ */
 class HotelLevelResultsPage {
   constructor(page) {
     this.page = page;
   }
 
-  /**
-   * Waits until hotel results are loaded.
-   * "View rates" indicates the hotel list is ready.
-   */
-  async waitForViewRatesText() {
-    await waitForText(
-      this.page,
-      SELECTORS.VIEW_RATES_LINK,
-      "View rates"
-    );
+  /** Scrolls to the first "View rates" button */
+  async scrollToFirstViewRatesButton() {
+    await this.page.waitForTimeout(4000);
+    await this.page
+      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
+      .first()
+      .scrollIntoViewIfNeeded();
   }
 
-  /**
-   * Opens room-level results for the first hotel.
-   */
-  async clickViewRatesButtonFirstHotel() {
-    await this.page.click(SELECTORS.VIEW_RATES_BUTTON);
+  /** Waits until the "View rates" button is visible */
+  async waitForViewRatesText() {
+    // Scroll to the button first to ensure it's in view
+    await this.page.waitForTimeout(500);
+    await this.scrollToFirstViewRatesButton();
+
+    await this.page
+      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
+      .first()
+      .waitFor({ state: 'visible', timeout: 15000 });
+
+    // Extra wait kept for UI stability
+    await this.page.waitForTimeout(4000);
+  }
+
+  /** Clicks the first available "View rates" button */
+  async clickFirstViewRatesButton() {
+    await this.page
+      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
+      .first()
+      .click();
   }
 }
 

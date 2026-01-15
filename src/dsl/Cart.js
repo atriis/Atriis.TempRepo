@@ -11,17 +11,6 @@ const CartPage = require('../pages/CartPage');
  */
 const Cart = {
   /**
-   * Handles the "Conflicting Quotes" modal if it appears.
-   * Safe to call even if no modal is shown.
-   */
-  async clickProceedConflictQuoteModal(page) {
-    const cartPage = new CartPage(page);
-
-    const proceeded = await cartPage.handleConflictQuoteModalIfVisible();
-    return { proceeded };
-  },
-
-  /**
    * Accepts terms and proceeds to checkout.
    * Used by Flights, Hotels and Cars.
    */

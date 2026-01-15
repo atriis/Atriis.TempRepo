@@ -1,6 +1,6 @@
 const FlightPricingPage = require('../pages/FlightPricingPage');
 const CartPage = require('../pages/CartPage');
-const Cart = require('./Cart');
+const Results = require('./Results');
 
 /**
  * FlightResults DSL
@@ -18,7 +18,7 @@ const FlightPricing = {
     await flightPricingPage.clickAddToTripYourSelection();
 
     // Some suppliers show a conflict modal; handle it defensively
-    await Cart.clickProceedConflictQuoteModal(page);
+    await Results.clickProceedConflictQuoteModal(page);
 
     // Ensure the flight is now present in the cart
     await cartPage.waitForPendingBookingText();

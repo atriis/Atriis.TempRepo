@@ -5,7 +5,6 @@ const SELECTORS = {
   OUTBOUND_TEXT: 'h3',
   SUGGESTED_FARES_TEXT: '.price-container.mb-5 .desc',
   CHEAPEST_SUGGESTED_FARE: '.suggested-btn .app-price',
-  ADD_TO_TRIP_BUTTON: '.btn.btn--primary'
 };
 
 /**
@@ -39,24 +38,6 @@ class EvolviResultsPage {
   async clickCheapestSuggestedFareOption() {
     await this.page
       .locator(SELECTORS.CHEAPEST_SUGGESTED_FARE)
-      .first()
-      .click();
-  }
-
-  /** Waits until "Add to trip" button is ready */
-  async waitForAddToTripButton() {
-    await waitForText(
-      this.page,
-      SELECTORS.ADD_TO_TRIP_BUTTON,
-      'Add to trip'
-    );
-    await this.page.waitForTimeout(4000);
-  }
-
-  /** Clicks the "Add to trip" button */
-  async clickAddToTripButton() {
-    await this.page
-      .locator(SELECTORS.ADD_TO_TRIP_BUTTON)
       .first()
       .click();
   }

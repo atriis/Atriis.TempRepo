@@ -10,10 +10,10 @@ const HotelLevelResults = {
    * Selects the first hotel and navigates to room-level results.
    */
   async clickFirstHotelOption(page) {
-    const hotelResultsPage = new HotelLevelResultsPage(page);
+    const hotelLevelResultsPage = new HotelLevelResultsPage(page);
 
-    await hotelResultsPage.waitForViewRatesText();
-    await hotelResultsPage.clickViewRatesButtonFirstHotel();
+    await hotelLevelResultsPage.waitForViewRatesText();
+    await hotelLevelResultsPage.clickFirstViewRatesButton();
 
     return { selected: true };
   },
