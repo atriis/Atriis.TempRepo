@@ -15,11 +15,11 @@ test.describe('[@regression] Add Round Trip Flight to Cart Flow', () => {
     console.log('Step 2: Add traveller - I am the traveller');
     await Search.addTravellerImTheTraveller(page);
 
-    // Step 3: Search round-trip PAR → SEA (HARDCODED ROUTE)
-    console.log('Step 3: Search round-trip flight PAR → SEA');
+    // Step 3: Search round-trip PAR → AMS (HARDCODED ROUTE)
+    console.log('Step 3: Search round-trip flight PAR → AMS');
     await FlightSearch.searchFlightRoundTrip(page, {
       from: 'PAR',
-      to: 'SEA',
+      to: 'AMS',
     });
 
     // Step 4: Add first flight and handle conflict modal if appears

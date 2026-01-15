@@ -1,10 +1,10 @@
-const { test, expect } = require('../../../fixtures/supplierTest');
+const { test, expect } = require('../../../../fixtures/supplierTest');
 
-const Search = require('../../../../src/dsl/Search');
-const HotelSearch = require('../../../../src/dsl/HotelSearch');
-const HotelLevelResults = require('../../../../src/dsl/HotelLevelResults');
-const RoomLevelResults = require('../../../../src/dsl/RoomLevelResults');
-const Cart = require('../../../../src/dsl/Cart');
+const Search = require('../../../../../src/dsl/Search');
+const HotelSearch = require('../../../../../src/dsl/HotelSearch');
+const HotelLevelResults = require('../../../../../src/dsl/HotelLevelResults');
+const RoomLevelResults = require('../../../../../src/dsl/RoomLevelResults');
+const Cart = require('../../../../../src/dsl/Cart');
 
 test.describe('[@regression] Hotel Add To Cart Multiple Nights', () => {
   test('[@priority:critical] Hotel Add To Cart – Should complete full hotel add to cart flow for multiple nights', async ({ newTripPage }) => {
