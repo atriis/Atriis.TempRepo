@@ -98,21 +98,6 @@ function createProjectsForProduct({ product, testDir, suppliers }) {
   }));
 }
 
-function createRailProjects({ suppliers }) {
-  return suppliers.map(s => ({
-    name: `rails:${s.name}`,
-    testDir: `tests/regression/rails/${s.provider}`,
-    testMatch: '**/*.spec.js',
-    use: {
-      channel: 'chrome',
-      supplierContext: {
-        provider: s.provider,
-        userKey: s.userKey,
-      },
-    },
-  }));
-}
-
 Object.entries(providers).forEach(([groupName, list]) => {
   assertProvidersExist(list, groupName);
 });
@@ -254,10 +239,64 @@ module.exports = defineConfig({
       provider: 'ratehawk',
     }),
 
+    defaultProject({
+      name: 'hotels:amadeus',
+      testDir: 'tests/regression/hotels/gds/amadeus',
+      provider: 'amadeus',
+    }),
+
+    defaultProject({
+      name: 'hotels:sabre',
+      testDir: 'tests/regression/hotels/gds/sabre',
+      provider: 'sabre',
+    }),
+
+    defaultProject({
+      name: 'hotels:galileo',
+      testDir: 'tests/regression/hotels/gds/galileo',
+      provider: 'galileo',
+    }),
+
     ...createProjectsForProduct({
       product: 'hotels-cross-supplier',
       testDir: 'tests/regression/hotels/cross-supplier',
       suppliers: suppliersByGroup.hotelsAll,
+    }),
+
+    defaultProject({
+      name: 'hotels:expedia',
+      testDir: 'tests/regression/hotels/expedia',
+      provider: 'expedia',
+    }),
+
+    defaultProject({
+      name: 'hotels:bookingcom',
+      testDir: 'tests/regression/hotels/booking-com',
+      provider: 'bookingcom',
+    }),
+
+    defaultProject({
+      name: 'hotels:ratehawk',
+      testDir: 'tests/regression/hotels/ratehawk',
+      provider: 'ratehawk',
+    }),
+
+    defaultProject({
+      name: 'hotels:ehotel',
+      testDir: 'tests/regression/hotels/ehotel',
+      provider: 'ehotel',
+    }),
+
+    defaultProject({
+      name: 'hotels:premierinn',
+      testDir: 'tests/regression/hotels/premier-inn',
+      provider: 'premierinn',
+    }),
+
+    defaultProject({
+      name: 'hotels:travelodge',
+      testDir: 'tests/regression/hotels/travelodge',
+      provider: 'travelodge',
     }),
 
     defaultProject({
@@ -270,6 +309,54 @@ module.exports = defineConfig({
       product: 'cars-cross-supplier',
       testDir: 'tests/regression/cars/cross-supplier',
       suppliers: suppliersByGroup.carsAll,
+    }),
+
+    defaultProject({
+      name: 'cars:sunny',
+      testDir: 'tests/regression/cars/sunny',
+      provider: 'sunny',
+    }),
+
+    defaultProject({
+      name: 'rails:benerail',
+      testDir: 'tests/regression/rails/benerail',
+      provider: 'benerail',
+    }),
+
+    defaultProject({
+      name: 'rails:amtrak',
+      testDir: 'tests/regression/rails/amtrak',
+      provider: 'amtrak',
+    }),
+
+    defaultProject({
+      name: 'rails:evolvi',
+      testDir: 'tests/regression/rails/evolvi',
+      provider: 'evolvi',
+    }),
+
+    defaultProject({
+      name: 'groundtransport:groundscope',
+      testDir: 'tests/regression/ground-transportation/groundscope',
+      provider: 'groundscope',
+    }),
+
+    defaultProject({
+      name: 'groundtransport:transferz',
+      testDir: 'tests/regression/ground-transportation/transferz',
+      provider: 'transferz',
+    }),
+
+    ...createProjectsForProduct({
+      product: 'groundtransport-cross-supplier',
+      testDir: 'tests/regression/ground-transportation/cross-supplier',
+      suppliers: suppliersByGroup.groundTransport,
+    }),
+
+    defaultProject({
+      name: 'parking:ukparking',
+      testDir: 'tests/regression/parking',
+      provider: 'ukparking',
     }),
   ],
 });
