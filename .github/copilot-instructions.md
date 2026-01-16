@@ -225,4 +225,9 @@ fix(login): prevent crash when token expires
 
 ## Guiding Principle
 
-> If a junior QA reads this code, they should understand **what happens**, **where it happens**, and **why it exists**—without needing to ask.
+> If a non-developer QA engineer reads this code, they should understand **what happens**, **where it happens**, and **why it exists**—without needing to ask.
+
+This means:
+- Every class and public method must have a brief comment explaining its purpose.
+- Non-obvious logic must include a `why` comment (not a restatement of the code).
+- Code should never require tribal knowledge to be understood.
