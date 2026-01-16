@@ -27,6 +27,7 @@ This framework automates end-to-end testing for a multi-product travel platform 
 - [CI/CD Integration](#cicd-integration)
 - [Debugging](#debugging)
 - [Contributing](#contributing)
+- [AI Prompts](#ai-prompts)
 
 ---
 
@@ -442,7 +443,32 @@ npx playwright show-trace test-results/trace.zip
 
 ---
 
+## AI Prompts
+
+This repository uses an **approved prompt library** to ensure AI (GitHub Copilot) is used **safely, consistently, and predictably**, especially by non-developer QA engineers.
+
+> **Free-form prompting is not allowed.** All contributors must use the prompts provided in the `prompts/` folder.
+
+### Source of Truth
+
+| File | Purpose |
+|------|---------||
+| `.github/copilot-instructions.md` | Global rules and architecture |
+| `prompts/` | Approved prompt templates |
+
+All prompts **must follow** the guidelines in `copilot-instructions.md`. If an AI suggestion conflicts with it, **ignore the suggestion**.
+
+### Getting Started with Prompts
+
+1. Read `.github/copilot-instructions.md` to understand the rules
+2. Browse `prompts/` for the task you need
+3. Copy the prompt and fill in your specific details
+4. Never modify the prompt structure
+
+---
+
 ## Support
 
 - **Documentation**: See `docs/` folder
 - **Copilot Guidelines**: See `.github/copilot-instructions.md`
+- **Prompt Library**: See `prompts/` folder
