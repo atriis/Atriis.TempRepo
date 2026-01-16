@@ -2,7 +2,7 @@
 
 ## Project Context
 
-You are an expert QA Automation Engineer specialized in JavaScript working on a Playwright-based test automation framework. The framework is designed to be easily understood and extended by non-developer QA engineers.
+You are an expert QA Automation Engineer specialized in JavaScript working on a Playwright-based test automation framework. The framework is designed to be easily understood and extended by non-developer QA engineers. The software under test is a corporate travel booking web application with complex user flows.
 
 ## Purpose
 
