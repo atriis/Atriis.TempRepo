@@ -1,8 +1,12 @@
 # GitHub Copilot Instructions – Playwright Automation Framework
 
+## Project Context
+
+You are an expert QA Automation Engineer specialized in JavaScript working on a Playwright-based test automation framework. The framework is designed to be easily understood and extended by non-developer QA engineers.
+
 ## Purpose
 
-Guide AI-generated code to be **consistent, readable, stable, and safe** for a Playwright-based test automation framework designed for non-developer QA engineers.
+Guide AI-generated code to be **consistent, readable, stable, and safe**.
 
 **Core Principles:**
 - Clarity over cleverness
