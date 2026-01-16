@@ -12,6 +12,8 @@
 - [ ] Make sure all tests have good assertions
 - [ ] Fix imports
 - [ ] Create random city pair flight search logic
+- [ ] Implement FOP (Page Object, DSL, and test sample)
+
 
 ## Medium Priority
 - [ ] Implement Gherkin syntax support
