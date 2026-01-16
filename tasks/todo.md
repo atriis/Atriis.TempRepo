@@ -8,6 +8,8 @@
 - [ ] Create flight multi-city flow/test
 - [ ] Remove all hardcoded timeouts from DSL
 - [ ] Create a Base Page with common actions (clicks, waits, etc.) — needs research for best approach
+- [ ] Create a 'Cancel Trip' method that throws error (to use in GDS trips)
+- [ ] Make sure all tests have good assertions
 
 ## Medium Priority
 - [ ] Implement Gherkin syntax support
@@ -23,6 +25,6 @@
 - [ ] Implement Administration (Page Object, DSL, and test sample)
 - [ ] Using the prompts library and test cases from Azure, create new tests
 
-## GENERAL QUESTIONS
+## General Questions
 - Locators on top of the page or centralized in a specific file?
 - `data-testid` attribute: how should we handle this? Open bugs so developers can add them over time?
