@@ -249,6 +249,56 @@ async function loginWithSupplier({ page, testInfo }) {
 }
 ```
 
+### Fixture Selection Guide
+
+Use this decision tree to choose the correct fixture:
+
+```
+What type of test is this?
+│
+├── GENERAL test (tests/regression/*/general/)
+│   └── Use: newTripPage
+│       User doesn't matter, runs with default supplier
+│
+├── CROSS-SUPPLIER test (tests/regression/*/cross-supplier/)
+│   └── Use: newTripPage
+│       Runs once per supplier, user selected automatically
+│
+└── SUPPLIER-SPECIFIC test (tests/regression/*/gds/amadeus/, etc.)
+    └── Do different tests need different users?
+        ├── NO  → Use: newTripPage (simpler, uses user_one)
+        └── YES → Use: newTripPageAs('user_key')
+```
+
+### Available Fixtures
+
+| Fixture | Purpose | Returns |
+|---------|---------|--------|
+| `newTripPage` | Login + start new trip | Page at trip screen |
+| `loggedInPage` | Login only | Page at dashboard |
+| `newTripPageAs` | Login as specific user + trip | Function (call with user key) |
+| `loggedInPageAs` | Login as specific user only | Function (call with user key) |
+
+### Fixture Usage Examples
+
+```javascript
+// General or cross-supplier tests (most common)
+test('Book flight', async ({ newTripPage }) => {
+  const page = newTripPage;
+  await Search.addTravellerImTheTraveller(page);
+  // ...
+});
+
+// Supplier-specific tests needing different users
+test('Traveler books', async ({ newTripPageAs }) => {
+  const page = await newTripPageAs('user_one');
+});
+
+test('Approver reviews', async ({ newTripPageAs }) => {
+  const page = await newTripPageAs('user_two');
+});
+```
+
 ---
 
 ## Getting Started

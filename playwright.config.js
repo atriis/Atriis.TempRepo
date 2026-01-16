@@ -72,6 +72,14 @@ function assertProvidersExist(providerList, groupName) {
   );
 }
 
+/**
+ * Generates all user combinations for a provider list.
+ * Used for supplier-specific tests where multiple users per supplier are needed.
+ *
+ * Example output for ['amadeus'] with user_one and user_two:
+ *   [{ provider: 'amadeus', userKey: 'user_one', name: 'amadeus-user-one' },
+ *    { provider: 'amadeus', userKey: 'user_two', name: 'amadeus-user-two' }]
+ */
 function autoGenerateSuppliers(providerList) {
   return providerList.flatMap(provider => {
     const userKeys = Object.keys(config.users?.[provider] || {});
@@ -80,6 +88,27 @@ function autoGenerateSuppliers(providerList) {
       userKey,
       name: `${provider}-${slugify(userKey)}`,
     }));
+  });
+}
+
+/**
+ * Generates one project per supplier using only the first available user.
+ * Used for cross-supplier tests where we need coverage across suppliers,
+ * not across multiple users within the same supplier.
+ *
+ * Example output for ['amadeus', 'sabre']:
+ *   [{ provider: 'amadeus', userKey: 'user_one', name: 'amadeus' },
+ *    { provider: 'sabre', userKey: 'user_one', name: 'sabre' }]
+ */
+function autoGenerateSuppliersOneUserEach(providerList) {
+  return providerList.map(provider => {
+    const userKeys = Object.keys(config.users?.[provider] || {});
+    const firstUserKey = userKeys[0] || 'user_one';
+    return {
+      provider,
+      userKey: firstUserKey,
+      name: provider,
+    };
   });
 }
 
@@ -102,10 +131,19 @@ Object.entries(providers).forEach(([groupName, list]) => {
   assertProvidersExist(list, groupName);
 });
 
+// All user combinations per supplier (for supplier-specific tests)
 const suppliersByGroup = Object.fromEntries(
   Object.entries(providers).map(([groupName, list]) => [
     groupName,
     autoGenerateSuppliers(list),
+  ])
+);
+
+// One user per supplier (for cross-supplier tests)
+const suppliersOneUserByGroup = Object.fromEntries(
+  Object.entries(providers).map(([groupName, list]) => [
+    groupName,
+    autoGenerateSuppliersOneUserEach(list),
   ])
 );
 
@@ -161,10 +199,11 @@ module.exports = defineConfig({
       provider: 'amadeus',
     }),
 
+    // Cross-supplier: one user per supplier
     ...createProjectsForProduct({
       product: 'flights-cross-supplier',
       testDir: 'tests/regression/flights/cross-supplier',
-      suppliers: suppliersByGroup.flightsAll,
+      suppliers: suppliersOneUserByGroup.flightsAll,
     }),
 
     defaultProject({
@@ -257,10 +296,11 @@ module.exports = defineConfig({
       provider: 'galileo',
     }),
 
+    // Cross-supplier: one user per supplier
     ...createProjectsForProduct({
       product: 'hotels-cross-supplier',
       testDir: 'tests/regression/hotels/cross-supplier',
-      suppliers: suppliersByGroup.hotelsAll,
+      suppliers: suppliersOneUserByGroup.hotelsAll,
     }),
 
     defaultProject({
@@ -305,10 +345,11 @@ module.exports = defineConfig({
       provider: 'sunny',
     }),
 
+    // Cross-supplier: one user per supplier
     ...createProjectsForProduct({
       product: 'cars-cross-supplier',
       testDir: 'tests/regression/cars/cross-supplier',
-      suppliers: suppliersByGroup.carsAll,
+      suppliers: suppliersOneUserByGroup.carsAll,
     }),
 
     defaultProject({
@@ -347,10 +388,11 @@ module.exports = defineConfig({
       provider: 'transferz',
     }),
 
+    // Cross-supplier: one user per supplier
     ...createProjectsForProduct({
       product: 'groundtransport-cross-supplier',
       testDir: 'tests/regression/ground-transportation/cross-supplier',
-      suppliers: suppliersByGroup.groundTransport,
+      suppliers: suppliersOneUserByGroup.groundTransport,
     }),
 
     defaultProject({
