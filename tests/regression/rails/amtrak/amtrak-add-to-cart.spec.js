@@ -1,0 +1,58 @@
+const { test, expect } = require('../../../fixtures/supplierTest');
+
+const Search = require('../../../../src/dsl/Search');
+const AmtrakSearch = require('../../../../src/dsl/AmtrakSearch');
+const Results = require('../../../../src/dsl/Results');
+const Cart = require('../../../../src/dsl/Cart');
+
+test.describe('[@regression] Amtrak Add To Cart Flow', () => {
+  // Test 1: Round Trip Amtrak Add To Cart Flow
+  test('[@priority:critical] Round Trip Amtrak Add To Cart – Should complete full Amtrak round trip add to cart flow', async ({ newTripPage }) => {
+    // Step 1: Login
+    console.log('Step 1: Login + Book a New Trip (fixtures)');
+    const page = newTripPage;
+
+    // Step 2: Add traveler - I'm the traveler
+    console.log('Step 2: Add traveler - I am the traveler');
+    await Search.addTravellerImTheTraveller(page);
+
+    // Step 3: Search round trip NYP → WAS
+    console.log('Step 3: Search round trip Amtrak NYP → WAS');
+    await AmtrakSearch.searchAmtrakRoundTrip(page, 'nypToWas');
+
+    // Step 4: Add Amtrak to trip
+    console.log('Step 4: Add Amtrak to trip');   
+    await Results.clickSelectButtonRoundTripAndClickAddToTrip(page);
+
+    // Step 5: Assert Pending booking
+    console.log('Step 5: Quote is "Pending booking" status');
+    expect(await Cart.isQuotePendingBooking(page)).toBe(true);
+    
+    console.log('Amtrak round trip add to cart flow completed successfully.');
+  });
+
+  // Test 2: One Way Amtrak Add To Cart Flow
+   test('[@priority:critical] One Way Amtrak Add To Cart – Should complete full Amtrak one way add to cart flow', async ({ newTripPage }) => {
+    // Step 1: Login
+    console.log('Step 1: Login + Book a New Trip (fixtures)');
+    const page = newTripPage;
+
+    // Step 2: Add traveler - I'm the traveler
+    console.log('Step 2: Add traveler - I am the traveler');
+    await Search.addTravellerImTheTraveller(page);
+
+    // Step 3: Search one-way NYP → WAS
+    console.log('Step 3: Search one-way Amtrak NYP → WAS');
+    await AmtrakSearch.searchAmtrakOneWay(page, 'nypToWas');
+
+    // Step 4: Add Amtrak to trip
+    console.log('Step 4: Add Amtrak to trip');
+    await Results.clickSelectButtonOneWayAndClickAddToTrip(page);
+
+    // Step 5: Assert Pending booking
+    console.log('Step 5: Quote is "Pending booking" status');
+    expect(await Cart.isQuotePendingBooking(page)).toBe(true);
+
+    console.log('Amtrak one way add to cart flow completed successfully.');
+  });
+});
