@@ -13,6 +13,7 @@
 - [ ] Fix imports
 - [ ] Create random city pair flight search logic
 - [ ] Implement FOP (Page Object, DSL, and test sample)
+- [ ] Review playwright.config file
 
 
 ## Medium Priority
