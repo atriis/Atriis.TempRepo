@@ -98,7 +98,7 @@ jobs:
       - run: npx playwright install --with-deps
 
       - name: Run Sabre Car Tests
-        run: npx playwright test --project=cars:gds:sabre
+        run: npx playwright test --project=cars:sabre
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           # Cars Suppliers
