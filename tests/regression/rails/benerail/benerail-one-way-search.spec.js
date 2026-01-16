@@ -2,8 +2,8 @@ const { test, expect } = require('../../../fixtures/supplierTest');
 
 const Search = require('../../../../src/dsl/Search');
 const BenerailSearch = require('../../../../src/dsl/BenerailSearch');
-const BenerailResults = require('../../../../src/dsl/BenerailResults');
 const Cart = require('../../../../src/dsl/Cart');
+const Results = require('../../../../src/dsl/Results');
 
 test.describe('[@regression] One Way Benerail Search Flow', () => {
   test('[@priority:critical] One Way Benerail Search – Should complete full benerail one way search flow', async ({ newTripPage }) => {
@@ -21,7 +21,7 @@ test.describe('[@regression] One Way Benerail Search Flow', () => {
     
     // Step 4: Add Benerail to trip
     console.log('Step 4: Add Benerail to trip');   
-    await BenerailResults.addBenerailOneWayToTrip(page);
+    await Results.clickSelectButtonOneWayAndClickAddToTrip(page);
 
     // Step 5: Assert Pending booking
     console.log('Step 5: Quote is "Pending booking" status');

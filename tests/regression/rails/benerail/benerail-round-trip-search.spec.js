@@ -2,7 +2,7 @@ const { test, expect } = require('../../../fixtures/supplierTest');
 
 const Search = require('../../../../src/dsl/Search');
 const BenerailSearch = require('../../../../src/dsl/BenerailSearch');
-const BenerailResults = require('../../../../src/dsl/BenerailResults');
+const Results = require('../../../../src/dsl/Results');
 const Cart = require('../../../../src/dsl/Cart');
 
 test.describe('[@regression] Round Trip Benerail Search Flow', () => {
@@ -21,7 +21,7 @@ test.describe('[@regression] Round Trip Benerail Search Flow', () => {
     
     // Step 4: Add Benerail to trip
     console.log('Step 4: Add Benerail to trip');   
-    await BenerailResults.addBenerailRoundtripToTrip(page);
+    await Results.clickSelectButtonRoundTripAndClickAddToTrip(page);
 
     // Step 5: Assert Pending booking
     console.log('Step 5: Quote is "Pending booking" status');
