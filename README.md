@@ -446,4 +446,3 @@ npx playwright show-trace test-results/trace.zip
 
 - **Documentation**: See `docs/` folder
 - **Copilot Guidelines**: See `.github/copilot-instructions.md`
-- **Report Issues**: Create a GitHub issue with reproduction steps
