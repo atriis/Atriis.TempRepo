@@ -15,13 +15,18 @@ function getEnv(name) {
 }
 
 /**
- * Helper to define a single test user.
- * This avoids repeating the same structure everywhere.
+ * Helper to define a single test user with lazy evaluation.
+ * Credentials are only validated when actually accessed,
+ * allowing partial test runs with subset of environment variables.
  */
 function createUser(emailEnvVar) {
   return {
-    email: getEnv(emailEnvVar),
-    password: getEnv('GENERAL_PASSWORD'),
+    get email() {
+      return getEnv(emailEnvVar);
+    },
+    get password() {
+      return getEnv('GENERAL_PASSWORD');
+    },
   };
 }
 
@@ -32,9 +37,14 @@ function createUser(emailEnvVar) {
  * - test users per supplier
  *
  * No test should ever read process.env directly.
+ * 
+ * Note: User credentials use lazy evaluation (getters) so env vars
+ * are only validated when accessed, not at config load time.
  */
 const config = {
-  baseUrl: getEnv('AUTOMATION_APP_BASEURL'),
+  get baseUrl() {
+    return getEnv('AUTOMATION_APP_BASEURL');
+  },
 
   users: {
     amadeus: {
