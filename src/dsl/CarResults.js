@@ -1,4 +1,3 @@
-const CarResultsPage = require('../pages/CarResultsPage');
 const Results = require('./Results');
 
 /**
@@ -11,10 +10,8 @@ const CarResults = {
    * Adds a car to the cart when searching by airport.
    */
   async addCarAirportFromResultsPageToCart(page) {
-    const carResultsPage = new CarResultsPage(page);
 
-    await carResultsPage.waitForCarAddToTripText();
-    await carResultsPage.clickCarAddToTripButton();
+    await Results.waitAndClickAddToTripButton(page);
 
     // Handle optional conflict modal
     await Results.clickProceedConflictQuoteModal(page);
@@ -27,14 +24,11 @@ const CarResults = {
    * This flow includes an extra "Select" step.
    */
   async addCarCityCenterFromResultsPageToCart(page) {
-    const carResultsPage = new CarResultsPage(page);
 
-    await carResultsPage.waitForSelectText();
-    await carResultsPage.clickSelectButton();
+    await Results.waitAndClickSelectButton(page);
+    await Results.waitAndClickAddToTripButton(page);
 
-    await carResultsPage.waitForCarAddToTripText();
-    await carResultsPage.clickCarAddToTripButton();
-
+    // Handle optional conflict modal
     await Results.clickProceedConflictQuoteModal(page);
 
     return { added: true };

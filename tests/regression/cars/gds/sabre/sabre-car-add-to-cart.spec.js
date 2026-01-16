@@ -5,8 +5,8 @@ const CarSearch = require('../../../../../src/dsl/CarSearch');
 const CarResults = require('../../../../../src/dsl/CarResults');
 const Cart = require('../../../../../src/dsl/Cart'); 
 
-test.describe('[@regression][@supplier:sabre] SABRE SPECIFIC', () => {
-  test('[@priority:critical] Sabre Specific', async ({ newTripPage }) => {
+test.describe('[@regression][@supplier:sabre] Sabre – Add Car to Cart from Airport', () => {
+  test('[@priority:critical] Should complete full airport location search and add-to-trip flow successfully', async ({ newTripPage }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPage;
@@ -26,6 +26,8 @@ test.describe('[@regression][@supplier:sabre] SABRE SPECIFIC', () => {
     // Step 5: Assert Pending booking
     console.log('Step 5: Quote is "Pending booking" status');
     expect(await Cart.isQuotePendingBooking(page)).toBe(true);
+
+    console.log('Sabre car add to cart airport location flow completed successfully.');
 
   });
 });

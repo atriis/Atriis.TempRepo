@@ -84,6 +84,42 @@ jobs:
           name: rails-playwright-report
           path: playwright-report/
 
+  sabre-car-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps
+
+      - name: Run Sabre Car Tests
+        run: npx playwright test --project=cars:gds:sabre
+        env:
+          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
+          # Cars Suppliers
+          SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
+          # General
+          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
+
+      - name: Upload Sabre Car Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sabre-car-results
+          path: test-results/
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sabre-car-playwright-report
+          path: playwright-report/
+
   # -----------------------------------------------
   # regression-tests (DISABLED)
   # To re-enable, remove the leading '#' from this job.
@@ -159,7 +195,7 @@ jobs:
 
   summary:
     runs-on: ubuntu-latest
-    needs: [ smoke-tests, rails-tests ]
+    needs: [ smoke-tests, rails-tests, sabre-car-tests ]
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4

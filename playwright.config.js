@@ -353,6 +353,24 @@ module.exports = defineConfig({
     }),
 
     defaultProject({
+      name: 'cars:amadeus',
+      testDir: 'tests/regression/cars/gds/amadeus',
+      provider: 'amadeus',
+    }),
+
+    defaultProject({
+      name: 'cars:sabre',
+      testDir: 'tests/regression/cars/gds/sabre',
+      provider: 'sabre',
+    }),
+
+    defaultProject({
+      name: 'cars:galileo',
+      testDir: 'tests/regression/cars/gds/galileo',
+      provider: 'galileo',
+    }),
+
+    defaultProject({
       name: 'cars:sunny',
       testDir: 'tests/regression/cars/sunny',
       provider: 'sunny',
