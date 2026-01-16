@@ -1,537 +1,449 @@
 # Atriis Automation
 
-**Proof of Concept for UI Test Automation using Playwright + Node.js**
+A production-grade **Playwright + JavaScript** test automation framework for a corporate travel booking platform.
 
-Atriis Automation is a POC framework showcasing how an end-to-end UI test automation solution can be structured using Playwright and JavaScript, based on the TMC2.Framework structure. It demonstrates a DSL layer, Page Object Model, environment‑driven configuration, parallel execution, reporting, and CI/CD integration with GitHub Actions.
+## Overview
 
-## 📚 Table of Contents
+This framework automates end-to-end testing for a multi-product travel platform supporting **flights, hotels, cars, rail, ground transportation, and parking** across multiple suppliers (GDS systems, NDC, LCC, and direct integrations).
 
-- [Project Structure](#-project-structure)
-- [Key Features](#-key-features)
-- [Getting Started](#-getting-started)
-- [Running Tests](#-running-tests)
-- [Architecture & Design](#-architecture--design)
-- [Test Structure](#-test-structure)
-- [Browser Lifecycle & Test Isolation](#-browser-lifecycle--test-isolation)
-- [Test Categories and Traits](#-test-categories-and-traits)
-- [CI/CD (GitHub Actions)](#-cicd-github-actions)
-- [Debugging & Troubleshooting](#-debugging--troubleshooting)
-- [Extending and Improving the Framework](#-extending-and-improving-the-framework)
-- [Status / Scope](#-status--scope)
+### Goals
 
-## 📂 Project Structure
+- **Stability**: Tests fail only when real bugs exist, not due to flaky behavior
+- **Readability**: Tests read like user journeys, accessible to non-developer QA engineers
+- **Scalability**: Same test logic runs across different suppliers, users, and environments
+- **Maintainability**: Clear separation of concerns with Page Object Model + DSL architecture
+
+---
+
+## Table of Contents
+
+- [Project Structure](#project-structure)
+- [Architecture](#architecture)
+- [Cross-Supplier Testing](#cross-supplier-testing)
+- [User-Based Execution](#user-based-execution)
+- [Getting Started](#getting-started)
+- [Running Tests](#running-tests)
+- [Test Organization](#test-organization)
+- [CI/CD Integration](#cicd-integration)
+- [Debugging](#debugging)
+- [Contributing](#contributing)
+
+---
+
+## Project Structure
 
 ```
 atriis-automation/
 ├── src/
-│   ├── config/           # Environment-driven configuration
-│   ├── dsl/              # High-level domain actions (business flows)
-│   ├── pages/            # Page Object Model implementations
-│   ├── utils/            # Cross-cutting helpers (DOM, waits)
-│   └── data/             # Shared test data (e.g., flights.json)
+│   ├── config/               # Environment-driven configuration
+│   │   └── config.js         # Central config: URLs, users per supplier
+│   ├── dsl/                  # Domain Specific Language (business workflows)
+│   │   ├── App.js            # Application-level actions (login, logout)
+│   │   ├── FlightSearch.js   # Flight search workflows
+│   │   ├── FlightResults.js  # Flight results interactions
+│   │   ├── Cart.js           # Cart operations
+│   │   ├── Checkout.js       # Checkout workflows
+│   │   └── ...               # Other product DSLs
+│   ├── pages/                # Page Object Model implementations
+│   │   ├── LoginPage.js      # Login page interactions
+│   │   ├── FlightSearchPage.js
+│   │   ├── FlightResultsPage.js
+│   │   └── ...               # One page per screen
+│   ├── utils/                # Helpers and utilities
+│   │   ├── calendar.helper.js
+│   │   ├── wait.js
+│   │   └── dom.js
+│   └── data/                 # Test data files
+│       ├── flights.json      # Flight routes and defaults
+│       ├── hotels.json
+│       └── ...
 ├── tests/
-│   ├── fixtures/         # Playwright fixtures and context setup
-│   ├── smoke/            # Critical smoke tests
-│   └── regression/       # Comprehensive regression suites
-├── .github/workflows/    # CI/CD workflows (test-suite.yml, dashboard.yml)
-├── test-results/         # Test artifacts (JUnit XML, JSON)
-├── playwright-report/    # Playwright HTML report
-└── .env / .env.example   # Environment configuration template
+│   ├── fixtures/             # Playwright fixtures (test setup)
+│   │   └── supplierTest.js   # Supplier-aware test fixture
+│   ├── smoke/                # Critical path smoke tests
+│   └── regression/           # Comprehensive regression suites
+│       ├── flights/
+│       │   ├── general/      # Supplier-agnostic flight tests
+│       │   ├── cross-supplier/  # Tests that run against all suppliers
+│       │   ├── gds/          # GDS-specific (Amadeus, Sabre, Galileo)
+│       │   ├── ndc/          # NDC-specific tests
+│       │   └── lcc/          # Low-cost carrier tests
+│       ├── hotels/
+│       ├── cars/
+│       ├── rails/
+│       └── ground-transportation/
+├── playwright.config.js      # Playwright configuration with projects
+├── package.json
+└── .env                      # Environment variables (not committed)
 ```
 
-## ✨ Key Features
+---
 
-- **DSL layer** for human-readable scenarios
-  - *Business-focused test language that abstracts technical implementation details*
-  - *Enables non-technical stakeholders to understand test scenarios*
-  - *Promotes reusable, maintainable test flows*
+## Architecture
 
-- **Page Object Model (POM)** with centralized, maintainable selectors
-  - *Encapsulates UI interactions and element selectors in dedicated classes*
-  - *Provides consistent interface for page interactions across all tests*
-  - *Enables easy maintenance when UI changes occur*
+The framework follows a **layered architecture** that separates concerns and enables non-technical QA engineers to write tests:
 
-- **Playwright Fixtures** for reusable, preconfigured contexts (e.g., logged-in users) to simplify test setup and enforce isolation
-  - *Automatic context isolation ensures tests don't interfere with each other*
-  - *Pre-configured user sessions eliminate repetitive login steps*
-  - *Supports multiple user types (Amadeus, Sabre, RateHawk) for comprehensive testing*
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         TESTS                                │
+│   • Scenario orchestration                                   │
+│   • Uses DSL methods only                                    │
+│   • Reads like user journeys                                 │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+┌───────────────────────────▼─────────────────────────────────┐
+│                          DSL                                 │
+│   • Business actions in domain language                      │
+│   • Combines Page Object methods into workflows              │
+│   • Example: FlightSearch.searchFlightOneWay(page, 'route')  │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+┌───────────────────────────▼─────────────────────────────────┐
+│                      PAGE OBJECTS                            │
+│   • UI elements and low-level actions                        │
+│   • Locators declared at top of constructor                  │
+│   • Example: fillEmail(), clickLoginButton()                 │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+┌───────────────────────────▼─────────────────────────────────┐
+│                        UTILS                                 │
+│   • Helpers: calendar, waits, data generators                │
+│   • No UI interaction logic                                  │
+└─────────────────────────────────────────────────────────────┘
+```
 
-- **Environment‑driven configuration** (no secrets committed)
-  - *Secure credential management through environment variables*
-  - *Support for multiple environments (dev, staging, production)*
-  - *Easy configuration switching without code changes*
+### Key Design Decisions
 
-- **Parallel execution** with Playwright projects and worker control
-  - *Configurable worker count for optimal performance (2-4 parallel workers)*
-  - *Separate project configurations for smoke vs regression testing*
-  - *Automatic load balancing across available system resources*
+- **Locators live in Page Objects only** — no separate selector files
+- **DSL never accesses Playwright APIs directly** — only calls Page Object methods
+- **Tests never use raw selectors** — only DSL methods
+- **Each test is independent** — no shared state between tests
 
-- **Reporting**: JUnit XML, JSON, and HTML report
-  - *JUnit XML format for CI/CD integration and test result aggregation*
-  - *Interactive HTML reports with detailed test execution timelines*
-  - *JSON format for programmatic analysis and custom reporting tools*
+---
 
-- **CI/CD ready**: GitHub Actions workflows for smoke/regression jobs and dashboard publishing
-  - *Automated test execution on push/pull request events*
-  - *Artifact collection and retention for debugging failed tests*
-  - *GitHub Pages integration for centralized test result dashboards*
+## Cross-Supplier Testing
 
+The framework enables running the **same test logic across different suppliers** without code duplication.
 
-## 🚀 Getting Started
+### How It Works
+
+1. **Projects define supplier context**: Each Playwright project includes a `supplierContext` with `provider` and `userKey`
+
+2. **Fixtures read supplier context**: The `supplierTest.js` fixture reads the project's supplier context and logs in with the correct user
+
+3. **Tests are supplier-agnostic**: Test code doesn't know which supplier it's running against
+
+```javascript
+// playwright.config.js (simplified)
+projects: [
+  {
+    name: 'flights:amadeus',
+    testDir: 'tests/regression/flights/gds/amadeus',
+    use: {
+      supplierContext: { provider: 'amadeus', userKey: 'user_one' }
+    }
+  },
+  {
+    name: 'flights:sabre',
+    testDir: 'tests/regression/flights/gds/sabre',
+    use: {
+      supplierContext: { provider: 'sabre', userKey: 'user_one' }
+    }
+  }
+]
+```
+
+### Cross-Supplier Test Example
+
+Tests in `cross-supplier/` folders run against **all configured suppliers** for that product:
+
+```javascript
+// tests/regression/flights/cross-supplier/flight-search.spec.js
+const { test, expect } = require('../../../fixtures/supplierTest');
+
+test('Search returns results', async ({ newTripPage }) => {
+  // This test runs for every supplier in the flightsAll group
+  await Search.addTravellerImTheTraveller(newTripPage);
+  await FlightSearch.searchFlightOneWay(newTripPage, 'lhrToDoh');
+  expect(await FlightResults.isResultDisplayed(newTripPage)).toBe(true);
+});
+```
+
+### Supplier Groups
+
+Suppliers are organized by product capability in `playwright.config.js`:
+
+| Group | Suppliers |
+|-------|-----------|
+| `gds` | Amadeus, Sabre, Galileo |
+| `flightsNdc` | AFKL, British, Lufthansa, United, Iberia, American |
+| `flightsLowCost` | Galileo ACH, Amadeus Light Ticketing, Fusion, Ypsilon |
+| `hotels` | Expedia, Booking.com, RateHawk, eHotel, Premier Inn, Travelodge |
+| `cars` | Sunny Cars (+ GDS) |
+| `rails` | Benerail, Amtrak, Evolvi |
+| `groundTransport` | Groundscope, Transferz |
+
+---
+
+## User-Based Execution
+
+Each supplier has one or more test users defined in configuration. The framework automatically selects the correct user based on the project being run.
+
+### Configuration Structure
+
+```javascript
+// src/config/config.js
+const config = {
+  baseUrl: getEnv('AUTOMATION_APP_BASEURL'),
+  users: {
+    amadeus: {
+      user_one: { email: getEnv('AMADEUS_USER_ONE_EMAIL'), password: getEnv('GENERAL_PASSWORD') },
+      user_two: { email: getEnv('AMADEUS_USER_TWO_EMAIL'), password: getEnv('GENERAL_PASSWORD') }
+    },
+    sabre: {
+      user_one: { email: getEnv('SABRE_USER_ONE_EMAIL'), password: getEnv('GENERAL_PASSWORD') }
+    },
+    // ... other suppliers
+  }
+};
+```
+
+### Environment Variables
+
+Create a `.env` file with your credentials:
+
+```env
+AUTOMATION_APP_BASEURL=https://ui.gtp-staging.com
+
+# GDS Users
+AMADEUS_USER_ONE_EMAIL=user@amadeus.com
+AMADEUS_USER_TWO_EMAIL=user2@amadeus.com
+SABRE_USER_ONE_EMAIL=user@sabre.com
+GALILEO_USER_ONE_EMAIL=user@galileo.com
+
+# Hotel Users
+RATEHAWK_USER_ONE_EMAIL=user@ratehawk.com
+EXPEDIA_USER_ONE_EMAIL=user@expedia.com
+BOOKINGCOM_USER_ONE_EMAIL=user@bookingcom.com
+
+# Shared
+GENERAL_PASSWORD=your_password_here
+```
+
+### How Users Are Selected
+
+1. **Project defines supplier context**: `{ provider: 'amadeus', userKey: 'user_one' }`
+2. **Fixture reads context at runtime**: Looks up user in `config.users.amadeus.user_one`
+3. **Login happens automatically**: Fixture logs in before test starts
+
+```javascript
+// tests/fixtures/supplierTest.js
+async function loginWithSupplier({ page, testInfo }) {
+  const supplier = testInfo.project.use?.supplierContext;
+  const { provider, userKey } = supplier;
+  const user = config.users[provider][userKey];
+  
+  await page.goto(config.baseUrl);
+  await App.loginAs(page, user);
+}
+```
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
-- **Node.js** >= 18 (CI uses Node 20)
+- **Node.js** >= 18.0.0
 - **npm** installed
 
 ### Installation
 
 ```bash
+# Clone the repository
 git clone <REPOSITORY_URL>
 cd atriis-automation
+
+# Install dependencies
 npm install
+
+# Install Playwright browsers
+npx playwright install
 ```
 
 ### Environment Setup
 
-Copy `.env.example` to `.env` and fill required values:
+1. Copy the environment template:
+   ```bash
+   cp .env.example .env
+   ```
 
-| Environment Variable | Example Value | Description |
-|---------------------|---------------|-------------|
-| `AUTOMATION_APP_BASEURL` | `https://ui.gtp-staging.com` | Base URL of the application |
-| `AMADEUS_USER_ONE_EMAIL` | `ruimariano@amadeus.com` | Amadeus user one email |
-| `AMADEUS_USER_TWO_EMAIL` | `coreytaylor@amadeusclubdubu.com` | Amadeus user two email |
-| `RATEHAWK_USER_ONE_EMAIL` | `lidi@ratehawk.com` | Ratehawk user email |
-| `SABRE_USER_ONE_EMAIL` | `robsoncruz@sabrecargdg.com` | Sabre user email |
-| `GENERAL_PASSWORD` | `(Secret)` | Shared password for all users |
+2. Fill in the required values in `.env`
 
-## 🎯 Running Tests
+3. Verify configuration loads correctly:
+   ```bash
+   npx playwright test --list
+   ```
+
+---
+
+## Running Tests
 
 ```bash
-# All tests
+# Run all tests
 npx playwright test
 
-# Smoke tests
+# Run smoke tests
 npx playwright test --project=Smoke
 npx playwright test --grep "@smoke"
 
-# Critical priority
+# Run by supplier
+npx playwright test --project="flights:amadeus"
+npx playwright test --project="hotels:ratehawk"
+npx playwright test --project="cars:sunny"
+
+# Run cross-supplier tests
+npx playwright test --project="flights-cross-supplier:*"
+
+# Run by tag
 npx playwright test --grep "priority:critical"
+npx playwright test --grep "@regression"
+npx playwright test --grep-invert "@slow"        # Exclude tag
 
-# Headed mode
-npm run test:headed
+# Run by file or folder
+npx playwright test tests/smoke/smoke.spec.js
+npx playwright test tests/regression/flights/
 
-# Debug mode
-npm run test:debug
+# Debug modes
+npm run test:headed       # See browser
+npm run test:debug        # Step through with DevTools
 
-# Open HTML report
+# View report
 npx playwright show-report
 ```
 
-## 🏗️ Architecture & Design
+### NPM Scripts
 
-**Tests → DSL → Pages → Utils**
+| Script | Description |
+|--------|-------------|
+| `npm run test` | Run all tests |
+| `npm run test:headed` | Run with visible browser |
+| `npm run test:debug` | Run in debug mode |
+| `npm run test:dev` | Run against dev environment |
+| `npm run test:staging` | Run against staging environment |
 
-## 🧩 Test Structure
+---
 
-- **Projects**: Smoke & Regression
-- **Fixtures**: Logged-in contexts per user
-- **Tags**: @smoke, priority:critical
-
-
-## 🔄 Browser Lifecycle & Test Isolation
-
-### Playwright's Automatic Isolation Model
-
-Playwright automatically handles browser lifecycle and test isolation without requiring manual setup or collections like traditional xUnit frameworks.
-
-#### How It Works
-
-**Browser Process Management**
-- Shared browser processes across multiple tests for performance
-- Each test gets a completely isolated browser context
-- Automatic cleanup after each test (cookies, storage, sessions cleared)
-
-**Parallel Execution**
-```javascript
-// playwright.config.js
-workers: process.env.CI ? 2 : 4  // 2-4 parallel workers
-```
-- Tests run concurrently in separate worker processes
-- Each worker maintains isolated browser contexts
-- No cross-test interference or state leakage
-
-**User Fixture Isolation**
-```javascript
-// Pre-authenticated user contexts
-amadeusUserOneTest('test name', async ({ newTripPageAMADEUS_USER_ONE }) => {
-  // Fresh login session for this test only
-});
-
-sabreUserOneTest('test name', async ({ newTripPageSABRE_USER_ONE }) => {
-  // Completely isolated from other user sessions
-});
-```
-
-#### Benefits vs Traditional Approaches
-
-| Feature | Traditional xUnit | Playwright Model |
-|---------|------------------|------------------|
-| **Setup** | Manual browser lifecycle | Automatic context management |
-| **Isolation** | Risk of state leakage | Guaranteed fresh contexts |
-| **Performance** | Sequential or complex sharing | Parallel + optimized browser reuse |
-| **Maintenance** | Collection management overhead | Simple fixture-based approach |
-
-#### Key Advantages
-
-✅ **Zero Configuration**: No browser lifecycle setup required  
-✅ **Guaranteed Isolation**: Each test starts with clean state  
-✅ **Optimal Performance**: Parallel execution with shared browser processes  
-✅ **Reliable CI/CD**: No flaky tests due to state contamination  
-
-#### When This Works Best
-
-- **E2E Testing**: Full user journey scenarios requiring fresh sessions
-- **Login-Dependent Tests**: Multiple user types with authentication requirements  
-- **Parallel CI/CD**: Fast, reliable test execution in continuous integration
-- **Team Development**: Consistent results across different developer environments
-
-#### Limitations to Consider
-
-⚠️ **Fresh Login Cost**: Each test performs complete authentication (higher execution time)  
-⚠️ **No Shared State**: Tests cannot share expensive setup between them  
-⚠️ **Memory Usage**: Multiple browser contexts require more system resources
-
-
-## 🏷️ Test Categories and Traits
-
-### Overview
-
-Playwright supports native test organization through tags and filtering, allowing you to run specific test subsets without external libraries.
+## Test Organization
 
 ### Test Categories
 
-**Smoke Tests**
-- Fast, critical validation of core functionality
-- Run before every deployment
-- Located in `tests/smoke/`
+| Category | Location | Purpose |
+|----------|----------|---------|
+| **Smoke** | `tests/smoke/` | Critical path validation, run before deployments |
+| **Regression** | `tests/regression/` | Comprehensive coverage by product |
+| **Cross-Supplier** | `tests/regression/*/cross-supplier/` | Tests that validate across all suppliers |
+| **Supplier-Specific** | `tests/regression/*/gds/`, `*/ndc/`, etc. | Tests for specific supplier behavior |
 
-**Regression Tests**
-- Comprehensive end-to-end scenarios
-- Full feature coverage testing
-- Located in `tests/regression/`
+### Tagging Convention
 
-### Priority Levels
+Tests use tags in the test name for filtering:
 
-- **Critical**: Must-pass tests for essential workflows
-- **High**: Important functionality, not deployment-blocking
-- **Medium**: Standard coverage for secondary features
-
-### Implementation
-
-**Adding Tags to Tests**
 ```javascript
-// Single tag
-test('[@smoke] User can login successfully', async ({ page }) => {
-  // test implementation
+test.describe('[@smoke] Smoke Tests', () => {
+  test('[@priority:critical] User can login', async ({ page }) => { });
+  test('[@priority:high] User can search flights', async ({ page }) => { });
 });
 
-// Multiple tags
-test('[@smoke][priority:critical] Flight booking end-to-end', async ({ page }) => {
-  // test implementation
+test.describe('[@regression][@supplier:all] Cross-Supplier Tests', () => {
+  test('[@priority:critical] Booking completes', async ({ page }) => { });
 });
 ```
 
-**Running Tagged Tests**
-```bash
-# Run smoke tests only
-npx playwright test --grep "@smoke"
+### Available Tags
 
-# Run critical priority tests
-npx playwright test --grep "priority:critical"
+| Tag | Description |
+|-----|-------------|
+| `@smoke` | Smoke test, fast critical validation |
+| `@regression` | Full regression test |
+| `@priority:critical` | Must pass for deployment |
+| `@priority:high` | Important but not blocking |
+| `@priority:medium` | Standard coverage |
+| `@supplier:all` | Runs against all suppliers |
+| `@supplier:gds` | GDS suppliers only |
+| `@supplier:ndc` | NDC suppliers only |
 
-# Combine multiple filters
-npx playwright test --grep "@smoke.*priority:critical"
+---
 
-# Exclude specific tags
-npx playwright test --grep-invert "@slow"
+## CI/CD Integration
 
-# Use project-based filtering
-npx playwright test --project=Smoke
-```
+### GitHub Actions
 
-### Benefits
+The framework includes workflows for:
 
-✅ **Native Support**: Built into Playwright, no additional dependencies  
-✅ **Flexible Filtering**: Regex-based matching supports complex combinations  
-✅ **CI/CD Integration**: Easy integration with build pipelines  
-✅ **Clear Organization**: Visual test categorization in code and reports
+- **Test Suite**: Runs smoke and regression tests on push/PR
+- **Dashboard**: Generates and publishes test reports
 
-## 🔄 CI/CD (GitHub Actions)
+### Artifacts Generated
 
-- ✅ **Test Suite Workflow**: Runs smoke and regression tests on pushes/PRs to main
-- 📦 **Artifacts**: Uploads JUnit XML, JSON, and Playwright HTML report
-- 📊 **Dashboard**: Generates summary and publishes via GitHub Pages
+| Artifact | Format | Location |
+|----------|--------|----------|
+| Test Results | JUnit XML | `test-results/results.xml` |
+| Test Results | JSON | `test-results/results.json` |
+| HTML Report | Interactive | `playwright-report/` |
+| Screenshots | PNG | `test-results/` (on failure) |
+| Traces | ZIP | `test-results/` (on failure) |
 
-### ⚠️ Important Note
+---
 
-GitHub Pages is not enabled for this repository right now.
+## Debugging
 
-- ✅ Test Suite workflow will run and upload artifacts successfully
-- ✅ Dashboard workflow will generate the HTML dashboard and upload it as an artifact
-- ❌ The final step (actions/deploy-pages) will fail until Pages is enabled
-
-#### Next steps when access is granted
-
-1. Go to **Settings → Pages**
-2. Set **Source** to **GitHub Actions**
-3. Re-run the dashboard workflow or trigger a new test run
-
-After enabling Pages, the dashboard will be published at:
-`https://<OWNER>.github.io/<REPO>/index.html`
-
-## 🎛️ Test Result Artifacts
-
-### Current Implementation
-
-Your project automatically generates comprehensive test artifacts for debugging and analysis:
-
-#### ✅ Screenshots
-```javascript
-// playwright.config.js
-screenshot: 'only-on-failure'
-```
-- **Automatic capture** on test failures for visual debugging
-- **Saved to** `test-results/` folder with timestamp and test name
-- **Format**: PNG images showing exact failure state
-
-#### ✅ Playwright Traces
-```javascript
-// playwright.config.js  
-trace: 'retain-on-failure'
-```
-- **Step-by-step execution traces** for detailed investigation
-- **Interactive timeline** showing actions, network requests, and DOM changes
-- **View with**: `npx playwright show-trace <trace-file>`
-
-#### ✅ Test Execution Results
-```javascript
-// playwright.config.js
-reporter: [
-  ['junit', { outputFile: 'test-results/results.xml' }],
-  ['html', { outputFolder: 'playwright-report' }]
-]
-```
-- **JUnit XML format** for CI/CD integration and reporting tools
-- **Interactive HTML report** with test details, timing, and failure analysis
-- **JSON results** automatically generated for programmatic access
-
-### 📋 Artifact Coverage Status
-
-| Artifact Type | Status | Implementation | Location |
-|---------------|---------|----------------|----------|
-| **Screenshots** | ✅ **Implemented** | Automatic on failure | `test-results/` |
-| **Execution Traces** | ✅ **Implemented** | Playwright traces | `test-results/` |
-| **Test Results** | ✅ **Implemented** | JUnit XML + HTML | `test-results/`, `playwright-report/` |
-| **Coverage Reports** | ❌ **Missing** | *Not implemented* | *N/A* |
-| **Retention Policies** | ❌ **Missing** | *No automatic cleanup* | *N/A* |
-
-### 🚧 Future Enhancements
-
-#### Code Coverage Analysis
-```bash
-# Planned implementation
-npm install --save-dev @playwright/test c8
-# Add coverage collection to playwright.config.js
-# Generate coverage reports in HTML/LCOV formats
-```
-
-#### Artifact Retention Management
-```bash
-# Planned automation
-# Smoke tests: 7-day retention
-# Regression tests: 30-day retention  
-# Automatic cleanup via GitHub Actions or local scripts
-```
-
-### 📖 Using Test Artifacts
+| Issue | Solution |
+|-------|----------|
+| Element not found | Check locators in Page Object, verify timing |
+| Timeout errors | Use explicit waits, check `src/utils/wait.js` |
+| Authentication fails | Verify `.env` credentials, check CI secrets |
+| Flaky tests | Replace hard waits with dynamic waits |
 
 ```bash
-# View latest HTML report
-npx playwright show-report
+# Run with trace recording for investigation
+npx playwright test --trace on path/to/test.spec.js
 
-# Open specific trace file
+# View trace file
 npx playwright show-trace test-results/trace.zip
-
-# CI/CD integration
-# JUnit XML automatically uploaded as artifact in GitHub Actions
 ```
 
-**💡 Benefits**: These artifacts provide comprehensive debugging capabilities, enabling quick root cause analysis of test failures and maintaining high test reliability standards.
+**Artifacts on failure**: Screenshots and traces are auto-captured in `test-results/`
 
+---
 
+## Contributing
 
-## 🛠️ Debugging & Troubleshooting
+### For QA Engineers
 
-### Quick Debug Commands
+1. **Write tests using DSL only** — never use raw selectors
+2. **Follow naming conventions** — `*Page.js`, `*.spec.js`
+3. **Add appropriate tags** — `@smoke`, `@regression`, `@priority:*`
+4. **Keep tests independent** — no shared state between tests
 
-```bash
-# Visual debugging (see browser actions)
-npm run test:headed
+### For Developers
 
-# Step-by-step debugging with DevTools
-npm run test:debug
+1. **Locators in Page Objects only** — top of constructor
+2. **DSL for business workflows** — combine Page Object methods
+3. **Utils for helpers** — no UI logic
+4. **Follow existing patterns** — check similar files first
 
-# Run specific failing test with traces
-npx playwright test --trace on path/to/failing-test.spec.js
+### Code Style
 
-# View latest test report
-npx playwright show-report
-```
+- Methods use verbs: `selectFlight()`, `addPassenger()`
+- Classes use nouns: `SearchPage`, `FlightResults`
+- Constants use UPPER_SNAKE_CASE: `MAX_RETRY_COUNT`
+- Comments explain **why**, not **what**
 
-### Debug Modes
+---
 
-**Headed Mode**
-- Shows browser window during test execution
-- Best for: Understanding test flow and UI interactions
-- Use when: Tests pass locally but fail in CI
+## Support
 
-**Debug Mode** 
-- Pauses execution, opens DevTools
-- Best for: Step-by-step code inspection
-- Use when: Need to examine element states or network calls
-
-**Trace Mode**
-- Records detailed execution timeline
-- Best for: Post-failure analysis
-- Use when: Investigating flaky or intermittent failures
-
-### Common Issues & Solutions
-
-#### ❌ Element Not Found
-```bash
-# Problem: Selector doesn't match any elements
-# Solution: Check Page Object Model selectors
-```
-- Verify selectors in `src/pages/` files
-- Use browser DevTools to test CSS selectors
-- Consider timing issues (element not loaded yet)
-
-#### ⏳ Timeout Errors
-```bash
-# Problem: Actions or waits exceed timeout limits
-# Solution: Use proper wait utilities
-```
-- Check `src/utils/wait.js` for available wait functions
-- Increase timeout for slow operations: `{ timeout: 30000 }`
-- Verify network conditions in CI environment
-
-#### 🔑 Authentication Issues
-```bash
-# Problem: Login failures or session timeouts
-# Solution: Verify environment configuration
-```
-- Check `.env` file has correct credentials
-- Verify CI secrets are properly configured
-- Test individual user fixtures in isolation
-
-#### 🏃‍♂️ Flaky Tests
-```bash
-# Problem: Tests pass sometimes, fail other times
-# Solution: Improve wait strategies
-```
-- Replace hard waits with dynamic waits
-- Use `waitFor()` instead of `setTimeout()`
-- Add retry logic for network-dependent operations
-
-### Debugging Tools
-
-**Screenshots**
-- Automatically captured on test failure
-- Located in `test-results/` folder
-- Show exact UI state when test failed
-
-**Traces**
-- Interactive timeline of test execution
-- View with: `npx playwright show-trace test-results/trace.zip`
-- Shows network requests, console logs, and DOM changes
-
-**Console Logs**
-- Framework includes comprehensive logging
-- All page actions logged with timestamps
-- Check terminal output for execution details
-
-### Environment Debugging
-
-**Local vs CI Differences**
-```bash
-# Test CI configuration locally
-npx playwright test --project=Smoke --workers=2
-
-# Match CI browser settings
-npx playwright test --headed=false
-```
-
-**Configuration Issues**
-- Verify `playwright.config.js` settings
-- Check environment variable loading
-- Validate user fixture configurations
-
-## 🔧 Extending and Improving the Framework
-
-### Core Improvements
-
-#### 1. Implement BasePage Pattern
-
-**Why**: Eliminate code duplication and enforce consistent patterns across all pages.
-
-**Benefits**:
-- Consistency: All pages follow the same approach for navigation and interactions
-- Maintainability: Update one method in BasePage, and all pages benefit  
-- Best Practices: Enforce stable selectors and common functionality
-
-#### 2. Improve Selector Strategy
-
-**Current Issue**: CSS class selectors are fragile and break easily
-**Solution**: Migrate to data-testid attributes
-
-**Implementation Steps**:
-1. Work with developers to add `data-testid` attributes to key elements
-2. Update page objects to use `getByTestId()` instead of CSS selectors
-3. Gradually replace fragile selectors with stable alternatives
-
-#### 3. Add New Page Objects
-
-**Process**: Create page classes that extend BasePage for new application areas
-
-**Requirements**:
-- Follow established naming conventions
-- Encapsulate UI interactions in dedicated methods
-- Include comprehensive console logging for debugging
-- Use consistent element selector patterns
-
-#### 4. Create New DSL Actions
-
-**Purpose**: Build high-level business workflow methods that combine page actions
-
-**Guidelines**:
-- Implement business-focused scenarios in `src/dsl/` folder
-- Combine multiple page methods into logical workflows
-- Follow existing patterns for logging and error handling
-- Focus on readable, maintainable test flows
-
-### Framework Extensions
-
-#### 6. Add New Fixtures *(Leverage Existing System)*
-
-**Current Status**: ✅ Comprehensive user fixture system already implemented
-- `amadeusUserOneTest`, `sabreUserOneTest`, `ratehawkUserOneTest` available
-- Automatic context isolation and login management working
-
-**Future Extensions**:
-- Add new user roles within existing booking systems
-- Create environment-specific user variations
-- Extend fixture system for additional authentication scenarios
-
-## 📌 Status / Scope
-This repository is a Proof of Concept for internal reference only.
+- **Documentation**: See `docs/` folder
+- **Copilot Guidelines**: See `.github/copilot-instructions.md`
+- **Report Issues**: Create a GitHub issue with reproduction steps
