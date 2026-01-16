@@ -5,6 +5,8 @@ const EvolviSearch = require('../../../../src/dsl/EvolviSearch');
 const EvolviResults = require('../../../../src/dsl/EvolviResults');
 const Cart = require('../../../../src/dsl/Cart');
 
+//Note: need to understand why this test is not adding product to cart
+
 test.describe('[@regression] Evolvi One Way Add to Cart Flow', () => {
   test('[@priority:critical] Search and Add Evolvi One Way Train to Cart – Should complete full add to cart flow', async ({ newTripPage }) => {
     // Step 1: Initialize test with logged-in user and new trip page
