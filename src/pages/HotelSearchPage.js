@@ -1,4 +1,4 @@
-const { waitForText } = require('../utils/wait');
+const { waitForText } = require('@utils/wait');
 
 /**
  * Page Object for hotel search form.

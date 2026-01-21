@@ -1,9 +1,9 @@
-const BenerailSearchPage = require("../pages/BenerailSearchPage");
-const SearchPage = require("../pages/SearchPage");
-const benerailRoutes = require("../data/benerail.json");
-const { selectDatesByNthAvailable } = require('../utils/calendar.helper');
-const { resolveRoute } = require('../utils/route.helper');
-const { SEARCH_DEFAULTS } = require('../utils/search.constants');
+const BenerailSearchPage = require("@pages/BenerailSearchPage");
+const SearchPage = require("@pages/SearchPage");
+const benerailRoutes = require("@data/benerail.json");
+const { selectDatesByNthAvailable } = require('@utils/calendar.helper');
+const { resolveRoute } = require('@utils/route.helper');
+const { SEARCH_DEFAULTS } = require('@utils/search.constants');
 
 /**
  * BenerailSearch DSL

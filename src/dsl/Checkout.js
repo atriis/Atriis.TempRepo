@@ -1,5 +1,5 @@
-const CheckoutPage = require('../pages/CheckoutPage');
-const TripOverviewPage = require('../pages/TripOverviewPage');
+const CheckoutPage = require('@pages/CheckoutPage');
+const TripOverviewPage = require('@pages/TripOverviewPage');
 
 /**
  * Checkout DSL

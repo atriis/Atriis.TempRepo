@@ -1,4 +1,4 @@
-const TripOverviewPage = require('../pages/TripOverviewPage');
+const TripOverviewPage = require('@pages/TripOverviewPage');
 
 /**
  * TripOverview DSL

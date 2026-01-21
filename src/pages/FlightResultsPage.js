@@ -1,4 +1,4 @@
-const { waitForText } = require('../utils/wait');
+const { waitForText } = require('@utils/wait');
 
 const SELECTORS = {
   ADD_TO_TRIP_BUTTON: '.btns-container .add-to-trip',

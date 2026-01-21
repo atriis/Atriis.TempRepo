@@ -13,7 +13,7 @@
  * - Centralizing this logic reduces flakiness
  */
 
-const { SELECTORS } = require('../pages/SearchPage');
+const { SELECTORS } = require('@pages/SearchPage');
 
 /**
  * Selects dates using the "nth available day" strategy.

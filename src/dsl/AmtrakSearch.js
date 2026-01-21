@@ -1,9 +1,9 @@
-const AmtrakSearchPage = require("../pages/AmtrakSearchPage");
-const SearchPage = require("../pages/SearchPage");
-const amtrakRoutes = require("../data/amtrak.json");
-const { selectDatesByNthAvailable } = require('../utils/calendar.helper');
-const { resolveRoute } = require('../utils/route.helper');
-const { SEARCH_DEFAULTS } = require('../utils/search.constants');
+const AmtrakSearchPage = require("@pages/AmtrakSearchPage");
+const SearchPage = require("@pages/SearchPage");
+const amtrakRoutes = require("@data/amtrak.json");
+const { selectDatesByNthAvailable } = require('@utils/calendar.helper');
+const { resolveRoute } = require('@utils/route.helper');
+const { SEARCH_DEFAULTS } = require('@utils/search.constants');
 
 /**
  * AmtrakSearch DSL

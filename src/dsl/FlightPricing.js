@@ -1,5 +1,5 @@
-const FlightPricingPage = require('../pages/FlightPricingPage');
-const CartPage = require('../pages/CartPage');
+const FlightPricingPage = require('@pages/FlightPricingPage');
+const CartPage = require('@pages/CartPage');
 const Results = require('./Results');
 
 /**

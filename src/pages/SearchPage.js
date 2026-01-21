@@ -1,7 +1,7 @@
 const {
   typeIntoNthAvailableInput,
   pressTab
-} = require('../utils/dom');
+} = require('@utils/dom');
 
 /**
  * Centralized selectors for the Search screen.

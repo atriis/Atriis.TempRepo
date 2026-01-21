@@ -1,4 +1,4 @@
-const EvolviResultsPage = require('../pages/EvolviResultsPage');
+const EvolviResultsPage = require('@pages/EvolviResultsPage');
 const Results = require('./Results');
 
 /**

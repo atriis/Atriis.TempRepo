@@ -1,4 +1,4 @@
-const { waitForText } = require('../utils/wait');
+const { waitForText } = require('@utils/wait');
 /**
  * Selectors for the Flight Results screen.
  * Kept minimal on purpose.

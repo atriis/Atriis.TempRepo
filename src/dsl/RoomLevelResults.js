@@ -1,5 +1,5 @@
-const RoomLevelResultsPage = require('../pages/RoomLevelResultsPage');
-const ResultsPage = require('../pages/ResultsPage');
+const RoomLevelResultsPage = require('@pages/RoomLevelResultsPage');
+const ResultsPage = require('@pages/ResultsPage');
 
 /**
  * RoomLevelResults DSL

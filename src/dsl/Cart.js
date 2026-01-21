@@ -1,4 +1,4 @@
-const CartPage = require('../pages/CartPage');
+const CartPage = require('@pages/CartPage');
 
 /**
  * Cart DSL

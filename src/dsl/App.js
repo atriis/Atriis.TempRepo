@@ -1,6 +1,6 @@
-const LoginPage = require('../pages/LoginPage');
-const LogoutPage = require('../pages/LogoutPage');
-const MenuPage = require('../pages/MenuPage');
+const LoginPage = require('@pages/LoginPage');
+const LogoutPage = require('@pages/LogoutPage');
+const MenuPage = require('@pages/MenuPage');
 
 /**
  * App (Application Facade)

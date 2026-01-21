@@ -1,5 +1,5 @@
-const { waitForText } = require('../utils/wait');
-const { getText } = require('../utils/dom');
+const { waitForText } = require('@utils/wait');
+const { getText } = require('@utils/dom');
 
 /**
  * CartPage

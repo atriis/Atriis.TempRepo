@@ -1,4 +1,4 @@
-const { waitForText } = require('../utils/wait');
+const { waitForText } = require('@utils/wait');
 
 // Centralized selectors for easy maintenance
 const SELECTORS = {

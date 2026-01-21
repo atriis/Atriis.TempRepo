@@ -1,10 +1,10 @@
-const EvolviSearchPage = require("../pages/EvolviSearchPage");
-const SearchPage = require("../pages/SearchPage");
-const evolviRoutes = require("../data/evolvi.json");
-const { SELECTORS: EVOLVI_SELECTORS } = require('../pages/EvolviSearchPage');
-const { selectDatesByNthAvailable } = require('../utils/calendar.helper');
-const { resolveRoute } = require('../utils/route.helper');
-const { SEARCH_DEFAULTS } = require('../utils/search.constants');
+const EvolviSearchPage = require("@pages/EvolviSearchPage");
+const SearchPage = require("@pages/SearchPage");
+const evolviRoutes = require("@data/evolvi.json");
+const { SELECTORS: EVOLVI_SELECTORS } = require('@pages/EvolviSearchPage');
+const { selectDatesByNthAvailable } = require('@utils/calendar.helper');
+const { resolveRoute } = require('@utils/route.helper');
+const { SEARCH_DEFAULTS } = require('@utils/search.constants');
 
 /**
  * EvolviSearch DSL

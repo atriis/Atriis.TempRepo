@@ -1,4 +1,4 @@
-const MenuPage = require('../pages/MenuPage');
+const MenuPage = require('@pages/MenuPage');
 
 /**
  * Menu DSL

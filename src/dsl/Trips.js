@@ -1,5 +1,5 @@
-const MenuPage = require('../pages/MenuPage');
-const TripsPage = require('../pages/TripsPage');
+const MenuPage = require('@pages/MenuPage');
+const TripsPage = require('@pages/TripsPage');
 
 /**
  * Trips DSL
