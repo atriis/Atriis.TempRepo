@@ -16,9 +16,9 @@ test.describe('[@regression] Benerail Add To Cart Flow', () => {
     console.log('Step 2: Add traveler - I am the traveler');
     await Search.addTravellerImTheTraveller(page);
 
-    // Step 3: Search round trip BEBMI → NLASC
-    console.log('Step 3: Search round trip Benerail BEBMI → NLASC');
-    await BenerailSearch.searchBenerailRoundTrip(page, 'bebmiToNlasc');
+    // Step 3: Search round trip BELEU → BEABC
+    console.log('Step 3: Search round trip Benerail BELEU → BEABC');
+    await BenerailSearch.searchBenerailRoundTrip(page);
 
     // Step 4: Add Benerail to trip
     console.log('Step 4: Add Benerail to trip');
@@ -41,9 +41,9 @@ test.describe('[@regression] Benerail Add To Cart Flow', () => {
     console.log('Step 2: Add traveler - I am the traveler');
     await Search.addTravellerImTheTraveller(page);
 
-    // Step 3: Search one-way BEBMI → NLASC
-    console.log('Step 3: Search one-way Benerail BEBMI → NLASC');
-    await BenerailSearch.searchBenerailOneWay(page, 'bebmiToNlasc');
+    // Step 3: Search one-way BELEU → BEABC
+    console.log('Step 3: Search one-way Benerail BELEU → BEABC');
+    await BenerailSearch.searchBenerailOneWay(page);
 
     // Step 4: Add Benerail to trip
     console.log('Step 4: Add Benerail to trip');

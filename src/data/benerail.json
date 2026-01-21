@@ -19,8 +19,20 @@
     "debhfToBebmi": {
       "from": "DEBHF",
       "to": "BEBMI"
+    },
+    "bebmiToGpspx": {
+      "from": "BEBMI",
+      "to": "GPSPX"
+    },
+    "gpspxToNlasc": {
+      "from": "GPSPX",
+      "to": "NLASC"
+    },
+    "beleuToBeabc": {
+      "from": "BELEU",
+      "to": "BEABC"
     }
 
   },
-  "defaultRoute": "bebmiToNlasc"
+  "defaultRoute": "beleuToBeabc"
 }
