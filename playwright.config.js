@@ -1,6 +1,7 @@
+
 const { defineConfig } = require('@playwright/test');
 const config = require('./src/config/config');
-// Loads environment variables and validates them at startup
+require('module-alias/register');
 
 /**
  * Viewport presets for local flexibility.

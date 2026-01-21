@@ -10,7 +10,6 @@
     "test:dev:headed": "cross-env TEST_ENV=dev playwright test --headed",
     "test:staging": "playwright test",
     "test:staging:headed": "playwright test --headed",
-    
     "test:default": "playwright test --grep='@supplier:default' --project='*:default'",
     "test:all": "playwright test --grep='@supplier:all'",
     "test:gds": "playwright test --grep='@supplier:gds' --project='*:gds:*'",
@@ -32,5 +31,17 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "_moduleAliases": {
+    "@src": "src",
+    "@pages": "src/pages",
+    "@dsl": "src/dsl",
+    "@data": "src/data",
+    "@utils": "src/utils",
+    "@config": "src/config",
+    "@fixtures": "tests/fixtures"
+  },
+  "dependencies": {
+    "module-alias": "^2.2.3"
   }
 }
