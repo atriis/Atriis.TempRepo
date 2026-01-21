@@ -1,11 +1,6 @@
-const { test, expect } = require('../../../fixtures/supplierTest');
+const { test, expect } = require('@fixtures/supplierTest');
 
-const Search = require('../../../../src/dsl/Search');
-const CarSearch = require('../../../../src/dsl/CarSearch');
-const CarResults = require('../../../../src/dsl/CarResults');
-const Cart = require('../../../../src/dsl/Cart'); 
-const Checkout = require('../../../../src/dsl/Checkout');
-const TripOverview = require('../../../../src/dsl/TripOverview');
+const { Search, CarSearch, CarResults, Cart, Checkout, TripOverview } = require('@dsl');
 
 test.describe('[@regression][@supplier:all] Car Booking End-to-End Flow', () => {
   test('[@priority:critical] Car Booking – Should complete full car booking flow with cancellation', async ({ newTripPage }) => {

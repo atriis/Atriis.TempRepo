@@ -1,10 +1,6 @@
-const { test, expect } = require('../../../../fixtures/supplierTest');
+const { test, expect } = require('@fixtures/supplierTest');
 
-const Search = require('../../../../../src/dsl/Search');
-const FlightSearch = require('../../../../../src/dsl/FlightSearch');
-const FlightResults = require('../../../../../src/dsl/FlightResults');
-const FlightPricing = require('../../../../../src/dsl/FlightPricing');
-const Cart = require('../../../../../src/dsl/Cart');
+const { Search, FlightSearch, FlightResults, FlightPricing, Cart } = require('@dsl');
 
 test.describe('[@regression] Add Flight By Schedule to Cart Flow', () => {
   test('[@priority:critical] Add Flight By Schedule to Cart – Should complete full add to cart flow', async ({ newTripPage }) => {

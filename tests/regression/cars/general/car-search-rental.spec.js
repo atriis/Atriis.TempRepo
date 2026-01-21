@@ -1,9 +1,6 @@
-const { test, expect } = require('../../../fixtures/supplierTest');
+const { test, expect } = require('@fixtures/supplierTest');
 
-const Search = require('../../../../src/dsl/Search');
-const CarSearch = require('../../../../src/dsl/CarSearch');
-const CarResults = require('../../../../src/dsl/CarResults');
-const Cart = require('../../../../src/dsl/Cart');
+const { Search, CarSearch, CarResults, Cart } = require('@dsl');
 
 test.describe('[@regression][@supplier:gds] Car City Center Search by Rental Agency', () => {
   test('[@priority:high] Car Search – Should complete full city center car search by rental agency', async ({ newTripPage }) => {

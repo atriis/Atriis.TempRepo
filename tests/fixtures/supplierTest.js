@@ -1,6 +1,6 @@
 const base = require('@playwright/test');
-const config = require('../../src/config/config');
-const App = require('../../src/dsl/App');
+const config = require('@config/config');
+const { App } = require('@dsl');
 
 /*
  * =============================================================================

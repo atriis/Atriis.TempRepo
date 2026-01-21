@@ -1,9 +1,6 @@
-const { test, expect } = require('../../../../fixtures/supplierTest');
+const { test, expect } = require('@fixtures/supplierTest');
 
-const Search = require('../../../../../src/dsl/Search');
-const CarSearch = require('../../../../../src/dsl/CarSearch');
-const CarResults = require('../../../../../src/dsl/CarResults');
-const Cart = require('../../../../../src/dsl/Cart'); 
+const { Search, CarSearch, CarResults, Cart } = require('@dsl'); 
 
 test.describe('[@regression][@supplier:amadeus] AMADEUS SPECIFIC', () => {
   test('[@priority:critical] Amadeus Specific', async ({ newTripPage }) => {

@@ -1,11 +1,6 @@
-const { test, expect } = require('../../../fixtures/supplierTest');
+const { test, expect } = require('@fixtures/supplierTest');
 
-const Search = require('../../../../src/dsl/Search');
-const FlightSearch = require('../../../../src/dsl/FlightSearch');
-const FlightResults = require('../../../../src/dsl/FlightResults');
-const Cart = require('../../../../src/dsl/Cart');
-const Checkout = require('../../../../src/dsl/Checkout');
-const TripOverview = require('../../../../src/dsl/TripOverview');
+const { Search, FlightSearch, FlightResults, Cart, Checkout, TripOverview } = require('@dsl');
 
 test.describe('[@regression] One Way Flight Booking End-to-End Flow', () => {
   test('[@priority:critical] Should complete one-way flight booking and cancellation', async ({ newTripPage }) => {

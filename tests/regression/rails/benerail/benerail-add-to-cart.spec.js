@@ -1,9 +1,6 @@
-const { test, expect } = require('../../../fixtures/supplierTest');
+const { test, expect } = require('@fixtures/supplierTest');
 
-const Search = require('../../../../src/dsl/Search');
-const BenerailSearch = require('../../../../src/dsl/BenerailSearch');
-const Results = require('../../../../src/dsl/Results');
-const Cart = require('../../../../src/dsl/Cart');
+const { Search, BenerailSearch, Results, Cart } = require('@dsl');
 
 test.describe('[@regression] Benerail Add To Cart Flow', () => {
   // Test 1: Round Trip Benerail Add To Cart Flow

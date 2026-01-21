@@ -1,6 +1,6 @@
-const { test } = require('../../../fixtures/supplierTest');
+const { test } = require('@fixtures/supplierTest');
 
-const Search = require('../../../../src/dsl/Search');
+const { Search } = require('@dsl');
 
 test.describe('[@regression][@supplier:sunny] SUNNY SPECIFIC', () => {
   test('[@priority:critical] Sunny Specific Test', async ({ newTripPage }) => {

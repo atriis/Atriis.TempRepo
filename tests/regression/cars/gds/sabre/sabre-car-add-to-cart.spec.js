@@ -1,9 +1,6 @@
-const { test, expect } = require('../../../../fixtures/supplierTest');
+const { test, expect } = require('@fixtures/supplierTest');
 
-const Search = require('../../../../../src/dsl/Search');
-const CarSearch = require('../../../../../src/dsl/CarSearch');
-const CarResults = require('../../../../../src/dsl/CarResults');
-const Cart = require('../../../../../src/dsl/Cart'); 
+const { Search, CarSearch, CarResults, Cart } = require('@dsl'); 
 
 test.describe('[@regression][@supplier:sabre] Sabre – Add Car to Cart from Airport', () => {
   test('[@priority:critical] Should complete full airport location search and add-to-trip flow successfully', async ({ newTripPage }) => {

@@ -1,10 +1,6 @@
-const { test, expect } = require('../fixtures/supplierTest');
+const { test, expect } = require('@fixtures/supplierTest');
 
-const Search = require('../../src/dsl/Search');
-const FlightSearch = require('../../src/dsl/FlightSearch');
-const FlightResults = require('../../src/dsl/FlightResults');
-const Trips = require('../../src/dsl/Trips');
-const App = require('../../src/dsl/App');
+const { Search, FlightSearch, FlightResults, Trips, App } = require('@dsl');
 
 test.describe('[@smoke] Smoke Tests', () => {
   // Test 1: Application Load Test

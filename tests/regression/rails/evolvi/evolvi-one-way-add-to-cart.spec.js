@@ -1,9 +1,6 @@
-const { test, expect } = require('../../../fixtures/supplierTest');
+const { test, expect } = require('@fixtures/supplierTest');
 
-const Search = require('../../../../src/dsl/Search');
-const EvolviSearch = require('../../../../src/dsl/EvolviSearch');
-const EvolviResults = require('../../../../src/dsl/EvolviResults');
-const Cart = require('../../../../src/dsl/Cart');
+const { Search, EvolviSearch, EvolviResults, Cart } = require('@dsl');
 
 //Note: need to understand why this test is not adding product to cart
 

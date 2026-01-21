@@ -1,9 +1,6 @@
-const { test, expect } = require('../../../fixtures/supplierTest');
+const { test, expect } = require('@fixtures/supplierTest');
 
-const Search = require('../../../../src/dsl/Search');
-const GroundTransportSearch = require('../../../../src/dsl/GroundTransportSearch');
-const Results = require('../../../../src/dsl/Results');
-const Cart = require('../../../../src/dsl/Cart');
+const { Search, GroundTransportSearch, Results, Cart } = require('@dsl');
 
 test.describe('[@regression] Search GroundScope Flow', () => {
   test('[@priority:critical] Search GroundScope – Should complete search flow', async ({ newTripPage }) => {

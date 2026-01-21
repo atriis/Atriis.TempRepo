@@ -1,9 +1,6 @@
-const { test, expect } = require('../../../fixtures/supplierTest');
+const { test, expect } = require('@fixtures/supplierTest');
 
-const Search = require('../../../../src/dsl/Search');
-const AmtrakSearch = require('../../../../src/dsl/AmtrakSearch');
-const Results = require('../../../../src/dsl/Results');
-const Cart = require('../../../../src/dsl/Cart');
+const { Search, AmtrakSearch, Results, Cart } = require('@dsl');
 
 test.describe('[@regression] Amtrak Add To Cart Flow', () => {
   // Test 1: Round Trip Amtrak Add To Cart Flow
