@@ -365,6 +365,12 @@ module.exports = defineConfig({
     }),
 
     defaultProject({
+      name: 'cars:gds:sabre',
+      testDir: 'tests/regression/cars/gds/sabre',
+      provider: 'sabre',
+    }),
+
+    defaultProject({
       name: 'cars:galileo',
       testDir: 'tests/regression/cars/gds/galileo',
       provider: 'galileo',
