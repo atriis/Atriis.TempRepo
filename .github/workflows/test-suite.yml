@@ -172,7 +172,7 @@ jobs:
         run: npx playwright test tests/regression/cars/cross-supplier --workers=1
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          # General User
+          # General Users
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
           SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
@@ -193,10 +193,46 @@ jobs:
         with:
           name: cross-supplier-cars-playwright-report
           path: playwright-report/
+  
+  general-hotels-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps
+
+      - name: Run General Hotels Tests
+        run: npx playwright test tests/regression/hotels/general
+        env:
+          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
+          # General User
+          RATEHAWK_USER_ONE_EMAIL: ${{ secrets.RATEHAWK_USER_ONE_EMAIL }}
+          # General
+          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
+
+      - name: Upload General Hotels Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: general-hotels-results
+          path: test-results/
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: general-hotels-playwright-report
+          path: playwright-report/
 
   summary:
     runs-on: ubuntu-latest
-    needs: [ smoke-tests, galileo-car-tests, general-flight-tests, lufthansa-flight-tests, cross-supplier-cars-tests ]
+    needs: [ smoke-tests, galileo-car-tests, general-flight-tests, lufthansa-flight-tests, cross-supplier-cars-tests, general-hotels-tests ]
     if: always()
     steps:
       - name: Download all artifacts
