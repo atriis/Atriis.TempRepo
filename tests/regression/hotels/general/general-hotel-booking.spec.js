@@ -1,6 +1,6 @@
 const { test, expect } = require('@fixtures/supplierTest');
 
-const { Search, HotelSearch, HotelLevelResults, RoomLevelResults, Cart, Checkout, TripOverview } = require('@dsl');
+const { Search, HotelSearch, HotelLevelResults, RoomLevelResults, Cart, Checkout } = require('@dsl');
 
 test.describe('[@regression] Hotel Booking End-to-End Flow', () => {
   test('[@priority:critical] Hotel Booking – Should complete full hotel booking flow with cancellation', async ({ newTripPage }) => {
@@ -42,7 +42,7 @@ test.describe('[@regression] Hotel Booking End-to-End Flow', () => {
     
     // Step 11: Cancel hotel trip with complete validation
     console.log('Step 11: Cancel hotel booking');
-    await TripOverview.cancelTrip(page);
+    await Cart.cancelTripStrict(page);
 
     console.log('Hotel booking and cancellation flow completed successfully.');
   });
