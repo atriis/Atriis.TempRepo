@@ -57,10 +57,6 @@ const providers = {
   parking: ['ukparking'],
 };
 
-function slugify(str) {
-  return String(str).trim().toLowerCase().replace(/_/g, '-');
-}
-
 function assertProvidersExist(providerList, groupName) {
   const missing = providerList.filter(p => !config.users?.[p]);
   if (missing.length === 0) return;
