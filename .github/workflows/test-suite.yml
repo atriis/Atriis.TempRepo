@@ -137,7 +137,7 @@ jobs:
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           # General User
-          AMADEUS_USER_ONE_EMAIL: ${{ secrets.LUFTHANSA_USER_ONE_EMAIL }}
+          LUFTHANSA_USER_ONE_EMAIL: ${{ secrets.LUFTHANSA_USER_ONE_EMAIL }}
           # General
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
