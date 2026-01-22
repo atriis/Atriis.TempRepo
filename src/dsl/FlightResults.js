@@ -1,5 +1,6 @@
 const FlightResultsPage = require('@pages/FlightResultsPage');
 const { CartPage } = require('@pages/CartPage');
+const { ResultsPage } = require('@pages/ResultsPage');
 const Results = require('./Results');
 
 /**
@@ -17,10 +18,10 @@ const FlightResults = {
    * - negative test scenarios
    */
   async isResultDisplayed(page) {
-    const flightResultsPage = new FlightResultsPage(page);
+    const resultsPage = new ResultsPage(page);
 
     try {
-      await flightResultsPage.waitForAddToTripText();
+      await resultsPage.waitForAddToTripText();
       return true;
     } catch {
       return false;
