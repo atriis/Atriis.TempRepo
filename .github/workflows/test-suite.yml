@@ -47,7 +47,7 @@ jobs:
           name: smoke-playwright-report
           path: playwright-report/
 
-  rails-tests:
+  galileo-car-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,142 +60,143 @@ jobs:
 
       - run: npx playwright install --with-deps
 
-      - name: Run Rails (Benerail and Amtrak only) Tests
-        run: npx playwright test --project=rails:benerail --project=rails:amtrak 
-        env:
-          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          # Rail Suppliers
-          BENERAIL_USER_ONE_EMAIL: ${{ secrets.BENERAIL_USER_ONE_EMAIL }}
-          AMTRAK_USER_ONE_EMAIL: ${{ secrets.AMTRAK_USER_ONE_EMAIL }}
-          # General
-          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
-
-      - name: Upload Rails Results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: rails-results
-          path: test-results/
-
-      - name: Upload Playwright Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: rails-playwright-report
-          path: playwright-report/
-
-  sabre-car-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - run: npm ci
-
-      - run: npx playwright install --with-deps
-
-      - name: Run Sabre Car Tests
-        run: npx playwright test --project=cars:sabre
+      - name: Run Galileo Car Tests
+        run: npx playwright test --project=cars:galileo
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           # Cars Suppliers
-          SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
+          GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
           # General
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
-      - name: Upload Sabre Car Results
+      - name: Upload Galileo Car Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sabre-car-results
+          name: galileo-car-results
           path: test-results/
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sabre-car-playwright-report
+          name: galileo-car-playwright-report
           path: playwright-report/
 
-  # -----------------------------------------------
-  # regression-tests (DISABLED)
-  # To re-enable, remove the leading '#' from this job.
-  # -----------------------------------------------
-  # regression-tests:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 20
-  #
-  #     - run: npm ci
-  #
-  #     - run: npx playwright install --with-deps
-  #
-  #     - name: Run Default Regression Tests
-  #       run: npx playwright test --project=flights:default --project=hotels:default --project=cars:default --project=rails:default --workers=4
-  #       env:
-  #         AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-  #         # GDS Suppliers
-  #         AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
-  #         AMADEUS_USER_TWO_EMAIL: ${{ secrets.AMADEUS_USER_TWO_EMAIL }}
-  #         SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
-  #         GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
-  #         # Hotel Suppliers
-  #         RATEHAWK_USER_ONE_EMAIL: ${{ secrets.RATEHAWK_USER_ONE_EMAIL }}
-  #         EXPEDIA_USER_ONE_EMAIL: ${{ secrets.EXPEDIA_USER_ONE_EMAIL }}
-  #         BOOKINGCOM_USER_ONE_EMAIL: ${{ secrets.BOOKINGCOM_USER_ONE_EMAIL }}
-  #         EHOTEL_USER_ONE_EMAIL: ${{ secrets.EHOTEL_USER_ONE_EMAIL }}
-  #         TRAVELODGE_USER_ONE_EMAIL: ${{ secrets.TRAVELODGE_USER_ONE_EMAIL }}
-  #         PREMIER_INN_USER_ONE_EMAIL: ${{ secrets.PREMIER_INN_USER_ONE_EMAIL }}
-  #         # Flights NDC Suppliers
-  #         AFKL_USER_ONE_EMAIL: ${{ secrets.AFKL_USER_ONE_EMAIL }}
-  #         LUFTHANSA_USER_ONE_EMAIL: ${{ secrets.LUFTHANSA_USER_ONE_EMAIL }}
-  #         BRITISH_AIRWAYS_USER_ONE_EMAIL: ${{ secrets.BRITISH_AIRWAYS_USER_ONE_EMAIL }}
-  #         UNITED_USER_ONE_EMAIL: ${{ secrets.UNITED_USER_ONE_EMAIL }}
-  #         AMERICAN_AIRLINES_USER_ONE_EMAIL: ${{ secrets.AMERICAN_AIRLINES_USER_ONE_EMAIL }}
-  #         IBERIA_USER_ONE_EMAIL: ${{ secrets.IBERIA_USER_ONE_EMAIL }}
-  #         # Cars Suppliers
-  #         SUNNY_CARS_USER_ONE_EMAIL: ${{ secrets.SUNNY_CARS_USER_ONE_EMAIL }}
-  #         # Flights Low Cost Suppliers
-  #         FUSION_USER_ONE_EMAIL: ${{ secrets.FUSION_USER_ONE_EMAIL }}
-  #         YPSILON_USER_ONE_EMAIL: ${{ secrets.YPSILON_USER_ONE_EMAIL }}
-  #         AMADEUS_LIGHT_TICKETING_USER_ONE_EMAIL: ${{ secrets.AMADEUS_LIGHT_TICKETING_USER_ONE_EMAIL }}
-  #         GALILEO_ACH_USER_ONE_EMAIL: ${{ secrets.GALILEO_ACH_USER_ONE_EMAIL }}
-  #         # Rail Suppliers
-  #         BENERAIL_USER_ONE_EMAIL: ${{ secrets.BENERAIL_USER_ONE_EMAIL }}
-  #         EVOLVI_USER_ONE_EMAIL: ${{ secrets.EVOLVI_USER_ONE_EMAIL }}
-  #         AMTRAK_USER_ONE_EMAIL: ${{ secrets.AMTRAK_USER_ONE_EMAIL }}
-  #         # Ground Transport Suppliers
-  #         GROUNDSCOPE_USER_ONE_EMAIL: ${{ secrets.GROUNDSCOPE_USER_ONE_EMAIL }}
-  #         TRANSFERZ_USER_ONE_EMAIL: ${{ secrets.TRANSFERZ_USER_ONE_EMAIL }}
-  #         # Parking Suppliers
-  #         UK_PARKING_USER_ONE_EMAIL: ${{ secrets.UK_PARKING_USER_ONE_EMAIL }}
-  #         # General
-  #         GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
-  #
-  #     - name: Upload Regression Results
-  #       uses: actions/upload-artifact@v4
-  #       if: always()
-  #       with:
-  #         name: regression-results
-  #         path: test-results/
-  #
-  #     - name: Upload Playwright Report
-  #       uses: actions/upload-artifact@v4
-  #       if: always()
-  #       with:
-  #         name: regression-playwright-report
-  #         path: playwright-report/
+  general-flight-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps
+
+      - name: Run General Flight Tests
+        run: npx playwright test tests/regression/flights/general
+        env:
+          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
+          # General User
+          AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
+          # General
+          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
+
+      - name: Upload General Flight Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: general-flight-results
+          path: test-results/
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: general-flight-playwright-report
+          path: playwright-report/
+
+  lufthansa-flight-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps
+
+      - name: Run Lufthansa Flight Tests
+        run: npx playwright test tests/regression/flights/lufthansa
+        env:
+          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
+          # General User
+          AMADEUS_USER_ONE_EMAIL: ${{ secrets.LUFTHANSA_USER_ONE_EMAIL }}
+          # General
+          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
+
+      - name: Upload Lufthansa Flight Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lufthansa-flight-results
+          path: test-results/
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lufthansa-flight-playwright-report
+          path: playwright-report/
+
+  cross-supplier-cars-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps
+
+      - name: Run Cross-Supplier Cars Tests
+        run: npx playwright test tests/regression/cars/cross-supplier --workers=1
+        env:
+          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
+          # General User
+          AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
+          GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
+          SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
+          SUNNY_CARS_USER_ONE_EMAIL: ${{ secrets.SUNNY_CARS_USER_ONE_EMAIL }}
+          # General
+          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
+
+      - name: Upload Cross-Supplier Cars Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cross-supplier-cars-results
+          path: test-results/
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cross-supplier-cars-playwright-report
+          path: playwright-report/
 
   summary:
     runs-on: ubuntu-latest
-    needs: [ smoke-tests, rails-tests, sabre-car-tests ]
+    needs: [ smoke-tests, galileo-car-tests, general-flight-tests, lufthansa-flight-tests, cross-supplier-cars-tests ]
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4

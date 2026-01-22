@@ -121,16 +121,13 @@ class TripOverviewPage {
    * Returns true if booking status is "Finalizing".
    * Returns false if status is not found or different.
    */
-  async waitForFinalizingText() {
-    const locator = this.page.locator(SELECTORS.BOOKING_STATUS_LABEL);
 
-    try {
-      await locator.waitFor({ state: 'visible', timeout: 5000 });
-      const text = (await locator.innerText()).trim();
-      return text.toLowerCase().includes('finalizing');
-    } catch {
-      return false;
-    }
+
+  async waitForBookingStatusText({ timeout = 5000 } = {}) {
+  const locator = this.page.locator(SELECTORS.BOOKING_STATUS_LABEL);
+
+  await locator.waitFor({ state: 'visible', timeout });
+  return (await locator.innerText()).trim();
   }
 
   /**

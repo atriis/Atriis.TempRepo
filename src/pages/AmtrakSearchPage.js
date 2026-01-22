@@ -1,4 +1,4 @@
-const SearchPage = require('@pages/SearchPage');
+const { SearchPage } = require('@pages/SearchPage');
 
 // Centralized selectors for easy maintenance
 const SELECTORS = {

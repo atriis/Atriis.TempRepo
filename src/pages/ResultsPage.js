@@ -28,14 +28,12 @@ class ResultsPage {
 
   /** Waits until the "Add to trip" button is visible */
   async waitForAddToTripText() {
-    // Wait for button with "Add to trip" text - use locator for partial match
-    await this.page
+    // Wait for button with "Add to trip" text with extended timeout
+    const addToTripButton = this.page
       .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Add to trip")`)
-      .first()
-      .waitFor({ state: 'visible', timeout: 15000 });
+      .first();
 
-    // Extra wait kept for UI stability
-    await this.page.waitForTimeout(4000);
+    await addToTripButton.waitFor({ state: 'visible', timeout: 60000 });
   }
 
   /** Scrolls to the first "Add to trip" button */
@@ -87,5 +85,7 @@ class ResultsPage {
   }
 }
 
-module.exports = ResultsPage;
-module.exports.SELECTORS = SELECTORS;
+module.exports = {
+  ResultsPage,
+  SELECTORS
+};

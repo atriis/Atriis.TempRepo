@@ -54,7 +54,18 @@ const TripOverview = {
     const tripOverviewPage = new TripOverviewPage(page);
     await tripOverviewPage.waitForConfirmedText();
     return true;
+  },
+
+  async expectBookingStatus(expectedStatus, { timeout = 5000 } = {}) {
+  const actualText = await this.waitForBookingStatusText({ timeout });
+
+  if (!actualText.toLowerCase().includes(expectedStatus.toLowerCase())) {
+    throw new Error(
+      `Expected booking status to be "${expectedStatus}", but got "${actualText}"`
+    );
   }
+}
+
 };
 
 module.exports = TripOverview;

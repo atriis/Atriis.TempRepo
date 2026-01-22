@@ -1,4 +1,4 @@
-const ResultsPage = require('@pages/ResultsPage');
+const { ResultsPage } = require('@pages/ResultsPage');
 
 /**
  * BenerailResults DSL

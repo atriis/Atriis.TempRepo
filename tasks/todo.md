@@ -1,7 +1,7 @@
 # TODO
 
 ## High Priority
-- [ ] Look for code duplication
+- [ ] Look for code duplication (delete Trip Overview Page Object and DSL)
 - [ ] Implement UK Parking page (Page Object, DSL, and test sample)
 - [ ] Implement Manual Quote page (Page Object, DSL, and test sample)
 - [ ] Implement Travel Request page (Page Object, DSL, and test sample)
@@ -10,11 +10,9 @@
 - [ ] Create a Base Page with common actions (clicks, waits, etc.) — needs research for best approach
 - [ ] Create a 'Cancel Trip' method that throws error (to use in GDS trips)
 - [ ] Make sure all tests have good assertions
-- [ ] Fix imports
 - [ ] Create random city pair flight search logic
 - [ ] Implement FOP (Page Object, DSL, and test sample)
 - [ ] Review playwright.config file
-
 
 ## Medium Priority
 - [ ] Implement Gherkin syntax support
@@ -25,6 +23,8 @@
 - [ ] Implement Travel Policy (Page Object, DSL, and test sample)
 - [ ] Implement Reference Fields / Dynamic Profile Fields (Page Object, DSL, and test sample)
 - [ ] Update workflows
+- [ ] Dashboard error
+
 
 ## Low Priority
 - [ ] Implement Administration (Page Object, DSL, and test sample)

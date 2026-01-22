@@ -1,0 +1,37 @@
+{
+  "label": {
+    "pendingBooking": {
+      "status": "Pending booking"
+    },
+    "ticketed": {
+      "status": "Ticketed"
+    },
+    "cancelled": {
+      "status": "Cancelled"
+    },
+    "onHold": {
+      "status": "On hold"
+    },
+    "pendingTicketing": {
+      "status": "Pending ticketing"
+    },
+    "expired": {
+      "status": "Expired"
+    },
+    "bookingError": {
+      "status": "Booking error"
+    },
+    "pendingReissue": {
+      "status": "Pending reissue"
+    },
+    "inProgress": {
+      "status": "In progress"
+    },
+    "finalizing": {
+      "status": "Finalizing"
+    },
+    "ticketingComplete": {
+      "status": "Ticketing complete"
+    }
+  }
+}

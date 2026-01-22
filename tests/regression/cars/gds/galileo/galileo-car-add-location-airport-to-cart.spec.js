@@ -1,9 +1,10 @@
-const { test, expect } = require('@fixtures/supplierTest');
+const { test } = require('@fixtures/supplierTest');
 
 const { Search, CarSearch, CarResults, Cart } = require('@dsl'); 
+const tripStatus = require('@data/tripStatus.json');
 
-test.describe('[@regression][@supplier:galileo] GALILEO SPECIFIC', () => {
-  test('[@priority:critical] Galileo Specific', async ({ newTripPage }) => {
+test.describe('[@regression][@supplier:galileo] Galileo - Add Car From Airport Location To Cart', () => {
+  test('[@priority:critical] Should complete adding a car from airport location to cart', async ({ newTripPage }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPage;
@@ -22,7 +23,7 @@ test.describe('[@regression][@supplier:galileo] GALILEO SPECIFIC', () => {
 
     // Step 5: Assert Pending booking
     console.log('Step 5: Quote is "Pending booking" status');
-    expect(await Cart.isQuotePendingBooking(page)).toBe(true);
+    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
 
   });
 });

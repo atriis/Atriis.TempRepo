@@ -12,7 +12,7 @@ test.describe('[@regression][@supplier:gds] Car City Center Search by Rental Age
     console.log('Step 2: Add traveller - I am the traveller');
     await Search.addTravellerImTheTraveller(page);
 
-/*     // Step 3: Search car in London, UK
+/*  // Step 3: Search car in London, UK
     console.log('Step 3: Search car in London, UK by rental agency Hertz');
     await CarSearch.searchCarByPlaceAndRentalAgency(page, { place: 'London, UK', agencyName: 'Hertz' });
     

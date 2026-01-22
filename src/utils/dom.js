@@ -1,3 +1,4 @@
+//Operates on locators or page elements
 /**
  * DOM Utility Functions
  *

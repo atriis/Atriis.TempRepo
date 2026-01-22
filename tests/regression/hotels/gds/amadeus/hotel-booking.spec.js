@@ -31,9 +31,6 @@ test.describe('[@regression] Hotel Booking End-to-End Flow', () => {
     // Step 7: Accept terms → Proceed to Checkout
     console.log('Step 7: Accept terms and proceed to checkout');
     await Cart.acceptTermsAndConditionsAndProceedToCheckout(page);
-
-    // Step 8: Wait for checkout page and proceed 
-    console.log('Step 8: Proceeding to checkout page');
     
     // Step 9: Book & Finalize 
     console.log('Step 9: Book and finalize booking');

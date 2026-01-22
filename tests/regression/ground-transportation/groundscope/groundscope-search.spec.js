@@ -1,6 +1,7 @@
-const { test, expect } = require('@fixtures/supplierTest');
+const { test } = require('@fixtures/supplierTest');
 
 const { Search, GroundTransportSearch, Results, Cart } = require('@dsl');
+const tripStatus = require('@data/tripStatus.json');
 
 test.describe('[@regression] Search GroundScope Flow', () => {
   test('[@priority:critical] Search GroundScope – Should complete search flow', async ({ newTripPage }) => {
@@ -22,7 +23,7 @@ test.describe('[@regression] Search GroundScope Flow', () => {
 
     // Step 5: Assert Pending booking
     console.log('Step 5: Quote is "Pending booking" status');
-    expect(await Cart.isQuotePendingBooking(page)).toBe(true);
+    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
 
     console.log('Ground transport search flow completed successfully.');
   });

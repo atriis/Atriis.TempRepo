@@ -1,5 +1,5 @@
 const FlightSearchPage = require("@pages/FlightSearchPage");
-const SearchPage = require("@pages/SearchPage");
+const { SearchPage } = require('@pages/SearchPage');
 const flightRoutes = require("@data/flights.json");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");

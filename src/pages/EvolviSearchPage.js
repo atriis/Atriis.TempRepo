@@ -44,5 +44,7 @@ class EvolviSearchPage {
   }
 }
 
-module.exports = EvolviSearchPage;
-module.exports.SELECTORS = SELECTORS;
+module.exports = {
+  EvolviSearchPage,
+  SELECTORS
+};

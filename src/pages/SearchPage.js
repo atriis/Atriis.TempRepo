@@ -2,6 +2,7 @@ const {
   typeIntoNthAvailableInput,
   pressTab
 } = require('@utils/dom');
+const { expect } = require('@playwright/test');
 
 /**
  * Centralized selectors for the Search screen.
@@ -124,9 +125,10 @@ class SearchPage {
   }
 
   // Used as a stability indicator that the page is fully ready
-  async waitForStarIcon() {
-    await this.page.waitForSelector(SELECTORS.STAR_ICON, { state: "visible" });
-  }
+async waitForStarIcon({ timeout = 15000 } = {}) {
+    const starIcon = this.page.locator(SELECTORS.STAR_ICON);
+    await expect(starIcon, 'Star icon should be visible after adding traveller').toBeVisible({ timeout });
+}
 
   // Searches and selects an existing traveler
   async fillInTravellerName(name) {
@@ -272,5 +274,7 @@ class SearchPage {
  * - SearchPage class (default)
  * - SELECTORS (for reuse or debugging if needed)
  */
-module.exports = SearchPage;
-module.exports.SELECTORS = SELECTORS;
+module.exports = {
+  SearchPage,
+  SELECTORS
+};

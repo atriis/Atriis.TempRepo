@@ -1,4 +1,4 @@
-const SearchPage = require('@pages/SearchPage');
+const { SearchPage } = require('@pages/SearchPage');
 const { generateRandomGuestData } = require('@utils/data/generateRandomGuestData.js');
 
 /**

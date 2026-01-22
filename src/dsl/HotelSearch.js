@@ -1,5 +1,5 @@
 const HotelSearchPage = require('@pages/HotelSearchPage');
-const SearchPage = require('@pages/SearchPage');
+const { SearchPage } = require('@pages/SearchPage');
 const { selectDatesByNthAvailable } = require('@utils/calendar.helper');
 const { resolveLocation } = require('@utils/route.helper');
 const { SEARCH_DEFAULTS } = require('@utils/search.constants');

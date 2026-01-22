@@ -1,5 +1,10 @@
+
+
 const { waitForText } = require('@utils/wait');
 const { getText } = require('@utils/dom');
+const tripStatus = require('@data/tripStatus.json');
+const { expect } = require('@playwright/test');
+const { caseInsensitiveContains } = require('@utils/text');
 
 /**
  * CartPage
@@ -13,15 +18,25 @@ const { getText } = require('@utils/dom');
 const SELECTORS = {
   TERMS_CHECKBOX: ".el-checkbox__inner",
   PROCEED_TO_CHECKOUT_TEXT: ".btn-container span",
-  PENDING_BOOKING_LABEL: ".app-label",
-  REFUNDABLE_TEXT: "div.refundable"
+  REFUNDABLE_TEXT: "div.refundable",
+  // Trip Overview selectors
+  TRIP_OVERVIEW_TITLE: ".payments-title",
+  FLIGHT_DETAILS_BUTTON: ".more-details-btn",
+  MORE_DETAILS_HOTEL_BUTTON: ".more-details",
+  MORE_DETAILS_CAR_BUTTON: ".more-details.is-flex",
+  TRIP_ACTIONS_DROPDOWN_ICON: ".dropdowns-container .expand-icon",
+  CANCEL_TRIP_OPTION: ".el-dropdown-menu__item span.mr-2",
+  TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label='Trip cancellation'] .el-dialog__title",
+  CONFIRM_CANCEL_BUTTON: "role=button[name='Cancel trip']",
+  CANCELLATION_SUCCESS_MESSAGE: "text='Cancellation confirmed!'",
+  QUOTE_STATUS_LABEL: ".app-label--quote"
 };
 
 class CartPage {
   constructor(page) {
     this.page = page;
   }
-  
+
   /**
    * Accepts Terms & Conditions.
    * Required before checkout is enabled.
@@ -54,18 +69,6 @@ class CartPage {
   }
 
   /**
-   * Waits for "Pending booking" label.
-   * Indicates the quote is being processed.
-   */
-  async waitForPendingBookingText() {
-    await waitForText(
-      this.page,
-      SELECTORS.PENDING_BOOKING_LABEL,
-      'Pending booking'
-    );
-  }
-
-  /**
    * Confirms hotel booking is refundable.
    */
   async waitForHotelRefundableText() {
@@ -75,6 +78,124 @@ class CartPage {
 
     await refundable.waitFor({ state: 'visible', timeout: 10000 });
   }
+
+  // ========== Trip Overview Methods ========== //
+
+  /** Confirms Trip Overview page is loaded */
+  async waitForTripOverviewTitle() {
+    await waitForText(this.page, SELECTORS.TRIP_OVERVIEW_TITLE, "Trip overview");
+  }
+
+  /**
+   * Waits for any "Details" entry to appear.
+   * This works across flights, hotels, and cars.
+   */
+  async waitForDetailsText() {
+    const candidateLocators = [
+      SELECTORS.FLIGHT_DETAILS_BUTTON,
+      SELECTORS.MORE_DETAILS_HOTEL_BUTTON,
+      SELECTORS.MORE_DETAILS_CAR_BUTTON
+    ];
+
+    for (const selector of candidateLocators) {
+      try {
+        await this.page
+          .locator(selector, { hasText: /details/i })
+          .waitFor({ timeout: 1500 });
+        return;
+      } catch {
+        // Try next locator
+      }
+    }
+
+    throw new Error(
+      'Unable to find any element containing "details" (case-insensitive).'
+    );
+  }
+
+  /** Opens the trip actions (three dots) dropdown */
+  async hoverTripActionsDropdownIcon() {
+    const icon = this.page
+      .locator(SELECTORS.TRIP_ACTIONS_DROPDOWN_ICON)
+      .first();
+
+    await icon.waitFor({ state: 'visible', timeout: 5000 });
+    await icon.hover();
+
+    // Allow dropdown animation
+    await this.page.waitForTimeout(500);
+  }
+
+  /** Waits until the dropdown menu with "Cancel trip" is visible */
+  async waitForDropdownMenu() {
+    await this.page
+      .locator(SELECTORS.CANCEL_TRIP_OPTION, { hasText: 'Cancel trip' })
+      .waitFor({ state: 'visible', timeout: 5000 });
+  }
+
+  /** Clicks the "Cancel trip" option */
+  async clickCancelTripOption() {
+    const cancelOption = this.page.locator(
+      SELECTORS.CANCEL_TRIP_OPTION,
+      { hasText: 'Cancel trip' }
+    );
+
+    await cancelOption.waitFor({ state: 'visible', timeout: 5000 });
+    await cancelOption.click();
+  }
+
+  /** Waits for the cancellation confirmation dialog */
+  async waitForTripCancellationDialogTitle() {
+    await waitForText(
+      this.page,
+      SELECTORS.TRIP_CANCELLATION_DIALOG_TITLE,
+      'Trip cancellation'
+    );
+  }
+
+  /** Confirms trip cancellation in the dialog */
+  async clickConfirmTripCancellationButton() {
+    const button = this.page.getByRole('button', { name: 'Cancel trip' });
+    await button.waitFor({ state: 'visible', timeout: 5000 });
+    await button.click();
+  }
+
+  /** Waits for the cancellation success message */
+  async waitForTripCancelledMessage() {
+    const successMessage = this.page.getByText(
+      'Cancellation confirmed!',
+      { exact: true }
+    );
+
+    await successMessage.waitFor({ state: 'visible', timeout: 20000 });
+  }
+
+  /**
+   * Waits for booking status label and returns its text.
+   * Used to verify status like "Pending booking", "Confirmed", etc.
+   */
+  async waitForBookingStatus(expectedStatus, { timeout = 30000, page = this.page } = {}) {
+    const locator = page.locator(SELECTORS.QUOTE_STATUS_LABEL);
+
+    await expect(locator).toBeVisible({ timeout });
+    await expect(locator).toContainText(caseInsensitiveContains(expectedStatus), { timeout });
+
+    return (await locator.innerText()).trim();
+  }
+
+  /**
+   * Waits until booking status becomes "Pending booking".
+   * Indicates the quote is being processed.
+   */
+  async waitForPendingBookingText({ timeout = 30000, page = this.page } = {}) {
+    return this.waitForBookingStatus(
+      tripStatus.label.pendingBooking.status,
+      { timeout, page }
+    );
+  }
 }
 
-module.exports = CartPage;
+module.exports = {
+  CartPage,
+  SELECTORS
+};

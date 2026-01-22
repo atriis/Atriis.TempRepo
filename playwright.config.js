@@ -74,25 +74,6 @@ function assertProvidersExist(providerList, groupName) {
 }
 
 /**
- * Generates all user combinations for a provider list.
- * Used for supplier-specific tests where multiple users per supplier are needed.
- *
- * Example output for ['amadeus'] with user_one and user_two:
- *   [{ provider: 'amadeus', userKey: 'user_one', name: 'amadeus-user-one' },
- *    { provider: 'amadeus', userKey: 'user_two', name: 'amadeus-user-two' }]
- */
-function autoGenerateSuppliers(providerList) {
-  return providerList.flatMap(provider => {
-    const userKeys = Object.keys(config.users?.[provider] || {});
-    return userKeys.map(userKey => ({
-      provider,
-      userKey,
-      name: `${provider}-${slugify(userKey)}`,
-    }));
-  });
-}
-
-/**
  * Generates one project per supplier using only the first available user.
  * Used for cross-supplier tests where we need coverage across suppliers,
  * not across multiple users within the same supplier.
@@ -131,14 +112,6 @@ function createProjectsForProduct({ product, testDir, suppliers }) {
 Object.entries(providers).forEach(([groupName, list]) => {
   assertProvidersExist(list, groupName);
 });
-
-// All user combinations per supplier (for supplier-specific tests)
-const suppliersByGroup = Object.fromEntries(
-  Object.entries(providers).map(([groupName, list]) => [
-    groupName,
-    autoGenerateSuppliers(list),
-  ])
-);
 
 // One user per supplier (for cross-supplier tests)
 const suppliersOneUserByGroup = Object.fromEntries(
@@ -361,12 +334,6 @@ module.exports = defineConfig({
 
     defaultProject({
       name: 'cars:sabre',
-      testDir: 'tests/regression/cars/gds/sabre',
-      provider: 'sabre',
-    }),
-
-    defaultProject({
-      name: 'cars:gds:sabre',
       testDir: 'tests/regression/cars/gds/sabre',
       provider: 'sabre',
     }),

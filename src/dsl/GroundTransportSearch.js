@@ -1,11 +1,10 @@
 const GroundTransportSearchPage = require('@pages/GroundTransportSearchPage');
-const SearchPage = require('@pages/SearchPage');
+const { SearchPage, SELECTORS: SEARCH_SELECTORS } = require('@pages/SearchPage');
 const { selectDatesByNthAvailable } = require('@utils/calendar.helper');
 const { resolveRoute } = require('@utils/route.helper');
 const { SEARCH_DEFAULTS } = require('@utils/search.constants');
 const groundTransportRoutes = require('@data/groundtransport.json');
 const { pressTab } = require('@utils/dom');
-const { SELECTORS: SEARCH_SELECTORS } = require('@pages/SearchPage');
 
 /**
  * GroundTransportSearch DSL
