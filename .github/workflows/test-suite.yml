@@ -197,6 +197,7 @@ jobs:
   summary:
     runs-on: ubuntu-latest
     needs: [ smoke-tests, galileo-car-tests, general-flight-tests, lufthansa-flight-tests, cross-supplier-cars-tests ]
+    if: always()
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
