@@ -1,7 +1,6 @@
 # TODO
 
 ## High Priority
-- [ ] Fix Hotel E2E test
 - [ ] Look for code duplication
 - [ ] Implement UK Parking page (Page Object, DSL, and test sample)
 - [ ] Implement Manual Quote page (Page Object, DSL, and test sample)
@@ -22,7 +21,6 @@
 - [ ] Implement Share Itinerary (Page Object, DSL, and test sample)
 - [ ] Implement Travel Policy (Page Object, DSL, and test sample)
 - [ ] Implement Reference Fields / Dynamic Profile Fields (Page Object, DSL, and test sample)
-- [ ] Update workflows
 - [ ] Dashboard error
 - [ ] Simplify Copilot Instructions file
 
