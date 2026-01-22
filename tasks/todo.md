@@ -1,6 +1,7 @@
 # TODO
 
 ## High Priority
+- [ ] Fix Hotel E2E test
 - [ ] Look for code duplication
 - [ ] Implement UK Parking page (Page Object, DSL, and test sample)
 - [ ] Implement Manual Quote page (Page Object, DSL, and test sample)
