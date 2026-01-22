@@ -32,9 +32,6 @@ const Checkout = {
     // Finalize the booking (button text may vary)
     await checkoutPage.clickBookAndFinalizeButton();
 
-    // Allow backend processing & UI transition
-    await page.waitForTimeout(4000);
-
     // Navigate to trip overview
     await checkoutPage.clickGoToTrip();
 

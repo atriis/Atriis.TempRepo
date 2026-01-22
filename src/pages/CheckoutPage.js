@@ -78,13 +78,15 @@ class CheckoutPage {
    * Navigates to the Trip Overview after booking completion.
    */
   async clickGoToTrip() {
-    await waitForText(
-      this.page,
-      SELECTORS.GO_TO_TRIP_BUTTON,
-      'Go to trip'
-    );
-    await this.page.click(SELECTORS.GO_TO_TRIP_BUTTON);
-  }
+  await waitForText(
+    this.page,
+    SELECTORS.GO_TO_TRIP_BUTTON,
+    'Go to trip',
+    60000
+  );
+
+  await this.page.click(SELECTORS.GO_TO_TRIP_BUTTON);
+}
 }
 
 module.exports = CheckoutPage;
