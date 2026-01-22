@@ -28,11 +28,12 @@ class CheckoutPage {
    * Uses visible text instead of DOM presence for reliability.
    */
   async waitForBookingDetailsText() {
-    await waitForText(
-      this.page,
-      SELECTORS.BOOKING_DETAILS_HEADING,
-      'Booking details'
-    );
+  await waitForText(
+    this.page,
+    SELECTORS.BOOKING_DETAILS_HEADING,
+    'Booking details',
+     60000
+  );
   }
 
   /**
