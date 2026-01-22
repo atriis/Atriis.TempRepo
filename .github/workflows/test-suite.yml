@@ -133,7 +133,7 @@ jobs:
       - run: npx playwright install --with-deps
 
       - name: Run Lufthansa Flight Tests
-        run: npx playwright test tests/regression/flights/lufthansa
+        run: npx playwright test tests/regression/flights/ndc/lufthansa
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           # General User
