@@ -26,6 +26,5 @@ module.exports = {
   Results: require('./Results'),
   RoomLevelResults: require('./RoomLevelResults'),
   Search: require('./Search'),
-  TripOverview: require('./TripOverview'),
   Trips: require('./Trips'),
 };

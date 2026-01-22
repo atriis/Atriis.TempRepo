@@ -1,5 +1,5 @@
 const CheckoutPage = require('@pages/CheckoutPage');
-const TripOverviewPage = require('@pages/TripOverviewPage');
+const { CartPage } = require('@pages/CartPage');
 
 /**
  * Checkout DSL
@@ -18,7 +18,7 @@ const Checkout = {
    */
   async bookAndFinalize(page) {
     const checkoutPage = new CheckoutPage(page);
-    const tripOverviewPage = new TripOverviewPage(page);
+    const cartPage = new CartPage(page);
 
     // Ensure checkout page is fully loaded
     await checkoutPage.waitForBookingDetailsText();
@@ -39,7 +39,7 @@ const Checkout = {
     await checkoutPage.clickGoToTrip();
 
     // Confirm trip overview is displayed
-    await tripOverviewPage.waitForTripOverviewTitle();
+    await cartPage.waitForTripOverviewTitle();
 
     return { finalized: true };
   }
