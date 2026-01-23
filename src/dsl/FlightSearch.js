@@ -37,9 +37,9 @@ const FlightSearch = {
 
     // Select trip type (oneWay or roundTrip)
     if (tripType === 'oneWay') {
-      await flightSearchPage.selectOneWayTrip();
+      await searchPage.selectOneWayTrip();
     } else {
-      await flightSearchPage.selectRoundTrip();
+      await searchPage.selectRoundTrip();
     }
 
     await searchPage.fillInFromField(from);

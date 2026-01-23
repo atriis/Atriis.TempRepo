@@ -129,10 +129,15 @@ class SearchPage {
   }
 
   // Used as a stability indicator that the page is fully ready
-async waitForStarIcon({ timeout = 15000 } = {}) {
+
+  /**
+   * Waits for the star icon to confirm traveler selection.
+   * @param {object} options
+   */
+  async waitForStarIcon({ timeout = 15000 } = {}) {
     const starIcon = this.page.locator(SELECTORS.STAR_ICON);
     await expect(starIcon, 'Star icon should be visible after adding traveller').toBeVisible({ timeout });
-}
+  }
 
   // Searches and selects an existing traveler
   async fillInTravellerName(name) {
@@ -182,6 +187,11 @@ async waitForStarIcon({ timeout = 15000 } = {}) {
    * Fills the "From" field.
    * Uses helper logic to support multiple supplier UIs.
    */
+
+  /**
+   * Fills the "From" field using flexible selectors for different suppliers.
+   * @param {string} from
+   */
   async fillInFromField(from) {
     await typeIntoNthAvailableInput(
       this.page,
@@ -195,6 +205,11 @@ async waitForStarIcon({ timeout = 15000 } = {}) {
 
   /**
    * Fills the "To" field and confirms the first autocomplete suggestion.
+   */
+
+  /**
+   * Fills the "To" field and confirms the first autocomplete suggestion.
+   * @param {string} to
    */
   async fillInToField(to) {
     await typeIntoNthAvailableInput(
@@ -217,6 +232,12 @@ async waitForStarIcon({ timeout = 15000 } = {}) {
    * Fills an "or" location field.
    * Used by Cars, Evolvi and other products.
    */
+
+  /**
+   * Fills an "or" location field (used by Cars, Evolvi, etc).
+   * @param {string} or
+   * @param {number} occurrence
+   */
   async fillInOrField(or, occurrence = 1) {
     await typeIntoNthAvailableInput(
       this.page,
@@ -229,12 +250,20 @@ async waitForStarIcon({ timeout = 15000 } = {}) {
   }
 
   // Opens departure calendar
+
+  /**
+   * Opens the departure calendar field.
+   */
   async clickDepartureDateField() {
     await this.page.locator(SELECTORS.DEPARTURE_PLACEHOLDER).nth(1).click();
     await this.page.waitForTimeout(4000);
   }
 
   // Opens return calendar
+
+  /**
+   * Opens the return calendar field.
+   */
   async clickReturnDateField() {
     await this.page.locator(SELECTORS.RETURN_PLACEHOLDER).click();
     await this.page.waitForTimeout(1500);
@@ -243,6 +272,11 @@ async waitForStarIcon({ timeout = 15000 } = {}) {
   /**
    * Advances the calendar by a number of months.
    * Default is 3 months ahead.
+   */
+
+  /**
+   * Advances the calendar by a number of months (default: 3).
+   * @param {number} monthsAhead
    */
   async clickCalendarNextArrow(monthsAhead = 3) {
     const nextArrow = this.page
@@ -258,20 +292,37 @@ async waitForStarIcon({ timeout = 15000 } = {}) {
   }
 
   // Executes the search
+
+  /**
+   * Clicks the main search button.
+   */
   async clickSearchButton() {
     await this.page.locator(SELECTORS.SEARCH_BUTTON).click();
   }
 
   // Switches to rail search
+
+  /**
+   * Switches to the rail search tab.
+   */
   async clickRailTab() {
     await this.page.click(SELECTORS.GENERAL_RAIL_TAB);
   }
 
   // "Pick-up Date" field (used by Cars and Ground Transport)
+
+  /**
+   * Clicks the pick-up date field (used by Cars and Ground Transport).
+   */
   async clickPickupDateField() {
     await this.page.click(SELECTORS.PICK_UP_DATE_INPUT);
   }
 
+
+  /**
+   * Clicks a trip type radio button by label text (e.g., "One Way", "Round Trip").
+   * @param {string|RegExp} labelText
+   */
   async clickTripType(labelText) {
     const labels = this.page.locator(SELECTORS.TRIP_TYPE_RADIO_LABELS);
 
@@ -294,12 +345,19 @@ async waitForStarIcon({ timeout = 15000 } = {}) {
     await target.click();
   }
 
+
+  /**
+   * Selects the "One Way" trip type.
+   */
   async selectOneWayTrip() {
-    await this.clickTripType('One Way');
+    await this.clickTripType(/one way/i);
   }
 
+  /**
+   * Selects the "Round Trip" trip type.
+   */
   async selectRoundTrip() {
-    await this.clickTripType('Round Trip');
+    await this.clickTripType(/round trip/i);
   }
 }
 
