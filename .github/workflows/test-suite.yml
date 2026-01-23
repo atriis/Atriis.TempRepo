@@ -34,7 +34,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: smoke-results
-          path: test-results/
+          path: test-results/results.xml
 
       - name: Upload Smoke Playwright Report
         if: always()
@@ -66,7 +66,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: galileo-car-results
-          path: test-results/
+          path: test-results/results.xml
 
       - name: Upload Galileo Car Playwright Report
         if: always()
@@ -98,7 +98,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: general-flight-results
-          path: test-results/
+          path: test-results/results.xml
 
       - name: Upload General Flight Playwright Report
         if: always()
@@ -130,7 +130,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lufthansa-flight-results
-          path: test-results/
+          path: test-results/results.xml
 
       - name: Upload Lufthansa Flight Playwright Report
         if: always()
@@ -165,7 +165,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cross-supplier-cars-results
-          path: test-results/
+          path: test-results/results.xml    
 
       - name: Upload Cross-Supplier Cars Playwright Report
         if: always()
@@ -197,7 +197,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: general-hotels-results
-          path: test-results/
+          path: test-results/results.xml
 
       - name: Upload General Hotels Playwright Report
         if: always()
@@ -233,17 +233,11 @@ jobs:
         with:
           path: all-results
 
-      - name: Debug downloaded JUnit files
-        if: always()
-        run: |
-          echo "JUnit files found:"
-          find all-results -type f -path "*/test-results/results.xml" -print || true
-
       - name: Publish All Tests (One Report)
         if: always()
         uses: dorny/test-reporter@v1
         with:
           name: Playwright E2E — Smoke + Regression + Suppliers
           reporter: java-junit
-          path: all-results/**/test-results/results.xml
+          path: all-results/**/results.xml
           fail-on-error: false
