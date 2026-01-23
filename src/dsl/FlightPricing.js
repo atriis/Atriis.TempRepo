@@ -1,6 +1,7 @@
 const FlightPricingPage = require('@pages/FlightPricingPage');
 const { CartPage } = require('@pages/CartPage');
-const Results = require('./Results');
+const { ResultsPage } = require('@pages/ResultsPage');
+const Results = require('@dsl/Results');
 
 /**
  * FlightResults DSL
@@ -13,9 +14,11 @@ const FlightPricing = {
   async addYourSelectionFareToCart(page) {
     const flightPricingPage = new FlightPricingPage(page);
     const cartPage = new CartPage(page);
+    const resultsPage = new ResultsPage(page);
 
     await flightPricingPage.waitForYourSelectionText();
-    await flightPricingPage.clickAddToTripYourSelection();
+    await resultsPage.waitForAddToTripText();
+    await resultsPage.clickFirstAddToTripButton();
 
     // Some suppliers show a conflict modal; handle it defensively
     await Results.clickProceedConflictQuoteModal(page);

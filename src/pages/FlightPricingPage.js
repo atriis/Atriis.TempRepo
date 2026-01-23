@@ -5,7 +5,6 @@ const { waitForText } = require('@utils/wait');
  */
 const SELECTORS = {
   YOUR_SELECTION_TEXT: "section.flight-by-schedule-pricing .best-combination-wrapper .header .title",
-  ADD_TO_TRIP_YOUR_SELECTION_BUTTON: '.btn.btn--primary',
 };
 
 /**
@@ -36,17 +35,6 @@ class FlightPricingPage {
 
     // Intentional extra wait to avoid clicking during UI transitions
     await this.page.waitForTimeout(4000);
-  }
-  /**
-   * Adds the first available flight to the trip.
-   *
-   * Assumes results are already visible.
-   */
-
-  async clickAddToTripYourSelection() {
-    await this.page.click(
-      SELECTORS.ADD_TO_TRIP_YOUR_SELECTION_BUTTON
-    );
   }
 }
 
