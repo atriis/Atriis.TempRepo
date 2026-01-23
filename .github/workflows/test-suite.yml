@@ -1,4 +1,3 @@
-
 name: Test Suite
 
 on:
@@ -8,7 +7,7 @@ on:
     branches: [ main ]
   schedule:
     - cron: '0 19 * * *'  # Daily at 19:00 UTC (19:00 Portugal winter / 20:00 Portugal summer)
-  workflow_dispatch:  # Allow manual runs via GitHub UI or `gh workflow run`
+  workflow_dispatch:
 
 jobs:
   smoke-tests:
@@ -21,28 +20,25 @@ jobs:
           node-version: 20
 
       - run: npm ci
-
       - run: npx playwright install --with-deps
 
       - name: Run Smoke Tests
         run: npx playwright test --project=Smoke
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          # General User
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
-          # General
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Smoke Results
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: smoke-results
           path: test-results/
 
-      - name: Upload Playwright Report
-        uses: actions/upload-artifact@v4
+      - name: Upload Smoke Playwright Report
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: smoke-playwright-report
           path: playwright-report/
@@ -51,34 +47,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - run: npm ci
-
       - run: npx playwright install --with-deps
 
       - name: Run Galileo Car Tests
         run: npx playwright test --project=cars:galileo
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          # Cars Suppliers
           GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
-          # General
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Galileo Car Results
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: galileo-car-results
           path: test-results/
 
-      - name: Upload Playwright Report
-        uses: actions/upload-artifact@v4
+      - name: Upload Galileo Car Playwright Report
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: galileo-car-playwright-report
           path: playwright-report/
@@ -87,34 +79,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - run: npm ci
-
       - run: npx playwright install --with-deps
 
       - name: Run General Flight Tests
         run: npx playwright test tests/regression/flights/general
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          # General User
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
-          # General
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload General Flight Results
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: general-flight-results
           path: test-results/
 
-      - name: Upload Playwright Report
-        uses: actions/upload-artifact@v4
+      - name: Upload General Flight Playwright Report
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: general-flight-playwright-report
           path: playwright-report/
@@ -123,34 +111,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - run: npm ci
-
       - run: npx playwright install --with-deps
 
       - name: Run Lufthansa Flight Tests
         run: npx playwright test tests/regression/flights/ndc/lufthansa
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          # General User
           LUFTHANSA_USER_ONE_EMAIL: ${{ secrets.LUFTHANSA_USER_ONE_EMAIL }}
-          # General
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Lufthansa Flight Results
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: lufthansa-flight-results
           path: test-results/
 
-      - name: Upload Playwright Report
-        uses: actions/upload-artifact@v4
+      - name: Upload Lufthansa Flight Playwright Report
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: lufthansa-flight-playwright-report
           path: playwright-report/
@@ -159,73 +143,65 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - run: npm ci
-
       - run: npx playwright install --with-deps
 
       - name: Run Cross-Supplier Cars Tests
         run: npx playwright test tests/regression/cars/cross-supplier --workers=1
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          # General Users
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
           SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
           SUNNY_CARS_USER_ONE_EMAIL: ${{ secrets.SUNNY_CARS_USER_ONE_EMAIL }}
-          # General
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Cross-Supplier Cars Results
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: cross-supplier-cars-results
           path: test-results/
 
-      - name: Upload Playwright Report
-        uses: actions/upload-artifact@v4
+      - name: Upload Cross-Supplier Cars Playwright Report
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: cross-supplier-cars-playwright-report
           path: playwright-report/
-  
+
   general-hotels-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - run: npm ci
-
       - run: npx playwright install --with-deps
 
       - name: Run General Hotels Tests
         run: npx playwright test tests/regression/hotels/general
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          # General User
           RATEHAWK_USER_ONE_EMAIL: ${{ secrets.RATEHAWK_USER_ONE_EMAIL }}
-          # General
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload General Hotels Results
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: general-hotels-results
           path: test-results/
 
-      - name: Upload Playwright Report
-        uses: actions/upload-artifact@v4
+      - name: Upload General Hotels Playwright Report
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: general-hotels-playwright-report
           path: playwright-report/
@@ -247,20 +223,27 @@ jobs:
       checks: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Download all artifacts
+        if: always()
         uses: actions/download-artifact@v4
         with:
           path: all-results
 
-      - name: Publish test results (TRX)
-        uses: dorny/test-reporter@v1
+      - name: Debug downloaded JUnit files
         if: always()
+        run: |
+          echo "JUnit files found:"
+          find all-results -type f -path "*/test-results/results.xml" -print || true
+
+      - name: Publish All Tests (One Report)
+        if: always()
+        uses: dorny/test-reporter@v1
         with:
-          name: test-publish
-          path: all-results/**/*.trx
-          reporter: dotnet-trx
+          name: Playwright E2E — Smoke + Regression + Suppliers
+          reporter: java-junit
+          path: all-results/**/test-results/results.xml
+          fail-on-error: false

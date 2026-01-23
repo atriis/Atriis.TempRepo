@@ -137,13 +137,10 @@ module.exports = defineConfig({
   timeout: 300000,
   workers: process.env.CI ? 2 : 4,
 
-  reporter: [
-    ['list'],
-    ['junit', { outputFile: 'test-results/results.xml' }],
-    ['json', { outputFile: 'test-results/results.json' }],
-    ['playwright-trx-reporter', { outputFile: 'test-results/results.trx' }],
-    ['html', { outputFolder: 'playwright-report', open: 'never' }],
-  ],
+reporter: [
+  ['junit', { outputFile: 'test-results/results.xml' }],
+  ['html', { open: 'never' }]
+],
 
   /**
    * Screen + viewport are flexible via ENV
