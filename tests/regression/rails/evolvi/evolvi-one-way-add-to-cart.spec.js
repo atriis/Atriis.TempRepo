@@ -1,6 +1,7 @@
-const { test, expect } = require('@fixtures/supplierTest');
+const { test } = require('@fixtures/supplierTest');
 
 const { Search, EvolviSearch, EvolviResults, Cart } = require('@dsl');
+const tripStatus = require('@data/tripStatus.json');
 
 //Note: need to understand why this test is not adding product to cart
 
@@ -24,7 +25,7 @@ test.describe('[@regression] Evolvi One Way Add to Cart Flow', () => {
     
     // Step 5: Validate booking status - should be "Pending booking"
     console.log('Step 5: Quote is "Pending booking" status');
-    expect(await Cart.isQuotePendingBooking(page)).toBe(true);
+    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
 
     console.log('Evolvi one way train add to cart flow completed successfully.');
   });

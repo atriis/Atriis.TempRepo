@@ -1,6 +1,7 @@
-const { test, expect } = require('@fixtures/supplierTest');
+const { test } = require('@fixtures/supplierTest');
 
 const { Search, BenerailSearch, Results, Cart } = require('@dsl');
+const tripStatus = require('@data/tripStatus.json');
 
 test.describe('[@regression] Benerail Add To Cart Flow', () => {
   // Test 1: Round Trip Benerail Add To Cart Flow
@@ -23,7 +24,7 @@ test.describe('[@regression] Benerail Add To Cart Flow', () => {
 
     // Step 5: Assert Pending booking
     console.log('Step 5: Quote is "Pending booking" status');
-    expect(await Cart.isQuotePendingBooking(page)).toBe(true);
+    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
 
     console.log('Benerail round trip add to cart flow completed successfully.');
   });
@@ -48,7 +49,7 @@ test.describe('[@regression] Benerail Add To Cart Flow', () => {
 
     // Step 5: Assert Pending booking
     console.log('Step 5: Quote is "Pending booking" status');
-    expect(await Cart.isQuotePendingBooking(page)).toBe(true);
+    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
 
     console.log('Benerail one way add to cart flow completed successfully.');
   });

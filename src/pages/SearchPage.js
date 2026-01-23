@@ -34,6 +34,10 @@ const SELECTORS = {
   PHONE_INPUT: "[placeholder='Enter phone number']",
   ADD_GUEST_MODAL_BUTTON: ".app-footer .add-guest-btn",
 
+  // Trip types
+  TRIP_TYPE_RADIO_LABELS:
+    ":is(.search-options-wrapper, .eu-rail-search-inputs, .amtrak-search-inputs, .uk-rail-search) > :nth-child(1) [role='radiogroup'] .el-radio__label",
+
   // Calendar (date picker)
   DATE_PICKER_PANEL: ".el-picker-panel:visible",
   DATE_PICKER_CALENDAR_NEXT_ARROW:
@@ -266,6 +270,36 @@ async waitForStarIcon({ timeout = 15000 } = {}) {
   // "Pick-up Date" field (used by Cars and Ground Transport)
   async clickPickupDateField() {
     await this.page.click(SELECTORS.PICK_UP_DATE_INPUT);
+  }
+
+  async clickTripType(labelText) {
+    const labels = this.page.locator(SELECTORS.TRIP_TYPE_RADIO_LABELS);
+
+    // Fail fast if your base locator is wrong (helps debugging a lot)
+    const count = await labels.count();
+    if (count === 0) {
+      throw new Error(
+        `Trip type labels not found. Selector: ${SELECTORS.TRIP_TYPE_RADIO_LABELS}`
+      );
+    }
+
+    const target = labels.filter({ hasText: labelText }).first();
+    const matches = await target.count();
+    if (matches === 0) {
+      throw new Error(
+        `Trip type option "${labelText}" not found under selector: ${SELECTORS.TRIP_TYPE_RADIO_LABELS}`
+      );
+    }
+
+    await target.click();
+  }
+
+  async selectOneWayTrip() {
+    await this.clickTripType('One Way');
+  }
+
+  async selectRoundTrip() {
+    await this.clickTripType('Round Trip');
   }
 }
 

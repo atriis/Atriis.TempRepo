@@ -52,7 +52,7 @@ const Search = {
 
     await searchPage.fillInRandomFirstName(firstName);
     // Keep as-is: the SearchPage method name is used exactly as in your project
-    await searchPage.fillInRandonLastName(lastName);
+    await searchPage.fillInRandomLastName(lastName);
 
     await searchPage.selectGenderMale();
     await searchPage.fillInRandomDateOfBirth(dateOfBirth);
