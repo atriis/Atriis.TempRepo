@@ -141,6 +141,7 @@ module.exports = defineConfig({
     ['list'],
     ['junit', { outputFile: 'test-results/results.xml' }],
     ['json', { outputFile: 'test-results/results.json' }],
+    ['playwright-trx-reporter', { outputFile: 'test-results/results.trx' }],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
   ],
 
