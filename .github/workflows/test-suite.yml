@@ -237,7 +237,7 @@ jobs:
         if: always()
         uses: dorny/test-reporter@v1
         with:
-          name: Playwright E2E — Smoke + Regression + Suppliers
+          name: Atriis Test Automation Suite
           reporter: java-junit
           path: all-results/**/results.xml
           fail-on-error: false

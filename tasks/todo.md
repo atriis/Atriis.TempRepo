@@ -21,7 +21,6 @@
 - [ ] Implement Share Itinerary (Page Object, DSL, and test sample)
 - [ ] Implement Travel Policy (Page Object, DSL, and test sample)
 - [ ] Implement Reference Fields / Dynamic Profile Fields (Page Object, DSL, and test sample)
-- [ ] Dashboard error
 - [ ] Simplify Copilot Instructions file
 
 ## Low Priority
