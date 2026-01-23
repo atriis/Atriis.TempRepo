@@ -232,16 +232,30 @@ jobs:
 
   summary:
     runs-on: ubuntu-latest
-    needs: [ smoke-tests, galileo-car-tests, general-flight-tests, lufthansa-flight-tests, cross-supplier-cars-tests, general-hotels-tests ]
+    needs:
+      - smoke-tests
+      - galileo-car-tests
+      - general-flight-tests
+      - lufthansa-flight-tests
+      - cross-supplier-cars-tests
+      - general-hotels-tests
     if: always()
+
+    permissions:
+      contents: read
+      actions: read
+      checks: write
+
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: all-results
 
-      - name: Display Summary
-        run: |
-          echo "### Test Suite Summary" >> $GITHUB_STEP_SUMMARY
-          echo "!Smoke" >> $GITHUB_STEP_SUMMARY
-          echo "Artifacts downloaded for dashboard generation." >> $GITHUB_STEP_SUMMARY
+      - name: Publish test results (TRX)
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: test-publish
+          path: all-results/**/*.trx
+          reporter: dotnet-trx
