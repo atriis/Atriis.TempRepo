@@ -1,12 +1,12 @@
 const { ResultsPage } = require('@pages/ResultsPage');
 
-
 /**
  * Results DSL
  *
  * High-level actions related to generic results screens.
  * Describes WHAT the user does, not HOW the UI works.
  */
+
 const Results = {
   /**
    * Waits for the "Add to trip" button and clicks the first available option.
@@ -64,8 +64,7 @@ const Results = {
   async clickSelectButtonRoundTripAndClickAddToTrip(page) {
     // First leg
     await Results.waitAndClickSelectButton(page);
-    // Allow UI to update
-    await page.waitForTimeout(500); // Required due to known animation issue
+
     // Second leg
     await Results.waitAndClickSelectButton(page);
     await Results.waitAndClickAddToTripButton(page);

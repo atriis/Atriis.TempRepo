@@ -5,8 +5,8 @@ const { ResultsPage } = require('@pages/ResultsPage');
  *
  * Business actions performed on Benerail results.
  */
-const BenerailResults = {
 
+const BenerailResults = {
   /** Waits until Benerail results are ready */
   async waitForBenerailResults(page) {
     const resultsPage = new ResultsPage(page);
@@ -49,9 +49,6 @@ const BenerailResults = {
     // First leg
     await resultsPage.waitForSelectText();
     await resultsPage.clickSelectFirstBenerailOption();
-
-    // Allow UI to update
-    await page.waitForTimeout(500);
 
     // Second leg
     await resultsPage.waitForSelectText();

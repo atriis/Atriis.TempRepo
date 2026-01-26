@@ -6,8 +6,8 @@ const Results = require('./Results');
  *
  * Business actions performed on Evolvi results.
  */
-const EvolviResults = {
 
+const EvolviResults = {
   /** Selects the cheapest suggested fare and adds it to the trip */
   async selectCheapestSuggestedFare(page) {
     const resultsPage = new EvolviResultsPage(page);
@@ -41,9 +41,6 @@ const EvolviResults = {
     // First leg
     await resultsPage.waitForOutboundText();
     await EvolviResults.selectCheapestSuggestedFare(page);
-
-    // Allow UI to refresh before second leg
-    await page.waitForTimeout(500);
 
     // Second leg
     await resultsPage.waitForOutboundText();
