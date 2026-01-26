@@ -35,17 +35,27 @@ class CarSearchPage {
 
   /**
    * Moves the second (drop-off) calendar forward.
+   *
    * Used when pickup and drop-off calendars are shown together.
+   * After each click, the method waits until the next-arrow is
+   * visible again, ensuring the calendar finished updating
+   * before continuing.
+   *
+   * @param {number} times - Number of months to advance
    */
   async clickDropoffSecondCalendarNextMonthArrow(times = 1) {
-    const secondNextArrow =
-      this.page.locator(SELECTORS.DROPOFF_NEXT_ARROW).nth(1);
+    const secondNextArrow = this.page
+      .locator(SELECTORS.DROPOFF_NEXT_ARROW)
+      .nth(1);
 
+    // Ensure the arrow is initially visible
     await secondNextArrow.waitFor({ state: 'visible' });
 
     for (let i = 0; i < times; i++) {
       await secondNextArrow.click();
-      await this.page.waitForTimeout(300);
+
+      // Wait for the calendar to re-render and the arrow to be usable again
+      await secondNextArrow.waitFor({ state: 'visible' });
     }
   }
 
@@ -54,13 +64,22 @@ class CarSearchPage {
     await this.page.click(SELECTORS.DROPOFF_DATE_INPUT);
   }
 
-  /** Types rental agency name in dropdown */
+  /**
+   * Types the rental agency name into the dropdown field.
+   *
+   * Waits until the rental agency dropdown input is visible
+   * to ensure the field is ready for interaction before typing.
+   *
+   * @param {string} agencyName
+   */
   async typeRentalAgencyName(agencyName) {
-    await this.page.waitForTimeout(500);
-    await this.page.type(
-      SELECTORS.RENTAL_AGENCY_DROPDOWN_FIELD,
-      agencyName
+    const rentalAgencyField = this.page.locator(
+      SELECTORS.RENTAL_AGENCY_DROPDOWN_FIELD
     );
+
+    // Ensure the dropdown field is visible and ready
+    await rentalAgencyField.waitFor({ state: 'visible' });
+    await rentalAgencyField.type(agencyName);
   }
 
   /** Selects rental agency from dropdown */

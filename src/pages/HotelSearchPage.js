@@ -1,4 +1,6 @@
 const { waitForText } = require('@utils/wait');
+const { pressTab } = require('@utils/dom');
+const { expect } = require('@playwright/test');
 
 /**
  * Page Object for hotel search form.
@@ -10,6 +12,7 @@ const SELECTORS = {
   HOTEL_DESTINATION_FIELD: "[placeholder='Where would you like to stay?']",
   CHECK_IN_INPUT: "[placeholder='Check in']",
 };
+
 
 class HotelSearchPage {
   constructor(page) {
@@ -32,25 +35,38 @@ class HotelSearchPage {
 
   /**
    * Types hotel destination and confirms selection.
-   * Uses Tab to accept autocomplete suggestion.
+   *
+   * Types into the destination field, uses TAB to accept the
+   * autocomplete suggestion, and waits until the field loses
+   * focus to ensure the selection was applied.
+   *
+   * @param {string} where - Hotel destination to search for
    */
   async typeHotelDestination(where) {
-    await this.page.waitForSelector(
-      SELECTORS.HOTEL_DESTINATION_FIELD,
-      { state: 'visible', timeout: 5000 }
+    const destinationField = this.page.locator(
+      SELECTORS.HOTEL_DESTINATION_FIELD
     );
 
-    await this.page.click(SELECTORS.HOTEL_DESTINATION_FIELD);
-    await this.page.fill(SELECTORS.HOTEL_DESTINATION_FIELD, where);
-    await this.page.keyboard.press('Tab');
+    // Ensure field is visible and ready
+    await destinationField.waitFor({ state: 'visible' });
 
-    // Allow autocomplete resolution
-    await this.page.waitForTimeout(5000);
+    await destinationField.click();
+    await destinationField.fill(where);
+
+    // Accept autocomplete suggestion
+    await pressTab(this.page);
+
+    // Ensure the "Hotel destination" field lost focus (input was applied)
+    await expect(destinationField).not.toBeFocused();
   }
 
-  /** Opens the calendar by clicking check-in field */
+  /**
+   * Opens the calendar by clicking the check-in field.
+   */
   async clickCheckInField() {
-    await this.page.click(SELECTORS.CHECK_IN_INPUT);
+    await this.page
+      .locator(SELECTORS.CHECK_IN_INPUT)
+      .click();
   }
 }
 

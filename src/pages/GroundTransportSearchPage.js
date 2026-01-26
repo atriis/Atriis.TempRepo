@@ -63,28 +63,47 @@ class GroundTransportSearchPage {
       .click();
   }
 
-  /** Selects vehicle type from dropdown */
+  /**
+   * Selects a vehicle type from the dropdown.
+   *
+   * The method waits for the vehicle type field to be visible,
+   * opens the dropdown, filters by typing, waits for the matching
+   * option to appear, and then selects it.
+   *
+   * @param {string} vehicleType - Vehicle type to select
+   */
   async selectVehicleType(vehicleType) {
-    await this.page.waitForTimeout(500);
-    // Click to open dropdown
-    await this.page.click(SELECTORS.VEHICLE_TYPE_FIELD);
-    await this.page.waitForTimeout(500);
-    // Type to filter
-    await this.page.fill(SELECTORS.VEHICLE_TYPE_FIELD, vehicleType);
-    await this.page.waitForTimeout(500);
-    // Click the option
-    await this.page
+    const vehicleTypeField = this.page.locator(
+      SELECTORS.VEHICLE_TYPE_FIELD
+    );
+
+    // Ensure the vehicle type field is visible and ready
+    await vehicleTypeField.waitFor({ state: 'visible' });
+
+    // Open dropdown
+    await vehicleTypeField.click();
+
+    // Type to filter options
+    await vehicleTypeField.fill(vehicleType);
+
+    const option = this.page
       .locator(SELECTORS.VEHICLE_TYPE_DROPDOWN_OPTION(vehicleType))
-      .first().click();
+      .first();
+
+    // Wait until the filtered option is visible
+    await option.waitFor({ state: 'visible' });
+
+    // Select the option
+    await option.click();
   }
 
   /** Selects traveller number from dropdown */
-async selectTravellerNumber(travellerNumbers) {
-  await this.page.locator(SELECTORS.TRAVELLER_DROPDOWN).click();
-  await this.page
-    .getByRole('option', { name: String(travellerNumbers), exact: true })
-    .click();
-}
+  async selectTravellerNumber(travellerNumbers) {
+    await this.page.locator(SELECTORS.TRAVELLER_DROPDOWN).click();
+    await this.page
+      .getByRole('option', { name: String(travellerNumbers), exact: true })
+      .click();
+  }
 }
 
 module.exports = GroundTransportSearchPage;

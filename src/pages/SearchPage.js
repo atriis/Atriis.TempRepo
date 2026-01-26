@@ -64,27 +64,20 @@ const SELECTORS = {
     "input[placeholder='From... Departure' i]",
     "input[placeholder*='From' i]"
   ],
-
   TO_PLACEHOLDER: [
     "input[placeholder='To... Station or Location' i]",
     "input[placeholder='To... Destination' i]",
     "input[placeholder*='To' i]"
   ],
-
   OR_PLACEHOLDER: [
     "input[placeholder='Enter station or location' i]",
     "input[placeholder='Airport, City or Address' i]",
     "input[placeholder*='or' i]"
   ],
-
   PICK_UP_PLACEHOLDER: "input[placeholder*='Pick-up']",
-
   DROP_OFF_PLACEHOLDER: "input[placeholder*='Drop-off']",
-
   DEPARTURE_PLACEHOLDER: "input[placeholder*='Depart']",
-
   RETURN_PLACEHOLDER: "input[placeholder*='Return']",
-
   PICK_UP_DATE_INPUT: "[placeholder='Pick-up Date']", //Same locator used for Cars and GroundScope/Transferz
 };
 
@@ -183,91 +176,139 @@ class SearchPage {
     await this.page.click(SELECTORS.ADD_GUEST_MODAL_BUTTON);
   }
 
-  /**
-   * Fills the "From" field.
-   * Uses helper logic to support multiple supplier UIs.
-   */
+/**
+ * Fills the "From" field.
+ *
+ * Uses a shared helper that supports multiple supplier UIs by targeting the
+ * first available input that matches the "From" placeholder selector.
+ * After typing, it commits the value by pressing TAB and waits until the field
+ * loses focus to ensure the UI applied the input (blur/validation/autocomplete).
+ *
+ * @param {string} from - Origin text to type into the "From" field
+ */
+async fillInFromField(from) {
+  const fromInput = this.page
+    .locator(SELECTORS.FROM_PLACEHOLDER)
+    .first();
 
-  /**
-   * Fills the "From" field using flexible selectors for different suppliers.
-   * @param {string} from
-   */
-  async fillInFromField(from) {
-    await typeIntoNthAvailableInput(
-      this.page,
-      from,
-      SELECTORS.FROM_PLACEHOLDER,
-      0
-    );
-    await this.page.waitForTimeout(1000);
-    await pressTab(this.page);
-  }
+  await typeIntoNthAvailableInput(
+    this.page,
+    from,
+    SELECTORS.FROM_PLACEHOLDER,
+    0
+  );
 
-  /**
-   * Fills the "To" field and confirms the first autocomplete suggestion.
-   */
+  // Commit the value (blur the field)
+  await pressTab(this.page);
 
-  /**
-   * Fills the "To" field and confirms the first autocomplete suggestion.
-   * @param {string} to
-   */
-  async fillInToField(to) {
-    await typeIntoNthAvailableInput(
-      this.page,
-      to,
-      SELECTORS.TO_PLACEHOLDER,
-      0
-    );
+  // Ensure the "From" field lost focus (input was applied)
+  await expect(fromInput).not.toBeFocused();
+}
 
-    const suggestions = this.page
-      .locator(SELECTORS.AUTOCOMPLETE_LIST)
-      .first();
+/**
+ * Fills the "To" field and confirms the first autocomplete suggestion.
+ *
+ * The method types into the "To" input, waits for the autocomplete list
+ * to appear, and commits the first suggestion by pressing TAB.
+ * It then waits until the field loses focus, ensuring the selection
+ * has been applied by the UI before continuing.
+ *
+ * @param {string} to - Destination text to type into the "To" field
+ */
+async fillInToField(to) {
+  const toInput = this.page
+    .locator(SELECTORS.TO_PLACEHOLDER)
+    .first();
 
-    await suggestions.waitFor({ state: 'visible', timeout: 3000 });
-    await pressTab(this.page);
-    await this.page.waitForTimeout(500);
-  }
+  await typeIntoNthAvailableInput(
+    this.page,
+    to,
+    SELECTORS.TO_PLACEHOLDER,
+    0
+  );
 
-  /**
-   * Fills an "or" location field.
-   * Used by Cars, Evolvi and other products.
-   */
+  const suggestions = this.page
+    .locator(SELECTORS.AUTOCOMPLETE_LIST)
+    .first();
 
-  /**
-   * Fills an "or" location field (used by Cars, Evolvi, etc).
-   * @param {string} or
-   * @param {number} occurrence
-   */
-  async fillInOrField(or, occurrence = 1) {
-    await typeIntoNthAvailableInput(
-      this.page,
-      or,
-      SELECTORS.OR_PLACEHOLDER,
-      occurrence - 1
-    );
-    await pressTab(this.page);
-    await this.page.waitForTimeout(500);
-  }
+  // Wait until autocomplete suggestions are shown
+  await suggestions.waitFor({ state: 'visible' });
 
-  // Opens departure calendar
+  // Confirm first suggestion (triggers blur + selection)
+  await pressTab(this.page);
 
-  /**
-   * Opens the departure calendar field.
-   */
-  async clickDepartureDateField() {
-    await this.page.locator(SELECTORS.DEPARTURE_PLACEHOLDER).nth(1).click();
-    await this.page.waitForTimeout(4000);
-  }
+  // Ensure the "To" field lost focus (selection was applied)
+  await expect(toInput).not.toBeFocused();
+}
 
-  // Opens return calendar
+/**
+ * Fills an "OR" location field.
+ *
+ * Used by Cars, Evolvi, and other products that support multiple locations.
+ * The value is committed by pressing TAB, which triggers blur/validation logic
+ * in the UI. The method waits until the field loses focus to ensure the input
+ * has been fully applied before continuing.
+ *
+ * @param {string} or - Location text to type into the OR field
+ * @param {number} occurrence - Which OR field to target (1-based index)
+ */
+async fillInOrField(or, occurrence = 1) {
+  const index = occurrence - 1;
 
-  /**
-   * Opens the return calendar field.
-   */
-  async clickReturnDateField() {
-    await this.page.locator(SELECTORS.RETURN_PLACEHOLDER).click();
-    await this.page.waitForTimeout(1500);
-  }
+  const orInput = this.page
+    .locator(SELECTORS.OR_PLACEHOLDER)
+    .nth(index);
+
+  await typeIntoNthAvailableInput(
+    this.page,
+    or,
+    SELECTORS.OR_PLACEHOLDER,
+    index
+  );
+
+  // Commit the value (blur the field)
+  await pressTab(this.page);
+
+  // Ensure the OR field lost focus (input was applied)
+  await expect(orInput).not.toBeFocused();
+}
+
+/**
+ * Opens the departure date calendar.
+ *
+ * Clicks the departure date field and waits until the date picker
+ * panel is visible, ensuring the calendar is fully open and ready
+ * for interaction.
+ */
+async clickDepartureDateField() {
+  await this.page
+    .locator(SELECTORS.DEPARTURE_PLACEHOLDER)
+    .nth(1)
+    .click();
+
+  // Wait until the date picker panel is visible
+  await this.page
+    .locator(SELECTORS.DATE_PICKER_PANEL)
+    .waitFor({ state: 'visible' });
+}
+
+/**
+ * Opens the return date calendar.
+ *
+ * Clicks the return date field and waits until the date picker
+ * panel is visible, ensuring the calendar is fully open and ready
+ * for interaction.
+ */
+async clickReturnDateField() {
+  await this.page
+    .locator(SELECTORS.RETURN_PLACEHOLDER)
+    .click();
+
+  // Wait until the date picker panel is visible
+  await this.page
+    .locator(SELECTORS.DATE_PICKER_PANEL)
+    .waitFor({ state: 'visible' });
+}
 
   /**
    * Advances the calendar by a number of months.
@@ -287,7 +328,6 @@ class SearchPage {
 
     for (let i = 0; i < monthsAhead; i++) {
       await nextArrow.click();
-      await this.page.waitForTimeout(300);
     }
   }
 
@@ -318,33 +358,38 @@ class SearchPage {
     await this.page.click(SELECTORS.PICK_UP_DATE_INPUT);
   }
 
+ /**
+ * Clicks a trip type radio button by label text (e.g., "One Way", "Round Trip").
+ *
+ * Waits until the trip type radio labels are visible before attempting
+ * to locate and click the requested option.
+ *
+ * @param {string|RegExp} labelText
+ */
+async clickTripType(labelText) {
+  const labels = this.page.locator(SELECTORS.TRIP_TYPE_RADIO_LABELS);
 
-  /**
-   * Clicks a trip type radio button by label text (e.g., "One Way", "Round Trip").
-   * @param {string|RegExp} labelText
-   */
-  async clickTripType(labelText) {
-    const labels = this.page.locator(SELECTORS.TRIP_TYPE_RADIO_LABELS);
+  // Ensure trip type labels are present and visible before interacting
+  await labels.first().waitFor({ state: 'visible' });
 
-    // Fail fast if your base locator is wrong (helps debugging a lot)
-    const count = await labels.count();
-    if (count === 0) {
-      throw new Error(
-        `Trip type labels not found. Selector: ${SELECTORS.TRIP_TYPE_RADIO_LABELS}`
-      );
-    }
-
-    const target = labels.filter({ hasText: labelText }).first();
-    const matches = await target.count();
-    if (matches === 0) {
-      throw new Error(
-        `Trip type option "${labelText}" not found under selector: ${SELECTORS.TRIP_TYPE_RADIO_LABELS}`
-      );
-    }
-
-    await target.click();
+  // Fail fast if your base locator is wrong (helps debugging a lot)
+  const count = await labels.count();
+  if (count === 0) {
+    throw new Error(
+      `Trip type labels not found. Selector: ${SELECTORS.TRIP_TYPE_RADIO_LABELS}`
+    );
   }
 
+  const target = labels.filter({ hasText: labelText }).first();
+  const matches = await target.count();
+  if (matches === 0) {
+    throw new Error(
+      `Trip type option "${labelText}" not found under selector: ${SELECTORS.TRIP_TYPE_RADIO_LABELS}`
+    );
+  }
+
+  await target.click();
+}
 
   /**
    * Selects the "One Way" trip type.
