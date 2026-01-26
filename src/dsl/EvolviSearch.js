@@ -10,6 +10,7 @@ const { SEARCH_DEFAULTS } = require('@utils/search.constants');
  *
  * High-level business actions for UK Rail searches.
  */
+
 const EvolviSearch = {
   /**
    * Selects the UK Rail provider in the search UI.
@@ -61,7 +62,6 @@ const EvolviSearch = {
 
     // Provider + trip type
     await EvolviSearch.selectEvolviSearch(page);
-    await page.waitForTimeout(5000); // stability wait for UI
     await searchPage.selectOneWayTrip();
     await EvolviSearch.ensureSplitTicketIsUnchecked(page);
 
@@ -109,7 +109,6 @@ const EvolviSearch = {
 
     // Provider + trip type
     await EvolviSearch.selectEvolviSearch(page);
-    await page.waitForTimeout(5000); // stability wait for UI
     await searchPage.selectRoundTrip();
     await EvolviSearch.ensureSplitTicketIsUnchecked(page);
 

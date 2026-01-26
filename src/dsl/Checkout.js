@@ -23,7 +23,7 @@ const Checkout = {
     // Ensure checkout page is fully loaded
     await checkoutPage.waitForBookingDetailsText();
 
-    // Intentional wait for UI stability before interacting
+    // Intentional wait required for UI stability before interacting, so test is not flaky
     await page.waitForTimeout(4000);
 
     // Wait for a valid finalize button variant

@@ -11,18 +11,48 @@ const { pressTab } = require('@utils/dom');
  *
  * Describes how users search for ground transportation.
  */
-const GroundTransportSearch = {
 
+const GroundTransportSearch = {
+  /**
+   * Fills the pick-up location field and commits the value.
+   *
+   * Types into the pick-up field and presses TAB to trigger
+   * blur/validation logic. Waits until the field loses focus
+   * to ensure the input was applied.
+   */
   async fillInPickUpField(page, from) {
-    await page.locator(SEARCH_SELECTORS.PICK_UP_PLACEHOLDER).first().fill(from);
-    await page.waitForTimeout(1000);
+    const pickUpInput = page
+      .locator(SEARCH_SELECTORS.PICK_UP_PLACEHOLDER)
+      .first();
+
+    await pickUpInput.fill(from);
+
+    // Commit value
     await pressTab(page);
+
+    // Ensure the field lost focus (input applied)
+    await expect(pickUpInput).not.toBeFocused();
   },
 
+  /**
+   * Fills the drop-off location field and commits the value.
+   *
+   * Types into the drop-off field and presses TAB to trigger
+   * blur/validation logic. Waits until the field loses focus
+   * to ensure the input was applied.
+   */
   async fillInDropOffField(page, to) {
-    await page.locator(SEARCH_SELECTORS.DROP_OFF_PLACEHOLDER).first().fill(to);
-    await page.waitForTimeout(1000);
+    const dropOffInput = page
+      .locator(SEARCH_SELECTORS.DROP_OFF_PLACEHOLDER)
+      .first();
+
+    await dropOffInput.fill(to);
+
+    // Commit value
     await pressTab(page);
+
+    // Ensure the field lost focus (input applied)
+    await expect(dropOffInput).not.toBeFocused();
   },
 
   async searchGroundTransportFromAirportToSpecificAddress(
@@ -63,7 +93,6 @@ const GroundTransportSearch = {
     
     await searchPage.clickSearchButton();
   }
-
 };
 
 module.exports = GroundTransportSearch;
