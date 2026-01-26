@@ -19,6 +19,10 @@
     "mucToFra": {
       "from": "MUC",
       "to": "FRA"
+    },
+    "fraToZrh": {
+      "from": "FRA",
+      "to": "ZRH"
     }
   },
   "defaultRoute": "lhrToMad"
