@@ -18,6 +18,7 @@ const SELECTORS = {
  * Note: You mentioned moving logout methods to HeaderPage later.
  * That is fine as a future refactor when header grows.
  */
+
 class MenuPage {
   constructor(page) {
     this.page = page;
@@ -28,8 +29,7 @@ class MenuPage {
    * Extra timeout is kept as-is for stability.
    */
   async waitForBookANewTripIcon() {
-    await this.page.waitForTimeout(3000);
-    await this.page.locator(SELECTORS.BOOK_NEW_TRIP_ICON).waitFor({ state: 'visible', timeout: 10000 });
+    await this.page.locator(SELECTORS.BOOK_NEW_TRIP_ICON).waitFor({ state: 'visible' });
   }
 
   /** Clicks "Book a New Trip" (this opens a new tab) */

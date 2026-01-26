@@ -31,7 +31,6 @@ const SELECTORS = {
   QUOTE_STATUS_LABEL: ".app-label--quote"
 };
 
-
 class CartPage {
   /**
    * @param {import('@playwright/test').Page} page - Playwright page instance
@@ -39,7 +38,6 @@ class CartPage {
   constructor(page) {
     this.page = page;
   }
-
 
   /**
    * Accepts Terms & Conditions checkbox (required before checkout).
@@ -49,7 +47,6 @@ class CartPage {
     await checkbox.waitFor({ state: 'visible' });
     await checkbox.click();
   }
-
 
   /**
    * Waits until "Proceed to Checkout" is ready.
@@ -67,14 +64,12 @@ class CartPage {
     }
   }
 
-
   /**
    * Clicks the Proceed to Checkout button.
    */
   async clickProceedToCheckout() {
     await this.page.click(SELECTORS.PROCEED_TO_CHECKOUT_TEXT);
   }
-
 
   /**
    * Waits for the "Refundable" label to appear for hotel bookings.
@@ -128,7 +123,7 @@ class CartPage {
       .first();
     await icon.waitFor({ state: 'visible', timeout: 5000 });
     await icon.hover();
-    // Allow dropdown animation
+    // Intentional wait required for UI stability before interacting, so test is not flaky
     await this.page.waitForTimeout(500);
   }
 

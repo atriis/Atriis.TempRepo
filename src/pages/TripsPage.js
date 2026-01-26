@@ -18,6 +18,8 @@ const SELECTORS = {
  * - no business decisions
  * - only waits and checks
  */
+
+
 class TripsPage {
   constructor(page) {
     this.page = page;
@@ -25,27 +27,31 @@ class TripsPage {
 
   /**
    * Waits until the page shows a "Found trips" indicator.
-   * This confirms the list of trips has been loaded.
+   *
+   * This confirms that the trips results have finished loading
+   * and the results state is visible to the user.
+   * The method relies on a real UI signal instead of a fixed delay.
    */
   async waitForFoundTripsText() {
-    // Small wait kept to match current UI behavior
-    await this.page.waitForTimeout(2000);
-
-    // We only care that "Found" is visible, not the exact number
-    await this.page
+    const foundText = this.page
       .locator('text=Found')
-      .first()
-      .waitFor({ state: 'visible', timeout: 10000 });
+      .first();
+
+    // Wait until the "Found" indicator becomes visible
+    await foundText.waitFor({ state: 'visible' });
   }
 
   /**
    * Waits until the "Trip Status" filter section is visible.
-   * Confirms filters are loaded and usable.
+   *
+   * This confirms that the filters panel has finished loading
+   * and the "Trip Status" filter is ready for interaction.
+   * Relies on a real UI signal instead of a fixed or custom timeout.
    */
   async waitForTripStatusFilter() {
     await this.page
       .locator(SELECTORS.TRIP_STATUS_FILTER_ICON)
-      .waitFor({ state: 'visible', timeout: 10000 });
+      .waitFor({ state: 'visible' });
   }
 }
 
