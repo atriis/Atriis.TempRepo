@@ -9,6 +9,12 @@ on:
     - cron: '0 19 * * *'  # Daily at 19:00 UTC (19:00 Portugal winter / 20:00 Portugal summer)
   workflow_dispatch:
 
+# Make scheduled runs able to publish check runs (dorny/test-reporter)
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
 jobs:
   smoke-tests:
     runs-on: ubuntu-latest
@@ -47,6 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -67,6 +74,7 @@ jobs:
         with:
           name: galileo-car-results
           path: test-results/results.xml
+          if-no-files-found: error
 
       - name: Upload Galileo Car Playwright Report
         if: always()
@@ -79,6 +87,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -99,6 +108,7 @@ jobs:
         with:
           name: general-flight-results
           path: test-results/results.xml
+          if-no-files-found: error
 
       - name: Upload General Flight Playwright Report
         if: always()
@@ -111,6 +121,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -143,6 +154,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -165,7 +177,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cross-supplier-cars-results
-          path: test-results/results.xml    
+          path: test-results/results.xml
 
       - name: Upload Cross-Supplier Cars Playwright Report
         if: always()
@@ -178,6 +190,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -237,7 +250,7 @@ jobs:
         if: always()
         uses: dorny/test-reporter@v1
         with:
-          name: Playwright E2E — Smoke + Regression + Suppliers
+          name: Atriis Test Automation Suite
           reporter: java-junit
           path: all-results/**/results.xml
           fail-on-error: false
