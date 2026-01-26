@@ -46,25 +46,6 @@ async function waitForText(page, selector, expectedText, timeout = 30000) {
   );
 }
 
-/**
- * Simple delay helper (seconds → milliseconds).
- *
- * Why this exists:
- * - Makes waits easier to read in code
- * - Avoids repeating "seconds * 1000" everywhere
- *
- * IMPORTANT:
- * - This should be used sparingly
- * - Prefer state-based waits (like waitForText) whenever possible
- *
- * @param {Object} page - Playwright page instance
- * @param {number} seconds - Number of seconds to wait
- */
-async function wait(page, seconds) {
-  await page.waitForTimeout(seconds * 1000);
-}
-
 module.exports = {
   waitForText,
-  wait,
 };

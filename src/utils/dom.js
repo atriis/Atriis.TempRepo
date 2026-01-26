@@ -68,6 +68,11 @@ async function scrollToElement(page, selector) {
  * - selectors = [selectorA, selectorB]
  * - nth = 1 → second matching input
  *
+ * Notes:
+ * - This helper does NOT use fixed delays.
+ * - If a specific UI needs autocomplete/suggestions to appear after typing,
+ *   the caller should wait for that UI-specific signal (e.g. suggestion list visible).
+ *
  * @param {Object} page - Playwright page instance
  * @param {string} value - Value to type
  * @param {string[]} selectors - List of selectors to try
@@ -75,6 +80,8 @@ async function scrollToElement(page, selector) {
  * @returns {Promise<string>} Selector that was successfully used
  */
 async function typeIntoNthAvailableInput(page, value, selectors, nth = 0) {
+  const expected = String(value ?? '').trim();
+
   for (const selector of selectors) {
     const locator = page.locator(selector);
     const count = await locator.count();
@@ -83,13 +90,28 @@ async function typeIntoNthAvailableInput(page, value, selectors, nth = 0) {
       const target = locator.nth(nth);
 
       // Logged on purpose to help debug selector mismatches
-      console.log(`Typing "${value}" into ${nth + 1}º match of selector: ${selector}`);
+      console.log(
+        `Typing "${value}" into ${nth + 1}º match of selector: ${selector}`
+      );
 
+      await target.waitFor({ state: 'visible' });
       await target.click();
       await target.fill(value);
 
-      // Intentional wait to allow UI suggestions/autocomplete to react
-      await page.waitForTimeout(800);
+      // Deterministic: wait until the input's value is actually applied in the DOM
+      await page.waitForFunction(
+        ([selector, index, expected]) => {
+          const el = document.querySelectorAll(selector)?.[index];
+          if (!el) return false;
+
+          // Most inputs use .value; fallback to textContent if needed
+          const raw =
+            typeof el.value === 'string' ? el.value : (el.textContent || '');
+
+          return raw.trim() === expected;
+        },
+        [selector, nth, expected]
+      );
 
       return selector;
     }
@@ -111,12 +133,24 @@ async function typeIntoNthAvailableInput(page, value, selectors, nth = 0) {
  */
 async function pressTab(page) {
   await page.keyboard.press("Tab");
-  await page.waitForTimeout(500);
+}
+
+/**
+ * Waits for an element to be visible and enabled (not disabled).
+ * @param {import('@playwright/test').Locator} locator
+ * @param {number} [timeout=5000]
+ */
+async function waitForEnabled(locator, timeout = 5000) {
+  await locator.waitFor({ state: 'visible', timeout });
+  await locator.waitFor({ state: 'attached', timeout });
+  // Playwright does not have a direct "enabled" state, so check attribute
+  await locator.evaluate((el) => !el.hasAttribute('disabled'));
 }
 
 module.exports = {
   getText,
   scrollToElement,
   typeIntoNthAvailableInput,
-  pressTab
+  pressTab,
+  waitForEnabled,
 };
