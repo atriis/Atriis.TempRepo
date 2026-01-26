@@ -1,4 +1,3 @@
-
 const { defineConfig } = require('@playwright/test');
 const config = require('./src/config/config');
 require('module-alias/register');
@@ -134,7 +133,10 @@ function defaultProject({ name, testDir, provider }) {
 
 module.exports = defineConfig({
   testDir: './tests',
-  timeout: 300000,
+  timeout: 120000,
+  expect: {
+    timeout: 60000, // expect timeout
+  },
   workers: process.env.CI ? 2 : 4,
 
 reporter: [
