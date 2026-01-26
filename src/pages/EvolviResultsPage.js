@@ -13,25 +13,38 @@ const SELECTORS = {
  * Low-level UI interactions on Evolvi results.
  * Quiet and mechanical by design.
  */
+
 class EvolviResultsPage {
   constructor(page) {
     this.page = page;
   }
 
-  /** Confirms Evolvi results page is loaded */
+  /** 
+   * Confirms the Evolvi results page is loaded.
+   *
+   * Waits until the "Outbound" text is visible, which indicates
+   * the outbound results section has been rendered.
+   */
   async waitForOutboundText() {
-    await waitForText(this.page, SELECTORS.OUTBOUND_TEXT, 'Outbound');
-    await this.page.waitForTimeout(4000); // keep stability wait
+    await waitForText(
+      this.page,
+      SELECTORS.OUTBOUND_TEXT,
+      'Outbound'
+    );
   }
 
-  /** Waits until suggested fares are visible */
+  /**
+   * Waits until suggested fares are visible.
+   *
+   * The "Suggested fares" text only appears once fares
+   * have finished loading and are ready for interaction.
+   */
   async waitForSuggestedFaresText() {
     await waitForText(
       this.page,
       SELECTORS.SUGGESTED_FARES_TEXT,
       'Suggested fares'
     );
-    await this.page.waitForTimeout(4000);
   }
 
   /** Clicks the cheapest suggested fare option */

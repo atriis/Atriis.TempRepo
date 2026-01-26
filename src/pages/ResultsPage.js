@@ -1,4 +1,6 @@
-// Centralized selectors for easy maintenance
+const { SELECTORS: CART_SELECTORS } = require('@pages/CartPage');
+
+// Centralized selectors for ResultsPage only
 const SELECTORS = {
   RESULTS_BUTTON: '.btn.btn--primary',
   PROCEED_BUTTON: "button:has-text('Proceed')",
@@ -15,25 +17,20 @@ class ResultsPage {
     this.page = page;
   }
 
-  /** Waits until the "Select" button is visible */
+  /** Waits until the first "Select" button is visible */
   async waitForSelectText() {
     await this.page
       .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Select")`)
       .first()
-      .waitFor({ state: 'visible', timeout: 15000 });
-
-    // Extra wait kept for UI stability
-    await this.page.waitForTimeout(4000);
+      .waitFor({ state: 'visible' });
   }
 
-  /** Waits until the "Add to trip" button is visible */
+  /** Waits until the first "Add to trip" button is visible */
   async waitForAddToTripText() {
-    // Wait for button with "Add to trip" text with extended timeout
-    const addToTripButton = this.page
+    await this.page
       .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Add to trip")`)
-      .first();
-
-    await addToTripButton.waitFor({ state: 'visible', timeout: 60000 });
+      .first()
+      .waitFor({ state: 'visible' });
   }
 
   /** Scrolls to the first "Add to trip" button */
@@ -60,7 +57,7 @@ class ResultsPage {
       .click();
   }
 
-   /**
+  /**
    * Handles the "Conflicting Quotes" modal if it appears.
    *
    * Returns:
@@ -68,24 +65,28 @@ class ResultsPage {
    * - false → modal did not appear
    */
   async handleConflictQuoteModalIfVisible() {
-    const proceedButton = this.page.locator(SELECTORS.PROCEED_BUTTON).first();
+    const proceedButton = this.page
+      .locator(SELECTORS.PROCEED_BUTTON)
+      .first();
 
     try {
-      // Short wait: if not visible, assume modal did not appear
-      await proceedButton.waitFor({ state: 'visible', timeout: 8000 });
+      await proceedButton.waitFor({ state: 'visible' });
     } catch {
       return false;
     }
 
     await proceedButton.click();
 
-    // Extra wait kept for UI stability
-    await this.page.waitForTimeout(1000);
+    // Confirm navigation to Trip Overview
+    await this.page
+      .locator(CART_SELECTORS.TRIP_OVERVIEW_TITLE)
+      .waitFor({ state: 'visible' });
+
     return true;
   }
 }
 
 module.exports = {
   ResultsPage,
-  SELECTORS
+  SELECTORS,
 };

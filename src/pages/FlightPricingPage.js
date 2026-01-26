@@ -1,4 +1,5 @@
 const { waitForText } = require('@utils/wait');
+
 /**
  * Selectors for the Flight Results screen.
  * Kept minimal on purpose.
@@ -13,6 +14,7 @@ const SELECTORS = {
  * Low-level interactions with the flight search results UI.
  * This class does NOT contain business logic.
  */
+
 class FlightPricingPage {
   constructor(page) {
     this.page = page;
@@ -26,15 +28,11 @@ class FlightPricingPage {
    * - Extra timeout improves stability in CI and slower environments
    */
   async waitForYourSelectionText() {
-    await this.page.waitForTimeout(6000);
     await waitForText(
       this.page,
       SELECTORS.YOUR_SELECTION_TEXT,
       'Your selection'
     );
-
-    // Intentional extra wait to avoid clicking during UI transitions
-    await this.page.waitForTimeout(4000);
   }
 }
 

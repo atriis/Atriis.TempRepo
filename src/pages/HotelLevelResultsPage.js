@@ -11,6 +11,7 @@ const SELECTORS = {
  * Low-level UI interactions on hotel-level results.
  * No logging, no business decisions.
  */
+
 class HotelLevelResultsPage {
   constructor(page) {
     this.page = page;
@@ -18,26 +19,28 @@ class HotelLevelResultsPage {
 
   /** Scrolls to the first "View rates" button */
   async scrollToFirstViewRatesButton() {
-    await this.page.waitForTimeout(4000);
-    await this.page
+    const viewRatesButton = this.page
       .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
-      .first()
-      .scrollIntoViewIfNeeded();
+      .first();
+
+    // Ensure the button exists before trying to scroll to it
+    await viewRatesButton.waitFor({ state: 'attached' });
+
+    await viewRatesButton.scrollIntoViewIfNeeded();
   }
 
-  /** Waits until the "View rates" button is visible */
+  /** Waits until the first "View rates" button is visible */
   async waitForViewRatesText() {
-    // Scroll to the button first to ensure it's in view
-    await this.page.waitForTimeout(500);
-    await this.scrollToFirstViewRatesButton();
-
-    await this.page
+    const viewRatesButton = this.page
       .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
-      .first()
-      .waitFor({ state: 'visible', timeout: 15000 });
+      .first();
 
-    // Extra wait kept for UI stability
-    await this.page.waitForTimeout(4000);
+    // Ensure the button exists, then scroll it into view
+    await viewRatesButton.waitFor({ state: 'attached' });
+    await viewRatesButton.scrollIntoViewIfNeeded();
+
+    // Confirm it is visible and ready for interaction
+    await viewRatesButton.waitFor({ state: 'visible' });
   }
 
   /** Clicks the first available "View rates" button */
