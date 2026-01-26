@@ -9,6 +9,12 @@ on:
     - cron: '0 19 * * *'  # Daily at 19:00 UTC (19:00 Portugal winter / 20:00 Portugal summer)
   workflow_dispatch:
 
+# Ensure scheduled runs can create check runs
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
 jobs:
   smoke-tests:
     runs-on: ubuntu-latest
@@ -35,6 +41,7 @@ jobs:
         with:
           name: smoke-results
           path: test-results/results.xml
+          if-no-files-found: warn
 
       - name: Upload Smoke Playwright Report
         if: always()
@@ -42,6 +49,7 @@ jobs:
         with:
           name: smoke-playwright-report
           path: playwright-report/
+          if-no-files-found: warn
 
   galileo-car-tests:
     runs-on: ubuntu-latest
@@ -67,6 +75,7 @@ jobs:
         with:
           name: galileo-car-results
           path: test-results/results.xml
+          if-no-files-found: warn
 
       - name: Upload Galileo Car Playwright Report
         if: always()
@@ -74,6 +83,7 @@ jobs:
         with:
           name: galileo-car-playwright-report
           path: playwright-report/
+          if-no-files-found: warn
 
   general-flight-tests:
     runs-on: ubuntu-latest
@@ -99,6 +109,7 @@ jobs:
         with:
           name: general-flight-results
           path: test-results/results.xml
+          if-no-files-found: warn
 
       - name: Upload General Flight Playwright Report
         if: always()
@@ -106,6 +117,7 @@ jobs:
         with:
           name: general-flight-playwright-report
           path: playwright-report/
+          if-no-files-found: warn
 
   lufthansa-flight-tests:
     runs-on: ubuntu-latest
@@ -131,6 +143,7 @@ jobs:
         with:
           name: lufthansa-flight-results
           path: test-results/results.xml
+          if-no-files-found: warn
 
       - name: Upload Lufthansa Flight Playwright Report
         if: always()
@@ -138,6 +151,7 @@ jobs:
         with:
           name: lufthansa-flight-playwright-report
           path: playwright-report/
+          if-no-files-found: warn
 
   cross-supplier-cars-tests:
     runs-on: ubuntu-latest
@@ -165,7 +179,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cross-supplier-cars-results
-          path: test-results/results.xml    
+          path: test-results/results.xml
+          if-no-files-found: warn
 
       - name: Upload Cross-Supplier Cars Playwright Report
         if: always()
@@ -173,6 +188,7 @@ jobs:
         with:
           name: cross-supplier-cars-playwright-report
           path: playwright-report/
+          if-no-files-found: warn
 
   general-hotels-tests:
     runs-on: ubuntu-latest
@@ -198,6 +214,7 @@ jobs:
         with:
           name: general-hotels-results
           path: test-results/results.xml
+          if-no-files-found: warn
 
       - name: Upload General Hotels Playwright Report
         if: always()
@@ -205,6 +222,7 @@ jobs:
         with:
           name: general-hotels-playwright-report
           path: playwright-report/
+          if-no-files-found: warn
 
   summary:
     runs-on: ubuntu-latest
@@ -217,11 +235,6 @@ jobs:
       - general-hotels-tests
     if: always()
 
-    permissions:
-      contents: read
-      actions: read
-      checks: write
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -233,11 +246,18 @@ jobs:
         with:
           path: all-results
 
+      - name: Debug downloaded files
+        if: always()
+        run: |
+          echo "== all-results tree =="
+          ls -R all-results || true
+
       - name: Publish All Tests (One Report)
         if: always()
         uses: dorny/test-reporter@v1
         with:
           name: Atriis Test Automation Suite
           reporter: java-junit
-          path: all-results/**/results.xml
+          # ✅ matches downloaded artifact structure: all-results/<artifact>/test-results/results.xml
+          path: all-results/**/test-results/results.xml
           fail-on-error: false
