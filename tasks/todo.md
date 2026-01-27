@@ -1,10 +1,10 @@
 # TODO
 
 ## Working Now: 
-- [ ] Implement UK Parking page (Page Object, DSL, and test sample)
+
+- Implement test flow to add credit card in cart as FOP.
 
 ## High Priority
-- [ ] Implement UK Parking page (Page Object, DSL, and test sample)
 - [ ] Review playwright.config file logic
 - [ ] Implement Travel Request page (Page Object, DSL, and test sample)
 - [ ] Create flight multi-city flow/test
