@@ -28,7 +28,8 @@ const SELECTORS = {
   TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label='Trip cancellation'] .el-dialog__title",
   CONFIRM_CANCEL_BUTTON: "role=button[name='Cancel trip']",
   CANCELLATION_SUCCESS_MESSAGE: "text='Cancellation confirmed!'",
-  QUOTE_STATUS_LABEL: ".app-label--quote"
+  QUOTE_STATUS_LABEL: ".app-label--quote",
+  HOLD_BUTTON: '.btn--default.mt-2'
 };
 
 class CartPage {
