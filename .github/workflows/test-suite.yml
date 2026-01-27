@@ -262,6 +262,7 @@ jobs:
       - cross-supplier-cars-tests
       - general-hotels-tests
       - manual-quote-flight-tests
+      - uk-parking-tests
     if: always()
 
     permissions:
@@ -288,3 +289,36 @@ jobs:
           reporter: java-junit
           path: all-results/**/results.xml
           fail-on-error: false
+
+  uk-parking-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+      - run: npx playwright install --with-deps
+
+      - name: Run UK Parking Tests
+        run: npx playwright test tests/regression/parking
+        env:
+          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
+          UK_PARKING_USER_ONE_EMAIL: ${{ secrets.UK_PARKING_USER_ONE_EMAIL }}
+          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
+
+      - name: Upload UK Parking Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uk-parking-results
+          path: test-results/results.xml
+
+      - name: Upload UK Parking Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uk-parking-playwright-report
+          path: playwright-report/
