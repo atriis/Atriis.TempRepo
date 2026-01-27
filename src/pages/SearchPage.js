@@ -321,17 +321,36 @@ async clickReturnDateField() {
    * Advances the calendar by a number of months (default: 3).
    * @param {number} monthsAhead
    */
-  async clickCalendarNextArrow(monthsAhead = 3) {
-    const nextArrow = this.page
+async clickCalendarNextArrow(monthsAhead = 3) {
+  if (!Number.isInteger(monthsAhead) || monthsAhead < 0) {
+    throw new Error(`monthsAhead must be an integer >= 0. Received: ${monthsAhead}`);
+  }
+
+  if (monthsAhead === 0) return;
+
+  const picker = this.page.locator(SELECTORS.DATE_PICKER_PANEL).first();
+
+  for (let i = 0; i < monthsAhead; i++) {
+    // Calendar can close/re-render in CI. Make sure it's open.
+    await picker.waitFor({ state: 'visible', timeout: 15000 });
+
+    const nextArrow = picker
       .locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW)
       .first();
 
-    await nextArrow.waitFor({ state: 'visible' });
+    await nextArrow.waitFor({ state: 'visible', timeout: 15000 });
+    await nextArrow.scrollIntoViewIfNeeded();
 
-    for (let i = 0; i < monthsAhead; i++) {
-      await nextArrow.click();
-    }
+    await nextArrow.click({ timeout: 15000 });
+
+    // Wait until transition settles (arrow visible again inside visible picker)
+    await picker.waitFor({ state: 'visible', timeout: 15000 });
+    await picker
+      .locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW)
+      .first()
+      .waitFor({ state: 'visible', timeout: 15000 });
   }
+}
 
   // Executes the search
 
