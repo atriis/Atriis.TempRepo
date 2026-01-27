@@ -1,18 +1,17 @@
 # TODO
 
 ## Working Now: 
-Implement Manual Quote page (Page Object, DSL, and test sample)
+- [ ] Implement UK Parking page (Page Object, DSL, and test sample)
 
 ## High Priority
 - [ ] Implement UK Parking page (Page Object, DSL, and test sample)
-- [ ] Implement Manual Quote page (Page Object, DSL, and test sample)
+- [ ] Review playwright.config file logic
 - [ ] Implement Travel Request page (Page Object, DSL, and test sample)
 - [ ] Create flight multi-city flow/test
 - [ ] Create a Base Page with common actions (clicks, waits, etc.) — needs research for best approach
 - [ ] Make sure all tests have good assertions
 - [ ] Create random city pair flight search logic
 - [ ] Implement FOP (Page Object, DSL, and test sample)
-- [ ] Review playwright.config file
 
 ## Medium Priority
 - [ ] Implement Gherkin syntax support
