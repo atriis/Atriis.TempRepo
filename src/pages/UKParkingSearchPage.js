@@ -1,28 +1,41 @@
+
 const { pressTab } = require('@utils/dom');
 const { expect } = require('@playwright/test');
 
 /**
+
  * Centralized selectors for UK Parking search page.
+ *
+ * All selectors for the UK Parking search UI are defined here.
+ * Only this object should be updated if selectors change.
  */
 const SELECTORS = {
+  // Tab selector
   PARKING_TAB: '#tab-parking',
-  
+
   // Search field
   SEARCH_FIELD_UK_PARKING: '[placeholder="Search UK Airport"]',
-  
+
   // Date inputs
   PARKING_FROM_DATE_INPUT: '[placeholder="Parking from"]',
   RETURN_DATE_INPUT: '[placeholder="Return Date"]',
-  
+
   // Time inputs
   TIME_PLACEHOLDERS: '[placeholder="Time"]',
 };
 
+
 /**
+ * UKParkingSearchPage
+ *
  * Page Object for UK Parking Search functionality.
  * Handles all UI interactions for searching UK airport parking.
+ * No business logic or assertions should be placed here.
  */
 class UKParkingSearchPage {
+  /**
+   * @param {import('@playwright/test').Page} page - Playwright page instance
+   */
   constructor(page) {
     this.page = page;
   }
@@ -42,7 +55,7 @@ class UKParkingSearchPage {
    */
   async typeUKAirport(airport) {
     await this.page.fill(SELECTORS.SEARCH_FIELD_UK_PARKING, airport);
-    
+
     // Commit the value (blur the field)
     await pressTab(this.page);
 
@@ -61,7 +74,7 @@ class UKParkingSearchPage {
    * Clicks the return date field to open the calendar picker.
    */
   async clickReturnDateField() {
-    return this.page.click(SELECTORS.RETURN_DATE_INPUT);
+    await this.page.click(SELECTORS.RETURN_DATE_INPUT);
   }
 
   /**
@@ -69,8 +82,7 @@ class UKParkingSearchPage {
    * Required to trigger time validation in the UI.
    */
   async clickFirstStartTimeField() {
-    await this.page.locator(SELECTORS.TIME_PLACEHOLDERS).nth(0).click();
-    await this.page.locator(SELECTORS.PARKING_FROM_DATE_INPUT).click();
+    await this.page.locator(SELECTORS.TIME_PLACEHOLDERS).nth(0).dblclick();
   }
 
   /**
@@ -78,8 +90,7 @@ class UKParkingSearchPage {
    * Required to trigger time validation in the UI.
    */
   async clickSecondTimeField() {
-    await this.page.locator(SELECTORS.TIME_PLACEHOLDERS).nth(1).click();
-    await this.page.locator(SELECTORS.RETURN_DATE_INPUT).click();
+    await this.page.locator(SELECTORS.TIME_PLACEHOLDERS).nth(1).dblclick();
   }
 }
 

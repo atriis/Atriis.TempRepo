@@ -1,16 +1,29 @@
+
 const UKParkingSearchPage = require("@pages/UKParkingSearchPage");
 const { SearchPage } = require('@pages/SearchPage');
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 
 /**
- * DSL for UK Parking Search functionality.
+
+/**
+ * UKParkingSearch DSL
+ *
  * Provides business-level methods for searching UK airport parking.
+ * All business logic for the UK Parking search flow should be placed here.
  */
 const UKParkingSearch = {
   /**
    * Performs a complete UK parking search.
-   * Fills in airport, parking dates, times, and executes the search.
+   *
+   * Steps:
+   * 1. Navigates to the parking tab
+   * 2. Fills in the airport
+   * 3. Selects parking start date
+   * 4. Sets default start time
+   * 5. Selects return date
+   * 6. Sets return time
+   * 7. Executes the search
    *
    * @param {Object} page - Playwright page instance
    * @param {string} airport - UK Airport name or code (e.g., "Heathrow", "LHR")
@@ -21,39 +34,46 @@ const UKParkingSearch = {
     page,
     airport = "LHR",
     parkingFromIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-    returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX
   ) {
-    console.log(`Starting UK parking search for: ${airport}`);
+    // Start of the search flow
 
     const ukParkingSearchPage = new UKParkingSearchPage(page);
     const searchPage = new SearchPage(page);
 
-    // Navigate to parking tab
+    // 1. Navigate to parking tab
     await ukParkingSearchPage.clickParkingTab();
 
-    // Fill in airport
+    // 2. Fill in airport
     await ukParkingSearchPage.typeUKAirport(airport);
 
-    // Select parking start date
+    // Wait for airport suggestions to load (UI requirement)
+    await page.waitForTimeout(500);
+
+    // 3. Select parking start date
     await ukParkingSearchPage.clickParkingFromDateField();
+    await page.waitForTimeout(500);
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: parkingFromIndex,
       endIndex: null, // Single date selection for parking start
     });
 
-    // Select return date
+    // 4. Set default times (required by UI to enable submission)
+    await ukParkingSearchPage.clickFirstStartTimeField();
+
+    // 5. Select return date
     await ukParkingSearchPage.clickReturnDateField();
+    await page.waitForTimeout(500);
     await selectDatesByNthAvailable(page, {
       startIndex: returnIndex,
       endIndex: null, // Single date selection for return
     });
 
-    // Set default times (required by UI to enable submission)
-    await ukParkingSearchPage.clickFirstStartTimeField();
+    // 6. Set return time
     await ukParkingSearchPage.clickSecondTimeField();
 
-    // Execute search
+    // 7. Execute search
     await searchPage.clickSearchButton();
   },
 };
