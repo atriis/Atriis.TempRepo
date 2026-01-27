@@ -43,8 +43,7 @@ const SELECTORS = {
   DATE_PICKER_CALENDAR_NEXT_ARROW:
     "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
   DATE_PICKER_MONTH_TABLE: "table.el-date-table",
-  DATE_PICKER_AVAILABLE_DAY_TEXT: "td.available .el-date-table-cell__text",
-  DATE_PICKER_AVAILABLE_DAY_CELL: "td.available",
+  DATE_PICKER_AVAILABLE_DAY_CELL: "td.available .el-date-table-cell__text",
 
   // Traveller search
   TRAVELLER_NAME_FIELD:
@@ -281,18 +280,17 @@ async fillInOrField(or, occurrence = 1) {
  * panel is visible, ensuring the calendar is fully open and ready
  * for interaction.
  */
-  async clickDepartureDateField() {
-    // Use .first() to ensure compatibility with UIs that only have one departure field
-    await this.page
-      .locator(SELECTORS.DEPARTURE_PLACEHOLDER)
-      .first()
-      .click();
+async clickDepartureDateField() {
+  await this.page
+    .locator(SELECTORS.DEPARTURE_PLACEHOLDER)
+    .nth(1)
+    .click();
 
-    // Wait until the date picker panel is visible
-    await this.page
-      .locator(SELECTORS.DATE_PICKER_PANEL)
-      .waitFor({ state: 'visible' });
-  }
+  // Wait until the date picker panel is visible
+  await this.page
+    .locator(SELECTORS.DATE_PICKER_PANEL)
+    .waitFor({ state: 'visible' });
+}
 
 /**
  * Opens the return date calendar.
@@ -322,33 +320,10 @@ async clickReturnDateField() {
    * @param {number} monthsAhead
    */
 async clickCalendarNextArrow(monthsAhead = 3) {
-  if (!Number.isInteger(monthsAhead) || monthsAhead < 0) {
-    throw new Error(`monthsAhead must be an integer >= 0. Received: ${monthsAhead}`);
-  }
-
-  if (monthsAhead === 0) return;
-
-  const picker = this.page.locator(SELECTORS.DATE_PICKER_PANEL).first();
-
-  for (let i = 0; i < monthsAhead; i++) {
-    // Calendar can close/re-render in CI. Make sure it's open.
-    await picker.waitFor({ state: 'visible', timeout: 15000 });
-
-    const nextArrow = picker
-      .locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW)
-      .first();
-
-    await nextArrow.waitFor({ state: 'visible', timeout: 15000 });
-    await nextArrow.scrollIntoViewIfNeeded();
-
-    await nextArrow.click({ timeout: 15000 });
-
-    // Wait until transition settles (arrow visible again inside visible picker)
-    await picker.waitFor({ state: 'visible', timeout: 15000 });
-    await picker
-      .locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW)
-      .first()
-      .waitFor({ state: 'visible', timeout: 15000 });
+ const nextArrow = this.page.locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW).first();
+ await nextArrow.waitFor({ state: 'visible' });
+ for (let i = 0; i < monthsAhead; i++) {
+  await nextArrow.click();
   }
 }
 
