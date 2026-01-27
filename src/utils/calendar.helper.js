@@ -47,16 +47,15 @@ async function selectDatesByNthAvailable(
 
   // The calendar must already be open before calling this helper
   const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
-  const monthTable = picker
-    .locator(SELECTORS.DATE_PICKER_MONTH_TABLE)
-    .first();
+  await picker.waitFor({ state: 'visible' });
 
-  const days = monthTable.locator(
-    SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL
-  );
+  const monthTable = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).first();
 
-  // Ensure there are enough selectable days available
-  const count = await days.count();
+  // This is still your existing selector:
+  // "td.available .el-date-table-cell__text"
+  const dayTexts = monthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
+
+  const count = await dayTexts.count();
   const maxIndexNeeded =
     endIndex === null ? startIndex : Math.max(startIndex, endIndex);
 
@@ -66,18 +65,25 @@ async function selectDatesByNthAvailable(
     );
   }
 
+  const clickDayByIndex = async (idx) => {
+    const text = dayTexts.nth(idx);
+    await text.waitFor({ state: 'visible' });
+
+    // Click the parent <td> (more stable than clicking the <span>)
+    const cell = text.locator('..');
+
+    await cell.scrollIntoViewIfNeeded();
+    await cell.click({ timeout: 15000 });
+  };
+
   // Select the start date
-  const start = days.nth(startIndex);
-  await start.waitFor({ state: 'visible' });
-  await start.click();
+  await clickDayByIndex(startIndex);
 
   // One-way flows stop here
   if (endIndex === null) return;
 
   // Select the end date
-  const end = days.nth(endIndex);
-  await end.waitFor({ state: 'visible' });
-  await end.click();
+  await clickDayByIndex(endIndex);
 }
 
 /**

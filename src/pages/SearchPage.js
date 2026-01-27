@@ -43,6 +43,7 @@ const SELECTORS = {
   DATE_PICKER_CALENDAR_NEXT_ARROW:
     "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
   DATE_PICKER_MONTH_TABLE: "table.el-date-table",
+  DATE_PICKER_AVAILABLE_DAY_CELL: "td.available .el-date-table-cell__text",
   DATE_PICKER_AVAILABLE_DAY_CELL: "td.available",
 
   // Traveller search
