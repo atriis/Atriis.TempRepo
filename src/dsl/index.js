@@ -22,6 +22,7 @@ module.exports = {
   GroundTransportSearch: require('./GroundTransportSearch'),
   HotelLevelResults: require('./HotelLevelResults'),
   HotelSearch: require('./HotelSearch'),
+  ManualQuoteSearch: require('./ManualQuoteSearch'),
   Menu: require('./Menu'),
   Results: require('./Results'),
   RoomLevelResults: require('./RoomLevelResults'),
