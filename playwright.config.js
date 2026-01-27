@@ -388,5 +388,11 @@ reporter: [
       testDir: 'tests/regression/parking',
       provider: 'ukparking',
     }),
+
+    defaultProject({
+      name: 'manual-quote:amadeus',
+      testDir: 'tests/regression/manual-quote',
+      provider: 'amadeus',
+    }),
   ],
 });
