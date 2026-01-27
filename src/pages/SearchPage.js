@@ -43,7 +43,7 @@ const SELECTORS = {
   DATE_PICKER_CALENDAR_NEXT_ARROW:
     "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
   DATE_PICKER_MONTH_TABLE: "table.el-date-table",
-  DATE_PICKER_AVAILABLE_DAY_CELL: "td.available .el-date-table-cell__text",
+  DATE_PICKER_AVAILABLE_DAY_CELL: "td.available",
 
   // Traveller search
   TRAVELLER_NAME_FIELD:
@@ -280,17 +280,18 @@ async fillInOrField(or, occurrence = 1) {
  * panel is visible, ensuring the calendar is fully open and ready
  * for interaction.
  */
-async clickDepartureDateField() {
-  await this.page
-    .locator(SELECTORS.DEPARTURE_PLACEHOLDER)
-    .nth(1)
-    .click();
+  async clickDepartureDateField() {
+    // Use .first() to ensure compatibility with UIs that only have one departure field
+    await this.page
+      .locator(SELECTORS.DEPARTURE_PLACEHOLDER)
+      .first()
+      .click();
 
-  // Wait until the date picker panel is visible
-  await this.page
-    .locator(SELECTORS.DATE_PICKER_PANEL)
-    .waitFor({ state: 'visible' });
-}
+    // Wait until the date picker panel is visible
+    await this.page
+      .locator(SELECTORS.DATE_PICKER_PANEL)
+      .waitFor({ state: 'visible' });
+  }
 
 /**
  * Opens the return date calendar.
