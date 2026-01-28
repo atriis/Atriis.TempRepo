@@ -11,19 +11,18 @@
 
 const SELECTORS = {
   // "Add Payment Method" modal selectors
-  ADD_CARD_DETAILS_BUTTON: ".add-credit",
-  DROPDOWN_FIELDS: ".el-select__wrapper",
+  DROPDOWN_WRAPPER: ".el-select__wrapper",
   CARD_HOLDER_NAME_INPUT: '[placeholder="Card holder name"]',
   CITY_NAME_INPUT: '[placeholder="City name"]',
   ZIP_CODE_INPUT: '[placeholder="Zip code"]',
   STREET_NAME_INPUT: '[placeholder="Street name"]',
   INSERT_CREDIT_CARD_NUMBER_LINK: '.insertCard',
   SAVE_CARD: '.btn-save',
-  // Dropdown option builder
-  DROPDOWN_OPTION: (option) => `li.el-select-dropdown__item span:text("${option}")`,
   // "Insert Credit Card Number" modal selectors
   INSERT_CREDIT_CARD_NUMBER_FIELD: '[placeholder="Please enter your credit card number"]',
   SAVE_CARD_MODAL_BUTTON: '.btn.flex button.btn.btn--primary.btn--size-default.btn--round',
+  // Green icon cart
+  GREEN_ICON_CART: '.material-symbols-outlined.payment-status-icon.filled.green'
 };
 
 class CartFOPPage {
@@ -35,10 +34,21 @@ class CartFOPPage {
   }
 
   /**
+   * Clicks the button to open the Add Payment Method modal.
+   */
+  async clickAddPaymentMethodButton() {
+    const button = this.page.getByRole('button', { name: 'Add payment method' });
+    await button.waitFor({ state: 'visible' });
+    await button.click();
+  }
+
+  /**
    * Clicks the button to open the Add Card Details modal.
    */
   async clickAddCardDetailsButton() {
-    await this.page.click(SELECTORS.ADD_CARD_DETAILS_BUTTON);
+    const button = this.page.getByRole('button', { name: 'Add card details' });
+    await button.waitFor({ state: 'visible' });
+    await button.click();
   }
 
   /**
@@ -54,17 +64,10 @@ class CartFOPPage {
    * @param {string} cardType
    */
   async typeCardType(cardType) {
-    const dropdowns = this.page.locator(SELECTORS.DROPDOWN_FIELDS);
-    await dropdowns.nth(0).click();
-    await dropdowns.nth(0).fill(cardType);
-  }
-
-  /**
-   * Clicks the card type option in the dropdown.
-   * @param {string} cardType
-   */
-  async clickCardTypeDropdownOption(cardType) {
-    await this.page.locator(SELECTORS.DROPDOWN_OPTION(cardType)).click();
+    const select = this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(0);
+    await select.click();
+    await this.page.keyboard.type(cardType);
+    await this.page.getByRole('option', { name: cardType }).click();
   }
 
   /**
@@ -80,17 +83,10 @@ class CartFOPPage {
    * @param {string} expirationMonth
    */
   async typeExpirationMonth(expirationMonth) {
-    const dropdowns = this.page.locator(SELECTORS.DROPDOWN_FIELDS);
-    await dropdowns.nth(1).click();
-    await dropdowns.nth(1).fill(expirationMonth);
-  }
-
-  /**
-   * Clicks the expiration month option in the dropdown.
-   * @param {string} expirationMonth
-   */
-  async clickExpirationMonthDropdownOption(expirationMonth) {
-    await this.page.locator(SELECTORS.DROPDOWN_OPTION(expirationMonth)).click();
+    const select = this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(1);
+    await select.click();
+    await this.page.keyboard.type(expirationMonth);
+    await this.page.getByRole('option', { name: expirationMonth }).click();
   }
 
   /**
@@ -98,17 +94,10 @@ class CartFOPPage {
    * @param {string} expirationYear
    */
   async typeExpirationYear(expirationYear) {
-    const dropdowns = this.page.locator(SELECTORS.DROPDOWN_FIELDS);
-    await dropdowns.nth(2).click();
-    await dropdowns.nth(2).fill(expirationYear);
-  }
-
-  /**
-   * Clicks the expiration year option in the dropdown.
-   * @param {string} expirationYear
-   */
-  async clickExpirationYearDropdownOption(expirationYear) {
-    await this.page.locator(SELECTORS.DROPDOWN_OPTION(expirationYear)).click();
+    const select = this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(2);
+    await select.click();
+    await this.page.keyboard.type(expirationYear);
+    await this.page.getByRole('option', { name: expirationYear }).click();
   }
 
   /**
@@ -116,17 +105,10 @@ class CartFOPPage {
    * @param {string} country
    */
   async typeCountry(country) {
-    const dropdowns = this.page.locator(SELECTORS.DROPDOWN_FIELDS);
-    await dropdowns.nth(3).click();
-    await dropdowns.nth(3).fill(country);
-  }
-
-  /**
-   * Clicks the country option in the dropdown.
-   * @param {string} country
-   */
-  async clickCountryDropdownOption(country) {
-    await this.page.locator(SELECTORS.DROPDOWN_OPTION(country)).click();
+    const select = this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(3);
+    await select.click();
+    await this.page.keyboard.type(country);
+    await this.page.getByRole('option', { name: country }).click();
   }
 
   /**
@@ -154,6 +136,13 @@ class CartFOPPage {
   }
 
   /**
+   * Clicks the link to open the Insert Credit Card Number modal.
+   */
+  async clickInsertCreditCardNumberLink() {
+    await this.page.click(SELECTORS.INSERT_CREDIT_CARD_NUMBER_LINK);
+  }
+
+  /**
    * Waits for the Save Card button to be visible in the modal.
    */
   async waitForSaveCardModalButton() {
@@ -174,6 +163,28 @@ class CartFOPPage {
    */
   async typeCardNumberInModal(cardNumber) {
     await this.page.fill(SELECTORS.INSERT_CREDIT_CARD_NUMBER_FIELD, cardNumber);
+  }
+
+  /**
+   * Clicks the Save Card button.
+   */
+  async clickSaveCardButton() {
+    await this.page.click(SELECTORS.SAVE_CARD);
+  }
+
+  /**
+   * Closes the FOP (Form of Payment) modal.
+   */
+  async closeFOPModal() {
+    await this.page.getByRole('button', { name: 'Close this dialog' }).nth(6).click();
+  }
+
+  /**
+   * Waits for the green payment confirmation icon to be visible in the cart.
+   */
+  async waitForGreenIconInCart() {
+    const icon = this.page.locator(SELECTORS.GREEN_ICON_CART);
+    await icon.waitFor({ state: 'visible' });
   }
 }
 
