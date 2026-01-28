@@ -64,11 +64,11 @@ test.describe('[@regression] Add Flight to Cart Flows', () => {
     console.log('Step 2: Add traveller - I am the traveller');
     await Search.addTravellerImTheTraveller(page);
 
-    // Step 3: Search by scheduled PAR → LON flight
-    console.log('Step 3: Search by scheduled flight PAR → LON');
+    // Step 3: Search by scheduled LON → AMS flight
+    console.log('Step 3: Search by scheduled flight LON → AMS');
     await FlightSearch.searchFlightBySchedule(page, {
-      from: 'PAR',
-      to: 'LON',
+      from: 'LON',
+      to: 'AMS',
     });
 
     // Step 4: Select flight segments by schedule
