@@ -2,7 +2,7 @@
 
 ## Working Now: 
 
-- Implement test flow to add credit card in cart as FOP.
+- Make test flow to add credit card in cart as FOP work. Issue to be solved tomorrow: figure out how to close the FOP modal. After that, create a test that selects a FOP in cart from a list of FOP.
 
 ## High Priority
 - [ ] Review playwright.config file logic
