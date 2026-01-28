@@ -1,0 +1,24 @@
+[
+  {
+    "cardType": "Visa",
+    "cardHolderName": "John James",
+    "expirationMonth": "12",
+    "expirationYear": "2031",
+    "country": "United Kingdom",
+    "cityName": "London",
+    "zipCode": "12345",
+    "streetName": "123 Main St",
+    "cardNumber": "4580458045804580"
+  },
+  {
+    "cardType": "MasterCard",
+    "cardHolderName": "Jane Laurent",
+    "expirationMonth": "06",
+    "expirationYear": "2031",
+    "country": "United States",
+    "cityName": "New York",
+    "zipCode": "10001",
+    "streetName": "456 Broadway",
+    "cardNumber": "5454545454545454"
+  }
+]
