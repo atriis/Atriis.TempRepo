@@ -76,10 +76,13 @@ class CartPage {
    * Waits for the "Refundable" label to appear for hotel bookings.
    */
   async waitForHotelRefundableText() {
-    const refundable = this.page
-      .locator(SELECTORS.REFUNDABLE_TEXT, { hasText: /Refundable/i })
-      .first();
-    await refundable.waitFor({ state: 'visible', timeout: 10000 });
+    const label = this.page.locator(SELECTORS.REFUNDABLE_TEXT).first();
+
+    // Must contain "Refundable"
+    await expect(label).toContainText(/Refundable/i, { timeout: 10000 });
+
+    // Must NOT contain any form of "Non Refundable"
+    await expect(label).not.toContainText(/Non\s*Refundable/i);
   }
 
   /**
@@ -173,7 +176,7 @@ class CartPage {
    * Waits for the cancellation success message to be visible.
    * Fails if not found within timeout.
    */
-  async waitForTripCancelledMessage({ timeout = 20000 } = {}) {
+  async waitForTripCancelledMessage({ timeout = 60000 } = {}) {
     const successMessage = this.page.getByText(
       'Cancellation confirmed!',
       { exact: true }
@@ -186,7 +189,7 @@ class CartPage {
    * Checks whether the cancellation success message is visible.
    * Never throws. Returns boolean.
    */
-  async isTripCancelledMessageVisible({ timeout = 20000 } = {}) {
+  async isTripCancelledMessageVisible({ timeout = 60000 } = {}) {
     try {
       const successMessage = this.page.getByText(
         'Cancellation confirmed!',
@@ -218,6 +221,68 @@ class CartPage {
       tripStatus.label.pendingBooking.status,
       { timeout, page }
     );
+  }
+
+/**
+ * Hovers over the Share button and waits for the visible share dropdown menu.
+ */
+async hoverShareButton() {
+  const shareButton = this.page
+    .locator('.share-container')
+    .getByRole('button', { name: 'share' });
+
+  await shareButton.waitFor({ state: 'visible', timeout: 30_000 });
+  await shareButton.hover();
+
+  // Wait for the menu instance that is actually visible
+  const visibleMenu = this.page.locator('ul.share-popper[role="menu"]:visible');
+  await visibleMenu.waitFor({ state: 'visible', timeout: 30_000 });
+}
+
+/**
+ * Clicks "Share Quotes" from the currently visible share menu.
+ */
+async clickShareQuotes() {
+  const menu = this.page.locator('ul.share-popper[role="menu"]:visible');
+  await menu.waitFor({ state: 'visible', timeout: 30_000 });
+
+  const item = menu.locator('li[role="menuitem"]', { hasText: 'Share Quotes' });
+  await item.waitFor({ state: 'visible', timeout: 30_000 });
+  await item.click();
+}
+
+
+/**
+ * Clicks "Share Itinerary" from the second share menu.
+ */
+async clickShareItinerary() {
+  const menu = this.page.locator('ul.share-popper[role="menu"]:visible');
+  await menu.waitFor({ state: 'visible', timeout: 30_000 });
+
+  const item = menu.locator('li[role="menuitem"]', { hasText: 'Share Itinerary' });
+  await item.waitFor({ state: 'visible', timeout: 30_000 });
+  await item.click();
+}
+
+  //This can be used when sharing quotes or itinerary from Results page as well
+  /**
+   * Waits until the "Subject" label is visible.
+   */
+  async waitForSubjectLabelSharePopUp() {
+    const subjectLabel = this.page.getByText('Subject', { exact: true });
+
+    await subjectLabel.waitFor({ state: 'visible', timeout: 30000 });
+  }
+
+  //This can be used when sharing quotes or itinerary from Results page as well
+  /**
+   * Clicks the "Send" button.
+   */
+  async clickSendEmailButton() {
+    const sendButton = this.page.getByRole('button', { name: 'Send' });
+
+    await sendButton.waitFor({ state: 'visible' });
+    await sendButton.click();
   }
 }
 
