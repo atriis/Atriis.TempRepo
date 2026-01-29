@@ -1,6 +1,7 @@
 const { CartPage, SELECTORS } = require('@pages/CartPage');
 const { expect } = require('@playwright/test');
 const { caseInsensitiveContains } = require('@utils/text');
+const GeneralElementsPage = require('@pages/GeneralElementsPage');
 
 /**
  * Cart DSL
@@ -93,12 +94,12 @@ const Cart = {
    * Confirms that a hotel booking is refundable.
    *
    * @param {import('playwright').Page} page
-   * @returns {Promise<boolean>}
+   * @returns {Promise<void>}
    */
+  //To better visualization in the test
   async isHotelRefundable(page) {
     const cartPage = new CartPage(page);
     await cartPage.waitForHotelRefundableText();
-    return true;
   },
 
   /**
@@ -115,7 +116,51 @@ const Cart = {
     const locator = page.locator(SELECTORS.QUOTE_STATUS_LABEL);
     await expect(locator).toBeVisible({ timeout });
     await expect(locator).toContainText(caseInsensitiveContains(expectedStatus), { timeout });
-  }
+  },
+
+  /**
+   * Opens share quote dialog and waits for the subject field to be visible.
+   * Does NOT send the email - use isQuoteSent() to complete the flow.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async clickShareQuoteAndWaitForSubjectField(page) {
+    const cartPage = new CartPage(page);
+    await cartPage.hoverShareButton();
+    await cartPage.clickShareQuotes();
+    await cartPage.waitForSubjectLabelSharePopUp();
+  },
+
+  /**
+   * Opens share itinerary dialog and waits for the subject field to be visible.
+   * Does NOT send the email - use isQuoteSent() to complete the flow.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async clickShareItineraryAndWaitForSubjectField(page) {
+    const cartPage = new CartPage(page);
+    await cartPage.hoverShareButton();
+    await cartPage.clickShareItinerary();
+    await cartPage.waitForSubjectLabelSharePopUp();
+  },
+
+  /**
+   * Sends a quote or itinerary email and waits for success notification.
+   * Used after opening the share dialog with clickShareQuoteAndWaitForSubjectField.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{sent: boolean}>}
+   */
+  async sendQuoteAndWaitForSuccess(page) {
+    const cartPage = new CartPage(page);
+    const generalElementsPage = new GeneralElementsPage(page);
+
+    await cartPage.clickSendEmailButton();
+    await generalElementsPage.waitForSuccessNotification();
+  },
+
 };
 
 
