@@ -21,7 +21,7 @@ test.describe('[@regression] Add Flight to Cart Flows', () => {
     console.log('Step 4: Add first flight to cart');
     await FlightResults.addFirstFlightToCart(page);
 
-    // Step 6: Assert Pending booking
+    // Step 6: Assert "Pending booking" quote status appears in cart
     console.log('Step 6: Quote is "Pending booking" status');
     await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
 
