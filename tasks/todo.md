@@ -2,7 +2,8 @@
 
 ## Working Now: 
 
-- Make test flow to add credit card in cart as FOP work. Issue to be solved tomorrow: figure out how to close the FOP modal. After that, create a test that selects a FOP in cart from a list of FOP.
+- Create US with selectors to be fixed.
+- Reviewing playwright.config file logic
 
 ## High Priority
 - [ ] Review playwright.config file logic
@@ -17,8 +18,6 @@
 - [ ] Implement Gherkin syntax support
 - [ ] Review comments across the entire project and make necessary adjustments
 - [ ] Review indentation across the entire project
-- [ ] Implement Share Quote (Page Object, DSL, and test sample)
-- [ ] Implement Share Itinerary (Page Object, DSL, and test sample)
 - [ ] Implement Travel Policy (Page Object, DSL, and test sample)
 - [ ] Implement Reference Fields / Dynamic Profile Fields (Page Object, DSL, and test sample)
 - [ ] Simplify Copilot Instructions file
