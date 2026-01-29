@@ -219,6 +219,40 @@ jobs:
           name: general-hotels-playwright-report
           path: playwright-report/
 
+  galileo-hotel-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+      - run: npx playwright install --with-deps
+
+      - name: Run Galileo Hotel Tests
+        run: npx playwright test tests/regression/hotels/gds/galileo
+        env:
+          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
+          GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
+          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
+
+      - name: Upload Galileo Hotel Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: galileo-hotel-results
+          path: test-results/results.xml
+          if-no-files-found: error
+
+      - name: Upload Galileo Hotel Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: galileo-hotel-playwright-report
+          path: playwright-report/
+
   manual-quote-flight-tests:
     runs-on: ubuntu-latest
     steps:
@@ -261,6 +295,7 @@ jobs:
       - lufthansa-flight-tests
       - cross-supplier-cars-tests
       - general-hotels-tests
+      - galileo-hotel-tests
       - manual-quote-flight-tests
       - uk-parking-tests
     if: always()
