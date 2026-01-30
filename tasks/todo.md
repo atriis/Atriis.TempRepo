@@ -1,6 +1,7 @@
 # TODO
 
 ## Working Now: 
+Implementing Travel Policy, checking supplierTest.js logic, adjusting Travel Policy test (test case base: 47764).
 
 ## High Priority
 - [ ] Review playwright.config file logic
@@ -15,7 +16,6 @@
 ## Medium Priority
 - [ ] Review comments across the entire project and make necessary adjustments
 - [ ] Review indentation across the entire project
-- [ ] Implement Travel Policy (Page Object, DSL, and test sample)
 - [ ] Implement Reference Fields / Dynamic Profile Fields (Page Object, DSL, and test sample)
 - [ ] Simplify Copilot Instructions file
 

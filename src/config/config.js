@@ -152,6 +152,10 @@ const config = {
     ukparking: {
       user_one: createUser('UK_PARKING_USER_ONE_EMAIL'),
     },
+
+    travelpolicy: {
+      user_one: createUser('TRAVEL_POLICY_USER_ONE_EMAIL'),
+    },
   },
 };
 

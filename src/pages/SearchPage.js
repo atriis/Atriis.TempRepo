@@ -49,7 +49,10 @@ const SELECTORS = {
   TRAVELLER_NAME_FIELD:
     "[placeholder='Search by name, user group, username or email']",
   FIRST_TRAVELLER_OPTION: "[id*='item-0']",
-  ADD_ANOTHER_TRAVELLER_BUTTON: ".add-btn .material-symbols-outlined",
+  TRIP_TRAVELLER_TAG: ".trip-traveler-tag",
+
+  // Additional traveller button
+  ADD_ANOTHER_TRAVELLER_BUTTON: "button:has(span.material-symbols-outlined:has-text('person_add'))",
 
   // Tabs
   GENERAL_RAIL_TAB: "#tab-rails",
@@ -103,10 +106,15 @@ class SearchPage {
     await this.page.click(SELECTORS.TRAVELER_ICON);
   }
 
-  // Adds an additional traveler to the booking
-  async clickAnotherTravellerButton() {
-    await this.page.click(SELECTORS.ADD_ANOTHER_TRAVELLER_BUTTON);
-  }
+/**
+ * Adds an additional traveler to the booking.
+ */
+async clickAnotherTravellerButton() {
+  const button = this.page.locator(SELECTORS.ADD_ANOTHER_TRAVELLER_BUTTON);
+
+  await button.waitFor({ state: 'visible' });
+  await button.click();
+}
 
   // Waits until the UI is ready to confirm traveler identity
   async waitForImTheTravelerButton() {
@@ -137,8 +145,17 @@ class SearchPage {
     await this.page.fill(SELECTORS.TRAVELLER_NAME_FIELD, name);
   }
 
-  async selectFirstTravellerOption() {
+  async selectFirstTravellerNameOption() {
     await this.page.click(SELECTORS.FIRST_TRAVELLER_OPTION);
+  }
+
+
+  async selectSecondTravellerOption() {
+    await this.page.locator(SELECTORS.TRIP_TRAVELLER_TAG).nth(1).click();
+  }
+
+  async selectThirdTravellerOption() {
+    await this.page.locator(SELECTORS.TRIP_TRAVELLER_TAG).nth(2).click();
   }
 
   // Opens the guest modal to add a new traveler

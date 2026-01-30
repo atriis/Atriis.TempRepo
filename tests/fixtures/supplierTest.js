@@ -197,6 +197,29 @@ const test = base.test.extend({
 
     await use(loginAsUser);
   },
+
+  /**
+   * Factory fixture for login + new trip with explicit provider and user key.
+   *
+   * Usage:
+   *   test('Test with provider and user', async ({ newTripPageFor }) => {
+   *     const page = await newTripPageFor('travelpolicy', 'user_one');
+   *     // ... test logic
+   *   });
+   *
+   * This fixture does not depend on Playwright project context.
+   */
+  newTripPageFor: async ({ page }, use, testInfo) => {
+    const loginAndStartTrip = async (provider, userKey) => {
+      const user = require('@config/config').users?.[provider]?.[userKey];
+      if (!user) throw new Error(`User ${provider}.${userKey} not found in config`);
+      await page.goto(require('@config/config').baseUrl, { waitUntil: 'domcontentloaded' });
+      await require('@dsl/App').loginAs(page, user);
+      const tripPage = await require('@dsl/App').bookANewTrip(page);
+      return tripPage;
+    };
+    await use(loginAndStartTrip);
+  },
 });
 
 module.exports = {

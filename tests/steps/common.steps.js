@@ -74,6 +74,11 @@ Given('I have added myself as the traveler', async function () {
   await Search.addTravellerImTheTraveller(this.page);
 });
 
+Given('I have added traveler by name {string}', async function (travelerName) {
+  console.log(`Adding traveler by name: ${travelerName}`);
+  await Search.addTravellerByName(this.page, travelerName);
+});
+
 // ===== THEN STEPS =====
 
 Then('the booking status should be {string}', async function (status) {
