@@ -2,9 +2,6 @@
 
 ## Working Now: 
 
-- Create US with selectors to be fixed.
-- Reviewing playwright.config file logic
-
 ## High Priority
 - [ ] Review playwright.config file logic
 - [ ] Implement Travel Request page (Page Object, DSL, and test sample)
@@ -13,9 +10,9 @@
 - [ ] Make sure all tests have good assertions
 - [ ] Create random city pair flight search logic
 - [ ] Implement FOP (Page Object, DSL, and test sample)
+- [ ] Review playwright.config file logic
 
 ## Medium Priority
-- [ ] Implement Gherkin syntax support
 - [ ] Review comments across the entire project and make necessary adjustments
 - [ ] Review indentation across the entire project
 - [ ] Implement Travel Policy (Page Object, DSL, and test sample)
@@ -25,7 +22,3 @@
 ## Low Priority
 - [ ] Implement Administration (Page Object, DSL, and test sample)
 - [ ] Using the prompts library and test cases from Azure, create new tests
-
-## General Questions
-- Locators on top of the page or centralized in a specific file?
-- `data-testid` attribute: how should we handle this? Open bugs so developers can add them over time?
