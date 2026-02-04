@@ -16,8 +16,8 @@ const { expect } = require('@playwright/test');
  */
 const SELECTORS = {
   // Traveler interaction
-  TRAVELER_ICON: ".traveler-name",
-  IM_THE_TRAVELER_BUTTON: ".imt-btn",
+  ADD_TRAVELER_BUTTON: ".btn.btn--default.btn--size-default.btn--round.add-btn",
+  ADD_ME_BUTTON: ".imt-btn",
   STAR_ICON: ".star-icon",
 
   // Search and guest management
@@ -50,9 +50,6 @@ const SELECTORS = {
     "[placeholder='Search by name, user group, username or email']",
   FIRST_TRAVELLER_OPTION: "[id*='item-0']",
   TRIP_TRAVELLER_TAG: ".trip-traveler-tag",
-
-  // Additional traveller button
-  ADD_ANOTHER_TRAVELLER_BUTTON: "button:has(span.material-symbols-outlined:has-text('person_add'))",
 
   // Tabs
   GENERAL_RAIL_TAB: "#tab-rails",
@@ -102,31 +99,21 @@ class SearchPage {
   }
 
   // Opens traveler selection panel
-  async clickTravelerIcon() {
-    await this.page.click(SELECTORS.TRAVELER_ICON);
+  async clickAddTravelerButton() {
+    await this.page.click(SELECTORS.ADD_TRAVELER_BUTTON);
   }
 
-/**
- * Adds an additional traveler to the booking.
- */
-async clickAnotherTravellerButton() {
-  const button = this.page.locator(SELECTORS.ADD_ANOTHER_TRAVELLER_BUTTON);
-
-  await button.waitFor({ state: 'visible' });
-  await button.click();
-}
-
   // Waits until the UI is ready to confirm traveler identity
-  async waitForImTheTravelerButton() {
+  async waitForAddMeButton() {
     await this.page.waitForSelector(
-      SELECTORS.IM_THE_TRAVELER_BUTTON,
+      SELECTORS.ADD_ME_BUTTON,
       { state: "visible" }
     );
   }
 
   // Confirms that the logged-in user is the traveler
-  async clickImTheTraveler() {
-    await this.page.click(SELECTORS.IM_THE_TRAVELER_BUTTON);
+  async clickAddMe() {
+    await this.page.click(SELECTORS.ADD_ME_BUTTON);
   }
 
   // Used as a stability indicator that the page is fully ready
