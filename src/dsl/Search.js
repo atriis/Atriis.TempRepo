@@ -23,36 +23,27 @@ const Search = {
    * Set a specific existing traveler by searching their name.
    * UI should show the "star" icon as confirmation.
    */
-  async fillInTravellerNameAndSave(page, name) {
+  async fillInTravelerNameAndSave(page, name) {
     const searchPage = new SearchPage(page);
-    await searchPage.fillInTravellerName(name);
-    await searchPage.selectFirstTravellerNameOption();
+    await searchPage.fillInTravelerName(name);
+    await searchPage.selectFirstTravelerNameOption();
     await searchPage.waitForStarIcon();
   },
 
   /**
    * Add a traveler by name (second traveler slot).
    */
-  async addTravellerByName(page, name) {
+  async addTravelerByName(page, name) {
     const searchPage = new SearchPage(page);
     await searchPage.clickAddTravelerButton();
-    await Search.fillInTravellerNameAndSave(page, name);
-  },
-
-  /**
-   * Add a second traveler by name (after first traveler).
-   */
-  async addSecondTravellerByName(page, name) {
-    const searchPage = new SearchPage(page);
-    await searchPage.clickAddTravelerButton();
-    await Search.fillInTravellerNameAndSave(page, name);
+    await Search.fillInTravelerNameAndSave(page, name);
   },
 
   /**
    * Add a new guest traveler using random test data.
    * Returns the generated data for test/debug use.
    */
-  async addFirstRandomGuest(page) {
+  async addRandomGuest(page) {
     const searchPage = new SearchPage(page);
     const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
 

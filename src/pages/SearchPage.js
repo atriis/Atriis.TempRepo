@@ -45,11 +45,11 @@ const SELECTORS = {
   DATE_PICKER_MONTH_TABLE: "table.el-date-table",
   DATE_PICKER_AVAILABLE_DAY_CELL: "td.available .el-date-table-cell__text",
 
-  // Traveller search
-  TRAVELLER_NAME_FIELD:
+  // Traveler search
+  TRAVELER_NAME_FIELD:
     "[placeholder='Search by name, user group, username or email']",
-  FIRST_TRAVELLER_OPTION: "[id*='item-0']",
-  TRIP_TRAVELLER_TAG: ".trip-traveler-tag",
+  FIRST_TRAVELER_OPTION: "[id*='item-0']",
+  TRIP_TRAVELER_TAG: ".trip-traveler-tag",
 
   // Tabs
   GENERAL_RAIL_TAB: "#tab-rails",
@@ -124,26 +124,18 @@ class SearchPage {
    */
   async waitForStarIcon({ timeout = 15000 } = {}) {
     const starIcon = this.page.locator(SELECTORS.STAR_ICON);
-    await expect(starIcon, 'Star icon should be visible after adding traveller').toBeVisible({ timeout });
+    await expect(starIcon, 'Star icon should be visible after adding traveler').toBeVisible({ timeout });
   }
 
   // Searches and selects an existing traveler
-  async fillInTravellerName(name) {
-    await this.page.fill(SELECTORS.TRAVELLER_NAME_FIELD, name);
+  async fillInTravelerName(name) {
+    await this.page.fill(SELECTORS.TRAVELER_NAME_FIELD, name);
   }
 
-  async selectFirstTravellerNameOption() {
-    await this.page.click(SELECTORS.FIRST_TRAVELLER_OPTION);
+  async selectFirstTravelerNameOption() {
+    await this.page.click(SELECTORS.FIRST_TRAVELER_OPTION);
   }
 
-
-  async selectSecondTravellerOption() {
-    await this.page.locator(SELECTORS.TRIP_TRAVELLER_TAG).nth(1).click();
-  }
-
-  async selectThirdTravellerOption() {
-    await this.page.locator(SELECTORS.TRIP_TRAVELLER_TAG).nth(2).click();
-  }
 
   // Opens the guest modal to add a new traveler
   async clickGuestTypeModal() {

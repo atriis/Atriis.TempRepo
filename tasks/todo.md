@@ -12,11 +12,11 @@ Implementing Travel Policy, checking supplierTest.js logic, adjusting Travel Pol
 - [ ] Create random city pair flight search logic
 - [ ] Implement FOP (Page Object, DSL, and test sample)
 - [ ] Review playwright.config file logic
+- [ ] Implement Reference Fields / Dynamic Profile Fields (Page Object, DSL, and test sample)
 
 ## Medium Priority
 - [ ] Review comments across the entire project and make necessary adjustments
 - [ ] Review indentation across the entire project
-- [ ] Implement Reference Fields / Dynamic Profile Fields (Page Object, DSL, and test sample)
 - [ ] Simplify Copilot Instructions file
 
 ## Low Priority
