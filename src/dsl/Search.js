@@ -12,10 +12,10 @@ const Search = {
    * Set the logged-in user as the traveler.
    * UI should show the "star" icon as confirmation.
    */
-  async addTravellerImTheTraveller(page) {
+  async addMeAsTraveler(page) {
     const searchPage = new SearchPage(page);
-    await searchPage.clickTravelerIcon();
-    await searchPage.clickImTheTraveler();
+    await searchPage.waitForAddMeButton();
+    await searchPage.clickAddMe();
     await searchPage.waitForStarIcon();
   },
 
@@ -35,8 +35,7 @@ const Search = {
    */
   async addTravellerByName(page, name) {
     const searchPage = new SearchPage(page);
-    await searchPage.clickTravelerIcon();
-    await searchPage.selectSecondTravellerOption();
+    await searchPage.clickAddTravelerButton();
     await Search.fillInTravellerNameAndSave(page, name);
   },
 
@@ -45,18 +44,7 @@ const Search = {
    */
   async addSecondTravellerByName(page, name) {
     const searchPage = new SearchPage(page);
-    await searchPage.clickAnotherTravellerButton();
-    await searchPage.selectSecondTravellerOption();
-    await Search.fillInTravellerNameAndSave(page, name);
-  },
-
-  /**
-   * Add a third traveler by name (after second traveler).
-   */
-  async addThirdTravellerByName(page, name) {
-    const searchPage = new SearchPage(page);
-    await searchPage.clickAnotherTravellerButton();
-    await searchPage.selectThirdTravellerOption();
+    await searchPage.clickAddTravelerButton();
     await Search.fillInTravellerNameAndSave(page, name);
   },
 
@@ -68,7 +56,7 @@ const Search = {
     const searchPage = new SearchPage(page);
     const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
 
-    await searchPage.clickTravelerIcon();
+    await searchPage.clickAddTravelerButton();
     await searchPage.clickGuestTypeModal();
     await searchPage.fillInRandomFirstName(firstName);
     // The SearchPage method name is used exactly as in your project
