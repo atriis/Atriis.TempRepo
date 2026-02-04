@@ -4,11 +4,11 @@ const { Search, ManualQuoteSearch, Cart } = require('@dsl');
 const tripStatus = require('@data/tripStatus.json');
 
 test.describe('Manual Quote - Add Flight Manual Quote to Cart', () => {
-test('[@priority:critical] Should complete add flight manual quote to cart flow', async ({ newTripPage }) => {
+test('[@priority:critical] Should complete add flight manual quote to cart flow', async ({ newTripPageFor }) => {
     
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = await newTripPageFor('amadeus', 'user_one');
 
     // Step 2: Add me as traveler
     console.log('Step 2: Add me as traveler');

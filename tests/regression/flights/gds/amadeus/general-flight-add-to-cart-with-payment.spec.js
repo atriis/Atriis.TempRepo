@@ -4,10 +4,10 @@ const { Search, FlightSearch, FlightResults, CartFOP, Cart } = require('@dsl');
 const tripStatus = require('@data/tripStatus.json');
 
 test.describe('[@regression] Add Flight to Cart with Payment', () => {
-  test('[@priority:critical] Add One-Way Flight to Cart with Credit Card – Should complete one-way add to cart flow with payment method', async ({ newTripPageAs }) => {
+  test('[@priority:critical] Add One-Way Flight to Cart with Credit Card – Should complete one-way add to cart flow with payment method', async ({ newTripPageFor }) => {
     // Step 1: Login as specific user + Book a New Trip
     console.log('Step 1: Login as specific user + Book a New Trip');
-    const page = await newTripPageAs('user_three');
+    const page = await newTripPageFor('amadeus', 'user_three');
 
     // Step 2: Add me as traveller
     console.log('Step 2: Add me as traveler');

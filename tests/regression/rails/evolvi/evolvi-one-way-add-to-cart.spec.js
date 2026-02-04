@@ -6,10 +6,10 @@ const tripStatus = require('@data/tripStatus.json');
 //Note: need to understand why this test is not adding product to cart
 
 test.describe('[@regression] Evolvi One Way Add to Cart Flow', () => {
-  test('[@priority:critical] Search and Add Evolvi One Way Train to Cart – Should complete full add to cart flow', async ({ newTripPage }) => {
+  test('[@priority:critical] Search and Add Evolvi One Way Train to Cart – Should complete full add to cart flow', async ({ newTripPageFor }) => {
     // Step 1: Initialize test with logged-in user and new trip page
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = await newTripPageFor('evolvi', 'user_one');
 
     // Step 2: Add me as traveler
     console.log('Step 2: Add me as traveler');

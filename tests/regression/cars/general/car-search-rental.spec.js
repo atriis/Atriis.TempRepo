@@ -3,10 +3,10 @@ const { test, expect } = require('@fixtures/supplierTest');
 const { Search, CarSearch, CarResults, Cart } = require('@dsl');
 
 test.describe('[@regression][@supplier:gds] Car City Center Search by Rental Agency', () => {
-  test('[@priority:high] Car Search – Should complete full city center car search by rental agency', async ({ newTripPage }) => {
+  test('[@priority:high] Car Search – Should complete full city center car search by rental agency', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = await newTripPageFor('amadeus', 'user_one');
 
     // Step 2: Add traveller - I'm the traveller
     console.log('Step 2: Add traveller - I am the traveller');

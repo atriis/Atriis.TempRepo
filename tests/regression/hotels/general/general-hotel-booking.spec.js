@@ -3,10 +3,10 @@ const { test } = require('@fixtures/supplierTest');
 const { Search, HotelSearch, HotelLevelResults, RoomLevelResults, Cart, Checkout } = require('@dsl');
 
 test.describe('[@regression] Hotel Booking End-to-End Flow', () => {
-  test('[@priority:critical] Hotel Booking – Should complete full hotel booking flow with cancellation', async ({ newTripPage }) => {
+  test('[@priority:critical] Hotel Booking – Should complete full hotel booking flow with cancellation', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = await newTripPageFor('amadeus', 'user_one');
 
     // Step 2: Add me as traveler
     console.log('Step 2: Add me as traveler');

@@ -4,7 +4,6 @@
 Implementing Travel Policy, checking supplierTest.js logic, adjusting Travel Policy test (test case base: 47764).
 
 ## High Priority
-- [ ] Review playwright.config file logic
 - [ ] Implement Travel Request page (Page Object, DSL, and test sample)
 - [ ] Create flight multi-city flow/test
 - [ ] Create a Base Page with common actions (clicks, waits, etc.) — needs research for best approach

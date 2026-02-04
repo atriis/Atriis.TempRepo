@@ -3,10 +3,10 @@ const { test, expect } = require('@fixtures/supplierTest');
 const { Search, HotelSearch, HotelLevelResults, RoomLevelResults, Cart } = require('@dsl');
 
 test.describe('[@regression] Hotel Share Quote', () => {
-  test('[@priority:critical] Hotel Search and Share Quote – Should complete hotel search, add to cart, and share quote with success notification', async ({ newTripPage }) => {
+  test('[@priority:critical] Hotel Search and Share Quote – Should complete hotel search, add to cart, and share quote with success notification', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = await newTripPageFor('galileo', 'user_one');
 
     // Step 2: Add me as traveler
     console.log('Step 2: Add me as traveler');
@@ -39,10 +39,10 @@ test.describe('[@regression] Hotel Share Quote', () => {
     console.log('Hotel search and share quote flow completed successfully.');
   });
 
-  test('[@priority:critical] Hotel Search and Share Itinerary – Should complete hotel search, add to cart, and share itinerary with success notification', async ({ newTripPage }) => {
+  test('[@priority:critical] Hotel Search and Share Itinerary – Should complete hotel search, add to cart, and share itinerary with success notification', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = await newTripPageFor('galileo', 'user_one');
 
     // Step 2: Add me as traveler
     console.log('Step 2: Add me as traveler');

@@ -17,8 +17,8 @@ test.describe('[@smoke] Smoke Tests', () => {
   });
 
   // Test 2: Login and Navigation Test
-  test('[@priority:critical] Smoke - Login and Navigate to Trips', async ({ loggedInPage }) => {
-    const page = loggedInPage;
+  test('[@priority:critical] Smoke - Login and Navigate to Trips', async ({ newTripPage }) => {
+    const page = newTripPage;
 
     // Step 1: Navigate to Trips page
     console.log('Step 1: Navigate to Trips page');
@@ -47,8 +47,8 @@ test.describe('[@smoke] Smoke Tests', () => {
   });
 
   // Test 4: Logout Test
-  test('[@priority:high] Smoke - Logout', async ({ loggedInPage }) => {
-    const page = loggedInPage;
+  test('[@priority:high] Smoke - Logout', async ({ newTripPage }) => {
+    const page = newTripPage;
 
     // Step 1: Logout from application
     console.log('Step 1: Logout from application');

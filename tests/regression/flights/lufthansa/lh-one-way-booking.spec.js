@@ -4,10 +4,10 @@ const { Search, FlightSearch, FlightResults, Cart, Checkout } = require('@dsl');
 const tripStatus = require('@data/tripStatus.json');
 
 test.describe('[@regression] Lufthansa NDC - One Way Flight Booking End-to-End Flow', () => {
-  test('[@priority:critical] Should complete one-way flight booking end-to-end flow', async ({ newTripPage }) => {
+  test('[@priority:critical] Should complete one-way flight booking end-to-end flow', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = await newTripPageFor('lufthansa', 'user_one');
 
     // Step 2: Add me as traveler
     console.log('Step 2: Add me as traveler');

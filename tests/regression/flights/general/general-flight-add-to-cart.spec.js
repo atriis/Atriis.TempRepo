@@ -4,10 +4,10 @@ const { Search, FlightSearch, FlightResults, FlightPricing, Cart } = require('@d
 const tripStatus = require('@data/tripStatus.json');
 
 test.describe('[@regression] Add Flight to Cart Flows', () => {
-  test('[@priority:critical] Add One-Way Flight to Cart – Should complete one-way add to cart flow', async ({ newTripPage }) => {
+  test('[@priority:critical] Add One-Way Flight to Cart – Should complete one-way add to cart flow', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = await newTripPageFor('amadeus', 'user_one');
 
     // Step 2: Add me as traveler
     console.log('Step 2: Add me as traveler');
@@ -28,10 +28,10 @@ test.describe('[@regression] Add Flight to Cart Flows', () => {
     console.log('One-way flight add to cart flow completed successfully.');
   });
 
-  test('[@priority:critical] Add Round Trip Flight to Cart – Should complete round trip add to cart flow', async ({ newTripPage }) => {
+  test('[@priority:critical] Add Round Trip Flight to Cart – Should complete round trip add to cart flow', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = await newTripPageFor('amadeus', 'user_one');
 
     // Step 2: Add me as traveler
     console.log('Step 2: Add me as traveler');
@@ -55,10 +55,10 @@ test.describe('[@regression] Add Flight to Cart Flows', () => {
     console.log('Round trip flight add to cart flow completed successfully.');
   });
 
-  test('[@priority:critical] Add Flight By Schedule to Cart – Should complete search by schedule add to cart flow', async ({ newTripPage }) => {
+  test('[@priority:critical] Add Flight By Schedule to Cart – Should complete search by schedule add to cart flow', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = await newTripPageFor('amadeus', 'user_one');
 
     // Step 2: Add me as traveler
     console.log('Step 2: Add me as traveler');

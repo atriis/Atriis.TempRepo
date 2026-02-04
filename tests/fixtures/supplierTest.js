@@ -7,47 +7,27 @@ const { App } = require('@dsl');
  * FIXTURE SELECTION GUIDE
  * =============================================================================
  *
- * Which fixture should I use?
+ * This framework has TWO fixture patterns only:
  *
- *   What type of test is this?
- *   |
- *   +-- GENERAL test (tests/regression/[product]/general/)
- *   |   +-- Use: newTripPage
- *   |       User doesn't matter, runs with default supplier
- *   |
- *   +-- CROSS-SUPPLIER test (tests/regression/[product]/cross-supplier/)
- *   |   +-- Use: newTripPage
- *   |       Runs once per supplier, user selected automatically
- *   |
- *   +-- SUPPLIER-SPECIFIC test (tests/regression/[product]/gds/amadeus/, etc.)
- *       +-- Do different tests need different users?
- *           +-- NO  -> Use: newTripPage (simpler, uses user_one)
- *           +-- YES -> Use: newTripPageAs('user_key')
+ * 1. CROSS-SUPPLIER tests (tests run once per supplier in a group)
+ *    Use: newTripPage
+ *    The supplier is determined by the Playwright project configuration.
+ *    
+ *    Example:
+ *      test('Book flight', async ({ newTripPage }) => {
+ *        const page = newTripPage;
+ *        // Test runs for each supplier in the project group
+ *      });
  *
- * -----------------------------------------------------------------------------
- * AVAILABLE FIXTURES
- * -----------------------------------------------------------------------------
+ * 2. SPECIFIC USER tests (explicit provider and user)
+ *    Use: newTripPageFor(provider, userKey)
+ *    You specify exactly which provider and user to use.
  *
- *   Fixture         | Purpose                        | Returns
- *   ----------------|--------------------------------|---------------------------
- *   newTripPage     | Login + start new trip         | Page at trip screen
- *   loggedInPage    | Login only                     | Page at dashboard
- *   newTripPageAs   | Login as specific user + trip  | Function (call with key)
- *   loggedInPageAs  | Login as specific user only    | Function (call with key)
- *
- * -----------------------------------------------------------------------------
- * USAGE EXAMPLES
- * -----------------------------------------------------------------------------
- *
- *   // General or cross-supplier tests (most common)
- *   test('Book flight', async ({ newTripPage }) => {
- *     const page = newTripPage;
- *   });
- *
- *   // Supplier-specific tests with different users
- *   test('Approver flow', async ({ newTripPageAs }) => {
- *     const page = await newTripPageAs('user_two');
- *   });
+ *    Example:
+ *      test('Travel policy test', async ({ newTripPageFor }) => {
+ *        const page = await newTripPageFor('travelpolicy', 'user_one');
+ *        // Test runs with exact user specified
+ *      });
  *
  * =============================================================================
  */
@@ -55,10 +35,6 @@ const { App } = require('@dsl');
 /**
  * Reads a user (email + password) from config
  * based on provider and user key.
- *
- * Example:
- *   provider = "amadeus"
- *   userKey  = "user_one"
  */
 function getUserFromConfig(provider, userKey) {
   const user = config.users?.[provider]?.[userKey];
@@ -78,146 +54,78 @@ function getUserFromConfig(provider, userKey) {
 
 /**
  * Extracts supplier context from the Playwright project.
- * Throws a clear error if missing.
+ * Returns null if not configured (for explicit user tests).
  */
 function getSupplierContext(testInfo) {
-  const supplier = testInfo.project.use?.supplierContext;
-
-  if (!supplier) {
-    throw new Error(
-      'supplierContext is missing. Run the test using a supplier project, e.g. --project=flights:amadeus'
-    );
-  }
-
-  return supplier;
+  return testInfo.project.use?.supplierContext || null;
 }
 
 /**
- * Shared helper that:
- * 1. Reads supplier info from the Playwright project
- * 2. Loads the correct user from config (with optional override)
- * 3. Navigates to the application
- * 4. Logs the user in
+ * Custom test object with simplified fixtures.
  *
- * @param {Object} params
- * @param {Object} params.page - Playwright page instance
- * @param {Object} params.testInfo - Playwright testInfo object
- * @param {string} [params.userKeyOverride] - Optional user key to override project default
- */
-async function loginWithSupplier({ page, testInfo, userKeyOverride }) {
-  const supplier = getSupplierContext(testInfo);
-  const { provider } = supplier;
-  const userKey = userKeyOverride || supplier.userKey;
-  const user = getUserFromConfig(provider, userKey);
-
-  console.log(`Fixture: logging in as ${provider}.${userKey}`);
-
-  await page.goto(config.baseUrl, { waitUntil: 'domcontentloaded' });
-  await App.loginAs(page, user);
-
-  return { provider, userKey };
-}
-
-/**
- * Custom test object with shared fixtures.
- *
- * Fixtures run automatically before each test
- * and prepare the application state.
+ * Only two fixture patterns:
+ * - newTripPage: for cross-supplier tests (uses project context)
+ * - newTripPageFor: for specific user tests (explicit provider + user)
  */
 const test = base.test.extend({
   /**
-   * Logs in and opens the "New Trip" flow.
-   * Uses the default user from the project's supplierContext.
+   * CROSS-SUPPLIER FIXTURE
    *
-   * Returns a page already positioned at the trip screen.
+   * Logs in and opens "New Trip" using the project's supplier context.
+   * The supplier is determined by the Playwright project configuration.
+   *
+   * Usage:
+   *   test('Book flight', async ({ newTripPage }) => {
+   *     const page = newTripPage;
+   *   });
    */
   newTripPage: async ({ page }, use, testInfo) => {
-    await loginWithSupplier({ page, testInfo });
+    const supplier = getSupplierContext(testInfo);
+
+    if (!supplier) {
+      throw new Error(
+        'newTripPage requires a project with supplierContext. ' +
+        'Use newTripPageFor(provider, userKey) for specific user tests, ' +
+        'or run with a cross-supplier project.'
+      );
+    }
+
+    const { provider, userKey } = supplier;
+    const user = getUserFromConfig(provider, userKey);
+
+    console.log(`Fixture: logging in as ${provider}.${userKey}`);
+
+    await page.goto(config.baseUrl, { waitUntil: 'domcontentloaded' });
+    await App.loginAs(page, user);
 
     const tripPage = await App.bookANewTrip(page);
     await use(tripPage);
   },
 
   /**
-   * Logs in only (no new trip).
-   * Uses the default user from the project's supplierContext.
+   * SPECIFIC USER FIXTURE
    *
-   * Returns a logged-in page without starting a new trip.
-   */
-  loggedInPage: async ({ page }, use, testInfo) => {
-    await loginWithSupplier({ page, testInfo });
-    await use(page);
-  },
-
-  /**
-   * Factory fixture that allows tests to specify which user to log in as.
-   * Used in supplier-specific tests where different tests need different users.
-   *
-   * Why this exists:
-   * - Cross-supplier tests use one user per supplier (handled by project config)
-   * - Supplier-specific tests may need to test with different users (user_one, user_two, etc.)
-   * - This fixture lets the test choose which user to authenticate with
+   * Logs in and opens "New Trip" with explicit provider and user key.
+   * Does not depend on Playwright project configuration.
    *
    * Usage:
-   *   test('Test with specific user', async ({ newTripPageAs }) => {
-   *     const page = await newTripPageAs('user_two');
-   *     // ... test logic using user_two
-   *   });
-   *
-   *   test('Test with default user', async ({ newTripPageAs }) => {
-   *     const page = await newTripPageAs(); // Uses project default (user_one)
-   *     // ... test logic
+   *   test('Travel policy test', async ({ newTripPageFor }) => {
+   *     const page = await newTripPageFor('travelpolicy', 'user_one');
    *   });
    */
-  newTripPageAs: async ({ page }, use, testInfo) => {
-    const loginAndStartTrip = async (userKeyOverride) => {
-      await loginWithSupplier({ page, testInfo, userKeyOverride });
+  newTripPageFor: async ({ page }, use) => {
+    const loginAndStartTrip = async (provider, userKey) => {
+      const user = getUserFromConfig(provider, userKey);
+
+      console.log(`Fixture: logging in as ${provider}.${userKey}`);
+
+      await page.goto(config.baseUrl, { waitUntil: 'domcontentloaded' });
+      await App.loginAs(page, user);
+
       const tripPage = await App.bookANewTrip(page);
       return tripPage;
     };
 
-    await use(loginAndStartTrip);
-  },
-
-  /**
-   * Factory fixture for login-only scenarios with user override.
-   * Similar to newTripPageAs but does not start a new trip.
-   *
-   * Usage:
-   *   test('Test logged in as specific user', async ({ loggedInPageAs }) => {
-   *     const page = await loggedInPageAs('user_three');
-   *     // ... test logic
-   *   });
-   */
-  loggedInPageAs: async ({ page }, use, testInfo) => {
-    const loginAsUser = async (userKeyOverride) => {
-      await loginWithSupplier({ page, testInfo, userKeyOverride });
-      return page;
-    };
-
-    await use(loginAsUser);
-  },
-
-  /**
-   * Factory fixture for login + new trip with explicit provider and user key.
-   *
-   * Usage:
-   *   test('Test with provider and user', async ({ newTripPageFor }) => {
-   *     const page = await newTripPageFor('travelpolicy', 'user_one');
-   *     // ... test logic
-   *   });
-   *
-   * This fixture does not depend on Playwright project context.
-   */
-  newTripPageFor: async ({ page }, use, testInfo) => {
-    const loginAndStartTrip = async (provider, userKey) => {
-      const user = require('@config/config').users?.[provider]?.[userKey];
-      if (!user) throw new Error(`User ${provider}.${userKey} not found in config`);
-      await page.goto(require('@config/config').baseUrl, { waitUntil: 'domcontentloaded' });
-      await require('@dsl/App').loginAs(page, user);
-      const tripPage = await require('@dsl/App').bookANewTrip(page);
-      return tripPage;
-    };
     await use(loginAndStartTrip);
   },
 });

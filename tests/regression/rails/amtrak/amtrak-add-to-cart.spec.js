@@ -30,10 +30,10 @@ test.describe('[@regression] Amtrak Add To Cart Flow', () => {
   });
 
   // Test 2: One Way Amtrak Add To Cart Flow
-   test('[@priority:critical] One Way Amtrak Add To Cart – Should complete full Amtrak one way add to cart flow', async ({ newTripPage }) => {
+   test('[@priority:critical] One Way Amtrak Add To Cart – Should complete full Amtrak one way add to cart flow', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = await newTripPageFor('amtrak', 'user_one');
 
     // Step 2: Add me as traveler
     console.log('Step 2: Add me as traveler');

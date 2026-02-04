@@ -4,10 +4,10 @@ const { Search, GroundTransportSearch, Results, Cart } = require('@dsl');
 const tripStatus = require('@data/tripStatus.json');
 
 test.describe('[@regression] Search GroundScope Flow', () => {
-  test('[@priority:critical] Search GroundScope – Should complete search flow', async ({ newTripPage }) => {
+  test('[@priority:critical] Search GroundScope – Should complete search flow', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = await newTripPageFor('groundscope', 'user_one');
 
     // Step 2: Add me as traveler
     console.log('Step 2: Add me as traveler');

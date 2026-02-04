@@ -4,10 +4,10 @@ const { Search, CarSearch, CarResults, Cart } = require('@dsl');
 const tripStatus = require('@data/tripStatus.json');
 
 test.describe('[@regression][@supplier:galileo] Galileo - Add Car From Airport Location To Cart', () => {
-  test('[@priority:critical] Should complete adding a car from airport location to cart', async ({ newTripPage }) => {
+  test('[@priority:critical] Should complete adding a car from airport location to cart', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = newTripPage;
+    const page = await newTripPageFor('galileo', 'user_one');
 
     // Step 2: Add traveller - I'm the traveller
     console.log('Step 2: Add traveller - I am the traveller');

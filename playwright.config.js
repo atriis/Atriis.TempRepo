@@ -1,5 +1,4 @@
 const { defineConfig } = require('@playwright/test');
-const config = require('./src/config/config');
 require('module-alias/register');
 
 /**
@@ -17,108 +16,49 @@ const ACTIVE_VIEWPORT =
   viewportPresets[process.env.VIEWPORT] ||
   viewportPresets.desktopFullHD;
 
-/**
- * Providers grouped by product capability.
- * Each provider must exist in config.users (validated below).
+/*
+ * =============================================================================
+ * SUPPLIER GROUPS
+ * =============================================================================
+ * Define supplier groups for cross-supplier testing.
  */
-const providers = {
+const supplierGroups = {
+  // GDS suppliers (shared across all products)
   gds: ['amadeus', 'sabre', 'galileo'],
 
-  flightsNdc: [
-    'afkl',
-    'british',
-    'lufthansa',
-    'united',
-    'iberia',
-    'american',
-  ],
-
-  flightsLowCost: ['galileoach', 'amadeuslightticketing', 'fusion', 'ypsilon'],
-
-  flightsAll: [
-    'amadeus', 'sabre', 'galileo',
+  // Flights - non-GDS suppliers
+  flightsNonGds: [
     'afkl', 'british', 'lufthansa', 'united', 'iberia', 'american',
-    'galileoach', 'amadeuslightticketing', 'fusion', 'ypsilon'
+    'fusion', 'ypsilon',
   ],
 
-  hotels: ['expedia', 'bookingcom', 'ratehawk', 'ehotel', 'premierinn', 'travelodge'],
+  // Hotels - non-GDS suppliers
+  hotelsNonGds: ['expedia', 'bookingcom', 'ratehawk', 'ehotel', 'premierinn', 'travelodge'],
 
-  hotelsAll: [
-    'amadeus', 'sabre', 'galileo',
-    'expedia', 'bookingcom', 'ratehawk', 'ehotel', 'premierinn', 'travelodge'
-  ],
+  // Cars - non-GDS suppliers
+  carsNonGds: ['sunny'],
 
-  cars: ['sunny'],
+  //Cars - all suppliers 
   carsAll: ['amadeus', 'sabre', 'galileo', 'sunny'],
 
-  rails: ['benerail', 'amtrak', 'evolvi'],
-  groundTransport: ['groundscope', 'transferz'],
-  parking: ['ukparking'],
+  // Rails - all suppliers
+  railsAll: ['benerail', 'amtrak', 'evolvi'],
+
+  // Ground Transport - all suppliers
+  groundTransportAll: ['groundscope', 'transferz'],
 };
 
-function assertProvidersExist(providerList, groupName) {
-  const missing = providerList.filter(p => !config.users?.[p]);
-  if (missing.length === 0) return;
-
-  const available = Object.keys(config.users || {}).join(', ');
-  throw new Error(
-    `[playwright.config] Missing providers in config.users for "${groupName}": ${missing.join(
-      ', '
-    )}. Available providers: ${available}`
-  );
-}
-
 /**
- * Generates one project per supplier using only the first available user.
- * Used for cross-supplier tests where we need coverage across suppliers,
- * not across multiple users within the same supplier.
+ * Creates cross-supplier projects for a test directory.
+ * Each supplier in the group gets its own project running the same tests.
  *
- * Example output for ['amadeus', 'sabre']:
- *   [{ provider: 'amadeus', userKey: 'user_one', name: 'amadeus' },
- *    { provider: 'sabre', userKey: 'user_one', name: 'sabre' }]
+ * @param {string} projectPrefix - Project name prefix (e.g., 'flights-x-gds')
+ * @param {string} testDir - Test directory path
+ * @param {string[]} suppliers - Array of supplier names
  */
-function autoGenerateSuppliersOneUserEach(providerList) {
-  return providerList.map(provider => {
-    const userKeys = Object.keys(config.users?.[provider] || {});
-    const firstUserKey = userKeys[0] || 'user_one';
-    return {
-      provider,
-      userKey: firstUserKey,
-      name: provider,
-    };
-  });
-}
-
-function createProjectsForProduct({ product, testDir, suppliers }) {
-  return suppliers.map(s => ({
-    name: `${product}:${s.name}`,
-    testDir,
-    testMatch: '**/*.spec.js',
-    use: {
-      channel: 'chrome',
-      supplierContext: {
-        provider: s.provider,
-        userKey: s.userKey,
-      },
-    },
-  }));
-}
-
-Object.entries(providers).forEach(([groupName, list]) => {
-  assertProvidersExist(list, groupName);
-});
-
-// One user per supplier (for cross-supplier tests)
-const suppliersOneUserByGroup = Object.fromEntries(
-  Object.entries(providers).map(([groupName, list]) => [
-    groupName,
-    autoGenerateSuppliersOneUserEach(list),
-  ])
-);
-
-function defaultProject({ name, testDir, provider }) {
-  return {
-    name,
+function createCrossSupplierProjects(projectPrefix, testDir, suppliers) {
+  return suppliers.map(provider => ({
+    name: `${projectPrefix}:${provider}`,
     testDir,
     testMatch: '**/*.spec.js',
     use: {
@@ -128,6 +68,24 @@ function defaultProject({ name, testDir, provider }) {
         userKey: 'user_one',
       },
     },
+  }));
+}
+
+/**
+ * Creates a project for tests using newTripPageFor (explicit user selection).
+ * No supplierContext - tests specify provider/user explicitly.
+ *
+ * @param {string} name - Project name
+ * @param {string} testDir - Test directory path
+ */
+function createSpecificUserProject(name, testDir) {
+  return {
+    name,
+    testDir,
+    testMatch: '**/*.spec.js',
+    use: {
+      channel: 'chrome',
+    },
   };
 }
 
@@ -135,18 +93,15 @@ module.exports = defineConfig({
   testDir: './tests',
   timeout: 120000,
   expect: {
-    timeout: 60000, // expect timeout
+    timeout: 60000,
   },
   workers: process.env.CI ? 2 : 4,
 
-reporter: [
-  ['junit', { outputFile: 'test-results/results.xml' }],
-  ['html', { open: 'never' }]
-],
+  reporter: [
+    ['junit', { outputFile: 'test-results/results.xml' }],
+    ['html', { open: 'never' }]
+  ],
 
-  /**
-   * Screen + viewport are flexible via ENV
-   */
   use: {
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
@@ -157,242 +112,104 @@ reporter: [
   },
 
   projects: [
-    defaultProject({
-      name: 'Smoke',
-      testDir: 'tests/smoke',
-      provider: 'amadeus',
-    }),
+    /*
+     * =========================================================================
+     * SMOKE TESTS
+     * =========================================================================
+     */
+    createSpecificUserProject('smoke', 'tests/smoke'),
 
-    defaultProject({
-      name: 'flights:default',
-      testDir: 'tests/regression/flights/general',
-      provider: 'amadeus',
-    }),
+    /*
+     * =========================================================================
+     * FLIGHTS - Provider-Specific Tests (use newTripPageFor)
+     * =========================================================================
+     */
+    createSpecificUserProject('flights:amadeus', 'tests/regression/flights/amadeus'),
+    createSpecificUserProject('flights:sabre', 'tests/regression/flights/sabre'),
+    createSpecificUserProject('flights:galileo', 'tests/regression/flights/galileo'),
+    createSpecificUserProject('flights:afkl', 'tests/regression/flights/afkl'),
+    createSpecificUserProject('flights:british', 'tests/regression/flights/british'),
+    createSpecificUserProject('flights:lufthansa', 'tests/regression/flights/lufthansa'),
+    createSpecificUserProject('flights:united', 'tests/regression/flights/united'),
+    createSpecificUserProject('flights:iberia', 'tests/regression/flights/iberia'),
+    createSpecificUserProject('flights:american', 'tests/regression/flights/american'),
+    createSpecificUserProject('flights:fusion', 'tests/regression/flights/fusion'),
+    createSpecificUserProject('flights:ypsilon', 'tests/regression/flights/ypsilon'),
+    createSpecificUserProject('flights:general', 'tests/regression/flights/general'),
 
-    // Cross-supplier: one user per supplier
-    ...createProjectsForProduct({
-      product: 'flights-cross-supplier',
-      testDir: 'tests/regression/flights/cross-supplier',
-      suppliers: suppliersOneUserByGroup.flightsAll,
-    }),
+    // Flights - Cross-Supplier GDS (amadeus, sabre, galileo)
+    ...createCrossSupplierProjects('flights-cross-gds', 'tests/regression/flights/cross-supplier-gds', supplierGroups.gds),
 
-    defaultProject({
-      name: 'flights:amadeus',
-      testDir: 'tests/regression/flights/gds/amadeus',
-      provider: 'amadeus',
-    }),
+    // Flights - Cross-Supplier Non-GDS
+    ...createCrossSupplierProjects('flights-cross-nongds', 'tests/regression/flights/cross-supplier-nongds', supplierGroups.flightsNonGds),
 
-    defaultProject({
-      name: 'flights:sabre',
-      testDir: 'tests/regression/flights/gds/sabre',
-      provider: 'sabre',
-    }),
+    /*
+     * =========================================================================
+     * HOTELS - Provider-Specific Tests (use newTripPageFor)
+     * =========================================================================
+     */
+    createSpecificUserProject('hotels:amadeus', 'tests/regression/hotels/amadeus'),
+    createSpecificUserProject('hotels:sabre', 'tests/regression/hotels/sabre'),
+    createSpecificUserProject('hotels:galileo', 'tests/regression/hotels/galileo'),
+    createSpecificUserProject('hotels:expedia', 'tests/regression/hotels/expedia'),
+    createSpecificUserProject('hotels:bookingcom', 'tests/regression/hotels/booking-com'),
+    createSpecificUserProject('hotels:ratehawk', 'tests/regression/hotels/ratehawk'),
+    createSpecificUserProject('hotels:ehotel', 'tests/regression/hotels/ehotel'),
+    createSpecificUserProject('hotels:premierinn', 'tests/regression/hotels/premier-inn'),
+    createSpecificUserProject('hotels:travelodge', 'tests/regression/hotels/travelodge'),
+    createSpecificUserProject('hotels:general', 'tests/regression/hotels/general'),
 
-    defaultProject({
-      name: 'flights:galileo',
-      testDir: 'tests/regression/flights/gds/galileo',
-      provider: 'galileo',
-    }),
+    // Hotels - Cross-Supplier GDS (amadeus, sabre, galileo)
+    ...createCrossSupplierProjects('hotels-cross-gds', 'tests/regression/hotels/cross-supplier-gds', supplierGroups.gds),
 
-    defaultProject({
-      name: 'flights:afkl',
-      testDir: 'tests/regression/flights/ndc/afkl',
-      provider: 'afkl',
-    }),
+    // Hotels - Cross-Supplier Non-GDS
+    ...createCrossSupplierProjects('hotels-cross-nongds', 'tests/regression/hotels/cross-supplier-nongds', supplierGroups.hotelsNonGds),
 
-    defaultProject({
-      name: 'flights:british',
-      testDir: 'tests/regression/flights/ndc/british',
-      provider: 'british',
-    }),
+    /*
+     * =========================================================================
+     * CARS - Provider-Specific Tests (use newTripPageFor)
+     * =========================================================================
+     */
+    createSpecificUserProject('cars:amadeus', 'tests/regression/cars/amadeus'),
+    createSpecificUserProject('cars:sabre', 'tests/regression/cars/sabre'),
+    createSpecificUserProject('cars:galileo', 'tests/regression/cars/galileo'),
+    createSpecificUserProject('cars:sunny', 'tests/regression/cars/sunny'),
+    createSpecificUserProject('cars:general', 'tests/regression/cars/general'),
 
-    defaultProject({
-      name: 'flights:lufthansa',
-      testDir: 'tests/regression/flights/ndc/lufthansa',
-      provider: 'lufthansa',
-    }),
+    // Cars - Cross-Supplier GDS (amadeus, sabre, galileo) and Non-GDS (sunny)
+    ...createCrossSupplierProjects('cars-cross-supplier', 'tests/regression/cars/cross-supplier', supplierGroups.carsAll),
 
-    defaultProject({
-      name: 'flights:united',
-      testDir: 'tests/regression/flights/ndc/united',
-      provider: 'united',
-    }),
+    /*
+     * =========================================================================
+     * RAILS - Provider-Specific Tests (use newTripPageFor)
+     * =========================================================================
+     */
+    createSpecificUserProject('rails:amtrak', 'tests/regression/rails/amtrak'),
+    createSpecificUserProject('rails:benerail', 'tests/regression/rails/benerail'),
+    createSpecificUserProject('rails:evolvi', 'tests/regression/rails/evolvi'),
+    createSpecificUserProject('rails:general', 'tests/regression/rails/general'),
 
-    defaultProject({
-      name: 'flights:iberia',
-      testDir: 'tests/regression/flights/ndc/iberia',
-      provider: 'iberia',
-    }),
+    // Rails - Cross-Supplier ALL
+    ...createCrossSupplierProjects('rails-cross', 'tests/regression/rails/cross-supplier', supplierGroups.railsAll),
 
-    defaultProject({
-      name: 'flights:american',
-      testDir: 'tests/regression/flights/ndc/american',
-      provider: 'american',
-    }),
+    /*
+     * =========================================================================
+     * GROUND TRANSPORT - Provider-Specific Tests (use newTripPageFor)
+     * =========================================================================
+     */
+    createSpecificUserProject('ground:groundscope', 'tests/regression/ground-transportation/groundscope'),
+    createSpecificUserProject('ground:transferz', 'tests/regression/ground-transportation/transferz'),
 
-    defaultProject({
-      name: 'flights:fusion',
-      testDir: 'tests/regression/flights/lcc/fusion',
-      provider: 'fusion',
-    }),
+    // Ground Transport - Cross-Supplier ALL
+    ...createCrossSupplierProjects('ground-cross', 'tests/regression/ground-transportation/cross-supplier', supplierGroups.groundTransportAll),
 
-    defaultProject({
-      name: 'flights:ypsilon',
-      testDir: 'tests/regression/flights/lcc/ypsilon',
-      provider: 'ypsilon',
-    }),
-
-    defaultProject({
-      name: 'hotels:default',
-      testDir: 'tests/regression/hotels/general',
-      provider: 'ratehawk',
-    }),
-
-    defaultProject({
-      name: 'hotels:amadeus',
-      testDir: 'tests/regression/hotels/gds/amadeus',
-      provider: 'amadeus',
-    }),
-
-    defaultProject({
-      name: 'hotels:sabre',
-      testDir: 'tests/regression/hotels/gds/sabre',
-      provider: 'sabre',
-    }),
-
-    defaultProject({
-      name: 'hotels:galileo',
-      testDir: 'tests/regression/hotels/gds/galileo',
-      provider: 'galileo',
-    }),
-
-    // Cross-supplier: one user per supplier
-    ...createProjectsForProduct({
-      product: 'hotels-cross-supplier',
-      testDir: 'tests/regression/hotels/cross-supplier',
-      suppliers: suppliersOneUserByGroup.hotelsAll,
-    }),
-
-    defaultProject({
-      name: 'hotels:expedia',
-      testDir: 'tests/regression/hotels/expedia',
-      provider: 'expedia',
-    }),
-
-    defaultProject({
-      name: 'hotels:bookingcom',
-      testDir: 'tests/regression/hotels/booking-com',
-      provider: 'bookingcom',
-    }),
-
-    defaultProject({
-      name: 'hotels:ratehawk',
-      testDir: 'tests/regression/hotels/ratehawk',
-      provider: 'ratehawk',
-    }),
-
-    defaultProject({
-      name: 'hotels:ehotel',
-      testDir: 'tests/regression/hotels/ehotel',
-      provider: 'ehotel',
-    }),
-
-    defaultProject({
-      name: 'hotels:premierinn',
-      testDir: 'tests/regression/hotels/premier-inn',
-      provider: 'premierinn',
-    }),
-
-    defaultProject({
-      name: 'hotels:travelodge',
-      testDir: 'tests/regression/hotels/travelodge',
-      provider: 'travelodge',
-    }),
-
-    defaultProject({
-      name: 'cars:default',
-      testDir: 'tests/regression/cars/general',
-      provider: 'sunny',
-    }),
-
-    // Cross-supplier: one user per supplier
-    ...createProjectsForProduct({
-      product: 'cars-cross-supplier',
-      testDir: 'tests/regression/cars/cross-supplier',
-      suppliers: suppliersOneUserByGroup.carsAll,
-    }),
-
-    defaultProject({
-      name: 'cars:amadeus',
-      testDir: 'tests/regression/cars/gds/amadeus',
-      provider: 'amadeus',
-    }),
-
-    defaultProject({
-      name: 'cars:sabre',
-      testDir: 'tests/regression/cars/gds/sabre',
-      provider: 'sabre',
-    }),
-
-    defaultProject({
-      name: 'cars:galileo',
-      testDir: 'tests/regression/cars/gds/galileo',
-      provider: 'galileo',
-    }),
-
-    defaultProject({
-      name: 'cars:sunny',
-      testDir: 'tests/regression/cars/sunny',
-      provider: 'sunny',
-    }),
-
-    defaultProject({
-      name: 'rails:benerail',
-      testDir: 'tests/regression/rails/benerail',
-      provider: 'benerail',
-    }),
-
-    defaultProject({
-      name: 'rails:amtrak',
-      testDir: 'tests/regression/rails/amtrak',
-      provider: 'amtrak',
-    }),
-
-    defaultProject({
-      name: 'rails:evolvi',
-      testDir: 'tests/regression/rails/evolvi',
-      provider: 'evolvi',
-    }),
-
-    defaultProject({
-      name: 'groundtransport:groundscope',
-      testDir: 'tests/regression/ground-transportation/groundscope',
-      provider: 'groundscope',
-    }),
-
-    defaultProject({
-      name: 'groundtransport:transferz',
-      testDir: 'tests/regression/ground-transportation/transferz',
-      provider: 'transferz',
-    }),
-
-    // Cross-supplier: one user per supplier
-    ...createProjectsForProduct({
-      product: 'groundtransport-cross-supplier',
-      testDir: 'tests/regression/ground-transportation/cross-supplier',
-      suppliers: suppliersOneUserByGroup.groundTransport,
-    }),
-
-    defaultProject({
-      name: 'parking:ukparking',
-      testDir: 'tests/regression/parking',
-      provider: 'ukparking',
-    }),
-
-    defaultProject({
-      name: 'manual-quote:amadeus',
-      testDir: 'tests/regression/manual-quote',
-      provider: 'amadeus',
-    }),
+    /*
+     * =========================================================================
+     * OTHER - Specific User Tests (use newTripPageFor)
+     * =========================================================================
+     */
+    createSpecificUserProject('travel-policy', 'tests/regression/travel-policy'),
+    createSpecificUserProject('manual-quote', 'tests/regression/manual-quote'),
+    createSpecificUserProject('parking', 'tests/regression/parking'),
   ],
 });
