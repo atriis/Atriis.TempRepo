@@ -253,7 +253,7 @@ jobs:
           name: galileo-hotel-playwright-report
           path: playwright-report/
 
-  manual-quote-flight-tests:
+  manual-quote-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -265,25 +265,25 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps
 
-      - name: Run Manual Quote Flight Tests
-        run: npx playwright test tests/regression/manual-quote/flights
+      - name: Run Manual Quote Tests
+        run: npx playwright test tests/regression/manual-quote
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
-      - name: Upload Manual Quote Flight Results
+      - name: Upload Manual Quote Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: manual-quote-flight-results
+          name: manual-quote-results
           path: test-results/results.xml
 
-      - name: Upload Manual Quote Flight Playwright Report
+      - name: Upload Manual Quote Playwright Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: manual-quote-flight-playwright-report
+          name: manual-quote-playwright-report
           path: playwright-report/
 
   summary:
@@ -296,7 +296,7 @@ jobs:
       - cross-supplier-cars-tests
       - general-hotels-tests
       - galileo-hotel-tests
-      - manual-quote-flight-tests
+      - manual-quote-tests
     if: always()
 
     permissions:
