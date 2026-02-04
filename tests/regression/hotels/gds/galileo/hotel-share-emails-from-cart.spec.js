@@ -8,9 +8,9 @@ test.describe('[@regression] Hotel Share Quote', () => {
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPage;
 
-    // Step 2: Add traveler - I am the traveler
-    console.log('Step 2: Add traveler - I am the traveler');
-    await Search.addTravellerImTheTraveller(page);
+    // Step 2: Add me as traveler
+    console.log('Step 2: Add me as traveler');
+    await Search.addMeAsTraveler(page);
 
     // Step 3: Search for a hotel in London (LHR area)
     console.log('Step 3: Search hotel in London');
@@ -44,9 +44,9 @@ test.describe('[@regression] Hotel Share Quote', () => {
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPage;
 
-    // Step 2: Add traveler - I am the traveler
-    console.log('Step 2: Add traveler - I am the traveler');
-    await Search.addTravellerImTheTraveller(page);
+    // Step 2: Add me as traveler
+    console.log('Step 2: Add me as traveler');
+    await Search.addMeAsTraveler(page);
 
     // Step 3: Search for a hotel in London (LHR area)
     console.log('Step 3: Search hotel in London');

@@ -9,9 +9,9 @@ test.describe('[@regression] Add Flight to Cart with Payment', () => {
     console.log('Step 1: Login as specific user + Book a New Trip');
     const page = await newTripPageAs('user_three');
 
-    // Step 2: Add traveller - I am the traveller
-    console.log('Step 2: Add traveller - I am the traveller');
-    await Search.addTravellerImTheTraveller(page);
+    // Step 2: Add me as traveller
+    console.log('Step 2: Add me as traveler');
+    await Search.addMeAsTraveler(page);
 
     // Step 3: Search for a one-way flight (London → Madrid)
     console.log('Step 3: Search for a one-way flight (London → Madrid)');

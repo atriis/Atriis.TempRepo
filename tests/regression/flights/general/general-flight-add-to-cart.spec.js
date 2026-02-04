@@ -9,9 +9,9 @@ test.describe('[@regression] Add Flight to Cart Flows', () => {
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPage;
 
-    // Step 2: Add traveller - I am the traveller
-    console.log('Step 2: Add traveller - I am the traveller');
-    await Search.addTravellerImTheTraveller(page);
+    // Step 2: Add me as traveler
+    console.log('Step 2: Add me as traveler');
+    await Search.addMeAsTraveler(page);
 
     // Step 3: Search for a one-way flight (London → Doha)
     console.log('Step 3: Search for a one-way flight (London → Doha)');
@@ -33,9 +33,9 @@ test.describe('[@regression] Add Flight to Cart Flows', () => {
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPage;
 
-    // Step 2: Add traveller - I am the traveller
-    console.log('Step 2: Add traveller - I am the traveller');
-    await Search.addTravellerImTheTraveller(page);
+    // Step 2: Add me as traveler
+    console.log('Step 2: Add me as traveler');
+    await Search.addMeAsTraveler(page);
 
     // Step 3: Search round-trip PAR → AMS (HARDCODED ROUTE)
     console.log('Step 3: Search round-trip flight PAR → AMS');
@@ -60,9 +60,9 @@ test.describe('[@regression] Add Flight to Cart Flows', () => {
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPage;
 
-    // Step 2: Add traveller - I am the traveller
-    console.log('Step 2: Add traveller - I am the traveller');
-    await Search.addTravellerImTheTraveller(page);
+    // Step 2: Add me as traveler
+    console.log('Step 2: Add me as traveler');
+    await Search.addMeAsTraveler(page);
 
     // Step 3: Search by scheduled LON → AMS flight
     console.log('Step 3: Search by scheduled flight LON → AMS');

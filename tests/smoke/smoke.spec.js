@@ -33,9 +33,9 @@ test.describe('[@smoke] Smoke Tests', () => {
   test('[@priority:critical] Smoke - Flight Search and Verify Results', async ({ newTripPage }) => {
     const page = newTripPage;
 
-    // Step 1: Add traveler (I am the traveler)
-    console.log('Step 1: Add traveler');
-    await Search.addTravellerImTheTraveller(page);
+    // Step 1: Add me as traveler
+    console.log('Step 1: Add me as traveler');
+    await Search.addMeAsTraveler(page);
 
     // Step 2: Search one-way flight CDG → LHR
     console.log('Step 2: Search one-way flight CDG → LHR');

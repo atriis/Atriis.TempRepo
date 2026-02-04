@@ -10,7 +10,7 @@
  *     → Handled by Before hook (browser setup + login via App DSL)
  * 
  *   "I have added myself as the traveler"
- *     → Search.addTravellerImTheTraveller(page)
+ *     → Search.addMeAsTraveler(page)
  * 
  * Then Steps:
  *   "the booking status should be {string}"
@@ -71,7 +71,7 @@ Given('I am logged in and ready to book a new trip', async function () {
 
 Given('I have added myself as the traveler', async function () {
   console.log('Adding traveler: I am the traveler');
-  await Search.addTravellerImTheTraveller(this.page);
+  await Search.addMeAsTraveler(this.page);
 });
 
 Given('I have added traveler by name {string}', async function (travelerName) {

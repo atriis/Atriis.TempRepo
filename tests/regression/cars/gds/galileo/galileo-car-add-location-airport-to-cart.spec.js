@@ -11,7 +11,7 @@ test.describe('[@regression][@supplier:galileo] Galileo - Add Car From Airport L
 
     // Step 2: Add traveller - I'm the traveller
     console.log('Step 2: Add traveller - I am the traveller');
-    await Search.addTravellerImTheTraveller(page);
+    await Search.addMeAsTraveler(page);
 
     // Step 3: Search car in LHR
     console.log('Step 3: Search car in LHR');

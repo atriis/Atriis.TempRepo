@@ -11,7 +11,7 @@ test.describe('[@regression][@supplier:all] Cross-supplier Cars Login and Add Tr
 
     // Step 2: Add traveller - I'm the traveller
     console.log('Step 2: Add traveller - I am the traveller');
-    await Search.addTravellerImTheTraveller(page);
+    await Search.addMeAsTraveler(page);
 
     console.log('Cross-supplier flow completed successfully.');
   });

@@ -10,7 +10,7 @@ test.describe('[@regression][@supplier:all] Car Booking End-to-End Flow', () => 
 
     // Step 2: Add traveller - I'm the traveller
     console.log('Step 2: Add traveller - I am the traveller');
-    await Search.addTravellerImTheTraveller(page);
+    await Search.addMeAsTraveler(page);
 /* 
     // Step 3: Search car in LHR
     console.log('Step 3: Search car in LHR');

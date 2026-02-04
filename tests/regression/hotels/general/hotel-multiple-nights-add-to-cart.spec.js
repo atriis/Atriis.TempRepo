@@ -9,9 +9,9 @@ test.describe('[@regression] Hotel Add To Cart Multiple Nights', () => {
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPage;
 
-    // Step 2: Add traveler - I'm the traveler
-    console.log('Step 2: Add traveler - I am the traveler');
-    await Search.addTravellerImTheTraveller(page);
+    // Step 2: Add me as traveler
+    console.log('Step 2: Add me as traveler');
+    await Search.addMeAsTraveler(page);
 
     // Step 3: Search a hotel in London, UK for 3 nights
     console.log('Step 3: Search hotel in London, UK for 3 nights');

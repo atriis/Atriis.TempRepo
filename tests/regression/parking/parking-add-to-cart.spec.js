@@ -10,9 +10,9 @@ test.describe('Parking - Add UK Parking to Cart', () => {
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPage;
 
-    // Step 2: Add traveller - I am the traveller
-    console.log('Step 2: Add traveller - I am the traveller');
-    await Search.addTravellerImTheTraveller(page);
+    // Step 2: Add me as traveler
+    console.log('Step 2: Add me as traveler');
+    await Search.addMeAsTraveler(page);
 
     // Step 3: Search UK parking
     console.log('Step 3: Search UK parking');

@@ -11,9 +11,9 @@ test.describe('[@regression] Evolvi One Way Add to Cart Flow', () => {
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = newTripPage;
 
-    // Step 2: Configure traveler - set logged-in user as the traveler
-    console.log('Step 2: Add traveller - I am the traveller');
-    await Search.addTravellerImTheTraveller(page);
+    // Step 2: Add me as traveler
+    console.log('Step 2: Add me as traveler');
+    await Search.addMeAsTraveler(page);
 
     // Step 3: Execute Evolvi one-way search for LIC to 105 route
     console.log('Step 3: Search one-way Evolvi train LIC → 105');
