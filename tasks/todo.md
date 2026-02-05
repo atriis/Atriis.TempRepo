@@ -1,7 +1,7 @@
 # TODO
 
 ## Working Now: 
-Implementing Travel Policy, checking supplierTest.js logic, adjusting Travel Policy test (test case base: 47764).
+FInishing implementing Travel Policy cart justification and dropdown (test case base: 47764) - see test-traveller.spec.js test.
 
 ## High Priority
 - [ ] Implement Travel Request page (Page Object, DSL, and test sample)
@@ -12,6 +12,9 @@ Implementing Travel Policy, checking supplierTest.js logic, adjusting Travel Pol
 - [ ] Implement FOP (Page Object, DSL, and test sample)
 - [ ] Review playwright.config file logic
 - [ ] Implement Reference Fields / Dynamic Profile Fields (Page Object, DSL, and test sample)
+- [ ] Adjust copilot instructions (breakdown instructions)
+- [ ] Add tools in my code-reviewer prompt
+- [ ] Search about login and time
 
 ## Medium Priority
 - [ ] Review comments across the entire project and make necessary adjustments
