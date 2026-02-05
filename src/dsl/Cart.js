@@ -1,6 +1,6 @@
-const { CartPage, SELECTORS } = require('@pages/CartPage');
+const { CartPage, SELECTORS: CART_SELECTORS } = require('@pages/CartPage');
+const { CommonPage, SELECTORS: COMMON_SELECTORS } = require('@pages/CommonPage');
 const { expect } = require('@playwright/test');
-const { caseInsensitiveContains } = require('@utils/text');
 const GeneralElementsPage = require('@pages/GeneralElementsPage');
 
 /**
@@ -92,11 +92,11 @@ const Cart = {
 
   /**
    * Confirms that a hotel booking is refundable.
+   * To better visualization in the test.
    *
    * @param {import('playwright').Page} page
    * @returns {Promise<void>}
    */
-  //To better visualization in the test
   async isHotelRefundable(page) {
     const cartPage = new CartPage(page);
     await cartPage.waitForHotelRefundableText();
@@ -113,9 +113,9 @@ const Cart = {
    * @returns {Promise<void>}
    */
   async expectBookingStatus(expectedStatus, { timeout = 60000, page } = {}) {
-    const locator = page.locator(SELECTORS.QUOTE_STATUS_LABEL);
+    const locator = page.locator(CART_SELECTORS.QUOTE_STATUS_LABEL);
     await expect(locator).toBeVisible({ timeout });
-    await expect(locator).toContainText(caseInsensitiveContains(expectedStatus), { timeout });
+    await expect(locator).toContainText(expectedStatus, { timeout });
   },
 
   /**
@@ -161,6 +161,42 @@ const Cart = {
     await generalElementsPage.waitForSuccessNotification();
   },
 
+  // ===== OUT OF POLICY (OOP) VALIDATION =====
+
+  /**
+   * Verifies that Out of Policy indicators are visible in cart page.
+   * Used when validating travel policy enforcement on cart.
+   * @param {import('playwright').Page} page - Playwright page instance
+   */
+  async verifyOutOfPolicyIndicatorIsVisibleInCart(page) {
+    const commonPage = new CommonPage(page);
+    await commonPage.waitForOOPVisible();
+    await expect(page.locator(COMMON_SELECTORS.OOP_INFO)).toBeVisible();
+  },
+
+  /**
+   * Verifies that Out of Policy indicators are not visible in cart page.
+   * Used when validating in-policy options on cart.
+   * @param {import('playwright').Page} page - Playwright page instance
+   */
+  async verifyOutOfPolicyIndicatorIsNotVisibleInCart(page) {
+    const commonPage = new CommonPage(page);
+    await commonPage.waitForOOPNotVisible();
+    await expect(page.locator(COMMON_SELECTORS.OOP_INFO)).toBeHidden();
+  },
+
+  /**
+   * Hovers over the Out of Policy info icon and validates tooltip text.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedText - The expected tooltip text
+   */
+  async hoverOverCartOOPInfoAndVerifyTooltipTextIs(page, expectedText) {
+    const commonPage = new CommonPage(page);
+    await commonPage.waitForOOPVisible();
+    await commonPage.hoverOverOOPInfoIcon();
+    const actualText = await commonPage.getOOPTooltipTextCart();
+    expect(actualText).toBe(expectedText);
+  }
 };
 
 
