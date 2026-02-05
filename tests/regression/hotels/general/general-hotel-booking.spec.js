@@ -6,7 +6,7 @@ test.describe('[@regression] Hotel Booking End-to-End Flow', () => {
   test('[@priority:critical] Hotel Booking – Should complete full hotel booking flow with cancellation', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = await newTripPageFor('amadeus', 'user_one');
+    const page = await newTripPageFor('ratehawk', 'user_one');
 
     // Step 2: Add me as traveler
     console.log('Step 2: Add me as traveler');

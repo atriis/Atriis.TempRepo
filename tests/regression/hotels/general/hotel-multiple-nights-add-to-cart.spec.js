@@ -7,7 +7,7 @@ test.describe('[@regression] Hotel Add To Cart Multiple Nights', () => {
   test('[@priority:critical] Hotel Add To Cart – Should complete full hotel add to cart flow for multiple nights', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = await newTripPageFor('amadeus', 'user_one');
+    const page = await newTripPageFor('ratehawk', 'user_one');
 
     // Step 2: Add me as traveler
     console.log('Step 2: Add me as traveler');
@@ -28,8 +28,7 @@ test.describe('[@regression] Hotel Add To Cart Multiple Nights', () => {
     // Step 6: Assert "Pending Booking" quote status appears in cart
     console.log('Step 6: Quote is "Pending booking" status');
     await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
-
-
+    
     console.log('Hotel add to cart flow for multiple nights completed successfully.');
   });
 });
