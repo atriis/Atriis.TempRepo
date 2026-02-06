@@ -19,15 +19,6 @@ class GeneralElementsPage {
   // ===== LOCATOR HELPERS =====
 
   /**
-   * Gets the Proceed with change button locator.
-   *
-   * @returns {Locator} Playwright locator for the Proceed with change button.
-   */
-  async clickProceedButton() {
-    await this.page.click(SELECTORS.PROCEED_BUTTON);
-  }
-
-  /**
    * Gets the Success notification locator.
    * TODO: duplicated — consolidate with other success notification locators.
    *

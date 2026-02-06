@@ -1,10 +1,5 @@
 const { SELECTORS: RESULTS_SELECTORS } = require('@pages/ResultsPage');
 
-// Centralized selectors for easy maintenance
-const SELECTORS = {
-  RESULTS_BUTTON: RESULTS_SELECTORS.RESULTS_BUTTON,
-};
-
 /**
  * HotelLevelResultsPage
  *
@@ -20,7 +15,7 @@ class HotelLevelResultsPage {
   /** Scrolls to the first "View rates" button */
   async scrollToFirstViewRatesButton() {
     const viewRatesButton = this.page
-      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
+      .locator(`${RESULTS_SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
       .first();
 
     // Ensure the button exists before trying to scroll to it
@@ -32,7 +27,7 @@ class HotelLevelResultsPage {
   /** Waits until the first "View rates" button is visible */
   async waitForViewRatesText() {
     const viewRatesButton = this.page
-      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
+      .locator(`${RESULTS_SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
       .first();
 
     // Ensure the button exists, then scroll it into view
@@ -46,7 +41,7 @@ class HotelLevelResultsPage {
   /** Clicks the first available "View rates" button */
   async clickFirstViewRatesButton() {
     await this.page
-      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
+      .locator(`${RESULTS_SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
       .first()
       .click();
   }

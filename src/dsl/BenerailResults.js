@@ -1,4 +1,5 @@
 const { ResultsPage } = require('@pages/ResultsPage');
+const Results = require('./Results');
 
 /**
  * BenerailResults DSL
@@ -17,7 +18,7 @@ const BenerailResults = {
   /** Selects the first available Benerail option */
   async selectFirstBenerailOption(page) {
     const resultsPage = new ResultsPage(page);
-    await resultsPage.clickSelectFirstBenerailOption();
+    await resultsPage.clickFirstSelectButton();
     return { selected: true };
   },
 
@@ -33,9 +34,7 @@ const BenerailResults = {
 
   /** Waits for results and adds the option to the trip */
   async clickAddToTripBenerail(page) {
-    const resultsPage = new ResultsPage(page);
-    await resultsPage.waitForAddToTripText();
-    await resultsPage.clickAddToTripButton();
+    await Results.waitAndClickAddToTripButton(page);
     return { workflowCompleted: true, selected: true };
   },
 
@@ -48,11 +47,11 @@ const BenerailResults = {
 
     // First leg
     await resultsPage.waitForSelectText();
-    await resultsPage.clickSelectFirstBenerailOption();
+    await resultsPage.clickFirstSelectButton();
 
     // Second leg
     await resultsPage.waitForSelectText();
-    await resultsPage.clickSelectFirstBenerailOption();
+    await resultsPage.clickFirstSelectButton();
 
     await BenerailResults.clickAddToTripBenerail(page);
 
@@ -66,7 +65,7 @@ const BenerailResults = {
     const resultsPage = new ResultsPage(page);
 
     await resultsPage.waitForSelectText();
-    await resultsPage.clickSelectFirstBenerailOption();
+    await resultsPage.clickFirstSelectButton();
 
     await BenerailResults.clickAddToTripBenerail(page);
 

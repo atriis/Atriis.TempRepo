@@ -1,7 +1,6 @@
 const {
   typeIntoNthAvailableInput,
-  pressTab,
-  scrollToElement
+  pressTab
 } = require('@utils/dom');
 const { expect } = require('@playwright/test');
 
@@ -203,8 +202,9 @@ class ManualQuoteSearchPage {
    * @param {string} baseFare - Base fare amount (e.g., "50")
    */
   async typeBaseFare(baseFare) {
-    await scrollToElement(this.page, SELECTORS.BASE_FARE_FIELD);
-    await this.page.fill(SELECTORS.BASE_FARE_FIELD, baseFare);
+    const baseFareField = this.page.locator(SELECTORS.BASE_FARE_FIELD).first();
+    await baseFareField.scrollIntoViewIfNeeded();
+    await baseFareField.fill(baseFare);
   }
 
   /**
@@ -212,8 +212,9 @@ class ManualQuoteSearchPage {
    * Scrolls to element first to ensure it's in view.
    */
   async clickAddQuoteButton() {
-    await scrollToElement(this.page, SELECTORS.ADD_QUOTE_BUTTON);
-    await this.page.click(SELECTORS.ADD_QUOTE_BUTTON);
+    const addQuoteBtn = this.page.locator(SELECTORS.ADD_QUOTE_BUTTON).first();
+    await addQuoteBtn.scrollIntoViewIfNeeded();
+    await addQuoteBtn.click();
   }
 }
 

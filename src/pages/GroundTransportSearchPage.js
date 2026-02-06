@@ -1,3 +1,7 @@
+const { pressTab } = require('@utils/dom');
+const { expect } = require('@playwright/test');
+const { SELECTORS: SEARCH_SELECTORS } = require('@pages/SearchPage');
+
 /**
  * Page Object for ground transport search form.
  * Contains only UI-level interactions.
@@ -103,6 +107,52 @@ class GroundTransportSearchPage {
     await this.page
       .getByRole('option', { name: String(travellerNumbers), exact: true })
       .click();
+  }
+
+  /**
+   * Fills the pick-up location field and commits the value.
+   *
+   * Types into the pick-up field and presses TAB to trigger
+   * blur/validation logic. Waits until the field loses focus
+   * to ensure the input was applied.
+   *
+   * @param {string} from - Pick-up location text
+   */
+  async fillInPickUpField(from) {
+    const pickUpInput = this.page
+      .locator(SEARCH_SELECTORS.PICK_UP_PLACEHOLDER)
+      .first();
+
+    await pickUpInput.fill(from);
+
+    // Commit value
+    await pressTab(this.page);
+
+    // Ensure the field lost focus (input applied)
+    await expect(pickUpInput).not.toBeFocused();
+  }
+
+  /**
+   * Fills the drop-off location field and commits the value.
+   *
+   * Types into the drop-off field and presses TAB to trigger
+   * blur/validation logic. Waits until the field loses focus
+   * to ensure the input was applied.
+   *
+   * @param {string} to - Drop-off location text
+   */
+  async fillInDropOffField(to) {
+    const dropOffInput = this.page
+      .locator(SEARCH_SELECTORS.DROP_OFF_PLACEHOLDER)
+      .first();
+
+    await dropOffInput.fill(to);
+
+    // Commit value
+    await pressTab(this.page);
+
+    // Ensure the field lost focus (input applied)
+    await expect(dropOffInput).not.toBeFocused();
   }
 }
 

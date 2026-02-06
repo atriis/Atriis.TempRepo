@@ -1,6 +1,7 @@
 const RoomLevelResultsPage = require('@pages/RoomLevelResultsPage');
 const { ResultsPage } = require('@pages/ResultsPage');
 const { CartPage } = require('@pages/CartPage');
+const Results = require('./Results');
 
 /**
  * RoomLevelResults DSL
@@ -25,8 +26,8 @@ const RoomLevelResults = {
 
     await resultsPage.clickFirstAddToTripButton();
 
-    // Handle optional conflict modal
-    await resultsPage.handleConflictQuoteModalIfVisible();
+    // Handle optional conflict modal (uses DSL for consistency)
+    await Results.clickProceedConflictQuoteModal(page);
 
     //Making sure hotel is refundable
     await cartPage.waitForHotelRefundableText();
