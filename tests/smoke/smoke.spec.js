@@ -4,8 +4,8 @@ const { Search, FlightSearch, FlightResults, Trips, App } = require('@dsl');
 
 test.describe('[@smoke] Smoke Tests', () => {
   // Test 1: Application Load Test
-  test('[@priority:medium] Smoke - Application Loads', async ({ newTripPage }) => {
-    const page = newTripPage;
+  test('[@priority:medium] Smoke - Application Loads', async ({ newTripPageFor }) => {
+    const page = await newTripPageFor('amadeus', 'user_one');
 
     // Step 1: Assert application loads successfully
     console.log('Step 1: Assert application loads successfully');
@@ -17,8 +17,8 @@ test.describe('[@smoke] Smoke Tests', () => {
   });
 
   // Test 2: Login and Navigation Test
-  test('[@priority:critical] Smoke - Login and Navigate to Trips', async ({ newTripPage }) => {
-    const page = newTripPage;
+  test('[@priority:critical] Smoke - Login and Navigate to Trips', async ({ newTripPageFor }) => {
+    const page = await newTripPageFor('amadeus', 'user_one');
 
     // Step 1: Navigate to Trips page
     console.log('Step 1: Navigate to Trips page');
@@ -30,8 +30,8 @@ test.describe('[@smoke] Smoke Tests', () => {
   });
 
   // Test 3: Flight Search Test
-  test('[@priority:critical] Smoke - Flight Search and Verify Results', async ({ newTripPage }) => {
-    const page = newTripPage;
+  test('[@priority:critical] Smoke - Flight Search and Verify Results', async ({ newTripPageFor }) => {
+    const page = await newTripPageFor('amadeus', 'user_one');
 
     // Step 1: Add me as traveler
     console.log('Step 1: Add me as traveler');
@@ -47,8 +47,8 @@ test.describe('[@smoke] Smoke Tests', () => {
   });
 
   // Test 4: Logout Test
-  test('[@priority:high] Smoke - Logout', async ({ newTripPage }) => {
-    const page = newTripPage;
+  test('[@priority:high] Smoke - Logout', async ({ newTripPageFor }) => {
+    const page = await newTripPageFor('amadeus', 'user_one');
 
     // Step 1: Logout from application
     console.log('Step 1: Logout from application');

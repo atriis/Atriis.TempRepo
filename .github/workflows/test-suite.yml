@@ -29,7 +29,7 @@ jobs:
       - run: npx playwright install --with-deps
 
       - name: Run Smoke Tests
-        run: npx playwright test --project=Smoke
+        run: npx playwright test --project=smoke
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
@@ -130,7 +130,7 @@ jobs:
       - run: npx playwright install --with-deps
 
       - name: Run Lufthansa Flight Tests
-        run: npx playwright test tests/regression/flights/ndc/lufthansa
+        run: npx playwright test tests/regression/flights/lufthansa
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           LUFTHANSA_USER_ONE_EMAIL: ${{ secrets.LUFTHANSA_USER_ONE_EMAIL }}
@@ -232,7 +232,7 @@ jobs:
       - run: npx playwright install --with-deps
 
       - name: Run Galileo Hotel Tests
-        run: npx playwright test tests/regression/hotels/gds/galileo
+        run: npx playwright test tests/regression/hotels/galileo
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}

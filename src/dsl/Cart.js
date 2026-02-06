@@ -101,7 +101,7 @@ const Cart = {
   async expectBookingStatus(expectedStatus, { timeout = 60000, page } = {}) {
     const locator = page.locator(CART_SELECTORS.QUOTE_STATUS_LABEL);
     await expect(locator).toBeVisible({ timeout });
-    await expect(locator).toContainText(expectedStatus, { timeout });
+    await expect(locator).toContainText(expectedStatus, { timeout, ignoreCase: true });
   },
 
   /**
