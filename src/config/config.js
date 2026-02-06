@@ -55,6 +55,8 @@ const config = {
 
     sabre: {
       user_one: createUser('SABRE_USER_ONE_EMAIL'),
+      user_two: createUser('SABRE_USER_TWO_EMAIL'),
+      chris_tree: createUser('CHRIS_TREE_USER_EMAIL'),
     },
 
     galileo: {
