@@ -15,6 +15,7 @@ module.exports = {
   Cart: require('./Cart'),
   CartFOP: require('./CartFOP'),
   Checkout: require('./Checkout'),
+  DynamicAndReferenceFields: require('./DynamicAndReferenceFields'),
   EvolviResults: require('./EvolviResults'),
   EvolviSearch: require('./EvolviSearch'),
   FlightPricing: require('./FlightPricing'),

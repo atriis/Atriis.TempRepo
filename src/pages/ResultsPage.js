@@ -1,9 +1,9 @@
 const { SELECTORS: CART_SELECTORS } = require('@pages/CartPage');
+const { SELECTORS: GENERAL_SELECTORS } = require('@pages/GeneralElementsPage');
 
 // Centralized selectors for ResultsPage only
 const SELECTORS = {
   RESULTS_BUTTON: '.btn.btn--primary',
-  PROCEED_BUTTON: "button:has-text('Proceed')",
 };
 
 /**
@@ -66,7 +66,7 @@ class ResultsPage {
    */
   async handleConflictQuoteModalIfVisible() {
     const proceedButton = this.page
-      .locator(SELECTORS.PROCEED_BUTTON)
+      .locator(GENERAL_SELECTORS.PROCEED_BUTTON)
       .first();
 
     try {

@@ -1,8 +1,9 @@
+const { SELECTORS: GENERAL_SELECTORS } = require('./GeneralElementsPage');
+
 // Centralized selectors for CommonPage only
 const SELECTORS = {
   
   // Modal buttons
-  PROCEED_ANYWAY_BUTTON: "button:has-text('Proceed anyway')",
   GO_BACK_BUTTON: "button:has-text('Go back')",
 
   // 'Out of Policy' indicator
@@ -89,7 +90,7 @@ class CommonPage {
    * Clicks 'Proceed anyway' button on the Flight Capacity Restriction pop-up.
    */
   async clickProceedAnywayOnFlightCapacityRestrictionPopUp() {
-    await this.page.locator(SELECTORS.PROCEED_ANYWAY_BUTTON).click();
+    await this.page.locator(GENERAL_SELECTORS.PROCEED_BUTTON).click();
   }
 
   /**

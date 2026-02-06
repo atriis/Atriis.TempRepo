@@ -1,7 +1,8 @@
 const { waitForText } = require('@utils/wait');
 
 const SELECTORS = {
-  CHANGE_FLIGHT_BUTTON: '.change-flight-btn-wrapper'
+  CHANGE_FLIGHT_BUTTON: ".change-flight-btn-wrapper",
+  SEARCH_FLIGHT_FILTER: "[placeholder='Search flight']"
 };
 
 /**
@@ -26,6 +27,15 @@ class FlightResultsPage {
       SELECTORS.CHANGE_FLIGHT_BUTTON,
       'Change flight'
     );
+  }
+
+  /**
+   * Types text in the search flight filter field.
+   *
+   * @param {string} text - The text to type in the search filter.
+   */
+  async typeInSearchFlightFilter(text) {
+    await this.page.fill(SELECTORS.SEARCH_FLIGHT_FILTER, text);
   }
 }
 

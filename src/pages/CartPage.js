@@ -29,7 +29,9 @@ const SELECTORS = {
   CONFIRM_CANCEL_BUTTON: "role=button[name='Cancel trip']",
   CANCELLATION_SUCCESS_MESSAGE: "text='Cancellation confirmed!'",
   QUOTE_STATUS_LABEL: ".app-label--quote",
-  HOLD_BUTTON: '.btn--default.mt-2'
+  HOLD_BUTTON: ".btn--default.mt-2",
+  // OOP Justification selectors
+  OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
 };
 
 class CartPage {
@@ -283,6 +285,133 @@ async clickShareItinerary() {
 
     await sendButton.waitFor({ state: 'visible' });
     await sendButton.click();
+  }
+
+  // ===== OOP JUSTIFICATION =====
+
+  /**
+   * Gets the OOP justification textbox locator.
+   *
+   * @returns {Locator} Playwright locator for the justification textbox.
+   */
+  getOOPJustificationTextbox() {
+    return this.page.locator(SELECTORS.OOP_JUSTIFICATION_TEXTBOX);
+  }
+
+  /**
+   * Gets the Save Justification button locator.
+   *
+   * @returns {Locator} Playwright locator for the Save button.
+   */
+  getSaveJustificationButton() {
+    return this.page.getByRole('button', { name: 'Save justification' });
+  }
+
+  /**
+   * Gets the justification dropdown (combobox) locator.
+   *
+   * @returns {Locator} Playwright locator for the justification dropdown.
+   */
+  getJustificationDropdown() {
+    return this.page.getByRole('combobox', {
+      name: 'Select your justification'
+    });
+  }
+
+  /**
+   * Gets a justification dropdown option by name.
+   *
+   * @param {string} optionName - The visible text of the option.
+   * @returns {Locator} Playwright locator for the dropdown option.
+   */
+  getJustificationOption(optionName) {
+    return this.page.getByRole('option', { name: optionName });
+  }
+
+  /**
+   * Fills in the OOP justification textbox.
+   *
+   * @param {string} justificationText - The text to enter in the justification field.
+   */
+  async fillInOOPJustificationText(justificationText) {
+    const textbox = this.getOOPJustificationTextbox();
+    await textbox.waitFor({ state: 'visible', timeout: 10000 });
+    await textbox.fill(justificationText);
+  }
+
+  /**
+   * Clicks the Save Justification button.
+   */
+  async saveOOPJustificationText() {
+    const saveButton = this.getSaveJustificationButton();
+    await saveButton.waitFor({ state: 'visible', timeout: 10000 });
+    await saveButton.click();
+  }
+
+  /**
+   * Clicks the justification dropdown to open the list of options.
+   */
+  async openJustificationDropdown() {
+    await this.getJustificationDropdown().click();
+  }
+
+  /**
+   * Waits for a justification dropdown option to appear.
+   */
+  async waitForJustificationDropdownOption(justificationOption) {
+    await this.getJustificationOption(justificationOption).waitFor({ state: 'visible' });
+  }
+
+  /**
+   * Selects a justification dropdown option by its visible name.
+   *
+   * @param {string} justificationOption - The name of the justification option to select.
+   */
+  async selectJustificationDropdownOption(justificationOption) {
+    await this.getJustificationOption(justificationOption).click();
+  }
+
+  /**
+   * Handles the "Price Change" modal if it appears.
+   *
+   * Modal appears when flight prices change after adding to cart.
+   * Returns:
+   * - true  → modal was shown and handled
+   * - false → modal did not appear (no price change)
+   *
+   * @returns {Promise<boolean>} Whether the modal was handled
+   */
+/**
+   * Returns the "Proceed with change" button locator.
+   * @returns {Locator}
+   */
+  getProceedWithChangeButton() {
+    return this.page.getByRole('button', {
+      name: 'Proceed with change',
+      exact: true,
+    });
+  }
+
+  /**
+   * Clicks the "Proceed with change" button if it is visible.
+   * Uses waitFor to actually wait for the button to appear.
+   *
+   * @param {number} [timeout=45000] - How long to wait for the modal
+   * @returns {Promise<boolean>} true if clicked, false if not found
+   */
+  async clickProceedWithChangeIfVisible(timeout = 45000) {
+    const btn = this.getProceedWithChangeButton();
+
+    try {
+      // waitFor actually waits — unlike isVisible which checks instantly
+      await btn.waitFor({ state: 'visible', timeout });
+    } catch {
+      // Modal did not appear within timeout
+      return false;
+    }
+
+    await btn.click();
+    return true;
   }
 }
 

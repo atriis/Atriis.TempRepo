@@ -17,6 +17,7 @@
 - [ ] Self-healing tests
 - [ ] Get and set methods
 - [ ] Dropdowns duplication code
+- [ ] Dynamic Fields Checkout Locators
 
 
 ## Medium Priority

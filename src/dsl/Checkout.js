@@ -1,4 +1,4 @@
-const CheckoutPage = require('@pages/CheckoutPage');
+const { CheckoutPage } = require('@pages/CheckoutPage');
 const { CartPage } = require('@pages/CartPage');
 
 /**

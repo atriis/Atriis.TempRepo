@@ -1,7 +1,8 @@
 const { CartPage, SELECTORS: CART_SELECTORS } = require('@pages/CartPage');
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require('@pages/CommonPage');
+const { CheckoutPage, SELECTORS: CheckoutSelectors } = require('@pages/CheckoutPage');
 const { expect } = require('@playwright/test');
-const GeneralElementsPage = require('@pages/GeneralElementsPage');
+const { GeneralElementsPage } = require('@pages/GeneralElementsPage');
 
 /**
  * Cart DSL
@@ -73,21 +74,6 @@ const Cart = {
         error: error?.message
       };
     }
-  },
-
-  /**
-   * Accepts terms and proceeds to checkout.
-   * Used by Flights, Hotels, and Cars.
-   *
-   * @param {import('playwright').Page} page
-   * @returns {Promise<{proceeded: boolean}>}
-   */
-  async acceptTermsAndConditionsAndProceedToCheckout(page) {
-    const cartPage = new CartPage(page);
-    await cartPage.acceptTermsAndConditions();
-    await cartPage.waitForProceedToCheckout();
-    await cartPage.clickProceedToCheckout();
-    return { proceeded: true };
   },
 
   /**
@@ -196,7 +182,74 @@ const Cart = {
     await commonPage.hoverOverOOPInfoIcon();
     const actualText = await commonPage.getOOPTooltipTextCart();
     expect(actualText).toBe(expectedText);
-  }
+  },
+
+  /**
+   * Fills in the OOP justification text and saves it immediately.
+   * Business-level action combining text input and save.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} justificationText - The justification text to enter
+   * @returns {Promise<void>}
+   */
+  async fillInOOPJustificationTextAndSave(page, justificationText = 'abc') {
+    const cartPage = new CartPage(page);
+    await cartPage.fillInOOPJustificationText(justificationText);
+    await cartPage.saveOOPJustificationText();
+  },
+
+  /**
+   * Opens the OOP justification dropdown and selects an option.
+   * Business-level action for selecting a justification reason.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} justificationOption - The justification option to select
+   * @returns {Promise<void>}
+   */
+  async selectOOPJustificationDropdownOptionAndSave(page, justificationOption) {
+    const cartPage = new CartPage(page);
+    await cartPage.openJustificationDropdown();
+    await cartPage.waitForJustificationDropdownOption(justificationOption);
+    await cartPage.selectJustificationDropdownOption(justificationOption);
+    await cartPage.saveOOPJustificationText();
+  },
+
+  // ===== PRICE CHANGE MODAL =====
+
+  
+  /**
+   * Accepts terms and proceeds to checkout.
+   * Used by Flights, Hotels, and Cars.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{proceeded: boolean, clickedModal: boolean}>}
+   */
+  async acceptTermsAndConditionsAndProceedToCheckout(page) {
+    const cartPage = new CartPage(page);
+    const checkoutHeading = page.locator(CheckoutSelectors.BOOKING_DETAILS_HEADING);
+    await cartPage.acceptTermsAndConditions();
+    await cartPage.waitForProceedToCheckout();
+    await cartPage.clickProceedToCheckout();
+
+    // Race: wait for either the checkout heading or the price change modal (up to 45s)
+    const proceedBtn = cartPage.getProceedWithChangeButton();
+    await Promise.race([
+      checkoutHeading.waitFor({ state: 'visible', timeout: 45000 }).catch(() => {}),
+      proceedBtn.waitFor({ state: 'visible', timeout: 45000 }).catch(() => {}),
+    ]);
+
+    // If the modal appeared, click it and wait for checkout heading
+    let clickedModal = false;
+    if (await proceedBtn.isVisible()) {
+      await proceedBtn.click();
+      clickedModal = true;
+    }
+
+    // Confirm checkout page loaded (either directly or after dismissing modal)
+    await checkoutHeading.waitFor({ state: 'visible', timeout: 30000 });
+
+    return { proceeded: true, clickedModal };
+  },
 };
 
 

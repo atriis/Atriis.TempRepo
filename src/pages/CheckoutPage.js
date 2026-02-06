@@ -89,4 +89,8 @@ class CheckoutPage {
 }
 }
 
-module.exports = CheckoutPage;
+// Export CheckoutPage and SELECTORS for use in tests and DSL
+module.exports = {
+  CheckoutPage,
+  SELECTORS
+};

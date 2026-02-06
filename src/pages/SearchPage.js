@@ -31,7 +31,7 @@ const SELECTORS = {
   GENDER_OPTION_MALE: "role=option[name='Male']",
   DATE_OF_BIRTH_INPUT: "[placeholder='DD/MM/YYYY']",
   EMAIL_INPUT: "[placeholder='Enter email address']",
-  PHONE_INPUT: "[placeholder='Enter phone number']",
+  PHONE_INPUT: "[placeholder='[City code]-[3 numbers prefix]-[4 digits]']",
   ADD_GUEST_MODAL_BUTTON: ".app-footer .add-guest-btn",
 
   // Trip types

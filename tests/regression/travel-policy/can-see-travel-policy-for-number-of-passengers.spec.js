@@ -1,8 +1,8 @@
 const { test } = require('@fixtures/supplierTest');
 const { Search, FlightSearch, Results, Cart } = require('@dsl');
 
-test.describe('[@regression][@travel-policy] Travel Policy - Flight Capacity Restriction Flow', () => {
-  test('[@priority:critical] Should verify OOP indicators and Flight Capacity modal behavior', async ({ newTripPageFor }) => {
+test.describe('[@regression][@travel-policy] 47764 Can see travel policy for number of passengers', () => {
+  test('[@priority:high] Should verify OOP indicators and Flight Capacity modal behavior', async ({ newTripPageFor }) => {
     // Step 1: Login
     console.log('Step 1: Login + Book a New Trip (fixtures)');
     const page = await newTripPageFor('travelpolicy', 'user_one');
