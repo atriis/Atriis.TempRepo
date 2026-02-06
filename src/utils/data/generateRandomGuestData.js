@@ -59,10 +59,17 @@ function generateRandomGuestData() {
   /**
    * Phone number generation
    *
-   * - Uses UK country code (+44)
-   * - Generates a 9-digit number to look realistic
+   * - Format: XXX-XXX-XXXX (standard US phone format)
+   * - Area code: 200-999 (3 digits)
+   * - Exchange code: 200-999 (3 digits)
+   * - Line number: 0000-9999 (4 digits)
    */
-  const phone = `+44${Math.floor(Math.random() * 900000000 + 100000000)}`;
+  const areaCode = Math.floor(Math.random() * 800) + 200;
+  const exchangeCode = Math.floor(Math.random() * 800) + 200;
+  const lineNumber = Math.floor(Math.random() * 10000)
+    .toString()
+    .padStart(4, '0');
+  const phone = `${areaCode}-${exchangeCode}-${lineNumber}`;
 
   // Returned object shape is stable and used by Search DSL
   return {
