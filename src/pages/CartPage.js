@@ -413,6 +413,26 @@ class CartPage {
     await btn.click();
     return true;
   }
+
+  /**
+   * Gets the "Requested" flight title locator.
+   * Used to confirm a travel request has been submitted.
+   *
+   * @returns {Locator} Playwright locator for the requested flight heading.
+   */
+  getRequestedFlightTitle() {
+    return this.page.locator("h5.center-title", {
+      hasText: "Requested",
+    });
+  }
+
+  /**
+   * Waits for the "Requested" flight title to be visible.
+   */
+  async waitForRequestedFlightTitle() {
+    await this.getRequestedFlightTitle().waitFor({ state: "visible" });
+  }
+
 }
 
 // Export CartPage and SELECTORS for use in tests and DSL

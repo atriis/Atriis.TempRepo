@@ -56,6 +56,17 @@ class GeneralElementsPage {
   async waitForSuccessNotification() {
     await this.getSuccessNotification().waitFor({ state: "visible" });
   }
+
+   /**
+   * Clicks the "Save" button.
+   */
+  getSaveButton() {
+    return this.page.getByRole("button", { name: "Save" });
+  }
+
+  clickSSaveButton() {
+    return this.getSSaveButton().click();
+  }
 }
 
 // Export GeneralElementsPage and SELECTORS for use in tests and DSL

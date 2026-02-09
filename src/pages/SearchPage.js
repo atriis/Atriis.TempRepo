@@ -400,6 +400,17 @@ class SearchPage {
   async selectRoundTrip() {
     await this.clickTripType(/round trip/i);
   }
+
+  /**
+   * Clicks the "Travel request" button.
+   */
+  getTravelRequestButton() {
+    return this.page.getByRole("button", { name: "Travel request" });
+  }
+
+  clickTravelRequestButton() {
+    return this.getTravelRequestButton().click();
+  }
 }
 
 /**

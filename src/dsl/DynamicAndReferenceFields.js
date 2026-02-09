@@ -1,6 +1,7 @@
 const DynamicAndReferenceFieldsPage = require("@pages/DynamicAndReferenceFieldsPage");
 const { GeneralElementsPage } = require("@pages/GeneralElementsPage");
 const { CheckoutPage } = require("@pages/CheckoutPage");
+const { TravelRequestPage } = require("@pages/TravelRequestPage");
 
 /**
  * DynamicAndReferenceFields DSL
@@ -59,6 +60,25 @@ const DynamicAndReferenceFields = {
 
     // Fill the text field with the checkout number
     await dynamicFieldsPage.fillInTextField("11111", fieldIndex);
+  },
+
+  /**
+   * Waits for the Save button in a modal to be visible and clicks it.
+   * Useful for dynamic/reference field modals that require explicit save.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async waitAndClickSaveButtonModal(page) {
+    const dynamicFieldsPage = new DynamicAndReferenceFieldsPage(page);
+    const travelRequestPage = new TravelRequestPage(page);
+    const checkoutPage = new CheckoutPage(page);
+
+    // Ensure
+    await dynamicFieldsPage.waitForSaveButtonModal();
+    await dynamicFieldsPage.clickSaveButtonModal();
+    await travelRequestPage.waitForSentToAgentMessage();
+    await checkoutPage.clickGoToTripButton();
   },
 };
 
