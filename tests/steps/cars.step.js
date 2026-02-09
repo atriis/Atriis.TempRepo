@@ -12,6 +12,12 @@
  *   "I add the first car to cart"
  *     → CarResults.addCarAirportFromResultsPageToCart(page)
  *
+ *   "I search for a car in {string} with rental agency {string}"
+ *     → CarSearch.searchCarByPlaceAndRentalAgency(page, place, agencyName)
+ *
+ *   "I add the first city center car to cart"
+ *     → CarResults.addCarCityCenterFromResultsPageToCart(page)
+ *
  * ========================
  */
 
@@ -35,4 +41,14 @@ When("I search for a car in {string}", async function (place) {
 When("I add the first car to cart", async function () {
   console.log("Adding first car to cart");
   await CarResults.addCarAirportFromResultsPageToCart(this.page);
+});
+
+When("I search for a car in {string} with rental agency {string}", async function (place, agencyName) {
+  console.log(`Searching for car in ${place} with rental agency: ${agencyName}`);
+  await CarSearch.searchCarByPlaceAndRentalAgency(this.page, place, agencyName);
+});
+
+When("I add the first city center car to cart", async function () {
+  console.log("Adding first city center car to cart");
+  await CarResults.addCarCityCenterFromResultsPageToCart(this.page);
 });

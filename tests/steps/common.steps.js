@@ -12,6 +12,16 @@
  *   "I have added myself as the traveler"
  *     → Search.addMeAsTraveler(page)
  *
+ *   "I have added a random guest traveler"
+ *     → Search.addRandomGuest(page)
+ *
+ * When Steps:
+ *   "I cancel the trip"
+ *     → Cart.cancelTripStrict(page)
+ *
+ *   "I attempt to cancel the trip safely"
+ *     → Cart.cancelTripSafely(page)
+ *
  * Then Steps:
  *   "the booking status should be {string}"
  *     → Cart.expectBookingStatus(status, { page })
@@ -32,6 +42,12 @@ setDefaultTimeout(120000);
 When("I cancel the trip", async function () {
   console.log("Cancelling trip");
   await Cart.cancelTripStrict(this.page);
+});
+
+When("I attempt to cancel the trip safely", async function () {
+  console.log("Attempting to cancel trip (safe mode)");
+  const result = await Cart.cancelTripSafely(this.page);
+  this.cancelResult = result;
 });
 
 When("I accept the terms and conditions", async function () {
@@ -76,7 +92,13 @@ Given("I have added myself as the traveler", async function () {
 
 Given("I have added traveler by name {string}", async function (travelerName) {
   console.log(`Adding traveler by name: ${travelerName}`);
-  await Search.addTravellerByName(this.page, travelerName);
+  await Search.addTravelerByName(this.page, travelerName);
+});
+
+Given("I have added a random guest traveler", async function () {
+  console.log("Adding random guest traveler");
+  const result = await Search.addRandomGuest(this.page);
+  console.log(`Guest added: ${result.guestData.firstName} ${result.guestData.lastName}`);
 });
 
 // ===== THEN STEPS =====
