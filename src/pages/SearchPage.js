@@ -98,6 +98,14 @@ class SearchPage {
     this.page = page;
   }
 
+  /**
+   * Gets the date picker panel element.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getDatePickerPanel() {
+    return this.page.locator(SELECTORS.DATE_PICKER_PANEL);
+  }
+
   // Opens traveler selection panel
   async clickAddTravelerButton() {
     await this.page.click(SELECTORS.ADD_TRAVELER_BUTTON);
@@ -283,9 +291,7 @@ class SearchPage {
       .click();
 
     // Wait until the date picker panel is visible
-    await this.page
-      .locator(SELECTORS.DATE_PICKER_PANEL)
-      .waitFor({ state: "visible" });
+    await this.getDatePickerPanel().waitFor({ state: "visible" });
   }
 
   /**
@@ -301,9 +307,7 @@ class SearchPage {
       .click();
 
     // Wait until the date picker panel is visible
-    await this.page
-      .locator(SELECTORS.DATE_PICKER_PANEL)
-      .waitFor({ state: "visible" });
+    await this.getDatePickerPanel().waitFor({ state: "visible" });
   }
 
   /**

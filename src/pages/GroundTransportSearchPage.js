@@ -26,6 +26,22 @@ class GroundTransportSearchPage {
     this.page = page;
   }
 
+  /**
+   * Gets the "from" (pickup) location container.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getFromLocationContainer() {
+    return this.page.locator(SELECTORS.LOCATION_CONTAINER).nth(0);
+  }
+
+  /**
+   * Gets the "to" (dropoff) location container.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getToLocationContainer() {
+    return this.page.locator(SELECTORS.LOCATION_CONTAINER).nth(1);
+  }
+
   /** Switches UI to Ground Transport search */
   async clickGroundTransportTab() {
     await this.page.click(SELECTORS.GROUND_TRANSPORT_TAB);
@@ -33,36 +49,28 @@ class GroundTransportSearchPage {
 
   /** Selects "From airport" option for pickup location */
   async clickFromAirport() {
-    await this.page
-      .locator(SELECTORS.LOCATION_CONTAINER)
-      .nth(0)
+    await this.getFromLocationContainer()
       .getByText(SELECTORS.FROM_AIRPORT_TEXT)
       .click();
   }
 
   /** Selects "From specific address" option for pickup location */
   async clickFromSpecificAddress() {
-    await this.page
-      .locator(SELECTORS.LOCATION_CONTAINER)
-      .nth(0)
+    await this.getFromLocationContainer()
       .getByText(SELECTORS.FROM_SPECIFIC_ADDRESS_TEXT)
       .click();
   }
 
   /** Selects "To airport" option for dropoff location */
   async clickToAirport() {
-    await this.page
-      .locator(SELECTORS.LOCATION_CONTAINER)
-      .nth(1)
+    await this.getToLocationContainer()
       .getByText(SELECTORS.TO_AIRPORT_TEXT)
       .click();
   }
 
   /** Selects "To specific address" option for dropoff location */
   async clickToSpecificAddress() {
-    await this.page
-      .locator(SELECTORS.LOCATION_CONTAINER)
-      .nth(1)
+    await this.getToLocationContainer()
       .getByText(SELECTORS.TO_SPECIFIC_ADDRESS_TEXT)
       .click();
   }

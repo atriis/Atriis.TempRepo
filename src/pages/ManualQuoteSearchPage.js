@@ -47,6 +47,27 @@ class ManualQuoteSearchPage {
     this.page = page;
   }
 
+  // ===== LOCATOR HELPERS =====
+
+  /**
+   * Gets the time picker input locator.
+   * @param {number} index - 0 for start time, 1 for end time
+   * @returns {Locator} Playwright locator for the time picker input
+   */
+  getTimePickerInput(index) {
+    return this.page.locator(SELECTORS.TIME_PICKER_INPUTS).nth(index);
+  }
+
+  /**
+   * Gets the flight number field locator.
+   * @returns {Locator} Playwright locator for the flight number field
+   */
+  getFlightNumberField() {
+    return this.page.locator(SELECTORS.FLIGHT_NUMBER_FIELD);
+  }
+
+  // ===== UI INTERACTIONS =====
+
   /**
    * Clicks the Manual Quote tab to switch to manual quote mode.
    */
@@ -182,8 +203,8 @@ class ManualQuoteSearchPage {
    * Required to trigger time validation in the UI.
    */
   async clickStartTime() {
-    await this.page.locator(SELECTORS.TIME_PICKER_INPUTS).nth(0).click();
-    await this.page.locator(SELECTORS.FLIGHT_NUMBER_FIELD).click();
+    await this.getTimePickerInput(0).click();
+    await this.getFlightNumberField().click();
   }
 
   /**
@@ -191,8 +212,8 @@ class ManualQuoteSearchPage {
    * Required to trigger time validation in the UI.
    */
   async clickEndTime() {
-    await this.page.locator(SELECTORS.TIME_PICKER_INPUTS).nth(1).click();
-    await this.page.locator(SELECTORS.FLIGHT_NUMBER_FIELD).click();
+    await this.getTimePickerInput(1).click();
+    await this.getFlightNumberField().click();
   }
 
   /**

@@ -22,6 +22,22 @@ class FlightSearchPage {
   }
 
   /**
+   * Gets the "Complete Trip" radio button.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCompleteTripRadio() {
+    return this.page.locator(SELECTORS.TRIP_TYPE).nth(0);
+  }
+
+  /**
+   * Gets the "By Schedule" radio button.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getByScheduleRadio() {
+    return this.page.locator(SELECTORS.TRIP_TYPE).nth(1);
+  }
+
+  /**
    * Opens the Flight search tab.
    */
   async clickFlightTab() {
@@ -32,14 +48,14 @@ class FlightSearchPage {
    * Selects the "Complete Trip" search mode.
    */
   async selectCompleteTrip() {
-    await this.page.locator(SELECTORS.TRIP_TYPE).nth(0).click();
+    await this.getCompleteTripRadio().click();
   }
 
   /**
    * Selects the "By Schedule" search mode.
    */
   async selectBySchedule() {
-    await this.page.locator(SELECTORS.TRIP_TYPE).nth(1).click();
+    await this.getByScheduleRadio().click();
   }
 
   /**
