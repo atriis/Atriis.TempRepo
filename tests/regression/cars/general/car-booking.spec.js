@@ -1,17 +1,17 @@
-const { test, expect } = require('@fixtures/supplierTest');
+const { test, expect } = require("@fixtures/supplierTest");
 
-const { Search, CarSearch, CarResults, Cart, Checkout, TripOverview } = require('@dsl');
+const { Search, CarSearch, CarResults, Cart, Checkout, TripOverview } = require("@dsl");
 
-test.describe('[@regression][@supplier:all] Car Booking End-to-End Flow', () => {
-  test('[@priority:critical] Car Booking – Should complete full car booking flow with cancellation', async ({ newTripPageFor }) => {
+test.describe("[@regression][@supplier:all] Car Booking End-to-End Flow", () => {
+  test("[@priority:critical] Car Booking – Should complete full car booking flow with cancellation", async ({ newTripPageFor }) => {
     // Step 1: Login
-    console.log('Step 1: Login + Book a New Trip (fixtures)');
-    const page = await newTripPageFor('amadeus', 'user_one');
+    console.log("Step 1: Login + Book a New Trip (fixtures)");
+    const page = await newTripPageFor("amadeus", "user_one");
 
     // Step 2: Add traveller - I'm the traveller
-    console.log('Step 2: Add traveller - I am the traveller');
+    console.log("Step 2: Add traveller - I am the traveller");
     await Search.addMeAsTraveler(page);
-/* 
+    /*
     // Step 3: Search car in LHR
     console.log('Step 3: Search car in LHR');
     await CarSearch.searchCarByPlace(page, { place: 'LHR' });
@@ -28,17 +28,17 @@ test.describe('[@regression][@supplier:all] Car Booking End-to-End Flow', () => 
     console.log('Step 6: Accept terms and proceed to checkout');
     await Cart.acceptTermsAndConditionsAndProceedToCheckout(page);
 
-    // Step 7: Wait for checkout page and proceed 
+    // Step 7: Wait for checkout page and proceed
     console.log('Step 7: Proceeding to checkout page');
-    
+
     // Step 8: Book & Finalize
     console.log('Step 8: Book and finalize booking');
     await Checkout.bookAndFinalize(page);
 
-    // Step 9: Assert confirmed status in trip overview 
+    // Step 9: Assert confirmed status in trip overview
     console.log('Step 9: Assert confirmed status');
     expect(await TripOverview.isBookingConfirmed(page)).toBe(true);
-    
+
     // Step 10: Cancel car trip with complete validation
     console.log('Step 10: Cancel car booking');
     await TripOverview.cancelTrip(page);

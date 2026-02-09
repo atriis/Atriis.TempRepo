@@ -1,6 +1,6 @@
 
 const UKParkingSearchPage = require("@pages/UKParkingSearchPage");
-const { SearchPage } = require('@pages/SearchPage');
+const { SearchPage } = require("@pages/SearchPage");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 
@@ -34,7 +34,7 @@ const UKParkingSearch = {
     page,
     airport = "LHR",
     parkingFromIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-    returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX
+    returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
   ) {
     // Start of the search flow
 

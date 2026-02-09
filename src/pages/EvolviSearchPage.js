@@ -1,7 +1,7 @@
 // Centralized selectors for easy maintenance
 const SELECTORS = {
   SPLIT_TICKET_CHECKBOX:
-    "label[data-track='evolvi-search-split-ticket'] .el-checkbox__inner"
+    "label[data-track='evolvi-search-split-ticket'] .el-checkbox__inner",
 };
 
 /**
@@ -23,5 +23,5 @@ class EvolviSearchPage {
 
 module.exports = {
   EvolviSearchPage,
-  SELECTORS
+  SELECTORS,
 };

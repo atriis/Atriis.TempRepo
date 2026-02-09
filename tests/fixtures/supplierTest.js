@@ -1,6 +1,6 @@
-const base = require('@playwright/test');
-const config = require('@config/config');
-const { App } = require('@dsl');
+const base = require("@playwright/test");
+const config = require("@config/config");
+const { App } = require("@dsl");
 
 /*
  * =============================================================================
@@ -12,7 +12,7 @@ const { App } = require('@dsl');
  * 1. CROSS-SUPPLIER tests (tests run once per supplier in a group)
  *    Use: newTripPage
  *    The supplier is determined by the Playwright project configuration.
- *    
+ *
  *    Example:
  *      test('Book flight', async ({ newTripPage }) => {
  *        const page = newTripPage;
@@ -42,10 +42,10 @@ function getUserFromConfig(provider, userKey) {
   if (!user) {
     const availableUsers = Object.keys(config.users || {})
       .flatMap(p => Object.keys(config.users[p] || {}).map(u => `${p}.${u}`))
-      .join(', ');
+      .join(", ");
 
     throw new Error(
-      `User "${provider}.${userKey}" not found in config.users. Available users: ${availableUsers}`
+      `User "${provider}.${userKey}" not found in config.users. Available users: ${availableUsers}`,
     );
   }
 
@@ -84,9 +84,9 @@ const test = base.test.extend({
 
     if (!supplier) {
       throw new Error(
-        'newTripPage requires a project with supplierContext. ' +
-        'Use newTripPageFor(provider, userKey) for specific user tests, ' +
-        'or run with a cross-supplier project.'
+        "newTripPage requires a project with supplierContext. " +
+        "Use newTripPageFor(provider, userKey) for specific user tests, " +
+        "or run with a cross-supplier project.",
       );
     }
 
@@ -95,7 +95,7 @@ const test = base.test.extend({
 
     console.log(`Fixture: logging in as ${provider}.${userKey}`);
 
-    await page.goto(config.baseUrl, { waitUntil: 'domcontentloaded' });
+    await page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
     await App.loginAs(page, user);
 
     const tripPage = await App.bookANewTrip(page);
@@ -119,7 +119,7 @@ const test = base.test.extend({
 
       console.log(`Fixture: logging in as ${provider}.${userKey}`);
 
-      await page.goto(config.baseUrl, { waitUntil: 'domcontentloaded' });
+      await page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
       await App.loginAs(page, user);
 
       const tripPage = await App.bookANewTrip(page);

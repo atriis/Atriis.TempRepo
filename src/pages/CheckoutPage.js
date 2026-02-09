@@ -1,15 +1,15 @@
-const { waitForText } = require('@utils/wait');
+const { waitForText } = require("@utils/wait");
 
 /**
  * Selectors for Checkout page.
  * Button variants exist depending on booking type and supplier.
  */
 const SELECTORS = {
-  BOOKING_DETAILS_HEADING: 'h1.mb-5',
+  BOOKING_DETAILS_HEADING: "h1.mb-5",
   FINALIZE_BUTTON: "button:has-text('Finalize')",
   BOOK_AND_FINALIZE_BUTTON: "button:has-text('Book and Finalize')",
-  FALLBACK_BUTTON: '.btn-container button',
-  GO_TO_TRIP_BUTTON: '.btn-container > :nth-child(1)'
+  FALLBACK_BUTTON: ".btn-container button",
+  GO_TO_TRIP_BUTTON: ".btn-container > :nth-child(1)",
 };
 
 /**
@@ -28,12 +28,12 @@ class CheckoutPage {
    * Uses visible text instead of DOM presence for reliability.
    */
   async waitForBookingDetailsText() {
-  await waitForText(
-    this.page,
-    SELECTORS.BOOKING_DETAILS_HEADING,
-    'Booking details',
-     60000
-  );
+    await waitForText(
+      this.page,
+      SELECTORS.BOOKING_DETAILS_HEADING,
+      "Booking details",
+      60000,
+    );
   }
 
   /**
@@ -43,7 +43,7 @@ class CheckoutPage {
   async waitForBookAndFinalizeButton() {
     await this.page.waitForSelector(
       `${SELECTORS.FINALIZE_BUTTON}, ${SELECTORS.BOOK_AND_FINALIZE_BUTTON}`,
-      { timeout: 10000 }
+      { timeout: 10000 },
     );
   }
 
@@ -78,19 +78,19 @@ class CheckoutPage {
    * Navigates to the Trip Overview after booking completion.
    */
   async clickGoToTrip() {
-  await waitForText(
-    this.page,
-    SELECTORS.GO_TO_TRIP_BUTTON,
-    'Go to trip',
-    60000
-  );
+    await waitForText(
+      this.page,
+      SELECTORS.GO_TO_TRIP_BUTTON,
+      "Go to trip",
+      60000,
+    );
 
-  await this.page.click(SELECTORS.GO_TO_TRIP_BUTTON);
-}
+    await this.page.click(SELECTORS.GO_TO_TRIP_BUTTON);
+  }
 }
 
 // Export CheckoutPage and SELECTORS for use in tests and DSL
 module.exports = {
   CheckoutPage,
-  SELECTORS
+  SELECTORS,
 };

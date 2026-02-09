@@ -1,7 +1,7 @@
-const FlightResultsPage = require('@pages/FlightResultsPage');
-const { CartPage } = require('@pages/CartPage');
-const { ResultsPage } = require('@pages/ResultsPage');
-const Results = require('./Results');
+const FlightResultsPage = require("@pages/FlightResultsPage");
+const { CartPage } = require("@pages/CartPage");
+const { ResultsPage } = require("@pages/ResultsPage");
+const Results = require("./Results");
 
 /**
  * FlightResults DSL
@@ -62,16 +62,16 @@ const FlightResults = {
 
   async selectSegmentsBySchedule(page) {
     const flightResultsPage = new FlightResultsPage(page);
-    
+
     // Select first segment
     await this.selectOneSegmentBySchedule(page);
     await flightResultsPage.waitForChangeFlightButton();
-    
+
     // Select second segment
     await this.selectOneSegmentBySchedule(page);
-    
+
     return { selected: true };
-  }
+  },
 };
 
 module.exports = FlightResults;

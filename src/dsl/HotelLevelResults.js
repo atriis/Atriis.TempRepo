@@ -1,4 +1,4 @@
-const HotelLevelResultsPage = require('@pages/HotelLevelResultsPage');
+const HotelLevelResultsPage = require("@pages/HotelLevelResultsPage");
 
 /**
  * HotelLevelResults DSL

@@ -1,41 +1,41 @@
 const {
   typeIntoNthAvailableInput,
-  pressTab
-} = require('@utils/dom');
-const { expect } = require('@playwright/test');
+  pressTab,
+} = require("@utils/dom");
+const { expect } = require("@playwright/test");
 
 /**
  * Centralized selectors for manual quote search page.
  * NOTE: Some selectors are UI-dependent and may be fragile.
  */
 const SELECTORS = {
-  MANUAL_QUOTE_TAB: '#tab-manual',
-  ENTER_AIRPORT_LOCATION_PLACEHOLDER: '[placeholder="Enter airport location"]',
-  
+  MANUAL_QUOTE_TAB: "#tab-manual",
+  ENTER_AIRPORT_LOCATION_PLACEHOLDER: "[placeholder=\"Enter airport location\"]",
+
   // Airport inputs
-  DEPARTING_FROM_INPUT: 'input[name="departing-airport-autocomplete"]',
-  ARRIVING_TO_INPUT: 'input[name="arriving-airport-autocomplete"]',
-  
+  DEPARTING_FROM_INPUT: "input[name=\"departing-airport-autocomplete\"]",
+  ARRIVING_TO_INPUT: "input[name=\"arriving-airport-autocomplete\"]",
+
   // Date inputs
-  DEPARTING_DATE_INPUT: 'input[name="departing-date"]',
+  DEPARTING_DATE_INPUT: "input[name=\"departing-date\"]",
   // TODO: Replace with data-testid - this selector is fragile and matches multiple elements
-  RETURNING_DATE_INPUT: '.el-input__inner[placeholder="DD MM YYYY"][readonly]',
-  
+  RETURNING_DATE_INPUT: ".el-input__inner[placeholder=\"DD MM YYYY\"][readonly]",
+
   // Time inputs
-  DEPARTING_HOUR_FIELD: '[name="departing-hour"]',
-  RETURNING_HOUR_FIELD: '[name="arriving-hour"]',
-  TIME_PICKER_INPUTS: 'section.app-timepicker input.app-timepicker-input',
-  
+  DEPARTING_HOUR_FIELD: "[name=\"departing-hour\"]",
+  RETURNING_HOUR_FIELD: "[name=\"arriving-hour\"]",
+  TIME_PICKER_INPUTS: "section.app-timepicker input.app-timepicker-input",
+
   // Flight details
-  FLIGHT_NUMBER_FIELD: '[name="flight-number"]',
-  CARRIER_LOCATOR_FIELD: '[name="carrier-locator"]',
-  CARRIER_INPUT: '[name="carrier"] input.el-select__input',
+  FLIGHT_NUMBER_FIELD: "[name=\"flight-number\"]",
+  CARRIER_LOCATOR_FIELD: "[name=\"carrier-locator\"]",
+  CARRIER_INPUT: "[name=\"carrier\"] input.el-select__input",
   CARRIER_DROPDOWN_OPTION:
     (carrierName) => `li.el-select-dropdown__item span:text("${carrierName}")`,
-  
+
   // Pricing and actions
-  BASE_FARE_FIELD: '[name="base-fare"]',
-  ADD_QUOTE_BUTTON: 'button.add-quote-btn',
+  BASE_FARE_FIELD: "[name=\"base-fare\"]",
+  ADD_QUOTE_BUTTON: "button.add-quote-btn",
 };
 
 /**
@@ -60,8 +60,8 @@ class ManualQuoteSearchPage {
    */
   async waitForEnterAirportLocationPlaceholderVisible() {
     await this.page.locator(
-      SELECTORS.ENTER_AIRPORT_LOCATION_PLACEHOLDER
-    ).first().waitFor({ state: 'visible', timeout: 20000 });
+      SELECTORS.ENTER_AIRPORT_LOCATION_PLACEHOLDER,
+    ).first().waitFor({ state: "visible", timeout: 20000 });
   }
 
   /**
@@ -83,7 +83,7 @@ class ManualQuoteSearchPage {
       this.page,
       from,
       [SELECTORS.DEPARTING_FROM_INPUT],
-      0
+      0,
     );
 
     // Commit the value (blur the field)
@@ -112,7 +112,7 @@ class ManualQuoteSearchPage {
       this.page,
       to,
       [SELECTORS.ARRIVING_TO_INPUT],
-      0
+      0,
     );
 
     // Commit the value (blur the field)

@@ -1,4 +1,4 @@
-const { SELECTORS: RESULTS_SELECTORS } = require('@pages/ResultsPage');
+const { SELECTORS: RESULTS_SELECTORS } = require("@pages/ResultsPage");
 
 /**
  * HotelLevelResultsPage
@@ -19,7 +19,7 @@ class HotelLevelResultsPage {
       .first();
 
     // Ensure the button exists before trying to scroll to it
-    await viewRatesButton.waitFor({ state: 'attached' });
+    await viewRatesButton.waitFor({ state: "attached" });
 
     await viewRatesButton.scrollIntoViewIfNeeded();
   }
@@ -31,11 +31,11 @@ class HotelLevelResultsPage {
       .first();
 
     // Ensure the button exists, then scroll it into view
-    await viewRatesButton.waitFor({ state: 'attached' });
+    await viewRatesButton.waitFor({ state: "attached" });
     await viewRatesButton.scrollIntoViewIfNeeded();
 
     // Confirm it is visible and ready for interaction
-    await viewRatesButton.waitFor({ state: 'visible' });
+    await viewRatesButton.waitFor({ state: "visible" });
   }
 
   /** Clicks the first available "View rates" button */

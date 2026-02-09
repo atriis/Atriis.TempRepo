@@ -1,10 +1,10 @@
-const { waitForText } = require('@utils/wait');
+const { waitForText } = require("@utils/wait");
 
 // Centralized selectors for easy maintenance
 const SELECTORS = {
-  BOOK_NEW_TRIP_ICON: '.top-container > :nth-child(4) .material-symbols-outlined',
-  LOGOUT_ICON: '.logout-icon',
-  TRIPS_ICON: 'a[href="/trips"]'
+  BOOK_NEW_TRIP_ICON: ".top-container > :nth-child(4) .material-symbols-outlined",
+  LOGOUT_ICON: ".logout-icon",
+  TRIPS_ICON: "a[href=\"/trips\"]",
 };
 
 /**
@@ -29,7 +29,7 @@ class MenuPage {
    * Extra timeout is kept as-is for stability.
    */
   async waitForBookANewTripIcon() {
-    await this.page.locator(SELECTORS.BOOK_NEW_TRIP_ICON).waitFor({ state: 'visible' });
+    await this.page.locator(SELECTORS.BOOK_NEW_TRIP_ICON).waitFor({ state: "visible" });
   }
 
   /** Clicks "Book a New Trip" (this opens a new tab) */
@@ -42,7 +42,7 @@ class MenuPage {
    * Used as confirmation that the user is logged in.
    */
   async waitForLogoutIcon() {
-    await waitForText(this.page, SELECTORS.LOGOUT_ICON, 'logout');
+    await waitForText(this.page, SELECTORS.LOGOUT_ICON, "logout");
   }
 
   /** Clicks logout icon */

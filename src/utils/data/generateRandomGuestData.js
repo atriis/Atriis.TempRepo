@@ -16,10 +16,10 @@
 function generateRandomGuestData() {
   // Common first and last names to keep data realistic
   const firstNames = [
-    'John', 'Jane', 'Michael', 'Sarah', 'David', 'Emma', 'James', 'Lisa'
+    "John", "Jane", "Michael", "Sarah", "David", "Emma", "James", "Lisa",
   ];
   const lastNames = [
-    'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis'
+    "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
   ];
 
   // Randomly select a name combination
@@ -41,9 +41,9 @@ function generateRandomGuestData() {
   const birthMonth = Math.floor(Math.random() * 12) + 1;
   const birthDay = Math.floor(Math.random() * 28) + 1;
 
-  const dateOfBirth = `${birthDay.toString().padStart(2, '0')}/${birthMonth
+  const dateOfBirth = `${birthDay.toString().padStart(2, "0")}/${birthMonth
     .toString()
-    .padStart(2, '0')}/${birthYear}`;
+    .padStart(2, "0")}/${birthYear}`;
 
   /**
    * Email generation
@@ -52,7 +52,7 @@ function generateRandomGuestData() {
    * - sending real emails
    * - colliding with real users
    */
-  const emailDomain = '@atriistestautomation.com';
+  const emailDomain = "@atriistestautomation.com";
   const email = `${randomFirstName.toLowerCase()}.${randomLastName
     .toLowerCase()}${Math.floor(Math.random() * 1000)}${emailDomain}`;
 
@@ -68,7 +68,7 @@ function generateRandomGuestData() {
   const exchangeCode = Math.floor(Math.random() * 800) + 200;
   const lineNumber = Math.floor(Math.random() * 10000)
     .toString()
-    .padStart(4, '0');
+    .padStart(4, "0");
   const phone = `${areaCode}-${exchangeCode}-${lineNumber}`;
 
   // Returned object shape is stable and used by Search DSL

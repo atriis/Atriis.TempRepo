@@ -4,7 +4,7 @@
  */
 
 const SELECTORS = {
-  CAR_TAB: '#tab-car',
+  CAR_TAB: "#tab-car",
   DROPOFF_DATE_INPUT: "[placeholder='Drop-off Date']",
   PICKUP_NEXT_ARROW: "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
   DROPOFF_NEXT_ARROW: "span.el-date-picker__next-btn button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']",
@@ -15,7 +15,7 @@ const SELECTORS = {
     "//span[normalize-space()='Rental agency']/parent::div[contains(@class,'el-select__placeholder')]/preceding-sibling::div[contains(@class,'el-select__input-wrapper')]//input",
 
   RENTAL_AGENCY_DROPDOWN_OPTION:
-    (agencyName) => `li.el-select-dropdown__item span:text("${agencyName}")`
+    (agencyName) => `li.el-select-dropdown__item span:text("${agencyName}")`,
 };
 
 class CarSearchPage {
@@ -49,13 +49,13 @@ class CarSearchPage {
       .nth(1);
 
     // Ensure the arrow is initially visible
-    await secondNextArrow.waitFor({ state: 'visible' });
+    await secondNextArrow.waitFor({ state: "visible" });
 
     for (let i = 0; i < times; i++) {
       await secondNextArrow.click();
 
       // Wait for the calendar to re-render and the arrow to be usable again
-      await secondNextArrow.waitFor({ state: 'visible' });
+      await secondNextArrow.waitFor({ state: "visible" });
     }
   }
 
@@ -74,11 +74,11 @@ class CarSearchPage {
    */
   async typeRentalAgencyName(agencyName) {
     const rentalAgencyField = this.page.locator(
-      SELECTORS.RENTAL_AGENCY_DROPDOWN_FIELD
+      SELECTORS.RENTAL_AGENCY_DROPDOWN_FIELD,
     );
 
     // Ensure the dropdown field is visible and ready
-    await rentalAgencyField.waitFor({ state: 'visible' });
+    await rentalAgencyField.waitFor({ state: "visible" });
     await rentalAgencyField.type(agencyName);
   }
 

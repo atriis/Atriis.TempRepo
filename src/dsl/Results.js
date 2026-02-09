@@ -1,6 +1,6 @@
-const { ResultsPage } = require('@pages/ResultsPage');
-const { CommonPage, SELECTORS } = require('@pages/CommonPage');
-const { expect } = require('@playwright/test');
+const { ResultsPage } = require("@pages/ResultsPage");
+const { CommonPage, SELECTORS } = require("@pages/CommonPage");
+const { expect } = require("@playwright/test");
 
 /**
  * Results DSL
@@ -125,9 +125,9 @@ const Results = {
   // ===== FLIGHT CAPACITY RESTRICTION MODAL =====
 
   async assertFlightCapacityRestrictionModalIsVisible(page) {
-    await expect(page.getByRole('heading', {
-      name: 'Flight Capacity Restriction',
-      level: 2
+    await expect(page.getByRole("heading", {
+      name: "Flight Capacity Restriction",
+      level: 2,
     })).toBeVisible({ timeout: 30000 });
   },
 
@@ -171,7 +171,7 @@ const Results = {
     await commonPage.hoverOverOOPInfoIcon();
     const actualText = await commonPage.getOOPTooltipText();
     expect(actualText).toBe(expectedText);
-  }
+  },
 };
 
 module.exports = Results;

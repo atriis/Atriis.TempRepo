@@ -24,7 +24,7 @@
  */
 async function getText(page, selector) {
   const locator = page.locator(selector).first();
-  await locator.waitFor({ state: 'visible' });
+  await locator.waitFor({ state: "visible" });
   return locator.textContent();
 }
 
@@ -42,16 +42,16 @@ async function scrollToElement(page, selector) {
   const el = page.locator(selector).first();
 
   // Wait until element exists in the DOM
-  await el.waitFor({ state: 'attached' });
+  await el.waitFor({ state: "attached" });
 
   // Then ensure it is actually visible
-  await el.waitFor({ state: 'visible' });
+  await el.waitFor({ state: "visible" });
 
   await el.evaluate((node) => {
     node.scrollIntoView({
-      block: 'center',
-      inline: 'nearest',
-      behavior: 'auto'
+      block: "center",
+      inline: "nearest",
+      behavior: "auto",
     });
   });
 }
@@ -80,7 +80,7 @@ async function scrollToElement(page, selector) {
  * @returns {Promise<string>} Selector that was successfully used
  */
 async function typeIntoNthAvailableInput(page, value, selectors, nth = 0) {
-  const expected = String(value ?? '').trim();
+  const expected = String(value ?? "").trim();
 
   for (const selector of selectors) {
     const locator = page.locator(selector);
@@ -91,10 +91,10 @@ async function typeIntoNthAvailableInput(page, value, selectors, nth = 0) {
 
       // Logged on purpose to help debug selector mismatches
       console.log(
-        `Typing "${value}" into ${nth + 1}º match of selector: ${selector}`
+        `Typing "${value}" into ${nth + 1}º match of selector: ${selector}`,
       );
 
-      await target.waitFor({ state: 'visible' });
+      await target.waitFor({ state: "visible" });
       await target.click();
       await target.fill(value);
 
@@ -106,11 +106,11 @@ async function typeIntoNthAvailableInput(page, value, selectors, nth = 0) {
 
           // Most inputs use .value; fallback to textContent if needed
           const raw =
-            typeof el.value === 'string' ? el.value : (el.textContent || '');
+            typeof el.value === "string" ? el.value : (el.textContent || "");
 
           return raw.trim() === expected;
         },
-        [selector, nth, expected]
+        [selector, nth, expected],
       );
 
       return selector;
@@ -118,7 +118,7 @@ async function typeIntoNthAvailableInput(page, value, selectors, nth = 0) {
   }
 
   throw new Error(
-    `Unable to find an input for "${value}" at position ${nth}. No selector matched.`
+    `Unable to find an input for "${value}" at position ${nth}. No selector matched.`,
   );
 }
 
@@ -141,10 +141,10 @@ async function pressTab(page) {
  * @param {number} [timeout=5000]
  */
 async function waitForEnabled(locator, timeout = 5000) {
-  await locator.waitFor({ state: 'visible', timeout });
-  await locator.waitFor({ state: 'attached', timeout });
+  await locator.waitFor({ state: "visible", timeout });
+  await locator.waitFor({ state: "attached", timeout });
   // Playwright does not have a direct "enabled" state, so check attribute
-  await locator.evaluate((el) => !el.hasAttribute('disabled'));
+  await locator.evaluate((el) => !el.hasAttribute("disabled"));
 }
 
 module.exports = {

@@ -1,5 +1,5 @@
-const { SearchPage } = require('@pages/SearchPage');
-const { generateRandomGuestData } = require('@utils/data/generateRandomGuestData.js');
+const { SearchPage } = require("@pages/SearchPage");
+const { generateRandomGuestData } = require("@utils/data/generateRandomGuestData.js");
 
 /**
  * Search (Domain DSL)

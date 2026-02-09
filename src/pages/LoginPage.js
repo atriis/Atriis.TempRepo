@@ -1,9 +1,9 @@
 // Centralized selectors for easy maintenance
 const SELECTORS = {
-  EMAIL_INPUT: '#email',
-  PASSWORD_INPUT: '#psw',
-  LOGIN_BUTTON: '#resetText',
-  FORGOT_PASSWORD_TEXT: '#forgotPsw'
+  EMAIL_INPUT: "#email",
+  PASSWORD_INPUT: "#psw",
+  LOGIN_BUTTON: "#resetText",
+  FORGOT_PASSWORD_TEXT: "#forgotPsw",
 };
 
 /**
@@ -22,9 +22,9 @@ class LoginPage {
    * This confirms the login form is ready to use.
    */
   async waitForLoginPage() {
-    await this.page.waitForLoadState('networkidle');
-    await this.page.waitForSelector(SELECTORS.EMAIL_INPUT, { state: 'visible' });
-    await this.page.waitForSelector(SELECTORS.PASSWORD_INPUT, { state: 'visible' });
+    await this.page.waitForLoadState("networkidle");
+    await this.page.waitForSelector(SELECTORS.EMAIL_INPUT, { state: "visible" });
+    await this.page.waitForSelector(SELECTORS.PASSWORD_INPUT, { state: "visible" });
   }
 
   /**
@@ -32,7 +32,7 @@ class LoginPage {
    * Used after logout to confirm we are back on the login page.
    */
   async waitForgotPasswordText() {
-    await this.page.waitForSelector(SELECTORS.FORGOT_PASSWORD_TEXT, { state: 'visible' });
+    await this.page.waitForSelector(SELECTORS.FORGOT_PASSWORD_TEXT, { state: "visible" });
   }
 
   /** Types email into the email field */

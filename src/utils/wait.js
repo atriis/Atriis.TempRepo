@@ -36,13 +36,13 @@ async function waitForText(page, selector, expectedText, timeout = 30000) {
       if (!element) return false;
 
       const text = element.textContent
-        .replace(/[\r\n]+/g, '')
+        .replace(/[\r\n]+/g, "")
         .trim();
 
       return text === expectedText.trim();
     },
     [selector, expectedText],
-    { timeout }
+    { timeout },
   );
 }
 

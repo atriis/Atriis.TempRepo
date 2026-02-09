@@ -1,8 +1,8 @@
-const { waitForText } = require('@utils/wait');
-const { getText } = require('@utils/dom');
-const tripStatus = require('@data/tripStatus.json');
-const { expect } = require('@playwright/test');
-const { caseInsensitiveContains } = require('@utils/text');
+const { waitForText } = require("@utils/wait");
+const { getText } = require("@utils/dom");
+const tripStatus = require("@data/tripStatus.json");
+const { expect } = require("@playwright/test");
+const { caseInsensitiveContains } = require("@utils/text");
 
 /**
  * CartPage
@@ -47,7 +47,7 @@ class CartPage {
    */
   async acceptTermsAndConditions() {
     const checkbox = this.page.locator(SELECTORS.TERMS_CHECKBOX).first();
-    await checkbox.waitFor({ state: 'visible' });
+    await checkbox.waitFor({ state: "visible" });
     await checkbox.click();
   }
 
@@ -62,7 +62,7 @@ class CartPage {
       await waitForText(
         this.page,
         SELECTORS.PROCEED_TO_CHECKOUT_TEXT,
-        'Proceed to Checkout'
+        "Proceed to Checkout",
       );
     }
   }
@@ -102,7 +102,7 @@ class CartPage {
     const candidateLocators = [
       SELECTORS.FLIGHT_DETAILS_BUTTON,
       SELECTORS.MORE_DETAILS_HOTEL_BUTTON,
-      SELECTORS.MORE_DETAILS_CAR_BUTTON
+      SELECTORS.MORE_DETAILS_CAR_BUTTON,
     ];
     for (const selector of candidateLocators) {
       try {
@@ -115,7 +115,7 @@ class CartPage {
       }
     }
     throw new Error(
-      'Unable to find any element containing "details" (case-insensitive).'
+      "Unable to find any element containing \"details\" (case-insensitive).",
     );
   }
 
@@ -127,7 +127,7 @@ class CartPage {
     const icon = this.page
       .locator(SELECTORS.TRIP_ACTIONS_DROPDOWN_ICON)
       .first();
-    await icon.waitFor({ state: 'visible', timeout: 5000 });
+    await icon.waitFor({ state: "visible", timeout: 5000 });
     await icon.hover();
     // Intentional wait required for UI stability before interacting, so test is not flaky
     await this.page.waitForTimeout(500);
@@ -138,8 +138,8 @@ class CartPage {
    */
   async waitForDropdownMenu() {
     await this.page
-      .locator(SELECTORS.CANCEL_TRIP_OPTION, { hasText: 'Cancel trip' })
-      .waitFor({ state: 'visible', timeout: 5000 });
+      .locator(SELECTORS.CANCEL_TRIP_OPTION, { hasText: "Cancel trip" })
+      .waitFor({ state: "visible", timeout: 5000 });
   }
 
   /**
@@ -148,9 +148,9 @@ class CartPage {
   async clickCancelTripOption() {
     const cancelOption = this.page.locator(
       SELECTORS.CANCEL_TRIP_OPTION,
-      { hasText: 'Cancel trip' }
+      { hasText: "Cancel trip" },
     );
-    await cancelOption.waitFor({ state: 'visible', timeout: 5000 });
+    await cancelOption.waitFor({ state: "visible", timeout: 5000 });
     await cancelOption.click();
   }
 
@@ -161,7 +161,7 @@ class CartPage {
     await waitForText(
       this.page,
       SELECTORS.TRIP_CANCELLATION_DIALOG_TITLE,
-      'Trip cancellation'
+      "Trip cancellation",
     );
   }
 
@@ -169,8 +169,8 @@ class CartPage {
    * Clicks the confirm trip cancellation button in the dialog.
    */
   async clickConfirmTripCancellationButton() {
-    const button = this.page.getByRole('button', { name: 'Cancel trip' });
-    await button.waitFor({ state: 'visible', timeout: 5000 });
+    const button = this.page.getByRole("button", { name: "Cancel trip" });
+    await button.waitFor({ state: "visible", timeout: 5000 });
     await button.click();
   }
 
@@ -180,10 +180,10 @@ class CartPage {
    */
   async waitForTripCancelledMessage({ timeout = 60000 } = {}) {
     const successMessage = this.page.getByText(
-      'Cancellation confirmed!',
-      { exact: true }
+      "Cancellation confirmed!",
+      { exact: true },
     );
-    await successMessage.waitFor({ state: 'visible', timeout });
+    await successMessage.waitFor({ state: "visible", timeout });
     // This method only waits, does not return value
   }
 
@@ -194,10 +194,10 @@ class CartPage {
   async isTripCancelledMessageVisible({ timeout = 60000 } = {}) {
     try {
       const successMessage = this.page.getByText(
-        'Cancellation confirmed!',
-        { exact: true }
+        "Cancellation confirmed!",
+        { exact: true },
       );
-      await successMessage.waitFor({ state: 'visible', timeout });
+      await successMessage.waitFor({ state: "visible", timeout });
       return true;
     } catch {
       return false;
@@ -221,59 +221,59 @@ class CartPage {
   async waitForPendingBookingText({ timeout = 30000, page = this.page } = {}) {
     return this.waitForBookingStatus(
       tripStatus.label.pendingBooking.status,
-      { timeout, page }
+      { timeout, page },
     );
   }
 
-/**
+  /**
  * Hovers over the Share button and waits for the visible share dropdown menu.
  */
-async hoverShareButton() {
-  const shareButton = this.page
-    .locator('.share-container')
-    .getByRole('button', { name: 'share' });
+  async hoverShareButton() {
+    const shareButton = this.page
+      .locator(".share-container")
+      .getByRole("button", { name: "share" });
 
-  await shareButton.waitFor({ state: 'visible', timeout: 30_000 });
-  await shareButton.hover();
+    await shareButton.waitFor({ state: "visible", timeout: 30_000 });
+    await shareButton.hover();
 
-  // Wait for the menu instance that is actually visible
-  const visibleMenu = this.page.locator('ul.share-popper[role="menu"]:visible');
-  await visibleMenu.waitFor({ state: 'visible', timeout: 30_000 });
-}
+    // Wait for the menu instance that is actually visible
+    const visibleMenu = this.page.locator("ul.share-popper[role=\"menu\"]:visible");
+    await visibleMenu.waitFor({ state: "visible", timeout: 30_000 });
+  }
 
-/**
+  /**
  * Clicks "Share Quotes" from the currently visible share menu.
  */
-async clickShareQuotes() {
-  const menu = this.page.locator('ul.share-popper[role="menu"]:visible');
-  await menu.waitFor({ state: 'visible', timeout: 30_000 });
+  async clickShareQuotes() {
+    const menu = this.page.locator("ul.share-popper[role=\"menu\"]:visible");
+    await menu.waitFor({ state: "visible", timeout: 30_000 });
 
-  const item = menu.locator('li[role="menuitem"]', { hasText: 'Share Quotes' });
-  await item.waitFor({ state: 'visible', timeout: 30_000 });
-  await item.click();
-}
+    const item = menu.locator("li[role=\"menuitem\"]", { hasText: "Share Quotes" });
+    await item.waitFor({ state: "visible", timeout: 30_000 });
+    await item.click();
+  }
 
 
-/**
+  /**
  * Clicks "Share Itinerary" from the second share menu.
  */
-async clickShareItinerary() {
-  const menu = this.page.locator('ul.share-popper[role="menu"]:visible');
-  await menu.waitFor({ state: 'visible', timeout: 30_000 });
+  async clickShareItinerary() {
+    const menu = this.page.locator("ul.share-popper[role=\"menu\"]:visible");
+    await menu.waitFor({ state: "visible", timeout: 30_000 });
 
-  const item = menu.locator('li[role="menuitem"]', { hasText: 'Share Itinerary' });
-  await item.waitFor({ state: 'visible', timeout: 30_000 });
-  await item.click();
-}
+    const item = menu.locator("li[role=\"menuitem\"]", { hasText: "Share Itinerary" });
+    await item.waitFor({ state: "visible", timeout: 30_000 });
+    await item.click();
+  }
 
   //This can be used when sharing quotes or itinerary from Results page as well
   /**
    * Waits until the "Subject" label is visible.
    */
   async waitForSubjectLabelSharePopUp() {
-    const subjectLabel = this.page.getByText('Subject', { exact: true });
+    const subjectLabel = this.page.getByText("Subject", { exact: true });
 
-    await subjectLabel.waitFor({ state: 'visible', timeout: 30000 });
+    await subjectLabel.waitFor({ state: "visible", timeout: 30000 });
   }
 
   //This can be used when sharing quotes or itinerary from Results page as well
@@ -281,9 +281,9 @@ async clickShareItinerary() {
    * Clicks the "Send" button.
    */
   async clickSendEmailButton() {
-    const sendButton = this.page.getByRole('button', { name: 'Send' });
+    const sendButton = this.page.getByRole("button", { name: "Send" });
 
-    await sendButton.waitFor({ state: 'visible' });
+    await sendButton.waitFor({ state: "visible" });
     await sendButton.click();
   }
 
@@ -304,7 +304,7 @@ async clickShareItinerary() {
    * @returns {Locator} Playwright locator for the Save button.
    */
   getSaveJustificationButton() {
-    return this.page.getByRole('button', { name: 'Save justification' });
+    return this.page.getByRole("button", { name: "Save justification" });
   }
 
   /**
@@ -313,8 +313,8 @@ async clickShareItinerary() {
    * @returns {Locator} Playwright locator for the justification dropdown.
    */
   getJustificationDropdown() {
-    return this.page.getByRole('combobox', {
-      name: 'Select your justification'
+    return this.page.getByRole("combobox", {
+      name: "Select your justification",
     });
   }
 
@@ -325,7 +325,7 @@ async clickShareItinerary() {
    * @returns {Locator} Playwright locator for the dropdown option.
    */
   getJustificationOption(optionName) {
-    return this.page.getByRole('option', { name: optionName });
+    return this.page.getByRole("option", { name: optionName });
   }
 
   /**
@@ -335,7 +335,7 @@ async clickShareItinerary() {
    */
   async fillInOOPJustificationText(justificationText) {
     const textbox = this.getOOPJustificationTextbox();
-    await textbox.waitFor({ state: 'visible', timeout: 10000 });
+    await textbox.waitFor({ state: "visible", timeout: 10000 });
     await textbox.fill(justificationText);
   }
 
@@ -344,7 +344,7 @@ async clickShareItinerary() {
    */
   async saveOOPJustificationText() {
     const saveButton = this.getSaveJustificationButton();
-    await saveButton.waitFor({ state: 'visible', timeout: 10000 });
+    await saveButton.waitFor({ state: "visible", timeout: 10000 });
     await saveButton.click();
   }
 
@@ -359,7 +359,7 @@ async clickShareItinerary() {
    * Waits for a justification dropdown option to appear.
    */
   async waitForJustificationDropdownOption(justificationOption) {
-    await this.getJustificationOption(justificationOption).waitFor({ state: 'visible' });
+    await this.getJustificationOption(justificationOption).waitFor({ state: "visible" });
   }
 
   /**
@@ -381,13 +381,13 @@ async clickShareItinerary() {
    *
    * @returns {Promise<boolean>} Whether the modal was handled
    */
-/**
+  /**
    * Returns the "Proceed with change" button locator.
    * @returns {Locator}
    */
   getProceedWithChangeButton() {
-    return this.page.getByRole('button', {
-      name: 'Proceed with change',
+    return this.page.getByRole("button", {
+      name: "Proceed with change",
       exact: true,
     });
   }
@@ -404,7 +404,7 @@ async clickShareItinerary() {
 
     try {
       // waitFor actually waits — unlike isVisible which checks instantly
-      await btn.waitFor({ state: 'visible', timeout });
+      await btn.waitFor({ state: "visible", timeout });
     } catch {
       // Modal did not appear within timeout
       return false;
@@ -418,5 +418,5 @@ async clickShareItinerary() {
 // Export CartPage and SELECTORS for use in tests and DSL
 module.exports = {
   CartPage,
-  SELECTORS
+  SELECTORS,
 };

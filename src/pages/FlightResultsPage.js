@@ -1,8 +1,8 @@
-const { waitForText } = require('@utils/wait');
+const { waitForText } = require("@utils/wait");
 
 const SELECTORS = {
   CHANGE_FLIGHT_BUTTON: ".change-flight-btn-wrapper",
-  SEARCH_FLIGHT_FILTER: "[placeholder='Search flight']"
+  SEARCH_FLIGHT_FILTER: "[placeholder='Search flight']",
 };
 
 /**
@@ -25,7 +25,7 @@ class FlightResultsPage {
     await waitForText(
       this.page,
       SELECTORS.CHANGE_FLIGHT_BUTTON,
-      'Change flight'
+      "Change flight",
     );
   }
 

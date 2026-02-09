@@ -1,6 +1,6 @@
-const DynamicAndReferenceFieldsPage = require('@pages/DynamicAndReferenceFieldsPage');
-const { GeneralElementsPage } = require('@pages/GeneralElementsPage');
-const { CheckoutPage } = require('@pages/CheckoutPage');
+const DynamicAndReferenceFieldsPage = require("@pages/DynamicAndReferenceFieldsPage");
+const { GeneralElementsPage } = require("@pages/GeneralElementsPage");
+const { CheckoutPage } = require("@pages/CheckoutPage");
 
 /**
  * DynamicAndReferenceFields DSL
@@ -28,11 +28,11 @@ const DynamicAndReferenceFields = {
     const generalElementsPage = new GeneralElementsPage(page);
 
     // Open the Trip Purpose dropdown
-    await dynamicFieldsPage.clickToOpenDropdown('TRIP PURPOSE');
+    await dynamicFieldsPage.clickToOpenDropdown("TRIP PURPOSE");
 
     // Wait for and select CONFERENCE option
-    await dynamicFieldsPage.waitForDropdownOption('CONFERENCE');
-    await dynamicFieldsPage.selectDropdownOption('CONFERENCE');
+    await dynamicFieldsPage.waitForDropdownOption("CONFERENCE");
+    await dynamicFieldsPage.selectDropdownOption("CONFERENCE");
 
     // Wait for and click Proceed button
     await generalElementsPage.waitForProceedButton();
@@ -50,16 +50,16 @@ const DynamicAndReferenceFields = {
   async addNumberCheckoutField(page, fieldIndex = 5) {
     const dynamicFieldsPage = new DynamicAndReferenceFieldsPage(page);
     const checkoutPage = new CheckoutPage(page);
- 
+
     // Ensure checkout page is fully loaded
     await checkoutPage.waitForBookingDetailsText();
 
     // Intentional wait required for UI stability before interacting, so test is not flaky
     await page.waitForTimeout(4000);
-    
+
     // Fill the text field with the checkout number
-    await dynamicFieldsPage.fillInTextField('11111', fieldIndex);
-  }
+    await dynamicFieldsPage.fillInTextField("11111", fieldIndex);
+  },
 };
 
 // Export DynamicAndReferenceFields DSL for use in tests

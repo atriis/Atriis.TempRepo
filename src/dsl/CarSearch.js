@@ -1,9 +1,9 @@
-const CarSearchPage = require('@pages/CarSearchPage');
-const { SearchPage } = require('@pages/SearchPage');
-const { selectDatesByNthAvailable } = require('@utils/calendar.helper');
-const { resolveLocation } = require('@utils/route.helper');
-const { SEARCH_DEFAULTS } = require('@utils/search.constants');
-const carLocations = require('@data/cars.json');
+const CarSearchPage = require("@pages/CarSearchPage");
+const { SearchPage } = require("@pages/SearchPage");
+const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const { resolveLocation } = require("@utils/route.helper");
+const { SEARCH_DEFAULTS } = require("@utils/search.constants");
+const carLocations = require("@data/cars.json");
 
 /**
  * CarSearch DSL
@@ -29,13 +29,13 @@ const CarSearch = {
     placeInput = carLocations.defaultLocation,
     {
       pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
-      dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX
-    } = {}
+      dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
+    } = {},
   ) {
     const place = resolveLocation(
       placeInput,
-      ['place', 'location'],
-      carLocations
+      ["place", "location"],
+      carLocations,
     );
 
     const carSearchPage = new CarSearchPage(page);
@@ -50,7 +50,7 @@ const CarSearch = {
 
     await selectDatesByNthAvailable(page, {
       startIndex: pickupIndex,
-      endIndex: null
+      endIndex: null,
     });
 
     // Drop-off date
@@ -59,7 +59,7 @@ const CarSearch = {
 
     await selectDatesByNthAvailable(page, {
       startIndex: dropoffIndex,
-      endIndex: null
+      endIndex: null,
     });
 
     await searchPage.clickSearchButton();
@@ -74,11 +74,11 @@ const CarSearch = {
     page,
     placeInput = carLocations.defaultLocation,
     agencyName,
-    options = {}
+    options = {},
   ) {
     if (!agencyName) {
       throw new Error(
-        'searchCarByPlaceAndRentalAgency requires "agencyName"'
+        "searchCarByPlaceAndRentalAgency requires \"agencyName\"",
       );
     }
 

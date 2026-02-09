@@ -25,7 +25,7 @@ class GeneralElementsPage {
    * @returns {Locator} Playwright locator for the Success notification.
    */
   getSuccessNotification() {
-    return this.page.getByText('Success', { exact: true });
+    return this.page.getByText("Success", { exact: true });
   }
 
 
@@ -33,7 +33,7 @@ class GeneralElementsPage {
    * Waits for the Proceed button to be visible.
    */
   async waitForProceedButton() {
-    await this.page.locator(SELECTORS.PROCEED_BUTTON).waitFor({ state: 'visible' });
+    await this.page.locator(SELECTORS.PROCEED_BUTTON).waitFor({ state: "visible" });
   }
 
   /**
@@ -47,12 +47,12 @@ class GeneralElementsPage {
    * Waits for the success notification to appear.
    */
   async waitForSuccessNotification() {
-    await this.getSuccessNotification().waitFor({ state: 'visible' });
+    await this.getSuccessNotification().waitFor({ state: "visible" });
   }
 }
 
 // Export GeneralElementsPage and SELECTORS for use in tests and DSL
 module.exports = {
   GeneralElementsPage,
-  SELECTORS
+  SELECTORS,
 };

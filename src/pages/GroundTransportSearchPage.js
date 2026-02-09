@@ -1,6 +1,6 @@
-const { pressTab } = require('@utils/dom');
-const { expect } = require('@playwright/test');
-const { SELECTORS: SEARCH_SELECTORS } = require('@pages/SearchPage');
+const { pressTab } = require("@utils/dom");
+const { expect } = require("@playwright/test");
+const { SELECTORS: SEARCH_SELECTORS } = require("@pages/SearchPage");
 
 /**
  * Page Object for ground transport search form.
@@ -8,17 +8,17 @@ const { SELECTORS: SEARCH_SELECTORS } = require('@pages/SearchPage');
  */
 
 const SELECTORS = {
-  GROUND_TRANSPORT_TAB: '#tab-groundService',
-  LOCATION_CONTAINER: 'section.location-container',
-  FROM_SPECIFIC_ADDRESS_TEXT: 'From specific address',
-  TO_SPECIFIC_ADDRESS_TEXT: 'To specific address',
-  FROM_AIRPORT_TEXT: 'From airport',
-  TO_AIRPORT_TEXT: 'To airport',
-  VEHICLE_TYPE_FIELD:  '.el-select__selection:has(.el-select__placeholder span:has-text("Vehicle Type")) input[role="combobox"]',
+  GROUND_TRANSPORT_TAB: "#tab-groundService",
+  LOCATION_CONTAINER: "section.location-container",
+  FROM_SPECIFIC_ADDRESS_TEXT: "From specific address",
+  TO_SPECIFIC_ADDRESS_TEXT: "To specific address",
+  FROM_AIRPORT_TEXT: "From airport",
+  TO_AIRPORT_TEXT: "To airport",
+  VEHICLE_TYPE_FIELD:  ".el-select__selection:has(.el-select__placeholder span:has-text(\"Vehicle Type\")) input[role=\"combobox\"]",
   VEHICLE_TYPE_DROPDOWN_OPTION: (vehicleType) => `li.el-select-dropdown__item span:text("${vehicleType}")`,
-  TRAVELLER_DROPDOWN: '.el-select__wrapper:has-text("Traveller")',
+  TRAVELLER_DROPDOWN: ".el-select__wrapper:has-text(\"Traveller\")",
   TRAVELLER_DROPDOWN_OPTION:
-    (travellerNumbers) => `li.el-select-dropdown__item span:text("${travellerNumbers}")`
+    (travellerNumbers) => `li.el-select-dropdown__item span:text("${travellerNumbers}")`,
 };
 
 class GroundTransportSearchPage {
@@ -78,11 +78,11 @@ class GroundTransportSearchPage {
    */
   async selectVehicleType(vehicleType) {
     const vehicleTypeField = this.page.locator(
-      SELECTORS.VEHICLE_TYPE_FIELD
+      SELECTORS.VEHICLE_TYPE_FIELD,
     );
 
     // Ensure the vehicle type field is visible and ready
-    await vehicleTypeField.waitFor({ state: 'visible' });
+    await vehicleTypeField.waitFor({ state: "visible" });
 
     // Open dropdown
     await vehicleTypeField.click();
@@ -95,7 +95,7 @@ class GroundTransportSearchPage {
       .first();
 
     // Wait until the filtered option is visible
-    await option.waitFor({ state: 'visible' });
+    await option.waitFor({ state: "visible" });
 
     // Select the option
     await option.click();
@@ -105,7 +105,7 @@ class GroundTransportSearchPage {
   async selectTravellerNumber(travellerNumbers) {
     await this.page.locator(SELECTORS.TRAVELLER_DROPDOWN).click();
     await this.page
-      .getByRole('option', { name: String(travellerNumbers), exact: true })
+      .getByRole("option", { name: String(travellerNumbers), exact: true })
       .click();
   }
 

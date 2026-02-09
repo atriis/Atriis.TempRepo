@@ -1,14 +1,14 @@
-const { SELECTORS: GENERAL_SELECTORS } = require('./GeneralElementsPage');
+const { SELECTORS: GENERAL_SELECTORS } = require("./GeneralElementsPage");
 
 // Centralized selectors for CommonPage only
 const SELECTORS = {
-  
+
   // Modal buttons
   GO_BACK_BUTTON: "button:has-text('Go back')",
 
   // 'Out of Policy' indicator
-  OOP_TOOLTIP_TEXT: '.mb-1',
-  OOP_INFO: '.app-out-of-policy'
+  OOP_TOOLTIP_TEXT: ".mb-1",
+  OOP_INFO: ".app-out-of-policy",
 
 };
 
@@ -24,17 +24,17 @@ class CommonPage {
   }
 
   /**
-   * Waits until the OOP text is visible 
+   * Waits until the OOP text is visible
    */
   async waitForOOPVisible() {
-    await this.page.locator(SELECTORS.OOP_INFO).waitFor({ state: 'visible', timeout: 30000});
+    await this.page.locator(SELECTORS.OOP_INFO).waitFor({ state: "visible", timeout: 30000});
   }
 
   /**
    * Waits until the OOP text is hidden
    */
   async waitForOOPNotVisible() {
-    await this.page.locator(SELECTORS.OOP_INFO).waitFor({ state: 'hidden', timeout: 30000 });
+    await this.page.locator(SELECTORS.OOP_INFO).waitFor({ state: "hidden", timeout: 30000 });
   }
 
   /**
@@ -42,48 +42,48 @@ class CommonPage {
    * TODO: Move this to ResultsPage - this is specific to results page.
    */
   async hoverOverOOPInfoIcon() {
-    await this.page.locator('span.info-icon', { hasText: 'info' }).nth(1).hover();
+    await this.page.locator("span.info-icon", { hasText: "info" }).nth(1).hover();
   }
 
   /**
    * Waits until the OOP tooltip is visible
    */
   async waitForOOPTooltipVisible() {
-    await this.page.locator('span.info-icon', { hasText: 'info' }).nth(1).waitFor({ state: 'visible', timeout: 30000 });
+    await this.page.locator("span.info-icon", { hasText: "info" }).nth(1).waitFor({ state: "visible", timeout: 30000 });
   }
 
-  /** 
+  /**
    * Retrieves the Out of Policy tooltip text.
-   * 
+   *
    * Returns the trimmed text content or empty string if not found.
    */
   async getOOPTooltipText() {
     await this.waitForOOPTooltipVisible();
     const tooltipText = this.page
-      .locator(SELECTORS.OOP_TOOLTIP_TEXT)
-    return (await tooltipText.textContent())?.trim() ?? '';
+      .locator(SELECTORS.OOP_TOOLTIP_TEXT);
+    return (await tooltipText.textContent())?.trim() ?? "";
   }
 
   /**
    * Retrieves the Out of Policy tooltip text from the cart page.
    * Uses nth(2) because the cart tooltip is the third .mb-1 element on the page.
-   * 
+   *
    * @returns {Promise<string>} Trimmed text content or empty string if not found.
    */
   async getOOPTooltipTextCart() {
     await this.waitForOOPTooltipVisible();
     const tooltipText = this.page.locator(SELECTORS.OOP_TOOLTIP_TEXT).nth(2);
-    return (await tooltipText.textContent())?.trim() ?? '';
+    return (await tooltipText.textContent())?.trim() ?? "";
   }
 
   /**
    * Waits for the Flight Capacity Restriction pop-up to be displayed.
    */
   async waitFlightCapacityRestrictionPopUpOOPDisplayed() {
-    await this.page.getByRole('heading', {
-      name: 'Flight Capacity Restriction',
-      level: 2
-    }).waitFor({ state: 'visible', timeout: 30000 });
+    await this.page.getByRole("heading", {
+      name: "Flight Capacity Restriction",
+      level: 2,
+    }).waitFor({ state: "visible", timeout: 30000 });
   }
 
   /**
@@ -103,5 +103,5 @@ class CommonPage {
 
 module.exports = {
   CommonPage,
-  SELECTORS
+  SELECTORS,
 };

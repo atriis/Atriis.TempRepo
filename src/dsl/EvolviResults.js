@@ -1,5 +1,5 @@
-const EvolviResultsPage = require('@pages/EvolviResultsPage');
-const Results = require('./Results');
+const EvolviResultsPage = require("@pages/EvolviResultsPage");
+const Results = require("./Results");
 
 /**
  * EvolviResults DSL

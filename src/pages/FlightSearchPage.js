@@ -1,7 +1,7 @@
 // Centralized selectors for easy maintenance
 // NOTE: Selectors are intentionally kept as-is (UI-dependent and may be fragile).
 const SELECTORS = {
-  FLIGHT_TAB: '#tab-flight',
+  FLIGHT_TAB: "#tab-flight",
   TRIP_TYPE: ".search-for-select  .el-radio",
   ADVANCED_SEARCH_BUTTON: ".advanced-search-container .btn",
   ALLOW_NEARBY_AIRPORTS_CHECKBOX: ".advanced-search-container .el-checkbox__inner",

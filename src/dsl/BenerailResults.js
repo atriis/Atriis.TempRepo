@@ -1,5 +1,5 @@
-const { ResultsPage } = require('@pages/ResultsPage');
-const Results = require('./Results');
+const { ResultsPage } = require("@pages/ResultsPage");
+const Results = require("./Results");
 
 /**
  * BenerailResults DSL
@@ -70,7 +70,7 @@ const BenerailResults = {
     await BenerailResults.clickAddToTripBenerail(page);
 
     return { addedToTrip: true };
-  }
+  },
 };
 
 module.exports = BenerailResults;

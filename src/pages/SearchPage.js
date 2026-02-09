@@ -1,8 +1,8 @@
 const {
   typeIntoNthAvailableInput,
-  pressTab
-} = require('@utils/dom');
-const { expect } = require('@playwright/test');
+  pressTab,
+} = require("@utils/dom");
+const { expect } = require("@playwright/test");
 
 /**
  * Centralized selectors for the Search screen.
@@ -62,17 +62,17 @@ const SELECTORS = {
   FROM_PLACEHOLDER: [
     "input[placeholder='From... Station or Location' i]",
     "input[placeholder='From... Departure' i]",
-    "input[placeholder*='From' i]"
+    "input[placeholder*='From' i]",
   ],
   TO_PLACEHOLDER: [
     "input[placeholder='To... Station or Location' i]",
     "input[placeholder='To... Destination' i]",
-    "input[placeholder*='To' i]"
+    "input[placeholder*='To' i]",
   ],
   OR_PLACEHOLDER: [
     "input[placeholder='Enter station or location' i]",
     "input[placeholder='Airport, City or Address' i]",
-    "input[placeholder*='or' i]"
+    "input[placeholder*='or' i]",
   ],
   PICK_UP_PLACEHOLDER: "input[placeholder*='Pick-up']",
   DROP_OFF_PLACEHOLDER: "input[placeholder*='Drop-off']",
@@ -107,7 +107,7 @@ class SearchPage {
   async waitForAddMeButton() {
     await this.page.waitForSelector(
       SELECTORS.ADD_ME_BUTTON,
-      { state: "visible" }
+      { state: "visible" },
     );
   }
 
@@ -124,7 +124,7 @@ class SearchPage {
    */
   async waitForStarIcon({ timeout = 15000 } = {}) {
     const starIcon = this.page.locator(SELECTORS.STAR_ICON);
-    await expect(starIcon, 'Star icon should be visible after adding traveler').toBeVisible({ timeout });
+    await expect(starIcon, "Star icon should be visible after adding traveler").toBeVisible({ timeout });
   }
 
   // Searches and selects an existing traveler
@@ -153,7 +153,7 @@ class SearchPage {
 
   async selectGenderMale() {
     await this.page.locator(SELECTORS.GENDER_DROPDOWN).click();
-    await this.page.getByRole('option', { name: 'Male' }).first().click();
+    await this.page.getByRole("option", { name: "Male" }).first().click();
   }
 
   async fillInRandomDateOfBirth(dateOfBirth) {
@@ -172,7 +172,7 @@ class SearchPage {
     await this.page.click(SELECTORS.ADD_GUEST_MODAL_BUTTON);
   }
 
-/**
+  /**
  * Fills the "From" field.
  *
  * Uses a shared helper that supports multiple supplier UIs by targeting the
@@ -182,26 +182,26 @@ class SearchPage {
  *
  * @param {string} from - Origin text to type into the "From" field
  */
-async fillInFromField(from) {
-  const fromInput = this.page
-    .locator(SELECTORS.FROM_PLACEHOLDER)
-    .first();
+  async fillInFromField(from) {
+    const fromInput = this.page
+      .locator(SELECTORS.FROM_PLACEHOLDER)
+      .first();
 
-  await typeIntoNthAvailableInput(
-    this.page,
-    from,
-    SELECTORS.FROM_PLACEHOLDER,
-    0
-  );
+    await typeIntoNthAvailableInput(
+      this.page,
+      from,
+      SELECTORS.FROM_PLACEHOLDER,
+      0,
+    );
 
-  // Commit the value (blur the field)
-  await pressTab(this.page);
+    // Commit the value (blur the field)
+    await pressTab(this.page);
 
-  // Ensure the "From" field lost focus (input was applied)
-  await expect(fromInput).not.toBeFocused();
-}
+    // Ensure the "From" field lost focus (input was applied)
+    await expect(fromInput).not.toBeFocused();
+  }
 
-/**
+  /**
  * Fills the "To" field and confirms the first autocomplete suggestion.
  *
  * The method types into the "To" input, waits for the autocomplete list
@@ -211,33 +211,33 @@ async fillInFromField(from) {
  *
  * @param {string} to - Destination text to type into the "To" field
  */
-async fillInToField(to) {
-  const toInput = this.page
-    .locator(SELECTORS.TO_PLACEHOLDER)
-    .first();
+  async fillInToField(to) {
+    const toInput = this.page
+      .locator(SELECTORS.TO_PLACEHOLDER)
+      .first();
 
-  await typeIntoNthAvailableInput(
-    this.page,
-    to,
-    SELECTORS.TO_PLACEHOLDER,
-    0
-  );
+    await typeIntoNthAvailableInput(
+      this.page,
+      to,
+      SELECTORS.TO_PLACEHOLDER,
+      0,
+    );
 
-  const suggestions = this.page
-    .locator(SELECTORS.AUTOCOMPLETE_LIST)
-    .first();
+    const suggestions = this.page
+      .locator(SELECTORS.AUTOCOMPLETE_LIST)
+      .first();
 
-  // Wait until autocomplete suggestions are shown
-  await suggestions.waitFor({ state: 'visible' });
+    // Wait until autocomplete suggestions are shown
+    await suggestions.waitFor({ state: "visible" });
 
-  // Confirm first suggestion (triggers blur + selection)
-  await pressTab(this.page);
+    // Confirm first suggestion (triggers blur + selection)
+    await pressTab(this.page);
 
-  // Ensure the "To" field lost focus (selection was applied)
-  await expect(toInput).not.toBeFocused();
-}
+    // Ensure the "To" field lost focus (selection was applied)
+    await expect(toInput).not.toBeFocused();
+  }
 
-/**
+  /**
  * Fills an "OR" location field.
  *
  * Used by Cars, Evolvi, and other products that support multiple locations.
@@ -248,63 +248,63 @@ async fillInToField(to) {
  * @param {string} or - Location text to type into the OR field
  * @param {number} occurrence - Which OR field to target (1-based index)
  */
-async fillInOrField(or, occurrence = 1) {
-  const index = occurrence - 1;
+  async fillInOrField(or, occurrence = 1) {
+    const index = occurrence - 1;
 
-  const orInput = this.page
-    .locator(SELECTORS.OR_PLACEHOLDER)
-    .nth(index);
+    const orInput = this.page
+      .locator(SELECTORS.OR_PLACEHOLDER)
+      .nth(index);
 
-  await typeIntoNthAvailableInput(
-    this.page,
-    or,
-    SELECTORS.OR_PLACEHOLDER,
-    index
-  );
+    await typeIntoNthAvailableInput(
+      this.page,
+      or,
+      SELECTORS.OR_PLACEHOLDER,
+      index,
+    );
 
-  // Commit the value (blur the field)
-  await pressTab(this.page);
+    // Commit the value (blur the field)
+    await pressTab(this.page);
 
-  // Ensure the OR field lost focus (input was applied)
-  await expect(orInput).not.toBeFocused();
-}
+    // Ensure the OR field lost focus (input was applied)
+    await expect(orInput).not.toBeFocused();
+  }
 
-/**
+  /**
  * Opens the departure date calendar.
  *
  * Clicks the departure date field and waits until the date picker
  * panel is visible, ensuring the calendar is fully open and ready
  * for interaction.
  */
-async clickDepartureDateField() {
-  await this.page
-    .locator(SELECTORS.DEPARTURE_PLACEHOLDER)
-    .nth(1)
-    .click();
+  async clickDepartureDateField() {
+    await this.page
+      .locator(SELECTORS.DEPARTURE_PLACEHOLDER)
+      .nth(1)
+      .click();
 
-  // Wait until the date picker panel is visible
-  await this.page
-    .locator(SELECTORS.DATE_PICKER_PANEL)
-    .waitFor({ state: 'visible' });
-}
+    // Wait until the date picker panel is visible
+    await this.page
+      .locator(SELECTORS.DATE_PICKER_PANEL)
+      .waitFor({ state: "visible" });
+  }
 
-/**
+  /**
  * Opens the return date calendar.
  *
  * Clicks the return date field and waits until the date picker
  * panel is visible, ensuring the calendar is fully open and ready
  * for interaction.
  */
-async clickReturnDateField() {
-  await this.page
-    .locator(SELECTORS.RETURN_PLACEHOLDER)
-    .click();
+  async clickReturnDateField() {
+    await this.page
+      .locator(SELECTORS.RETURN_PLACEHOLDER)
+      .click();
 
-  // Wait until the date picker panel is visible
-  await this.page
-    .locator(SELECTORS.DATE_PICKER_PANEL)
-    .waitFor({ state: 'visible' });
-}
+    // Wait until the date picker panel is visible
+    await this.page
+      .locator(SELECTORS.DATE_PICKER_PANEL)
+      .waitFor({ state: "visible" });
+  }
 
   /**
    * Advances the calendar by a number of months.
@@ -315,13 +315,13 @@ async clickReturnDateField() {
    * Advances the calendar by a number of months (default: 3).
    * @param {number} monthsAhead
    */
-async clickCalendarNextArrow(monthsAhead = 3) {
- const nextArrow = this.page.locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW).first();
- await nextArrow.waitFor({ state: 'visible' });
- for (let i = 0; i < monthsAhead; i++) {
-  await nextArrow.click();
+  async clickCalendarNextArrow(monthsAhead = 3) {
+    const nextArrow = this.page.locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW).first();
+    await nextArrow.waitFor({ state: "visible" });
+    for (let i = 0; i < monthsAhead; i++) {
+      await nextArrow.click();
+    }
   }
-}
 
   // Executes the search
 
@@ -350,7 +350,7 @@ async clickCalendarNextArrow(monthsAhead = 3) {
     await this.page.click(SELECTORS.PICK_UP_DATE_INPUT);
   }
 
- /**
+  /**
  * Clicks a trip type radio button by label text (e.g., "One Way", "Round Trip").
  *
  * Waits until the trip type radio labels are visible before attempting
@@ -358,30 +358,30 @@ async clickCalendarNextArrow(monthsAhead = 3) {
  *
  * @param {string|RegExp} labelText
  */
-async clickTripType(labelText) {
-  const labels = this.page.locator(SELECTORS.TRIP_TYPE_RADIO_LABELS);
+  async clickTripType(labelText) {
+    const labels = this.page.locator(SELECTORS.TRIP_TYPE_RADIO_LABELS);
 
-  // Ensure trip type labels are present and visible before interacting
-  await labels.first().waitFor({ state: 'visible' });
+    // Ensure trip type labels are present and visible before interacting
+    await labels.first().waitFor({ state: "visible" });
 
-  // Fail fast if your base locator is wrong (helps debugging a lot)
-  const count = await labels.count();
-  if (count === 0) {
-    throw new Error(
-      `Trip type labels not found. Selector: ${SELECTORS.TRIP_TYPE_RADIO_LABELS}`
-    );
+    // Fail fast if your base locator is wrong (helps debugging a lot)
+    const count = await labels.count();
+    if (count === 0) {
+      throw new Error(
+        `Trip type labels not found. Selector: ${SELECTORS.TRIP_TYPE_RADIO_LABELS}`,
+      );
+    }
+
+    const target = labels.filter({ hasText: labelText }).first();
+    const matches = await target.count();
+    if (matches === 0) {
+      throw new Error(
+        `Trip type option "${labelText}" not found under selector: ${SELECTORS.TRIP_TYPE_RADIO_LABELS}`,
+      );
+    }
+
+    await target.click();
   }
-
-  const target = labels.filter({ hasText: labelText }).first();
-  const matches = await target.count();
-  if (matches === 0) {
-    throw new Error(
-      `Trip type option "${labelText}" not found under selector: ${SELECTORS.TRIP_TYPE_RADIO_LABELS}`
-    );
-  }
-
-  await target.click();
-}
 
   /**
    * Selects the "One Way" trip type.
@@ -405,5 +405,5 @@ async clickTripType(labelText) {
  */
 module.exports = {
   SearchPage,
-  SELECTORS
+  SELECTORS,
 };

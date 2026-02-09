@@ -6,7 +6,7 @@ const SELECTORS = {
   REFUNDABLE_CHECKBOX_LABEL: "label.el-checkbox",
   REFUNDABLE_CHECKBOX_INNER: ".el-checkbox__inner",
   REFUNDABLE_CHECKBOX_INPUT: "input.el-checkbox__original",
-  REFUNDABLE_TAG: "div.refundable:has-text('Refundable')"
+  REFUNDABLE_TAG: "div.refundable:has-text('Refundable')",
 };
 
 class RoomLevelResultsPage {
@@ -17,8 +17,8 @@ class RoomLevelResultsPage {
   /** Confirms room results page is loaded */
   async waitForViewHotelOnMapText() {
     await this.page
-      .locator(SELECTORS.VIEW_HOTEL_ON_MAP_BUTTON, { hasText: 'View hotel on map' })
-      .waitFor({ state: 'visible' });
+      .locator(SELECTORS.VIEW_HOTEL_ON_MAP_BUTTON, { hasText: "View hotel on map" })
+      .waitFor({ state: "visible" });
   }
 
   /**
@@ -28,19 +28,19 @@ class RoomLevelResultsPage {
   async clickRefundableCheckbox() {
     const root = this.page.locator(
       SELECTORS.REFUNDABLE_CHECKBOX_LABEL,
-      { has: this.page.locator("p.filter-title[title='Refundable']") }
+      { has: this.page.locator("p.filter-title[title='Refundable']") },
     );
 
     const inner = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INNER);
     const input = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INPUT);
 
     await inner.scrollIntoViewIfNeeded();
-    await inner.waitFor({ state: 'visible' });
+    await inner.waitFor({ state: "visible" });
     await inner.click();
 
     await this.page.waitForFunction(
       el => el.checked,
-      await input.elementHandle()
+      await input.elementHandle(),
     );
   }
 
@@ -49,7 +49,7 @@ class RoomLevelResultsPage {
     await this.page
       .locator(SELECTORS.REFUNDABLE_TAG)
       .first()
-      .waitFor({ state: 'visible' });
+      .waitFor({ state: "visible" });
   }
 }
 

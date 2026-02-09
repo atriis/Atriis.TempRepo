@@ -1,12 +1,12 @@
 /**
  * Cucumber World
- * 
+ *
  * Provides shared context for all step definitions.
  * Holds the Playwright browser and page instances.
  */
 
-const { setWorldConstructor } = require('@cucumber/cucumber');
-const { chromium } = require('playwright');
+const { setWorldConstructor } = require("@cucumber/cucumber");
+const { chromium } = require("playwright");
 
 class CustomWorld {
   constructor() {
@@ -20,8 +20,8 @@ class CustomWorld {
    */
   async init() {
     this.browser = await chromium.launch({
-      headless: process.env.HEADLESS === 'true',
-      channel: 'chrome',
+      headless: process.env.HEADLESS === "true",
+      channel: "chrome",
     });
 
     this.context = await this.browser.newContext({

@@ -1,6 +1,6 @@
-const LoginPage = require('@pages/LoginPage');
-const LogoutPage = require('@pages/LogoutPage');
-const MenuPage = require('@pages/MenuPage');
+const LoginPage = require("@pages/LoginPage");
+const LogoutPage = require("@pages/LogoutPage");
+const MenuPage = require("@pages/MenuPage");
 
 /**
  * App (Application Facade)
@@ -31,7 +31,7 @@ const App = {
     await loginPage.clickLoginButton();
 
     // Keep as-is: app needs time to finish authentication and loading
-    await page.waitForLoadState('networkidle', { timeout: 60000 });
+    await page.waitForLoadState("networkidle", { timeout: 60000 });
 
     await menuPage.waitForLogoutIcon();
   },
@@ -47,7 +47,7 @@ const App = {
 
     // We wait for a new tab/page to open while clicking the UI button.
     const [newTripPage] = await Promise.all([
-      page.context().waitForEvent('page'),
+      page.context().waitForEvent("page"),
       menuPage.clickBookANewTrip(),
     ]);
 

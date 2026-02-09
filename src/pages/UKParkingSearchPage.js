@@ -1,6 +1,6 @@
 
-const { pressTab } = require('@utils/dom');
-const { expect } = require('@playwright/test');
+const { pressTab } = require("@utils/dom");
+const { expect } = require("@playwright/test");
 
 /**
 
@@ -11,17 +11,17 @@ const { expect } = require('@playwright/test');
  */
 const SELECTORS = {
   // Tab selector
-  PARKING_TAB: '#tab-parking',
+  PARKING_TAB: "#tab-parking",
 
   // Search field
-  SEARCH_FIELD_UK_PARKING: '[placeholder="Search UK Airport"]',
+  SEARCH_FIELD_UK_PARKING: "[placeholder=\"Search UK Airport\"]",
 
   // Date inputs
-  PARKING_FROM_DATE_INPUT: '[placeholder="Parking from"]',
-  RETURN_DATE_INPUT: '[placeholder="Return Date"]',
+  PARKING_FROM_DATE_INPUT: "[placeholder=\"Parking from\"]",
+  RETURN_DATE_INPUT: "[placeholder=\"Return Date\"]",
 
   // Time inputs
-  TIME_PLACEHOLDERS: '[placeholder="Time"]',
+  TIME_PLACEHOLDERS: "[placeholder=\"Time\"]",
 };
 
 

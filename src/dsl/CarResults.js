@@ -1,4 +1,4 @@
-const Results = require('./Results');
+const Results = require("./Results");
 
 /**
  * CarResults DSL

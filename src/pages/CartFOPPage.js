@@ -12,17 +12,17 @@
 const SELECTORS = {
   // "Add Payment Method" modal selectors
   DROPDOWN_WRAPPER: ".el-select__wrapper",
-  CARD_HOLDER_NAME_INPUT: '[placeholder="Card holder name"]',
-  CITY_NAME_INPUT: '[placeholder="City name"]',
-  ZIP_CODE_INPUT: '[placeholder="Zip code"]',
-  STREET_NAME_INPUT: '[placeholder="Street name"]',
-  INSERT_CREDIT_CARD_NUMBER_LINK: '.insertCard',
-  SAVE_CARD: '.btn-save',
+  CARD_HOLDER_NAME_INPUT: "[placeholder=\"Card holder name\"]",
+  CITY_NAME_INPUT: "[placeholder=\"City name\"]",
+  ZIP_CODE_INPUT: "[placeholder=\"Zip code\"]",
+  STREET_NAME_INPUT: "[placeholder=\"Street name\"]",
+  INSERT_CREDIT_CARD_NUMBER_LINK: ".insertCard",
+  SAVE_CARD: ".btn-save",
   // "Insert Credit Card Number" modal selectors
-  INSERT_CREDIT_CARD_NUMBER_FIELD: '[placeholder="Please enter your credit card number"]',
-  SAVE_CARD_MODAL_BUTTON: '.btn.flex button.btn.btn--primary.btn--size-default.btn--round',
+  INSERT_CREDIT_CARD_NUMBER_FIELD: "[placeholder=\"Please enter your credit card number\"]",
+  SAVE_CARD_MODAL_BUTTON: ".btn.flex button.btn.btn--primary.btn--size-default.btn--round",
   // Green icon cart
-  GREEN_ICON_CART: '.material-symbols-outlined.payment-status-icon.filled.green'
+  GREEN_ICON_CART: ".material-symbols-outlined.payment-status-icon.filled.green",
 };
 
 class CartFOPPage {
@@ -37,8 +37,8 @@ class CartFOPPage {
    * Clicks the button to open the Add Payment Method modal.
    */
   async clickAddPaymentMethodButton() {
-    const button = this.page.getByRole('button', { name: 'Add payment method' });
-    await button.waitFor({ state: 'visible' });
+    const button = this.page.getByRole("button", { name: "Add payment method" });
+    await button.waitFor({ state: "visible" });
     await button.click();
   }
 
@@ -46,8 +46,8 @@ class CartFOPPage {
    * Clicks the button to open the Add Card Details modal.
    */
   async clickAddCardDetailsButton() {
-    const button = this.page.getByRole('button', { name: 'Add card details' });
-    await button.waitFor({ state: 'visible' });
+    const button = this.page.getByRole("button", { name: "Add card details" });
+    await button.waitFor({ state: "visible" });
     await button.click();
   }
 
@@ -56,7 +56,7 @@ class CartFOPPage {
    */
   async waitForCardHolderNameInput() {
     const input = this.page.locator(SELECTORS.CARD_HOLDER_NAME_INPUT).first();
-    await input.waitFor({ state: 'visible' });
+    await input.waitFor({ state: "visible" });
   }
 
   /**
@@ -67,7 +67,7 @@ class CartFOPPage {
     const select = this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(0);
     await select.click();
     await this.page.keyboard.type(cardType);
-    await this.page.getByRole('option', { name: cardType }).click();
+    await this.page.getByRole("option", { name: cardType }).click();
   }
 
   /**
@@ -86,7 +86,7 @@ class CartFOPPage {
     const select = this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(1);
     await select.click();
     await this.page.keyboard.type(expirationMonth);
-    await this.page.getByRole('option', { name: expirationMonth }).click();
+    await this.page.getByRole("option", { name: expirationMonth }).click();
   }
 
   /**
@@ -97,7 +97,7 @@ class CartFOPPage {
     const select = this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(2);
     await select.click();
     await this.page.keyboard.type(expirationYear);
-    await this.page.getByRole('option', { name: expirationYear }).click();
+    await this.page.getByRole("option", { name: expirationYear }).click();
   }
 
   /**
@@ -108,7 +108,7 @@ class CartFOPPage {
     const select = this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(3);
     await select.click();
     await this.page.keyboard.type(country);
-    await this.page.getByRole('option', { name: country }).click();
+    await this.page.getByRole("option", { name: country }).click();
   }
 
   /**
@@ -147,7 +147,7 @@ class CartFOPPage {
    */
   async waitForSaveCardModalButton() {
     const button = this.page.locator(SELECTORS.SAVE_CARD_MODAL_BUTTON);
-    await button.waitFor({ state: 'visible' });
+    await button.waitFor({ state: "visible" });
   }
 
   /**
@@ -176,7 +176,7 @@ class CartFOPPage {
    * Closes the FOP (Form of Payment) modal.
    */
   async closeFOPModal() {
-    await this.page.getByRole('button', { name: 'Close this dialog' }).nth(6).click();
+    await this.page.getByRole("button", { name: "Close this dialog" }).nth(6).click();
   }
 
   /**
@@ -184,7 +184,7 @@ class CartFOPPage {
    */
   async waitForGreenIconInCart() {
     const icon = this.page.locator(SELECTORS.GREEN_ICON_CART);
-    await icon.waitFor({ state: 'visible' });
+    await icon.waitFor({ state: "visible" });
   }
 }
 

@@ -1,8 +1,8 @@
-const { CartPage, SELECTORS: CART_SELECTORS } = require('@pages/CartPage');
-const { CommonPage, SELECTORS: COMMON_SELECTORS } = require('@pages/CommonPage');
-const { CheckoutPage, SELECTORS: CheckoutSelectors } = require('@pages/CheckoutPage');
-const { expect } = require('@playwright/test');
-const { GeneralElementsPage } = require('@pages/GeneralElementsPage');
+const { CartPage, SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
+const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
+const { CheckoutPage, SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
+const { expect } = require("@playwright/test");
+const { GeneralElementsPage } = require("@pages/GeneralElementsPage");
 
 /**
  * Cart DSL
@@ -44,7 +44,7 @@ const Cart = {
     await cartPage.waitForTripCancelledMessage();
 
     // Allow backend and UI to settle
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     return { cancelled: true };
   },
@@ -66,12 +66,12 @@ const Cart = {
       await cartPage.waitForTripCancellationDialogTitle();
       await cartPage.clickConfirmTripCancellationButton();
       const wasCancelled = await cartPage.isTripCancelledMessageVisible();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState("networkidle");
       return { cancelled: wasCancelled };
     } catch (error) {
       return {
         cancelled: false,
-        error: error?.message
+        error: error?.message,
       };
     }
   },
@@ -192,7 +192,7 @@ const Cart = {
    * @param {string} justificationText - The justification text to enter
    * @returns {Promise<void>}
    */
-  async fillInOOPJustificationTextAndSave(page, justificationText = 'abc') {
+  async fillInOOPJustificationTextAndSave(page, justificationText = "abc") {
     const cartPage = new CartPage(page);
     await cartPage.fillInOOPJustificationText(justificationText);
     await cartPage.saveOOPJustificationText();
@@ -216,7 +216,7 @@ const Cart = {
 
   // ===== PRICE CHANGE MODAL =====
 
-  
+
   /**
    * Accepts terms and proceeds to checkout.
    * Used by Flights, Hotels, and Cars.
@@ -234,8 +234,8 @@ const Cart = {
     // Race: wait for either the checkout heading or the price change modal (up to 45s)
     const proceedBtn = cartPage.getProceedWithChangeButton();
     await Promise.race([
-      checkoutHeading.waitFor({ state: 'visible', timeout: 45000 }).catch(() => {}),
-      proceedBtn.waitFor({ state: 'visible', timeout: 45000 }).catch(() => {}),
+      checkoutHeading.waitFor({ state: "visible", timeout: 45000 }).catch(() => {}),
+      proceedBtn.waitFor({ state: "visible", timeout: 45000 }).catch(() => {}),
     ]);
 
     // If the modal appeared, click it and wait for checkout heading
@@ -246,7 +246,7 @@ const Cart = {
     }
 
     // Confirm checkout page loaded (either directly or after dismissing modal)
-    await checkoutHeading.waitFor({ state: 'visible', timeout: 30000 });
+    await checkoutHeading.waitFor({ state: "visible", timeout: 30000 });
 
     return { proceeded: true, clickedModal };
   },

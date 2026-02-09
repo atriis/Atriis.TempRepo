@@ -1,5 +1,5 @@
 const FlightSearchPage = require("@pages/FlightSearchPage");
-const { SearchPage } = require('@pages/SearchPage');
+const { SearchPage } = require("@pages/SearchPage");
 const flightRoutes = require("@data/flights.json");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
@@ -27,7 +27,7 @@ const FlightSearch = {
       tripType,
       departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
       returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
-    }
+    },
   ) {
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
     console.log(`Starting ${tripType} flight search (${searchType}): ${from} → ${to}`);
@@ -38,7 +38,7 @@ const FlightSearch = {
     await flightSearchPage.clickFlightTab();
 
     // Select trip type (oneWay or roundTrip)
-    if (tripType === 'oneWay') {
+    if (tripType === "oneWay") {
       await searchPage.selectOneWayTrip();
     } else {
       await searchPage.selectRoundTrip();
@@ -48,11 +48,11 @@ const FlightSearch = {
     await searchPage.fillInToField(to);
 
     // Handle calendar interaction based on trip type
-    if (tripType === 'oneWay') {
+    if (tripType === "oneWay") {
       // One-way: user opens the calendar by clicking the departure date field
       await searchPage.clickDepartureDateField();
       await searchPage.clickCalendarNextArrow();
-      
+
       // Select only the departure date
       await selectDatesByNthAvailable(page, {
         startIndex: departureIndex,
@@ -61,7 +61,7 @@ const FlightSearch = {
     } else {
       // Round-trip: calendar may open automatically with round-trip selection
       await searchPage.clickCalendarNextArrow();
-      
+
       // Select departure + return in one call
       await selectDatesByNthAvailable(page, {
         startIndex: departureIndex,
@@ -70,7 +70,7 @@ const FlightSearch = {
     }
 
     // Select search type (completeTrip or bySchedule) - last action before search
-    if (searchType === 'bySchedule') {
+    if (searchType === "bySchedule") {
       await flightSearchPage.selectBySchedule();
     } else {
       await flightSearchPage.selectCompleteTrip();
@@ -90,15 +90,15 @@ const FlightSearch = {
   async searchRandomFlight(
     page,
     {
-      region = '',
-      tripType = 'roundTrip',
-      searchType = 'completeTrip',
+      region = "",
+      tripType = "roundTrip",
+      searchType = "completeTrip",
       departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
       returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
-    } = {}
+    } = {},
   ) {
     // Map 'transcontinental' to 'intercontinental' for user convenience
-    let regionKey = region === 'transcontinental' ? 'intercontinental' : region;
+    let regionKey = region === "transcontinental" ? "intercontinental" : region;
     const routeKey = generateRandomFlightRoute(regionKey);
     return await this.searchFlight(page, routeKey, {
       searchType,
@@ -116,13 +116,13 @@ const FlightSearch = {
    */
   async searchOneWayRandomFlight(
     page,
-    region = '',
-    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX } = {}
+    region = "",
+    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX } = {},
   ) {
     return await this.searchRandomFlight(page, {
       region,
-      tripType: 'oneWay',
-      searchType: 'completeTrip',
+      tripType: "oneWay",
+      searchType: "completeTrip",
       departureIndex,
     });
   },
@@ -135,16 +135,16 @@ const FlightSearch = {
    */
   async searchRoundTripRandomFlight(
     page,
-    region = 'europe',
+    region = "europe",
     {
       departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
       returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
-    } = {}
+    } = {},
   ) {
     return await this.searchRandomFlight(page, {
       region,
-      tripType: 'roundTrip',
-      searchType: 'completeTrip',
+      tripType: "roundTrip",
+      searchType: "completeTrip",
       departureIndex,
       returnIndex,
     });
@@ -156,12 +156,12 @@ const FlightSearch = {
   async searchFlightOneWay(
     page,
     routeInput = flightRoutes.defaultRoute,
-    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX } = {}
+    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX } = {},
   ) {
     return await this.searchFlight(page, routeInput, {
-      searchType: 'completeTrip',
-      tripType: 'oneWay',
-      departureIndex
+      searchType: "completeTrip",
+      tripType: "oneWay",
+      departureIndex,
     });
   },
 
@@ -174,13 +174,13 @@ const FlightSearch = {
     {
       departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
       returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
-    } = {}
+    } = {},
   ) {
     return await this.searchFlight(page, routeInput, {
-      searchType: 'completeTrip',
-      tripType: 'roundTrip',
+      searchType: "completeTrip",
+      tripType: "roundTrip",
       departureIndex,
-      returnIndex
+      returnIndex,
     });
   },
 
@@ -193,13 +193,13 @@ const FlightSearch = {
     {
       departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
       returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
-    } = {}
+    } = {},
   ) {
     return await this.searchFlight(page, routeInput, {
-      searchType: 'bySchedule',
-      tripType: 'roundTrip',
+      searchType: "bySchedule",
+      tripType: "roundTrip",
       departureIndex,
-      returnIndex
+      returnIndex,
     });
   },
 };

@@ -1,6 +1,6 @@
 const ManualQuoteSearchPage = require("@pages/ManualQuoteSearchPage");
 const FlightSearchPage = require("@pages/FlightSearchPage");
-const { SearchPage } = require('@pages/SearchPage');
+const { SearchPage } = require("@pages/SearchPage");
 const flightRoutes = require("@data/flights.json");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
@@ -41,7 +41,7 @@ const ManualQuoteSearch = {
     // Fill in route details
     await manualQuoteSearchPage.fillInDepartingFromField(from);
     await manualQuoteSearchPage.fillInArrivingToField(to);
-    await manualQuoteSearchPage.typeFlightNumber('765');
+    await manualQuoteSearchPage.typeFlightNumber("765");
 
     // Select departure date
     await manualQuoteSearchPage.clickDepartingDateField();
@@ -55,16 +55,16 @@ const ManualQuoteSearch = {
     // Current RETURNING_DATE_INPUT selector matches multiple elements
 
     // Fill in carrier details
-    await manualQuoteSearchPage.typeCarrierLocator('TP');
-    await manualQuoteSearchPage.typeCarrierName('TAP Air Portugal (TP)');
-    await manualQuoteSearchPage.clickCarrierDropdownOption('TAP Air Portugal (TP)');
+    await manualQuoteSearchPage.typeCarrierLocator("TP");
+    await manualQuoteSearchPage.typeCarrierName("TAP Air Portugal (TP)");
+    await manualQuoteSearchPage.clickCarrierDropdownOption("TAP Air Portugal (TP)");
 
     // Set default times (required by UI to enable submission)
     await manualQuoteSearchPage.clickStartTime();
     await manualQuoteSearchPage.clickEndTime();
 
     // Enter pricing and add quote to cart
-    await manualQuoteSearchPage.typeBaseFare('10');
+    await manualQuoteSearchPage.typeBaseFare("10");
     await manualQuoteSearchPage.clickAddQuoteButton();
   },
 };

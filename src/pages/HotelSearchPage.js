@@ -1,14 +1,14 @@
-const { waitForText } = require('@utils/wait');
-const { pressTab } = require('@utils/dom');
-const { expect } = require('@playwright/test');
+const { waitForText } = require("@utils/wait");
+const { pressTab } = require("@utils/dom");
+const { expect } = require("@playwright/test");
 
 /**
  * Page Object for hotel search form.
  * Handles only UI interactions.
  */
 const SELECTORS = {
-  HOTEL_TAB: '#tab-hotel',
-  HOTEL_HEADING: '#pane-hotel > h4',
+  HOTEL_TAB: "#tab-hotel",
+  HOTEL_HEADING: "#pane-hotel > h4",
   HOTEL_DESTINATION_FIELD: "[placeholder='Where would you like to stay?']",
   CHECK_IN_INPUT: "[placeholder='Check in']",
 };
@@ -29,7 +29,7 @@ class HotelSearchPage {
     await waitForText(
       this.page,
       SELECTORS.HOTEL_HEADING,
-      "Book and stay at your hotel"
+      "Book and stay at your hotel",
     );
   }
 
@@ -44,11 +44,11 @@ class HotelSearchPage {
    */
   async typeHotelDestination(where) {
     const destinationField = this.page.locator(
-      SELECTORS.HOTEL_DESTINATION_FIELD
+      SELECTORS.HOTEL_DESTINATION_FIELD,
     );
 
     // Ensure field is visible and ready
-    await destinationField.waitFor({ state: 'visible' });
+    await destinationField.waitFor({ state: "visible" });
 
     await destinationField.click();
     await destinationField.fill(where);

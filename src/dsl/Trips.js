@@ -1,5 +1,5 @@
-const MenuPage = require('@pages/MenuPage');
-const TripsPage = require('@pages/TripsPage');
+const MenuPage = require("@pages/MenuPage");
+const TripsPage = require("@pages/TripsPage");
 
 /**
  * Trips DSL
@@ -25,9 +25,9 @@ const Trips = {
     // Page is considered loaded when these key elements are visible
     await tripsPage.waitForFoundTripsText();
     await tripsPage.waitForTripStatusFilter();
-    
+
     return { navigated: true };
-  }
+  },
 };
 
 module.exports = Trips;

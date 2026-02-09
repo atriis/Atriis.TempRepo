@@ -1,9 +1,9 @@
 const { EvolviSearchPage, SELECTORS: EVOLVI_SELECTORS } = require("@pages/EvolviSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const evolviRoutes = require("@data/evolvi.json");
-const { selectDatesByNthAvailable } = require('@utils/calendar.helper');
-const { resolveRoute } = require('@utils/route.helper');
-const { SEARCH_DEFAULTS } = require('@utils/search.constants');
+const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const { resolveRoute } = require("@utils/route.helper");
+const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 
 /**
  * EvolviSearch DSL
@@ -19,7 +19,7 @@ const EvolviSearch = {
   async selectEvolviSearch(page) {
     const searchPage = new SearchPage(page);
     await searchPage.clickRailTab();
-    await page.getByRole('option', { name: 'UK Rail' }).click();
+    await page.getByRole("option", { name: "UK Rail" }).click();
   },
 
   /**
@@ -49,13 +49,13 @@ const EvolviSearch = {
   async searchEvolviOneWay(
     page,
     routeInput = evolviRoutes.defaultRoute,
-    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {}
+    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {},
   ) {
     // Resolve route (key or inline object)
     const { from, to } = resolveRoute(
       routeInput,
       evolviRoutes.routes,
-      "evolvi"
+      "evolvi",
     );
 
     const searchPage = new SearchPage(page);
@@ -73,7 +73,7 @@ const EvolviSearch = {
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
-      endIndex: null
+      endIndex: null,
     });
 
     await searchPage.clickSearchButton();
@@ -95,14 +95,14 @@ const EvolviSearch = {
     routeInput = evolviRoutes.defaultRoute,
     {
       departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.RAIL.RETURN_INDEX
-    } = {}
+      returnIndex = SEARCH_DEFAULTS.RAIL.RETURN_INDEX,
+    } = {},
   ) {
     // Resolve route (key or inline object)
     const { from, to } = resolveRoute(
       routeInput,
       evolviRoutes.routes,
-      "evolvi"
+      "evolvi",
     );
 
     const searchPage = new SearchPage(page);
@@ -117,14 +117,14 @@ const EvolviSearch = {
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
-      endIndex: null
+      endIndex: null,
     });
 
     // Return flow: select Nth available date for return
     await searchPage.fillInOrField(to, 2);
     await selectDatesByNthAvailable(page, {
       startIndex: returnIndex,
-      endIndex: null
+      endIndex: null,
     });
 
     await searchPage.clickSearchButton();
@@ -135,7 +135,7 @@ const EvolviSearch = {
       from,
       to,
       departureIndex,
-      returnIndex
+      returnIndex,
     };
   },
 };

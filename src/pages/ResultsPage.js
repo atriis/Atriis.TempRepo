@@ -1,9 +1,9 @@
-const { SELECTORS: CART_SELECTORS } = require('@pages/CartPage');
-const { SELECTORS: GENERAL_SELECTORS } = require('@pages/GeneralElementsPage');
+const { SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
+const { SELECTORS: GENERAL_SELECTORS } = require("@pages/GeneralElementsPage");
 
 // Centralized selectors for ResultsPage only
 const SELECTORS = {
-  RESULTS_BUTTON: '.btn.btn--primary',
+  RESULTS_BUTTON: ".btn.btn--primary",
 };
 
 /**
@@ -22,7 +22,7 @@ class ResultsPage {
     await this.page
       .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Select")`)
       .first()
-      .waitFor({ state: 'visible' });
+      .waitFor({ state: "visible" });
   }
 
   /** Waits until the first "Add to trip" button is visible */
@@ -30,7 +30,7 @@ class ResultsPage {
     await this.page
       .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Add to trip")`)
       .first()
-      .waitFor({ state: 'visible' });
+      .waitFor({ state: "visible" });
   }
 
   /** Scrolls to the first "Add to trip" button */
@@ -70,7 +70,7 @@ class ResultsPage {
       .first();
 
     try {
-      await proceedButton.waitFor({ state: 'visible' });
+      await proceedButton.waitFor({ state: "visible" });
     } catch {
       return false;
     }
@@ -80,7 +80,7 @@ class ResultsPage {
     // Confirm navigation to Trip Overview
     await this.page
       .locator(CART_SELECTORS.TRIP_OVERVIEW_TITLE)
-      .waitFor({ state: 'visible' });
+      .waitFor({ state: "visible" });
 
     return true;
   }

@@ -1,5 +1,5 @@
-const { CheckoutPage } = require('@pages/CheckoutPage');
-const { CartPage } = require('@pages/CartPage');
+const { CheckoutPage } = require("@pages/CheckoutPage");
+const { CartPage } = require("@pages/CartPage");
 
 /**
  * Checkout DSL
@@ -39,7 +39,7 @@ const Checkout = {
     await cartPage.waitForTripOverviewTitle();
 
     return { finalized: true };
-  }
+  },
 };
 
 module.exports = Checkout;

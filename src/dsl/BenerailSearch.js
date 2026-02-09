@@ -1,8 +1,8 @@
 const { SearchPage } = require("@pages/SearchPage");
 const benerailRoutes = require("@data/benerail.json");
-const { selectDatesByNthAvailable } = require('@utils/calendar.helper');
-const { resolveRoute } = require('@utils/route.helper');
-const { SEARCH_DEFAULTS } = require('@utils/search.constants');
+const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const { resolveRoute } = require("@utils/route.helper");
+const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 
 /**
  * BenerailSearch DSL
@@ -18,7 +18,7 @@ const BenerailSearch = {
   async selectBenerailSearch(page) {
     const searchPage = new SearchPage(page);
     await searchPage.clickRailTab();
-    await page.getByRole('option', { name: 'EU Rail' }).click();
+    await page.getByRole("option", { name: "EU Rail" }).click();
   },
 
 
@@ -33,13 +33,13 @@ const BenerailSearch = {
   async searchBenerailOneWay(
     page,
     routeInput = benerailRoutes.defaultRoute,
-    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {}
+    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {},
   ) {
     // Resolve route (key or inline object)
     const { from, to } = resolveRoute(
       routeInput,
       benerailRoutes.routes,
-      "benerail"
+      "benerail",
     );
 
     const searchPage = new SearchPage(page);
@@ -56,7 +56,7 @@ const BenerailSearch = {
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
-      endIndex: null
+      endIndex: null,
     });
 
     await searchPage.clickSearchButton();
@@ -78,14 +78,14 @@ const BenerailSearch = {
     routeInput = benerailRoutes.defaultRoute,
     {
       departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.RAIL.RETURN_INDEX
-    } = {}
+      returnIndex = SEARCH_DEFAULTS.RAIL.RETURN_INDEX,
+    } = {},
   ) {
     // Resolve route (key or inline object)
     const { from, to } = resolveRoute(
       routeInput,
       benerailRoutes.routes,
-      "benerail"
+      "benerail",
     );
 
     const searchPage = new SearchPage(page);
@@ -99,7 +99,7 @@ const BenerailSearch = {
     // Calendar flow: select Nth available date for departure
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
-      endIndex: null
+      endIndex: null,
     });
 
     // Route selection for return
@@ -108,7 +108,7 @@ const BenerailSearch = {
     // Calendar flow: select Nth available date for return
     await selectDatesByNthAvailable(page, {
       startIndex: returnIndex,
-      endIndex: null
+      endIndex: null,
     });
 
     await searchPage.clickSearchButton();
@@ -119,9 +119,9 @@ const BenerailSearch = {
       from,
       to,
       departureIndex,
-      returnIndex
+      returnIndex,
     };
-  }
+  },
 };
 
 module.exports = BenerailSearch;

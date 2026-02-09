@@ -1,6 +1,6 @@
 // Centralized selectors for easy maintenance
 const SELECTORS = {
-  LOGOUT_SUCCESS_MESSAGE: 'h1:has-text("You\'ve been logged out successfully!")'
+  LOGOUT_SUCCESS_MESSAGE: "h1:has-text(\"You've been logged out successfully!\")",
 };
 
 /**
@@ -15,7 +15,7 @@ class LogoutPage {
 
   /** Waits until the logout success message becomes visible */
   async waitForLogoutSuccessMessage() {
-    await this.page.locator(SELECTORS.LOGOUT_SUCCESS_MESSAGE).waitFor({ state: 'visible' });
+    await this.page.locator(SELECTORS.LOGOUT_SUCCESS_MESSAGE).waitFor({ state: "visible" });
   }
 }
 

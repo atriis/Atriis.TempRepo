@@ -1,10 +1,10 @@
-const { waitForText } = require('@utils/wait');
+const { waitForText } = require("@utils/wait");
 
 // Centralized selectors for easy maintenance
 const SELECTORS = {
-  OUTBOUND_TEXT: 'h3',
-  SUGGESTED_FARES_TEXT: '.price-container.mb-5 .desc',
-  CHEAPEST_SUGGESTED_FARE: '.suggested-btn .app-price',
+  OUTBOUND_TEXT: "h3",
+  SUGGESTED_FARES_TEXT: ".price-container.mb-5 .desc",
+  CHEAPEST_SUGGESTED_FARE: ".suggested-btn .app-price",
 };
 
 /**
@@ -19,7 +19,7 @@ class EvolviResultsPage {
     this.page = page;
   }
 
-  /** 
+  /**
    * Confirms the Evolvi results page is loaded.
    *
    * Waits until the "Outbound" text is visible, which indicates
@@ -29,7 +29,7 @@ class EvolviResultsPage {
     await waitForText(
       this.page,
       SELECTORS.OUTBOUND_TEXT,
-      'Outbound'
+      "Outbound",
     );
   }
 
@@ -43,7 +43,7 @@ class EvolviResultsPage {
     await waitForText(
       this.page,
       SELECTORS.SUGGESTED_FARES_TEXT,
-      'Suggested fares'
+      "Suggested fares",
     );
   }
 

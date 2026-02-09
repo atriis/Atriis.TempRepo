@@ -1,7 +1,7 @@
-const RoomLevelResultsPage = require('@pages/RoomLevelResultsPage');
-const { ResultsPage } = require('@pages/ResultsPage');
-const { CartPage } = require('@pages/CartPage');
-const Results = require('./Results');
+const RoomLevelResultsPage = require("@pages/RoomLevelResultsPage");
+const { ResultsPage } = require("@pages/ResultsPage");
+const { CartPage } = require("@pages/CartPage");
+const Results = require("./Results");
 
 /**
  * RoomLevelResults DSL

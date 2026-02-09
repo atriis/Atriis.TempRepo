@@ -1,9 +1,9 @@
-const GroundTransportSearchPage = require('@pages/GroundTransportSearchPage');
-const { SearchPage } = require('@pages/SearchPage');
-const { selectDatesByNthAvailable } = require('@utils/calendar.helper');
-const { resolveRoute } = require('@utils/route.helper');
-const { SEARCH_DEFAULTS } = require('@utils/search.constants');
-const groundTransportRoutes = require('@data/groundtransport.json');
+const GroundTransportSearchPage = require("@pages/GroundTransportSearchPage");
+const { SearchPage } = require("@pages/SearchPage");
+const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const { resolveRoute } = require("@utils/route.helper");
+const { SEARCH_DEFAULTS } = require("@utils/search.constants");
+const groundTransportRoutes = require("@data/groundtransport.json");
 
 /**
  * GroundTransportSearch DSL
@@ -16,18 +16,18 @@ const GroundTransportSearch = {
   async searchGroundTransportFromAirportToSpecificAddress(
     page,
     routeInput = groundTransportRoutes.defaultRoute,
-    { 
+    {
       vehicleType = groundTransportRoutes.vehicleTypes.all,
       travellerNumber = 1,
-      pickupIndex = SEARCH_DEFAULTS.GROUND_TRANSPORT.PICKUP_INDEX 
-    } = {}
+      pickupIndex = SEARCH_DEFAULTS.GROUND_TRANSPORT.PICKUP_INDEX,
+    } = {},
   ) {
     const { from, to } = resolveRoute(
       routeInput,
       groundTransportRoutes.routes,
-      "groundtransport"
+      "groundtransport",
     );
-    
+
     const groundTransportSearchPage = new GroundTransportSearchPage(page);
     const searchPage = new SearchPage(page);
 
@@ -40,17 +40,17 @@ const GroundTransportSearch = {
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: pickupIndex,
-      endIndex: null
+      endIndex: null,
     });
-    
+
     // Select vehicle type (mandatory field)
     await groundTransportSearchPage.selectVehicleType(vehicleType);
 
     // Select traveller number (mandatory field)
     await groundTransportSearchPage.selectTravellerNumber(travellerNumber);
-    
+
     await searchPage.clickSearchButton();
-  }
+  },
 };
 
 module.exports = GroundTransportSearch;

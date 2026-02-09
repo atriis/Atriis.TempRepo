@@ -1,4 +1,4 @@
-const { waitForText } = require('@utils/wait');
+const { waitForText } = require("@utils/wait");
 
 /**
  * Selectors for the Flight Results screen.
@@ -31,7 +31,7 @@ class FlightPricingPage {
     await waitForText(
       this.page,
       SELECTORS.YOUR_SELECTION_TEXT,
-      'Your selection'
+      "Your selection",
     );
   }
 }

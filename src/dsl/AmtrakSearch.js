@@ -1,8 +1,8 @@
 const { SearchPage } = require("@pages/SearchPage");
 const amtrakRoutes = require("@data/amtrak.json");
-const { selectDatesByNthAvailable } = require('@utils/calendar.helper');
-const { resolveRoute } = require('@utils/route.helper');
-const { SEARCH_DEFAULTS } = require('@utils/search.constants');
+const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const { resolveRoute } = require("@utils/route.helper");
+const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 
 /**
  * AmtrakSearch DSL
@@ -18,7 +18,7 @@ const AmtrakSearch = {
   async selectAmtrakSearch(page) {
     const searchPage = new SearchPage(page);
     await searchPage.clickRailTab();
-    await page.getByRole('option', { name: 'Amtrak' }).click();
+    await page.getByRole("option", { name: "Amtrak" }).click();
   },
 
   /**
@@ -34,13 +34,13 @@ const AmtrakSearch = {
   async searchAmtrakOneWay(
     page,
     routeInput = amtrakRoutes.defaultRoute,
-    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {}
+    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {},
   ) {
     // Resolve route (key or inline object)
     const { from, to } = resolveRoute(
       routeInput,
       amtrakRoutes.routes,
-      "amtrak"
+      "amtrak",
     );
 
     const searchPage = new SearchPage(page);
@@ -57,7 +57,7 @@ const AmtrakSearch = {
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
-      endIndex: null
+      endIndex: null,
     });
 
     await searchPage.clickSearchButton();
@@ -80,14 +80,14 @@ const AmtrakSearch = {
     routeInput = amtrakRoutes.defaultRoute,
     {
       departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.RAIL.RETURN_INDEX
-    } = {}
+      returnIndex = SEARCH_DEFAULTS.RAIL.RETURN_INDEX,
+    } = {},
   ) {
     // Resolve route (key or inline object)
     const { from, to } = resolveRoute(
       routeInput,
       amtrakRoutes.routes,
-      "amtrak"
+      "amtrak",
     );
 
     const searchPage = new SearchPage(page);
@@ -101,14 +101,14 @@ const AmtrakSearch = {
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
-      endIndex: null
+      endIndex: null,
     });
 
     // Return flow: select Nth available date for return
     await searchPage.fillInToField(to);
     await selectDatesByNthAvailable(page, {
       startIndex: returnIndex,
-      endIndex: null
+      endIndex: null,
     });
 
     await searchPage.clickSearchButton();
@@ -119,7 +119,7 @@ const AmtrakSearch = {
       from,
       to,
       departureIndex,
-      returnIndex
+      returnIndex,
     };
   },
 };

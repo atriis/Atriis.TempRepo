@@ -1,9 +1,9 @@
-const HotelSearchPage = require('@pages/HotelSearchPage');
-const { SearchPage } = require('@pages/SearchPage');
-const { selectDatesByNthAvailable } = require('@utils/calendar.helper');
-const { resolveLocation } = require('@utils/route.helper');
-const { SEARCH_DEFAULTS } = require('@utils/search.constants');
-const hotelLocations = require('@data/hotels.json');
+const HotelSearchPage = require("@pages/HotelSearchPage");
+const { SearchPage } = require("@pages/SearchPage");
+const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const { resolveLocation } = require("@utils/route.helper");
+const { SEARCH_DEFAULTS } = require("@utils/search.constants");
+const hotelLocations = require("@data/hotels.json");
 
 /**
  * HotelSearch DSL
@@ -17,21 +17,21 @@ const HotelSearch = {
   async searchHotelByNights(
     page,
     whereInput = hotelLocations.defaultLocation,
-    options = {}
+    options = {},
   ) {
     let where, nights;
 
     // Legacy combined object support
     if (
-      typeof whereInput === 'object' &&
+      typeof whereInput === "object" &&
       whereInput !== null &&
       (whereInput.where || whereInput.destination) &&
       whereInput.nights !== undefined
     ) {
-      where = resolveLocation(whereInput, ['where', 'destination'], hotelLocations);
+      where = resolveLocation(whereInput, ["where", "destination"], hotelLocations);
       nights = whereInput.nights || SEARCH_DEFAULTS.HOTEL.NIGHTS;
     } else {
-      where = resolveLocation(whereInput, ['where', 'destination'], hotelLocations);
+      where = resolveLocation(whereInput, ["where", "destination"], hotelLocations);
       nights = options.nights || SEARCH_DEFAULTS.HOTEL.NIGHTS;
     }
 

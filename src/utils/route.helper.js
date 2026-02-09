@@ -37,14 +37,14 @@ function resolveRoute(routeInput, routesConfig, routeType = "route") {
     // Search nested groups (us, europe, intercontinental, etc)
     for (const groupKey of Object.keys(routesConfig)) {
       const group = routesConfig[groupKey];
-      if (group && typeof group === 'object' && group[routeInput]) {
+      if (group && typeof group === "object" && group[routeInput]) {
         return group[routeInput];
       }
     }
 
     throw new Error(
       `Route "${routeInput}" was not found in any group in ${routeType}.json. ` +
-      `Check that the key exists and is spelled correctly.`
+      "Check that the key exists and is spelled correctly.",
     );
   }
 
@@ -59,8 +59,8 @@ function resolveRoute(routeInput, routesConfig, routeType = "route") {
   }
 
   throw new Error(
-    'Invalid route input. Provide either a route key (string) ' +
-    'or an object with { from, to }.'
+    "Invalid route input. Provide either a route key (string) " +
+    "or an object with { from, to }.",
   );
 }
 
@@ -79,7 +79,7 @@ function resolveRoute(routeInput, routesConfig, routeType = "route") {
  */
 function resolveLocation(
   locationInput,
-  propertyKeys = ['where', 'place', 'location', 'destination']
+  propertyKeys = ["where", "place", "location", "destination"],
 ) {
   // Direct string input (most common case)
   if (typeof locationInput === "string") {
@@ -95,9 +95,9 @@ function resolveLocation(
     }
   }
 
-  const expectedKeys = propertyKeys.map(k => `{ ${k} }`).join(' or ');
+  const expectedKeys = propertyKeys.map(k => `{ ${k} }`).join(" or ");
   throw new Error(
-    `Invalid location input. Provide a string or an object containing ${expectedKeys}.`
+    `Invalid location input. Provide a string or an object containing ${expectedKeys}.`,
   );
 }
 

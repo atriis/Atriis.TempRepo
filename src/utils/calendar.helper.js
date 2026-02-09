@@ -13,7 +13,7 @@
  * - Centralizing this logic reduces flakiness
  */
 
-const { SELECTORS } = require('@pages/SearchPage');
+const { SELECTORS } = require("@pages/SearchPage");
 
 /**
  * Selects dates using the "nth available day" strategy.
@@ -35,7 +35,7 @@ const { SELECTORS } = require('@pages/SearchPage');
  */
 async function selectDatesByNthAvailable(
   page,
-  { startIndex = 0, endIndex = null } = {}
+  { startIndex = 0, endIndex = null } = {},
 ) {
   if (startIndex < 0) {
     throw new Error(`startIndex must be >= 0. Received: ${startIndex}`);
@@ -51,9 +51,9 @@ async function selectDatesByNthAvailable(
     .locator(SELECTORS.DATE_PICKER_MONTH_TABLE)
     .first();
   const days = monthTable.locator(
-    SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL
+    SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL,
   );
-  
+
   // Ensure there are enough selectable days available
   const count = await days.count();
 
@@ -62,13 +62,13 @@ async function selectDatesByNthAvailable(
 
   if (count <= maxIndexNeeded) {
     throw new Error(
-      `Not enough available dates in the calendar. Found ${count}, need at least ${maxIndexNeeded + 1}.`
+      `Not enough available dates in the calendar. Found ${count}, need at least ${maxIndexNeeded + 1}.`,
     );
   }
 
   // Select the start date
   const start = days.nth(startIndex);
-  await start.waitFor({ state: 'visible' });
+  await start.waitFor({ state: "visible" });
   await start.click();
 
   // One-way flows stop here
@@ -76,7 +76,7 @@ async function selectDatesByNthAvailable(
 
   // Select the end date
   const end = days.nth(endIndex);
-  await end.waitFor({ state: 'visible' });
+  await end.waitFor({ state: "visible" });
   await end.click();
 }
 
@@ -122,22 +122,22 @@ async function selectDatesByValue(
     startDate,
     endDate = null,
     dateSelectorBuilder = defaultDateSelectorBuilder,
-  } = {}
+  } = {},
 ) {
   if (!startDate) {
     throw new Error(
-      'startDate is required when using fixed-date calendar selection'
+      "startDate is required when using fixed-date calendar selection",
     );
   }
 
-  if (typeof dateSelectorBuilder !== 'function') {
-    throw new Error('dateSelectorBuilder must be a function');
+  if (typeof dateSelectorBuilder !== "function") {
+    throw new Error("dateSelectorBuilder must be a function");
   }
 
   const startSelector = dateSelectorBuilder(startDate);
   const start = page.locator(startSelector).first();
 
-  await start.waitFor({ state: 'visible' });
+  await start.waitFor({ state: "visible" });
   await start.click();
 
   if (!endDate) return;
@@ -145,7 +145,7 @@ async function selectDatesByValue(
   const endSelector = dateSelectorBuilder(endDate);
   const end = page.locator(endSelector).first();
 
-  await end.waitFor({ state: 'visible' });
+  await end.waitFor({ state: "visible" });
   await end.click();
 }
 

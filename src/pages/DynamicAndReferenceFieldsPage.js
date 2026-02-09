@@ -28,7 +28,7 @@ class DynamicAndReferenceFieldsPage {
    * @returns {Locator} Playwright locator for the text field.
    */
   getTextFieldInput(index = 0) {
-    return this.page.locator('.el-input__wrapper').nth(index).locator('.el-input__inner');
+    return this.page.locator(".el-input__wrapper").nth(index).locator(".el-input__inner");
   }
 
 
@@ -48,7 +48,7 @@ class DynamicAndReferenceFieldsPage {
    * @returns {Locator} Playwright locator for the option.
    */
   getDropdownOption(optionName) {
-    return this.page.getByRole('option', { name: optionName });
+    return this.page.getByRole("option", { name: optionName });
   }
 
   /**
@@ -59,8 +59,8 @@ class DynamicAndReferenceFieldsPage {
    * @returns {Promise<void>}
    */
   async scrollToTextField(index = 0) {
-    const field = this.page.locator('.el-input__wrapper').nth(index);
-    await field.waitFor({ state: 'visible', timeout: 10000 });
+    const field = this.page.locator(".el-input__wrapper").nth(index);
+    await field.waitFor({ state: "visible", timeout: 10000 });
     await field.scrollIntoViewIfNeeded();
   }
 
@@ -70,7 +70,7 @@ class DynamicAndReferenceFieldsPage {
    * @param {string} optionName - The name of the option to wait for.
    */
   async waitForDropdownOption(optionName) {
-    await this.getDropdownOption(optionName).waitFor({ state: 'visible' });
+    await this.getDropdownOption(optionName).waitFor({ state: "visible" });
   }
 
   /**
