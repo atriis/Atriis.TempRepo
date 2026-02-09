@@ -25,16 +25,32 @@ class MenuPage {
   }
 
   /**
+   * Gets the "Book a New Trip" icon element.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getBookANewTripIcon() {
+    return this.page.locator(SELECTORS.BOOK_NEW_TRIP_ICON);
+  }
+
+  /**
+   * Gets the logout icon element.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getLogoutIcon() {
+    return this.page.locator(SELECTORS.LOGOUT_ICON);
+  }
+
+  /**
    * Waits for the "Book a New Trip" icon to appear.
    * Extra timeout is kept as-is for stability.
    */
   async waitForBookANewTripIcon() {
-    await this.page.locator(SELECTORS.BOOK_NEW_TRIP_ICON).waitFor({ state: "visible" });
+    await this.getBookANewTripIcon().waitFor({ state: "visible" });
   }
 
   /** Clicks "Book a New Trip" (this opens a new tab) */
   async clickBookANewTrip() {
-    await this.page.click(SELECTORS.BOOK_NEW_TRIP_ICON);
+    await this.getBookANewTripIcon().click();
   }
 
   /**
@@ -47,7 +63,7 @@ class MenuPage {
 
   /** Clicks logout icon */
   async clickLogout() {
-    await this.page.click(SELECTORS.LOGOUT_ICON);
+    await this.getLogoutIcon().click();
   }
 
   /** Opens the Trips page */

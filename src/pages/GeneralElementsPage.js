@@ -28,19 +28,26 @@ class GeneralElementsPage {
     return this.page.getByText("Success", { exact: true });
   }
 
+  /**
+   * Gets the Proceed button element.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getProceedButton() {
+    return this.page.locator(SELECTORS.PROCEED_BUTTON);
+  }
 
   /**
    * Waits for the Proceed button to be visible.
    */
   async waitForProceedButton() {
-    await this.page.locator(SELECTORS.PROCEED_BUTTON).waitFor({ state: "visible" });
+    await this.getProceedButton().waitFor({ state: "visible" });
   }
 
   /**
    * Clicks the Proceed button.
    */
   async clickProceedButton() {
-    await this.page.locator(SELECTORS.PROCEED_BUTTON).click();
+    await this.getProceedButton().click();
   }
 
   /**

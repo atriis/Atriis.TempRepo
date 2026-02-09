@@ -18,13 +18,29 @@ class LoginPage {
   }
 
   /**
+   * Gets the email input element.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getEmailInput() {
+    return this.page.locator(SELECTORS.EMAIL_INPUT);
+  }
+
+  /**
+   * Gets the password input element.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getPasswordInput() {
+    return this.page.locator(SELECTORS.PASSWORD_INPUT);
+  }
+
+  /**
    * Waits for the login page fields to be visible.
    * This confirms the login form is ready to use.
    */
   async waitForLoginPage() {
     await this.page.waitForLoadState("networkidle");
-    await this.page.waitForSelector(SELECTORS.EMAIL_INPUT, { state: "visible" });
-    await this.page.waitForSelector(SELECTORS.PASSWORD_INPUT, { state: "visible" });
+    await this.getEmailInput().waitFor({ state: "visible" });
+    await this.getPasswordInput().waitFor({ state: "visible" });
   }
 
   /**
@@ -37,12 +53,12 @@ class LoginPage {
 
   /** Types email into the email field */
   async fillEmail(email) {
-    await this.page.fill(SELECTORS.EMAIL_INPUT, email);
+    await this.getEmailInput().fill(email);
   }
 
   /** Types password into the password field */
   async fillPassword(password) {
-    await this.page.fill(SELECTORS.PASSWORD_INPUT, password);
+    await this.getPasswordInput().fill(password);
   }
 
   /** Clicks the login button */

@@ -41,6 +41,22 @@ class UKParkingSearchPage {
   }
 
   /**
+   * Gets the drop-off time placeholder element (first time field).
+   * @returns {import('@playwright/test').Locator}
+   */
+  getDropOffTimePlaceholder() {
+    return this.page.locator(SELECTORS.TIME_PLACEHOLDERS).nth(0);
+  }
+
+  /**
+   * Gets the pickup/return time placeholder element (second time field).
+   * @returns {import('@playwright/test').Locator}
+   */
+  getReturnTimePlaceholder() {
+    return this.page.locator(SELECTORS.TIME_PLACEHOLDERS).nth(1);
+  }
+
+  /**
    * Clicks the Parking tab to switch to parking search mode.
    */
   async clickParkingTab() {
@@ -82,7 +98,7 @@ class UKParkingSearchPage {
    * Required to trigger time validation in the UI.
    */
   async clickFirstStartTimeField() {
-    await this.page.locator(SELECTORS.TIME_PLACEHOLDERS).nth(0).dblclick();
+    await this.getDropOffTimePlaceholder().dblclick();
   }
 
   /**
@@ -90,7 +106,7 @@ class UKParkingSearchPage {
    * Required to trigger time validation in the UI.
    */
   async clickSecondTimeField() {
-    await this.page.locator(SELECTORS.TIME_PLACEHOLDERS).nth(1).dblclick();
+    await this.getReturnTimePlaceholder().dblclick();
   }
 }
 
