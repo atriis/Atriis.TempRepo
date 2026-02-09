@@ -31,14 +31,18 @@ class TripsPage {
    * This confirms that the trips results have finished loading
    * and the results state is visible to the user.
    * The method relies on a real UI signal instead of a fixed delay.
+   *
+   * @param {object} options
+   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
    */
-  async waitForFoundTripsText() {
+  async waitForFoundTripsText({ timeout = 30000 } = {}) {
     const foundText = this.page
-      .locator("text=Found")
+      .locator(SELECTORS.FOUND_TRIPS_TEXT)
+      .filter({ hasText: /Found/i })
       .first();
 
     // Wait until the "Found" indicator becomes visible
-    await foundText.waitFor({ state: "visible" });
+    await foundText.waitFor({ state: "visible", timeout });
   }
 
   /**
@@ -46,12 +50,14 @@ class TripsPage {
    *
    * This confirms that the filters panel has finished loading
    * and the "Trip Status" filter is ready for interaction.
-   * Relies on a real UI signal instead of a fixed or custom timeout.
+   *
+   * @param {object} options
+   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
    */
-  async waitForTripStatusFilter() {
+  async waitForTripStatusFilter({ timeout = 30000 } = {}) {
     await this.page
       .locator(SELECTORS.TRIP_STATUS_FILTER_ICON)
-      .waitFor({ state: "visible" });
+      .waitFor({ state: "visible", timeout });
   }
 }
 

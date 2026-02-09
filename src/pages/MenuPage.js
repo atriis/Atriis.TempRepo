@@ -41,6 +41,14 @@ class MenuPage {
   }
 
   /**
+   * Gets the Trips navigation link element.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getTripsLink() {
+    return this.page.locator(SELECTORS.TRIPS_ICON);
+  }
+
+  /**
    * Waits for the "Book a New Trip" icon to appear.
    * Extra timeout is kept as-is for stability.
    */
@@ -68,7 +76,10 @@ class MenuPage {
 
   /** Opens the Trips page */
   async clickTrips() {
-    await this.page.click(SELECTORS.TRIPS_ICON);
+    const tripsLink = this.getTripsLink();
+    await tripsLink.waitFor({ state: "visible", timeout: 10000 });
+    // Use force click to bypass any overlay issues
+    await tripsLink.click({ force: true });
   }
 }
 

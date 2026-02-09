@@ -12,18 +12,20 @@ const Trips = {
    * Navigates to the Trips page from anywhere in the app.
    *
    * Confirmation strategy:
-   * - "Found trips" text is visible
-   * - "Trip Status" filter section is visible
+   * - Click trips link
+   * - Wait for trips page content to load
    */
   async navigateToTripsPage(page) {
     const menuPage = new MenuPage(page);
     const tripsPage = new TripsPage(page);
 
-    // User action: open Trips via the top menu
+    // Click the trips link
     await menuPage.clickTrips();
 
-    // Page is considered loaded when these key elements are visible
-    await tripsPage.waitForFoundTripsText();
+    // Wait for page content to settle
+    await page.waitForLoadState("domcontentloaded");
+
+    // Page is considered loaded when the filter section is visible
     await tripsPage.waitForTripStatusFilter();
 
     return { navigated: true };

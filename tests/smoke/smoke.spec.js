@@ -26,7 +26,7 @@ test.describe("[@smoke] Smoke Tests", () => {
 
     // Step 2: Assert trips page is loaded
     console.log("Step 2: Assert trips page is loaded");
-    expect(await page.title()).not.toBe("");
+    expect(page.url()).toContain("/trips");
   });
 
   // Test 3: Flight Search Test
