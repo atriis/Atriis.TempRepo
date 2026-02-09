@@ -2,9 +2,6 @@
 
 ## Working Now: 
 - [ ] Get and set methods
-- [ ] Async functions
-- [ ] Review comments across the entire project and make necessary adjustments
-- [ ] Review indentation across the entire project
 
 ## High Priority
 - [ ] Added price prompt modal and a huge wait, is it worth? Need to analyze it.
@@ -21,9 +18,7 @@
 - [ ] Dynamic Fields Checkout Locators
 - [ ] Understand cucumber and pipeline, do not repeat tests
 
-
 ## Medium Priority
-
 
 ## Low Priority
 - [ ] Implement Administration (Page Object, DSL, and test sample)

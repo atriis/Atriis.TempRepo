@@ -82,13 +82,9 @@ const Results = {
   // ===== OUT OF POLICY (OOP) VALIDATION =====
 
   /**
-   * Verifies that Out of Policy indicators are visible for a result.
-   * Used when validating travel policy enforcement on search results.
-   * @param {import('playwright').Page} page - Playwright page instance
-   */
-  /**
    * Verifies that Out of Policy indicators are visible in results page.
    * Used when validating travel policy enforcement on results.
+   *
    * @param {import('playwright').Page} page - Playwright page instance
    */
   async verifyOutOfPolicyIndicatorVisibleInResults(page) {
@@ -124,6 +120,11 @@ const Results = {
 
   // ===== FLIGHT CAPACITY RESTRICTION MODAL =====
 
+  /**
+   * Asserts that the Flight Capacity Restriction modal is visible.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   */
   async assertFlightCapacityRestrictionModalIsVisible(page) {
     await expect(page.getByRole("heading", {
       name: "Flight Capacity Restriction",

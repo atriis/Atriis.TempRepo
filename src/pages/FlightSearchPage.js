@@ -1,5 +1,11 @@
-// Centralized selectors for easy maintenance
-// NOTE: Selectors are intentionally kept as-is (UI-dependent and may be fragile).
+/**
+ * FlightSearchPage
+ *
+ * Handles low-level UI interactions for flight search configuration.
+ * Provides methods for search mode selection and advanced options.
+ */
+
+/** Centralized selectors for easy maintenance */
 const SELECTORS = {
   FLIGHT_TAB: "#tab-flight",
   TRIP_TYPE: ".search-for-select  .el-radio",
@@ -8,31 +14,44 @@ const SELECTORS = {
 };
 
 class FlightSearchPage {
+  /**
+   * @param {import('@playwright/test').Page} page - Playwright page instance
+   */
   constructor(page) {
     this.page = page;
   }
 
-  // Opens the Flight search area in the UI (same as clicking the Flights tab)
+  /**
+   * Opens the Flight search tab.
+   */
   async clickFlightTab() {
     await this.page.click(SELECTORS.FLIGHT_TAB);
   }
 
-  // Chooses the "Complete Trip" option (a flight search mode)
+  /**
+   * Selects the "Complete Trip" search mode.
+   */
   async selectCompleteTrip() {
     await this.page.locator(SELECTORS.TRIP_TYPE).nth(0).click();
   }
 
-  // Chooses the "By Schedule" option (a flight search mode)
+  /**
+   * Selects the "By Schedule" search mode.
+   */
   async selectBySchedule() {
     await this.page.locator(SELECTORS.TRIP_TYPE).nth(1).click();
   }
 
-  // Opens the Advanced Search section (more filters/options)
+  /**
+   * Opens the Advanced Search options panel.
+   */
   async clickAdvancedSearchButton() {
     await this.page.locator(SELECTORS.ADVANCED_SEARCH_BUTTON).click();
   }
 
-  // Turns the "Allow nearby airports" option on/off
+  /**
+   * Toggles the "Allow nearby airports" checkbox.
+   */
   async toggleAllowNearbyAirportsCheckbox() {
     await this.page.locator(SELECTORS.ALLOW_NEARBY_AIRPORTS_CHECKBOX).click();
   }

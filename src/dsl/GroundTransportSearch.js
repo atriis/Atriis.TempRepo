@@ -12,7 +12,26 @@ const groundTransportRoutes = require("@data/groundtransport.json");
  */
 
 const GroundTransportSearch = {
-
+  /**
+   * Searches for ground transport from an airport to a specific address.
+   *
+   * Steps:
+   * 1. Navigates to Ground Transport tab
+   * 2. Selects "From Airport" option
+   * 3. Fills pickup location
+   * 4. Selects "To Specific Address" option
+   * 5. Fills drop-off location
+   * 6. Selects pickup date
+   * 7. Selects vehicle type and traveller count
+   * 8. Executes search
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string|Object} routeInput - Route name or route object with from/to
+   * @param {Object} options - Optional search parameters
+   * @param {string} options.vehicleType - Vehicle type filter
+   * @param {number} options.travellerNumber - Number of travellers
+   * @param {number} options.pickupIndex - Calendar index for pickup date
+   */
   async searchGroundTransportFromAirportToSpecificAddress(
     page,
     routeInput = groundTransportRoutes.defaultRoute,

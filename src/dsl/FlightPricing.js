@@ -4,9 +4,9 @@ const { ResultsPage } = require("@pages/ResultsPage");
 const Results = require("@dsl/Results");
 
 /**
- * FlightResults DSL
+ * FlightPricing DSL
  *
- * High-level actions related to flight search results.
+ * High-level actions related to flight pricing and fare selection.
  * Describes WHAT the user does, not HOW the UI works.
  */
 const FlightPricing = {

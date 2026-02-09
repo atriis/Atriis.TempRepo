@@ -1,10 +1,7 @@
-
 const UKParkingSearchPage = require("@pages/UKParkingSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
-
-/**
 
 /**
  * UKParkingSearch DSL

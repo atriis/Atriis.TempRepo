@@ -372,17 +372,9 @@ class CartPage {
   }
 
   /**
-   * Handles the "Price Change" modal if it appears.
-   *
-   * Modal appears when flight prices change after adding to cart.
-   * Returns:
-   * - true  → modal was shown and handled
-   * - false → modal did not appear (no price change)
-   *
-   * @returns {Promise<boolean>} Whether the modal was handled
-   */
-  /**
    * Returns the "Proceed with change" button locator.
+   * Used for handling price change modals that appear when flight prices change after adding to cart.
+   *
    * @returns {Locator}
    */
   getProceedWithChangeButton() {

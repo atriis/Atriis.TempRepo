@@ -54,12 +54,24 @@ const FlightResults = {
     return { added: true };
   },
 
+  /**
+   * Selects a single flight segment by schedule.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{selected: boolean}>}
+   */
   async selectOneSegmentBySchedule(page) {
     await Results.waitAndClickSelectButton(page);
 
     return { selected: true };
   },
 
+  /**
+   * Selects both segments for a round-trip flight by schedule.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{selected: boolean}>}
+   */
   async selectSegmentsBySchedule(page) {
     const flightResultsPage = new FlightResultsPage(page);
 

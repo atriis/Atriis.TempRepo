@@ -174,6 +174,9 @@ class CartFOPPage {
 
   /**
    * Closes the FOP (Form of Payment) modal.
+   *
+   * Note: Uses nth(6) because multiple nested dialogs exist on the page
+   * and this targets the specific FOP modal close button.
    */
   async closeFOPModal() {
     await this.page.getByRole("button", { name: "Close this dialog" }).nth(6).click();
