@@ -26,18 +26,26 @@
  * @returns {{ from: string, to: string }}
  */
 function resolveRoute(routeInput, routesConfig, routeType = "route") {
+
   // Route defined by key (preferred for reuse and consistency)
   if (typeof routeInput === "string") {
-    const route = routesConfig[routeInput];
-
-    if (!route) {
-      throw new Error(
-        `Route "${routeInput}" was not found in ${routeType}.json. ` +
-        `Check that the key exists and is spelled correctly.`
-      );
+    // Try direct lookup (flat structure or full path)
+    if (routesConfig[routeInput]) {
+      return routesConfig[routeInput];
     }
 
-    return route;
+    // Search nested groups (us, europe, intercontinental, etc)
+    for (const groupKey of Object.keys(routesConfig)) {
+      const group = routesConfig[groupKey];
+      if (group && typeof group === 'object' && group[routeInput]) {
+        return group[routeInput];
+      }
+    }
+
+    throw new Error(
+      `Route "${routeInput}" was not found in any group in ${routeType}.json. ` +
+      `Check that the key exists and is spelled correctly.`
+    );
   }
 
   // Route defined inline (useful for one-off scenarios)

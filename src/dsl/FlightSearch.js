@@ -3,7 +3,9 @@ const { SearchPage } = require('@pages/SearchPage');
 const flightRoutes = require("@data/flights.json");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
+
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
+const { generateRandomFlightRoute } = require("@utils/data/generateRandomFlightRoute");
 
 const FlightSearch = {
   /**
@@ -77,6 +79,75 @@ const FlightSearch = {
     await searchPage.clickSearchButton();
 
     return { searched: true, from, to, tripType, searchType };
+  },
+
+  /**
+   * Search a random flight (one-way or round-trip) by region
+   * @param {Object} page - Playwright page object
+   * @param {Object} options - { region, tripType, searchType, departureIndex, returnIndex }
+   * @returns {Promise}
+   */
+  async searchRandomFlight(
+    page,
+    {
+      region = '',
+      tripType = 'roundTrip',
+      searchType = 'completeTrip',
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    } = {}
+  ) {
+    // Map 'transcontinental' to 'intercontinental' for user convenience
+    let regionKey = region === 'transcontinental' ? 'intercontinental' : region;
+    const routeKey = generateRandomFlightRoute(regionKey);
+    return await this.searchFlight(page, routeKey, {
+      searchType,
+      tripType,
+      departureIndex,
+      returnIndex,
+    });
+  },
+
+  /**
+   * Search a random one-way flight by region
+   * @param {Object} page - Playwright page object
+   * @param {string} region - 'us', 'europe', 'transcontinental' (optional)
+   * @param {Object} options - { departureIndex }
+   */
+  async searchOneWayRandomFlight(
+    page,
+    region = '',
+    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX } = {}
+  ) {
+    return await this.searchRandomFlight(page, {
+      region,
+      tripType: 'oneWay',
+      searchType: 'completeTrip',
+      departureIndex,
+    });
+  },
+
+  /**
+   * Search a random round-trip flight by region
+   * @param {Object} page - Playwright page object
+   * @param {string} region - 'us', 'europe', 'transcontinental' (optional)
+   * @param {Object} options - { departureIndex, returnIndex }
+   */
+  async searchRoundTripRandomFlight(
+    page,
+    region = 'europe',
+    {
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    } = {}
+  ) {
+    return await this.searchRandomFlight(page, {
+      region,
+      tripType: 'roundTrip',
+      searchType: 'completeTrip',
+      departureIndex,
+      returnIndex,
+    });
   },
 
   /**

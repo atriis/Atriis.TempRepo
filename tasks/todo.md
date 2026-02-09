@@ -1,7 +1,9 @@
 # TODO
 
 ## Working Now: 
-
+- [ ] Adjust copilot instructions (breakdown instructions)
+- [ ] Add tools in my code-reviewer prompt
+- [ ] Get and set methods
 
 ## High Priority
 - [ ] Added price prompt modal and a huge wait, is it worth? Need to analyze it.
@@ -10,11 +12,11 @@
 - [ ] Create flight multi-city flow/test
 - [ ] Create a Base Page with common actions (clicks, waits, etc.) — needs research for best approach
 - [ ] Make sure all tests have good assertions
-- [ ] Create random city pair flight search logic
 - [ ] Adjust copilot instructions (breakdown instructions)
 - [ ] Add tools in my code-reviewer prompt
 - [ ] Search about login and time
 - [ ] Self-healing tests
+- [ ] Assertion methods, where to implement?
 - [ ] Get and set methods
 - [ ] Dropdowns duplication code
 - [ ] Dynamic Fields Checkout Locators

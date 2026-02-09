@@ -1,28 +1,61 @@
 {
   "routes": {
-    "lhrToMad": {
-      "from": "LHR",
-      "to": "MAD"
+    "us": {
+      "nycToLax": { "from": "NYC", "to": "LAX" },
+      "sfoToLax": { "from": "SFO", "to": "LAX" },
+      "laxToSfo": { "from": "LAX", "to": "SFO" },
+      "atlToMco": { "from": "ATL", "to": "MCO" },
+      "atlToLga": { "from": "ATL", "to": "LGA" },
+      "dfwToDen": { "from": "DFW", "to": "DEN" },
+      "ordToLga": { "from": "ORD", "to": "LGA" },
+      "ordToAtl": { "from": "ORD", "to": "ATL" },
+      "denToPhx": { "from": "DEN", "to": "PHX" },
+      "seaToSfo": { "from": "SEA", "to": "SFO" },
+      "lasToLax": { "from": "LAS", "to": "LAX" },
+      "dfwToIah": { "from": "DFW", "to": "IAH" },
+      "bosToDca": { "from": "BOS", "to": "DCA" },
+      "miaToJfk": { "from": "MIA", "to": "JFK" },
+      "phlToMia": { "from": "PHL", "to": "MIA" },
+      "msyToAtl": { "from": "MSY", "to": "ATL" }
     },
-    "lhrToDoh": {
-      "from": "LHR",
-      "to": "DOH"
+    "europe": {
+      "lhrToMad": { "from": "LHR", "to": "MAD" },
+      "cdgToLhr": { "from": "CDG", "to": "LHR" },
+      "mucToFra": { "from": "MUC", "to": "FRA" },
+      "fraToZrh": { "from": "FRA", "to": "ZRH" },
+      "bruToPar": { "from": "BRU", "to": "PAR" },
+      "madToLhr": { "from": "MAD", "to": "LHR" },
+      "madToBcn": { "from": "MAD", "to": "BCN" },
+      "mucToLhr": { "from": "MUC", "to": "LHR" },
+      "lhrToMuc": { "from": "LHR", "to": "MUC" },
+      "fraToLhr": { "from": "FRA", "to": "LHR" },
+      "amsToCph": { "from": "AMS", "to": "CPH" },
+      "arnToOsl": { "from": "ARN", "to": "OSL" },
+      "zrhToVie": { "from": "ZRH", "to": "VIE" },
+      "bcnToFco": { "from": "BCN", "to": "FCO" },
+      "fcoToMuc": { "from": "FCO", "to": "MUC" }
     },
-    "nycToLax": {
-      "from": "NYC",
-      "to": "LAX"
-    },
-    "cdgToLhr": {
-      "from": "CDG",
-      "to": "LHR"
-    },
-    "mucToFra": {
-      "from": "MUC",
-      "to": "FRA"
-    },
-    "fraToZrh": {
-      "from": "FRA",
-      "to": "ZRH"
+    "intercontinental": {
+      "lhrToDoh": { "from": "LHR", "to": "DOH" },
+      "seaToFra": { "from": "SEA", "to": "FRA" },
+      "sinToKul": { "from": "SIN", "to": "KUL" },
+      "bkkToHkk": { "from": "BKK", "to": "HKK" },
+      "dxbToLhr": { "from": "DXB", "to": "LHR" },
+      "gmpToCju": { "from": "GMP", "to": "CJU" },
+      "dohToLhr": { "from": "DOH", "to": "LHR" },
+      "lhrToJfk": { "from": "LHR", "to": "JFK" },
+      "sydToMel": { "from": "SYD", "to": "MEL" },
+      "bomToDel": { "from": "BOM", "to": "DEL" },
+      "kixToIcn": { "from": "KIX", "to": "ICN" },
+      "sinToLhr": { "from": "SIN", "to": "LHR" },
+      "lhrToSin": { "from": "LHR", "to": "SIN" },
+      "cdgToJfk": { "from": "CDG", "to": "JFK" },
+      "jfkToCdg": { "from": "JFK", "to": "CDG" },
+      "jfkToNrt": { "from": "JFK", "to": "NRT" },
+      "laxToHnd": { "from": "LAX", "to": "HND" },
+      "gruToJfk": { "from": "GRU", "to": "JFK" },
+      "jnbToLhr": { "from": "JNB", "to": "LHR" },
+      "sfoToHkg": { "from": "SFO", "to": "HKG" }
     }
   },
   "defaultRoute": "lhrToMad"
