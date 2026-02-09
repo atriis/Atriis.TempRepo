@@ -237,15 +237,14 @@ class CartPage {
     await shareButton.hover();
 
     // Wait for the menu instance that is actually visible
-    const visibleMenu = this.page.locator("ul.share-popper[role=\"menu\"]:visible");
-    await visibleMenu.waitFor({ state: "visible", timeout: 30_000 });
+    await this.getVisibleShareMenu().waitFor({ state: "visible", timeout: 30_000 });
   }
 
   /**
  * Clicks "Share Quotes" from the currently visible share menu.
  */
   async clickShareQuotes() {
-    const menu = this.page.locator("ul.share-popper[role=\"menu\"]:visible");
+    const menu = this.getVisibleShareMenu();
     await menu.waitFor({ state: "visible", timeout: 30_000 });
 
     const item = menu.locator("li[role=\"menuitem\"]", { hasText: "Share Quotes" });
@@ -258,7 +257,7 @@ class CartPage {
  * Clicks "Share Itinerary" from the second share menu.
  */
   async clickShareItinerary() {
-    const menu = this.page.locator("ul.share-popper[role=\"menu\"]:visible");
+    const menu = this.getVisibleShareMenu();
     await menu.waitFor({ state: "visible", timeout: 30_000 });
 
     const item = menu.locator("li[role=\"menuitem\"]", { hasText: "Share Itinerary" });
@@ -326,6 +325,15 @@ class CartPage {
    */
   getJustificationOption(optionName) {
     return this.page.getByRole("option", { name: optionName });
+  }
+
+  /**
+   * Gets the visible share menu locator.
+   *
+   * @returns {Locator} Playwright locator for the visible share dropdown menu.
+   */
+  getVisibleShareMenu() {
+    return this.page.locator("ul.share-popper[role=\"menu\"]:visible");
   }
 
   /**

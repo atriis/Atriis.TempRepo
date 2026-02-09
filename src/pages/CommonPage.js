@@ -23,18 +23,38 @@ class CommonPage {
     this.page = page;
   }
 
+  // ===== LOCATOR HELPERS =====
+
+  /**
+   * Gets the Out of Policy indicator locator.
+   * @returns {Locator} Playwright locator for the OOP indicator
+   */
+  getOOPInfo() {
+    return this.page.locator(SELECTORS.OOP_INFO);
+  }
+
+  /**
+   * Gets the Out of Policy info icon locator.
+   * @returns {Locator} Playwright locator for the OOP info icon
+   */
+  getOOPInfoIcon() {
+    return this.page.locator("span.info-icon", { hasText: "info" }).nth(1);
+  }
+
+  // ===== UI INTERACTIONS =====
+
   /**
    * Waits until the OOP text is visible
    */
   async waitForOOPVisible() {
-    await this.page.locator(SELECTORS.OOP_INFO).waitFor({ state: "visible", timeout: 30000});
+    await this.getOOPInfo().waitFor({ state: "visible", timeout: 30000});
   }
 
   /**
    * Waits until the OOP text is hidden
    */
   async waitForOOPNotVisible() {
-    await this.page.locator(SELECTORS.OOP_INFO).waitFor({ state: "hidden", timeout: 30000 });
+    await this.getOOPInfo().waitFor({ state: "hidden", timeout: 30000 });
   }
 
   /**
@@ -42,14 +62,14 @@ class CommonPage {
    * TODO: Move this to ResultsPage - this is specific to results page.
    */
   async hoverOverOOPInfoIcon() {
-    await this.page.locator("span.info-icon", { hasText: "info" }).nth(1).hover();
+    await this.getOOPInfoIcon().hover();
   }
 
   /**
    * Waits until the OOP tooltip is visible
    */
   async waitForOOPTooltipVisible() {
-    await this.page.locator("span.info-icon", { hasText: "info" }).nth(1).waitFor({ state: "visible", timeout: 30000 });
+    await this.getOOPInfoIcon().waitFor({ state: "visible", timeout: 30000 });
   }
 
   /**

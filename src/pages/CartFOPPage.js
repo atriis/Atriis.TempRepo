@@ -34,6 +34,38 @@ class CartFOPPage {
   }
 
   /**
+   * Gets the card type dropdown element (first dropdown).
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCardTypeDropdown() {
+    return this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(0);
+  }
+
+  /**
+   * Gets the expiration month dropdown element (second dropdown).
+   * @returns {import('@playwright/test').Locator}
+   */
+  getExpirationMonthDropdown() {
+    return this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(1);
+  }
+
+  /**
+   * Gets the expiration year dropdown element (third dropdown).
+   * @returns {import('@playwright/test').Locator}
+   */
+  getExpirationYearDropdown() {
+    return this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(2);
+  }
+
+  /**
+   * Gets the country dropdown element (fourth dropdown).
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCountryDropdown() {
+    return this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(3);
+  }
+
+  /**
    * Clicks the button to open the Add Payment Method modal.
    */
   async clickAddPaymentMethodButton() {
@@ -64,8 +96,7 @@ class CartFOPPage {
    * @param {string} cardType
    */
   async typeCardType(cardType) {
-    const select = this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(0);
-    await select.click();
+    await this.getCardTypeDropdown().click();
     await this.page.keyboard.type(cardType);
     await this.page.getByRole("option", { name: cardType }).click();
   }
@@ -83,8 +114,7 @@ class CartFOPPage {
    * @param {string} expirationMonth
    */
   async typeExpirationMonth(expirationMonth) {
-    const select = this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(1);
-    await select.click();
+    await this.getExpirationMonthDropdown().click();
     await this.page.keyboard.type(expirationMonth);
     await this.page.getByRole("option", { name: expirationMonth }).click();
   }
@@ -94,8 +124,7 @@ class CartFOPPage {
    * @param {string} expirationYear
    */
   async typeExpirationYear(expirationYear) {
-    const select = this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(2);
-    await select.click();
+    await this.getExpirationYearDropdown().click();
     await this.page.keyboard.type(expirationYear);
     await this.page.getByRole("option", { name: expirationYear }).click();
   }
@@ -105,8 +134,7 @@ class CartFOPPage {
    * @param {string} country
    */
   async typeCountry(country) {
-    const select = this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(3);
-    await select.click();
+    await this.getCountryDropdown().click();
     await this.page.keyboard.type(country);
     await this.page.getByRole("option", { name: country }).click();
   }
