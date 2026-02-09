@@ -10,6 +10,9 @@
  *   "I select and add one way journey to trip"
  *     → Results.clickSelectButtonOneWayAndClickAddToTrip(page)
  *
+ *   "I add the first result to trip"
+ *     → Results.waitAndClickAddToTripButton(page)
+ *
  *   "I select and add round trip journey to trip"
  *     → Results.clickSelectButtonRoundTripAndClickAddToTrip(page)
  *
@@ -65,6 +68,11 @@ setDefaultTimeout(120000);
 When("I select and add one way journey to trip", async function () {
   console.log("Selecting one-way journey and adding to trip");
   await Results.clickSelectButtonOneWayAndClickAddToTrip(this.page);
+});
+
+When("I add the first result to trip", async function () {
+  console.log("Adding first result to trip");
+  await Results.waitAndClickAddToTripButton(this.page);
 });
 
 When("I select and add round trip journey to trip", async function () {
