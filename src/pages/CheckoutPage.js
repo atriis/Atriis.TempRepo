@@ -23,6 +23,34 @@ class CheckoutPage {
     this.page = page;
   }
 
+  // ===== LOCATOR HELPERS =====
+
+  /**
+   * Gets the "Finalize" button locator.
+   * @returns {Locator} Playwright locator for the Finalize button
+   */
+  getFinalizeButton() {
+    return this.page.locator(SELECTORS.FINALIZE_BUTTON).first();
+  }
+
+  /**
+   * Gets the "Book and Finalize" button locator.
+   * @returns {Locator} Playwright locator for the Book and Finalize button
+   */
+  getBookAndFinalizeButton() {
+    return this.page.locator(SELECTORS.BOOK_AND_FINALIZE_BUTTON).first();
+  }
+
+  /**
+   * Gets the Go to Trip button element.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getGoToTripButton() {
+    return this.page.locator(SELECTORS.GO_TO_TRIP_BUTTON);
+  }
+
+  // ===== UI INTERACTIONS =====
+
   /**
    * Confirms that the checkout page is loaded.
    * Uses visible text instead of DOM presence for reliability.
@@ -52,21 +80,13 @@ class CheckoutPage {
    * Falls back to a generic button if needed.
    */
   async clickBookAndFinalizeButton() {
-    const finalizeBtn = this.page
-      .locator(SELECTORS.FINALIZE_BUTTON)
-      .first();
-
-    const bookFinalizeBtn = this.page
-      .locator(SELECTORS.BOOK_AND_FINALIZE_BUTTON)
-      .first();
-
-    if (await finalizeBtn.isVisible()) {
-      await finalizeBtn.click();
+    if (await this.getFinalizeButton().isVisible()) {
+      await this.getFinalizeButton().click();
       return;
     }
 
-    if (await bookFinalizeBtn.isVisible()) {
-      await bookFinalizeBtn.click();
+    if (await this.getBookAndFinalizeButton().isVisible()) {
+      await this.getBookAndFinalizeButton().click();
       return;
     }
 
@@ -85,7 +105,7 @@ class CheckoutPage {
       60000,
     );
 
-    await this.page.click(SELECTORS.GO_TO_TRIP_BUTTON);
+    await this.getGoToTripButton().click();
   }
 }
 

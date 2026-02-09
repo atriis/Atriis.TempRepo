@@ -17,44 +17,53 @@ class ResultsPage {
     this.page = page;
   }
 
+  // ===== LOCATOR HELPERS =====
+
+  /**
+   * Gets the "Add to trip" button locator.
+   * @returns {Locator} Playwright locator for the first "Add to trip" button
+   */
+  getAddToTripButton() {
+    return this.page
+      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Add to trip")`)
+      .first();
+  }
+
+  /**
+   * Gets the "Select" button locator.
+   * @returns {Locator} Playwright locator for the first "Select" button
+   */
+  getSelectButton() {
+    return this.page
+      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Select")`)
+      .first();
+  }
+
+  // ===== UI INTERACTIONS =====
+
   /** Waits until the first "Select" button is visible */
   async waitForSelectText() {
-    await this.page
-      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Select")`)
-      .first()
-      .waitFor({ state: "visible" });
+    await this.getSelectButton().waitFor({ state: "visible" });
   }
 
   /** Waits until the first "Add to trip" button is visible */
   async waitForAddToTripText() {
-    await this.page
-      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Add to trip")`)
-      .first()
-      .waitFor({ state: "visible" });
+    await this.getAddToTripButton().waitFor({ state: "visible" });
   }
 
   /** Scrolls to the first "Add to trip" button */
   async scrollToFirstAddToTripButton() {
-    await this.page
-      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Add to trip")`)
-      .first()
-      .scrollIntoViewIfNeeded();
+    await this.getAddToTripButton().scrollIntoViewIfNeeded();
   }
 
   /** Clicks the first available "Add to trip" button */
   async clickFirstAddToTripButton() {
-    await this.page
-      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Add to trip")`)
-      .first()
-      .click();
+    await this.getAddToTripButton().click();
   }
 
   /** Clicks the first available "Select" button */
   async clickFirstSelectButton() {
-    await this.page
-      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Select")`)
-      .first()
-      .click();
+    await this.getSelectButton().click();
   }
 
   /**

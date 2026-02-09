@@ -14,6 +14,37 @@ class RoomLevelResultsPage {
     this.page = page;
   }
 
+  // ===== LOCATOR HELPERS =====
+
+  /**
+   * Gets the refundable checkbox root container locator.
+   * @returns {Locator} Playwright locator for the refundable checkbox container
+   */
+  getRefundableCheckboxRoot() {
+    return this.page.locator(
+      SELECTORS.REFUNDABLE_CHECKBOX_LABEL,
+      { has: this.page.locator("p.filter-title[title='Refundable']") },
+    );
+  }
+
+  /**
+   * Gets the refundable checkbox inner element locator.
+   * @returns {Locator} Playwright locator for the checkbox inner element
+   */
+  getRefundableCheckboxInner() {
+    return this.getRefundableCheckboxRoot().locator(SELECTORS.REFUNDABLE_CHECKBOX_INNER);
+  }
+
+  /**
+   * Gets the refundable checkbox input element locator.
+   * @returns {Locator} Playwright locator for the checkbox input element
+   */
+  getRefundableCheckboxInput() {
+    return this.getRefundableCheckboxRoot().locator(SELECTORS.REFUNDABLE_CHECKBOX_INPUT);
+  }
+
+  // ===== UI INTERACTIONS =====
+
   /** Confirms room results page is loaded */
   async waitForViewHotelOnMapText() {
     await this.page
@@ -26,13 +57,8 @@ class RoomLevelResultsPage {
    * Waits until the checkbox state is confirmed.
    */
   async clickRefundableCheckbox() {
-    const root = this.page.locator(
-      SELECTORS.REFUNDABLE_CHECKBOX_LABEL,
-      { has: this.page.locator("p.filter-title[title='Refundable']") },
-    );
-
-    const inner = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INNER);
-    const input = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INPUT);
+    const inner = this.getRefundableCheckboxInner();
+    const input = this.getRefundableCheckboxInput();
 
     await inner.scrollIntoViewIfNeeded();
     await inner.waitFor({ state: "visible" });

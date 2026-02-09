@@ -12,11 +12,23 @@ class HotelLevelResultsPage {
     this.page = page;
   }
 
-  /** Scrolls to the first "View rates" button */
-  async scrollToFirstViewRatesButton() {
-    const viewRatesButton = this.page
+  // ===== LOCATOR HELPERS =====
+
+  /**
+   * Gets the "View rates" button locator.
+   * @returns {Locator} Playwright locator for the first "View rates" button
+   */
+  getViewRatesButton() {
+    return this.page
       .locator(`${RESULTS_SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
       .first();
+  }
+
+  // ===== UI INTERACTIONS =====
+
+  /** Scrolls to the first "View rates" button */
+  async scrollToFirstViewRatesButton() {
+    const viewRatesButton = this.getViewRatesButton();
 
     // Ensure the button exists before trying to scroll to it
     await viewRatesButton.waitFor({ state: "attached" });
@@ -26,9 +38,7 @@ class HotelLevelResultsPage {
 
   /** Waits until the first "View rates" button is visible */
   async waitForViewRatesText() {
-    const viewRatesButton = this.page
-      .locator(`${RESULTS_SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
-      .first();
+    const viewRatesButton = this.getViewRatesButton();
 
     // Ensure the button exists, then scroll it into view
     await viewRatesButton.waitFor({ state: "attached" });
@@ -40,10 +50,7 @@ class HotelLevelResultsPage {
 
   /** Clicks the first available "View rates" button */
   async clickFirstViewRatesButton() {
-    await this.page
-      .locator(`${RESULTS_SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
-      .first()
-      .click();
+    await this.getViewRatesButton().click();
   }
 }
 
