@@ -13,7 +13,39 @@ You MUST follow `copilot-instructions.md` for:
 If your suggestion conflicts with `copilot-instructions.md`, do not proceed with that suggestion.
 
 ## Task
-Generate a new automated test based on the user’s scenario, using the repository’s existing patterns.
+Generate a new automated test based on the user's scenario, using the repository's existing patterns.
+
+## Key Project Patterns
+
+Tests use **custom fixtures** (NOT `@playwright/test`):
+
+```js
+const { test } = require('@fixtures/supplierTest');
+const { Search, FlightSearch, FlightResults, Cart } = require('@dsl');
+const tripStatus = require('@data/tripStatus.json');
+
+test.describe('[@regression] Add Flight to Cart Flows', () => {
+  test('[@priority:critical] Add One-Way Flight to Cart', async ({ newTripPageFor }) => {
+    console.log('Step 1: Login + Book a New Trip (fixtures)');
+    const page = await newTripPageFor('amadeus', 'user_one');
+
+    console.log('Step 2: Add me as traveler');
+    await Search.addMeAsTraveler(page);
+
+    console.log('Step 3: Search for a one-way flight');
+    await FlightSearch.searchFlightOneWay(page, 'lhrToDoh');
+  });
+});
+```
+
+- **`require('@fixtures/supplierTest')`** for `test` — NEVER `@playwright/test`
+- **`newTripPageFor(provider, userKey)`** — handles login + trip navigation (most common)
+- **`newTripPage`** — cross-supplier, uses project config
+- **`require('@dsl')`** barrel import for all DSL access
+- **No `page.goto()`** — fixtures handle navigation
+- **Console.log** each step for progress tracking
+- **Tags**: `[@regression]`, `[@priority:critical]` in describe/test names
+- **DSL calls are static** with `page` as first arg: `FlightSearch.searchFlightOneWay(page, ...)`
 
 ## Requirements
 - Prefer reusing existing DSL and Page Object methods.
