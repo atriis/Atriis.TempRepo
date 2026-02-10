@@ -42,7 +42,7 @@ class CartFOP {
     await fop.waitForSaveCardModalButton();
     await fop.clickSaveCardModalButton();
     await fop.clickSaveCardButton();
-    await fop.closeFOPModal();
+    //await fop.closeFOPModal();
   }
 
   /**
