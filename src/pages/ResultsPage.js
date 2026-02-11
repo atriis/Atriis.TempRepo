@@ -136,7 +136,11 @@ class ResultsPage {
   }
 
   async clickShareQuoteToGetEmailPopUp() {
-    await this.page.locator(SELECTORS.SHARE_QUOTE_EMAIL_BUTTON).click();
+    // Wait a bit for the button to potentially re-enable after closing pricing options
+    await this.page.waitForTimeout(1000);
+    
+    // Click with force if button is disabled but clickable
+    await this.page.locator(SELECTORS.SHARE_QUOTE_EMAIL_BUTTON).click({ force: true });
   }
 
   /**

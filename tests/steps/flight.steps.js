@@ -21,6 +21,16 @@
  *   "I add the first flight to cart"
  *   "I add the selected fare to cart"
  *
+ * Results Filtering:
+ *   "I filter results by carrier {string}"
+ *
+ * Pricing Options:
+ *   "I click on \"Pricing Options\" for the first result"
+ *   "I extract the price from first pricing option"
+ *   "I select first option from pricing options"
+ *   "I click share from pricing options"
+ *   "I close pricing options window"
+ *
  * Share Quote:
  *   "I click on the 'Share' button"
  *   "I select 2 options from carriers {string} and {string}"
@@ -30,6 +40,7 @@
  * Assertions:
  *   "flight results should be available"
  *   "The shared price for carrier {string} should match the prices from results"
+ *   "The shared price for carrier {string} should match the price from pricing options"
  *
  * ========================
  */
@@ -115,6 +126,86 @@ When("I add the selected fare to cart", async function () {
 });
 
 // ========================================
+// WHEN STEPS - RESULTS FILTERING
+// ========================================
+
+When("I filter results by carrier {string}", async function (carrier) {
+  console.log(`Filtering results by carrier: ${carrier}`);
+  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
+  const flightResultsPage = new FlightResultsPage(this.page);
+  
+  // Store current carrier for pricing options tracking
+  this.currentCarrier = carrier;
+  
+  // Track carriers in order for shared prices extraction
+  if (!this.carriers) this.carriers = [];
+  if (!this.carriers.includes(carrier)) {
+    this.carriers.push(carrier);
+  }
+  
+  await flightResultsPage.typeInSearchFlightFilter(carrier);
+  
+  // Wait for filtered results to load
+  await this.page.waitForTimeout(1000);
+});
+
+// ========================================
+// WHEN STEPS - PRICING OPTIONS
+// ========================================
+
+When("I click on \"Pricing Options\" for the first result", async function () {
+  console.log("Clicking Pricing Options for first result");
+  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
+  const flightResultsPage = new FlightResultsPage(this.page);
+  
+  // Wait for filter to apply and results to stabilize
+  await this.page.waitForTimeout(1500);
+  
+  await flightResultsPage.waitForPricingOptionsButton();
+  await flightResultsPage.clickPricingOptionsButton();
+});
+
+When("I extract the price from first pricing option", async function () {
+  console.log("Extracting price from first pricing option");
+  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
+  const flightResultsPage = new FlightResultsPage(this.page);
+  
+  const price = await flightResultsPage.getAmountPriceValuePricingOptions(0);
+  
+  // Store pricing options prices by carrier
+  if (!this.pricingOptionsPrices) this.pricingOptionsPrices = {};
+  if (!this.currentCarrier) {
+    throw new Error("Current carrier not set. Filter by carrier before extracting pricing options.");
+  }
+  
+  // Store price for current carrier
+  if (!this.pricingOptionsPrices[this.currentCarrier]) {
+    this.pricingOptionsPrices[this.currentCarrier] = [];
+  }
+  this.pricingOptionsPrices[this.currentCarrier].push(price);
+  
+  console.log(`Extracted ${this.currentCarrier} pricing option price: ${price}`);
+});
+
+When("I select first option from pricing options", async function () {
+  console.log("Selecting first option from pricing options");
+  await FlightResults.selectFirstPricingOption(this.page);
+});
+
+When("I click share from pricing options", async function () {
+  console.log("Clicking share from pricing options and closing modal");
+  await FlightResults.shareFromPricingOptions(this.page);
+});
+
+When("I close pricing options window", async function () {
+  console.log("Closing pricing options window");
+  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
+  const flightResultsPage = new FlightResultsPage(this.page);
+  
+  await flightResultsPage.clickXToClosePricingOptionsModal();
+});
+
+// ========================================
 // WHEN STEPS - SHARE QUOTE FLOW
 // ========================================
 
@@ -179,4 +270,19 @@ Then("The shared price for carrier {string} should match the prices from results
   const sharedPrice = this.sharedPrices[carrier];
   
   expectNumbersToBeEqual(sharedPrice, resultsPrice, `${carrier} shared price`);
+});
+
+Then("The shared price for carrier {string} should match the price from pricing options", async function (carrier) {
+  const pricingOptionsPrice = this.pricingOptionsPrices?.[carrier]?.[0];
+  const sharedPrice = this.sharedPrices?.[carrier];
+  
+  if (!pricingOptionsPrice) {
+    throw new Error(`No pricing options price found for carrier: ${carrier}`);
+  }
+  
+  if (!sharedPrice) {
+    throw new Error(`No shared price found for carrier: ${carrier}`);
+  }
+  
+  expectNumbersToBeEqual(sharedPrice, pricingOptionsPrice, `${carrier} shared price from pricing options`);
 });

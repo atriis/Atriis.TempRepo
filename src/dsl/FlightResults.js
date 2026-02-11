@@ -134,9 +134,9 @@ const FlightResults = {
    * @param {import('playwright').Page} page - Playwright page instance
    * @returns {Promise<{sharedPrice1: number, sharedPrice2: number}>} The prices of the two shared offers
    */
+  // TODO: Locator needs to be created
   async scrollIntoOffersAndGetPrices(page) {
     const commonPage = new CommonPage(page);
-    const resultsPage = new ResultsPage(page);
     
     // Scroll to make both offers visible in the share dialog
     await commonPage.scrollIntoViewOffer(1);
@@ -149,7 +149,53 @@ const FlightResults = {
     const sharedPrice2 = await commonPage.getPriceFromEmailOffer(7);
     
     return { sharedPrice1, sharedPrice2 };
-}
+  },
+
+  /**
+   * Selects the first pricing option by clicking "Select to share" button.
+   * Assumes pricing options modal is already open.
+   * 
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{selected: boolean}>} Selection status
+   */
+  async selectFirstPricingOption(page) {
+    const flightResultsPage = new FlightResultsPage(page);
+    
+    // Click "Select to share" button for first pricing option
+    await flightResultsPage.waitForSelectToShareButton();
+    await flightResultsPage.clickSelectToShareButton();
+    
+    return { selected: true };
+  },
+
+  /**
+   * Shares the selected pricing option and closes the modal.
+   * 
+   * Flow:
+   * - Click share quote button from pricing options
+   * - Close the pricing options modal
+   * - Wait for share action to complete
+   * 
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{shared: boolean}>} Share status
+   */
+  async shareFromPricingOptions(page) {
+    const flightResultsPage = new FlightResultsPage(page);
+    
+    // Share the quote
+    await flightResultsPage.clickPricingOptionsShareQuoteButton();
+    
+    // Wait for share action to process
+    await page.waitForTimeout(1000);
+    
+    // Close the pricing options drawer
+    await flightResultsPage.clickXToClosePricingOptionsModal();
+    
+    // Wait for drawer close animation and for results to update
+    await page.waitForTimeout(500);
+    
+    return { shared: true };
+  }
 
 };
 

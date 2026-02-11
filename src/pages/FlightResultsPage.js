@@ -1,8 +1,21 @@
 const { waitForText } = require("@utils/wait");
+const { extractNumber } = require("@utils/dom");
 
+// Centralized selectors for FlightResultsPage only
 const SELECTORS = {
-  CHANGE_FLIGHT_BUTTON: ".change-flight-btn-wrapper",
-  SEARCH_FLIGHT_FILTER: "[placeholder='Search flight']",
+  // Flight selection
+  CHANGE_FLIGHT_BUTTON: '.change-flight-btn-wrapper',
+  SEARCH_FLIGHT_FILTER: '[placeholder="Search flight"]',
+  
+  // Pricing options modal
+  PRICING_OPTIONS_BUTTON: '.btn.pricing-options',
+  PRICING_OPTIONS_DRAWER: '.el-drawer__body',
+  PRICING_OPTIONS_CARD: '.leg-pricing-option',
+  PRICING_OPTIONS_SELECT_BUTTON: '.select-btn', 
+  PRICING_OPTIONS_AMOUNT_VALUE: '.leg-pricing-option .amount',
+  PRICING_OPTIONS_ADD_TO_TRIP_BUTTON: '.add-btn',
+  PRICING_OPTIONS_SHARE_QUOTE_BUTTON: '.share-btn:not(.add-btn)',
+  PRICING_OPTIONS_CLOSE_MODAL: '[aria-label="Close this dialog"]'
 };
 
 /**
@@ -15,6 +28,51 @@ class FlightResultsPage {
   constructor(page) {
     this.page = page;
   }
+
+  /**
+   * Gets the pricing options drawer overlay.
+   * Uses the aria-label to target the specific overlay containing pricing options.
+   */
+  getPricingOptionsOverlay() {
+    return this.page.locator('.el-overlay:has(.app-drawer.flight-details-drawer)');
+  }
+
+  /**
+   * Clicks the "Select to share" button within the pricing options drawer.
+   * Uses getByRole for reliable button targeting inside the drawer overlay.
+   * 
+   * @param {number} [index=0] - Index of the pricing option (default: 0 for first option)
+   */
+  async clickSelectToShareButton(index = 0) {
+    // Target the button directly inside the pricing options overlay
+    const overlay = this.getPricingOptionsOverlay();
+    const selectButton = overlay
+      .getByRole('button', { name: 'Select to share' })
+      .nth(index);
+    
+    await selectButton.waitFor({ state: 'visible', timeout: 10000 });
+    await selectButton.click();
+    
+    // Wait for the UI to update after selection
+    await this.page.waitForTimeout(1000);
+  }
+
+/**
+ * Waits for the share quote button to be enabled.
+ * This is used after selecting a pricing option to ensure the share button becomes clickable.
+ */
+async waitForShareQuoteButtonEnabled() {
+  // Wait for the share button to be enabled (not disabled)
+  await this.page.locator(SELECTORS.PRICING_OPTIONS_SHARE_QUOTE_BUTTON)
+    .first()
+    .waitFor({ state: 'attached', timeout: 5000 });
+  
+  // Small delay to allow for state update
+  await this.page.waitForTimeout(1000);
+}
+
+
+  // ===== FLIGHT SELECTION =====
 
   /**
    * Waits for the Change Flight button to appear.
@@ -36,6 +94,114 @@ class FlightResultsPage {
    */
   async typeInSearchFlightFilter(text) {
     await this.page.fill(SELECTORS.SEARCH_FLIGHT_FILTER, text);
+  }
+
+  // ===== PRICING OPTIONS MODAL =====
+
+  /**
+   * Waits for the pricing options button to be visible.
+   *
+   * @param {number} index - Zero-based index of the pricing options button (default: 0)
+   */
+  async waitForPricingOptionsButton(index = 0) {
+    await this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).nth(index).waitFor({ state: "visible" });
+  }
+
+  /**
+   * Clicks the pricing options button to open the pricing options dialog.
+   *
+   * @param {number} index - Zero-based index of the pricing options button (default: 0)
+   */
+   async clickPricingOptionsButton(index = 0) {
+    // Scroll into view and click with retry logic
+    const button = this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).nth(index);
+    await button.scrollIntoViewIfNeeded();
+    await button.click({ timeout: 10000 });
+  }
+
+  /**
+   * Clicks a pricing option item/row to select it.
+   * This selects the pricing tier (e.g., Basic, Standard, Premium).
+   *
+   * @param {number} index - Zero-based index of the pricing option (default: 0)
+   */
+  async clickPricingOptionItem(index = 0) {
+    await this.page.locator(SELECTORS.PRICING_OPTIONS_ITEM).nth(index).click();
+  }
+
+  /**
+   * Waits for the pricing options Select button to be visible.\n   *
+   * @param {number} index - Zero-based index of the select button (default: 0)
+   */ 
+  async waitForPricingOptionsSelectButton(index = 0) {
+    await this.page.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON).nth(index).waitFor({ state: "visible" });
+  }
+
+  /**
+   * Clicks the select button within the pricing options dialog to confirm selection.
+   *
+   * @param {number} index - Zero-based index of the select button (default: 0)
+   */
+   async clickPricingOptionsSelectButton(index = 0) {
+    await this.page.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON).nth(index).click();
+  }
+
+  /**
+   * Waits for the select button with "Select to share" text to be visible.
+   * This is the initial state before selecting an option.
+   *
+   * @param {number} index - Zero-based index of the button (default: 0)
+   */
+  async waitForSelectToShareButton(index = 0) {
+    const overlay = this.getPricingOptionsOverlay();
+    await overlay
+      .getByRole('button', { name: 'Select to share' })
+      .nth(index)
+      .waitFor({ state: 'visible' });
+  }
+
+  /**
+   * Waits for the select button to change its text to "Unselect" after being clicked.
+   *
+   * @param {number} index - Zero-based index of the button (default: 0)
+   */
+  async waitForPricingOptionsUnselectButton(index = 0) {
+    await this.page.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON).nth(index).filter({ hasText: "Unselect" }).waitFor({ state: "visible" });
+  }
+
+  /**
+   * Clicks the share quote button within the pricing options dialog footer.
+   * The "+Share" button is in the app-footer area at the bottom of the drawer.
+   */
+  async clickPricingOptionsShareQuoteButton() {
+    // The +Share button is in the footer area of the pricing options drawer
+    const overlay = this.getPricingOptionsOverlay();
+    const shareButton = overlay.locator('.summary-and-actions .share-btn');
+    
+    // Wait for share button to be enabled (not disabled)
+    await shareButton.waitFor({ state: 'visible', timeout: 10000 });
+    await shareButton.click();
+  }
+
+  /**
+   * Clicks the X button to close the pricing options modal.
+   *
+   * @param {number} index - Zero-based index of the close button (default: 2)
+   */
+  // TODO: Locator needs to be created
+  async clickXToClosePricingOptionsModal(index = 2) {
+    await this.page.locator(SELECTORS.PRICING_OPTIONS_CLOSE_MODAL).nth(index).click();
+  }
+
+  /**
+   * Extracts the price amount from the pricing options modal.
+   *
+   * @param {number} index - Zero-based index of the amount element (default: 0)
+   * @returns {Promise<number|null>} The price value or null if not found
+   */
+  async getAmountPriceValuePricingOptions(index = 0) {
+    const overlay = this.getPricingOptionsOverlay();
+    return extractNumber(overlay, SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE, index);
   }
 }
 

@@ -66,6 +66,7 @@ Given("I am logged in as {string} {string} and ready to book a new trip", async 
   // Setup browser
   this.browser = await chromium.launch({
     headless: config.headless || false,
+    channel: "chrome",
     slowMo: config.slowMo || 0,
   });
   

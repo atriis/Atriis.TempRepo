@@ -2,6 +2,7 @@
 
 ## Working Now: 
 Creating some tests with Cucumber.
+Clean up steps and DSL (make sure they match)
 
 ## High Priority
 - [ ] Adjust and create assertions
