@@ -6,52 +6,30 @@
  *
  * ===== STEP CATALOG =====
  *
- * When Steps:
+ * Journey Selection:
  *   "I select and add one way journey to trip"
- *     → Results.clickSelectButtonOneWayAndClickAddToTrip(page)
- *
- *   "I add the first result to trip"
- *     → Results.waitAndClickAddToTripButton(page)
- *
  *   "I select and add round trip journey to trip"
- *     → Results.clickSelectButtonRoundTripAndClickAddToTrip(page)
+ *   "I add the first result to trip"
  *
+ * Flight Capacity Modals:
  *   "I validate flight capacity modal and go back"
- *     → Results.validateFlightCapacityModalIsVisibleInResultsAndClickGoBack(page)
- *
  *   "I add to cart and proceed past flight capacity modal"
- *     → Results.validateFlightCapacityModalIsVisibleAfterAddToCart(page)
  *
+ * Out of Policy (OOP):
  *   "I fill in the OOP justification text {string}"
- *     → Cart.fillInOOPJustificationTextAndSave(page, text)
- *
  *   "I select OOP justification option {string}"
- *     → Cart.selectOOPJustificationDropdownOptionAndSave(page, option)
  *
- * Then Steps:
+ * Assertions - OOP Indicators:
  *   "the out of policy indicator should be visible in results"
- *     → Results.verifyOutOfPolicyIndicatorVisibleInResults(page)
- *
  *   "the out of policy indicator should not be visible in results"
- *     → Results.verifyOutOfPolicyIndicatorNotVisibleInResults(page)
- *
  *   "the out of policy tooltip in results should be {string}"
- *     → Results.hoverOverResultsOOPInfoAndVerifyTooltipTextIs(page, text)
- *
  *   "the out of policy tooltip in results page should be {string}"
- *     → Results.verifyOutOfPolicyTooltipInResultsPage(page, text)
- *
  *   "the out of policy indicator should be visible in cart"
- *     → Cart.verifyOutOfPolicyIndicatorIsVisibleInCart(page)
- *
  *   "the out of policy indicator should not be visible in cart"
- *     → Cart.verifyOutOfPolicyIndicatorIsNotVisibleInCart(page)
- *
  *   "the out of policy tooltip in cart should be {string}"
- *     → Cart.hoverOverCartOOPInfoAndVerifyTooltipTextIs(page, text)
  *
+ * Assertions - Flight Capacity:
  *   "the flight capacity restriction modal should be visible"
- *     → Results.assertFlightCapacityRestrictionModalIsVisible(page)
  *
  * ========================
  */
@@ -63,7 +41,9 @@ const { Results, Cart } = require("../../src/dsl");
 
 setDefaultTimeout(120000);
 
-// ===== WHEN STEPS =====
+// ========================================
+// WHEN STEPS - JOURNEY SELECTION
+// ========================================
 
 When("I select and add one way journey to trip", async function () {
   console.log("Selecting one-way journey and adding to trip");
@@ -80,6 +60,10 @@ When("I select and add round trip journey to trip", async function () {
   await Results.clickSelectButtonRoundTripAndClickAddToTrip(this.page);
 });
 
+// ========================================
+// WHEN STEPS - FLIGHT CAPACITY MODALS
+// ========================================
+
 When("I validate flight capacity modal and go back", async function () {
   console.log("Validating flight capacity modal and going back");
   await Results.validateFlightCapacityModalIsVisibleInResultsAndClickGoBack(this.page);
@@ -89,6 +73,10 @@ When("I add to cart and proceed past flight capacity modal", async function () {
   console.log("Adding to cart and proceeding past flight capacity modal");
   await Results.validateFlightCapacityModalIsVisibleAfterAddToCart(this.page);
 });
+
+// ========================================
+// WHEN STEPS - OUT OF POLICY (OOP)
+// ========================================
 
 When("I fill in the OOP justification text {string}", async function (text) {
   console.log(`Filling in OOP justification text: ${text}`);
@@ -100,7 +88,9 @@ When("I select OOP justification option {string}", async function (option) {
   await Cart.selectOOPJustificationDropdownOptionAndSave(this.page, option);
 });
 
-// ===== THEN STEPS =====
+// ========================================
+// THEN STEPS - OOP INDICATORS IN RESULTS
+// ========================================
 
 Then("the out of policy indicator should be visible in results", async function () {
   console.log("Verifying OOP indicator is visible in results");
@@ -122,6 +112,10 @@ Then("the out of policy tooltip in results page should be {string}", async funct
   await Results.verifyOutOfPolicyTooltipInResultsPage(this.page, expectedText);
 });
 
+// ========================================
+// THEN STEPS - OOP INDICATORS IN CART
+// ========================================
+
 Then("the out of policy indicator should be visible in cart", async function () {
   console.log("Verifying OOP indicator is visible in cart");
   await Cart.verifyOutOfPolicyIndicatorIsVisibleInCart(this.page);
@@ -136,6 +130,10 @@ Then("the out of policy tooltip in cart should be {string}", async function (exp
   console.log(`Verifying OOP tooltip in cart: ${expectedText}`);
   await Cart.hoverOverCartOOPInfoAndVerifyTooltipTextIs(this.page, expectedText);
 });
+
+// ========================================
+// THEN STEPS - FLIGHT CAPACITY
+// ========================================
 
 Then("the flight capacity restriction modal should be visible", async function () {
   console.log("Verifying flight capacity restriction modal is visible");

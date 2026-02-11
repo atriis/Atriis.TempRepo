@@ -5,18 +5,13 @@
  *
  * ===== STEP CATALOG =====
  *
- * When Steps:
+ * Search:
  *   "I search for a one way Evolvi train from {string}"
- *     → EvolviSearch.searchEvolviOneWay(page, routeKey)
- *
  *   "I search for a round trip Evolvi train from {string}"
- *     → EvolviSearch.searchEvolviRoundTrip(page, routeKey)
  *
+ * Selection:
  *   "I add an Evolvi one way to the trip"
- *     → EvolviResults.addEvolviToTrip(page)
- *
  *   "I add an Evolvi round trip to the trip"
- *     → EvolviResults.addEvolviRoundtripToTrip(page)
  *
  * ========================
  */
@@ -28,7 +23,9 @@ const { EvolviSearch, EvolviResults } = require("../../src/dsl");
 
 setDefaultTimeout(120000);
 
-// ===== WHEN STEPS =====
+// ========================================
+// WHEN STEPS - EVOLVI SEARCH
+// ========================================
 
 When("I search for a one way Evolvi train from {string}", async function (routeKey) {
   console.log(`Searching for one-way Evolvi train: ${routeKey}`);
@@ -39,6 +36,10 @@ When("I search for a round trip Evolvi train from {string}", async function (rou
   console.log(`Searching for round trip Evolvi train: ${routeKey}`);
   await EvolviSearch.searchEvolviRoundTrip(this.page, routeKey);
 });
+
+// ========================================
+// WHEN STEPS - EVOLVI SELECTION
+// ========================================
 
 When("I add an Evolvi one way to the trip", async function () {
   console.log("Adding Evolvi one-way to trip");

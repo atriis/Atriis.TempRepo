@@ -5,43 +5,31 @@
  *
  * ===== STEP CATALOG =====
  *
- * When Steps:
- *   "I search for a one-way flight from {string}"
- *     → FlightSearch.searchFlightOneWay(page, routeKey)
- *
+ * Search:
+ *   "I search for a one way flight from {string}"
+ *   "I search for a one way flight from {string} to {string}"
  *   "I search for a round trip flight from {string} to {string}"
- *     → FlightSearch.searchFlightRoundTrip(page, { from, to })
- *
  *   "I search for a flight by schedule from {string} to {string}"
- *     → FlightSearch.searchFlightBySchedule(page, { from, to })
- *
- *   "I add the first flight to cart"
- *     → FlightResults.addFirstFlightToCart(page)
- *
- *   "I select flight segments by schedule"
- *     → FlightResults.selectSegmentsBySchedule(page)
- *
- *   "I add the selected fare to cart"
- *     → FlightPricing.addYourSelectionFareToCart(page)
- *
  *   "I search for a random one way flight"
- *     → FlightSearch.searchOneWayRandomFlight(page)
- *
  *   "I search for a random one way flight in {string}"
- *     → FlightSearch.searchOneWayRandomFlight(page, region)
- *
  *   "I search for a random round trip flight"
- *     → FlightSearch.searchRoundTripRandomFlight(page)
- *
  *   "I search for a random round trip flight in {string}"
- *     → FlightSearch.searchRoundTripRandomFlight(page, region)
  *
+ * Selection & Cart:
  *   "I select one flight segment by schedule"
- *     → FlightResults.selectOneSegmentBySchedule(page)
+ *   "I select flight segments by schedule"
+ *   "I add the first flight to cart"
+ *   "I add the selected fare to cart"
  *
- * Then Steps:
+ * Share Quote:
+ *   "I click on the 'Share' button"
+ *   "I select 2 options from carriers {string} and {string}"
+ *   "I click on the 'Share' button to open the share dialog"
+ *   "I scroll into offers and get prices"
+ *
+ * Assertions:
  *   "flight results should be available"
- *     → FlightResults.isResultDisplayed(page)
+ *   "The shared price for carrier {string} should match the prices from results"
  *
  * ========================
  */
@@ -57,16 +45,19 @@ const {
 const { expectNumbersToBeEqual } = require("../../src/assertions/numberAssertions");
 
 setDefaultTimeout(120000);
-When("I search for a one way flight from {string} to {string}", async function (from, to) {
-  console.log(`Searching for one-way flight: ${from} → ${to}`);
-  await FlightSearch.searchFlightOneWay(this.page, { from, to });
-});
 
-// ===== WHEN STEPS =====
+// ========================================
+// WHEN STEPS - FLIGHT SEARCH
+// ========================================
 
 When("I search for a one way flight from {string}", async function (routeKey) {
   console.log(`Searching for one-way flight: ${routeKey}`);
   await FlightSearch.searchFlightOneWay(this.page, routeKey);
+});
+
+When("I search for a one way flight from {string} to {string}", async function (from, to) {
+  console.log(`Searching for one-way flight: ${from} → ${to}`);
+  await FlightSearch.searchFlightOneWay(this.page, { from, to });
 });
 
 When("I search for a round trip flight from {string} to {string}", async function (from, to) {
@@ -77,21 +68,6 @@ When("I search for a round trip flight from {string} to {string}", async functio
 When("I search for a flight by schedule from {string} to {string}", async function (from, to) {
   console.log(`Searching for flight by schedule: ${from} → ${to}`);
   await FlightSearch.searchFlightBySchedule(this.page, { from, to });
-});
-
-When("I add the first flight to cart", async function () {
-  console.log("Adding first flight to cart");
-  await FlightResults.addFirstFlightToCart(this.page);
-});
-
-When("I select flight segments by schedule", async function () {
-  console.log("Selecting flight segments by schedule");
-  await FlightResults.selectSegmentsBySchedule(this.page);
-});
-
-When("I add the selected fare to cart", async function () {
-  console.log("Adding selected fare to cart");
-  await FlightPricing.addYourSelectionFareToCart(this.page);
 });
 
 When("I search for a random one way flight", async function () {
@@ -114,23 +90,33 @@ When("I search for a random round trip flight in {string}", async function (regi
   await FlightSearch.searchRoundTripRandomFlight(this.page, region);
 });
 
+// ========================================
+// WHEN STEPS - FLIGHT SELECTION & CART
+// ========================================
+
 When("I select one flight segment by schedule", async function () {
   console.log("Selecting one flight segment by schedule");
   await FlightResults.selectOneSegmentBySchedule(this.page);
 });
 
-// ===== THEN STEPS =====
-
-Then("flight results should be available", async function () {
-  console.log("Verifying flight results are available");
-  const isDisplayed = await FlightResults.isResultDisplayed(this.page);
-  expect(isDisplayed).toBe(true);
+When("I select flight segments by schedule", async function () {
+  console.log("Selecting flight segments by schedule");
+  await FlightResults.selectSegmentsBySchedule(this.page);
 });
 
-// ===== AND STEPS =====
+When("I add the first flight to cart", async function () {
+  console.log("Adding first flight to cart");
+  await FlightResults.addFirstFlightToCart(this.page);
+});
 
+When("I add the selected fare to cart", async function () {
+  console.log("Adding selected fare to cart");
+  await FlightPricing.addYourSelectionFareToCart(this.page);
+});
 
-// ===== SHARE FLIGHT QUOTES STEPS =====
+// ========================================
+// WHEN STEPS - SHARE QUOTE FLOW
+// ========================================
 
 When("I click on the 'Share' button", async function () {
   console.log("Clicking Share button");
@@ -178,7 +164,16 @@ When("I scroll into offers and get prices", async function () {
   this.sharedPrices[this.carriers[1]] = sharedPrice1;
 });
 
-// This ONE step definition handles BOTH carriers
+// ========================================
+// THEN STEPS - ASSERTIONS
+// ========================================
+
+Then("flight results should be available", async function () {
+  console.log("Verifying flight results are available");
+  const isDisplayed = await FlightResults.isResultDisplayed(this.page);
+  expect(isDisplayed).toBe(true);
+});
+
 Then("The shared price for carrier {string} should match the prices from results", async function (carrier) {
   const resultsPrice = this.resultsPrices[carrier];
   const sharedPrice = this.sharedPrices[carrier];

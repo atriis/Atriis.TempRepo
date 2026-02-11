@@ -5,32 +5,19 @@
  *
  * ===== STEP CATALOG =====
  *
- * Given Steps:
+ * Setup:
  *   "I am logged in to the application"
- *     → Uses loggedInPage behavior (no new trip started)
  *
- * When Steps:
+ * Navigation:
  *   "I navigate to the trips page"
- *     → Trips.navigateToTripsPage(page)
- *
  *   "I logout from the application"
- *     → App.logout(page)
  *
- * Then Steps:
+ * Assertions:
  *   "the application should be loaded"
- *     → Validates page URL is not empty
- *
  *   "the page should have a title"
- *     → Validates page title is not empty
- *
  *   "the trips page should be loaded"
- *     → Validates trips page title exists
- *
  *   "flight results should be displayed"
- *     → FlightResults.isResultDisplayed(page)
- *
  *   "I should be redirected to the login page"
- *     → Validates URL contains 'login'
  *
  * ========================
  */
@@ -43,7 +30,9 @@ const { Trips, App, FlightResults } = require("../../src/dsl");
 
 setDefaultTimeout(120000);
 
-// ===== GIVEN STEPS =====
+// ========================================
+// GIVEN STEPS - SETUP
+// ========================================
 
 Given("I am logged in to the application", async function () {
   console.log("User is logged in (no new trip started)");
@@ -51,7 +40,9 @@ Given("I am logged in to the application", async function () {
   // We need to modify the hook to support this
 });
 
-// ===== WHEN STEPS =====
+// ========================================
+// WHEN STEPS - NAVIGATION
+// ========================================
 
 When("I navigate to the trips page", async function () {
   console.log("Navigating to Trips page");
@@ -63,7 +54,9 @@ When("I logout from the application", async function () {
   await App.logout(this.page);
 });
 
-// ===== THEN STEPS =====
+// ========================================
+// THEN STEPS - ASSERTIONS
+// ========================================
 
 Then("the application should be loaded", async function () {
   console.log("Verifying application is loaded");

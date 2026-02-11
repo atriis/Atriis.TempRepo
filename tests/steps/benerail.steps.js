@@ -5,21 +5,14 @@
  *
  * ===== STEP CATALOG =====
  *
- * When Steps:
+ * Search:
  *   "I search for a one way Benerail train from {string}"
- *     → BenerailSearch.searchBenerailOneWay(page, routeKey)
- *
  *   "I search for a round trip Benerail train from {string}"
- *     → BenerailSearch.searchBenerailRoundTrip(page, routeKey)
  *
- *   "I add a Benerail one way to the trip"
- *     → BenerailResults.addBenerailOneWayToTrip(page)
- *
- *   "I add a Benerail round trip to the trip"
- *     → BenerailResults.addBenerailRoundtripToTrip(page)
- *
+ * Selection:
  *   "I select the first Benerail option"
- *     → BenerailResults.waitAndSelectFirstBenerailOption(page)
+ *   "I add a Benerail one way to the trip"
+ *   "I add a Benerail round trip to the trip"
  *
  * ========================
  */
@@ -31,7 +24,9 @@ const { BenerailSearch, BenerailResults } = require("../../src/dsl");
 
 setDefaultTimeout(120000);
 
-// ===== WHEN STEPS =====
+// ========================================
+// WHEN STEPS - BENERAIL SEARCH
+// ========================================
 
 When("I search for a one way Benerail train from {string}", async function (routeKey) {
   console.log(`Searching for one-way Benerail train: ${routeKey}`);
@@ -42,6 +37,10 @@ When("I search for a round trip Benerail train from {string}", async function (r
   console.log(`Searching for round trip Benerail train: ${routeKey}`);
   await BenerailSearch.searchBenerailRoundTrip(this.page, routeKey);
 });
+
+// ========================================
+// WHEN STEPS - BENERAIL SELECTION
+// ========================================
 
 When("I add a Benerail one way to the trip", async function () {
   console.log("Adding Benerail one-way to trip");

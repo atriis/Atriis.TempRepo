@@ -5,26 +5,28 @@
  *
  * ===== STEP CATALOG =====
  *
- * Given Steps:
+ * Setup:
  *   "I am logged in and ready to book a new trip"
- *     → Handled by Before hook (browser setup + login via App DSL)
- *
  *   "I have added myself as the traveler"
- *     → Search.addMeAsTraveler(page)
- *
+ *   "I have added traveler by name {string}"
  *   "I have added a random guest traveler"
- *     → Search.addRandomGuest(page)
  *
- * When Steps:
+ * Cart & Checkout:
+ *   "I accept the terms and conditions"
+ *   "I proceed to checkout"
+ *   "I complete the booking"
  *   "I cancel the trip"
- *     → Cart.cancelTripStrict(page)
- *
  *   "I attempt to cancel the trip safely"
- *     → Cart.cancelTripSafely(page)
  *
- * Then Steps:
+ * Share Flows:
+ *   "I click the share quote button"
+ *   "I click the share itinerary button"
+ *   "I send the share"
+ *
+ * Assertions:
  *   "the booking status should be {string}"
- *     → Cart.expectBookingStatus(status, { page })
+ *   "the trip should be successfully cancelled"
+ *   "I should see a success notification"
  *
  * ========================
  */
@@ -37,49 +39,9 @@ const tripStatus = require("../../src/data/tripStatus.json");
 
 setDefaultTimeout(120000);
 
-// ===== WHEN STEPS =====
-
-When("I cancel the trip", async function () {
-  console.log("Cancelling trip");
-  await Cart.cancelTripStrict(this.page);
-});
-
-When("I attempt to cancel the trip safely", async function () {
-  console.log("Attempting to cancel trip (safe mode)");
-  const result = await Cart.cancelTripSafely(this.page);
-  this.cancelResult = result;
-});
-
-When("I accept the terms and conditions", async function () {
-  console.log("Accepting terms and conditions");
-});
-
-When("I proceed to checkout", async function () {
-  console.log("Proceeding to checkout");
-  await Cart.acceptTermsAndConditionsAndProceedToCheckout(this.page);
-});
-
-When("I complete the booking", async function () {
-  console.log("Completing booking");
-  await Checkout.bookAndFinalize(this.page);
-});
-
-When("I click the share quote button", async function () {
-  console.log("Clicking share quote button");
-  await Cart.clickShareQuoteAndWaitForSubjectField(this.page);
-});
-
-When("I click the share itinerary button", async function () {
-  console.log("Clicking share itinerary button");
-  await Cart.clickShareItineraryAndWaitForSubjectField(this.page);
-});
-
-When("I send the share", async function () {
-  console.log("Sending share with success notification");
-  await Cart.sendQuoteAndWaitForSuccess(this.page);
-});
-
-// ===== GIVEN STEPS =====
+// ========================================
+// GIVEN STEPS - SETUP
+// ========================================
 
 Given("I am logged in and ready to book a new trip", async function () {
   console.log("User is logged in and on new trip page");
@@ -101,7 +63,57 @@ Given("I have added a random guest traveler", async function () {
   console.log(`Guest added: ${result.guestData.firstName} ${result.guestData.lastName}`);
 });
 
-// ===== THEN STEPS =====
+// ========================================
+// WHEN STEPS - CART & CHECKOUT
+// ========================================
+
+When("I accept the terms and conditions", async function () {
+  console.log("Accepting terms and conditions");
+});
+
+When("I proceed to checkout", async function () {
+  console.log("Proceeding to checkout");
+  await Cart.acceptTermsAndConditionsAndProceedToCheckout(this.page);
+});
+
+When("I complete the booking", async function () {
+  console.log("Completing booking");
+  await Checkout.bookAndFinalize(this.page);
+});
+
+When("I cancel the trip", async function () {
+  console.log("Cancelling trip");
+  await Cart.cancelTripStrict(this.page);
+});
+
+When("I attempt to cancel the trip safely", async function () {
+  console.log("Attempting to cancel trip (safe mode)");
+  const result = await Cart.cancelTripSafely(this.page);
+  this.cancelResult = result;
+});
+
+// ========================================
+// WHEN STEPS - SHARE FLOWS
+// ========================================
+
+When("I click the share quote button", async function () {
+  console.log("Clicking share quote button");
+  await Cart.clickShareQuoteAndWaitForSubjectField(this.page);
+});
+
+When("I click the share itinerary button", async function () {
+  console.log("Clicking share itinerary button");
+  await Cart.clickShareItineraryAndWaitForSubjectField(this.page);
+});
+
+When("I send the share", async function () {
+  console.log("Sending share with success notification");
+  await Cart.sendQuoteAndWaitForSuccess(this.page);
+});
+
+// ========================================
+// THEN STEPS - ASSERTIONS
+// ========================================
 
 Then("the booking status should be {string}", async function (status) {
   console.log(`Verifying booking status is: ${status}`);

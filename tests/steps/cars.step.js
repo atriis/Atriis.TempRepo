@@ -5,18 +5,13 @@
  *
  * ===== STEP CATALOG =====
  *
- * When Steps:
+ * Search:
  *   "I search for a car in {string}"
- *     → CarSearch.searchCarByPlace(page, { place: location })
- *
- *   "I add the first car to cart"
- *     → CarResults.addCarAirportFromResultsPageToCart(page)
- *
  *   "I search for a car in {string} with rental agency {string}"
- *     → CarSearch.searchCarByPlaceAndRentalAgency(page, place, agencyName)
  *
+ * Selection:
+ *   "I add the first car to cart"
  *   "I add the first city center car to cart"
- *     → CarResults.addCarCityCenterFromResultsPageToCart(page)
  *
  * ========================
  */
@@ -31,21 +26,27 @@ const {
 
 setDefaultTimeout(120000);
 
-// ===== WHEN STEPS =====
+// ========================================
+// WHEN STEPS - CAR SEARCH
+// ========================================
 
 When("I search for a car in {string}", async function (place) {
   console.log(`Searching for car in ${place}`);
   await CarSearch.searchCarByPlace(this.page, { place });
 });
 
-When("I add the first car to cart", async function () {
-  console.log("Adding first car to cart");
-  await CarResults.addCarAirportFromResultsPageToCart(this.page);
-});
-
 When("I search for a car in {string} with rental agency {string}", async function (place, agencyName) {
   console.log(`Searching for car in ${place} with rental agency: ${agencyName}`);
   await CarSearch.searchCarByPlaceAndRentalAgency(this.page, place, agencyName);
+});
+
+// ========================================
+// WHEN STEPS - CAR SELECTION
+// ========================================
+
+When("I add the first car to cart", async function () {
+  console.log("Adding first car to cart");
+  await CarResults.addCarAirportFromResultsPageToCart(this.page);
 });
 
 When("I add the first city center car to cart", async function () {

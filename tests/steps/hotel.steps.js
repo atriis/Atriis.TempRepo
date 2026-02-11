@@ -5,44 +5,15 @@
  *
  * ===== STEP CATALOG =====
  *
- * When Steps:
+ * Search:
  *   "I search for a hotel in {string} for {int} night(s)"
- *     → HotelSearch.searchHotelByNights(page, { where: location, nights: nights })
  *
+ * Selection:
  *   "I select the first available hotel"
- *     → HotelLevelResults.clickFirstHotelOption(page)
- *
  *   "I add a refundable room to my cart"
- *     → RoomLevelResults.addRefundableHotelRoomLevelToCart(page)
  *
- *   "I accept the terms and conditions"
- *   "I proceed to checkout"
- *     → Cart.acceptTermsAndConditionsAndProceedToCheckout(page)
- *
- *   "I complete the booking"
- *     → Checkout.bookAndFinalize(page)
- *
- *   "I cancel the trip"
- *     → Cart.cancelTripStrict(page)
- *
- *   "I click the share quote button"
- *     → Cart.clickShareQuoteAndWaitForSubjectField(page)
- *
- *   "I click the share itinerary button"
- *     → Cart.clickShareItineraryAndWaitForSubjectField(page)
- *
- *   "I send the share"
- *     → Cart.sendQuoteAndWaitForSuccess(page)
- *
- * Then Steps:
+ * Assertions:
  *   "the hotel should appear as refundable in my cart"
- *     → Cart.isHotelRefundable(page)
- *
- *   "the trip should be successfully cancelled"
- *     → Validated by cancelTripStrict (includes assertions)
- *
- *   "I should see a success notification"
- *     → page.getByText('Success').waitFor() + validation
  *
  * ========================
  */
@@ -59,12 +30,18 @@ const {
 
 setDefaultTimeout(120000);
 
-// ===== WHEN STEPS =====
+// ========================================
+// WHEN STEPS - HOTEL SEARCH
+// ========================================
 
 When("I search for a hotel in {string} for {int} night(s)", async function (location, nights) {
   console.log(`Searching for hotel in ${location} for ${nights} night(s)`);
   await HotelSearch.searchHotelByNights(this.page, { where: location, nights: nights });
 });
+
+// ========================================
+// WHEN STEPS - HOTEL SELECTION
+// ========================================
 
 When("I select the first available hotel", async function () {
   console.log("Selecting first hotel option");
@@ -76,7 +53,9 @@ When("I add a refundable room to my cart", async function () {
   await RoomLevelResults.addRefundableHotelRoomLevelToCart(this.page);
 });
 
-// ===== THEN STEPS  =====
+// ========================================
+// THEN STEPS - ASSERTIONS
+// ========================================
 
 Then("the hotel should appear as refundable in my cart", async function () {
   console.log("Verifying hotel is refundable");
