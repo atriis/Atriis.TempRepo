@@ -132,13 +132,13 @@ When("I select 2 options from carriers {string} and {string}", async function (c
   this.carriers[0] = carrier1;
   this.carriers[1] = carrier2;
   
-  // Filter, get price, and share result at index 1 from carrier 1
-  const result1 = await FlightResults.getPriceAndShareQuoteFromCarrier(this.page, carrier1, 1);
+  // Filter, get FIRST price (index 0), and share first result from carrier 1
+  const result1 = await FlightResults.getPriceAndShareQuoteFromCarrier(this.page, carrier1, 0);
   this.resultsPrices[carrier1] = result1.price;
   console.log(`Stored ${carrier1} price: ${this.resultsPrices[carrier1]}`);
   
-  // Filter, get price, and share result at index 1 from carrier 2
-  const result2 = await FlightResults.getPriceAndShareQuoteFromCarrier(this.page, carrier2, 1);
+  // Filter, get FIRST price (index 0), and share first result from carrier 2
+  const result2 = await FlightResults.getPriceAndShareQuoteFromCarrier(this.page, carrier2, 0);
   this.resultsPrices[carrier2] = result2.price;
   console.log(`Stored ${carrier2} price: ${this.resultsPrices[carrier2]}`);
 });
@@ -158,10 +158,10 @@ When("I scroll into offers and get prices", async function () {
   console.log("Scrolling into offers and getting prices");
   const { sharedPrice1, sharedPrice2 } = await FlightResults.scrollIntoOffersAndGetPrices(this.page);
   
-  // Store using carrier names as keys (swapped order as share dialog shows them reversed)
+  // Store prices using carrier names as keys (in selection order)
   if (!this.sharedPrices) this.sharedPrices = {};
-  this.sharedPrices[this.carriers[0]] = sharedPrice2;
-  this.sharedPrices[this.carriers[1]] = sharedPrice1;
+  this.sharedPrices[this.carriers[0]] = sharedPrice1;
+  this.sharedPrices[this.carriers[1]] = sharedPrice2;
 });
 
 // ========================================

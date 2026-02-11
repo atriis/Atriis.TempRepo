@@ -119,11 +119,11 @@ const FlightResults = {
     // Necessary wait to ensure results are filtered before interacting
     await page.waitForTimeout(1000);
     
-    // Get price from the filtered result
-    const price = await resultsPage.getAmountPriceValue(index);
+    // Get price from the filtered result (index 0 = first filtered result)
+    const price = await resultsPage.getAmountPriceValueResults(index);
     
-    // Share the same result
-    await resultsPage.clickShareQuoteButton(index);
+    // Share the same result (index + 1 because share buttons include disabled main button at index 0)
+    await resultsPage.clickShareQuoteButton(index + 1);
     
     return { price, shared: true };
   },
@@ -140,11 +140,13 @@ const FlightResults = {
     
     // Scroll to make both offers visible in the share dialog
     await commonPage.scrollIntoViewOffer(1);
+    await commonPage.getPriceFromEmailOffer(3);
     await commonPage.scrollIntoViewOffer(2);
+    await commonPage.getPriceFromEmailOffer(7);
     
     // Extract prices from the shared offers (indices 1 and 2 skip the first price element)
-    const sharedPrice1 = await resultsPage.getAmountPriceValue(1);
-    const sharedPrice2 = await resultsPage.getAmountPriceValue(2);
+    const sharedPrice1 = await commonPage.getPriceFromEmailOffer(3);
+    const sharedPrice2 = await commonPage.getPriceFromEmailOffer(7);
     
     return { sharedPrice1, sharedPrice2 };
 }

@@ -1,5 +1,6 @@
 const { SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
 const { SELECTORS: GENERAL_SELECTORS } = require("@pages/GeneralElementsPage");
+const { extractNumber } = require("@utils/dom");
 
 // Centralized selectors for ResultsPage only
 const SELECTORS = {
@@ -139,25 +140,17 @@ class ResultsPage {
   }
 
   /**
- * Extracts the displayed amount from the UI and returns it as a number.
- * Defaults to the first amount found.
- *
- * @param {number} index - Zero-based index of the amount element (default: 0)
- * @example
- *   getAmountPriceValue()      → first price
- *   getAmountPriceValue(1)     → second price
- *   getAmountPriceValue(9)     → tenth price
- */
- async getAmountPriceValue(index = 0) {
-  const rawText = await this.page
-    .locator(SELECTORS.AMOUNT_VALUE)
-    .nth(index)
-    .textContent();
-
-  if (!rawText) return null;
-
-  return Number(rawText.replace(/[^0-9.]/g, ''));
-}
+   * Extracts the displayed price amount from the results page.
+   * 
+   * @param {number} index - Zero-based index of the amount element (default: 0)
+   * @returns {Promise<number|null>} The price value or null if not found
+   * @example
+   *   getAmountPriceValueResults(0)  → first price
+   *   getAmountPriceValueResults(1)  → second price
+   */
+  async getAmountPriceValueResults(index = 0) {
+    return extractNumber(this.page, SELECTORS.AMOUNT_VALUE, index);
+  }
 
 } 
 module.exports = {

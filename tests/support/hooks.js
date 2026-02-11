@@ -61,6 +61,16 @@ function isLoginOnly(pickle) {
  * Before each scenario
  */
 Before(async function (testCase) {
+  // Skip automatic setup if scenario uses parameterized login step
+  const hasParameterizedLogin = testCase.pickle.steps.some(step => 
+    step.text.includes('I am logged in as "')
+  );
+  
+  if (hasParameterizedLogin) {
+    console.log("Skipping Before hook - scenario uses parameterized login");
+    return;
+  }
+
   console.log("Setting up browser and logging in...");
 
   const headlessEnv = process.env.HEADLESS || process.env.AUTOMATION_HEADLESS || "false";

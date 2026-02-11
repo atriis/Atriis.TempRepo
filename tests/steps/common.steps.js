@@ -47,6 +47,39 @@ Given("I am logged in and ready to book a new trip", async function () {
   console.log("User is logged in and on new trip page");
 });
 
+Given("I am logged in as {string} {string} and ready to book a new trip", async function (provider, user) {
+  console.log(`Logging in as ${provider}.${user} (from scenario outline)`);
+  
+  // Import dependencies
+  const { chromium } = require("@playwright/test");
+  const config = require("@config/config");
+  const { App } = require("@dsl");
+  
+  // Validate user exists in config
+  const userConfig = config.users?.[provider]?.[user];
+  if (!userConfig) {
+    throw new Error(`User not found in config: ${provider}.${user}`);
+  }
+  
+  console.log(`Logging in as ${provider}.${user}`);
+  
+  // Setup browser
+  this.browser = await chromium.launch({
+    headless: config.headless || false,
+    slowMo: config.slowMo || 0,
+  });
+  
+  this.context = await this.browser.newContext();
+  this.page = await this.context.newPage();
+  
+  // Navigate to app and login
+  await this.page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
+  await App.loginAs(this.page, userConfig);
+  this.page = await App.bookANewTrip(this.page);
+  
+  console.log("Setup complete");
+});
+
 Given("I have added myself as the traveler", async function () {
   console.log("Adding traveler: I am the traveler");
   await Search.addMeAsTraveler(this.page);

@@ -28,6 +28,34 @@ async function getText(page, selector) {
 }
 
 /**
+ * Extracts a numeric value from a DOM element.
+ * Works with both page and frame contexts.
+ *
+ * Why this exists:
+ * - Prices and numbers appear in various formats ($123.45, €1,234.56)
+ * - Need consistent extraction across main page and iframes (email previews)
+ * - Removes currency symbols and formatting automatically
+ *
+ * @param {import('@playwright/test').Page|import('@playwright/test').Frame} context - Playwright page or frame
+ * @param {string} selector - CSS selector for the element
+ * @param {number} index - Zero-based index of the element (default: 0)
+ * @returns {Promise<number|null>} Parsed number, or null if not found
+ * @example
+ *   extractNumber(page, '.amount', 0)  → first price on page
+ *   extractNumber(frame, '.amount', 1) → second price in frame
+ */
+async function extractNumber(context, selector, index = 0) {
+  const rawText = await context
+    .locator(selector)
+    .nth(index)
+    .textContent();
+
+  if (!rawText) return null;
+
+  return Number(rawText.replace(/[^0-9.]/g, ''));
+}
+
+/**
  * Scrolls an element into the visible area of the screen.
  *
  * Why this exists:
@@ -148,6 +176,7 @@ async function waitForEnabled(locator, timeout = 5000) {
 
 module.exports = {
   getText,
+  extractNumber,
   scrollToElement,
   typeIntoNthAvailableInput,
   pressTab,
