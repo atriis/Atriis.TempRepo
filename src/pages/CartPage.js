@@ -267,16 +267,6 @@ class CartPage {
 
   //This can be used when sharing quotes or itinerary from Results page as well
   /**
-   * Waits until the "Subject" label is visible.
-   */
-  async waitForSubjectLabelSharePopUp() {
-    const subjectLabel = this.page.getByText("Subject", { exact: true });
-
-    await subjectLabel.waitFor({ state: "visible", timeout: 30000 });
-  }
-
-  //This can be used when sharing quotes or itinerary from Results page as well
-  /**
    * Clicks the "Send" button.
    */
   async clickSendEmailButton() {

@@ -119,6 +119,44 @@ class CommonPage {
   async clickGoBackOnFlightCapacityRestrictionPopUp() {
     await this.page.locator(SELECTORS.GO_BACK_BUTTON).click();
   }
+
+  //This can be used when sharing quotes or itinerary from Results page as well
+  /**
+   * Waits until the "Subject" label is visible.
+   */
+  async waitForSubjectLabelSharePopUp() {
+    const subjectLabel = this.page.getByText("Subject", { exact: true });
+
+    await subjectLabel.waitFor({ state: "visible", timeout: 30000 });
+  }
+
+async scrollIntoViewOffer(offerNumber = 1, timeout = 30000) {
+  const offerText = `Flight Offer # ${offerNumber} Pending booking`;
+
+  // Try main page first
+  const offer = this.page.getByText(offerText, { exact: true });
+
+  if (await offer.count()) {
+    await offer.first().scrollIntoViewIfNeeded();
+    await offer.first().waitFor({ state: 'visible', timeout });
+    return;
+  }
+
+  // Fallback: search inside iframes (email / preview cases)
+  for (const frame of this.page.frames()) {
+    if (frame === this.page.mainFrame()) continue;
+
+    const inFrame = frame.getByText(offerText, { exact: true });
+    if (await inFrame.count()) {
+      await inFrame.first().scrollIntoViewIfNeeded();
+      await inFrame.first().waitFor({ state: 'visible', timeout });
+      return;
+    }
+  }
+
+  throw new Error(`Offer not found: "${offerText}"`);
+}
+
 }
 
 module.exports = {

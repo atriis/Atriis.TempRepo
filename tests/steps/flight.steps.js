@@ -47,7 +47,6 @@
  */
 
 require("module-alias/register");
-
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const {
@@ -55,8 +54,13 @@ const {
   FlightResults,
   FlightPricing,
 } = require("../../src/dsl");
+const { expectNumbersToBeEqual } = require("../../src/assertions/numberAssertions");
 
 setDefaultTimeout(120000);
+When("I search for a one way flight from {string} to {string}", async function (from, to) {
+  console.log(`Searching for one-way flight: ${from} → ${to}`);
+  await FlightSearch.searchFlightOneWay(this.page, { from, to });
+});
 
 // ===== WHEN STEPS =====
 
@@ -121,4 +125,63 @@ Then("flight results should be available", async function () {
   console.log("Verifying flight results are available");
   const isDisplayed = await FlightResults.isResultDisplayed(this.page);
   expect(isDisplayed).toBe(true);
+});
+
+// ===== AND STEPS =====
+
+
+// ===== SHARE FLIGHT QUOTES STEPS =====
+
+When("I click on the 'Share' button", async function () {
+  console.log("Clicking Share button");
+  await FlightResults.waitForAddToTripButtonAndClickShareButton(this.page);
+});
+
+When("I select 2 options from carriers {string} and {string}", async function (carrier1, carrier2) {
+  console.log(`Selecting 2 options from carriers ${carrier1} and ${carrier2}`);
+  
+  if (!this.resultsPrices) this.resultsPrices = {};
+  if (!this.carriers) this.carriers = [];
+  
+  this.carriers[0] = carrier1;
+  this.carriers[1] = carrier2;
+  
+  // Filter, get price, and share result at index 1 from carrier 1
+  const result1 = await FlightResults.getPriceAndShareQuoteFromCarrier(this.page, carrier1, 1);
+  this.resultsPrices[carrier1] = result1.price;
+  console.log(`Stored ${carrier1} price: ${this.resultsPrices[carrier1]}`);
+  
+  // Filter, get price, and share result at index 1 from carrier 2
+  const result2 = await FlightResults.getPriceAndShareQuoteFromCarrier(this.page, carrier2, 1);
+  this.resultsPrices[carrier2] = result2.price;
+  console.log(`Stored ${carrier2} price: ${this.resultsPrices[carrier2]}`);
+});
+
+When("I click on the 'Share' button to open the share dialog", async function () {
+  console.log("Clicking Share button to open share dialog");
+  const { ResultsPage } = require("../../src/pages/ResultsPage");
+  const { CommonPage } = require("../../src/pages/CommonPage");
+  const resultsPage = new ResultsPage(this.page);
+  const commonPage = new CommonPage(this.page);
+  
+  await resultsPage.clickShareQuoteToGetEmailPopUp();
+  await commonPage.waitForSubjectLabelSharePopUp();
+});
+
+When("I scroll into offers and get prices", async function () {
+  console.log("Scrolling into offers and getting prices");
+  const { sharedPrice1, sharedPrice2 } = await FlightResults.scrollIntoOffersAndGetPrices(this.page);
+  
+  // Store using carrier names as keys (swapped order as share dialog shows them reversed)
+  if (!this.sharedPrices) this.sharedPrices = {};
+  this.sharedPrices[this.carriers[0]] = sharedPrice2;
+  this.sharedPrices[this.carriers[1]] = sharedPrice1;
+});
+
+// This ONE step definition handles BOTH carriers
+Then("The shared price for carrier {string} should match the prices from results", async function (carrier) {
+  const resultsPrice = this.resultsPrices[carrier];
+  const sharedPrice = this.sharedPrices[carrier];
+  
+  expectNumbersToBeEqual(sharedPrice, resultsPrice, `${carrier} shared price`);
 });

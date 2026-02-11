@@ -4,6 +4,10 @@ const { SELECTORS: GENERAL_SELECTORS } = require("@pages/GeneralElementsPage");
 // Centralized selectors for ResultsPage only
 const SELECTORS = {
   RESULTS_BUTTON: ".btn.btn--primary",
+  SHARE_MAIN_BUTTON: 'button.share-btn.mr-4',
+  SHARE_QUOTE_RESULTS_BUTTON: '.share-btn.py-2',
+  SHARE_QUOTE_EMAIL_BUTTON: 'button:has(span:text("email"))',
+  AMOUNT_VALUE: ".amount"
 };
 
 /**
@@ -39,6 +43,16 @@ class ResultsPage {
       .first();
   }
 
+  /**
+   * Gets the "Share" button locator.
+   * @returns {Locator} Playwright locator for the first "Share" button
+   */
+  getShareButton() {
+    return this.page
+      .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Share")`)
+      .first();
+  }
+
   // ===== UI INTERACTIONS =====
 
   /** Waits until the first "Select" button is visible */
@@ -48,7 +62,7 @@ class ResultsPage {
 
   /** Waits until the first "Add to trip" button is visible */
   async waitForAddToTripText() {
-    await this.getAddToTripButton().waitFor({ state: "visible" });
+    await this.getAddToTripButton().waitFor({ state: "visible", timeout: 45000 });
   }
 
   /** Scrolls to the first "Add to trip" button */
@@ -64,6 +78,23 @@ class ResultsPage {
   /** Clicks the first available "Select" button */
   async clickFirstSelectButton() {
     await this.getSelectButton().click();
+  }
+
+/**
+ * Clicks a "Share" button by position.
+ * Defaults to the first available Share button.
+ *
+ * @param {number} index - Zero-based index of the Share button (default: 0)
+ * @example
+ *   clickShareButton()    // first Share button
+ *   clickShareButton(1)   // second Share button
+ *   clickShareButton(2)   // third Share button
+ */
+  async clickShareQuoteButton(index = 0) {
+    const button = this.page
+      .locator(SELECTORS.SHARE_QUOTE_RESULTS_BUTTON)
+      .nth(index);
+    await button.click({ timeout: 30000 }); // Waits automatically for actionable state
   }
 
   /**
@@ -93,8 +124,42 @@ class ResultsPage {
 
     return true;
   }
+
+  // Share Quote button interactions in results page
+  async waitForShareMainButton() {
+    await this.page.locator(SELECTORS.SHARE_MAIN_BUTTON).waitFor({ state: "visible" });
+  }
+
+  async clickShareMainButton() {
+    await this.page.locator(SELECTORS.SHARE_MAIN_BUTTON).click();
+  }
+
+  async clickShareQuoteToGetEmailPopUp() {
+    await this.page.locator(SELECTORS.SHARE_QUOTE_EMAIL_BUTTON).click();
+  }
+
+  /**
+ * Extracts the displayed amount from the UI and returns it as a number.
+ * Defaults to the first amount found.
+ *
+ * @param {number} index - Zero-based index of the amount element (default: 0)
+ * @example
+ *   getAmountPriceValue()      → first price
+ *   getAmountPriceValue(1)     → second price
+ *   getAmountPriceValue(9)     → tenth price
+ */
+ async getAmountPriceValue(index = 0) {
+  const rawText = await this.page
+    .locator(SELECTORS.AMOUNT_VALUE)
+    .nth(index)
+    .textContent();
+
+  if (!rawText) return null;
+
+  return Number(rawText.replace(/[^0-9.]/g, ''));
 }
 
+} 
 module.exports = {
   ResultsPage,
   SELECTORS,

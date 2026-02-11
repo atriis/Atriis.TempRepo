@@ -1,6 +1,6 @@
 const { CartPage, SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
-const { CheckoutPage, SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
+const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const { expect } = require("@playwright/test");
 const { GeneralElementsPage } = require("@pages/GeneralElementsPage");
 
@@ -113,9 +113,10 @@ const Cart = {
    */
   async clickShareQuoteAndWaitForSubjectField(page) {
     const cartPage = new CartPage(page);
+    const commonPage = new CommonPage(page);
     await cartPage.hoverShareButton();
     await cartPage.clickShareQuotes();
-    await cartPage.waitForSubjectLabelSharePopUp();
+    await commonPage.waitForSubjectLabelSharePopUp();
   },
 
   /**
@@ -127,9 +128,10 @@ const Cart = {
    */
   async clickShareItineraryAndWaitForSubjectField(page) {
     const cartPage = new CartPage(page);
+    const commonPage = new CommonPage(page);
     await cartPage.hoverShareButton();
     await cartPage.clickShareItinerary();
-    await cartPage.waitForSubjectLabelSharePopUp();
+    await commonPage.waitForSubjectLabelSharePopUp();
   },
 
   /**
