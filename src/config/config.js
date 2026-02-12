@@ -51,6 +51,7 @@ const config = {
       user_one: createUser("AMADEUS_USER_ONE_EMAIL"),
       user_two: createUser("AMADEUS_USER_TWO_EMAIL"),
       user_three: createUser("AMADEUS_USER_THREE_EMAIL"),
+      rui_mendes: createUser("AMADEUS_RUI_MENDES_USER"),
     },
 
     sabre: {

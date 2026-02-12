@@ -292,6 +292,12 @@ const Cart = {
     await Cart.expectBookingStatus(tripStatus.label.onHold.status, { page });
     return { held: true };
   },
+
+  async assertPassportDetailsAreDisplayedAs(page, index, expectedText) {
+    const cartPage = new CartPage(page);
+    const actualText = await cartPage.getPassportDetailsText(index);
+    expect(actualText).toBe(expectedText);
+  }
 };
 
 

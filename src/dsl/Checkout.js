@@ -1,5 +1,6 @@
 const { CheckoutPage } = require("@pages/CheckoutPage");
 const { CartPage } = require("@pages/CartPage");
+const { CommonPage } = require("@src/pages/CommonPage");
 
 /**
  * Checkout DSL
@@ -39,6 +40,34 @@ const Checkout = {
     await cartPage.waitForTripOverviewTitle();
 
     return { finalized: true };
+  },
+
+  /**
+   * Navigates to cart from the checkout page.
+   *
+   * This flow:
+   * - waits for checkout details
+   * - clicks the trip cart icon
+   * - confirms cart page is displayed
+   */
+  async navigateToCartFromCheckout(page) {
+    const checkoutPage = new CheckoutPage(page);
+    const commonPage = new CommonPage(page);
+    const cartPage = new CartPage(page);
+
+    // Ensure checkout page is fully loaded
+    await checkoutPage.waitForBookingDetailsText();
+
+    // Intentional wait required for UI stability before interacting, so test is not flaky
+    await page.waitForTimeout(4000);
+
+    // Wait for a valid finalize button variant
+    await checkoutPage.waitForBookAndFinalizeButton();
+    await commonPage.clickTripCart();
+
+    // Confirm trip overview is displayed
+    await cartPage.waitForTripOverviewTitle();
+    return { navigatedToCart: true };
   },
 };
 

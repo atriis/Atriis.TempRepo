@@ -1,25 +1,14 @@
 /**
- * Flight Step Definitions
+ * Flight Results Step Definitions
  *
- * Maps Gherkin steps to DSL methods for flight-specific flows.
+ * Maps Gherkin steps to FlightResults DSL methods.
  *
  * ===== STEP CATALOG =====
- *
- * Search:
- *   "I search for a one way flight from {string}"
- *   "I search for a one way flight from {string} to {string}"
- *   "I search for a round trip flight from {string} to {string}"
- *   "I search for a flight by schedule from {string} to {string}"
- *   "I search for a random one way flight"
- *   "I search for a random one way flight in {string}"
- *   "I search for a random round trip flight"
- *   "I search for a random round trip flight in {string}"
  *
  * Selection & Cart:
  *   "I select one flight segment by schedule"
  *   "I select flight segments by schedule"
  *   "I add the first flight to cart"
- *   "I add the selected fare to cart"
  *
  * Results Filtering:
  *   "I filter results by carrier {string}"
@@ -27,13 +16,17 @@
  * Pricing Options:
  *   "I click on \"Pricing Options\" for the first result"
  *   "I extract the price from first pricing option"
+ *   "I click to open first pricing options"
  *   "I select first option from pricing options"
  *   "I click share from pricing options"
- *   "I close pricing options window"
+ *   "I close pricing options modal"
  *
  * Fare Rules:
  *   "I click to open fare rules"
  *   "I close fare rules window"
+ *   "I click to open flight details"
+ *   "I click to open fare rules from modal"
+ *   "I close flight details window"
  *
  * Share Quote:
  *   "I click on the 'Share' button"
@@ -53,58 +46,10 @@
 require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
-const {
-  FlightSearch,
-  FlightResults,
-  FlightPricing,
-} = require("../../src/dsl");
+const { FlightResults } = require("../../src/dsl");
 const { expectNumbersToBeEqual } = require("../../src/assertions/numberAssertions");
 
 setDefaultTimeout(120000);
-
-// ========================================
-// WHEN STEPS - FLIGHT SEARCH
-// ========================================
-
-When("I search for a one way flight from {string}", async function (routeKey) {
-  console.log(`Searching for one-way flight: ${routeKey}`);
-  await FlightSearch.searchFlightOneWay(this.page, routeKey);
-});
-
-When("I search for a one way flight from {string} to {string}", async function (from, to) {
-  console.log(`Searching for one-way flight: ${from} → ${to}`);
-  await FlightSearch.searchFlightOneWay(this.page, { from, to });
-});
-
-When("I search for a round trip flight from {string} to {string}", async function (from, to) {
-  console.log(`Searching for round trip flight: ${from} → ${to}`);
-  await FlightSearch.searchFlightRoundTrip(this.page, { from, to });
-});
-
-When("I search for a flight by schedule from {string} to {string}", async function (from, to) {
-  console.log(`Searching for flight by schedule: ${from} → ${to}`);
-  await FlightSearch.searchFlightBySchedule(this.page, { from, to });
-});
-
-When("I search for a random one way flight", async function () {
-  console.log("Searching for random one-way flight");
-  await FlightSearch.searchOneWayRandomFlight(this.page);
-});
-
-When("I search for a random one way flight in {string}", async function (region) {
-  console.log(`Searching for random one-way flight in: ${region}`);
-  await FlightSearch.searchOneWayRandomFlight(this.page, region);
-});
-
-When("I search for a random round trip flight", async function () {
-  console.log("Searching for random round trip flight");
-  await FlightSearch.searchRoundTripRandomFlight(this.page);
-});
-
-When("I search for a random round trip flight in {string}", async function (region) {
-  console.log(`Searching for random round trip flight in: ${region}`);
-  await FlightSearch.searchRoundTripRandomFlight(this.page, region);
-});
 
 // ========================================
 // WHEN STEPS - FLIGHT SELECTION & CART
@@ -123,11 +68,6 @@ When("I select flight segments by schedule", async function () {
 When("I add the first flight to cart", async function () {
   console.log("Adding first flight to cart");
   await FlightResults.addFirstFlightToCart(this.page);
-});
-
-When("I add the selected fare to cart", async function () {
-  console.log("Adding selected fare to cart");
-  await FlightPricing.addYourSelectionFareToCart(this.page);
 });
 
 // ========================================
@@ -193,7 +133,7 @@ When("I extract the price from first pricing option", async function () {
 });
 
 When("I click to open first pricing options", async function () {
-  console.log("Selecting first option from pricing options");
+  console.log("Clicking to open first pricing options");
   await FlightResults.clickToOpenPricingOptions(this.page);
 });
 
@@ -208,7 +148,7 @@ When("I click share from pricing options", async function () {
 });
 
 When("I close pricing options modal", async function () {
-  console.log("Closing pricing options window");
+  console.log("Closing pricing options modal");
   const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
@@ -295,6 +235,7 @@ When("I click to open fare rules from modal", async function () {
   console.log("Clicking to open fare rules from flight details");
   await FlightResults.clickToOpenFareRulesFromResultsModal(this.page);
 });
+
 // ========================================
 // THEN STEPS - ASSERTIONS
 // ========================================

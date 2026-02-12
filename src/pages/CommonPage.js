@@ -45,6 +45,10 @@ class CommonPage {
     return this.page.locator("span.info-icon", { hasText: "info" }).nth(1);
   }
 
+  getShoppingCartIcon() {
+  return this.page.locator('span', { hasText: 'shopping_cart' });
+ }
+
   // ===== UI INTERACTIONS =====
 
   /**
@@ -197,6 +201,12 @@ class CommonPage {
     throw new Error(`Offer not found: "${offerText}"`);
   }
 
+  /**
+   * Clicks the shopping cart icon to navigate to cart.
+   */
+  async clickTripCart() {
+    await this.getShoppingCartIcon().click();
+  }
 }
 
 module.exports = {

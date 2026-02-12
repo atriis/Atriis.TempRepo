@@ -34,6 +34,9 @@ const SELECTORS = {
   CLOSE_DIALOG_MODAL: '[aria-label="Close this dialog"]',
   // OOP Justification selectors
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
+  // Extras
+  EDIT_EXTRAS_BUTTON: ".extra__btns",
+  EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span'
 };
 
 class CartPage {
@@ -42,6 +45,35 @@ class CartPage {
    */
   constructor(page) {
     this.page = page;
+  }
+
+  getInformationField(index = 1) {
+    return this.page.locator(SELECTORS.EXTRAS_INFORMATION_FIELD).nth(index);
+  }
+
+  /**
+   * Gets passport details text from visible input or text field.
+   * Looks for input fields with value attribute containing passport pattern.
+   *
+   * @param {number} [index=0] - The index of the passport field to read
+   * @returns {Promise<string>} The passport details text
+   */
+  async getPassportDetailsText(index = 0) {
+    // Wait for the page to stabilize after clicking edit extras
+    await this.page.waitForTimeout(2000);
+    
+    // Try to find passport in input field value attribute
+    const inputLocator = this.page.locator('input[value*="-"]').nth(index);
+    
+    try {
+      await inputLocator.waitFor({ state: "visible", timeout: 5000 });
+      return await inputLocator.inputValue();
+    } catch {
+      // If not found in input, try looking in any element containing the text
+      const textLocator = this.page.getByText(/[A-Z]{2}-\*+\d+/).nth(index);
+      await textLocator.waitFor({ state: "visible", timeout: 5000 });
+      return await textLocator.innerText();
+    }
   }
 
   /**
@@ -439,16 +471,34 @@ class CartPage {
     await this.page.locator(SELECTORS.HOLD_BUTTON).click();
   }
 
+  /**
+   * Waits for the Price Breakdown button to be visible.
+   */
   async waitForPriceBreakdownButton() {
     await this.page.locator(SELECTORS.PRICE_BREAKDOWN_BUTTON).waitFor({ state: "visible", timeout: 10000 });
   }
 
+  /**
+   * Clicks the Price Breakdown button.
+   */
   async clickPriceBreakdownButton() {
     await this.page.locator(SELECTORS.PRICE_BREAKDOWN_BUTTON).click();
   }
 
-    async clickXToClosePriceBreakdownModal(index = 4) {
+  /**
+   * Clicks the X button to close the Price Breakdown modal.
+   *
+   * @param {number} [index=4] - The nth instance of the close button to click
+   */
+  async clickXToClosePriceBreakdownModal(index = 4) {
     await this.page.locator(SELECTORS.CLOSE_DIALOG_MODAL).nth(index).click();
+  }
+
+  /**
+   * Clicks edit button in Extras section.
+   */
+  async clickEditExtrasButton(index = 0) {
+    await this.page.locator(SELECTORS.EDIT_EXTRAS_BUTTON).nth(index).click();
   }
 }
 

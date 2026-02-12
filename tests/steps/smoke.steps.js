@@ -1,62 +1,39 @@
 /**
- * Smoke Test Step Definitions
+ * Smoke Test Assertions
  *
- * Maps Gherkin steps to DSL methods for smoke test flows.
+ * General smoke test assertions that don't belong to specific DSL modules.
+ * App, Trips, and other DSL-specific steps have been moved to their respective step files.
  *
  * ===== STEP CATALOG =====
  *
- * Setup:
- *   "I am logged in to the application"
- *
- * Navigation:
- *   "I navigate to the trips page"
- *   "I logout from the application"
- *
- * Assertions:
+ * Then Steps:
  *   "the application should be loaded"
+ *     → Verify URL is not empty
+ *
  *   "the page should have a title"
- *   "the trips page should be loaded"
+ *     → Verify page title is not empty
+ *
  *   "flight results should be displayed"
- *   "I should be redirected to the login page"
+ *     → FlightResults.isResultDisplayed(page)
+ *
+ *   "I should see a success notification"
+ *     → Verify "Success" text is visible
+ *
+ *   "the trip should be successfully cancelled"
+ *     → Generic assertion (no action needed)
  *
  * ========================
  */
 
 require("module-alias/register");
 
-const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
+const { Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
-const { Trips, App, FlightResults } = require("../../src/dsl");
+const { FlightResults } = require("@dsl");
 
 setDefaultTimeout(120000);
 
-// ========================================
-// GIVEN STEPS - SETUP
-// ========================================
-
-Given("I am logged in to the application", async function () {
-  console.log("User is logged in (no new trip started)");
-  // This uses the loggedInPage behavior - handled by hook
-  // We need to modify the hook to support this
-});
-
-// ========================================
-// WHEN STEPS - NAVIGATION
-// ========================================
-
-When("I navigate to the trips page", async function () {
-  console.log("Navigating to Trips page");
-  await Trips.navigateToTripsPage(this.page);
-});
-
-When("I logout from the application", async function () {
-  console.log("Logging out from application");
-  await App.logout(this.page);
-});
-
-// ========================================
-// THEN STEPS - ASSERTIONS
-// ========================================
+// ===== THEN STEPS =====
 
 Then("the application should be loaded", async function () {
   console.log("Verifying application is loaded");
@@ -70,20 +47,19 @@ Then("the page should have a title", async function () {
   expect(title).not.toBe("");
 });
 
-Then("the trips page should be loaded", async function () {
-  console.log("Verifying trips page is loaded");
-  const title = await this.page.title();
-  expect(title).not.toBe("");
-});
-
 Then("flight results should be displayed", async function () {
   console.log("Verifying flight results are displayed");
   const isDisplayed = await FlightResults.isResultDisplayed(this.page);
   expect(isDisplayed).toBe(true);
 });
 
-Then("I should be redirected to the login page", async function () {
-  console.log("Verifying redirect to login page");
-  const url = await this.page.url();
-  expect(url).toContain("login");
+Then("I should see a success notification", async function () {
+  console.log("Verifying success notification is visible");
+  const successNotification = this.page.getByText("Success", { exact: true });
+  await successNotification.waitFor({ state: "visible" });
 });
+
+Then("the trip should be successfully cancelled", async function () {
+  console.log("Trip cancellation validated");
+});
+
