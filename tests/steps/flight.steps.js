@@ -31,6 +31,10 @@
  *   "I click share from pricing options"
  *   "I close pricing options window"
  *
+ * Fare Rules:
+ *   "I click to open fare rules"
+ *   "I close fare rules window"
+ *
  * Share Quote:
  *   "I click on the 'Share' button"
  *   "I select 2 options from carriers {string} and {string}"
@@ -41,6 +45,7 @@
  *   "flight results should be available"
  *   "The shared price for carrier {string} should match the prices from results"
  *   "The shared price for carrier {string} should match the price from pricing options"
+ *   "I should see the fare rules note about strictest terms"
  *
  * ========================
  */
@@ -187,6 +192,11 @@ When("I extract the price from first pricing option", async function () {
   console.log(`Extracted ${this.currentCarrier} pricing option price: ${price}`);
 });
 
+When("I click to open first pricing options", async function () {
+  console.log("Selecting first option from pricing options");
+  await FlightResults.clickToOpenPricingOptions(this.page);
+});
+
 When("I select first option from pricing options", async function () {
   console.log("Selecting first option from pricing options");
   await FlightResults.selectFirstPricingOption(this.page);
@@ -197,12 +207,28 @@ When("I click share from pricing options", async function () {
   await FlightResults.shareFromPricingOptions(this.page);
 });
 
-When("I close pricing options window", async function () {
+When("I close pricing options modal", async function () {
   console.log("Closing pricing options window");
   const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
   await flightResultsPage.clickXToClosePricingOptionsModal();
+});
+
+When("I close fare rules window", async function () {
+  console.log("Closing fare rules window");
+  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
+  const flightResultsPage = new FlightResultsPage(this.page);
+  
+  await flightResultsPage.clickXToClosePricingOptionsModal(1);
+});
+
+When("I close flight details window", async function () {
+  console.log("Closing flight details window");
+  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
+  const flightResultsPage = new FlightResultsPage(this.page);
+  
+  await flightResultsPage.clickXToCloseFlightDetailsModal();
 });
 
 // ========================================
@@ -255,6 +281,20 @@ When("I scroll into offers and get prices", async function () {
   this.sharedPrices[this.carriers[1]] = sharedPrice2;
 });
 
+When("I click to open fare rules", async function () {
+  console.log("Clicking to open fare rules");
+  await FlightResults.clickToOpenFareRules(this.page);
+});
+
+When("I click to open flight details", async function () {
+  console.log("Clicking to open flight details");
+  await FlightResults.clickToOpenFlightDetails(this.page);
+});
+
+When("I click to open fare rules from modal", async function () {
+  console.log("Clicking to open fare rules from flight details");
+  await FlightResults.clickToOpenFareRulesFromResultsModal(this.page);
+});
 // ========================================
 // THEN STEPS - ASSERTIONS
 // ========================================
@@ -285,4 +325,9 @@ Then("The shared price for carrier {string} should match the price from pricing 
   }
   
   expectNumbersToBeEqual(sharedPrice, pricingOptionsPrice, `${carrier} shared price from pricing options`);
+});
+
+Then("I should see the fare rules note about strictest terms", async function () {
+  console.log("Verifying fare rules note about strictest terms");
+  await FlightResults.verifyFareRulesStrictestTermsMessage(this.page);
 });

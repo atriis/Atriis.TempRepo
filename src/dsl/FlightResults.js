@@ -3,6 +3,7 @@ const { CartPage } = require("@pages/CartPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const Results = require("./Results");
 const { CommonPage } = require("@src/pages/CommonPage");
+const { expect } = require("@fixtures/supplierTest");
 
 /**
  * FlightResults DSL
@@ -168,6 +169,12 @@ const FlightResults = {
     return { selected: true };
   },
 
+  async clickToOpenPricingOptions(page, index = 0) {
+    const flightResultsPage = new FlightResultsPage(page);
+    await flightResultsPage.waitForPricingOptionsButton(index);
+    await flightResultsPage.clickPricingOptionsButton(index);
+  },
+
   /**
    * Shares the selected pricing option and closes the modal.
    * 
@@ -195,8 +202,51 @@ const FlightResults = {
     await page.waitForTimeout(500);
     
     return { shared: true };
-  }
+  },
 
-};
+  /**
+   * Validates the strictest terms message inside the fare rules drawer.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{validated: boolean}>}
+   */
+  async verifyFareRulesStrictestTermsMessage(page) {
+    const flightResultsPage = new FlightResultsPage(page);
+
+    // Validate the policy text displayed in the fare rules drawer.
+    await expect(flightResultsPage.getFareRulesNote())
+      .toContainText('Fare rules would be applied according to the strictest terms');
+
+    return { validated: true };
+  },
+
+  /**
+   * Opens the fare rules drawer and waits for the note to render.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} index - Zero-based index of the fare rules button (default: 0)
+   * @returns {Promise<void>}
+   */
+  async clickToOpenFareRules(page, index = 0) {
+    const flightResultsPage = new FlightResultsPage(page);
+    // Open the fare rules drawer and wait for its content to be visible.
+    await flightResultsPage.waitForFareRulesButton(index);
+    await flightResultsPage.clickFareRulesButton(index);
+    await flightResultsPage.waitForFareRulesNote();
+  },
+
+  async clickToOpenFlightDetails(page) {
+    const flightResultsPage = new FlightResultsPage(page);
+    await flightResultsPage.waitForFlightDetailsButton();
+    await flightResultsPage.clickFlightDetailsButton();
+    await flightResultsPage.waitForFlightDetailsHeadline();
+  },
+
+async clickToOpenFareRulesFromResultsModal(page) {
+ await FlightResults.clickToOpenFareRules(page, 10);
+},
+
+}
 
 module.exports = FlightResults;
+

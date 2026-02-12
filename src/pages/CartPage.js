@@ -18,6 +18,7 @@ const SELECTORS = {
   TERMS_CHECKBOX: ".el-checkbox__inner",
   PROCEED_TO_CHECKOUT_TEXT: ".btn-container span",
   REFUNDABLE_TEXT: "div.refundable",
+  PRICE_BREAKDOWN_BUTTON: ".price-breakdown-btn",
   // Trip Overview selectors
   TRIP_OVERVIEW_TITLE: ".payments-title",
   FLIGHT_DETAILS_BUTTON: ".more-details-btn",
@@ -30,6 +31,7 @@ const SELECTORS = {
   CANCELLATION_SUCCESS_MESSAGE: "text='Cancellation confirmed!'",
   QUOTE_STATUS_LABEL: ".app-label--quote",
   HOLD_BUTTON: ".btn--default.mt-2",
+  CLOSE_DIALOG_MODAL: '[aria-label="Close this dialog"]',
   // OOP Justification selectors
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
 };
@@ -423,6 +425,31 @@ class CartPage {
     await this.getRequestedFlightTitle().waitFor({ state: "visible" });
   }
 
+  /**
+   * Waits for the Hold button to be visible.
+   */
+  async waitForHoldButton() {
+    await this.page.locator(SELECTORS.HOLD_BUTTON).waitFor({ state: "visible", timeout: 10000 });
+  }
+
+  /**
+   * Clicks the Hold button.
+   */
+  async clickHoldButton() {
+    await this.page.locator(SELECTORS.HOLD_BUTTON).click();
+  }
+
+  async waitForPriceBreakdownButton() {
+    await this.page.locator(SELECTORS.PRICE_BREAKDOWN_BUTTON).waitFor({ state: "visible", timeout: 10000 });
+  }
+
+  async clickPriceBreakdownButton() {
+    await this.page.locator(SELECTORS.PRICE_BREAKDOWN_BUTTON).click();
+  }
+
+    async clickXToClosePriceBreakdownModal(index = 4) {
+    await this.page.locator(SELECTORS.CLOSE_DIALOG_MODAL).nth(index).click();
+  }
 }
 
 // Export CartPage and SELECTORS for use in tests and DSL

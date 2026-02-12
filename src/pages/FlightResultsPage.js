@@ -15,7 +15,7 @@ const SELECTORS = {
   PRICING_OPTIONS_AMOUNT_VALUE: '.leg-pricing-option .amount',
   PRICING_OPTIONS_ADD_TO_TRIP_BUTTON: '.add-btn',
   PRICING_OPTIONS_SHARE_QUOTE_BUTTON: '.share-btn:not(.add-btn)',
-  PRICING_OPTIONS_CLOSE_MODAL: '[aria-label="Close this dialog"]'
+  PRICING_OPTIONS_CLOSE_MODAL: '[aria-label="Close this dialog"]',
 };
 
 /**
@@ -38,6 +38,38 @@ class FlightResultsPage {
   }
 
   /**
+   * Gets the "Fare rules" button element.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getFareRulesButton() {
+    return this.page.getByRole('button', { name: 'Fare rules' });
+  }
+
+  /**
+   * Gets the "Fare rules" button element.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getSeatsButton() {
+    return this.page.getByRole('button', { name: 'Seats' });
+  }
+
+  /**
+   * Gets the "Fare rules" button element.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getFlightDetailsButton() {
+    return this.page.getByRole('button', { name: 'Flight details' });
+  }
+
+  /**
+   * Gets the fare rules note element shown in the drawer.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getFareRulesNote() {
+    return this.page.locator('.note');
+  }
+
+  /**
    * Clicks the "Select to share" button within the pricing options drawer.
    * Uses getByRole for reliable button targeting inside the drawer overlay.
    * 
@@ -57,19 +89,19 @@ class FlightResultsPage {
     await this.page.waitForTimeout(1000);
   }
 
-/**
- * Waits for the share quote button to be enabled.
- * This is used after selecting a pricing option to ensure the share button becomes clickable.
- */
-async waitForShareQuoteButtonEnabled() {
-  // Wait for the share button to be enabled (not disabled)
-  await this.page.locator(SELECTORS.PRICING_OPTIONS_SHARE_QUOTE_BUTTON)
-    .first()
-    .waitFor({ state: 'attached', timeout: 5000 });
-  
-  // Small delay to allow for state update
-  await this.page.waitForTimeout(1000);
-}
+  /**
+   * Waits for the share quote button to be enabled.
+   * This is used after selecting a pricing option to ensure the share button becomes clickable.
+   */
+  async waitForShareQuoteButtonEnabled() {
+    // Wait for the share button to be enabled (not disabled)
+    await this.page.locator(SELECTORS.PRICING_OPTIONS_SHARE_QUOTE_BUTTON)
+      .first()
+      .waitFor({ state: 'attached', timeout: 5000 });
+    
+    // Small delay to allow for state update
+    await this.page.waitForTimeout(1000);
+  }
 
 
   // ===== FLIGHT SELECTION =====
@@ -112,7 +144,7 @@ async waitForShareQuoteButtonEnabled() {
    *
    * @param {number} index - Zero-based index of the pricing options button (default: 0)
    */
-   async clickPricingOptionsButton(index = 0) {
+  async clickPricingOptionsButton(index = 0) {
     // Scroll into view and click with retry logic
     const button = this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).nth(index);
     await button.scrollIntoViewIfNeeded();
@@ -130,9 +162,10 @@ async waitForShareQuoteButtonEnabled() {
   }
 
   /**
-   * Waits for the pricing options Select button to be visible.\n   *
+   * Waits for the pricing options Select button to be visible.
+   *
    * @param {number} index - Zero-based index of the select button (default: 0)
-   */ 
+   */
   async waitForPricingOptionsSelectButton(index = 0) {
     await this.page.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON).nth(index).waitFor({ state: "visible" });
   }
@@ -142,7 +175,7 @@ async waitForShareQuoteButtonEnabled() {
    *
    * @param {number} index - Zero-based index of the select button (default: 0)
    */
-   async clickPricingOptionsSelectButton(index = 0) {
+  async clickPricingOptionsSelectButton(index = 0) {
     await this.page.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON).nth(index).click();
   }
 
@@ -193,6 +226,10 @@ async waitForShareQuoteButtonEnabled() {
     await this.page.locator(SELECTORS.PRICING_OPTIONS_CLOSE_MODAL).nth(index).click();
   }
 
+  async clickXToCloseFlightDetailsModal(index = 0) {
+    await this.page.locator(SELECTORS.PRICING_OPTIONS_CLOSE_MODAL).nth(index).click();
+  }
+
   /**
    * Extracts the price amount from the pricing options modal.
    *
@@ -203,6 +240,64 @@ async waitForShareQuoteButtonEnabled() {
     const overlay = this.getPricingOptionsOverlay();
     return extractNumber(overlay, SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE, index);
   }
+
+  /**
+   * Waits for the "Fare rules" button to be visible.
+   *
+   * @param {number} index - Zero-based index of the fare rules button (default: 0)
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async waitForFareRulesButton(index = 0, timeout = 30000) {
+    await this.getFareRulesButton()
+      .nth(index)
+      .waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Clicks the "Fare rules" button.
+   *
+   * @param {number} index - Zero-based index of the fare rules button (default: 0)
+   */
+  async clickFareRulesButton(index = 0) {
+    await this.getFareRulesButton()
+      .nth(index)
+      .click();
+  } 
+
+  /**
+   * Waits for the fare rules note to become visible.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async waitForFareRulesNote(timeout = 30000) {
+    await this.getFareRulesNote().waitFor({
+      state: 'visible',
+      timeout,
+    });
+  }
+
+  async waitForFlightDetailsButton(index = 0, timeout = 30000) {
+    await this.getFlightDetailsButton()
+      .nth(index)
+      .waitFor({ state: 'visible', timeout });
+  }
+
+  async clickFlightDetailsButton(index = 0) {
+    await this.getFlightDetailsButton()
+      .nth(index)
+      .click();
+}
+
+async waitForFlightDetailsHeadline(timeout = 30000) {
+  await this.page.getByRole('heading', {
+    level: 3,
+    name: / - /,
+  }).waitFor({
+    state: 'visible',
+    timeout,
+  });
+}
+
 }
 
 module.exports = FlightResultsPage;

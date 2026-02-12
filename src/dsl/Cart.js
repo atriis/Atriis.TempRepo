@@ -3,6 +3,8 @@ const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage")
 const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const { expect } = require("@playwright/test");
 const { GeneralElementsPage } = require("@pages/GeneralElementsPage");
+const FlightResultsPage = require("@pages/FlightResultsPage");
+const tripStatus = require("@data/tripStatus.json");
 
 /**
  * Cart DSL
@@ -251,6 +253,44 @@ const Cart = {
     await checkoutHeading.waitFor({ state: "visible", timeout: 30000 });
 
     return { proceeded: true, clickedModal };
+  },
+
+  /**
+   * Opens the fare rules drawer from cart flight details and waits for content.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} index - Zero-based index of the fare rules button (default: 1)
+   * @returns {Promise<void>}
+   */
+  async clickToOpenFareRulesInCart(page, index = 1) {
+    const flightResultsPage = new FlightResultsPage(page);
+    await flightResultsPage.waitForFareRulesButton(index);
+    await flightResultsPage.clickFareRulesButton(index);
+    await flightResultsPage.waitForFareRulesNote();
+  },
+
+  async clickToOpenPriceBreakdown(page) {
+    const cartPage = new CartPage(page);
+    await cartPage.waitForPriceBreakdownButton();
+    await cartPage.clickPriceBreakdownButton();
+  },
+  /**
+   * Puts a trip on hold and waits for the status to update.
+   * 
+   * Flow:
+   * - Wait for Hold button to be visible
+   * - Click the Hold button
+   * - Verify booking status changes to "On hold"
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{held: boolean}>} Hold status
+   */
+  async holdTrip(page) {
+    const cartPage = new CartPage(page);
+    await cartPage.waitForHoldButton();
+    await cartPage.clickHoldButton();
+    await Cart.expectBookingStatus(tripStatus.label.onHold.status, { page });
+    return { held: true };
   },
 };
 
