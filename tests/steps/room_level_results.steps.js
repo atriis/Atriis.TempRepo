@@ -17,6 +17,7 @@
 require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { RoomLevelResults, Cart } = require("../../src/dsl");
+const logger = require("../../src/utils/logger").child("RoomResults");
 
 setDefaultTimeout(120000);
 
@@ -25,7 +26,7 @@ setDefaultTimeout(120000);
 // ========================================
 
 When("I add a refundable room to my cart", async function () {
-  console.log("Adding refundable room to cart");
+  logger.info("Adding refundable room to cart");
   await RoomLevelResults.addRefundableHotelRoomLevelToCart(this.page);
 });
 
@@ -34,6 +35,6 @@ When("I add a refundable room to my cart", async function () {
 // ========================================
 
 Then("the hotel should appear as refundable in my cart", async function () {
-  console.log("Verifying hotel is refundable");
+  logger.info("Verifying hotel is refundable");
   await Cart.isHotelRefundable(this.page);
 });

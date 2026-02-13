@@ -5,6 +5,7 @@ const flightRoutes = require("@data/flights.json");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
+const logger = require("@utils/logger").child("ManualQuoteSearch-DSL");
 
 /**
  * DSL for Manual Quote Search functionality.
@@ -27,7 +28,7 @@ const ManualQuoteSearch = {
     returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
   ) {
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
-    console.log(`Starting manual quote flight search: ${from} → ${to}`);
+    logger.info("Starting manual quote flight search", { from, to });
 
     const flightSearchPage = new FlightSearchPage(page);
     const manualQuoteSearchPage = new ManualQuoteSearchPage(page);

@@ -6,6 +6,7 @@ const { resolveRoute } = require("@utils/route.helper");
 
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { generateRandomFlightRoute } = require("@utils/data/generateRandomFlightRoute");
+const logger = require("@utils/logger").child("FlightSearch-DSL");
 
 const FlightSearch = {
   /**
@@ -30,7 +31,7 @@ const FlightSearch = {
     },
   ) {
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
-    console.log(`Starting ${tripType} flight search (${searchType}): ${from} → ${to}`);
+    logger.info(`Starting ${tripType} flight search (${searchType})`, { from, to });
 
     const flightSearchPage = new FlightSearchPage(page);
     const searchPage = new SearchPage(page);

@@ -21,6 +21,7 @@
 require("module-alias/register");
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { FlightSearch } = require("../../src/dsl");
+const logger = require("@utils/logger").child('FlightSearch');
 
 setDefaultTimeout(120000);
 
@@ -29,41 +30,41 @@ setDefaultTimeout(120000);
 // ========================================
 
 When("I search for a one way flight from {string}", async function (routeKey) {
-  console.log(`Searching for one-way flight: ${routeKey}`);
+  logger.info('Searching for one-way flight', { routeKey });
   await FlightSearch.searchFlightOneWay(this.page, routeKey);
 });
 
 When("I search for a one way flight from {string} to {string}", async function (from, to) {
-  console.log(`Searching for one-way flight: ${from} → ${to}`);
+  logger.info('Searching for one-way flight', { from, to });
   await FlightSearch.searchFlightOneWay(this.page, { from, to });
 });
 
 When("I search for a round trip flight from {string} to {string}", async function (from, to) {
-  console.log(`Searching for round trip flight: ${from} → ${to}`);
+  logger.info('Searching for round trip flight', { from, to });
   await FlightSearch.searchFlightRoundTrip(this.page, { from, to });
 });
 
 When("I search for a flight by schedule from {string} to {string}", async function (from, to) {
-  console.log(`Searching for flight by schedule: ${from} → ${to}`);
+  logger.info('Searching for flight by schedule', { from, to });
   await FlightSearch.searchFlightBySchedule(this.page, { from, to });
 });
 
 When("I search for a random one way flight", async function () {
-  console.log("Searching for random one-way flight");
+  logger.info('Searching for random one-way flight');
   await FlightSearch.searchOneWayRandomFlight(this.page);
 });
 
 When("I search for a random one way flight in {string}", async function (region) {
-  console.log(`Searching for random one-way flight in: ${region}`);
+  logger.info('Searching for random one-way flight', { region });
   await FlightSearch.searchOneWayRandomFlight(this.page, region);
 });
 
 When("I search for a random round trip flight", async function () {
-  console.log("Searching for random round trip flight");
+  logger.info('Searching for random round trip flight');
   await FlightSearch.searchRoundTripRandomFlight(this.page);
 });
 
 When("I search for a random round trip flight in {string}", async function (region) {
-  console.log(`Searching for random round trip flight in: ${region}`);
+  logger.info('Searching for random round trip flight', { region });
   await FlightSearch.searchRoundTripRandomFlight(this.page, region);
 });

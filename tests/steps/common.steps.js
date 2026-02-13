@@ -38,57 +38,58 @@ const {
   expectSumToBeEqual,
 } = require("../../src/assertions/numberAssertions");
 const { extractPriceFromLocation } = require("../../src/utils/priceExtraction");
+const logger = require("../../src/utils/logger").child("Common");
 
 setDefaultTimeout(120000);
 
 // ===== WHEN STEPS - PRICE EXTRACTION =====
 
 Then("the extracted price at index {int} should equal {float}", function (index, expectedValue) {
-  console.log(`Asserting extracted price at index ${index} equals ${expectedValue}`);
+  logger.info("Asserting extracted price equals value", { index, expectedValue });
   const actualValue = this.extractedPrices[index];
   expectNumbersToBeEqual(actualValue, expectedValue, `Price at index ${index}`);
 });
 
 Then("the extracted price at index {int} should be greater than {float}", function (index, expectedValue) {
-  console.log(`Asserting extracted price at index ${index} > ${expectedValue}`);
+  logger.info("Asserting extracted price is greater than value", { index, expectedValue });
   const actualValue = this.extractedPrices[index];
   expectNumberToBeGreaterThan(actualValue, expectedValue, `Price at index ${index}`);
 });
 
 Then("the extracted price at index {int} should be greater than or equal to {float}", function (index, expectedValue) {
-  console.log(`Asserting extracted price at index ${index} >= ${expectedValue}`);
+  logger.info("Asserting extracted price is greater than or equal to value", { index, expectedValue });
   const actualValue = this.extractedPrices[index];
   expectNumberToBeGreaterThanOrEqual(actualValue, expectedValue, `Price at index ${index}`);
 });
 
 Then("the extracted price at index {int} should be less than {float}", function (index, expectedValue) {
-  console.log(`Asserting extracted price at index ${index} < ${expectedValue}`);
+  logger.info("Asserting extracted price is less than value", { index, expectedValue });
   const actualValue = this.extractedPrices[index];
   expectNumberToBeLessThan(actualValue, expectedValue, `Price at index ${index}`);
 });
 
 Then("the extracted price at index {int} should be less than or equal to {float}", function (index, expectedValue) {
-  console.log(`Asserting extracted price at index ${index} <= ${expectedValue}`);
+  logger.info("Asserting extracted price is less than or equal to value", { index, expectedValue });
   const actualValue = this.extractedPrices[index];
   expectNumberToBeLessThanOrEqual(actualValue, expectedValue, `Price at index ${index}`);
 });
 
 Then("the extracted price at index {int} should equal the extracted price at index {int}", function (indexA, indexB) {
-  console.log(`Asserting extracted price at index ${indexA} equals price at index ${indexB}`);
+  logger.info("Asserting extracted prices are equal", { indexA, indexB });
   const priceA = this.extractedPrices[indexA];
   const priceB = this.extractedPrices[indexB];
   expectNumbersToBeEqual(priceA, priceB, `Price comparison [${indexA}] vs [${indexB}]`);
 });
 
 Then("the sum of extracted prices at index {int} and {int} should equal {float}", function (indexA, indexB, expectedSum) {
-  console.log(`Asserting sum of prices at index ${indexA} and ${indexB} equals ${expectedSum}`);
+  logger.info("Asserting sum of extracted prices equals value", { indexA, indexB, expectedSum });
   const priceA = this.extractedPrices[indexA];
   const priceB = this.extractedPrices[indexB];
   expectSumToBeEqual(priceA, priceB, expectedSum, `Sum of prices [${indexA}] + [${indexB}]`);
 });
 
 Then("the sum of extracted prices at index {int} and {int} should equal the extracted price at index {int}", function (indexA, indexB, expectedIndex) {
-  console.log(`Asserting sum of prices at index ${indexA} and ${indexB} equals price at index ${expectedIndex}`);
+  logger.info("Asserting sum of extracted prices equals price at index", { indexA, indexB, expectedIndex });
   const priceA = this.extractedPrices[indexA];
   const priceB = this.extractedPrices[indexB];
   const expectedSum = this.extractedPrices[expectedIndex];
@@ -96,7 +97,7 @@ Then("the sum of extracted prices at index {int} and {int} should equal the extr
 });
 
 Then("the sum of extracted prices at index {int} {string} and {int} {string} should equal the extracted price at index {int} {string}", function (indexA, labelA, indexB, labelB, expectedIndex, expectedLabel) {
-  console.log(`Asserting sum of prices at index ${indexA} (${labelA}) and ${indexB} (${labelB}) equals price at index ${expectedIndex} (${expectedLabel})`);
+  logger.info("Asserting sum of labeled prices equals labeled price", { indexA, labelA, indexB, labelB, expectedIndex, expectedLabel });
   const priceA = this.extractedPrices[indexA];
   const priceB = this.extractedPrices[indexB];
   const expectedSum = this.extractedPrices[expectedIndex];
@@ -106,7 +107,7 @@ Then("the sum of extracted prices at index {int} {string} and {int} {string} sho
 // ===== DIRECT COMPARISON (EXTRACT + ASSERT) =====
 
 Then("the price at index {int} from {string} should equal the price at index {int} from {string}", async function (indexA, locationA, indexB, locationB) {
-  console.log(`Comparing price at index ${indexA} from ${locationA} with index ${indexB} from ${locationB}`);
+  logger.info("Comparing prices from different locations", { indexA, locationA, indexB, locationB });
   
   // Extract price A
   const priceA = await extractPriceFromLocation(this.page, indexA, locationA);
@@ -117,7 +118,7 @@ Then("the price at index {int} from {string} should equal the price at index {in
 });
 
 Then("the sum of prices at index {int} from {string} and index {int} from {string} should equal the price at index {int} from {string}", async function (indexA, locationA, indexB, locationB, expectedIndex, expectedLocation) {
-  console.log(`Asserting sum of [${indexA}] from ${locationA} + [${indexB}] from ${locationB} equals [${expectedIndex}] from ${expectedLocation}`);
+  logger.info("Asserting sum of prices from locations equals price", { indexA, locationA, indexB, locationB, expectedIndex, expectedLocation });
   
   // Extract all three prices
   const priceA = await extractPriceFromLocation(this.page, indexA, locationA);
@@ -138,7 +139,7 @@ Then('I should see the heading {string}', async function (text) {
 // ===== WHEN STEPS - PRICE EXTRACTION =====
 
 When("I extract the price at index {int} from {string}", async function (index, location) {
-  console.log(`Extracting price at index ${index} from ${location}`);
+  logger.info("Extracting price from location", { index, location });
   
   const price = await extractPriceFromLocation(this.page, index, location);
   
@@ -146,5 +147,5 @@ When("I extract the price at index {int} from {string}", async function (index, 
   if (!this.extractedPrices) this.extractedPrices = [];
   this.extractedPrices.push(price);
   
-  console.log(`Extracted price from ${location}: ${price}`);
+  logger.info("Extracted price", { location, price });
 });

@@ -57,81 +57,82 @@ const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const Cart = require("@dsl/Cart");
 const { CartPage } = require("@pages/CartPage");
 const tripStatus = require("@data/tripStatus.json");
+const logger = require("../../src/utils/logger").child("Cart");
 
 setDefaultTimeout(120000);
 
 // ===== WHEN STEPS =====
 
 When("I click to open fare rules in cart", async function () {
-  console.log("Clicking to open fare rules in cart");
+  logger.info("Clicking to open fare rules in cart");
   await Cart.clickToOpenFareRulesInCart(this.page);
 });
 
 When("I accept Terms & Conditions", async function () {
-  console.log("Accepting T&Cs");
+  logger.info("Accepting T&Cs");
   const cartPage = new CartPage(this.page);
   await cartPage.acceptTermsAndConditions();
 });
 
 When("I proceed to checkout", async function () {
-  console.log("Proceeding to checkout");
+  logger.info("Proceeding to checkout");
   await Cart.acceptTermsAndConditionsAndProceedToCheckout(this.page);
 });
 
 When("I hold the trip", async function () {
-  console.log("Holding the trip");
+  logger.info("Holding the trip");
   await Cart.holdTrip(this.page);
 });
 
 When("I cancel the trip", async function () {
-  console.log("Cancelling trip");
+  logger.info("Cancelling trip");
   await Cart.cancelTripStrict(this.page);
 });
 
 When("I attempt to cancel the trip safely", async function () {
-  console.log("Attempting to cancel trip (safe mode)");
+  logger.info("Attempting to cancel trip (safe mode)");
   const result = await Cart.cancelTripSafely(this.page);
   this.cancelResult = result;
 });
 
 When("I click to open price breakdown in cart", async function () {
-  console.log("Clicking to open price breakdown in cart");
+  logger.info("Clicking to open price breakdown in cart");
   await Cart.clickToOpenPriceBreakdown(this.page);
 });
 
 When("I close price breakdown modal", async function () {
-  console.log("Closing price breakdown modal");
+  logger.info("Closing price breakdown modal");
   const cartPage = new CartPage(this.page);
   await cartPage.clickXToClosePriceBreakdownModal();
 });
 
 When("I click the share quote button", async function () {
-  console.log("Clicking share quote button");
+  logger.info("Clicking share quote button");
   await Cart.clickShareQuoteAndWaitForSubjectField(this.page);
 });
 
 When("I click the share itinerary button", async function () {
-  console.log("Clicking share itinerary button");
+  logger.info("Clicking share itinerary button");
   await Cart.clickShareItineraryAndWaitForSubjectField(this.page);
 });
 
 When("I send the share", async function () {
-  console.log("Sending share with success notification");
+  logger.info("Sending share with success notification");
   await Cart.sendQuoteAndWaitForSuccess(this.page);
 });
 
 When("I fill in the OOP justification text {string}", async function (text) {
-  console.log(`Filling in OOP justification text: ${text}`);
+  logger.info("Filling in OOP justification text", { text });
   await Cart.fillInOOPJustificationTextAndSave(this.page, text);
 });
 
 When("I select OOP justification option {string}", async function (option) {
-  console.log(`Selecting OOP justification option: ${option}`);
+  logger.info("Selecting OOP justification option", { option });
   await Cart.selectOOPJustificationDropdownOptionAndSave(this.page, option);
 });
 
 When("I click to edit extras", async function () {
-  console.log("Clicking to edit extras");
+  logger.info("Clicking to edit extras");
   const cartPage = new CartPage(this.page);
   await cartPage.clickEditExtrasButton();
 });
@@ -139,12 +140,12 @@ When("I click to edit extras", async function () {
 // ===== THEN STEPS =====
 
 Then("I successfully cancel the trip", async function () {
-  console.log("Cancelling the trip successfully"); 
+  logger.info("Cancelling the trip successfully"); 
   await Cart.cancelTripStrict(this.page); 
 });
 
 Then("the booking status should be {string}", async function (status) {
-  console.log(`Verifying booking status is: ${status}`);
+  logger.info("Verifying booking status", { status });
   if (status === "Pending booking") {
     await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page: this.page });
   } else if (status === "On Hold") {
@@ -160,21 +161,21 @@ Then("the booking status should be {string}", async function (status) {
 });
 
 Then("the out of policy indicator should be visible in cart", async function () {
-  console.log("Verifying OOP indicator is visible in cart");
+  logger.info("Verifying OOP indicator is visible in cart");
   await Cart.verifyOutOfPolicyIndicatorIsVisibleInCart(this.page);
 });
 
 Then("the out of policy indicator should not be visible in cart", async function () {
-  console.log("Verifying OOP indicator is not visible in cart");
+  logger.info("Verifying OOP indicator is not visible in cart");
   await Cart.verifyOutOfPolicyIndicatorIsNotVisibleInCart(this.page);
 });
 
 Then("the out of policy tooltip in cart should be {string}", async function (expectedText) {
-  console.log(`Verifying OOP tooltip in cart: ${expectedText}`);
+  logger.info("Verifying OOP tooltip in cart", { expectedText });
   await Cart.hoverOverCartOOPInfoAndVerifyTooltipTextIs(this.page, expectedText);
 });
 
 Then("passport details are displayed as {string}", async function (expectedText) {
-  console.log(`Asserting passport details are displayed as: ${expectedText}`);
+  logger.info("Asserting passport details are displayed", { expectedText });
   await Cart.assertPassportDetailsAreDisplayedAs(this.page, 0, expectedText);   
 });

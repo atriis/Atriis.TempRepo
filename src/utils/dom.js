@@ -10,6 +10,8 @@
  * - Behavior must remain stable
  */
 
+const logger = require("./logger").child("DOM");
+
 /**
  * Reads visible text from the first matching element.
  *
@@ -117,9 +119,11 @@ async function typeIntoNthAvailableInput(page, value, selectors, nth = 0) {
       const target = locator.nth(nth);
 
       // Logged on purpose to help debug selector mismatches
-      console.log(
-        `Typing "${value}" into ${nth + 1}º match of selector: ${selector}`,
-      );
+      logger.debug("Typing into input", {
+        value,
+        position: nth + 1,
+        selector
+      });
 
       await target.waitFor({ state: "visible" });
       await target.click();

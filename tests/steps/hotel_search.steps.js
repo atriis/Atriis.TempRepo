@@ -14,6 +14,7 @@
 require("module-alias/register");
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { HotelSearch } = require("../../src/dsl");
+const logger = require("../../src/utils/logger").child("HotelSearch");
 
 setDefaultTimeout(120000);
 
@@ -22,6 +23,6 @@ setDefaultTimeout(120000);
 // ========================================
 
 When("I search for a hotel in {string} for {int} night(s)", async function (location, nights) {
-  console.log(`Searching for hotel in ${location} for ${nights} night(s)`);
+  logger.info("Searching for hotel", { location, nights });
   await HotelSearch.searchHotelByNights(this.page, { where: location, nights: nights });
 });

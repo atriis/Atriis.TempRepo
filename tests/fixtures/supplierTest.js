@@ -1,6 +1,7 @@
 const base = require("@playwright/test");
 const config = require("@config/config");
 const { App } = require("@dsl");
+const logger = require("../../src/utils/logger").child("Fixtures");
 
 /*
  * =============================================================================
@@ -93,7 +94,7 @@ const test = base.test.extend({
     const { provider, userKey } = supplier;
     const user = getUserFromConfig(provider, userKey);
 
-    console.log(`Fixture: logging in as ${provider}.${userKey}`);
+    logger.info("Fixture: logging in as user", { provider, userKey });
 
     await page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
     await App.loginAs(page, user);
@@ -117,7 +118,7 @@ const test = base.test.extend({
     const loginAndStartTrip = async (provider, userKey) => {
       const user = getUserFromConfig(provider, userKey);
 
-      console.log(`Fixture: logging in as ${provider}.${userKey}`);
+      logger.info("Fixture: logging in as user", { provider, userKey });
 
       await page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
       await App.loginAs(page, user);

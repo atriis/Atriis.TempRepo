@@ -9,6 +9,11 @@ on:
     - cron: '0 21 * * *'  # Daily at 21:00 UTC (21:00 Portugal winter / 22:00 Portugal summer)
   workflow_dispatch:
 
+# Structured logging configuration for all jobs
+env:
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+
 # Make scheduled runs able to publish check runs (dorny/test-reporter)
 permissions:
   contents: read

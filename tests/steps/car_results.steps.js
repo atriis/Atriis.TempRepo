@@ -15,6 +15,7 @@
 require("module-alias/register");
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { CarResults } = require("../../src/dsl");
+const logger = require("../../src/utils/logger").child("CarResults");
 
 setDefaultTimeout(120000);
 
@@ -23,11 +24,11 @@ setDefaultTimeout(120000);
 // ========================================
 
 When("I add a car from airport results to cart", async function () {
-  console.log("Adding car from airport results to cart");
+  logger.info("Adding car from airport results to cart");
   await CarResults.addCarAirportFromResultsPageToCart(this.page);
 });
 
 When("I add a car from city center results to cart", async function () {
-  console.log("Adding car from city center results to cart");
+  logger.info("Adding car from city center results to cart");
   await CarResults.addCarCityCenterFromResultsPageToCart(this.page);
 });

@@ -11,6 +11,7 @@ const { Before, After, setDefaultTimeout } = require("@cucumber/cucumber");
 const { launchBrowser } = require("./browserFactory");
 const config = require("../../src/config/config");
 const { App } = require("../../src/dsl");
+const logger = require("../../src/utils/logger").child("Hooks");
 
 setDefaultTimeout(120000);
 
@@ -67,11 +68,11 @@ Before(async function (testCase) {
   );
   
   if (hasParameterizedLogin) {
-    console.log("Skipping Before hook - scenario uses parameterized login");
+    logger.debug("Skipping Before hook - scenario uses parameterized login");
     return;
   }
 
-  console.log("Setting up browser and logging in...");
+  logger.info("Setting up browser and logging in...");
 
   const headlessEnv = process.env.HEADLESS || process.env.AUTOMATION_HEADLESS || "false";
   const isHeadless = headlessEnv === "true";
@@ -106,19 +107,19 @@ Before(async function (testCase) {
     );
   }
 
-  console.log(`Logging in as ${provider}.${userKey}`);
+  logger.info("Logging in as user", { provider, userKey });
 
   await this.page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
   await App.loginAs(this.page, user);
 
   if (!loginOnly) {
-    console.log("Starting new trip...");
+    logger.info("Starting new trip...");
     this.page = await App.bookANewTrip(this.page);
   } else {
-    console.log("Login only - no new trip started");
+    logger.debug("Login only - no new trip started");
   }
 
-  console.log("Setup complete");
+  logger.info("Setup complete");
 });
 
 /**

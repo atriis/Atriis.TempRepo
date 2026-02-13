@@ -1,48 +1,49 @@
 const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, CarSearch, CarResults, Cart, Checkout, TripOverview } = require("@dsl");
+const logger = require('../../../src/utils/logger').child('CarBooking');
 
 test.describe("[@regression][@supplier:all] Car Booking End-to-End Flow", () => {
   test("[@priority:critical] Car Booking – Should complete full car booking flow with cancellation", async ({ newTripPageFor }) => {
     // Step 1: Login
-    console.log("Step 1: Login + Book a New Trip (fixtures)");
+    logger.info('Login + Book a New Trip', { supplier: 'amadeus', user: 'user_one' });
     const page = await newTripPageFor("amadeus", "user_one");
 
     // Step 2: Add traveller - I'm the traveller
-    console.log("Step 2: Add traveller - I am the traveller");
+    logger.info('Adding me as traveler');
     await Search.addMeAsTraveler(page);
     /*
     // Step 3: Search car in LHR
-    console.log('Step 3: Search car in LHR');
+    logger.info('Searching car', { location: 'LHR' });
     await CarSearch.searchCarByPlace(page, { place: 'LHR' });
 
     // Step 4: Add first car and handle conflict modal if appears
-    console.log('Step 4: Add first car to cart');
+    logger.info('Adding first car to cart');
     await CarResults.addCarAirportFromResultsPageToCart(page);
 
     // Step 5: Assert Pending booking
-    console.log('Step 5: Quote is "Pending booking" status');
+    logger.info('Asserting quote status', { status: 'Pending booking' });
     expect(await Cart.isQuotePendingBooking(page)).toBe(true);
 
     // Step 6: Accept terms → Proceed to Checkout
-    console.log('Step 6: Accept terms and proceed to checkout');
+    logger.info('Accepting terms and proceeding to checkout');
     await Cart.acceptTermsAndConditionsAndProceedToCheckout(page);
 
     // Step 7: Wait for checkout page and proceed
-    console.log('Step 7: Proceeding to checkout page');
+    logger.info('Proceeding to checkout page');
 
     // Step 8: Book & Finalize
-    console.log('Step 8: Book and finalize booking');
+    logger.info('Booking and finalizing');
     await Checkout.bookAndFinalize(page);
 
     // Step 9: Assert confirmed status in trip overview
-    console.log('Step 9: Assert confirmed status');
+    logger.info('Asserting confirmed status');
     expect(await TripOverview.isBookingConfirmed(page)).toBe(true);
 
     // Step 10: Cancel car trip with complete validation
-    console.log('Step 10: Cancel car booking');
+    logger.info('Cancelling car booking');
     await TripOverview.cancelTrip(page);
 
-    console.log('Car booking and cancellation flow completed successfully.'); */
+    logger.info('Car booking and cancellation flow completed successfully'); */
   });
 });

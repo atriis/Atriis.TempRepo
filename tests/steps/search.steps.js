@@ -23,22 +23,23 @@ require("module-alias/register");
 
 const { Given, setDefaultTimeout } = require("@cucumber/cucumber");
 const { Search } = require("@dsl");
+const logger = require("../../src/utils/logger").child("Search");
 
 setDefaultTimeout(120000);
 
 // ===== GIVEN STEPS =====
 
 Given("I have added myself as the traveler", async function () {
-  console.log("Adding traveler: I am the traveler");
+  logger.info("Adding traveler: I am the traveler");
   await Search.addMeAsTraveler(this.page);
 });
 
 Given("I have added traveler by name {string}", async function (travelerName) {
-  console.log(`Adding traveler by name: ${travelerName}`);
+  logger.info("Adding traveler by name", { travelerName });
   await Search.addTravelerByName(this.page, travelerName);
 });
 
 Given("I have added a random guest traveler", async function () {
-  console.log("Adding random guest traveler");
+  logger.info("Adding random guest traveler");
   await Search.addRandomGuest(this.page);
 });

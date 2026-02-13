@@ -53,6 +53,7 @@ const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { FlightResults } = require("../../src/dsl");
 const { expectNumbersToBeEqual } = require("../../src/assertions/numberAssertions");
+const logger = require("../../src/utils/logger").child("FlightResults");
 
 setDefaultTimeout(120000);
 
@@ -61,12 +62,12 @@ setDefaultTimeout(120000);
 // ========================================
 
 When("I select one flight segment by schedule", async function () {
-  console.log("Selecting one flight segment by schedule");
+  logger.info("Selecting one flight segment by schedule");
   await FlightResults.selectOneSegmentBySchedule(this.page);
 });
 
 When("I wait for the change flight button to be visible", async function () {
-  console.log("Waiting for change flight button to appear");
+  logger.info("Waiting for change flight button to appear");
   const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
@@ -74,12 +75,12 @@ When("I wait for the change flight button to be visible", async function () {
 });
 
 When("I select flight segments by schedule", async function () {
-  console.log("Selecting flight segments by schedule");
+  logger.info("Selecting flight segments by schedule");
   await FlightResults.selectSegmentsBySchedule(this.page);
 });
 
 When("I add the first flight to cart", async function () {
-  console.log("Adding first flight to cart");
+  logger.info("Adding first flight to cart");
   await FlightResults.addFirstFlightToCart(this.page);
 });
 
@@ -88,7 +89,7 @@ When("I add the first flight to cart", async function () {
 // ========================================
 
 When("I filter results by carrier {string}", async function (carrier) {
-  console.log(`Filtering results by carrier: ${carrier}`);
+  logger.info("Filtering results by carrier", { carrier });
   const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
@@ -112,7 +113,7 @@ When("I filter results by carrier {string}", async function (carrier) {
 // ========================================
 
 When("I click on \"Pricing Options\" for the first result", async function () {
-  console.log("Clicking Pricing Options for first result");
+  logger.info("Clicking Pricing Options for first result");
   const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
@@ -124,7 +125,7 @@ When("I click on \"Pricing Options\" for the first result", async function () {
 });
 
 When("I extract the price from first pricing option", async function () {
-  console.log("Extracting price from first pricing option");
+  logger.info("Extracting price from first pricing option");
   const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
@@ -146,31 +147,31 @@ When("I extract the price from first pricing option", async function () {
   if (!this.extractedPrices) this.extractedPrices = [];
   this.extractedPrices.push(price);
   
-  console.log(`Extracted ${this.currentCarrier} pricing option price: ${price}`);
+  logger.info("Extracted pricing option price", { carrier: this.currentCarrier, price });
 });
 
 When("I click to open first pricing options", async function () {
-  console.log("Clicking to open first pricing options");
+  logger.info("Clicking to open first pricing options");
   await FlightResults.clickToOpenPricingOptions(this.page);
 });
 
 When('I select the first option from pricing options', async function () {
-  console.log("Selecting first option from pricing options");
+  logger.info("Selecting first option from pricing options");
   await FlightResults.selectFirstPricingOptionInModal(this.page);
 });
 
 When('I "Select to share" first option from pricing options', async function () {
-  console.log("Selecting first option from pricing options");
+  logger.info("Selecting first option from pricing options");
   await FlightResults.selectToShareFirstPricingOption(this.page);
 });
 
 When("I click share from pricing options", async function () {
-  console.log("Clicking share from pricing options and closing modal");
+  logger.info("Clicking share from pricing options and closing modal");
   await FlightResults.shareFromPricingOptions(this.page);
 });
 
 When("I add to trip from pricing options", async function () {
-  console.log("Clicking add to trip from pricing options");
+  logger.info("Clicking add to trip from pricing options");
   const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
@@ -178,7 +179,7 @@ When("I add to trip from pricing options", async function () {
 });
 
 When("I close pricing options modal", async function () {
-  console.log("Closing pricing options modal");
+  logger.info("Closing pricing options modal");
   const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
@@ -186,7 +187,7 @@ When("I close pricing options modal", async function () {
 });
 
 When("I close fare rules window", async function () {
-  console.log("Closing fare rules window");
+  logger.info("Closing fare rules window");
   const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
@@ -194,7 +195,7 @@ When("I close fare rules window", async function () {
 });
 
 When("I close flight details window", async function () {
-  console.log("Closing flight details window");
+  logger.info("Closing flight details window");
   const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
@@ -206,12 +207,12 @@ When("I close flight details window", async function () {
 // ========================================
 
 When('I click on the "Share" button', async function () {
-  console.log("Clicking Share button");
+  logger.info("Clicking Share button");
   await FlightResults.waitForAddToTripButtonAndClickShareButton(this.page);
 });
 
 When("I select 2 options from carriers {string} and {string}", async function (carrier1, carrier2) {
-  console.log(`Selecting 2 options from carriers ${carrier1} and ${carrier2}`);
+  logger.info("Selecting 2 options from carriers", { carrier1, carrier2 });
   
   if (!this.resultsPrices) this.resultsPrices = {};
   if (!this.carriers) this.carriers = [];
@@ -222,16 +223,16 @@ When("I select 2 options from carriers {string} and {string}", async function (c
   // Filter, get FIRST price (index 0), and share first result from carrier 1
   const result1 = await FlightResults.getPriceAndShareQuoteFromCarrier(this.page, carrier1, 0);
   this.resultsPrices[carrier1] = result1.price;
-  console.log(`Stored ${carrier1} price: ${this.resultsPrices[carrier1]}`);
+  logger.info("Stored price for carrier", { carrier: carrier1, price: this.resultsPrices[carrier1] });
   
   // Filter, get FIRST price (index 0), and share first result from carrier 2
   const result2 = await FlightResults.getPriceAndShareQuoteFromCarrier(this.page, carrier2, 0);
   this.resultsPrices[carrier2] = result2.price;
-  console.log(`Stored ${carrier2} price: ${this.resultsPrices[carrier2]}`);
+  logger.info("Stored price for carrier", { carrier: carrier2, price: this.resultsPrices[carrier2] });
 });
 
 When('I click on the "Share" button to open the share dialog', async function () {
-  console.log("Clicking Share button to open share dialog");
+  logger.info("Clicking Share button to open share dialog");
   const { ResultsPage } = require("../../src/pages/ResultsPage");
   const { CommonPage } = require("../../src/pages/CommonPage");
   const resultsPage = new ResultsPage(this.page);
@@ -242,7 +243,7 @@ When('I click on the "Share" button to open the share dialog', async function ()
 });
 
 When("I scroll into offers and get prices", async function () {
-  console.log("Scrolling into offers and getting prices");
+  logger.info("Scrolling into offers and getting prices");
   const { sharedPrice1, sharedPrice2 } = await FlightResults.scrollIntoOffersAndGetPrices(this.page);
   
   // Store prices using carrier names as keys (in selection order)
@@ -252,17 +253,17 @@ When("I scroll into offers and get prices", async function () {
 });
 
 When("I click to open fare rules", async function () {
-  console.log("Clicking to open fare rules");
+  logger.info("Clicking to open fare rules");
   await FlightResults.clickToOpenFareRules(this.page);
 });
 
 When("I click to open flight details", async function () {
-  console.log("Clicking to open flight details");
+  logger.info("Clicking to open flight details");
   await FlightResults.clickToOpenFlightDetails(this.page);
 });
 
 When("I click to open fare rules from modal", async function () {
-  console.log("Clicking to open fare rules from flight details");
+  logger.info("Clicking to open fare rules from flight details");
   await FlightResults.clickToOpenFareRulesFromResultsModal(this.page);
 });
 
@@ -271,7 +272,7 @@ When("I click to open fare rules from modal", async function () {
 // ========================================
 
 Then("flight results should be available", async function () {
-  console.log("Verifying flight results are available");
+  logger.info("Verifying flight results are available");
   const isDisplayed = await FlightResults.isResultDisplayed(this.page);
   expect(isDisplayed).toBe(true);
 });
@@ -299,11 +300,11 @@ Then("The shared price for carrier {string} should match the price from pricing 
 });
 
 Then("I should see the fare rules note about strictest terms", async function () {
-  console.log("Verifying fare rules note about strictest terms");
+  logger.info("Verifying fare rules note about strictest terms");
   await FlightResults.verifyFareRulesStrictestTermsMessage(this.page);
 });
 
 Then("the green circle icon at index {int} {string} should be displayed in pricing options", async function (index, description) {
-  console.log(`Verifying green circle icon at index ${index} (${description}) is displayed in pricing options`);
+  logger.info("Verifying green circle icon is displayed in pricing options", { index, description });
   await FlightResults.greenCircleIconIsDisplayedInPricingOptions(this.page, index);
 });

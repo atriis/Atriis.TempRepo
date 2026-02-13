@@ -14,6 +14,7 @@
 require("module-alias/register");
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { HotelLevelResults } = require("../../src/dsl");
+const logger = require("../../src/utils/logger").child("HotelResults");
 
 setDefaultTimeout(120000);
 
@@ -22,6 +23,6 @@ setDefaultTimeout(120000);
 // ========================================
 
 When("I select the first available hotel", async function () {
-  console.log("Selecting first hotel option");
+  logger.info("Selecting first hotel option");
   await HotelLevelResults.clickFirstHotelOption(this.page);
 });

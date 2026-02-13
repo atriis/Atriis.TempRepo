@@ -2,37 +2,38 @@ const { test } = require("@fixtures/supplierTest");
 
 const { Search, FlightSearch, FlightResults, Cart, Checkout } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
+const logger = require('../../../src/utils/logger').child('LufthansaBooking');
 
 test.describe("[@regression] Lufthansa NDC - One Way Flight Booking End-to-End Flow", () => {
   test("[@priority:critical] Should complete one-way flight booking end-to-end flow", async ({ newTripPageFor }) => {
     // Step 1: Login
-    console.log("Step 1: Login + Book a New Trip (fixtures)");
+    logger.info('Login + Book a New Trip', { supplier: 'lufthansa', user: 'user_one' });
     const page = await newTripPageFor("lufthansa", "user_one");
 
     // Step 2: Add me as traveler
-    console.log("Step 2: Add me as traveler");
+    logger.info('Adding me as traveler');
     await Search.addMeAsTraveler(page);
 
     // Step 3: Search for a one-way flight (Munich → Frankfurt)
-    console.log("Step 3: Search for a one-way flight (Munich → Frankfurt)");
+    logger.info('Searching one-way flight', { route: 'MUC → FRA' });
     await FlightSearch.searchFlightOneWay(page, "mucToFra");
 
     // Step 4: Select the first available flight and add it to the cart
-    console.log("Step 4: Add first flight to cart");
+    logger.info('Adding first flight to cart');
     await FlightResults.addFirstFlightToCart(page);
 
     // Step 5: Accept terms and continue to checkout
-    console.log("Step 5: Accept terms and proceed to checkout");
+    logger.info('Accepting terms and proceeding to checkout');
     await Cart.acceptTermsAndConditionsAndProceedToCheckout(page);
 
     // Step 6: Complete the booking
-    console.log("Step 6: Complete the booking");
+    logger.info('Completing the booking');
     await Checkout.bookAndFinalize(page);
 
     // Step 7: Verify that the booking is in "Ticketing Complete" state
-    console.log("Step 7: Verify booking is \"Ticketing Complete\" status");
+    logger.info('Verifying booking status', { status: 'Ticketing Complete' });
     await Cart.expectBookingStatus(tripStatus.label.ticketingComplete.status, { page });
 
-    console.log("One-way flight booking end-to-end flow completed successfully.");
+    logger.info('One-way flight booking end-to-end flow completed successfully');
   });
 });

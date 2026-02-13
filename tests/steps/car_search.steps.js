@@ -16,6 +16,7 @@
 require("module-alias/register");
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { CarSearch } = require("../../src/dsl");
+const logger = require("../../src/utils/logger").child("CarSearch");
 
 setDefaultTimeout(120000);
 
@@ -24,16 +25,16 @@ setDefaultTimeout(120000);
 // ========================================
 
 When("I search for a car at {string}", async function (place) {
-  console.log(`Searching for car at: ${place}`);
+  logger.info("Searching for car", { place });
   await CarSearch.searchCarByPlace(this.page, place);
 });
 
 When("I search for a car at {string} with rental agency {string}", async function (place, agencyName) {
-  console.log(`Searching for car at ${place} with agency: ${agencyName}`);
+  logger.info("Searching for car with agency", { place, agencyName });
   await CarSearch.searchCarByPlaceAndRentalAgency(this.page, place, agencyName);
 });
 
 When("I select rental agency {string}", async function (agencyName) {
-  console.log(`Selecting rental agency: ${agencyName}`);
+  logger.info("Selecting rental agency", { agencyName });
   await CarSearch.selectRentalAgencyByName(this.page, agencyName);
 });
