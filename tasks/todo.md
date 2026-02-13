@@ -2,12 +2,9 @@
 
 ## Working Now: 
 Creating some tests with Cucumber.
-Clean up steps and DSL (make sure they match)
 
 ## High Priority
 - [ ] Adjust and create assertions
-- [ ] Adjust pipeline to cucumber.
-- [ ] Added price prompt modal and a huge wait, is it worth? Need to analyze it.
 - [ ] Difference between CommonPages & General Elements, need to analyze it.
 - [ ] Create flight multi-city flow/test
 - [ ] Create a Base Page with common actions (clicks, waits, etc.) — needs research for best approach
