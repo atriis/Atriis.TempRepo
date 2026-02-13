@@ -371,6 +371,7 @@ jobs:
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
+          AMADEUS_RUI_MENDES_USER: ${{ secrets.AMADEUS_RUI_MENDES_USER }}
           SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
