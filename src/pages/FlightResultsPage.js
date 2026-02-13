@@ -89,6 +89,26 @@ class FlightResultsPage {
     await this.page.waitForTimeout(1000);
   }
 
+    /**
+   * Clicks the "Select to share" button within the pricing options drawer.
+   * Uses getByRole for reliable button targeting inside the drawer overlay.
+   * 
+   * @param {number} [index=0] - Index of the pricing option (default: 0 for first option)
+   */
+  async clickSelectButtonInPricingOptionsModal(index = 0) {
+    // Target the button directly inside the pricing options overlay
+    const overlay = this.getPricingOptionsOverlay();
+    const selectButton = overlay
+      .getByRole('button', { name: 'Select' })
+      .nth(index);
+    
+    await selectButton.waitFor({ state: 'visible', timeout: 10000 });
+    await selectButton.click();
+    
+    // Wait for the UI to update after selection
+    await this.page.waitForTimeout(1000);
+  }
+
   /**
    * Waits for the share quote button to be enabled.
    * This is used after selecting a pricing option to ensure the share button becomes clickable.
@@ -193,6 +213,20 @@ class FlightResultsPage {
       .waitFor({ state: 'visible' });
   }
 
+    /**
+   * Waits for the select button with "Select to share" text to be visible.
+   * This is the initial state before selecting an option.
+   *
+   * @param {number} index - Zero-based index of the button (default: 0)
+   */
+  async waitForSelectButtonInPricingOptionsModal(index = 0) {
+    const overlay = this.getPricingOptionsOverlay();
+    await overlay
+      .getByRole('button', { name: 'Select' })
+      .nth(index)
+      .waitFor({ state: 'visible' });
+  }
+
   /**
    * Waits for the select button to change its text to "Unselect" after being clicked.
    *
@@ -276,26 +310,58 @@ class FlightResultsPage {
     });
   }
 
+  // ===== FLIGHT DETAILS INTERACTIONS =====
+
+  /**
+   * Waits for the Flight Details button to be visible.
+   *
+   * @param {number} index - Zero-based index of the button (default: 0)
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
   async waitForFlightDetailsButton(index = 0, timeout = 30000) {
     await this.getFlightDetailsButton()
       .nth(index)
       .waitFor({ state: 'visible', timeout });
   }
 
+  /**
+   * Clicks the Flight Details button to open the flight details view.
+   *
+   * @param {number} index - Zero-based index of the button (default: 0)
+   */
   async clickFlightDetailsButton(index = 0) {
     await this.getFlightDetailsButton()
       .nth(index)
       .click();
-}
+  }
 
-async waitForFlightDetailsHeadline(timeout = 30000) {
-  await this.page.getByRole('heading', {
-    level: 3,
-    name: / - /,
-  }).waitFor({
-    state: 'visible',
-    timeout,
-  });
+  /**
+   * Waits for the flight details headline to be visible.
+   * The headline follows the pattern "Origin - Destination".
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async waitForFlightDetailsHeadline(timeout = 30000) {
+    await this.page.getByRole('heading', {
+      level: 3,
+      name: / - /,
+    }).waitFor({
+      state: 'visible',
+      timeout,
+    });
+  }
+
+async clickAddToTripButtonPricingOptionsModal() {
+  const addButton = this.page.locator(SELECTORS.PRICING_OPTIONS_ADD_TO_TRIP_BUTTON);
+  
+  // Wait for button to be enabled (not disabled)
+  await addButton.waitFor({ state: 'attached', timeout: 10000 });
+  
+  // Additional wait for the disabled attribute to be removed
+  await this.page.waitForTimeout(1500);
+  
+  // Click the button
+  await addButton.click({ timeout: 10000 });
 }
 
 }

@@ -12,7 +12,10 @@ const SELECTORS = {
   OOP_INFO: ".app-out-of-policy",
 
   // Share email elements
-  SHARE_EMAIL_ELEMENT: '.em_grey_txt'
+  SHARE_EMAIL_ELEMENT: '.em_grey_txt',
+
+  // Price elements
+  AMOUNT_VALUE: ".amount"
 
 };
 
@@ -206,6 +209,19 @@ class CommonPage {
    */
   async clickTripCart() {
     await this.getShoppingCartIcon().click();
+  }
+
+  /**
+   * Extracts the displayed price amount from any page.
+   * 
+   * @param {number} index - Zero-based index of the amount element (default: 0)
+   * @returns {Promise<number|null>} The price value or null if not found
+   * @example
+   *   getAmountPriceValue(0)  → first price
+   *   getAmountPriceValue(1)  → second price
+   */
+  async getAmountPriceValue(index = 0) {
+    return extractNumber(this.page, SELECTORS.AMOUNT_VALUE, index);
   }
 }
 

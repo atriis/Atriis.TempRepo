@@ -42,8 +42,9 @@ const Cart = {
     await cartPage.waitForTripCancellationDialogTitle();
     await cartPage.clickConfirmTripCancellationButton();
 
-    // Will FAIL if message is not shown
+    // Verify cancellation was successful
     await cartPage.waitForTripCancelledMessage();
+    await expect(page.getByText("Cancellation confirmed!", { exact: true })).toBeVisible();
 
     // Allow backend and UI to settle
     await page.waitForLoadState("networkidle");

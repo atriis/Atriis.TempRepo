@@ -1,14 +1,12 @@
 const { SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
 const { SELECTORS: GENERAL_SELECTORS } = require("@pages/GeneralElementsPage");
-const { extractNumber } = require("@utils/dom");
 
 // Centralized selectors for ResultsPage only
 const SELECTORS = {
   RESULTS_BUTTON: ".btn.btn--primary",
   SHARE_MAIN_BUTTON: 'button.share-btn.mr-4',
   SHARE_QUOTE_RESULTS_BUTTON: '.share-btn.py-2',
-  SHARE_QUOTE_EMAIL_BUTTON: 'button:has(span:text("email"))',
-  AMOUNT_VALUE: ".amount"
+  SHARE_QUOTE_EMAIL_BUTTON: 'button:has(span:text("email"))'
 };
 
 /**
@@ -126,15 +124,28 @@ class ResultsPage {
     return true;
   }
 
-  // Share Quote button interactions in results page
+  /**
+   * Waits for the main Share button to be visible.
+   * Used before clicking the share button to ensure it's ready.
+   */
   async waitForShareMainButton() {
     await this.page.locator(SELECTORS.SHARE_MAIN_BUTTON).waitFor({ state: "visible" });
   }
 
+  /**
+   * Clicks the main Share button in results.
+   * Opens the share options interface.
+   */
   async clickShareMainButton() {
     await this.page.locator(SELECTORS.SHARE_MAIN_BUTTON).click();
   }
 
+  /**
+   * Clicks the email share button to open the share quote email dialog.
+   * 
+   * Note: Includes a stabilization wait and force click to handle cases
+   * where the button may be temporarily disabled after closing pricing options.
+   */
   async clickShareQuoteToGetEmailPopUp() {
     // Wait a bit for the button to potentially re-enable after closing pricing options
     await this.page.waitForTimeout(1000);
@@ -153,7 +164,9 @@ class ResultsPage {
    *   getAmountPriceValueResults(1)  → second price
    */
   async getAmountPriceValueResults(index = 0) {
-    return extractNumber(this.page, SELECTORS.AMOUNT_VALUE, index);
+    const { CommonPage } = require("@pages/CommonPage");
+    const commonPage = new CommonPage(this.page);
+    return commonPage.getAmountPriceValue(index);
   }
 
 } 

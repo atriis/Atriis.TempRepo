@@ -7,7 +7,7 @@
  *  - "€ 1,987.23"     -> 1987.23
  *  - "  1,987.23  "   -> 1987.23
  */
-export function toNumber(value, label = 'value') {
+function toNumber(value, label = 'value') {
   if (value == null) {
     throw new Error(`${label} is null/undefined`);
   }
@@ -48,3 +48,7 @@ export function toNumber(value, label = 'value') {
 
   return num;
 }
+
+module.exports = {
+  toNumber,
+};

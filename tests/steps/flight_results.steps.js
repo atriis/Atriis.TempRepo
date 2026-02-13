@@ -7,6 +7,7 @@
  *
  * Selection & Cart:
  *   "I select one flight segment by schedule"
+ *   "I wait for the change flight button to be visible"
  *   "I select flight segments by schedule"
  *   "I add the first flight to cart"
  *
@@ -14,12 +15,15 @@
  *   "I filter results by carrier {string}"
  *
  * Pricing Options:
- *   "I click on \"Pricing Options\" for the first result"
+ *   "I click on 'Pricing Options' for the first result"
  *   "I extract the price from first pricing option"
  *   "I click to open first pricing options"
- *   "I select first option from pricing options"
+ *   "I select the first option from pricing options"
+ *   "I 'Select to share' first option from pricing options"
  *   "I click share from pricing options"
+ *   "I add to trip from pricing options"
  *   "I close pricing options modal"
+ * 
  *
  * Fare Rules:
  *   "I click to open fare rules"
@@ -58,6 +62,14 @@ setDefaultTimeout(120000);
 When("I select one flight segment by schedule", async function () {
   console.log("Selecting one flight segment by schedule");
   await FlightResults.selectOneSegmentBySchedule(this.page);
+});
+
+When("I wait for the change flight button to be visible", async function () {
+  console.log("Waiting for change flight button to appear");
+  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
+  const flightResultsPage = new FlightResultsPage(this.page);
+  
+  await flightResultsPage.waitForChangeFlightButton();
 });
 
 When("I select flight segments by schedule", async function () {
@@ -129,6 +141,10 @@ When("I extract the price from first pricing option", async function () {
   }
   this.pricingOptionsPrices[this.currentCarrier].push(price);
   
+  // ALSO store in extractedPrices array for common assertions
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(price);
+  
   console.log(`Extracted ${this.currentCarrier} pricing option price: ${price}`);
 });
 
@@ -137,14 +153,27 @@ When("I click to open first pricing options", async function () {
   await FlightResults.clickToOpenPricingOptions(this.page);
 });
 
-When("I select first option from pricing options", async function () {
+When('I select the first option from pricing options', async function () {
   console.log("Selecting first option from pricing options");
-  await FlightResults.selectFirstPricingOption(this.page);
+  await FlightResults.selectFirstPricingOptionInModal(this.page);
+});
+
+When('I "Select to share" first option from pricing options', async function () {
+  console.log("Selecting first option from pricing options");
+  await FlightResults.selectToShareFirstPricingOption(this.page);
 });
 
 When("I click share from pricing options", async function () {
   console.log("Clicking share from pricing options and closing modal");
   await FlightResults.shareFromPricingOptions(this.page);
+});
+
+When("I add to trip from pricing options", async function () {
+  console.log("Clicking add to trip from pricing options");
+  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
+  const flightResultsPage = new FlightResultsPage(this.page);
+  
+  await flightResultsPage.clickAddToTripButtonPricingOptionsModal();
 });
 
 When("I close pricing options modal", async function () {
@@ -175,7 +204,7 @@ When("I close flight details window", async function () {
 // WHEN STEPS - SHARE QUOTE FLOW
 // ========================================
 
-When("I click on the 'Share' button", async function () {
+When('I click on the "Share" button', async function () {
   console.log("Clicking Share button");
   await FlightResults.waitForAddToTripButtonAndClickShareButton(this.page);
 });
@@ -200,7 +229,7 @@ When("I select 2 options from carriers {string} and {string}", async function (c
   console.log(`Stored ${carrier2} price: ${this.resultsPrices[carrier2]}`);
 });
 
-When("I click on the 'Share' button to open the share dialog", async function () {
+When('I click on the "Share" button to open the share dialog', async function () {
   console.log("Clicking Share button to open share dialog");
   const { ResultsPage } = require("../../src/pages/ResultsPage");
   const { CommonPage } = require("../../src/pages/CommonPage");

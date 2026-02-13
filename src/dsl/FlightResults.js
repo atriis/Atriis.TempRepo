@@ -159,12 +159,22 @@ const FlightResults = {
    * @param {import('playwright').Page} page - Playwright page instance
    * @returns {Promise<{selected: boolean}>} Selection status
    */
-  async selectFirstPricingOption(page) {
+  async selectToShareFirstPricingOption(page) {
     const flightResultsPage = new FlightResultsPage(page);
     
     // Click "Select to share" button for first pricing option
     await flightResultsPage.waitForSelectToShareButton();
     await flightResultsPage.clickSelectToShareButton();
+    
+    return { selected: true };
+  },
+
+  async selectFirstPricingOptionInModal(page) {
+    const flightResultsPage = new FlightResultsPage(page);
+    
+    // Click "Select" button for first pricing option
+    await flightResultsPage.waitForSelectButtonInPricingOptionsModal();
+    await flightResultsPage.clickSelectButtonInPricingOptionsModal();
     
     return { selected: true };
   },

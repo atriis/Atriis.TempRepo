@@ -7,6 +7,7 @@
  *
  * Fare Selection:
  *   "I add the selected fare to cart"
+ *   "I wait for \"Your Selection\" text to be visible"
  *
  * ========================
  */
@@ -21,7 +22,15 @@ setDefaultTimeout(120000);
 // WHEN STEPS - FARE SELECTION
 // ========================================
 
-When("I add the selected fare to cart", async function () {
-  console.log("Adding selected fare to cart");
+When('I add "Your Selection" fare to trip', async function () {
+  console.log('Adding "Your Selection" fare to trip');
   await FlightPricing.addYourSelectionFareToCart(this.page);
+});
+
+When('I wait for "Your Selection" text to be visible', async function () {
+  console.log('Waiting for "Your Selection" text to be visible');
+  const FlightPricingPage = require("../../src/pages/FlightPricingPage");
+  const flightPricingPage = new FlightPricingPage(this.page);
+  
+  await flightPricingPage.waitForYourSelectionText();
 });
