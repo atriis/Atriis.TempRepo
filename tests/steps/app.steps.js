@@ -33,7 +33,7 @@ const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { App } = require("@dsl");
 const config = require("@config/config");
-const { launchBrowser } = require("./browserFactory");
+const { launchBrowser } = require("../support/browserFactory");
 
 setDefaultTimeout(120000);
 
