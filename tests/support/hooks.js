@@ -8,7 +8,7 @@ require("module-alias/register");
  */
 
 const { Before, After, setDefaultTimeout } = require("@cucumber/cucumber");
-const { chromium } = require("playwright");
+const { launchBrowser } = require("./browserFactory");
 const config = require("../../src/config/config");
 const { App } = require("../../src/dsl");
 
@@ -76,10 +76,7 @@ Before(async function (testCase) {
   const headlessEnv = process.env.HEADLESS || process.env.AUTOMATION_HEADLESS || "false";
   const isHeadless = headlessEnv === "true";
 
-  this.browser = await chromium.launch({
-    headless: isHeadless,
-    channel: "chrome",
-  });
+  this.browser = await launchBrowser();
 
   this.context = await this.browser.newContext({
     viewport: { width: 1920, height: 1080 },

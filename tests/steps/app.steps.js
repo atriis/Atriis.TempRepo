@@ -33,7 +33,7 @@ const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { App } = require("@dsl");
 const config = require("@config/config");
-const { chromium } = require("@playwright/test");
+const { launchBrowser } = require("./browserFactory");
 
 setDefaultTimeout(120000);
 
@@ -55,12 +55,9 @@ Given("I am logged in as {string} {string} and ready to book a new trip", async 
   console.log(`Logging in as ${provider}.${user}`);
   
   // Setup browser
-  this.browser = await chromium.launch({
-    headless: config.headless || false,
-    channel: "chrome",
-    slowMo: config.slowMo || 0,
-  });
+  this.browser = await launchBrowser();
   
+
   this.context = await this.browser.newContext();
   this.page = await this.context.newPage();
   

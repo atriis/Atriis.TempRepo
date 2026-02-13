@@ -6,7 +6,7 @@
  */
 
 const { setWorldConstructor } = require("@cucumber/cucumber");
-const { chromium } = require("playwright");
+const { launchBrowser } = require("./browserFactory");
 
 class CustomWorld {
   constructor() {
@@ -19,10 +19,7 @@ class CustomWorld {
    * Initialize Playwright browser and create a new page
    */
   async init() {
-    this.browser = await chromium.launch({
-      headless: process.env.HEADLESS === "true",
-      channel: "chrome",
-    });
+    this.browser = await launchBrowser();
 
     this.context = await this.browser.newContext({
       viewport: { width: 1920, height: 1080 },
