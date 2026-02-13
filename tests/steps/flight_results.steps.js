@@ -43,6 +43,7 @@
  *   "The shared price for carrier {string} should match the prices from results"
  *   "The shared price for carrier {string} should match the price from pricing options"
  *   "I should see the fare rules note about strictest terms"
+ *   "the green circle icon at index {int} {string} should be displayed in pricing options"
  *
  * ========================
  */
@@ -300,4 +301,9 @@ Then("The shared price for carrier {string} should match the price from pricing 
 Then("I should see the fare rules note about strictest terms", async function () {
   console.log("Verifying fare rules note about strictest terms");
   await FlightResults.verifyFareRulesStrictestTermsMessage(this.page);
+});
+
+Then("the green circle icon at index {int} {string} should be displayed in pricing options", async function (index, description) {
+  console.log(`Verifying green circle icon at index ${index} (${description}) is displayed in pricing options`);
+  await FlightResults.greenCircleIconIsDisplayedInPricingOptions(this.page, index);
 });

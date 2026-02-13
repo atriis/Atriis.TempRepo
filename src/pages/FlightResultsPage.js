@@ -16,6 +16,10 @@ const SELECTORS = {
   PRICING_OPTIONS_ADD_TO_TRIP_BUTTON: '.add-btn',
   PRICING_OPTIONS_SHARE_QUOTE_BUTTON: '.share-btn:not(.add-btn)',
   PRICING_OPTIONS_CLOSE_MODAL: '[aria-label="Close this dialog"]',
+  GREEN_CIRCLE_ICON_PRICING_OPTIONS: 'span.material-symbols-outlined.green',
+
+  //Fare rules note
+  FARE_RULES_NOTE: '.note',
 };
 
 /**
@@ -66,7 +70,18 @@ class FlightResultsPage {
    * @returns {import('@playwright/test').Locator}
    */
   getFareRulesNote() {
-    return this.page.locator('.note');
+    return this.page.locator(SELECTORS.FARE_RULES_NOTE);
+  }
+
+  /**
+   * Gets the green circle icon in the pricing options modal.
+   * This icon indicates a successful selection.
+   * @param {number} index - Zero-based index of the icon (default: 0)
+   * @returns {import('@playwright/test').Locator}
+   */
+  getGreenIconInPricingOptions(index = 0) {
+    const overlay = this.getPricingOptionsOverlay();
+    return overlay.locator(SELECTORS.GREEN_CIRCLE_ICON_PRICING_OPTIONS).nth(index);
   }
 
   /**
@@ -364,6 +379,20 @@ async clickAddToTripButtonPricingOptionsModal() {
   await addButton.click({ timeout: 10000 });
 }
 
+/**
+ * Waits for the green circle icon to appear in the pricing options modal.
+ * This icon indicates a successful selection.
+ *
+ * @param {number} index - Zero-based index of the icon (default: 0)
+ * @param {number} timeout - Max wait time in ms (default: 30000)
+ */
+async waitForGreenIconPricingOptionsModal(index = 0, timeout = 30000) {
+  const overlay = this.getPricingOptionsOverlay();
+  await overlay
+    .locator(SELECTORS.GREEN_CIRCLE_ICON_PRICING_OPTIONS)
+    .nth(index)
+    .waitFor({ state: 'visible', timeout });
+}
 }
 
 module.exports = FlightResultsPage;

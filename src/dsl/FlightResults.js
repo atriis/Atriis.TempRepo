@@ -256,6 +256,28 @@ async clickToOpenFareRulesFromResultsModal(page) {
  await FlightResults.clickToOpenFareRules(page, 10);
 },
 
+/**
+ * Verifies the green circle icon is displayed in the pricing options modal.
+ * This icon indicates a successful selection of a pricing option.
+ *
+ * @param {import('playwright').Page} page - Playwright page instance
+ * @param {number} index - Zero-based index of the icon (default: 0)
+ * @returns {Promise<{displayed: boolean}>}
+ */
+async greenCircleIconIsDisplayedInPricingOptions(page, index = 0) {
+  const flightResultsPage = new FlightResultsPage(page);
+  
+  // Wait for the green icon to appear
+  await flightResultsPage.waitForGreenIconPricingOptionsModal(index);
+  
+  // Assert the icon is visible
+  await expect(
+    flightResultsPage.getGreenIconInPricingOptions(index),
+    'Green circle icon should be visible in pricing options'
+  ).toBeVisible();
+  
+  return { displayed: true };
+},
 }
 
 module.exports = FlightResults;

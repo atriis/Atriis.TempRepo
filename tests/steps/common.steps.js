@@ -127,7 +127,13 @@ Then("the sum of prices at index {int} from {string} and index {int} from {strin
   expectSumToBeEqual(priceA, priceB, expectedSum, `Sum [${indexA}] + [${indexB}] vs [${expectedIndex}]`);
 });
 
-// ===== THEN STEPS - NUMBER ASSERTIONS =====
+// ===== THEN STEPS =====
+
+Then('I should see the heading {string}', async function (text) {
+  const { CommonPage } = require("../../src/pages/CommonPage");
+  const commonPage = new CommonPage(this.page);
+  await commonPage.validateHeading(text);
+});
 
 // ===== WHEN STEPS - PRICE EXTRACTION =====
 

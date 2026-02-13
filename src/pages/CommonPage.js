@@ -1,5 +1,6 @@
 const { SELECTORS: GENERAL_SELECTORS } = require("./GeneralElementsPage");
 const { extractNumber } = require("@utils/dom");
+const { expect } = require("@playwright/test");
 
 // Centralized selectors for CommonPage only
 const SELECTORS = {
@@ -222,6 +223,24 @@ class CommonPage {
    */
   async getAmountPriceValue(index = 0) {
     return extractNumber(this.page, SELECTORS.AMOUNT_VALUE, index);
+  }
+
+  /**
+   * Gets a heading element by its text content.
+   * @param {string} text - The text content of the heading
+   * @returns {Locator} Playwright locator for the heading
+   */
+  getHeadingByText(text) {
+    return this.page.getByRole('heading', { name: text });
+  }
+
+  /**
+   * Validates that a heading with the given text is visible.
+   * @param {string} text - The text content of the heading to validate
+   * @returns {Promise<void>}
+   */
+  async validateHeading(text) {
+    await expect(this.getHeadingByText(text)).toBeVisible();
   }
 }
 
