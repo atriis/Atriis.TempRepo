@@ -2,7 +2,7 @@ const { test } = require("@fixtures/supplierTest");
 
 const { Search, AmtrakSearch, Results, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
-const logger = require('../../../src/utils/logger').child('AmtrakAddToCart');
+const logger = require('@utils/logger').child('AmtrakAddToCart');
 
 test.describe("[@regression] Amtrak Add To Cart Flow", () => {
   // Test 1: Round Trip Amtrak Add To Cart Flow

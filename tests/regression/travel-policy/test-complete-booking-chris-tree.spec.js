@@ -2,7 +2,7 @@ const { test } = require("@fixtures/supplierTest");
 const { Search, DynamicAndReferenceFields, FlightSearch, Cart } = require("@dsl");
 const { FlightResults } = require("@src/dsl");
 const tripStatus = require("@data/tripStatus.json");
-const logger = require('../../src/utils/logger').child('ChrisTreeBooking');
+const logger = require('@utils/logger').child('ChrisTreeBooking');
 
 test.describe("[@regression][@travel-policy] Complete Booking with Chris Tree", () => {
   test("[@priority:critical] Complete flight booking workflow with Chris Tree traveler", async ({ newTripPageFor }) => {

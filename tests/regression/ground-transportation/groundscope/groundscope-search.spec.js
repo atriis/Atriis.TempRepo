@@ -2,7 +2,7 @@ const { test } = require("@fixtures/supplierTest");
 
 const { Search, GroundTransportSearch, Results, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
-const logger = require('../../../src/utils/logger').child('GroundScopeSearch');
+const logger = require('@utils/logger').child('GroundScopeSearch');
 
 test.describe("[@regression] Search GroundScope Flow", () => {
   test("[@priority:critical] Search GroundScope – Should complete search flow", async ({ newTripPageFor }) => {

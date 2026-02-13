@@ -2,7 +2,7 @@ const { test } = require("@fixtures/supplierTest");
 
 const { Search, EvolviSearch, EvolviResults, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
-const logger = require('../../../src/utils/logger').child('EvolviAddToCart');
+const logger = require('@utils/logger').child('EvolviAddToCart');
 
 //Note: need to understand why this test is not adding product to cart
 

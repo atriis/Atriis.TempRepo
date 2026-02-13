@@ -2,7 +2,7 @@ const { test } = require("@fixtures/supplierTest");
 
 const { Search, ManualQuoteSearch, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
-const logger = require('../../src/utils/logger').child('ManualQuoteAddToCart');
+const logger = require('@utils/logger').child('ManualQuoteAddToCart');
 
 test.describe("Manual Quote - Add Flight Manual Quote to Cart", () => {
   test("[@priority:critical] Should complete add flight manual quote to cart flow", async ({ newTripPageFor }) => {

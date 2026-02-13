@@ -2,7 +2,7 @@ const { test } = require("@fixtures/supplierTest");
 
 const { Search, FlightSearch, FlightResults, Cart, Checkout } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
-const logger = require('../../../src/utils/logger').child('LufthansaBooking');
+const logger = require('@utils/logger').child('LufthansaBooking');
 
 test.describe("[@regression] Lufthansa NDC - One Way Flight Booking End-to-End Flow", () => {
   test("[@priority:critical] Should complete one-way flight booking end-to-end flow", async ({ newTripPageFor }) => {

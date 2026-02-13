@@ -1,7 +1,7 @@
 const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, CarSearch, CarResults, Cart, Checkout, TripOverview } = require("@dsl");
-const logger = require('../../../src/utils/logger').child('CarBooking');
+const logger = require('@utils/logger').child('CarBooking');
 
 test.describe("[@regression][@supplier:all] Car Booking End-to-End Flow", () => {
   test("[@priority:critical] Car Booking – Should complete full car booking flow with cancellation", async ({ newTripPageFor }) => {

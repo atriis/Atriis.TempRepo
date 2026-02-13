@@ -1,7 +1,7 @@
 const { test } = require("@fixtures/supplierTest");
 
 const { Search, HotelSearch, HotelLevelResults, RoomLevelResults, Cart, Checkout } = require("@dsl");
-const logger = require('../../../src/utils/logger').child('HotelBooking');
+const logger = require('@utils/logger').child('HotelBooking');
 
 test.describe("[@regression] Hotel Booking End-to-End Flow", () => {
   test("[@priority:critical] Hotel Booking – Should complete full hotel booking flow with cancellation", async ({ newTripPageFor }) => {

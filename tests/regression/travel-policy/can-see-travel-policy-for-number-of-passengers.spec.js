@@ -1,6 +1,6 @@
 const { test } = require("@fixtures/supplierTest");
 const { Search, FlightSearch, Results, Cart } = require("@dsl");
-const logger = require('../../src/utils/logger').child('TravelPolicyPassengers');
+const logger = require('@utils/logger').child('TravelPolicyPassengers');
 
 test.describe("[@regression][@travel-policy] 47764 Can see travel policy for number of passengers", () => {
   test("[@priority:high] Should verify OOP indicators and Flight Capacity modal behavior", async ({ newTripPageFor }) => {

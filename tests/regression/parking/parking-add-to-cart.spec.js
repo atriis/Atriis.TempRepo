@@ -2,7 +2,7 @@ const { test } = require("@fixtures/supplierTest");
 
 const { Search, UKParkingSearch, Results, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
-const logger = require('../../src/utils/logger').child('ParkingAddToCart');
+const logger = require('@utils/logger').child('ParkingAddToCart');
 
 test.describe("Parking - Add UK Parking to Cart", () => {
   test("[@priority:critical] Should complete add UK parking to cart flow", async ({ newTripPageFor }) => {

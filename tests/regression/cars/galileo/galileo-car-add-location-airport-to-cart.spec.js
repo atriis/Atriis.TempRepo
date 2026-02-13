@@ -2,7 +2,7 @@ const { test } = require("@fixtures/supplierTest");
 
 const { Search, CarSearch, CarResults, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
-const logger = require('../../../src/utils/logger').child('CarAddToCart');
+const logger = require('@utils/logger').child('CarAddToCart');
 
 test.describe("[@regression][@supplier:galileo] Galileo - Add Car From Airport Location To Cart", () => {
   test("[@priority:critical] Should complete adding a car from airport location to cart", async ({ newTripPageFor }) => {

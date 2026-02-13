@@ -1,7 +1,7 @@
 const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, HotelSearch, HotelLevelResults, RoomLevelResults, Cart } = require("@dsl");
-const logger = require('../../../src/utils/logger').child('HotelShareQuote');
+const logger = require('@utils/logger').child('HotelShareQuote');
 
 test.describe("[@regression] Hotel Share Quote", () => {
   test("[@priority:critical] Hotel Search and Share Quote – Should complete hotel search, add to cart, and share quote with success notification", async ({ newTripPageFor }) => {

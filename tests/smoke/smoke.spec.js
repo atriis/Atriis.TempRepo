@@ -1,7 +1,7 @@
 const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, FlightSearch, FlightResults, Trips, App } = require("@dsl");
-const logger = require('../../src/utils/logger').child('SmokeTests');
+const logger = require('@utils/logger').child('SmokeTests');
 
 test.describe("[@smoke] Smoke Tests", () => {
   // Test 1: Application Load Test

@@ -1,7 +1,7 @@
 const { test } = require("@fixtures/supplierTest");
 
 const { Search } = require("@dsl");
-const logger = require('../../../src/utils/logger').child('CrossSupplierCars');
+const logger = require('@utils/logger').child('CrossSupplierCars');
 
 //This is a test just to verify the cross-supplier logic works, hence this test will run one time for each supplier
 test.describe("[@regression][@supplier:all] Cross-supplier Cars Login and Add Traveller Flow", () => {

@@ -2,7 +2,7 @@ const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, FlightSearch, FlightResults, CartFOP, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
-const logger = require('../../../src/utils/logger').child('FlightWithPayment');
+const logger = require('@utils/logger').child('FlightWithPayment');
 
 test.describe("[@regression] Add Flight to Cart with Payment", () => {
   test("[@priority:critical] Add One-Way Flight to Cart with Credit Card – Should complete one-way add to cart flow with payment method", async ({ newTripPageFor }) => {

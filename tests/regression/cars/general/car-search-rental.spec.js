@@ -1,7 +1,7 @@
 const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, CarSearch, CarResults, Cart } = require("@dsl");
-const logger = require('../../../src/utils/logger').child('CarSearchRental');
+const logger = require('@utils/logger').child('CarSearchRental');
 
 test.describe("[@regression][@supplier:gds] Car City Center Search by Rental Agency", () => {
   test("[@priority:high] Car Search – Should complete full city center car search by rental agency", async ({ newTripPageFor }) => {

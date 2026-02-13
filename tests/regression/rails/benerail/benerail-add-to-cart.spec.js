@@ -2,7 +2,7 @@ const { test } = require("@fixtures/supplierTest");
 
 const { Search, BenerailSearch, Results, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
-const logger = require('../../../src/utils/logger').child('BenerailAddToCart');
+const logger = require('@utils/logger').child('BenerailAddToCart');
 
 test.describe("[@regression] Benerail Add To Cart Flow", () => {
   // Test 1: Round Trip Benerail Add To Cart Flow

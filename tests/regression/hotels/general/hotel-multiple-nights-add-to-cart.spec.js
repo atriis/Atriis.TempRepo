@@ -2,7 +2,7 @@ const { test } = require("@fixtures/supplierTest");
 
 const { Search, HotelSearch, HotelLevelResults, RoomLevelResults, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
-const logger = require('../../../src/utils/logger').child('HotelAddToCart');
+const logger = require('@utils/logger').child('HotelAddToCart');
 
 test.describe("[@regression] Hotel Add To Cart Multiple Nights", () => {
   test("[@priority:critical] Hotel Add To Cart – Should complete full hotel add to cart flow for multiple nights", async ({ newTripPageFor }) => {
