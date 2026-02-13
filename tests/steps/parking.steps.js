@@ -16,7 +16,7 @@ require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { UKParkingSearch } = require("../../src/dsl");
-const logger = require("../../src/utils/logger").child("Parking");
+const logger = require("@utils/logger").child("Parking");
 
 setDefaultTimeout(120000);
 

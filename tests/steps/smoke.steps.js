@@ -30,7 +30,7 @@ require("module-alias/register");
 const { Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { FlightResults } = require("@dsl");
-const logger = require("../../src/utils/logger").child("Smoke");
+const logger = require("@utils/logger").child("Smoke");
 
 setDefaultTimeout(120000);
 

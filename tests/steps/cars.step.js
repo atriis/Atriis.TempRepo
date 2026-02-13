@@ -23,7 +23,7 @@ const {
   CarSearch,
   CarResults,
 } = require("../../src/dsl");
-const logger = require("../../src/utils/logger").child("Cars");
+const logger = require("@utils/logger").child("Cars");
 
 setDefaultTimeout(120000);
 

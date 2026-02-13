@@ -34,7 +34,7 @@ const { expect } = require("@playwright/test");
 const { App } = require("@dsl");
 const config = require("@config/config");
 const { launchBrowser } = require("../support/browserFactory");
-const logger = require("../../src/utils/logger").child("App");
+const logger = require("@utils/logger").child("App");
 
 setDefaultTimeout(120000);
 

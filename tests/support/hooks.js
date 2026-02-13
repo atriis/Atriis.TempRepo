@@ -11,7 +11,7 @@ const { Before, After, setDefaultTimeout } = require("@cucumber/cucumber");
 const { launchBrowser } = require("./browserFactory");
 const config = require("../../src/config/config");
 const { App } = require("../../src/dsl");
-const logger = require("../../src/utils/logger").child("Hooks");
+const logger = require("@utils/logger").child("Hooks");
 
 setDefaultTimeout(120000);
 

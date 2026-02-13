@@ -53,7 +53,7 @@ const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { FlightResults } = require("../../src/dsl");
 const { expectNumbersToBeEqual } = require("../../src/assertions/numberAssertions");
-const logger = require("../../src/utils/logger").child("FlightResults");
+const logger = require("@utils/logger").child("FlightResults");
 
 setDefaultTimeout(120000);
 

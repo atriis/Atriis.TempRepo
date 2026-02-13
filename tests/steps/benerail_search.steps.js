@@ -20,7 +20,7 @@ require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { BenerailSearch } = require("@dsl");
-const logger = require("../../src/utils/logger").child("BenerailSearch");
+const logger = require("@utils/logger").child("BenerailSearch");
 
 setDefaultTimeout(120000);
 

@@ -15,7 +15,7 @@
 require("module-alias/register");
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { FlightPricing } = require("../../src/dsl");
-const logger = require("../../src/utils/logger").child("FlightPricing");
+const logger = require("@utils/logger").child("FlightPricing");
 
 setDefaultTimeout(120000);
 

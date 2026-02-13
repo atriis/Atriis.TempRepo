@@ -20,7 +20,7 @@ require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { EvolviResults } = require("@dsl");
-const logger = require("../../src/utils/logger").child("EvolviResults");
+const logger = require("@utils/logger").child("EvolviResults");
 
 setDefaultTimeout(120000);
 

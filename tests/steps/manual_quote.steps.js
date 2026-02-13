@@ -25,7 +25,7 @@ const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const {
   ManualQuoteSearch,
 } = require("../../src/dsl");
-const logger = require("../../src/utils/logger").child("ManualQuote");
+const logger = require("@utils/logger").child("ManualQuote");
 
 setDefaultTimeout(120000);
 

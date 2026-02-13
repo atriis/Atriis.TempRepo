@@ -20,7 +20,7 @@ require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { Checkout } = require("@dsl");
-const logger = require("../../src/utils/logger").child("Checkout");
+const logger = require("@utils/logger").child("Checkout");
 
 setDefaultTimeout(120000);
 

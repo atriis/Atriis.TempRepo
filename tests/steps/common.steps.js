@@ -38,7 +38,7 @@ const {
   expectSumToBeEqual,
 } = require("../../src/assertions/numberAssertions");
 const { extractPriceFromLocation } = require("../../src/utils/priceExtraction");
-const logger = require("../../src/utils/logger").child("Common");
+const logger = require("@utils/logger").child("Common");
 
 setDefaultTimeout(120000);
 

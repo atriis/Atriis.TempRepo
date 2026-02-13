@@ -22,7 +22,7 @@ require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { Trips } = require("@dsl");
-const logger = require("../../src/utils/logger").child("Trips");
+const logger = require("@utils/logger").child("Trips");
 
 setDefaultTimeout(120000);
 

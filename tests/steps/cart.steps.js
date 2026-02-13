@@ -57,7 +57,7 @@ const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const Cart = require("@dsl/Cart");
 const { CartPage } = require("@pages/CartPage");
 const tripStatus = require("@data/tripStatus.json");
-const logger = require("../../src/utils/logger").child("Cart");
+const logger = require("@utils/logger").child("Cart");
 
 setDefaultTimeout(120000);
 

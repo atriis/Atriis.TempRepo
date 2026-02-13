@@ -23,7 +23,7 @@ require("module-alias/register");
 
 const { Given, setDefaultTimeout } = require("@cucumber/cucumber");
 const { Search } = require("@dsl");
-const logger = require("../../src/utils/logger").child("Search");
+const logger = require("@utils/logger").child("Search");
 
 setDefaultTimeout(120000);
 

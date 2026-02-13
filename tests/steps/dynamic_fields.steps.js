@@ -19,7 +19,7 @@ require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { DynamicAndReferenceFields } = require("../../src/dsl");
-const logger = require("../../src/utils/logger").child("DynamicFields");
+const logger = require("@utils/logger").child("DynamicFields");
 
 setDefaultTimeout(120000);
 

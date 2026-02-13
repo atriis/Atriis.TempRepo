@@ -23,7 +23,7 @@ require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { BenerailResults } = require("@dsl");
-const logger = require("../../src/utils/logger").child("BenerailResults");
+const logger = require("@utils/logger").child("BenerailResults");
 
 setDefaultTimeout(120000);
 

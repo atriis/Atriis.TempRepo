@@ -19,7 +19,7 @@ require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { AmtrakSearch } = require("../../src/dsl");
-const logger = require("../../src/utils/logger").child("AmtrakSearch");
+const logger = require("@utils/logger").child("AmtrakSearch");
 
 setDefaultTimeout(120000);
 

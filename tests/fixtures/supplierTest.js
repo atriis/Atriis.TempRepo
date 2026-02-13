@@ -1,7 +1,7 @@
 const base = require("@playwright/test");
 const config = require("@config/config");
 const { App } = require("@dsl");
-const logger = require("../../src/utils/logger").child("Fixtures");
+const logger = require("@utils/logger").child("Fixtures");
 
 /*
  * =============================================================================

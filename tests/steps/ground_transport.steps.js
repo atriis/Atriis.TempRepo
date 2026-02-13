@@ -16,7 +16,7 @@ require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { GroundTransportSearch } = require("../../src/dsl");
-const logger = require("../../src/utils/logger").child("GroundTransport");
+const logger = require("@utils/logger").child("GroundTransport");
 
 setDefaultTimeout(120000);
 
