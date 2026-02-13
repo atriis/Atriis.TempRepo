@@ -1,7 +1,7 @@
 const FlightPricingPage = require("@pages/FlightPricingPage");
 const { CartPage } = require("@pages/CartPage");
 const { ResultsPage } = require("@pages/ResultsPage");
-const Results = require("@dsl/Results");
+const Results = require("./Results");
 
 /**
  * FlightPricing DSL
