@@ -145,13 +145,15 @@ Then("I successfully cancel the trip", async function () {
 
 Then("the booking status should be {string}", async function (status) {
   console.log(`Verifying booking status is: ${status}`);
-
   if (status === "Pending booking") {
     await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page: this.page });
   } else if (status === "On Hold") {
     await Cart.expectBookingStatus(tripStatus.label.onHold.status, { page: this.page });
   } else if (status === "Ticketing Complete") {
     await Cart.expectBookingStatus(tripStatus.label.ticketingComplete.status, { page: this.page });
+  }
+  else if (status === "Confirmed") {
+    await Cart.expectBookingStatus(tripStatus.label.confirmed.status, { page: this.page });
   } else {
     throw new Error(`Unknown booking status: ${status}`);
   }

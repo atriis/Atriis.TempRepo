@@ -48,7 +48,7 @@ const Search = {
     const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
 
     await searchPage.clickAddTravelerButton();
-    await searchPage.clickGuestTypeModal();
+    await searchPage.clickAddGuestTravelerButton();
     await searchPage.fillInRandomFirstName(firstName);
     // The SearchPage method name is used exactly as in your project
     await searchPage.fillInRandomLastName(lastName);
@@ -56,7 +56,7 @@ const Search = {
     await searchPage.fillInRandomDateOfBirth(dateOfBirth);
     await searchPage.fillInRandomEmail(email);
     await searchPage.fillInRandomPhone(phone);
-    await searchPage.clickToAddGuestModal();
+    await searchPage.clickAddGuestButton();
     await searchPage.waitForStarIcon();
 
     return {

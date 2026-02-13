@@ -22,7 +22,6 @@ const SELECTORS = {
 
   // Search and guest management
   SEARCH_BUTTON: "button.search-btn",
-  GUEST_TYPE_MODAL_BUTTON: ".add-guest-btn",
 
   // Guest information form
   FIRST_NAME_INPUT: "[placeholder='First Name']",
@@ -31,8 +30,7 @@ const SELECTORS = {
   GENDER_OPTION_MALE: "role=option[name='Male']",
   DATE_OF_BIRTH_INPUT: "[placeholder='DD/MM/YYYY']",
   EMAIL_INPUT: "[placeholder='Enter email address']",
-  PHONE_INPUT: "[placeholder='[City code]-[3 numbers prefix]-[4 digits]']",
-  ADD_GUEST_MODAL_BUTTON: ".app-footer .add-guest-btn",
+  PHONE_INPUT: "[placeholder='Enter phone number']",
 
   // Trip types
   TRIP_TYPE_RADIO_LABELS:
@@ -144,10 +142,42 @@ class SearchPage {
     await this.page.click(SELECTORS.FIRST_TRAVELER_OPTION);
   }
 
-
   // Opens the guest modal to add a new traveler
-  async clickGuestTypeModal() {
-    await this.page.click(SELECTORS.GUEST_TYPE_MODAL_BUTTON);
+  /**
+   * Gets the "Add guest traveler" button that opens the guest form modal.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getAddGuestTravelerButton() {
+    return this.page.getByRole('button', { name: 'Add guest traveler' });
+  }
+
+  /**
+   * Clicks the "Add guest traveler" button to open the guest form modal.
+   */
+  async clickAddGuestTravelerButton() {
+    await this.getAddGuestTravelerButton().click();
+  }
+
+  /**
+   * Gets the "Add guest" button that confirms and submits the guest form.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getAddGuestButton() {
+    return this.page.getByRole('button', { name: 'Add guest' });
+  }
+
+  /**
+   * Waits for the "Add guest" button to be visible.
+   */
+  async waitForAddGuestButton() {
+    await this.getAddGuestButton().waitFor({ state: 'visible' });
+  }
+
+  /**
+   * Clicks the "Add guest" button to submit the guest form and add the traveler.
+   */
+  async clickAddGuestButton() {
+    await this.getAddGuestButton().click();
   }
 
   // Guest form fields
@@ -174,10 +204,6 @@ class SearchPage {
 
   async fillInRandomPhone(phoneNumber) {
     await this.page.fill(SELECTORS.PHONE_INPUT, phoneNumber);
-  }
-
-  async clickToAddGuestModal() {
-    await this.page.click(SELECTORS.ADD_GUEST_MODAL_BUTTON);
   }
 
   /**

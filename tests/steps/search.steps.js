@@ -40,6 +40,5 @@ Given("I have added traveler by name {string}", async function (travelerName) {
 
 Given("I have added a random guest traveler", async function () {
   console.log("Adding random guest traveler");
-  const result = await Search.addRandomGuest(this.page);
-  console.log(`Guest added: ${result.guestData.firstName} ${result.guestData.lastName}`);
+  await Search.addRandomGuest(this.page);
 });
