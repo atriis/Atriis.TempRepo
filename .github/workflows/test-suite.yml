@@ -345,6 +345,7 @@ jobs:
 
       - run: npm ci
       - run: npx playwright install --with-deps
+      - run: mkdir -p test-results
 
       - name: Run Daily Car Tests
         run: npx cucumber-js tests/features/cars/daily_cars/
@@ -380,6 +381,7 @@ jobs:
 
       - run: npm ci
       - run: npx playwright install --with-deps
+      - run: mkdir -p test-results
 
       - name: Run Daily Flight Tests
         run: npx cucumber-js tests/features/flights/daily_flights/
@@ -443,14 +445,21 @@ jobs:
         id: check-results
         shell: bash
         run: |
+          echo "📁 Checking for test results..."
           if [ -d "all-results" ]; then
+            echo "Directory structure:"
+            ls -la all-results/ || echo "Failed to list all-results"
+            
             xml_count=$(find all-results -name "*.xml" -type f 2>/dev/null | wc -l)
             if [ "$xml_count" -gt 0 ]; then
               echo "found=true" >> $GITHUB_OUTPUT
-              echo "✅ Found $xml_count test result file(s)"
+              echo "✅ Found $xml_count test result file(s):"
+              find all-results -name "*.xml" -type f 2>/dev/null | sed 's/^/  - /'
             else
               echo "found=false" >> $GITHUB_OUTPUT
               echo "⚠️ No test result XML files found in artifacts"
+              echo "Contents of all-results:"
+              find all-results -type f 2>/dev/null | head -20 || echo "No files found"
             fi
           else
             echo "found=false" >> $GITHUB_OUTPUT
