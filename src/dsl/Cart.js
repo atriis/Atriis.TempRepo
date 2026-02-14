@@ -232,6 +232,10 @@ const Cart = {
   /**
    * Accepts terms and proceeds to checkout.
    * Used by Flights, Hotels, and Cars.
+   * 
+   * After clicking "Proceed to Checkout", one of two things happens:
+   * 1. Checkout page loads immediately (checkoutHeading visible)
+   * 2. Price change modal appears first (proceedBtn visible)
    *
    * @param {import('playwright').Page} page
    * @returns {Promise<{proceeded: boolean, clickedModal: boolean}>}
@@ -243,22 +247,30 @@ const Cart = {
     await cartPage.waitForProceedToCheckout();
     await cartPage.clickProceedToCheckout();
 
-    // Race: wait for either the checkout heading or the price change modal (up to 45s)
+    // Wait for either checkout heading OR price change modal (whichever appears first)
     const proceedBtn = cartPage.getProceedWithChangeButton();
-    await Promise.race([
-      checkoutHeading.waitFor({ state: "visible", timeout: 45000 }).catch(() => {}),
-      proceedBtn.waitFor({ state: "visible", timeout: 45000 }).catch(() => {}),
-    ]);
+    
+    try {
+      await Promise.race([
+        checkoutHeading.waitFor({ state: "visible", timeout: 45000 }),
+        proceedBtn.waitFor({ state: "visible", timeout: 45000 }),
+      ]);
+    } catch (error) {
+      // If both timeout, provide clear error message
+      throw new Error(
+        `Neither checkout page nor price change modal appeared within 45s. ` +
+        `Either navigation failed or page is stuck. Original error: ${error.message}`
+      );
+    }
 
     // If the modal appeared, click it and wait for checkout heading
     let clickedModal = false;
     if (await proceedBtn.isVisible()) {
       await proceedBtn.click();
       clickedModal = true;
+      // Wait for checkout page to load after dismissing modal
+      await checkoutHeading.waitFor({ state: "visible", timeout: 30000 });
     }
-
-    // Confirm checkout page loaded (either directly or after dismissing modal)
-    await checkoutHeading.waitFor({ state: "visible", timeout: 30000 });
 
     return { proceeded: true, clickedModal };
   },
