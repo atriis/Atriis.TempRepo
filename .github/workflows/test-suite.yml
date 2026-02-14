@@ -466,16 +466,26 @@ jobs:
             echo "⚠️ No artifacts directory found (all tests may have failed early)"
           fi
 
-      - name: Publish All Tests (One Report)
+      - name: Publish Playwright Test Results
         if: always() && steps.check-results.outputs.found == 'true'
         uses: dorny/test-reporter@v1
         with:
-          name: Atriis Test Automation Suite
+          name: Playwright Tests
           reporter: java-junit
-          path: |
-            all-results/**/results.xml
-            all-results/**/cucumber-junit.xml
+          path: 'all-results/**/results.xml'
           fail-on-error: false
+        continue-on-error: true
+
+      - name: Publish Cucumber Test Results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Cucumber Tests
+          reporter: java-junit
+          path: 'all-results/**/cucumber-junit.xml'
+          fail-on-error: false
+          fail-on-empty: false
+        continue-on-error: true
 
       - name: Report No Results Found
         if: always() && steps.check-results.outputs.found == 'false'
