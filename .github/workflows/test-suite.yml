@@ -443,12 +443,18 @@ jobs:
         id: check-results
         shell: bash
         run: |
-          if find all-results -name "*.xml" -type f | grep -q .; then
-            echo "found=true" >> $GITHUB_OUTPUT
-            echo "Test result files found"
+          if [ -d "all-results" ]; then
+            xml_count=$(find all-results -name "*.xml" -type f 2>/dev/null | wc -l)
+            if [ "$xml_count" -gt 0 ]; then
+              echo "found=true" >> $GITHUB_OUTPUT
+              echo "✅ Found $xml_count test result file(s)"
+            else
+              echo "found=false" >> $GITHUB_OUTPUT
+              echo "⚠️ No test result XML files found in artifacts"
+            fi
           else
             echo "found=false" >> $GITHUB_OUTPUT
-            echo "No test result files found"
+            echo "⚠️ No artifacts directory found (all tests may have failed early)"
           fi
 
       - name: Publish All Tests (One Report)
@@ -461,3 +467,11 @@ jobs:
             all-results/**/results.xml
             all-results/**/cucumber-junit.xml
           fail-on-error: false
+
+      - name: Report No Results Found
+        if: always() && steps.check-results.outputs.found == 'false'
+        run: |
+          echo "::warning::No test results found to publish. This typically means:"
+          echo "  - Tests failed during setup (before generating XML files)"
+          echo "  - Tests crashed or timed out early"
+          echo "  - Check individual job logs for details"
