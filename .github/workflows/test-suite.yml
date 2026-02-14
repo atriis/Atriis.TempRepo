@@ -35,7 +35,6 @@ jobs:
 
       - name: Run Smoke Tests
         run: npx playwright test --project=smoke
-        continue-on-error: true
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
@@ -69,7 +68,6 @@ jobs:
 
       - name: Run Galileo Car Tests
         run: npx playwright test --project=cars:galileo
-        continue-on-error: true
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
@@ -104,7 +102,6 @@ jobs:
 
       - name: Run General Flight Tests
         run: npx playwright test tests/regression/flights/general
-        continue-on-error: true
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
@@ -139,7 +136,6 @@ jobs:
 
       - name: Run Lufthansa Flight Tests
         run: npx playwright test tests/regression/flights/lufthansa
-        continue-on-error: true
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           LUFTHANSA_USER_ONE_EMAIL: ${{ secrets.LUFTHANSA_USER_ONE_EMAIL }}
@@ -173,7 +169,6 @@ jobs:
 
       - name: Run Cross-Supplier Cars Tests
         run: npx playwright test tests/regression/cars/cross-supplier --workers=1
-        continue-on-error: true
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
@@ -210,7 +205,6 @@ jobs:
 
       - name: Run General Hotels Tests
         run: npx playwright test tests/regression/hotels/general
-        continue-on-error: true
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           RATEHAWK_USER_ONE_EMAIL: ${{ secrets.RATEHAWK_USER_ONE_EMAIL }}
@@ -244,7 +238,6 @@ jobs:
 
       - name: Run Galileo Hotel Tests
         run: npx playwright test tests/regression/hotels/galileo
-        continue-on-error: true
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
@@ -279,7 +272,6 @@ jobs:
 
       - name: Run Manual Quote Tests
         run: npx playwright test tests/regression/manual-quote
-        continue-on-error: true
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
@@ -313,7 +305,6 @@ jobs:
 
       - name: Run Travel Policy & Credit Card FOP Regression Tests
         run: npx playwright test tests/regression/travel-policy/can-see-travel-policy-for-number-of-passengers.spec.js tests/regression/flights/amadeus/general-flight-add-to-cart-with-payment.spec.js
-        continue-on-error: true
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           TRAVEL_POLICY_USER_ONE_EMAIL: ${{ secrets.TRAVEL_POLICY_USER_ONE_EMAIL }}
@@ -349,7 +340,6 @@ jobs:
 
       - name: Run Daily Car Tests
         run: npx cucumber-js tests/features/cars/daily_cars/
-        continue-on-error: true
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
@@ -385,7 +375,6 @@ jobs:
 
       - name: Run Daily Flight Tests
         run: npx cucumber-js tests/features/flights/daily_flights/
-        continue-on-error: true
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
