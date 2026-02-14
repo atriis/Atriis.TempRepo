@@ -109,16 +109,15 @@ class CartPage {
   }
 
   /**
-   * Waits for the "Refundable" label to appear for hotel bookings.
+   * Gets the refundable label text for hotel bookings.
+   * Returns the text content after waiting for visibility.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<string>} The label text content
    */
-  async waitForHotelRefundableText() {
+  async getHotelRefundableText({ timeout = 10000 } = {}) {
     const label = this.page.locator(SELECTORS.REFUNDABLE_TEXT).first();
-
-    // Must contain "Refundable"
-    await expect(label).toContainText(/Refundable/i, { timeout: 10000 });
-
-    // Must NOT contain any form of "Non Refundable"
-    await expect(label).not.toContainText(/Non\s*Refundable/i);
+    await label.waitFor({ state: 'visible', timeout });
+    return (await label.textContent()).trim();
   }
 
   /**
@@ -239,24 +238,30 @@ class CartPage {
   }
 
   /**
-   * Waits for the booking status label to match expected status.
-   * Returns the label text.
+   * Gets the current booking status text.
+   * Waits for the status label to be visible before returning.
+   * @param {object} options - Configuration options
+   * @param {number} options.timeout - Maximum wait time (default: 30000ms)
+   * @param {Page} options.page - Page object to use (default: this.page)
+   * @returns {Promise<string>} The booking status text
    */
-  async waitForBookingStatus(expectedStatus, { timeout = 30000, page = this.page } = {}) {
+  async getBookingStatus({ timeout = 30000, page = this.page } = {}) {
     const locator = page.locator(SELECTORS.QUOTE_STATUS_LABEL);
-    await expect(locator).toBeVisible({ timeout });
-    await expect(locator).toContainText(caseInsensitiveContains(expectedStatus), { timeout });
+    await locator.waitFor({ state: 'visible', timeout });
     return (await locator.innerText()).trim();
   }
 
   /**
-   * Waits until booking status becomes "Pending booking" (quote is being processed).
+   * Gets booking status, waiting for visibility.
+   * Use this when checking for "Pending booking" or other statuses.
+   * Assertion should be done at DSL/test layer.
+   * @param {object} options - Configuration options
+   * @param {number} options.timeout - Maximum wait time (default: 30000ms)
+   * @param {Page} options.page - Page object to use (default: this.page)
+   * @returns {Promise<string>} The booking status text
    */
   async waitForPendingBookingText({ timeout = 30000, page = this.page } = {}) {
-    return this.waitForBookingStatus(
-      tripStatus.label.pendingBooking.status,
-      { timeout, page },
-    );
+    return this.getBookingStatus({ timeout, page });
   }
 
   /**

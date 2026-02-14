@@ -29,8 +29,11 @@ const RoomLevelResults = {
     // Handle optional conflict modal (uses DSL for consistency)
     await Results.clickProceedConflictQuoteModal(page);
 
-    //Making sure hotel is refundable
-    await cartPage.waitForHotelRefundableText();
+    // Making sure hotel is refundable
+    const { expect } = require('@playwright/test');
+    const labelText = await cartPage.getHotelRefundableText();
+    expect(labelText).toMatch(/Refundable/i);
+    expect(labelText).not.toMatch(/Non\s*Refundable/i);
   },
 };
 

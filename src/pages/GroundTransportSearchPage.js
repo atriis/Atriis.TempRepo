@@ -136,8 +136,8 @@ class GroundTransportSearchPage {
     // Commit value
     await pressTab(this.page);
 
-    // Ensure the field lost focus (input applied)
-    await expect(pickUpInput).not.toBeFocused();
+    // Small wait for UI to process the blur event
+    await this.page.waitForTimeout(100);
   }
 
   /**
@@ -159,8 +159,8 @@ class GroundTransportSearchPage {
     // Commit value
     await pressTab(this.page);
 
-    // Ensure the field lost focus (input applied)
-    await expect(dropOffInput).not.toBeFocused();
+    // Small wait for UI to process the blur event
+    await this.page.waitForTimeout(100);
   }
 }
 

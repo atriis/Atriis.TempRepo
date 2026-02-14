@@ -13,10 +13,13 @@ const Search = {
    * UI should show the "star" icon as confirmation.
    */
   async addMeAsTraveler(page) {
+    const { expect } = require('@playwright/test');
     const searchPage = new SearchPage(page);
     await searchPage.waitForAddMeButton();
     await searchPage.clickAddMe();
-    await searchPage.waitForStarIcon();
+    
+    const starIconVisible = await searchPage.isStarIconVisible();
+    expect(starIconVisible, "Star icon should be visible after adding traveler").toBe(true);
   },
 
   /**
@@ -24,10 +27,13 @@ const Search = {
    * UI should show the "star" icon as confirmation.
    */
   async fillInTravelerNameAndSave(page, name) {
+    const { expect } = require('@playwright/test');
     const searchPage = new SearchPage(page);
     await searchPage.fillInTravelerName(name);
     await searchPage.selectFirstTravelerNameOption();
-    await searchPage.waitForStarIcon();
+    
+    const starIconVisible = await searchPage.isStarIconVisible();
+    expect(starIconVisible, "Star icon should be visible after selecting traveler").toBe(true);
   },
 
   /**
@@ -44,6 +50,7 @@ const Search = {
    * Returns the generated data for test/debug use.
    */
   async addRandomGuest(page) {
+    const { expect } = require('@playwright/test');
     const searchPage = new SearchPage(page);
     const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
 
@@ -57,7 +64,9 @@ const Search = {
     await searchPage.fillInRandomEmail(email);
     await searchPage.fillInRandomPhone(phone);
     await searchPage.clickAddGuestButton();
-    await searchPage.waitForStarIcon();
+    
+    const starIconVisible = await searchPage.isStarIconVisible();
+    expect(starIconVisible, "Star icon should be visible after adding guest").toBe(true);
 
     return {
       added: true,

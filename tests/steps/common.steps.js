@@ -131,9 +131,12 @@ Then("the sum of prices at index {int} from {string} and index {int} from {strin
 // ===== THEN STEPS =====
 
 Then('I should see the heading {string}', async function (text) {
+  const { expect } = require('@playwright/test');
   const { CommonPage } = require("../../src/pages/CommonPage");
   const commonPage = new CommonPage(this.page);
-  await commonPage.validateHeading(text);
+  
+  const headingVisible = await commonPage.isHeadingVisible(text);
+  expect(headingVisible, `Heading "${text}" should be visible`).toBe(true);
 });
 
 // ===== WHEN STEPS - PRICE EXTRACTION =====

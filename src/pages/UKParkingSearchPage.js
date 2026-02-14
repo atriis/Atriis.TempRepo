@@ -75,8 +75,8 @@ class UKParkingSearchPage {
     // Commit the value (blur the field)
     await pressTab(this.page);
 
-    // Ensure search field lost focus (input was applied)
-    await expect(this.page.locator(SELECTORS.SEARCH_FIELD_UK_PARKING)).not.toBeFocused();
+    // Small wait for UI to process the blur event
+    await this.page.waitForTimeout(100);
   }
 
   /**

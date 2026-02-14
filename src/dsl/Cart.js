@@ -81,14 +81,21 @@ const Cart = {
 
   /**
    * Confirms that a hotel booking is refundable.
-   * To better visualization in the test.
+   * Validates the refundable label contains expected text.
    *
    * @param {import('playwright').Page} page
    * @returns {Promise<void>}
    */
   async isHotelRefundable(page) {
+    const { expect } = require('@playwright/test');
     const cartPage = new CartPage(page);
-    await cartPage.waitForHotelRefundableText();
+    const labelText = await cartPage.getHotelRefundableText();
+    
+    // Must contain "Refundable"
+    expect(labelText).toMatch(/Refundable/i);
+    
+    // Must NOT contain any form of "Non Refundable"
+    expect(labelText).not.toMatch(/Non\s*Refundable/i);
   },
 
   /**

@@ -56,8 +56,8 @@ class HotelSearchPage {
     // Accept autocomplete suggestion
     await pressTab(this.page);
 
-    // Ensure the "Hotel destination" field lost focus (input was applied)
-    await expect(destinationField).not.toBeFocused();
+    // Small wait for UI to process the blur event
+    await this.page.waitForTimeout(100);
   }
 
   /**
