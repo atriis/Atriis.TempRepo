@@ -2,6 +2,7 @@
 
 ## Working Now: 
 Creating some tests with Cucumber.
+Fix daily run tests.
 
 ## High Priority
 - [ ] Adjust and create assertions
