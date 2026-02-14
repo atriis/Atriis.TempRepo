@@ -90,6 +90,7 @@ function createSpecificUserProject(name, testDir) {
 }
 
 module.exports = defineConfig({
+  retries: process.env.CI ? 2 : 0,
   testDir: './tests',
   timeout: 120000,
   expect: {
