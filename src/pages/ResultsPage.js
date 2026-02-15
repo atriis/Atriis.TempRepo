@@ -71,7 +71,10 @@ class ResultsPage {
 
   /** Clicks the first available "Add to trip" button */
   async clickFirstAddToTripButton() {
-    await this.getAddToTripButton().click();
+    const button = this.getAddToTripButton();
+    // Wait for button to be enabled (flight data loaded)
+    await button.waitFor({ state: "attached", timeout: 45000 });
+    await button.click({ timeout: 60000 });
   }
 
   /** Clicks the first available "Select" button */
