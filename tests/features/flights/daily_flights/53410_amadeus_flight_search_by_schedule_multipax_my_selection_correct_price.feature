@@ -25,5 +25,5 @@ Feature: 53410 Amadeus - Flight - Search by schedule - Multipax - "My Selection"
     And I extract the price at index 0 from "Your Selection"
     And I add "Your Selection" fare to trip
     And I extract the price at index 0 from "cart"
-    Then the sum of extracted prices at index 0 "Virgin pricing option" and 1 "Qantas pricing option" should equal the extracted price at index 2 "Your Selection"
+    Then the sum of extracted prices at index 0 "Virgin Australia pricing option" and 1 "Qantas pricing option" should equal the extracted price at index 2 "Your Selection"
     And the price at index 0 from "Your Selection" should equal the price at index 0 from "cart"

@@ -13,6 +13,7 @@ Fix daily run tests.
 - [ ] Self-healing tests
 - [ ] Assertion methods, where to implement?
 - [ ] Dropdowns duplication code
+- [ ] Share button duplication code
 - [ ] Dynamic Fields Checkout Locators creation
 
 ## Medium Priority

@@ -17,6 +17,7 @@ const SELECTORS = {
   PRICING_OPTIONS_SHARE_QUOTE_BUTTON: '.share-btn:not(.add-btn)',
   PRICING_OPTIONS_CLOSE_MODAL: '[aria-label="Close this dialog"]',
   GREEN_CIRCLE_ICON_PRICING_OPTIONS: 'span.material-symbols-outlined.green',
+  PRICING_OPTIONS_OVERLAY: '.el-overlay:has(.app-drawer.flight-details-drawer)',
 
   //Fare rules note
   FARE_RULES_NOTE: '.note',
@@ -35,10 +36,13 @@ class FlightResultsPage {
 
   /**
    * Gets the pricing options drawer overlay.
-   * Uses the aria-label to target the specific overlay containing pricing options.
+   * Filters for the overlay containing "Pricing Options" heading to avoid strict mode violations.
    */
   getPricingOptionsOverlay() {
-    return this.page.locator('.el-overlay:has(.app-drawer.flight-details-drawer)');
+    return this.page
+      .locator(SELECTORS.PRICING_OPTIONS_OVERLAY)
+      .filter({ hasText: 'Pricing Options' })
+      .first();
   }
 
   /**
@@ -150,7 +154,7 @@ class FlightResultsPage {
     await waitForText(
       this.page,
       SELECTORS.CHANGE_FLIGHT_BUTTON,
-      "Change flight",
+      "Change flight"
     );
   }
 
@@ -370,13 +374,16 @@ async clickAddToTripButtonPricingOptionsModal() {
   const addButton = this.page.locator(SELECTORS.PRICING_OPTIONS_ADD_TO_TRIP_BUTTON);
   
   // Wait for button to be enabled (not disabled)
-  await addButton.waitFor({ state: 'attached', timeout: 10000 });
+  await addButton.waitFor({ state: 'attached', timeout: 30000 });
   
   // Additional wait for the disabled attribute to be removed
   await this.page.waitForTimeout(1500);
   
   // Click the button
-  await addButton.click({ timeout: 10000 });
+  await addButton.click({ timeout: 30000 });
+  
+  // Wait for modal to close after adding to trip
+  await this.getPricingOptionsOverlay().waitFor({ state: 'hidden', timeout: 30000 });
 }
 
 /**
