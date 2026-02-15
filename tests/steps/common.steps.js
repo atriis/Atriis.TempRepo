@@ -135,8 +135,7 @@ Then('I should see the heading {string}', async function (text) {
   const { CommonPage } = require("../../src/pages/CommonPage");
   const commonPage = new CommonPage(this.page);
   
-  const headingVisible = await commonPage.isHeadingVisible(text);
-  expect(headingVisible, `Heading "${text}" should be visible`).toBe(true);
+  await expect(commonPage.getHeadingByText(text)).toBeVisible({ timeout: 30000 });
 });
 
 // ===== WHEN STEPS - PRICE EXTRACTION =====

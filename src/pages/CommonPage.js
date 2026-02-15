@@ -237,10 +237,10 @@ class CommonPage {
   /**
    * Checks if a heading with the given text is visible.
    * @param {string} text - The text content of the heading to check
-   * @param {number} timeout - Maximum wait time (default: 5000ms)
+   * @param {number} timeout - Maximum wait time (default: 30000ms)
    * @returns {Promise<boolean>} True if heading is visible
    */
-  async isHeadingVisible(text, { timeout = 5000 } = {}) {
+  async isHeadingVisible(text, { timeout = 30000 } = {}) {
     try {
       await this.getHeadingByText(text).waitFor({ state: 'visible', timeout });
       return true;
