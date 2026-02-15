@@ -459,7 +459,7 @@ jobs:
         if: always() && steps.check-results.outputs.found == 'true'
         uses: dorny/test-reporter@v1
         with:
-          name: Playwright Tests
+          name: Playwright Tests - Run ${{ github.run_number }}
           reporter: java-junit
           path: 'all-results/**/results.xml'
           fail-on-error: false
@@ -469,7 +469,7 @@ jobs:
         if: always()
         uses: dorny/test-reporter@v1
         with:
-          name: Cucumber Tests
+          name: Cucumber Tests - Run ${{ github.run_number }}
           reporter: java-junit
           path: 'all-results/**/cucumber-junit.xml'
           fail-on-error: false
