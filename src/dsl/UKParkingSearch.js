@@ -66,6 +66,7 @@ const UKParkingSearch = {
 
     // 3. Select parking start date
     await ukParkingSearchPage.clickParkingFromDateField();
+    // Wait for calendar to open after clicking parking from date field
     await page.waitForTimeout(500);
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
@@ -78,6 +79,7 @@ const UKParkingSearch = {
 
     // 5. Select return date
     await ukParkingSearchPage.clickReturnDateField();
+    // Wait for calendar to open after clicking return date field
     await page.waitForTimeout(500);
     await selectDatesByNthAvailable(page, {
       startIndex: returnIndex,
