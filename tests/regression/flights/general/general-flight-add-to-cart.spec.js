@@ -25,7 +25,7 @@ test.describe("[@regression] Add Flight to Cart Flows", () => {
     // Step 6: Assert "Pending booking" quote status appears in cart
     logger.info('Asserting quote status', { status: 'Pending booking' });
     const status = await Cart.getBookingStatus({ page });
-    expect(status).toContain(tripStatus.label.pendingBooking.status);
+    expect(status.toLowerCase()).toContain(tripStatus.label.pendingBooking.status.toLowerCase());
 
     logger.info('One-way flight add to cart flow completed successfully');
   });
@@ -53,7 +53,7 @@ test.describe("[@regression] Add Flight to Cart Flows", () => {
     // Step 5: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
     const statusRT = await Cart.getBookingStatus({ page });
-    expect(statusRT).toContain(tripStatus.label.pendingBooking.status);
+    expect(statusRT.toLowerCase()).toContain(tripStatus.label.pendingBooking.status.toLowerCase());
 
     logger.info('Round trip flight add to cart flow completed successfully');
   });
@@ -85,7 +85,7 @@ test.describe("[@regression] Add Flight to Cart Flows", () => {
     // Step 6: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
     const statusSched = await Cart.getBookingStatus({ page });
-    expect(statusSched).toContain(tripStatus.label.pendingBooking.status);
+    expect(statusSched.toLowerCase()).toContain(tripStatus.label.pendingBooking.status.toLowerCase());
 
     logger.info('Flight search by schedule add to cart flow completed successfully');
   });

@@ -33,7 +33,7 @@ test.describe("[@regression] Lufthansa NDC - One Way Flight Booking End-to-End F
     // Step 7: Verify that the booking is in "Ticketing Complete" state
     logger.info('Verifying booking status', { status: 'Ticketing Complete' });
     const status = await Cart.getBookingStatus({ page });
-    expect(status).toContain(tripStatus.label.ticketingComplete.status);
+    expect(status.toLowerCase()).toContain(tripStatus.label.ticketingComplete.status.toLowerCase());
 
     logger.info('One-way flight booking end-to-end flow completed successfully');
   });

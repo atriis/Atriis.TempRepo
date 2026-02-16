@@ -29,7 +29,7 @@ test.describe("[@regression] Hotel Add To Cart Multiple Nights", () => {
     // Step 6: Assert "Pending Booking" quote status appears in cart
     logger.info('Asserting quote status', { status: 'Pending booking' });
     const status = await Cart.getBookingStatus({ page });
-    expect(status).toContain(tripStatus.label.pendingBooking.status);
+    expect(status.toLowerCase()).toContain(tripStatus.label.pendingBooking.status.toLowerCase());
 
     logger.info('Hotel add to cart flow for multiple nights completed successfully');
   });

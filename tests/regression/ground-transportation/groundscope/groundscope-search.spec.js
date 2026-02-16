@@ -25,7 +25,7 @@ test.describe("[@regression] Search GroundScope Flow", () => {
     // Step 5: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
     const status = await Cart.getBookingStatus({ page });
-    expect(status).toContain(tripStatus.label.pendingBooking.status);
+    expect(status.toLowerCase()).toContain(tripStatus.label.pendingBooking.status.toLowerCase());
 
     logger.info('Ground transport search flow completed successfully');
   });

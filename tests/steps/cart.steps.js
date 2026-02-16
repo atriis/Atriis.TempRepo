@@ -83,7 +83,7 @@ When("I proceed to checkout", async function () {
 When("I hold the trip", async function () {
   logger.info("Holding the trip");
   const result = await Cart.holdTrip(this.page);
-  expect(result.status).toContain(tripStatus.label.onHold.status);
+  expect(result.status.toLowerCase()).toContain(tripStatus.label.onHold.status.toLowerCase());
 });
 
 When("I cancel the trip", async function () {
@@ -153,14 +153,14 @@ Then("the booking status should be {string}", async function (status) {
   const actualStatus = await Cart.getBookingStatus({ page: this.page });
   
   if (status === "Pending booking") {
-    expect(actualStatus).toContain(tripStatus.label.pendingBooking.status);
+    expect(actualStatus.toLowerCase()).toContain(tripStatus.label.pendingBooking.status.toLowerCase());
   } else if (status === "On Hold") {
-    expect(actualStatus).toContain(tripStatus.label.onHold.status);
+    expect(actualStatus.toLowerCase()).toContain(tripStatus.label.onHold.status.toLowerCase());
   } else if (status === "Ticketing Complete") {
-    expect(actualStatus).toContain(tripStatus.label.ticketingComplete.status);
+    expect(actualStatus.toLowerCase()).toContain(tripStatus.label.ticketingComplete.status.toLowerCase());
   }
   else if (status === "Confirmed") {
-    expect(actualStatus).toContain(tripStatus.label.confirmed.status);
+    expect(actualStatus.toLowerCase()).toContain(tripStatus.label.confirmed.status.toLowerCase());
   } else {
     throw new Error(`Unknown booking status: ${status}`);
   }

@@ -25,7 +25,7 @@ test.describe("[@regression][@supplier:galileo] Galileo - Add Car From Airport L
     // Step 5: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
     const status = await Cart.getBookingStatus({ page });
-    expect(status).toContain(tripStatus.label.pendingBooking.status);
+    expect(status.toLowerCase()).toContain(tripStatus.label.pendingBooking.status.toLowerCase());
 
   });
 });

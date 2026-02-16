@@ -6,7 +6,7 @@
  * Uses CartFOPPage for low-level UI interactions.
  */
 
-const CartFOPPage = require("../pages/CartFOPPage");
+const CartFOPPage = require("../pages/CartPaymentPage");
 const cards = require("../data/cards.json");
 
 class CartFOP {

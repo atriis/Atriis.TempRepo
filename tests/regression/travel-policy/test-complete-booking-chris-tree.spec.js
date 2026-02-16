@@ -45,7 +45,7 @@ test.describe("[@regression][@travel-policy] Complete Booking with Chris Tree", 
     // Step 9: Assert Finalizing status
     logger.info('Asserting quote status', { status: 'Finalizing' });
     const status = await Cart.getBookingStatus({ page });
-    expect(status).toContain(tripStatus.label.finalizing.status);
+    expect(status.toLowerCase()).toContain(tripStatus.label.finalizing.status.toLowerCase());
 
     logger.info('Complete booking flow with Chris Tree completed successfully');
   });

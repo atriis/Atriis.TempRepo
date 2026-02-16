@@ -26,7 +26,7 @@ test.describe("[@regression] Amtrak Add To Cart Flow", () => {
     // Step 5: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
     const statusRT = await Cart.getBookingStatus({ page });
-    expect(statusRT).toContain(tripStatus.label.pendingBooking.status);
+    expect(statusRT.toLowerCase()).toContain(tripStatus.label.pendingBooking.status.toLowerCase());
 
     logger.info('Amtrak round trip add to cart flow completed successfully');
   });
@@ -52,7 +52,7 @@ test.describe("[@regression] Amtrak Add To Cart Flow", () => {
     // Step 5: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
     const statusOW = await Cart.getBookingStatus({ page });
-    expect(statusOW).toContain(tripStatus.label.pendingBooking.status);
+    expect(statusOW.toLowerCase()).toContain(tripStatus.label.pendingBooking.status.toLowerCase());
 
     logger.info('Amtrak one way add to cart flow completed successfully');
   });

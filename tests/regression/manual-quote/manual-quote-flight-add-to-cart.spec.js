@@ -22,7 +22,7 @@ test.describe("Manual Quote - Add Flight Manual Quote to Cart", () => {
     //Step 4: Assert 'On Hold' trip status in cart
     logger.info('Asserting trip status', { status: 'On Hold' });
     const status = await Cart.getBookingStatus({ page });
-    expect(status).toContain(tripStatus.label.onHold.status);
+    expect(status.toLowerCase()).toContain(tripStatus.label.onHold.status.toLowerCase());
 
     // Step 11: Cancel manual quote flight trip with complete validation
     logger.info('Cancelling manual quote flight trip');

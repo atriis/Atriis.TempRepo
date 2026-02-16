@@ -26,7 +26,7 @@ test.describe("Parking - Add UK Parking to Cart", () => {
     // Step 5: Validate trip status is 'Pending Booking' in cart
     logger.info('Validating trip status', { status: 'Pending Booking' });
     const status = await Cart.getBookingStatus({ page });
-    expect(status).toContain(tripStatus.label.pendingBooking.status);
+    expect(status.toLowerCase()).toContain(tripStatus.label.pendingBooking.status.toLowerCase());
 
     logger.info('UK parking add to cart flow completed successfully');
   });

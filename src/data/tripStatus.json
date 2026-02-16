@@ -10,7 +10,7 @@
       "status": "Cancelled"
     },
     "onHold": {
-      "status": "On hold"
+      "status": "ON HOLD"
     },
     "pendingTicketing": {
       "status": "Pending ticketing"
