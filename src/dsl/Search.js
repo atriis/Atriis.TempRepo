@@ -13,6 +13,10 @@ const Search = {
    * UI should show the "star" icon as confirmation.
    */
   async addMeAsTraveler(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const { expect } = require('@playwright/test');
     const searchPage = new SearchPage(page);
     await searchPage.waitForAddMeButton();
@@ -27,6 +31,14 @@ const Search = {
    * UI should show the "star" icon as confirmation.
    */
   async fillInTravelerNameAndSave(page, name) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (!name || typeof name !== 'string') {
+      throw new Error('name must be a non-empty string');
+    }
+    
     const { expect } = require('@playwright/test');
     const searchPage = new SearchPage(page);
     await searchPage.fillInTravelerName(name);
@@ -40,6 +52,14 @@ const Search = {
    * Add a traveler by name (second traveler slot).
    */
   async addTravelerByName(page, name) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (!name || typeof name !== 'string') {
+      throw new Error('name must be a non-empty string');
+    }
+    
     const searchPage = new SearchPage(page);
     await searchPage.clickAddTravelerButton();
     await Search.fillInTravelerNameAndSave(page, name);
@@ -50,6 +70,10 @@ const Search = {
    * Returns the generated data for test/debug use.
    */
   async addRandomGuest(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const { expect } = require('@playwright/test');
     const searchPage = new SearchPage(page);
     const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();

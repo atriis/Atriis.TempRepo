@@ -22,8 +22,16 @@ const logger = require("./logger").child("DOM");
  * @param {Object} page - Playwright page instance
  * @param {string} selector - CSS selector for the element
  * @returns {Promise<string>} Visible text content
+ * @throws {Error} If page or selector are invalid
  */
 async function getText(page, selector) {
+  if (!page) {
+    throw new Error('page is required');
+  }
+  
+  if (!selector || typeof selector !== 'string') {
+    throw new Error('selector must be a non-empty string');
+  }
   const locator = page.locator(selector).first();
   await locator.waitFor({ state: "visible" });
   return locator.textContent();
@@ -42,11 +50,23 @@ async function getText(page, selector) {
  * @param {string} selector - CSS selector for the element
  * @param {number} index - Zero-based index of the element (default: 0)
  * @returns {Promise<number|null>} Parsed number, or null if not found
+ * @throws {Error} If context or selector are invalid, or index is negative
  * @example
  *   extractNumber(page, '.amount', 0)  → first price on page
  *   extractNumber(frame, '.amount', 1) → second price in frame
  */
 async function extractNumber(context, selector, index = 0) {
+  if (!context) {
+    throw new Error('context (page or frame) is required');
+  }
+  
+  if (!selector || typeof selector !== 'string') {
+    throw new Error('selector must be a non-empty string');
+  }
+  
+  if (typeof index !== 'number' || index < 0) {
+    throw new Error(`index must be a non-negative number, got ${typeof index === 'number' ? index : typeof index}`);
+  }
   const rawText = await context
     .locator(selector)
     .nth(index)
@@ -66,8 +86,16 @@ async function extractNumber(context, selector, index = 0) {
  *
  * @param {Object} page - Playwright page instance
  * @param {string} selector - CSS selector for the element
+ * @throws {Error} If page or selector are invalid
  */
 async function scrollToElement(page, selector) {
+  if (!page) {
+    throw new Error('page is required');
+  }
+  
+  if (!selector || typeof selector !== 'string') {
+    throw new Error('selector must be a non-empty string');
+  }
   const el = page.locator(selector).first();
 
   // Wait until element exists in the DOM
@@ -161,8 +189,12 @@ async function typeIntoNthAvailableInput(page, value, selectors, nth = 0) {
  * - Adds a small delay to allow UI focus changes
  *
  * @param {Object} page - Playwright page instance
+ * @throws {Error} If page is invalid
  */
 async function pressTab(page) {
+  if (!page) {
+    throw new Error('page is required');
+  }
   await page.keyboard.press("Tab");
 }
 
@@ -170,8 +202,16 @@ async function pressTab(page) {
  * Waits for an element to be visible and enabled (not disabled).
  * @param {import('@playwright/test').Locator} locator
  * @param {number} [timeout=5000]
+ * @throws {Error} If locator is invalid or timeout is negative
  */
 async function waitForEnabled(locator, timeout = 5000) {
+  if (!locator) {
+    throw new Error('locator is required');
+  }
+  
+  if (typeof timeout !== 'number' || timeout < 0) {
+    throw new Error(`timeout must be a non-negative number, got ${timeout}`);
+  }
   await locator.waitFor({ state: "visible", timeout });
   await locator.waitFor({ state: "attached", timeout });
   // Playwright does not have a direct "enabled" state, so check attribute

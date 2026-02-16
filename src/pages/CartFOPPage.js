@@ -93,9 +93,13 @@ class CartFOPPage {
 
   /**
    * Selects the card type from the dropdown.
-   * @param {string} cardType
+   * @param {string} cardType - Card type to select (required)
+   * @throws {Error} If cardType is not provided
    */
   async typeCardType(cardType) {
+    if (!cardType || typeof cardType !== 'string') {
+      throw new Error('cardType must be a non-empty string');
+    }
     await this.getCardTypeDropdown().click();
     await this.page.keyboard.type(cardType);
     await this.page.getByRole("option", { name: cardType }).click();
@@ -103,17 +107,25 @@ class CartFOPPage {
 
   /**
    * Types the card holder name into the input.
-   * @param {string} name
+   * @param {string} name - Card holder name (required)
+   * @throws {Error} If name is not provided
    */
   async typeCardHolderName(name) {
+    if (!name || typeof name !== 'string') {
+      throw new Error('name must be a non-empty string');
+    }
     await this.page.fill(SELECTORS.CARD_HOLDER_NAME_INPUT, name);
   }
 
   /**
    * Selects the expiration month from the dropdown.
-   * @param {string} expirationMonth
+   * @param {string} expirationMonth - Expiration month (required)
+   * @throws {Error} If expirationMonth is not provided
    */
   async typeExpirationMonth(expirationMonth) {
+    if (!expirationMonth || typeof expirationMonth !== 'string') {
+      throw new Error('expirationMonth must be a non-empty string');
+    }
     await this.getExpirationMonthDropdown().click();
     await this.page.keyboard.type(expirationMonth);
     await this.page.getByRole("option", { name: expirationMonth }).click();
@@ -121,9 +133,13 @@ class CartFOPPage {
 
   /**
    * Selects the expiration year from the dropdown.
-   * @param {string} expirationYear
+   * @param {string} expirationYear - Expiration year (required)
+   * @throws {Error} If expirationYear is not provided
    */
   async typeExpirationYear(expirationYear) {
+    if (!expirationYear || typeof expirationYear !== 'string') {
+      throw new Error('expirationYear must be a non-empty string');
+    }
     await this.getExpirationYearDropdown().click();
     await this.page.keyboard.type(expirationYear);
     await this.page.getByRole("option", { name: expirationYear }).click();
@@ -131,9 +147,13 @@ class CartFOPPage {
 
   /**
    * Selects the country from the dropdown.
-   * @param {string} country
+   * @param {string} country - Country name (required)
+   * @throws {Error} If country is not provided
    */
   async typeCountry(country) {
+    if (!country || typeof country !== 'string') {
+      throw new Error('country must be a non-empty string');
+    }
     await this.getCountryDropdown().click();
     await this.page.keyboard.type(country);
     await this.page.getByRole("option", { name: country }).click();
@@ -187,9 +207,13 @@ class CartFOPPage {
 
   /**
    * Types the card number into the modal field.
-   * @param {string} cardNumber
+   * @param {string} cardNumber - Card number (required)
+   * @throws {Error} If cardNumber is not provided
    */
   async typeCardNumberInModal(cardNumber) {
+    if (!cardNumber || typeof cardNumber !== 'string') {
+      throw new Error('cardNumber must be a non-empty string');
+    }
     await this.page.fill(SELECTORS.INSERT_CREDIT_CARD_NUMBER_FIELD, cardNumber);
   }
 

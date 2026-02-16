@@ -18,6 +18,10 @@ const Results = {
    * @returns {Promise<{clicked: boolean}>}
    */
   async waitAndClickAddToTripButton(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const resultsPage = new ResultsPage(page);
     await resultsPage.waitForAddToTripText();
     await resultsPage.clickFirstAddToTripButton();
@@ -30,6 +34,10 @@ const Results = {
    * @returns {Promise<{clicked: boolean}>}
    */
   async waitAndClickSelectButton(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const resultsPage = new ResultsPage(page);
     await resultsPage.waitForSelectText();
     await resultsPage.clickFirstSelectButton();
@@ -45,6 +53,10 @@ const Results = {
    * @returns {Promise<{proceeded: boolean}>}
    */
   async clickProceedConflictQuoteModal(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const resultsPage = new ResultsPage(page);
     const proceeded = await resultsPage.handleConflictQuoteModalIfVisible();
     return { proceeded };
@@ -58,6 +70,10 @@ const Results = {
    * @returns {Promise<{workflowCompleted: boolean}>}
    */
   async clickSelectButtonOneWayAndClickAddToTrip(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     await Results.waitAndClickSelectButton(page);
     await Results.waitAndClickAddToTripButton(page);
     return { workflowCompleted: true };
@@ -70,6 +86,10 @@ const Results = {
    * @returns {Promise<{workflowCompleted: boolean}>}
    */
   async clickSelectButtonRoundTripAndClickAddToTrip(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     // First leg
     await Results.waitAndClickSelectButton(page);
 
@@ -88,6 +108,10 @@ const Results = {
    * @param {import('playwright').Page} page - Playwright page instance
    */
   async verifyOutOfPolicyIndicatorVisibleInResults(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const commonPage = new CommonPage(page);
     await commonPage.waitForOOPVisible();
     await expect(page.locator(SELECTORS.OOP_INFO)).toBeVisible();
@@ -99,6 +123,10 @@ const Results = {
    * @param {import('playwright').Page} page - Playwright page instance
    */
   async verifyOutOfPolicyIndicatorNotVisibleInResults(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const commonPage = new CommonPage(page);
     await commonPage.waitForOOPNotVisible();
     await expect(page.locator(SELECTORS.OOP_INFO)).toBeHidden();
@@ -110,6 +138,14 @@ const Results = {
    * @param {string} expectedText - The expected tooltip text
    */
   async verifyOutOfPolicyTooltipInResultsPage(page, expectedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+    
     const resultsPage = new ResultsPage(page);
     await resultsPage.waitForAddToTripText(); // Ensure results are loaded before checking OOP tooltip
     const commonPage = new CommonPage(page);
@@ -126,6 +162,10 @@ const Results = {
    * @param {import('playwright').Page} page - Playwright page instance
    */
   async assertFlightCapacityRestrictionModalIsVisible(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     await expect(page.getByRole("heading", {
       name: "Flight Capacity Restriction",
       level: 2,
@@ -138,6 +178,10 @@ const Results = {
    * @param {import('playwright').Page} page - Playwright page instance
    */
   async validateFlightCapacityModalIsVisibleInResultsAndClickGoBack(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const commonPage = new CommonPage(page);
     const resultsPage = new ResultsPage(page);
     await Results.assertFlightCapacityRestrictionModalIsVisible(page);
@@ -151,6 +195,10 @@ const Results = {
    * @param {import('playwright').Page} page - Playwright page instance
    */
   async validateFlightCapacityModalIsVisibleAfterAddToCart(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const commonPage = new CommonPage(page);
     const resultsPage = new ResultsPage(page);
     await resultsPage.clickFirstAddToTripButton(); // Ensure results are loaded before checking modal
@@ -165,6 +213,14 @@ const Results = {
    * @param {string} expectedText - The expected tooltip text
    */
   async hoverOverResultsOOPInfoAndVerifyTooltipTextIs(page, expectedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+    
     const resultsPage = new ResultsPage(page);
     await resultsPage.waitForAddToTripText(); // Ensure results are loaded before checking OOP tooltip
     const commonPage = new CommonPage(page);

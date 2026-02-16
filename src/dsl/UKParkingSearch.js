@@ -24,8 +24,9 @@ const UKParkingSearch = {
    *
    * @param {Object} page - Playwright page instance
    * @param {string} airport - UK Airport name or code (e.g., "Heathrow", "LHR")
-   * @param {number} parkingFromIndex - Index of parking start date in calendar
-   * @param {number} returnIndex - Index of return date in calendar
+   * @param {number} parkingFromIndex - Index of parking start date in calendar (>= 0)
+   * @param {number} returnIndex - Index of return date in calendar (>= 0)
+   * @throws {Error} If airport is empty or indices are negative
    */
   async searchUKParking(
     page,
@@ -33,6 +34,22 @@ const UKParkingSearch = {
     parkingFromIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
     returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
   ) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (!airport || typeof airport !== 'string') {
+      throw new Error('airport must be a non-empty string');
+    }
+    
+    if (parkingFromIndex < 0) {
+      throw new Error(`parkingFromIndex must be >= 0, got ${parkingFromIndex}`);
+    }
+    
+    if (returnIndex < 0) {
+      throw new Error(`returnIndex must be >= 0, got ${returnIndex}`);
+    }
+    
     // Start of the search flow
 
     const ukParkingSearchPage = new UKParkingSearchPage(page);

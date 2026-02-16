@@ -22,6 +22,18 @@ const App = {
    * - Waits until the menu shows the logout icon (meaning login worked)
    */
   async loginAs(page, { email, password }) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (!email || typeof email !== 'string') {
+      throw new Error('email must be a non-empty string');
+    }
+    
+    if (!password || typeof password !== 'string') {
+      throw new Error('password must be a non-empty string');
+    }
+    
     const loginPage = new LoginPage(page);
     const menuPage = new MenuPage(page);
 
@@ -41,6 +53,10 @@ const App = {
    * Returns the newly opened tab (new Playwright page object).
    */
   async bookANewTrip(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const menuPage = new MenuPage(page);
 
     await menuPage.waitForBookANewTripIcon();
@@ -59,6 +75,10 @@ const App = {
    * Logs out the user and confirms we are back on the login page.
    */
   async logout(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const menuPage = new MenuPage(page);
     const loginPage = new LoginPage(page);
     const logoutPage = new LogoutPage(page);

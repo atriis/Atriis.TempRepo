@@ -12,6 +12,10 @@ const Results = require("./Results");
 const FlightPricing = {
 
   async addYourSelectionFareToCart(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const flightPricingPage = new FlightPricingPage(page);
     const cartPage = new CartPage(page);
     const resultsPage = new ResultsPage(page);

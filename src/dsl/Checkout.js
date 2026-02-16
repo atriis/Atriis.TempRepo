@@ -18,6 +18,10 @@ const Checkout = {
    * - navigates to the trip overview page
    */
   async bookAndFinalize(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const checkoutPage = new CheckoutPage(page);
     const cartPage = new CartPage(page);
 
@@ -51,6 +55,10 @@ const Checkout = {
    * - confirms cart page is displayed
    */
   async navigateToCartFromCheckout(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const checkoutPage = new CheckoutPage(page);
     const commonPage = new CommonPage(page);
     const cartPage = new CartPage(page);

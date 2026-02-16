@@ -28,6 +28,10 @@ const Cart = {
    * @returns {Promise<{cancelled: boolean}>}
    */
   async cancelTripStrict(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const cartPage = new CartPage(page);
 
     // Confirm correct page state
@@ -59,6 +63,10 @@ const Cart = {
    * @returns {Promise<{cancelled: boolean, error?: string}>}
    */
   async cancelTripSafely(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const cartPage = new CartPage(page);
     try {
       await cartPage.waitForDetailsText();
@@ -87,6 +95,10 @@ const Cart = {
    * @returns {Promise<void>}
    */
   async isHotelRefundable(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const { expect } = require('@playwright/test');
     const cartPage = new CartPage(page);
     const labelText = await cartPage.getHotelRefundableText();
@@ -109,6 +121,18 @@ const Cart = {
    * @returns {Promise<void>}
    */
   async expectBookingStatus(expectedStatus, { timeout = 60000, page } = {}) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (!expectedStatus || typeof expectedStatus !== 'string') {
+      throw new Error('expectedStatus must be a non-empty string');
+    }
+    
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be >= 0, got ${timeout}`);
+    }
+    
     const locator = page.locator(CART_SELECTORS.QUOTE_STATUS_LABEL);
     await expect(locator).toBeVisible({ timeout });
     await expect(locator).toContainText(expectedStatus, { timeout, ignoreCase: true });
@@ -122,6 +146,10 @@ const Cart = {
    * @returns {Promise<void>}
    */
   async clickShareQuoteAndWaitForSubjectField(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const cartPage = new CartPage(page);
     const commonPage = new CommonPage(page);
     await cartPage.hoverShareButton();
@@ -137,6 +165,10 @@ const Cart = {
    * @returns {Promise<void>}
    */
   async clickShareItineraryAndWaitForSubjectField(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const cartPage = new CartPage(page);
     const commonPage = new CommonPage(page);
     await cartPage.hoverShareButton();
@@ -152,6 +184,10 @@ const Cart = {
    * @returns {Promise<{sent: boolean}>}
    */
   async sendQuoteAndWaitForSuccess(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const cartPage = new CartPage(page);
     const generalElementsPage = new GeneralElementsPage(page);
 
@@ -167,6 +203,10 @@ const Cart = {
    * @param {import('playwright').Page} page - Playwright page instance
    */
   async verifyOutOfPolicyIndicatorIsVisibleInCart(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const commonPage = new CommonPage(page);
     await commonPage.waitForOOPVisible();
     await expect(page.locator(COMMON_SELECTORS.OOP_INFO)).toBeVisible();
@@ -178,6 +218,10 @@ const Cart = {
    * @param {import('playwright').Page} page - Playwright page instance
    */
   async verifyOutOfPolicyIndicatorIsNotVisibleInCart(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const commonPage = new CommonPage(page);
     await commonPage.waitForOOPNotVisible();
     await expect(page.locator(COMMON_SELECTORS.OOP_INFO)).toBeHidden();
@@ -189,6 +233,14 @@ const Cart = {
    * @param {string} expectedText - The expected tooltip text
    */
   async hoverOverCartOOPInfoAndVerifyTooltipTextIs(page, expectedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+    
     const commonPage = new CommonPage(page);
     await commonPage.waitForOOPVisible();
     await commonPage.hoverOverOOPInfoIcon();
@@ -205,6 +257,10 @@ const Cart = {
    * @returns {Promise<void>}
    */
   async fillInOOPJustificationTextAndSave(page, justificationText = "abc") {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const cartPage = new CartPage(page);
     await cartPage.fillInOOPJustificationText(justificationText);
     await cartPage.saveOOPJustificationText();
@@ -219,6 +275,14 @@ const Cart = {
    * @returns {Promise<void>}
    */
   async selectOOPJustificationDropdownOptionAndSave(page, justificationOption) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (!justificationOption || typeof justificationOption !== 'string') {
+      throw new Error('justificationOption must be a non-empty string');
+    }
+    
     const cartPage = new CartPage(page);
     await cartPage.openJustificationDropdown();
     await cartPage.waitForJustificationDropdownOption(justificationOption);
@@ -241,6 +305,10 @@ const Cart = {
    * @returns {Promise<{proceeded: boolean, clickedModal: boolean}>}
    */
   async acceptTermsAndConditionsAndProceedToCheckout(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const cartPage = new CartPage(page);
     const checkoutHeading = page.locator(CheckoutSelectors.BOOKING_DETAILS_HEADING);
     await cartPage.acceptTermsAndConditions();
@@ -283,6 +351,14 @@ const Cart = {
    * @returns {Promise<void>}
    */
   async clickToOpenFareRulesInCart(page, index = 1) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+    
     const flightResultsPage = new FlightResultsPage(page);
     await flightResultsPage.waitForFareRulesButton(index);
     await flightResultsPage.clickFareRulesButton(index);
@@ -290,6 +366,10 @@ const Cart = {
   },
 
   async clickToOpenPriceBreakdown(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const cartPage = new CartPage(page);
     await cartPage.waitForPriceBreakdownButton();
     await cartPage.clickPriceBreakdownButton();
@@ -306,6 +386,10 @@ const Cart = {
    * @returns {Promise<{held: boolean}>} Hold status
    */
   async holdTrip(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const cartPage = new CartPage(page);
     await cartPage.waitForHoldButton();
     await cartPage.clickHoldButton();
@@ -314,6 +398,18 @@ const Cart = {
   },
 
   async assertPassportDetailsAreDisplayedAs(page, index, expectedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+    
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+    
     const cartPage = new CartPage(page);
     const actualText = await cartPage.getPassportDetailsText(index);
     expect(actualText).toBe(expectedText);

@@ -28,8 +28,25 @@
  * @param {string} selector - CSS selector used to locate the element
  * @param {string} expectedText - The exact text we expect to see
  * @param {number} timeout - Max time to wait in milliseconds (default: 30s)
+ * @throws {Error} If page, selector, or expectedText are invalid, or if timeout < 0
  */
 async function waitForText(page, selector, expectedText, timeout = 30000) {
+  // Validate inputs
+  if (!page) {
+    throw new Error('page is required');
+  }
+  
+  if (!selector || typeof selector !== 'string') {
+    throw new Error('selector must be a non-empty string');
+  }
+  
+  if (expectedText == null || typeof expectedText !== 'string') {
+    throw new Error('expectedText must be a string');
+  }
+  
+  if (typeof timeout !== 'number' || timeout < 0) {
+    throw new Error(`timeout must be a non-negative number, got ${timeout}`);
+  }
   await page.waitForFunction(
     ([selector, expectedText]) => {
       const element = document.querySelector(selector);

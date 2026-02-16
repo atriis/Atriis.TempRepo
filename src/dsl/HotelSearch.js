@@ -19,6 +19,10 @@ const HotelSearch = {
     whereInput = hotelLocations.defaultLocation,
     options = {},
   ) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     let where, nights;
 
     // Legacy combined object support

@@ -31,6 +31,8 @@ For comprehensive guidelines, see:
 - **[DSL](instructions/dsl.md)** – Business logic layer guidelines
 - **[Tests](instructions/tests.md)** – Writing readable, maintainable tests
 - **[Architecture](instructions/architecture.md)** – Layer separation, data flow, patterns
+- **[Error Handling](instructions/error-handling.md)** – Validation, error messages, debugging
+- **[Logging](instructions/logging.md)** – Structured logging, log levels, best practices
 - **[Playwright Best Practices](instructions/playwright-best-practices.md)** – Locators, waits, assertions
 - **[Naming Conventions](instructions/naming-conventions.md)** – Files, classes, methods
 - **[Commit Guidelines](instructions/commit-guidelines.md)** – Commit message format, scopes, examples
@@ -39,6 +41,11 @@ For comprehensive guidelines, see:
 ## AI Assistant Rules
 - Extend existing code, don't rewrite unrelated files
 - Follow existing patterns and naming conventions
+- **Always validate inputs** following [error handling guidelines](instructions/error-handling.md):
+  - DSL methods: validate `page` parameter (required)
+  - Utilities: validate all parameters (type, range, nullability)
+  - Page objects: validate selectors and index parameters
+  - Include descriptive error messages with parameter names and expected vs actual values
 - Leave `// TODO` comments when unsure
 - Prefer partial implementation over incorrect behavior
 - Never change public method signatures without request

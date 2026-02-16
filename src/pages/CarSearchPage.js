@@ -41,9 +41,13 @@ class CarSearchPage {
    * visible again, ensuring the calendar finished updating
    * before continuing.
    *
-   * @param {number} times - Number of months to advance
+   * @param {number} times - Number of months to advance (>= 1)
+   * @throws {Error} If times is less than 1
    */
   async clickDropoffSecondCalendarNextMonthArrow(times = 1) {
+    if (times < 1) {
+      throw new Error(`times must be >= 1, got ${times}`);
+    }
     const secondNextArrow = this.page
       .locator(SELECTORS.DROPOFF_NEXT_ARROW)
       .nth(1);
@@ -70,9 +74,13 @@ class CarSearchPage {
    * Waits until the rental agency dropdown input is visible
    * to ensure the field is ready for interaction before typing.
    *
-   * @param {string} agencyName
+   * @param {string} agencyName - Rental agency name (required)
+   * @throws {Error} If agencyName is not provided
    */
   async typeRentalAgencyName(agencyName) {
+    if (!agencyName || typeof agencyName !== 'string') {
+      throw new Error('agencyName must be a non-empty string');
+    }
     const rentalAgencyField = this.page.locator(
       SELECTORS.RENTAL_AGENCY_DROPDOWN_FIELD,
     );
@@ -82,8 +90,15 @@ class CarSearchPage {
     await rentalAgencyField.type(agencyName);
   }
 
-  /** Selects rental agency from dropdown */
+  /**
+   * Selects rental agency from dropdown.
+   * @param {string} agencyName - Rental agency name (required)
+   * @throws {Error} If agencyName is not provided
+   */
   async clickRentalAgencyDropdownOption(agencyName) {
+    if (!agencyName || typeof agencyName !== 'string') {
+      throw new Error('agencyName must be a non-empty string');
+    }
     await this.page
       .locator(SELECTORS.RENTAL_AGENCY_DROPDOWN_OPTION(agencyName))
       .click();

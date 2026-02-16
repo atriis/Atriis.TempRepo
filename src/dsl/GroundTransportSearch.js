@@ -29,8 +29,9 @@ const GroundTransportSearch = {
    * @param {string|Object} routeInput - Route name or route object with from/to
    * @param {Object} options - Optional search parameters
    * @param {string} options.vehicleType - Vehicle type filter
-   * @param {number} options.travellerNumber - Number of travellers
-   * @param {number} options.pickupIndex - Calendar index for pickup date
+   * @param {number} options.travellerNumber - Number of travellers (>= 1)
+   * @param {number} options.pickupIndex - Calendar index for pickup date (>= 0)
+   * @throws {Error} If travellerNumber < 1 or pickupIndex < 0
    */
   async searchGroundTransportFromAirportToSpecificAddress(
     page,
@@ -41,6 +42,17 @@ const GroundTransportSearch = {
       pickupIndex = SEARCH_DEFAULTS.GROUND_TRANSPORT.PICKUP_INDEX,
     } = {},
   ) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (travellerNumber < 1) {
+      throw new Error(`travellerNumber must be >= 1, got ${travellerNumber}`);
+    }
+    
+    if (pickupIndex < 0) {
+      throw new Error(`pickupIndex must be >= 0, got ${pickupIndex}`);
+    }
     const { from, to } = resolveRoute(
       routeInput,
       groundTransportRoutes.routes,

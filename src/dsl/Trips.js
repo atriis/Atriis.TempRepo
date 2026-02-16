@@ -16,6 +16,10 @@ const Trips = {
    * - Wait for trips page content to load
    */
   async navigateToTripsPage(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const menuPage = new MenuPage(page);
     const tripsPage = new TripsPage(page);
 

@@ -20,6 +20,10 @@ const FlightResults = {
    * - negative test scenarios
    */
   async isResultDisplayed(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const resultsPage = new ResultsPage(page);
 
     try {
@@ -43,6 +47,10 @@ const FlightResults = {
    * not UI details.
    */
   async addFirstFlightToCart(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const cartPage = new CartPage(page);
 
     await Results.waitAndClickAddToTripButton(page);
@@ -63,6 +71,10 @@ const FlightResults = {
    * @returns {Promise<{selected: boolean}>}
    */
   async selectOneSegmentBySchedule(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     await Results.waitAndClickSelectButton(page);
 
     return { selected: true };
@@ -75,6 +87,10 @@ const FlightResults = {
    * @returns {Promise<{selected: boolean}>}
    */
   async selectSegmentsBySchedule(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const flightResultsPage = new FlightResultsPage(page);
 
     // Select first segment
@@ -95,6 +111,10 @@ const FlightResults = {
    * @returns {Promise<{clicked: boolean}>}
    */
   async waitForAddToTripButtonAndClickShareButton(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const resultsPage = new ResultsPage(page);
     await resultsPage.waitForAddToTripText();
     await resultsPage.clickShareMainButton();
@@ -111,6 +131,18 @@ const FlightResults = {
    * @returns {Promise<{price: number, shared: boolean}>} The price and share status
    */
   async getPriceAndShareQuoteFromCarrier(page, carrier, index = 0) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (!carrier || typeof carrier !== 'string') {
+      throw new Error('carrier must be a non-empty string');
+    }
+    
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+    
     const resultsPage = new ResultsPage(page);
     const flightResultsPage = new FlightResultsPage(page);
     
@@ -137,6 +169,10 @@ const FlightResults = {
    */
   // TODO: Locator needs to be created
   async scrollIntoOffersAndGetPrices(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const commonPage = new CommonPage(page);
     
     // Scroll to make both offers visible in the share dialog
@@ -160,6 +196,10 @@ const FlightResults = {
    * @returns {Promise<{selected: boolean}>} Selection status
    */
   async selectToShareFirstPricingOption(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const flightResultsPage = new FlightResultsPage(page);
     
     // Click "Select to share" button for first pricing option
@@ -170,6 +210,10 @@ const FlightResults = {
   },
 
   async selectFirstPricingOptionInModal(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const flightResultsPage = new FlightResultsPage(page);
     
     // Click "Select" button for first pricing option
@@ -180,6 +224,14 @@ const FlightResults = {
   },
 
   async clickToOpenPricingOptions(page, index = 0) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+    
     const flightResultsPage = new FlightResultsPage(page);
     await flightResultsPage.waitForPricingOptionsButton(index);
     await flightResultsPage.clickPricingOptionsButton(index);
@@ -197,6 +249,10 @@ const FlightResults = {
    * @returns {Promise<{shared: boolean}>} Share status
    */
   async shareFromPricingOptions(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const flightResultsPage = new FlightResultsPage(page);
     
     // Share the quote
@@ -221,6 +277,10 @@ const FlightResults = {
    * @returns {Promise<{validated: boolean}>}
    */
   async verifyFareRulesStrictestTermsMessage(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const flightResultsPage = new FlightResultsPage(page);
 
     // Validate the policy text displayed in the fare rules drawer.
@@ -238,6 +298,14 @@ const FlightResults = {
    * @returns {Promise<void>}
    */
   async clickToOpenFareRules(page, index = 0) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+    
     const flightResultsPage = new FlightResultsPage(page);
     // Open the fare rules drawer and wait for its content to be visible.
     await flightResultsPage.waitForFareRulesButton(index);
@@ -246,6 +314,10 @@ const FlightResults = {
   },
 
   async clickToOpenFlightDetails(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
     const flightResultsPage = new FlightResultsPage(page);
     await flightResultsPage.waitForFlightDetailsButton();
     await flightResultsPage.clickFlightDetailsButton();
@@ -253,6 +325,10 @@ const FlightResults = {
   },
 
 async clickToOpenFareRulesFromResultsModal(page) {
+ if (!page) {
+   throw new Error('page is required');
+ }
+ 
  await FlightResults.clickToOpenFareRules(page, 10);
 },
 
@@ -265,6 +341,14 @@ async clickToOpenFareRulesFromResultsModal(page) {
  * @returns {Promise<{displayed: boolean}>}
  */
 async greenCircleIconIsDisplayedInPricingOptions(page, index = 0) {
+  if (!page) {
+    throw new Error('page is required');
+  }
+  
+  if (typeof index !== 'number' || index < 0) {
+    throw new Error(`index must be >= 0, got ${index}`);
+  }
+  
   const flightResultsPage = new FlightResultsPage(page);
   
   // Wait for the green icon to appear
