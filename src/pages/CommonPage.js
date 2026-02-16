@@ -1,6 +1,5 @@
 const { SELECTORS: GENERAL_SELECTORS } = require("./GeneralElementsPage");
 const { extractNumber } = require("@utils/dom");
-const { expect } = require("@playwright/test");
 
 // Centralized selectors for CommonPage only
 const SELECTORS = {

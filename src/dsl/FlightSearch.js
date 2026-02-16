@@ -3,7 +3,6 @@ const { SearchPage } = require("@pages/SearchPage");
 const flightRoutes = require("@data/flights.json");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
-
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { generateRandomFlightRoute } = require("@utils/data/generateRandomFlightRoute");
 const logger = require("@utils/logger").child("FlightSearch-DSL");

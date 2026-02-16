@@ -1,5 +1,4 @@
 const { pressTab } = require("@utils/dom");
-const { expect } = require("@playwright/test");
 const { SELECTORS: SEARCH_SELECTORS } = require("@pages/SearchPage");
 
 /**

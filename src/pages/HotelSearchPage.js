@@ -1,6 +1,5 @@
 const { waitForText } = require("@utils/wait");
 const { pressTab } = require("@utils/dom");
-const { expect } = require("@playwright/test");
 
 /**
  * Page Object for hotel search form.

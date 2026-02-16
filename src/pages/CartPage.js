@@ -1,8 +1,5 @@
 const { waitForText } = require("@utils/wait");
 const { getText } = require("@utils/dom");
-const tripStatus = require("@data/tripStatus.json");
-const { expect } = require("@playwright/test");
-const { caseInsensitiveContains } = require("@utils/text");
 
 /**
  * CartPage

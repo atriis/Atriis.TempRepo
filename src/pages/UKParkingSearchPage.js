@@ -1,6 +1,4 @@
-
 const { pressTab } = require("@utils/dom");
-const { expect } = require("@playwright/test");
 
 /**
 

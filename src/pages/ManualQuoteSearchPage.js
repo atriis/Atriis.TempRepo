@@ -2,7 +2,6 @@ const {
   typeIntoNthAvailableInput,
   pressTab,
 } = require("@utils/dom");
-const { expect } = require("@playwright/test");
 
 /**
  * Centralized selectors for manual quote search page.
