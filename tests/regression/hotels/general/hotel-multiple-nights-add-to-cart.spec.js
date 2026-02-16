@@ -1,4 +1,4 @@
-const { test } = require("@fixtures/supplierTest");
+const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, HotelSearch, HotelLevelResults, RoomLevelResults, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
@@ -28,7 +28,8 @@ test.describe("[@regression] Hotel Add To Cart Multiple Nights", () => {
 
     // Step 6: Assert "Pending Booking" quote status appears in cart
     logger.info('Asserting quote status', { status: 'Pending booking' });
-    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
+    const status = await Cart.getBookingStatus({ page });
+    expect(status).toContain(tripStatus.label.pendingBooking.status);
 
     logger.info('Hotel add to cart flow for multiple nights completed successfully');
   });

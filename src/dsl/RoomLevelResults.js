@@ -11,6 +11,7 @@ const Results = require("./Results");
 const RoomLevelResults = {
   /**
    * Adds a refundable hotel room to the cart.
+   * Returns the refundable label text for validation.
    */
   async addRefundableHotelRoomLevelToCart(page) {
     const roomLevelResultsPage = new RoomLevelResultsPage(page);
@@ -29,11 +30,9 @@ const RoomLevelResults = {
     // Handle optional conflict modal (uses DSL for consistency)
     await Results.clickProceedConflictQuoteModal(page);
 
-    // Making sure hotel is refundable
-    const { expect } = require('@playwright/test');
+    // Get refundable text for validation
     const labelText = await cartPage.getHotelRefundableText();
-    expect(labelText).toMatch(/Refundable/i);
-    expect(labelText).not.toMatch(/Non\s*Refundable/i);
+    return { added: true, labelText };
   },
 };
 

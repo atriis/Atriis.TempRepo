@@ -1,4 +1,4 @@
-const { test } = require("@fixtures/supplierTest");
+const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, EvolviSearch, EvolviResults, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
@@ -26,7 +26,8 @@ test.describe("[@regression] Evolvi One Way Add to Cart Flow", () => {
 
     // Step 5: Validate booking status - should be "Pending booking"
     logger.info('Asserting quote status', { status: 'Pending booking' });
-    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
+    const status = await Cart.getBookingStatus({ page });
+    expect(status).toContain(tripStatus.label.pendingBooking.status);
 
     logger.info('Evolvi one way train add to cart flow completed successfully');
   });

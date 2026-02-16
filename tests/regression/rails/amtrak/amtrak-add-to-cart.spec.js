@@ -1,4 +1,4 @@
-const { test } = require("@fixtures/supplierTest");
+const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, AmtrakSearch, Results, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
@@ -25,7 +25,8 @@ test.describe("[@regression] Amtrak Add To Cart Flow", () => {
 
     // Step 5: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
-    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
+    const statusRT = await Cart.getBookingStatus({ page });
+    expect(statusRT).toContain(tripStatus.label.pendingBooking.status);
 
     logger.info('Amtrak round trip add to cart flow completed successfully');
   });
@@ -50,7 +51,8 @@ test.describe("[@regression] Amtrak Add To Cart Flow", () => {
 
     // Step 5: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
-    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
+    const statusOW = await Cart.getBookingStatus({ page });
+    expect(statusOW).toContain(tripStatus.label.pendingBooking.status);
 
     logger.info('Amtrak one way add to cart flow completed successfully');
   });

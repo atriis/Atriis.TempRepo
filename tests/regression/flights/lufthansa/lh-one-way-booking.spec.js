@@ -1,4 +1,4 @@
-const { test } = require("@fixtures/supplierTest");
+const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, FlightSearch, FlightResults, Cart, Checkout } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
@@ -32,7 +32,8 @@ test.describe("[@regression] Lufthansa NDC - One Way Flight Booking End-to-End F
 
     // Step 7: Verify that the booking is in "Ticketing Complete" state
     logger.info('Verifying booking status', { status: 'Ticketing Complete' });
-    await Cart.expectBookingStatus(tripStatus.label.ticketingComplete.status, { page });
+    const status = await Cart.getBookingStatus({ page });
+    expect(status).toContain(tripStatus.label.ticketingComplete.status);
 
     logger.info('One-way flight booking end-to-end flow completed successfully');
   });

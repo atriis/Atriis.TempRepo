@@ -24,7 +24,8 @@ test.describe("[@regression] Add Flight to Cart with Payment", () => {
 
     // Step 5: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
-    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
+    const status = await Cart.getBookingStatus({ page });
+    expect(status).toContain(tripStatus.label.pendingBooking.status);
 
     // Step 6: Add credit card as form of payment
     logger.info('Adding credit card as form of payment');

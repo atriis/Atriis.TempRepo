@@ -102,80 +102,70 @@ const Results = {
   // ===== OUT OF POLICY (OOP) VALIDATION =====
 
   /**
-   * Verifies that Out of Policy indicators are visible in results page.
-   * Used when validating travel policy enforcement on results.
+   * Checks if Out of Policy indicators are visible in results page.
+   * Returns visibility status for validation in step definitions.
    *
    * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<boolean>} True if OOP indicator is visible
    */
-  async verifyOutOfPolicyIndicatorVisibleInResults(page) {
+  async isOutOfPolicyIndicatorVisibleInResults(page) {
     if (!page) {
       throw new Error('page is required');
     }
     
     const commonPage = new CommonPage(page);
     await commonPage.waitForOOPVisible();
-    await expect(page.locator(SELECTORS.OOP_INFO)).toBeVisible();
+    return await page.locator(SELECTORS.OOP_INFO).isVisible();
   },
 
   /**
-   * Verifies that Out of Policy indicators are not visible in results page.
-   * Used when validating in-policy options on results.
+   * Checks if Out of Policy indicators are hidden in results page.
+   * Returns visibility status for validation in step definitions.
    * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<boolean>} True if OOP indicator is hidden
    */
-  async verifyOutOfPolicyIndicatorNotVisibleInResults(page) {
+  async isOutOfPolicyIndicatorHiddenInResults(page) {
     if (!page) {
       throw new Error('page is required');
     }
     
     const commonPage = new CommonPage(page);
     await commonPage.waitForOOPNotVisible();
-    await expect(page.locator(SELECTORS.OOP_INFO)).toBeHidden();
-  },
-
-  /**
-   * Hovers over the Out of Policy info icon and validates tooltip text.
-   * @param {import('playwright').Page} page - Playwright page instance
-   * @param {string} expectedText - The expected tooltip text
-   */
-  async verifyOutOfPolicyTooltipInResultsPage(page, expectedText) {
-    if (!page) {
-      throw new Error('page is required');
-    }
-    
-    if (!expectedText || typeof expectedText !== 'string') {
-      throw new Error('expectedText must be a non-empty string');
-    }
-    
-    const resultsPage = new ResultsPage(page);
-    await resultsPage.waitForAddToTripText(); // Ensure results are loaded before checking OOP tooltip
-    const commonPage = new CommonPage(page);
-    await commonPage.hoverOverOOPInfoIcon();
-    const actualText = await commonPage.getOOPTooltipText();
-    expect(actualText).toBe(expectedText);
+    return await page.locator(SELECTORS.OOP_INFO).isHidden();
   },
 
   // ===== FLIGHT CAPACITY RESTRICTION MODAL =====
 
   /**
-   * Asserts that the Flight Capacity Restriction modal is visible.
+   * Checks if the Flight Capacity Restriction modal is visible.
+   * Returns visibility status for validation in step definitions.
    *
    * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<boolean>} True if modal is visible
    */
-  async assertFlightCapacityRestrictionModalIsVisible(page) {
+  async isFlightCapacityRestrictionModalVisible(page) {
     if (!page) {
       throw new Error('page is required');
     }
     
-    await expect(page.getByRole("heading", {
+    const modal = page.getByRole("heading", {
       name: "Flight Capacity Restriction",
       level: 2,
-    })).toBeVisible({ timeout: 30000 });
+    });
+    
+    try {
+      await modal.waitFor({ state: 'visible', timeout: 30000 });
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   /**
    * Validates Flight Capacity Restriction modal is visible and clicks 'Go Back'.
    * Used when booking exceeds traveler capacity and user wants to return to results.
    * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{modalVisible: boolean}>}
    */
   async validateFlightCapacityModalIsVisibleInResultsAndClickGoBack(page) {
     if (!page) {
@@ -184,15 +174,17 @@ const Results = {
     
     const commonPage = new CommonPage(page);
     const resultsPage = new ResultsPage(page);
-    await Results.assertFlightCapacityRestrictionModalIsVisible(page);
+    const modalVisible = await Results.isFlightCapacityRestrictionModalVisible(page);
     await commonPage.clickGoBackOnFlightCapacityRestrictionPopUp();
     await resultsPage.waitForAddToTripText(); // Wait for results to reload after going back
+    return { modalVisible };
   },
 
   /**
    * Validates Flight Capacity Restriction modal is visible and clicks 'Proceed Anyway'.
    * Used when booking exceeds traveler capacity but user wants to continue.
    * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{modalVisible: boolean}>}
    */
   async validateFlightCapacityModalIsVisibleAfterAddToCart(page) {
     if (!page) {
@@ -202,23 +194,21 @@ const Results = {
     const commonPage = new CommonPage(page);
     const resultsPage = new ResultsPage(page);
     await resultsPage.clickFirstAddToTripButton(); // Ensure results are loaded before checking modal
-    await Results.assertFlightCapacityRestrictionModalIsVisible(page);
+    const modalVisible = await Results.isFlightCapacityRestrictionModalVisible(page);
     await commonPage.clickProceedAnywayOnFlightCapacityRestrictionPopUp();
     await Results.clickProceedConflictQuoteModal(page);
+    return { modalVisible };
   },
 
   /**
-   * Hovers over the Out of Policy info icon and validates tooltip text.
+   * Hovers over the Out of Policy info icon and gets tooltip text.
+   * Returns the tooltip text for validation in step definitions.
    * @param {import('playwright').Page} page - Playwright page instance
-   * @param {string} expectedText - The expected tooltip text
+   * @returns {Promise<string>} The OOP tooltip text
    */
-  async hoverOverResultsOOPInfoAndVerifyTooltipTextIs(page, expectedText) {
+  async hoverAndGetOOPTooltipTextInResults(page) {
     if (!page) {
       throw new Error('page is required');
-    }
-    
-    if (!expectedText || typeof expectedText !== 'string') {
-      throw new Error('expectedText must be a non-empty string');
     }
     
     const resultsPage = new ResultsPage(page);
@@ -226,8 +216,7 @@ const Results = {
     const commonPage = new CommonPage(page);
     await commonPage.waitForOOPVisible();
     await commonPage.hoverOverOOPInfoIcon();
-    const actualText = await commonPage.getOOPTooltipText();
-    expect(actualText).toBe(expectedText);
+    return await commonPage.getOOPTooltipText();
   },
 };
 

@@ -271,23 +271,19 @@ const FlightResults = {
   },
 
   /**
-   * Validates the strictest terms message inside the fare rules drawer.
+   * Gets the fare rules note text from the fare rules drawer.
+   * Returns the text for validation in step definitions.
    *
    * @param {import('playwright').Page} page - Playwright page instance
-   * @returns {Promise<{validated: boolean}>}
+   * @returns {Promise<string>} The fare rules note text
    */
-  async verifyFareRulesStrictestTermsMessage(page) {
+  async getFareRulesNoteText(page) {
     if (!page) {
       throw new Error('page is required');
     }
     
     const flightResultsPage = new FlightResultsPage(page);
-
-    // Validate the policy text displayed in the fare rules drawer.
-    await expect(flightResultsPage.getFareRulesNote())
-      .toContainText('Fare rules would be applied according to the strictest terms');
-
-    return { validated: true };
+    return await flightResultsPage.getFareRulesNote().textContent();
   },
 
   /**
@@ -333,14 +329,15 @@ async clickToOpenFareRulesFromResultsModal(page) {
 },
 
 /**
- * Verifies the green circle icon is displayed in the pricing options modal.
+ * Checks if the green circle icon is displayed in the pricing options modal.
+ * Returns visibility status for validation in step definitions.
  * This icon indicates a successful selection of a pricing option.
  *
  * @param {import('playwright').Page} page - Playwright page instance
  * @param {number} index - Zero-based index of the icon (default: 0)
- * @returns {Promise<{displayed: boolean}>}
+ * @returns {Promise<boolean>} True if icon is visible
  */
-async greenCircleIconIsDisplayedInPricingOptions(page, index = 0) {
+async isGreenCircleIconVisibleInPricingOptions(page, index = 0) {
   if (!page) {
     throw new Error('page is required');
   }
@@ -354,13 +351,8 @@ async greenCircleIconIsDisplayedInPricingOptions(page, index = 0) {
   // Wait for the green icon to appear
   await flightResultsPage.waitForGreenIconPricingOptionsModal(index);
   
-  // Assert the icon is visible
-  await expect(
-    flightResultsPage.getGreenIconInPricingOptions(index),
-    'Green circle icon should be visible in pricing options'
-  ).toBeVisible();
-  
-  return { displayed: true };
+  // Return visibility status
+  return await flightResultsPage.getGreenIconInPricingOptions(index).isVisible();
 },
 }
 

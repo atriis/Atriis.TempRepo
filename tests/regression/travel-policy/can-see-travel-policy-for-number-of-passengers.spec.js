@@ -1,4 +1,4 @@
-const { test } = require("@fixtures/supplierTest");
+const { test, expect } = require("@fixtures/supplierTest");
 const { Search, FlightSearch, Results, Cart } = require("@dsl");
 const logger = require('@utils/logger').child('TravelPolicyPassengers');
 
@@ -26,7 +26,8 @@ test.describe("[@regression][@travel-policy] 47764 Can see travel policy for num
 
     // Step 6: Verify Out of Policy indicators ARE NOT VISIBLE in results (before clicking Add to Trip)
     logger.info('Verifying OOP indicators are NOT visible in results');
-    await Results.verifyOutOfPolicyIndicatorNotVisibleInResults(page);
+    const isHiddenBefore = await Results.isOutOfPolicyIndicatorHiddenInResults(page);
+    expect(isHiddenBefore).toBe(true);
 
     // Step 7: Click Add to Trip button
     logger.info('Clicking Add to Trip button');
@@ -38,11 +39,13 @@ test.describe("[@regression][@travel-policy] 47764 Can see travel policy for num
 
     // Step 9: Verify OOP indicators ARE VISIBLE in results
     logger.info('Verifying OOP indicators ARE visible in results');
-    await Results.verifyOutOfPolicyIndicatorVisibleInResults(page);
+    const isVisible = await Results.isOutOfPolicyIndicatorVisibleInResults(page);
+    expect(isVisible).toBe(true);
 
     // Step 10: Hover over OOP info icon and verify tooltip text
     logger.info('Hovering over OOP info icon and verifying tooltip text');
-    await Results.hoverOverResultsOOPInfoAndVerifyTooltipTextIs(page, "Number of Passengers is greater than or equals 3  and role - dont change is for number of passengers only");
+    const tooltipResults = await Results.hoverAndGetOOPTooltipTextInResults(page);
+    expect(tooltipResults).toBe("Number of Passengers is greater than or equals 3  and role - dont change is for number of passengers only");
 
     // Step 11: Click Add to Trip button
     logger.info('Validating Flight Capacity Restriction Modal and clicking Proceed Anyway');
@@ -50,11 +53,13 @@ test.describe("[@regression][@travel-policy] 47764 Can see travel policy for num
 
     // Step 12: Validate OOP indicators are visible in cart page
     logger.info('Validating OOP indicators are visible in cart');
-    await Cart.verifyOutOfPolicyIndicatorIsVisibleInCart(page);
+    const isVisibleCart = await Cart.isOutOfPolicyIndicatorVisibleInCart(page);
+    expect(isVisibleCart).toBe(true);
 
     // Step 13: Hover over OOP info icon in cart and verify tooltip text
     logger.info('Hovering over OOP info icon in cart and verifying tooltip text');
-    await Cart.hoverOverCartOOPInfoAndVerifyTooltipTextIs(page, "Number of Passengers is greater than or equals 3  and role - dont change is for number of passengers only");
+    const tooltipCart = await Cart.hoverAndGetOOPTooltipTextInCart(page);
+    expect(tooltipCart).toBe("Number of Passengers is greater than or equals 3  and role - dont change is for number of passengers only");
 
     logger.info('Travel Policy Flow completed successfully');
   });

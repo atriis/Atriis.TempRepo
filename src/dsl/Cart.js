@@ -16,16 +16,16 @@ const tripStatus = require("@data/tripStatus.json");
  */
 const Cart = {
   /**
-   * STRICT cancel flow (fails if cancellation fails)
+   * STRICT cancel flow (returns cancellation status)
    *
    * This flow:
    * - Confirms Trip Overview page is loaded
    * - Opens actions menu
    * - Confirms cancellation
-   * - Waits for success message
+   * - Checks for success message
    *
    * @param {import('playwright').Page} page
-   * @returns {Promise<{cancelled: boolean}>}
+   * @returns {Promise<{cancelled: boolean, messageVisible: boolean}>}
    */
   async cancelTripStrict(page) {
     if (!page) {
@@ -46,14 +46,14 @@ const Cart = {
     await cartPage.waitForTripCancellationDialogTitle();
     await cartPage.clickConfirmTripCancellationButton();
 
-    // Verify cancellation was successful
+    // Check if cancellation was successful
     await cartPage.waitForTripCancelledMessage();
-    await expect(page.getByText("Cancellation confirmed!", { exact: true })).toBeVisible();
+    const messageVisible = await page.getByText("Cancellation confirmed!", { exact: true }).isVisible();
 
     // Allow backend and UI to settle
     await page.waitForLoadState("networkidle");
 
-    return { cancelled: true };
+    return { cancelled: true, messageVisible };
   },
 
   /**
@@ -88,54 +88,42 @@ const Cart = {
   },
 
   /**
-   * Confirms that a hotel booking is refundable.
-   * Validates the refundable label contains expected text.
+   * Gets the hotel refundable label text from the cart.
+   * Returns the label text for validation in step definitions.
    *
    * @param {import('playwright').Page} page
-   * @returns {Promise<void>}
+   * @returns {Promise<string>} The refundable label text
    */
-  async isHotelRefundable(page) {
+  async getHotelRefundableText(page) {
     if (!page) {
       throw new Error('page is required');
     }
     
-    const { expect } = require('@playwright/test');
     const cartPage = new CartPage(page);
     const labelText = await cartPage.getHotelRefundableText();
-    
-    // Must contain "Refundable"
-    expect(labelText).toMatch(/Refundable/i);
-    
-    // Must NOT contain any form of "Non Refundable"
-    expect(labelText).not.toMatch(/Non\s*Refundable/i);
+    return labelText;
   },
 
   /**
-   * Waits for a specific booking status label in the cart.
-   * Throws a detailed error if the expected status is not found in time.
+   * Gets the current booking status label from the cart.
+   * Returns the status text for validation in step definitions.
    *
-   * @param {string} expectedStatus - Status text to wait for
    * @param {object} [options]
    * @param {number} [options.timeout=60000] - Timeout in ms
    * @param {import('playwright').Page} options.page - Playwright page instance
-   * @returns {Promise<void>}
+   * @returns {Promise<string>} The booking status text
    */
-  async expectBookingStatus(expectedStatus, { timeout = 60000, page } = {}) {
+  async getBookingStatus({ timeout = 60000, page } = {}) {
     if (!page) {
       throw new Error('page is required');
-    }
-    
-    if (!expectedStatus || typeof expectedStatus !== 'string') {
-      throw new Error('expectedStatus must be a non-empty string');
     }
     
     if (typeof timeout !== 'number' || timeout < 0) {
       throw new Error(`timeout must be >= 0, got ${timeout}`);
     }
     
-    const locator = page.locator(CART_SELECTORS.QUOTE_STATUS_LABEL);
-    await expect(locator).toBeVisible({ timeout });
-    await expect(locator).toContainText(expectedStatus, { timeout, ignoreCase: true });
+    const cartPage = new CartPage(page);
+    return await cartPage.getBookingStatus({ timeout, page });
   },
 
   /**
@@ -198,54 +186,52 @@ const Cart = {
   // ===== OUT OF POLICY (OOP) VALIDATION =====
 
   /**
-   * Verifies that Out of Policy indicators are visible in cart page.
-   * Used when validating travel policy enforcement on cart.
+   * Checks if Out of Policy indicators are visible in cart page.
+   * Returns visibility status for validation in step definitions.
    * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<boolean>} True if OOP indicator is visible
    */
-  async verifyOutOfPolicyIndicatorIsVisibleInCart(page) {
+  async isOutOfPolicyIndicatorVisibleInCart(page) {
     if (!page) {
       throw new Error('page is required');
     }
     
     const commonPage = new CommonPage(page);
     await commonPage.waitForOOPVisible();
-    await expect(page.locator(COMMON_SELECTORS.OOP_INFO)).toBeVisible();
+    return await page.locator(COMMON_SELECTORS.OOP_INFO).isVisible();
   },
 
   /**
-   * Verifies that Out of Policy indicators are not visible in cart page.
-   * Used when validating in-policy options on cart.
+   * Checks if Out of Policy indicators are hidden in cart page.
+   * Returns visibility status for validation in step definitions.
    * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<boolean>} True if OOP indicator is hidden
    */
-  async verifyOutOfPolicyIndicatorIsNotVisibleInCart(page) {
+  async isOutOfPolicyIndicatorHiddenInCart(page) {
     if (!page) {
       throw new Error('page is required');
     }
     
     const commonPage = new CommonPage(page);
     await commonPage.waitForOOPNotVisible();
-    await expect(page.locator(COMMON_SELECTORS.OOP_INFO)).toBeHidden();
+    return await page.locator(COMMON_SELECTORS.OOP_INFO).isHidden();
   },
 
   /**
-   * Hovers over the Out of Policy info icon and validates tooltip text.
+   * Hovers over the Out of Policy info icon and gets tooltip text.
+   * Returns the tooltip text for validation in step definitions.
    * @param {import('playwright').Page} page - Playwright page instance
-   * @param {string} expectedText - The expected tooltip text
+   * @returns {Promise<string>} The OOP tooltip text
    */
-  async hoverOverCartOOPInfoAndVerifyTooltipTextIs(page, expectedText) {
+  async hoverAndGetOOPTooltipTextInCart(page) {
     if (!page) {
       throw new Error('page is required');
-    }
-    
-    if (!expectedText || typeof expectedText !== 'string') {
-      throw new Error('expectedText must be a non-empty string');
     }
     
     const commonPage = new CommonPage(page);
     await commonPage.waitForOOPVisible();
     await commonPage.hoverOverOOPInfoIcon();
-    const actualText = await commonPage.getOOPTooltipTextCart();
-    expect(actualText).toBe(expectedText);
+    return await commonPage.getOOPTooltipTextCart();
   },
 
   /**
@@ -375,15 +361,15 @@ const Cart = {
     await cartPage.clickPriceBreakdownButton();
   },
   /**
-   * Puts a trip on hold and waits for the status to update.
+   * Puts a trip on hold and returns the new status.
    * 
    * Flow:
    * - Wait for Hold button to be visible
    * - Click the Hold button
-   * - Verify booking status changes to "On hold"
+   * - Get booking status
    *
    * @param {import('playwright').Page} page - Playwright page instance
-   * @returns {Promise<{held: boolean}>} Hold status
+   * @returns {Promise<{held: boolean, status: string}>} Hold status and booking status
    */
   async holdTrip(page) {
     if (!page) {
@@ -393,11 +379,19 @@ const Cart = {
     const cartPage = new CartPage(page);
     await cartPage.waitForHoldButton();
     await cartPage.clickHoldButton();
-    await Cart.expectBookingStatus(tripStatus.label.onHold.status, { page });
-    return { held: true };
+    const status = await Cart.getBookingStatus({ page });
+    return { held: true, status };
   },
 
-  async assertPassportDetailsAreDisplayedAs(page, index, expectedText) {
+  /**
+   * Gets passport details text from the cart extras section.
+   * Returns the passport details for validation in step definitions.
+   * 
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} index - Index of the passport field to read
+   * @returns {Promise<string>} The passport details text
+   */
+  async getPassportDetailsText(page, index = 0) {
     if (!page) {
       throw new Error('page is required');
     }
@@ -406,14 +400,9 @@ const Cart = {
       throw new Error(`index must be >= 0, got ${index}`);
     }
     
-    if (!expectedText || typeof expectedText !== 'string') {
-      throw new Error('expectedText must be a non-empty string');
-    }
-    
     const cartPage = new CartPage(page);
-    const actualText = await cartPage.getPassportDetailsText(index);
-    expect(actualText).toBe(expectedText);
-  }
+    return await cartPage.getPassportDetailsText(index);
+  },
 };
 
 

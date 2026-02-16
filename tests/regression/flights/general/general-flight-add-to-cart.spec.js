@@ -1,4 +1,4 @@
-const { test } = require("@fixtures/supplierTest");
+const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, FlightSearch, FlightResults, FlightPricing, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
@@ -24,7 +24,8 @@ test.describe("[@regression] Add Flight to Cart Flows", () => {
 
     // Step 6: Assert "Pending booking" quote status appears in cart
     logger.info('Asserting quote status', { status: 'Pending booking' });
-    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
+    const status = await Cart.getBookingStatus({ page });
+    expect(status).toContain(tripStatus.label.pendingBooking.status);
 
     logger.info('One-way flight add to cart flow completed successfully');
   });
@@ -51,7 +52,8 @@ test.describe("[@regression] Add Flight to Cart Flows", () => {
 
     // Step 5: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
-    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
+    const statusRT = await Cart.getBookingStatus({ page });
+    expect(statusRT).toContain(tripStatus.label.pendingBooking.status);
 
     logger.info('Round trip flight add to cart flow completed successfully');
   });
@@ -82,7 +84,8 @@ test.describe("[@regression] Add Flight to Cart Flows", () => {
 
     // Step 6: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
-    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
+    const statusSched = await Cart.getBookingStatus({ page });
+    expect(statusSched).toContain(tripStatus.label.pendingBooking.status);
 
     logger.info('Flight search by schedule add to cart flow completed successfully');
   });

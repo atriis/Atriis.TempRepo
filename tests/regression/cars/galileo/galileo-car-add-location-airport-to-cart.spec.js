@@ -1,4 +1,4 @@
-const { test } = require("@fixtures/supplierTest");
+const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, CarSearch, CarResults, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
@@ -24,7 +24,8 @@ test.describe("[@regression][@supplier:galileo] Galileo - Add Car From Airport L
 
     // Step 5: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
-    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
+    const status = await Cart.getBookingStatus({ page });
+    expect(status).toContain(tripStatus.label.pendingBooking.status);
 
   });
 });

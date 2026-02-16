@@ -1,4 +1,4 @@
-const { test } = require("@fixtures/supplierTest");
+const { test, expect } = require("@fixtures/supplierTest");
 const { Search, DynamicAndReferenceFields, FlightSearch, Cart } = require("@dsl");
 const { FlightResults } = require("@src/dsl");
 const tripStatus = require("@data/tripStatus.json");
@@ -44,7 +44,8 @@ test.describe("[@regression][@travel-policy] Complete Booking with Chris Tree", 
 
     // Step 9: Assert Finalizing status
     logger.info('Asserting quote status', { status: 'Finalizing' });
-    await Cart.expectBookingStatus(tripStatus.label.finalizing.status, { page });
+    const status = await Cart.getBookingStatus({ page });
+    expect(status).toContain(tripStatus.label.finalizing.status);
 
     logger.info('Complete booking flow with Chris Tree completed successfully');
   });

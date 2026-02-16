@@ -10,25 +10,24 @@ const { generateRandomGuestData } = require("@utils/data/generateRandomGuestData
 const Search = {
   /**
    * Set the logged-in user as the traveler.
-   * UI should show the "star" icon as confirmation.
+   * Returns whether the star icon is visible (indicates success).
    */
   async addMeAsTraveler(page) {
     if (!page) {
       throw new Error('page is required');
     }
     
-    const { expect } = require('@playwright/test');
     const searchPage = new SearchPage(page);
     await searchPage.waitForAddMeButton();
     await searchPage.clickAddMe();
     
     const starIconVisible = await searchPage.isStarIconVisible();
-    expect(starIconVisible, "Star icon should be visible after adding traveler").toBe(true);
+    return { added: true, starIconVisible };
   },
 
   /**
    * Set a specific existing traveler by searching their name.
-   * UI should show the "star" icon as confirmation.
+   * Returns whether the star icon is visible (indicates success).
    */
   async fillInTravelerNameAndSave(page, name) {
     if (!page) {
@@ -39,13 +38,12 @@ const Search = {
       throw new Error('name must be a non-empty string');
     }
     
-    const { expect } = require('@playwright/test');
     const searchPage = new SearchPage(page);
     await searchPage.fillInTravelerName(name);
     await searchPage.selectFirstTravelerNameOption();
     
     const starIconVisible = await searchPage.isStarIconVisible();
-    expect(starIconVisible, "Star icon should be visible after selecting traveler").toBe(true);
+    return { selected: true, starIconVisible };
   },
 
   /**
@@ -62,19 +60,18 @@ const Search = {
     
     const searchPage = new SearchPage(page);
     await searchPage.clickAddTravelerButton();
-    await Search.fillInTravelerNameAndSave(page, name);
+    return await Search.fillInTravelerNameAndSave(page, name);
   },
 
   /**
    * Add a new guest traveler using random test data.
-   * Returns the generated data for test/debug use.
+   * Returns the generated data and star icon visibility status.
    */
   async addRandomGuest(page) {
     if (!page) {
       throw new Error('page is required');
     }
     
-    const { expect } = require('@playwright/test');
     const searchPage = new SearchPage(page);
     const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
 
@@ -90,10 +87,10 @@ const Search = {
     await searchPage.clickAddGuestButton();
     
     const starIconVisible = await searchPage.isStarIconVisible();
-    expect(starIconVisible, "Star icon should be visible after adding guest").toBe(true);
 
     return {
       added: true,
+      starIconVisible,
       guestData: { firstName, lastName, dateOfBirth, email, phone },
     };
   },

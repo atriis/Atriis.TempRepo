@@ -43,7 +43,9 @@
  *   "The shared price for carrier {string} should match the prices from results"
  *   "The shared price for carrier {string} should match the price from pricing options"
  *   "I should see the fare rules note about strictest terms"
+ *     → FlightResults.getFareRulesNoteText(page) + expect(noteText).toContain(...)
  *   "the green circle icon at index {int} {string} should be displayed in pricing options"
+ *     → FlightResults.isGreenCircleIconVisibleInPricingOptions(page, index) + expect(isVisible).toBe(true)
  *
  * ========================
  */
@@ -301,10 +303,12 @@ Then("The shared price for carrier {string} should match the price from pricing 
 
 Then("I should see the fare rules note about strictest terms", async function () {
   logger.info("Verifying fare rules note about strictest terms");
-  await FlightResults.verifyFareRulesStrictestTermsMessage(this.page);
+  const noteText = await FlightResults.getFareRulesNoteText(this.page);
+  expect(noteText).toContain('Fare rules would be applied according to the strictest terms');
 });
 
 Then("the green circle icon at index {int} {string} should be displayed in pricing options", async function (index, description) {
   logger.info("Verifying green circle icon is displayed in pricing options", { index, description });
-  await FlightResults.greenCircleIconIsDisplayedInPricingOptions(this.page, index);
+  const isVisible = await FlightResults.isGreenCircleIconVisibleInPricingOptions(this.page, index);
+  expect(isVisible).toBe(true);
 });

@@ -1,4 +1,4 @@
-const { test } = require("@fixtures/supplierTest");
+const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, UKParkingSearch, Results, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
@@ -25,7 +25,8 @@ test.describe("Parking - Add UK Parking to Cart", () => {
 
     // Step 5: Validate trip status is 'Pending Booking' in cart
     logger.info('Validating trip status', { status: 'Pending Booking' });
-    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
+    const status = await Cart.getBookingStatus({ page });
+    expect(status).toContain(tripStatus.label.pendingBooking.status);
 
     logger.info('UK parking add to cart flow completed successfully');
   });

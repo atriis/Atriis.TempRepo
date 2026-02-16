@@ -1,4 +1,4 @@
-const { test } = require("@fixtures/supplierTest");
+const { test, expect } = require("@fixtures/supplierTest");
 
 const { Search, BenerailSearch, Results, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
@@ -19,13 +19,14 @@ test.describe("[@regression] Benerail Add To Cart Flow", () => {
     logger.info('Searching round trip Benerail', { from: 'BELEU', to: 'BEABC' });
     await BenerailSearch.searchBenerailRoundTrip(page);
 
-    // Step 4: Add Benerail to trip
+    //  Step 4: Add Benerail to trip
     logger.info('Adding Benerail to trip');
     await Results.clickSelectButtonRoundTripAndClickAddToTrip(page);
 
     // Step 5: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
-    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
+    const statusRT = await Cart.getBookingStatus({ page });
+    expect(statusRT).toContain(tripStatus.label.pendingBooking.status);
 
     logger.info('Benerail round trip add to cart flow completed successfully');
   });
@@ -50,7 +51,8 @@ test.describe("[@regression] Benerail Add To Cart Flow", () => {
 
     // Step 5: Assert Pending booking
     logger.info('Asserting quote status', { status: 'Pending booking' });
-    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page });
+    const statusOW = await Cart.getBookingStatus({ page });
+    expect(statusOW).toContain(tripStatus.label.pendingBooking.status);
 
     logger.info('Benerail one way add to cart flow completed successfully');
   });

@@ -38,15 +38,15 @@
  *
  * Then Steps:
  *   "I successfully cancel the trip"
- *     → Cart.cancelTripStrict(page)
+ *     → Cart.cancelTripStrict(page) + expect(result.messageVisible).toBe(true)
  *   "the booking status should be {string}"
- *     → Cart.expectBookingStatus(status, page)
+ *     → Cart.getBookingStatus({page}) + expect(actualStatus).toContain(...)
  *   "the out of policy indicator should be visible in cart"
- *     → Cart.verifyOutOfPolicyIndicatorIsVisibleInCart(page)
+ *     → Cart.isOutOfPolicyIndicatorVisibleInCart(page) + expect(isVisible).toBe(true)
  *   "the out of policy indicator should not be visible in cart"
- *     → Cart.verifyOutOfPolicyIndicatorIsNotVisibleInCart(page)
+ *     → Cart.isOutOfPolicyIndicatorHiddenInCart(page) + expect(isHidden).toBe(true)
  *   "the out of policy tooltip in cart should be {string}"
- *     → Cart.hoverOverCartOOPInfoAndVerifyTooltipTextIs(page, expectedText)
+ *     → Cart.hoverAndGetOOPTooltipTextInCart(page) + expect(actualText).toBe(expectedText)
  *
  * ========================
  */
@@ -57,6 +57,7 @@ const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const Cart = require("@dsl/Cart");
 const { CartPage } = require("@pages/CartPage");
 const tripStatus = require("@data/tripStatus.json");
+const { expect } = require("@fixtures/supplierTest");
 const logger = require("@utils/logger").child("Cart");
 
 setDefaultTimeout(120000);
@@ -81,12 +82,14 @@ When("I proceed to checkout", async function () {
 
 When("I hold the trip", async function () {
   logger.info("Holding the trip");
-  await Cart.holdTrip(this.page);
+  const result = await Cart.holdTrip(this.page);
+  expect(result.status).toContain(tripStatus.label.onHold.status);
 });
 
 When("I cancel the trip", async function () {
   logger.info("Cancelling trip");
-  await Cart.cancelTripStrict(this.page);
+  const result = await Cart.cancelTripStrict(this.page);
+  expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
 });
 
 When("I attempt to cancel the trip safely", async function () {
@@ -140,21 +143,24 @@ When("I click to edit extras", async function () {
 // ===== THEN STEPS =====
 
 Then("I successfully cancel the trip", async function () {
-  logger.info("Cancelling the trip successfully"); 
-  await Cart.cancelTripStrict(this.page); 
+  logger.info("Cancelling the trip successfully");
+  const result = await Cart.cancelTripStrict(this.page);
+  expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
 });
 
 Then("the booking status should be {string}", async function (status) {
   logger.info("Verifying booking status", { status });
+  const actualStatus = await Cart.getBookingStatus({ page: this.page });
+  
   if (status === "Pending booking") {
-    await Cart.expectBookingStatus(tripStatus.label.pendingBooking.status, { page: this.page });
+    expect(actualStatus).toContain(tripStatus.label.pendingBooking.status);
   } else if (status === "On Hold") {
-    await Cart.expectBookingStatus(tripStatus.label.onHold.status, { page: this.page });
+    expect(actualStatus).toContain(tripStatus.label.onHold.status);
   } else if (status === "Ticketing Complete") {
-    await Cart.expectBookingStatus(tripStatus.label.ticketingComplete.status, { page: this.page });
+    expect(actualStatus).toContain(tripStatus.label.ticketingComplete.status);
   }
   else if (status === "Confirmed") {
-    await Cart.expectBookingStatus(tripStatus.label.confirmed.status, { page: this.page });
+    expect(actualStatus).toContain(tripStatus.label.confirmed.status);
   } else {
     throw new Error(`Unknown booking status: ${status}`);
   }
@@ -162,20 +168,24 @@ Then("the booking status should be {string}", async function (status) {
 
 Then("the out of policy indicator should be visible in cart", async function () {
   logger.info("Verifying OOP indicator is visible in cart");
-  await Cart.verifyOutOfPolicyIndicatorIsVisibleInCart(this.page);
+  const isVisible = await Cart.isOutOfPolicyIndicatorVisibleInCart(this.page);
+  expect(isVisible).toBe(true);
 });
 
 Then("the out of policy indicator should not be visible in cart", async function () {
   logger.info("Verifying OOP indicator is not visible in cart");
-  await Cart.verifyOutOfPolicyIndicatorIsNotVisibleInCart(this.page);
+  const isHidden = await Cart.isOutOfPolicyIndicatorHiddenInCart(this.page);
+  expect(isHidden).toBe(true);
 });
 
 Then("the out of policy tooltip in cart should be {string}", async function (expectedText) {
   logger.info("Verifying OOP tooltip in cart", { expectedText });
-  await Cart.hoverOverCartOOPInfoAndVerifyTooltipTextIs(this.page, expectedText);
+  const actualText = await Cart.hoverAndGetOOPTooltipTextInCart(this.page);
+  expect(actualText).toBe(expectedText);
 });
 
 Then("passport details are displayed as {string}", async function (expectedText) {
   logger.info("Asserting passport details are displayed", { expectedText });
-  await Cart.assertPassportDetailsAreDisplayedAs(this.page, 0, expectedText);   
+  const actualText = await Cart.getPassportDetailsText(this.page, 0);
+  expect(actualText).toBe(expectedText);
 });

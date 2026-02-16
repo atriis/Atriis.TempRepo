@@ -23,6 +23,7 @@ require("module-alias/register");
 
 const { Given, setDefaultTimeout } = require("@cucumber/cucumber");
 const { Search } = require("@dsl");
+const { expect } = require("@fixtures/supplierTest");
 const logger = require("@utils/logger").child("Search");
 
 setDefaultTimeout(120000);
@@ -31,15 +32,18 @@ setDefaultTimeout(120000);
 
 Given("I have added myself as the traveler", async function () {
   logger.info("Adding traveler: I am the traveler");
-  await Search.addMeAsTraveler(this.page);
+  const result = await Search.addMeAsTraveler(this.page);
+  expect(result.starIconVisible, "Star icon should be visible after adding traveler").toBe(true);
 });
 
 Given("I have added traveler by name {string}", async function (travelerName) {
   logger.info("Adding traveler by name", { travelerName });
-  await Search.addTravelerByName(this.page, travelerName);
+  const result = await Search.addTravelerByName(this.page, travelerName);
+  expect(result.starIconVisible, "Star icon should be visible after adding traveler by name").toBe(true);
 });
 
 Given("I have added a random guest traveler", async function () {
   logger.info("Adding random guest traveler");
-  await Search.addRandomGuest(this.page);
+  const result = await Search.addRandomGuest(this.page);
+  expect(result.starIconVisible, "Star icon should be visible after adding guest").toBe(true);
 });
