@@ -13,7 +13,7 @@ module.exports = {
   CarResults: require("./CarResults"),
   CarSearch: require("./CarSearch"),
   Cart: require("./Cart"),
-  CartFOP: require("./CartPayment"),
+  CartPayment: require("./CartPayment"),
   Checkout: require("./Checkout"),
   DynamicAndReferenceFields: require("./DynamicAndReferenceFields"),
   EvolviResults: require("./EvolviResults"),

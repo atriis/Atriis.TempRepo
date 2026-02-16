@@ -1,6 +1,6 @@
 
 /**
- * CartFOPPage
+ * CartPaymentPage
  *
  * Handles low-level UI interactions inside the FOP (Form of Payment) modal on the cart page.
  * Follows project guidelines:
@@ -25,7 +25,7 @@ const SELECTORS = {
   GREEN_ICON_CART: ".material-symbols-outlined.payment-status-icon.filled.green",
 };
 
-class CartFOPPage {
+class CartPaymentPage {
   /**
    * @param {import('@playwright/test').Page} page - Playwright page instance
    */
@@ -243,5 +243,5 @@ class CartFOPPage {
   }
 }
 
-// Export CartFOPPage
-module.exports = CartFOPPage;
+// Export CartPaymentPage
+module.exports = CartPaymentPage;

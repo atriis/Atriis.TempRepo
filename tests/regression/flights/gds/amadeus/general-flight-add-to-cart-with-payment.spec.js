@@ -1,6 +1,6 @@
 const { test, expect } = require("@fixtures/supplierTest");
 
-const { Search, FlightSearch, FlightResults, CartFOP, Cart } = require("@dsl");
+const { Search, FlightSearch, FlightResults, CartPayment, Cart } = require("@dsl");
 const tripStatus = require("@data/tripStatus.json");
 const logger = require('@utils/logger').child('FlightWithPayment');
 
@@ -29,11 +29,11 @@ test.describe("[@regression] Add Flight to Cart with Payment", () => {
 
     // Step 6: Add credit card as form of payment
     logger.info('Adding credit card as form of payment');
-    await CartFOP.addCreditCard(page);
+    await CartPayment.addCreditCard(page);
 
     // Step 7: Assert payment method added
     logger.info('Asserting payment method added');
-    expect(await CartFOP.isPaymentMethodAdded(page)).toBe(true);
+    expect(await CartPayment.isPaymentMethodAdded(page)).toBe(true);
 
     logger.info('One-way flight add to cart flow with payment completed successfully');
   });

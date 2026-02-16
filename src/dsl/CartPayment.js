@@ -1,15 +1,15 @@
 /**
- * CartFOP DSL
+ * CartPayment DSL
  *
  * Business-level actions for adding a credit card as a form of payment to the cart.
  * Follows project conventions: no selectors, no UI details, no assertions.
- * Uses CartFOPPage for low-level UI interactions.
+ * Uses CartPaymentPage for low-level UI interactions.
  */
 
-const CartFOPPage = require("../pages/CartPaymentPage");
+const CartPaymentPage = require("../pages/CartPaymentPage");
 const cards = require("../data/cards.json");
 
-class CartFOP {
+class CartPayment {
   /**
    * Adds a credit card as a form of payment to the cart.
    * @param {import('@playwright/test').Page} page - Playwright page instance
@@ -25,7 +25,7 @@ class CartFOP {
    * @param {string} cardData.cardNumber
    */
   static async addCreditCard(page, cardData = cards[0]) {
-    const fop = new CartFOPPage(page);
+    const fop = new CartPaymentPage(page);
     await fop.clickAddPaymentMethodButton();
     await fop.clickAddCardDetailsButton();
     await fop.waitForCardHolderNameInput();
@@ -51,9 +51,9 @@ class CartFOP {
    * @returns {Promise<boolean>} True if payment method green icon is visible
    */
   static async isPaymentMethodAdded(page) {
-    const fop = new CartFOPPage(page);
+    const fop = new CartPaymentPage(page);
     return await fop.waitForGreenIconInCart();
   }
 }
 
-module.exports = CartFOP;
+module.exports = CartPayment;
