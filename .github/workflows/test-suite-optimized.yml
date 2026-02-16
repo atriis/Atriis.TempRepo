@@ -148,6 +148,9 @@ jobs:
       RATEHAWK_USER_ONE_EMAIL: ${{ secrets.RATEHAWK_USER_ONE_EMAIL }}
       GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
       TRAVEL_POLICY_USER_ONE_EMAIL: ${{ secrets.TRAVEL_POLICY_USER_ONE_EMAIL }}
+      SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
+      SABRE_USER_TWO_EMAIL: ${{ secrets.SABRE_USER_TWO_EMAIL }}
+      CHRIS_TREE_USER_EMAIL: ${{ secrets.CHRIS_TREE_USER_EMAIL }}
     steps:
       - uses: actions/checkout@v4
 
