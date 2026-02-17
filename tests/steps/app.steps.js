@@ -14,9 +14,13 @@
  *     → App.loginAs(page, userConfig) + App.bookANewTrip(page)
  *
  *   "I am logged in to the application"
- *     → Context setup for smoke tests (no new trip started)
+ *     → Context setup (login only, use @loginOnly tag)
  *
  * When Steps:
+ *   "I book a new trip"
+ *     → App.bookANewTrip(page)
+ *     → Opens new trip page in separate tab
+ *
  *   "I logout from the application"
  *     → App.logout(page)
  *
@@ -73,6 +77,12 @@ Given("I am logged in as {string} {string} and ready to book a new trip", async 
 Given("I am logged in to the application", async function () {
   logger.debug("User is logged in (no new trip started)");
   // This uses the loggedInPage behavior - handled by hook
+});
+
+When("I book a new trip", async function () {
+  logger.info("Starting new trip booking flow");
+  this.page = await App.bookANewTrip(this.page);
+  logger.debug("New trip page opened");
 });
 
 // ===== WHEN STEPS =====
