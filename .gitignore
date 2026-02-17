@@ -45,6 +45,9 @@ test-results/
 playwright-report/
 playwright/.cache/
 
+# Browser authentication states (sensitive - contains OIDC tokens)
+.auth-states/
+
 # Screenshots and videos
 screenshots/
 videos/
