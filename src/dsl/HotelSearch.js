@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const HotelSearchPage = require("@pages/HotelSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
@@ -43,8 +44,8 @@ const HotelSearch = {
       throw new Error(`"nights" must be >= 1. Got ${nights}`);
     }
 
-    const hotelSearchPage = new HotelSearchPage(page);
-    const searchPage = new SearchPage(page);
+    const hotelSearchPage = getPageObject(page, HotelSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
 
     await hotelSearchPage.clickHotelTab();
     await hotelSearchPage.waitForBookAndStayAtYourHotelText();

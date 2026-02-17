@@ -5,6 +5,7 @@
  *
  * Exposes business-level methods for sending a flight travel request.
  */
+const { getPageObject } = require("@utils/pageObjectCache");
 const { FlightSearch } = require("./FlightSearch");
 const { TravelRequestPage } = require("@pages/TravelRequestPage");
 const { CheckoutPage } = require("@pages/CheckoutPage");
@@ -19,7 +20,7 @@ const TravelRequest = {
    * @param {import('@playwright/test').Page} page
    */
   async sendFlightTravelRequest(page) {
-    const travelRequestPage = new TravelRequestPage(page);
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
     // Click "Travel Request" button if needed (not specified in UI)
     await travelRequestPage.clickTravelRequestButton();
 
@@ -31,7 +32,7 @@ const TravelRequest = {
   },
 
   async navigateToTravelRequestTrip(page) {
-    const checkoutPage = new CheckoutPage(page);
+    const checkoutPage = getPageObject(page, CheckoutPage);
     await checkoutPage.clickGoToTripButton();
     
   }

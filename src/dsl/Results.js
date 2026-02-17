@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { CommonPage, SELECTORS } = require("@pages/CommonPage");
 const { expect } = require("@playwright/test");
@@ -22,7 +23,7 @@ const Results = {
       throw new Error('page is required');
     }
     
-    const resultsPage = new ResultsPage(page);
+    const resultsPage = getPageObject(page, ResultsPage);
     await resultsPage.waitForAddToTripText();
     await resultsPage.clickFirstAddToTripButton();
     return { clicked: true };
@@ -38,7 +39,7 @@ const Results = {
       throw new Error('page is required');
     }
     
-    const resultsPage = new ResultsPage(page);
+    const resultsPage = getPageObject(page, ResultsPage);
     await resultsPage.waitForSelectText();
     await resultsPage.clickFirstSelectButton();
     return { clicked: true };
@@ -57,7 +58,7 @@ const Results = {
       throw new Error('page is required');
     }
     
-    const resultsPage = new ResultsPage(page);
+    const resultsPage = getPageObject(page, ResultsPage);
     const proceeded = await resultsPage.handleConflictQuoteModalIfVisible();
     return { proceeded };
   },
@@ -113,7 +114,7 @@ const Results = {
       throw new Error('page is required');
     }
     
-    const commonPage = new CommonPage(page);
+    const commonPage = getPageObject(page, CommonPage);
     await commonPage.waitForOOPVisible();
     return await page.locator(SELECTORS.OOP_INFO).isVisible();
   },
@@ -129,7 +130,7 @@ const Results = {
       throw new Error('page is required');
     }
     
-    const commonPage = new CommonPage(page);
+    const commonPage = getPageObject(page, CommonPage);
     await commonPage.waitForOOPNotVisible();
     return await page.locator(SELECTORS.OOP_INFO).isHidden();
   },
@@ -172,8 +173,8 @@ const Results = {
       throw new Error('page is required');
     }
     
-    const commonPage = new CommonPage(page);
-    const resultsPage = new ResultsPage(page);
+    const commonPage = getPageObject(page, CommonPage);
+    const resultsPage = getPageObject(page, ResultsPage);
     const modalVisible = await Results.isFlightCapacityRestrictionModalVisible(page);
     await commonPage.clickGoBackOnFlightCapacityRestrictionPopUp();
     await resultsPage.waitForAddToTripText(); // Wait for results to reload after going back
@@ -191,8 +192,8 @@ const Results = {
       throw new Error('page is required');
     }
     
-    const commonPage = new CommonPage(page);
-    const resultsPage = new ResultsPage(page);
+    const commonPage = getPageObject(page, CommonPage);
+    const resultsPage = getPageObject(page, ResultsPage);
     await resultsPage.clickFirstAddToTripButton(); // Ensure results are loaded before checking modal
     const modalVisible = await Results.isFlightCapacityRestrictionModalVisible(page);
     await commonPage.clickProceedAnywayOnFlightCapacityRestrictionPopUp();
@@ -211,9 +212,9 @@ const Results = {
       throw new Error('page is required');
     }
     
-    const resultsPage = new ResultsPage(page);
+    const resultsPage = getPageObject(page, ResultsPage);
     await resultsPage.waitForAddToTripText(); // Ensure results are loaded before checking OOP tooltip
-    const commonPage = new CommonPage(page);
+    const commonPage = getPageObject(page, CommonPage);
     await commonPage.waitForOOPVisible();
     await commonPage.hoverOverOOPInfoIcon();
     return await commonPage.getOOPTooltipText();

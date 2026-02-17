@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const LoginPage = require("@pages/LoginPage");
 const LogoutPage = require("@pages/LogoutPage");
 const MenuPage = require("@pages/MenuPage");
@@ -34,8 +35,8 @@ const App = {
       throw new Error('password must be a non-empty string');
     }
     
-    const loginPage = new LoginPage(page);
-    const menuPage = new MenuPage(page);
+    const loginPage = getPageObject(page, LoginPage);
+    const menuPage = getPageObject(page, MenuPage);
 
     await loginPage.waitForLoginPage();
     await loginPage.fillEmail(email);
@@ -57,7 +58,7 @@ const App = {
       throw new Error('page is required');
     }
     
-    const menuPage = new MenuPage(page);
+    const menuPage = getPageObject(page, MenuPage);
 
     await menuPage.waitForBookANewTripIcon();
 
@@ -79,9 +80,9 @@ const App = {
       throw new Error('page is required');
     }
     
-    const menuPage = new MenuPage(page);
-    const loginPage = new LoginPage(page);
-    const logoutPage = new LogoutPage(page);
+    const menuPage = getPageObject(page, MenuPage);
+    const loginPage = getPageObject(page, LoginPage);
+    const logoutPage = getPageObject(page, LogoutPage);
 
     await menuPage.waitForLogoutIcon();
     await menuPage.clickLogout();

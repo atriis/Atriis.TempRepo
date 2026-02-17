@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const { EvolviSearchPage, SELECTORS: EVOLVI_SELECTORS } = require("@pages/EvolviSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const evolviRoutes = require("@data/evolvi.json");
@@ -17,7 +18,7 @@ const EvolviSearch = {
    * @param {import('playwright').Page} page - Playwright page instance
    */
   async selectEvolviSearch(page) {
-    const searchPage = new SearchPage(page);
+    const searchPage = getPageObject(page, SearchPage);
     await searchPage.clickRailTab();
     await page.getByRole("option", { name: "UK Rail" }).click();
   },
@@ -28,7 +29,7 @@ const EvolviSearch = {
    * @param {import('playwright').Page} page
    */
   async ensureSplitTicketIsUnchecked(page) {
-    const evolviSearchPage = new EvolviSearchPage(page);
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
     const checkbox = page.locator(EVOLVI_SELECTORS.SPLIT_TICKET_CHECKBOX);
 
     // Only uncheck if currently checked
@@ -58,7 +59,7 @@ const EvolviSearch = {
       "evolvi",
     );
 
-    const searchPage = new SearchPage(page);
+    const searchPage = getPageObject(page, SearchPage);
 
     // Provider + trip type
     await EvolviSearch.selectEvolviSearch(page);
@@ -105,7 +106,7 @@ const EvolviSearch = {
       "evolvi",
     );
 
-    const searchPage = new SearchPage(page);
+    const searchPage = getPageObject(page, SearchPage);
 
     // Provider + trip type
     await EvolviSearch.selectEvolviSearch(page);

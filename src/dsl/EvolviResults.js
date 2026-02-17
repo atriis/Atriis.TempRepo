@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const EvolviResultsPage = require("@pages/EvolviResultsPage");
 const Results = require("./Results");
 
@@ -10,7 +11,7 @@ const Results = require("./Results");
 const EvolviResults = {
   /** Selects the cheapest suggested fare and adds it to the trip */
   async selectCheapestSuggestedFare(page) {
-    const resultsPage = new EvolviResultsPage(page);
+    const resultsPage = getPageObject(page, EvolviResultsPage);
 
     await resultsPage.waitForSuggestedFaresText();
     await resultsPage.clickCheapestSuggestedFareOption();
@@ -23,7 +24,7 @@ const EvolviResults = {
    * Complete workflow to add an Evolvi one-way option.
    */
   async addEvolviToTrip(page) {
-    const resultsPage = new EvolviResultsPage(page);
+    const resultsPage = getPageObject(page, EvolviResultsPage);
 
     await resultsPage.waitForOutboundText();
     await EvolviResults.selectCheapestSuggestedFare(page);
@@ -36,7 +37,7 @@ const EvolviResults = {
    * Requires two selections before adding to trip.
    */
   async addEvolviRoundtripToTrip(page) {
-    const resultsPage = new EvolviResultsPage(page);
+    const resultsPage = getPageObject(page, EvolviResultsPage);
 
     // First leg
     await resultsPage.waitForOutboundText();

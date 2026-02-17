@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const GroundTransportSearchPage = require("@pages/GroundTransportSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
@@ -59,8 +60,8 @@ const GroundTransportSearch = {
       "groundtransport",
     );
 
-    const groundTransportSearchPage = new GroundTransportSearchPage(page);
-    const searchPage = new SearchPage(page);
+    const groundTransportSearchPage = getPageObject(page, GroundTransportSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
 
     await groundTransportSearchPage.clickGroundTransportTab();
     await groundTransportSearchPage.clickFromAirport();

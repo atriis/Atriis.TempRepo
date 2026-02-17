@@ -3,6 +3,7 @@ const { SearchPage } = require("@pages/SearchPage");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveLocation } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
+const { getPageObject } = require("@utils/pageObjectCache");
 const carLocations = require("@data/cars.json");
 
 /**
@@ -25,7 +26,7 @@ const CarSearch = {
     if (!agencyName || typeof agencyName !== 'string') {
       throw new Error('agencyName must be a non-empty string');
     }
-    const carSearchPage = new CarSearchPage(page);
+    const carSearchPage = getPageObject(page, CarSearchPage);
 
     await carSearchPage.typeRentalAgencyName(agencyName);
     await carSearchPage.clickRentalAgencyDropdownOption(agencyName);
@@ -65,8 +66,8 @@ const CarSearch = {
       carLocations,
     );
 
-    const carSearchPage = new CarSearchPage(page);
-    const searchPage = new SearchPage(page);
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
 
     await carSearchPage.clickCarTab();
     await searchPage.fillInOrField(place, 1);
@@ -118,7 +119,7 @@ const CarSearch = {
       );
     }
 
-    const carSearchPage = new CarSearchPage(page);
+    const carSearchPage = getPageObject(page, CarSearchPage);
 
     await carSearchPage.clickCarTab();
     await CarSearch.selectRentalAgencyByName(page, agencyName);

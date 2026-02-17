@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const DynamicAndReferenceFieldsPage = require("@pages/DynamicAndReferenceFieldsPage");
 const { GeneralElementsPage } = require("@pages/GeneralElementsPage");
 const { CheckoutPage } = require("@pages/CheckoutPage");
@@ -25,8 +26,8 @@ const DynamicAndReferenceFields = {
    * @returns {Promise<void>}
    */
   async selectTripPurposeReferenceField(page) {
-    const dynamicFieldsPage = new DynamicAndReferenceFieldsPage(page);
-    const generalElementsPage = new GeneralElementsPage(page);
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const generalElementsPage = getPageObject(page, GeneralElementsPage);
 
     // Open the Trip Purpose dropdown
     await dynamicFieldsPage.clickToOpenDropdown("TRIP PURPOSE");
@@ -49,8 +50,8 @@ const DynamicAndReferenceFields = {
    * @returns {Promise<void>}
    */
   async addNumberCheckoutField(page, fieldIndex = 5) {
-    const dynamicFieldsPage = new DynamicAndReferenceFieldsPage(page);
-    const checkoutPage = new CheckoutPage(page);
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const checkoutPage = getPageObject(page, CheckoutPage);
 
     // Ensure checkout page is fully loaded
     await checkoutPage.waitForBookingDetailsText();
@@ -70,9 +71,9 @@ const DynamicAndReferenceFields = {
    * @returns {Promise<void>}
    */
   async waitAndClickSaveButtonModal(page) {
-    const dynamicFieldsPage = new DynamicAndReferenceFieldsPage(page);
-    const travelRequestPage = new TravelRequestPage(page);
-    const checkoutPage = new CheckoutPage(page);
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    const checkoutPage = getPageObject(page, CheckoutPage);
 
     // Ensure
     await dynamicFieldsPage.waitForSaveButtonModal();

@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const UKParkingSearchPage = require("@pages/UKParkingSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
@@ -52,8 +53,8 @@ const UKParkingSearch = {
     
     // Start of the search flow
 
-    const ukParkingSearchPage = new UKParkingSearchPage(page);
-    const searchPage = new SearchPage(page);
+    const ukParkingSearchPage = getPageObject(page, UKParkingSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
 
     // 1. Navigate to parking tab
     await ukParkingSearchPage.clickParkingTab();

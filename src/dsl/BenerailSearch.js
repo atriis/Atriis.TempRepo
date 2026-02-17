@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const { SearchPage } = require("@pages/SearchPage");
 const benerailRoutes = require("@data/benerail.json");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
@@ -16,7 +17,7 @@ const BenerailSearch = {
    * @param {import('playwright').Page} page - Playwright page instance
    */
   async selectBenerailSearch(page) {
-    const searchPage = new SearchPage(page);
+    const searchPage = getPageObject(page, SearchPage);
     await searchPage.clickRailTab();
     await page.getByRole("option", { name: "EU Rail" }).click();
   },
@@ -42,7 +43,7 @@ const BenerailSearch = {
       "benerail",
     );
 
-    const searchPage = new SearchPage(page);
+    const searchPage = getPageObject(page, SearchPage);
 
     // Provider + trip type
     await BenerailSearch.selectBenerailSearch(page);
@@ -88,7 +89,7 @@ const BenerailSearch = {
       "benerail",
     );
 
-    const searchPage = new SearchPage(page);
+    const searchPage = getPageObject(page, SearchPage);
 
     // Provider + trip type
     await BenerailSearch.selectBenerailSearch(page);

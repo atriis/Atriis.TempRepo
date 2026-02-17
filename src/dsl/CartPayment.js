@@ -6,6 +6,7 @@
  * Uses CartPaymentPage for low-level UI interactions.
  */
 
+const { getPageObject } = require("@utils/pageObjectCache");
 const CartPaymentPage = require("../pages/CartPaymentPage");
 const cards = require("../data/cards.json");
 
@@ -25,7 +26,7 @@ class CartPayment {
    * @param {string} cardData.cardNumber
    */
   static async addCreditCard(page, cardData = cards[0]) {
-    const fop = new CartPaymentPage(page);
+    const fop = getPageObject(page, CartPaymentPage);
     await fop.clickAddPaymentMethodButton();
     await fop.clickAddCardDetailsButton();
     await fop.waitForCardHolderNameInput();
@@ -51,7 +52,7 @@ class CartPayment {
    * @returns {Promise<boolean>} True if payment method green icon is visible
    */
   static async isPaymentMethodAdded(page) {
-    const fop = new CartPaymentPage(page);
+    const fop = getPageObject(page, CartPaymentPage);
     return await fop.waitForGreenIconInCart();
   }
 }

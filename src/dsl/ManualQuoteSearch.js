@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const ManualQuoteSearchPage = require("@pages/ManualQuoteSearchPage");
 const FlightSearchPage = require("@pages/FlightSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
@@ -30,9 +31,9 @@ const ManualQuoteSearch = {
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
     logger.info("Starting manual quote flight search", { from, to });
 
-    const flightSearchPage = new FlightSearchPage(page);
-    const manualQuoteSearchPage = new ManualQuoteSearchPage(page);
-    const searchPage = new SearchPage(page);
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
 
     // Navigate to the manual quote flight tab
     await manualQuoteSearchPage.clickManualQuoteTab();

@@ -5,6 +5,7 @@ const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { generateRandomFlightRoute } = require("@utils/data/generateRandomFlightRoute");
+const { getPageObject } = require("@utils/pageObjectCache");
 const logger = require("@utils/logger").child("FlightSearch-DSL");
 
 const FlightSearch = {
@@ -32,8 +33,8 @@ const FlightSearch = {
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
     logger.info(`Starting ${tripType} flight search (${searchType})`, { from, to });
 
-    const flightSearchPage = new FlightSearchPage(page);
-    const searchPage = new SearchPage(page);
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
 
     await flightSearchPage.clickFlightTab();
 

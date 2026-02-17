@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const RoomLevelResultsPage = require("@pages/RoomLevelResultsPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { CartPage } = require("@pages/CartPage");
@@ -14,9 +15,9 @@ const RoomLevelResults = {
    * Returns the refundable label text for validation.
    */
   async addRefundableHotelRoomLevelToCart(page) {
-    const roomLevelResultsPage = new RoomLevelResultsPage(page);
-    const resultsPage = new ResultsPage(page);
-    const cartPage = new CartPage(page);
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+    const cartPage = getPageObject(page, CartPage);
 
     await roomLevelResultsPage.waitForViewHotelOnMapText();
     await resultsPage.scrollToFirstAddToTripButton();

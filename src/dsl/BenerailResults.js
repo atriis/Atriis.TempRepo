@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const { ResultsPage } = require("@pages/ResultsPage");
 const Results = require("./Results");
 
@@ -10,14 +11,14 @@ const Results = require("./Results");
 const BenerailResults = {
   /** Waits until Benerail results are ready */
   async waitForBenerailResults(page) {
-    const resultsPage = new ResultsPage(page);
+    const resultsPage = getPageObject(page, ResultsPage);
     await resultsPage.waitForSelectText();
     return { loaded: true };
   },
 
   /** Selects the first available Benerail option */
   async selectFirstBenerailOption(page) {
-    const resultsPage = new ResultsPage(page);
+    const resultsPage = getPageObject(page, ResultsPage);
     await resultsPage.clickFirstSelectButton();
     return { selected: true };
   },
@@ -43,7 +44,7 @@ const BenerailResults = {
    * Two selections are required before adding to trip.
    */
   async addBenerailRoundtripToTrip(page) {
-    const resultsPage = new ResultsPage(page);
+    const resultsPage = getPageObject(page, ResultsPage);
 
     // First leg
     await resultsPage.waitForSelectText();
@@ -62,7 +63,7 @@ const BenerailResults = {
    * Adds a Benerail one-way trip to the current trip.
    */
   async addBenerailOneWayToTrip(page) {
-    const resultsPage = new ResultsPage(page);
+    const resultsPage = getPageObject(page, ResultsPage);
 
     await resultsPage.waitForSelectText();
     await resultsPage.clickFirstSelectButton();

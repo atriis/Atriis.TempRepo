@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const FlightPricingPage = require("@pages/FlightPricingPage");
 const { CartPage } = require("@pages/CartPage");
 const { ResultsPage } = require("@pages/ResultsPage");
@@ -16,9 +17,9 @@ const FlightPricing = {
       throw new Error('page is required');
     }
     
-    const flightPricingPage = new FlightPricingPage(page);
-    const cartPage = new CartPage(page);
-    const resultsPage = new ResultsPage(page);
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+    const cartPage = getPageObject(page, CartPage);
+    const resultsPage = getPageObject(page, ResultsPage);
 
     await flightPricingPage.waitForYourSelectionText();
     await resultsPage.waitForAddToTripText();

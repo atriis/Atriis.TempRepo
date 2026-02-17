@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const { CheckoutPage } = require("@pages/CheckoutPage");
 const { CartPage } = require("@pages/CartPage");
 const { CommonPage } = require("@src/pages/CommonPage");
@@ -22,8 +23,8 @@ const Checkout = {
       throw new Error('page is required');
     }
     
-    const checkoutPage = new CheckoutPage(page);
-    const cartPage = new CartPage(page);
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const cartPage = getPageObject(page, CartPage);
 
     // Ensure checkout page is fully loaded
     await checkoutPage.waitForBookingDetailsText();
@@ -59,9 +60,9 @@ const Checkout = {
       throw new Error('page is required');
     }
     
-    const checkoutPage = new CheckoutPage(page);
-    const commonPage = new CommonPage(page);
-    const cartPage = new CartPage(page);
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const commonPage = getPageObject(page, CommonPage);
+    const cartPage = getPageObject(page, CartPage);
 
     // Ensure checkout page is fully loaded
     await checkoutPage.waitForBookingDetailsText();

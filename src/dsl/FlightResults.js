@@ -3,6 +3,7 @@ const { CartPage } = require("@pages/CartPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const Results = require("./Results");
 const { CommonPage } = require("@src/pages/CommonPage");
+const { getPageObject } = require("@utils/pageObjectCache");
 const { expect } = require("@fixtures/supplierTest");
 
 /**
@@ -24,7 +25,7 @@ const FlightResults = {
       throw new Error('page is required');
     }
     
-    const resultsPage = new ResultsPage(page);
+    const resultsPage = getPageObject(page, ResultsPage);
 
     try {
       await resultsPage.waitForAddToTripText();
@@ -51,7 +52,7 @@ const FlightResults = {
       throw new Error('page is required');
     }
     
-    const cartPage = new CartPage(page);
+    const cartPage = getPageObject(page, CartPage);
 
     await Results.waitAndClickAddToTripButton(page);
 
@@ -91,7 +92,7 @@ const FlightResults = {
       throw new Error('page is required');
     }
     
-    const flightResultsPage = new FlightResultsPage(page);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
 
     // Select first segment
     await this.selectOneSegmentBySchedule(page);
@@ -115,7 +116,7 @@ const FlightResults = {
       throw new Error('page is required');
     }
     
-    const resultsPage = new ResultsPage(page);
+    const resultsPage = getPageObject(page, ResultsPage);
     await resultsPage.waitForAddToTripText();
     await resultsPage.clickShareMainButton();
     return { clicked: true };
@@ -143,8 +144,8 @@ const FlightResults = {
       throw new Error(`index must be >= 0, got ${index}`);
     }
     
-    const resultsPage = new ResultsPage(page);
-    const flightResultsPage = new FlightResultsPage(page);
+    const resultsPage = getPageObject(page, ResultsPage);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
     
     // Filter by carrier
     await flightResultsPage.typeInSearchFlightFilter(carrier);
@@ -173,7 +174,7 @@ const FlightResults = {
       throw new Error('page is required');
     }
     
-    const commonPage = new CommonPage(page);
+    const commonPage = getPageObject(page, CommonPage);
     
     // Scroll to make both offers visible in the share dialog
     await commonPage.scrollIntoViewOffer(1);
@@ -200,7 +201,7 @@ const FlightResults = {
       throw new Error('page is required');
     }
     
-    const flightResultsPage = new FlightResultsPage(page);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
     
     // Click "Select to share" button for first pricing option
     await flightResultsPage.waitForSelectToShareButton();
@@ -214,7 +215,7 @@ const FlightResults = {
       throw new Error('page is required');
     }
     
-    const flightResultsPage = new FlightResultsPage(page);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
     
     // Click "Select" button for first pricing option
     await flightResultsPage.waitForSelectButtonInPricingOptionsModal();
@@ -232,7 +233,7 @@ const FlightResults = {
       throw new Error(`index must be >= 0, got ${index}`);
     }
     
-    const flightResultsPage = new FlightResultsPage(page);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
     await flightResultsPage.waitForPricingOptionsButton(index);
     await flightResultsPage.clickPricingOptionsButton(index);
   },
@@ -253,7 +254,7 @@ const FlightResults = {
       throw new Error('page is required');
     }
     
-    const flightResultsPage = new FlightResultsPage(page);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
     
     // Share the quote
     await flightResultsPage.clickPricingOptionsShareQuoteButton();
@@ -282,7 +283,7 @@ const FlightResults = {
       throw new Error('page is required');
     }
     
-    const flightResultsPage = new FlightResultsPage(page);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
     return await flightResultsPage.getFareRulesNote().textContent();
   },
 
@@ -302,7 +303,7 @@ const FlightResults = {
       throw new Error(`index must be >= 0, got ${index}`);
     }
     
-    const flightResultsPage = new FlightResultsPage(page);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
     // Open the fare rules drawer and wait for its content to be visible.
     await flightResultsPage.waitForFareRulesButton(index);
     await flightResultsPage.clickFareRulesButton(index);
@@ -314,7 +315,7 @@ const FlightResults = {
       throw new Error('page is required');
     }
     
-    const flightResultsPage = new FlightResultsPage(page);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
     await flightResultsPage.waitForFlightDetailsButton();
     await flightResultsPage.clickFlightDetailsButton();
     await flightResultsPage.waitForFlightDetailsHeadline();
@@ -346,7 +347,7 @@ async isGreenCircleIconVisibleInPricingOptions(page, index = 0) {
     throw new Error(`index must be >= 0, got ${index}`);
   }
   
-  const flightResultsPage = new FlightResultsPage(page);
+  const flightResultsPage = getPageObject(page, FlightResultsPage);
   
   // Wait for the green icon to appear
   await flightResultsPage.waitForGreenIconPricingOptionsModal(index);

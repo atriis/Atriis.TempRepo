@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const { SearchPage } = require("@pages/SearchPage");
 const amtrakRoutes = require("@data/amtrak.json");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
@@ -16,7 +17,7 @@ const AmtrakSearch = {
    * @param {import('playwright').Page} page - Playwright page instance
    */
   async selectAmtrakSearch(page) {
-    const searchPage = new SearchPage(page);
+    const searchPage = getPageObject(page, SearchPage);
     await searchPage.clickRailTab();
     await page.getByRole("option", { name: "Amtrak" }).click();
   },
@@ -43,7 +44,7 @@ const AmtrakSearch = {
       "amtrak",
     );
 
-    const searchPage = new SearchPage(page);
+    const searchPage = getPageObject(page, SearchPage);
 
     // Provider + trip type
     await AmtrakSearch.selectAmtrakSearch(page);
@@ -90,7 +91,7 @@ const AmtrakSearch = {
       "amtrak",
     );
 
-    const searchPage = new SearchPage(page);
+    const searchPage = getPageObject(page, SearchPage);
 
     // Provider + trip type
     await AmtrakSearch.selectAmtrakSearch(page);

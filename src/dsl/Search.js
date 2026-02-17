@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const { SearchPage } = require("@pages/SearchPage");
 const { generateRandomGuestData } = require("@utils/data/generateRandomGuestData.js");
 
@@ -17,7 +18,7 @@ const Search = {
       throw new Error('page is required');
     }
     
-    const searchPage = new SearchPage(page);
+    const searchPage = getPageObject(page, SearchPage);
     await searchPage.waitForAddMeButton();
     await searchPage.clickAddMe();
     
@@ -38,7 +39,7 @@ const Search = {
       throw new Error('name must be a non-empty string');
     }
     
-    const searchPage = new SearchPage(page);
+    const searchPage = getPageObject(page, SearchPage);
     await searchPage.fillInTravelerName(name);
     await searchPage.selectFirstTravelerNameOption();
     
@@ -58,7 +59,7 @@ const Search = {
       throw new Error('name must be a non-empty string');
     }
     
-    const searchPage = new SearchPage(page);
+    const searchPage = getPageObject(page, SearchPage);
     await searchPage.clickAddTravelerButton();
     return await Search.fillInTravelerNameAndSave(page, name);
   },
@@ -72,7 +73,7 @@ const Search = {
       throw new Error('page is required');
     }
     
-    const searchPage = new SearchPage(page);
+    const searchPage = getPageObject(page, SearchPage);
     const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
 
     await searchPage.clickAddTravelerButton();

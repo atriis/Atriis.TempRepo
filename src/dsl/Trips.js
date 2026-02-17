@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const MenuPage = require("@pages/MenuPage");
 const TripsPage = require("@pages/TripsPage");
 
@@ -20,8 +21,8 @@ const Trips = {
       throw new Error('page is required');
     }
     
-    const menuPage = new MenuPage(page);
-    const tripsPage = new TripsPage(page);
+    const menuPage = getPageObject(page, MenuPage);
+    const tripsPage = getPageObject(page, TripsPage);
 
     // Click the trips link
     await menuPage.clickTrips();

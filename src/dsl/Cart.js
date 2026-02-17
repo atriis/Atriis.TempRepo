@@ -1,3 +1,4 @@
+const { getPageObject } = require("@utils/pageObjectCache");
 const { CartPage, SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
@@ -32,7 +33,7 @@ const Cart = {
       throw new Error('page is required');
     }
     
-    const cartPage = new CartPage(page);
+    const cartPage = getPageObject(page, CartPage);
 
     // Confirm correct page state
     await cartPage.waitForDetailsText();
@@ -67,7 +68,7 @@ const Cart = {
       throw new Error('page is required');
     }
     
-    const cartPage = new CartPage(page);
+    const cartPage = getPageObject(page, CartPage);
     try {
       await cartPage.waitForDetailsText();
       await cartPage.waitForTripOverviewTitle();
@@ -99,7 +100,7 @@ const Cart = {
       throw new Error('page is required');
     }
     
-    const cartPage = new CartPage(page);
+    const cartPage = getPageObject(page, CartPage);
     const labelText = await cartPage.getHotelRefundableText();
     return labelText;
   },
@@ -122,7 +123,7 @@ const Cart = {
       throw new Error(`timeout must be >= 0, got ${timeout}`);
     }
     
-    const cartPage = new CartPage(page);
+    const cartPage = getPageObject(page, CartPage);
     return await cartPage.getBookingStatus({ timeout, page });
   },
 
@@ -138,8 +139,8 @@ const Cart = {
       throw new Error('page is required');
     }
     
-    const cartPage = new CartPage(page);
-    const commonPage = new CommonPage(page);
+    const cartPage = getPageObject(page, CartPage);
+    const commonPage = getPageObject(page, CommonPage);
     await cartPage.hoverShareButton();
     await cartPage.clickShareQuotes();
     await commonPage.waitForSubjectLabelSharePopUp();
@@ -157,8 +158,8 @@ const Cart = {
       throw new Error('page is required');
     }
     
-    const cartPage = new CartPage(page);
-    const commonPage = new CommonPage(page);
+    const cartPage = getPageObject(page, CartPage);
+    const commonPage = getPageObject(page, CommonPage);
     await cartPage.hoverShareButton();
     await cartPage.clickShareItinerary();
     await commonPage.waitForSubjectLabelSharePopUp();
@@ -176,8 +177,8 @@ const Cart = {
       throw new Error('page is required');
     }
     
-    const cartPage = new CartPage(page);
-    const generalElementsPage = new GeneralElementsPage(page);
+    const cartPage = getPageObject(page, CartPage);
+    const generalElementsPage = getPageObject(page, GeneralElementsPage);
 
     await cartPage.clickSendEmailButton();
     await generalElementsPage.waitForSuccessNotification();
@@ -196,7 +197,7 @@ const Cart = {
       throw new Error('page is required');
     }
     
-    const commonPage = new CommonPage(page);
+    const commonPage = getPageObject(page, CommonPage);
     await commonPage.waitForOOPVisible();
     return await page.locator(COMMON_SELECTORS.OOP_INFO).isVisible();
   },
@@ -212,7 +213,7 @@ const Cart = {
       throw new Error('page is required');
     }
     
-    const commonPage = new CommonPage(page);
+    const commonPage = getPageObject(page, CommonPage);
     await commonPage.waitForOOPNotVisible();
     return await page.locator(COMMON_SELECTORS.OOP_INFO).isHidden();
   },
@@ -228,7 +229,7 @@ const Cart = {
       throw new Error('page is required');
     }
     
-    const commonPage = new CommonPage(page);
+    const commonPage = getPageObject(page, CommonPage);
     await commonPage.waitForOOPVisible();
     await commonPage.hoverOverOOPInfoIcon();
     return await commonPage.getOOPTooltipTextCart();
@@ -247,7 +248,7 @@ const Cart = {
       throw new Error('page is required');
     }
     
-    const cartPage = new CartPage(page);
+    const cartPage = getPageObject(page, CartPage);
     await cartPage.fillInOOPJustificationText(justificationText);
     await cartPage.saveOOPJustificationText();
   },
@@ -269,7 +270,7 @@ const Cart = {
       throw new Error('justificationOption must be a non-empty string');
     }
     
-    const cartPage = new CartPage(page);
+    const cartPage = getPageObject(page, CartPage);
     await cartPage.openJustificationDropdown();
     await cartPage.waitForJustificationDropdownOption(justificationOption);
     await cartPage.selectJustificationDropdownOption(justificationOption);
@@ -295,7 +296,7 @@ const Cart = {
       throw new Error('page is required');
     }
     
-    const cartPage = new CartPage(page);
+    const cartPage = getPageObject(page, CartPage);
     const checkoutHeading = page.locator(CheckoutSelectors.BOOKING_DETAILS_HEADING);
     await cartPage.acceptTermsAndConditions();
     await cartPage.waitForProceedToCheckout();
@@ -345,7 +346,7 @@ const Cart = {
       throw new Error(`index must be >= 0, got ${index}`);
     }
     
-    const flightResultsPage = new FlightResultsPage(page);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
     await flightResultsPage.waitForFareRulesButton(index);
     await flightResultsPage.clickFareRulesButton(index);
     await flightResultsPage.waitForFareRulesNote();
@@ -356,7 +357,7 @@ const Cart = {
       throw new Error('page is required');
     }
     
-    const cartPage = new CartPage(page);
+    const cartPage = getPageObject(page, CartPage);
     await cartPage.waitForPriceBreakdownButton();
     await cartPage.clickPriceBreakdownButton();
   },
@@ -376,7 +377,7 @@ const Cart = {
       throw new Error('page is required');
     }
     
-    const cartPage = new CartPage(page);
+    const cartPage = getPageObject(page, CartPage);
     await cartPage.waitForHoldButton();
     await cartPage.clickHoldButton();
     const status = await Cart.getBookingStatus({ page });
@@ -400,7 +401,7 @@ const Cart = {
       throw new Error(`index must be >= 0, got ${index}`);
     }
     
-    const cartPage = new CartPage(page);
+    const cartPage = getPageObject(page, CartPage);
     return await cartPage.getPassportDetailsText(index);
   },
 };
