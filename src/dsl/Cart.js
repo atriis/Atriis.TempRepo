@@ -367,7 +367,8 @@ const Cart = {
    * Flow:
    * - Wait for Hold button to be visible
    * - Click the Hold button
-   * - Get booking status
+   * - Wait for status to update to "on hold" (visible in UI)
+   * - Get and return booking status
    *
    * @param {import('playwright').Page} page - Playwright page instance
    * @returns {Promise<{held: boolean, status: string}>} Hold status and booking status
@@ -380,6 +381,8 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     await cartPage.waitForHoldButton();
     await cartPage.clickHoldButton();
+    await cartPage.waitForOnHoldStatus();
+    
     const status = await Cart.getBookingStatus({ page });
     return { held: true, status };
   },

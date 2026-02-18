@@ -28,7 +28,7 @@ const SELECTORS = {
   CANCELLATION_SUCCESS_MESSAGE: "text='Cancellation confirmed!'",
   QUOTE_STATUS_LABEL: ".app-label--quote",
   HOLD_BUTTON: ".btn--default.mt-2",
-  CLOSE_DIALOG_MODAL: '[aria-label="Close this dialog"]',
+  PRICE_BREAKDOWN_CLOSE_BUTTON: '.app-drawer.flight-price-breakdown-drawer [aria-label="Close this dialog"]',
   // OOP Justification selectors
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
   // Extras
@@ -77,7 +77,7 @@ class CartPage {
    * Accepts Terms & Conditions checkbox (required before checkout).
    */
   async acceptTermsAndConditions() {
-    const checkbox = this.page.locator(SELECTORS.TERMS_CHECKBOX).first();
+    const checkbox = this.page.locator(SELECTORS.TERMS_CHECKBOX).nth(0);
     await checkbox.waitFor({ state: "visible" });
     await checkbox.click();
   }
@@ -474,6 +474,15 @@ class CartPage {
   }
 
   /**
+   * Waits for the booking status label to show "on hold" text.
+   * Used after clicking the hold button to wait for status to update.
+   */
+  async waitForOnHoldStatus() {
+    await this.page.locator(SELECTORS.QUOTE_STATUS_LABEL, { hasText: /on hold/i })
+      .waitFor({ state: 'visible', timeout: 30000 });
+  }
+
+  /**
    * Waits for the Price Breakdown button to be visible.
    */
   async waitForPriceBreakdownButton() {
@@ -490,10 +499,9 @@ class CartPage {
   /**
    * Clicks the X button to close the Price Breakdown modal.
    *
-   * @param {number} [index=4] - The nth instance of the close button to click
    */
-  async clickXToClosePriceBreakdownModal(index = 4) {
-    await this.page.locator(SELECTORS.CLOSE_DIALOG_MODAL).nth(index).click();
+  async clickXToClosePriceBreakdownModal() {
+    await this.page.locator(SELECTORS.PRICE_BREAKDOWN_CLOSE_BUTTON).click();
   }
 
   /**
