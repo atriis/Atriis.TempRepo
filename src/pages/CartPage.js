@@ -33,7 +33,14 @@ const SELECTORS = {
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
   // Extras
   EDIT_EXTRAS_BUTTON: ".extra__btns",
-  EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span'
+  EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span',
+
+  // XPath used due to complex dropdown structure
+  NUMBER_OF_BAGGAGE_DROPDOWN_FIELD:
+    "//span[normalize-space()='Number of baggage']",
+
+  // Dropdown option selector (used with hasText filter for partial matching)
+  DROPDOWN_OPTION: 'li.el-select-dropdown__item',
 };
 
 class CartPage {
@@ -510,8 +517,40 @@ class CartPage {
   async clickEditExtrasButton(index = 0) {
     await this.page.locator(SELECTORS.EDIT_EXTRAS_BUTTON).nth(index).click();
   }
+
+ // Locator
+ getSaveButton() {
+   return this.page.getByRole('button', { name: 'Save' });
+ }
+
+ // Wait for Save button to be visible
+ async waitForSaveButton() {
+   await this.getSaveButton().waitFor({ state: 'visible' });
+ }
+
+ async clickSaveButton() {
+   await this.getSaveButton().click();
+ }
+
+ getNumberOfBaggage() {
+  return this.page.getByText('Number of baggage', { exact: true });
 }
 
+async clickNumberOfBaggage() {
+  await this.getNumberOfBaggage().click();
+}
+
+  async clickDropdownOption(optionDropdown) {
+    if (!optionDropdown || typeof optionDropdown !== 'string') {
+      throw new Error('optionDropdown must be a non-empty string');
+    }
+    // Use hasText for partial matching - allows "BAG" to match "CHECKED BAG 2nd - USD80.00"
+    await this.page
+      .locator(SELECTORS.DROPDOWN_OPTION, { hasText: optionDropdown })
+      .first()
+      .click();
+  }
+}
 // Export CartPage and SELECTORS for use in tests and DSL
 module.exports = {
   CartPage,

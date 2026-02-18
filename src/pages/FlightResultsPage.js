@@ -19,7 +19,7 @@ const SELECTORS = {
   GREEN_CIRCLE_ICON_PRICING_OPTIONS: 'span.material-symbols-outlined.green',
   PRICING_OPTIONS_OVERLAY: '.el-overlay:has(.app-drawer.flight-details-drawer)',
   PRICING_OPTIONS_BAGGAGE_CLASS: '.leg-details .baggage span',
-  
+
   //Fare rules note
   FARE_RULES_NOTE: '.note',
 };
@@ -404,14 +404,15 @@ async waitForGreenIconPricingOptionsModal(index = 0, timeout = 30000) {
 
 async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   // Find the pricing option card that contains the specified baggage text
-  const card = this.page.locator(SELECTORS.PRICING_OPTIONS_CARD, {
+  // Uses partial text matching to be flexible with label formats (e.g., "1 PC", "Luggage 1 PC")
+  const card = this.page.locator(SELECTORS.PRICING_OPTIONS_CARD).filter({
     has: this.page.locator(SELECTORS.PRICING_OPTIONS_BAGGAGE_CLASS, {
       hasText: baggageText
     })
   }).first();
 
   // Wait for the card to be visible
-  await card.waitFor({ state: 'visible', timeout: 5000 });
+  await card.waitFor({ state: 'visible', timeout: 10000 });
   
   // Find and click the select button within this card
   const selectButton = card.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON);

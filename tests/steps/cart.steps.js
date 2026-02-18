@@ -35,6 +35,16 @@
  *     → Cart.selectOOPJustificationDropdownOptionAndSave(page, option)
  *   "I click to edit extras"
  *     → CartPage.clickEditExtrasButton(page)
+ *   "I click to edit extras at index {int}"
+ *     → CartPage.clickEditExtrasButton(page, index)
+ *   "I wait for the save button"
+ *     → CartPage.waitForSaveButton(page)
+ *   "I click the save button"
+ *     → CartPage.clickSaveButton(page)
+ *   "I click number of baggage"
+ *     → CartPage.clickNumberOfBaggage(page)
+ *   "I click dropdown option {string}"
+ *     → CartPage.clickDropdownOption(page, option)
  *
  * Then Steps:
  *   "I successfully cancel the trip"
@@ -134,10 +144,34 @@ When("I select OOP justification option {string}", async function (option) {
   await Cart.selectOOPJustificationDropdownOptionAndSave(this.page, option);
 });
 
-When("I click to edit extras", async function () {
-  logger.info("Clicking to edit extras");
+When("I click to edit extras at index {int}", async function (index) {
+  logger.info("Clicking to edit extras at index", { index });
   const cartPage = new CartPage(this.page);
-  await cartPage.clickEditExtrasButton();
+  await cartPage.clickEditExtrasButton(index);
+});
+
+When("I wait for the save button", async function () {
+  logger.info("Waiting for save button to be visible");
+  const cartPage = new CartPage(this.page);
+  await cartPage.waitForSaveButton();
+});
+
+When("I click the save button", async function () {
+  logger.info("Clicking save button");
+  const cartPage = new CartPage(this.page);
+  await cartPage.clickSaveButton();
+});
+
+When("I click number of baggage", async function () {
+  logger.info("Clicking number of baggage dropdown");
+  const cartPage = new CartPage(this.page);
+  await cartPage.clickNumberOfBaggage();
+});
+
+When("I click dropdown option {string}", async function (option) {
+  logger.info("Clicking dropdown option", { option });
+  const cartPage = new CartPage(this.page);
+  await cartPage.clickDropdownOption(option);
 });
 
 // ===== THEN STEPS =====

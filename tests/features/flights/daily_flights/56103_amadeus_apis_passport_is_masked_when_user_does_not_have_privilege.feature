@@ -11,7 +11,7 @@ Feature: 56103 [Merge] Amadeus - APIS - Passport is masked when user does not ha
     And I have added traveler by name "Rui Marista"
     When I search for a one way flight from "LIS" to "NYC"
     And I add the first flight to cart
-    When I click to edit extras
+    When I click to edit extras at index 0
     Then passport details are displayed as "AF-******345"
     And I proceed to checkout
     And I navigate to cart from checkout
