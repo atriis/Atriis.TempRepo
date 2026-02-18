@@ -19,3 +19,8 @@ Feature: Verify baggage is displayed after booking
     And I click number of baggage
     And I click dropdown option "CHECKED BAG"
     And I click the save button
+    Then the baggage green icon should be visible
+    And I proceed to checkout
+    And I complete the booking
+    When I click the extras arrow button
+    Then the baggage green icon should be visible

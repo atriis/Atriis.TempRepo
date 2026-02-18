@@ -31,9 +31,11 @@ const SELECTORS = {
   PRICE_BREAKDOWN_CLOSE_BUTTON: '.app-drawer.flight-price-breakdown-drawer [aria-label="Close this dialog"]',
   // OOP Justification selectors
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
+  
   // Extras
   EDIT_EXTRAS_BUTTON: ".extra__btns",
   EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span',
+  EXTRAS_ARROW_BUTTON: '.px-4.ticket-bottom.py-4 .el-icon.el-collapse-item__arrow',
 
   // XPath used due to complex dropdown structure
   NUMBER_OF_BAGGAGE_DROPDOWN_FIELD:
@@ -41,6 +43,9 @@ const SELECTORS = {
 
   // Dropdown option selector (used with hasText filter for partial matching)
   DROPDOWN_OPTION: 'li.el-select-dropdown__item',
+
+  // Green icon next to baggage
+  GREEN_ICON_BAGGAGE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green",
 };
 
 class CartPage {
@@ -513,33 +518,56 @@ class CartPage {
 
   /**
    * Clicks edit button in Extras section.
+   * @param {number} [index=0] - The index of the extras section (0-based)
    */
   async clickEditExtrasButton(index = 0) {
     await this.page.locator(SELECTORS.EDIT_EXTRAS_BUTTON).nth(index).click();
   }
 
- // Locator
- getSaveButton() {
-   return this.page.getByRole('button', { name: 'Save' });
- }
+  /**
+   * Gets the Save button locator in extras section.
+   * @returns {Locator} Playwright locator for the Save button
+   */
+  getSaveButton() {
+    return this.page.getByRole('button', { name: 'Save' });
+  }
 
- // Wait for Save button to be visible
- async waitForSaveButton() {
-   await this.getSaveButton().waitFor({ state: 'visible' });
- }
+  /**
+   * Waits for the Save button to be visible in extras section.
+   */
+  async waitForSaveButton() {
+    await this.getSaveButton().waitFor({ state: 'visible' });
+  }
 
- async clickSaveButton() {
-   await this.getSaveButton().click();
- }
+  /**
+   * Clicks the Save button in extras section.
+   */
+  async clickSaveButton() {
+    await this.getSaveButton().click();
+  }
 
- getNumberOfBaggage() {
-  return this.page.getByText('Number of baggage', { exact: true });
-}
+  /**
+   * Gets the Number of baggage dropdown trigger locator.
+   * @returns {Locator} Playwright locator for the baggage dropdown trigger
+   */
+  getNumberOfBaggage() {
+    return this.page.getByText('Number of baggage', { exact: true });
+  }
 
-async clickNumberOfBaggage() {
-  await this.getNumberOfBaggage().click();
-}
+  /**
+   * Clicks the Number of baggage dropdown to open options.
+   */
+  async clickNumberOfBaggage() {
+    await this.getNumberOfBaggage().click();
+  }
 
+  /**
+   * Clicks a dropdown option by partial or full text match.
+   * Uses hasText filter for flexible matching (e.g., "BAG" matches "CHECKED BAG 2nd - USD80.00").
+   * 
+   * @param {string} optionDropdown - Text to match in dropdown option (partial or full)
+   * @throws {Error} If optionDropdown is not a non-empty string
+   */
   async clickDropdownOption(optionDropdown) {
     if (!optionDropdown || typeof optionDropdown !== 'string') {
       throw new Error('optionDropdown must be a non-empty string');
@@ -550,6 +578,24 @@ async clickNumberOfBaggage() {
       .first()
       .click();
   }
+
+  /**
+   * Gets the baggage green icon locator.
+   * Used to verify baggage was successfully added in extras.
+   *
+   * @returns {Locator} Playwright locator for the baggage success icon
+   */
+  getBaggageGreenIcon() {
+    return this.page.locator(SELECTORS.GREEN_ICON_BAGGAGE);
+  }
+
+  /**
+   * Clicks the arrow button to expand or collapse extras section.
+   */
+  async clickArrowButtonExtras() {
+    await this.page.locator(SELECTORS.EXTRAS_ARROW_BUTTON).click();
+  }
+  
 }
 // Export CartPage and SELECTORS for use in tests and DSL
 module.exports = {

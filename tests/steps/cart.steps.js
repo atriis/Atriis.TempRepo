@@ -45,6 +45,8 @@
  *     → CartPage.clickNumberOfBaggage(page)
  *   "I click dropdown option {string}"
  *     → CartPage.clickDropdownOption(page, option)
+ *   "I click the extras arrow button"
+ *     → CartPage.clickArrowButtonExtras(page)
  *
  * Then Steps:
  *   "I successfully cancel the trip"
@@ -57,6 +59,8 @@
  *     → Cart.isOutOfPolicyIndicatorHiddenInCart(page) + expect(isHidden).toBe(true)
  *   "the out of policy tooltip in cart should be {string}"
  *     → Cart.hoverAndGetOOPTooltipTextInCart(page) + expect(actualText).toBe(expectedText)
+ *   "the baggage green icon should be visible"
+ *     → CartPage.getBaggageGreenIcon() + expect(icon).toBeVisible({ timeout: 30000 })
  *
  * ========================
  */
@@ -174,6 +178,12 @@ When("I click dropdown option {string}", async function (option) {
   await cartPage.clickDropdownOption(option);
 });
 
+When("I click the extras arrow button", async function () {
+  logger.info("Clicking extras arrow button to expand/collapse");
+  const cartPage = new CartPage(this.page);
+  await cartPage.clickArrowButtonExtras();
+});
+
 // ===== THEN STEPS =====
 
 Then("I successfully cancel the trip", async function () {
@@ -222,4 +232,11 @@ Then("passport details are displayed as {string}", async function (expectedText)
   logger.info("Asserting passport details are displayed", { expectedText });
   const actualText = await Cart.getPassportDetailsText(this.page, 0);
   expect(actualText).toBe(expectedText);
+});
+
+Then("the baggage green icon should be visible", async function () {
+  logger.info("Verifying baggage green icon is visible");
+  const cartPage = new CartPage(this.page);
+  const icon = cartPage.getBaggageGreenIcon();
+  await expect(icon).toBeVisible({ timeout: 30000 });
 });
