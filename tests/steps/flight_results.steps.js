@@ -269,6 +269,11 @@ When("I click to open fare rules from modal", async function () {
   await FlightResults.clickToOpenFareRulesFromResultsModal(this.page);
 });
 
+When('I select the fare with baggage {string}', async function (baggageText) {
+  logger.info("Selecting the fare with baggage", { baggageText });
+  await FlightResults.selectFareWithBaggage(this.page, baggageText);
+});
+
 // ========================================
 // THEN STEPS - ASSERTIONS
 // ========================================
@@ -312,3 +317,5 @@ Then("the green circle icon at index {int} {string} should be displayed in prici
   const isVisible = await FlightResults.isGreenCircleIconVisibleInPricingOptions(this.page, index);
   expect(isVisible).toBe(true);
 });
+
+

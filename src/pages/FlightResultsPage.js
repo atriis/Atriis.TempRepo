@@ -18,7 +18,8 @@ const SELECTORS = {
   PRICING_OPTIONS_CLOSE_MODAL: '[aria-label="Close this dialog"]',
   GREEN_CIRCLE_ICON_PRICING_OPTIONS: 'span.material-symbols-outlined.green',
   PRICING_OPTIONS_OVERLAY: '.el-overlay:has(.app-drawer.flight-details-drawer)',
-
+  PRICING_OPTIONS_BAGGAGE_CLASS: '.leg-details .baggage span',
+  
   //Fare rules note
   FARE_RULES_NOTE: '.note',
 };
@@ -400,6 +401,23 @@ async waitForGreenIconPricingOptionsModal(index = 0, timeout = 30000) {
     .nth(index)
     .waitFor({ state: 'visible', timeout });
 }
+
+async clickSelectForFareWithBaggagePricingOptions(baggageText) {
+  // Find the pricing option card that contains the specified baggage text
+  const card = this.page.locator(SELECTORS.PRICING_OPTIONS_CARD, {
+    has: this.page.locator(SELECTORS.PRICING_OPTIONS_BAGGAGE_CLASS, {
+      hasText: baggageText
+    })
+  }).first();
+
+  // Wait for the card to be visible
+  await card.waitFor({ state: 'visible', timeout: 5000 });
+  
+  // Find and click the select button within this card
+  const selectButton = card.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON);
+  await selectButton.waitFor({ state: 'visible', timeout: 5000 });
+  await selectButton.click();
 }
 
+}
 module.exports = FlightResultsPage;

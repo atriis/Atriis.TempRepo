@@ -4,7 +4,6 @@ const { ResultsPage } = require("@pages/ResultsPage");
 const Results = require("./Results");
 const { CommonPage } = require("@src/pages/CommonPage");
 const { getPageObject } = require("@utils/pageObjectCache");
-const { expect } = require("@fixtures/supplierTest");
 
 /**
  * FlightResults DSL
@@ -355,6 +354,16 @@ async isGreenCircleIconVisibleInPricingOptions(page, index = 0) {
   // Return visibility status
   return await flightResultsPage.getGreenIconInPricingOptions(index).isVisible();
 },
+
+ async selectFareWithBaggage(page, baggageText) {
+  if (!page) {
+    throw new Error('page is required');
+  }
+  
+  const resultsPage = getPageObject(page, FlightResultsPage);
+  await resultsPage.clickSelectForFareWithBaggagePricingOptions(baggageText);
+},
+
 }
 
 module.exports = FlightResults;
