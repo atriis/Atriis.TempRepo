@@ -7,8 +7,8 @@ require("module-alias/register");
  * Cucumber Hooks
  */
 
-const { Before, After, AfterAll, setDefaultTimeout } = require("@cucumber/cucumber");
-const { contextPool } = require("./contextPool");
+const { Before, After, setDefaultTimeout } = require("@cucumber/cucumber");
+const { launchBrowser } = require("./browserFactory");
 const config = require("../../src/config/config");
 const { App } = require("../../src/dsl");
 const logger = require("@utils/logger").child("Hooks");
@@ -74,7 +74,6 @@ Before(async function (testCase) {
 
   logger.info("Setting up browser and logging in...");
 
-  // Get authenticated context from pool (reuses session if already authenticated)
   const defaultProvider = getDefaultProvider(testCase);
   const tagProvider = getProviderFromTags(testCase.pickle);
   const tagUserKey = getUserKeyFromTags(testCase.pickle);
@@ -94,31 +93,20 @@ Before(async function (testCase) {
     );
   }
 
-  logger.info("Getting authenticated context", { provider, userKey });
+  logger.info("Launching browser and creating context", { provider, userKey });
 
-  // Get authenticated context from pool (login happens once per worker, then reused)
-  this.context = await contextPool.getAuthenticatedContext(provider, userKey);
-  
-  // CRITICAL: Close any existing pages in the context from previous tests
-  // This prevents tab accumulation when bookANewTrip() opens new tabs
-  const existingPages = this.context.pages();
-  for (const page of existingPages) {
-    try {
-      await page.close();
-    } catch (e) {
-      // Page might already be closed, ignore
-    }
-  }
-  
-  // Now create a fresh page for this test
+  // Launch browser and create context
+  this.browser = await launchBrowser();
+  this.context = await this.browser.newContext({
+    viewport: { width: 1920, height: 1080 },
+    screen: { width: 1920, height: 1080 },
+    ignoreHTTPSErrors: true,
+  });
   this.page = await this.context.newPage();
 
-  // Get authenticated context from pool (login happens once per worker, then reused)
-  this.context = await contextPool.getAuthenticatedContext(provider, userKey);
-  this.page = await this.context.newPage();
-
-  // Navigate to app (already logged in via stored session)
+  // Navigate and login
   await this.page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
+  await App.loginAs(this.page, user);
 
   if (!loginOnly) {
     logger.info("Starting new trip...");
@@ -139,26 +127,11 @@ After(async function (scenario) {
     this.attach(screenshot, "image/png");
   }
 
-  // Close ALL pages in the context to prevent tab accumulation
-  // (bookANewTrip opens new tabs, so we need to clean them all up)
+  // Close context and browser
   if (this.context) {
-    const pages = this.context.pages();
-    for (const page of pages) {
-      try {
-        await page.close();
-      } catch (e) {
-        // Page might already be closed, ignore
-      }
-    }
+    await this.context.close();
   }
-  
-  // Context and browser are managed by contextPool - do NOT close them here
-});
-
-/**
- * After all tests complete - cleanup the browser context pool
- */
-AfterAll(async function () {
-  logger.info("All tests complete - cleaning up browser pool");
-  await contextPool.cleanup();
+  if (this.browser) {
+    await this.browser.close();
+  }
 });

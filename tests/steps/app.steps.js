@@ -37,7 +37,7 @@ const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { App } = require("@dsl");
 const config = require("@config/config");
-const { contextPool } = require("../support/contextPool");
+const { launchBrowser } = require("../support/browserFactory");
 const logger = require("@utils/logger").child("App");
 
 setDefaultTimeout(120000);
@@ -100,27 +100,20 @@ Given("I am logged in as {string} {string} and ready to book a new trip", async 
     throw new Error(`User not found in config: ${provider}.${user}`);
   }
   
-  logger.info("Getting authenticated context", { provider, user });
+  logger.info("Launching browser and creating context", { provider, user });
   
-  // Use context pool instead of launching new browser
-  this.context = await contextPool.getAuthenticatedContext(provider, user);
-  
-  // CRITICAL: Close any existing pages in the context from previous tests
-  // This prevents tab accumulation when bookANewTrip() opens new tabs
-  const existingPages = this.context.pages();
-  for (const page of existingPages) {
-    try {
-      await page.close();
-    } catch (e) {
-      // Page might already be closed, ignore
-    }
-  }
-  
-  // Now create a fresh page for this test
+  // Launch browser and create context
+  this.browser = await launchBrowser();
+  this.context = await this.browser.newContext({
+    viewport: { width: 1920, height: 1080 },
+    screen: { width: 1920, height: 1080 },
+    ignoreHTTPSErrors: true,
+  });
   this.page = await this.context.newPage();
   
-  // Navigate to app (already authenticated via pooled session)
+  // Navigate and login
   await this.page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
+  await App.loginAs(this.page, userConfig);
   
   // Book a new trip
   this.page = await App.bookANewTrip(this.page);
