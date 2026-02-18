@@ -52,6 +52,7 @@ const config = {
       user_two: createUser("AMADEUS_USER_TWO_EMAIL"),
       user_three: createUser("AMADEUS_USER_THREE_EMAIL"),
       rui_mendes: createUser("AMADEUS_RUI_MENDES_USER"),
+      amadeus_with_gds_profile: createUser("AMADEUS_WITH_GDS_PROFILE"),
     },
 
     sabre: {
