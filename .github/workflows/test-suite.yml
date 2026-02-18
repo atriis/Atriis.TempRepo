@@ -379,7 +379,10 @@ jobs:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           AMADEUS_RUI_MENDES_USER: ${{ secrets.AMADEUS_RUI_MENDES_USER }}
+          AMADEUS_WITH_GDS_PROFILE: ${{ secrets.AMADEUS_WITH_GDS_PROFILE }}
+          GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
           SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
+          LUFTHANSA_USER_ONE_EMAIL: ${{ secrets.LUFTHANSA_USER_ONE_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Flight Results
