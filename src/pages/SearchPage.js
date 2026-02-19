@@ -29,8 +29,11 @@ const SELECTORS = {
   GENDER_OPTION_MALE: "role=option[name='Male']",
   DATE_OF_BIRTH_INPUT: "[placeholder='DD/MM/YYYY']",
   EMAIL_INPUT: "[placeholder='Enter email address']",
-  PHONE_INPUT: "[placeholder='[City code]-[3 numbers prefix]-[4 digits]']",
-
+  PHONE_NUMBER_PLACEHOLDERS: [
+    "[placeholder='Enter phone number']",
+    "[placeholder='[City code]-[3 numbers prefix]-[4 digits]']",
+  ],
+  
   // Trip types
   TRIP_TYPE_RADIO_LABELS:
     ":is(.search-options-wrapper, .eu-rail-search-inputs, .amtrak-search-inputs, .uk-rail-search) > :nth-child(1) [role='radiogroup'] .el-radio__label",
@@ -208,8 +211,24 @@ class SearchPage {
     await this.page.fill(SELECTORS.EMAIL_INPUT, email);
   }
 
+  /**
+   * Fills the phone number field.
+   * Tries multiple placeholder variations to support different supplier UIs.
+   * @param {string} phoneNumber - Phone number to enter
+   * @throws {Error} If no phone number input field is found
+   */
   async fillInRandomPhone(phoneNumber) {
-    await this.page.fill(SELECTORS.PHONE_INPUT, phoneNumber);
+    for (const selector of SELECTORS.PHONE_NUMBER_PLACEHOLDERS) {
+      const element = this.page.locator(selector);
+      const count = await element.count();
+      if (count > 0) {
+        await element.first().fill(phoneNumber);
+        return;
+      }
+    }
+    throw new Error(
+      `Phone number input not found. Tried selectors: ${SELECTORS.PHONE_NUMBER_PLACEHOLDERS.join(', ')}`
+    );
   }
 
   /**
@@ -277,7 +296,7 @@ class SearchPage {
     await this.page.waitForTimeout(100);
   }
 
-  /**
+/**
  * Fills an "OR" location field.
  *
  * Used by Cars, Evolvi, and other products that support multiple locations.
