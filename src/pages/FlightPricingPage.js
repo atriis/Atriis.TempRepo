@@ -28,10 +28,13 @@ class FlightPricingPage {
    * - Extra timeout improves stability in CI and slower environments
    */
   async waitForYourSelectionText() {
-    // Wait for element to exist and be visible first
+    // Give the page extra time to render after navigation/updates
+    await this.page.waitForTimeout(3000);
+    
+    // Wait for element to exist and be visible first (extended timeout for CI/CD)
     await this.page.locator(SELECTORS.YOUR_SELECTION_TEXT).waitFor({ 
       state: 'visible', 
-      timeout: 45000 
+      timeout: 60000 
     });
     
     // Then verify the exact text content

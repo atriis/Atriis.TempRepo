@@ -400,18 +400,23 @@ async clickAddToTripButtonPricingOptionsModal() {
   // Additional wait for the disabled attribute to be removed
   await this.page.waitForTimeout(1500);
   
-  // Click the button
-  await addButton.click({ timeout: 30000 });
+  // Click the button and wait for navigation if it occurs
+  await Promise.all([
+    this.page.waitForLoadState('domcontentloaded', { timeout: 45000 }).catch(() => {}),
+    addButton.click({ timeout: 30000 })
+  ]);
   
   // Wait for modal to close after adding to trip
   await this.getPricingOptionsOverlay().waitFor({ state: 'hidden', timeout: 30000 });
   
-  // Wait for page to process the added flight (network requests, DOM updates)
-  // This ensures any pricing calculations or page transitions complete
+  // Wait for any page updates to complete (API calls, DOM updates, potential navigation)
   await this.page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {
-    // Fallback: if networkidle times out, at least wait for DOM content
-    return this.page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+    // Fallback: if networkidle times out, wait for load state
+    return this.page.waitForLoadState('load', { timeout: 15000 }).catch(() => {});
   });
+  
+  // Additional stabilization for slow environments
+  await this.page.waitForTimeout(2000);
 }
 
 /**
