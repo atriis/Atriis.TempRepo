@@ -2,50 +2,54 @@ const { waitForText } = require("@utils/wait");
 const { getText } = require("@utils/dom");
 
 /**
- * CartPage
- *
- * Handles low-level UI interactions inside the cart page.
- * Follows project guidelines:
- * - No business logic or assertions
- * - No logging
- * - Only exposes technical UI actions
+ * Page Object for cart page.
+ * Contains only UI-level interactions.
  */
+
 const SELECTORS = {
-  // Cart selectors
+
+  // =============================
+  // 1️⃣ Selectors (centralized)
+  // =============================
+
+  // Cart general selectors
   TERMS_CHECKBOX: ".el-checkbox__inner",
   PROCEED_TO_CHECKOUT_TEXT: ".btn-container span",
+  QUOTE_STATUS_LABEL: ".app-label--quote",
+  HOLD_BUTTON: ".btn--default.mt-2",
+
+  // Refundable hotel text
   REFUNDABLE_TEXT: "div.refundable",
+
+  // Price breakdown button
   PRICE_BREAKDOWN_BUTTON: ".price-breakdown-btn",
-  // Trip Overview selectors
-  TRIP_OVERVIEW_TITLE: ".payments-title",
-  FLIGHT_DETAILS_BUTTON: ".more-details-btn",
-  MORE_DETAILS_HOTEL_BUTTON: ".more-details",
-  MORE_DETAILS_CAR_BUTTON: ".more-details.is-flex",
+  PRICE_BREAKDOWN_CLOSE_BUTTON: '.app-drawer.flight-price-breakdown-drawer [aria-label="Close this dialog"]',
+
+  // Trip cancellation selectors
   TRIP_ACTIONS_DROPDOWN_ICON: ".dropdowns-container .expand-icon",
   CANCEL_TRIP_OPTION: ".el-dropdown-menu__item span.mr-2",
   TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label='Trip cancellation'] .el-dialog__title",
   CONFIRM_CANCEL_BUTTON: "role=button[name='Cancel trip']",
   CANCELLATION_SUCCESS_MESSAGE: "text='Cancellation confirmed!'",
-  QUOTE_STATUS_LABEL: ".app-label--quote",
-  HOLD_BUTTON: ".btn--default.mt-2",
-  PRICE_BREAKDOWN_CLOSE_BUTTON: '.app-drawer.flight-price-breakdown-drawer [aria-label="Close this dialog"]',
+
+  // Product details selectors
+  FLIGHT_DETAILS_BUTTON: ".more-details-btn",
+  MORE_DETAILS_HOTEL_BUTTON: ".more-details",
+  MORE_DETAILS_CAR_BUTTON: ".more-details.is-flex",
+
+  // Trip Overview selectors
+  TRIP_OVERVIEW_TITLE: ".payments-title",
+
   // OOP Justification selectors
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
   
   // Extras
-  EDIT_EXTRAS_BUTTON: ".extra__btns",
-  EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span',
-  EXTRAS_ARROW_BUTTON: '.px-4.ticket-bottom.py-4 .el-icon.el-collapse-item__arrow',
-
-  // XPath used due to complex dropdown structure
-  NUMBER_OF_BAGGAGE_DROPDOWN_FIELD:
-    "//span[normalize-space()='Number of baggage']",
-
-  // Dropdown option selector (used with hasText filter for partial matching)
-  DROPDOWN_OPTION: 'li.el-select-dropdown__item',
-
-  // Green icon next to baggage
-  GREEN_ICON_BAGGAGE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green",
+  EDIT_EXTRAS_BUTTON: ".extra__btns", //All edit buttons in extras section have the same class, so we will use nth(index) to click the right one when needed
+  EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span', // The field that shows selected extra option
+  EXTRAS_ARROW_BUTTON: '.px-4.ticket-bottom.py-4 .el-icon.el-collapse-item__arrow', // Arrow button to expand/collapse extras information
+  NUMBER_OF_BAGGAGE_DROPDOWN_FIELD: "//span[normalize-space()='Number of baggage']", // XPath used due to complex dropdown structure - TODO: adjust when we have a data-test-id selector.
+  DROPDOWN_OPTION: 'li.el-select-dropdown__item', // Dropdown option selector (used with hasText filter for partial matching)
+  GREEN_ICON_BAGGAGE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green",  // Green icon next to added baggage
 };
 
 class CartPage {
@@ -56,6 +60,43 @@ class CartPage {
     this.page = page;
   }
 
+  // =============================
+  // 2️⃣ Selectors (get methods)
+  // =============================
+
+  /**
+   * Gets the refundable label text for hotel bookings.
+   * Returns the text content after waiting for visibility.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<string>} The label text content
+   */
+  async getHotelRefundableText({ timeout = 10000 } = {}) {
+    const label = this.page.locator(SELECTORS.REFUNDABLE_TEXT).first();
+    await label.waitFor({ state: 'visible', timeout });
+    return (await label.textContent()).trim();
+  }
+
+  /**
+   * Gets the current booking status text.
+   * Waits for the status label to be visible before returning.
+   * @param {object} options - Configuration options
+   * @param {number} options.timeout - Maximum wait time (default: 30000ms)
+   * @param {Page} options.page - Page object to use (default: this.page)
+   * @returns {Promise<string>} The booking status text
+   */
+  async getBookingStatus({ timeout = 30000, page = this.page } = {}) {
+    const locator = page.locator(SELECTORS.QUOTE_STATUS_LABEL);
+    await locator.waitFor({ state: 'visible', timeout });
+    return (await locator.innerText()).trim();
+  }
+
+  /**
+   * Gets the extras information field locator at the specified index.
+   * Used to read the selected extra option (e.g., baggage, seat selection).
+   *
+   * @param {number} [index=1] - The index of the information field (default: 1)
+   * @returns {Locator} Playwright locator for the information field
+   */
   getInformationField(index = 1) {
     return this.page.locator(SELECTORS.EXTRAS_INFORMATION_FIELD).nth(index);
   }
@@ -84,6 +125,109 @@ class CartPage {
       return await textLocator.innerText();
     }
   }
+
+  /**
+   * Gets the OOP justification textbox locator.
+   *
+   * @returns {Locator} Playwright locator for the justification textbox.
+   */
+  getOOPJustificationTextbox() {
+    return this.page.locator(SELECTORS.OOP_JUSTIFICATION_TEXTBOX);
+  }
+
+  /**
+   * Gets the Save Justification button locator.
+   *
+   * @returns {Locator} Playwright locator for the Save button.
+   */
+  getSaveJustificationButton() {
+    return this.page.getByRole("button", { name: "Save justification" });
+  }
+
+  /**
+   * Gets the justification dropdown (combobox) locator.
+   *
+   * @returns {Locator} Playwright locator for the justification dropdown.
+   */
+  getJustificationDropdown() {
+    return this.page.getByRole("combobox", {
+      name: "Select your justification",
+    });
+  }
+
+  /**
+   * Gets a justification dropdown option by name.
+   *
+   * @param {string} optionName - The visible text of the option.
+   * @returns {Locator} Playwright locator for the dropdown option.
+   */
+  getJustificationOption(optionName) {
+    return this.page.getByRole("option", { name: optionName });
+  }
+
+  /**
+   * Gets the visible share menu locator.
+   *
+   * @returns {Locator} Playwright locator for the visible share dropdown menu.
+   */
+  getVisibleShareMenu() {
+    return this.page.locator("ul.share-popper[role=\"menu\"]:visible");
+  }
+
+  /**
+   * Returns the "Proceed with change" button locator.
+   * Used for handling price change modals that appear when flight prices change after adding to cart.
+   *
+   * @returns {Locator}
+   */
+  getProceedWithChangeButton() {
+    return this.page.getByRole("button", {
+      name: "Proceed with change",
+      exact: true,
+    });
+  }
+
+    /**
+   * Gets the "Requested" flight title locator.
+   * Used to confirm a travel request has been submitted.
+   *
+   * @returns {Locator} Playwright locator for the requested flight heading.
+   */
+  getRequestedFlightTitle() {
+    return this.page.locator("h5.center-title", {
+      hasText: "Requested",
+    });
+  }
+
+  /**
+   * Gets the Save button locator in extras section.
+   * @returns {Locator} Playwright locator for the Save button
+   */
+  getSaveButton() {
+    return this.page.getByRole('button', { name: 'Save' });
+  }
+
+  /**
+   * Gets the Number of baggage dropdown trigger locator.
+   * @returns {Locator} Playwright locator for the baggage dropdown trigger
+   */
+  getNumberOfBaggage() {
+    return this.page.getByText('Number of baggage', { exact: true });
+  }
+
+  /**
+   * Gets the baggage green icon locator.
+   * Used to verify baggage was successfully added in extras.
+   *
+   * @returns {Locator} Playwright locator for the baggage success icon
+   */
+  getBaggageGreenIcon() {
+    return this.page.locator(SELECTORS.GREEN_ICON_BAGGAGE);
+  }
+
+  // =============================
+  // 3️⃣ Actions
+  // =============================
 
   /**
    * Accepts Terms & Conditions checkbox (required before checkout).
@@ -115,18 +259,6 @@ class CartPage {
    */
   async clickProceedToCheckout() {
     await this.page.click(SELECTORS.PROCEED_TO_CHECKOUT_TEXT);
-  }
-
-  /**
-   * Gets the refundable label text for hotel bookings.
-   * Returns the text content after waiting for visibility.
-   * @param {number} timeout - Maximum wait time in milliseconds
-   * @returns {Promise<string>} The label text content
-   */
-  async getHotelRefundableText({ timeout = 10000 } = {}) {
-    const label = this.page.locator(SELECTORS.REFUNDABLE_TEXT).first();
-    await label.waitFor({ state: 'visible', timeout });
-    return (await label.textContent()).trim();
   }
 
   /**
@@ -247,20 +379,6 @@ class CartPage {
   }
 
   /**
-   * Gets the current booking status text.
-   * Waits for the status label to be visible before returning.
-   * @param {object} options - Configuration options
-   * @param {number} options.timeout - Maximum wait time (default: 30000ms)
-   * @param {Page} options.page - Page object to use (default: this.page)
-   * @returns {Promise<string>} The booking status text
-   */
-  async getBookingStatus({ timeout = 30000, page = this.page } = {}) {
-    const locator = page.locator(SELECTORS.QUOTE_STATUS_LABEL);
-    await locator.waitFor({ state: 'visible', timeout });
-    return (await locator.innerText()).trim();
-  }
-
-  /**
    * Gets booking status, waiting for visibility.
    * Use this when checking for "Pending booking" or other statuses.
    * Assertion should be done at DSL/test layer.
@@ -274,8 +392,8 @@ class CartPage {
   }
 
   /**
- * Hovers over the Share button and waits for the visible share dropdown menu.
- */
+   * Hovers over the Share button and waits for the visible share dropdown menu.
+   */
   async hoverShareButton() {
     const shareButton = this.page
       .locator(".share-container")
@@ -289,8 +407,8 @@ class CartPage {
   }
 
   /**
- * Clicks "Share Quotes" from the currently visible share menu.
- */
+   * Clicks "Share Quotes" from the currently visible share menu.
+   */
   async clickShareQuotes() {
     const menu = this.getVisibleShareMenu();
     await menu.waitFor({ state: "visible", timeout: 30_000 });
@@ -300,10 +418,9 @@ class CartPage {
     await item.click();
   }
 
-
   /**
- * Clicks "Share Itinerary" from the second share menu.
- */
+   * Clicks "Share Itinerary" from the second share menu.
+   */
   async clickShareItinerary() {
     const menu = this.getVisibleShareMenu();
     await menu.waitFor({ state: "visible", timeout: 30_000 });
@@ -313,7 +430,7 @@ class CartPage {
     await item.click();
   }
 
-  //This can be used when sharing quotes or itinerary from Results page as well
+  // This can be used when sharing quotes or itinerary from Results page as well
   /**
    * Clicks the "Send" button.
    */
@@ -325,54 +442,6 @@ class CartPage {
   }
 
   // ===== OOP JUSTIFICATION =====
-
-  /**
-   * Gets the OOP justification textbox locator.
-   *
-   * @returns {Locator} Playwright locator for the justification textbox.
-   */
-  getOOPJustificationTextbox() {
-    return this.page.locator(SELECTORS.OOP_JUSTIFICATION_TEXTBOX);
-  }
-
-  /**
-   * Gets the Save Justification button locator.
-   *
-   * @returns {Locator} Playwright locator for the Save button.
-   */
-  getSaveJustificationButton() {
-    return this.page.getByRole("button", { name: "Save justification" });
-  }
-
-  /**
-   * Gets the justification dropdown (combobox) locator.
-   *
-   * @returns {Locator} Playwright locator for the justification dropdown.
-   */
-  getJustificationDropdown() {
-    return this.page.getByRole("combobox", {
-      name: "Select your justification",
-    });
-  }
-
-  /**
-   * Gets a justification dropdown option by name.
-   *
-   * @param {string} optionName - The visible text of the option.
-   * @returns {Locator} Playwright locator for the dropdown option.
-   */
-  getJustificationOption(optionName) {
-    return this.page.getByRole("option", { name: optionName });
-  }
-
-  /**
-   * Gets the visible share menu locator.
-   *
-   * @returns {Locator} Playwright locator for the visible share dropdown menu.
-   */
-  getVisibleShareMenu() {
-    return this.page.locator("ul.share-popper[role=\"menu\"]:visible");
-  }
 
   /**
    * Fills in the OOP justification textbox.
@@ -403,6 +472,8 @@ class CartPage {
 
   /**
    * Waits for a justification dropdown option to appear.
+   *
+   * @param {string} justificationOption - The name of the justification option to wait for
    */
   async waitForJustificationDropdownOption(justificationOption) {
     await this.getJustificationOption(justificationOption).waitFor({ state: "visible" });
@@ -415,19 +486,6 @@ class CartPage {
    */
   async selectJustificationDropdownOption(justificationOption) {
     await this.getJustificationOption(justificationOption).click();
-  }
-
-  /**
-   * Returns the "Proceed with change" button locator.
-   * Used for handling price change modals that appear when flight prices change after adding to cart.
-   *
-   * @returns {Locator}
-   */
-  getProceedWithChangeButton() {
-    return this.page.getByRole("button", {
-      name: "Proceed with change",
-      exact: true,
-    });
   }
 
   /**
@@ -450,18 +508,6 @@ class CartPage {
 
     await btn.click();
     return true;
-  }
-
-  /**
-   * Gets the "Requested" flight title locator.
-   * Used to confirm a travel request has been submitted.
-   *
-   * @returns {Locator} Playwright locator for the requested flight heading.
-   */
-  getRequestedFlightTitle() {
-    return this.page.locator("h5.center-title", {
-      hasText: "Requested",
-    });
   }
 
   /**
@@ -510,7 +556,6 @@ class CartPage {
 
   /**
    * Clicks the X button to close the Price Breakdown modal.
-   *
    */
   async clickXToClosePriceBreakdownModal() {
     await this.page.locator(SELECTORS.PRICE_BREAKDOWN_CLOSE_BUTTON).click();
@@ -522,14 +567,6 @@ class CartPage {
    */
   async clickEditExtrasButton(index = 0) {
     await this.page.locator(SELECTORS.EDIT_EXTRAS_BUTTON).nth(index).click();
-  }
-
-  /**
-   * Gets the Save button locator in extras section.
-   * @returns {Locator} Playwright locator for the Save button
-   */
-  getSaveButton() {
-    return this.page.getByRole('button', { name: 'Save' });
   }
 
   /**
@@ -547,14 +584,6 @@ class CartPage {
   }
 
   /**
-   * Gets the Number of baggage dropdown trigger locator.
-   * @returns {Locator} Playwright locator for the baggage dropdown trigger
-   */
-  getNumberOfBaggage() {
-    return this.page.getByText('Number of baggage', { exact: true });
-  }
-
-  /**
    * Clicks the Number of baggage dropdown to open options.
    */
   async clickNumberOfBaggage() {
@@ -564,7 +593,7 @@ class CartPage {
   /**
    * Clicks a dropdown option by partial or full text match.
    * Uses hasText filter for flexible matching (e.g., "BAG" matches "CHECKED BAG 2nd - USD80.00").
-   * 
+   *
    * @param {string} optionDropdown - Text to match in dropdown option (partial or full)
    * @throws {Error} If optionDropdown is not a non-empty string
    */
@@ -580,22 +609,12 @@ class CartPage {
   }
 
   /**
-   * Gets the baggage green icon locator.
-   * Used to verify baggage was successfully added in extras.
-   *
-   * @returns {Locator} Playwright locator for the baggage success icon
-   */
-  getBaggageGreenIcon() {
-    return this.page.locator(SELECTORS.GREEN_ICON_BAGGAGE);
-  }
-
-  /**
    * Clicks the arrow button to expand or collapse extras section.
    */
   async clickArrowButtonExtras() {
     await this.page.locator(SELECTORS.EXTRAS_ARROW_BUTTON).click();
   }
-  
+
 }
 // Export CartPage and SELECTORS for use in tests and DSL
 module.exports = {

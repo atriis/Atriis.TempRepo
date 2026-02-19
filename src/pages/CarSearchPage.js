@@ -25,7 +25,7 @@ class CarSearchPage {
     this.page = page;
   }
 
-  /** Switches UI to Car search */
+  /** Switches UI to Car search if needed */
   async clickCarTab() {
     try {
       const carTab = this.page.locator(SELECTORS.CAR_TAB);
@@ -36,13 +36,27 @@ class CarSearchPage {
     }
   }
 
-  /** Enables "Drop-off at a different location" option */
+  /**
+   * Clicks "Drop-off at a different location" checkbox.
+   * Enables the different drop-off location field in car search.
+   */
   async clickDropoffDifferentLocationCheckbox() {
     await this.page.click(SELECTORS.DROPOFF_DIFFERENT_LOCATION_CHECKBOX);
   }
 
   /**
+   * Opens drop-off date calendar.
+   * This function is specific to Car search as it's the only product
+   * that requires clicking to open the second calendar.
+   */
+  async clickDropoffDateField() {
+    await this.page.click(SELECTORS.DROPOFF_DATE_INPUT);
+  }
+
+  /**
    * Moves the second (drop-off) calendar forward.
+   * This function is specific to Car search as it's the only product
+   * that requires clicking to interact with the second calendar.
    *
    * Used when pickup and drop-off calendars are shown together.
    * After each click, the method waits until the next-arrow is
@@ -69,11 +83,6 @@ class CarSearchPage {
       // Wait for the calendar to re-render and the arrow to be usable again
       await secondNextArrow.waitFor({ state: "visible" });
     }
-  }
-
-  /** Opens drop-off date calendar */
-  async clickDropoffDateField() {
-    await this.page.click(SELECTORS.DROPOFF_DATE_INPUT);
   }
 
   /**

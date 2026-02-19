@@ -1,19 +1,14 @@
 const { getPageObject } = require("@utils/pageObjectCache");
-const { CartPage, SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
+const { CartPage } = require("@pages/CartPage");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
-const { expect } = require("@playwright/test");
 const { GeneralElementsPage } = require("@pages/GeneralElementsPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
-const tripStatus = require("@data/tripStatus.json");
 
 /**
  * Cart DSL
  *
- * Exposes business-level actions for cart flows.
- * - Explains intent
- * - Logs behavior
- * - Returns business-level results
+ * Describes how users interact with the cart.
  */
 const Cart = {
   /**
@@ -352,6 +347,13 @@ const Cart = {
     await flightResultsPage.waitForFareRulesNote();
   },
 
+  /**
+   * Opens the price breakdown drawer in cart.
+   * Waits for button to be visible before clicking.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
   async clickToOpenPriceBreakdown(page) {
     if (!page) {
       throw new Error('page is required');
@@ -361,6 +363,7 @@ const Cart = {
     await cartPage.waitForPriceBreakdownButton();
     await cartPage.clickPriceBreakdownButton();
   },
+
   /**
    * Puts a trip on hold and returns the new status.
    * 
