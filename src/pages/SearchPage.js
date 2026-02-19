@@ -51,6 +51,9 @@ const SELECTORS = {
   FIRST_TRAVELER_OPTION: "[id*='item-0']",
   TRIP_TRAVELER_TAG: ".trip-traveler-tag",
 
+  // Edit Search
+  SEARCH_TITLE: '.locations.is-flex.is-align-items-center',
+
   // Tabs
   GENERAL_RAIL_TAB: "#tab-rails",
 
@@ -387,6 +390,18 @@ class SearchPage {
     await this.page.locator(SELECTORS.SEARCH_BUTTON).click();
   }
 
+  /**
+   * Waits for the search button to be enabled and then clicks it.
+   * Useful for dynamic forms where the button may be disabled until all fields are filled.
+   */
+  async waitAndClickSearchButton() {
+    const searchButton = this.page.locator(SELECTORS.SEARCH_BUTTON);
+    await searchButton.waitFor({ state: "visible" });
+    // Small delay to ensure form validation completes
+    await this.page.waitForTimeout(500);
+    await searchButton.click();
+  }
+
   // Switches to rail search
 
   /**
@@ -462,6 +477,35 @@ class SearchPage {
   clickTravelRequestButton() {
     return this.getTravelRequestButton().click();
   }
+
+  
+  /**
+   * Gets the search title locator.
+   * @returns {Locator} Search title element
+   */
+  getSearchTitle() {
+    return this.page.locator(SELECTORS.SEARCH_TITLE).first();
+  }
+
+  /**
+   * Validates that the search title contains expected text.
+   * @param {string} expectedText - Text expected in search title
+   * @throws {Error} If expectedText is not provided
+   */
+  async validateSearchTitleContains(expectedText) {
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+    
+    const titleElement = this.getSearchTitle();
+    await titleElement.waitFor({ state: 'visible' });
+    const actualText = await titleElement.innerText();
+    
+    if (!actualText.toLowerCase().includes(expectedText.toLowerCase())) {
+      throw new Error(`Search title "${actualText}" does not contain "${expectedText}"`);
+    }
+  }
+
 }
 
 /**

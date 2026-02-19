@@ -8,7 +8,11 @@
  * Search:
  *   "I search for a car at {string}"
  *   "I search for a car at {string} with rental agency {string}"
+ *   "I search for a car from {string} to {string}"
  *   "I select rental agency {string}"
+ *
+ * Edit:
+ *   "I edit the car search from {string} to {string}"
  *
  * ========================
  */
@@ -34,7 +38,21 @@ When("I search for a car at {string} with rental agency {string}", async functio
   await CarSearch.searchCarByPlaceAndRentalAgency(this.page, place, agencyName);
 });
 
+When("I search for a car from {string} to {string}", async function (pickupLocation, dropoffLocation) {
+  logger.info("Searching for car with different pickup and dropoff locations", { pickupLocation, dropoffLocation });
+  await CarSearch.searchCarWithDifferentDropoffLocation(this.page, pickupLocation, dropoffLocation);
+});
+
 When("I select rental agency {string}", async function (agencyName) {
   logger.info("Selecting rental agency", { agencyName });
   await CarSearch.selectRentalAgencyByName(this.page, agencyName);
+});
+
+// ========================================
+// WHEN STEPS - CAR SEARCH EDIT
+// ========================================
+
+When("I edit the car search from {string} to {string}", async function (pickupLocation, dropoffLocation) {
+  logger.info("Editing car search with different pickup and dropoff locations", { pickupLocation, dropoffLocation });
+  await CarSearch.editCarSearchWithDifferentDropoffLocation(this.page, pickupLocation, dropoffLocation);
 });

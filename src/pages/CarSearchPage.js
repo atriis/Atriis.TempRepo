@@ -3,6 +3,8 @@
  * Contains only UI-level interactions.
  */
 
+const logger = require("@utils/logger").child("CarSearchPage");
+
 const SELECTORS = {
   CAR_TAB: "#tab-car",
   DROPOFF_DATE_INPUT: "[placeholder='Drop-off Date']",
@@ -25,7 +27,13 @@ class CarSearchPage {
 
   /** Switches UI to Car search */
   async clickCarTab() {
-    await this.page.click(SELECTORS.CAR_TAB);
+    try {
+      const carTab = this.page.locator(SELECTORS.CAR_TAB);
+      await carTab.waitFor({ state: "visible", timeout: 3000 });
+      await carTab.click();
+    } catch (error) {
+      logger.warn("Car tab not found or not clickable - may already be active", { error: error.message });
+    }
   }
 
   /** Enables "Drop-off at a different location" option */
