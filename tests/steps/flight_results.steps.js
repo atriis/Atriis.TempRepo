@@ -103,12 +103,10 @@ When("I add the first flight to cart", async function () {
 When("I filter results by carrier {string}", async function (carrier) {
   logger.info("Filtering results by carrier", { carrier });
   const FlightResultsPage = require("../../src/pages/FlightResultsPage");
-  const { ResultsPage } = require("../../src/pages/ResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
-  const resultsPage = new ResultsPage(this.page);
   
-  // Wait for results to load before filtering
-  await resultsPage.waitForAddToTripText();
+  // Wait for initial results to load (works in both share and normal mode)
+  await flightResultsPage.waitForFlightResults();
   
   // Store current carrier for pricing options tracking
   this.currentCarrier = carrier;
@@ -119,10 +117,14 @@ When("I filter results by carrier {string}", async function (carrier) {
     this.carriers.push(carrier);
   }
   
+  // Type in filter (this also waits for filter element visibility)
   await flightResultsPage.typeInSearchFlightFilter(carrier);
   
+  // Wait for filtered results to stabilize
+  await this.page.waitForTimeout(2000);
+  
   // Wait for filtered results to load
-  await this.page.waitForTimeout(1000);
+  await flightResultsPage.waitForFlightResults();
 });
 
 // ========================================

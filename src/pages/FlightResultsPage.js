@@ -166,8 +166,26 @@ class FlightResultsPage {
    * @param {string} text - The text to type in the search filter.
    */
   async typeInSearchFlightFilter(text) {
+    // Wait for filter to be visible
     await this.page.locator(SELECTORS.SEARCH_FLIGHT_FILTER).waitFor({ state: 'visible', timeout: 60000 });
+    
+    // Clear any existing text and type new filter
     await this.page.fill(SELECTORS.SEARCH_FLIGHT_FILTER, text);
+  }
+
+  /**
+   * Waits for flight results to be loaded by checking for result actions.
+   * Works in both normal mode (Add to trip/Select) and share mode (Pricing Options).
+   * 
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async waitForFlightResults(timeout = 60000) {
+    // Wait for either pricing options button OR action buttons to appear
+    // This works in both share mode and regular mode
+    await Promise.race([
+      this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).first().waitFor({ state: 'visible', timeout }),
+      this.page.locator('.btn.btn--primary').first().waitFor({ state: 'visible', timeout })
+    ]);
   }
 
   // ===== PRICING OPTIONS MODAL =====
