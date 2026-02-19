@@ -28,12 +28,18 @@ class FlightPricingPage {
    * - Extra timeout improves stability in CI and slower environments
    */
   async waitForYourSelectionText() {
-    // Extended timeout for CI/CD environments where pricing calculations are slower
+    // Wait for element to exist and be visible first
+    await this.page.locator(SELECTORS.YOUR_SELECTION_TEXT).waitFor({ 
+      state: 'visible', 
+      timeout: 45000 
+    });
+    
+    // Then verify the exact text content
     await waitForText(
       this.page,
       SELECTORS.YOUR_SELECTION_TEXT,
       "Your selection",
-      60000,
+      30000,
     );
   }
 }

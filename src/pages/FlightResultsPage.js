@@ -405,6 +405,13 @@ async clickAddToTripButtonPricingOptionsModal() {
   
   // Wait for modal to close after adding to trip
   await this.getPricingOptionsOverlay().waitFor({ state: 'hidden', timeout: 30000 });
+  
+  // Wait for page to process the added flight (network requests, DOM updates)
+  // This ensures any pricing calculations or page transitions complete
+  await this.page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {
+    // Fallback: if networkidle times out, at least wait for DOM content
+    return this.page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+  });
 }
 
 /**
