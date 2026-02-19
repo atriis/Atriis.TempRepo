@@ -16,12 +16,16 @@
  *   "I have added a random guest traveler"
  *     → Search.addRandomGuest(page)
  *
+ * Then Steps:
+ *   "the search title should contain {string}"
+ *     → Search.validateSearchTitleContains(page, text)
+ *
  * ========================
  */
 
 require("module-alias/register");
 
-const { Given, setDefaultTimeout } = require("@cucumber/cucumber");
+const { Given, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { Search } = require("@dsl");
 const { expect } = require("@fixtures/supplierTest");
 const logger = require("@utils/logger").child("Search");
@@ -46,4 +50,11 @@ Given("I have added a random guest traveler", async function () {
   logger.info("Adding random guest traveler");
   const result = await Search.addRandomGuest(this.page);
   expect(result.starIconVisible, "Star icon should be visible after adding guest").toBe(true);
+});
+
+// ===== THEN STEPS =====
+
+Then("the search title should contain {string}", async function (expectedText) {
+  logger.info("Validating search title contains text", { expectedText });
+  await Search.validateSearchTitleContains(this.page, expectedText);
 });

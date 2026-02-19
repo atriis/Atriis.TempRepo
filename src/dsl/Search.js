@@ -95,6 +95,25 @@ const Search = {
       guestData: { firstName, lastName, dateOfBirth, email, phone },
     };
   },
+
+  /**
+   * Validates that the search title contains specific text.
+   * @param {Object} page - Playwright page instance
+   * @param {string} text - Expected text in search title
+   * @throws {Error} If page or text are missing
+   */
+  async validateSearchTitleContains(page, text) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (!text || typeof text !== 'string') {
+      throw new Error('text must be a non-empty string');
+    }
+    
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.validateSearchTitleContains(text);
+  }
 };
 
 module.exports = Search;
