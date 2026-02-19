@@ -172,6 +172,15 @@ class ResultsPage {
     return commonPage.getAmountPriceValue(index);
   }
 
+  getEditButton() {
+  return this.page.getByRole('button', { name: 'Edit' });
+  }
+
+  async clickEditButton() {
+  await this.getEditButton().waitFor({ state: 'visible' }); 
+  await this.getEditButton().click();
+ }
+
 } 
 module.exports = {
   ResultsPage,
