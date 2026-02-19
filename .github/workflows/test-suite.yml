@@ -374,7 +374,7 @@ jobs:
       - run: mkdir -p test-results
 
       - name: Run Daily Flight Tests
-        run: npx cucumber-js tests/features/flights/daily_flights/
+        run: npx cucumber-js tests/features/flights/daily_flights/ --parallel 3
         env:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
