@@ -161,10 +161,12 @@ class FlightResultsPage {
 
   /**
    * Types text in the search flight filter field.
+   * Waits for the filter to be visible before typing.
    *
    * @param {string} text - The text to type in the search filter.
    */
   async typeInSearchFlightFilter(text) {
+    await this.page.locator(SELECTORS.SEARCH_FLIGHT_FILTER).waitFor({ state: 'visible', timeout: 60000 });
     await this.page.fill(SELECTORS.SEARCH_FLIGHT_FILTER, text);
   }
 

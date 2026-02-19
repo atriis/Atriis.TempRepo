@@ -103,7 +103,12 @@ When("I add the first flight to cart", async function () {
 When("I filter results by carrier {string}", async function (carrier) {
   logger.info("Filtering results by carrier", { carrier });
   const FlightResultsPage = require("../../src/pages/FlightResultsPage");
+  const { ResultsPage } = require("../../src/pages/ResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
+  const resultsPage = new ResultsPage(this.page);
+  
+  // Wait for results to load before filtering
+  await resultsPage.waitForAddToTripText();
   
   // Store current carrier for pricing options tracking
   this.currentCarrier = carrier;
