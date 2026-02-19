@@ -61,9 +61,13 @@ class LoginPage {
     await this.getPasswordInput().fill(password);
   }
 
-  /** Clicks the login button */
+  /**
+   * Clicks the login button.
+   * Uses noWaitAfter to avoid waiting for navigation here,
+   * since App.loginAs handles the navigation wait explicitly.
+   */
   async clickLoginButton() {
-    await this.page.click(SELECTORS.LOGIN_BUTTON);
+    await this.page.click(SELECTORS.LOGIN_BUTTON, { noWaitAfter: true });
   }
 }
 
