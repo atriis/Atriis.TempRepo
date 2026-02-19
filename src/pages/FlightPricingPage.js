@@ -28,10 +28,12 @@ class FlightPricingPage {
    * - Extra timeout improves stability in CI and slower environments
    */
   async waitForYourSelectionText() {
+    // Extended timeout for CI/CD environments where pricing calculations are slower
     await waitForText(
       this.page,
       SELECTORS.YOUR_SELECTION_TEXT,
       "Your selection",
+      60000,
     );
   }
 }

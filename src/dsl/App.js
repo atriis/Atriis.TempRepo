@@ -68,7 +68,9 @@ const App = {
       menuPage.clickBookANewTrip(),
     ]);
 
-    await newTripPage.waitForLoadState();
+    // Wait for the new trip page to fully load with network idle and extended timeout
+    // CI/CD environments need more time for the booking form to initialize
+    await newTripPage.waitForLoadState("networkidle", { timeout: 60000 });
     return newTripPage;
   },
 

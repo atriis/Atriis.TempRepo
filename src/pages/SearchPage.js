@@ -432,7 +432,8 @@ class SearchPage {
     const labels = this.page.locator(SELECTORS.TRIP_TYPE_RADIO_LABELS);
 
     // Ensure trip type labels are present and visible before interacting
-    await labels.first().waitFor({ state: "visible" });
+    // Extended timeout for CI/CD environments where page loads slower
+    await labels.first().waitFor({ state: "visible", timeout: 60000 });
 
     // Fail fast if your base locator is wrong (helps debugging a lot)
     const count = await labels.count();

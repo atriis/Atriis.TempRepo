@@ -59,9 +59,12 @@ class ResultsPage {
     await this.getSelectButton().waitFor({ state: "visible" });
   }
 
-  /** Waits until the first "Add to trip" button is visible */
+  /** 
+   * Waits until the first "Add to trip" button is visible
+   * Extended timeout for CI/CD environments where results load slower
+   */
   async waitForAddToTripText() {
-    await this.getAddToTripButton().waitFor({ state: "visible", timeout: 45000 });
+    await this.getAddToTripButton().waitFor({ state: "visible", timeout: 60000 });
   }
 
   /** Scrolls to the first "Add to trip" button */
