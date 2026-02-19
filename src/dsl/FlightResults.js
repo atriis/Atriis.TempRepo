@@ -1,3 +1,4 @@
+const { expect } = require("@playwright/test");
 const FlightResultsPage = require("@pages/FlightResultsPage");
 const { CartPage } = require("@pages/CartPage");
 const { ResultsPage } = require("@pages/ResultsPage");
@@ -363,6 +364,79 @@ async isGreenCircleIconVisibleInPricingOptions(page, index = 0) {
   const resultsPage = getPageObject(page, FlightResultsPage);
   await resultsPage.clickSelectForFareWithBaggagePricingOptions(baggageText);
 },
+
+  /**
+   * Scrolls to the Flight Duration filter title.
+   * Useful for ensuring the filter is in view before interacting with it.
+   * 
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async scrollToFlightDurationTitle(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.getFlightDurationTitle().scrollIntoViewIfNeeded();
+  },
+
+  /**
+   * Scrolls to the Flight Duration filter title for a specific location.
+   * 
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} location - The location text (e.g., "Depart from London", "Depart from Madrid")
+   * @returns {Promise<void>}
+   */
+  async scrollToFlightDurationFromLocationTitle(page, location) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (!location || typeof location !== 'string') {
+      throw new Error('location must be a non-empty string');
+    }
+    
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.getFlightDurationFromLocationTitle(location).scrollIntoViewIfNeeded();
+  },
+
+  /**
+   * Asserts that the Flight Duration filter title is visible.
+   * 
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async assertFlightDurationTitleVisible(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await expect(flightResultsPage.getFlightDurationTitle()).toBeVisible();
+  },
+
+  /**
+   * Asserts that the Flight Duration filter title for a specific location is visible.
+   * 
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} location - The location text (e.g., "Depart from London", "Depart from Madrid")
+   * @returns {Promise<void>}
+   */
+  async assertFlightDurationFromLocationVisible(page, location) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    if (!location || typeof location !== 'string') {
+      throw new Error('location must be a non-empty string');
+    }
+    
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await expect(
+      flightResultsPage.getFlightDurationFromLocationTitle(location)
+    ).toBeVisible();
+  }
 
 }
 

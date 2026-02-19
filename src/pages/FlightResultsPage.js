@@ -420,5 +420,15 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   await selectButton.click();
 }
 
+  // Static title: "Flight duration"
+  getFlightDurationTitle() {
+    return this.page.getByText('Flight duration', { exact: false }).first();
+  }
+
+  // Dynamic title: e.g., "Depart from London", "Depart from Madrid"
+  getFlightDurationFromLocationTitle(location) {
+    return this.page.getByText(location, { exact: false }).first();
+  }
+
 }
 module.exports = FlightResultsPage;

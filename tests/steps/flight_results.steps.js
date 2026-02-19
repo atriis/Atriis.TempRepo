@@ -46,6 +46,16 @@
  *     → FlightResults.getFareRulesNoteText(page) + expect(noteText).toContain(...)
  *   "the green circle icon at index {int} {string} should be displayed in pricing options"
  *     → FlightResults.isGreenCircleIconVisibleInPricingOptions(page, index) + expect(isVisible).toBe(true)
+ *   "the Flight Duration filter should be visible"
+ *     → FlightResults.assertFlightDurationTitleVisible(page)
+ *   "the Flight Duration filter for {string} should be visible"
+ *     → FlightResults.assertFlightDurationFromLocationVisible(page, location)
+ *
+ * Scrolling:
+ *   "I scroll to the Flight Duration filter"
+ *     → FlightResults.scrollToFlightDurationTitle(page)
+ *   "I scroll to the Flight Duration filter for {string}"
+ *     → FlightResults.scrollToFlightDurationFromLocationTitle(page, location)
  *
  * ========================
  */
@@ -274,6 +284,16 @@ When('I select the fare with baggage {string}', async function (baggageText) {
   await FlightResults.selectFareWithBaggage(this.page, baggageText);
 });
 
+When("I scroll to the Flight Duration filter", async function () {
+  logger.info("Scrolling to Flight Duration filter");
+  await FlightResults.scrollToFlightDurationTitle(this.page);
+});
+
+When("I scroll to the Flight Duration filter for {string}", async function (location) {
+  logger.info("Scrolling to Flight Duration filter for location", { location });
+  await FlightResults.scrollToFlightDurationFromLocationTitle(this.page, location);
+});
+
 // ========================================
 // THEN STEPS - ASSERTIONS
 // ========================================
@@ -318,4 +338,13 @@ Then("the green circle icon at index {int} {string} should be displayed in prici
   expect(isVisible).toBe(true);
 });
 
+Then("the Flight Duration filter should be visible", async function () {
+  logger.info("Verifying Flight Duration filter is visible");
+  await FlightResults.assertFlightDurationTitleVisible(this.page);
+});
+
+Then("the Flight Duration filter for {string} should be visible", async function (location) {
+  logger.info("Verifying Flight Duration filter for location is visible", { location });
+  await FlightResults.assertFlightDurationFromLocationVisible(this.page, location);
+});
 
