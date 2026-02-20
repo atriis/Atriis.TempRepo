@@ -1,6 +1,6 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const DynamicAndReferenceFieldsPage = require("@pages/DynamicAndReferenceFieldsPage");
-const { GeneralElementsPage } = require("@pages/GeneralElementsPage");
+const { CommonPage } = require("@pages/CommonPage");
 const { CheckoutPage } = require("@pages/CheckoutPage");
 const { TravelRequestPage } = require("@pages/TravelRequestPage");
 
@@ -27,7 +27,7 @@ const DynamicAndReferenceFields = {
    */
   async selectTripPurposeReferenceField(page) {
     const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
-    const generalElementsPage = getPageObject(page, GeneralElementsPage);
+    const commonPage = getPageObject(page, CommonPage);
 
     // Open the Trip Purpose dropdown
     await dynamicFieldsPage.clickToOpenDropdown("TRIP PURPOSE");
@@ -37,8 +37,8 @@ const DynamicAndReferenceFields = {
     await dynamicFieldsPage.selectDropdownOption("CONFERENCE");
 
     // Wait for and click Proceed button
-    await generalElementsPage.waitForProceedButton();
-    await generalElementsPage.clickProceedButton();
+    await commonPage.getProceedButton().waitFor({ state: "visible" });
+    await commonPage.clickProceedButton();
   },
 
   /**

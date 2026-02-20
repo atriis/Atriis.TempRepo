@@ -68,10 +68,10 @@
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
+const { expect } = require("@playwright/test");
 const Cart = require("@dsl/Cart");
 const { CartPage } = require("@pages/CartPage");
 const tripStatus = require("@data/tripStatus.json");
-const { expect } = require("@fixtures/supplierTest");
 const logger = require("@utils/logger").child("Cart");
 
 setDefaultTimeout(120000);

@@ -2,7 +2,6 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const { CartPage } = require("@pages/CartPage");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
-const { GeneralElementsPage } = require("@pages/GeneralElementsPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
 
 /**
@@ -173,10 +172,10 @@ const Cart = {
     }
     
     const cartPage = getPageObject(page, CartPage);
-    const generalElementsPage = getPageObject(page, GeneralElementsPage);
+    const commonPage = getPageObject(page, CommonPage);
 
     await cartPage.clickSendEmailButton();
-    await generalElementsPage.waitForSuccessNotification();
+    await commonPage.getSuccessNotification().waitFor({ state: "visible" });
   },
 
   // ===== OUT OF POLICY (OOP) VALIDATION =====

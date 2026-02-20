@@ -52,7 +52,7 @@ require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { Results } = require("@dsl");
 const { ResultsPage } = require("@pages/ResultsPage");
-const { expect } = require("@fixtures/supplierTest");
+const { expect } = require("@playwright/test");
 const logger = require("@utils/logger").child("Results");
 
 setDefaultTimeout(120000);
