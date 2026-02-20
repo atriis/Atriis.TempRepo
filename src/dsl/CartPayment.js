@@ -6,6 +6,7 @@
  * Uses CartPaymentPage for low-level UI interactions.
  */
 
+const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const CartPaymentPage = require("../pages/CartPaymentPage");
 const cards = require("../data/cards.json");
@@ -54,6 +55,39 @@ class CartPayment {
   static async isPaymentMethodAdded(page) {
     const fop = getPageObject(page, CartPaymentPage);
     return await fop.waitForGreenIconInCart();
+  }
+
+  /**
+   * Validates that a saved card is visible in the payment methods list.
+   * @param {import('@playwright/test').Page} page - Playwright page instance
+   * @param {string} cardName - Name of the card to check for visibility (required)
+   * @throws {Error} If page or cardName are not provided
+   * @returns {Promise<void>}
+   */
+  static async expectCardVisible(page, cardName) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!cardName || typeof cardName !== 'string') {
+      throw new Error('cardName must be a non-empty string');
+    }
+    const fop = getPageObject(page, CartPaymentPage);
+    await expect(fop.getCardByName(cardName)).toBeVisible();
+  }
+
+  /**
+   * Validates that the Card Details section is visible.
+   * Used to verify the payment form has loaded before entering card information.
+   * @param {import('@playwright/test').Page} page - Playwright page instance
+   * @throws {Error} If page is not provided
+   * @returns {Promise<void>}
+   */
+  static async waitForCardDetailsToBeVisible(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    const fop = getPageObject(page, CartPaymentPage);
+    await expect(fop.getCardDetailsTitle()).toBeVisible();
   }
 }
 
