@@ -151,3 +151,9 @@ When("I extract the price at index {int} from {string}", async function (index, 
   
   logger.info("Extracted price", { location, price });
 });
+
+Then("I should see a success notification", async function () {
+  logger.info("Verifying success notification is visible");
+  const commonPage = getPageObject(this.page, CommonPage);
+  await commonPage.getSuccessNotification().waitFor({ state: "visible" });
+});

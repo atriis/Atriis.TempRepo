@@ -30,6 +30,8 @@ require("module-alias/register");
 const { Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { FlightResults } = require("@dsl");
+const { getPageObject } = require("@utils/pageObjectCache");
+const { CommonPage } = require("@pages/CommonPage");
 const logger = require("@utils/logger").child("Smoke");
 
 setDefaultTimeout(120000);
@@ -52,12 +54,6 @@ Then("flight results should be displayed", async function () {
   logger.info("Verifying flight results are displayed");
   const isDisplayed = await FlightResults.isResultDisplayed(this.page);
   expect(isDisplayed).toBe(true);
-});
-
-Then("I should see a success notification", async function () {
-  logger.info("Verifying success notification is visible");
-  const successNotification = this.page.getByText("Success", { exact: true });
-  await successNotification.waitFor({ state: "visible" });
 });
 
 Then("the trip should be successfully cancelled", async function () {
