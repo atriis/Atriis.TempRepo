@@ -1,6 +1,8 @@
 /**
- * Page Object for Travel Request
+ * Page Object for travel request page.
+ * Contains only UI-level interactions.
  */
+
 const SELECTORS = {
   SEND_REQUEST_BUTTON: "button:has-text('Send Request')",
 };

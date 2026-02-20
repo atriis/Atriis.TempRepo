@@ -1,23 +1,15 @@
 const { waitForText } = require("@utils/wait");
 
-// Centralized selectors for easy maintenance
+/**
+ * Page Object for menu page.
+ * Contains only UI-level interactions.
+ */
+
 const SELECTORS = {
   BOOK_NEW_TRIP_ICON: ".top-container > :nth-child(4) .material-symbols-outlined",
   LOGOUT_ICON: ".logout-icon",
   TRIPS_ICON: "a[href=\"/trips\"]",
 };
-
-/**
- * MenuPage
- *
- * Represents the top menu / header actions like:
- * - Book a new trip
- * - Logout
- * - Go to Trips
- *
- * Note: You mentioned moving logout methods to HeaderPage later.
- * That is fine as a future refactor when header grows.
- */
 
 class MenuPage {
   constructor(page) {

@@ -2,9 +2,10 @@ const { waitForText } = require("@utils/wait");
 const { pressTab } = require("@utils/dom");
 
 /**
- * Page Object for hotel search form.
- * Handles only UI interactions.
+ * Page Object for hotel search page.
+ * Contains only UI-level interactions.
  */
+
 const SELECTORS = {
   HOTEL_TAB: "#tab-hotel",
   HOTEL_HEADING: "#pane-hotel > h4",

@@ -1,12 +1,6 @@
-
 /**
- * CartPaymentPage
- *
- * Handles low-level UI interactions inside the FOP (Form of Payment) modal on the cart page.
- * Follows project guidelines:
- * - No business logic or assertions
- * - No logging
- * - Only exposes technical UI actions
+ * Page Object for cart payment page.
+ * Contains only UI-level interactions.
  */
 
 const SELECTORS = {

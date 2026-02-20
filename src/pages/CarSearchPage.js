@@ -1,9 +1,9 @@
+const logger = require("@utils/logger").child("CarSearchPage");
+
 /**
- * Page Object for car search form.
+ * Page Object for car search page.
  * Contains only UI-level interactions.
  */
-
-const logger = require("@utils/logger").child("CarSearchPage");
 
 const SELECTORS = {
   CAR_TAB: "#tab-car",

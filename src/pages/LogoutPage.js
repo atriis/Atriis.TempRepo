@@ -1,13 +1,12 @@
-// Centralized selectors for easy maintenance
+/**
+ * Page Object for logout page.
+ * Contains only UI-level interactions.
+ */
+
 const SELECTORS = {
   LOGOUT_SUCCESS_MESSAGE: "h1:has-text(\"You've been logged out successfully!\")",
 };
 
-/**
- * LogoutPage
- *
- * Small helper page that only confirms the logout success message.
- */
 class LogoutPage {
   constructor(page) {
     this.page = page;

@@ -1,19 +1,13 @@
 const { waitForText } = require("@utils/wait");
 
 /**
- * Selectors for the Flight Results screen.
- * Kept minimal on purpose.
+ * Page Object for flight pricing page.
+ * Contains only UI-level interactions.
  */
+
 const SELECTORS = {
   YOUR_SELECTION_TEXT: "section.flight-by-schedule-pricing .best-combination-wrapper .header .title",
 };
-
-/**
- * FlightPricingPage
- *
- * Low-level interactions with the flight search results UI.
- * This class does NOT contain business logic.
- */
 
 class FlightPricingPage {
   constructor(page) {

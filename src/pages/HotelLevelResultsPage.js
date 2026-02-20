@@ -1,18 +1,14 @@
 const { SELECTORS: RESULTS_SELECTORS } = require("@pages/ResultsPage");
 
 /**
- * HotelLevelResultsPage
- *
- * Low-level UI interactions on hotel-level results.
- * No logging, no business decisions.
+ * Page Object for hotel level results page.
+ * Contains only UI-level interactions.
  */
 
 class HotelLevelResultsPage {
   constructor(page) {
     this.page = page;
   }
-
-  // ===== LOCATOR HELPERS =====
 
   /**
    * Gets the "View rates" button locator.
@@ -23,8 +19,6 @@ class HotelLevelResultsPage {
       .locator(`${RESULTS_SELECTORS.RESULTS_BUTTON}:has-text("View rates")`)
       .first();
   }
-
-  // ===== UI INTERACTIONS =====
 
   /** Scrolls to the first "View rates" button */
   async scrollToFirstViewRatesButton() {

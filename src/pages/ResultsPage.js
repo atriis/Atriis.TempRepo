@@ -1,7 +1,11 @@
 const { SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
-const { SELECTORS: GENERAL_SELECTORS } = require("@pages/GeneralElementsPage");
+const { SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 
-// Centralized selectors for ResultsPage only
+/**
+ * Page Object for results page.
+ * Contains only UI-level interactions.
+ */
+
 const SELECTORS = {
   RESULTS_BUTTON: ".btn.btn--primary",
   SHARE_MAIN_BUTTON: 'button.share-btn.mr-4',
@@ -9,12 +13,6 @@ const SELECTORS = {
   SHARE_QUOTE_EMAIL_BUTTON: 'button:has(span:text("email"))'
 };
 
-/**
- * ResultsPage
- *
- * Low-level UI interactions on results.
- * No logging, no business decisions.
- */
 class ResultsPage {
   constructor(page) {
     this.page = page;
@@ -118,7 +116,7 @@ class ResultsPage {
    */
   async handleConflictQuoteModalIfVisible() {
     const proceedButton = this.page
-      .locator(GENERAL_SELECTORS.PROCEED_BUTTON)
+      .locator(COMMON_SELECTORS.PROCEED_BUTTON)
       .first();
 
     try {

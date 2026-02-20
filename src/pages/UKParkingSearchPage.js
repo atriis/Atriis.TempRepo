@@ -1,12 +1,10 @@
 const { pressTab } = require("@utils/dom");
 
 /**
-
- * Centralized selectors for UK Parking search page.
- *
- * All selectors for the UK Parking search UI are defined here.
- * Only this object should be updated if selectors change.
+ * Page Object for UK parking search page.
+ * Contains only UI-level interactions.
  */
+
 const SELECTORS = {
   // Tab selector
   PARKING_TAB: "#tab-parking",
@@ -22,14 +20,6 @@ const SELECTORS = {
   TIME_PLACEHOLDERS: "[placeholder=\"Time\"]",
 };
 
-
-/**
- * UKParkingSearchPage
- *
- * Page Object for UK Parking Search functionality.
- * Handles all UI interactions for searching UK airport parking.
- * No business logic or assertions should be placed here.
- */
 class UKParkingSearchPage {
   /**
    * @param {import('@playwright/test').Page} page - Playwright page instance

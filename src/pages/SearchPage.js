@@ -4,15 +4,10 @@ const {
 } = require("@utils/dom");
 
 /**
- * Centralized selectors for the Search screen.
- *
- * These selectors are shared across Flights, Hotels, Cars and Rails.
- * They are intentionally flexible to support different suppliers and UIs.
- *
- * IMPORTANT:
- * Selectors are UI-dependent and may look fragile.
- * They are kept as-is by design.
+ * Page Object for search page.
+ * Contains only UI-level interactions.
  */
+
 const SELECTORS = {
   // Traveler interaction
   ADD_TRAVELER_BUTTON: ".btn.btn--default.btn--size-default.btn--round.add-btn",

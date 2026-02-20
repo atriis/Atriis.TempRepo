@@ -1,4 +1,8 @@
-// Centralized selectors for easy maintenance
+/**
+ * Page Object for trips page.
+ * Contains only UI-level interactions.
+ */
+
 const SELECTORS = {
   // "Found X Trips" summary block
   FOUND_TRIPS_TEXT:
@@ -8,17 +12,6 @@ const SELECTORS = {
   TRIP_STATUS_FILTER_ICON:
     "h4.filter-title.is-size-6:has-text(\"Trip Status\")",
 };
-
-/**
- * TripsPage
- *
- * Low-level UI interactions on the Trips page.
- * This class is intentionally quiet:
- * - no logging
- * - no business decisions
- * - only waits and checks
- */
-
 
 class TripsPage {
   constructor(page) {

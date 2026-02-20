@@ -1,15 +1,13 @@
-// Centralized selectors for easy maintenance
+/**
+ * Page Object for evolvi search page.
+ * Contains only UI-level interactions.
+ */
+
 const SELECTORS = {
   SPLIT_TICKET_CHECKBOX:
     "label[data-track='evolvi-search-split-ticket'] .el-checkbox__inner",
 };
 
-/**
- * EvolviSearchPage
- *
- * Low-level UI interactions for UK Rail (Evolvi) search.
- * No logging, no business logic.
- */
 class EvolviSearchPage {
   constructor(page) {
     this.page = page;

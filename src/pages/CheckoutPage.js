@@ -1,9 +1,10 @@
 const { waitForText } = require("@utils/wait");
 
 /**
- * Selectors for Checkout page.
- * Button variants exist depending on booking type and supplier.
+ * Page Object for checkout page.
+ * Contains only UI-level interactions.
  */
+
 const SELECTORS = {
   BOOKING_DETAILS_HEADING: "h1.mb-5",
   FINALIZE_BUTTON: "button:has-text('Finalize')",
@@ -12,18 +13,10 @@ const SELECTORS = {
   GO_TO_TRIP_BUTTON: ".btn-container > :nth-child(1)",
 };
 
-/**
- * CheckoutPage
- *
- * Handles low-level UI interactions on the checkout screen.
- * Contains no business logic.
- */
 class CheckoutPage {
   constructor(page) {
     this.page = page;
   }
-
-  // ===== LOCATOR HELPERS =====
 
   /**
    * Gets the "Finalize" button locator.
@@ -48,8 +41,6 @@ class CheckoutPage {
   getGoToTripButton() {
     return this.page.locator(SELECTORS.GO_TO_TRIP_BUTTON);
   }
-
-  // ===== UI INTERACTIONS =====
 
   /**
    * Confirms that the checkout page is loaded.

@@ -1,8 +1,6 @@
 /**
- * DynamicAndReferenceFieldsPage
- *
- * Handles dynamic and reference fields that appear across multiple pages.
- * Low-level UI interactions only—no business logic.
+ * Page Object for dynamic and reference fields page.
+ * Contains only UI-level interactions.
  */
 
 class DynamicAndReferenceFieldsPage {

@@ -1,18 +1,15 @@
 const { waitForText } = require("@utils/wait");
 
-// Centralized selectors for easy maintenance
+/**
+ * Page Object for evolvi results page.
+ * Contains only UI-level interactions.
+ */
+
 const SELECTORS = {
   OUTBOUND_TEXT: "h3",
   SUGGESTED_FARES_TEXT: ".price-container.mb-5 .desc",
   CHEAPEST_SUGGESTED_FARE: ".suggested-btn .app-price",
 };
-
-/**
- * EvolviResultsPage
- *
- * Low-level UI interactions on Evolvi results.
- * Quiet and mechanical by design.
- */
 
 class EvolviResultsPage {
   constructor(page) {

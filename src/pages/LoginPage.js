@@ -1,4 +1,8 @@
-// Centralized selectors for easy maintenance
+/**
+ * Page Object for login page.
+ * Contains only UI-level interactions.
+ */
+
 const SELECTORS = {
   EMAIL_INPUT: "#email",
   PASSWORD_INPUT: "#psw",
@@ -6,12 +10,6 @@ const SELECTORS = {
   FORGOT_PASSWORD_TEXT: "#forgotPsw",
 };
 
-/**
- * LoginPage
- *
- * Low-level UI actions on the login screen.
- * This file should be quiet (no heavy logs).
- */
 class LoginPage {
   constructor(page) {
     this.page = page;

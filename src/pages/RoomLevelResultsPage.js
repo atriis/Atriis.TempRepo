@@ -1,6 +1,8 @@
 /**
- * Page Object for room-level hotel results.
+ * Page Object for room level results page.
+ * Contains only UI-level interactions.
  */
+
 const SELECTORS = {
   VIEW_HOTEL_ON_MAP_BUTTON: "button.map-btn.is-paddingless",
   REFUNDABLE_CHECKBOX_LABEL: "label.el-checkbox",

@@ -1,8 +1,14 @@
-const { SELECTORS: GENERAL_SELECTORS } = require("./GeneralElementsPage");
 const { extractNumber } = require("@utils/dom");
 
-// Centralized selectors for CommonPage only
+/**
+ * Page Object for common elements across pages.
+ * Contains only UI-level interactions.
+ */
+
 const SELECTORS = {
+  // Proceed and Save buttons
+  PROCEED_BUTTON: "button:has-text('Proceed')",
+  SAVE_BUTTON: "button:has-text('Save')",
 
   // Modal buttons
   GO_BACK_BUTTON: "button:has-text('Go back')",
@@ -19,18 +25,10 @@ const SELECTORS = {
 
 };
 
-/**
- * CommonPage
- *
- * Low-level UI interactions on results.
- * No logging, no business decisions.
- */
 class CommonPage {
   constructor(page) {
     this.page = page;
   }
-
-  // ===== LOCATOR HELPERS =====
 
   /**
    * Gets the Out of Policy indicator locator.
@@ -51,8 +49,6 @@ class CommonPage {
   getShoppingCartIcon() {
   return this.page.locator('span', { hasText: 'shopping_cart' });
  }
-
-  // ===== UI INTERACTIONS =====
 
   /**
    * Waits until the OOP text is visible
@@ -121,7 +117,45 @@ class CommonPage {
    * Clicks 'Proceed anyway' button on the Flight Capacity Restriction pop-up.
    */
   async clickProceedAnywayOnFlightCapacityRestrictionPopUp() {
-    await this.page.locator(GENERAL_SELECTORS.PROCEED_BUTTON).click();
+    await this.page.locator(SELECTORS.PROCEED_BUTTON).click();
+  }
+
+  /**
+   * Gets the Success notification locator.
+   * @returns {Locator} Playwright locator for the Success notification.
+   */
+  getSuccessNotification() {
+    return this.page.getByText("Success", { exact: true });
+  }
+
+  /**
+   * Gets the Proceed button element.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getProceedButton() {
+    return this.page.locator(SELECTORS.PROCEED_BUTTON);
+  }
+
+  /**
+   * Gets the Save button element.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getSaveButton() {
+    return this.page.locator(SELECTORS.SAVE_BUTTON);
+  }
+
+  /**
+   * Clicks the Proceed button.
+   */
+  async clickProceedButton() {
+    await this.getProceedButton().click();
+  }
+
+  /**
+   * Clicks the Save button.
+   */
+  async clickSaveButton() {
+    await this.getSaveButton().click();
   }
 
   /**

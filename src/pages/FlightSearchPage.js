@@ -1,11 +1,8 @@
 /**
- * FlightSearchPage
- *
- * Handles low-level UI interactions for flight search configuration.
- * Provides methods for search mode selection and advanced options.
+ * Page Object for flight search page.
+ * Contains only UI-level interactions.
  */
 
-/** Centralized selectors for easy maintenance */
 const SELECTORS = {
   FLIGHT_TAB: "#tab-flight",
   TRIP_TYPE: ".search-for-select  .el-radio",

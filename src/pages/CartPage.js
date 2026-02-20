@@ -8,10 +8,6 @@ const { getText } = require("@utils/dom");
 
 const SELECTORS = {
 
-  // =============================
-  // 1️⃣ Selectors (centralized)
-  // =============================
-
   // Cart general selectors
   TERMS_CHECKBOX: ".el-checkbox__inner",
   PROCEED_TO_CHECKOUT_TEXT: ".btn-container span",
@@ -59,10 +55,6 @@ class CartPage {
   constructor(page) {
     this.page = page;
   }
-
-  // =============================
-  // 2️⃣ Selectors (get methods)
-  // =============================
 
   /**
    * Gets the refundable label text for hotel bookings.
@@ -224,10 +216,6 @@ class CartPage {
   getBaggageGreenIcon() {
     return this.page.locator(SELECTORS.GREEN_ICON_BAGGAGE);
   }
-
-  // =============================
-  // 3️⃣ Actions
-  // =============================
 
   /**
    * Accepts Terms & Conditions checkbox (required before checkout).

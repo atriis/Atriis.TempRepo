@@ -4,9 +4,10 @@ const {
 } = require("@utils/dom");
 
 /**
- * Centralized selectors for manual quote search page.
- * NOTE: Some selectors are UI-dependent and may be fragile.
+ * Page Object for manual quote search page.
+ * Contains only UI-level interactions.
  */
+
 const SELECTORS = {
   MANUAL_QUOTE_TAB: "#tab-manual",
   ENTER_AIRPORT_LOCATION_PLACEHOLDER: "[placeholder=\"Enter airport location\"]",
@@ -37,10 +38,6 @@ const SELECTORS = {
   ADD_QUOTE_BUTTON: "button.add-quote-btn",
 };
 
-/**
- * Page Object for Manual Quote Search functionality.
- * Handles all UI interactions for creating manual flight quotes.
- */
 class ManualQuoteSearchPage {
   constructor(page) {
     this.page = page;
