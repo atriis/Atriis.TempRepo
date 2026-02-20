@@ -18,6 +18,9 @@ const SELECTORS = {
   STREET_NAME_INPUT: "[placeholder=\"Street name\"]",
   INSERT_CREDIT_CARD_NUMBER_LINK: ".insertCard",
   SAVE_CARD: ".btn-save",
+  CARD_NAME_LIST: '.card-name',
+  CARD_DETAILS_TITLE: 'p.section-title',
+  BACK_ARROW: 'span.material-symbols-outlined:has-text("chevron_left")',
   // "Insert Credit Card Number" modal selectors
   INSERT_CREDIT_CARD_NUMBER_FIELD: "[placeholder=\"Please enter your credit card number\"]",
   SAVE_CARD_MODAL_BUTTON: ".btn.flex button.btn.btn--primary.btn--size-default.btn--round",
@@ -63,6 +66,34 @@ class CartPaymentPage {
    */
   getCountryDropdown() {
     return this.page.locator(SELECTORS.DROPDOWN_WRAPPER).nth(3);
+  }
+
+  /**
+   * Gets the Card Details title heading.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCardDetailsTitle() {
+    return this.page.locator(SELECTORS.CARD_DETAILS_TITLE).filter({ hasText: 'Card details' });
+  }
+
+  /**
+   * Gets a saved card element by its name.
+   * @param {string} cardName - Name of the card to locate (required)
+   * @returns {import('@playwright/test').Locator}
+   * @throws {Error} If cardName is not provided
+   */
+  getCardByName(cardName) {
+    if (!cardName || typeof cardName !== 'string') {
+      throw new Error('cardName must be a non-empty string');
+    }
+    return this.page.locator(SELECTORS.CARD_NAME_LIST).filter({ hasText: cardName });
+  }
+
+  /**
+   * Waits for the Card Details section to be visible.
+   */
+  async waitForCardDetailsToBeVisible() {
+    await this.getCardDetailsTitle().waitFor({ state: 'visible' });
   }
 
   /**
@@ -240,6 +271,13 @@ class CartPaymentPage {
   async waitForGreenIconInCart() {
     const icon = this.page.locator(SELECTORS.GREEN_ICON_CART);
     await icon.waitFor({ state: "visible" });
+  }
+
+  /**
+   * Clicks the back arrow button.
+   */
+  async clickBackArrow() {
+    await this.page.locator(SELECTORS.BACK_ARROW).click();
   }
 }
 

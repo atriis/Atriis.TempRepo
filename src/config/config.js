@@ -160,6 +160,10 @@ const config = {
     travelpolicy: {
       user_one: createUser("TRAVEL_POLICY_USER_ONE_EMAIL"),
     },
+
+    general: {
+      harry_potter_cc_not_default: createUser("GENERAL_FLOWS_HARRY_POTTER_USER_EMAIL"),
+    },
   },
 };
 
