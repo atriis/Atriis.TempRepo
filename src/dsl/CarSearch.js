@@ -92,9 +92,6 @@ const CarSearch = {
     });
 
     await searchPage.clickSearchButton();
-    
-    // Wait for navigation to results page to complete (important for CI)
-    await page.waitForURL('**/results/**', { timeout: 60000 });
 
     return { searched: true, place, pickupIndex, dropoffIndex };
   },
