@@ -1,7 +1,8 @@
+const { waitForText } = require("@utils/wait");
 const { extractNumber } = require("@utils/dom");
 
 /**
- * Page Object for Flight Results page.
+ * Page Object for flight results page.
  * Contains only UI-level interactions.
  */
 
@@ -86,15 +87,6 @@ class FlightResultsPage {
     return overlay.locator(SELECTORS.GREEN_CIRCLE_ICON_PRICING_OPTIONS).nth(index);
   }
 
-  getFlightDurationTitle() {
-    return this.page.getByText('Flight duration', { exact: false }).first();
-  }
-
-  // Dynamic title: e.g., "Depart from London", "Depart from Madrid"
-  getFlightDurationFromLocationTitle(location) {
-    return this.page.getByText(location, { exact: false }).first();
-  }
-
   /**
    * Clicks the "Select to share" button within the pricing options drawer.
    * Uses getByRole for reliable button targeting inside the drawer overlay.
@@ -136,6 +128,36 @@ class FlightResultsPage {
   }
 
   /**
+   * Waits for the share quote button to be enabled.
+   * This is used after selecting a pricing option to ensure the share button becomes clickable.
+   */
+  async waitForShareQuoteButtonEnabled() {
+    // Wait for the share button to be enabled (not disabled)
+    await this.page.locator(SELECTORS.PRICING_OPTIONS_SHARE_QUOTE_BUTTON)
+      .first()
+      .waitFor({ state: 'attached', timeout: 5000 });
+    
+    // Small delay to allow for state update
+    await this.page.waitForTimeout(1000);
+  }
+
+
+  // ===== FLIGHT SELECTION =====
+
+  /**
+   * Waits for the Change Flight button to appear.
+   *
+   * Used when user needs to modify their flight selection.
+   */
+  async waitForChangeFlightButton() {
+    await waitForText(
+      this.page,
+      SELECTORS.CHANGE_FLIGHT_BUTTON,
+      "Change flight"
+    );
+  }
+
+  /**
    * Types text in the search flight filter field.
    * Waits for the filter to be visible before typing.
    *
@@ -147,6 +169,32 @@ class FlightResultsPage {
     
     // Clear any existing text and type new filter
     await this.page.fill(SELECTORS.SEARCH_FLIGHT_FILTER, text);
+  }
+
+  /**
+   * Waits for flight results to be loaded by checking for result actions.
+   * Works in both normal mode (Add to trip/Select) and share mode (Pricing Options).
+   * 
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async waitForFlightResults(timeout = 60000) {
+    // Wait for either pricing options button OR action buttons to appear
+    // This works in both share mode and regular mode
+    await Promise.race([
+      this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).first().waitFor({ state: 'visible', timeout }),
+      this.page.locator('.btn.btn--primary').first().waitFor({ state: 'visible', timeout })
+    ]);
+  }
+
+  // ===== PRICING OPTIONS MODAL =====
+
+  /**
+   * Waits for the pricing options button to be visible.
+   *
+   * @param {number} index - Zero-based index of the pricing options button (default: 0)
+   */
+  async waitForPricingOptionsButton(index = 0) {
+    await this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).nth(index).waitFor({ state: "visible" });
   }
 
   /**
@@ -172,12 +220,58 @@ class FlightResultsPage {
   }
 
   /**
+   * Waits for the pricing options Select button to be visible.
+   *
+   * @param {number} index - Zero-based index of the select button (default: 0)
+   */
+  async waitForPricingOptionsSelectButton(index = 0) {
+    await this.page.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON).nth(index).waitFor({ state: "visible" });
+  }
+
+  /**
    * Clicks the select button within the pricing options dialog to confirm selection.
    *
    * @param {number} index - Zero-based index of the select button (default: 0)
    */
   async clickPricingOptionsSelectButton(index = 0) {
     await this.page.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON).nth(index).click();
+  }
+
+  /**
+   * Waits for the select button with "Select to share" text to be visible.
+   * This is the initial state before selecting an option.
+   *
+   * @param {number} index - Zero-based index of the button (default: 0)
+   */
+  async waitForSelectToShareButton(index = 0) {
+    const overlay = this.getPricingOptionsOverlay();
+    await overlay
+      .getByRole('button', { name: 'Select to share' })
+      .nth(index)
+      .waitFor({ state: 'visible' });
+  }
+
+    /**
+   * Waits for the select button with "Select to share" text to be visible.
+   * This is the initial state before selecting an option.
+   *
+   * @param {number} index - Zero-based index of the button (default: 0)
+   */
+  async waitForSelectButtonInPricingOptionsModal(index = 0) {
+    const overlay = this.getPricingOptionsOverlay();
+    await overlay
+      .getByRole('button', { name: 'Select' })
+      .nth(index)
+      .waitFor({ state: 'visible' });
+  }
+
+  /**
+   * Waits for the select button to change its text to "Unselect" after being clicked.
+   *
+   * @param {number} index - Zero-based index of the button (default: 0)
+   */
+  async waitForPricingOptionsUnselectButton(index = 0) {
+    await this.page.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON).nth(index).filter({ hasText: "Unselect" }).waitFor({ state: "visible" });
   }
 
   /**
@@ -220,6 +314,18 @@ class FlightResultsPage {
   }
 
   /**
+   * Waits for the "Fare rules" button to be visible.
+   *
+   * @param {number} index - Zero-based index of the fare rules button (default: 0)
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async waitForFareRulesButton(index = 0, timeout = 30000) {
+    await this.getFareRulesButton()
+      .nth(index)
+      .waitFor({ state: 'visible', timeout });
+  }
+
+  /**
    * Clicks the "Fare rules" button.
    *
    * @param {number} index - Zero-based index of the fare rules button (default: 0)
@@ -229,6 +335,32 @@ class FlightResultsPage {
       .nth(index)
       .click();
   } 
+
+  /**
+   * Waits for the fare rules note to become visible.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async waitForFareRulesNote(timeout = 30000) {
+    await this.getFareRulesNote().waitFor({
+      state: 'visible',
+      timeout,
+    });
+  }
+
+  // ===== FLIGHT DETAILS INTERACTIONS =====
+
+  /**
+   * Waits for the Flight Details button to be visible.
+   *
+   * @param {number} index - Zero-based index of the button (default: 0)
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async waitForFlightDetailsButton(index = 0, timeout = 30000) {
+    await this.getFlightDetailsButton()
+      .nth(index)
+      .waitFor({ state: 'visible', timeout });
+  }
 
   /**
    * Clicks the Flight Details button to open the flight details view.
@@ -241,6 +373,21 @@ class FlightResultsPage {
       .click();
   }
 
+  /**
+   * Waits for the flight details headline to be visible.
+   * The headline follows the pattern "Origin - Destination".
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async waitForFlightDetailsHeadline(timeout = 30000) {
+    await this.page.getByRole('heading', {
+      level: 3,
+      name: / - /,
+    }).waitFor({
+      state: 'visible',
+      timeout,
+    });
+  }
 
 async clickAddToTripButtonPricingOptionsModal() {
   const addButton = this.page.locator(SELECTORS.PRICING_OPTIONS_ADD_TO_TRIP_BUTTON);
@@ -270,6 +417,20 @@ async clickAddToTripButtonPricingOptionsModal() {
   await this.page.waitForTimeout(2000);
 }
 
+/**
+ * Waits for the green circle icon to appear in the pricing options modal.
+ * This icon indicates a successful selection.
+ *
+ * @param {number} index - Zero-based index of the icon (default: 0)
+ * @param {number} timeout - Max wait time in ms (default: 30000)
+ */
+async waitForGreenIconPricingOptionsModal(index = 0, timeout = 30000) {
+  const overlay = this.getPricingOptionsOverlay();
+  await overlay
+    .locator(SELECTORS.GREEN_CIRCLE_ICON_PRICING_OPTIONS)
+    .nth(index)
+    .waitFor({ state: 'visible', timeout });
+}
 
 async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   // Find the pricing option card that contains the specified baggage text
@@ -289,6 +450,15 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   await selectButton.click();
 }
 
+  // Static title: "Flight duration"
+  getFlightDurationTitle() {
+    return this.page.getByText('Flight duration', { exact: false }).first();
+  }
+
+  // Dynamic title: e.g., "Depart from London", "Depart from Madrid"
+  getFlightDurationFromLocationTitle(location) {
+    return this.page.getByText(location, { exact: false }).first();
+  }
+
 }
 module.exports = FlightResultsPage;
-FlightResultsPage.SELECTORS = SELECTORS;
