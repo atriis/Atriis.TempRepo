@@ -219,6 +219,26 @@ const Results = {
     await commonPage.hoverOverOOPInfoIcon();
     return await commonPage.getOOPTooltipText();
   },
+
+  /**
+   * Validates that the Reset Filters button is visible and disabled.
+   * Used to verify initial state before any filters are applied.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{isVisible: boolean, isDisabled: boolean}>}
+   */
+  async validateResetFiltersButtonIsVisibleAndDisabled(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    const resultsPage = getPageObject(page, ResultsPage);
+    const resetButton = resultsPage.getResetFiltersButton();
+
+    await expect(resetButton).toBeVisible();
+    await expect(resetButton).toBeDisabled();
+    
+    return { isVisible: true, isDisabled: true };
+  }
 };
 
 module.exports = Results;

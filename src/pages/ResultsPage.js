@@ -52,6 +52,13 @@ class ResultsPage {
       .first();
   }
 
+  /**
+  * Gets the "Reset Filters" button locator.
+  */
+  getResetFiltersButton() {
+    return this.page.getByRole('button', { name: 'Reset Filters' });
+  }
+
   // ===== UI INTERACTIONS =====
 
   /** Waits until the first "Select" button is visible */

@@ -40,6 +40,10 @@
  *   "the flight capacity restriction modal should be visible"
  *     → Results.isFlightCapacityRestrictionModalVisible(page) + expect(isVisible).toBe(true)
  *
+ * Then Steps - Filters:
+ *   "the reset filters button should be visible and disabled"
+ *     → Results.validateResetFiltersButtonIsVisibleAndDisabled(page)
+ *
  * ========================
  */
 
@@ -47,6 +51,7 @@ require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { Results } = require("@dsl");
+const { ResultsPage } = require("@pages/ResultsPage");
 const { expect } = require("@fixtures/supplierTest");
 const logger = require("@utils/logger").child("Results");
 
@@ -57,6 +62,12 @@ setDefaultTimeout(120000);
 When("I select and add one way journey to trip", async function () {
   logger.info("Selecting one-way journey and adding to trip");
   await Results.clickSelectButtonOneWayAndClickAddToTrip(this.page);
+});
+
+When("I wait for add to trip text to be visible", async function () {
+  logger.info("Waiting for 'Add to trip' button to be visible");
+  const resultsPage = new ResultsPage(this.page);
+  await resultsPage.waitForAddToTripText();
 });
 
 When("I add the first result to trip", async function () {
@@ -115,4 +126,11 @@ Then("the flight capacity restriction modal should be visible", async function (
   logger.info("Verifying flight capacity restriction modal is visible");
   const isVisible = await Results.isFlightCapacityRestrictionModalVisible(this.page);
   expect(isVisible).toBe(true);
+});
+
+// ===== THEN STEPS - FILTERS =====
+
+Then("the reset filters button should be visible and disabled", async function () {
+  logger.info("Verifying reset filters button is visible and disabled");
+  await Results.validateResetFiltersButtonIsVisibleAndDisabled(this.page);
 });
