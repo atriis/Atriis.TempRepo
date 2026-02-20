@@ -37,7 +37,5 @@ When("I add a refundable room to my cart", async function () {
 
 Then("the hotel should appear as refundable in my cart", async function () {
   logger.info("Verifying hotel is refundable");
-  const labelText = await Cart.getHotelRefundableText(this.page);
-  expect(labelText).toMatch(/Refundable/i);
-  expect(labelText).not.toMatch(/Non\s*Refundable/i);
+  await Cart.expectHotelToBeRefundableInCart(this.page);
 });

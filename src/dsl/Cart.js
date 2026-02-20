@@ -1,8 +1,10 @@
+const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
-const { CartPage } = require("@pages/CartPage");
+const { CartPage, SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
+const tripStatus = require("@data/tripStatus.json");
 
 /**
  * Cart DSL
@@ -82,43 +84,46 @@ const Cart = {
     }
   },
 
-  /**
-   * Gets the hotel refundable label text from the cart.
-   * Returns the label text for validation in step definitions.
-   *
-   * @param {import('playwright').Page} page
-   * @returns {Promise<string>} The refundable label text
-   */
-  async getHotelRefundableText(page) {
+  async expectHotelToBeRefundableInCart(page) {
     if (!page) {
       throw new Error('page is required');
     }
     
     const cartPage = getPageObject(page, CartPage);
     const labelText = await cartPage.getHotelRefundableText();
-    return labelText;
+    expect(labelText).toMatch(/Refundable/i);
+    expect(labelText).not.toMatch(/Non\s*Refundable/i);
   },
 
+
   /**
-   * Gets the current booking status label from the cart.
-   * Returns the status text for validation in step definitions.
+   * Asserts that the booking status label matches the expected status.
    *
+   * @param {string} expectedStatus
    * @param {object} [options]
    * @param {number} [options.timeout=60000] - Timeout in ms
    * @param {import('playwright').Page} options.page - Playwright page instance
-   * @returns {Promise<string>} The booking status text
+   * @returns {Promise<void>}
    */
-  async getBookingStatus({ timeout = 60000, page } = {}) {
+  async expectBookingStatusToBe(expectedStatus, { timeout = 60000, page } = {}) {
     if (!page) {
       throw new Error('page is required');
     }
-    
+
+    if (!expectedStatus || typeof expectedStatus !== 'string') {
+      throw new Error('expectedStatus must be a non-empty string');
+    }
+
     if (typeof timeout !== 'number' || timeout < 0) {
       throw new Error(`timeout must be >= 0, got ${timeout}`);
     }
-    
+
+    const mappedStatus = tripStatus?.label?.[expectedStatus]?.status;
+    const expectedText = mappedStatus || expectedStatus;
     const cartPage = getPageObject(page, CartPage);
-    return await cartPage.getBookingStatus({ timeout, page });
+    const actualStatus = await cartPage.getBookingStatus({ timeout, page });
+
+    expect(actualStatus.toLowerCase()).toContain(expectedText.toLowerCase());
   },
 
   /**
@@ -384,8 +389,8 @@ const Cart = {
     await cartPage.waitForHoldButton();
     await cartPage.clickHoldButton();
     await cartPage.waitForOnHoldStatus();
-    
-    const status = await Cart.getBookingStatus({ page });
+
+    const status = await cartPage.getBookingStatus({ page });
     return { held: true, status };
   },
 

@@ -194,20 +194,7 @@ Then("I successfully cancel the trip", async function () {
 
 Then("the booking status should be {string}", async function (status) {
   logger.info("Verifying booking status", { status });
-  const actualStatus = await Cart.getBookingStatus({ page: this.page });
-  
-  if (status === "Pending booking") {
-    expect(actualStatus.toLowerCase()).toContain(tripStatus.label.pendingBooking.status.toLowerCase());
-  } else if (status === "On Hold") {
-    expect(actualStatus.toLowerCase()).toContain(tripStatus.label.onHold.status.toLowerCase());
-  } else if (status === "Ticketing Complete") {
-    expect(actualStatus.toLowerCase()).toContain(tripStatus.label.ticketingComplete.status.toLowerCase());
-  }
-  else if (status === "Confirmed") {
-    expect(actualStatus.toLowerCase()).toContain(tripStatus.label.confirmed.status.toLowerCase());
-  } else {
-    throw new Error(`Unknown booking status: ${status}`);
-  }
+  await Cart.expectBookingStatusToBe(status, { page: this.page });
 });
 
 Then("the out of policy indicator should be visible in cart", async function () {
