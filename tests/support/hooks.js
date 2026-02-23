@@ -8,6 +8,8 @@ require("module-alias/register");
  */
 
 const { Before, After, setDefaultTimeout } = require("@cucumber/cucumber");
+const path = require("path");
+const fs = require("fs");
 const { launchBrowser } = require("./browserFactory");
 const config = require("../../src/config/config");
 const { App } = require("../../src/dsl");
@@ -123,7 +125,8 @@ Before(async function (testCase) {
 /**
  * After each scenario
  * 
- * - Captures screenshots on failure
+ * - Saves screenshots to disk on failure
+ * - Attaches screenshots to Cucumber report
  * - Records failures for retry in CI environments
  */
 After(async function (scenario) {
@@ -132,11 +135,38 @@ After(async function (scenario) {
   }
 
   if (scenario.result.status === "failed") {
-    // Capture screenshot on failure
-    const screenshot = await this.page.screenshot({ fullPage: true });
-    this.attach(screenshot, "image/png");
-    
-    logger.warn("Test failed - screenshot captured", { scenario: scenario.pickle.name });
+    try {
+      // Capture screenshot
+      const screenshot = await this.page.screenshot({ fullPage: true });
+      
+      // Create screenshots directory if it doesn't exist
+      const screenshotsDir = path.join("test-results", "screenshots");
+      if (!fs.existsSync(screenshotsDir)) {
+        fs.mkdirSync(screenshotsDir, { recursive: true });
+      }
+
+      // Generate filename with scenario name and timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const scenarioName = scenario.pickle.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .substring(0, 50); // Limit length to avoid long filenames
+      const filename = `${scenarioName}_${timestamp}.png`;
+      const filepath = path.join(screenshotsDir, filename);
+
+      // Save screenshot to disk
+      fs.writeFileSync(filepath, screenshot);
+      logger.info("Screenshot saved to disk", { 
+        file: filepath, 
+        scenario: scenario.pickle.name 
+      });
+
+      // Attach to Cucumber report as well
+      this.attach(screenshot, "image/png");
+      logger.warn("Test failed - screenshot captured", { scenario: scenario.pickle.name });
+    } catch (error) {
+      logger.error("Failed to capture screenshot", { error: error.message });
+    }
 
     // Record failure for retry in CI
     if (isRetryEnabled()) {
