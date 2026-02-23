@@ -48,8 +48,14 @@ function generateRandomGuestData() {
    * Phone number generation
    *
    * Format: XXX-XXX-XXXX (standard US phone format)
+   * - Area code: 200-999 (3 digits)
+   * - Exchange code: 200-999 (3 digits)
+   * - Line number: 0000-9999 (4 digits)
    */
-  const phone = faker.phone.number('###-###-####');
+  const areaCode = faker.number.int({ min: 200, max: 999 });
+  const exchangeCode = faker.number.int({ min: 200, max: 999 });
+  const lineNumber = faker.number.int({ min: 1000, max: 9999 });
+  const phone = `${areaCode}-${exchangeCode}-${lineNumber}`;
 
   // Returned object shape is stable and used by Search DSL
   return {

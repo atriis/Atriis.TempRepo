@@ -31,6 +31,64 @@ function createUser(emailEnvVar) {
 }
 
 /**
+ * Dynamically creates users for a provider based on available env vars.
+ * Handles multiple naming patterns:
+ *   - PROVIDER_USER_ONE_EMAIL → user_one
+ *   - CHRIS_TREE_USER_EMAIL → chris_tree (cross-provider users)
+ *   - AMADEUS_RUI_MENDES_USER → rui_mendes
+ *   - AMADEUS_WITH_GDS_PROFILE → with_gds_profile
+ *   - GENERAL_FLOWS_HARRY_POTTER_USER_EMAIL → harry_potter
+ * 
+ * This eliminates the need to update config.js when adding new users.
+ * Just add the env var (locally in .env and in CI secrets).
+ */
+function createProviderUsers(provider) {
+  const normalizedProvider = provider.toUpperCase().replace(/-/g, '_');
+  const users = {};
+  
+  // Scan all env vars to find matches
+  Object.keys(process.env).forEach(envKey => {
+    // Skip if it's the general password
+    if (envKey === 'GENERAL_PASSWORD') return;
+    
+    let userKey = null;
+    
+    // Pattern 1: Direct provider prefix (AMADEUS_USER_ONE_EMAIL, AMADEUS_WITH_GDS_PROFILE)
+    if (envKey.startsWith(`${normalizedProvider}_`)) {
+      userKey = envKey
+        .replace(`${normalizedProvider}_`, '')
+        .replace('FLOWS_', '')
+        .replace(/_EMAIL$/, '')
+        .replace(/_USER$/, '')
+        .toLowerCase();
+    }
+    // Pattern 2: Cross-provider users (CHRIS_TREE_USER_EMAIL for sabre)
+    // These don't have provider prefix but should be included based on context
+    // For now, we'll add them to all providers that request them
+    else if (envKey.endsWith('_EMAIL') || envKey.endsWith('_USER')) {
+      // Extract potential user key
+      const potentialKey = envKey
+        .replace(/_EMAIL$/, '')
+        .replace(/_USER$/, '')
+        .toLowerCase();
+      
+      // Only add cross-provider users if they're commonly known
+      // (This is a fallback - you can still add them explicitly if needed)
+      if (provider === 'sabre' && envKey.startsWith('CHRIS_TREE')) {
+        userKey = potentialKey;
+      }
+    }
+    
+    // If we found a valid user key, add it
+    if (userKey) {
+      users[userKey] = createUser(envKey);
+    }
+  });
+  
+  return users;
+}
+
+/**
  * Viewport presets for flexibility.
  * Can be changed via VIEWPORT env variable.
  * Default = desktopFullHD (1920x1080)
@@ -65,124 +123,40 @@ const config = {
 
   viewport: ACTIVE_VIEWPORT,
 
+  /**
+   * User credentials organized by provider.
+   * Users are automatically discovered from environment variables.
+   * No need to update this file when adding new users - just add the env var.
+   */
   users: {
-    amadeus: {
-      user_one: createUser("AMADEUS_USER_ONE_EMAIL"),
-      user_two: createUser("AMADEUS_USER_TWO_EMAIL"),
-      user_three: createUser("AMADEUS_USER_THREE_EMAIL"),
-      rui_mendes: createUser("AMADEUS_RUI_MENDES_USER"),
-      amadeus_with_gds_profile: createUser("AMADEUS_WITH_GDS_PROFILE"),
-    },
-
-    sabre: {
-      user_one: createUser("SABRE_USER_ONE_EMAIL"),
-      user_two: createUser("SABRE_USER_TWO_EMAIL"),
-      chris_tree: createUser("CHRIS_TREE_USER_EMAIL"),
-    },
-
-    galileo: {
-      user_one: createUser("GALILEO_USER_ONE_EMAIL"),
-    },
-
-    ratehawk: {
-      user_one: createUser("RATEHAWK_USER_ONE_EMAIL"),
-    },
-
-    expedia: {
-      user_one: createUser("EXPEDIA_USER_ONE_EMAIL"),
-    },
-
-    bookingcom: {
-      user_one: createUser("BOOKINGCOM_USER_ONE_EMAIL"),
-    },
-
-    ehotel: {
-      user_one: createUser("EHOTEL_USER_ONE_EMAIL"),
-    },
-
-    travelodge: {
-      user_one: createUser("TRAVELODGE_USER_ONE_EMAIL"),
-    },
-
-    premierinn: {
-      user_one: createUser("PREMIER_INN_USER_ONE_EMAIL"),
-    },
-
-    afkl: {
-      user_one: createUser("AFKL_USER_ONE_EMAIL"),
-    },
-
-    lufthansa: {
-      user_one: createUser("LUFTHANSA_USER_ONE_EMAIL"),
-    },
-
-    british: {
-      user_one: createUser("BRITISH_AIRWAYS_USER_ONE_EMAIL"),
-    },
-
-    united: {
-      user_one: createUser("UNITED_USER_ONE_EMAIL"),
-    },
-
-    american: {
-      user_one: createUser("AMERICAN_AIRLINES_USER_ONE_EMAIL"),
-    },
-
-    iberia: {
-      user_one: createUser("IBERIA_USER_ONE_EMAIL"),
-    },
-
-    sunny: {
-      user_one: createUser("SUNNY_CARS_USER_ONE_EMAIL"),
-    },
-
-    fusion: {
-      user_one: createUser("FUSION_USER_ONE_EMAIL"),
-    },
-
-    ypsilon: {
-      user_one: createUser("YPSILON_USER_ONE_EMAIL"),
-    },
-
-    amadeuslightticketing: {
-      user_one: createUser("AMADEUS_LIGHT_TICKETING_USER_ONE_EMAIL"),
-    },
-
-    galileoach: {
-      user_one: createUser("GALILEO_ACH_USER_ONE_EMAIL"),
-    },
-
-    benerail: {
-      user_one: createUser("BENERAIL_USER_ONE_EMAIL"),
-    },
-
-    evolvi: {
-      user_one: createUser("EVOLVI_USER_ONE_EMAIL"),
-    },
-
-    amtrak: {
-      user_one: createUser("AMTRAK_USER_ONE_EMAIL"),
-    },
-
-    groundscope: {
-      user_one: createUser("GROUNDSCOPE_USER_ONE_EMAIL"),
-    },
-
-    transferz: {
-      user_one: createUser("TRANSFERZ_USER_ONE_EMAIL"),
-    },
-
-    ukparking: {
-      user_one: createUser("UK_PARKING_USER_ONE_EMAIL"),
-    },
-
-    travelpolicy: {
-      user_one: createUser("TRAVEL_POLICY_USER_ONE_EMAIL"),
-    },
-
-    general: {
-      harry_potter_cc_not_default: createUser("GENERAL_FLOWS_HARRY_POTTER_USER_EMAIL"),
-    },
+    amadeus: createProviderUsers('amadeus'),
+    sabre: createProviderUsers('sabre'),
+    galileo: createProviderUsers('galileo'),
+    ratehawk: createProviderUsers('ratehawk'),
+    expedia: createProviderUsers('expedia'),
+    bookingcom: createProviderUsers('bookingcom'),
+    ehotel: createProviderUsers('ehotel'),
+    travelodge: createProviderUsers('travelodge'),
+    premierinn: createProviderUsers('premierinn'),
+    afkl: createProviderUsers('afkl'),
+    lufthansa: createProviderUsers('lufthansa'),
+    british: createProviderUsers('british'),
+    united: createProviderUsers('united'),
+    american: createProviderUsers('american'),
+    iberia: createProviderUsers('iberia'),
+    sunny: createProviderUsers('sunny'),
+    fusion: createProviderUsers('fusion'),
+    ypsilon: createProviderUsers('ypsilon'),
+    amadeuslightticketing: createProviderUsers('amadeuslightticketing'),
+    galileoach: createProviderUsers('galileoach'),
+    benerail: createProviderUsers('benerail'),
+    evolvi: createProviderUsers('evolvi'),
+    amtrak: createProviderUsers('amtrak'),
+    groundscope: createProviderUsers('groundscope'),
+    transferz: createProviderUsers('transferz'),
+    ukparking: createProviderUsers('ukparking'),
+    travelpolicy: createProviderUsers('travelpolicy'),
+    general: createProviderUsers('general'),
   },
 };
 

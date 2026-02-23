@@ -7,7 +7,7 @@ Feature: 61567 FOP - When adding a new credit card and navigating back to the pa
 
   @priority:critical
   Scenario: When adding a new credit card and navigating back to the payment options page, existing saved cards are displayed
-    Given I am logged in as "general" "harry_potter_cc_not_default" booking a new trip
+    Given I am logged in as "general" "harry_potter" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "LON" to "BRU"
     And I add the first flight to cart

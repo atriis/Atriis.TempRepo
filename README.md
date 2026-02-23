@@ -336,6 +336,33 @@ npx playwright install
    npx playwright test --list
    ```
 
+#### Adding New Test Users
+
+Users are automatically discovered from environment variables - no need to update `config.js`!
+
+**Local Setup:**
+1. Add to `.env`:
+   ```bash
+   PROVIDER_USER_KEY_EMAIL=email@example.com
+   # Example: AMADEUS_USER_FOUR_EMAIL=user4@amadeus.com
+   ```
+
+2. Use in tests:
+   ```javascript
+   await App.login('amadeus', 'user_four')
+   // or in Gherkin:
+   // Given I am logged in as "amadeus" "user_four"
+   ```
+
+**CI Setup:**
+- Add the same env var to GitHub Secrets
+- Add to the relevant job's `env:` section in `.github/workflows/test-suite.yml`
+
+**Naming Convention:**
+- Standard: `PROVIDER_USER_KEY_EMAIL` → `provider.user_key`
+- Example: `AMADEUS_USER_ONE_EMAIL` → `amadeus.user_one`
+- Example: `LUFTHANSA_JOHN_DOE_EMAIL` → `lufthansa.john_doe`
+
 ---
 
 ## Running Tests
