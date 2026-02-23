@@ -98,10 +98,11 @@ Before(async function (testCase) {
   // Launch browser and create context
   this.browser = await launchBrowser();
   this.context = await this.browser.newContext({
-    viewport: { width: 1920, height: 1080 },
-    screen: { width: 1920, height: 1080 },
+    viewport: config.viewport,
+    screen: config.viewport,
     ignoreHTTPSErrors: true,
   });
+  
   this.page = await this.context.newPage();
 
   // Navigate and login
@@ -120,11 +121,20 @@ Before(async function (testCase) {
 
 /**
  * After each scenario
+ * 
+ * Captures screenshots on failure
  */
 After(async function (scenario) {
-  if (scenario.result.status === "failed" && this.page) {
+  if (!this.page) {
+    return; // No page to capture
+  }
+
+  if (scenario.result.status === "failed") {
+    // Capture screenshot on failure
     const screenshot = await this.page.screenshot({ fullPage: true });
     this.attach(screenshot, "image/png");
+    
+    logger.warn("Test failed - screenshot captured", { scenario: scenario.pickle.name });
   }
 
   // Close context and browser

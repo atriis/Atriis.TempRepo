@@ -105,7 +105,6 @@ module.exports = defineConfig({
 
   use: {
     screenshot: 'only-on-failure',
-    trace: 'retain-on-failure',
     video: 'retain-on-failure',
     viewport: ACTIVE_VIEWPORT,
     screen: ACTIVE_VIEWPORT,
