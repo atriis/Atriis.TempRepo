@@ -1,12 +1,15 @@
+const { faker } = require('@faker-js/faker');
+
 /**
  * generateRandomGuestData
  *
- * Generates realistic but fake guest data for test automation.
+ * Generates realistic but fake guest data for test automation using Faker.
  *
  * Why this exists:
  * - Allows tests to add new travelers without hardcoding personal data
  * - Prevents collisions with real users
  * - Keeps tests repeatable and environment-safe
+ * - Uses Faker for more realistic and diverse test data
  *
  * IMPORTANT:
  * - Data is intentionally random
@@ -14,36 +17,22 @@
  * - It should never be used in production code
  */
 function generateRandomGuestData() {
-  // Common first and last names to keep data realistic
-  const firstNames = [
-    "John", "Jane", "Michael", "Sarah", "David", "Emma", "James", "Lisa",
-  ];
-  const lastNames = [
-    "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
-  ];
-
-  // Randomly select a name combination
-  const randomFirstName =
-    firstNames[Math.floor(Math.random() * firstNames.length)];
-  const randomLastName =
-    lastNames[Math.floor(Math.random() * lastNames.length)];
+  // Generate random names using Faker
+  const randomFirstName = faker.person.firstName();
+  const randomLastName = faker.person.lastName();
 
   /**
    * Date of birth generation
    *
    * Logic:
-   * - Guest age will be roughly between 25 and 60 years old
-   * - Day is limited to 28 to avoid invalid dates (Feb 30, etc.)
+   * - Guest age will be between 25 and 60 years old
+   * - Uses Faker's birthdate method for realistic dates
    */
-  const today = new Date();
-  const birthYear =
-    today.getFullYear() - Math.floor(Math.random() * 35) - 25;
-  const birthMonth = Math.floor(Math.random() * 12) + 1;
-  const birthDay = Math.floor(Math.random() * 28) + 1;
-
-  const dateOfBirth = `${birthDay.toString().padStart(2, "0")}/${birthMonth
-    .toString()
-    .padStart(2, "0")}/${birthYear}`;
+  const birthDate = faker.date.birthdate({ min: 25, max: 60, mode: 'age' });
+  const day = birthDate.getDate().toString().padStart(2, '0');
+  const month = (birthDate.getMonth() + 1).toString().padStart(2, '0');
+  const year = birthDate.getFullYear();
+  const dateOfBirth = `${day}/${month}/${year}`;
 
   /**
    * Email generation
@@ -53,23 +42,14 @@ function generateRandomGuestData() {
    * - colliding with real users
    */
   const emailDomain = "@atriistestautomation.com";
-  const email = `${randomFirstName.toLowerCase()}.${randomLastName
-    .toLowerCase()}${Math.floor(Math.random() * 1000)}${emailDomain}`;
+  const email = `${randomFirstName.toLowerCase()}.${randomLastName.toLowerCase()}${faker.number.int({ min: 100, max: 999 })}${emailDomain}`;
 
   /**
    * Phone number generation
    *
-   * - Format: XXX-XXX-XXXX (standard US phone format)
-   * - Area code: 200-999 (3 digits)
-   * - Exchange code: 200-999 (3 digits)
-   * - Line number: 0000-9999 (4 digits)
+   * Format: XXX-XXX-XXXX (standard US phone format)
    */
-  const areaCode = Math.floor(Math.random() * 800) + 200;
-  const exchangeCode = Math.floor(Math.random() * 800) + 200;
-  const lineNumber = Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, "0");
-  const phone = `${areaCode}-${exchangeCode}-${lineNumber}`;
+  const phone = faker.phone.number('###-###-####');
 
   // Returned object shape is stable and used by Search DSL
   return {
