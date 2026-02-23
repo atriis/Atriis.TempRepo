@@ -5,51 +5,58 @@ description: Layer responsibilities, data flow, dependency rules, and structural
 
 # Architecture Guidelines
 
-## Overview
+## Overview – Cucumber BDD Layers
 
 ```
-┌─────────────────────────────────────────┐
-│         Tests / Feature Files          │  ← Business scenarios
-├─────────────────────────────────────────┤
-│     DSL (Domain-Specific Language)     │  ← Business workflows
-├─────────────────────────────────────────┤
-│          Page Objects                   │  ← UI interactions
-├─────────────────────────────────────────┤
-│    Helpers / Utilities / Data          │  ← Shared utilities
-├─────────────────────────────────────────┤
-│       Playwright / Browser             │  ← Browser automation
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│     Gherkin Feature Files (tests/features/)        │  ← User stories
+│     (Human-readable scenarios)                      │
+├─────────────────────────────────────────────────────┤
+│     Step Definitions (tests/steps/)                │  ← Parameter extraction
+│     (Connect Gherkin to DSL)                        │
+├─────────────────────────────────────────────────────┤
+│     DSL (Domain-Specific Language) (src/dsl/)      │  ← Business workflows
+├─────────────────────────────────────────────────────┤
+│     Page Objects (src/pages/)                       │  ← UI selectors & actions
+├─────────────────────────────────────────────────────┤
+│     Helpers / Utilities / Data (src/utils/, etc.)  │  ← Shared code
+├─────────────────────────────────────────────────────┤
+│     Playwright Browser Automation                  │  ← Browser control
+└─────────────────────────────────────────────────────┘
 ```
 
 ## Layer Responsibilities
 
-| Layer | Location | Responsibility | Allowed Dependencies |
-|-------|----------|----------------|---------------------|
-| **Tests** | `tests/` | Business scenarios, assertions | DSL only (via `@dsl`) |
-| **DSL** | `src/dsl/` | Business workflows (object literals) | Page Objects, Helpers |
-| **Page Objects** | `src/pages/` | UI interactions, SELECTORS const | Playwright, Helpers |
-| **Helpers** | `src/utils/` | Utilities, data generation | Minimal (some import SELECTORS from Pages) |
+| Layer | Location | Responsibility | Calls Only |
+|-------|----------|----------------|-----------|
+| **Gherkin Features** | `tests/features/` | Scenarios in human-readable BDD language | Step definitions (implicit) |
+| **Step Definitions** | `tests/steps/` | Extract parameters, invoke DSL methods | DSL methods |
+| **DSL** | `src/dsl/` | Business workflows, assertions | Page Objects, Helpers |
+| **Page Objects** | `src/pages/` | UI selectors, atomic Playwright actions | Playwright APIs, Helpers |
+| **Helpers** | `src/utils/` | Utility functions, data generation | Minimal (Playwright, external libs) |
 
-## Path Aliases
-
-Configured in `jsconfig.json`:
-
-```js
-require('@dsl')           // → src/dsl/index.js (barrel export)
-require('@pages/...')     // → src/pages/
-require('@data/...')      // → src/data/
-require('@utils/...')     // → src/utils/
-require('@config/...')    // → src/config/
-require('@fixtures/...')  // → tests/fixtures/
-```
-
-## Data Flow Rules
+## Data Flow (Strict One-Way)
 
 ```
-✅ ALLOWED                          ❌ FORBIDDEN
-Test → DSL → Page Object → PW      Test ─X─> Page Object
-Test, DSL, PO → Helper             Test ─X─> Playwright directly
-                                    DSL ─X─> Playwright directly
+Feature File
+    ↓ (Gherkin step "When I search...")
+Step Definition
+    ↓ (calls DSL method)
+DSL Method
+    ↓ (composes Page Object calls)
+Page Object
+    ↓ (uses Playwright APIs)
+Playwright Browser
+```
+
+### Forbidden Data Flow
+
+```
+❌ Feature File → Page Object (skip layers)
+❌ Feature File → Playwright APIs (skip layers)
+❌ DSL → Playwright APIs (skip Page Objects)
+❌ Page Objects → DSL (circular/backwards)
+❌ Tests/Steps → Page Objects (must use DSL)
 ```
 
 ## DSL Pattern: Object Literals
@@ -68,25 +75,30 @@ const FlightSearch = {
 module.exports = FlightSearch;
 ```
 
-## Test Pattern: Fixtures + Static DSL
+## Step Definition Pattern: Cucumber
 
-Tests use custom fixtures from `@fixtures/supplierTest`:
+Step definitions connect Gherkin to DSL:
 
-```js
-const { test } = require('@fixtures/supplierTest');
-const { Search, FlightSearch, Cart } = require('@dsl');
+```javascript
+// tests/steps/flight_search.steps.js
+const { When, Then } = require('@cucumber/cucumber');
+const { expect } = require('@playwright/test');
+const { FlightSearch, FlightResults } = require('@dsl');
 
-test('Add flight to cart', async ({ newTripPageFor }) => {
-  const page = await newTripPageFor('amadeus', 'user_one');
-  await Search.addMeAsTraveler(page);
-  await FlightSearch.searchFlightOneWay(page, 'lhrToDoh');
-  await Cart.expectBookingStatus('Pending booking', { page });
+// Step definitions call DSL methods
+When('I search for a one-way flight from {string} to {string}',
+  async (origin, destination) => {
+    // Call DSL method with global.page
+    await FlightSearch.searchFlightOneWay(global.page, origin, destination);
+  }
+);
+
+Then('flight results are displayed', async () => {
+  expect(
+    await FlightResults.areResultsVisible(global.page)
+  ).toBe(true);
 });
 ```
-
-**Two fixture patterns**:
-- `newTripPageFor(provider, userKey)` — explicit user, most common
-- `newTripPage` — cross-supplier, uses project config
 
 ## Page Object Pattern: SELECTORS + Class
 
@@ -107,53 +119,76 @@ module.exports = FlightSearchPage;
 // Some files export: module.exports = { CartPage, SELECTORS };
 ```
 
-## Shared UI Elements
+## Path Aliases
 
-No `*Component.js` files. Use dedicated Page Objects:
+Configured in `jsconfig.json`:
 
-- `CommonPage.js` — OOP indicators, shared validation elements
-- `GeneralElementsPage.js` — Notifications, common UI feedback
-
+```js
+require('@dsl')           // → src/dsl/index.js (barrel export)
+require('@pages/...')     // → src/pages/
+require('@data/...')      // → src/data/
+require('@utils/...')     // → src/utils/
+require('@config/...')    // → src/config/
+```
 ## Project Structure
 
 ```
 src/
-├── pages/              # Page Objects (SELECTORS + class)
+├── pages/              # Page Objects (SELECTORS const + class)
 │   ├── SearchPage.js
 │   ├── FlightSearchPage.js
 │   ├── CartPage.js
 │   ├── CommonPage.js
 │   └── GeneralElementsPage.js
 ├── dsl/                # Business workflows (object literals)
-│   ├── index.js        # Barrel export
+│   ├── index.js        # Barrel export (exports all DSLs)
 │   ├── FlightSearch.js
 │   ├── Cart.js
 │   └── Search.js
-├── utils/              # Helpers
+├── utils/              # Helpers & utilities
+│   ├── browserFactory.js
 │   ├── calendar.helper.js
 │   ├── route.helper.js
 │   ├── wait.js
+│   ├── dom.js
 │   └── data/
 │       ├── generateRandomGuestData.js
 │       └── generateRandomFlightRoute.js
-├── data/               # Test data (JSON)
+├── data/               # Static test data (JSON)
 │   ├── flights.json
-│   └── tripStatus.json
+│   ├── tripStatus.json
+│   └── cards.json
 └── config/
-    └── config.js
+    └── config.js       # Centralized configuration
 
 tests/
-├── features/           # Cucumber scenarios (.feature)
-├── regression/         # Playwright tests (.spec.js)
-├── fixtures/           # Custom fixtures (supplierTest.js)
-├── steps/              # Step definitions
-└── support/            # Hooks & world
+├── features/           # Cucumber Gherkin scenarios (.feature)
+│   ├── smoke/          # Smoke tests (critical path)
+│   ├── flights/
+│   │   ├── general/    # Supplier-agnostic tests
+│   │   ├── daily_flights/
+│   │   └── lufthansa/  # Supplier-specific
+│   ├── hotels/
+│   ├── cars/
+│   └── ...
+├── steps/              # Step definitions (Cucumber glue code)
+│   ├── app.steps.js
+│   ├── flight_search.steps.js
+│   ├── flight_results.steps.js
+│   ├── cart.steps.js
+│   └── ...
+└── support/
+    ├── hooks.js        # Cucumber Before/After lifecycle
+    ├── world.js        # Custom World class
+    └── retry-handler.js  # CI retry logic
 ```
 
 ## When to Create New Files
 
 | Type | Create When | Naming |
 |------|------------|--------|
+| Feature File | New business scenario area | `*_*.feature` (kebab-case) |
+| Step Definition | New step patterns | `*_steps.js` |
 | Page Object | New page/section, file >200 lines | `*Page.js` |
 | DSL | New business domain, file >300 lines | Descriptive noun (`FlightSearch.js`) |
 | Helper | Pure utility needed across layers | `*.helper.js` |
@@ -161,15 +196,20 @@ tests/
 ## Anti-Patterns
 
 - **God Objects**: Don't put search + results + pricing in one file
-- **Layer Bypassing**: Tests must not use Page Objects or raw selectors
+- **Layer Bypassing**: Gherkin must only reference DSL (via steps), never Page Objects or selectors
 - **Class-based DSL**: Don't use `class` with `constructor(page)` for DSLs
 - **Circular Dependencies**: Page Objects must not import DSLs
+- **Business Logic in Steps**: Steps are glue; logic goes in DSL
+- **Business Logic in Pages**: Pages have selectors and Playwright actions only
 
 ## Architecture Checklist
 
-- [ ] Dependencies flow downward only
+- [ ] Dependencies flow downward only (Feature → Steps → DSL → Pages → Playwright)
 - [ ] DSLs are object literals, not classes
-- [ ] Tests use fixtures for login, `@dsl` for actions
+- [ ] Gherkin scenarios are human-readable (domain language, not UI details)
+- [ ] Step definitions only extract parameters and call DSL methods
 - [ ] SELECTORS defined at top of Page Object files
-- [ ] Path aliases used (`@dsl`, `@pages`, etc.)
-- [ ] No layer bypassing
+- [ ] Assertions in DSL layer (or critical steps), not in Page Objects
+- [ ] No layer bypassing (no Test → Page, no DSL → Playwright)
+- [ ] Page parameter always first in DSL methods
+- [ ] All DSLs exported via `src/dsl/index.js` barrel export

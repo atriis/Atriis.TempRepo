@@ -14,18 +14,21 @@ Explain the provided code (or diff) in a way that a non-developer QA engineer ca
 - Explain:
   - What the code does
   - Why it exists (intent)
-  - How it fits into the framework (DSL vs Page Object vs Test vs Fixtures)
-  - Any risks (flakiness, stability, maintainability) if visible
+  - How it fits into the framework (Gherkin vs Step Definition vs DSL vs Page Object vs Hook)
+  - Any risks (flakiness, stability, maintainability, layer violations) if visible
 - If something is unclear from the provided context, state what information is missing.
 
 ## Key Architecture Terms
 Use these when explaining where code fits:
+- **Gherkin**: Human-readable scenarios in feature files (`.feature` in `tests/features/`)
+- **Step Definition**: Glue code in `tests/steps/` that matches Gherkin steps and calls DSL methods
+- **World**: Shared context object in Cucumber that holds `page`, `browser`, `context`
 - **DSL**: Object literal modules in `src/dsl/` — business workflows, `page` as first arg
 - **Page Object**: `SELECTORS` constant + class in `src/pages/` — UI interactions only
-- **Test**: Uses `@fixtures/supplierTest` fixtures, calls DSL via `require('@dsl')`
-- **Fixture**: `newTripPageFor(provider, userKey)` — handles login + trip setup
 - **Helper**: Shared utilities in `src/utils/` (calendar, waits, route resolution)
 - **Barrel export**: `src/dsl/index.js` — all DSLs imported via `require('@dsl')`
+- **Tag**: Metadata on Gherkin scenarios (`@smoke`, `@regression`, `@priority:critical`, `@provider:amadeus`)
+- **Hook**: Before/After setup/teardown in `tests/support/hooks.js` (login, browser launch, screenshot on failure)
 
 ## Output Format
 - Overview (2–5 bullets)

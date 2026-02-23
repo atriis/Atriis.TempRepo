@@ -39,13 +39,13 @@ description: Conventional Commits format, scopes, examples, and pre-commit check
 ## Scopes
 
 **By Layer:**
-- `dsl`, `pages`, `tests`, `utils`, `data`, `fixtures`
+- `dsl`, `pages`, `steps`, `utils`, `data`, `config`
 
 **By Feature:**
 - `flights`, `hotels`, `cars`, `cart`, `search`, `checkout`, `rails`, `parking`, `manual-quote`, `travel-policy`
 
 **Infrastructure:**
-- `config`, `ci`, `deps`
+- `ci`, `deps`, `docs`
 
 ## Examples
 
@@ -101,12 +101,12 @@ chore(deps): update Playwright to 1.42.0
 
 Before committing:
 
-- [ ] Code follows project patterns (object literal DSLs, SELECTORS const, fixtures)
-- [ ] Tests pass: `npx playwright test [file]`
+- [ ] Code follows project patterns (object literal DSLs, SELECTORS const, step definitions)
+- [ ] Tests pass: `npx cucumber-js --tags "@smoke"` or `npx cucumber-js [file]`
 - [ ] No debug code (`console.log`, `page.pause()`, commented blocks)
 - [ ] No unused imports
 - [ ] Commit message: `<type>(<scope>): <subject>` (max 80 chars)
-- [ ] Related files included (DSL + Page Object + Test if applicable)
+- [ ] Related files included (Step Defs + DSL/Page Object + Feature file if applicable)
 - [ ] Code formatted consistently
 
 ## Multi-File Changes

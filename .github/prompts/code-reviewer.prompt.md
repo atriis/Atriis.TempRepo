@@ -34,8 +34,10 @@ Review all pending changes and classify them into one or more categories:
 
 - **Locators** — Selector patterns in Page Objects
 - **DSL** — Business workflow methods
-- **Tests** — Test files (.spec.js, .feature, .steps.js)
+- **Step Definitions** — Step definition files (.steps.js) that implement Gherkin steps
+- **Feature Files** — Gherkin scenarios (.feature) and scenario structure
 - **Page Objects** — UI interaction layer
+- **Hooks & World** — Cucumber Before/After hooks and world setup
 - **Framework / Architecture** — Structural changes
 - **Other** — Helpers, data files, configuration
 
@@ -58,9 +60,13 @@ Review all pending changes and classify them into one or more categories:
   - **Test logic in Page Objects** — No assertions in Page Objects (except critical state checks in DSL)
   - **Boolean returns** — DSL should return rich data objects like `{ cancelled: true }`, not just `true`
   - **DSL instantiation** — DSL calls are static: `FlightSearch.searchFlightOneWay(page, ...)`, not `new FlightSearch(page)`
-  - **Cross-layer violations** — Tests must not access Page Objects or raw selectors directly
+  - **Cross-layer violations** — Step definitions must not call Page Objects directly; go through DSL
   - **Missing from barrel** — New DSL files must be exported in `src/dsl/index.js`
   - **Vague method names** — Use descriptive names: `searchFlightOneWay`, not `search` or `doStuff`
+  - **Generic Gherkin** — Scenarios must read like user stories, not technical steps
+  - **Hardcoded data in Gherkin** — Use {string}, {int} parameters instead of hardcoded values
+  - **Missing tags** — Scenarios must include tags: `@regression`, `@priority:critical`, `@provider:amadeus`
+  - **Missing logging in steps** — Step definitions should log their actions with logger.info()
 
 - **Playwright & Framework specifics to watch:**
   - **DSL structure:**
@@ -72,12 +78,17 @@ Review all pending changes and classify them into one or more categories:
     - Export: `module.exports = FlightSearch;`
   - **Page Object structure:**
     - `SELECTORS` constant outside class with UPPER_SNAKE_CASE keys
-    - Class with `constructor(page) { this.page = page; }`
-    - Methods use `this.page.click(SELECTORS.X)`
-    - Technical method names (e.g., `clickFlightTab`, `fillInFromField`)
-    - Export pattern: `module.exports = FlightSearchPage;` or `module.exports = { CartPage, SELECTORS };`
-  - **Test structure:**
-    - Import: `const { test } = require('@fixtures/supplierTest');`
+    - Step Definition structure:**
+    - Import: `const { Given, When, Then } = require('@cucumber/cucumber');`
+    - DSL import: `const { FlightSearch, Cart } = require('@dsl');`
+    - Logging: `const logger = require('@utils/logger').child('FlightSearch');`
+    - Pattern: `When('I search for a flight from {string} to {string}', async function (from, to) { ... })`
+    - Error handling: Throw with context, never silently fail
+  - **Feature File structure:**
+    - Tags: `@regression`, `@priority:critical`, `@provider:amadeus`, `@slow` (above Feature/Scenario)
+    - Gherkin: Feature name → Background (setup) → Scenarios with Given-When-Then
+    - Organization: `tests/features/flights/general/`, `tests/features/hotels/supplier-specific/`, etc.
+    - Parameters: `Given I am logged in as {string} {string}` not hardcoded values
     - DSL import: `const { Search, FlightSearch, Cart } = require('@dsl');`
     - Fixture usage: `async ({ newTripPageFor }) => { const page = await newTripPageFor('amadeus', 'user_one'); }`
     - Step logging: `console.log('Step 1: Login + Book a New Trip (fixtures)');`

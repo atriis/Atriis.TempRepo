@@ -1,9 +1,29 @@
 ---
-applyTo: src/pages/, tests/
-description: Locator strategies, waits, assertions, form handling, and browser automation patterns.
+applyTo: src/pages/, src/dsl/
+description: Locator strategies, waits, assertions, form handling, and browser automation patterns for Page Objects and DSL methods in Cucumber BDD context.
 ---
 
 # Playwright Best Practices
+
+## Context in Cucumber BDD
+
+In this framework, **only Page Objects and DSL methods interact directly with Playwright**:
+
+```
+Gherkin Scenarios
+    ↓
+Step Definitions (extract parameters, call DSL)
+    ↓
+DSL Methods (business workflows, assertions)
+    ↓ Calls Page Objects
+Page Objects (UI selectors, atomic actions) ← THIS LAYER uses Playwright
+    ↓
+Playwright APIs
+```
+
+**This guide applies to**: Page Objects (`src/pages/`) and DSL methods (`src/dsl/`) that compose Page Object calls.
+
+**Not applicable to**: Gherkin scenarios or step definitions (they call DSL, never touch Playwright directly).
 
 ## Locator Strategy
 
@@ -100,31 +120,46 @@ await page.waitForTimeout(3000);
 
 ### Use Playwright Assertions (Auto-Retry)
 
-```js
-const { expect } = require('@playwright/test');
+Assertions should use Playwright's `expect()` for auto-retry stability. **In Cucumber BDD**, assertions typically live in **DSL methods**, not in Page Objects:
 
-// ✅ GOOD: Auto-retry assertions
+```js
+// Page Object (src/pages/)
+class CartPage {
+  async getBookingStatus() {
+    return await this.page.locator(SELECTORS.STATUS_LABEL).textContent();
+  }
+}
+
+// DSL (src/dsl/Cart.js) — Contains assertion logic
+async expectBookingStatus(page, expectedStatus, { timeout = 60000 } = {}) {
+  const proceedBtn = new CartPage(page);
+  const locator = page.locator(SELECTORS.QUOTE_STATUS_LABEL);
+  
+  // Assert using Playwright expect (auto-retry)
+  await expect(locator).toBeVisible({ timeout });
+  await expect(locator).toContainText(expectedStatus, { timeout, ignoreCase: true });
+}
+```
+
+**Step Definition** (calls DSL):
+```js
+Then('the booking status should be {string}', async function (status) {
+  await Cart.expectBookingStatus(this.page, status);
+});
+```
+
+### Assertion Pattern
+
+```js
+// ✅ GOOD: Auto-retry assertions (use in DSL/Page Objects)
 await expect(locator).toBeVisible();
 await expect(locator).toBeVisible({ timeout: 60000 });
 await expect(locator).toContainText('Pending booking', { ignoreCase: true });
 await expect(locator).toBeHidden();
 
-// ❌ BAD: No auto-retry
+// ❌ BAD: No auto-retry (don't use)
 const isVisible = await locator.isVisible();
 expect(isVisible).toBe(true);  // Can fail due to timing
-```
-
-### Assertions in DSL (Actual Pattern)
-
-Some DSLs contain assertion methods for reuse:
-
-```js
-// ✅ ACTUAL: Cart.expectBookingStatus
-async expectBookingStatus(expectedStatus, { timeout = 60000, page } = {}) {
-  const locator = page.locator(CART_SELECTORS.QUOTE_STATUS_LABEL);
-  await expect(locator).toBeVisible({ timeout });
-  await expect(locator).toContainText(expectedStatus, { timeout, ignoreCase: true });
-}
 ```
 
 ## Forms and Inputs
@@ -188,18 +223,37 @@ await page.waitForLoadState('networkidle');
 const proceedBtn = cartPage.getProceedWithChangeButton();
 if (await proceedBtn.isVisible()) {
   await proceedBtn.click();
-}
+### Interactive Debugging
 
-// ✅ GOOD: Try-catch for optional elements
-async dismissNotificationIfPresent() {
-  try {
-    await this.notification.waitFor({ state: 'visible', timeout: 2000 });
-    await this.dismissButton.click();
-  } catch {
-    // Notification didn't appear — OK
-  }
-}
+```js
+// Pause execution for interactive debugging (access page, inspect, etc.)
+await page.pause();
+
+// Take screenshot
+await page.screenshot({ path: 'debug-screenshot.png' });
+
+// Full page screenshot
+await page.screenshot({ path: 'full-page.png', fullPage: true });
+
+// Console output for debugging
+console.log('Current URL:', page.url());
 ```
+
+### In Cucumber Context
+
+**Automatic screenshot capture on failure** is handled by the [After hook](./cucumber.md#after-hook):
+- Screenshots saved to `test-results/screenshots/`
+- Automatically attached to Cucumber report
+- No manual action needed in DSL/Page Objects
+
+For debugging tests locally, use `logger.info()` in step definitions and DSL methods instead of `console.log()`:
+
+```js
+// Step Definition
+When('I search for a flight', async function () {
+  logger.info('Searching for one-way flight', { from, to });
+  await FlightSearch.searchFlightOneWay(this.page, from, to);
+}
 
 ## Screenshots and Debugging
 
@@ -217,18 +271,39 @@ await page.screenshot({ path: 'full-page.png', fullPage: true });
 console.log('Current URL:', page.url());
 ```
 
-## Common Patterns
+## Common Patterns (hard to maintain, brittle)
+this.page.locator('div > ul > li:first-child > button');
 
-### Handling Lists
+// ❌ Arbitrary timeouts without explanation
+await page.waitForTimeout(5000);
 
-```js
-// Count elements
-const count = await this.page.locator(SELECTORS.FLIGHT_CARD).count();
+// ❌ No auto-retry assertions
+const text = await element.textContent();
+expect(text).toBe('Expected');  // Use await expect(element).toHaveText()
 
-// Get all elements
-const allCards = await this.page.locator(SELECTORS.FLIGHT_CARD).all();
+// ❌ Locators defined in test/DSL (should be in SELECTORS)
+await page.click('.submit-button');  // Move to Page Object SELECTORS
 
-// First/Last/Nth
+// ❌ Assertions in Page Objects (belongs in DSL)
+// Page Objects should only have getters and actions, not assertions
+class CartPage {
+  async expectStatusVisible() {  // ❌ WRONG: assertion logic in Page Object
+    await expect(...).toBeVisible();
+  }
+}
+
+// ✅ CORRECT: DSL contains assertions, Page Objects have actions
+// CartPage.js
+async getStatus() {
+  return await this.page.locator(SELECTORS.STATUS).textContent();
+}
+
+// Cart.js (DSL)
+async expectStatus(page, expectedStatus) {
+  const cartPage = new CartPage(page);
+  const locator = page.locator(SELECTORS.STATUS);
+  await expect(locator).toContainText(expectedStatus);
+}
 await this.page.locator(SELECTORS.FLIGHT_CARD).first().click();
 await this.page.locator(SELECTORS.FLIGHT_CARD).nth(2).click();
 ```
@@ -255,8 +330,10 @@ await page.click('.submit-button');  // Move to Page Object SELECTORS
 - [ ] Selectors defined in SELECTORS const in Page Objects
 - [ ] Use specific selectors (not generic)
 - [ ] Trust Playwright auto-waiting for basic actions
-- [ ] Use `expect()` assertions (auto-retry)
+- [ ] Use `expect()` assertions with auto-retry (in DSL/Page Objects)
 - [ ] Comment any `waitForTimeout()` usage
 - [ ] Wait for loading states explicitly
 - [ ] Handle race conditions with `Promise.race`
 - [ ] Use `page.pause()` for interactive debugging
+- [ ] Assertions in DSL, not in Page Objects
+- [ ] No Playwright code in step definitions (call DSL instead)

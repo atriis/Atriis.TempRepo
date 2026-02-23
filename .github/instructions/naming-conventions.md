@@ -17,10 +17,9 @@ description: Naming standards for files, classes, methods, variables, tests, and
 | Utility | `*.js` | `src/utils/` | `wait.js`, `dom.js`, `text.js` |
 | Data Generator | `generate*.js` | `src/utils/data/` | `generateRandomGuestData.js` |
 | Test Data | `*.json` | `src/data/` | `flights.json`, `tripStatus.json` |
-| Playwright Test | `*.spec.js` | `tests/regression/` | `general-flight-add-to-cart.spec.js` |
 | Feature File | `*.feature` | `tests/features/` | `flight_add_to_cart.feature` |
 | Step Definition | `*.steps.js` or `*.step.js` | `tests/steps/` | `flight.steps.js`, `cars.step.js` |
-| Fixture | `*.js` | `tests/fixtures/` | `supplierTest.js` |
+| Hook File | `*.js` | `tests/support/` | `hooks.js`, `world.js` |
 
 ### File Naming Examples
 
@@ -164,33 +163,38 @@ const visible = false;
 const cancelled = true;
 ```
 
-## Test Names
+## Gherkin Scenario Names
 
-Use descriptive sentences with tags:
-
-```js
-// ✅ GOOD
-test.describe('[@regression] Add Flight to Cart Flows', () => {
-  test('[@priority:critical] Add One-Way Flight to Cart – Should complete one-way add to cart flow', ...);
-  test('[@priority:critical] Add Round Trip Flight to Cart – Should complete round trip add to cart flow', ...);
-});
-
-// ❌ BAD
-test('search test', ...);
-test('it works', ...);
-test('verify search', ...);
-```
-
-## Cucumber Scenarios
+Use descriptive user-intent statements:
 
 ```gherkin
 # ✅ GOOD
 Scenario: Search for one-way domestic flight
 Scenario: Book round-trip intercontinental flight
+Scenario: Add passenger to flight booking
+Scenario: Cancel trip and receive refund
 
 # ❌ BAD
 Scenario: Test search
 Scenario: Check functionality
+Scenario: Verify page loads
+Scenario: User does something
+```
+
+## Gherkin Steps
+
+Use domain language (user intent), not UI language:
+
+```gherkin
+# ✅ GOOD
+Given I am logged in as "amadeus" user "user_one"
+When I search for a one-way flight from "LHR" to "MAD"
+Then I should see available flight options
+
+# ❌ BAD
+Given I click login button with ID submit-btn
+When I click #search and fill #from with LHR
+Then the results div with class flight-options should be visible
 ```
 
 ## Commit Messages

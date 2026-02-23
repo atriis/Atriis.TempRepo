@@ -1,33 +1,38 @@
-# Atriis Automation
+# Atriis Automation Framework
 
-A production-grade **Playwright + JavaScript** test automation framework for a corporate travel booking platform.
+A **Playwright + Cucumber BDD** test automation framework for a corporate travel booking platform.
 
 ## Overview
 
-This framework automates end-to-end testing for a multi-product travel platform supporting **flights, hotels, cars, rail, ground transportation, and parking** across multiple suppliers (GDS systems, NDC, LCC, and direct integrations).
+This framework enables behavior-driven testing for a multi-product travel platform supporting flights, hotels, cars, rail, ground transportation, parking, and manual quotes. Tests are written in human-readable Gherkin syntax and execute against multiple suppliers and user types.
 
-### Goals
+### Design Principles
 
-- **Stability**: Tests fail only when real bugs exist, not due to flaky behavior
-- **Readability**: Tests read like user journeys, accessible to non-developer QA engineers
-- **Scalability**: Same test logic runs across different suppliers, users, and environments
-- **Maintainability**: Clear separation of concerns with Page Object Model + DSL architecture
+- **Clarity over Cleverness**: Simple, explicit code that non-developers can understand
+- **Stability over Speed**: Reliable tests with built-in resilience (timeouts, retries)
+- **Separation of Concerns**: Layered architecture keeps business logic, UI interactions, and test scenarios distinct
+- **Minimal Duplication**: Reusable DSL methods and utilities prevent test code repetition
+
+### Technology Stack
+
+- **Playwright**: Browser automation and synchronization
+- **Cucumber**: BDD test runner and Gherkin feature parsing
+- **JavaScript (ES6+)**: Test implementation language
+- **Node.js**: Runtime (>=18.0.0 required)
 
 ---
 
 ## Table of Contents
 
 - [Project Structure](#project-structure)
-- [Architecture](#architecture)
-- [Cross-Supplier Testing](#cross-supplier-testing)
-- [User-Based Execution](#user-based-execution)
+- [Architecture Layers](#architecture-layers)
 - [Getting Started](#getting-started)
+- [Installation](#installation)
+- [Configuration](#configuration)
 - [Running Tests](#running-tests)
 - [Test Organization](#test-organization)
-- [CI/CD Integration](#cicd-integration)
 - [Debugging](#debugging)
 - [Contributing](#contributing)
-- [AI Prompts](./.github/README.md)
 
 ---
 
@@ -36,218 +41,160 @@ This framework automates end-to-end testing for a multi-product travel platform 
 ```
 atriis-automation/
 ├── src/
-│   ├── config/               # Environment-driven configuration
-│   │   └── config.js         # Central config: URLs, users per supplier
-│   ├── dsl/                  # Domain Specific Language (business workflows)
-│   │   ├── App.js            # Application-level actions (login, logout)
-│   │   ├── FlightSearch.js   # Flight search workflows
-│   │   ├── FlightResults.js  # Flight results interactions
-│   │   ├── Cart.js           # Cart operations
-│   │   ├── Checkout.js       # Checkout workflows
-│   │   └── ...               # Other product DSLs
-│   ├── pages/                # Page Object Model implementations
-│   │   ├── LoginPage.js      # Login page interactions
-│   │   ├── FlightSearchPage.js
-│   │   ├── FlightResultsPage.js
-│   │   └── ...               # One page per screen
-│   ├── utils/                # Helpers and utilities
-│   │   ├── calendar.helper.js
-│   │   ├── wait.js
-│   │   └── dom.js
-│   └── data/                 # Test data files
-│       ├── flights.json      # Flight routes and defaults
+│   ├── config/
+│   │   └── config.js                 # Central configuration: URLs, viewport, user discovery
+│   ├── pages/                        # Page Object Layer (25+ page classes)
+│   │   ├── LoginPage.js              # Login form interactions
+│   │   ├── SearchPage.js             # Input forms, traveler selection, date picking
+│   │   ├── FlightResultsPage.js      # Flight results, pricing options, fare rules
+│   │   ├── CartPage.js               # Trip summary, payment options, trip cancellation
+│   │   ├── CheckoutPage.js           # Final booking confirmation
+│   │   ├── ResultsPage.js            # Generic result buttons (Add to Trip, Select)
+│   │   ├── CommonPage.js             # Shared UI patterns across all pages
+│   │   └── ...                       # Additional page objects (Hotels, Cars, Rails, etc.)
+│   ├── dsl/                          # Domain-Specific Language Layer (27+ DSL classes)
+│   │   ├── App.js                    # Application workflows (login, logout, book trip)
+│   │   ├── Search.js                 # Traveler and search field interactions
+│   │   ├── FlightSearch.js           # Flight search workflows (one-way, round-trip)
+│   │   ├── FlightResults.js          # Flight result selection and pricing
+│   │   ├── Flight Pricing.js         # Pricing option selection
+│   │   ├── Cart.js                   # Trip management (hold, cancel, share)
+│   │   ├── Checkout.js               # Final booking steps
+│   │   ├── CartPayment.js            # Payment method selection and card details
+│   │   ├── Results.js                # Generic result actions (shared across products)
+│   │   ├── HotelSearch.js            # Hotel search flows
+│   │   ├── CarSearch.js              # Car rental search flows
+│   │   ├── GroundTransportSearch.js  # Ground transport search flows
+│   │   ├── BenerailSearch.js         # Rail search (Benerail)
+│   │   ├── AmtrakSearch.js           # Rail search (Amtrak)
+│   │   └── ...                       # Other product DSLs
+│   ├── utils/
+│   │   ├── browserFactory.js         # Browser launch with CI detection (headless, slowmo)
+│   │   ├── dom.js                    # DOM utilities (getText, extractNumber, scrollToElement)
+│   │   ├── wait.js                   # Wait utilities (waitForText with timeout)
+│   │   ├── logger.js                 # Structured logging
+│   │   ├── calendar.helper.js        # Date picker interactions
+│   │   ├── text.js                   # Text formatting utilities
+│   │   ├── numbers.js                # Number parsing and validation
+│   │   ├── route.helper.js           # Flight route data lookups
+│   │   ├── pageObjectCache.js        # Page object instance caching
+│   │   ├── priceExtraction.js        # Price parsing from DOM
+│   │   ├── search.constants.js       # Search parameter constants
+│   │   └── data/
+│   │       ├── generateRandomGuestData.js  # Faker-based test data generation
+│   │       └── generateRandomFlightRoute.js
+│   ├── assertions/
+│   │   └── numberAssertions.js       # Reusable number comparison assertions
+│   └── data/                         # Static test data (JSON)
+│       ├── flights.json
 │       ├── hotels.json
-│       └── ...
+│       ├── cars.json
+│       ├── cards.json
+│       └── ...                       # Other product data
 ├── tests/
-│   ├── fixtures/             # Playwright fixtures (test setup)
-│   │   └── supplierTest.js   # Supplier-aware test fixture
-│   ├── smoke/                # Critical path smoke tests
-│   └── regression/           # Comprehensive regression suites
-│       ├── flights/
-│       │   ├── general/      # Supplier-agnostic flight tests
-│       │   ├── cross-supplier/  # Tests that run against all suppliers
-│       │   ├── gds/          # GDS-specific (Amadeus, Sabre, Galileo)
-│       │   ├── ndc/          # NDC-specific tests
-│       │   └── lcc/          # Low-cost carrier tests
-│       ├── hotels/
-│       ├── cars/
-│       ├── rails/
-│       └── ground-transportation/
-├── playwright.config.js      # Playwright configuration with projects
+│   ├── features/                     # Cucumber Feature Files (Gherkin)
+│   │   ├── smoke/                    # Critical path smoke tests
+│   │   ├── flights/
+│   │   │   ├── daily_flights/        # Daily regression suite
+│   │   │   ├── general/              # General flight booking tests
+│   │   │   └── lufthansa/            # Supplier-specific (Lufthansa) tests
+│   │   ├── hotels/                   # Hotel booking features
+│   │   ├── cars/                     # Car rental features
+│   │   ├── ground_transport/         # Ground transport features
+│   │   ├── rails/                    # Rail booking features
+│   │   ├── manual_quote/             # Manual quote features
+│   │   ├── parking/                  # Parking features
+│   │   └── shell/                    # Complex multi-product flows
+│   ├── steps/                        # Step Definitions (Glue Code)
+│   │   ├── app.steps.js              # Login/logout/app-level steps
+│   │   ├── search.steps.js           # Traveler and search field steps
+│   │   ├── flight_search.steps.js    # Flight search steps
+│   │   ├── flight_results.steps.js   # Flight result selection steps
+│   │   ├── cart.steps.js             # Cart and trip management steps
+│   │   ├── checkout.steps.js         # Booking confirmation steps
+│   │   ├── common.steps.js           # Shared validation steps
+│   │   └── ...                       # Other product step definitions
+│   └── support/
+│       ├── hooks.js                  # Cucumber lifecycle hooks (Before/After scenario)
+│       ├── world.js                  # Custom World class (shared context)
+│       ├── retry-handler.js          # CI-only retry logic for failed scenarios
+│       └── browserFactory.js         # Browser launch configuration
+├── .github/
+│   ├── workflows/
+│   │   └── test-suite.yml            # CI/CD pipeline (GitHub Actions)
+│   ├── instructions/                 # Detailed architecture guides
+│   │   ├── page-objects.md
+│   │   ├── dsl.md
+│   │   ├── tests.md
+│   │   ├── architecture.md
+│   │   └── ...
+│   └── README.md                     # AI Copilot usage guide
+├── cucumber.js                       # Cucumber configuration
+├── playwright.config.js              # Playwright runner configuration (used by Playwright Test only)
 ├── package.json
-└── .env                      # Environment variables (not committed)
+├── .env.example                      # Environment variable template
+├── .gitignore
+└── README.md                         # This file
 ```
 
 ---
 
-## Architecture
+## Architecture Layers
 
-The framework follows a **layered architecture** that separates concerns and enables non-technical QA engineers to write tests:
+The framework uses strict **layered separation of concerns**:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         TESTS                                │
-│   • Scenario orchestration                                   │
-│   • Uses DSL methods only                                    │
-│   • Reads like user journeys                                 │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────────┐
-│                          DSL                                 │
-│   • Business actions in domain language                      │
-│   • Combines Page Object methods into workflows              │
-│   • Example: FlightSearch.searchFlightOneWay(page, 'route')  │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────────┐
-│                      PAGE OBJECTS                            │
-│   • UI elements and low-level actions                        │
-│   • Locators declared at top of constructor                  │
-│   • Example: fillEmail(), clickLoginButton()                 │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────────┐
-│                        UTILS                                 │
-│   • Helpers: calendar, waits, data generators                │
-│   • No UI interaction logic                                  │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│           TESTS (Cucumber Features)          │
+│  ├─ Gherkin scenarios in .feature files      │
+│  └─ Readable: "Given I am logged in as..."   │
+└────────────────┬─────────────────────────────┘
+                 │ Uses only DSL methods
+                 ▼
+┌──────────────────────────────────────────────┐
+│    DSL (Domain-Specific Language)            │
+│  ├─ Business workflows (FlightSearch.js)     │
+│  ├─ Composes Page methods into actions       │
+│  ├─ Assertions (expect) live here            │
+│  └─ Example: searchFlightOneWay(page, from)  │
+└────────────────┬─────────────────────────────┘
+                 │ Uses only Page Object methods
+                 ▼
+┌──────────────────────────────────────────────┐
+│       PAGE OBJECTS (UI Interactions)         │
+│  ├─ Locators declared in constructor         │
+│  ├─ Low-level UI actions only                │
+│  ├─ Example: fillEmail(), clickLoginButton() │
+│  └─ No assertions, no business logic         │
+└────────────────┬─────────────────────────────┘
+                 │ Uses Playwright APIs
+                 ▼
+┌──────────────────────────────────────────────┐
+│        UTILITIES (Helpers & Reused Code)     │
+│  ├─ DOM helpers (waitForText, extractNumber) │
+│  ├─ Data generators (Faker)                  │
+│  ├─ Calendar/date helpers                    │
+│  └─ Logging and constants                    │
+└──────────────────────────────────────────────┘
 ```
 
-### Key Design Decisions
+### Layer Responsibilities
 
-- **Locators live in Page Objects only** — no separate selector files
-- **DSL never accesses Playwright APIs directly** — only calls Page Object methods
-- **Tests never use raw selectors** — only DSL methods
-- **Each test is independent** — no shared state between tests
+| Layer | Responsibility | May Use | May NOT Use |
+|-------|---|---|---|
+| **Tests** | Orchestrate scenarios | DSL methods only | Page objects, Playwright APIs |
+| **DSL** | Business workflows, assertions | Page objects, utils | Playwright APIs directly |
+| **Pages** | UI selectors and actions | Playwright APIs, utils | Business logic, assertions |
+| **Utils** | Helpers and data | Playwright, external libs | Business logic, Page objects |
+
+### Strict Rules
+
+- **Pages**: Only locators and atomic UI actions (click, fill, waitFor)
+- **DSL**: Compose page methods into workflows; assert expected outcomes
+- **Tests**: Call DSL methods; no raw selectors or Playwright calls
+- **No Circular Dependencies**: Utils never depend on Pages or DSL
 
 ---
-
-## Cross-Supplier Testing
-
-The framework enables running the **same test logic across different suppliers** without code duplication.
-
-### How It Works
-
-1. **Projects define supplier context**: Each Playwright project includes a `supplierContext` with `provider` and `userKey`
-
-2. **Fixtures read supplier context**: The `supplierTest.js` fixture reads the project's supplier context and logs in with the correct user
-
-3. **Tests are supplier-agnostic**: Test code doesn't know which supplier it's running against
-
-```javascript
-// playwright.config.js (simplified)
-projects: [
-  {
-    name: 'flights:amadeus',
-    testDir: 'tests/regression/flights/gds/amadeus',
-    use: {
-      supplierContext: { provider: 'amadeus', userKey: 'user_one' }
-    }
-  },
-  {
-    name: 'flights:sabre',
-    testDir: 'tests/regression/flights/gds/sabre',
-    use: {
-      supplierContext: { provider: 'sabre', userKey: 'user_one' }
-    }
-  }
-]
-```
-
-### Cross-Supplier Test Example
-
-Tests in `cross-supplier/` folders run against **all configured suppliers** for that product:
-
-```javascript
-// tests/regression/flights/cross-supplier/flight-search.spec.js
-const { test, expect } = require('../../../fixtures/supplierTest');
-
-test('Search returns results', async ({ newTripPage }) => {
-  // This test runs for every supplier in the flightsAll group
-  await Search.addTravellerImTheTraveller(newTripPage);
-  await FlightSearch.searchFlightOneWay(newTripPage, 'lhrToDoh');
-  expect(await FlightResults.isResultDisplayed(newTripPage)).toBe(true);
-});
-```
-
-### Supplier Groups
-
-Suppliers are organized by product capability in `playwright.config.js`:
-
-| Group | Suppliers |
-|-------|-----------|
-| `gds` | Amadeus, Sabre, Galileo |
-| `flightsNdc` | AFKL, British, Lufthansa, United, Iberia, American |
-| `flightsLowCost` | Galileo ACH, Amadeus Light Ticketing, Fusion, Ypsilon |
-| `hotels` | Expedia, Booking.com, RateHawk, eHotel, Premier Inn, Travelodge |
-| `cars` | Sunny Cars (+ GDS) |
-| `rails` | Benerail, Amtrak, Evolvi |
-| `groundTransport` | Groundscope, Transferz |
-
----
-
-## User-Based Execution
-
-Each supplier has one or more test users defined in configuration. The framework automatically selects the correct user based on the project being run.
-
-### Configuration Structure
-
-```javascript
-// src/config/config.js
-const config = {
-  baseUrl: getEnv('AUTOMATION_APP_BASEURL'),
-  users: {
-    amadeus: {
-      user_one: { email: getEnv('AMADEUS_USER_ONE_EMAIL'), password: getEnv('GENERAL_PASSWORD') },
-      user_two: { email: getEnv('AMADEUS_USER_TWO_EMAIL'), password: getEnv('GENERAL_PASSWORD') }
-    },
-    sabre: {
-      user_one: { email: getEnv('SABRE_USER_ONE_EMAIL'), password: getEnv('GENERAL_PASSWORD') }
-    },
-    // ... other suppliers
-  }
-};
-```
-
-### Environment Variables
-
-Create a `.env` file with your credentials:
-
-```env
-AUTOMATION_APP_BASEURL=https://ui.gtp-staging.com
-
-# GDS Users
-AMADEUS_USER_ONE_EMAIL=user@amadeus.com
-AMADEUS_USER_TWO_EMAIL=user2@amadeus.com
-SABRE_USER_ONE_EMAIL=user@sabre.com
-GALILEO_USER_ONE_EMAIL=user@galileo.com
-
-# Hotel Users
-RATEHAWK_USER_ONE_EMAIL=user@ratehawk.com
-EXPEDIA_USER_ONE_EMAIL=user@expedia.com
-BOOKINGCOM_USER_ONE_EMAIL=user@bookingcom.com
-
-# Shared
-GENERAL_PASSWORD=your_password_here
-```
-
-### How Users Are Selected
-
-1. **Project defines supplier context**: `{ provider: 'amadeus', userKey: 'user_one' }`
-2. **Fixture reads context at runtime**: Looks up user in `config.users.amadeus.user_one`
-3. **Login happens automatically**: Fixture logs in before test starts
-
-```javascript
-// tests/fixtures/supplierTest.js
-async function loginWithSupplier({ page, testInfo }) {
-  const supplier = testInfo.project.use?.supplierContext;
-  const { provider, userKey } = supplier;
-  const user = config.users[provider][userKey];
-  
-  await page.goto(config.baseUrl);
-  await App.loginAs(page, user);
-}
-```
 
 ### Fixture Selection Guide
 
@@ -329,34 +276,61 @@ npx playwright install
    cp .env.example .env
    ```
 
-2. Fill in the required values in `.env`
+2. Fill in required credentials:
+   ```bash
+   # App Configuration
+   AUTOMATION_APP_BASEURL=https://ui.gtp-staging.com
+   
+   # Dynamic User Discovery (auto-loaded from environment)
+   # Format: PROVIDER_USER_KEY_EMAIL=email@example.com
+   AMADEUS_USER_ONE_EMAIL=user1@amadeus.com
+   AMADEUS_USER_TWO_EMAIL=user2@amadeus.com
+   LUFTHANSA_USER_ONE_EMAIL=user@lufthansa.com
+   GENERAL_PASSWORD=your_secure_password
+   
+   # Viewport override (optional; defaults in config.js)
+   VIEWPORT=1280x720
+   ```
 
 3. Verify configuration loads correctly:
    ```bash
-   npx playwright test --list
+   npx cucumber-js --dry-run  # List all scenarios without running
    ```
 
-#### Adding New Test Users
+### Dynamic User Discovery
 
-Users are automatically discovered from environment variables - no need to update `config.js`!
+Users are automatically discovered from environment variables - **no need to update `config.js`**!
 
-**Local Setup:**
+**How it works:**
+- Environment variable: `AMADEUS_USER_ONE_EMAIL=user@example.com`
+- Extracted provider: `amadeus`
+- Extracted key: `user_one`
+- Referenced in Gherkin: `Given I am logged in as "amadeus" "user_one"`
+
+**Adding a new user:**
 1. Add to `.env`:
    ```bash
    PROVIDER_USER_KEY_EMAIL=email@example.com
    # Example: AMADEUS_USER_FOUR_EMAIL=user4@amadeus.com
    ```
 
-2. Use in tests:
+2. Use in Gherkin feature file:
+   ```gherkin
+   Given I am logged in as "amadeus" "user_four"
+   When I search for a flight
+   Then results are displayed
+   ```
+
+3. Use in step definitions:
    ```javascript
-   await App.login('amadeus', 'user_four')
-   // or in Gherkin:
-   // Given I am logged in as "amadeus" "user_four"
+   Given('I am logged in as {string} {string}', async (provider, userKey) => {
+     await app.loginAndBookANewTrip(provider, userKey);
+   });
    ```
 
 **CI Setup:**
-- Add the same env var to GitHub Secrets
-- Add to the relevant job's `env:` section in `.github/workflows/test-suite.yml`
+- Add environment variable to GitHub Secrets
+- Add to workflow job's `env:` section in `.github/workflows/test-suite.yml`
 
 **Naming Convention:**
 - Standard: `PROVIDER_USER_KEY_EMAIL` → `provider.user_key`
@@ -367,89 +341,151 @@ Users are automatically discovered from environment variables - no need to updat
 
 ## Running Tests
 
+### Using Cucumber CLI
+
+Tests are executed using Cucumber (BDD test runner) with Playwright for browser automation.
+
 ```bash
-# Run all tests
-npx playwright test
+# Run all scenarios
+npx cucumber-js
 
-# Run smoke tests
-npx playwright test --project=Smoke
-npx playwright test --grep "@smoke"
+# Run specific feature file
+npx cucumber-js tests/features/flights/general/basic_flight_search.feature
 
-# Run by supplier
-npx playwright test --project="flights:amadeus"
-npx playwright test --project="hotels:ratehawk"
-npx playwright test --project="cars:sunny"
+# Run all flights tests
+npx cucumber-js tests/features/flights/
 
-# Run cross-supplier tests
-npx playwright test --project="flights-cross-supplier:*"
+# List all scenarios without running
+npx cucumber-js --dry-run
 
-# Run by tag
-npx playwright test --grep "priority:critical"
-npx playwright test --grep "@regression"
-npx playwright test --grep-invert "@slow"        # Exclude tag
+# Run with specific tags
+npx cucumber-js --tags "@smoke"
+npx cucumber-js --tags "@smoke and @priority:critical"
+npx cucumber-js --tags "not @slow"
 
-# Run by file or folder
-npx playwright test tests/smoke/smoke.spec.js
-npx playwright test tests/regression/flights/
+# Run with detailed output
+npx cucumber-js --format progress-bar
+npx cucumber-js --format json > results.json
+npx cucumber-js --format html:cucumber-report.html
 
-# Debug modes
-npm run test:headed       # See browser
-npm run test:debug        # Step through with DevTools
-
-# View report
-npx playwright show-report
+# Run in specific environment
+AUTOMATION_APP_BASEURL=https://ui.gtp-dev.com npx cucumber-js
 ```
+
+### Test Organization
+
+**By Product:**
+- `tests/features/flights/` — Flight booking scenarios
+- `tests/features/hotels/` — Hotel booking scenarios
+- `tests/features/cars/` — Car rental scenarios
+- `tests/features/ground_transport/` — Ground transport scenarios
+- `tests/features/rails/` — Rail (Amtrak, Benerail) scenarios
+- `tests/features/manual_quote/` — Manual quote scenarios
+- `tests/features/parking/` — Parking scenarios
+- `tests/features/shell/` — Complex multi-product workflows
+
+**By Test Type:**
+- `tests/features/smoke/` — Critical path smoke tests (fast validation)
+- `tests/features/*/general/` — General product scenarios
+- `tests/features/*/daily_flights/` — Daily regression suite
+- `tests/features/*/<supplier>/` — Supplier-specific tests (Lufthansa, Amadeus, etc.)
+
+### Gherkin Scenario Tags
+
+Tests use tags in Gherkin feature files for categorization:
+
+```gherkin
+@regression @priority:high @provider:amadeus
+Scenario: Book a round-trip flight with multiple passengers
+  Given I am logged in as "amadeus" "user_one"
+  When I search for a flight from "LON" to "NYC"
+  Then flight results are displayed
+  And I can select a flight for booking
+```
+
+### Available Tag Categories
+
+| Tag Type | Examples | Usage |
+|----------|----------|-------|
+| **Test Level** | `@smoke`, `@regression` | Filter by test scope |
+| **Priority** | `@priority:critical`, `@priority:high` | Filter by importance |
+| **Provider** | `@provider:amadeus`, `@provider:lufthansa` | Filter by supplier |
+| **Feature** | `@flights`, `@hotels`, `@complex` | Filter by product |
+| **Performance** | `@slow`, `@fast` | Filter by execution time |
 
 ### NPM Scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm run test` | Run all tests |
+| `npm test` | Run all Cucumber scenarios |
+| `npm run test:smoke` | Run smoke tests only |
 | `npm run test:headed` | Run with visible browser |
-| `npm run test:debug` | Run in debug mode |
-| `npm run test:dev` | Run against dev environment |
-| `npm run test:staging` | Run against staging environment |
+| `npm run test:debug` | Run in debug mode with DevTools |
 
 ---
 
 ## Test Organization
 
+### Feature File Structure
+
+Each feature file describes user scenarios in Gherkin (human-readable BDD syntax):
+
+```gherkin
+# tests/features/flights/general/search-one-way.feature
+
+Feature: One-Way Flight Search
+  As a travel booker
+  I want to search for one-way flights
+  So I can book the best option for my trip
+
+  Background:
+    Given I am logged in as "amadeus" "user_one"
+
+  @smoke @priority:critical
+  Scenario: Search returns results for valid route
+    When I search for a one-way flight from "LON" to "NYC"
+    Then flight results are displayed
+    And results show at least 1 flight
+
+  @regression @priority:high
+  Scenario: Pagination works for large result sets
+    When I search for a one-way flight from "LON" to "NYC"
+    And I scroll to the next results page
+    Then more results are displayed
+```
+
+### Step Definitions and DSL Connection
+
+Step definitions (in `tests/steps/`) call DSL methods to execute business workflows:
+
+```javascript
+// tests/steps/flight_search.steps.js
+const { Given, When, Then } = require('@cucumber/cucumber');
+const { app, FlightSearch, FlightResults } = require('@dsl');
+
+When('I search for a one-way flight from {string} to {string}', 
+  async (origin, destination) => {
+    await FlightSearch.searchOneWayFlight(
+      global.page,
+      origin,
+      destination
+    );
+  }
+);
+
+Then('flight results are displayed', async () => {
+  expect(await FlightResults.areResultsVisible(global.page)).toBe(true);
+});
+```
+
 ### Test Categories
 
 | Category | Location | Purpose |
 |----------|----------|---------|
-| **Smoke** | `tests/smoke/` | Critical path validation, run before deployments |
-| **Regression** | `tests/regression/` | Comprehensive coverage by product |
-| **Cross-Supplier** | `tests/regression/*/cross-supplier/` | Tests that validate across all suppliers |
-| **Supplier-Specific** | `tests/regression/*/gds/`, `*/ndc/`, etc. | Tests for specific supplier behavior |
-
-### Tagging Convention
-
-Tests use tags in the test name for filtering:
-
-```javascript
-test.describe('[@smoke] Smoke Tests', () => {
-  test('[@priority:critical] User can login', async ({ page }) => { });
-  test('[@priority:high] User can search flights', async ({ page }) => { });
-});
-
-test.describe('[@regression][@supplier:all] Cross-Supplier Tests', () => {
-  test('[@priority:critical] Booking completes', async ({ page }) => { });
-});
-```
-
-### Available Tags
-
-| Tag | Description |
-|-----|-------------|
-| `@smoke` | Smoke test, fast critical validation |
-| `@regression` | Full regression test |
-| `@priority:critical` | Must pass for deployment |
-| `@priority:high` | Important but not blocking |
-| `@priority:medium` | Standard coverage |
-| `@supplier:all` | Runs against all suppliers |
-| `@supplier:gds` | GDS suppliers only |
-| `@supplier:ndc` | NDC suppliers only |
+| **Smoke** | `tests/features/smoke/` | Critical path validation, run before deployments |
+| **General** | `tests/features/*/general/` | Supplier-agnostic scenarios covering core functionality |
+| **Daily Regression** | `tests/features/*/daily_flights/` | Comprehensive daily regression suite |
+| **Supplier-Specific** | `tests/features/*/<supplier>/` | Supplier-specific behavior (Lufthansa, Amadeus, etc.) |
 
 ---
 
@@ -457,41 +493,72 @@ test.describe('[@regression][@supplier:all] Cross-Supplier Tests', () => {
 
 ### GitHub Actions
 
-The framework includes workflows for:
+The framework includes GitHub Actions workflows in `.github/workflows/`:
 
-- **Test Suite**: Runs smoke and regression tests on push/PR
-- **Dashboard**: Generates and publishes test reports
+- **test-suite.yml**: Runs smoke, daily, and shell tests on push/PR
 
-### Artifacts Generated
+### Retry Logic (CI Only)
 
-| Artifact | Format | Location |
-|----------|--------|----------|
-| Test Results | JUnit XML | `test-results/results.xml` |
-| Test Results | JSON | `test-results/results.json` |
-| HTML Report | Interactive | `playwright-report/` |
-| Screenshots | PNG | `test-results/` (on failure) |
-| Traces | ZIP | `test-results/` (on failure) |
+Failed scenarios automatically retry in CI environments:
+- **When**: Only when `CI=true` environment variable is set
+- **Retries**: Configured via `RETRY_COUNT` env var (default: 2)
+- **Delay Between Retries**: Configured via `RETRY_DELAY` env var (default: 2000ms)
+- **Local Execution**: No retries (faster feedback for development)
+
+The retry mechanism is implemented in:
+- `tests/support/retry-handler.js` — Tracks and manages retries
+- `cucumber.js` — Configures native Cucumber retry setting based on CI status
+
+### Artifacts Generated on Failure
+
+| Artifact | Format | Location | Purpose |
+|----------|--------|----------|---------|
+| Screenshots | PNG | `test-results/screenshots/` | Visual debugging of failure point |
+| Cucumber Report | JSON | `test-results/cucumber-report.json` | Detailed scenario results |
+| Cucumber Report | JUnit XML | `test-results/cucumber-junit.xml` | CI/CD integration format |
+
+**Screenshot Naming:** `scenario_name_TIMESTAMP.png` (e.g., `search_returns_results_2026-02-23T10-30-45-123Z.png`)
 
 ---
 
 ## Debugging
 
-| Issue | Solution |
-|-------|----------|
-| Element not found | Check locators in Page Object, verify timing |
-| Timeout errors | Use explicit waits, check `src/utils/wait.js` |
-| Authentication fails | Verify `.env` credentials, check CI secrets |
-| Flaky tests | Replace hard waits with dynamic waits |
+### Common Issues
 
+| Issue | Root Cause | Solution |
+|-------|-----------|----------|
+| **Element not found** | Locator mismatch or timing | Check Page Object locator, use explicit waits in Page methods |
+| **Timeout errors** | Page not loaded, slow network | Increase timeout, use `wait.js` utilities |
+| **Authentication fails** | Missing/incorrect credentials | Verify `.env` file, check CI secrets, ensure env var naming matches |
+| **Scenario hangs** | Missing timeouts on Playwright APIs | Add timeout to `waitForEvent('page')`, `waitForNavigation()`, etc. |
+| **Flaky tests** | Hard waits (sleep), missing waits | Replace `page.waitForTimeout()` with dynamic waits like `waitForText()` |
+
+### Debugging Techniques
+
+**Run a single scenario with verbose output:**
 ```bash
-# Run with trace recording for investigation
-npx playwright test --trace on path/to/test.spec.js
-
-# View trace file
-npx playwright show-trace test-results/trace.zip
+npx cucumber-js tests/features/flights/general/basic_search.feature --format progress-bar
 ```
 
-**Artifacts on failure**: Screenshots and traces are auto-captured in `test-results/`
+**Enable browser visibility (headed mode):**
+```bash
+HEADLESS=false npx cucumber-js
+```
+
+**Enable debug logging:**
+```bash
+DEBUG=* npx cucumber-js
+```
+
+**Inspect DOM elements and network:**
+Access video recordings and screenshots in `test-results/screenshots/` after test failure.
+
+### Test Artifacts
+
+On failure, the framework automatically captures:
+- **Screenshots**: Saved to `test-results/screenshots/scenario_name_TIMESTAMP.png`
+- **Cucumber JSON Report**: `test-results/cucumber-report.json` (includes embedded screenshots)
+- **Cucumber JUnit Report**: `test-results/cucumber-junit.xml` (for CI integrations)
 
 ---
 
@@ -499,41 +566,163 @@ npx playwright show-trace test-results/trace.zip
 
 ### For QA Engineers
 
-1. **Write tests using DSL only** — never use raw selectors
-2. **Follow naming conventions** — `*Page.js`, `*.spec.js`
-3. **Add appropriate tags** — `@smoke`, `@regression`, `@priority:*`
-4. **Keep tests independent** — no shared state between tests
+1. **Write Gherkin scenarios that read like user stories**
+   ```gherkin
+   Given I am logged in as "amadeus" "user_one"
+   When I search for a one-way flight from "LON" to "NYC"
+   Then flight results are displayed
+   ```
+
+2. **Use step definitions and DSL methods** — never write Playwright code directly
+   ```javascript
+   // ✅ GOOD - Use DSL
+   await FlightSearch.searchOneWayFlight(page, 'LON', 'NYC');
+   
+   // ❌ BAD - Don't use Playwright API directly
+   await page.fill('input[name="from"]', 'LON');
+   ```
+
+3. **Add appropriate tags for filtering and categorization**
+   ```gherkin
+   @smoke @priority:critical @provider:amadeus
+   Scenario: Book a flight
+   ```
+
+4. **Keep scenarios independent** — no shared state between scenarios
+
+5. **Document why, not what**
+   ```javascript
+   // ✅ GOOD - Explains intention
+   // Verify that international routes show visa warnings
+   expect(visaWarningShown).toBe(true);
+   
+   // ❌ BAD - Restates the code
+   // Check if visa warning element is visible
+   ```
 
 ### For Developers
 
-1. **Locators in Page Objects only** — top of constructor
-2. **DSL for business workflows** — combine Page Object methods
-3. **Utils for helpers** — no UI logic
-4. **Follow existing patterns** — check similar files first
+1. **Locators in Page Objects only** — declare at top of constructor
+   ```javascript
+   constructor(page) {
+     this.page = page;
+     this.emailInput = page.locator('input[name="email"]');
+     this.loginButton = page.locator('button:has-text("Sign In")');
+   }
+   ```
 
-### Code Style
+2. **Page Objects contain only UI interactions** — no business logic
+   ```javascript
+   // ✅ GOOD - Atomic UI action
+   async fillEmail(email) {
+     await this.emailInput.fill(email);
+   }
+   
+   // ❌ BAD - Business logic in Page Object
+   async loginWithRetry(email, password) {
+     for (let i = 0; i < 3; i++) {
+       try {
+         await this.fillEmail(email);
+         await this.fillPassword(password);
+         await this.clickLogin();
+         break;
+       } catch (e) {
+         // retry logic
+       }
+     }
+   }
+   ```
 
-- Methods use verbs: `selectFlight()`, `addPassenger()`
-- Classes use nouns: `SearchPage`, `FlightResults`
-- Constants use UPPER_SNAKE_CASE: `MAX_RETRY_COUNT`
-- Comments explain **why**, not **what**
+3. **DSL composes Page methods into workflows**
+   ```javascript
+   async loginAs(page, provider, userKey) {
+     const loginPage = new LoginPage(page);
+     const user = config.getUser(provider, userKey);
+     
+     await loginPage.fillEmail(user.email);
+     await loginPage.fillPassword(user.password);
+     await loginPage.clickLogin();
+     // DSL level assertions
+     expect(await loginPage.isLoggedIn()).toBe(true);
+   }
+   ```
+
+4. **Validate inputs in DSL methods** per [error handling guidelines](./.github/instructions/error-handling.md)
+   ```javascript
+   async selectFlight(page, flightIndex) {
+     if (!page) throw new Error('page parameter is required');
+     if (typeof flightIndex !== 'number') {
+       throw new Error(`flightIndex must be a number, got: ${typeof flightIndex}`);
+     }
+     if (flightIndex < 0) {
+       throw new Error(`flightIndex must be >= 0, got: ${flightIndex}`);
+     }
+     // ... implementation
+   }
+   ```
+
+5. **Follow existing patterns** — check similar files before inventing new approaches
+
+### Code Style Guide
+
+- **Method names**: Start with verb, describe action clearly
+  - ✅ `selectFlight()`, `addPassenger()`, `clickSubmit()`
+  - ❌ `flight()`, `passenger()`, `submit()`
+
+- **Class names**: Nouns describing the page or concept
+  - ✅ `FlightSearchPage`, `CartPage`, `CheckoutPage`
+  - ❌ `SearchFlightPage`, `Page1`, `Stage2`
+
+- **Constants**: UPPER_SNAKE_CASE for module-level constants
+  - ✅ `MAX_WAIT_TIME`, `SELECTORS`, `DEFAULT_TIMEOUT`
+  - ❌ `maxWaitTime`, `MAX_waitTime`, `maxwaiter`
+
+- **Comments**: Explain **why** decisions were made, not what code does
+  ```javascript
+  // ✅ GOOD - Explains intent
+  // Wait for network activity to settle before proceeding
+  // (GDS takes 2-3s to return pricing options)
+  await page.waitForLoadState('networkidle');
+  
+  // ❌ BAD - Restates code
+  // Wait for network idle state
+  await page.waitForLoadState('networkidle');
+  ```
+
+### Layer Responsibilities (Summary)
+
+| Layer | Should Contain | Should NOT Contain |
+|-------|---|---|
+| **Page Object** | Locators, UI actions (click, fill, type) | Business logic, assertions, wait logic |
+| **DSL** | Workflows, test data building, assertions | Selectors, raw Playwright calls, UI details |
+| **Step Definition** | Parametrization, context building | Business logic (use DSL instead) |
+| **Utilities** | Helpers (DOM, calendar, data), logging | Page objects, DSL methods |
 
 ---
 
-## AI Prompts
+## Architecture Guidelines
 
-This repository uses an approved prompt library for safe, consistent AI usage.
-
-→ **[Start here: How to Use Copilot in This Repository](./.github/README.md)**
-
-See also:
-- `.github/copilot-instructions.md` — Global rules and architecture
-- `prompts/` — Approved prompt templates
+For comprehensive architecture and design decision documentation, see:
+- [.github/instructions/page-objects.md](./.github/instructions/page-objects.md) — Page Object patterns and locator strategies
+- [.github/instructions/dsl.md](./.github/instructions/dsl.md) — DSL composition and business workflow design
+- [.github/instructions/architecture.md](./.github/instructions/architecture.md) — Overall layer separation and data flow
+- [.github/instructions/error-handling.md](./.github/instructions/error-handling.md) — Validation and error message patterns
+- [.github/instructions/tests.md](./.github/instructions/tests.md) — Gherkin scenario writing
+- [.github/instructions/playwright-best-practices.md](./.github/instructions/playwright-best-practices.md) — Playwright API usage patterns
 
 ---
 
-## Support
+## Using Copilot in This Repository
 
-- **Documentation**: See `docs/` folder
-- **Copilot Guidelines**: See `.github/copilot-instructions.md`
-- **Prompt Library**: See `prompts/` folder
+This project is optimized for AI-assisted development using GitHub Copilot. For safe, consistent AI guidance:
+
+→ **[Start Here: How to Use Copilot](./.github/README.md)**
+
+Key resources:
+- **.github/copilot-instructions.md** — AI rules, architecture principles, layer responsibilities
+- **.github/instructions/** — Detailed guidelines for each architectural layer
+- **prompts/** → Approved prompt templates (Code Review, Test Generation, DSL Updates, Error Diagnosis)
+
+**Never invent new prompts.** Always use approved templates from the `prompts/` folder.
+
+---

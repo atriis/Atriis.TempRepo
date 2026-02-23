@@ -7,7 +7,21 @@ description: DSL layer guidelines for business workflows. Covers method design, 
 
 ## Purpose
 
-DSL layer translates business intent into UI actions. It provides readable, domain-focused methods that orchestrate Page Object interactions.
+DSL layer translates business intent into UI actions. It provides readable, domain-focused methods that orchestrate Page Object interactions. 
+
+In the Cucumber BDD architecture, **step definitions call DSL methods** to execute business workflows:
+
+```
+Gherkin Step (When I search for a flight)
+    ↓
+Step Definition (calls DSL)
+    ↓
+DSL Method (composes Page Object calls)
+    ↓
+Page Object (executes Playwright API)
+```
+
+For details on how step definitions invoke DSL methods in Cucumber, see [Cucumber Implementation Guide](./cucumber.md#step-definitions).
 
 ## Pattern: Object Literals (Not Classes)
 

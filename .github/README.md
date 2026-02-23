@@ -1,12 +1,12 @@
-# Start Here – How to Use Copilot in This Repository
+# Atriis Automation – AI-Assisted Development Guide
 
-This file is the **entry point for all non-developer contributors** using AI in this project.
+This guide explains how to use GitHub Copilot effectively and safely in this Playwright + Cucumber BDD test automation framework.
 
-Follow these steps exactly to get safe, consistent results.
+**For non-developers (QA Engineers)**: This project provides approved prompts that simplify AI usage. You don't need to write complex instructions—just follow the steps below.
 
 ---
 
-## How to Use Prompts (Read This First)
+## Quick Start (3 Steps)
 
 Using prompts in this repository is simple and **always the same**:
 
