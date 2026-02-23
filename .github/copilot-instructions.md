@@ -1,3 +1,8 @@
+---
+applyTo: src/, tests/
+description: Cucumber BDD test automation framework with Playwright. Rules for layer separation, code generation, Gherkin scenarios, DSL methods, and Page Objects.
+---
+
 # GitHub Copilot Instructions – Playwright + Cucumber BDD Automation Framework
 
 ## Project Overview
@@ -174,5 +179,5 @@ Users are auto-discovered from environment variables. No code changes needed:
 > - **What happens** – Clear method names and Gherkin
 > - **Where it happens** – Which page/layer is involved
 > - **Why it exists** – Comments explain intent, not implementation
-> 
+>
 > Without needing to ask.
