@@ -6,7 +6,7 @@ Feature: Lufthansa NDC - One Way Flight Booking
 
   @priority:critical
   Scenario: Complete one-way flight booking end-to-end
-    Given I am logged in and ready to book a new trip
+    Given I am logged in as "lufthansa" "user_one" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "mucToFra"
     And I click to open fare rules

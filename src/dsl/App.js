@@ -1,7 +1,9 @@
 const { getPageObject } = require("@utils/pageObjectCache");
+const { launchBrowser } = require("@utils/browserFactory");
 const LoginPage = require("@pages/LoginPage");
 const LogoutPage = require("@pages/LogoutPage");
 const MenuPage = require("@pages/MenuPage");
+const config = require("@config/config");
 
 /**
  * App (Application Facade)
@@ -14,39 +16,111 @@ const MenuPage = require("@pages/MenuPage");
  *
  * These are not single UI clicks; they are complete workflows.
  */
+
+/**
+ * Helper function to perform login on an existing page.
+ * - Waits for the login form
+ * - Fills email and password
+ * - Submits
+ * - Waits until the menu shows the logout icon (meaning login worked)
+ */
+async function performLogin(page, { email, password }) {
+  if (!page) {
+    throw new Error('page is required');
+  }
+  
+  if (!email || typeof email !== 'string') {
+    throw new Error('email must be a non-empty string');
+  }
+  
+  if (!password || typeof password !== 'string') {
+    throw new Error('password must be a non-empty string');
+  }
+  
+  const loginPage = getPageObject(page, LoginPage);
+  const menuPage = getPageObject(page, MenuPage);
+
+  await loginPage.waitForLoginPage();
+  await loginPage.fillEmail(email);
+  await loginPage.fillPassword(password);
+  await loginPage.clickLoginButton();
+
+  // Keep as-is: app needs time to finish authentication and loading
+  await page.waitForLoadState("networkidle", { timeout: 60000 });
+
+  await menuPage.waitForLogoutIcon();
+}
+
 const App = {
   /**
-   * Logs the user into the application.
-   * - Waits for the login form
-   * - Fills email and password
-   * - Submits
-   * - Waits until the menu shows the logout icon (meaning login worked)
+   * Logs in with provider/user and returns a ready session.
+   *
+   * @param {string} provider
+   * @param {string} user
+   * @returns {Promise<{browser: import('@playwright/test').Browser, context: import('@playwright/test').BrowserContext, page: import('@playwright/test').Page}>}
    */
-  async loginAs(page, { email, password }) {
-    if (!page) {
-      throw new Error('page is required');
+  async login(provider, user) {
+    if (!provider || typeof provider !== "string") {
+      throw new Error("provider must be a non-empty string");
     }
-    
-    if (!email || typeof email !== 'string') {
-      throw new Error('email must be a non-empty string');
+
+    if (!user || typeof user !== "string") {
+      throw new Error("user must be a non-empty string");
     }
-    
-    if (!password || typeof password !== 'string') {
-      throw new Error('password must be a non-empty string');
+
+    const userConfig = config.users?.[provider]?.[user];
+    if (!userConfig) {
+      throw new Error(`User not found in config: ${provider}.${user}`);
     }
-    
-    const loginPage = getPageObject(page, LoginPage);
-    const menuPage = getPageObject(page, MenuPage);
 
-    await loginPage.waitForLoginPage();
-    await loginPage.fillEmail(email);
-    await loginPage.fillPassword(password);
-    await loginPage.clickLoginButton();
+    const browser = await launchBrowser();
+    const context = await browser.newContext({
+      viewport: config.viewport,
+      screen: config.viewport,
+      ignoreHTTPSErrors: true,
+    });
+    const page = await context.newPage();
 
-    // Keep as-is: app needs time to finish authentication and loading
-    await page.waitForLoadState("networkidle", { timeout: 60000 });
+    await page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
+    await performLogin(page, userConfig);
 
-    await menuPage.waitForLogoutIcon();
+    return { browser, context, page };
+  },
+
+  /**
+   * Logs in with provider/user and starts a new trip in a fresh tab.
+   *
+   * @param {string} provider
+   * @param {string} user
+   * @returns {Promise<{browser: import('@playwright/test').Browser, context: import('@playwright/test').BrowserContext, page: import('@playwright/test').Page}>}
+   */
+  async loginAndBookANewTrip(provider, user) {
+    if (!provider || typeof provider !== "string") {
+      throw new Error("provider must be a non-empty string");
+    }
+
+    if (!user || typeof user !== "string") {
+      throw new Error("user must be a non-empty string");
+    }
+
+    const userConfig = config.users?.[provider]?.[user];
+    if (!userConfig) {
+      throw new Error(`User not found in config: ${provider}.${user}`);
+    }
+
+    const browser = await launchBrowser();
+    const context = await browser.newContext({
+      viewport: config.viewport,
+      screen: config.viewport,
+      ignoreHTTPSErrors: true,
+    });
+    const page = await context.newPage();
+
+    await page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
+    await performLogin(page, userConfig);
+
+    const newTripPage = await App.bookANewTrip(page);
+    return { browser, context, page: newTripPage };
   },
 
   /**
