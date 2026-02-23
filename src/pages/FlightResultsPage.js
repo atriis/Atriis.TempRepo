@@ -298,6 +298,7 @@ class FlightResultsPage {
     await this.page.locator(SELECTORS.PRICING_OPTIONS_CLOSE_MODAL).nth(index).click();
   }
 
+  // TODO: Locator needs to be created
   async clickXToCloseFlightDetailsModal(index = 0) {
     await this.page.locator(SELECTORS.PRICING_OPTIONS_CLOSE_MODAL).nth(index).click();
   }
