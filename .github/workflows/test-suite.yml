@@ -37,6 +37,9 @@ jobs:
       - name: Run Smoke Tests
         run: npx cucumber-js tests/features/smoke/
         env:
+          CI: "true"
+          RETRY_COUNT: "2"
+          RETRY_DELAY: "2000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
@@ -71,6 +74,9 @@ jobs:
       - name: Run Daily Car Tests
         run: npx cucumber-js tests/features/cars/daily_cars/
         env:
+          CI: "true"
+          RETRY_COUNT: "2"
+          RETRY_DELAY: "2000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
@@ -107,6 +113,9 @@ jobs:
       - name: Run Daily Flight Tests
         run: npx cucumber-js tests/features/flights/daily_flights/ --parallel 3
         env:
+          CI: "true"
+          RETRY_COUNT: "2"
+          RETRY_DELAY: "2000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           AMADEUS_RUI_MENDES_USER: ${{ secrets.AMADEUS_RUI_MENDES_USER }}
@@ -146,6 +155,9 @@ jobs:
       - name: Run Daily Shell Tests
         run: npx cucumber-js tests/features/shell/daily_shell/
         env:
+          CI: "true"
+          RETRY_COUNT: "2"
+          RETRY_DELAY: "2000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           GENERAL_FLOWS_HARRY_POTTER_USER_EMAIL: ${{ secrets.GENERAL_FLOWS_HARRY_POTTER_USER_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}

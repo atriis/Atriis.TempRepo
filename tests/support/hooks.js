@@ -12,6 +12,7 @@ const { launchBrowser } = require("./browserFactory");
 const config = require("../../src/config/config");
 const { App } = require("../../src/dsl");
 const logger = require("@utils/logger").child("Hooks");
+const { recordFailure, isRetryEnabled } = require("./retry-handler");
 
 setDefaultTimeout(120000);
 
@@ -122,7 +123,8 @@ Before(async function (testCase) {
 /**
  * After each scenario
  * 
- * Captures screenshots on failure
+ * - Captures screenshots on failure
+ * - Records failures for retry in CI environments
  */
 After(async function (scenario) {
   if (!this.page) {
@@ -135,6 +137,12 @@ After(async function (scenario) {
     this.attach(screenshot, "image/png");
     
     logger.warn("Test failed - screenshot captured", { scenario: scenario.pickle.name });
+
+    // Record failure for retry in CI
+    if (isRetryEnabled()) {
+      const error = scenario.result.message || "Scenario failed";
+      recordFailure(scenario, new Error(error));
+    }
   }
 
   // Close context and browser
