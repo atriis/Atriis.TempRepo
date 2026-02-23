@@ -6,12 +6,9 @@ Fix daily run tests.
 
 ## High Priority
 - [ ] Adjust and create assertions
-- [ ] Difference between CommonPages & General Elements, need to analyze it.
 - [ ] Create flight multi-city flow/test
-- [ ] Create a Base Page with common actions (clicks, waits, etc.) — needs research for best approach
 - [ ] Search about login and time
 - [ ] Self-healing tests
-- [ ] Assertion methods, where to implement?
 - [ ] Dropdowns duplication code
 - [ ] Share button duplication code
 - [ ] Dynamic Fields Checkout Locators creation
