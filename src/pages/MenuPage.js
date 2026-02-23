@@ -42,15 +42,26 @@ class MenuPage {
 
   /**
    * Waits for the "Book a New Trip" icon to appear.
-   * Extra timeout is kept as-is for stability.
+   * Extra timeout for CI environments where rendering can be slower.
    */
   async waitForBookANewTripIcon() {
-    await this.getBookANewTripIcon().waitFor({ state: "visible" });
+    // Extended timeout for CI environments
+    await this.getBookANewTripIcon().waitFor({ state: "visible", timeout: 30000 });
   }
 
   /** Clicks "Book a New Trip" (this opens a new tab) */
   async clickBookANewTrip() {
-    await this.getBookANewTripIcon().click();
+    const icon = this.getBookANewTripIcon();
+    
+    // Ensure element is in viewport and ready
+    await icon.scrollIntoViewIfNeeded();
+    
+    // Wait for element to be stable before clicking
+    await icon.waitFor({ state: "visible", timeout: 10000 });
+    await icon.waitFor({ state: "attached", timeout: 10000 });
+    
+    // Click with extended timeout for CI environments
+    await icon.click({ timeout: 15000 });
   }
 
   /**

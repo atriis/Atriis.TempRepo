@@ -136,16 +136,31 @@ const App = {
 
     await menuPage.waitForBookANewTripIcon();
 
-    // We wait for a new tab/page to open while clicking the UI button.
-    const [newTripPage] = await Promise.all([
-      page.context().waitForEvent("page"),
-      menuPage.clickBookANewTrip(),
-    ]);
+    // Validate that context exists
+    const context = page.context();
+    if (!context) {
+      throw new Error('Page context is null or undefined');
+    }
 
-    // Wait for the new trip page to fully load with network idle and extended timeout
-    // CI/CD environments need more time for the booking form to initialize
-    await newTripPage.waitForLoadState("networkidle", { timeout: 60000 });
-    return newTripPage;
+    // We wait for a new tab/page to open while clicking the UI button.
+    // Use Promise.race with timeout to avoid hanging indefinitely in CI
+    try {
+      const newPagePromise = context.waitForEvent("page", { timeout: 60000 });
+      const clickPromise = menuPage.clickBookANewTrip();
+      
+      const [newTripPage] = await Promise.all([newPagePromise, clickPromise]);
+
+      // Wait for the new trip page to fully load with network idle and extended timeout
+      // CI/CD environments need more time for the booking form to initialize
+      await newTripPage.waitForLoadState("networkidle", { timeout: 60000 });
+      return newTripPage;
+    } catch (error) {
+      throw new Error(
+        `Failed to open new trip page: ${error.message}\n` +
+        `Context state: ${context ? 'valid' : 'null'}\n` +
+        `This usually means the "Book a New Trip" button did not open a new tab.`
+      );
+    }
   },
 
   /**
