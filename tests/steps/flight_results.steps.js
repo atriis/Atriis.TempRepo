@@ -339,6 +339,17 @@ Then("I should see the fare rules note about strictest terms", async function ()
   expect(noteText).toContain('Fare rules would be applied according to the strictest terms');
 });
 
+When("I should click fare rules for the second flight leg", async function () {
+  logger.info("Clicking fare rules leg tab for the second flight leg");
+  await FlightResults.clickFareRulesLegTab(this.page, 1);
+});
+
+When("I should click fare rules for the third flight leg", async function () {
+  logger.info("Clicking fare rules leg tab for the third flight leg");
+  await FlightResults.clickFareRulesLegTab(this.page, 2);
+});
+
+
 Then("the green circle icon at index {int} {string} should be displayed in pricing options", async function (index, description) {
   logger.info("Verifying green circle icon is displayed in pricing options", { index, description });
   const isVisible = await FlightResults.isGreenCircleIconVisibleInPricingOptions(this.page, index);

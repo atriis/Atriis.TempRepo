@@ -11,3 +11,8 @@ Feature: 61600 Amadeus - Multi city search, fare rules displayed
     When I search for a multi-city flight with legs "BRU-FRA" and "FRA-DFW" and "DFW-BRU"
     And I click to open fare rules
     Then I should see the fare rules note about strictest terms
+    And I should click fare rules for the second flight leg
+    Then I should see the fare rules note about strictest terms
+    And I should click fare rules for the third flight leg
+    Then I should see the fare rules note about strictest terms
+    And I close fare rules window

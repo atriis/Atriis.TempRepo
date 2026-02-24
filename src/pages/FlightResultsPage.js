@@ -26,6 +26,9 @@ const SELECTORS = {
 
   //Fare rules note
   FARE_RULES_NOTE: '.note',
+
+  // Fare rules leg tabs inside the drawer
+  FARE_RULES_LEG_TAB: '.fare-rules-tabs .el-tabs__item',
 };
 
 class FlightResultsPage {
@@ -347,6 +350,35 @@ class FlightResultsPage {
       state: 'visible',
       timeout,
     });
+  }
+
+  /**
+   * Gets a leg tab inside the fare rules drawer by zero-based index.
+   *
+   * @param {number} index - Zero-based index of the leg tab
+   * @returns {import('@playwright/test').Locator}
+   */
+  getFareRulesLegTab(index = 0) {
+    return this.page.locator(SELECTORS.FARE_RULES_LEG_TAB).nth(index);
+  }
+
+  /**
+   * Waits for a fare rules leg tab to be visible.
+   *
+   * @param {number} index - Zero-based index of the leg tab
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async waitForFareRulesLegTab(index = 0, timeout = 30000) {
+    await this.getFareRulesLegTab(index).waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Clicks a leg tab inside the fare rules drawer.
+   *
+   * @param {number} index - Zero-based index of the leg tab
+   */
+  async clickFareRulesLegTab(index = 0) {
+    await this.getFareRulesLegTab(index).click();
   }
 
   // ===== FLIGHT DETAILS INTERACTIONS =====

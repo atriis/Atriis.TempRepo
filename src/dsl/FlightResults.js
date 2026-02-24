@@ -329,6 +329,28 @@ async clickToOpenFareRulesFromResultsModal(page) {
  await FlightResults.clickToOpenFareRules(page, 10);
 },
 
+  /**
+   * Clicks a leg tab inside the already-open fare rules drawer.
+   * Tabs are displayed at the top of the drawer (e.g. BRU-FRA, FRA-DFW, DFW-BRU).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} index - Zero-based index of the leg tab
+   * @returns {Promise<void>}
+   */
+  async clickFareRulesLegTab(page, index) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got: ${index}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForFareRulesLegTab(index);
+    await flightResultsPage.clickFareRulesLegTab(index);
+    await flightResultsPage.waitForFareRulesNote();
+  },
+
 /**
  * Checks if the green circle icon is displayed in the pricing options modal.
  * Returns visibility status for validation in step definitions.
