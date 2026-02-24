@@ -1,3 +1,5 @@
+# TODO: Needs retesting — scenario is almost complete and ready, but Amadeus supplier was having issues with fare rules
+#       during final validation so the full run could not be verified. Retest and finish when supplier is back up. Finish
 @daily_flights @provider:amadeus @regression
 Feature: 61600 Amadeus - Multi city search, fare rules displayed
   As a corporate traveler using Amadeus
