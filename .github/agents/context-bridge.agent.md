@@ -83,6 +83,27 @@ The application source code being tested.
 
 ---
 
+### Task E — Find Selector from Vue Source
+**Trigger**: User asks "what selector should I use for X?" OR when creating/fixing a test and a selector is missing or broken in a Page Object
+
+**Process:**
+1. Identify the product area (flight, hotel, car, etc.) from the test context
+2. Scan `../vue/src/modules/products/<product>/components/` — read `.vue` template blocks to find:
+   - `data-testid` attributes (preferred — most stable)
+   - `id` attributes
+   - Unique class names (e.g., `btn--primary`, `refundable`, `room-list`)
+   - ARIA roles and labels (`role="button"`, `aria-label="..."`)
+3. Match the element the user is describing to a real element in the Vue template
+4. Propose the selector in order of stability preference:
+   - `[data-testid="..."]` — most stable
+   - `#id` — stable
+   - `.unique-class` — acceptable if not dynamically generated
+   - `:has-text("...")` combined with a class — fallback
+5. Show the Vue source snippet where the element was found (file + line reference)
+6. If the selector needs to go in a Page Object, show exactly where to add it in the `SELECTORS` constant
+
+---
+
 ### Task D — Environment & Data lookup
 **Trigger**: User asks "which environment should I test in?" or "what test user should I use?"
 
@@ -97,7 +118,7 @@ The application source code being tested.
 ## Rules
 
 - **Never invent steps** — search `tests/steps/` and match exact phrasing before proposing new steps
-- **Never invent selectors** — read existing `src/pages/` for patterns; scan Vue components only to understand intent
+- **Never invent selectors** — always scan `../vue/src/modules/products/<product>/components/` to find real selectors from the Vue templates; check existing `src/pages/` for already-mapped ones
 - **Never add business logic to steps** — steps call DSL; DSL calls Pages
 - **Always check Cortex.QA first** before fetching from ADO live — the findings file may already have everything needed
 - **Reference files by relative path** — always link to actual files so the QA can open them
