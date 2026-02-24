@@ -176,6 +176,43 @@ jobs:
           name: daily-shell-report
           path: test-results/cucumber-report.json
 
+  daily-hotel-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: mkdir -p test-results
+
+      - name: Run Daily Hotel Tests
+        run: npx cucumber-js tests/features/hotels/daily_hotels/
+        env:
+          CI: "true"
+          RETRY_COUNT: "2"
+          RETRY_DELAY: "2000"
+          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
+          AMADEUS_VALUE_HOTEL_JOAO_EMAIL: ${{ secrets.AMADEUS_VALUE_HOTEL_JOAO_EMAIL }}
+          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
+
+      - name: Upload Daily Hotel Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-hotel-results
+          path: test-results/cucumber-junit.xml
+
+      - name: Upload Daily Hotel Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-hotel-report
+          path: test-results/cucumber-report.json
+
   summary:
     runs-on: ubuntu-latest
     needs:
@@ -183,6 +220,7 @@ jobs:
       - daily-car-tests
       - daily-flight-tests
       - daily-shell-tests
+      - daily-hotel-tests
     if: always()
 
     permissions:
