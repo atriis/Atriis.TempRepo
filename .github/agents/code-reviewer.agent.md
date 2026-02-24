@@ -1,5 +1,5 @@
 ---
-description: "Review pending code changes in this Playwright + Cucumber automation framework. Provides constructive, actionable feedback on stability, maintainability, and adherence to project patterns."
+description: "Review pending code changes in this Cucumber BDD + Playwright automation framework. Provides constructive, actionable feedback on stability, maintainability, and adherence to project patterns."
 tools: ["read", "search", "edit", "runCommands"]
 ---
 
@@ -23,7 +23,7 @@ If any feedback conflicts with `copilot-instructions.md`, the instructions file 
 
 - **scope** (optional): Can be one of the following:
   - **Directory path** (e.g., `scope=tests/regression/flights`): Review only files inside that directory
-  - **Glob pattern** (e.g., `scope=src/dsl/**/*.js` or `scope=tests/**/*.spec.js`): Review files matching the pattern
+  - **Glob pattern** (e.g., `scope=src/dsl/**/*.js` or `scope=tests/**/*.feature`): Review files matching the pattern
   - **`pr` or `PR`**: Review changes as if this branch was a pull request to `remote/main` branch
   - If not provided, all changed files will be reviewed.
 - **output** (optional): Name of the output file in markdown format (e.g., `output=review-report.md`). If provided, the review feedback will be saved to this file.
@@ -47,13 +47,9 @@ Review all pending changes and classify them into one or more categories:
   - **Class-based DSLs** — DSLs must be object literals, not `class` with `constructor(page)`
   - **Missing `page` first argument** — Every DSL method must have `page` as the first parameter
   - **Page Objects at module level** — Instantiate inside DSL methods, not at top of file
-  - **Wrong test fixtures** — Must use `@fixtures/supplierTest`, NEVER `@playwright/test`
-  - **Manual navigation** — Tests must use `newTripPageFor`/`newTripPage` fixtures, not `page.goto()`
   - **Inline selectors** — All selectors must be in `SELECTORS` constant (UPPER_SNAKE_CASE), not inline in methods
   - **Raw Playwright in DSL** — DSL must call Page Object methods, not `page.click()` or `page.locator()`
-  - **Missing barrel import** — Tests must use `require('@dsl')`, not individual DSL file imports
-  - **Missing console.log** — Tests should log each step for progress tracking
-  - **Missing tags** — Tests must include `[@regression]`, `[@priority:critical]` etc. in names
+  - **Missing logger** — Step definitions must use `logger.info()` (via `@utils/logger`), not `console.log()`
   - **Hard-coded waits** — No `page.waitForTimeout()` without explaining why in comment
   - **Business logic in Page Objects** — Page Objects are UI-only, no business decisions
   - **Test logic in Page Objects** — No assertions in Page Objects (except critical state checks in DSL)
@@ -63,9 +59,8 @@ Review all pending changes and classify them into one or more categories:
   - **Missing from barrel** — New DSL files must be exported in `src/dsl/index.js`
   - **Vague method names** — Use descriptive names: `searchFlightOneWay`, not `search` or `doStuff`
   - **Generic Gherkin** — Scenarios must read like user stories, not technical steps
-  - **Hardcoded data in Gherkin** — Use {string}, {int} parameters instead of hardcoded values
-  - **Missing tags** — Scenarios must include tags: `@regression`, `@priority:critical`, `@provider:amadeus`
-  - **Missing logging in steps** — Step definitions should log their actions with logger.info()
+  - **Hardcoded data in Gherkin** — Use `{string}`, `{int}` parameters instead of hardcoded values
+  - **Missing tags** — Scenarios must have `@regression`, `@priority:critical`, `@provider:*` tags above Feature or Scenario
 
 - **Playwright & Framework specifics to watch:**
   - **DSL structure:**
@@ -73,20 +68,20 @@ Review all pending changes and classify them into one or more categories:
     - `page` always first argument
     - Page Objects created inside each method
     - Return meaningful data (e.g., `{ searched: true, from, to }`)
-    - Console.log business intent, not UI steps
+    - Log business intent with `logger.info()`, not `console.log()`
     - Export: `module.exports = FlightSearch;`
   - **Page Object structure:**
     - `SELECTORS` constant outside class with UPPER_SNAKE_CASE keys
   - **Step Definition structure:**
     - Import: `const { Given, When, Then } = require('@cucumber/cucumber');`
-    - DSL import: `const { FlightSearch, Cart } = require('@dsl');`
+    - DSL import: `const { FlightSearch, Cart } = require('../../src/dsl');` or `require('@dsl')`
     - Logging: `const logger = require('@utils/logger').child('FlightSearch');`
     - Pattern: `When('I search for a flight from {string} to {string}', async function (from, to) { ... })`
     - Error handling: Throw with context, never silently fail
   - **Feature File structure:**
     - Tags: `@regression`, `@priority:critical`, `@provider:amadeus`, `@slow` (above Feature/Scenario)
     - Gherkin: Feature name → Background (setup) → Scenarios with Given-When-Then
-    - Organization: `tests/features/flights/general/`, `tests/features/hotels/supplier-specific/`, etc.
+    - Organization: `tests/features/flights/general/`, `tests/features/hotels/daily_hotels/`, etc.
     - Parameters: `Given I am logged in as {string} {string}` not hardcoded values
   - **Naming conventions:**
     - **Files:** `*Page.js` (Page Objects), `*.js` (DSL), `*.steps.js` (step definitions), `*.helper.js` (utilities)
