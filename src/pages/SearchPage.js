@@ -49,6 +49,12 @@ const SELECTORS = {
   // Edit Search
   SEARCH_TITLE: '.locations.is-flex.is-align-items-center',
 
+  // Multi-city
+  MULTI_CITY_SECTION: 'section.multi-city',
+  MULTI_CITY_LINE: '.multi-city-line',
+  MULTI_CITY_DATEPICKER_INPUT: '.flight-date-picker input',
+  ADD_FLIGHT_ROW_BUTTON: '.add-flight-btn',
+
   // Tabs
   GENERAL_RAIL_TAB: "#tab-rails",
 
@@ -461,6 +467,87 @@ class SearchPage {
    */
   async selectRoundTrip() {
     await this.clickTripType(/round trip/i);
+  }
+
+  /**
+   * Selects the "Multi City" trip type.
+   */
+  async selectMultiCityTrip() {
+    await this.clickTripType(/multi.city/i);
+  }
+
+  /**
+   * Waits for the multi-city section to be visible after selecting multi-city trip type.
+   */
+  async waitForMultiCitySection() {
+    await this.page.locator(SELECTORS.MULTI_CITY_SECTION).waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  /**
+   * Clicks the "Add another flight" button to add a new leg in multi-city search.
+   */
+  async clickAddFlightRowButton() {
+    await this.page.locator(SELECTORS.ADD_FLIGHT_ROW_BUTTON).click();
+  }
+
+  /**
+   * Fills the From and To fields for a single multi-city leg.
+   *
+   * Scoped to the specific .multi-city-line row so that global nth-index lookups
+   * are not needed. Works regardless of how many legs are visible.
+   *
+   * After Tab from the "To" autocomplete, Element Plus often auto-opens the
+   * departure date picker for that row. Call openMultiCityDatePickerAtIndex
+   * afterwards to use the already-open picker or open it if needed.
+   *
+   * @param {string} from - Origin airport code
+   * @param {string} to - Destination airport code
+   * @param {number} legIndex - Zero-based leg row index
+   */
+  async fillMultiCityLeg(from, to, legIndex) {
+    const row = this.page.locator(SELECTORS.MULTI_CITY_LINE).nth(legIndex);
+
+    // From field
+    const fromInput = row.locator('input[placeholder*="From" i]').first();
+    await fromInput.waitFor({ state: 'visible' });
+    await fromInput.click();
+    await fromInput.fill(from);
+    await this.page.waitForTimeout(200);
+    await this.page.keyboard.press('Tab');
+    await this.page.waitForTimeout(150);
+
+    // To field — Tab focus moves here, then click to ensure correct focus before fill
+    const toInput = row.locator('input[placeholder*="To" i]').first();
+    await toInput.waitFor({ state: 'visible' });
+    await toInput.click();
+    await toInput.fill(to);
+    // Wait for autocomplete suggestions then commit with Tab
+    await this.page.locator(SELECTORS.AUTOCOMPLETE_LIST).first().waitFor({ state: 'visible' });
+    await this.page.keyboard.press('Tab');
+    // Tab moves focus to the date input, which may auto-open the picker
+    await this.page.waitForTimeout(200);
+  }
+
+  /**
+   * Ensures the date picker is open for a given multi-city leg.
+   *
+   * Element Plus auto-opens the date picker when Tab moves focus to the date
+   * input. This method checks if it's already visible and only clicks to open
+   * it if it's not — preventing the toggle-close that would happen if the
+   * picker is already open.
+   *
+   * @param {number} legIndex - Zero-based leg row index
+   */
+  async openMultiCityDatePickerAtIndex(legIndex) {
+    const panel = this.getDatePickerPanel();
+    const alreadyOpen = await panel.isVisible();
+    if (!alreadyOpen) {
+      const row = this.page.locator(SELECTORS.MULTI_CITY_LINE).nth(legIndex);
+      await row.locator(SELECTORS.MULTI_CITY_DATEPICKER_INPUT).click();
+      await panel.waitFor({ state: 'visible', timeout: 10000 });
+    }
+    // Wait for panel animation to stabilize before interacting with month arrows
+    await this.page.waitForTimeout(300);
   }
 
   /**

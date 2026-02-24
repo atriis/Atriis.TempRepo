@@ -77,7 +77,7 @@ const FlightSearch = {
       await flightSearchPage.selectCompleteTrip();
     }
 
-    await searchPage.clickSearchButton();
+    await searchPage.waitAndClickSearchButton();
 
     return { searched: true, from, to, tripType, searchType };
   },
@@ -183,6 +183,58 @@ const FlightSearch = {
       departureIndex,
       returnIndex,
     });
+  },
+
+  /**
+   * Multi-city flight search: completePTrip + multiCity + multiple legs
+   *
+   * @param {Object} page - Playwright page object
+   * @param {Array<{from: string, to: string}>} legs - Array of at least 2 leg objects
+   * @param {Object} options
+   * @param {number} options.departureIndex - Starting available-day index for first leg (default: SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX)
+   */
+  async searchFlightMultiCity(
+    page,
+    legs,
+    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX } = {},
+  ) {
+    if (!Array.isArray(legs) || legs.length < 2) {
+      throw new Error('legs must be an array of at least 2 {from, to} objects, got: ' + JSON.stringify(legs));
+    }
+
+    logger.info('Starting multi-city flight search', { legs });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectMultiCityTrip();
+    await searchPage.waitForMultiCitySection();
+
+    // Add extra rows if the default number of rows is less than the number of legs
+    const currentRows = await page.locator('.multi-city-line').count();
+    for (let i = currentRows; i < legs.length; i++) {
+      await searchPage.clickAddFlightRowButton();
+    }
+
+    // Fill origin, destination, and departure date for each leg
+    for (let i = 0; i < legs.length; i++) {
+      const { from, to } = legs[i];
+      // Fill From + To scoped to this leg's row; Tab from To auto-opens the date picker
+      await searchPage.fillMultiCityLeg(from, to, i);
+      // Use the already-open picker or open it if not — never toggle-close
+      await searchPage.openMultiCityDatePickerAtIndex(i);
+      await searchPage.clickCalendarNextArrow();
+      await selectDatesByNthAvailable(page, {
+        startIndex: departureIndex + i * 3,
+        endIndex: null,
+      });
+    }
+
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, legs, tripType: 'multiCity' };
   },
 
   /**

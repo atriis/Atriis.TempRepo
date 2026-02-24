@@ -68,3 +68,14 @@ When("I search for a random round trip flight in {string}", async function (regi
   logger.info('Searching for random round trip flight', { region });
   await FlightSearch.searchRoundTripRandomFlight(this.page, region);
 });
+
+When("I search for a multi-city flight with legs {string} and {string} and {string}", async function (leg1, leg2, leg3) {
+  const parseLeg = (leg) => {
+    const parts = leg.toUpperCase().split('-');
+    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
+    return { from: parts[0], to: parts[1] };
+  };
+  const legs = [leg1, leg2, leg3].map(parseLeg);
+  logger.info('Searching for multi-city flight', { legs });
+  await FlightSearch.searchFlightMultiCity(this.page, legs);
+});
