@@ -148,7 +148,7 @@ const config = {
     sunny: createProviderUsers('sunny'),
     fusion: createProviderUsers('fusion'),
     ypsilon: createProviderUsers('ypsilon'),
-    amadeuslightticketing: createProviderUsers('amadeuslightticketing'),
+    amadeus_light_ticketing: createProviderUsers('amadeus_light_ticketing'),
     galileoach: createProviderUsers('galileoach'),
     benerail: createProviderUsers('benerail'),
     evolvi: createProviderUsers('evolvi'),
