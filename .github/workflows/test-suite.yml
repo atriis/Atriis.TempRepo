@@ -123,6 +123,7 @@ jobs:
           GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
           SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
           LUFTHANSA_USER_ONE_EMAIL: ${{ secrets.LUFTHANSA_USER_ONE_EMAIL }}
+          AMADEUS_VALUE_HOTEL_JOAO_EMAIL: ${{ secrets.AMADEUS_VALUE_HOTEL_JOAO_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Flight Results
