@@ -416,7 +416,7 @@ class FlightResultsPage {
     await this.page.getByRole('heading', {
       level: 3,
       name: / - /,
-    }).waitFor({
+    }).first().waitFor({
       state: 'visible',
       timeout,
     });

@@ -16,3 +16,12 @@ Feature: 61600 Amadeus - Multi city search, fare rules displayed
     And I should click fare rules for the third flight leg
     Then I should see the fare rules note about strictest terms
     And I close fare rules window
+    When I click to open flight details
+    And I click to open fare rules from modal
+    Then I should see the fare rules note about strictest terms
+    And I should click fare rules for the second flight leg
+    Then I should see the fare rules note about strictest terms
+    And I should click fare rules for the third flight leg
+    Then I should see the fare rules note about strictest terms
+    And I close fare rules window
+    And I close flight details window
