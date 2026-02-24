@@ -62,7 +62,7 @@ const HotelSearch = {
       endIndex: nights,
     });
 
-    await searchPage.clickSearchButton();
+    await searchPage.waitAndClickSearchButton();
 
     return { searched: true, where, nights };
   },
