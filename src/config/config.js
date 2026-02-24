@@ -130,6 +130,7 @@ const config = {
    */
   users: {
     amadeus: createProviderUsers('amadeus'),
+    amadeus_value_hotel: createProviderUsers('amadeus_value_hotel'),
     sabre: createProviderUsers('sabre'),
     galileo: createProviderUsers('galileo'),
     ratehawk: createProviderUsers('ratehawk'),
