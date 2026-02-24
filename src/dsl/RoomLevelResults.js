@@ -35,6 +35,33 @@ const RoomLevelResults = {
     const labelText = await cartPage.getHotelRefundableText();
     return { added: true, labelText };
   },
+
+  async addFirstHotelRoomLevelToCart(page) {
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    await roomLevelResultsPage.waitForViewHotelOnMapText();
+    await resultsPage.scrollToFirstAddToTripButton();
+    await resultsPage.waitForAddToTripText();
+
+    await resultsPage.clickFirstAddToTripButton();
+
+    // Handle optional conflict modal (uses DSL for consistency)
+    await Results.clickProceedConflictQuoteModal(page);
+  },
+
+  /**
+   * Extracts the cancellation policy text from the first room in room level results.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The cancellation policy text
+   */
+  async extractCancellationPolicy(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    return roomLevelResultsPage.getCancellationPolicy();
+  },
 };
 
 module.exports = RoomLevelResults;

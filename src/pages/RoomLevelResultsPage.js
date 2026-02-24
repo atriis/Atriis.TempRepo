@@ -9,6 +9,7 @@ const SELECTORS = {
   REFUNDABLE_CHECKBOX_INNER: ".el-checkbox__inner",
   REFUNDABLE_CHECKBOX_INPUT: "input.el-checkbox__original",
   REFUNDABLE_TAG: "div.refundable:has-text('Refundable')",
+  FIRST_ROOM_CANCELLATION_POLICY: ".room-list > :nth-child(2) .ticket-details p",
 };
 
 class RoomLevelResultsPage {
@@ -78,6 +79,16 @@ class RoomLevelResultsPage {
       .locator(SELECTORS.REFUNDABLE_TAG)
       .first()
       .waitFor({ state: "visible" });
+  }
+
+  /**
+   * Gets the cancellation policy text from the first room in the room list.
+   * @returns {Promise<string>} The cancellation policy text
+   */
+  async getCancellationPolicy() {
+    const locator = this.page.locator(SELECTORS.FIRST_ROOM_CANCELLATION_POLICY).first();
+    await locator.waitFor({ state: "visible" });
+    return locator.innerText();
   }
 }
 
