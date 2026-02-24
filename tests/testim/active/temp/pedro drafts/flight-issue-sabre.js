@@ -1,0 +1,235 @@
+/*
+ * Test Name: flight issue sabre
+ * Description: Checking:
+GDS RMs, user DYN RM, Corp RF on checkout stage
+booking Q sets on Corp end
+
+Admin:
+nerver@sabre.com
+CorporationId	AgencyId
+276348	274057
+ * Status: Active
+ * Labels: Sabre NDC,Flights,Filters,results
+ * Owner: pini harush
+ * Created: 2025-09-10T12:08:53Z
+ * Updated: 2026-02-09T11:05:29Z
+ */
+ 
+"use strict";
+
+const { chromium } = require('playwright');
+
+(async () => {
+  const browser = await chromium.launch({headless: false});
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto("https://ui.gtp-staging.com");
+  await Login("nerver@sabre.com");
+  await book_a_new_trip();
+  await Add_traveler___I_am_the_traveler();
+  await Search_flights_one_way('LON', 'AMS');
+  await Add_to_trip_first_flight();
+  await Accept__Terms___Conditions__and_proceed_to_checkout();
+  await Copy_of_Book_and_finalize___RF_filling();
+  await PNR_Remarks_Validation_by_API("PNR ON QUEUE 13 - 09FEB,DYN151TESTIM DYN, RF CHECKOUT FOR BOOKERRF VALSuffix, ITX1RF VAL,ticketing phase 1, ticketing phase 2, ticketing phase 4, ticketing phase 5, ticketing phase 8, ticketing phase 10, ticketing phase 11", "Travel req only", "nerver@sabre.com", true, );
+  await browser.close();
+})();
+
+// move to utils.js
+
+async function waitForText(page, selector, expectedText) {
+  await page.waitForFunction(([selector, expectedText]) => {
+    const element = document.querySelector(selector);
+    return element && element.textContent.replace(/[\r\n]+/g, "").trim() === expectedText.trim();
+  }, [selector, expectedText]);
+}
+
+async function isVisible(page, selector) {
+  try {
+    const elementHandle = await page.$(selector);
+    if(!elementHandle) {
+      return false;
+    }
+    const elementBox = await elementHandle.boundingBox();
+    return Boolean(elementBox);
+  } catch(err) {
+    return false;
+  }
+}
+async function sendSpecialCharacter(page, selector, key) {
+  const elementHandle = await page.$(selector);
+  await elementHandle.press(key);
+}
+
+function getText(page, selector) {
+  return page.evaluate((selector) => {
+    const element = document.querySelector(selector);
+    return element.textContent;
+  }, selector);
+}
+
+
+// shared steps \\
+async function Login(username) {
+  await page.type("#email", username);
+  await page.type("#psw", 'MAGA!$$2k26');
+  await page.click("#resetText");
+  await waitForText(page, ".logout-icon", 'logout');
+}
+
+async function book_a_new_trip() {
+  await page.waitFor(2000);
+  await page.waitFor(1000);
+  await page.click(".top-container > :nth-child(4) .material-symbols-outlined");
+}
+
+async function refresh_tab_if_there_is_no_star() {
+  if (await isVisible(page, ".star-icon")) {
+    return;
+  }
+  await page.reload();
+}
+
+async function Add_traveler___I_am_the_traveler() {
+  await waitForText(page, ".imt-btn", 'Add me');
+  await page.click(".imt-btn");
+  await page.waitForSelector(".star-icon", {state: "visible"});
+  await refresh_tab_if_there_is_no_star();
+}
+
+async function old() {
+  if (true) {
+    return;
+  }
+  // Converting a 'date-generator' step has to be done manually at this time
+  await page.click("[placeholder='Departure date']");
+  await page.type("[placeholder='Departure date']", departureDate);
+  await sendSpecialCharacter(page, "[placeholder='Departure date']", 'Enter');
+}
+
+async function Search_flights_one_way(from, to) {
+  await page.click("#tab-flight > div");
+  await page.click(".search-options-wrapper > :nth-child(1) [role='radiogroup'] > :nth-child(2) .el-radio__label");
+  await page.type("[placeholder='From... Departure']", from);
+  await sendSpecialCharacter(page, "#el-id-4533-79", 'Tab');
+  await page.type("[placeholder='To... Destination']", to);
+  await sendSpecialCharacter(page, "#el-id-4533-80", 'Tab');
+  await page.click("#el-id-383-77");
+  await page.click("#el-id-383-63 > div > div.el-picker-panel__body-wrapper > div > div.el-date-picker__header > span.el-date-picker__next-btn > button.el-picker-panel__icon-btn.arrow-right > i > svg > path");
+  await page.click("tbody > :nth-child(5) > td:nth-of-type(5) .el-date-table-cell__text");
+  await old();
+  await page.click(".search-btn");
+}
+
+async function Flight___Results___Wait_for__Add_to_trip__text() {
+  await waitForText(page, ".flight-list > :nth-child(1) .btn--primary", 'Add to trip');
+}
+
+async function click_on_procced_if_there_is_a_conflict_with_previous_trip() {
+  if (await getText(page, "[class^='mr'], [class*=' mr']") === "/Proceed/") {
+    await page.click("[class^='mr'], [class*=' mr']");
+  }
+}
+
+async function Pending_booking___wait_for_element_text() {
+  await waitForText(page, ".app-label", 'Pending booking');
+}
+
+async function Add_to_trip_first_flight() {
+  await Flight___Results___Wait_for__Add_to_trip__text();
+  await page.click(".flight-list > :nth-child(1) .is-hidden-mobile");
+  await click_on_procced_if_there_is_a_conflict_with_previous_trip();
+  await Pending_booking___wait_for_element_text();
+}
+
+async function Accept__Terms___Conditions_() {
+  await page.click(".el-checkbox__inner");
+}
+
+async function Click_Proceed_to_Checkout() {
+  if (await getText(page, ".btn-container span") === "'Proceed to Checkout'") {
+    await waitForText(page, ".btn-container span", 'Proceed to Checkout');
+  }
+  await page.click(".btn-container span");
+}
+
+async function Accept__Terms___Conditions__and_proceed_to_checkout() {
+  await waitForText(page, ".payments-title", 'Trip overview');
+  await Accept__Terms___Conditions_();
+  await page.waitFor(1000);
+  await Click_Proceed_to_Checkout();
+}
+
+async function Click_Go_to_Trip() {
+  await waitForText(page, ".btn-container > :nth-child(1)", 'Go to trip');
+  await page.click(".btn-container > :nth-child(1)");
+}
+
+async function Copy_of_Book_and_finalize___RF_filling() {
+  await waitForText(page, "h1", 'Booking details');
+  await page.waitFor(3000);
+  await page.click("#el-id-3503-304");
+  await page.type("#el-id-3503-304", 'rf val');
+  await page.click("#el-id-3503-305");
+  await page.type("#el-id-3503-305", 'rf val');
+  await page.click("[class^='btn--width'], [class*=' btn--width']");
+  await Click_Go_to_Trip();
+  await waitForText(page, ".payments-title", 'Trip overview');
+}
+
+async function getTripId() {
+  await page.evaluate(() => {
+    const url = window.location.href;
+    const match = url.match(/trips\/(\d+)\//);
+    
+    if (!match) {
+      throw new Error("Trip number not found in URL: " + url);
+    }
+    
+    var tripNumber = match[1];
+    exportsTest.tripNumber = tripNumber;
+    console.log("Trip Number:", tripNumber);
+  });
+}
+
+async function getUrlTripNumber() {
+  await getTripId();
+}
+
+async function sleepInMinutes() {
+  await page.evaluate(() => {
+        var sleepInMinutes = sleepInMinutes ?? 5;
+        const end = Date.now() + sleepInMinutes * 60000;
+        while (Date.now() < end) { }
+        console.log(`Sleep completed: ${sleepInMinutes} minute${sleepInMinutes !== 1 ? 's' : ''}`);
+    
+  });
+}
+
+async function Copy_of_API_Validation__AuthForAPi(username, password, SubscriptionKey) {
+  // Converting a 'api-action' step has to be done manually at this time
+}
+
+async function Copy_of_Api_Validation__Remarks(reqRemarks, fbRemarks) {
+  // Converting a 'api-action' step has to be done manually at this time
+}
+
+async function API_Validation__Cancel_Trip_on__true___boolean__cancelQuote__parameter_() {
+  const boolean_27 = await page.evaluate(() => {
+    return cancelQuote === true || cancelQuote === "true";
+    
+  }).catch(() => false);
+  if (!boolean_27) {
+    return;
+  }
+  // Converting a 'api-action' step has to be done manually at this time
+}
+
+async function PNR_Remarks_Validation_by_API(requiredRemarks, forbiddenRemarks, username, cancelQuote, sleepInMinutes) {
+  await getUrlTripNumber();
+  await sleepInMinutes();
+  await Copy_of_API_Validation__AuthForAPi(username, "NextLevelAtriis25!", '58294d71f764436fa8282de44cb90cfd');
+  await Copy_of_Api_Validation__Remarks(requiredRemarks, forbiddenRemarks);
+  await API_Validation__Cancel_Trip_on__true___boolean__cancelQuote__parameter_();
+}
+
