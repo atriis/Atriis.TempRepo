@@ -6,7 +6,7 @@
  * ===== STEP CATALOG =====
  *
  * Selection:
- *   "I select the first available hotel"
+ *   "I select the first hotel result"
  *
  * ========================
  */
@@ -22,7 +22,7 @@ setDefaultTimeout(120000);
 // WHEN STEPS - HOTEL SELECTION
 // ========================================
 
-When("I select the first available hotel", async function () {
+When("I select the first hotel result", async function () {
   logger.info("Selecting first hotel option");
   await HotelLevelResults.clickFirstHotelOption(this.page);
 });
