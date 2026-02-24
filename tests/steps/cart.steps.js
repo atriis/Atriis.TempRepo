@@ -184,6 +184,12 @@ When("I click the extras arrow button", async function () {
   await cartPage.clickArrowButtonExtras();
 });
 
+When("I extract cancellation policy from cart", async function () {
+  logger.info("Extracting cancellation policy from cart");
+  this.cartCancellationPolicy = await Cart.getCancellationPolicyFromCart(this.page);
+  logger.info("Extracted cancellation policy from cart", { cartCancellationPolicy: this.cartCancellationPolicy });
+});
+
 // ===== THEN STEPS =====
 
 Then("I successfully cancel the trip", async function () {
