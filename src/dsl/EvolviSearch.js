@@ -77,7 +77,7 @@ const EvolviSearch = {
       endIndex: null,
     });
 
-    await searchPage.clickSearchButton();
+    await searchPage.waitAndClickSearchButton();
 
     return { searched: true, routeInput, from, to, departureIndex };
   },

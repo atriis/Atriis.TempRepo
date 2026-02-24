@@ -6,7 +6,7 @@ Feature: Evolvi One Way Add To Cart
 
   @priority:critical
   Scenario: Add one way Evolvi train to cart
-    Given I am logged in and ready to book a new trip
+    Given I am logged in as "evolvi" "user_one" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Evolvi train from "licTo105"
     And I add an Evolvi one way to the trip

@@ -23,11 +23,13 @@ const EvolviResults = {
   /**
    * Complete workflow to add an Evolvi one-way option.
    */
-  async addEvolviToTrip(page) {
+  async addEvolviOneWayToTrip(page) {
     const resultsPage = getPageObject(page, EvolviResultsPage);
 
     await resultsPage.waitForOutboundText();
     await EvolviResults.selectCheapestSuggestedFare(page);
+
+    await Results.waitAndClickAddToTripButton(page);
 
     return { workflowCompleted: true, selected: true };
   },
@@ -46,6 +48,8 @@ const EvolviResults = {
     // Second leg
     await resultsPage.waitForOutboundText();
     await EvolviResults.selectCheapestSuggestedFare(page);
+
+    await Results.waitAndClickAddToTripButton(page);
 
     return { addedToTrip: true };
   },

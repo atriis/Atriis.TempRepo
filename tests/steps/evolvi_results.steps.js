@@ -28,7 +28,7 @@ setDefaultTimeout(120000);
 
 When("I add an Evolvi one way to the trip", async function () {
   logger.info("Adding Evolvi one-way to trip");
-  await EvolviResults.addEvolviToTrip(this.page);
+  await EvolviResults.addEvolviOneWayToTrip(this.page);
 });
 
 When("I add an Evolvi round trip to the trip", async function () {
