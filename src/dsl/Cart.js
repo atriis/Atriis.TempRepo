@@ -95,6 +95,19 @@ const Cart = {
     expect(labelText).not.toMatch(/Non\s*Refundable/i);
   },
 
+  /**
+   * Gets the cancellation policy label text from the cart.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The cancellation policy text
+   */
+  async getCancellationPolicyFromCart(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    const cartPage = getPageObject(page, CartPage);
+    return cartPage.getCancellationPolicyFromCart();
+  },
+
 
   /**
    * Asserts that the booking status label matches the expected status.

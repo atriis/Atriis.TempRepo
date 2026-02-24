@@ -16,6 +16,7 @@ const SELECTORS = {
 
   // Refundable hotel text
   REFUNDABLE_TEXT: "div.refundable",
+  CANCELLATION_POLICY_LABEL: "div.refundable, div.non-refundable",
 
   // Price breakdown button
   PRICE_BREAKDOWN_BUTTON: ".price-breakdown-btn",
@@ -64,6 +65,18 @@ class CartPage {
    */
   async getHotelRefundableText({ timeout = 10000 } = {}) {
     const label = this.page.locator(SELECTORS.REFUNDABLE_TEXT).first();
+    await label.waitFor({ state: 'visible', timeout });
+    return (await label.textContent()).trim();
+  }
+
+  /**
+   * Gets the cancellation policy label text from the cart hotel item.
+   * Returns text from whichever policy label (refundable or non-refundable) is visible.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<string>} The cancellation policy text
+   */
+  async getCancellationPolicyFromCart({ timeout = 10000 } = {}) {
+    const label = this.page.locator(SELECTORS.CANCELLATION_POLICY_LABEL).first();
     await label.waitFor({ state: 'visible', timeout });
     return (await label.textContent()).trim();
   }
