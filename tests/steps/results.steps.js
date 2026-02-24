@@ -40,6 +40,13 @@
  *   "the flight capacity restriction modal should be visible"
  *     → Results.isFlightCapacityRestrictionModalVisible(page) + expect(isVisible).toBe(true)
  *
+ * When Steps - Filters:
+ *   "I filter results by {string} checkbox"
+ *     → ResultsPage.filterByCheckboxOption(option)
+ *
+ *   "I filter airline results by {string} checkbox"
+ *     → Results.filterAirlineByCheckboxOption(page, option)
+ *
  * Then Steps - Filters:
  *   "the reset filters button should be visible and disabled"
  *     → Results.validateResetFiltersButtonIsVisibleAndDisabled(page)
@@ -126,6 +133,19 @@ Then("the flight capacity restriction modal should be visible", async function (
   logger.info("Verifying flight capacity restriction modal is visible");
   const isVisible = await Results.isFlightCapacityRestrictionModalVisible(this.page);
   expect(isVisible).toBe(true);
+});
+
+// ===== WHEN STEPS - FILTERS =====
+
+When("I filter results by {string} checkbox", async function (option) {
+  logger.info("Filtering results by checkbox", { option });
+  const resultsPage = new ResultsPage(this.page);
+  await resultsPage.filterByCheckboxOption(option);
+});
+
+When("I filter airline results by {string} checkbox", async function (option) {
+  logger.info("Filtering airline results by checkbox", { option });
+  await Results.filterAirlineByCheckboxOption(this.page, option);
 });
 
 // ===== THEN STEPS - FILTERS =====

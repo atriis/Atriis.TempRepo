@@ -47,6 +47,16 @@
  *     → CartPage.clickDropdownOption(page, option)
  *   "I click the extras arrow button"
  *     → CartPage.clickArrowButtonExtras(page)
+ *   "I click add seats in extras"
+ *     → CartPage.clickAddSeatsButton()
+ *   "I wait for the seat map to load"
+ *     → CartPage.waitForSeatMapToLoad()
+ *   "I select the first available flight seat"
+ *     → Cart.selectFirstAvailableFlightSeat(page)
+ *   "I extract seat price in seat map drawer"
+ *     → Cart.extractSeatPriceFromDrawer(page) → this.seatPrice
+ *   "I save and close seat map drawer"
+ *     → CartPage.saveAndCloseSeatMapDrawer()
  *
  * Then Steps:
  *   "I successfully cancel the trip"
@@ -61,6 +71,8 @@
  *     → Cart.hoverAndGetOOPTooltipTextInCart(page) + expect(actualText).toBe(expectedText)
  *   "the baggage green icon should be visible"
  *     → CartPage.getBaggageGreenIcon() + expect(icon).toBeVisible({ timeout: 30000 })
+ *   "the total price in cart is equal to total price in cart before seats + seats price"
+ *     → extractPriceFromLocation(index 4, cart) vs this.extractedPrices[0] + this.seatPrice
  *
  * ========================
  */
@@ -73,6 +85,8 @@ const Cart = require("@dsl/Cart");
 const { CartPage } = require("@pages/CartPage");
 const tripStatus = require("@data/tripStatus.json");
 const logger = require("@utils/logger").child("Cart");
+const { expectSumToBeEqual } = require("../../src/assertions/numberAssertions");
+const { extractPriceFromLocation } = require("../../src/utils/priceExtraction");
 
 setDefaultTimeout(120000);
 
@@ -184,6 +198,35 @@ When("I click the extras arrow button", async function () {
   await cartPage.clickArrowButtonExtras();
 });
 
+When("I click add seats in extras", async function () {
+  logger.info("Clicking 'Add seats' button in extras");
+  const cartPage = new CartPage(this.page);
+  await cartPage.clickAddSeatsButton();
+});
+
+When("I wait for the seat map to load", async function () {
+  logger.info("Waiting for seat map to load");
+  const cartPage = new CartPage(this.page);
+  await cartPage.waitForSeatMapToLoad();
+});
+
+When("I select the first available flight seat", async function () {
+  logger.info("Selecting first available flight seat with a price");
+  await Cart.selectFirstAvailableFlightSeat(this.page);
+});
+
+When("I extract seat price in seat map drawer", async function () {
+  this.seatPrice = await Cart.extractSeatPriceFromDrawer(this.page);
+  logger.info("Extracted seat price from seat map drawer", { seatPrice: this.seatPrice });
+  console.log(`[Seat Price] ${this.seatPrice}`);
+});
+
+When("I save and close seat map drawer", async function () {
+  logger.info("Saving and closing seat map drawer");
+  const cartPage = new CartPage(this.page);
+  await cartPage.saveAndCloseSeatMapDrawer();
+});
+
 When("I extract cancellation policy from cart", async function () {
   logger.info("Extracting cancellation policy from cart");
   this.cartCancellationPolicy = await Cart.getCancellationPolicyFromCart(this.page);
@@ -191,6 +234,23 @@ When("I extract cancellation policy from cart", async function () {
 });
 
 // ===== THEN STEPS =====
+
+Then("the total price in cart is equal to total price in cart before seats + seats price", async function () {
+  const { expect: pwExpect } = require("@playwright/test");
+  const cartPage = new CartPage(this.page);
+  const priceBeforeSeats = this.extractedPrices[0];
+  const seatPrice = this.seatPrice;
+
+  // Poll until the cart total updates to a value different from pre-seat price
+  let currentTotal;
+  await pwExpect(async () => {
+    currentTotal = await cartPage.getCartTotalPrice();
+    pwExpect(currentTotal).not.toBe(priceBeforeSeats);
+  }).toPass({ timeout: 20000 });
+
+  console.log(`[Price Assertion] Before seats: ${priceBeforeSeats}, Seat price: ${seatPrice}, Expected total: ${priceBeforeSeats + seatPrice}, Actual: ${currentTotal}`);
+  expectSumToBeEqual(priceBeforeSeats, seatPrice, currentTotal, "Cart total = flight price + seat price");
+});
 
 Then("I successfully cancel the trip", async function () {
   logger.info("Cancelling the trip successfully");

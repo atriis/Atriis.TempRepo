@@ -10,15 +10,16 @@ const SELECTORS = {
   RESULTS_BUTTON: ".btn.btn--primary",
   SHARE_MAIN_BUTTON: 'button.share-btn.mr-4',
   SHARE_QUOTE_RESULTS_BUTTON: '.share-btn.py-2',
-  SHARE_QUOTE_EMAIL_BUTTON: 'button:has(span:text("email"))'
+  SHARE_QUOTE_EMAIL_BUTTON: 'button:has(span:text("email"))',
+  FILTER_CHECKBOX_LABEL: 'label.el-checkbox',
+  FILTER_CHECKBOX_INNER: '.el-checkbox__input',
+  FILTER_VIEW_MORE_AIRLINES_EXPANDER: 'p.view-more-btn'
 };
 
 class ResultsPage {
   constructor(page) {
     this.page = page;
   }
-
-  // ===== LOCATOR HELPERS =====
 
   /**
    * Gets the "Add to trip" button locator.
@@ -57,7 +58,9 @@ class ResultsPage {
     return this.page.getByRole('button', { name: 'Reset Filters' });
   }
 
-  // ===== UI INTERACTIONS =====
+  getEditButton() {
+     return this.page.getByRole('button', { name: 'Edit' });
+  }
 
   /** Waits until the first "Select" button is visible */
   async waitForSelectText() {
@@ -180,13 +183,33 @@ class ResultsPage {
     return commonPage.getAmountPriceValue(index);
   }
 
-  getEditButton() {
-  return this.page.getByRole('button', { name: 'Edit' });
+  /**
+   * Clicks a filter checkbox identified by its label text.
+   * @param {string} option - The label text of the checkbox to click (e.g. 'Refundable')
+   */
+  async filterByCheckboxOption(option) {
+    if (typeof option !== 'string' || !option.trim()) {
+      throw new Error(`option must be a non-empty string, got: ${typeof option}`);
+    }
+    const checkbox = this.page
+      .locator(SELECTORS.FILTER_CHECKBOX_LABEL, { has: this.page.locator(`p:text-is('${option}')`) })
+      .locator(SELECTORS.FILTER_CHECKBOX_INNER)
+      .first();
+    await checkbox.waitFor({ state: 'visible' });
+    await checkbox.click();
   }
 
   async clickEditButton() {
-  await this.getEditButton().waitFor({ state: 'visible' }); 
-  await this.getEditButton().click();
+     await this.getEditButton().waitFor({ state: 'visible' }); 
+     await this.getEditButton().click();
+ }
+
+ async clickViewMoreAirlinesExpanderIfVisible() {
+    const expander = this.page.locator(SELECTORS.FILTER_VIEW_MORE_AIRLINES_EXPANDER);
+    const isVisible = await expander.isVisible();
+    if (isVisible) {
+      await expander.click();
+    }
  }
 
 } 

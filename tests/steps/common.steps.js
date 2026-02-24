@@ -150,6 +150,7 @@ When("I extract the price at index {int} from {string}", async function (index, 
   this.extractedPrices.push(price);
   
   logger.info("Extracted price", { location, price });
+  console.log(`[Price] index=${index} location="${location}" → ${price}`);
 });
 
 Then("I should see a success notification", async function () {

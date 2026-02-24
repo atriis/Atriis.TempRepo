@@ -238,7 +238,26 @@ const Results = {
     await expect(resetButton).toBeDisabled();
     
     return { isVisible: true, isDisabled: true };
-  }
+  },
+
+  /**
+   * Clicks a filter checkbox by its label text.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} option - The label text of the checkbox (e.g. 'Iberia')
+   * @returns {Promise<{filtered: boolean, option: string}>}
+   */
+  async filterAirlineByCheckboxOption(page, option) {
+    if (!page) throw new Error('page is required');
+    if (typeof option !== 'string' || !option.trim()) {
+      throw new Error(`option must be a non-empty string, got: ${typeof option}`);
+    }
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    await resultsPage.clickViewMoreAirlinesExpanderIfVisible(); // Ensure all airline options are visible before filtering
+    await resultsPage.filterByCheckboxOption(option);
+    return { filtered: true, option };
+  },
+
 };
 
 module.exports = Results;

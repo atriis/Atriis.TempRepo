@@ -108,6 +108,23 @@ const Cart = {
     return cartPage.getCancellationPolicyFromCart();
   },
 
+  /**
+   * Extracts the seat price from the seat map drawer footer.
+   * Reads raw text from the Page Object, then parses to a numeric value.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number|null>} The seat price as a float
+   */
+  async extractSeatPriceFromDrawer(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    const cartPage = getPageObject(page, CartPage);
+    const text = await cartPage.getSeatPriceTextFromDrawer();
+    const cleaned = text.replace(/[^0-9.,]/g, '').replace(',', '.');
+    return parseFloat(cleaned) || null;
+  },
+
 
   /**
    * Asserts that the booking status label matches the expected status.
@@ -405,6 +422,37 @@ const Cart = {
 
     const status = await cartPage.getBookingStatus({ page });
     return { held: true, status };
+  },
+
+  /**
+   * Selects the first available seat with a price (containing $, €, or £).
+   * Clicks the .is-flex ancestor div which carries the Vue handleSeatSelect click handler.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async selectFirstAvailableFlightSeat(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const selected = await page.evaluate((seatSelector) => {
+      const seatElements = Array.from(document.querySelectorAll(seatSelector));
+      const eligibleSeat = seatElements.find(seat => {
+        const span = seat.querySelector('span');
+        return span && /[$€£]/.test(span.textContent);
+      });
+      if (!eligibleSeat) {
+        return false;
+      }
+      const clickTarget = eligibleSeat.closest('.is-flex') || eligibleSeat;
+      clickTarget.click();
+      return true;
+    }, CART_SELECTORS.SEAT_ELEMENT);
+
+    if (!selected) {
+      throw new Error('No eligible seats found with a price containing $, €, or £');
+    }
   },
 
   /**

@@ -44,6 +44,12 @@ const SELECTORS = {
   EDIT_EXTRAS_BUTTON: ".extra__btns", //All edit buttons in extras section have the same class, so we will use nth(index) to click the right one when needed
   EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span', // The field that shows selected extra option
   EXTRAS_ARROW_BUTTON: '.px-4.ticket-bottom.py-4 .el-icon.el-collapse-item__arrow', // Arrow button to expand/collapse extras information
+  ADD_SEATS_BUTTON: 'button:has-text("Add Seats")', // Button to open seat selection (text from $t('btn.add') + $t('common.seats'))
+  SEAT_MAP_CONTAINER: '.deck-wrapper', // Appears only when seat map data is loaded (v-if="!isLoading && seatsMap.length > 0")
+  SEAT_ELEMENT: '.seat', // div.seat inside plane-seat.vue component
+  SEAT_MAP_PRICE: '.total-sum-wrapper .price', // Price element in the seat map footer (app-price component)
+  SEAT_MAP_SAVE_CLOSE_BUTTON: 'button:has-text("Save And Close")', // Save & Close button in seat map drawer
+  CART_TOTAL_PRICE: '.price-total .amount', // Grand total in the cart summary sidebar (trip-summary.vue)
   NUMBER_OF_BAGGAGE_DROPDOWN_FIELD: "//span[normalize-space()='Number of baggage']", // XPath used due to complex dropdown structure - TODO: adjust when we have a data-test-id selector.
   DROPDOWN_OPTION: 'li.el-select-dropdown__item', // Dropdown option selector (used with hasText filter for partial matching)
   GREEN_ICON_BAGGAGE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green",  // Green icon next to added baggage
@@ -616,6 +622,52 @@ class CartPage {
     await this.page.locator(SELECTORS.EXTRAS_ARROW_BUTTON).click();
   }
 
+  /**
+   * Clicks the 'Add seats' button in the extras section.
+   */
+  async clickAddSeatsButton() {
+    await this.page.locator(SELECTORS.ADD_SEATS_BUTTON).first().waitFor({ state: 'visible', timeout: 15000 });
+    await this.page.locator(SELECTORS.ADD_SEATS_BUTTON).first().click();
+  }
+
+  /**
+   * Waits for the seat map to load and be visible.
+   */
+  async waitForSeatMapToLoad() {
+    await this.page.locator(SELECTORS.SEAT_MAP_CONTAINER).first().waitFor({ state: 'visible', timeout: 30000 });
+  }
+
+  /**
+   * Gets the raw seat price text shown in the seat map drawer footer.
+   * @returns {Promise<string>} The raw price text (e.g. "€40.48")
+   */
+  async getSeatPriceTextFromDrawer() {
+    const priceEl = this.page.locator(SELECTORS.SEAT_MAP_PRICE).first();
+    await priceEl.waitFor({ state: 'visible', timeout: 15000 });
+    return (await priceEl.innerText()).trim();
+  }
+
+  /**
+   * Clicks the 'Save And Close' button in the seat map drawer.
+   */
+  async saveAndCloseSeatMapDrawer() {
+    const btn = this.page.locator(SELECTORS.SEAT_MAP_SAVE_CLOSE_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout: 15000 });
+    await btn.click();
+  }
+
+  /**
+   * Gets the cart grand total price from the trip summary sidebar.
+   * Uses the .price-total .amount selector from trip-summary.vue.
+   * @returns {Promise<number|null>} The total price as a numeric value
+   */
+  async getCartTotalPrice() {
+    const totalEl = this.page.locator(SELECTORS.CART_TOTAL_PRICE).first();
+    await totalEl.waitFor({ state: 'visible', timeout: 15000 });
+    const text = await totalEl.innerText();
+    const match = text.replace(/[^0-9.,]/g, '').replace(',', '.');
+    return parseFloat(match) || null;
+  }
 }
 // Export CartPage and SELECTORS for use in tests and DSL
 module.exports = {
