@@ -87,6 +87,34 @@ function expectSumToBeEqual(
   ).toBe(expected);
 }
 
+/**
+ * Asserts that (a + b) is within tolerance of expectedSum
+ */
+function expectSumToBeEqualWithTolerance(
+  valueA,
+  valueB,
+  expectedSum,
+  tolerance = 0.02,
+  label = 'Sum'
+) {
+  const a = toNumber(valueA, `${label} (value A)`);
+  const b = toNumber(valueB, `${label} (value B)`);
+  const expected = toNumber(expectedSum, `${label} (expected)`);
+  const tol = toNumber(tolerance, `${label} (tolerance)`);
+
+  if (tol < 0) {
+    throw new Error(`${label} tolerance must be >= 0, got: ${tol}`);
+  }
+
+  const actualSum = a + b;
+  const delta = Math.abs(actualSum - expected);
+
+  expect(
+    delta,
+    `${label}: expected ${a} + ${b} to be within ${tol} of ${expected}, but got ${actualSum}`
+  ).toBeLessThanOrEqual(tol);
+}
+
 module.exports = {
   expectNumbersToBeEqual,
   expectNumberToBeGreaterThan,
@@ -94,4 +122,5 @@ module.exports = {
   expectNumberToBeLessThan,
   expectNumberToBeLessThanOrEqual,
   expectSumToBeEqual,
+  expectSumToBeEqualWithTolerance,
 };
