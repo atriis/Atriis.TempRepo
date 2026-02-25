@@ -213,7 +213,6 @@ const Results = {
     }
     
     const resultsPage = getPageObject(page, ResultsPage);
-    await resultsPage.waitForAddToTripText(); // Ensure results are loaded before checking OOP tooltip
     const commonPage = getPageObject(page, CommonPage);
     await commonPage.waitForOOPVisible();
     await commonPage.hoverOverOOPInfoIcon();

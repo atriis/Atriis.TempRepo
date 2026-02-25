@@ -43,7 +43,7 @@ class CommonPage {
    * @returns {Locator} Playwright locator for the OOP info icon
    */
   getOOPInfoIcon() {
-    return this.page.locator("span.info-icon", { hasText: "info" }).nth(1);
+    return this.page.locator(SELECTORS.OOP_INFO).locator("span.info-icon", { hasText: "info" }).first();
   }
 
   getShoppingCartIcon() {
