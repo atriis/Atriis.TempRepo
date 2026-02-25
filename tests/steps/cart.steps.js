@@ -227,6 +227,11 @@ When("I save and close seat map drawer", async function () {
   await cartPage.saveAndCloseSeatMapDrawer();
 });
 
+When("I select default delivery method and save", async function () {
+  logger.info("Selecting default delivery method (atriis - on site travel management printer)");
+  await Cart.selectDefaultDeliveryMethod(this.page);
+});
+
 When("I extract cancellation policy from cart", async function () {
   logger.info("Extracting cancellation policy from cart");
   this.cartCancellationPolicy = await Cart.getCancellationPolicyFromCart(this.page);

@@ -11,3 +11,7 @@ Feature: Evolvi One Way Add To Cart
     When I search for a one way Evolvi train from "licTo105"
     And I add an Evolvi one way to the trip
     Then the booking status should be "Pending booking"
+    And I select default delivery method and save
+    When I proceed to checkout
+    And I complete the booking
+    Then the booking status should be "Ticketing Complete"

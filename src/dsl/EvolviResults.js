@@ -29,8 +29,6 @@ const EvolviResults = {
     await resultsPage.waitForOutboundText();
     await EvolviResults.selectCheapestSuggestedFare(page);
 
-    await Results.waitAndClickAddToTripButton(page);
-
     return { workflowCompleted: true, selected: true };
   },
 

@@ -236,6 +236,7 @@ jobs:
           RETRY_DELAY: "2000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMTRAK_USER_ONE_EMAIL: ${{ secrets.AMTRAK_USER_ONE_EMAIL }}
+          EVOLVI_USER_ONE_EMAIL: ${{ secrets.EVOLVI_USER_ONE_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Rails Results

@@ -475,6 +475,28 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     return await cartPage.getPassportDetailsText(index);
   },
+
+  /**
+   * Selects the default (first) delivery method for UK Rail tickets and saves.
+   * Waits for the delivery method section to load, clicks the clickable trigger,
+   * waits for the title to appear, selects the first radio button option, 
+   * and saves the selection.
+   * 
+   * @param {import('playwright').Page} page - Playwright page instance
+   */
+  async selectDefaultDeliveryMethod(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForDeliveryMethodSection();
+    await cartPage.clickDeliveryMethodClickable();
+    await cartPage.waitForDeliveryMethodTitle();
+    await cartPage.selectFirstDeliveryMethod();
+    await cartPage.clickSaveButton();
+    await cartPage.waitForDeliveryMethodGreenIcon();
+  },
 };
 
 

@@ -10,7 +10,7 @@ const SELECTORS = {
 
   // Cart general selectors
   TERMS_CHECKBOX: ".el-checkbox__inner",
-  PROCEED_TO_CHECKOUT_TEXT: ".btn-container span",
+  PROCEED_TO_CHECKOUT_BUTTON: ".btn-container:has-text('Proceed to Checkout')",
   QUOTE_STATUS_LABEL: ".app-label--quote",
   HOLD_BUTTON: ".btn--default.mt-2",
 
@@ -53,6 +53,13 @@ const SELECTORS = {
   NUMBER_OF_BAGGAGE_DROPDOWN_FIELD: "//span[normalize-space()='Number of baggage']", // XPath used due to complex dropdown structure - TODO: adjust when we have a data-test-id selector.
   DROPDOWN_OPTION: 'li.el-select-dropdown__item', // Dropdown option selector (used with hasText filter for partial matching)
   GREEN_ICON_BAGGAGE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green",  // Green icon next to added baggage
+  
+  // Delivery Method (UK Rail) selectors
+  DELIVERY_METHOD_SECTION: ".uk-rail-delivery-method",
+  DELIVERY_METHOD_CLICKABLE: ".uk-rail-delivery-method .is-clickable",
+  DELIVERY_METHOD_TITLE: ".uk-rail-delivery-method .card-title",
+  DELIVERY_METHOD_FIRST_RADIO: ".uk-rail-delivery-method .el-radio-group > :nth-child(1) .el-radio__inner",
+  GREEN_ICON_DELIVERY_METHOD: ".uk-rail-delivery-method .material-symbols-outlined",
 };
 
 class CartPage {
@@ -96,7 +103,7 @@ class CartPage {
    * @returns {Promise<string>} The booking status text
    */
   async getBookingStatus({ timeout = 30000, page = this.page } = {}) {
-    const locator = page.locator(SELECTORS.QUOTE_STATUS_LABEL);
+    const locator = page.locator(SELECTORS.QUOTE_STATUS_LABEL).first();
     await locator.waitFor({ state: 'visible', timeout });
     return (await locator.innerText()).trim();
   }
@@ -247,25 +254,23 @@ class CartPage {
 
   /**
    * Waits until "Proceed to Checkout" is ready.
-   * Uses text validation to avoid clicking wrong buttons.
+   * Ensures button is visible and ready to click.
    */
   async waitForProceedToCheckout() {
-    const text = await getText(this.page, SELECTORS.PROCEED_TO_CHECKOUT_TEXT);
-    // Only wait if the button text matches exactly
-    if (text === "'Proceed to Checkout'") {
-      await waitForText(
-        this.page,
-        SELECTORS.PROCEED_TO_CHECKOUT_TEXT,
-        "Proceed to Checkout",
-      );
-    }
+    // Wait for button with exact text
+    await this.page.locator(SELECTORS.PROCEED_TO_CHECKOUT_BUTTON).waitFor({ 
+      state: 'visible', 
+      timeout: 10000 
+    });
   }
 
   /**
    * Clicks the Proceed to Checkout button.
+   * Uses text-based selector to ensure correct button.
    */
   async clickProceedToCheckout() {
-    await this.page.click(SELECTORS.PROCEED_TO_CHECKOUT_TEXT);
+    // Click the specific button container that has "Proceed to Checkout" text
+    await this.page.locator(SELECTORS.PROCEED_TO_CHECKOUT_BUTTON).click();
   }
 
   /**
@@ -667,6 +672,55 @@ class CartPage {
     const text = await totalEl.innerText();
     const match = text.replace(/[^0-9.,]/g, '').replace(',', '.');
     return parseFloat(match) || null;
+  }
+
+  /**
+   * Waits for the delivery method section to be visible.
+   * Used before interacting with delivery method options.
+   */
+  async waitForDeliveryMethodSection() {
+    await this.page.locator(SELECTORS.DELIVERY_METHOD_SECTION).waitFor({ state: 'visible', timeout: 30000 });
+  }
+
+  /**
+   * Waits for the delivery method section to be hidden.
+   * Used after saving delivery method to ensure panel has closed.
+   */
+  async waitForDeliveryMethodSectionHidden() {
+    await this.page.locator(SELECTORS.DELIVERY_METHOD_SECTION).waitFor({ state: 'hidden', timeout: 30000 });
+  }
+
+  /**
+   * Clicks the delivery method clickable element to expand/toggle the section.
+   */
+  async clickDeliveryMethodClickable() {
+    const element = this.page.locator(SELECTORS.DELIVERY_METHOD_CLICKABLE);
+    await element.waitFor({ state: 'visible', timeout: 15000 });
+    await element.click();
+  }
+
+  /**
+   * Waits for the delivery method title to be visible.
+   */
+  async waitForDeliveryMethodTitle() {
+    await this.page.locator(SELECTORS.DELIVERY_METHOD_TITLE).waitFor({ state: 'visible', timeout: 30000 });
+  }
+
+  /**
+   * Selects the first delivery method option via radio button.
+   */
+  async selectFirstDeliveryMethod() {
+    const radio = this.page.locator(SELECTORS.DELIVERY_METHOD_FIRST_RADIO);
+    await radio.waitFor({ state: 'visible', timeout: 15000 });
+    await radio.click();
+  }
+
+  /**
+   * Waits for the green success icon to appear next to delivery method.
+   * Indicates that the delivery method has been successfully saved.
+   */
+  async waitForDeliveryMethodGreenIcon() {
+    await this.page.locator(SELECTORS.GREEN_ICON_DELIVERY_METHOD).waitFor({ state: 'visible', timeout: 15000 });
   }
 }
 // Export CartPage and SELECTORS for use in tests and DSL
