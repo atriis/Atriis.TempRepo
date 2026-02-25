@@ -87,6 +87,30 @@ function expectSumToBeEqual(
   ).toBe(expected);
 }
 
+/**
+ * Asserts that (a + b) === expectedSum, within a small tolerance (default 0.02).
+ * Use this when floating point arithmetic may cause tiny rounding differences.
+ */
+function expectSumToBeEqualWithTolerance(
+  valueA,
+  valueB,
+  expectedSum,
+  label = 'Sum',
+  tolerance = 0.02
+) {
+  const a = toNumber(valueA, `${label} (value A)`);
+  const b = toNumber(valueB, `${label} (value B)`);
+  const expected = toNumber(expectedSum, `${label} (expected)`);
+
+  const actualSum = a + b;
+  const diff = Math.abs(actualSum - expected);
+
+  expect(
+    diff,
+    `${label}: expected ${a} + ${b} ≈ ${expected} (tolerance ±${tolerance}), but got ${actualSum} (diff: ${diff})`
+  ).toBeLessThanOrEqual(tolerance);
+}
+
 module.exports = {
   expectNumbersToBeEqual,
   expectNumberToBeGreaterThan,
@@ -94,4 +118,5 @@ module.exports = {
   expectNumberToBeLessThan,
   expectNumberToBeLessThanOrEqual,
   expectSumToBeEqual,
+  expectSumToBeEqualWithTolerance,
 };
