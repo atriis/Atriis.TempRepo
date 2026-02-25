@@ -85,7 +85,8 @@ const Cart = require("@dsl/Cart");
 const { CartPage } = require("@pages/CartPage");
 const tripStatus = require("@data/tripStatus.json");
 const logger = require("@utils/logger").child("Cart");
-const { expectSumToBeEqualWithTolerance } = require("../../src/assertions/numberAssertions");
+const { expectSumToBeEqual } = require("../../src/assertions/numberAssertions");
+const { extractPriceFromLocation } = require("../../src/utils/priceExtraction");
 
 setDefaultTimeout(120000);
 
@@ -248,7 +249,7 @@ Then("the total price in cart is equal to total price in cart before seats + sea
   }).toPass({ timeout: 20000 });
 
   console.log(`[Price Assertion] Before seats: ${priceBeforeSeats}, Seat price: ${seatPrice}, Expected total: ${priceBeforeSeats + seatPrice}, Actual: ${currentTotal}`);
-  expectSumToBeEqualWithTolerance(priceBeforeSeats, seatPrice, currentTotal, "Cart total = flight price + seat price");
+  expectSumToBeEqual(priceBeforeSeats, seatPrice, currentTotal, "Cart total = flight price + seat price");
 });
 
 Then("I successfully cancel the trip", async function () {

@@ -7,10 +7,6 @@
     "bosToNyp": {
       "from": "BOS",
       "to": "NYP"
-    },
-    "bosToWas": {
-      "from": "BOS",
-      "to": "WAS"
     }
   },
   "defaultRoute": "nypToWas"
