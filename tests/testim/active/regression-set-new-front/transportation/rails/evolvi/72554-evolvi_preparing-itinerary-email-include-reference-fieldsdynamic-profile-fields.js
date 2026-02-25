@@ -1,0 +1,198 @@
+/*
+ * Test Name: 72554 Evolvi - preparing itinerary email include reference fields/dynamic profile fields
+ * Description: Clone: 
+ * Status: Active
+ * Labels: Full Purchase,Regression,Pre Prod,Rail,Evolvi,Fare Rules,Terms and Conditions,more details,Transportation,Bug ticket,2026 plan 2
+ * Owner: Pedro Carneiro
+ * Created: 2026-01-13T04:28:03Z
+ * Updated: 2026-01-14T10:01:38Z
+ */
+ 
+"use strict";
+
+const { chromium } = require('playwright');
+
+(async () => {
+  const browser = await chromium.launch({headless: false});
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto("https://ui.gtp-staging.com/");
+  await Login('elisabete@testim.com');
+  await book_a_new_trip();
+  await Add_traveler___I_am_the_traveler();
+  await UK_Rail__Evolvi____One_way_search_lwith_parameters_('LIC', '105');
+  await close_mandatory_notification();
+  await Fare_rules_are_displayed_in_results_page();
+  await UK_Rail__Evolvi__add_to_cart();
+  await Pending_booking___wait_for_element_text();
+  await Validate_terms_and_conditions_before_booking();
+  await Delivery_Method();
+  await accept_and_proceed_to_checkout();
+  await book_and_finalize();
+  await Validate_ref_fields_on_email_sent();
+  await Trip_Cancelation();
+  await browser.close();
+})();
+
+// move to utils.js
+
+async function waitForText(page, selector, expectedText) {
+  await page.waitForFunction(([selector, expectedText]) => {
+    const element = document.querySelector(selector);
+    return element && element.textContent.replace(/[\r\n]+/g, "").trim() === expectedText.trim();
+  }, [selector, expectedText]);
+}
+
+async function isVisible(page, selector) {
+  try {
+    const elementHandle = await page.$(selector);
+    if(!elementHandle) {
+      return false;
+    }
+    const elementBox = await elementHandle.boundingBox();
+    return Boolean(elementBox);
+  } catch(err) {
+    return false;
+  }
+}
+async function sendSpecialCharacter(page, selector, key) {
+  const elementHandle = await page.$(selector);
+  await elementHandle.press(key);
+}
+
+function getText(page, selector) {
+  return page.evaluate((selector) => {
+    const element = document.querySelector(selector);
+    return element.textContent;
+  }, selector);
+}
+
+
+// shared steps \\
+async function Login(username) {
+  await page.type("#email", username);
+  await page.type("#psw", 'MAGA!$$2k26');
+  await page.click("#resetText");
+  await waitForText(page, ".logout-icon", 'logout');
+}
+
+async function book_a_new_trip() {
+  await page.waitFor(2000);
+  await page.waitFor(1000);
+  await page.click(".top-container > :nth-child(4) .material-symbols-outlined");
+}
+
+async function refresh_tab_if_there_is_no_star() {
+  if (await isVisible(page, ".star-icon")) {
+    return;
+  }
+  await page.reload();
+}
+
+async function Add_traveler___I_am_the_traveler() {
+  await waitForText(page, ".imt-btn", 'Add me');
+  await page.click(".imt-btn");
+  await page.waitForSelector(".star-icon", {state: "visible"});
+  await refresh_tab_if_there_is_no_star();
+}
+
+async function UK_Rail__Evolvi____One_way_search_lwith_parameters_(from, to) {
+  await page.click(".trip-index [xmlns='http://www.w3.org/2000/svg']");
+  await page.click("[x-placement='bottom-start'] .el-scrollbar__view > li:nth-of-type(1) span");
+  await page.click("[id='pane-rails'] [role='radiogroup'] > :nth-child(2) .el-radio__label");
+  await page.type("[aria-activedescendant='el-autocomplete-8871-item--1']", from);
+  await sendSpecialCharacter(page, "#el-id-7815-174", 'Tab');
+  await page.type("[aria-activedescendant='el-autocomplete-6209-item--1']", to);
+  await sendSpecialCharacter(page, "#el-id-7815-175", 'Tab');
+  await page.click("[placeholder='Pick-up date']");
+  await page.dblclick("[id='el-id-5703-1150'] [aria-label='Next Month'] [xmlns='http://www.w3.org/2000/svg']");
+  await page.click("[id='el-id-5703-1150'] tbody > :nth-child(4) > :nth-child(5)");
+  await page.click("form > :nth-child(4) > :nth-child(3) .el-checkbox__inner");
+  //TODO Please add an assertion here
+await isVisible(page, "[data-track='evolvi-search-split-ticket'] .el-checkbox__inner");
+  await page.click(".btn--primary");
+  // Converting a 'negative-element-validation' step has to be done manually at this time
+}
+
+async function close_mandatory_notification() {
+  await page.waitForSelector("body > :nth-child(16) .el-dialog__title", {state: "visible"});
+  await page.click("body > :nth-child(16) .el-checkbox__inner");
+  await page.click("body > :nth-child(16) .btn");
+}
+
+async function Fare_rules_are_displayed_in_results_page() {
+  await waitForText(page, ".results-header > :nth-child(2) .title-container h3", 'Outbound');
+  await page.click(".results-header .amount");
+  await page.hover(".results .amount");
+  await waitForText(page, ".more-info-btn", 'Full information');
+  await page.click(".more-info-btn");
+  await waitForText(page, ".rules", /ticket/);
+  await page.click("[aria-label='Full information'] [xmlns='http://www.w3.org/2000/svg']");
+}
+
+async function Pending_booking___wait_for_element_text() {
+  await waitForText(page, ".app-label", 'Pending booking');
+}
+
+async function UK_Rail__Evolvi__add_to_cart() {
+  await waitForText(page, ".selected-prices-container .btn", 'Add to trip');
+  await page.click(".uk-rail-results .btn");
+  await Pending_booking___wait_for_element_text();
+}
+
+async function Validate_terms_and_conditions_before_booking() {
+  await page.click(".terms > :nth-child(1)");
+  await waitForText(page, ".rules", /ticket/);
+  await page.click("[aria-label='Terms & Conditions'] .el-dialog__close");
+}
+
+async function Delivery_Method() {
+  await page.click(".uk-rail-delivery-method .is-clickable");
+  await page.click(".el-radio-group > :nth-child(1) .el-radio__inner");
+  await page.click("[id='pane-overview'] .btn--primary");
+}
+
+async function Accept__Terms___Conditions_() {
+  await page.click(".el-checkbox__inner");
+}
+
+async function Click_Proceed_to_Checkout() {
+  if (await getText(page, ".btn-container span") === "'Proceed to Checkout'") {
+    await waitForText(page, ".btn-container span", 'Proceed to Checkout');
+  }
+  await page.click(".btn-container span");
+}
+
+async function accept_and_proceed_to_checkout() {
+  await waitForText(page, ".payments-title", 'Trip overview');
+  await Accept__Terms___Conditions_();
+  await page.waitFor(1000);
+  await Click_Proceed_to_Checkout();
+}
+
+async function Click_Go_to_Trip() {
+  await waitForText(page, ".btn-container > :nth-child(1)", 'Go to trip');
+  await page.click(".btn-container > :nth-child(1)");
+}
+
+async function book_and_finalize() {
+  await waitForText(page, "h1", 'Booking details');
+  await page.waitFor(3000);
+  await page.click("[class^='btn--width'], [class*=' btn--width']");
+  await Click_Go_to_Trip();
+  await waitForText(page, ".payments-title", 'Trip overview');
+}
+
+async function Validate_ref_fields_on_email_sent() {
+  // Converting a 'email-validation-step' step has to be done manually at this time
+}
+
+async function Trip_Cancelation() {
+  await page.hover(".dropdowns-container .expand-icon");
+  await page.click(".share-popper > :nth-child(2)");
+  await waitForText(page, "[aria-label='Trip cancellation'] .el-dialog__title", /Trip cancellation/);
+  await page.waitFor(3000);
+  await page.click(".btn--primary");
+  await waitForText(page, ".msg-description", 'Your trip has been successfully cancelled');
+}
+
