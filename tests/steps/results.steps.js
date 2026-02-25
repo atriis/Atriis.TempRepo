@@ -31,10 +31,7 @@
  *     → Results.isOutOfPolicyIndicatorHiddenInResults(page) + expect(isHidden).toBe(true)
  *
  *   "the out of policy tooltip in results should be {string}"
- *     → Results.hoverAndGetOOPTooltipTextInResults(page) + expect(actualText).toBe(expectedText)
- *
- *   "the out of policy tooltip in results page should be {string}"
- *     → Results.hoverAndGetOOPTooltipTextInResults(page) + expect(actualText).toBe(expectedText)
+ *     → Results.verifyOOPTooltipTextInResults(page, expectedText)
  *
  * Then Steps - Flight Capacity:
  *   "the flight capacity restriction modal should be visible"
@@ -87,6 +84,12 @@ When("I select and add round trip journey to trip", async function () {
   await Results.clickSelectButtonRoundTripAndClickAddToTrip(this.page);
 });
 
+When("I wait for select text to be visible", async function () {
+  logger.info("Waiting for 'Select' button to be visible");
+  const resultsPage = new ResultsPage(this.page);
+  await resultsPage.waitForSelectText();
+});
+
 // ===== WHEN STEPS - FLIGHT CAPACITY MODALS =====
 
 When("I validate flight capacity modal and go back", async function () {
@@ -117,14 +120,8 @@ Then("the out of policy indicator should not be visible in results", async funct
 
 Then("the out of policy tooltip in results should be {string}", async function (expectedText) {
   logger.info("Verifying OOP tooltip in results", { expectedText });
-  const actualText = await Results.hoverAndGetOOPTooltipTextInResults(this.page);
-  expect(actualText).toBe(expectedText);
-});
-
-Then("the out of policy tooltip in results page should be {string}", async function (expectedText) {
-  logger.info("Verifying OOP tooltip in results page", { expectedText });
-  const actualText = await Results.hoverAndGetOOPTooltipTextInResults(this.page);
-  expect(actualText).toBe(expectedText);
+  const result = await Results.verifyOOPTooltipTextInResults(this.page, expectedText);
+  expect(result.matches).toBe(true);
 });
 
 // ===== THEN STEPS - FLIGHT CAPACITY =====

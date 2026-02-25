@@ -14,8 +14,9 @@ const SELECTORS = {
   GO_BACK_BUTTON: "button:has-text('Go back')",
 
   // 'Out of Policy' indicator
-  OOP_TOOLTIP_TEXT: ".mb-1",
+  OOP_TOOLTIP_TEXT: "[role='tooltip']:visible .mb-1",
   OOP_INFO: ".app-out-of-policy",
+  OOP_INFO_ICON: ".app-out-of-policy .info-icon",
 
   // Share email elements
   SHARE_EMAIL_ELEMENT: '.em_grey_txt',
@@ -43,7 +44,7 @@ class CommonPage {
    * @returns {Locator} Playwright locator for the OOP info icon
    */
   getOOPInfoIcon() {
-    return this.page.locator("span.info-icon", { hasText: "info" }).nth(1);
+    return this.page.locator(SELECTORS.OOP_INFO_ICON).first();
   }
 
   getShoppingCartIcon() {
@@ -85,10 +86,9 @@ class CommonPage {
    * Returns the trimmed text content or empty string if not found.
    */
   async getOOPTooltipText() {
-    await this.waitForOOPTooltipVisible();
-    const tooltipText = this.page
-      .locator(SELECTORS.OOP_TOOLTIP_TEXT);
-    return (await tooltipText.textContent())?.trim() ?? "";
+    const visiblePopper = this.page.locator(SELECTORS.OOP_TOOLTIP_TEXT).first();
+    await visiblePopper.waitFor({ state: 'visible', timeout: 10000 });
+    return (await visiblePopper.textContent())?.trim() ?? "";
   }
 
   /**

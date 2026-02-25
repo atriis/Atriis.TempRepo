@@ -202,22 +202,22 @@ const Results = {
   },
 
   /**
-   * Hovers over the Out of Policy info icon and gets tooltip text.
-   * Returns the tooltip text for validation in step definitions.
+   * Hovers over the OOP info icon and asserts the tooltip text matches the expected value.
    * @param {import('playwright').Page} page - Playwright page instance
-   * @returns {Promise<string>} The OOP tooltip text
+   * @param {string} expectedText - The expected tooltip text to compare against
+   * @returns {Promise<{matches: boolean, actualText: string}>}
    */
-  async hoverAndGetOOPTooltipTextInResults(page) {
-    if (!page) {
-      throw new Error('page is required');
-    }
-    
+  async verifyOOPTooltipTextInResults(page, expectedText) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedText !== 'string') throw new Error(`expectedText must be a string, got: ${typeof expectedText}`);
+
     const resultsPage = getPageObject(page, ResultsPage);
-    await resultsPage.waitForAddToTripText(); // Ensure results are loaded before checking OOP tooltip
+    await resultsPage.waitForSelectText(); // Ensure results are loaded before checking OOP tooltip
     const commonPage = getPageObject(page, CommonPage);
     await commonPage.waitForOOPVisible();
     await commonPage.hoverOverOOPInfoIcon();
-    return await commonPage.getOOPTooltipText();
+    const actualText = await commonPage.getOOPTooltipText();
+    return { matches: actualText === expectedText, actualText };
   },
 
   /**
