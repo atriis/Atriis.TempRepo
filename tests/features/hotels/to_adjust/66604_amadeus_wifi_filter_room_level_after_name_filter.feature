@@ -1,0 +1,23 @@
+# Test Name: 66604 Amadeus - can see wi fi in room level
+# Description: 
+# Status: Active
+# Labels: Hotel,Amenities,results,room level,Regression,Amadeus,No Amadeus Hotel Book,2026 plan 2
+# Owner: Shani Hadar
+# Created: 2025-09-09T07:14:32Z
+# Updated: 2025-09-09T07:23:59Z
+
+@regression @provider:amadeus
+Feature: 66604 Amadeus - Wi-Fi amenity filter works in room level after hotel name filter
+  As a corporate traveler
+  I want to filter hotel results by hotel name then filter rooms by Wi-Fi amenity
+  So that I can find a specific hotel that offers rooms with Wi-Fi
+
+  @priority:medium
+  Scenario: Wi-Fi filter in room level works after filtering hotels by name
+    Given I am logged in as "amadeus" "user_one" booking a new trip
+    And I have added myself as the traveler
+    When I search for a hotel in "LON" for 1 night
+    When I filter results by "Trafalgar" checkbox
+    And I select the first hotel result
+    # TODO: Create step "When I filter room results by Wi-Fi amenity" that calls DSL filterRoomsByWifi in RoomLevelResults.js
+    # TODO: Create step "Then only rooms with Wi-Fi should be displayed" that calls DSL verifyWifiRoomsOnly in RoomLevelResults.js
