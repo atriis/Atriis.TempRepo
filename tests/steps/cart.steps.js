@@ -86,7 +86,6 @@ const { CartPage } = require("@pages/CartPage");
 const tripStatus = require("@data/tripStatus.json");
 const logger = require("@utils/logger").child("Cart");
 const { expectSumToBeEqualWithTolerance } = require("../../src/assertions/numberAssertions");
-const { extractPriceFromLocation } = require("../../src/utils/priceExtraction");
 
 setDefaultTimeout(120000);
 
