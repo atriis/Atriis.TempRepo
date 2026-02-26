@@ -111,7 +111,7 @@ jobs:
       - run: mkdir -p test-results
 
       - name: Run Daily Flight Tests
-        run: npx cucumber-js tests/features/flights/daily_flights/ --parallel 3
+        run: npx cucumber-js tests/features/flights/daily_flights/ --parallel 4
         env:
           CI: "true"
           RETRY_COUNT: "2"
