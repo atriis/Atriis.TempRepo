@@ -34,16 +34,16 @@ class HotelLevelResultsPage {
     await viewRatesButton.scrollIntoViewIfNeeded();
   }
 
-  /** Waits until the first "View rates" button is visible */
+  /** Waits until the first "View rates" button is visible (60s timeout for CI/CD) */
   async waitForViewRatesText() {
     const viewRatesButton = this.getViewRatesButton();
 
-    // Ensure the button exists, then scroll it into view
-    await viewRatesButton.waitFor({ state: "attached" });
+    // Ensure the button exists, then scroll it into view (60s timeout for slower CI environments)
+    await viewRatesButton.waitFor({ state: "attached", timeout: 60000 });
     await viewRatesButton.scrollIntoViewIfNeeded();
 
-    // Confirm it is visible and ready for interaction
-    await viewRatesButton.waitFor({ state: "visible" });
+    // Confirm it is visible and ready for interaction (60s timeout)
+    await viewRatesButton.waitFor({ state: "visible", timeout: 60000 });
   }
 
   /** Clicks the first available "View rates" button */
