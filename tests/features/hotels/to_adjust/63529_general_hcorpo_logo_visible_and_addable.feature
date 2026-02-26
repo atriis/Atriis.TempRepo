@@ -19,5 +19,6 @@ Feature: 63529 General - hCorpo hotel logo visible and can be added to trip
     When I search for a hotel in "Ibis Styles Makkah" for 1 night
     And I select the first hotel result
     # TODO: Create step "Then the hCorpo logo should be visible in room level results" that calls DSL verifyHCorpoLogo in RoomLevelResults.js
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
+

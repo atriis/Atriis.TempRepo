@@ -20,9 +20,10 @@ Feature: 47159 Sabre - Reference fields required and loyalty number saved after 
     # TODO: Create step "When I fill in the reference fields" that calls DSL fillReferenceFields in Checkout.js
     When I filter results by "Sabre" checkbox
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
     # TODO: Create step "When I save my loyalty number {string} for hotel chain {string}" that calls DSL saveLoyaltyNumber in Trip.js
+

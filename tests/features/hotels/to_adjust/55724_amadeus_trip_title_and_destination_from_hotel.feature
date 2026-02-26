@@ -18,9 +18,10 @@ Feature: 55724 Amadeus - Trip title and destination set from hotel booking
     And I have added myself as the traveler
     When I search for a hotel in "Leonardo Plana Ashdod" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
     # TODO: Create step "Then the trip title should contain the hotel city" that calls DSL verifyTripTitle in Trip.js
     # TODO: Create step "Then the trip destination should be set to the hotel city" that calls DSL verifyTripDestination in Trip.js
+

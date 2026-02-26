@@ -19,10 +19,11 @@ Feature: 61590 Premier Inn - Book hotel for 2 travelers 2 nights
     # TODO: Create step "When I add a second traveler by name {string}" - needs DSL method addSecondTraveler
     When I search for a hotel in "London" for 2 nights
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "Then the cart should show 2 nights and 2 rooms badge" calls DSL verify2Nights2RoomsBadge in Cart.js
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    When I cancel the trip
+    Then I successfully cancel the trip
+

@@ -18,9 +18,10 @@ Feature: 64405 Booking.com - Credit card validation without cardholder name and 
     And I have added a random guest traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I click add payment method button
     And I click add card details button
     # TODO: Create step "When I fill in card number and expiry without cardholder name and country" that calls DSL fillPartialCardDetails in CartFop.js
     # TODO: Create step "Then the card form should show validation errors for required fields" that calls DSL verifyCardValidationErrors in CartFop.js
+

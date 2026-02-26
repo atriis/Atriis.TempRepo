@@ -19,9 +19,10 @@ Feature: 23109 eHotel - Book hotel and verify provider label
     When I search for a hotel in "London" for 1 night
     # TODO: Create step "Then I should see a "Provided by" label in hotel level results" that calls DSL method verifyProvidedByLabel in HotelLevelResults.js
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    When I cancel the trip
+    Then I successfully cancel the trip
+

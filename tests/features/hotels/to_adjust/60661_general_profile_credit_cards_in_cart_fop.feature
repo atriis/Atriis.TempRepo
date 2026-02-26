@@ -18,7 +18,8 @@ Feature: 60661 General - Credit cards from user profile are available in cart FO
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I click add payment method button
     # TODO: Create step "Then {int} profile credit cards should be visible in the FOP panel" that calls DSL verifyProfileCardCount with 2 in CartFop.js
+

@@ -23,4 +23,5 @@ Feature: 39426 Expedia - Book with virtual credit card (billback) and cancel
     # TODO: Create step "When I select the virtual credit card as payment method" that calls DSL method selectVirtualCard in CartFop.js
     When I proceed to checkout
     And I complete the booking
-    When I cancel the trip
+    Then I successfully cancel the trip
+

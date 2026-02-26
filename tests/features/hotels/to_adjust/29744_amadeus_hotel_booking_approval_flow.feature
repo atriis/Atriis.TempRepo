@@ -18,7 +18,7 @@ Feature: 29744 Amadeus - Hotel booking with approval flow
     And I have added traveler by name "Shani Corp"
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
@@ -26,3 +26,4 @@ Feature: 29744 Amadeus - Hotel booking with approval flow
     # TODO: Create step "Then the approval request should be visible to the approvers" that calls DSL verifyApprovalVisible
     # TODO: Create step "When the approver approves the booking" that calls DSL method approveBooking in Approval.js
     # TODO: Create DSL file Approval.js with methods: approveBooking, rejectBooking, verifyApprovalSent
+

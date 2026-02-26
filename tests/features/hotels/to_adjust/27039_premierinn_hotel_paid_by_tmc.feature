@@ -18,6 +18,7 @@ Feature: 27039 Premier Inn - Hotel paid by TMC
     And I have added myself as the traveler
     When I search for a hotel in "Premier Inn London" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "Then the payment type should be "Paid by TMC"" that calls DSL method verifyPaymentType in Cart.js
+

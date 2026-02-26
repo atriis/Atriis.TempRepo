@@ -18,11 +18,12 @@ Feature: 73877 eHotel - Web confirmation email sent based on traveler exception 
     And I have added traveler by name "Eliyahu Tel"
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "When I set the CVV for the selected payment card" that calls DSL setCVVForCard in CartFop.js
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
     # TODO: Create step "Then the web confirmation email should be sent according to the traveler exception rule" - hybrid API check via backend log
-    When I cancel the trip
+    Then I successfully cancel the trip
+

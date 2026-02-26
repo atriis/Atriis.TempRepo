@@ -18,7 +18,8 @@ Feature: 73594 Amadeus - Special request 120 character limit for Amadeus hotels
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "When I add a special request text of {int} characters" (120) that calls DSL addSpecialRequest in Cart.js
     # TODO: Create step "Then the special request field should accept up to {int} characters for Amadeus" (120) that calls DSL verifySpecialRequestLimit in Cart.js
+

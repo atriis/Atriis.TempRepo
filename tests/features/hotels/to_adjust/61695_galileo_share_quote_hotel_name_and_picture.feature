@@ -18,9 +18,10 @@ Feature: 61695 Galileo - Share quote email contains hotel name and picture
     And I have added myself as the traveler
     When I search for a hotel in "Ardoe House Hotel and Spa" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I click the share quote button
     And I send the share
     # TODO: Create step "Then the share quote email should contain the hotel name" that calls DSL verifyShareEmailHotelName in Share.js
     # TODO: Create step "Then the share quote email should contain the hotel picture" that calls DSL verifyShareEmailHotelPicture in Share.js
+

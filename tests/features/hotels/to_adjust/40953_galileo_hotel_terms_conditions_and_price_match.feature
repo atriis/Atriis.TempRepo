@@ -20,11 +20,12 @@ Feature: 40953 Galileo - Book hotel with terms and conditions and price verifica
     And I select the first hotel result
     # TODO: Create step "When I check terms and conditions in room level" that calls DSL checkTermsAndConditions in RoomLevelResults.js
     # TODO: Create step "When I extract the room price from room level results" that calls DSL extractRoomPrice in RoomLevelResults.js
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "When I check terms and conditions in cart" that calls DSL checkTermsAndConditions in Cart.js
     # TODO: Create step "Then the price in cart should match the price from room level results" that calls DSL comparePrices in Cart.js
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    When I cancel the trip
+    Then I successfully cancel the trip
+

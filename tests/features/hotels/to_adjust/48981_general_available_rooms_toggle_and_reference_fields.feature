@@ -20,6 +20,7 @@ Feature: 48981 General - Available rooms only toggle and reference field validat
     When I search for a hotel in "LON" for 1 night
     # TODO: Create step "When I fill in the reference fields" that calls DSL fillReferenceFields in Checkout.js
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "Then the reference fields should be visible in cart" that calls DSL verifyReferenceFieldsInCart in Cart.js
+

@@ -18,7 +18,7 @@ Feature: 48977 Galileo - PNR remark sent to GetTrip when user sends booking for 
     And I have added myself as the traveler
     When I search for a hotel in "Denver" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     # TODO: Create step "When I send the booking for approval" that calls DSL sendForApproval in Checkout.js
@@ -30,3 +30,4 @@ Feature: 48977 Galileo - PNR remark sent to GetTrip when user sends booking for 
     When I proceed to checkout
     # TODO: Create step "When I send the car booking for approval" that calls DSL sendForApproval in Checkout.js
     # TODO: Create step "Then the PNR remark for the car should also be sent to GetTrip" - hybrid: validate via GetTrip API log
+

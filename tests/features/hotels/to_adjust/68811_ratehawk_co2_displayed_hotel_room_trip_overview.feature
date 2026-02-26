@@ -20,6 +20,7 @@ Feature: 68811 Ratehawk - CO2 emissions displayed in hotel level, room level, an
     # TODO: Create step "Then the CO2 emissions should be displayed in hotel level results" that calls DSL verifyCO2InHotelLevel in HotelSearch.js
     And I select the first hotel result
     # TODO: Create step "Then the CO2 emissions should be displayed in room level results" that calls DSL verifyCO2InRoomLevel in RoomLevelResults.js
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "Then the CO2 emissions should be displayed in the trip overview" that calls DSL verifyCO2InTripOverview in Trip.js
+

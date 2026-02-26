@@ -18,11 +18,12 @@ Feature: 52657 Go Global - FOP validation and credit card booking for guest
     And I have added a random guest traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "Then the Go Global payment options should be valid" that calls DSL verifyGoGlobalFOP in CartFop.js
     When I add a credit card as payment method
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    When I cancel the trip
+    Then I successfully cancel the trip
+

@@ -18,8 +18,9 @@ Feature: 47191 General - Hotel paid by Traveler
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I add a credit card as payment method
     # TODO: Create step "Then the payment type should be "Paid by Traveler"" that calls DSL verifyPaymentType with "Paid by Traveler" in Cart.js
-    When I cancel the trip
+    Then I successfully cancel the trip
+

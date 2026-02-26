@@ -25,4 +25,5 @@ Feature: 37302 Ratehawk - Book refundable hotel with price verification
     # TODO: Create step "Then the price in cart should match the price from room level results" that calls DSL method comparePrices in Cart.js
     When I proceed to checkout
     And I complete the booking
-    When I cancel the trip
+    Then I successfully cancel the trip
+

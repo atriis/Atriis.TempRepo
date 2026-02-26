@@ -18,11 +18,12 @@ Feature: 37135 Premier Inn - Book hotel with CVV and Extras
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "When I set the CVV for the selected payment card" that calls DSL method setCVVForCard in CartFop.js
     # TODO: Create step "When I add Premier Inn extras to my booking" that calls DSL method addPremierInnExtras in Cart.js
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    When I cancel the trip
+    Then I successfully cancel the trip
+

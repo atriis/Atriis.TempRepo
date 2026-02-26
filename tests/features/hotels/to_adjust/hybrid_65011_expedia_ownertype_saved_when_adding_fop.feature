@@ -18,8 +18,9 @@ Feature: 65011 Expedia - OwnerType is saved correctly when adding FOP in cart
     And I have added myself as the traveler
     When I search for a hotel in "Budapest" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I add a credit card as payment method
     Then the payment method should be added
     # TODO: Create step "Then the OwnerType in the FOP record should be saved as the correct value" - hybrid: validate via API/log that OwnerType field is not empty or incorrect
+

@@ -18,10 +18,11 @@ Feature: 59023 Booking.com - Add new credit card without cardholder privilege re
     And I have added myself as the traveler
     When I search for a hotel in "The White Swan" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I click add payment method button
     And I click add card details button
     # TODO: Create step "When I fill in the credit card details" that calls DSL fillCreditCardDetails in CartFop.js
     # TODO: Create step "When I save the credit card" that calls DSL saveCreditCard in CartFop.js
     Then the payment method should be added
+

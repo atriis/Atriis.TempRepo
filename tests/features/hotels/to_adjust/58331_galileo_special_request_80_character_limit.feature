@@ -18,11 +18,12 @@ Feature: 58331 Galileo - Special request 80 character limit validation
     And I have added myself as the traveler
     When I search for a hotel in "Ardoe House Hotel and Spa" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "When I add a special request text of {int} characters" that calls DSL addSpecialRequest in Cart.js
     # TODO: Create step "Then the special request should be truncated to {int} characters" that calls DSL verifySpecialRequestLimit in Cart.js
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    When I cancel the trip
+    Then I successfully cancel the trip
+

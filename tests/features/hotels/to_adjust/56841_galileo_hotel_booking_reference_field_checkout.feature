@@ -18,10 +18,11 @@ Feature: 56841 Galileo - Hotel booking with financial reference field in checkou
     And I have added a random guest traveler
     When I search for a hotel in "The Ritz-Carlton Dubai" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     # TODO: Create step "When I fill in the reference field in checkout" that calls DSL fillReferenceFieldInCheckout in Checkout.js
     And I complete the booking
     Then the booking status should be "Confirmed"
-    When I cancel the trip
+    Then I successfully cancel the trip
+

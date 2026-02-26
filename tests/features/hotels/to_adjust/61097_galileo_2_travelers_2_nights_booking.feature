@@ -20,7 +20,7 @@ Feature: 61097 Galileo - Book hotel for 2 travelers, 2 nights with price verific
     When I search for a hotel in "Birmingham" for 2 nights
     # TODO: Create step "When I filter hotel results by name {string}" calls DSL filterHotelByName
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "Then the cart should show 2 nights and 2 rooms badge" calls DSL verify2Nights2RoomsBadge in Cart.js
     # TODO: Create step "When I extract the price from cart" calls DSL extractCartPrice in Cart.js
@@ -28,4 +28,5 @@ Feature: 61097 Galileo - Book hotel for 2 travelers, 2 nights with price verific
     And I complete the booking
     Then the booking status should be "Confirmed"
     # TODO: Create step "Then the confirmed booking price should match the cart price" calls DSL compareConfirmedPrice
-    When I cancel the trip
+    Then I successfully cancel the trip
+

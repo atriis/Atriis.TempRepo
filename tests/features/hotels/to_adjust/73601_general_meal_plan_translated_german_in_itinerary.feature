@@ -19,8 +19,9 @@ Feature: 73601 General - Meal plan translated to German in share itinerary
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
     # TODO: Create step "When I filter room results by breakfast included" that calls DSL filterRoomsByBreakfast in RoomLevelResults.js
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I click the share itinerary button
     And I send the share
     # TODO: Create step "Then the meal plan in the shared itinerary should be shown in German" that calls DSL verifyMealPlanTranslationGerman in Share.js
+

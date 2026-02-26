@@ -18,7 +18,7 @@ Feature: 61677 Travelodge - Title field required before proceeding to checkout
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "Then the title field should show a red border indicating it is required" that calls DSL verifyTitleFieldRequired in Cart.js
     # TODO: Create step "When I fill in the title field" that calls DSL fillTitleField in Cart.js
@@ -26,3 +26,4 @@ Feature: 61677 Travelodge - Title field required before proceeding to checkout
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
+

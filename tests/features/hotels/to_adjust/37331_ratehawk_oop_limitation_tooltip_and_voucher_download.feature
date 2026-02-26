@@ -19,10 +19,11 @@ Feature: 37331 Ratehawk - OOP limitation tooltip and voucher download
     When I search for a hotel in "123 Champs-Élysées" for 1 night
     And I select the first hotel result
     # TODO: Create step "Then the OOP limitation tooltip should be visible on hover in room level" that calls DSL verifyOOPLimitationTooltip in RoomLevelResults.js
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
     # TODO: Create step "When I download the hotel voucher" that calls DSL method downloadVoucher in Trip.js
     # TODO: Create step "Then the voucher should be downloaded successfully" that calls DSL method verifyVoucherDownloaded in Trip.js
+

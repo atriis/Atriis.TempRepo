@@ -22,4 +22,5 @@ Feature: 46189 Amadeus Value Hotel - Markup validation in room list and refundab
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     Then the hotel should appear as refundable in my cart
-    When I cancel the trip
+    Then I successfully cancel the trip
+

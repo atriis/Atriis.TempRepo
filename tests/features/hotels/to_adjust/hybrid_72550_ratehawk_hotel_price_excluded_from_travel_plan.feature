@@ -18,7 +18,7 @@ Feature: 72550 Ratehawk - Hotel price is excluded from the travel plan email
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "When I preview the itinerary and validate price is excluded" that calls DSL validateItineraryPreviewNoPricing in Share.js
     When I click the share itinerary button
@@ -27,3 +27,4 @@ Feature: 72550 Ratehawk - Hotel price is excluded from the travel plan email
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
+

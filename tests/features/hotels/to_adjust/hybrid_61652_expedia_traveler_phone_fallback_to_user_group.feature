@@ -18,15 +18,16 @@ Feature: 61652 Expedia - Traveler phone used when valid, user group phone used w
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
     # TODO: Create step "Then the phone number sent in the booking request should be <expected_phone>" - hybrid: validate via API/log that the <phone_source> phone was used
-    When I cancel the trip
+    Then I successfully cancel the trip
 
     Examples:
       | scenario                        | phone_source |
       | traveler with invalid phone     | user group   |
       | traveler with valid phone       | traveler     |
+

@@ -18,7 +18,7 @@ Feature: 73871 Expedia - Booking error message displayed and status not set to i
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "When I set the CVV for the selected payment card" that calls DSL setCVVForCard in CartFop.js
     When I proceed to checkout
@@ -26,3 +26,4 @@ Feature: 73871 Expedia - Booking error message displayed and status not set to i
     # TODO: Create step "Then a booking error message should be displayed" that calls DSL verifyBookingErrorMessage in Checkout.js
     # TODO: Create step "Then the booking status should not be "In Progress"" that calls DSL verifyStatusNotInProgress in Cart.js
     When I attempt to cancel the trip safely
+

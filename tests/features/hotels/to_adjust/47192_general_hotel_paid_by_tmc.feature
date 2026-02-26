@@ -18,7 +18,8 @@ Feature: 47192 General - Hotel paid by TMC
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "Then the payment type should be "Paid by TMC"" that calls DSL verifyPaymentType with "Paid by TMC" in Cart.js
-    When I cancel the trip
+    Then I successfully cancel the trip
+

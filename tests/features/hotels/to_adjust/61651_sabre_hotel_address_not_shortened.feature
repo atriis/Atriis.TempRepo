@@ -18,7 +18,7 @@ Feature: 61651 Sabre - Hotel address not shortened in More Details, Itinerary, a
     And I have added myself as the traveler
     When I search for a hotel in "Comfort Suites Monroeville" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "Then the hotel address should not be shortened in More Details" that calls DSL verifyFullAddressMoreDetails in Cart.js
     When I proceed to checkout
@@ -28,3 +28,4 @@ Feature: 61651 Sabre - Hotel address not shortened in More Details, Itinerary, a
     When I click the share itinerary button
     And I send the share
     # TODO: Create step "Then the hotel address should not be shortened in the Price Offer email" that calls DSL verifyFullAddressPriceOffer in Share.js
+

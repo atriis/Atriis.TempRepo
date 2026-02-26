@@ -18,10 +18,11 @@ Feature: 66654 Ratehawk - OOP policy not displayed for in-policy travelers
     And I have added traveler by name "Carla Carolina"
     When I search for a hotel in "London, UK" for 1 night
     Then the out of policy indicator should not be visible in results
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the out of policy indicator should not be visible in cart
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
     # TODO: Create step "Then the out of policy indicator should not be visible in the trip overview" that calls DSL verifyOOPNotInTripOverview in Trip.js
-    When I cancel the trip
+    Then I successfully cancel the trip
+

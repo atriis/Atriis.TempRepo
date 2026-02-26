@@ -18,9 +18,10 @@ Feature: 69255 Amadeus - Loyalty number added and visible in share itinerary
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "When I add my loyalty number {string} to the hotel booking" that calls DSL addLoyaltyNumber in Cart.js
     When I click the share itinerary button
     And I send the share
     # TODO: Create step "Then the loyalty number should be visible in the shared itinerary email" that calls DSL verifyLoyaltyInItinerary in Share.js
+

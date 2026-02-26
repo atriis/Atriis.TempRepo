@@ -18,9 +18,10 @@ Feature: 62899 Sabre - Book hotel for traveler with dash in last name
     And I have added traveler by name "Ana Antonoli-Carto"
     When I search for a hotel in "Denver" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    When I cancel the trip
+    Then I successfully cancel the trip
+

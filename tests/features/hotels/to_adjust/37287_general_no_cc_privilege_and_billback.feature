@@ -18,8 +18,9 @@ Feature: 37287 General - No other CC privilege and billback checkbox
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     # TODO: Create step "Then the "No other CC" privilege restriction should be applied in cart" that calls DSL verifyNoOtherCCPrivilege in CartFop.js
     # TODO: Create step "When I select the billback payment option" that calls DSL method selectBillback in CartFop.js
     # TODO: Create step "Then the billback checkbox should be checked" that calls DSL method verifyBillbackChecked in CartFop.js
+

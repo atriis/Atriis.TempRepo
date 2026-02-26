@@ -21,10 +21,11 @@ Feature: 28676 General - OOP hotel booking with justification and cancel
     And the out of policy tooltip in results should be "Out of policy"
     When I select the first hotel result
     # TODO: Create step "Then the out of policy indicator should be visible in room level results" that calls DSL method verifyOOPInRoomLevel
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the out of policy indicator should be visible in cart
     # TODO: Create step "When I select OOP justification option from the dropdown list" that calls DSL method selectOOPJustificationOption
     When I fill in the OOP justification text "Business requirement"
     When I proceed to checkout
     And I complete the booking
-    When I cancel the trip
+    Then I successfully cancel the trip
+
