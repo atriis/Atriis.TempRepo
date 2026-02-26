@@ -16,13 +16,17 @@ Feature: 61574 Expedia - Book hotel for 2 travelers 2 nights
   Scenario: 2 travelers booked in Expedia hotel for 2 nights
     Given I am logged in as "expedia" "user_one" booking a new trip
     And I have added myself as the traveler
-    # TODO: Create step "When I add a second traveler by name {string}" - needs DSL method addSecondTraveler
+    And I have added traveler by name "shani car"
     When I search for a hotel in "London" for 2 nights
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "Then the cart should show 2 nights and 2 rooms badge" calls DSL verify2Nights2RoomsBadge in Cart.js
+    Then the hotel should appear as refundable in cart
+    And I fill credit card cvv if needed
+    When I extract the price at index 0 from "cart"
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    When I cancel the trip
+    When I extract the price at index 0 from "cart"
+    Then the extracted price at index 0 should equal the extracted price at index 1 within tolerance
+    Then I successfully cancel the trip

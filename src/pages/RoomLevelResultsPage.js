@@ -12,6 +12,8 @@ const SELECTORS = {
   FIRST_ROOM_CANCELLATION_POLICY: ".room-list > :nth-child(2) .ticket-details p",
   MEMBER_BADGE: ".expedia-membership-badge-container",
   FIRST_ROOM_PRICE: ".room-list > :nth-child(2) .price-details-main",
+  MEMBER_PRICE: ".price-txt h4.amount",
+  REGULAR_PRICE_BEFORE_DISCOUNT: ".price-txt h6.amount-before-discount",
 };
 
 class RoomLevelResultsPage {
@@ -50,11 +52,21 @@ class RoomLevelResultsPage {
 
   // ===== UI INTERACTIONS =====
 
-  /** Confirms room results page is loaded */
+  /**
+   * Confirms room results page is loaded.
+   * Some providers do not show this element, so treat it as optional.
+   * @returns {Promise<boolean>} True if visible within timeout, else false.
+   */
   async waitForViewHotelOnMapText() {
-    await this.page
-      .locator(SELECTORS.VIEW_HOTEL_ON_MAP_BUTTON, { hasText: "View hotel on map" })
-      .waitFor({ state: "visible" });
+    const viewOnMap = this.page
+      .locator(SELECTORS.VIEW_HOTEL_ON_MAP_BUTTON, { hasText: "View hotel on map" });
+
+    try {
+      await viewOnMap.waitFor({ state: "visible", timeout: 5000 });
+      return true;
+    } catch (error) {
+      return false;
+    }
   }
 
   /**
@@ -116,16 +128,16 @@ class RoomLevelResultsPage {
     const priceContainer = this.page.locator(SELECTORS.FIRST_ROOM_PRICE).first();
     await priceContainer.waitFor({ state: "visible" });
 
-    // Get the discounted (member) price - this is in <h4 class="amount">
-    const memberPriceLocator = priceContainer.locator('.price-txt h4.amount').first();
+    // Get the discounted (member) price
+    const memberPriceLocator = priceContainer.locator(SELECTORS.MEMBER_PRICE).first();
     const memberPriceText = await memberPriceLocator.innerText();
     const memberPrice = parseFloat(memberPriceText.replace(/[^0-9.]/g, ''));
 
-    // Get the regular price before discount - shown in <h6 class="amount-before-discount">
+    // Get the regular price before discount (if shown)
     let regularPrice = memberPrice; // Default if no discount shown
     
     // Try to find the "before discount" price
-    const beforeDiscountLocator = priceContainer.locator('.price-txt h6.amount-before-discount').first();
+    const beforeDiscountLocator = priceContainer.locator(SELECTORS.REGULAR_PRICE_BEFORE_DISCOUNT).first();
     try {
       const beforeDiscountText = await beforeDiscountLocator.innerText({ timeout: 2000 });
       regularPrice = parseFloat(beforeDiscountText.replace(/[^0-9.]/g, ''));

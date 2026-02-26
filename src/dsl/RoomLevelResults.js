@@ -12,28 +12,26 @@ const Results = require("./Results");
 const RoomLevelResults = {
   /**
    * Adds a refundable hotel room to the cart.
-   * Returns the refundable label text for validation.
+   * Filters to refundable rooms first, then adds the first one available.
    */
   async addRefundableHotelRoomLevelToCart(page) {
     const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
     const resultsPage = getPageObject(page, ResultsPage);
-    const cartPage = getPageObject(page, CartPage);
 
     await roomLevelResultsPage.waitForViewHotelOnMapText();
-    await resultsPage.scrollToFirstAddToTripButton();
-    await resultsPage.waitForAddToTripText();
 
+    // Filter to refundable rooms FIRST
     await roomLevelResultsPage.clickRefundableCheckbox();
     await roomLevelResultsPage.verifyRefundableTagIsVisible();
+
+    // Now wait and scroll to the "Add to trip" button in the filtered list
+    await resultsPage.waitForAddToTripText();
+    await resultsPage.scrollToFirstAddToTripButton();
 
     await resultsPage.clickFirstAddToTripButton();
 
     // Handle optional conflict modal (uses DSL for consistency)
     await Results.clickProceedConflictQuoteModal(page);
-
-    // Get refundable text for validation
-    const labelText = await cartPage.getHotelRefundableText();
-    return { added: true, labelText };
   },
 
   async addFirstHotelRoomLevelToCart(page) {

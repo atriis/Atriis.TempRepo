@@ -304,7 +304,7 @@ Then("the baggage green icon should be visible", async function () {
   await expect(icon).toBeVisible({ timeout: 30000 });
 });
 
-Then("the hotel should appear as refundable in my cart", async function () {
+Then("the hotel should appear as refundable in cart", async function () {
   logger.info("Verifying hotel is refundable");
   await Cart.expectHotelToBeRefundableInCart(this.page);
 });

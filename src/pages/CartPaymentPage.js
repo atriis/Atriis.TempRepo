@@ -4,6 +4,8 @@
  */
 
 const SELECTORS = {
+  // CVV input field selector
+  CVV_INPUT: "[placeholder='cvv']",
   // "Add Payment Method" modal selectors
   DROPDOWN_WRAPPER: ".el-select__wrapper",
   CARD_HOLDER_NAME_INPUT: "[placeholder=\"Card holder name\"]",
@@ -272,6 +274,27 @@ class CartPaymentPage {
    */
   async clickBackArrow() {
     await this.page.locator(SELECTORS.BACK_ARROW).click();
+  }
+
+  /**
+   * Fills the CVV field if it is visible, otherwise does nothing.
+   * Used for payment flows where CVV may or may not be required.
+   * Types slowly (100ms per character) to ensure field registration.
+   * @param {string} cvv - CVV code (required)
+   * @throws {Error} If cvv is not provided
+   * @returns {Promise<void>}
+   */
+  async fillCVV(cvv) {
+    if (!cvv || typeof cvv !== 'string') {
+      throw new Error('cvv must be a non-empty string');
+    }
+    const cvvInput = this.page.locator(SELECTORS.CVV_INPUT);
+    if (await cvvInput.isVisible()) {
+      await cvvInput.click();
+      await cvvInput.clear();
+      // Type with 100ms delay between each character for stability
+      await this.page.keyboard.type(cvv, { delay: 100 });
+    }
   }
 }
 

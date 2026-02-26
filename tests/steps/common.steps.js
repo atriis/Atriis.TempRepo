@@ -17,6 +17,7 @@
  *   "the extracted price at index {int} should be less than {float}"
  *   "the extracted price at index {int} should be less than or equal to {float}"
  *   "the extracted price at index {int} should equal the extracted price at index {int}"
+ *   "the extracted price at index {int} should equal the extracted price at index {int} within tolerance"
  *   "the sum of extracted prices at index {int} and {int} should equal {float}"
  *   "the sum of extracted prices at index {int} and {int} should equal the extracted price at index {int}"
  *   "the sum of extracted prices at index {int} {string} and {int} {string} should equal the extracted price at index {int} {string}"
@@ -31,6 +32,7 @@ require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const {
   expectNumbersToBeEqual,
+  expectNumbersToBeEqualWithTolerance,
   expectNumberToBeGreaterThan,
   expectNumberToBeGreaterThanOrEqual,
   expectNumberToBeLessThan,
@@ -79,6 +81,13 @@ Then("the extracted price at index {int} should equal the extracted price at ind
   const priceA = this.extractedPrices[indexA];
   const priceB = this.extractedPrices[indexB];
   expectNumbersToBeEqual(priceA, priceB, `Price comparison [${indexA}] vs [${indexB}]`);
+});
+
+Then("the extracted price at index {int} should equal the extracted price at index {int} within tolerance", function (indexA, indexB) {
+  logger.info("Asserting extracted prices are equal within tolerance", { indexA, indexB, tolerance: 0.02 });
+  const priceA = this.extractedPrices[indexA];
+  const priceB = this.extractedPrices[indexB];
+  expectNumbersToBeEqualWithTolerance(priceA, priceB, 0.02, `Price comparison [${indexA}] vs [${indexB}]`);
 });
 
 Then("the sum of extracted prices at index {int} and {int} should equal {float}", function (indexA, indexB, expectedSum) {

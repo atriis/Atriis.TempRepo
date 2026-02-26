@@ -89,6 +89,26 @@ class CartPayment {
     const fop = getPageObject(page, CartPaymentPage);
     await expect(fop.getCardDetailsTitle()).toBeVisible();
   }
+
+  /**
+   * Fills the CVV field if it is visible, otherwise does nothing.
+   * Used for payment flows where CVV may or may not be required.
+   * @param {import('@playwright/test').Page} page - Playwright page instance
+   * @param {string} cvv - CVV code (defaults to "123")
+   * @throws {Error} If page is not provided
+   * @returns {Promise<void>}
+   */
+  static async fillCreditCardCVVifNeeded(page, cvv = "123") {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!cvv || typeof cvv !== 'string') {
+      throw new Error('cvv must be a non-empty string');
+    }
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.fillCVV(cvv);
+  }
 }
 
 module.exports = CartPayment;
+

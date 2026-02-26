@@ -15,6 +15,31 @@ function expectNumbersToBeEqual(actual, expected, label = 'Number') {
 }
 
 /**
+ * Asserts that actual and expected are within tolerance
+ */
+function expectNumbersToBeEqualWithTolerance(
+  actual,
+  expected,
+  tolerance = 0.02,
+  label = 'Number'
+) {
+  const a = toNumber(actual, `${label} (actual)`);
+  const e = toNumber(expected, `${label} (expected)`);
+  const tol = toNumber(tolerance, `${label} (tolerance)`);
+
+  if (tol < 0) {
+    throw new Error(`${label} tolerance must be >= 0, got: ${tol}`);
+  }
+
+  const delta = Math.abs(a - e);
+
+  expect(
+    delta,
+    `${label}: expected ${a} to be within ${tol} of ${e}`
+  ).toBeLessThanOrEqual(tol);
+}
+
+/**
  * Asserts that actual > expected
  */
 function expectNumberToBeGreaterThan(actual, expected, label = 'Number') {
@@ -117,6 +142,7 @@ function expectSumToBeEqualWithTolerance(
 
 module.exports = {
   expectNumbersToBeEqual,
+  expectNumbersToBeEqualWithTolerance,
   expectNumberToBeGreaterThan,
   expectNumberToBeGreaterThanOrEqual,
   expectNumberToBeLessThan,

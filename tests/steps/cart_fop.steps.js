@@ -68,6 +68,11 @@ When("I click the back arrow", async function () {
   await fop.clickBackArrow();
 });
 
+When("I fill credit card cvv if needed", async function () {
+  logger.info("Filling credit card CVV if needed");
+  await CartPayment.fillCreditCardCVVifNeeded(this.page);
+});
+
 // ===== THEN STEPS =====
 
 Then("the payment method should be added", async function () {
