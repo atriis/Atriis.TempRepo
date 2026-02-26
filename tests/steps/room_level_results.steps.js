@@ -19,6 +19,10 @@
  *   "the cancellation policy in the cart should match the cancellation policy from room level results"
  *     → Compares this.cartCancellationPolicy (set by "I extract cancellation policy from cart")
  *     → with this.roomLevelCancellationPolicy (set by extraction step) using strict equality
+ *   "I should see member rates displayed in room level results"
+ *     → RoomLevelResults.verifyMemberRatesDisplayed(page)
+ *   "the member rate price should be lower than the regular price"
+ *     → RoomLevelResults.compareMemberVsRegularPrice(page)
  *
  * ========================
  */
@@ -26,7 +30,9 @@
 require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
-const { RoomLevelResults, Cart } = require("../../src/dsl");
+const { RoomLevelResults } = require("../../src/dsl");
+const { ResultsPage } = require("../../src/pages/ResultsPage");
+const RoomLevelResultsPage = require("../../src/pages/RoomLevelResultsPage");
 const logger = require("@utils/logger").child("RoomResults");
 
 setDefaultTimeout(120000);
@@ -43,6 +49,15 @@ When("I add a refundable room to my cart", async function () {
 When("I add the first available room to my cart", async function () {
   logger.info("Adding first available room to cart");
   await RoomLevelResults.addFirstHotelRoomLevelToCart(this.page);
+});
+
+When("I wait for the first add to trip button in room level results to be visible", async function () {
+  logger.info("Waiting for first add to trip button in room level results to be visible");
+  const roomLevelResultsPage = new RoomLevelResultsPage(this.page);
+  const resultsPage = new ResultsPage(this.page);
+    await roomLevelResultsPage.waitForViewHotelOnMapText();
+    await resultsPage.scrollToFirstAddToTripButton();
+    await resultsPage.waitForAddToTripText();
 });
 
 // ========================================
@@ -68,4 +83,19 @@ Then("the cancellation policy in the cart should match the cancellation policy f
   }
   logger.info("Comparing cancellation policies", { roomResults: this.roomLevelCancellationPolicy, cart: this.cartCancellationPolicy });
   expect(this.cartCancellationPolicy).toBe(this.roomLevelCancellationPolicy);
+});
+
+Then("I should see member rates displayed in room level results", async function () {
+  logger.info("Verifying member rates are displayed in room level results");
+  const isVisible = await RoomLevelResults.verifyMemberRatesDisplayed(this.page);
+  logger.info("Member rates verification result", { isVisible });
+  expect(isVisible).toBe(true);
+});
+
+Then("the member rate price should be lower than the regular price", async function () {
+  logger.info("Comparing member rate price vs regular price");
+  const comparison = await RoomLevelResults.compareMemberVsRegularPrice(this.page);
+  logger.info("Price comparison result", comparison);
+  expect(comparison.hasDiscount).toBe(true);
+  expect(comparison.memberPrice).toBeLessThan(comparison.regularPrice);
 });

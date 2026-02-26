@@ -62,6 +62,52 @@ const RoomLevelResults = {
     const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
     return roomLevelResultsPage.getCancellationPolicy();
   },
+
+  /**
+   * Verifies that member rates are displayed in room level results.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<boolean>} True if member rates are visible
+   * @throws {Error} If page parameter is not provided or member rates are not displayed
+   */
+  async verifyMemberRatesDisplayed(page) {
+    if (!page) {
+      throw new Error('page parameter is required');
+    }
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const isVisible = await roomLevelResultsPage.isMemberBadgeVisible();
+    
+    if (!isVisible) {
+      throw new Error('Member rate badge is not visible in room level results');
+    }
+
+    return isVisible;
+  },
+
+  /**
+   * Compares member rate price vs regular price and verifies discount exists.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{memberPrice: number, regularPrice: number, hasDiscount: boolean}>}
+   * @throws {Error} If page parameter is not provided or member price is not lower
+   */
+  async compareMemberVsRegularPrice(page) {
+    if (!page) {
+      throw new Error('page parameter is required');
+    }
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const { memberPrice, regularPrice } = await roomLevelResultsPage.getPriceComparison();
+
+    const hasDiscount = memberPrice < regularPrice;
+    
+    if (!hasDiscount) {
+      throw new Error(
+        `Member price (${memberPrice}) is not lower than regular price (${regularPrice})`
+      );
+    }
+
+    return { memberPrice, regularPrice, hasDiscount };
+  },
 };
 
 module.exports = RoomLevelResults;

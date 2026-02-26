@@ -14,10 +14,12 @@ Feature: 18420 Expedia - Member rates are displayed
 
   @priority:high
   Scenario: Member rates are visible in hotel and room level results
-    Given I am logged in as "expedia" "user_one" booking a new trip
+    Given I am logged in as "expedia" "user_two" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Verona, Italy" for 1 night
-    # TODO: Create step "Then I should see member rates displayed in hotel level results" that calls a DSL method in HotelSearch.js
-    # TODO: Create step "When I select the first hotel result" - check if available or create DSL method verifyMemberRatesInHotelLevel
-    # TODO: Create step "Then I should see member rates displayed in room level results" that calls DSL method verifyMemberRatesInRoomLevel
-    # TODO: Create step "Then the member rate price should be lower than the regular price" that calls DSL method compareDiscountVsRegularPrice
+    And I wait to see view rates text in results page
+    Then I should see member rates displayed in hotel level results
+    When I select a hotel with member rates
+    And I wait for the first add to trip button in room level results to be visible
+    Then I should see member rates displayed in room level results
+    Then the member rate price should be lower than the regular price

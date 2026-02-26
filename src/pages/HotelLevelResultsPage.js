@@ -5,6 +5,10 @@ const { SELECTORS: RESULTS_SELECTORS } = require("@pages/ResultsPage");
  * Contains only UI-level interactions.
  */
 
+const SELECTORS = {
+  MEMBER_BADGE: ".expedia-membership-badge-container, .booking-com-membership-badge-container",
+};
+
 class HotelLevelResultsPage {
   constructor(page) {
     this.page = page;
@@ -45,6 +49,41 @@ class HotelLevelResultsPage {
   /** Clicks the first available "View rates" button */
   async clickFirstViewRatesButton() {
     await this.getViewRatesButton().click();
+  }
+
+  /**
+   * Verifies member rate badge is visible in hotel results
+   * @returns {Promise<boolean>} True if member badge is visible
+   */
+  async isMemberBadgeVisible() {
+    const badge = this.page.locator(SELECTORS.MEMBER_BADGE).first();
+    try {
+      await badge.waitFor({ state: "visible", timeout: 5000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Clicks on the first hotel that displays a member rate badge
+   * @throws {Error} If no hotel with member badge is found
+   */
+  async clickFirstHotelWithMemberRate() {
+    // Find all hotel previews that have a member badge
+    const hotelWithBadge = this.page.locator('.hotel-preview').filter({ has: this.page.locator(SELECTORS.MEMBER_BADGE) }).first();
+    
+    // Get the View Rates button within that hotel card
+    const viewRatesButton = hotelWithBadge.locator(`${RESULTS_SELECTORS.RESULTS_BUTTON}:has-text("View rates")`);
+    
+    await viewRatesButton.waitFor({ state: "visible", timeout: 10000 });
+    await viewRatesButton.scrollIntoViewIfNeeded();
+    await viewRatesButton.click();
+  }
+
+  /** Waits for View Rates text to be visible in results page */
+  async waitForViewRatesTextInResultsPage() {
+    await this.getViewRatesButton().waitFor({ state: "visible" });
   }
 }
 
