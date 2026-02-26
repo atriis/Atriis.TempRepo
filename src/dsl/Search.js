@@ -27,6 +27,23 @@ const Search = {
   },
 
   /**
+   * Removes the logged-in traveler from the trip.
+   * Returns whether the Add Me button becomes visible again.
+   */
+  async removeTraveler(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.waitForTravelerTagVisible();
+    await searchPage.clickRemoveTravelerButton();
+    await searchPage.waitForAddMeButton();
+
+    return { removed: true };
+  },
+
+  /**
    * Set a specific existing traveler by searching their name.
    * Returns whether the star icon is visible (indicates success).
    */

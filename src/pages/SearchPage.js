@@ -13,6 +13,7 @@ const SELECTORS = {
   ADD_TRAVELER_BUTTON: ".btn.btn--default.btn--size-default.btn--round.add-btn",
   ADD_ME_BUTTON: ".imt-btn",
   STAR_ICON: ".star-icon",
+  REMOVE_TRAVELER_BUTTON: ".btn--default .material-symbols-outlined",
 
   // Search and guest management
   SEARCH_BUTTON: "button.search-btn",
@@ -144,6 +145,36 @@ class SearchPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Waits for the traveler tag to be visible.
+   * @returns {Promise<void>}
+   */
+  async waitForTravelerTagVisible() {
+    await this.page.locator(SELECTORS.TRIP_TRAVELER_TAG).first().waitFor({ state: 'visible' });
+  }
+
+  /**
+   * Gets the remove traveler button within the traveler tag.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getRemoveTravelerButton() {
+    return this.page
+      .locator(SELECTORS.TRIP_TRAVELER_TAG)
+      .first()
+      .locator(SELECTORS.REMOVE_TRAVELER_BUTTON)
+      .first();
+  }
+
+  /**
+   * Clicks the remove traveler button.
+   * @returns {Promise<void>}
+   */
+  async clickRemoveTravelerButton() {
+    const removeButton = this.getRemoveTravelerButton();
+    await removeButton.waitFor({ state: 'visible' });
+    await removeButton.click();
   }
 
   // Searches and selects an existing traveler

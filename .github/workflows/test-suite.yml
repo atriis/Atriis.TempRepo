@@ -162,6 +162,7 @@ jobs:
           RETRY_DELAY: "2000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           GENERAL_FLOWS_HARRY_POTTER_USER_EMAIL: ${{ secrets.GENERAL_FLOWS_HARRY_POTTER_USER_EMAIL }}
+          AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Shell Results

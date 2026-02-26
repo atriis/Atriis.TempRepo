@@ -52,9 +52,17 @@ Given("I have added a random guest traveler", async function () {
   expect(result.starIconVisible, "Star icon should be visible after adding guest").toBe(true);
 });
 
+// ===== WHEN STEPS =====
+
 // ===== THEN STEPS =====
 
 Then("the search title should contain {string}", async function (expectedText) {
   logger.info("Validating search title contains text", { expectedText });
   await Search.validateSearchTitleContains(this.page, expectedText);
+});
+
+Then("I remove myself as the traveler", async function () {
+  logger.info("Removing traveler: I am the traveler");
+  const result = await Search.removeTraveler(this.page);
+  expect(result.removed, "Traveler should be removed").toBe(true);
 });
