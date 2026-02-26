@@ -5,7 +5,7 @@ Feature: 34527 Amadeus Value Hotels - Cancellation policy does not change when a
   So that the cancellation policy shown in room results matches what appears in the cart
 
   @priority:critical
-  Scenario: Cancellation policy remains refundable after adding hotel to cart
+  Scenario: Cancellation policy does not change when adding hotel to cart
     Given I am logged in as "amadeus_value_hotel" "joao" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Design Hotel Artemins" for 1 night

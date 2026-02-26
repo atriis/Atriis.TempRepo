@@ -59,11 +59,6 @@ When("I extract cancellation policy from first room level results", async functi
 // THEN STEPS - ASSERTIONS
 // ========================================
 
-Then("the hotel should appear as refundable in my cart", async function () {
-  logger.info("Verifying hotel is refundable");
-  await Cart.expectHotelToBeRefundableInCart(this.page);
-});
-
 Then("the cancellation policy in the cart should match the cancellation policy from room level results", async function () {
   if (!this.roomLevelCancellationPolicy) {
     throw new Error("No cancellation policy stored. Run 'I extract cancellation policy from first room level results' before this step.");
