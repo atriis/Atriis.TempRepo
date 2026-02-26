@@ -44,7 +44,11 @@ class CartPayment {
     await fop.waitForSaveCardModalButton();
     await fop.clickSaveCardModalButton();
     await fop.clickSaveCardButton();
-    //await fop.closeFOPModal();
+    // Close modal dialogs (tries multiple indices, each returns true/false if found)
+    // These are optional and may not exist depending on the payment flow
+    await fop.closeFOPModal(0); // First modal (if present)
+    await fop.closeFOPModal(1); // Second modal (if present)
+    await fop.closeFOPModal(2); // Third modal (if present)
   }
 
   /**

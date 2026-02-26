@@ -252,13 +252,25 @@ class CartPaymentPage {
   }
 
   /**
-   * Closes the FOP (Form of Payment) modal.
+   * Closes the FOP (Form of Payment) modal by index.
+   * Returns false silently if the modal close button is not found (optional modal).
    *
-   * Note: Uses nth(6) because multiple nested dialogs exist on the page
-   * and this targets the specific FOP modal close button.
+   * Note: Uses index because multiple nested dialogs exist on the page.
+   * Pass the correct nth index to target the specific FOP modal close button.
+   * @param {number} nth - Index of the close button (default: 1 for most cases)
+   * @returns {Promise<boolean>} True if modal was closed, false if button not found
    */
-  async closeFOPModal() {
-    await this.page.getByRole("button", { name: "Close this dialog" }).nth(6).click();
+  async closeFOPModal(nth = 1) {
+    try {
+      const closeBtn = this.page.getByRole("button", { name: "Close this dialog" }).nth(nth);
+      // Wait briefly to see if the button exists, then click
+      await closeBtn.waitFor({ state: "visible", timeout: 5000 });
+      await closeBtn.click();
+      return true;
+    } catch (error) {
+      // Modal not found or already closed - this is OK for optional modals
+      return false;
+    }
   }
 
   /**

@@ -14,17 +14,15 @@ Feature: 20182 General - Book hotel with no FOP and add credit card in cart
 
   @priority:critical
   Scenario: Book hotel, add credit card in cart, confirm and cancel
-    Given I am logged in as "general" "hotelnofop" booking a new trip
+    Given I am logged in as "general" "hotel_no_fop" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    When I click add payment method button
-    And I click add card details button
-    # TODO: Create step "When I fill in the credit card details" that calls DSL method fillCreditCardDetails in CartFop.js
-    # TODO: Create step "When I save the credit card" that calls DSL method saveCreditCard in CartFop.js
+    Then the hotel should appear as refundable in cart
+    When I add a credit card as payment method
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    When I cancel the trip
+    Then I successfully cancel the trip
