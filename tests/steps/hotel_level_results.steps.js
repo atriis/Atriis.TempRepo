@@ -28,6 +28,11 @@ setDefaultTimeout(120000);
 // ========================================
 // WHEN STEPS - HOTEL SELECTION
 // ========================================
+When("I filter hotel results by hotel name {string}", async function (hotelName) {
+  logger.info(`Filtering hotel results by hotel name: ${hotelName}`);
+  const hotelLevelResultsPage = new HotelLevelResultsPage(this.page);
+  await hotelLevelResultsPage.filterByHotelName(hotelName);
+});
 
 When("I select the first hotel result", async function () {
   logger.info("Selecting first hotel option");

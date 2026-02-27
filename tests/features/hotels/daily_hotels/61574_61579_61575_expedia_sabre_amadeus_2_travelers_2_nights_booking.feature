@@ -14,19 +14,27 @@
 # Created: 2025-05-04T09:19:04Z
 # Updated: 2026-02-09T12:53:23Z
 
+# Test Name: 61575 Amadeus GDS hotel - book for 2 travelers and 2 nights
+# Description: 
+# Status: Active
+# Labels: Regression,Hotel,Full Purchase,more than 1 night,multi pax,Daily Hotels,Amadeus,progress page,66444 hotel results,Pre Prod,Giata,2026 plan 2
+# Owner: Shani Hadar
+# Created: 2025-05-04T07:05:40Z
+# Updated: 2026-02-09T12:53:28Z
+
 #Combine these two features into one with examples for both providers since they are identical except for the provider and user. This will reduce duplication and maintenance effort while still covering both Expedia and Sabre in the same scenario outline.
 
 @regression @provider:expedia
-Feature: 61574 Expedia - Book hotel for 2 travelers 2 nights
+Feature: 61574 Book hotel for 2 travelers 2 nights
   As a travel arranger
-  I want to book an Expedia hotel for 2 travelers for 2 nights
+  I want to book a hotel for 2 travelers for 2 nights
   So that both travelers are accommodated in the same booking
 
   @priority:critical
-  Scenario: 2 travelers booked in Expedia hotel for 2 nights
+  Scenario: 2 travelers booked in hotel for 2 nights
     Given I am logged in as "<provider>" "<user>" booking a new trip
     And I have added myself as the traveler
-    And I have added traveler by name "shani car"
+    And I have added a random guest traveler
     When I search for a hotel in "London" for 2 nights
     And I select the first hotel result
     And I add a refundable room to my cart
@@ -45,3 +53,4 @@ Feature: 61574 Expedia - Book hotel for 2 travelers 2 nights
       | provider | user            |
       | expedia  | user_one        |
       | sabre    | user_sabrin_orly |
+      | amadeus  | rui_mariano    |

@@ -14,10 +14,11 @@ Feature: 42353 Sabre - Wait for hotel rates and filter results
 
   @priority:medium
   Scenario: Hotel rates load and results can be filtered in Sabre
-    Given I am logged in as "sabre" "user_one" booking a new trip
+    Given I am logged in as "sabre" "user_sabrin_orly" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Holiday Inn Sutton" for 1 night
-    # TODO: Create step "When I wait for hotel rates to load" that calls DSL method waitForRatesLoaded in HotelSearch.js
-    When I filter results by "Holiday Inn" checkbox
+    When I search for a hotel in "Holiday Inn London - Sutton by IHG, Gibson Road, London, UK" for 1 night
+    And I wait to see view rates text in results page
+    When I filter hotel results by hotel name "Holiday Inn Sutton"
     And I select the first hotel result
-    # TODO: Create step "Then room level rates should be visible" that calls DSL method verifyRoomRatesVisible in RoomLevelResults.js
+    And I add a refundable room to my cart
+    Then the booking status should be "Pending booking"

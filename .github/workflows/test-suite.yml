@@ -217,6 +217,7 @@ jobs:
           SABRE_USER_SABRIN_ORLY: ${{ secrets.SABRE_USER_SABRIN_ORLY }}
           GENERAL_HOTEL_NO_FOP_EMAIL: ${{ secrets.GENERAL_HOTEL_NO_FOP_EMAIL }}
           PREMIERINN_USER_TWO_EMAIL: ${{ secrets.PREMIERINN_USER_TWO_EMAIL }}
+          AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Hotel Results

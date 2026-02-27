@@ -7,6 +7,7 @@ const { SELECTORS: RESULTS_SELECTORS } = require("@pages/ResultsPage");
 
 const SELECTORS = {
   MEMBER_BADGE: ".expedia-membership-badge-container, .booking-com-membership-badge-container",
+  SEARCH_HOTEL_FILTER: '[placeholder="Search hotel"]'
 };
 
 class HotelLevelResultsPage {
@@ -84,6 +85,10 @@ class HotelLevelResultsPage {
   /** Waits for View Rates text to be visible in results page */
   async waitForViewRatesTextInResultsPage() {
     await this.getViewRatesButton().waitFor({ state: "visible" });
+  }
+
+  async filterByHotelName(hotelName) {
+    await this.page.locator(SELECTORS.SEARCH_HOTEL_FILTER).fill(hotelName);
   }
 }
 
