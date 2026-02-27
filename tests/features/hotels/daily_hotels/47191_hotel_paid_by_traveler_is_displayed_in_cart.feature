@@ -21,5 +21,5 @@ Feature: 47191 General - Hotel paid by Traveler
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I add a credit card as payment method
-    And the payment type should be "Paid by Traveler"
+    Then the payment type should be "Paid by Traveler"
 

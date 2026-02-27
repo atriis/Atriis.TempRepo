@@ -20,4 +20,4 @@ Feature: 47192 General - Hotel paid by TMC
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    And the payment type should be "Paid by TMC"
+    Then the payment type should be "Paid by TMC"
