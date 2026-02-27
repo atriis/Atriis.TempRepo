@@ -6,6 +6,16 @@
 # Created: 2025-05-04T06:20:12Z
 # Updated: 2026-02-09T12:54:32Z
 
+# Test Name: 61579 Sabre hotel - book for 2 travelers and 2 nights
+# Description: 
+# Status: Active
+# Labels: Regression,Hotel,Full Purchase,more than 1 night,multi pax,Daily Hotels,Sabre,No Amadeus Hotel Book,progress page,66444 hotel results,2026 plan 2
+# Owner: Shani Hadar
+# Created: 2025-05-04T09:19:04Z
+# Updated: 2026-02-09T12:53:23Z
+
+#Combine these two features into one with examples for both providers since they are identical except for the provider and user. This will reduce duplication and maintenance effort while still covering both Expedia and Sabre in the same scenario outline.
+
 @regression @provider:expedia
 Feature: 61574 Expedia - Book hotel for 2 travelers 2 nights
   As a travel arranger
@@ -32,6 +42,6 @@ Feature: 61574 Expedia - Book hotel for 2 travelers 2 nights
     Then I successfully cancel the trip
 
     Examples:
-      | provider | user     |
-      | expedia  | user_one |
-      | sabre  | sabrin_orly |
+      | provider | user            |
+      | expedia  | user_one        |
+      | sabre    | user_sabrin_orly |
