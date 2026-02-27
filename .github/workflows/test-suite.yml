@@ -23,6 +23,7 @@ permissions:
 jobs:
   smoke-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -35,11 +36,12 @@ jobs:
       - run: mkdir -p test-results
 
       - name: Run Smoke Tests
+        timeout-minutes: 15
         run: npx cucumber-js tests/features/smoke/
         env:
           CI: "true"
           RETRY_COUNT: "2"
-          RETRY_DELAY: "2000"
+          RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
@@ -60,6 +62,7 @@ jobs:
 
   daily-car-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -72,11 +75,12 @@ jobs:
       - run: mkdir -p test-results
 
       - name: Run Daily Car Tests
-        run: npx cucumber-js tests/features/cars/daily_cars/
+        timeout-minutes: 25
+        run: npx cucumber-js tests/features/cars/daily_cars/ --parallel 2
         env:
           CI: "true"
           RETRY_COUNT: "2"
-          RETRY_DELAY: "2000"
+          RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
@@ -99,6 +103,7 @@ jobs:
 
   daily-flight-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -111,11 +116,12 @@ jobs:
       - run: mkdir -p test-results
 
       - name: Run Daily Flight Tests
-        run: npx cucumber-js tests/features/flights/daily_flights/ --parallel 4
+        timeout-minutes: 35
+        run: npx cucumber-js tests/features/flights/daily_flights/ --parallel 2
         env:
           CI: "true"
           RETRY_COUNT: "2"
-          RETRY_DELAY: "2000"
+          RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           AMADEUS_RUI_MENDES_USER: ${{ secrets.AMADEUS_RUI_MENDES_USER }}
@@ -143,6 +149,7 @@ jobs:
 
   daily-shell-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -155,11 +162,12 @@ jobs:
       - run: mkdir -p test-results
 
       - name: Run Daily Shell Tests
+        timeout-minutes: 20
         run: npx cucumber-js tests/features/shell/daily_shell/
         env:
           CI: "true"
           RETRY_COUNT: "2"
-          RETRY_DELAY: "2000"
+          RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           GENERAL_FLOWS_HARRY_POTTER_USER_EMAIL: ${{ secrets.GENERAL_FLOWS_HARRY_POTTER_USER_EMAIL }}
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
@@ -181,6 +189,7 @@ jobs:
 
   daily-hotel-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -193,11 +202,12 @@ jobs:
       - run: mkdir -p test-results
 
       - name: Run Daily Hotel Tests
-        run: npx cucumber-js tests/features/hotels/daily_hotels/
+        timeout-minutes: 25
+        run: npx cucumber-js tests/features/hotels/daily_hotels/ --parallel 2
         env:
           CI: "true"
           RETRY_COUNT: "2"
-          RETRY_DELAY: "2000"
+          RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMADEUS_VALUE_HOTEL_JOAO_EMAIL: ${{ secrets.AMADEUS_VALUE_HOTEL_JOAO_EMAIL }}
           EXPEDIA_USER_ONE_EMAIL: ${{ secrets.EXPEDIA_USER_ONE_EMAIL }}
@@ -221,6 +231,7 @@ jobs:
 
   daily-rails-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -233,11 +244,12 @@ jobs:
       - run: mkdir -p test-results
 
       - name: Run Daily Rails Tests
+        timeout-minutes: 25
         run: npx cucumber-js tests/features/rails/daily_rails/
         env:
           CI: "true"
           RETRY_COUNT: "2"
-          RETRY_DELAY: "2000"
+          RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           AMTRAK_USER_ONE_EMAIL: ${{ secrets.AMTRAK_USER_ONE_EMAIL }}
           EVOLVI_USER_ONE_EMAIL: ${{ secrets.EVOLVI_USER_ONE_EMAIL }}
@@ -259,6 +271,7 @@ jobs:
 
   summary:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs:
       - smoke-tests
       - daily-car-tests
