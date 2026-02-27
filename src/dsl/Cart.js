@@ -157,6 +157,34 @@ const Cart = {
   },
 
   /**
+   * Asserts that the payment type label matches the expected value.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedType
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000] - Timeout in ms
+   * @returns {Promise<void>}
+   */
+  async verifyPaymentType(page, expectedType, { timeout = 30000 } = {}) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedType || typeof expectedType !== 'string') {
+      throw new Error(`expectedType must be a non-empty string, got: ${typeof expectedType}`);
+    }
+
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be >= 0, got ${timeout}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualType = await cartPage.waitForPaymentTypeText(expectedType, { timeout });
+
+    expect(actualType.toLowerCase()).toContain(expectedType.toLowerCase());
+  },
+
+  /**
    * Opens share quote dialog and waits for the subject field to be visible.
    * Does NOT send the email - use isQuoteSent() to complete the flow.
    *

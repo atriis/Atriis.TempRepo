@@ -62,9 +62,12 @@ class ResultsPage {
      return this.page.getByRole('button', { name: 'Edit' });
   }
 
-  /** Waits until the first "Select" button is visible */
+  /** 
+   * Waits until the first "Select" button is visible
+   * Extended timeout for CI/CD environments where results load slower
+   */
   async waitForSelectText() {
-    await this.getSelectButton().waitFor({ state: "visible" });
+    await this.getSelectButton().waitFor({ state: "visible", timeout: 60000 });
   }
 
   /** 

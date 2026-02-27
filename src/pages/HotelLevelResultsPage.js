@@ -40,7 +40,7 @@ class HotelLevelResultsPage {
 
     // Ensure the button exists, then scroll it into view (60s timeout for slower CI environments)
     await viewRatesButton.waitFor({ state: "attached", timeout: 60000 });
-    await viewRatesButton.scrollIntoViewIfNeeded();
+    await viewRatesButton.scrollIntoViewIfNeeded({ timeout: 60000 });
 
     // Confirm it is visible and ready for interaction (60s timeout)
     await viewRatesButton.waitFor({ state: "visible", timeout: 60000 });

@@ -108,6 +108,35 @@ class CartPage {
   }
 
   /**
+   * Gets the payment type label locator by expected text.
+   * @param {string} expectedType - Expected payment type text (e.g., "Paid by TMC")
+   * @returns {Locator}
+   */
+  getPaymentTypeLabel(expectedType) {
+    if (!expectedType || typeof expectedType !== "string") {
+      throw new Error(`expectedType must be a non-empty string, got: ${typeof expectedType}`);
+    }
+
+    return this.page.getByText(expectedType, { exact: true });
+  }
+
+  /**
+   * Waits for payment type label to be visible and returns its text.
+   * @param {string} expectedType - Expected payment type text (e.g., "Paid by TMC")
+   * @param {number} [timeout=30000] - Maximum wait time in milliseconds
+   * @returns {Promise<string>} The payment type label text
+   */
+  async waitForPaymentTypeText(expectedType, { timeout = 30000 } = {}) {
+    if (typeof timeout !== "number" || timeout < 0) {
+      throw new Error(`timeout must be >= 0, got ${timeout}`);
+    }
+
+    const label = this.getPaymentTypeLabel(expectedType);
+    await label.waitFor({ state: "visible", timeout });
+    return (await label.innerText()).trim();
+  }
+
+  /**
    * Gets the extras information field locator at the specified index.
    * Used to read the selected extra option (e.g., baggage, seat selection).
    *

@@ -20,5 +20,5 @@ Feature: 27039 Premier Inn - Hotel paid by TMC
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "Then the payment type should be "Paid by TMC"" that calls DSL method verifyPaymentType in Cart.js
+    And the payment type should be "Paid by TMC"
 

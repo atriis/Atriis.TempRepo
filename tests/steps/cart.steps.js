@@ -63,6 +63,8 @@
  *     → Cart.cancelTripStrict(page) + expect(result.messageVisible).toBe(true)
  *   "the booking status should be {string}"
  *     → Cart.getBookingStatus({page}) + expect(actualStatus).toContain(...)
+ *   "the payment type should be {string}"
+ *     → Cart.verifyPaymentType(page, expectedType)
  *   "the out of policy indicator should be visible in cart"
  *     → Cart.isOutOfPolicyIndicatorVisibleInCart(page) + expect(isVisible).toBe(true)
  *   "the out of policy indicator should not be visible in cart"
@@ -271,6 +273,11 @@ Then("I successfully cancel the trip", async function () {
 Then("the booking status should be {string}", async function (status) {
   logger.info("Verifying booking status", { status });
   await Cart.expectBookingStatusToBe(status, { page: this.page });
+});
+
+Then("the payment type should be {string}", async function (expectedType) {
+  logger.info("Verifying payment type", { expectedType });
+  await Cart.verifyPaymentType(this.page, expectedType);
 });
 
 Then("the out of policy indicator should be visible in cart", async function () {
