@@ -202,6 +202,7 @@ jobs:
           AMADEUS_VALUE_HOTEL_JOAO_EMAIL: ${{ secrets.AMADEUS_VALUE_HOTEL_JOAO_EMAIL }}
           EXPEDIA_USER_ONE_EMAIL: ${{ secrets.EXPEDIA_USER_ONE_EMAIL }}
           EXPEDIA_USER_TWO_EMAIL: ${{ secrets.EXPEDIA_USER_TWO_EMAIL }}
+          PREMIERINN_USER_TWO_EMAIL: ${{ secrets.PREMIERINN_USER_TWO_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Hotel Results

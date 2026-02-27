@@ -181,7 +181,11 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     const actualType = await cartPage.waitForPaymentTypeText(expectedType, { timeout });
 
-    expect(actualType.toLowerCase()).toContain(expectedType.toLowerCase());
+    // Normalize whitespace (handles non-breaking spaces, newlines, etc.)
+    const normalizedActual = actualType.toLowerCase().replace(/\s+/g, ' ').trim();
+    const normalizedExpected = expectedType.toLowerCase().replace(/\s+/g, ' ').trim();
+    
+    expect(normalizedActual).toContain(normalizedExpected);
   },
 
   /**
