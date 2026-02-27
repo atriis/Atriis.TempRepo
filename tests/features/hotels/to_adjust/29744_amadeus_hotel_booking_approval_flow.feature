@@ -20,6 +20,7 @@ Feature: 29744 Amadeus - Hotel booking with approval flow
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
+    Then the hotel should appear as refundable in cart
     When I proceed to checkout
     And I complete the booking
     # TODO: Create step "Then the booking should be sent for approval" that calls DSL method verifyApprovalSent in Checkout.js

@@ -20,6 +20,7 @@ Feature: 73878 Expedia - Web confirmation email sent to specific email address
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
+    Then the hotel should appear as refundable in cart
     # TODO: Create step "When I set the CVV for the selected payment card" that calls DSL setCVVForCard in CartFop.js
     When I proceed to checkout
     And I complete the booking

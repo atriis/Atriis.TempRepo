@@ -21,6 +21,7 @@ Feature: 63822 eHotel - Book hotel for 2 travelers 2 nights with CVV and price m
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
+    Then the hotel should appear as refundable in cart
     # TODO: Create step "Then the cart should show 2 nights and 2 rooms badge" calls DSL verify2Nights2RoomsBadge in Cart.js
     # TODO: Create step "When I set the CVV for the selected payment card" that calls DSL setCVVForCard in CartFop.js
     # TODO: Create step "When I extract the price from cart" calls DSL extractCartPrice in Cart.js
