@@ -22,7 +22,15 @@
 # Created: 2025-05-04T07:05:40Z
 # Updated: 2026-02-09T12:53:28Z
 
-#Combine these two features into one with examples for both providers since they are identical except for the provider and user. This will reduce duplication and maintenance effort while still covering both Expedia and Sabre in the same scenario outline.
+# Test Name: 73521 amadeus value hotel - book for 2 travelers and 2 nights
+# Description: 
+# Status: Active
+# Labels: Hotel,Full Purchase,more than 1 night,multi pax,Amadeus Value hotel,Regression
+# Owner: Shani Hadar
+# Created: 2025-05-04T01:13:40Z
+# Updated: 2026-02-09T12:35:42Z
+
+#Combine these features into one with examples for all providers since they are identical except for the provider and user. This will reduce duplication and maintenance effort while still covering Expedia, Sabre, Amadeus, and Amadeus Value Hotel in the same scenario outline.
 
 @regression @provider:expedia
 Feature: 61574 Book hotel for 2 travelers 2 nights
@@ -50,7 +58,8 @@ Feature: 61574 Book hotel for 2 travelers 2 nights
     Then I successfully cancel the trip
 
     Examples:
-      | provider | user            |
-      | expedia  | user_one        |
-      | sabre    | user_sabrin_orly |
-      | amadeus  | rui_mariano    |
+      | provider | user |
+      | expedia | user_one |
+      | sabre | user_sabrin_orly |
+      | amadeus | user_one |
+      | amadeus_value_hotel | papatinho |

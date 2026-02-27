@@ -12,17 +12,20 @@ Feature: 69671 Sabre - Book hotel for 4 travelers in 2 rooms with price match
   I want to book a Sabre hotel for 4 travelers in 2 rooms
   So that all travelers are accommodated and the booking is confirmed
 
+ # Note: this test is flaky (specially with Sabre) due to cancelation issues, need to check with Shani what's happening
   @priority:critical
   Scenario: 4 travelers booked in 2 Sabre hotel rooms with confirmed status
-    Given I am logged in as "sabre" "user_one" booking a new trip
+    Given I am logged in as "sabre" "user_sabrin_orly" booking a new trip
     And I have added myself as the traveler
-    # TODO: Create step "When I add {int} additional travelers by name" for 3 more travelers
-    # TODO: Create step "When I search for a hotel in {string} for {int} nights and {int} rooms" that calls DSL searchHotelMultiRoom in HotelSearch.js
-    When I search for a hotel in "Leipzig" for 1 night
+    And I have added traveler by name "Maria Fernanda"
+    And I have added traveler by name "James Douglas"
+    And I have added a random guest traveler
+    When I search for a hotel in "Leipzig,Germany,(LEJ)" for 1 night with 2 rooms
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "Then the cart should show 2 rooms badge" calls DSL verify2RoomsBadge in Cart.js
+    Then the hotel should appear as refundable in cart
+    Then the cart should show 2 rooms badge
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"

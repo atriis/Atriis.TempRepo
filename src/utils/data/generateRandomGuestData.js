@@ -17,9 +17,10 @@ const { faker } = require('@faker-js/faker');
  * - It should never be used in production code
  */
 function generateRandomGuestData() {
-  // Generate random names using Faker
-  const randomFirstName = faker.person.firstName();
-  const randomLastName = faker.person.lastName();
+  // Generate random names using Faker — reject hyphenated names (e.g. "Kuvalis-Cummerata")
+  let randomFirstName, randomLastName;
+  do { randomFirstName = faker.person.firstName(); } while (randomFirstName.includes('-'));
+  do { randomLastName = faker.person.lastName(); } while (randomLastName.includes('-'));
 
   /**
    * Date of birth generation

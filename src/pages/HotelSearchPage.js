@@ -11,6 +11,8 @@ const SELECTORS = {
   HOTEL_HEADING: "#pane-hotel > h4",
   HOTEL_DESTINATION_FIELD: "[placeholder='Where would you like to stay?']",
   CHECK_IN_INPUT: "[placeholder='Check in']",
+  ROOMS_DROPDOWN: '.hotel-search-cmp .app-select:has(.select-icon:text("sensor_door"))',
+  ROOMS_DROPDOWN_OPTION: '.app-select-popper .el-select-dropdown__item',
 };
 
 
@@ -66,6 +68,28 @@ class HotelSearchPage {
   async clickCheckInField() {
     await this.page
       .locator(SELECTORS.CHECK_IN_INPUT)
+      .click();
+  }
+
+  /**
+   * Opens the rooms count dropdown in the hotel search form.
+   */
+  async openRoomsDropdown() {
+    const dropdown = this.page.locator(SELECTORS.ROOMS_DROPDOWN);
+    await dropdown.waitFor({ state: 'visible', timeout: 10000 });
+    await dropdown.click();
+  }
+
+  /**
+   * Selects a room count option from the open rooms dropdown.
+   * @param {number} count - Number of rooms to select (e.g. 2)
+   */
+  async selectRoomCount(count) {
+    if (typeof count !== 'number') throw new Error('count must be a number, got: ' + typeof count);
+    const label = count === 1 ? 'Room' : 'Rooms';
+    await this.page
+      .locator(SELECTORS.ROOMS_DROPDOWN_OPTION)
+      .filter({ hasText: new RegExp('^' + count + '\\s+' + label, 'i') })
       .click();
   }
 }

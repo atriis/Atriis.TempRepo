@@ -20,11 +20,9 @@ Feature: 60144 Ratehawk - Special request information is sent to supplier
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "When I fill in the special request field with text {string}" that calls DSL fillSpecialRequest in Cart.js
-    When I fill in the OOP justification text "Business requirement"
+    Then the hotel should appear as refundable in cart
+    When I add a special request with text "Please arrange for a quiet room"
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    # TODO: Create step "Then the special request should appear in the booking confirmation sent to Ratehawk" - hybrid: validate via Ratehawk API log that special request field is present
     Then I successfully cancel the trip
-

@@ -26,3 +26,8 @@ When("I search for a hotel in {string} for {int} night(s)", async function (loca
   logger.info("Searching for hotel", { location, nights });
   await HotelSearch.searchHotelByNights(this.page, { where: location, nights: nights });
 });
+
+When("I search for a hotel in {string} for {int} night(s) with {int} rooms", async function (location, nights, rooms) {
+  logger.info("Searching for hotel with multiple rooms", { location, nights, rooms });
+  await HotelSearch.searchHotelMultiRoom(this.page, { where: location, nights, rooms });
+});

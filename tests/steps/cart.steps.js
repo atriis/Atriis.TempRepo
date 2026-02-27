@@ -315,3 +315,14 @@ Then("the hotel should appear as refundable in cart", async function () {
   logger.info("Verifying hotel is refundable");
   await Cart.expectHotelToBeRefundableInCart(this.page);
 });
+
+Then("the cart should show 2 rooms badge", async function () {
+  logger.info("Verifying 2 rooms badge is displayed in cart hotel summary");
+  await Cart.verify2RoomsBadge(this.page);
+});
+
+When("I add a special request with text {string}", async function (text) {
+  logger.info(`Adding special request: "${text}"`);
+  this.specialRequestText = text;
+  await Cart.addSpecialRequest(this.page, text);
+});
