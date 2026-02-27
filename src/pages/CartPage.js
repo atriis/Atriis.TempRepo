@@ -15,7 +15,8 @@ const SELECTORS = {
 
   // Refundable hotel text
   REFUNDABLE_TEXT: "div.refundable",
-  CANCELLATION_POLICY_LABEL: "div.refundable, div.non-refundable",
+  // div.cancellation-terms is always present in hotel-preview (cart); the <p> inside carries the policy text
+  CANCELLATION_POLICY_LABEL: "div.cancellation-terms p",
 
   // Price breakdown button
   PRICE_BREAKDOWN_BUTTON: ".price-breakdown-btn",
