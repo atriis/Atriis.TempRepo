@@ -14,7 +14,7 @@ Feature: 61579 Sabre - Book hotel for 2 travelers 2 nights
 
   @priority:critical
   Scenario: 2 travelers booked in Sabre hotel for 2 nights
-    Given I am logged in as "sabre" "user_one" booking a new trip
+    Given I am logged in as "sabre" "sabrin_orly" booking a new trip
     And I have added myself as the traveler
     # TODO: Create step "When I add a second traveler by name {string}" - needs DSL method addSecondTraveler
     When I search for a hotel in "London" for 2 nights

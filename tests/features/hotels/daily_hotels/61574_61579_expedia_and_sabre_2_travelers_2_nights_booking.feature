@@ -14,7 +14,7 @@ Feature: 61574 Expedia - Book hotel for 2 travelers 2 nights
 
   @priority:critical
   Scenario: 2 travelers booked in Expedia hotel for 2 nights
-    Given I am logged in as "expedia" "user_one" booking a new trip
+    Given I am logged in as "<provider>" "<user>" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "shani car"
     When I search for a hotel in "London" for 2 nights
@@ -30,3 +30,8 @@ Feature: 61574 Expedia - Book hotel for 2 travelers 2 nights
     When I extract the price at index 0 from "cart"
     Then the extracted price at index 0 should equal the extracted price at index 1 within tolerance
     Then I successfully cancel the trip
+
+    Examples:
+      | provider | user     |
+      | expedia  | user_one |
+      | sabre  | sabrin_orly |
