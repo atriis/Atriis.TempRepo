@@ -59,6 +59,15 @@ const SELECTORS = {
   DELIVERY_METHOD_TITLE: ".uk-rail-delivery-method .card-title",
   DELIVERY_METHOD_FIRST_RADIO: ".uk-rail-delivery-method .el-radio-group > :nth-child(1) .el-radio__inner",
   GREEN_ICON_DELIVERY_METHOD: ".uk-rail-delivery-method .material-symbols-outlined",
+
+  // Hotel rooms badge in cart trip summary (.dates-and-rooms from hotel-quote-summary.vue)
+  ROOMS_BADGE: '.dates-and-rooms, .dates span',
+
+  // Special request (special-requests.vue)
+  SPECIAL_REQUEST_CLICKABLE: '.quote-extras--special-requests .is-clickable',
+  SPECIAL_REQUEST_TEXTAREA: '.quote-extras--special-requests textarea',
+  SPECIAL_REQUEST_SAVE_BTN: '.quote-extras--special-requests .btn--primary',
+  SPECIAL_REQUEST_SUCCESS: '.success-icon',
 };
 
 class CartPage {
@@ -341,10 +350,10 @@ class CartPage {
     const icon = this.page
       .locator(SELECTORS.TRIP_ACTIONS_DROPDOWN_ICON)
       .first();
-    await icon.waitFor({ state: "visible", timeout: 5000 });
+    await icon.waitFor({ state: "visible", timeout: 10000 });
     await icon.hover();
-    // Intentional wait required for UI stability before interacting, so test is not flaky
-    await this.page.waitForTimeout(500);
+    // Extended wait: el-dropdown is disabled while page is loading; give UI time to open
+    await this.page.waitForTimeout(1500);
   }
 
   /**
@@ -353,7 +362,7 @@ class CartPage {
   async waitForDropdownMenu() {
     await this.page
       .locator(SELECTORS.CANCEL_TRIP_OPTION, { hasText: "Cancel trip" })
-      .waitFor({ state: "visible", timeout: 5000 });
+      .waitFor({ state: "visible", timeout: 15000 });
   }
 
   /**
@@ -364,7 +373,7 @@ class CartPage {
       SELECTORS.CANCEL_TRIP_OPTION,
       { hasText: "Cancel trip" },
     );
-    await cancelOption.waitFor({ state: "visible", timeout: 5000 });
+    await cancelOption.waitFor({ state: "visible", timeout: 15000 });
     await cancelOption.click();
   }
 
@@ -384,7 +393,7 @@ class CartPage {
    */
   async clickConfirmTripCancellationButton() {
     const button = this.page.getByRole("button", { name: "Cancel trip" });
-    await button.waitFor({ state: "visible", timeout: 5000 });
+    await button.waitFor({ state: "visible", timeout: 10000 });
     await button.click();
   }
 
@@ -392,7 +401,10 @@ class CartPage {
    * Waits for the cancellation success message to be visible.
    * Fails if not found within timeout.
    */
-  async waitForTripCancelledMessage({ timeout = 60000 } = {}) {
+  async waitForTripCancelledMessage({ timeout = 120000 } = {}) {
+    // Text-based polling: works whether navigation already happened (fast backend)
+    // or is still in-progress (slow GDS backends like Sabre/Amadeus).
+    // 120s covers slow backend cancellation processing times.
     const successMessage = this.page.getByText(
       "Cancellation confirmed!",
       { exact: true },
@@ -405,7 +417,7 @@ class CartPage {
    * Checks whether the cancellation success message is visible.
    * Never throws. Returns boolean.
    */
-  async isTripCancelledMessageVisible({ timeout = 60000 } = {}) {
+  async isTripCancelledMessageVisible({ timeout = 120000 } = {}) {
     try {
       const successMessage = this.page.getByText(
         "Cancellation confirmed!",
@@ -703,6 +715,24 @@ class CartPage {
   }
 
   /**
+   * Waits for the hotel rooms badge in the cart to show the expected count.
+   * Matches text like "2 Rooms" in the hotel quote summary.
+   * Selector covers both .dates-and-rooms (Vue source) and .dates span (legacy Testim).
+   *
+   * @param {number} count - Expected number of rooms (e.g. 2)
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000] - Max wait time in ms
+   */
+  async waitForRoomsBadge(count, { timeout = 30000 } = {}) {
+    if (typeof count !== 'number') throw new Error('count must be a number, got: ' + typeof count);
+    const label = count === 1 ? 'Room' : 'Rooms';
+    const badge = this.page
+      .locator(SELECTORS.ROOMS_BADGE)
+      .filter({ hasText: new RegExp(count + '\\s+' + label, 'i') });
+    await badge.first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
    * Waits for the delivery method section to be visible.
    * Used before interacting with delivery method options.
    */
@@ -749,6 +779,26 @@ class CartPage {
    */
   async waitForDeliveryMethodGreenIcon() {
     await this.page.locator(SELECTORS.GREEN_ICON_DELIVERY_METHOD).waitFor({ state: 'visible', timeout: 15000 });
+  }
+
+  /**
+   * Opens the special request panel, types the given text, saves it,
+   * and waits for the success icon to confirm the save.
+   *
+   * @param {string} text - The special request text to submit
+   * @param {object} [options]
+   * @param {number} [options.timeout=20000] - Max wait time per action in ms
+   */
+  async fillSpecialRequest(text, { timeout = 20000 } = {}) {
+    if (typeof text !== 'string') throw new Error('text must be a string, got: ' + typeof text);
+    const clickable = this.page.locator(SELECTORS.SPECIAL_REQUEST_CLICKABLE);
+    await clickable.waitFor({ state: 'visible', timeout });
+    await clickable.click();
+    const textarea = this.page.locator(SELECTORS.SPECIAL_REQUEST_TEXTAREA);
+    await textarea.waitFor({ state: 'visible', timeout });
+    await textarea.fill(text);
+    await this.page.locator(SELECTORS.SPECIAL_REQUEST_SAVE_BTN).click();
+    await this.page.locator(SELECTORS.SPECIAL_REQUEST_SUCCESS).waitFor({ state: 'visible', timeout });
   }
 }
 // Export CartPage and SELECTORS for use in tests and DSL

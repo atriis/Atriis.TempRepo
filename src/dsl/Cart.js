@@ -31,6 +31,10 @@ const Cart = {
     
     const cartPage = getPageObject(page, CartPage);
 
+    // Wait for page network activity to settle before attempting the cancellation dropdown.
+    // The el-dropdown is disabled while the page is loading; skipping this causes flaky hover failures.
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
+
     // Confirm correct page state
     await cartPage.waitForDetailsText();
     await cartPage.waitForTripOverviewTitle();
@@ -528,6 +532,32 @@ const Cart = {
     await cartPage.selectFirstDeliveryMethod();
     await cartPage.clickSaveButton();
     await cartPage.waitForDeliveryMethodGreenIcon();
+  },
+
+  /**
+   * Asserts that the cart shows a badge indicating 2 rooms for a hotel booking.
+   * Waits for the rooms badge text (e.g. "2 Rooms") to be visible in the trip summary.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verify2RoomsBadge(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForRoomsBadge(2);
+  },
+
+  /**
+   * Fills in and saves a special request on the hotel cart card.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} text - The special request text to submit
+   */
+  async addSpecialRequest(page, text) {
+    if (!page) throw new Error('page is required');
+    if (typeof text !== 'string' || !text.trim()) throw new Error('text must be a non-empty string, got: ' + typeof text);
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.fillSpecialRequest(text);
   },
 };
 
