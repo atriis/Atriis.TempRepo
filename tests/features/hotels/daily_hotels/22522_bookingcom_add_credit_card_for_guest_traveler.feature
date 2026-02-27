@@ -14,15 +14,12 @@ Feature: 22522 Booking.com - Add credit card for guest traveler
 
   @priority:high
   Scenario: Add credit card for guest traveler booking via Booking.com
-    Given I am logged in as "bookingcom" "user_one" booking a new trip
+    Given I am logged in as "bookingcom" "user_two" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "EZE" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    When I click add payment method button
-    And I click add card details button
-    # TODO: Create step "When I fill in the credit card details for guest" that calls DSL method fillCreditCardDetails in CartFop.js
-    # TODO: Create step "When I save the credit card" that calls DSL method saveCreditCard in CartFop.js
-    Then the payment method should be added
+    When I add a credit card as payment method
+    Then the payment type should be "Paid by Traveler"
 
