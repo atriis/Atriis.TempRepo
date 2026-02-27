@@ -21,6 +21,10 @@ class CarResultsPage {
   getLocationByIndex(index) {
     return this.page.locator(SELECTORS.LOCATION_CITY_CENTER).nth(index);
   }
+
+  async waitForLocationVisible(index = 0) {
+    await this.page.locator(SELECTORS.LOCATION_CITY_CENTER).nth(index).waitFor({ state: 'visible', timeout: 60000 });
+  }
 }
 
 module.exports = CarResultsPage;

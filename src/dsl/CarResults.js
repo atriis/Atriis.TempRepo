@@ -1,7 +1,6 @@
 const { expect } = require("@playwright/test");
 const Results = require("./Results");
 const CarResultsPage = require("@pages/CarResultsPage");
-const { ResultsPage } = require("@pages/ResultsPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 
 /**
@@ -60,11 +59,9 @@ const CarResults = {
       throw new Error('expectedCity must be a non-empty string');
     }
 
-    // Wait for results to load before checking locations
-    const resultsPage = getPageObject(page, ResultsPage);
-    await resultsPage.waitForSelectText();
-
     const carResultsPage = getPageObject(page, CarResultsPage);
+    // Wait for the actual location elements to appear before asserting
+    await carResultsPage.waitForLocationVisible(0);
     const text = await carResultsPage.getLocationByIndex(index).innerText();
     expect(text.toLowerCase()).toContain(expectedCity.toLowerCase());
   }
