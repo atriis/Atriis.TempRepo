@@ -40,6 +40,7 @@ const {
   expectSumToBeEqual,
 } = require("../../src/assertions/numberAssertions");
 const { extractPriceFromLocation } = require("../../src/utils/priceExtraction");
+const { CommonPage } = require("@pages/CommonPage");
 const logger = require("@utils/logger").child("Common");
 
 setDefaultTimeout(120000);
@@ -141,7 +142,6 @@ Then("the sum of prices at index {int} from {string} and index {int} from {strin
 
 Then('I should see the heading {string}', async function (text) {
   const { expect } = require('@playwright/test');
-  const { CommonPage } = require("../../src/pages/CommonPage");
   const commonPage = new CommonPage(this.page);
   
   await expect(commonPage.getHeadingByText(text)).toBeVisible({ timeout: 30000 });
@@ -166,4 +166,12 @@ Then("I should see a success notification", async function () {
   logger.info("Verifying success notification is visible");
   const commonPage = getPageObject(this.page, CommonPage);
   await commonPage.getSuccessNotification().waitFor({ state: "visible" });
+});
+
+// ===== WHEN STEPS =====
+
+When("I click proceed button if visible", async function () {
+  logger.info("Attempting to click Proceed button if visible");
+  const commonPage = new CommonPage(this.page);
+  await commonPage.clickProceedButtonIfVisible();
 });

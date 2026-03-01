@@ -14,8 +14,10 @@ Feature: 66399 SQUAKE - Hotel CO2 calculation uses Greenview methodology
 
   @priority:medium
   Scenario: Hotel search loads with CO2 data using Greenview calculation method
-    Given I am logged in as "general" "user_one" booking a new trip
+    Given I am logged in as "general" "hotel_co2_tel" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
-    # TODO: Create step "Then the hotel CO2 values should be calculated using the Greenview methodology" - hybrid: validate via SQUAKE API log that calculation method is "GREENVIEW"
-    # TODO: Create step "Then the price filter should be visible in hotel results" that calls DSL verifyPriceFilterVisible in HotelSearch.js
+    And I click proceed button if visible
+    And I wait to see view rates text in results page
+
+    

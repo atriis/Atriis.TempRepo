@@ -152,6 +152,26 @@ class CommonPage {
   }
 
   /**
+   * Clicks the Proceed button if it becomes visible within timeout.
+   * Does nothing and returns false if the button never appears.
+   * @param {number} timeout - Max ms to wait for the button (default: 10000)
+   * @returns {Promise<boolean>} True if clicked, false if not displayed
+   */
+  async clickProceedButtonIfVisible(timeout = 10000) {
+    const button = this.getProceedButton();
+    const isVisible = await button.isVisible();
+
+    if (!isVisible) {
+      // Wait for button to potentially appear after async operations
+      const appeared = await button.waitFor({ state: 'visible', timeout }).then(() => true, () => false);
+      if (!appeared) return false;
+    }
+
+    await button.click();
+    return true;
+  }
+
+  /**
    * Clicks the Save button.
    */
   async clickSaveButton() {

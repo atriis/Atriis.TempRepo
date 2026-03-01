@@ -67,7 +67,7 @@ jobs:
           name: smoke-screenshots
           path: test-results/screenshots/
 
-  daily-car-tests:
+  daily-cars-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -81,7 +81,7 @@ jobs:
       - run: npx playwright install --with-deps
       - run: mkdir -p test-results test-results/screenshots
 
-      - name: Run Daily Car Tests
+      - name: Run Daily Cars Tests
         timeout-minutes: 25
         run: npx cucumber-js tests/features/cars/daily_cars/ --parallel 2
         env:
@@ -94,28 +94,28 @@ jobs:
           GALILEO_USER_ONE_EMAIL: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
-      - name: Upload Daily Car Results
+      - name: Upload Daily Cars Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: daily-car-results
+          name: daily-cars-results
           path: test-results/cucumber-junit.xml
 
-      - name: Upload Daily Car Report
+      - name: Upload Daily Cars Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: daily-car-report
+          name: daily-cars-report
           path: test-results/cucumber-report.json
 
-      - name: Upload Daily Car Screenshots
+      - name: Upload Daily Cars Screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: daily-car-screenshots
+          name: daily-cars-screenshots
           path: test-results/screenshots/
 
-  daily-flight-tests:
+  daily-flights-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -129,7 +129,7 @@ jobs:
       - run: npx playwright install --with-deps
       - run: mkdir -p test-results test-results/screenshots
 
-      - name: Run Daily Flight Tests
+      - name: Run Daily Flights Tests
         timeout-minutes: 35
         run: npx cucumber-js tests/features/flights/daily_flights/ --parallel 2
         env:
@@ -147,25 +147,25 @@ jobs:
           AMADEUS_VALUE_HOTEL_JOAO_EMAIL: ${{ secrets.AMADEUS_VALUE_HOTEL_JOAO_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
-      - name: Upload Daily Flight Results
+      - name: Upload Daily Flights Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: daily-flight-results
+          name: daily-flights-results
           path: test-results/cucumber-junit.xml
 
-      - name: Upload Daily Flight Report
+      - name: Upload Daily Flights Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: daily-flight-report
+          name: daily-flights-report
           path: test-results/cucumber-report.json
 
-      - name: Upload Daily Flight Screenshots
+      - name: Upload Daily Flights Screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: daily-flight-screenshots
+          name: daily-flights-screenshots
           path: test-results/screenshots/
 
   daily-shell-tests:
@@ -215,7 +215,7 @@ jobs:
           name: daily-shell-screenshots
           path: test-results/screenshots/
 
-  daily-hotel-tests:
+  daily-hotels-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -251,27 +251,28 @@ jobs:
           AMADEUS_USER_ONE_EMAIL: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
           BOOKINGCOM_USER_TWO_EMAIL: ${{ secrets.BOOKINGCOM_USER_TWO_EMAIL }}
           EXPEDIA_USER_WITHOUT_FOP_EMAIL: ${{ secrets.EXPEDIA_USER_WITHOUT_FOP_EMAIL }}
+          GENERAL_HOTEL_CO2_TEL_EMAIL: ${{ secrets.GENERAL_HOTEL_CO2_TEL_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
-      - name: Upload Daily Hotel Results
+      - name: Upload Daily Hotels Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: daily-hotel-results
+          name: daily-hotels-results
           path: test-results/cucumber-junit.xml
 
-      - name: Upload Daily Hotel Report
+      - name: Upload Daily Hotels Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: daily-hotel-report
+          name: daily-hotels-report
           path: test-results/cucumber-report.json
 
-      - name: Upload Daily Hotel Screenshots
+      - name: Upload Daily Hotels Screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: daily-hotel-screenshots
+          name: daily-hotels-screenshots
           path: test-results/screenshots/
 
   daily-rails-tests:
@@ -326,10 +327,10 @@ jobs:
     timeout-minutes: 10
     needs:
       - smoke-tests
-      - daily-car-tests
-      - daily-flight-tests
+      - daily-cars-tests
+      - daily-flights-tests
       - daily-shell-tests
-      - daily-hotel-tests
+      - daily-hotels-tests
       - daily-rails-tests
     if: always()
 
