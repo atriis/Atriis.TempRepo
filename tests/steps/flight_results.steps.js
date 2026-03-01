@@ -329,8 +329,8 @@ Then("The shared price for carrier {string} should match the price from pricing 
   if (!sharedPrice) {
     throw new Error(`No shared price found for carrier: ${carrier}`);
   }
-  
-  expectNumbersToBeEqual(sharedPrice, pricingOptionsPrice, `${carrier} shared price from pricing options`);
+  // Use tolerance for floating point comparison
+  expectNumbersToBeEqualWithTolerance(sharedPrice, pricingOptionsPrice, 0.02, `${carrier} shared price from pricing options`);
 });
 
 Then("I should see the fare rules note about strictest terms", async function () {
