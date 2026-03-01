@@ -33,7 +33,7 @@ jobs:
 
       - run: npm ci
       - run: npx playwright install --with-deps
-      - run: mkdir -p test-results
+      - run: mkdir -p test-results test-results/screenshots
 
       - name: Run Smoke Tests
         timeout-minutes: 15
@@ -79,7 +79,7 @@ jobs:
 
       - run: npm ci
       - run: npx playwright install --with-deps
-      - run: mkdir -p test-results
+      - run: mkdir -p test-results test-results/screenshots
 
       - name: Run Daily Car Tests
         timeout-minutes: 25
@@ -127,7 +127,7 @@ jobs:
 
       - run: npm ci
       - run: npx playwright install --with-deps
-      - run: mkdir -p test-results
+      - run: mkdir -p test-results test-results/screenshots
 
       - name: Run Daily Flight Tests
         timeout-minutes: 35
@@ -180,7 +180,7 @@ jobs:
 
       - run: npm ci
       - run: npx playwright install --with-deps
-      - run: mkdir -p test-results
+      - run: mkdir -p test-results test-results/screenshots
 
       - name: Run Daily Shell Tests
         timeout-minutes: 20
@@ -227,7 +227,7 @@ jobs:
 
       - run: npm ci
       - run: npx playwright install --with-deps
-      - run: mkdir -p test-results
+      - run: mkdir -p test-results test-results/screenshots
 
       - name: Run Daily Hotel Tests
         timeout-minutes: 25
@@ -286,7 +286,7 @@ jobs:
 
       - run: npm ci
       - run: npx playwright install --with-deps
-      - run: mkdir -p test-results
+      - run: mkdir -p test-results test-results/screenshots
 
       - name: Run Daily Rails Tests
         timeout-minutes: 25
