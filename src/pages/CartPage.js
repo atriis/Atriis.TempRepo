@@ -268,7 +268,7 @@ class CartPage {
    * @returns {Locator} Playwright locator for the baggage dropdown trigger
    */
   getNumberOfBaggage() {
-    return this.page.getByText('Number of baggage', { exact: true });
+    return this.page.getByText('Number of baggage', { exact: true }).first();
   }
 
   /**
