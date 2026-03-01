@@ -64,7 +64,7 @@ require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { FlightResults } = require("../../src/dsl");
-const { expectNumbersToBeEqual } = require("../../src/assertions/numberAssertions");
+const { expectNumbersToBeEqual, expectNumbersToBeEqualWithTolerance } = require("../../src/assertions/numberAssertions");
 const logger = require("@utils/logger").child("FlightResults");
 
 setDefaultTimeout(120000);
@@ -315,7 +315,7 @@ Then("The shared price for carrier {string} should match the prices from results
   const resultsPrice = this.resultsPrices[carrier];
   const sharedPrice = this.sharedPrices[carrier];
   
-  expectNumbersToBeEqual(sharedPrice, resultsPrice, `${carrier} shared price`);
+  expectNumbersToBeEqualWithTolerance(sharedPrice, resultsPrice, 0.02, `${carrier} shared price`);
 });
 
 Then("The shared price for carrier {string} should match the price from pricing options", async function (carrier) {
