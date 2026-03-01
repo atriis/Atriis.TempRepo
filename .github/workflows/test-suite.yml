@@ -36,6 +36,7 @@ jobs:
       - run: mkdir -p test-results test-results/screenshots
 
       - name: Run Smoke Tests
+        id: run-smoke
         timeout-minutes: 15
         run: npx cucumber-js tests/features/smoke/
         env:
@@ -61,7 +62,7 @@ jobs:
           path: test-results/cucumber-report.json
 
       - name: Upload Smoke Screenshots
-        if: always()
+        if: failure() && steps.run-smoke.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: smoke-screenshots
@@ -82,6 +83,7 @@ jobs:
       - run: mkdir -p test-results test-results/screenshots
 
       - name: Run Daily Cars Tests
+        id: run-daily-cars
         timeout-minutes: 25
         run: npx cucumber-js tests/features/cars/daily_cars/ --parallel 2
         env:
@@ -109,7 +111,7 @@ jobs:
           path: test-results/cucumber-report.json
 
       - name: Upload Daily Cars Screenshots
-        if: always()
+        if: failure() && steps.run-daily-cars.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: daily-cars-screenshots
@@ -130,6 +132,7 @@ jobs:
       - run: mkdir -p test-results test-results/screenshots
 
       - name: Run Daily Flights Tests
+        id: run-daily-flights
         timeout-minutes: 35
         run: npx cucumber-js tests/features/flights/daily_flights/ --parallel 2
         env:
@@ -162,7 +165,7 @@ jobs:
           path: test-results/cucumber-report.json
 
       - name: Upload Daily Flights Screenshots
-        if: always()
+        if: failure() && steps.run-daily-flights.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: daily-flights-screenshots
@@ -183,6 +186,7 @@ jobs:
       - run: mkdir -p test-results test-results/screenshots
 
       - name: Run Daily Shell Tests
+        id: run-daily-shell
         timeout-minutes: 20
         run: npx cucumber-js tests/features/shell/daily_shell/
         env:
@@ -209,7 +213,7 @@ jobs:
           path: test-results/cucumber-report.json
 
       - name: Upload Daily Shell Screenshots
-        if: always()
+        if: failure() && steps.run-daily-shell.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: daily-shell-screenshots
@@ -230,6 +234,7 @@ jobs:
       - run: mkdir -p test-results test-results/screenshots
 
       - name: Run Daily Hotel Tests
+        id: run-daily-hotels
         timeout-minutes: 25
         run: npx cucumber-js tests/features/hotels/daily_hotels/ --parallel 2
         env:
@@ -269,7 +274,7 @@ jobs:
           path: test-results/cucumber-report.json
 
       - name: Upload Daily Hotels Screenshots
-        if: always()
+        if: failure() && steps.run-daily-hotels.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: daily-hotels-screenshots
@@ -290,6 +295,7 @@ jobs:
       - run: mkdir -p test-results test-results/screenshots
 
       - name: Run Daily Rails Tests
+        id: run-daily-rails
         timeout-minutes: 25
         run: npx cucumber-js tests/features/rails/daily_rails/
         env:
@@ -316,7 +322,7 @@ jobs:
           path: test-results/cucumber-report.json
 
       - name: Upload Daily Rails Screenshots
-        if: always()
+        if: failure() && steps.run-daily-rails.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: daily-rails-screenshots
