@@ -60,6 +60,13 @@ jobs:
           name: smoke-report
           path: test-results/cucumber-report.json
 
+      - name: Upload Smoke Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshots
+          path: test-results/screenshots/
+
   daily-car-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -100,6 +107,13 @@ jobs:
         with:
           name: daily-car-report
           path: test-results/cucumber-report.json
+
+      - name: Upload Daily Car Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-car-screenshots
+          path: test-results/screenshots/
 
   daily-flight-tests:
     runs-on: ubuntu-latest
@@ -147,6 +161,13 @@ jobs:
           name: daily-flight-report
           path: test-results/cucumber-report.json
 
+      - name: Upload Daily Flight Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-flight-screenshots
+          path: test-results/screenshots/
+
   daily-shell-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -186,6 +207,13 @@ jobs:
         with:
           name: daily-shell-report
           path: test-results/cucumber-report.json
+
+      - name: Upload Daily Shell Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-shell-screenshots
+          path: test-results/screenshots/
 
   daily-hotel-tests:
     runs-on: ubuntu-latest
@@ -239,6 +267,13 @@ jobs:
           name: daily-hotel-report
           path: test-results/cucumber-report.json
 
+      - name: Upload Daily Hotel Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-hotel-screenshots
+          path: test-results/screenshots/
+
   daily-rails-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -278,6 +313,13 @@ jobs:
         with:
           name: daily-rails-report
           path: test-results/cucumber-report.json
+
+      - name: Upload Daily Rails Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-rails-screenshots
+          path: test-results/screenshots/
 
   summary:
     runs-on: ubuntu-latest
