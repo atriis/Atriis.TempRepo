@@ -91,7 +91,7 @@ const CarSearch = {
       endIndex: null,
     });
 
-    await searchPage.clickSearchButton();
+    await searchPage.waitAndClickSearchButton();
 
     return { searched: true, place, pickupIndex, dropoffIndex };
   },
