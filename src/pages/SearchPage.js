@@ -356,7 +356,11 @@ class SearchPage {
       index,
     );
 
-    // Commit the value (blur the field)
+    // Wait until autocomplete suggestions are shown before committing
+    const suggestions = this.page.locator(SELECTORS.AUTOCOMPLETE_LIST).first();
+    await suggestions.waitFor({ state: "visible" });
+
+    // Commit first suggestion (triggers blur + selection)
     await pressTab(this.page);
 
     // Small wait for UI to process the blur event and autocomplete selection
