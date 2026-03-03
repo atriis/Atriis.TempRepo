@@ -7,7 +7,7 @@ require("module-alias/register");
  * Cucumber Hooks
  */
 
-const { Before, After, setDefaultTimeout } = require("@cucumber/cucumber");
+const { Before, After, setDefaultTimeout, Status } = require("@cucumber/cucumber");
 const path = require("path");
 const fs = require("fs");
 const { launchBrowser } = require("./browserFactory");
@@ -134,7 +134,7 @@ After(async function (scenario) {
     return; // No page to capture
   }
 
-  if (scenario.result.status === "failed") {
+  if (scenario.result.status === Status.FAILED) {
     try {
       // Capture screenshot
       const screenshot = await this.page.screenshot({ fullPage: true });
