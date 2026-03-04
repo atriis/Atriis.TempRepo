@@ -9,6 +9,9 @@ const SELECTORS = {
   REFUNDABLE_CHECKBOX_INNER: ".el-checkbox__inner",
   REFUNDABLE_CHECKBOX_INPUT: "input.el-checkbox__original",
   REFUNDABLE_TAG: "div.refundable:has-text('Refundable')",
+  REFUNDABLE_FILTER_TITLE: "p.filter-title[title='Refundable']",
+  WIFI_FILTER_TITLE: "p.filter-title[title='Wifi']",
+  BREAKFAST_FILTER_TITLE: "p.filter-title[title='Breakfast']",
   FIRST_ROOM_CANCELLATION_POLICY: ".room-list > :nth-child(2) .ticket-details p",
   MEMBER_BADGE: ".expedia-membership-badge-container",
   FIRST_ROOM_PRICE: ".room-list > :nth-child(2) .price-details-main",
@@ -17,9 +20,10 @@ const SELECTORS = {
   CO2_LABEL: ".eco-label",
   CO2_VALUE: ".eco-label .is-size-7",
   NIGHTS_TEXT: ".price-txt .muliSemiBold.gray-2600",
-  WIFI_AMENITY_SPAN: ".room-amenities span",
+  AMENITY_SPAN: ".room-amenities span",
   ROOM_CARDS_WITH_AMENITIES: ".room-list > div:has(.room-amenities-container)",
-  WIFI_INCLUDED: ".room-amenities span:has-text('Wifi included')"
+  WIFI_INCLUDED: ".room-amenities span:has-text('Wifi included')",
+  BREAKFAST_ICON: "img[src*='breakfastIncluded']",
 };
 
 class RoomLevelResultsPage {
@@ -36,7 +40,7 @@ class RoomLevelResultsPage {
   getRefundableCheckboxRoot() {
     return this.page.locator(
       SELECTORS.REFUNDABLE_CHECKBOX_LABEL,
-      { has: this.page.locator("p.filter-title[title='Refundable']") },
+      { has: this.page.locator(SELECTORS.REFUNDABLE_FILTER_TITLE) },
     );
   }
 
@@ -63,7 +67,18 @@ class RoomLevelResultsPage {
   getWifiCheckboxRoot() {
     return this.page.locator(
       SELECTORS.REFUNDABLE_CHECKBOX_LABEL,
-      { has: this.page.locator("p.filter-title[title='Wifi']") },
+      { has: this.page.locator(SELECTORS.WIFI_FILTER_TITLE) },
+    );
+  }
+
+  /**
+   * Gets the Breakfast amenity filter checkbox root container locator.
+   * @returns {Locator} Playwright locator for the Breakfast checkbox container
+   */
+  getBreakfastCheckboxRoot() {
+    return this.page.locator(
+      SELECTORS.REFUNDABLE_CHECKBOX_LABEL,
+      { has: this.page.locator(SELECTORS.BREAKFAST_FILTER_TITLE) },
     );
   }
 
@@ -195,7 +210,7 @@ class RoomLevelResultsPage {
    * @throws {Error} If any room card does not show Wi-Fi amenity
    */
   async verifyAllRoomsHaveWifi() {
-    await this.page.locator(SELECTORS.WIFI_AMENITY_SPAN).first().waitFor({ state: "visible", timeout: 15000 });
+    await this.page.locator(SELECTORS.AMENITY_SPAN).first().waitFor({ state: "visible", timeout: 15000 });
 
     const roomCards = this.page.locator(SELECTORS.ROOM_CARDS_WITH_AMENITIES);
     const count = await roomCards.count();
@@ -205,6 +220,43 @@ class RoomLevelResultsPage {
       const hasWifi = await wifiSpan.count() > 0;
       if (!hasWifi) {
         throw new Error(`Room ${i + 1} does not have Wi-Fi amenity displayed`);
+      }
+    }
+  }
+  /**
+   * Enables the "Breakfast" amenity filter.
+   * Waits until the checkbox state is confirmed.
+   */
+  async clickBreakfastCheckbox() {
+    const root = this.getBreakfastCheckboxRoot();
+    const inner = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INNER);
+    const input = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INPUT);
+
+    await inner.scrollIntoViewIfNeeded();
+    await inner.waitFor({ state: "visible" });
+    await inner.click();
+
+    await this.page.waitForFunction(
+      el => el.checked,
+      await input.elementHandle(),
+    );
+  }
+
+  /**
+   * Verifies that all visible room cards have the Breakfast amenity displayed.
+   * @throws {Error} If any room card does not show Breakfast amenity
+   */
+  async verifyAllRoomsHaveBreakfast() {
+    await this.page.locator(SELECTORS.AMENITY_SPAN).first().waitFor({ state: "visible", timeout: 15000 });
+
+    const roomCards = this.page.locator(SELECTORS.ROOM_CARDS_WITH_AMENITIES);
+    const count = await roomCards.count();
+
+    for (let i = 0; i < count; i++) {
+      const hasBreakfastIcon = await roomCards.nth(i).locator(SELECTORS.BREAKFAST_ICON).count() > 0;
+      const hasBreakfastText = await roomCards.nth(i).locator(SELECTORS.AMENITY_SPAN).filter({ hasText: /breakfast/i }).count() > 0;
+      if (!hasBreakfastIcon && !hasBreakfastText) {
+        throw new Error(`Room ${i + 1} does not have Breakfast amenity displayed`);
       }
     }
   }

@@ -123,3 +123,13 @@ Then("only rooms with Wi-Fi should be displayed", async function () {
   logger.info("Verifying only rooms with Wi-Fi amenity are displayed");
   await RoomLevelResults.verifyWifiRoomsOnly(this.page);
 });
+
+When("I filter room results by breakfast included", async function () {
+  logger.info("Filtering room results by breakfast included");
+  await RoomLevelResults.filterRoomsByBreakfast(this.page);
+});
+
+Then("only rooms with breakfast should be displayed", async function () {
+  logger.info("Verifying only rooms with breakfast amenity are displayed");
+  await RoomLevelResults.verifyBreakfastRoomsOnly(this.page);
+});

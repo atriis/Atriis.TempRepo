@@ -1,4 +1,4 @@
-# Test Name: 47169 Hotels - Breakfast filter is enabled
+﻿# Test Name: 47169 Hotels - Breakfast filter is enabled
 # Description: 
 # Status: Active
 # Labels: Regression,Hotel,Filters,2026 plan 1
@@ -16,7 +16,7 @@ Feature: 47169 Amadeus - Filter hotel room results by breakfast
   Scenario: Breakfast filter shows only rooms with breakfast in room level
     Given I am logged in as "amadeus" "user_one" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Hilton Garden Inn" for 1 night
+    When I search for a hotel in "HILTON GARDEN INN LONDON HEATHROW" for 1 night
     And I select the first hotel result
-    # TODO: Create step "When I filter room results by breakfast included" that calls DSL filterRoomsByBreakfast in RoomLevelResults.js
-    # TODO: Create step "Then only rooms with breakfast should be displayed" that calls DSL verifyBreakfastRoomsOnly in RoomLevelResults.js
+    When I filter room results by breakfast included
+    Then only rooms with breakfast should be displayed

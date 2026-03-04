@@ -141,6 +141,18 @@ const RoomLevelResults = {
     const p = getPageObject(page, RoomLevelResultsPage);
     await p.verifyAllRoomsHaveWifi();
   },
+
+  async filterRoomsByBreakfast(page) {
+    if (!page) throw new Error('page parameter is required');
+    const p = getPageObject(page, RoomLevelResultsPage);
+    await p.clickBreakfastCheckbox();
+  },
+
+  async verifyBreakfastRoomsOnly(page) {
+    if (!page) throw new Error('page parameter is required');
+    const p = getPageObject(page, RoomLevelResultsPage);
+    await p.verifyAllRoomsHaveBreakfast();
+  },
 };
 
 module.exports = RoomLevelResults;
