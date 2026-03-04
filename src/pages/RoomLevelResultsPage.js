@@ -17,6 +17,9 @@ const SELECTORS = {
   CO2_LABEL: ".eco-label",
   CO2_VALUE: ".eco-label .is-size-7",
   NIGHTS_TEXT: ".price-txt .muliSemiBold.gray-2600",
+  WIFI_AMENITY_SPAN: ".room-amenities span",
+  ROOM_CARDS_WITH_AMENITIES: ".room-list > div:has(.room-amenities-container)",
+  WIFI_INCLUDED: ".room-amenities span:has-text('Wifi included')"
 };
 
 class RoomLevelResultsPage {
@@ -51,6 +54,17 @@ class RoomLevelResultsPage {
    */
   getRefundableCheckboxInput() {
     return this.getRefundableCheckboxRoot().locator(SELECTORS.REFUNDABLE_CHECKBOX_INPUT);
+  }
+
+  /**
+   * Gets the Wi-Fi amenity filter checkbox root container locator.
+   * @returns {Locator} Playwright locator for the Wi-Fi checkbox container
+   */
+  getWifiCheckboxRoot() {
+    return this.page.locator(
+      SELECTORS.REFUNDABLE_CHECKBOX_LABEL,
+      { has: this.page.locator("p.filter-title[title='Wifi']") },
+    );
   }
 
   // ===== UI INTERACTIONS =====
@@ -156,6 +170,43 @@ class RoomLevelResultsPage {
     const value = this.page.locator(SELECTORS.CO2_VALUE).first();
     await value.waitFor({ state: "visible", timeout: 10000 });
     return (await value.textContent()).trim();
+  }
+  /**
+   * Enables the "Wi-Fi" amenity filter.
+   * Waits until the checkbox state is confirmed.
+   */
+  async clickWifiCheckbox() {
+    const root = this.getWifiCheckboxRoot();
+    const inner = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INNER);
+    const input = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INPUT);
+
+    await inner.scrollIntoViewIfNeeded();
+    await inner.waitFor({ state: "visible" });
+    await inner.click();
+
+    await this.page.waitForFunction(
+      el => el.checked,
+      await input.elementHandle(),
+    );
+  }
+
+  /**
+   * Verifies that all visible room cards have the Wi-Fi amenity displayed.
+   * @throws {Error} If any room card does not show Wi-Fi amenity
+   */
+  async verifyAllRoomsHaveWifi() {
+    await this.page.locator(SELECTORS.WIFI_AMENITY_SPAN).first().waitFor({ state: "visible", timeout: 15000 });
+
+    const roomCards = this.page.locator(SELECTORS.ROOM_CARDS_WITH_AMENITIES);
+    const count = await roomCards.count();
+
+    for (let i = 0; i < count; i++) {
+      const wifiSpan = roomCards.nth(i).locator(SELECTORS.WIFI_INCLUDED);
+      const hasWifi = await wifiSpan.count() > 0;
+      if (!hasWifi) {
+        throw new Error(`Room ${i + 1} does not have Wi-Fi amenity displayed`);
+      }
+    }
   }
 }
 

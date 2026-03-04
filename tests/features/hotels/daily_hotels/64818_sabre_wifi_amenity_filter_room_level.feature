@@ -14,9 +14,9 @@ Feature: 64818 Sabre - Wi-Fi amenity filter works in room level results
 
   @priority:medium
   Scenario: Wi-Fi amenity filter shows only Wi-Fi rooms in Sabre room level results
-    Given I am logged in as "sabre" "user_one" booking a new trip
+    Given I am logged in as "sabre" "user_sabrin_orly" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result
-    # TODO: Create step "When I filter room results by Wi-Fi amenity" that calls DSL filterRoomsByWifi in RoomLevelResults.js
-    # TODO: Create step "Then only rooms with Wi-Fi should be displayed" that calls DSL verifyWifiRoomsOnly in RoomLevelResults.js
+    When I filter room results by Wi-Fi amenity
+    Then only rooms with Wi-Fi should be displayed

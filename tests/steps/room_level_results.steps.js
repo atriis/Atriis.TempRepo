@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Room Level Results Step Definitions
  *
  * Maps Gherkin steps to RoomLevelResults DSL methods.
@@ -112,4 +112,14 @@ Then("the member rate price should be lower than the regular price", async funct
 Then("the room level results should display {int} nights", async function (nights) {
   logger.info(`Verifying ${nights} nights displayed in room level results`);
   await RoomLevelResults.verifyNightsCountInRoomLevel(this.page, nights);
+});
+
+When("I filter room results by Wi-Fi amenity", async function () {
+  logger.info("Filtering room results by Wi-Fi amenity");
+  await RoomLevelResults.filterRoomsByWifi(this.page);
+});
+
+Then("only rooms with Wi-Fi should be displayed", async function () {
+  logger.info("Verifying only rooms with Wi-Fi amenity are displayed");
+  await RoomLevelResults.verifyWifiRoomsOnly(this.page);
 });

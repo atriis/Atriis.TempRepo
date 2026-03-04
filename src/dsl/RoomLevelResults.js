@@ -128,7 +128,19 @@ const RoomLevelResults = {
       () => p.getCO2Value(),
       'room level results',
     );
-  }
+  },
+
+  async filterRoomsByWifi(page) {
+    if (!page) throw new Error('page parameter is required');
+    const p = getPageObject(page, RoomLevelResultsPage);
+    await p.clickWifiCheckbox();
+  },
+
+  async verifyWifiRoomsOnly(page) {
+    if (!page) throw new Error('page parameter is required');
+    const p = getPageObject(page, RoomLevelResultsPage);
+    await p.verifyAllRoomsHaveWifi();
+  },
 };
 
 module.exports = RoomLevelResults;

@@ -1,4 +1,4 @@
-# Test Name: 64395 Ratehawk - can see wi fi in room level
+﻿# Test Name: 64395 Ratehawk - can see wi fi in room level
 # Description: 
 # Status: Active
 # Labels: Hotel,Amenities,results,room level,Ratehawk Regression,2026 plan 2
@@ -17,6 +17,8 @@ Feature: 64395 Ratehawk - Wi-Fi amenity filter works in room level results
     Given I am logged in as "ratehawk" "user_one" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
+    And I wait to see view rates text in results page
+    And I filter hotel results by hotel name "Trafalgar"
     And I select the first hotel result
-    # TODO: Create step "When I filter room results by Wi-Fi amenity" that calls DSL filterRoomsByWifi in RoomLevelResults.js
-    # TODO: Create step "Then only rooms with Wi-Fi should be displayed" that calls DSL verifyWifiRoomsOnly in RoomLevelResults.js
+    When I filter room results by Wi-Fi amenity
+    Then only rooms with Wi-Fi should be displayed
