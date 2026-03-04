@@ -1,4 +1,4 @@
-# Test Name: 40950 Expedia - Expedia content will be displayed even when GDS content is switched on
+﻿# Test Name: 40950 Expedia - Expedia content will be displayed even when GDS content is switched on
 # Description: 
 # Status: Active
 # Labels: Expedia,Hotel,Regression,2026 plan 1
@@ -17,4 +17,5 @@ Feature: 40950 Expedia - Expedia supplier logo is displayed in hotel results
     Given I am logged in as "expedia" "user_one" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Budapest" for 1 night
-    # TODO: Create step "Then the Expedia supplier logo should be visible in hotel results" that calls DSL verifySupplierLogo with "expedia" in HotelSearch.js
+    And I wait to see view rates text in results page
+    Then the "Expedia" supplier logo should be visible in hotel results

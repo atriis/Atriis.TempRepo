@@ -66,3 +66,8 @@ Then("the CO2 emissions should be displayed in hotel level results", async funct
   logger.info("CO2 verification result in hotel level", { visible: result.visible, value: result.value });
   expect(result.visible).toBe(true);
 });
+Then("the {string} supplier logo should be visible in hotel results", async function (supplierName) {
+  logger.info("Verifying supplier logo is visible", { supplierName });
+  const isVisible = await HotelLevelResults.verifySupplierLogo(this.page, supplierName);
+  if (!isVisible) throw new Error(`Supplier logo for "${supplierName}" not visible in hotel results`);
+});

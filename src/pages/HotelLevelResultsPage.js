@@ -1,4 +1,4 @@
-const { SELECTORS: RESULTS_SELECTORS } = require("@pages/ResultsPage");
+﻿const { SELECTORS: RESULTS_SELECTORS } = require("@pages/ResultsPage");
 
 /**
  * Page Object for hotel level results page.
@@ -10,6 +10,7 @@ const SELECTORS = {
   SEARCH_HOTEL_FILTER: '[placeholder="Search hotel"]',
   CO2_LABEL: ".hotel-info .eco-label",
   CO2_VALUE: ".hotel-info .eco-label .is-size-7",
+  SUPPLIER_LOGO_IMG: (supplierId) => `.hotel-supplier-carousel img[alt*="${supplierId}"]`,
 };
 
 class HotelLevelResultsPage {
@@ -116,6 +117,28 @@ class HotelLevelResultsPage {
     const value = this.page.locator(SELECTORS.CO2_VALUE).first();
     await value.waitFor({ state: "visible", timeout: 10000 });
     return (await value.textContent()).trim();
+  }
+
+  /**
+   * Checks if a supplier logo is visible in hotel level results.
+   * Matches against the supplier ID embedded in the img alt attribute.
+   *
+   * @param {string} supplierId - Supplier ID as it appears in the SVG filename (e.g. "EXPEDIARAPID")
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<boolean>} True if at least one matching supplier logo is visible
+   */
+  async isSupplierLogoVisible(supplierId, { timeout = 15000 } = {}) {
+    if (!supplierId || typeof supplierId !== "string") {
+      throw new Error(`supplierId must be a non-empty string, got: ${typeof supplierId}`);
+    }
+    const logo = this.page.locator(SELECTORS.SUPPLIER_LOGO_IMG(supplierId)).first();
+    try {
+      await logo.waitFor({ state: "visible", timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
