@@ -1,6 +1,7 @@
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { CartPage, SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
+const { assertCO2Displayed } = require("@utils/co2Validation");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
@@ -558,6 +559,26 @@ const Cart = {
     if (typeof text !== 'string' || !text.trim()) throw new Error('text must be a non-empty string, got: ' + typeof text);
     const cartPage = getPageObject(page, CartPage);
     await cartPage.fillSpecialRequest(text);
+  },
+
+  /**
+   * Verifies that CO2 emissions data is displayed in the trip overview.
+   * Checks that the eco-label is visible and the CO2 value is a non-zero number.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{visible: boolean, value: string}>}
+   * @throws {Error} If CO2 data is not displayed or value is zero
+   */
+  async verifyCO2InTripOverview(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const p = getPageObject(page, CartPage);
+    return assertCO2Displayed(
+      () => p.isCO2LabelVisibleInTripOverview(),
+      () => p.getCO2ValueInTripOverview(),
+      'trip overview',
+    );
   },
 };
 

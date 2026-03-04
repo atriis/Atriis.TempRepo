@@ -69,6 +69,10 @@ const SELECTORS = {
   SPECIAL_REQUEST_TEXTAREA: '.quote-extras--special-requests textarea',
   SPECIAL_REQUEST_SAVE_BTN: '.quote-extras--special-requests .btn--primary',
   SPECIAL_REQUEST_SUCCESS: '.success-icon',
+
+  // CO2 eco-label in trip overview (hotel-preview.vue in cart context)
+  CO2_LABEL_TRIP_OVERVIEW: "section.hotel-preview .eco-label",
+  CO2_VALUE_TRIP_OVERVIEW: "section.hotel-preview .eco-label .is-size-7",
 };
 
 class CartPage {
@@ -800,6 +804,30 @@ class CartPage {
     await textarea.fill(text);
     await this.page.locator(SELECTORS.SPECIAL_REQUEST_SAVE_BTN).click();
     await this.page.locator(SELECTORS.SPECIAL_REQUEST_SUCCESS).waitFor({ state: 'visible', timeout });
+  }
+  /**
+   * Checks if CO2 eco-label is visible in trip overview.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<boolean>} True if CO2 label is visible
+   */
+  async isCO2LabelVisibleInTripOverview({ timeout = 10000 } = {}) {
+    const label = this.page.locator(SELECTORS.CO2_LABEL_TRIP_OVERVIEW).first();
+    try {
+      await label.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Gets the CO2 value text from the trip overview.
+   * @returns {Promise<string>} The CO2 numeric value text
+   */
+  async getCO2ValueInTripOverview() {
+    const value = this.page.locator(SELECTORS.CO2_VALUE_TRIP_OVERVIEW).first();
+    await value.waitFor({ state: 'visible', timeout: 10000 });
+    return (await value.textContent()).trim();
   }
 }
 // Export CartPage and SELECTORS for use in tests and DSL

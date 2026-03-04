@@ -59,3 +59,10 @@ Then("I should see member rates displayed in hotel level results", async functio
   logger.info("Member rates verification result", { isVisible });
   expect(isVisible).toBe(true);
 });
+
+Then("the CO2 emissions should be displayed in hotel level results", async function () {
+  logger.info("Verifying CO2 emissions are displayed in hotel level results");
+  const result = await HotelLevelResults.verifyCO2InHotelLevel(this.page);
+  logger.info("CO2 verification result in hotel level", { visible: result.visible, value: result.value });
+  expect(result.visible).toBe(true);
+});

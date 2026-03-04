@@ -298,6 +298,13 @@ Then("the out of policy tooltip in cart should be {string}", async function (exp
   expect(actualText).toBe(expectedText);
 });
 
+Then("the CO2 emissions should be displayed in the trip overview", async function () {
+  logger.info("Verifying CO2 emissions are displayed in trip overview");
+  const result = await Cart.verifyCO2InTripOverview(this.page);
+  logger.info("CO2 verification result in trip overview", { visible: result.visible, value: result.value });
+  expect(result.visible).toBe(true);
+});
+
 Then("passport details are displayed as {string}", async function (expectedText) {
   logger.info("Asserting passport details are displayed", { expectedText });
   const actualText = await Cart.getPassportDetailsText(this.page, 0);

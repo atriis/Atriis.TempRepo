@@ -14,6 +14,8 @@ const SELECTORS = {
   FIRST_ROOM_PRICE: ".room-list > :nth-child(2) .price-details-main",
   MEMBER_PRICE: ".price-txt h4.amount",
   REGULAR_PRICE_BEFORE_DISCOUNT: ".price-txt h6.amount-before-discount",
+  CO2_LABEL: ".eco-label",
+  CO2_VALUE: ".eco-label .is-size-7",
 };
 
 class RoomLevelResultsPage {
@@ -146,6 +148,31 @@ class RoomLevelResultsPage {
     }
 
     return { memberPrice, regularPrice };
+  }
+
+  /**
+   * Checks if CO2 eco-label is visible in room level results.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<boolean>} True if CO2 label is visible
+   */
+  async isCO2LabelVisible({ timeout = 10000 } = {}) {
+    const label = this.page.locator(SELECTORS.CO2_LABEL).first();
+    try {
+      await label.waitFor({ state: "visible", timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Gets the CO2 value text from the room level results.
+   * @returns {Promise<string>} The CO2 numeric value text
+   */
+  async getCO2Value() {
+    const value = this.page.locator(SELECTORS.CO2_VALUE).first();
+    await value.waitFor({ state: "visible", timeout: 10000 });
+    return (await value.textContent()).trim();
   }
 }
 

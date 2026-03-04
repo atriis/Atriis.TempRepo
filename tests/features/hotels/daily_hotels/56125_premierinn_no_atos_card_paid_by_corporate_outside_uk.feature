@@ -14,12 +14,11 @@ Feature: 56125 Premier Inn - Corporate booking outside UK does not use ATOS card
 
   @priority:high
   Scenario: ATOS card not available and Paid by Corporate shown for non-UK Premier Inn
-    Given I am logged in as "premierinn" "user_one" booking a new trip
+    Given I am logged in as "premierinn" "user_two" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "FRA" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "Then the ATOS card should not be available as a payment option" that calls DSL verifyATOSCardNotAvailable in CartFop.js
-    # TODO: Create step "Then the payment type should be "Paid by Corporate"" that calls DSL verifyPaymentType with "Paid by Corporate" in Cart.js
+    Then the payment type should be "Paid by Corporate"
 

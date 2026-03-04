@@ -7,7 +7,9 @@ const { SELECTORS: RESULTS_SELECTORS } = require("@pages/ResultsPage");
 
 const SELECTORS = {
   MEMBER_BADGE: ".expedia-membership-badge-container, .booking-com-membership-badge-container",
-  SEARCH_HOTEL_FILTER: '[placeholder="Search hotel"]'
+  SEARCH_HOTEL_FILTER: '[placeholder="Search hotel"]',
+  CO2_LABEL: ".hotel-info .eco-label",
+  CO2_VALUE: ".hotel-info .eco-label .is-size-7",
 };
 
 class HotelLevelResultsPage {
@@ -89,6 +91,31 @@ class HotelLevelResultsPage {
 
   async filterByHotelName(hotelName) {
     await this.page.locator(SELECTORS.SEARCH_HOTEL_FILTER).fill(hotelName);
+  }
+
+  /**
+   * Checks if CO2 eco-label is visible in hotel level results.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<boolean>} True if CO2 label is visible
+   */
+  async isCO2LabelVisible({ timeout = 10000 } = {}) {
+    const label = this.page.locator(SELECTORS.CO2_LABEL).first();
+    try {
+      await label.waitFor({ state: "visible", timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Gets the CO2 value text from the first hotel result.
+   * @returns {Promise<string>} The CO2 numeric value text
+   */
+  async getCO2Value() {
+    const value = this.page.locator(SELECTORS.CO2_VALUE).first();
+    await value.waitFor({ state: "visible", timeout: 10000 });
+    return (await value.textContent()).trim();
   }
 }
 

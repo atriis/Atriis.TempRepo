@@ -92,6 +92,13 @@ Then("I should see member rates displayed in room level results", async function
   expect(isVisible).toBe(true);
 });
 
+Then("the CO2 emissions should be displayed in room level results", async function () {
+  logger.info("Verifying CO2 emissions are displayed in room level results");
+  const result = await RoomLevelResults.verifyCO2InRoomLevel(this.page);
+  logger.info("CO2 verification result in room level", { visible: result.visible, value: result.value });
+  expect(result.visible).toBe(true);
+});
+
 Then("the member rate price should be lower than the regular price", async function () {
   logger.info("Comparing member rate price vs regular price");
   const comparison = await RoomLevelResults.compareMemberVsRegularPrice(this.page);

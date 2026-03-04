@@ -16,11 +16,11 @@ Feature: 68809 Amadeus - CO2 emissions displayed in hotel level, room level, and
   Scenario: CO2 data is visible throughout the Amadeus hotel booking flow
     Given I am logged in as "amadeus" "user_one" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "DoubleTree Heathrow" for 1 night
-    # TODO: Create step "Then the CO2 emissions should be displayed in hotel level results" that calls DSL verifyCO2InHotelLevel in HotelSearch.js
+    When I search for a hotel in "Amsterdam" for 1 night
+    Then the CO2 emissions should be displayed in hotel level results
     And I select the first hotel result
-    # TODO: Create step "Then the CO2 emissions should be displayed in room level results" that calls DSL verifyCO2InRoomLevel in RoomLevelResults.js
+    Then the CO2 emissions should be displayed in room level results
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "Then the CO2 emissions should be displayed in the trip overview" that calls DSL verifyCO2InTripOverview in Trip.js
+    And the CO2 emissions should be displayed in the trip overview
 

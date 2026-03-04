@@ -1,5 +1,6 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const RoomLevelResultsPage = require("@pages/RoomLevelResultsPage");
+const { assertCO2Displayed } = require("@utils/co2Validation");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { CartPage } = require("@pages/CartPage");
 const Results = require("./Results");
@@ -105,6 +106,26 @@ const RoomLevelResults = {
     }
 
     return { memberPrice, regularPrice, hasDiscount };
+  },
+
+  /**
+   * Verifies that CO2 emissions data is displayed in room level results.
+   * Checks that the eco-label is visible and the CO2 value is a non-zero number.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{visible: boolean, value: string}>}
+   * @throws {Error} If CO2 data is not displayed or value is zero
+   */
+  async verifyCO2InRoomLevel(page) {
+    if (!page) {
+      throw new Error('page parameter is required');
+    }
+
+    const p = getPageObject(page, RoomLevelResultsPage);
+    return assertCO2Displayed(
+      () => p.isCO2LabelVisible(),
+      () => p.getCO2Value(),
+      'room level results',
+    );
   },
 };
 

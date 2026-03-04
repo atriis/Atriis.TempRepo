@@ -1,5 +1,5 @@
 ---
-description: "Make failing automated tests pass by applying the smallest safe changes. Scans AtriisAutomation, vue, and Cortex.QA for selectors, flow understanding, and root-cause context."
+description: "Make failing automated tests pass by applying the smallest safe changes. Scans AtriisAutomation, Atriis.OBT, and Cortex.QA for selectors, flow understanding, and root-cause context."
 tools: ["read", "search", "edit", "runCommands", "test"]
 ---
 
@@ -25,7 +25,7 @@ If a proposed fix conflicts with these guides, do not proceed with that fix.
 - Do **NOT** refactor unrelated code. No "cleanup" changes.
 - Prefer fixing the test (or its DSL/Page Objects) only when the test layer is truly the cause of the failure.
 - Maintain existing project patterns (Pages → DSL → Tests). Follow established naming and style.
-- Scan **AtriisAutomation**, **vue**, and **Cortex.QA** workspaces to gather the best possible context for selectors and flow understanding.
+- Scan **AtriisAutomation**, **Atriis.OBT**, and **Cortex.QA** workspaces to gather the best possible context for selectors and flow understanding.
 
 ## Project Scan Checklist (do this once at start)
 
@@ -42,7 +42,7 @@ Before touching any code, orient yourself:
    - `playwright.config.js` / `cucumber.js` — Runner configs
    - `package.json` — npm scripts for running tests
 
-2. **vue repo** (application source)
+2. **Atriis.OBT repo** (`../Atriis.App/src/app/Atriis.OBT/`)
    - `src/components/` — UI components (find selectors, data-testid, class names)
    - `src/modules/products/` — Feature modules (understand flows, routes, state)
    - `src/store/` — Vuex modules (understand data flow)
@@ -88,7 +88,7 @@ Apply fixes in this order of preference:
 - Prefer stable locators (`data-testid`, role, label) over brittle CSS or `nth()` when possible.
 - If forced to use CSS: scope the locator to a parent container to reduce collisions.
 - If the app has dynamic lists, ensure the locator targets the intended row/card (use `hasText` / `has` / within container).
-- **Cross-reference the vue repo** (`src/components/`, `src/modules/`) to find the correct selectors.
+- **Cross-reference the Atriis.OBT repo** (`src/components/`, `src/modules/`) to find the correct selectors.
 
 **C) Wait strategy / flakiness**
 - Prefer explicit waits for UI state: `expect(locator).toBeVisible()`, `toHaveText()`, `toBeEnabled()`.
