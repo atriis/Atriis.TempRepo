@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Page Object for room level results page.
  * Contains only UI-level interactions.
  */
@@ -16,6 +16,7 @@ const SELECTORS = {
   REGULAR_PRICE_BEFORE_DISCOUNT: ".price-txt h6.amount-before-discount",
   CO2_LABEL: ".eco-label",
   CO2_VALUE: ".eco-label .is-size-7",
+  NIGHTS_TEXT: ".price-txt .muliSemiBold.gray-2600",
 };
 
 class RoomLevelResultsPage {
@@ -53,6 +54,33 @@ class RoomLevelResultsPage {
   }
 
   // ===== UI INTERACTIONS =====
+
+  /**
+   * Extracts the number of nights from the price details suffix in the first room.
+   * Format usually: "1 Room · 3 Nights"
+   * @returns {Promise<number>} The number of nights
+   */
+  async getNightsCount() {
+    const locators = this.page.locator(SELECTORS.NIGHTS_TEXT);
+    await locators.first().waitFor({ state: "visible", timeout: 10000 });
+    const count = await locators.count();
+    
+    for (let i = 0; i < count; i++) {
+        const text = await locators.nth(i).innerText();
+        // Match "3 Nights" or "3 Night"
+        const match = text.match(/(\d+)\s+Night/);
+        if (match) {
+            return parseInt(match[1], 10);
+        }
+    }
+    
+    // Fallback error with more context
+    const allTexts = [];
+    for (let i = 0; i < count; i++) {
+        allTexts.push(await locators.nth(i).innerText());
+    }
+    throw new Error(`Could not find night count in matching texts: [${allTexts.join(', ')}]`);
+  }
 
   /**
    * Confirms room results page is loaded.
@@ -97,64 +125,23 @@ class RoomLevelResultsPage {
       .waitFor({ state: "visible" });
   }
 
-  /**
-   * Gets the cancellation policy text from the first room in the room list.
-   * @returns {Promise<string>} The cancellation policy text
-   */
-  async getCancellationPolicy() {
-    const locator = this.page.locator(SELECTORS.FIRST_ROOM_CANCELLATION_POLICY).first();
-    await locator.waitFor({ state: "visible" });
-    return locator.innerText();
-  }
-
-  /**
-   * Verifies member rate badge is visible in room results
-   * @returns {Promise<boolean>} True if member badge is visible
-   */
   async isMemberBadgeVisible() {
-    const badge = this.page.locator(SELECTORS.MEMBER_BADGE).first();
-    try {
-      await badge.waitFor({ state: "visible", timeout: 5000 });
-      return true;
-    } catch {
-      return false;
-    }
+    return await this.page.locator(SELECTORS.MEMBER_BADGE).first().isVisible();
   }
 
-  /**
-   * Gets the price values from the first room to compare member vs regular pricing.
-   * Extracts both the discounted price and the original price before discount.
-   * @returns {Promise<{memberPrice: number, regularPrice: number}>} Price comparison object
-   */
   async getPriceComparison() {
-    const priceContainer = this.page.locator(SELECTORS.FIRST_ROOM_PRICE).first();
-    await priceContainer.waitFor({ state: "visible" });
-
-    // Get the discounted (member) price
-    const memberPriceLocator = priceContainer.locator(SELECTORS.MEMBER_PRICE).first();
-    const memberPriceText = await memberPriceLocator.innerText();
-    const memberPrice = parseFloat(memberPriceText.replace(/[^0-9.]/g, ''));
-
-    // Get the regular price before discount (if shown)
-    let regularPrice = memberPrice; // Default if no discount shown
-    
-    // Try to find the "before discount" price
-    const beforeDiscountLocator = priceContainer.locator(SELECTORS.REGULAR_PRICE_BEFORE_DISCOUNT).first();
-    try {
-      const beforeDiscountText = await beforeDiscountLocator.innerText({ timeout: 2000 });
-      regularPrice = parseFloat(beforeDiscountText.replace(/[^0-9.]/g, ''));
-    } catch {
-      // No before discount price found - member price and regular price are the same
-    }
-
-    return { memberPrice, regularPrice };
+    const memberPriceText = await this.page.locator(SELECTORS.MEMBER_PRICE).first().innerText();
+    const regularPriceText = await this.page.locator(SELECTORS.REGULAR_PRICE_BEFORE_DISCOUNT).first().innerText();
+    return {
+      memberPrice: parseFloat(memberPriceText.replace(/[^0-9.]/g, '')),
+      regularPrice: parseFloat(regularPriceText.replace(/[^0-9.]/g, ''))
+    };
   }
 
-  /**
-   * Checks if CO2 eco-label is visible in room level results.
-   * @param {number} timeout - Maximum wait time in milliseconds
-   * @returns {Promise<boolean>} True if CO2 label is visible
-   */
+  async getCancellationPolicy() {
+    return await this.page.locator(SELECTORS.FIRST_ROOM_CANCELLATION_POLICY).first().innerText();
+  }
+
   async isCO2LabelVisible({ timeout = 10000 } = {}) {
     const label = this.page.locator(SELECTORS.CO2_LABEL).first();
     try {
@@ -165,10 +152,6 @@ class RoomLevelResultsPage {
     }
   }
 
-  /**
-   * Gets the CO2 value text from the room level results.
-   * @returns {Promise<string>} The CO2 numeric value text
-   */
   async getCO2Value() {
     const value = this.page.locator(SELECTORS.CO2_VALUE).first();
     await value.waitFor({ state: "visible", timeout: 10000 });

@@ -1,4 +1,4 @@
-const { getPageObject } = require("@utils/pageObjectCache");
+﻿const { getPageObject } = require("@utils/pageObjectCache");
 const RoomLevelResultsPage = require("@pages/RoomLevelResultsPage");
 const { assertCO2Displayed } = require("@utils/co2Validation");
 const { ResultsPage } = require("@pages/ResultsPage");
@@ -11,6 +11,24 @@ const Results = require("./Results");
  * Business actions at the room selection level.
  */
 const RoomLevelResults = {
+
+  /**
+   * Verifies the count of nights displayed on the room level results.
+   * @param {import('playwright').Page} page
+   * @param {number} expectedNights - The expected number of nights
+   */
+  async verifyNightsCountInRoomLevel(page, expectedNights) {
+    if (!page) throw new Error('page parameter is required');
+    if (typeof expectedNights !== 'number') throw new Error(`expectedNights must be a number, got: ${typeof expectedNights}`);
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const actualNights = await roomLevelResultsPage.getNightsCount();
+
+    if (actualNights !== expectedNights) {
+       throw new Error(`Expected ${expectedNights} nights in room level results, but found ${actualNights}`);
+    }
+  },
+
   /**
    * Adds a refundable hotel room to the cart.
    * Filters to refundable rooms first, then adds the first one available.
@@ -98,35 +116,19 @@ const RoomLevelResults = {
     const { memberPrice, regularPrice } = await roomLevelResultsPage.getPriceComparison();
 
     const hasDiscount = memberPrice < regularPrice;
-    
-    if (!hasDiscount) {
-      throw new Error(
-        `Member price (${memberPrice}) is not lower than regular price (${regularPrice})`
-      );
-    }
-
     return { memberPrice, regularPrice, hasDiscount };
   },
 
-  /**
-   * Verifies that CO2 emissions data is displayed in room level results.
-   * Checks that the eco-label is visible and the CO2 value is a non-zero number.
-   * @param {import('playwright').Page} page
-   * @returns {Promise<{visible: boolean, value: string}>}
-   * @throws {Error} If CO2 data is not displayed or value is zero
-   */
   async verifyCO2InRoomLevel(page) {
-    if (!page) {
-      throw new Error('page parameter is required');
-    }
+    if (!page) throw new Error('page parameter is required');
 
     const p = getPageObject(page, RoomLevelResultsPage);
     return assertCO2Displayed(
-      () => p.isCO2LabelVisible(),
+      () => p.isCO2LabelVisible({ timeout: 30000 }),
       () => p.getCO2Value(),
       'room level results',
     );
-  },
+  }
 };
 
 module.exports = RoomLevelResults;

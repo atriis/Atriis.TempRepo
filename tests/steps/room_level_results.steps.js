@@ -106,3 +106,10 @@ Then("the member rate price should be lower than the regular price", async funct
   expect(comparison.hasDiscount).toBe(true);
   expect(comparison.memberPrice).toBeLessThan(comparison.regularPrice);
 });
+
+
+
+Then("the room level results should display {int} nights", async function (nights) {
+  logger.info(`Verifying ${nights} nights displayed in room level results`);
+  await RoomLevelResults.verifyNightsCountInRoomLevel(this.page, nights);
+});
