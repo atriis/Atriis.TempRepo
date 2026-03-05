@@ -112,6 +112,25 @@ class CartPayment {
     const paymentPage = getPageObject(page, CartPaymentPage);
     await paymentPage.fillCVV(cvv);
   }
+
+  /**
+   * Validates the count of visible payment cards in the FOP panel.
+   * @param {import('@playwright/test').Page} page - Playwright page instance
+   * @param {number} expectedCount - Expected number of visible cards
+   * @throws {Error} If page or expectedCount are invalid
+   * @returns {Promise<void>}
+   */
+  static async verifyCardCount(page, expectedCount) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (typeof expectedCount !== 'number') {
+      throw new Error('expectedCount must be a number, got: ' + typeof expectedCount);
+    }
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const actualCount = await paymentPage.getCardCount();
+    expect(actualCount, `Expected ${expectedCount} payment cards, but found ${actualCount}`).toBe(expectedCount);
+  }
 }
 
 module.exports = CartPayment;

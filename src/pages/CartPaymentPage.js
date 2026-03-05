@@ -86,6 +86,23 @@ class CartPaymentPage {
   }
 
   /**
+   * Gets the list of available cards.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCardList() {
+    return this.page.locator(SELECTORS.CARD_NAME_LIST);
+  }
+
+  /**
+   * Returns the count of visible cards in the card list.
+   * @returns {Promise<number>}
+   */
+  async getCardCount() {
+    await this.page.locator(SELECTORS.CARD_NAME_LIST).first().waitFor({ state: 'visible' });
+    return await this.page.locator(SELECTORS.CARD_NAME_LIST).count();
+  }
+
+  /**
    * Waits for the Card Details section to be visible.
    */
   async waitForCardDetailsToBeVisible() {

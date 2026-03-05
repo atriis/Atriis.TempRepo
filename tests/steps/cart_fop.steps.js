@@ -92,3 +92,8 @@ Then("the card details text should be visible", async function () {
   logger.info("Verifying card details text is visible");
   await CartPayment.waitForCardDetailsToBeVisible(this.page);
 });
+
+Then("{int} payment cards should be visible in the FOP panel", async function (count) {
+  logger.info(`Verifying ${count} payment cards are visible in FOP panel`);
+  await CartPayment.verifyCardCount(this.page, count);
+});
