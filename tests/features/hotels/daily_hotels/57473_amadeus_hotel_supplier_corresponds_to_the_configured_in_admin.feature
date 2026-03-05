@@ -7,19 +7,19 @@
 # Updated: 2025-11-20T08:14:52Z
 
 @regression @provider:amadeus
-Feature: 57473 Amadeus - Filter hotel by name and validate correct supplier
+Feature: 57473 Amadeus - Hotel - Supplier corresponds to the one that is configured in admin
   As a corporate traveler
   I want to filter hotel results by hotel name and verify the correct supplier is shown
   So that I can find and book from a specific hotel chain and confirm the supplier
 
   @priority:medium
-  Scenario: Filter by hotel name and verify supplier in room level results
+  Scenario: Verify supplier in room level results
     Given I am logged in as "amadeus" "user_one" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Hilton Cambridge" for 1 night
-    When I filter results by "Hilton" checkbox
+    When I search for a hotel in "Graduate by Hilton Cambridge" for 1 night
     And I wait to see view rates text in results page
+    And I filter hotel results by hotel name "Hilton Cambridge"
     Then the "Amadeus" supplier logo should be visible in hotel results
     And I select the first hotel result
+    And I wait for the first add to trip button in room level results to be visible
     Then the "Amadeus" supplier logo should be visible in room level results
-
