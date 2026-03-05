@@ -14,7 +14,8 @@ Feature: 46711 Expedia - Sustainability filter is not greyed out
 
   @priority:medium
   Scenario: Sustainability filter is active and not greyed out in hotel results
-    Given I am logged in as "expedia" "user_one" booking a new trip
+    Given I am logged in as "expedia" "user_three" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
-    # TODO: Create step "Then the sustainability filter should be enabled and not greyed out" that calls DSL verifySustainabilityFilterEnabled in HotelSearch.js
+    And I wait to see view rates text in results page
+    Then the sustainability filter checkbox should be enabled and clickable

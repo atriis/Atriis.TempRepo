@@ -71,3 +71,8 @@ Then("the {string} supplier logo should be visible in hotel results", async func
   const isVisible = await HotelLevelResults.verifySupplierLogo(this.page, supplierName);
   if (!isVisible) throw new Error(`Supplier logo for "${supplierName}" not visible in hotel results`);
 });
+
+Then("the sustainability filter checkbox should be enabled and clickable", async function () {
+  logger.info("Verifying sustainability filter checkbox is enabled and clickable");
+  await HotelLevelResults.verifySustainabilityFilterEnabled(this.page);
+});

@@ -11,6 +11,7 @@ const SELECTORS = {
   CO2_LABEL: ".hotel-info .eco-label",
   CO2_VALUE: ".hotel-info .eco-label .is-size-7",
   SUPPLIER_LOGO_IMG: (supplierId) => `.hotel-supplier-carousel img[alt*="${supplierId}"]`,
+  SUSTAINABILITY_FILTER_CHECKBOX: 'input.el-checkbox__original[value="ecoCertificated"]',
 };
 
 class HotelLevelResultsPage {
@@ -117,6 +118,21 @@ class HotelLevelResultsPage {
     const value = this.page.locator(SELECTORS.CO2_VALUE).first();
     await value.waitFor({ state: "visible", timeout: 10000 });
     return (await value.textContent()).trim();
+  }
+
+  /**
+   * Checks if the Sustainability filter is enabled (not greyed out).
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<boolean>} True if the filter is visible and not disabled
+   */
+  async isSustainabilityFilterEnabled({ timeout = 30000 } = {}) {
+    const checkbox = this.page.locator(SELECTORS.SUSTAINABILITY_FILTER_CHECKBOX);
+    await checkbox.waitFor({ state: 'attached', timeout });
+    const filterLabel = checkbox.locator('xpath=ancestor::label[contains(@class,"el-checkbox")]');
+    await filterLabel.waitFor({ state: 'visible', timeout });
+    const classes = await filterLabel.getAttribute('class');
+    return !classes.includes('is-disabled');
   }
 
   /**

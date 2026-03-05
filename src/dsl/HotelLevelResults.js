@@ -97,6 +97,20 @@ const HotelLevelResults = {
     const p = getPageObject(page, HotelLevelResultsPage);
     return p.isSupplierLogoVisible(supplierId);
   },
+
+  /**
+   * Verifies the Sustainability filter is visible and not greyed out in hotel results.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{enabled: boolean}>}
+   * @throws {Error} If the filter is not visible or is disabled
+   */
+  async verifySustainabilityFilterEnabled(page) {
+    if (!page) throw new Error('page is required');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const isEnabled = await hotelLevelResultsPage.isSustainabilityFilterEnabled();
+    if (!isEnabled) throw new Error('Sustainability filter is greyed out (disabled)');
+    return { enabled: true };
+  },
 };
 
 module.exports = HotelLevelResults;
