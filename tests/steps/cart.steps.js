@@ -333,3 +333,13 @@ When("I add a special request with text {string}", async function (text) {
   this.specialRequestText = text;
   await Cart.addSpecialRequest(this.page, text);
 });
+
+When("I send the email", async function () {
+  logger.info("Sending email and waiting for success notification");
+  await Cart.sendQuoteAndWaitForSuccess(this.page);
+});
+
+Then("the download voucher button should be visible in the trip overview", async function () {
+  logger.info("Verifying download voucher button is visible in trip overview");
+  await Cart.verifyVoucherDownloadVisible(this.page);
+});

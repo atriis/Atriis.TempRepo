@@ -73,6 +73,9 @@ const SELECTORS = {
   // CO2 eco-label in trip overview (hotel-preview.vue in cart context)
   CO2_LABEL_TRIP_OVERVIEW: "section.hotel-preview .eco-label",
   CO2_VALUE_TRIP_OVERVIEW: "section.hotel-preview .eco-label .is-size-7",
+
+  // Voucher download box in hotel-quote-card.vue (.voucher-box)
+  DOWNLOAD_VOUCHER_BOX: ".download-text",
 };
 
 class CartPage {
@@ -828,6 +831,22 @@ class CartPage {
     const value = this.page.locator(SELECTORS.CO2_VALUE_TRIP_OVERVIEW).first();
     await value.waitFor({ state: 'visible', timeout: 10000 });
     return (await value.textContent()).trim();
+  }
+
+  /**
+   * Checks if the "Download Voucher" box is visible in the trip overview.
+   * Only visible for suppliers that provide a voucher (e.g. Ratehawk).
+   * @param {number} [timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async isVoucherDownloadVisible({ timeout = 15000 } = {}) {
+    const box = this.page.locator(SELECTORS.DOWNLOAD_VOUCHER_BOX).first();
+    try {
+      await box.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 // Export CartPage and SELECTORS for use in tests and DSL

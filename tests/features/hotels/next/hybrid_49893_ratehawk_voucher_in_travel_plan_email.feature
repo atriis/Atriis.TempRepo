@@ -20,11 +20,13 @@ Feature: 49893 Ratehawk - Travel plan email contains Ratehawk voucher, not Atrii
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
+    Then the hotel should appear as refundable in cart
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    # TODO: Create step "Then the download voucher button should be visible in the trip overview" that calls DSL verifyVoucherDownloadVisible in Trip.js
+    Then the download voucher button should be visible in the trip overview
     When I click the share itinerary button
-    And I send the share
-    # TODO: Create step "Then the travel plan email should contain the Ratehawk voucher URL, not an Atriis-generated voucher" - hybrid: validate via email/API log that voucher link is from Ratehawk
+    And I send the email
+    Then I should see a success notification
+    Then I successfully cancel the trip
 

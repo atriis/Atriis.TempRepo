@@ -580,6 +580,23 @@ const Cart = {
       'trip overview',
     );
   },
+
+  /**
+   * Verifies that the "Download Voucher" box is visible in the trip overview.
+   * Only present for suppliers that provide their own voucher (e.g. Ratehawk).
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the voucher download box is not visible
+   */
+  async verifyVoucherDownloadVisible(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const isVisible = await cartPage.isVoucherDownloadVisible();
+
+    if (!isVisible) {
+      throw new Error('Download Voucher box is not visible in the trip overview');
+    }
+  },
 };
 
 
