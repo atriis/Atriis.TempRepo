@@ -18,5 +18,8 @@ Feature: 57473 Amadeus - Filter hotel by name and validate correct supplier
     And I have added myself as the traveler
     When I search for a hotel in "Hilton Cambridge" for 1 night
     When I filter results by "Hilton" checkbox
+    And I wait to see view rates text in results page
+    Then the "Amadeus" supplier logo should be visible in hotel results
     And I select the first hotel result
-    # TODO: Create step "Then the correct supplier should be visible in room level results" that calls DSL verifySupplierInRoomLevel in RoomLevelResults.js
+    Then the "Amadeus" supplier logo should be visible in room level results
+
