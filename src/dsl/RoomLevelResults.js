@@ -153,6 +153,33 @@ const RoomLevelResults = {
     const p = getPageObject(page, RoomLevelResultsPage);
     await p.verifyAllRoomsHaveBreakfast();
   },
+
+  /**
+   * Verifies that a specific supplier logo is visible in room level results.
+   * @param {import('playwright').Page} page
+   * @param {string} supplierName - Common name of the supplier (e.g. "Expedia", "hCorpo")
+   * @returns {Promise<boolean>} True if logo is visible
+   */
+  async verifySupplierLogo(page, supplierName) {
+    if (!page) throw new Error('page is required');
+    if (!supplierName || typeof supplierName !== 'string') {
+      throw new Error('supplierName must be a non-empty string, got: ' + typeof supplierName);
+    }
+    const SUPPLIER_ID_MAP = {
+      expedia: 'EXPEDIA',
+      hcorpo: 'HCORPO',
+      bookingcom: 'BOOKINGCOM',
+      amadeus: 'AMADEUS',
+      ratehawk: 'RATEHAWK',
+    };
+    const key = supplierName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const supplierId = SUPPLIER_ID_MAP[key];
+    if (!supplierId) {
+      throw new Error('Unknown supplier: ' + supplierName);
+    }
+    const p = getPageObject(page, RoomLevelResultsPage);
+    return p.isSupplierLogoVisible(supplierId);
+  },
 };
 
 module.exports = RoomLevelResults;

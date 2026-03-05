@@ -24,6 +24,7 @@ const SELECTORS = {
   ROOM_CARDS_WITH_AMENITIES: ".room-list > div:has(.room-amenities-container)",
   WIFI_INCLUDED: ".room-amenities span:has-text('Wifi included')",
   BREAKFAST_ICON: "img[src*='breakfastIncluded']",
+  SUPPLIER_LOGO_IMG: (supplierId) => `img[src*="${supplierId}"]`,
 };
 
 class RoomLevelResultsPage {
@@ -258,6 +259,28 @@ class RoomLevelResultsPage {
       if (!hasBreakfastIcon && !hasBreakfastText) {
         throw new Error(`Room ${i + 1} does not have Breakfast amenity displayed`);
       }
+    }
+  }
+
+  /**
+   * Checks if a supplier logo is visible in room level results.
+   * Matches against the supplier ID embedded in the img src attribute.
+   *
+   * @param {string} supplierId - Supplier ID as it appears in the image URL (e.g. "HCORPO")
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<boolean>} True if at least one matching supplier logo is visible
+   */
+  async isSupplierLogoVisible(supplierId, { timeout = 15000 } = {}) {
+    if (!supplierId || typeof supplierId !== "string") {
+      throw new Error(`supplierId must be a non-empty string, got: ${typeof supplierId}`);
+    }
+    const logo = this.page.locator(SELECTORS.SUPPLIER_LOGO_IMG(supplierId)).first();
+    try {
+      await logo.waitFor({ state: "visible", timeout });
+      return true;
+    } catch {
+      return false;
     }
   }
 }

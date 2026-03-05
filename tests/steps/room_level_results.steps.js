@@ -99,6 +99,12 @@ Then("the CO2 emissions should be displayed in room level results", async functi
   expect(result.visible).toBe(true);
 });
 
+Then("the {string} supplier logo should be visible in room level results", async function (supplierName) {
+  logger.info("Verifying supplier logo is visible in room level results", { supplierName });
+  const isVisible = await RoomLevelResults.verifySupplierLogo(this.page, supplierName);
+  if (!isVisible) throw new Error(`Supplier logo for "${supplierName}" not visible in room level results`);
+});
+
 Then("the member rate price should be lower than the regular price", async function () {
   logger.info("Comparing member rate price vs regular price");
   const comparison = await RoomLevelResults.compareMemberVsRegularPrice(this.page);

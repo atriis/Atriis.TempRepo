@@ -14,11 +14,12 @@ Feature: 63529 General - hCorpo hotel logo visible and can be added to trip
 
   @priority:medium
   Scenario: hCorpo hotel logo is visible in room level and hotel can be added to cart
-    Given I am logged in as "general" "user_one" booking a new trip
+    Given I am logged in as "amadeus" "hcorpo_hotel" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Ibis Styles Makkah" for 1 night
+    When I search for a hotel in "Ibis Styles Makkah Hotel" for 1 night
     And I select the first hotel result
-    # TODO: Create step "Then the hCorpo logo should be visible in room level results" that calls DSL verifyHCorpoLogo in RoomLevelResults.js
+    And I wait for the first add to trip button in room level results to be visible
+    Then the "hCorpo" supplier logo should be visible in room level results
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
 
