@@ -139,3 +139,23 @@ Then("only rooms with breakfast should be displayed", async function () {
   logger.info("Verifying only rooms with breakfast amenity are displayed");
   await RoomLevelResults.verifyBreakfastRoomsOnly(this.page);
 });
+
+When("I click on price details button in room level results", async function () {
+  logger.info("Clicking price details button in room level results");
+  const roomLevelResultsPage = new RoomLevelResultsPage(this.page);
+  await roomLevelResultsPage.clickPriceDetailsButton();
+});
+
+When("I hover over info icon next to taxes and fees", async function () {
+  logger.info("Hovering over info icon next to taxes and fees");
+  const roomLevelResultsPage = new RoomLevelResultsPage(this.page);
+  await roomLevelResultsPage.hoverPayAtHotelInfoIcon();
+});
+
+Then("the {string} tooltip should be correct", async function (tooltipText) {
+  logger.info("Verifying tooltip text", { expected: tooltipText });
+  const roomLevelResultsPage = new RoomLevelResultsPage(this.page);
+  const actualText = await roomLevelResultsPage.getPayAtHotelTooltipText();
+  logger.info("Tooltip text found", { actual: actualText });
+  expect(actualText).toBe("Paid at the hotel");
+});

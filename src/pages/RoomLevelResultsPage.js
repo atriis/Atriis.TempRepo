@@ -25,6 +25,10 @@ const SELECTORS = {
   WIFI_INCLUDED: ".room-amenities span:has-text('Wifi included')",
   BREAKFAST_ICON: "img[src*='breakfastIncluded']",
   SUPPLIER_LOGO_IMG: (supplierId) => `img[src*="${supplierId}"]`,
+  FIRST_ROOM_PRICE_DETAILS_BUTTON: ".room-list > :nth-child(2) button.is-hidden-mobile",
+  PRICE_DETAILS_DIALOG: ".app-dialog .room-price-details, .el-dialog .room-price-details",
+  INFO_ICON_IN_DIALOG: "span.material-symbols-outlined",
+  TOOLTIP_POPPER: '[role="tooltip"], .el-tooltip__popper, .el-popper',
 };
 
 class RoomLevelResultsPage {
@@ -271,6 +275,43 @@ class RoomLevelResultsPage {
    * @param {number} [options.timeout=15000]
    * @returns {Promise<boolean>} True if at least one matching supplier logo is visible
    */
+  /**
+   * Clicks the "Price details" button on the first room card.
+   * This opens a dialog with the price breakdown.
+   */
+  async clickPriceDetailsButton() {
+    const btn = this.page.locator(SELECTORS.FIRST_ROOM_PRICE_DETAILS_BUTTON);
+    await btn.scrollIntoViewIfNeeded();
+    await btn.waitFor({ state: "visible", timeout: 10000 });
+    await btn.click();
+    // Wait for the price details dialog to appear
+    await this.page.locator(SELECTORS.PRICE_DETAILS_DIALOG).first().waitFor({ state: "visible", timeout: 10000 });
+  }
+
+  /**
+   * Hovers over the "Paid at hotel" info icon next to taxes and fees.
+   * The icon only appears for Ratehawk rooms inside the price details dialog.
+   */
+  async hoverPayAtHotelInfoIcon() {
+    const dialogContent = this.page.locator(SELECTORS.PRICE_DETAILS_DIALOG).first();
+    await dialogContent.waitFor({ state: "visible", timeout: 10000 });
+
+    const infoIcon = dialogContent.locator(SELECTORS.INFO_ICON_IN_DIALOG).filter({ hasText: "info" }).first();
+    await infoIcon.waitFor({ state: "visible", timeout: 10000 });
+    await infoIcon.hover();
+  }
+
+  /**
+   * Gets the tooltip text from the "Paid at hotel" tooltip.
+   * Must hover over the info icon first to make the tooltip visible.
+   * @returns {Promise<string>} The tooltip text content
+   */
+  async getPayAtHotelTooltipText() {
+    const tooltip = this.page.locator(SELECTORS.TOOLTIP_POPPER).filter({ hasText: "Paid at the hotel" });
+    await tooltip.first().waitFor({ state: "visible", timeout: 5000 });
+    return (await tooltip.first().textContent()).trim();
+  }
+
   async isSupplierLogoVisible(supplierId, { timeout = 15000 } = {}) {
     if (!supplierId || typeof supplierId !== "string") {
       throw new Error(`supplierId must be a non-empty string, got: ${typeof supplierId}`);

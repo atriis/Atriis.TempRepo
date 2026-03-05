@@ -155,6 +155,25 @@ const RoomLevelResults = {
   },
 
   /**
+   * Verifies the "Paid at hotel" tooltip is displayed correctly for Ratehawk rooms.
+   * Clicks price details, hovers the info icon, and asserts tooltip text.
+   * @param {import('playwright').Page} page
+   */
+  async verifyPaidAtHotelTooltip(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+
+    await roomLevelResultsPage.clickPriceDetailsButton();
+    await roomLevelResultsPage.hoverPayAtHotelInfoIcon();
+    const tooltipText = await roomLevelResultsPage.getPayAtHotelTooltipText();
+
+    if (tooltipText !== 'Paid at the hotel') {
+      throw new Error(`Expected tooltip "Paid at the hotel", got: "${tooltipText}"`);
+    }
+  },
+
+  /**
    * Verifies that a specific supplier logo is visible in room level results.
    * @param {import('playwright').Page} page
    * @param {string} supplierName - Common name of the supplier (e.g. "Expedia", "hCorpo")
