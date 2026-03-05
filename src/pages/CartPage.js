@@ -76,6 +76,10 @@ const SELECTORS = {
 
   // Voucher download box in hotel-quote-card.vue (.voucher-box)
   DOWNLOAD_VOUCHER_BOX: ".download-text",
+
+  // Share itinerary / quotes dropdown
+  SHARE_BUTTON: ".share-container .share-btn",
+  SHARE_POPPER_MENU: "ul.share-popper[role='menu']:visible",
 };
 
 class CartPage {
@@ -234,7 +238,7 @@ class CartPage {
    * @returns {Locator} Playwright locator for the visible share dropdown menu.
    */
   getVisibleShareMenu() {
-    return this.page.locator("ul.share-popper[role=\"menu\"]:visible");
+    return this.page.locator(SELECTORS.SHARE_POPPER_MENU);
   }
 
   /**
@@ -456,11 +460,13 @@ class CartPage {
    */
   async hoverShareButton() {
     const shareButton = this.page
-      .locator(".share-container")
-      .getByRole("button", { name: "share" });
+      .locator(SELECTORS.SHARE_BUTTON);
 
     await shareButton.waitFor({ state: "visible", timeout: 30_000 });
-    await shareButton.hover();
+    // Use click() instead of hover() — click() also fires mouseenter (which
+    // is the actual El-dropdown trigger) but enforces actionability checks
+    // (stable, not covered, scrolled into view), making it more reliable.
+    await shareButton.click();
 
     // Wait for the menu instance that is actually visible
     await this.getVisibleShareMenu().waitFor({ state: "visible", timeout: 30_000 });
