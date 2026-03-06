@@ -22,6 +22,8 @@ const SELECTORS = {
   SAVE_CARD_MODAL_BUTTON: ".btn.flex button.btn.btn--primary.btn--size-default.btn--round",
   // Green icon cart
   GREEN_ICON_CART: ".material-symbols-outlined.payment-status-icon.filled.green",
+  PAYMENT_RESTRICTION_LABEL: ".label",
+  PAYMENT_RESTRICTION_CONTROL: ".control span",
 };
 
 class CartPaymentPage {
@@ -324,6 +326,68 @@ class CartPaymentPage {
       // Type with 100ms delay between each character for stability
       await this.page.keyboard.type(cvv, { delay: 100 });
     }
+  }
+
+  /**
+   * Clicks the round checkbox for a specific saved card by card name.
+   * @param {string} cardName
+   */
+  async clickCardCheckboxByName(cardName) {
+    if (!cardName || typeof cardName !== "string") {
+      throw new Error("cardName must be a non-empty string");
+    }
+
+    const cardNames = this.getCardList();
+    await cardNames.first().waitFor({ state: "visible", timeout: 20000 });
+
+    const total = await cardNames.count();
+    let targetIndex = -1;
+
+    for (let i = 0; i < total; i += 1) {
+      const text = (await cardNames.nth(i).innerText()).trim().toLowerCase();
+      if (text.includes(cardName.trim().toLowerCase())) {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    if (targetIndex < 0) {
+      throw new Error(`Could not find card by name: ${cardName}`);
+    }
+
+    const checkboxes = this.page.locator(".select-credit-card .checkbox-round");
+    await checkboxes.nth(targetIndex).waitFor({ state: "visible", timeout: 20000 });
+    await checkboxes.nth(targetIndex).click();
+  }
+
+  /**
+   * Waits for payment restriction label text to be visible.
+   */
+  async waitForPaymentRestrictionLabel() {
+    const label = this.page.locator(SELECTORS.PAYMENT_RESTRICTION_LABEL).filter({ hasText: "Payment restriction" }).first();
+    await label.waitFor({ state: "visible", timeout: 20000 });
+  }
+
+  /**
+   * Opens the payment restriction options dropdown.
+   */
+  async clickPaymentRestrictionControl() {
+    const control = this.page.locator(SELECTORS.PAYMENT_RESTRICTION_CONTROL).first();
+    await control.waitFor({ state: "visible", timeout: 20000 });
+    await control.click();
+  }
+
+  /**
+   * Returns locator for a payment restriction option by visible text.
+   * @param {string} option
+   * @returns {import('@playwright/test').Locator}
+   */
+  getPaymentRestrictionOption(option) {
+    if (!option || typeof option !== "string") {
+      throw new Error("option must be a non-empty string");
+    }
+
+    return this.page.getByText(option, { exact: false }).first();
   }
 }
 

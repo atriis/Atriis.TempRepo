@@ -73,6 +73,16 @@ When("I fill credit card cvv if needed", async function () {
   await CartPayment.fillCreditCardCVVifNeeded(this.page);
 });
 
+When("I click the card {string} checkbox", async function (cardName) {
+  logger.info("Selecting card by checkbox", { cardName });
+  await CartPayment.selectCardByName(this.page, cardName);
+});
+
+When("I click payment restriction field", async function () {
+  logger.info("Opening payment restriction field");
+  await CartPayment.openPaymentRestrictionOptions(this.page);
+});
+
 // ===== THEN STEPS =====
 
 Then("the payment method should be added", async function () {
@@ -96,4 +106,14 @@ Then("the card details text should be visible", async function () {
 Then("{int} payment cards should be visible in the FOP panel", async function (count) {
   logger.info(`Verifying ${count} payment cards are visible in FOP panel`);
   await CartPayment.verifyCardCount(this.page, count);
+});
+
+Then("payment restriction text should be visible", async function () {
+  logger.info("Verifying payment restriction text is visible");
+  await CartPayment.verifyPaymentRestrictionFieldVisible(this.page);
+});
+
+Then("payment restriction options should include {string} and {string}", async function (optionOne, optionTwo) {
+  logger.info("Verifying payment restriction options", { optionOne, optionTwo });
+  await CartPayment.verifyPaymentRestrictionOptions(this.page, [optionOne, optionTwo]);
 });

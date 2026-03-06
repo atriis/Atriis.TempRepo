@@ -131,6 +131,74 @@ class CartPayment {
     const actualCount = await paymentPage.getCardCount();
     expect(actualCount, `Expected ${expectedCount} payment cards, but found ${actualCount}`).toBe(expectedCount);
   }
+
+  /**
+   * Selects an existing saved card by name in the FOP panel.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} cardName
+   */
+  static async selectCardByName(page, cardName) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!cardName || typeof cardName !== 'string') {
+      throw new Error('cardName must be a non-empty string, got: ' + typeof cardName);
+    }
+
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.clickCardCheckboxByName(cardName);
+  }
+
+  /**
+   * Verifies payment restriction field label is visible after selecting billback card.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async verifyPaymentRestrictionFieldVisible(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.waitForPaymentRestrictionLabel();
+  }
+
+  /**
+   * Opens payment restriction dropdown options.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async openPaymentRestrictionOptions(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.clickPaymentRestrictionControl();
+  }
+
+  /**
+   * Verifies specific payment restriction options are visible in dropdown.
+   * @param {import('@playwright/test').Page} page
+   * @param {string[]} options
+   */
+  static async verifyPaymentRestrictionOptions(page, options) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!Array.isArray(options)) {
+      throw new Error('options must be an array, got: ' + typeof options);
+    }
+    if (options.length === 0) {
+      throw new Error('options must be a non-empty array, got length: 0');
+    }
+
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    for (const option of options) {
+      if (!option || typeof option !== 'string') {
+        throw new Error('each option must be a non-empty string, got: ' + typeof option);
+      }
+      await expect(paymentPage.getPaymentRestrictionOption(option)).toBeVisible();
+    }
+  }
 }
 
 module.exports = CartPayment;
