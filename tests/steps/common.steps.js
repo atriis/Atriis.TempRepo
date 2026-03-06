@@ -29,7 +29,7 @@
 
 require("module-alias/register");
 
-const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
+const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const {
   expectNumbersToBeEqual,
   expectNumbersToBeEqualWithTolerance,
@@ -44,6 +44,30 @@ const { CommonPage } = require("@pages/CommonPage");
 const logger = require("@utils/logger").child("Common");
 
 setDefaultTimeout(120000);
+
+Given("I work on tab {int}", async function (tabNumber) {
+  logger.info("Switching active tab for scenario", { tabNumber });
+
+  if (!this.context) {
+    throw new Error("Browser context is not available. Login step must run first.");
+  }
+
+  if (!Number.isInteger(tabNumber) || tabNumber < 1) {
+    throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
+  }
+
+  const pages = this.context.pages();
+  const targetIndex = tabNumber - 1;
+
+  if (targetIndex >= pages.length) {
+    throw new Error(
+      `Requested tab ${tabNumber} but only ${pages.length} tab(s) are open`,
+    );
+  }
+
+  this.page = pages[targetIndex];
+  await this.page.bringToFront();
+});
 
 // ===== WHEN STEPS - PRICE EXTRACTION =====
 

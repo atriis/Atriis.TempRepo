@@ -13,6 +13,36 @@ const cards = require("../data/cards.json");
 
 class CartPayment {
   /**
+   * Fills credit card details when the card details form is already open.
+   * Unlike addCreditCard, this does NOT click "Add payment method" or "Add card details".
+   * @param {import('@playwright/test').Page} page
+   * @param {Object} cardData - Card details (defaults to Visa from cards.json)
+   */
+  static async fillCreditCardDetails(page, cardData = cards[0]) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+    const fop = getPageObject(page, CartPaymentPage);
+    await fop.waitForCardHolderNameInput();
+    await fop.typeCardType(cardData.cardType);
+    await fop.typeCardHolderName(cardData.cardHolderName);
+    await fop.typeExpirationMonth(cardData.expirationMonth);
+    await fop.typeExpirationYear(cardData.expirationYear);
+    await fop.typeCountry(cardData.country);
+    await fop.typeCityName(cardData.cityName);
+    await fop.typeZipCode(cardData.zipCode);
+    await fop.typeStreetName(cardData.streetName);
+    await fop.clickInsertCreditCardNumberLink();
+    await fop.typeCardNumberInModal(cardData.cardNumber);
+    await fop.waitForSaveCardModalButton();
+    await fop.clickSaveCardModalButton();
+    await fop.clickSaveCardButton();
+    await fop.closeFOPModal(0);
+    await fop.closeFOPModal(1);
+    await fop.closeFOPModal(2);
+  }
+
+  /**
    * Adds a credit card as a form of payment to the cart.
    * @param {import('@playwright/test').Page} page - Playwright page instance
    * @param {Object} cardData - Card details (defaults to Visa from cards.json)
@@ -30,25 +60,7 @@ class CartPayment {
     const fop = getPageObject(page, CartPaymentPage);
     await fop.clickAddPaymentMethodButton();
     await fop.clickAddCardDetailsButton();
-    await fop.waitForCardHolderNameInput();
-    await fop.typeCardType(cardData.cardType);
-    await fop.typeCardHolderName(cardData.cardHolderName);
-    await fop.typeExpirationMonth(cardData.expirationMonth);
-    await fop.typeExpirationYear(cardData.expirationYear);
-    await fop.typeCountry(cardData.country);
-    await fop.typeCityName(cardData.cityName);
-    await fop.typeZipCode(cardData.zipCode);
-    await fop.typeStreetName(cardData.streetName);
-    await fop.clickInsertCreditCardNumberLink();
-    await fop.typeCardNumberInModal(cardData.cardNumber);
-    await fop.waitForSaveCardModalButton();
-    await fop.clickSaveCardModalButton();
-    await fop.clickSaveCardButton();
-    // Close modal dialogs (tries multiple indices, each returns true/false if found)
-    // These are optional and may not exist depending on the payment flow
-    await fop.closeFOPModal(0); // First modal (if present)
-    await fop.closeFOPModal(1); // Second modal (if present)
-    await fop.closeFOPModal(2); // Third modal (if present)
+    await CartPayment.fillCreditCardDetails(page, cardData);
   }
 
   /**
@@ -70,10 +82,10 @@ class CartPayment {
    */
   static async expectCardVisible(page, cardName) {
     if (!page) {
-      throw new Error('page is required');
+      throw new Error("page is required");
     }
-    if (!cardName || typeof cardName !== 'string') {
-      throw new Error('cardName must be a non-empty string');
+    if (!cardName || typeof cardName !== "string") {
+      throw new Error("cardName must be a non-empty string");
     }
     const fop = getPageObject(page, CartPaymentPage);
     await expect(fop.getCardByName(cardName)).toBeVisible();
@@ -88,7 +100,7 @@ class CartPayment {
    */
   static async waitForCardDetailsToBeVisible(page) {
     if (!page) {
-      throw new Error('page is required');
+      throw new Error("page is required");
     }
     const fop = getPageObject(page, CartPaymentPage);
     await expect(fop.getCardDetailsTitle()).toBeVisible();
@@ -104,10 +116,10 @@ class CartPayment {
    */
   static async fillCreditCardCVVifNeeded(page, cvv = "123") {
     if (!page) {
-      throw new Error('page is required');
+      throw new Error("page is required");
     }
-    if (!cvv || typeof cvv !== 'string') {
-      throw new Error('cvv must be a non-empty string');
+    if (!cvv || typeof cvv !== "string") {
+      throw new Error("cvv must be a non-empty string");
     }
     const paymentPage = getPageObject(page, CartPaymentPage);
     await paymentPage.fillCVV(cvv);
@@ -122,14 +134,19 @@ class CartPayment {
    */
   static async verifyCardCount(page, expectedCount) {
     if (!page) {
-      throw new Error('page is required');
+      throw new Error("page is required");
     }
-    if (typeof expectedCount !== 'number') {
-      throw new Error('expectedCount must be a number, got: ' + typeof expectedCount);
+    if (typeof expectedCount !== "number") {
+      throw new Error(
+        "expectedCount must be a number, got: " + typeof expectedCount,
+      );
     }
     const paymentPage = getPageObject(page, CartPaymentPage);
     const actualCount = await paymentPage.getCardCount();
-    expect(actualCount, `Expected ${expectedCount} payment cards, but found ${actualCount}`).toBe(expectedCount);
+    expect(
+      actualCount,
+      `Expected ${expectedCount} payment cards, but found ${actualCount}`,
+    ).toBe(expectedCount);
   }
 
   /**
@@ -139,10 +156,12 @@ class CartPayment {
    */
   static async selectCardByName(page, cardName) {
     if (!page) {
-      throw new Error('page is required');
+      throw new Error("page is required");
     }
-    if (!cardName || typeof cardName !== 'string') {
-      throw new Error('cardName must be a non-empty string, got: ' + typeof cardName);
+    if (!cardName || typeof cardName !== "string") {
+      throw new Error(
+        "cardName must be a non-empty string, got: " + typeof cardName,
+      );
     }
 
     const paymentPage = getPageObject(page, CartPaymentPage);
@@ -155,7 +174,7 @@ class CartPayment {
    */
   static async verifyPaymentRestrictionFieldVisible(page) {
     if (!page) {
-      throw new Error('page is required');
+      throw new Error("page is required");
     }
 
     const paymentPage = getPageObject(page, CartPaymentPage);
@@ -168,7 +187,7 @@ class CartPayment {
    */
   static async openPaymentRestrictionOptions(page) {
     if (!page) {
-      throw new Error('page is required');
+      throw new Error("page is required");
     }
 
     const paymentPage = getPageObject(page, CartPaymentPage);
@@ -182,24 +201,49 @@ class CartPayment {
    */
   static async verifyPaymentRestrictionOptions(page, options) {
     if (!page) {
-      throw new Error('page is required');
+      throw new Error("page is required");
     }
     if (!Array.isArray(options)) {
-      throw new Error('options must be an array, got: ' + typeof options);
+      throw new Error("options must be an array, got: " + typeof options);
     }
     if (options.length === 0) {
-      throw new Error('options must be a non-empty array, got length: 0');
+      throw new Error("options must be a non-empty array, got length: 0");
     }
 
     const paymentPage = getPageObject(page, CartPaymentPage);
     for (const option of options) {
-      if (!option || typeof option !== 'string') {
-        throw new Error('each option must be a non-empty string, got: ' + typeof option);
+      if (!option || typeof option !== "string") {
+        throw new Error(
+          "each option must be a non-empty string, got: " + typeof option,
+        );
       }
-      await expect(paymentPage.getPaymentRestrictionOption(option)).toBeVisible();
+      await expect(
+        paymentPage.getPaymentRestrictionOption(option),
+      ).toBeVisible();
     }
+  }
+  /**
+   * Verifies that a credit card looks disabled (not supported) in the FOP panel.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} cardName - Name of the card expected to be disabled
+   */
+  static async verifyCardLooksDisabled(page, cardName) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+    if (!cardName || typeof cardName !== "string") {
+      throw new Error(
+        "cardName must be a non-empty string, got: " + typeof cardName,
+      );
+    }
+
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const isDisabled = await paymentPage.isCardDisabled(cardName);
+    expect(
+      isDisabled,
+      `Expected card "${cardName}" to look disabled but it appears enabled`,
+    ).toBe(true);
   }
 }
 
 module.exports = CartPayment;
-

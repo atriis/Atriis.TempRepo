@@ -4,6 +4,7 @@ const LoginPage = require("@pages/LoginPage");
 const LogoutPage = require("@pages/LogoutPage");
 const MenuPage = require("@pages/MenuPage");
 const config = require("@config/config");
+const logger = require("@utils/logger").child("App");
 
 /**
  * App (Application Facade)
@@ -124,8 +125,9 @@ const App = {
   },
 
   /**
-   * Opens the "Book a New Trip" flow in a separate tab.
-   * Returns the newly opened tab (new Playwright page object).
+   * Opens the "Book a New Trip" flow.
+   * Tries to catch a new tab; if no new tab opens within 10s,
+   * assumes the trip opened in the current tab and returns it.
    */
   async bookANewTrip(page) {
     if (!page) {
@@ -136,31 +138,27 @@ const App = {
 
     await menuPage.waitForBookANewTripIcon();
 
-    // Validate that context exists
     const context = page.context();
     if (!context) {
       throw new Error('Page context is null or undefined');
     }
 
-    // We wait for a new tab/page to open while clicking the UI button.
-    // Use Promise.race with timeout to avoid hanging indefinitely in CI
-    try {
-      const newPagePromise = context.waitForEvent("page", { timeout: 60000 });
-      const clickPromise = menuPage.clickBookANewTrip();
-      
-      const [newTripPage] = await Promise.all([newPagePromise, clickPromise]);
+    // Try to detect a new tab opening; fall back to same tab if none opens
+    const newPagePromise = context.waitForEvent("page", { timeout: 10000 }).catch(() => null);
+    await menuPage.clickBookANewTrip();
 
-      // Wait for the new trip page to fully load with network idle and extended timeout
-      // CI/CD environments need more time for the booking form to initialize
+    const newTripPage = await newPagePromise;
+
+    if (newTripPage) {
+      logger.info("New trip opened in a new tab");
       await newTripPage.waitForLoadState("networkidle", { timeout: 60000 });
       return newTripPage;
-    } catch (error) {
-      throw new Error(
-        `Failed to open new trip page: ${error.message}\n` +
-        `Context state: ${context ? 'valid' : 'null'}\n` +
-        `This usually means the "Book a New Trip" button did not open a new tab.`
-      );
     }
+
+    // No new tab — trip opened in current tab
+    logger.info("New trip opened in current tab (no new tab detected)");
+    await page.waitForLoadState("networkidle", { timeout: 60000 });
+    return page;
   },
 
   /**

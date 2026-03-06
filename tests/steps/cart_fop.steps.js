@@ -50,6 +50,11 @@ When("I add a credit card as payment method", async function () {
   await CartPayment.addCreditCard(this.page);
 });
 
+When("I fill credit card details", async function () {
+  logger.info("Filling credit card details in already-open form");
+  await CartPayment.fillCreditCardDetails(this.page);
+});
+
 When("I click add payment method button", async function () {
   logger.info("Clicking add payment method button");
   const fop = getPageObject(this.page, CartPaymentPage);
@@ -101,6 +106,11 @@ Then("the card {string} should be visible", async function (cardName) {
 Then("the card details text should be visible", async function () {
   logger.info("Verifying card details text is visible");
   await CartPayment.waitForCardDetailsToBeVisible(this.page);
+});
+
+Then("credit card {string} should look disabled", async function (cardName) {
+  logger.info("Verifying credit card looks disabled", { cardName });
+  await CartPayment.verifyCardLooksDisabled(this.page, cardName);
 });
 
 Then("{int} payment cards should be visible in the FOP panel", async function (count) {

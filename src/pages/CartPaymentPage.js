@@ -298,6 +298,7 @@ class CartPaymentPage {
   async waitForGreenIconInCart() {
     const icon = this.page.locator(SELECTORS.GREEN_ICON_CART);
     await icon.waitFor({ state: "visible" });
+    return true;
   }
 
   /**
@@ -375,6 +376,23 @@ class CartPaymentPage {
     const control = this.page.locator(SELECTORS.PAYMENT_RESTRICTION_CONTROL).first();
     await control.waitFor({ state: "visible", timeout: 20000 });
     await control.click();
+  }
+
+  /**
+   * Checks whether a card row appears disabled (greyed-out / not-supported state).
+   * In the UI, unsupported cards get the "gray-out" class on the .card-name element.
+   * @param {string} cardName
+   * @returns {Promise<boolean>} true if the card looks disabled
+   */
+  async isCardDisabled(cardName) {
+    if (!cardName || typeof cardName !== 'string') {
+      throw new Error('cardName must be a non-empty string');
+    }
+
+    const cardNameEl = this.page.locator('.card-name.gray-out').filter({ hasText: cardName }).first();
+    const isGrayedOut = await cardNameEl.isVisible({ timeout: 5000 }).catch(() => false);
+
+    return isGrayedOut;
   }
 
   /**
