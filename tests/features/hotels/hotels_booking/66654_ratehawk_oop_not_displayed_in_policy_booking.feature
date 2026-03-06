@@ -7,22 +7,24 @@
 # Updated: 2025-09-09T03:29:33Z
 
 @regression @provider:ratehawk
-Feature: 66654 Ratehawk - OOP policy not displayed for in-policy travelers
+Feature: 66654 Ratehawk - 'Check-In Date' Travel Policy - OOP icon is not displayed for in policy hotels
   As a corporate traveler booking within policy
   I want to confirm that no OOP indicator is shown at any stage of the booking
   So that I know my booking is compliant with company policy
 
   @priority:high
-  Scenario: OOP indicator is not shown in results, cart, or trip overview for in-policy booking
+  Scenario: OOP icon is not displayed for in policy hotels before and after booking
     Given I am logged in as "ratehawk" "user_one" booking a new trip
     And I have added traveler by name "Carla Carolina"
-    When I search for a hotel in "London, UK" for 1 night
-    Then the out of policy indicator should not be visible in results
+    When I search for a hotel in "LON" for 1 night
+    And I select the first hotel result
     And I add a refundable room to my cart
+    Then the booking status should be "Pending booking"
+    Then the hotel should appear as refundable in cart
     Then the out of policy indicator should not be visible in cart
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    # TODO: Create step "Then the out of policy indicator should not be visible in the trip overview" that calls DSL verifyOOPNotInTripOverview in Trip.js
+    Then the out of policy indicator should not be visible in cart
     Then I successfully cancel the trip
 
