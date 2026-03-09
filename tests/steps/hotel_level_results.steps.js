@@ -76,3 +76,23 @@ Then("the sustainability filter checkbox should be enabled and clickable", async
   logger.info("Verifying sustainability filter checkbox is enabled and clickable");
   await HotelLevelResults.verifySustainabilityFilterEnabled(this.page);
 });
+
+When("I sort hotel results by {string}", async function (label) {
+  logger.info("Sorting hotel results by", { label });
+  await HotelLevelResults.sortBy(this.page, label);
+});
+
+When("I select hotel result at index {int}", async function (index) {
+  logger.info("Selecting hotel result by index", { index });
+  await HotelLevelResults.clickHotelByIndex(this.page, index);
+});
+
+Then("hotel {int} should display the {string} amenity", async function (index, amenityName) {
+  logger.info("Verifying amenity is displayed on hotel", { index, amenityName });
+  await HotelLevelResults.verifyAmenityDisplayed(this.page, index, amenityName);
+});
+
+Then("hotel {int} should not display the {string} amenity", async function (index, amenityName) {
+  logger.info("Verifying amenity is NOT displayed on hotel", { index, amenityName });
+  await HotelLevelResults.verifyAmenityNotDisplayed(this.page, index, amenityName);
+});

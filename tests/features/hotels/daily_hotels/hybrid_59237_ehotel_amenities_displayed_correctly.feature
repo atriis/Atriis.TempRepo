@@ -14,9 +14,9 @@ Feature: 59237 eHotel - Hotel amenities displayed correctly according to supplie
 
   @priority:medium
   Scenario: Amenities are shown correctly - with gym and without gym
-    Given I am logged in as "ehotel" "user_one" booking a new trip
+    Given I am logged in as "ehotel" "eli_tel" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "LON" for 1 night
-    # TODO: Create step "Then the first hotel should display the gym amenity" - hybrid: validate via eHotel API log that gym amenity is present in the response for hotel 1
-    # TODO: Create step "When I select the second hotel result" that calls DSL selectHotelByIndex with 2 in HotelSearch.js
-    # TODO: Create step "Then the second hotel should not display the gym amenity" - hybrid: validate via eHotel API log that gym amenity is absent for hotel 2
+    When I search for a hotel in "London" for 1 night
+    Then hotel 1 should display the "Gym" amenity
+    When I sort hotel results by "Price"
+    Then hotel 1 should not display the "Gym" amenity

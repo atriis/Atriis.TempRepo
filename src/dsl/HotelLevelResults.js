@@ -1,6 +1,7 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const HotelLevelResultsPage = require("@pages/HotelLevelResultsPage");
 const { CommonPage } = require("@pages/CommonPage");
+const { expect } = require("@playwright/test");
 
 /**
  * HotelLevelResults DSL
@@ -111,6 +112,69 @@ const HotelLevelResults = {
     const isEnabled = await hotelLevelResultsPage.isSustainabilityFilterEnabled();
     if (!isEnabled) throw new Error('Sustainability filter is greyed out (disabled)');
     return { enabled: true };
+  },
+
+  /**
+   * Clicks "View rates" on a hotel result by 1-based index.
+   * @param {import('playwright').Page} page
+   * @param {number} index - 1-based hotel index
+   */
+  async clickHotelByIndex(page, index) {
+    if (!page) throw new Error('page is required');
+    if (typeof index !== 'number' || index < 1) throw new Error('index must be a positive number, got: ' + index);
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.clickViewRatesByIndex(index);
+  },
+
+  /**
+   * Sorts hotel results by a given label (e.g., "Price").
+   * Closes any open hotel details drawer first.
+   * @param {import('playwright').Page} page
+   * @param {string} label - Sort option label text
+   */
+  async sortBy(page, label) {
+    if (!page) throw new Error('page is required');
+    if (!label || typeof label !== 'string') throw new Error('label must be a non-empty string');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    // Close any open hotel details drawer via Escape
+    const amenitiesVisible = await page.locator('.hotel-amenities').first().isVisible().catch(() => false);
+    if (amenitiesVisible) {
+      await page.keyboard.press('Escape');
+      await page.locator('.hotel-amenities').first().waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+    }
+    await hotelLevelResultsPage.selectSortOption(label);
+  },
+
+  /**
+   * Verifies that a specific amenity is displayed (active) on hotel at given index.
+   * Opens the hotel details drawer first, then checks the amenity.
+   * @param {import('playwright').Page} page
+   * @param {number} index - 1-based hotel index
+   * @param {string} amenityName - Amenity name to check (e.g., "gym")
+   */
+  async verifyAmenityDisplayed(page, index, amenityName) {
+    if (!page) throw new Error('page is required');
+    if (!amenityName || typeof amenityName !== 'string') throw new Error('amenityName must be a non-empty string');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.clickMoreDetailsByIndex(index);
+    const isActive = await hotelLevelResultsPage.isAmenityActive(amenityName);
+    expect(isActive, `Expected amenity "${amenityName}" to be displayed on hotel ${index}`).toBe(true);
+  },
+
+  /**
+   * Verifies that a specific amenity is NOT displayed (not active) on hotel at given index.
+   * Opens the hotel details drawer first, then checks the amenity.
+   * @param {import('playwright').Page} page
+   * @param {number} index - 1-based hotel index
+   * @param {string} amenityName - Amenity name to check (e.g., "gym")
+   */
+  async verifyAmenityNotDisplayed(page, index, amenityName) {
+    if (!page) throw new Error('page is required');
+    if (!amenityName || typeof amenityName !== 'string') throw new Error('amenityName must be a non-empty string');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.clickMoreDetailsByIndex(index);
+    const isActive = await hotelLevelResultsPage.isAmenityActive(amenityName);
+    expect(isActive, `Expected amenity "${amenityName}" to NOT be displayed on hotel ${index}`).toBe(false);
   },
 };
 
