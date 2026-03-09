@@ -14,13 +14,13 @@ Feature: 33939 Booking.com - Payment method selection (pay on departure vs pre-p
 
   @priority:high
   Scenario: Payment method options are displayed and selectable for Booking.com hotel
-    Given I am logged in as "bookingcom" "user_one" booking a new trip
+    Given I am logged in as "bookingcom" "user_striction" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "Then the mandatory notification should be visible in cart" that calls DSL verifyMandatoryNotification in Cart.js
-    # TODO: Create step "Then the payment options should include "Pay on departure" and "Pre-paid"" that calls DSL verifyPaymentOptions in CartFop.js
-    # TODO: Create step "When I select the "Pay on departure" payment option" that calls DSL selectPaymentOption in CartFop.js
-
+    When I click to edit extras at index 0
+    Then the payment options should include "Pay on departure" and "Pre paid"
+    When I select the "Pre paid" payment option
+    Then payment restrictions are displayed for "Pre paid" option
