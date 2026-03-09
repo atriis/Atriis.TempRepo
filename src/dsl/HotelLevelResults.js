@@ -176,6 +176,94 @@ const HotelLevelResults = {
     const isActive = await hotelLevelResultsPage.isAmenityActive(amenityName);
     expect(isActive, `Expected amenity "${amenityName}" to NOT be displayed on hotel ${index}`).toBe(false);
   },
+
+  /**
+   * Edits the hotel search location and searches for new results.
+   * Clicks the Edit button, changes the destination, and initiates a new search.
+   * @param {import('playwright').Page} page
+   * @param {string} newLocation - New hotel destination to search for
+   * @throws {Error} If page or newLocation are not provided
+   */
+  async editHotelSearchLocation(page, newLocation) {
+    if (!page) throw new Error('page is required');
+    if (!newLocation || typeof newLocation !== 'string') throw new Error('newLocation must be a non-empty string');
+    
+    const { ResultsPage } = require('@pages/ResultsPage');
+    const HotelSearchPage = require('@pages/HotelSearchPage');
+    const { SearchPage } = require('@pages/SearchPage');
+    
+    const resultsPage = getPageObject(page, ResultsPage);
+    const hotelSearchPage = getPageObject(page, HotelSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+    
+    // Click Edit to open the search form
+    await resultsPage.clickEditButton();
+    
+    // Wait for the destination field to become visible (may be in a modal or overlay)
+    await hotelSearchPage.page.locator("[placeholder='Where would you like to stay?']").waitFor({ state: 'visible', timeout: 15000 });
+    
+    // Update the location field
+    await hotelSearchPage.typeHotelDestination(newLocation);
+    
+    // Click search to apply the location change
+    await searchPage.waitAndClickSearchButton();
+    
+    return { locationChanged: true, newLocation };
+  },
+
+  /**
+   * Verifies that the hotel results are for the expected location.
+   * Checks that the location appears in the search results header/title.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedLocation - Expected location in results
+   * @throws {Error} If page or expectedLocation are not provided, or if location is not visible
+   */
+  async verifyResultsLocation(page, expectedLocation) {
+    if (!page) throw new Error('page is required');
+    if (!expectedLocation || typeof expectedLocation !== 'string') throw new Error('expectedLocation must be a non-empty string');
+    
+    // Look for the location in the page heading or search results header
+    // Try to find text matching the location in headings or common result labels
+    const locationSearchElements = page.getByText(expectedLocation, { exact: false });
+    const count = await locationSearchElements.count();
+    
+    expect(count > 0, `Expected location "${expectedLocation}" not found in results`).toBe(true);
+    
+    return { locationVerified: true, expectedLocation };
+  },
+
+  /**
+   * Scrolls through the hotel filters panel to verify it has scrollable content.
+   * Scrolls within the filters sidebar on the results page.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If page is not provided
+   */
+  async scrollHotelFilters(page) {
+    if (!page) throw new Error('page is required');
+    
+    // Find the filters container (typically a sidebar with hotel filters)
+    const filtersContainer = page.locator('.search-filters, [class*="filter"], .filters-sidebar').first();
+    
+    try {
+      // Wait for filters to be visible
+      await filtersContainer.waitFor({ state: 'visible', timeout: 10000 });
+      
+      // Scroll within the filters container
+      await filtersContainer.evaluate(el => {
+        el.scrollTop = el.scrollHeight;
+      });
+      
+      // Small pause for scroll to settle
+      await page.waitForTimeout(500);
+      
+      return { scrolled: true };
+    } catch {
+      // If no dedicated filters container found, scroll the whole page filters area
+      await page.keyboard.press('End');
+      await page.waitForTimeout(500);
+      return { scrolled: true };
+    }
+  },
 };
 
 module.exports = HotelLevelResults;

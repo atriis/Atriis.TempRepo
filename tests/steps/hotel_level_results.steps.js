@@ -96,3 +96,18 @@ Then("hotel {int} should not display the {string} amenity", async function (inde
   logger.info("Verifying amenity is NOT displayed on hotel", { index, amenityName });
   await HotelLevelResults.verifyAmenityNotDisplayed(this.page, index, amenityName);
 });
+
+When("I edit the hotel search location to {string}", async function (newLocation) {
+  logger.info("Editing hotel search location", { newLocation });
+  await HotelLevelResults.editHotelSearchLocation(this.page, newLocation);
+});
+
+Then("the hotel results should be for the new location {string}", async function (expectedLocation) {
+  logger.info("Verifying hotel results are for new location", { expectedLocation });
+  await HotelLevelResults.verifyResultsLocation(this.page, expectedLocation);
+});
+
+When("I scroll through hotel filters", async function () {
+  logger.info("Scrolling through hotel filters");
+  await HotelLevelResults.scrollHotelFilters(this.page);
+});
