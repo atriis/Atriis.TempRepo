@@ -21,8 +21,17 @@ const SELECTORS = {
   SHARE_EMAIL_ELEMENT: '.em_grey_txt',
 
   // Price elements
-  AMOUNT_VALUE: ".amount"
+  AMOUNT_VALUE: ".amount",
 
+  // Mandatory notification banner (trip-cart.vue)
+  MANDATORY_NOTIFICATION: ".unread-messages",
+  MANDATORY_NOTIFICATION_LINK: ".open-notifications",
+
+  // Notification panel close button
+  NOTIFICATION_PANEL_CLOSE: '.app-notification .close',
+
+  // Shopping cart icon
+  SHOPPING_CART_ICON: 'span:has-text("shopping_cart")',
 };
 
 class CommonPage {
@@ -47,8 +56,8 @@ class CommonPage {
   }
 
   getShoppingCartIcon() {
-  return this.page.locator('span', { hasText: 'shopping_cart' });
- }
+    return this.page.locator(SELECTORS.SHOPPING_CART_ICON);
+  }
 
   /**
    * Waits until the OOP text is visible
@@ -263,6 +272,40 @@ class CommonPage {
    */
   async clickTripCart() {
     await this.getShoppingCartIcon().click();
+  }
+
+  /**
+   * Checks if the mandatory notification banner is visible.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async isMandatoryNotificationVisible({ timeout = 15000 } = {}) {
+    const notification = this.page.locator(SELECTORS.MANDATORY_NOTIFICATION).first();
+    try {
+      await notification.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Clicks the mandatory notification link to open and dismiss it.
+   */
+  async clickMandatoryNotificationLink() {
+    const link = this.page.locator(SELECTORS.MANDATORY_NOTIFICATION_LINK).first();
+    await link.waitFor({ state: 'visible', timeout: 15000 });
+    await link.click();
+  }
+
+  /**
+   * Closes the notification panel by clicking the close button.
+   */
+  async closeNotificationPanel() {
+    const closeBtn = this.page.locator(SELECTORS.NOTIFICATION_PANEL_CLOSE).first();
+    await closeBtn.waitFor({ state: 'visible', timeout: 15000 });
+    await closeBtn.click();
   }
 
   /**
