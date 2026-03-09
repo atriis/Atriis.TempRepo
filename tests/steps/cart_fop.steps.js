@@ -127,3 +127,48 @@ Then("payment restriction options should include {string} and {string}", async f
   logger.info("Verifying payment restriction options", { optionOne, optionTwo });
   await CartPayment.verifyPaymentRestrictionOptions(this.page, [optionOne, optionTwo]);
 });
+
+Then("the {string} privilege restriction should be applied in cart", async function (privilegeName) {
+  logger.info("Verifying privilege restriction is applied", { privilegeName });
+  await CartPayment.verifyNoOtherCCPrivilege(this.page);
+});
+
+When("I click the set billback button in cart", async function () {
+  logger.info("Clicking set billback button in cart");
+  await CartPayment.clickSetBillback(this.page);
+});
+
+When("I select the billback payment option", async function () {
+  logger.info("Selecting billback payment option");
+  await CartPayment.selectBillback(this.page);
+});
+
+Then("the billback checkbox should be checked", async function () {
+  logger.info("Verifying billback checkbox is checked");
+  await CartPayment.verifyBillbackChecked(this.page);
+});
+
+Then("the card {string} checkbox should be checked", async function (cardName) {
+  logger.info("Verifying card checkbox is checked", { cardName });
+  await CartPayment.verifyBillbackChecked(this.page);
+});
+
+Then("add credit card details option should not be visible", async function () {
+  logger.info("Verifying add credit card details option is not visible");
+  await CartPayment.verifyNoOtherCCPrivilege(this.page);
+});
+
+Then("the payment options should include {string} and {string}", async function (optionOne, optionTwo) {
+  logger.info("Verifying payment options include both options", { optionOne, optionTwo });
+  await CartPayment.verifyPaymentOptions(this.page, [optionOne, optionTwo]);
+});
+
+When("I select the {string} payment option", async function (optionText) {
+  logger.info("Selecting payment option", { optionText });
+  await CartPayment.selectPaymentOption(this.page, optionText);
+});
+
+Then("payment restrictions are displayed for {string} option", async function (optionText) {
+  logger.info("Verifying payment restrictions are displayed", { optionText });
+  await CartPayment.verifyPaymentRestrictions(this.page, optionText);
+});

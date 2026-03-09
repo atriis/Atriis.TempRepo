@@ -24,6 +24,31 @@ const SELECTORS = {
   GREEN_ICON_CART: ".material-symbols-outlined.payment-status-icon.filled.green",
   PAYMENT_RESTRICTION_LABEL: ".label",
   PAYMENT_RESTRICTION_CONTROL: ".control span",
+  // "Set Billback" button shown when isBillBack is true and billback info is not yet complete
+  SET_BILLBACK_BUTTON: '.add-form-payment',
+  // Add card button (hidden when canSelectFop is false = no other CC privilege)
+  ADD_CARD_BUTTON: ".add-card .add-credit",
+  // Billback checkbox container
+  BILLBACK_CHECKBOX_CONTAINER: ".billback-checkbox-container",
+  BILLBACK_CHECKBOX: ".billback-checkbox-container .el-checkbox",
+  // Payment method extras section (booking.com)
+  PAYMENT_METHOD_SECTION: ".quote-extras--payment-method",
+  PAYMENT_METHOD_RADIO: ".quote-extras--payment-method .el-radio",
+  PAYMENT_METHOD_SAVE_BTN: ".quote-extras--payment-method .no-border",
+  PAYMENT_RESTRICTIONS_CONTAINER: ".payment-restrictions-container",
+  PAYMENT_RESTRICTIONS_LABEL: ".payment-restrictions-container .app-label.grayed",
+
+  // Card selection panel
+  CARD_CHECKBOX: ".select-credit-card .checkbox-round",
+  CARD_NAME_DISABLED: ".card-name.gray-out",
+
+  // Billback inner checkbox input (used to check `is-checked` class)
+  BILLBACK_CHECKBOX_INPUT: '.el-checkbox__input',
+
+  // Button names (used with getByRole)
+  ADD_PAYMENT_METHOD_BTN_NAME: "Add payment method",
+  ADD_CARD_DETAILS_BTN_NAME: "Add card details",
+  CLOSE_DIALOG_BTN_NAME: "Close this dialog",
 };
 
 class CartPaymentPage {
@@ -115,7 +140,7 @@ class CartPaymentPage {
    * Clicks the button to open the Add Payment Method modal.
    */
   async clickAddPaymentMethodButton() {
-    const button = this.page.getByRole("button", { name: "Add payment method" });
+    const button = this.page.getByRole("button", { name: SELECTORS.ADD_PAYMENT_METHOD_BTN_NAME });
     await button.waitFor({ state: "visible" });
     await button.click();
   }
@@ -124,7 +149,7 @@ class CartPaymentPage {
    * Clicks the button to open the Add Card Details modal.
    */
   async clickAddCardDetailsButton() {
-    const button = this.page.getByRole("button", { name: "Add card details" });
+    const button = this.page.getByRole("button", { name: SELECTORS.ADD_CARD_DETAILS_BTN_NAME });
     await button.waitFor({ state: "visible" });
     await button.click();
   }
@@ -281,7 +306,7 @@ class CartPaymentPage {
    */
   async closeFOPModal(nth = 1) {
     try {
-      const closeBtn = this.page.getByRole("button", { name: "Close this dialog" }).nth(nth);
+      const closeBtn = this.page.getByRole("button", { name: SELECTORS.CLOSE_DIALOG_BTN_NAME }).nth(nth);
       // Wait briefly to see if the button exists, then click
       await closeBtn.waitFor({ state: "visible", timeout: 5000 });
       await closeBtn.click();
@@ -356,7 +381,7 @@ class CartPaymentPage {
       throw new Error(`Could not find card by name: ${cardName}`);
     }
 
-    const checkboxes = this.page.locator(".select-credit-card .checkbox-round");
+    const checkboxes = this.page.locator(SELECTORS.CARD_CHECKBOX);
     await checkboxes.nth(targetIndex).waitFor({ state: "visible", timeout: 20000 });
     await checkboxes.nth(targetIndex).click();
   }
@@ -389,7 +414,7 @@ class CartPaymentPage {
       throw new Error('cardName must be a non-empty string');
     }
 
-    const cardNameEl = this.page.locator('.card-name.gray-out').filter({ hasText: cardName }).first();
+    const cardNameEl = this.page.locator(SELECTORS.CARD_NAME_DISABLED).filter({ hasText: cardName }).first();
     const isGrayedOut = await cardNameEl.isVisible({ timeout: 5000 }).catch(() => false);
 
     return isGrayedOut;
@@ -406,6 +431,136 @@ class CartPaymentPage {
     }
 
     return this.page.getByText(option, { exact: false }).first();
+  }
+
+  /**
+   * Clicks the "Set Billback" button in the form-of-payment section.
+   * Shown when isBillBack is true and billback info is not yet complete.
+   */
+  async clickSetBillbackButton() {
+    const btn = this.page.locator(SELECTORS.SET_BILLBACK_BUTTON);
+    await btn.waitFor({ state: 'visible', timeout: 15000 });
+    await btn.click();
+  }
+
+  /**
+   * Checks if the "Add card" button is visible (indicates user has CC privilege).
+   * @param {object} [options]
+   * @param {number} [options.timeout=5000]
+   * @returns {Promise<boolean>}
+   */
+  async isAddCardButtonVisible({ timeout = 5000 } = {}) {
+    const btn = this.page.locator(SELECTORS.ADD_CARD_BUTTON).first();
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the billback checkbox is visible.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isBillbackCheckboxVisible({ timeout = 10000 } = {}) {
+    const checkbox = this.page.locator(SELECTORS.BILLBACK_CHECKBOX).first();
+    try {
+      await checkbox.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the billback checkbox is checked.
+   * @returns {Promise<boolean>}
+   */
+  async isBillbackCheckboxChecked() {
+    const checkbox = this.page.locator(SELECTORS.BILLBACK_CHECKBOX).first();
+    await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+    return checkbox.locator(SELECTORS.BILLBACK_CHECKBOX_INPUT).evaluate(el => el.classList.contains('is-checked'));
+  }
+
+  /**
+   * Clicks the billback checkbox.
+   */
+  async clickBillbackCheckbox() {
+    const checkbox = this.page.locator(SELECTORS.BILLBACK_CHECKBOX).first();
+    await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+    await checkbox.click();
+  }
+
+  /**
+   * Checks if a payment method radio option is visible by text.
+   * @param {string} optionText - The radio option text (e.g., "Pay on departure")
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isPaymentMethodOptionVisible(optionText, { timeout = 10000 } = {}) {
+    const radio = this.page.locator(SELECTORS.PAYMENT_METHOD_RADIO).filter({ hasText: optionText }).first();
+    try {
+      await radio.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Clicks a payment method radio option by text.
+   * @param {string} optionText - The radio option text (e.g., "Pay on departure")
+   */
+  async clickPaymentMethodOption(optionText) {
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error('optionText must be a non-empty string');
+    }
+    const radio = this.page.locator(SELECTORS.PAYMENT_METHOD_RADIO).filter({ hasText: optionText }).first();
+    await radio.waitFor({ state: 'visible', timeout: 10000 });
+    await radio.click();
+  }
+
+  /**
+   * Clicks the Save button in the payment method section.
+   */
+  async clickPaymentMethodSaveButton() {
+    const btn = this.page.locator(SELECTORS.PAYMENT_METHOD_SAVE_BTN).first();
+    await btn.waitFor({ state: 'visible', timeout: 10000 });
+    await btn.click();
+  }
+
+  /**
+   * Checks if payment restrictions container is visible.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isPaymentRestrictionsContainerVisible({ timeout = 10000 } = {}) {
+    const container = this.page.locator(SELECTORS.PAYMENT_RESTRICTIONS_CONTAINER).first();
+    try {
+      await container.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Gets all payment restriction label texts.
+   * @returns {Promise<string[]>}
+   */
+  async getPaymentRestrictionLabels() {
+    const labels = this.page.locator(SELECTORS.PAYMENT_RESTRICTIONS_LABEL);
+    const count = await labels.count();
+    const texts = [];
+    for (let i = 0; i < count; i++) {
+      texts.push((await labels.nth(i).textContent()).trim());
+    }
+    return texts;
   }
 }
 

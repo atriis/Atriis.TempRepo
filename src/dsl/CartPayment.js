@@ -244,6 +244,89 @@ class CartPayment {
       `Expected card "${cardName}" to look disabled but it appears enabled`,
     ).toBe(true);
   }
+
+  /**
+   * Clicks the "Set Billback" button in the cart FOP section.
+   * Opens the select-credit-card modal for billback configuration.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async clickSetBillback(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.clickSetBillbackButton();
+  }
+
+  /**
+   * Verifies that the "Add card" button is NOT visible (no other CC privilege).
+   * @param {import('@playwright/test').Page} page
+   */
+  static async verifyNoOtherCCPrivilege(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const isVisible = await paymentPage.isAddCardButtonVisible();
+    expect(isVisible, 'Expected "Add card" button to be hidden (no other CC privilege)').toBe(false);
+  }
+
+  /**
+   * Clicks the billback checkbox to select/toggle billback payment.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async selectBillback(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.clickBillbackCheckbox();
+  }
+
+  /**
+   * Verifies that the billback checkbox is checked.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async verifyBillbackChecked(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const isChecked = await paymentPage.isBillbackCheckboxChecked();
+    expect(isChecked, 'Expected billback checkbox to be checked').toBe(true);
+  }
+
+  /**
+   * Verifies that specific payment method options are visible (e.g., "Pay on departure", "Pre-paid").
+   * @param {import('@playwright/test').Page} page
+   * @param {string[]} options - Array of payment option texts to verify
+   */
+  static async verifyPaymentOptions(page, options) {
+    if (!page) throw new Error("page is required");
+    if (!Array.isArray(options)) throw new Error("options must be an array, got: " + typeof options);
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    for (const option of options) {
+      const isVisible = await paymentPage.isPaymentMethodOptionVisible(option);
+      expect(isVisible, `Expected payment option "${option}" to be visible`).toBe(true);
+    }
+  }
+
+  /**
+   * Selects a payment method option by text and saves.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} optionText - The payment option to select (e.g., "Pay on departure")
+   */
+  static async selectPaymentOption(page, optionText) {
+    if (!page) throw new Error("page is required");
+    if (!optionText || typeof optionText !== "string") throw new Error("optionText must be a non-empty string");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.clickPaymentMethodOption(optionText);
+    await paymentPage.clickPaymentMethodSaveButton();
+  }
+
+  /**
+   * Verifies that payment restrictions are displayed for a given payment option.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} optionText - The payment option that triggers restrictions (e.g., "Pre-paid")
+   */
+  static async verifyPaymentRestrictions(page, optionText) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const isVisible = await paymentPage.isPaymentRestrictionsContainerVisible();
+    expect(isVisible, `Expected payment restrictions to be displayed for "${optionText}"`).toBe(true);
+  }
 }
 
 module.exports = CartPayment;
