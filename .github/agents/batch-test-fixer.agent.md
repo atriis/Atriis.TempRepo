@@ -39,10 +39,21 @@ If test fails or passes with issues:
 
 #### Step C: Fix TODOs
 For each TODO found:
-- Understand the missing implementation from context (Gherkin step, expected behavior)
-- Implement the function/method
-- Update step definitions or DSL as needed
-- Commit atomically: `fix(<scope>): implement TODO for {test_id}`
+1. **Check if already implemented**:
+   - Read the TODO comment context
+   - Scan the method/function body for actual implementation (not just stubs)
+   - If implementation exists and works → Log as "TODO satisfied, no action needed"
+   - If implementation is missing/stub → Proceed to step 2
+
+2. **Implement if needed**:
+   - Understand the missing functionality from context (Gherkin step, expected behavior)
+   - Implement the function/method
+   - Update step definitions or DSL as needed
+   - Remove TODO comment after implementation
+
+3. **Commit atomically**:
+   - `fix(<scope>): implement TODO for {test_id}` (if changes made)
+   - No commit needed if TODO was already satisfied
 
 #### Step D: Rerun Test
 ```
@@ -92,7 +103,9 @@ Provide:
 
 ## Implementation Notes
 
-- **Atomic commits**: Each TODO fix is committed separately with clear scope
+- **TODO validation**: Check if TODO comment represents an actual incomplete task or already-implemented code before attempting fixes
+- **Smart implementation**: Only implement TODOs that lack actual functionality; reuse existing code if TODO is satisfied
+- **Atomic commits**: Each TODO fix is committed separately with clear scope; skip commits if no changes made
 - **Error handling**: If test fails after 5 iterations, report failure and move to next test
 - **No skipping**: All 3 tests processed regardless of individual outcomes
 - **State preservation**: Commits ensure no local changes are lost
