@@ -301,6 +301,31 @@ class CommonPage {
       return false;
     }
   }
+
+  /**
+   * Validates and asserts CO2 eco-label is displayed with valid numeric value.
+   * 
+   * @param {() => Promise<boolean>} isCO2LabelVisible - Async fn that returns true if label is visible
+   * @param {() => Promise<string>}  getCO2Value       - Async fn that returns the CO2 text value
+   * @param {string}                 context           - Human-readable location for error messages
+   * @returns {Promise<{visible: boolean, value: string}>}
+   * @throws {Error} If CO2 label is not visible or value is not a positive number
+   */
+  async assertCO2Displayed(isCO2LabelVisible, getCO2Value, context) {
+    const isVisible = await isCO2LabelVisible();
+    if (!isVisible) {
+      throw new Error(`CO2 eco-label is not visible in ${context}`);
+    }
+
+    const value = await getCO2Value();
+    const numericValue = parseFloat(value.replace(/,/g, ''));
+
+    if (isNaN(numericValue) || numericValue <= 0) {
+      throw new Error(`CO2 value must be a positive number, got: "${value}" (${context})`);
+    }
+
+    return { visible: true, value };
+  }
 }
 
 module.exports = {

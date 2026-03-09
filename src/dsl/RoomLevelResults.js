@@ -1,8 +1,7 @@
 ﻿const { getPageObject } = require("@utils/pageObjectCache");
 const RoomLevelResultsPage = require("@pages/RoomLevelResultsPage");
-const { assertCO2Displayed } = require("@utils/co2Validation");
+const { CommonPage } = require("@pages/CommonPage");
 const { ResultsPage } = require("@pages/ResultsPage");
-const { CartPage } = require("@pages/CartPage");
 const Results = require("./Results");
 
 /**
@@ -122,10 +121,11 @@ const RoomLevelResults = {
   async verifyCO2InRoomLevel(page) {
     if (!page) throw new Error('page parameter is required');
 
-    const p = getPageObject(page, RoomLevelResultsPage);
-    return assertCO2Displayed(
-      () => p.isCO2LabelVisible({ timeout: 30000 }),
-      () => p.getCO2Value(),
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const commonPage = getPageObject(page, CommonPage);
+    return commonPage.assertCO2Displayed(
+      () => roomLevelResultsPage.isCO2LabelVisible({ timeout: 30000 }),
+      () => roomLevelResultsPage.getCO2Value(),
       'room level results',
     );
   },

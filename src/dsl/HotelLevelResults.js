@@ -1,6 +1,6 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const HotelLevelResultsPage = require("@pages/HotelLevelResultsPage");
-const { assertCO2Displayed } = require("@utils/co2Validation");
+const { CommonPage } = require("@pages/CommonPage");
 
 /**
  * HotelLevelResults DSL
@@ -67,11 +67,12 @@ const HotelLevelResults = {
       throw new Error('page parameter is required');
     }
 
-    const p = getPageObject(page, HotelLevelResultsPage);
-    await p.waitForViewRatesText();
-    return assertCO2Displayed(
-      () => p.isCO2LabelVisible({ timeout: 30000 }),
-      () => p.getCO2Value(),
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const commonPage = getPageObject(page, CommonPage);
+    await hotelLevelResultsPage.waitForViewRatesText();
+    return commonPage.assertCO2Displayed(
+      () => hotelLevelResultsPage.isCO2LabelVisible({ timeout: 30000 }),
+      () => hotelLevelResultsPage.getCO2Value(),
       'hotel level results',
     );
   },

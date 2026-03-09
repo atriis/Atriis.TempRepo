@@ -1,6 +1,5 @@
 ---
 description: "Make failing automated tests pass by applying the smallest safe changes. Scans AtriisAutomation, Atriis.OBT, and Cortex.QA for selectors, flow understanding, and root-cause context."
-tools: ["read", "search", "edit", "runCommands", "test"]
 ---
 
 # Fix Tests Agent

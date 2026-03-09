@@ -1,7 +1,6 @@
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { CartPage, SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
-const { assertCO2Displayed } = require("@utils/co2Validation");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
@@ -573,10 +572,11 @@ const Cart = {
       throw new Error('page is required');
     }
 
-    const p = getPageObject(page, CartPage);
-    return assertCO2Displayed(
-      () => p.isCO2LabelVisibleInTripOverview(),
-      () => p.getCO2ValueInTripOverview(),
+    const cartPage = getPageObject(page, CartPage);
+    const commonPage = getPageObject(page, CommonPage);
+    return commonPage.assertCO2Displayed(
+      () => cartPage.isCO2LabelVisibleInTripOverview(),
+      () => cartPage.getCO2ValueInTripOverview(),
       'trip overview',
     );
   },
