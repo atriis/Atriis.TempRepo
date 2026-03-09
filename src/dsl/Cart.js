@@ -597,6 +597,64 @@ const Cart = {
       throw new Error('Download Voucher box is not visible in the trip overview');
     }
   },
+
+  /**
+   * Verifies that a car location at a specific airport index contains the expected airport name.
+   * 
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} index - Zero-based index of the airport location element
+   * @param {string} expectedAirport - Expected airport name to find in the location text
+   * @throws {Error} If page, index, or expectedAirport are invalid
+   * @returns {Promise<void>}
+   */
+
+  async expectAirportLocationOnCartToContain(page, index, expectedAirport) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+
+    if (!expectedAirport || typeof expectedAirport !== 'string') {
+      throw new Error(`expectedAirport must be a non-empty string, got: ${expectedAirport}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    const text = await cartPage.getLocationByIndexOnCart(index, 'airport').innerText();
+    expect(text.toLowerCase()).toContain(expectedAirport.toLowerCase());
+  },
+
+  /**
+   * Verifies that a car location label at a specific index contains the expected label text (e.g., "Pick up", "Drop off").
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} index - Zero-based index of the location element
+   * @param {string} expectedLabel - Expected label to find in the location text
+   * @throws {Error} If page, index, or expectedLabel are invalid
+   * @returns {Promise<void>}
+   */
+
+  async expectLocationLabelOnCartToContain(page, index, expectedLabel) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+
+    if (!expectedLabel || typeof expectedLabel !== 'string') {
+      throw new Error(`expectedLabel must be a non-empty string, got: ${expectedLabel}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    const text = await cartPage.getLocationLabelOnCartByIndex(index).innerText();
+    expect(text.toLowerCase()).toContain(expectedLabel.toLowerCase());
+  },
 };
 
 

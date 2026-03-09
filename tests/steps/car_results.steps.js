@@ -45,3 +45,13 @@ Then("the car location at city center index {int} should contain {string}", asyn
   logger.info("Verifying car location contains expected city", { index, expectedCity });
   await CarResults.expectLocationToContain(this.page, index, expectedCity);
 });
+
+Then("the car location at airport index {int} should contain {string} on results", async function (index, expectedAirport) {
+  logger.info("Verifying car airport location contains expected airport location on results", { index, expectedAirport });
+  await CarResults.expectAirportLocationToContain(this.page, index, expectedAirport);
+});
+
+Then("the car location label at index {int} should contain {string} on results", async function (index, expectedLabel) {
+  logger.info("Verifying car location label at index contains expected label on results", { index, expectedLabel });
+  await CarResults.expectLocationLabelToContain(this.page, index, expectedLabel);
+});

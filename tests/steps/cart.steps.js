@@ -343,3 +343,13 @@ Then("the download voucher button should be visible in the trip overview", async
   logger.info("Verifying download voucher button is visible in trip overview");
   await Cart.verifyVoucherDownloadVisible(this.page);
 });
+
+Then("the car location at airport index {int} should contain {string} on cart", async function (index, expectedAirport) {
+  logger.info("Verifying car airport location contains expected airport location on cart", { index, expectedAirport });
+  await Cart.expectAirportLocationOnCartToContain(this.page, index, expectedAirport);
+});
+
+Then("the car location label at index {int} should contain {string} on cart", async function (index, expectedLabel) {
+  logger.info("Verifying car location label at index contains expected label on cart", { index, expectedLabel });
+  await Cart.expectLocationLabelOnCartToContain(this.page, index, expectedLabel);
+});
