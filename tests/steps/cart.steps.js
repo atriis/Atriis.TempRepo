@@ -353,3 +353,13 @@ Then("the car location label at index {int} should contain {string} on cart", as
   logger.info("Verifying car location label at index contains expected label on cart", { index, expectedLabel });
   await Cart.expectLocationLabelOnCartToContain(this.page, index, expectedLabel);
 });
+
+When("I add Premier Inn Extras Services in cart", async function () {
+  logger.info("Adding Premier Inn extras services in cart");
+  await Cart.addPremierInnExtras(this.page);
+});
+
+When("I save Premier Inn Extras Services in cart", async function () {
+  logger.info("Saving Premier Inn extras services in cart");
+  await Cart.savePremierInnExtras(this.page);
+});

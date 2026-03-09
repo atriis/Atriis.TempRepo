@@ -655,6 +655,37 @@ const Cart = {
     const text = await cartPage.getLocationLabelOnCartByIndex(index).innerText();
     expect(text.toLowerCase()).toContain(expectedLabel.toLowerCase());
   },
+
+  /**
+   * Opens the extras edit panel at the specified index.
+   * Used to add optional extras like Premier Inn services or airline baggage.
+   * @param {import('playwright').Page} page
+   * @param {number} [index=0] - The index of the extras section to edit (0-based)
+   * @throws {Error} If page is not provided
+   */
+  async addPremierInnExtras(page, index = 0) {
+    if (!page) throw new Error('page is required');
+    if (typeof index !== 'number' || index < 0) throw new Error('index must be a non-negative number');
+    
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickEditExtrasButton(index);
+    // Wait for the Save button to appear, confirming the extras panel is open
+    await cartPage.waitForSaveButton();
+  },
+
+  /**
+   * Saves the Premier Inn extras panel by clicking the Save button.
+   * Should be called after addPremierInnExtras opens the panel.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If page is not provided
+   */
+  async savePremierInnExtras(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickSaveButton();
+    // Wait for the Save button to disappear, confirming the panel is closed
+    await cartPage.getSaveButton().waitFor({ state: 'hidden', timeout: 15000 });
+  },
 };
 
 

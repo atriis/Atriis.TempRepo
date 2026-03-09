@@ -14,16 +14,16 @@ Feature: 37135 Premier Inn - Book hotel with CVV and Extras
 
   @priority:critical
   Scenario: Premier Inn hotel booked with CVV and extras, then cancelled
-    Given I am logged in as "premierinn" "user_one" booking a new trip
+    Given I am logged in as "premierinn" "user_three" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "When I set the CVV for the selected payment card" that calls DSL method setCVVForCard in CartFop.js
-    # TODO: Create step "When I add Premier Inn extras to my booking" that calls DSL method addPremierInnExtras in Cart.js
+    Then the hotel should appear as refundable in cart
+    When I add Premier Inn Extras Services in cart
+    And I save Premier Inn Extras Services in cart
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
     Then I successfully cancel the trip
-
