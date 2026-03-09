@@ -1,8 +1,5 @@
 module.exports = {
   default: {
-    paths: [
-      'tests/features/**/*.feature'
-    ],
     require: [
       'tests/support/world.js',   // World class
       'tests/support/hooks.js',   // Before/After hooks (includes alias registration)

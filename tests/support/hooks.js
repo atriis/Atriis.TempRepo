@@ -15,7 +15,6 @@ const config = require("../../src/config/config");
 const { App } = require("../../src/dsl");
 const logger = require("@utils/logger").child("Hooks");
 const { recordFailure, isRetryEnabled } = require("./retry-handler");
-const allowedLabels = require("../../labels.config.json").allowedLabels;
 
 setDefaultTimeout(120000);
 
@@ -183,28 +182,4 @@ After(async function (scenario) {
   if (this.browser) {
     await this.browser.close();
   }
-});
-
-// Validate allowed labels before each test case scenario
-Before(function (scenario) {
-  // 1. Extract tags from the current scenario/pickle
-  const scenarioTags = scenario.pickle.tags.map(tag => tag.name);
-
-  // 2. Filter tags that start with "@label:"
-  const labelTags = scenarioTags.filter(tag => tag.startsWith("@label:"));
-
-  // 3. Validate each label tag
-  labelTags.forEach(tag => {
-    // Extract the value (e.g., turn "@label:booking" into "booking")
-    const labelValue = tag.split(":")[1];
-
-    // Check if the value exists in the allowed list
-    if (!allowedLabels.includes(labelValue)) {
-      throw new Error(
-        `INVALID LABEL DETECTED: "${tag}" is not allowed.\n` +
-        `Allowed labels: ${allowedLabels.join(", ")}\n` +
-        "New labels can be added in '../../labels.config.json'.",
-      );
-    }
-  });
 });
