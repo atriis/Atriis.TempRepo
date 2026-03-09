@@ -1,8 +1,7 @@
 ---
 name: batch-test-fixer
 description: Batch test runner and TODO resolver. Accepts 3 test cases with respective users, runs them sequentially, collects TODO comments, implements fixes, and reruns until each test passes.
-tools:
-  - runSubagent
+tools: ["read", "search", "edit", "runCommands"]
 ---
 
 # Batch Test Fixer Agent
@@ -103,6 +102,7 @@ Provide:
 
 ## Implementation Notes
 
+- **Environment setup**: Before creating a new user, search `.env` for the provided email address. If the email already exists under any key (e.g., `EHOTEL_ELI_TEL_EMAIL="eli@tel.com"`), use that existing user key in the feature file (e.g., `"ehotel" "eli_tel"`). Only add a new env var if the email is not found anywhere in `.env`
 - **TODO validation**: Check if TODO comment represents an actual incomplete task or already-implemented code before attempting fixes
 - **Smart implementation**: Only implement TODOs that lack actual functionality; reuse existing code if TODO is satisfied
 - **Atomic commits**: Each TODO fix is committed separately with clear scope; skip commits if no changes made
