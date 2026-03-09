@@ -14,12 +14,14 @@ Feature: 60661 General - Credit cards from user profile are available in cart FO
 
   @priority:high
   Scenario: Two user profile credit cards are visible in cart FOP panel
-    Given I am logged in as "general" "user_one" booking a new trip
+    Given I am logged in as "general" "hotel_fop" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I click add payment method button
-    # TODO: Create step "Then {int} profile credit cards should be visible in the FOP panel" that calls DSL verifyProfileCardCount with 2 in CartFop.js
+    Then the card "personal bruna" should be visible
+    Then the card "testim cardd" should be visible
+    Then 2 payment cards should be visible in the FOP panel
 
