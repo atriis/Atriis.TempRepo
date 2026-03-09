@@ -57,6 +57,18 @@ const HotelLevelResults = {
   },
 
   /**
+   * Verifies the corporate preferred badge is visible on hotel level results.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the badge is not visible
+   */
+  async verifyCorporatePreferredBadge(page) {
+    if (!page) throw new Error('page is required');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const isVisible = await hotelLevelResultsPage.isCorporatePreferredBadgeVisible();
+    if (!isVisible) throw new Error('Corporate preferred badge is not visible in hotel level results');
+  },
+
+  /**
    * Verifies that CO2 emissions data is displayed in hotel level results.
    * Checks that the eco-label is visible and the CO2 value is a non-zero number.
    * @param {import('playwright').Page} page

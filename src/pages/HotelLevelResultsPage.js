@@ -7,6 +7,7 @@
 
 const SELECTORS = {
   MEMBER_BADGE: ".expedia-membership-badge-container, .booking-com-membership-badge-container",
+  CORPORATE_PREFERRED_BADGE: ".badge-wrapper .app-badge",  // Badge shown when hotel.tags includes 'preferred'
   SEARCH_HOTEL_FILTER: '[placeholder="Search hotel"]',
   CO2_LABEL: ".hotel-info .eco-label",
   CO2_VALUE: ".hotel-info .eco-label .is-size-7",
@@ -69,6 +70,20 @@ class HotelLevelResultsPage {
    * Verifies member rate badge is visible in hotel results
    * @returns {Promise<boolean>} True if member badge is visible
    */
+  /**
+   * Checks if the corporate preferred badge is visible in hotel results.
+   * @returns {Promise<boolean>} True if badge is visible
+   */
+  async isCorporatePreferredBadgeVisible() {
+    const badge = this.page.locator(SELECTORS.CORPORATE_PREFERRED_BADGE).first();
+    try {
+      await badge.waitFor({ state: 'visible', timeout: 5000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async isMemberBadgeVisible() {
     const badge = this.page.locator(SELECTORS.MEMBER_BADGE).first();
     try {
