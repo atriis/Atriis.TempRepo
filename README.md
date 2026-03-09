@@ -540,6 +540,18 @@ The retry mechanism is implemented in:
 npx cucumber-js tests/features/flights/general/basic_search.feature --format progress-bar
 ```
 
+**Run tests by a specific label:**
+```bash
+npx cucumber-js --tags "@label:booking"
+```
+
+**Run tests with multiple labels (OR condition):**
+```bash
+npx cucumber-js --tags "@label:booking or @label:results"
+npx cucumber-js --tags "@label:booking and @label:results"
+npx cucumber-js --tags "@label:booking and not @label:results"
+```
+
 **Enable browser visibility (headed mode):**
 ```bash
 HEADLESS=false npx cucumber-js
