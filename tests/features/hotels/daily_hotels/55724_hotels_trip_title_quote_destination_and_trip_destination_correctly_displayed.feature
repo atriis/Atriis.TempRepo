@@ -7,21 +7,19 @@
 # Updated: 2026-01-06T09:25:43Z
 
 @regression @provider:amadeus
-Feature: 55724 Amadeus - Trip title and destination set from hotel booking
+Feature: 55724 Hotels - Trip title, quote destination and trip destination are correcly displayed
   As a corporate traveler
   I want the trip title and destination to be automatically set from the hotel I book
   So that my trip is properly labelled with the hotel's city
 
   @priority:medium
-  Scenario: Trip title and destination are populated from hotel booking
+  Scenario: Trip title, quote destination and trip destination are correcly displayed
     Given I am logged in as "amadeus" "user_one" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Leonardo Plana Ashdod" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    When I proceed to checkout
-    And I complete the booking
-    # TODO: Create step "Then the trip title should contain the hotel city" that calls DSL verifyTripTitle in Trip.js
-    # TODO: Create step "Then the trip destination should be set to the hotel city" that calls DSL verifyTripDestination in Trip.js
-
+    Then the trip title should contain "Trip to Ashdod, IL"
+    Then the quote destination should contain "1 Night at Ashdod, IL"
+    Then the trip destination on top of the page should contain "Ashdod, IL"

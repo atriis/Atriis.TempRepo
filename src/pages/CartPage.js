@@ -40,6 +40,13 @@ const SELECTORS = {
   // Trip Overview selectors
   TRIP_OVERVIEW_TITLE: ".payments-title",
 
+  // Trip title and destination selectors (cart-info-bar.vue)
+  TRIP_TITLE: '.cart-info-bar h4.trip-title',
+  TRIP_DESTINATION_INFO: '.cart-info-bar .info-wrapper p',
+
+  // Quote title selector (base-quote-header.vue)
+  QUOTE_TITLE: '.quote-payment-card h6.quote-title',
+
   // OOP Justification selectors
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
   
@@ -877,6 +884,39 @@ class CartPage {
   getLocationLabelOnCartByIndex(index) {
       const selector = SELECTORS.LOCATION_LABEL;
       return this.page.locator(selector).nth(index);
+  }
+
+  /**
+   * Gets the trip title text from the cart info bar (e.g. "Trip to Ashdod").
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getTripTitleText({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.TRIP_TITLE).first();
+    await el.waitFor({ state: 'visible', timeout });
+    return (await el.innerText()).trim();
+  }
+
+  /**
+   * Gets the trip destination text from the cart info bar (e.g. "Ashdod").
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getTripDestinationInfoText({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.TRIP_DESTINATION_INFO).first();
+    await el.waitFor({ state: 'visible', timeout });
+    return (await el.innerText()).trim();
+  }
+
+  /**
+   * Gets the quote title text from the hotel quote card header (e.g. "Leonardo Plana Ashdod").
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getQuoteTitleText({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.QUOTE_TITLE).first();
+    await el.waitFor({ state: 'visible', timeout });
+    return (await el.innerText()).trim();
   }
 }
 // Export CartPage and SELECTORS for use in tests and DSL

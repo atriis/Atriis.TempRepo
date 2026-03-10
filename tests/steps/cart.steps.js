@@ -363,3 +363,18 @@ When("I save Premier Inn Extras Services in cart", async function () {
   logger.info("Saving Premier Inn extras services in cart");
   await Cart.savePremierInnExtras(this.page);
 });
+
+Then("the trip title should contain {string}", async function (city) {
+  logger.info("Verifying trip title contains city", { city });
+  await Cart.verifyTripTitle(this.page, city);
+});
+
+Then("the quote destination should contain {string}", async function (city) {
+  logger.info("Verifying quote destination contains city", { city });
+  await Cart.verifyQuoteDestination(this.page, city);
+});
+
+Then("the trip destination on top of the page should contain {string}", async function (city) {
+  logger.info("Verifying trip destination on top of page contains city", { city });
+  await Cart.verifyTripDestinationTopPage(this.page, city);
+});

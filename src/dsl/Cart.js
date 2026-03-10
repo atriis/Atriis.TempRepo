@@ -686,6 +686,54 @@ const Cart = {
     // Wait for the Save button to disappear, confirming the panel is closed
     await cartPage.getSaveButton().waitFor({ state: 'hidden', timeout: 15000 });
   },
+
+  /**
+   * Verifies that the trip title in the cart info bar contains "Trip to <city>".
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} city - Expected city name (e.g. "Ashdod")
+   * @returns {Promise<void>}
+   */
+  async verifyTripTitle(page, city) {
+    if (!page) throw new Error('page is required');
+    if (!city || typeof city !== 'string') throw new Error(`city must be a non-empty string, got: ${typeof city}`);
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualTitle = await cartPage.getTripTitleText();
+    expect(actualTitle.toLowerCase()).toContain(city.toLowerCase());
+  },
+
+  /**
+   * Verifies that the hotel quote card title contains the expected city name.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} city - Expected city name (e.g. "Ashdod")
+   * @returns {Promise<void>}
+   */
+  async verifyQuoteDestination(page, city) {
+    if (!page) throw new Error('page is required');
+    if (!city || typeof city !== 'string') throw new Error(`city must be a non-empty string, got: ${typeof city}`);
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualTitle = await cartPage.getQuoteTitleText();
+    expect(actualTitle.toLowerCase()).toContain(city.toLowerCase());
+  },
+
+  /**
+   * Verifies that the destination text in the cart info bar (top of page) contains the expected city.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} city - Expected city name (e.g. "Ashdod")
+   * @returns {Promise<void>}
+   */
+  async verifyTripDestinationTopPage(page, city) {
+    if (!page) throw new Error('page is required');
+    if (!city || typeof city !== 'string') throw new Error(`city must be a non-empty string, got: ${typeof city}`);
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualDestination = await cartPage.getTripDestinationInfoText();
+    expect(actualDestination.toLowerCase()).toContain(city.toLowerCase());
+  },
 };
 
 
