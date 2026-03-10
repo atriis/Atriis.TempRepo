@@ -268,24 +268,16 @@ class CartPayment {
   }
 
   /**
-   * Clicks the billback checkbox to select/toggle billback payment.
+   * Verifies that a card's checkbox is checked, matched by card name string.
    * @param {import('@playwright/test').Page} page
+   * @param {string} cardName - Substring to match against card label text
    */
-  static async selectBillback(page) {
+  static async verifyCardCheckboxChecked(page, cardName) {
     if (!page) throw new Error("page is required");
+    if (!cardName || typeof cardName !== 'string') throw new Error("cardName must be a non-empty string");
     const paymentPage = getPageObject(page, CartPaymentPage);
-    await paymentPage.clickBillbackCheckbox();
-  }
-
-  /**
-   * Verifies that the billback checkbox is checked.
-   * @param {import('@playwright/test').Page} page
-   */
-  static async verifyBillbackChecked(page) {
-    if (!page) throw new Error("page is required");
-    const paymentPage = getPageObject(page, CartPaymentPage);
-    const isChecked = await paymentPage.isBillbackCheckboxChecked();
-    expect(isChecked, 'Expected billback checkbox to be checked').toBe(true);
+    const isChecked = await paymentPage.isCardCheckboxCheckedByName(cardName);
+    expect(isChecked, `Expected "${cardName}" checkbox to be checked`).toBe(true);
   }
 
   /**

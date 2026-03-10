@@ -7,16 +7,16 @@
 # Updated: 2024-10-01T01:50:32Z
 
 @regression @provider:general
-Feature: 37287 General - No other CC privilege and billback checkbox
+Feature: 37287 Hotel - System should not show an option to pay with other credit card in case user doesn't have privileges; if there's billback checkbox must be checked by default
   As a corporate traveler with restricted payment privileges
   I want to see only the allowed payment methods in cart
   So that I don't accidentally use unauthorized payment methods
 
   @priority:high
-  Scenario: Billback checkbox is available and only allowed payment methods are shown
+  Scenario: System should not show an option to pay with other credit card in case user doesn't have privileges; if there's billback checkbox must be checked by default
     Given I am logged in as "general" "user_lilyaldrin" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "London" for 1 night
+    When I search for a hotel in "Lon" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"

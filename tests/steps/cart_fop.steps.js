@@ -128,29 +128,14 @@ Then("payment restriction options should include {string} and {string}", async f
   await CartPayment.verifyPaymentRestrictionOptions(this.page, [optionOne, optionTwo]);
 });
 
-Then("the {string} privilege restriction should be applied in cart", async function (privilegeName) {
-  logger.info("Verifying privilege restriction is applied", { privilegeName });
-  await CartPayment.verifyNoOtherCCPrivilege(this.page);
-});
-
 When("I click the set billback button in cart", async function () {
   logger.info("Clicking set billback button in cart");
   await CartPayment.clickSetBillback(this.page);
 });
 
-When("I select the billback payment option", async function () {
-  logger.info("Selecting billback payment option");
-  await CartPayment.selectBillback(this.page);
-});
-
-Then("the billback checkbox should be checked", async function () {
-  logger.info("Verifying billback checkbox is checked");
-  await CartPayment.verifyBillbackChecked(this.page);
-});
-
 Then("the card {string} checkbox should be checked", async function (cardName) {
   logger.info("Verifying card checkbox is checked", { cardName });
-  await CartPayment.verifyBillbackChecked(this.page);
+  await CartPayment.verifyCardCheckboxChecked(this.page, cardName);
 });
 
 Then("add credit card details option should not be visible", async function () {

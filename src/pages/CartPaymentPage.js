@@ -486,6 +486,21 @@ class CartPaymentPage {
   }
 
   /**
+   * Checks if a card's checkbox is checked, found by matching the card name string.
+   * Works for any .el-checkbox container whose visible text contains cardName.
+   * @param {string} cardName - Substring to match against card label text
+   * @returns {Promise<boolean>}
+   */
+  async isCardCheckboxCheckedByName(cardName) {
+    if (!cardName || typeof cardName !== 'string') {
+      throw new Error('cardName must be a non-empty string');
+    }
+    const checkbox = this.page.locator('.el-checkbox').filter({ hasText: cardName }).first();
+    await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+    return checkbox.locator(SELECTORS.BILLBACK_CHECKBOX_INPUT).evaluate(el => el.classList.contains('is-checked'));
+  }
+
+  /**
    * Clicks the billback checkbox.
    */
   async clickBillbackCheckbox() {
