@@ -7,15 +7,17 @@
 # Updated: 2025-10-28T05:30:13Z
 
 @regression @provider:amadeus
-Feature: 66386 Amadeus - Agreement filter shows correct results for PwC account
+Feature: 66386 Hotels - Amadeus - Agreement results are visible in hotel level
   As a corporate traveler with a PwC account
   I want to filter by agreement hotels
   So that only PwC-negotiated hotels are shown in results
 
   @priority:high
-  Scenario: Agreement filter returns correct results for PwC corporate account
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+  Scenario: Agreement results are visible in hotel level
+    Given I am logged in as "amadeus" "pcw" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Cardiff Lane Dublin" for 1 night
-    When I filter results by "Agreement" checkbox
-    # TODO: Create step "Then agreement hotel results should be displayed for the corporate account" that calls DSL verifyAgreementResultsForCorporate in HotelSearch.js
+    And I wait to see view rates text in results page
+    Then the first hotel result should display the "Corporate rate" agreement
+    Then hovering over the "Corporate rate" agreement should show "pcw" in the tooltip
+    

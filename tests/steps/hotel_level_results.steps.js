@@ -78,6 +78,16 @@ Then("the {string} supplier logo should be visible in hotel results", async func
   if (!isVisible) throw new Error(`Supplier logo for "${supplierName}" not visible in hotel results`);
 });
 
+Then("the first hotel result should display the {string} agreement", async function (labelText) {
+  logger.info("Verifying agreement label is visible for first hotel result", { labelText });
+  await HotelLevelResults.verifyAgreementLabelForFirstHotel(this.page, labelText);
+});
+
+Then("hovering over the {string} agreement should show {string} in the tooltip", async function (labelText, tooltipText) {
+  logger.info("Verifying agreement tooltip text", { labelText, tooltipText });
+  await HotelLevelResults.verifyAgreementResultsForCorporate(this.page, labelText, tooltipText);
+});
+
 Then("the sustainability filter checkbox should be enabled and clickable", async function () {
   logger.info("Verifying sustainability filter checkbox is enabled and clickable");
   await HotelLevelResults.verifySustainabilityFilterEnabled(this.page);

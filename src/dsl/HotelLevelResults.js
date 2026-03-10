@@ -323,6 +323,36 @@ const HotelLevelResults = {
     const isVisible = await hotelLevelResultsPage.isFilterTagVisible(tagText);
     if (!isVisible) throw new Error(`Hotel filter tag "${tagText}" is not visible in the filter summary`);
   },
+
+  /**
+   * Verifies that an agreement label (e.g. "Corporate rate") is visible on the first hotel result.
+   * @param {import('playwright').Page} page
+   * @param {string} labelText - The agreement label text to look for (e.g. "Corporate rate")
+   * @throws {Error} If the label is not visible
+   */
+  async verifyAgreementLabelForFirstHotel(page, labelText) {
+    if (!page) throw new Error('page is required');
+    if (!labelText || typeof labelText !== 'string') throw new Error(`labelText must be a non-empty string, got: ${typeof labelText}`);
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const isVisible = await hotelLevelResultsPage.isAgreementLabelVisibleInFirstHotel(labelText);
+    if (!isVisible) throw new Error(`Agreement label "${labelText}" is not visible on the first hotel result`);
+  },
+
+  /**
+   * Hovers over an agreement label on the first hotel result and verifies the tooltip contains expected text.
+   * @param {import('playwright').Page} page
+   * @param {string} labelText - The agreement label to hover over (e.g. "Corporate rate")
+   * @param {string} tooltipText - Expected text in the tooltip (e.g. "PwC Rate")
+   * @throws {Error} If the tooltip text does not contain expected value
+   */
+  async verifyAgreementResultsForCorporate(page, labelText, tooltipText) {
+    if (!page) throw new Error('page is required');
+    if (!labelText || typeof labelText !== 'string') throw new Error(`labelText must be a non-empty string, got: ${typeof labelText}`);
+    if (!tooltipText || typeof tooltipText !== 'string') throw new Error(`tooltipText must be a non-empty string, got: ${typeof tooltipText}`);
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const actualTooltip = await hotelLevelResultsPage.hoverAgreementLabelAndGetTooltip(labelText);
+    expect(actualTooltip.toLowerCase()).toContain(tooltipText.toLowerCase());
+  },
 };
 
 module.exports = HotelLevelResults;

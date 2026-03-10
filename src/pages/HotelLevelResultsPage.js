@@ -29,6 +29,12 @@ const SELECTORS = {
     `.hotel-filter .filter-container:has(h4:has-text("${filterName}")) label.el-checkbox:has-text("${optionText}")`,
   // Active filter badge tag in the hotel-filter summary bar
   HOTEL_FILTER_SUMMARY_TAG: (text) => `.hotel-filter-summary .el-tag:has-text("${text}")`,
+  // Agreement label badge in hotel card (e.g. "Corporate rate", "Agency rate")
+  AGREEMENT_LABEL: (text) => `.hotel-preview .ticket-agreement:has-text("${text}")`,
+  // Agreement label span (exact text match) for El-Plus tooltip triggering via mouse.move
+  AGREEMENT_LABEL_SPAN: (text) => `.hotel-preview .ticket-agreement span:text-is("${text}")`,
+  // Tooltip content shown on hover over agreement label (Element Plus renders popper at body level)
+  AGREEMENT_TOOLTIP_DESCRIPTION: '.el-popper.is-light .agreement-tooltip__description',
 };
 
 class HotelLevelResultsPage {
@@ -340,6 +346,44 @@ class HotelLevelResultsPage {
         }
       }
     }, { filterName, optionText });
+  }
+
+  /**
+   * Checks if an agreement label (e.g. "Corporate rate") is visible in the first hotel result.
+   * @param {string} labelText - Agreement label text
+   * @returns {Promise<boolean>}
+   */
+  async isAgreementLabelVisibleInFirstHotel(labelText) {
+    const label = this.page.locator(SELECTORS.AGREEMENT_LABEL(labelText)).first();
+    try {
+      await label.waitFor({ state: 'visible', timeout: 10000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Hovers over an agreement label in the first hotel result and returns the tooltip description text.
+   * @param {string} labelText - Agreement label text to hover over (e.g. "Corporate rate")
+   * @returns {Promise<string>} The tooltip description text
+   */
+  async hoverAgreementLabelAndGetTooltip(labelText) {
+    // Target the span with exact label text for precise El-Plus tooltip triggering
+    const span = this.page.locator(SELECTORS.AGREEMENT_LABEL_SPAN(labelText)).first();
+    await span.waitFor({ state: 'visible', timeout: 10000 });
+    // Use explicit mouse coordinates - more reliable than element.hover() for El-Plus tooltips
+    const box = await span.boundingBox();
+    await this.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    // Wait for El-Plus open-delay (200ms) + render time
+    await this.page.waitForTimeout(1500);
+    // Read tooltip text via DOM evaluate - handles portal elements teleported to body
+    const descText = await this.page.evaluate(() => {
+      const el = document.querySelector('.agreement-tooltip__description');
+      return el ? el.textContent.trim() : null;
+    });
+    if (descText === null) throw new Error(`Agreement tooltip description not found in DOM after hovering over "${labelText}"`);
+    return descText;
   }
 
   /**   * Checks if an active filter badge tag is visible in the hotel-filter summary bar.
