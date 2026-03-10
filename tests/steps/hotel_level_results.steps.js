@@ -117,3 +117,18 @@ When("I scroll through hotel filters", async function () {
   logger.info("Scrolling through hotel filters");
   await HotelLevelResults.scrollHotelFilters(this.page);
 });
+
+Then("I see hotel level filter sections", async function () {
+  logger.info("Verifying hotel level filter sections are visible");
+  await HotelLevelResults.verifyHotelFilters(this.page);
+});
+
+When("I apply hotel level filter {string} with option {string}", async function (filterName, optionText) {
+  logger.info("Applying hotel level filter", { filterName, optionText });
+  await HotelLevelResults.applyHotelFilter(this.page, filterName, optionText);
+});
+
+Then("the {string} filter tag should be visible in hotel results", async function (tagText) {
+  logger.info("Verifying hotel filter tag is visible", { tagText });
+  await HotelLevelResults.verifyHotelFilterTag(this.page, tagText);
+});

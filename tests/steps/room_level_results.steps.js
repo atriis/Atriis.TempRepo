@@ -159,3 +159,13 @@ Then("the {string} tooltip should be correct", async function (tooltipText) {
   logger.info("Tooltip text found", { actual: actualText });
   expect(actualText).toBe("Paid at the hotel");
 });
+
+Then("I see room level filter sections", async function () {
+  logger.info("Verifying room level filter sections are visible");
+  await RoomLevelResults.verifyRoomLevelFilters(this.page);
+});
+
+When("I apply room level filter {string} with option {string}", async function (filterName, optionText) {
+  logger.info("Applying room level filter", { filterName, optionText });
+  await RoomLevelResults.applyRoomFilter(this.page, filterName, optionText);
+});

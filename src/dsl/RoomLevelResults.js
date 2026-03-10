@@ -199,6 +199,36 @@ const RoomLevelResults = {
     const p = getPageObject(page, RoomLevelResultsPage);
     return p.isSupplierLogoVisible(supplierId);
   },
+
+  /**
+   * Verifies that the expected filter sections are visible in the room-level filter panel.
+   * Filters: Agreement, Price, Payment, Suppliers.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If any expected filter section is not visible
+   */
+  async verifyRoomLevelFilters(page) {
+    if (!page) throw new Error('page is required');
+    const expectedFilters = ['Agreement', 'Price', 'Payment', 'Suppliers'];
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    for (const filter of expectedFilters) {
+      const isVisible = await roomLevelResultsPage.isRoomFilterSectionVisible(filter);
+      if (!isVisible) throw new Error(`Room filter section "${filter}" is not visible in room level results`);
+    }
+  },
+
+  /**
+   * Applies a filter in the room-level filter panel by clicking the specified option.
+   * @param {import('playwright').Page} page
+   * @param {string} filterName - Filter section title (e.g. "Agreement")
+   * @param {string} optionText - Checkbox option label (e.g. "Corp")
+   */
+  async applyRoomFilter(page, filterName, optionText) {
+    if (!page) throw new Error('page is required');
+    if (!filterName || typeof filterName !== 'string') throw new Error('filterName must be a non-empty string');
+    if (!optionText || typeof optionText !== 'string') throw new Error('optionText must be a non-empty string');
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    await roomLevelResultsPage.clickRoomFilterOption(filterName, optionText);
+  },
 };
 
 module.exports = RoomLevelResults;

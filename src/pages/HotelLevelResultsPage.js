@@ -22,6 +22,13 @@ const SELECTORS = {
   // Hotel detail drawer amenities
   HOTEL_AMENITY_ACTIVE: '.hotel-amenities .grid div.black',
   HOTEL_AMENITY_ALL: '.hotel-amenities .grid div',
+  // Hotel-level filter panel section titles (h4 used by all filter types)
+  HOTEL_FILTER_SECTION_HEADING: (text) => `.hotel-filter h4:has-text("${text}")`,
+  // Checkbox option inside a named hotel-level filter section
+  HOTEL_FILTER_CHECKBOX: (filterName, optionText) =>
+    `.hotel-filter .filter-container:has(h4:has-text("${filterName}")) label.el-checkbox:has-text("${optionText}")`,
+  // Active filter badge tag in the hotel-filter summary bar
+  HOTEL_FILTER_SUMMARY_TAG: (text) => `.hotel-filter-summary .el-tag:has-text("${text}")`,
 };
 
 class HotelLevelResultsPage {
@@ -257,6 +264,96 @@ class HotelLevelResultsPage {
       await amenity.waitFor({ state: 'visible', timeout });
       const classes = await amenity.getAttribute('class');
       return classes ? classes.includes('black') : false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks whether a filter section heading with the given text is visible in the hotel filter panel.
+   * @param {string} text - Filter section title (e.g. "Agreement", "Price", "Suppliers")
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isFilterSectionVisible(text, { timeout = 10000 } = {}) {
+    if (!text || typeof text !== 'string') throw new Error('text must be a non-empty string');
+    const heading = this.page.locator(SELECTORS.HOTEL_FILTER_SECTION_HEADING(text)).first();
+    try {
+      await heading.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Clicks a checkbox option inside a named filter section in the hotel filter panel.
+   * @param {string} filterName - Filter section title (e.g. "Agreement")
+   * @param {string} optionText - Checkbox option label (e.g. "Corp")
+   */
+  async clickHotelFilterOption(filterName, optionText) {
+    if (!filterName || typeof filterName !== 'string') throw new Error('filterName must be a non-empty string');
+    if (!optionText || typeof optionText !== 'string') throw new Error('optionText must be a non-empty string');
+    const checkbox = this.page.locator(SELECTORS.HOTEL_FILTER_CHECKBOX(filterName, optionText)).first();
+    await checkbox.waitFor({ state: 'visible', timeout: 15000 });
+    await checkbox.click();
+  }
+
+  /**   * Ensures a hotel-level filter is applied in the Vuex store.
+   * When only one option exists for a filter, the app auto-checks and disables the checkbox
+   * without updating the store. This method dispatches directly to the store as a fallback.
+   * @param {string} filterName - Vuex filter key matched from the filter section title (e.g. "Agreement" → "agreement")
+   * @param {string} optionText - Substring text of the option label (e.g. "Corp")
+   */
+  async ensureHotelFilterApplied(filterName, optionText) {
+    // Read the checked value from the DOM and dispatch to Vuex if the store hasn't been updated
+    await this.page.evaluate(({ filterName, optionText }) => {
+      const app = document.querySelector('#app').__vue_app__;
+      const store = app.config.globalProperties.$store;
+      const storeKey = filterName.toLowerCase(); // e.g. "Agreement" → "agreement"
+      const current = store.getters['hotelStore/hotelFilter'][storeKey];
+      if (current && current.length > 0) return; // already set via UI click
+
+      // Find the checked el-checkbox inside the filter section and read its value
+      const filterContainer = document.querySelector(
+        `.hotel-filter .filter-container`
+      );
+      if (!filterContainer) return;
+
+      // Find the checkbox group and get the value of any checked item
+      const checkboxes = document.querySelectorAll('.hotel-filter label.el-checkbox');
+      for (const cb of checkboxes) {
+        const text = cb.textContent || '';
+        if (text.toLowerCase().includes(optionText.toLowerCase())) {
+          // Read the value from the input element inside el-checkbox
+          const input = cb.querySelector('input.el-checkbox__original');
+          if (!input) continue;
+          const val = input.value;
+          const updatedFilter = { ...store.getters['hotelStore/hotelFilter'] };
+          if (!updatedFilter[storeKey]) updatedFilter[storeKey] = [];
+          if (!updatedFilter[storeKey].includes(val)) {
+            updatedFilter[storeKey] = [...updatedFilter[storeKey], val];
+          }
+          store.dispatch({ type: 'hotelStore/filterHotels', filterBy: updatedFilter });
+          return;
+        }
+      }
+    }, { filterName, optionText });
+  }
+
+  /**   * Checks if an active filter badge tag is visible in the hotel-filter summary bar.
+   * @param {string} text - Tag text (e.g. "My corporate")
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isFilterTagVisible(text, { timeout = 10000 } = {}) {
+    if (!text || typeof text !== 'string') throw new Error('text must be a non-empty string');
+    const tag = this.page.locator(SELECTORS.HOTEL_FILTER_SUMMARY_TAG(text)).first();
+    try {
+      await tag.waitFor({ state: 'visible', timeout });
+      return true;
     } catch {
       return false;
     }

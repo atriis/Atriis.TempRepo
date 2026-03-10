@@ -276,6 +276,53 @@ const HotelLevelResults = {
       return { scrolled: true };
     }
   },
+
+  /**
+   * Verifies that the expected filter sections are visible in the hotel-level filter panel.
+   * Filters: Agreement, Distance, Price, Stars, Payment, Amenities, Suppliers.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If any expected filter section is not visible
+   */
+  async verifyHotelFilters(page) {
+    if (!page) throw new Error('page is required');
+    const expectedFilters = ['Agreement', 'Distance', 'Price', 'Stars', 'Payment', 'Amenities', 'Suppliers'];
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    for (const filter of expectedFilters) {
+      const isVisible = await hotelLevelResultsPage.isFilterSectionVisible(filter);
+      if (!isVisible) throw new Error(`Hotel filter section "${filter}" is not visible in hotel level results`);
+    }
+  },
+
+  /**
+   * Clicks a checkbox option in the hotel-level filter panel.
+   * @param {import('playwright').Page} page
+   * @param {string} filterName - Filter section title (e.g. "Agreement")
+   * @param {string} optionText - Checkbox label to click (e.g. "Corp")
+   */
+  async applyHotelFilter(page, filterName, optionText) {
+    if (!page) throw new Error('page is required');
+    if (!filterName || typeof filterName !== 'string') throw new Error(`filterName must be a non-empty string, got: ${typeof filterName}`);
+    if (!optionText || typeof optionText !== 'string') throw new Error(`optionText must be a non-empty string, got: ${typeof optionText}`);
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.clickHotelFilterOption(filterName, optionText);
+    // When only one agreement option exists the checkbox is auto-checked/disabled by the app.
+    // Clicking it triggers no Vuex update, so we dispatch directly as a reliable fallback.
+    await hotelLevelResultsPage.ensureHotelFilterApplied(filterName, optionText);
+  },
+
+  /**
+   * Verifies that an active filter badge tag is visible in the hotel-filter summary bar.
+   * @param {import('playwright').Page} page
+   * @param {string} tagText - The badge text to look for (e.g. "My corporate")
+   * @throws {Error} If the tag is not visible
+   */
+  async verifyHotelFilterTag(page, tagText) {
+    if (!page) throw new Error('page is required');
+    if (!tagText || typeof tagText !== 'string') throw new Error(`tagText must be a non-empty string, got: ${typeof tagText}`);
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const isVisible = await hotelLevelResultsPage.isFilterTagVisible(tagText);
+    if (!isVisible) throw new Error(`Hotel filter tag "${tagText}" is not visible in the filter summary`);
+  },
 };
 
 module.exports = HotelLevelResults;

@@ -25,6 +25,11 @@ const SELECTORS = {
   WIFI_INCLUDED: ".room-amenities span:has-text('Wifi included')",
   BREAKFAST_ICON: "img[src*='breakfastIncluded']",
   SUPPLIER_LOGO_IMG: (supplierId) => `.supplier-img img[alt*="${supplierId}"]`,
+  // Room-level filter panel section titles (h4 used by all filter types)
+  ROOM_FILTER_SECTION_HEADING: (text) => `.room-filter h4:has-text("${text}")`,
+  // Room filter checkbox by filter title and option text
+  ROOM_FILTER_CHECKBOX: (filterName, optionText) =>
+    `.room-filter .filter-container:has(h4:has-text("${filterName}")) label.el-checkbox:has-text("${optionText}")`,
   FIRST_ROOM_PRICE_DETAILS_BUTTON: ".room-list > :nth-child(2) button.is-hidden-mobile",
   PRICE_DETAILS_DIALOG: ".app-dialog .room-price-details, .el-dialog .room-price-details",
   INFO_ICON_IN_DIALOG: "span.material-symbols-outlined",
@@ -323,6 +328,37 @@ class RoomLevelResultsPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Checks whether a filter section heading with the given text is visible in the room filter panel.
+   * @param {string} text - Filter section title (e.g. "Agreement", "Price", "Payment")
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isRoomFilterSectionVisible(text, { timeout = 10000 } = {}) {
+    if (!text || typeof text !== 'string') throw new Error('text must be a non-empty string');
+    const heading = this.page.locator(SELECTORS.ROOM_FILTER_SECTION_HEADING(text)).first();
+    try {
+      await heading.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Clicks a checkbox option inside a named filter section in the room filter panel.
+   * @param {string} filterName - The filter section title (e.g. "Agreement")
+   * @param {string} optionText - The checkbox option label (e.g. "Corp")
+   */
+  async clickRoomFilterOption(filterName, optionText) {
+    if (!filterName || typeof filterName !== 'string') throw new Error('filterName must be a non-empty string');
+    if (!optionText || typeof optionText !== 'string') throw new Error('optionText must be a non-empty string');
+    const checkbox = this.page.locator(SELECTORS.ROOM_FILTER_CHECKBOX(filterName, optionText)).first();
+    await checkbox.waitFor({ state: 'visible', timeout: 15000 });
+    await checkbox.click();
   }
 }
 
