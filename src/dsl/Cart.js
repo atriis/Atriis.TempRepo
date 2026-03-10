@@ -688,6 +688,19 @@ const Cart = {
   },
 
   /**
+   * Verifies that the payment method for Premier Inn extras cannot be changed
+   * by asserting the payment method dropdown exposes exactly 1 option.
+   * @param {import('playwright').Page} page
+   */
+  async verifyExtrasPaymentNotChangeable(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickPremierInnPaymentMethodDropdown();
+    const count = await cartPage.getPremierInnPaymentOptionCount();
+    expect(count).toBe(1);
+  },
+
+  /**
    * Verifies that the trip title in the cart info bar contains "Trip to <city>".
    *
    * @param {import('playwright').Page} page

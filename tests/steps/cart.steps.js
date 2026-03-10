@@ -378,3 +378,8 @@ Then("the trip destination on top of the page should contain {string}", async fu
   logger.info("Verifying trip destination on top of page contains city", { city });
   await Cart.verifyTripDestinationTopPage(this.page, city);
 });
+
+Then("the payment method for extras should not be changeable", async function () {
+  logger.info("Verifying payment method for extras cannot be changed");
+  await Cart.verifyExtrasPaymentNotChangeable(this.page);
+});

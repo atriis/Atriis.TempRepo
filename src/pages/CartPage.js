@@ -54,6 +54,10 @@ const SELECTORS = {
   EDIT_EXTRAS_BUTTON: ".extra__btns", //All edit buttons in extras section have the same class, so we will use nth(index) to click the right one when needed
   EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span', // The field that shows selected extra option
   EXTRAS_ARROW_BUTTON: '.px-4.ticket-bottom.py-4 .el-icon.el-collapse-item__arrow', // Arrow button to expand/collapse extras information
+  // Premier Inn extras selectors (premier-inn.vue)
+  PREMIER_INN_PAYMENT_SELECT: '.quote-extras--premier-inn .extras-card .el-select', // First el-select in Premier Inn extras = payment method
+
+  // General
   ADD_SEATS_BUTTON: 'button:has-text("Add Seats")', // Button to open seat selection (text from $t('btn.add') + $t('common.seats'))
   SEAT_MAP_CONTAINER: '.deck-wrapper', // Appears only when seat map data is loaded (v-if="!isLoading && seatsMap.length > 0")
   SEAT_ELEMENT: '.seat', // div.seat inside plane-seat.vue component
@@ -863,6 +867,41 @@ class CartPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Clicks the payment method dropdown in the Premier Inn extras panel.
+   */
+  async clickPremierInnPaymentMethodDropdown() {
+    const select = this.page.locator(SELECTORS.PREMIER_INN_PAYMENT_SELECT).first();
+    await select.waitFor({ state: 'visible', timeout: 10000 });
+    await select.click();
+    // Wait for the open popper to render items (El-Plus shows them via display, not aria)
+    await this.page.waitForTimeout(800);
+  }
+
+  /**
+   * Counts payment method options in the Premier Inn extras dropdown after it is opened.
+   * Traverses ancestor chain to skip items inside poppers that are display:none (closed dropdowns).
+   * @returns {Promise<number>} Number of options in the currently open dropdown
+   */
+  async getPremierInnPaymentOptionCount() {
+    return await this.page.evaluate((selector) => {
+      let count = 0;
+      for (const item of document.querySelectorAll(selector)) {
+        let visible = true;
+        let node = item.parentElement;
+        while (node && node !== document.body) {
+          if (window.getComputedStyle(node).display === 'none') {
+            visible = false;
+            break;
+          }
+          node = node.parentElement;
+        }
+        if (visible) count++;
+      }
+      return count;
+    }, SELECTORS.DROPDOWN_OPTION);
   }
 
     /**
