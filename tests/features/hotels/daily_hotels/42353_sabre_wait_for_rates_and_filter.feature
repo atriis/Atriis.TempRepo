@@ -18,7 +18,7 @@ Feature: 42353 Sabre - Wait for hotel rates and filter results
     And I have added myself as the traveler
     When I search for a hotel in "Holiday Inn London - Sutton by IHG, Gibson Road, London, UK" for 1 night
     And I wait to see view rates text in results page
-    When I filter hotel results by hotel name "Holiday Inn Sutton"
+    When I filter hotel results by hotel name "holiday inn london - sutton"
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"

@@ -24,7 +24,7 @@ const SELECTORS = {
   ROOM_CARDS_WITH_AMENITIES: ".room-list > div:has(.room-amenities-container)",
   WIFI_INCLUDED: ".room-amenities span:has-text('Wifi included')",
   BREAKFAST_ICON: "img[src*='breakfastIncluded']",
-  SUPPLIER_LOGO_IMG: (supplierId) => `img[src*="${supplierId}"]`,
+  SUPPLIER_LOGO_IMG: (supplierId) => `.supplier-img img[alt*="${supplierId}"]`,
   FIRST_ROOM_PRICE_DETAILS_BUTTON: ".room-list > :nth-child(2) button.is-hidden-mobile",
   PRICE_DETAILS_DIALOG: ".app-dialog .room-price-details, .el-dialog .room-price-details",
   INFO_ICON_IN_DIALOG: "span.material-symbols-outlined",
