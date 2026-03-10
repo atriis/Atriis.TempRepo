@@ -186,7 +186,7 @@ const RoomLevelResults = {
     }
     const SUPPLIER_ID_MAP = {
       expedia: 'EXPEDIA',
-      hcorpo: 'HCORPO',
+      hcorpo: 'AMADEUS-HD',
       bookingcom: 'BOOKINGCOM',
       amadeus: 'AMADEUS',
       ratehawk: 'RATEHAWK',
