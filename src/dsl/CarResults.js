@@ -60,12 +60,9 @@ const CarResults = {
       throw new Error('expectedCity must be a non-empty string');
     }
 
-    const resultsPage = getPageObject(page, ResultsPage);
-    await resultsPage.waitForAddToTripText();
-
     const carResultsPage = getPageObject(page, CarResultsPage);
-    // Wait for the actual location elements to appear before asserting
-    await carResultsPage.waitForLocationVisible(0);
+    // Wait for the location elements to appear (works for both city-center and airport results)
+    await carResultsPage.waitForLocationVisible(index);
     const text = await carResultsPage.getLocationByIndex(index).innerText();
     expect(text.toLowerCase()).toContain(expectedCity.toLowerCase());
   },
