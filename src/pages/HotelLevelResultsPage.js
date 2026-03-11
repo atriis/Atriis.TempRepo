@@ -8,6 +8,7 @@
 const SELECTORS = {
   MEMBER_BADGE: ".expedia-membership-badge-container, .booking-com-membership-badge-container",
   CORPORATE_PREFERRED_BADGE: ".badge-wrapper .app-badge",  // Badge shown when hotel.tags includes 'preferred'
+  FIRST_HOTEL_PRICE_AMOUNT: '.hotel-preview .hotel-price .amount',
   VIEW_ON_MAP_BUTTON: '.view-map-btn',
   MAP_CONTAINER: '.map-container',
   MAP_MARKER: '.hotel-map-marker .hotel-price, .hotel-map-marker .hotel-dot',
@@ -136,6 +137,24 @@ class HotelLevelResultsPage {
   /** Waits for View Rates text to be visible in results page */
   async waitForViewRatesTextInResultsPage() {
     await this.getViewRatesButton().waitFor({ state: "visible" });
+  }
+
+  /**
+   * Gets the first displayed hotel-level price from results.
+   * @returns {Promise<number>} First hotel price as a number
+   */
+  async getFirstHotelLevelPrice() {
+    const price = this.page.locator(SELECTORS.FIRST_HOTEL_PRICE_AMOUNT).first();
+    await price.waitFor({ state: 'visible', timeout: 30000 });
+
+    const priceText = (await price.textContent())?.trim() ?? '';
+    const parsedPrice = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+
+    if (Number.isNaN(parsedPrice)) {
+      throw new Error(`Could not parse hotel-level price from text: "${priceText}"`);
+    }
+
+    return parsedPrice;
   }
 
   async openMapView() {

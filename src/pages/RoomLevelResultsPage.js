@@ -6,6 +6,7 @@
 const SELECTORS = {
   VIEW_HOTEL_ON_MAP_BUTTON: "button.map-btn.is-paddingless",
   MAP_MODAL: ".map-modal .google-map-loader, .map-modal .el-dialog__body .google-map-loader",
+  FIRST_ROOM_PRICE_AMOUNT: ".room-list > :nth-child(2) .price-details-main .amount",
   REFUNDABLE_CHECKBOX_LABEL: "label.el-checkbox",
   REFUNDABLE_CHECKBOX_INNER: ".el-checkbox__inner",
   REFUNDABLE_CHECKBOX_INPUT: "input.el-checkbox__original",
@@ -211,6 +212,24 @@ class RoomLevelResultsPage {
 
   async getCancellationPolicy() {
     return await this.page.locator(SELECTORS.FIRST_ROOM_CANCELLATION_POLICY).first().innerText();
+  }
+
+  /**
+   * Gets the first displayed room-level price.
+   * @returns {Promise<number>} First room price as a number
+   */
+  async getFirstRoomLevelPrice() {
+    const price = this.page.locator(SELECTORS.FIRST_ROOM_PRICE_AMOUNT).first();
+    await price.waitFor({ state: 'visible', timeout: 30000 });
+
+    const priceText = (await price.textContent())?.trim() ?? '';
+    const parsedPrice = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+
+    if (Number.isNaN(parsedPrice)) {
+      throw new Error(`Could not parse room-level price from text: "${priceText}"`);
+    }
+
+    return parsedPrice;
   }
 
   async isCO2LabelVisible({ timeout = 10000 } = {}) {

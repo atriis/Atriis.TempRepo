@@ -66,6 +66,32 @@ const RoomLevelResults = {
     await Results.clickProceedConflictQuoteModal(page);
   },
 
+  async extractRoomLevelPrice(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    return roomLevelResultsPage.getFirstRoomLevelPrice();
+  },
+
+  async compareHotelAndRoomLevelPrices(page, hotelLevelPrice, roomLevelPrice) {
+    if (!page) throw new Error('page parameter is required');
+    if (typeof hotelLevelPrice !== 'number' || Number.isNaN(hotelLevelPrice)) {
+      throw new Error(`hotelLevelPrice must be a number, got: ${typeof hotelLevelPrice}`);
+    }
+    if (typeof roomLevelPrice !== 'number' || Number.isNaN(roomLevelPrice)) {
+      throw new Error(`roomLevelPrice must be a number, got: ${typeof roomLevelPrice}`);
+    }
+
+    const difference = Math.abs(hotelLevelPrice - roomLevelPrice);
+    const tolerance = 0.01;
+
+    if (difference > tolerance) {
+      throw new Error(`Expected hotel-level price ${hotelLevelPrice} to match room-level price ${roomLevelPrice} within tolerance ${tolerance}`);
+    }
+
+    return { hotelLevelPrice, roomLevelPrice, difference };
+  },
+
   async waitForViewHotelOnMapButtonInRoomLevelResults(page) {
     if (!page) throw new Error('page parameter is required');
 

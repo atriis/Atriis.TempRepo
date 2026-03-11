@@ -60,6 +60,15 @@ When("I wait for the first add to trip button in room level results to be visibl
     await resultsPage.waitForAddToTripText();
 });
 
+When("I wait for the first add to trip button to be visible in room level results", async function () {
+  logger.info("Waiting for first add to trip button to be visible in room level results");
+  const roomLevelResultsPage = new RoomLevelResultsPage(this.page);
+  const resultsPage = new ResultsPage(this.page);
+  await roomLevelResultsPage.waitForViewHotelOnMapText();
+  await resultsPage.scrollToFirstAddToTripButton();
+  await resultsPage.waitForAddToTripText();
+});
+
 When("I wait for view hotel on map button to be visible in room level results", async function () {
   logger.info("Waiting for view hotel on map button in room level results");
   await RoomLevelResults.waitForViewHotelOnMapButtonInRoomLevelResults(this.page);
@@ -78,6 +87,14 @@ When("I extract cancellation policy from first room level results", async functi
   logger.info("Extracting cancellation policy from first room level results");
   this.roomLevelCancellationPolicy = await RoomLevelResults.extractCancellationPolicy(this.page);
   logger.info("Extracted cancellation policy from room level results", { roomLevelCancellationPolicy: this.roomLevelCancellationPolicy });
+});
+
+When("I extract the price from room level results", async function () {
+  logger.info("Extracting price from room level results");
+  this.roomLevelPrice = await RoomLevelResults.extractRoomLevelPrice(this.page);
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(this.roomLevelPrice);
+  logger.info("Stored room level price", { roomLevelPrice: this.roomLevelPrice });
 });
 
 // ========================================
@@ -128,6 +145,22 @@ Then("the member rate price should be lower than the regular price", async funct
 Then("the room level results should display {int} nights", async function (nights) {
   logger.info(`Verifying ${nights} nights displayed in room level results`);
   await RoomLevelResults.verifyNightsCountInRoomLevel(this.page, nights);
+});
+
+Then("the hotel level price should match the room level price", async function () {
+  logger.info("Comparing hotel level price with room level price", {
+    hotelLevelPrice: this.hotelLevelPrice,
+    roomLevelPrice: this.roomLevelPrice,
+  });
+
+  const result = await RoomLevelResults.compareHotelAndRoomLevelPrices(
+    this.page,
+    this.hotelLevelPrice,
+    this.roomLevelPrice,
+  );
+
+  logger.info("Price comparison succeeded", result);
+  expect(result.difference).toBeLessThanOrEqual(0.01);
 });
 
 Then("the hotel map should open in room level results", async function () {

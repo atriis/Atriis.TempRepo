@@ -17,7 +17,9 @@ Feature: 47086 Sabre - Price comparison between hotel level and room level
     Given I am logged in as "sabre" "user_one" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Holiday Inn Oxford" for 1 night
-    # TODO: Create step "When I extract the price from hotel level results" that calls DSL extractHotelLevelPrice in HotelSearch.js
+    And I wait to see view rates text in results page
+    When I extract the price from hotel level results
     And I select the first hotel result
-    # TODO: Create step "When I extract the price from room level results" that calls DSL extractRoomLevelPrice in RoomLevelResults.js
-    # TODO: Create step "Then the hotel level price should match the room level price" that calls DSL compareHotelAndRoomLevelPrices in HotelSearch.js
+    And I wait for the first add to trip button to be visible in room level results
+    When I extract the price from room level results
+    Then the hotel level price should match the room level price

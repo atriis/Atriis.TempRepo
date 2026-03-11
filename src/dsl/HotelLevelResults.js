@@ -36,6 +36,21 @@ const HotelLevelResults = {
   },
 
   /**
+   * Extracts the first displayed hotel-level price from results.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>}
+   */
+  async extractHotelLevelPrice(page) {
+    if (!page) {
+      throw new Error('page parameter is required');
+    }
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.waitForViewRatesText();
+    return hotelLevelResultsPage.getFirstHotelLevelPrice();
+  },
+
+  /**
    * Verifies that member rates are displayed in hotel level results.
    * @param {import('playwright').Page} page
    * @returns {Promise<boolean>} True if member rates are visible

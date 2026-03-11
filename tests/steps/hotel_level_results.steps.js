@@ -50,6 +50,14 @@ When("I wait to see view rates text in results page", async function () {
   await hotelLevelResultsPage.waitForViewRatesText();
 });
 
+When("I extract the price from hotel level results", async function () {
+  logger.info("Extracting price from hotel level results");
+  this.hotelLevelPrice = await HotelLevelResults.extractHotelLevelPrice(this.page);
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(this.hotelLevelPrice);
+  logger.info("Stored hotel level price", { hotelLevelPrice: this.hotelLevelPrice });
+});
+
 When("I wait for the hotel results page to load", async function () {
   logger.info("Waiting for hotel results page to load");
   const hotelLevelResultsPage = new HotelLevelResultsPage(this.page);

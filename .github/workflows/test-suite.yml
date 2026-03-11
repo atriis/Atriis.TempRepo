@@ -278,6 +278,7 @@ jobs:
           GENERAL_HOTEL_CO2_TEL_EMAIL: ${{ secrets.GENERAL_HOTEL_CO2_TEL_EMAIL }}
           AMADEUS_AMY_GADASY_EMAIL: ${{ secrets.AMADEUS_AMY_GADASY_EMAIL }}
           TRAVELODGE_USER_ONE_EMAIL: ${{ secrets.TRAVELODGE_USER_ONE_EMAIL }}
+          SABRE_USER_ONE_EMAIL: ${{ secrets.SABRE_USER_ONE_EMAIL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Hotels Results
