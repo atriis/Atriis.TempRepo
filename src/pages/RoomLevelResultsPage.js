@@ -5,6 +5,7 @@
 
 const SELECTORS = {
   VIEW_HOTEL_ON_MAP_BUTTON: "button.map-btn.is-paddingless",
+  MAP_MODAL: ".map-modal .google-map-loader, .map-modal .el-dialog__body .google-map-loader",
   REFUNDABLE_CHECKBOX_LABEL: "label.el-checkbox",
   REFUNDABLE_CHECKBOX_INNER: ".el-checkbox__inner",
   REFUNDABLE_CHECKBOX_INPUT: "input.el-checkbox__original",
@@ -136,6 +137,37 @@ class RoomLevelResultsPage {
     } catch (error) {
       return false;
     }
+  }
+
+  /**
+   * Waits for the room-level "View hotel on map" button to be visible.
+   */
+  async waitForViewHotelOnMapButton() {
+    const viewOnMap = this.page
+      .locator(SELECTORS.VIEW_HOTEL_ON_MAP_BUTTON, { hasText: "View hotel on map" })
+      .first();
+
+    await viewOnMap.waitFor({ state: "visible", timeout: 15000 });
+  }
+
+  /**
+   * Clicks the room-level "View hotel on map" button.
+   */
+  async clickViewHotelOnMapButton() {
+    const viewOnMap = this.page
+      .locator(SELECTORS.VIEW_HOTEL_ON_MAP_BUTTON, { hasText: "View hotel on map" })
+      .first();
+
+    await viewOnMap.scrollIntoViewIfNeeded();
+    await viewOnMap.waitFor({ state: "visible", timeout: 15000 });
+    await viewOnMap.click();
+  }
+
+  /**
+   * Waits for the hotel map modal to be visible after clicking the room-level map button.
+   */
+  async waitForHotelMapModal() {
+    await this.page.locator(SELECTORS.MAP_MODAL).first().waitFor({ state: "visible", timeout: 15000 });
   }
 
   /**

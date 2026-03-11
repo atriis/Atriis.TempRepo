@@ -66,6 +66,27 @@ const RoomLevelResults = {
     await Results.clickProceedConflictQuoteModal(page);
   },
 
+  async waitForViewHotelOnMapButtonInRoomLevelResults(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    await roomLevelResultsPage.waitForViewHotelOnMapButton();
+  },
+
+  async clickViewOnMap(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    await roomLevelResultsPage.clickViewHotelOnMapButton();
+  },
+
+  async verifyMapModalOpened(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    await roomLevelResultsPage.waitForHotelMapModal();
+  },
+
   /**
    * Extracts the cancellation policy text from the first room in room level results.
    * @param {import('playwright').Page} page

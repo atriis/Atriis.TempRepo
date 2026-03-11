@@ -60,6 +60,16 @@ When("I wait for the first add to trip button in room level results to be visibl
     await resultsPage.waitForAddToTripText();
 });
 
+When("I wait for view hotel on map button to be visible in room level results", async function () {
+  logger.info("Waiting for view hotel on map button in room level results");
+  await RoomLevelResults.waitForViewHotelOnMapButtonInRoomLevelResults(this.page);
+});
+
+When("I click the view on map button in room level", async function () {
+  logger.info("Clicking view hotel on map button in room level results");
+  await RoomLevelResults.clickViewOnMap(this.page);
+});
+
 // ========================================
 // WHEN STEPS - EXTRACTION
 // ========================================
@@ -118,6 +128,11 @@ Then("the member rate price should be lower than the regular price", async funct
 Then("the room level results should display {int} nights", async function (nights) {
   logger.info(`Verifying ${nights} nights displayed in room level results`);
   await RoomLevelResults.verifyNightsCountInRoomLevel(this.page, nights);
+});
+
+Then("the hotel map should open in room level results", async function () {
+  logger.info("Verifying hotel map modal is visible in room level results");
+  await RoomLevelResults.verifyMapModalOpened(this.page);
 });
 
 When("I filter room results by Wi-Fi amenity", async function () {
