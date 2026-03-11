@@ -63,3 +63,4 @@ Feature: 61574 Book hotel for 2 travelers 2 nights
       | sabre | user_sabrin_orly |
       | amadeus | user_one |
       | amadeus_value_hotel | papatinho |
+      | general | rebecca |
