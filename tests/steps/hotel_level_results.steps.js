@@ -49,9 +49,31 @@ When("I wait to see view rates text in results page", async function () {
   const hotelLevelResultsPage = new HotelLevelResultsPage(this.page);
   await hotelLevelResultsPage.waitForViewRatesText();
 });
+
+When("I wait for the hotel results page to load", async function () {
+  logger.info("Waiting for hotel results page to load");
+  const hotelLevelResultsPage = new HotelLevelResultsPage(this.page);
+  await hotelLevelResultsPage.waitForResultsPageReady();
+});
+
+When("I open the hotel results map view", async function () {
+  logger.info("Opening hotel results map view");
+  await HotelLevelResults.openResultsMapView(this.page);
+});
+
+When("I open the first hotel from the map preview in a new browser tab", async function () {
+  logger.info("Opening first hotel from map preview in a new browser tab");
+  this.hotelMapPopupPage = await HotelLevelResults.openFirstHotelFromMapPreviewInNewTab(this.page);
+});
 // ========================================
 // THEN STEPS - ASSERTIONS
 // ========================================
+
+Then("the new browser tab should show the hotel details page", async function () {
+  logger.info("Verifying the new browser tab shows the hotel details page");
+  const result = await HotelLevelResults.verifyHotelDetailsTabOpened(this.page, this.hotelMapPopupPage);
+  logger.info("Hotel details tab verification result", result);
+});
 
 Then("I should see member rates displayed in hotel level results", async function () {
   logger.info("Verifying member rates are displayed in hotel level results");

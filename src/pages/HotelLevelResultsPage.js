@@ -8,6 +8,11 @@
 const SELECTORS = {
   MEMBER_BADGE: ".expedia-membership-badge-container, .booking-com-membership-badge-container",
   CORPORATE_PREFERRED_BADGE: ".badge-wrapper .app-badge",  // Badge shown when hotel.tags includes 'preferred'
+  VIEW_ON_MAP_BUTTON: '.view-map-btn',
+  MAP_CONTAINER: '.map-container',
+  MAP_MARKER: '.hotel-map-marker .hotel-price, .hotel-map-marker .hotel-dot',
+  SELECTED_MAP_PREVIEW: '.map-container .hotel-preview',
+  SELECTED_MAP_PREVIEW_VIEW_RATES_BUTTON: '.map-container .hotel-preview .see-availability-btn',
   SEARCH_HOTEL_FILTER: '[placeholder="Search hotel"]',
   CO2_LABEL: ".hotel-info .eco-label",
   CO2_VALUE: ".hotel-info .eco-label .is-size-7",
@@ -74,6 +79,11 @@ class HotelLevelResultsPage {
     await viewRatesButton.waitFor({ state: "visible", timeout: 60000 });
   }
 
+  async waitForResultsPageReady() {
+    await this.page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
+    await this.page.locator(SELECTORS.VIEW_ON_MAP_BUTTON).first().waitFor({ state: 'visible', timeout: 60000 });
+  }
+
   /** Clicks the first available "View rates" button */
   async clickFirstViewRatesButton() {
     await this.getViewRatesButton().click();
@@ -126,6 +136,32 @@ class HotelLevelResultsPage {
   /** Waits for View Rates text to be visible in results page */
   async waitForViewRatesTextInResultsPage() {
     await this.getViewRatesButton().waitFor({ state: "visible" });
+  }
+
+  async openMapView() {
+    const viewOnMapButton = this.page.locator(SELECTORS.VIEW_ON_MAP_BUTTON).first();
+    await viewOnMapButton.waitFor({ state: 'visible', timeout: 30000 });
+    await viewOnMapButton.click();
+    await this.page.locator(SELECTORS.MAP_CONTAINER).waitFor({ state: 'visible', timeout: 30000 });
+  }
+
+  async selectFirstMapMarker() {
+    const firstMarker = this.page.locator(SELECTORS.MAP_MARKER).first();
+    await firstMarker.waitFor({ state: 'visible', timeout: 30000 });
+    await firstMarker.click();
+    await this.page.locator(SELECTORS.SELECTED_MAP_PREVIEW).first().waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  async clickSelectedMapPreviewAndWaitForNewTab() {
+    const viewRatesButton = this.page.locator(SELECTORS.SELECTED_MAP_PREVIEW_VIEW_RATES_BUTTON).first();
+    await viewRatesButton.waitFor({ state: 'visible', timeout: 10000 });
+
+    const popupPromise = this.page.context().waitForEvent('page', { timeout: 10000 });
+    await viewRatesButton.click();
+
+    const popupPage = await popupPromise;
+    await popupPage.waitForLoadState('domcontentloaded', { timeout: 60000 });
+    return popupPage;
   }
 
   async filterByHotelName(hotelName) {

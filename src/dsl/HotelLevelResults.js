@@ -245,6 +245,53 @@ const HotelLevelResults = {
   },
 
   /**
+   * Opens the map view from hotel results.
+   * @param {import('playwright').Page} page
+   */
+  async openResultsMapView(page) {
+    if (!page) throw new Error('page is required');
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.openMapView();
+
+    return { mapOpened: true };
+  },
+
+  /**
+   * Opens the first hotel preview from the map in a new browser tab.
+   * @param {import('playwright').Page} page
+   */
+  async openFirstHotelFromMapPreviewInNewTab(page) {
+    if (!page) throw new Error('page is required');
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.selectFirstMapMarker();
+    const popupPage = await hotelLevelResultsPage.clickSelectedMapPreviewAndWaitForNewTab();
+
+    return popupPage;
+  },
+
+  /**
+   * Verifies the newly opened tab is the hotel details page.
+   * @param {import('playwright').Page} page
+   * @param {import('playwright').Page} popupPage
+   */
+  async verifyHotelDetailsTabOpened(page, popupPage) {
+    if (!page) throw new Error('page is required');
+    if (!popupPage || typeof popupPage.url !== 'function') {
+      throw new Error('popupPage must be a Playwright page, got: ' + typeof popupPage);
+    }
+
+    await popupPage.waitForLoadState('domcontentloaded', { timeout: 60000 });
+    const popupUrl = popupPage.url();
+
+    expect(popupUrl).toContain('/rooms');
+    expect(popupUrl).not.toBe(page.url());
+
+    return { popupUrl };
+  },
+
+  /**
    * Scrolls through the hotel filters panel to verify it has scrollable content.
    * Scrolls within the filters sidebar on the results page.
    * @param {import('playwright').Page} page

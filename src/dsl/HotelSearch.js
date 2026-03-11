@@ -52,6 +52,8 @@ const HotelSearch = {
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, { startIndex: 0, endIndex: nights });
     await searchPage.waitAndClickSearchButton();
+    await page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
+    await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
 
     return { searched: true, where, nights, rooms };
   },
@@ -107,6 +109,8 @@ const HotelSearch = {
     });
 
     await searchPage.waitAndClickSearchButton();
+    await page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
+    await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
 
     return { searched: true, where, nights };
   },

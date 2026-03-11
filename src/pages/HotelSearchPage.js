@@ -10,6 +10,7 @@ const SELECTORS = {
   HOTEL_TAB: "#tab-hotel",
   HOTEL_HEADING: "#pane-hotel > h4",
   HOTEL_DESTINATION_FIELD: "[placeholder='Where would you like to stay?']",
+  AUTOCOMPLETE_FIRST_OPTION: ".el-autocomplete-suggestion__list li[id*='item-0']",
   CHECK_IN_INPUT: "[placeholder='Check in']",
   ROOMS_DROPDOWN: '.hotel-search-cmp .app-select:has(.select-icon:text("sensor_door"))',
   ROOMS_DROPDOWN_OPTION: '.app-select-popper .el-select-dropdown__item',
@@ -48,6 +49,7 @@ class HotelSearchPage {
     const destinationField = this.page.locator(
       SELECTORS.HOTEL_DESTINATION_FIELD,
     );
+    const firstSuggestion = this.page.locator(SELECTORS.AUTOCOMPLETE_FIRST_OPTION).first();
 
     // Ensure field is visible and ready
     await destinationField.waitFor({ state: "visible" });
@@ -55,11 +57,15 @@ class HotelSearchPage {
     await destinationField.click();
     await destinationField.fill(where);
 
-    // Accept autocomplete suggestion
-    await pressTab(this.page);
+    try {
+      await firstSuggestion.waitFor({ state: "visible", timeout: 5000 });
+      await firstSuggestion.click();
+    } catch {
+      await pressTab(this.page);
+    }
 
     // Small wait for UI to process the blur event
-    await this.page.waitForTimeout(100);
+    await this.page.waitForTimeout(300);
   }
 
   /**
