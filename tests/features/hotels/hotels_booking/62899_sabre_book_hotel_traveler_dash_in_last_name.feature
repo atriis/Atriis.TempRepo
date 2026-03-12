@@ -20,8 +20,8 @@ Feature: 62899 Sabre - Book hotel for traveler with dash in last name
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
+    Then the hotel should appear as refundable in cart
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
     Then I successfully cancel the trip
-
