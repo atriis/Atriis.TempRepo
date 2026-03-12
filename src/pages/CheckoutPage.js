@@ -11,6 +11,8 @@ const SELECTORS = {
   BOOK_AND_FINALIZE_BUTTON: "button:has-text('Book and Finalize')",
   FALLBACK_BUTTON: ".btn-container button",
   GO_TO_TRIP_BUTTON: ".btn-container > :nth-child(1)",
+  BOOKING_ERROR_DIALOG: ".booking-error-dialog",
+  BACK_TO_TRIP_BUTTON: ".back-to-trip-btn",
 };
 
 class CheckoutPage {
@@ -83,6 +85,20 @@ class CheckoutPage {
 
     // Fallback for unexpected UI variations
     await this.page.click(SELECTORS.FALLBACK_BUTTON);
+  }
+
+  /**
+   * Waits until the booking error dialog is visible.
+   */
+  async waitForBookingErrorDialog() {
+    await this.page.locator(SELECTORS.BOOKING_ERROR_DIALOG).waitFor({ state: "visible", timeout: 60000 });
+  }
+
+  /**
+   * Clicks the "Back to trip" button inside the booking error dialog.
+   */
+  async clickBackToTripButton() {
+    await this.page.locator(SELECTORS.BACK_TO_TRIP_BUTTON).click();
   }
 
   /**
