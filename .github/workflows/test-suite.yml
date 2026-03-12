@@ -44,7 +44,7 @@ jobs:
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          USER_RUIMARIANO: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
+          USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Smoke Results
@@ -91,9 +91,9 @@ jobs:
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          USER_RUIMARIANO: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
-          USER_ROBSONCRUZ: ${{ secrets.SABRE_USER_ONE_EMAIL }}
-          USER_BEATRIZ: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
+          USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
+          USER_ROBSONCRUZ: ${{ secrets.USER_ROBSONCRUZ }}
+          USER_BEATRIZ: ${{ secrets.USER_BEATRIZ }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Cars Results
@@ -140,12 +140,12 @@ jobs:
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          USER_RUIMARIANO: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
-          USER_AMADEUS_GDS: ${{ secrets.AMADEUS_WITH_GDS_PROFILE }}
-          USER_BEATRIZ: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
-          USER_ROBSONCRUZ: ${{ secrets.SABRE_USER_ONE_EMAIL }}
-          USER_LUCAS: ${{ secrets.AMADEUS_LIGHT_TICKETING_USER_ONE_EMAIL }}
-          USER_CLARA: ${{ secrets.LUFTHANSA_USER_ONE_EMAIL }}
+          USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
+          USER_AMADEUS_GDS: ${{ secrets.USER_AMADEUS_GDS }}
+          USER_BEATRIZ: ${{ secrets.USER_BEATRIZ }}
+          USER_ROBSONCRUZ: ${{ secrets.USER_ROBSONCRUZ }}
+          USER_LUCAS: ${{ secrets.USER_LUCAS }}
+          USER_CLARA: ${{ secrets.USER_CLARA }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Flights Results
@@ -192,8 +192,8 @@ jobs:
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          USER_HARRYPOTTER: ${{ secrets.GENERAL_FLOWS_HARRY_POTTER_USER_EMAIL }}
-          USER_RUIMARIANO: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
+          USER_HARRYPOTTER: ${{ secrets.USER_HARRYPOTTER }}
+          USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Shell Results
@@ -240,38 +240,38 @@ jobs:
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          USER_RUIMARIANO: ${{ secrets.AMADEUS_USER_ONE_EMAIL }}
-          USER_RUIMENDES: ${{ secrets.AMADEUS_RUI_MENDES_USER }}
-          USER_HELENATEREZA: ${{ secrets.AMADEUS_HELENA_TEREZA_EMAIL }}
-          USER_PCW: ${{ secrets.AMADEUS_PCW_USER_EMAIL }}
-          USER_BRUNA_TELDAR: ${{ secrets.AMADEUS_TELDAR_HOTEL_EMAIL }}
-          USER_HCORPO: ${{ secrets.AMADEUS_HCORPO_HOTEL_EMAIL }}
-          USER_AMY: ${{ secrets.AMADEUS_AMY_GADASY_EMAIL }}
-          USER_JOAO: ${{ secrets.AMADEUS_VALUE_HOTEL_JOAO_EMAIL }}
-          USER_SABRIN: ${{ secrets.SABRE_USER_SABRIN_ORLY }}
-          USER_ROBSONCRUZ: ${{ secrets.SABRE_USER_ONE_EMAIL }}
-          USER_BEATRIZ: ${{ secrets.GALILEO_USER_ONE_EMAIL }}
-          USER_LIDI: ${{ secrets.RATEHAWK_USER_ONE_EMAIL }}
-          USER_EXPEDIA: ${{ secrets.EXPEDIA_USER_ONE_EMAIL }}
-          USER_NATALIA: ${{ secrets.EXPEDIA_USER_TWO_EMAIL }}
-          USER_ROBBYSILVA: ${{ secrets.EXPEDIA_USER_THREE_EMAIL }}
-          USER_BRUNA_CO2: ${{ secrets.EXPEDIA_USER_CO2_EMAIL }}
-          USER_EDI: ${{ secrets.EXPEDIA_USER_WITHOUT_FOP_EMAIL }}
-          USER_CINTIA: ${{ secrets.BOOKINGCOM_USER_ONE_EMAIL }}
-          USER_ALEXANDRE: ${{ secrets.BOOKINGCOM_USER_TWO_EMAIL }}
-          USER_BRUNANINA: ${{ secrets.BOOKINGCOM_USER_SPECIFIC_EMAIL }}
-          USER_DISCOVER: ${{ secrets.BOOKINGCOM_USER_DISCOVER_EMAIL }}
-          USER_STRICTION: ${{ secrets.BOOKINGCOM_USER_STRICTION_EMAIL }}
-          USER_ELI: ${{ secrets.EHOTEL_ELI_TEL_EMAIL }}
-          USER_PLUTO: ${{ secrets.TRAVELODGE_USER_ONE_EMAIL }}
-          USER_BRUNA_PREMIER: ${{ secrets.PREMIERINN_USER_ONE_EMAIL }}
-          USER_PREMIER: ${{ secrets.PREMIERINN_USER_TWO_EMAIL }}
-          USER_SHANI: ${{ secrets.GENERAL_HOTEL_SHANI_EMAIL }}
-          USER_FELIPE: ${{ secrets.GENERAL_HOTEL_PAID_BY_TRAVELER_EMAIL }}
-          USER_ZAC: ${{ secrets.GENERAL_HOTEL_PAID_BY_TMC_EMAIL }}
-          USER_LILY: ${{ secrets.GENERAL_USER_LILYALDRIN_EMAIL }}
-          USER_CALEB: ${{ secrets.GENERAL_HOTEL_FOP_EMAIL }}
-          USER_TEL: ${{ secrets.GENERAL_HOTEL_CO2_TEL_EMAIL }}
+          USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
+          USER_RUIMENDES: ${{ secrets.USER_RUIMENDES }}
+          USER_HELENATEREZA: ${{ secrets.USER_HELENATEREZA }}
+          USER_PCW: ${{ secrets.USER_PCW }}
+          USER_BRUNA_TELDAR: ${{ secrets.USER_BRUNA_TELDAR }}
+          USER_HCORPO: ${{ secrets.USER_HCORPO }}
+          USER_AMY: ${{ secrets.USER_AMY }}
+          USER_JOAO: ${{ secrets.USER_JOAO }}
+          USER_SABRIN: ${{ secrets.USER_SABRIN }}
+          USER_ROBSONCRUZ: ${{ secrets.USER_ROBSONCRUZ }}
+          USER_BEATRIZ: ${{ secrets.USER_BEATRIZ }}
+          USER_LIDI: ${{ secrets.USER_LIDI }}
+          USER_EXPEDIA: ${{ secrets.USER_EXPEDIA }}
+          USER_NATALIA: ${{ secrets.USER_NATALIA }}
+          USER_ROBBYSILVA: ${{ secrets.USER_ROBBYSILVA }}
+          USER_BRUNA_CO2: ${{ secrets.USER_BRUNA_CO2 }}
+          USER_EDI: ${{ secrets.USER_EDI }}
+          USER_CINTIA: ${{ secrets.USER_CINTIA }}
+          USER_ALEXANDRE: ${{ secrets.USER_ALEXANDRE }}
+          USER_BRUNANINA: ${{ secrets.USER_BRUNANINA }}
+          USER_DISCOVER: ${{ secrets.USER_DISCOVER }}
+          USER_STRICTION: ${{ secrets.USER_STRICTION }}
+          USER_ELI: ${{ secrets.USER_ELI }}
+          USER_PLUTO: ${{ secrets.USER_PLUTO }}
+          USER_BRUNA_PREMIER: ${{ secrets.USER_BRUNA_PREMIER }}
+          USER_PREMIER: ${{ secrets.USER_PREMIER }}
+          USER_SHANI: ${{ secrets.USER_SHANI }}
+          USER_FELIPE: ${{ secrets.USER_FELIPE }}
+          USER_ZAC: ${{ secrets.USER_ZAC }}
+          USER_LILY: ${{ secrets.USER_LILY }}
+          USER_CALEB: ${{ secrets.USER_CALEB }}
+          USER_TEL: ${{ secrets.USER_TEL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Hotels Results
@@ -318,8 +318,8 @@ jobs:
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          USER_MARCOLUIS: ${{ secrets.AMTRAK_USER_ONE_EMAIL }}
-          USER_JIM: ${{ secrets.EVOLVI_USER_ONE_EMAIL }}
+          USER_MARCOLUIS: ${{ secrets.USER_MARCOLUIS }}
+          USER_JIM: ${{ secrets.USER_JIM }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Rails Results
