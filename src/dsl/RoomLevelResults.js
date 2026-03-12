@@ -318,6 +318,17 @@ const RoomLevelResults = {
     const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
     await roomLevelResultsPage.clickRoomFilterOption(filterName, optionText);
   },
+
+  /**
+   * Clicks the Terms and Conditions link on the first room card and asserts the dialog appears.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<boolean>} True if the terms dialog is visible
+   */
+  async checkTermsAndConditions(page) {
+    if (!page) throw new Error('page is required');
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    return await roomLevelResultsPage.clickTermsAndConditionsButton();
+  },
 };
 
 module.exports = RoomLevelResults;

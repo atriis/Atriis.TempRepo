@@ -36,6 +36,8 @@ const SELECTORS = {
   PRICE_DETAILS_DIALOG: ".app-dialog .room-price-details, .el-dialog .room-price-details",
   INFO_ICON_IN_DIALOG: "span.material-symbols-outlined",
   TOOLTIP_POPPER: '[role="tooltip"], .el-tooltip__popper, .el-popper',
+  TERMS_AND_CONDITIONS_BUTTON: ".room-list button:has-text('Terms & Conditions')",
+  TERMS_AND_CONDITIONS_DIALOG: ".terms-conditions-dialog",
 };
 
 class RoomLevelResultsPage {
@@ -410,6 +412,24 @@ class RoomLevelResultsPage {
     const checkbox = this.page.locator(SELECTORS.ROOM_FILTER_CHECKBOX(filterName, optionText)).first();
     await checkbox.waitFor({ state: 'visible', timeout: 15000 });
     await checkbox.click();
+  }
+
+  /**
+   * Clicks the "Terms and conditions" link on the first room card and waits for the dialog.
+   * @returns {Promise<boolean>} True if the dialog is visible after clicking
+   */
+  async clickTermsAndConditionsButton() {
+    const btn = this.page.locator(SELECTORS.TERMS_AND_CONDITIONS_BUTTON).first();
+    await btn.scrollIntoViewIfNeeded();
+    await btn.waitFor({ state: 'visible', timeout: 15000 });
+    await btn.click();
+    const dialog = this.page.locator(SELECTORS.TERMS_AND_CONDITIONS_DIALOG).first();
+    await dialog.waitFor({ state: 'visible', timeout: 15000 });
+    const isVisible = await dialog.isVisible();
+    // Close the dialog so subsequent steps are not blocked by the overlay
+    await this.page.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'hidden', timeout: 5000 });
+    return isVisible;
   }
 }
 

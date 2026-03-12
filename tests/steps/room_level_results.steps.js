@@ -74,6 +74,21 @@ When("I extract the booking fee from the first room result", async function () {
   logger.info("Stored room booking fee", { roomBookingFee: this.roomBookingFee });
 });
 
+When("I check terms and conditions in room level", async function () {
+  logger.info("Clicking terms and conditions on first room");
+  this.termsDialogVisible = await RoomLevelResults.checkTermsAndConditions(this.page);
+});
+
+Then("terms and conditions are displayed", async function () {
+  if (this.termsDialogVisible === undefined) {
+    throw new Error("Terms dialog state not recorded. Run 'When I check terms and conditions in room level' before this step.");
+  }
+  if (!this.termsDialogVisible) {
+    throw new Error("Terms and conditions dialog was not visible after clicking the button.");
+  }
+  logger.info("Terms and conditions dialog confirmed visible");
+});
+
 Then("the booking fee from hotel level should match the booking fee from room level", async function () {
   if (this.hotelBookingFee === undefined) {
     throw new Error("No hotel booking fee stored. Run 'I extract the booking fee from the first hotel result' before this step.");
