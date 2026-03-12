@@ -41,6 +41,8 @@ const SELECTORS = {
   AGREEMENT_LABEL_SPAN: (text) => `.hotel-preview .ticket-agreement span:text-is("${text}")`,
   // Tooltip content shown on hover over agreement label (Element Plus renders popper at body level)
   AGREEMENT_TOOLTIP_DESCRIPTION: '.el-popper.is-light .agreement-tooltip__description',
+  // "Hotel wasn't found" no-results section
+  HOTEL_NO_RESULTS: '.hotel-no-results',
 };
 
 class HotelLevelResultsPage {
@@ -452,6 +454,19 @@ class HotelLevelResultsPage {
     const tag = this.page.locator(SELECTORS.HOTEL_FILTER_SUMMARY_TAG(text)).first();
     try {
       await tag.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks whether the "Hotel wasn't found" no-results section is visible.
+   * @returns {Promise<boolean>} True if the no-results section is visible
+   */
+  async isHotelNotFoundMessageVisible() {
+    try {
+      await this.page.locator(SELECTORS.HOTEL_NO_RESULTS).waitFor({ state: 'visible', timeout: 5000 });
       return true;
     } catch {
       return false;

@@ -7,14 +7,15 @@
 # Updated: 2024-02-11T06:58:18Z
 
 @regression @provider:amadeus
-Feature: 34418 Amadeus - Hotel search results load correctly
+Feature: 34418 34418 "Hotel wasn't found" error message is not displayed (no specific hotel requested)
   As a corporate traveler
   I want to search for hotels and see results load
   So that I can select a hotel for my trip
 
   @priority:medium
-  Scenario: Hotel search results are displayed after search
+  Scenario: "Hotel wasn't found" error message is not displayed (no specific hotel requested)
     Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Mönchengladbach" for 1 night
-    # TODO: Create step "Then hotel results should be displayed" that calls DSL method verifyResultsLoaded in HotelSearch.js
+    And I wait to see view rates text in results page 
+    Then "hotel wasn't found" error message is not displayed

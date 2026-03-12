@@ -429,6 +429,26 @@ const HotelLevelResults = {
     const actualTooltip = await hotelLevelResultsPage.hoverAgreementLabelAndGetTooltip(labelText);
     expect(actualTooltip.toLowerCase()).toContain(tooltipText.toLowerCase());
   },
+
+  /**
+   * Verifies that the "Hotel wasn't found" error message is NOT displayed in results.
+   * Waits for results to load first, then asserts the no-results section is absent.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the "Hotel wasn't found" message is unexpectedly visible
+   */
+  async verifyHotelWasntFoundMessageNotDisplayed(page) {
+    if (!page) throw new Error('page is required');
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+
+    // Wait for results to load (view rates button signals real results appeared)
+    await hotelLevelResultsPage.waitForViewRatesText();
+
+    const isVisible = await hotelLevelResultsPage.isHotelNotFoundMessageVisible();
+    if (isVisible) {
+      throw new Error('"Hotel wasn\'t found" error message is displayed but should not be');
+    }
+  },
 };
 
 module.exports = HotelLevelResults;

@@ -160,3 +160,8 @@ Then("the {string} filter tag should be visible in hotel results", async functio
   logger.info("Verifying hotel filter tag is visible", { tagText });
   await HotelLevelResults.verifyHotelFilterTag(this.page, tagText);
 });
+
+Then(/^"[Hh]otel [Ww]asn't [Ff]ound" error message is not displayed$/, async function () {
+  logger.info('Verifying hotel results are displayed without "Hotel wasn\'t found" message');
+  await HotelLevelResults.verifyHotelWasntFoundMessageNotDisplayed(this.page);
+});
