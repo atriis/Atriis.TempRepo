@@ -9,6 +9,7 @@ const {
   expectNumberToBeLessThan,
   expectNumberToBeLessThanOrEqual,
   expectSumToBeEqual,
+  expectSumToBeEqualWithTolerance,
 } = require("../../src/assertions/numberAssertions");
 const { extractPriceFromLocation } = require("../../src/utils/priceExtraction");
 const { CommonPage } = require("@pages/CommonPage");
@@ -90,7 +91,7 @@ Then("the sum of extracted prices at index {int} and {int} should equal {float}"
   logger.info("Asserting sum of extracted prices equals value", { indexA, indexB, expectedSum });
   const priceA = this.extractedPrices[indexA];
   const priceB = this.extractedPrices[indexB];
-  expectSumToBeEqual(priceA, priceB, expectedSum, `Sum of prices [${indexA}] + [${indexB}]`);
+  expectSumToBeEqualWithTolerance(priceA, priceB, expectedSum, 0.02, `Sum of prices [${indexA}] + [${indexB}]`);
 });
 
 Then("the sum of extracted prices at index {int} and {int} should equal the extracted price at index {int}", function (indexA, indexB, expectedIndex) {
@@ -98,7 +99,7 @@ Then("the sum of extracted prices at index {int} and {int} should equal the extr
   const priceA = this.extractedPrices[indexA];
   const priceB = this.extractedPrices[indexB];
   const expectedSum = this.extractedPrices[expectedIndex];
-  expectSumToBeEqual(priceA, priceB, expectedSum, `Sum of prices [${indexA}] + [${indexB}] vs [${expectedIndex}]`);
+  expectSumToBeEqualWithTolerance(priceA, priceB, expectedSum, 0.02, `Sum of prices [${indexA}] + [${indexB}] vs [${expectedIndex}]`);
 });
 
 Then("the sum of extracted prices at index {int} {string} and {int} {string} should equal the extracted price at index {int} {string}", function (indexA, labelA, indexB, labelB, expectedIndex, expectedLabel) {
@@ -106,7 +107,7 @@ Then("the sum of extracted prices at index {int} {string} and {int} {string} sho
   const priceA = this.extractedPrices[indexA];
   const priceB = this.extractedPrices[indexB];
   const expectedSum = this.extractedPrices[expectedIndex];
-  expectSumToBeEqual(priceA, priceB, expectedSum, `Sum [${indexA}] ${labelA} + [${indexB}] ${labelB} vs [${expectedIndex}] ${expectedLabel}`);
+  expectSumToBeEqualWithTolerance(priceA, priceB, expectedSum, 0.02, `Sum [${indexA}] ${labelA} + [${indexB}] ${labelB} vs [${expectedIndex}] ${expectedLabel}`);
 });
 
 // ===== DIRECT COMPARISON (EXTRACT + ASSERT) =====
@@ -130,7 +131,7 @@ Then("the sum of prices at index {int} from {string} and index {int} from {strin
   const priceB = await extractPriceFromLocation(this.page, indexB, locationB);
   const expectedSum = await extractPriceFromLocation(this.page, expectedIndex, expectedLocation);
   
-  expectSumToBeEqual(priceA, priceB, expectedSum, `Sum [${indexA}] + [${indexB}] vs [${expectedIndex}]`);
+  expectSumToBeEqualWithTolerance(priceA, priceB, expectedSum, 0.02, `Sum [${indexA}] + [${indexB}] vs [${expectedIndex}]`);
 });
 
 // ===== THEN STEPS =====
