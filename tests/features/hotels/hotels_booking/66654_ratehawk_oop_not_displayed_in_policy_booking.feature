@@ -1,4 +1,4 @@
-# Test Name: 66654 Ratehawk - 'Check-In Date' Travel Policy - OOP icon is not displayed for in policy hotels
+﻿# Test Name: 66654 Ratehawk - 'Check-In Date' Travel Policy - OOP icon is not displayed for in policy hotels
 # Description: 
 # Status: Active
 # Labels: Ratehawk Regression,Hotel,Full Purchase,special request,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 66654 Ratehawk - 'Check-In Date' Travel Policy - OOP icon is not displa
 
   @priority:high
   Scenario: OOP icon is not displayed for in policy hotels before and after booking
-    Given I am logged in as "ratehawk" "user_one" booking a new trip
+    Given I am logged in as "lidi" booking a new trip
     And I have added traveler by name "Carla Carolina"
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result

@@ -1,4 +1,4 @@
-# Test Name: 47192 Hotel - 'Paid by TMC' is displayed in cart
+﻿# Test Name: 47192 Hotel - 'Paid by TMC' is displayed in cart
 # Description: 
 # Status: Active
 # Labels: Regression,Hotel,paid by,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 47192 General - Hotel paid by TMC
 
   @priority:high
   Scenario: Hotel booking shows "Paid by TMC" payment type
-    Given I am logged in as "general" "hotel_paid_by_tmc" booking a new trip
+    Given I am logged in as "zac" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     And I select the first hotel result

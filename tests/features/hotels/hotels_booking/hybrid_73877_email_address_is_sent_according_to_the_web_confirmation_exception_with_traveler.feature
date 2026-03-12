@@ -1,4 +1,4 @@
-# Test Name: HYBRID for 73877 Email adress is sent according to the web confirmation - exception with traveler
+﻿# Test Name: HYBRID for 73877 Email adress is sent according to the web confirmation - exception with traveler
 # Description: 
 # Status: Active
 # Labels: Hotel,Web confirmation,Full Purchase,No Amadeus Hotel Book,Ehotel Regression,hybrid
@@ -14,7 +14,7 @@ Feature: HYBRID for 73877 Email adress is sent according to the web confirmation
 
   @priority:high
   Scenario: Confirmation email is sent using the traveler exception rule after hotel booking
-    Given I am logged in as "general" "rebecca" booking a new trip
+    Given I am logged in as "rebecca" booking a new trip
     And I have added traveler by name "Eliyahu Tel"
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result

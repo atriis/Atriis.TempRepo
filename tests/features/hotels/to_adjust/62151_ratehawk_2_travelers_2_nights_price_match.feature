@@ -1,4 +1,4 @@
-# Test Name: 62151 Ratehawk hotel - book for 2 travelers and 2 nights
+﻿# Test Name: 62151 Ratehawk hotel - book for 2 travelers and 2 nights
 # Description: 
 # Status: Active
 # Labels: Hotel,Full Purchase,more than 1 night,No Amadeus Hotel Book,multi pax,Daily Hotels,Ratehawk Regression,progress page,66444 hotel results,Giata,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 62151 Ratehawk - Book hotel for 2 travelers 2 nights with price match
 
   @priority:critical
   Scenario: 2 travelers booked for 2 nights via Ratehawk with price match and cancel
-    Given I am logged in as "ratehawk" "user_one" booking a new trip
+    Given I am logged in as "lidi" booking a new trip
     And I have added myself as the traveler
     # TODO: Create step "When I add a second traveler by name {string}" - needs DSL method addSecondTraveler
     When I search for a hotel in "LON" for 2 nights

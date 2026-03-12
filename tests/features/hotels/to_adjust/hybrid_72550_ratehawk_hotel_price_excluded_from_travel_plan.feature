@@ -1,4 +1,4 @@
-# Test Name: HYBRID for 72550 Exclude Hotel Price From Travel Plan Email
+﻿# Test Name: HYBRID for 72550 Exclude Hotel Price From Travel Plan Email
 # Description: 
 # Status: Active
 # Labels: Share Itinerary,Email,Hotel,Ratehawk Regression,Full Purchase,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 72550 Ratehawk - Hotel price is excluded from the travel plan email
 
   @priority:medium
   Scenario: Hotel price is not included when sharing the travel plan itinerary
-    Given I am logged in as "ratehawk" "user_one" booking a new trip
+    Given I am logged in as "lidi" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result

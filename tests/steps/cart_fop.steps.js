@@ -1,37 +1,3 @@
-/**
- * CartPayment (Form of Payment) Step Definitions
- *
- * Maps Gherkin steps to CartPayment DSL methods for payment flow orchestration.
- * CartPayment DSL handles adding credit cards and validating payment methods.
- *
- * ===== STEP CATALOG =====
- *
- * When Steps:
- *   "I add a credit card as payment method"
- *     → CartPayment.addCreditCard(page)
- *
- *   "I click add payment method button"
- *     → CartPaymentPage.clickAddPaymentMethodButton()
- *
- *   "I click add card details button"
- *     → CartPaymentPage.clickAddCardDetailsButton()
- *
- *   "I click the back arrow"
- *     → CartPaymentPage.clickBackArrow()
- *
- * Then Steps:
- *   "the payment method should be added"
- *     → CartPayment.isPaymentMethodAdded(page)
- *
- *   "the card {string} should be visible"
- *     → CartPayment.expectCardVisible(page, cardName)
- *
- *   "the card details should be visible"
- *     → CartPayment.waitForCardDetailsToBeVisible(page)
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");

@@ -1,24 +1,3 @@
-/**
- * Benerail Results Step Definitions
- *
- * Maps Gherkin steps to BenerailResults DSL methods for EU Rail result selection.
- * BenerailResults DSL handles selecting options and adding trips to cart.
- *
- * ===== STEP CATALOG =====
- *
- * When Steps:
- *   "I select the first Benerail option"
- *     → BenerailResults.waitAndSelectFirstBenerailOption(page)
- *
- *   "I add a Benerail one way to the trip"
- *     → BenerailResults.addBenerailOneWayToTrip(page)
- *
- *   "I add a Benerail round trip to the trip"
- *     → BenerailResults.addBenerailRoundtripToTrip(page)
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");

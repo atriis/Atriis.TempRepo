@@ -1,21 +1,3 @@
-/**
- * Evolvi Results Step Definitions
- *
- * Maps Gherkin steps to EvolviResults DSL methods for UK Rail result selection.
- * EvolviResults DSL handles selecting options and adding trips to cart.
- *
- * ===== STEP CATALOG =====
- *
- * When Steps:
- *   "I add an Evolvi one way to the trip"
- *     → EvolviResults.addEvolviToTrip(page)
- *
- *   "I add an Evolvi round trip to the trip"
- *     → EvolviResults.addEvolviRoundtripToTrip(page)
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");

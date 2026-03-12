@@ -1,4 +1,4 @@
-# Test Name: 59023 Booking.com - User with no privilege to select FOP in cart can add new cc when default cc is not supported
+﻿# Test Name: 59023 Booking.com - User with no privilege to select FOP in cart can add new cc when default cc is not supported
 # Description: 
 # Status: Active
 # Labels: Booking.com,booking.com 3.1,FOP,Regression,credit card,Cart,Privileges,Hotel,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 59023 Booking.com - Add new credit card without cardholder privilege re
 
   @priority:high
   Scenario: Add new credit card for Booking.com hotel when no privilege restriction applies
-    Given I am logged in as "bookingcom" "user_discover" booking a new trip
+    Given I am logged in as "discover" booking a new trip
     When I search for a hotel in "The White Swan" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart

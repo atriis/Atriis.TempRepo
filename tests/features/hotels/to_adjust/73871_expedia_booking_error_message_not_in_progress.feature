@@ -1,4 +1,4 @@
-# Test Name: 73871 Expedia - In case of booking error we show the error and the status is not in progress
+﻿# Test Name: 73871 Expedia - In case of booking error we show the error and the status is not in progress
 # Description: 
 # Status: Active
 # Labels: Regression,Expedia,FOP,Booking error,Hotel
@@ -14,7 +14,7 @@ Feature: 73871 Expedia - Booking error message displayed and status not set to i
 
   @priority:critical
   Scenario: Booking error message is displayed and booking status is not "In Progress"
-    Given I am logged in as "expedia" "user_one" booking a new trip
+    Given I am logged in as "edi" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result

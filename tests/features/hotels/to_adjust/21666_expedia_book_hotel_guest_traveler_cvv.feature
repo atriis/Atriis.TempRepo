@@ -1,4 +1,4 @@
-# Test Name: 21666 MERGED: 2fa expedia
+﻿# Test Name: 21666 MERGED: 2fa expedia
 # Description: Supplier issue related to 2FA, Cannot run until they fix it
 # Status: Active
 # Labels: Expedia,No Amadeus Hotel Book,Full Purchase,Sanity,Keeps failing,Hotel
@@ -14,7 +14,7 @@ Feature: 21666 Expedia - Book hotel for guest traveler with CVV and 2FA
 
   @priority:high
   Scenario: Book hotel for random guest traveler with CVV verification
-    Given I am logged in as "expedia" "user_one" booking a new trip
+    Given I am logged in as "edi" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "Big Sky" for 1 night
     And I select the first hotel result

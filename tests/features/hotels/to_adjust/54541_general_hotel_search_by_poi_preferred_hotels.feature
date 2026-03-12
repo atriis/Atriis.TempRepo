@@ -1,4 +1,4 @@
-# Test Name: 54541 - Preferred Hotel linked to Point of Interest
+﻿# Test Name: 54541 - Preferred Hotel linked to Point of Interest
 # Description: 
 # Status: Active
 # Labels: Club,Hotel,Preferred Hotels,search,Regression,Point of interest,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 54541 General - Hotel search by Point of Interest shows preferred hotel
 
   @priority:medium
   Scenario: Hotel search by POI returns preferred hotels
-    Given I am logged in as "general" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     # TODO: Create step "When I search for a hotel near point of interest {string}" that calls DSL searchHotelByPOI in HotelSearch.js
     # TODO: Create step "Then preferred hotels should be displayed in results" that calls DSL verifyPreferredHotels in HotelSearch.js

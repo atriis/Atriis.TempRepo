@@ -1,20 +1,3 @@
-/**
- * Amtrak Step Definitions
- *
- * Maps Gherkin steps to DSL methods for Amtrak rail flows.
- *
- * ===== STEP CATALOG =====
- *
- * When Steps:
- *   "I search for a one way Amtrak train from {string}"
- *     → AmtrakSearch.searchAmtrakOneWay(page, routeKey)
- *
- *   "I search for a round trip Amtrak train from {string}"
- *     → AmtrakSearch.searchAmtrakRoundTrip(page, routeKey)
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");

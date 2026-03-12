@@ -1,20 +1,3 @@
-/**
- * Dynamic and Reference Fields Step Definitions
- *
- * Maps Gherkin steps to DSL methods for dynamic/reference field flows.
- *
- * ===== STEP CATALOG =====
- *
- * When Steps:
- *   "I select the trip purpose reference field"
- *     → DynamicAndReferenceFields.selectTripPurposeReferenceField(page)
- *
- *   "I add a number checkout field"
- *     → DynamicAndReferenceFields.addNumberCheckoutField(page)
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");

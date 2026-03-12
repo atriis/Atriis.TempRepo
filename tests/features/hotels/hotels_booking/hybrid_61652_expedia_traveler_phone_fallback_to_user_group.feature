@@ -1,4 +1,4 @@
-# Test Name: HYBRID for 61652 expedia - send the traveler's phone in case valid, and the user group's phone in case not valid
+﻿# Test Name: HYBRID for 61652 expedia - send the traveler's phone in case valid, and the user group's phone in case not valid
 # Description: 
 # Status: Active
 # Labels: Expedia,Hotel,Regression,traveler,hybrid,phone number,progress page,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 61652 HYBRID Expedia - Send the traveler's phone in case valid, and the
 
   @priority:medium
   Scenario: Trip 1 - Traveler with invalid phone - We send the user group's phone
-    Given I am logged in as "general" "shani_corp_nl" booking a new trip
+    Given I am logged in as "shani_nl" booking a new trip
     And I have added traveler by name "inbal idfon"
     When I search for a hotel in "LON" for 1 night
     And I click proceed button if visible
@@ -30,7 +30,7 @@ Feature: 61652 HYBRID Expedia - Send the traveler's phone in case valid, and the
 
   @priority:medium
   Scenario: Trip 2 - Traveler with valid phone - We send the traveler's phone
-    Given I am logged in as "general" "shani_corp_nl" booking a new trip
+    Given I am logged in as "shani_nl" booking a new trip
     And I have added traveler by name "valeria fone"
     When I search for a hotel in "LON" for 1 night
     And I click proceed button if visible

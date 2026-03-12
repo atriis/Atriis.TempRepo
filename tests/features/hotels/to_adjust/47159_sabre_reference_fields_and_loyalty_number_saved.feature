@@ -1,4 +1,4 @@
-# Test Name: 47159 Sabre - Hotel - It is possible to save loyalty number with letters and numbers
+﻿# Test Name: 47159 Sabre - Hotel - It is possible to save loyalty number with letters and numbers
 # Description: 
 # Status: Active
 # Labels: Regression,Sabre,Hotel,Hotel loyalty number,GDS,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 47159 Sabre - Reference fields required and loyalty number saved after 
 
   @priority:high
   Scenario: Reference fields are filled and loyalty number is saved to profile
-    Given I am logged in as "sabre" "user_one" booking a new trip
+    Given I am logged in as "robsoncruz" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "MCO" for 1 night
     # TODO: Create step "When I fill in the reference fields" that calls DSL fillReferenceFields in Checkout.js

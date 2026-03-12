@@ -1,4 +1,4 @@
-# Test Name: 32663 When Searching for cities with multiple airports, the hotel search prepopulates the specific airport and not the city
+﻿# Test Name: 32663 When Searching for cities with multiple airports, the hotel search prepopulates the specific airport and not the city
 # Description: 
 # Status: Active
 # Labels: CR7,Regression,No Amadeus Hotel Book,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 32663 General - Hotel search pre-populates airport from flight search i
 
   @priority:high
   Scenario: Hotel search pre-populates airport from existing flight booking in cart
-    Given I am logged in as "general" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     # TODO: Create step "When I search for a flight from {string} to {string}" to set up a flight in cart first
     # TODO: Create step "When I add a hotel from the cart" that calls DSL method addHotelFromCart in Cart.js

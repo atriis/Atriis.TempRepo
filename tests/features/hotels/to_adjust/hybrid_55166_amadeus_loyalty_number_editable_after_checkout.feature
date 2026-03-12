@@ -1,4 +1,4 @@
-# Test Name: HYBRID for 55166 Amadeus hotel - can edit loyalty number after checkout
+﻿# Test Name: HYBRID for 55166 Amadeus hotel - can edit loyalty number after checkout
 # Description: 
 # Status: Active
 # Labels: Hotel loyalty number,Regression,Amadeus,Full Purchase,Hotel,hybrid,progress page,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 55166 Amadeus - Loyalty number can be edited after hotel checkout
 
   @priority:medium
   Scenario: Loyalty number can be added or edited on the confirmed booking page
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result

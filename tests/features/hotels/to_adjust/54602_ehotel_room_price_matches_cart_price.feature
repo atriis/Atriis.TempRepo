@@ -1,4 +1,4 @@
-# Test Name: 54602 [Merge] eHotel - Price is the same in room level and cart and adding corporate card works
+﻿# Test Name: 54602 [Merge] eHotel - Price is the same in room level and cart and adding corporate card works
 # Description: 
 # Status: Active
 # Labels: Ehotel Regression,Hotel,Cart,FOP,credit card,merge,price,Check price,Daily Hotels,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 54602 eHotel - Price from room level matches price after adding to cart
 
   @priority:high
   Scenario: Room price consistent between room level results and cart, add CC from profile
-    Given I am logged in as "ehotel" "user_one" booking a new trip
+    Given I am logged in as "luciana" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result

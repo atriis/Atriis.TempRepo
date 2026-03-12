@@ -1,17 +1,3 @@
-/**
- * Ground Transport Step Definitions
- *
- * Maps Gherkin steps to DSL methods for ground transportation flows.
- *
- * ===== STEP CATALOG =====
- *
- * When Steps:
- *   "I search for ground transport from {string}"
- *     → GroundTransportSearch.searchGroundTransportFromAirportToSpecificAddress(page, routeKey)
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");

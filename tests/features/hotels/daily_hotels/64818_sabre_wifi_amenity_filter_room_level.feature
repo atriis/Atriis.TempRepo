@@ -1,4 +1,4 @@
-# Test Name: 64818 Sabre - can see wi fi in room level
+﻿# Test Name: 64818 Sabre - can see wi fi in room level
 # Description: 
 # Status: Active
 # Labels: Hotel,Amenities,results,room level,Sabre,Regression,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 64818 Sabre - Wi-Fi amenity filter works in room level results
 
   @priority:medium
   Scenario: Wi-Fi amenity filter shows only Wi-Fi rooms in Sabre room level results
-    Given I am logged in as "sabre" "user_sabrin_orly" booking a new trip
+    Given I am logged in as "sabrin" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result

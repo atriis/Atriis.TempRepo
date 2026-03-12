@@ -1,37 +1,8 @@
-/**
- * Smoke Test Assertions
- *
- * General smoke test assertions that don't belong to specific DSL modules.
- * App, Trips, and other DSL-specific steps have been moved to their respective step files.
- *
- * ===== STEP CATALOG =====
- *
- * Then Steps:
- *   "the application should be loaded"
- *     → Verify URL is not empty
- *
- *   "the page should have a title"
- *     → Verify page title is not empty
- *
- *   "flight results should be displayed"
- *     → FlightResults.isResultDisplayed(page)
- *
- *   "I should see a success notification"
- *     → Verify "Success" text is visible
- *
- *   "the trip should be successfully cancelled"
- *     → Generic assertion (no action needed)
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { FlightResults } = require("@dsl");
-const { getPageObject } = require("@utils/pageObjectCache");
-const { CommonPage } = require("@pages/CommonPage");
 const logger = require("@utils/logger").child("Smoke");
 
 setDefaultTimeout(120000);

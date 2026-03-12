@@ -1,4 +1,4 @@
-# Test Name: 46171 Ratehawk - "Paid at the hotel" icon and tooltip are displayed
+﻿# Test Name: 46171 Ratehawk - "Paid at the hotel" icon and tooltip are displayed
 # Description: 
 # Status: Active
 # Labels: Hotel,Ratehawk Regression,Daily Hotels,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 46171 Ratehawk - "Paid at hotel" icon and tooltip visible
 
   @priority:medium
   Scenario: "Paid at hotel" icon is visible with correct tooltip in room level
-    Given I am logged in as "ratehawk" "user_one" booking a new trip
+    Given I am logged in as "lidi" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Porto, Portugal" for 1 night
     And I select the first hotel result

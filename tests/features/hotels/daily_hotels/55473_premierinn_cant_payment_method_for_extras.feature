@@ -1,4 +1,4 @@
-# Test Name: 55473 Premier Inn - Can't change payment method for extras
+﻿# Test Name: 55473 Premier Inn - Can't change payment method for extras
 # Description: 
 # Status: Active
 # Labels: Premier Inn Regression,Hotel,Extras,payment method,Cart,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 55473 Premier Inn - Can't change payment method for extras
 
   @priority:high
   Scenario: Can't change payment method for extras
-    Given I am logged in as "premierinn" "user_one" booking a new trip
+    Given I am logged in as "bruna_premier" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result

@@ -1,4 +1,4 @@
-# Test Name: 37211 [Merge] Hotels - After editing search parameters, hotels from the new location are displayed correctly and there is a scroll bar on the filters
+﻿# Test Name: 37211 [Merge] Hotels - After editing search parameters, hotels from the new location are displayed correctly and there is a scroll bar on the filters
 # Description: 
 # Status: Active
 # Labels: Hotel,merge,Filters,search,Regression,v3,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 37211 General - Edit hotel search parameters
 
   @priority:medium
   Scenario: Edit hotel search and verify new results are displayed
-    Given I am logged in as "expedia" "user_three" booking a new trip
+    Given I am logged in as "natalia" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     When I edit the hotel search location to "BCN"

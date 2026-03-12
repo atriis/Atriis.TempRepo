@@ -1,4 +1,4 @@
-# Test Name: 52621 Galileo - deposit room filter and instant purchase
+﻿# Test Name: 52621 Galileo - deposit room filter and instant purchase
 # Description: 
 # Status: Active
 # Labels: Regression,Hotel,Galileo,Travel policy,Filters,results,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 52621 Galileo - Deposit filter shows hotels with instant purchase toolt
 
   @priority:medium
   Scenario: Deposit filter is applied and instant purchase tooltip is visible
-    Given I am logged in as "galileo" "user_one" booking a new trip
+    Given I am logged in as "beatriz" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Blue Mansion" for 1 night
     And I select the first hotel result

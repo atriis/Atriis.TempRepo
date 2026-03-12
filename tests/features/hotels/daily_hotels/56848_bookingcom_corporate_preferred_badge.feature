@@ -1,4 +1,4 @@
-# Test Name: 56848 Booking.com - Hotel is marked as 'Corporate Preferred' according to the admin configuration
+﻿# Test Name: 56848 Booking.com - Hotel is marked as 'Corporate Preferred' according to the admin configuration
 # Description: 
 # Status: Active
 # Labels: Booking.com,Regression,Hotel,Preferred Hotels,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 56848 Booking.com - Hotel is marked as 'Corporate Preferred' according 
 
   @priority:medium
   Scenario: Hotel is marked as 'Corporate Preferred' according to the admin configuration
-    Given I am logged in as "bookingcom" "user_one" booking a new trip
+    Given I am logged in as "cintia" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Springhill Suites Pittsburgh" for 1 night
     And I wait to see view rates text in results page

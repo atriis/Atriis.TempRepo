@@ -1,4 +1,4 @@
-# Test Name: HYBRID for 73878 Email adress is sent according to the web confirmation - specific email address
+﻿# Test Name: HYBRID for 73878 Email adress is sent according to the web confirmation - specific email address
 # Description: 
 # Status: Active
 # Labels: Hotel,Web confirmation,Full Purchase,No Amadeus Hotel Book,hybrid,Regression,Expedia
@@ -14,7 +14,7 @@ Feature: HYBRID for 73878 Email adress is sent according to the web confirmation
 
   @priority:high
   Scenario: Confirmation email is sent to the specific configured email address after hotel booking
-    Given I am logged in as "general" "rebecca" booking a new trip
+    Given I am logged in as "rebecca" booking a new trip
     And I have added traveler by name "Yosef Edi"
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result

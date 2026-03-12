@@ -1,70 +1,8 @@
-/**
- * Flight Results Step Definitions
- *
- * Maps Gherkin steps to FlightResults DSL methods.
- *
- * ===== STEP CATALOG =====
- *
- * Selection & Cart:
- *   "I select one flight segment by schedule"
- *   "I wait for the change flight button to be visible"
- *   "I select flight segments by schedule"
- *   "I add the first flight to cart"
- *
- * Results Filtering:
- *   "I filter results by carrier {string}"
- *
- * Pricing Options:
- *   "I click on 'Pricing Options' for the first result"
- *   "I extract the price from first pricing option"
- *   "I click to open first pricing options"
- *   "I select the first option from pricing options"
- *   "I 'Select to share' first option from pricing options"
- *   "I click share from pricing options"
- *   "I add to trip from pricing options"
- *   "I close pricing options modal"
- * 
- *
- * Fare Rules:
- *   "I click to open fare rules"
- *   "I close fare rules window"
- *   "I click to open flight details"
- *   "I click to open fare rules from modal"
- *   "I close flight details window"
- *
- * Share Quote:
- *   "I click on the 'Share' button"
- *   "I select 2 options from carriers {string} and {string}"
- *   "I click on the 'Share' button to open the share dialog"
- *   "I scroll into offers and get prices"
- *
- * Assertions:
- *   "flight results should be available"
- *   "The shared price for carrier {string} should match the prices from results"
- *   "The shared price for carrier {string} should match the price from pricing options"
- *   "I should see the fare rules note about strictest terms"
- *     → FlightResults.getFareRulesNoteText(page) + expect(noteText).toContain(...)
- *   "the green circle icon at index {int} {string} should be displayed in pricing options"
- *     → FlightResults.isGreenCircleIconVisibleInPricingOptions(page, index) + expect(isVisible).toBe(true)
- *   "the Flight Duration filter should be visible"
- *     → FlightResults.assertFlightDurationTitleVisible(page)
- *   "the Flight Duration filter for {string} should be visible"
- *     → FlightResults.assertFlightDurationFromLocationVisible(page, location)
- *
- * Scrolling:
- *   "I scroll to the Flight Duration filter"
- *     → FlightResults.scrollToFlightDurationTitle(page)
- *   "I scroll to the Flight Duration filter for {string}"
- *     → FlightResults.scrollToFlightDurationFromLocationTitle(page, location)
- *
- * ========================
- */
-
 require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { FlightResults } = require("../../src/dsl");
-const { expectNumbersToBeEqual, expectNumbersToBeEqualWithTolerance } = require("../../src/assertions/numberAssertions");
+const { expectNumbersToBeEqualWithTolerance } = require("../../src/assertions/numberAssertions");
 const logger = require("@utils/logger").child("FlightResults");
 
 setDefaultTimeout(120000);

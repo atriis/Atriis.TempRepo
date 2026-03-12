@@ -1,4 +1,4 @@
-# Test Name: 29751 MERGED approval for changes + approval flow determined by the user administration if the financial reference has no approval flow
+﻿# Test Name: 29751 MERGED approval for changes + approval flow determined by the user administration if the financial reference has no approval flow
 # Description: 
 # Status: Active
 # Labels: Email,Approval flow,Approval for changes,Hotel,Cars,Full Purchase,Regression,NL government,Financial Reference Code,Pre Prod,Sanity,Amadeus,Transportation,Giata,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 29751 Amadeus - Hotel booking with financial reference and approval
 
   @priority:critical
   Scenario: Hotel booking with FOP CVV, financial reference, and approval flow
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LAX" for 1 night
     And I select the first hotel result

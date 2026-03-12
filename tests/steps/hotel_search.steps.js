@@ -1,16 +1,3 @@
-/**
- * Hotel Search Step Definitions
- *
- * Maps Gherkin steps to HotelSearch DSL methods.
- *
- * ===== STEP CATALOG =====
- *
- * Search:
- *   "I search for a hotel in {string} for {int} night(s)"
- *
- * ========================
- */
-
 require("module-alias/register");
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { HotelSearch } = require("../../src/dsl");

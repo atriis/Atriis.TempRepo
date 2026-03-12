@@ -1,4 +1,4 @@
-# Test Name: 48981 search for available rooms only
+﻿# Test Name: 48981 search for available rooms only
 # Description: 
 # Status: Active
 # Labels: Hotel,Regression,Cart,results,search,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 48981 General - Available rooms only toggle and reference field validat
 
   @priority:high
   Scenario: Available rooms only toggle works and reference fields are validated
-    Given I am logged in as "general" "shani_corp_nl" booking a new trip
+    Given I am logged in as "shani_nl" booking a new trip
     And I have added myself as the traveler
     # TODO: Create step "When I toggle the available rooms only option in hotel search" that calls DSL toggleAvailableRoomsOnly in HotelSearch.js
     When I search for a hotel in "LON" for 1 night

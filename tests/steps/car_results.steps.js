@@ -1,21 +1,3 @@
-/**
- * Car Results Step Definitions
- *
- * Maps Gherkin steps to CarResults DSL methods.
- *
- * ===== STEP CATALOG =====
- *
- * Selection & Cart:
- *   "I add a car from airport results to cart"
- *   "I add a car from city center results to cart"
- *
- * Assertions:
- *   "the car location at index {int} should contain {string}"
- *     → CarResults.expectLocationToContain(page, index, expectedCity)
- *
- * ========================
- */
-
 require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { CarResults } = require("../../src/dsl");

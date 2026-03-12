@@ -1,4 +1,4 @@
-# Test Name: 41518 Amadeus - "Intercontinental Ljubljana" hotel terms and conditions are available and it is possible to add it to cart
+﻿# Test Name: 41518 Amadeus - "Intercontinental Ljubljana" hotel terms and conditions are available and it is possible to add it to cart
 # Description: 
 # Status: Active
 # Labels: Regression,Amadeus,Hotel,Terms and Conditions,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 41518 Amadeus - Book specific hotel with terms and refundable verificat
 
   @priority:critical
   Scenario: Filter for specific hotel, check terms, add to cart, and verify refundable
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Intercontinental Ljubljana" for 1 night
     When I filter results by "Intercontinental Ljubljana" checkbox

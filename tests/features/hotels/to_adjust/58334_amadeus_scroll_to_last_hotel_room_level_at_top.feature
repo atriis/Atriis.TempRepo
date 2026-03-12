@@ -1,4 +1,4 @@
-# Test Name: 58334 Hotels - After scrolling down in the hotel level and selecting a hotel from the bottom page, user is redirected to the room level top page
+﻿# Test Name: 58334 Hotels - After scrolling down in the hotel level and selecting a hotel from the bottom page, user is redirected to the room level top page
 # Description: 
 # Status: Active
 # Labels: Regression,Hotel,room level,general,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 58334 Amadeus - Scroll to last hotel and redirect to room level at top
 
   @priority:low
   Scenario: Scrolling to last hotel and clicking redirects to room level at page top
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     # TODO: Create step "When I scroll to the last hotel in results and click it" that calls DSL scrollToLastHotelAndClick in HotelSearch.js

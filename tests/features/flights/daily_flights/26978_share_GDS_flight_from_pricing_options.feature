@@ -6,7 +6,7 @@ Feature: Share flight from pricing options
 
   @share-flight
   Scenario Outline: User shares price offers selected from pricing options
-    Given I am logged in as "<provider>" "<user>" booking a new trip
+    Given I am logged in as "<label>" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "MAD" to "LIS"
     When I click on the "Share" button
@@ -26,6 +26,6 @@ Feature: Share flight from pricing options
     And The shared price for carrier "Iberia" should match the price from pricing options
 
     Examples:
-      | provider | user     |
-      | amadeus  | user_one |
-      | galileo  | user_one |
+      | label        |
+      | ruimariano   |
+      | beatriz      |

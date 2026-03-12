@@ -1,21 +1,3 @@
-/**
- * Car Step Definitions
- *
- * Maps Gherkin steps to DSL methods for car-specific flows.
- *
- * ===== STEP CATALOG =====
- *
- * Search:
- *   "I search for a car in {string}"
- *   "I search for a car in {string} with rental agency {string}"
- *
- * Selection:
- *   "I add the first car to cart"
- *   "I add the first city center car to cart"
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");

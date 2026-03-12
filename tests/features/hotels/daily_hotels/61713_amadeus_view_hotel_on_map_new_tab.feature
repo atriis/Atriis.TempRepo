@@ -1,4 +1,4 @@
-# Test Name: 61713 Hotel - Room Results - "View Hotel On Map" opens correctly
+﻿# Test Name: 61713 Hotel - Room Results - "View Hotel On Map" opens correctly
 # Description: 
 # Status: Active
 # Labels: Hotel,Regression,general,Google Maps,room level,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 61713 Amadeus - View hotel on map opens correctly
 
   @priority:medium
   Scenario: Clicking view on map opens hotel location on the map
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     And I select the first hotel result

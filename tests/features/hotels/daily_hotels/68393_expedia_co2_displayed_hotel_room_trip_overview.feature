@@ -1,4 +1,4 @@
-# Test Name: 68393 Expedia - Co2 is display with value in room level, hotel level and trip overview
+﻿# Test Name: 68393 Expedia - Co2 is display with value in room level, hotel level and trip overview
 # Description: 
 # Status: Active
 # Labels: Hotel,Regression,CO2,room level,hotel level,Cart,Expedia,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 68393 Expedia - CO2 emissions displayed in hotel level, room level, and
 
   @priority:high
   Scenario: CO2 data is visible throughout the Expedia hotel booking flow
-    Given I am logged in as "expedia" "user_co2" booking a new trip
+    Given I am logged in as "bruna_co2" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I click proceed button if visible

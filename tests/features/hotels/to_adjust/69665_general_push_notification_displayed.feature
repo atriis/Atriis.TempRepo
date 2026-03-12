@@ -1,4 +1,4 @@
-# Test Name: 69665 Hotels - Push Notification 'Hotel Content Source' and 'Country' filters are being correctly applied
+﻿# Test Name: 69665 Hotels - Push Notification 'Hotel Content Source' and 'Country' filters are being correctly applied
 # Description: 
 # Status: Active
 # Labels: Regression,Hotel,general,push notifications,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 69665 General - Push notification displayed when adding hotel to cart
 
   @priority:medium
   Scenario: Push notification is displayed when hotel is added to cart
-    Given I am logged in as "general" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     # TODO: Create step "Then a push notification should be displayed in hotel results" that calls DSL verifyPushNotification in HotelSearch.js

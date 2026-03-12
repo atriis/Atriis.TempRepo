@@ -1,4 +1,4 @@
-# Test Name: HYBRID for 59237 ehotel - see amenities according to the log
+﻿# Test Name: HYBRID for 59237 ehotel - see amenities according to the log
 # Description: 
 # Status: Active
 # Labels: hybrid,Ehotel Regression,No Amadeus Hotel Book,Hotel,Amenities,results,Results page hotel,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 59237 eHotel - Hotel amenities displayed correctly according to supplie
 
   @priority:medium
   Scenario: Amenities are shown correctly - with gym and without gym
-    Given I am logged in as "ehotel" "eli_tel" booking a new trip
+    Given I am logged in as "eli" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     Then hotel 1 should display the "Gym" amenity

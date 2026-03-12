@@ -1,33 +1,4 @@
-﻿/**
- * Room Level Results Step Definitions
- *
- * Maps Gherkin steps to RoomLevelResults DSL methods.
- *
- * ===== STEP CATALOG =====
- *
- * Selection:
- *   "I add a refundable room to my cart"
- *   "I add the first available room to my cart"
- *
- * Extraction:
- *   "I extract cancellation policy from room level results"
- *     → RoomLevelResults.extractCancellationPolicy(page)
- *     → Stores result in this.cancellationPolicy
- *
- * Assertions:
- *   "the hotel should appear as refundable in my cart"
- *   "the cancellation policy in the cart should match the cancellation policy from room level results"
- *     → Compares this.cartCancellationPolicy (set by "I extract cancellation policy from cart")
- *     → with this.roomLevelCancellationPolicy (set by extraction step) using strict equality
- *   "I should see member rates displayed in room level results"
- *     → RoomLevelResults.verifyMemberRatesDisplayed(page)
- *   "the member rate price should be lower than the regular price"
- *     → RoomLevelResults.compareMemberVsRegularPrice(page)
- *
- * ========================
- */
-
-require("module-alias/register");
+﻿require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { RoomLevelResults } = require("../../src/dsl");

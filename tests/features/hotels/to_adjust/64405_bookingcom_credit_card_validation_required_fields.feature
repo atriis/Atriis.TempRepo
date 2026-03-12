@@ -1,4 +1,4 @@
-# Test Name: 64405 booking.com - credit card without card holder name and country
+﻿# Test Name: 64405 booking.com - credit card without card holder name and country
 # Description: 
 # Status: Active
 # Labels: Booking.com,FOP,Regression,No Amadeus Hotel Book,Hotel,Cart,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 64405 Booking.com - Credit card validation without cardholder name and 
 
   @priority:medium
   Scenario: Credit card cannot be saved without cardholder name and country
-    Given I am logged in as "bookingcom" "user_one" booking a new trip
+    Given I am logged in as "cintia" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result

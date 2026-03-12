@@ -32,15 +32,15 @@
 
 #Combine these features into one with examples for all providers since they are identical except for the provider and user. This will reduce duplication and maintenance effort while still covering Expedia, Sabre, Amadeus, and Amadeus Value Hotel in the same scenario outline.
 
-@regression @provider:expedia
+@regression @provider:expedia @provider:sabre @provider:amadeus @provider:premierinn
 Feature: 61574 Book hotel for 2 travelers 2 nights
   As a travel arranger
   I want to book a hotel for 2 travelers for 2 nights
   So that both travelers are accommodated in the same booking
 
   @priority:critical
-  Scenario: 2 travelers booked in hotel for 2 nights
-    Given I am logged in as "<provider>" "<user>" booking a new trip
+  Scenario Outline: 2 travelers booked in hotel for 2 nights
+    Given I am logged in as "<label>" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
     When I search for a hotel in "London" for 2 nights
@@ -59,10 +59,10 @@ Feature: 61574 Book hotel for 2 travelers 2 nights
     Then I successfully cancel the trip
 
     Examples:
-      | provider | user |
-      | expedia | user_one |
-      | sabre | user_sabrin_orly |
-      | amadeus | user_one |
-      | amadeus_value_hotel | papatinho |
-      | general | rebecca |
-      | premierinn | user_one | 
+      | label        |
+      | expedia      |
+      | sabrin       |
+      | ruimariano   |
+      | papatinho    |
+      | rebecca      |
+      | bruna_premier | 

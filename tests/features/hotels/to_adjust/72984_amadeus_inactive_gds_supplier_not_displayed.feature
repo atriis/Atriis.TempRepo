@@ -1,4 +1,4 @@
-# Test Name: 72984 don't see amadeus GDS in the results if inactive on user group level
+﻿# Test Name: 72984 don't see amadeus GDS in the results if inactive on user group level
 # Description: 
 # Status: Active
 # Labels: Amadeus,Amadeus Value hotel,No Amadeus Hotel Book,Hotel,Regression,results,Preferred Hotels,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 72984 Amadeus - Inactive GDS supplier logo not displayed and filtered o
 
   @priority:medium
   Scenario: Inactive Amadeus GDS supplier logo is not visible in hotel results
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Pittsburgh" for 1 night
     # TODO: Create step "Then the Amadeus GDS supplier logo should not be visible for inactive accounts" that calls DSL verifySupplierLogoNotVisible in HotelSearch.js

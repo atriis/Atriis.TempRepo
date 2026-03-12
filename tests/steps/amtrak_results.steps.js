@@ -1,17 +1,3 @@
-/**
- * Amtrak Results Step Definitions
- *
- * Maps Gherkin steps to AmtrakResults DSL methods for Amtrak result interactions.
- *
- * ===== STEP CATALOG =====
- *
- * When Steps:
- *   "I click more details for the first Amtrak result"
- *     → AmtrakResultsPage.clickMoreDetailsButton()
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");

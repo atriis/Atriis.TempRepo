@@ -1,4 +1,4 @@
-@daily_flights @provider:amadeus
+﻿@daily_flights @provider:amadeus
 Feature: 56103 [Merge] Amadeus - APIS - Passport is masked when user does not have "Can edit and view profile for other users" privilege and go to checkout
   As a corporate traveler using Amadeus supplier
   I want to search a one-way flight to the United States and add it to cart
@@ -7,7 +7,7 @@ Feature: 56103 [Merge] Amadeus - APIS - Passport is masked when user does not ha
 
   @priority:critical
   Scenario: Passport is masked when user does not have "Can edit and view profile for other users" privilege and checkout navigation
-    Given I am logged in as "amadeus" "rui_mendes" booking a new trip
+    Given I am logged in as "ruimendes" booking a new trip
     And I have added traveler by name "Rui Marista"
     When I search for a one way flight from "LIS" to "NYC"
     And I add the first flight to cart

@@ -1,4 +1,4 @@
-# Test Name: 69255 Amadeus - Hotel - Loyalty Number is displayed in Itinerary
+﻿# Test Name: 69255 Amadeus - Hotel - Loyalty Number is displayed in Itinerary
 # Description: 
 # Status: Active
 # Labels: Hotel loyalty number,Regression,Amadeus,Hotel,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 69255 Amadeus - Loyalty number added and visible in share itinerary
 
   @priority:medium
   Scenario: Loyalty number added to booking is visible in shared itinerary email
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result

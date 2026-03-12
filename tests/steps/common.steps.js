@@ -1,32 +1,3 @@
-/**
- * Common Step Definitions
- *
- * Generic steps that can be used across multiple test scenarios.
- *
- * ===== STEP CATALOG =====
- *
- * When Steps - Price Extraction:
- *   "I extract the price at index {int} from {string}"
- *     → CommonPage.getAmountPriceValue(index)
- *     → Supports: "results", "cart", "pricing options"
- *
- * Then Steps - Number Assertions:
- *   "the extracted price at index {int} should equal {float}"
- *   "the extracted price at index {int} should be greater than {float}"
- *   "the extracted price at index {int} should be greater than or equal to {float}"
- *   "the extracted price at index {int} should be less than {float}"
- *   "the extracted price at index {int} should be less than or equal to {float}"
- *   "the extracted price at index {int} should equal the extracted price at index {int}"
- *   "the extracted price at index {int} should equal the extracted price at index {int} within tolerance"
- *   "the sum of extracted prices at index {int} and {int} should equal {float}"
- *   "the sum of extracted prices at index {int} and {int} should equal the extracted price at index {int}"
- *   "the sum of extracted prices at index {int} {string} and {int} {string} should equal the extracted price at index {int} {string}"
- *   "the price at index {int} from {string} should equal the price at index {int} from {string}"
- *   "the sum of prices at index {int} from {string} and index {int} from {string} should equal the price at index {int} from {string}"
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");

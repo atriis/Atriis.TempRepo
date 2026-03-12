@@ -1,4 +1,4 @@
-# Test Name: HYBRID for 59611 Galileo hotels - we don't send multi level agreement in the room level in case "AvailableForOtherRates" and hotel chain is not from list
+﻿# Test Name: HYBRID for 59611 Galileo hotels - we don't send multi level agreement in the room level in case "AvailableForOtherRates" and hotel chain is not from list
 # Description: 
 # Status: Active
 # Labels: Regression,Hotel,No Amadeus Hotel Book,Galileo,Agreement,multi agreement,hybrid,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 59611 Galileo - Multi-level agreement not sent in room level for non-qu
 
   @priority:high
   Scenario: Multi-level agreement not sent for hotel chain outside configured list
-    Given I am logged in as "galileo" "user_one" booking a new trip
+    Given I am logged in as "beatriz" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "SFO" for 1 night
     # TODO: Create step "When I select a hotel that is NOT from the configured chain list" that calls DSL selectHotelNotFromChainList in HotelSearch.js

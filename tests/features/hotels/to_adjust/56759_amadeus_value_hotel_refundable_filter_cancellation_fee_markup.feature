@@ -1,4 +1,4 @@
-# Test Name: 56759 amadeus aggregators hotel - cancellation fee appears with markup
+﻿# Test Name: 56759 amadeus aggregators hotel - cancellation fee appears with markup
 # Description: 
 # Status: Active
 # Labels: Regression,Amadeus Value hotel,No Amadeus Hotel Book,cancellation policy,mark up,results,Cart,Hotel,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 56759 Amadeus Value Hotel - Refundable filter with cancellation fee and
 
   @priority:high
   Scenario: Refundable filter shows cancellation fee with markup applied
-    Given I am logged in as "amadeus_value_hotel" "user_one" booking a new trip
+    Given I am logged in as "joao" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, United Kingdom" for 1 night
     And I select the first hotel result

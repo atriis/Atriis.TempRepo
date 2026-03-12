@@ -125,6 +125,28 @@ const App = {
   },
 
   /**
+   * Logs in without specifying a provider — resolves user across all providers.
+   *
+   * @param {string} userKey - e.g. 'eli'
+   */
+  async loginAsUser(userKey) {
+    const { provider, userConfig } = config.resolveUser(userKey);
+    logger.info(`Resolved user "${userKey}" to provider "${provider}"`);
+    return App.login(provider, userKey);
+  },
+
+  /**
+   * Logs in without specifying a provider, then starts a new trip.
+   *
+   * @param {string} userKey - e.g. 'eli'
+   */
+  async loginAsUserAndBookANewTrip(userKey) {
+    const { provider, userConfig } = config.resolveUser(userKey);
+    logger.info(`Resolved user "${userKey}" to provider "${provider}"`);
+    return App.loginAndBookANewTrip(provider, userKey);
+  },
+
+  /**
    * Opens the "Book a New Trip" flow.
    * Tries to catch a new tab; if no new tab opens within 10s,
    * assumes the trip opened in the current tab and returns it.

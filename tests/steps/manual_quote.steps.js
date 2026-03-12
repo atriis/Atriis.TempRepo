@@ -1,24 +1,3 @@
-/**
- * Manual Quote Step Definitions
- *
- * Maps Gherkin steps to DSL methods for manual quote flows.
- *
- * ===== STEP CATALOG =====
- *
- * When Steps:
- *   "I search and add a flight manual quote"
- *     → ManualQuoteSearch.searchAndAddFlightManualQuote(page)
- *
- *   "I cancel the trip"
- *     → Cart.cancelTripStrict(page)
- *
- * Then Steps:
- *   "the trip should be successfully cancelled"
- *     → Validated by cancelTripStrict (includes assertions)
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");

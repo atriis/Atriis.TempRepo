@@ -1,21 +1,3 @@
-/**
- * Hotel Level Results Step Definitions
- *
- * Maps Gherkin steps to HotelLevelResults DSL methods.
- *
- * ===== STEP CATALOG =====
- *
- * Selection:
- *   "I select the first hotel result"
- *   "I select a hotel with member rates"
- *
- * Assertions:
- *   "I should see member rates displayed in hotel level results"
- *     → HotelLevelResults.verifyMemberRatesDisplayed(page)
- *
- * ========================
- */
-
 require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");

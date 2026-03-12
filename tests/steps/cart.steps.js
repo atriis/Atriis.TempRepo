@@ -1,84 +1,3 @@
-/**
- * Cart Step Definitions
- *
- * Maps Gherkin steps to Cart DSL methods for cart-related actions.
- * Cart DSL handles fare rules, terms & conditions, trip actions, price breakdowns, sharing, and OOP.
- *
- * ===== STEP CATALOG =====
- *
- * When Steps:
- *   "I click to open fare rules in cart"
- *     → Cart.clickToOpenFareRulesInCart(page)
- *   "I accept Terms & Conditions"
- *     → CartPage.acceptTermsAndConditions(page)
- *   "I proceed to checkout"
- *     → Cart.acceptTermsAndConditionsAndProceedToCheckout(page)
- *   "I hold the trip"
- *     → Cart.holdTrip(page)
- *   "I cancel the trip"
- *     → Cart.cancelTripStrict(page)
- *   "I attempt to cancel the trip safely"
- *     → Cart.cancelTripSafely(page)
- *   "I click to open price breakdown in cart"
- *     → Cart.clickToOpenPriceBreakdown(page)
- *   "I close price breakdown modal"
- *     → CartPage.clickXToClosePriceBreakdownModal(page)
- *   "I click the share quote button"
- *     → Cart.clickShareQuoteAndWaitForSubjectField(page)
- *   "I click the share itinerary button"
- *     → Cart.clickShareItineraryAndWaitForSubjectField(page)
- *   "I send the share"
- *     → Cart.sendQuoteAndWaitForSuccess(page)
- *   "I fill in the OOP justification text {string}"
- *     → Cart.fillInOOPJustificationTextAndSave(page, text)
- *   "I select OOP justification option {string}"
- *     → Cart.selectOOPJustificationDropdownOptionAndSave(page, option)
- *   "I click to edit extras"
- *     → CartPage.clickEditExtrasButton(page)
- *   "I click to edit extras at index {int}"
- *     → CartPage.clickEditExtrasButton(page, index)
- *   "I wait for the save button"
- *     → CartPage.waitForSaveButton(page)
- *   "I click the save button"
- *     → CartPage.clickSaveButton(page)
- *   "I click number of baggage"
- *     → CartPage.clickNumberOfBaggage(page)
- *   "I click dropdown option {string}"
- *     → CartPage.clickDropdownOption(page, option)
- *   "I click the extras arrow button"
- *     → CartPage.clickArrowButtonExtras(page)
- *   "I click add seats in extras"
- *     → CartPage.clickAddSeatsButton()
- *   "I wait for the seat map to load"
- *     → CartPage.waitForSeatMapToLoad()
- *   "I select the first available flight seat"
- *     → Cart.selectFirstAvailableFlightSeat(page)
- *   "I extract seat price in seat map drawer"
- *     → Cart.extractSeatPriceFromDrawer(page) → this.seatPrice
- *   "I save and close seat map drawer"
- *     → CartPage.saveAndCloseSeatMapDrawer()
- *
- * Then Steps:
- *   "I successfully cancel the trip"
- *     → Cart.cancelTripStrict(page) + expect(result.messageVisible).toBe(true)
- *   "the booking status should be {string}"
- *     → Cart.getBookingStatus({page}) + expect(actualStatus).toContain(...)
- *   "the payment type should be {string}"
- *     → Cart.verifyPaymentType(page, expectedType)
- *   "the out of policy indicator should be visible in cart"
- *     → Cart.isOutOfPolicyIndicatorVisibleInCart(page) + expect(isVisible).toBe(true)
- *   "the out of policy indicator should not be visible in cart"
- *     → Cart.isOutOfPolicyIndicatorHiddenInCart(page) + expect(isHidden).toBe(true)
- *   "the out of policy tooltip in cart should be {string}"
- *     → Cart.hoverAndGetOOPTooltipTextInCart(page) + expect(actualText).toBe(expectedText)
- *   "the baggage green icon should be visible"
- *     → CartPage.getBaggageGreenIcon() + expect(icon).toBeVisible({ timeout: 30000 })
- *   "the total price in cart is equal to total price in cart before seats + seats price"
- *     → extractPriceFromLocation(index 4, cart) vs this.extractedPrices[0] + this.seatPrice
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
@@ -113,12 +32,6 @@ When("I hold the trip", async function () {
   logger.info("Holding the trip");
   const result = await Cart.holdTrip(this.page);
   expect(result.status.toLowerCase()).toContain(tripStatus.label.onHold.status.toLowerCase());
-});
-
-When("I cancel the trip", async function () {
-  logger.info("Cancelling trip");
-  const result = await Cart.cancelTripStrict(this.page);
-  expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
 });
 
 When("I attempt to cancel the trip safely", async function () {

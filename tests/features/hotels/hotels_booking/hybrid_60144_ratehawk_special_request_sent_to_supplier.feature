@@ -1,4 +1,4 @@
-# Test Name: HYBRID for 60144 Ratehawk - Special request information is being sent
+﻿# Test Name: HYBRID for 60144 Ratehawk - Special request information is being sent
 # Description: 
 # Status: Active
 # Labels: Ratehawk Regression,Hotel,Full Purchase,hybrid,special request,progress page,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 60144 Ratehawk - Special request information is sent to supplier
 
   @priority:medium
   Scenario: Special request text is included in the booking request sent to Ratehawk
-    Given I am logged in as "ratehawk" "user_one" booking a new trip
+    Given I am logged in as "lidi" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result

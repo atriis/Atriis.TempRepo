@@ -1,4 +1,4 @@
-# Test Name: 57403 Premier Inn - Extras - Breakfast option is not displayed when disabled in administration
+﻿# Test Name: 57403 Premier Inn - Extras - Breakfast option is not displayed when disabled in administration
 # Description: 
 # Status: Active
 # Labels: Premier Inn Regression,Extras,Hotel,breakfast,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 57403 Premier Inn - Extras panel shows payment method but not breakfast
 
   @priority:medium
   Scenario: Premier Inn extras panel shows payment method visible but no breakfast option
-    Given I am logged in as "premierinn" "user_one" booking a new trip
+    Given I am logged in as "bruna_premier" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     And I select the first hotel result

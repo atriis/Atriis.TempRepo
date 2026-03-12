@@ -1,4 +1,4 @@
-# Test Name: 62899 Sabre - Hotel - Booking is successful for a passenger with last name that has a dash (-)
+﻿# Test Name: 62899 Sabre - Hotel - Booking is successful for a passenger with last name that has a dash (-)
 # Description: 
 # Status: Active
 # Labels: Sabre,Hotel,Regression,Full Purchase,name,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 62899 Sabre - Book hotel for traveler with dash in last name
 
   @priority:medium
   Scenario: Hotel booking succeeds for traveler with hyphenated last name
-    Given I am logged in as "sabre" "user_one" booking a new trip
+    Given I am logged in as "robsoncruz" booking a new trip
     And I have added traveler by name "Ana Antonoli-Carto"
     When I search for a hotel in "Denver" for 1 night
     And I select the first hotel result

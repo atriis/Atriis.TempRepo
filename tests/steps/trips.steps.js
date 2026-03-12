@@ -1,22 +1,3 @@
-/**
- * Trips Step Definitions
- *
- * Maps Gherkin steps to Trips DSL methods for trips page navigation.
- * Trips DSL handles navigating to and interacting with the Trips section.
- *
- * ===== STEP CATALOG =====
- *
- * When Steps:
- *   "I navigate to the trips page"
- *     → Trips.navigateToTripsPage(page)
- *
- * Then Steps:
- *   "the trips page should be loaded"
- *     → Verify page title is not empty
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");

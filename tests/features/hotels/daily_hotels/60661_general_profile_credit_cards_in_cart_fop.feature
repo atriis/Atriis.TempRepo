@@ -1,4 +1,4 @@
-# Test Name: 60661 Hotels - Credit card from user profile is displayed
+﻿# Test Name: 60661 Hotels - Credit card from user profile is displayed
 # Description: 
 # Status: Active
 # Labels: Hotel,general,Regression,FOP,credit card,Administration,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 60661 General - Credit cards from user profile are available in cart FO
 
   @priority:high
   Scenario: Two user profile credit cards are visible in cart FOP panel
-    Given I am logged in as "general" "hotel_fop" booking a new trip
+    Given I am logged in as "caleb" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result

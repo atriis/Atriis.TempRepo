@@ -45,6 +45,15 @@ function createUser(emailEnvVar) {
 function createProviderUsers(provider) {
   const normalizedProvider = provider.toUpperCase().replace(/-/g, '_');
   const users = {};
+
+  // Known provider prefixes — vars starting with these belong to specific providers
+  const KNOWN_PREFIXES = [
+    'AMADEUS', 'SABRE', 'GALILEO', 'RATEHAWK', 'EXPEDIA', 'BOOKINGCOM',
+    'EHOTEL', 'TRAVELODGE', 'PREMIERINN', 'AFKL', 'LUFTHANSA', 'BRITISH',
+    'UNITED', 'AMERICAN', 'IBERIA', 'SUNNY', 'FUSION', 'YPSILON',
+    'GALILEOACH', 'BENERAIL', 'EVOLVI', 'AMTRAK', 'GROUNDSCOPE',
+    'TRANSFERZ', 'UKPARKING', 'TRAVELPOLICY', 'GENERAL',
+  ];
   
   // Scan all env vars to find matches
   Object.keys(process.env).forEach(envKey => {
@@ -63,19 +72,16 @@ function createProviderUsers(provider) {
         .toLowerCase();
     }
     // Pattern 2: Cross-provider users (CHRIS_TREE_USER_EMAIL for sabre)
-    // These don't have provider prefix but should be included based on context
-    // For now, we'll add them to all providers that request them
     else if (envKey.endsWith('_EMAIL') || envKey.endsWith('_USER')) {
-      // Extract potential user key
-      const potentialKey = envKey
-        .replace(/_EMAIL$/, '')
-        .replace(/_USER$/, '')
-        .toLowerCase();
-      
-      // Only add cross-provider users if they're commonly known
-      // (This is a fallback - you can still add them explicitly if needed)
-      if (provider === 'sabre' && envKey.startsWith('CHRIS_TREE')) {
-        userKey = potentialKey;
+      const hasKnownPrefix = KNOWN_PREFIXES.some(p => envKey.startsWith(p + '_'));
+      if (!hasKnownPrefix) {
+        // Bare var like ELI_EMAIL — available under all providers
+        userKey = envKey
+          .replace(/_EMAIL$/, '')
+          .replace(/_USER$/, '')
+          .toLowerCase();
+      } else if (provider === 'sabre' && envKey.startsWith('CHRIS_TREE')) {
+        userKey = envKey.replace(/_EMAIL$/, '').replace(/_USER$/, '').toLowerCase();
       }
     }
     
@@ -85,6 +91,22 @@ function createProviderUsers(provider) {
     }
   });
   
+  return users;
+}
+
+/**
+ * Creates users from simple USER_<label>=email format.
+ * Example: USER_BRUNA=bruna@atriis.com → accessible as config.users.labels.bruna
+ * Usage in Gherkin: Given I am logged in as "bruna"
+ * No provider prefix needed — labels work across all test scenarios.
+ */
+function createLabelUsers() {
+  const users = {};
+  Object.keys(process.env).forEach(envKey => {
+    if (!envKey.startsWith('USER_')) return;
+    const label = envKey.replace(/^USER_/, '').toLowerCase();
+    if (label) users[label] = createUser(envKey);
+  });
   return users;
 }
 
@@ -129,6 +151,11 @@ const config = {
    * No need to update this file when adding new users - just add the env var.
    */
   users: {
+    /**
+     * Simple label users — defined as USER_<label>=email in .env.
+     * These are provider-agnostic and are the recommended approach for new users.
+     */
+    labels: createLabelUsers(),
     amadeus: createProviderUsers('amadeus'),
     amadeus_value_hotel: createProviderUsers('amadeus_value_hotel'),
     sabre: createProviderUsers('sabre'),
@@ -159,6 +186,26 @@ const config = {
     travelpolicy: createProviderUsers('travelpolicy'),
     general: createProviderUsers('general'),
   },
+};
+
+/**
+ * Finds a user across all providers by userKey.
+ * Returns { provider, userKey, userConfig } or throws if not found.
+ *
+ * @param {string} userKey - e.g. 'eli'
+ * @returns {{ provider: string, userKey: string, userConfig: object }}
+ */
+config.resolveUser = function (userKey) {
+  if (!userKey || typeof userKey !== 'string') {
+    throw new Error('userKey must be a non-empty string, got: ' + typeof userKey);
+  }
+  const key = userKey.toLowerCase();
+  for (const [provider, users] of Object.entries(config.users)) {
+    if (users && users[key]) {
+      return { provider, userKey: key, userConfig: users[key] };
+    }
+  }
+  throw new Error(`User not found in any provider: ${userKey}`);
 };
 
 module.exports = config;

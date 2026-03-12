@@ -1,4 +1,4 @@
-# Test Name: 27039 Premier Inn Atos Card
+﻿# Test Name: 27039 Premier Inn Atos Card
 # Description: 
 # Status: Active
 # Labels: Premier Inn Regression,Hotel,Cart,atos card,Daily Hotels,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 27039 Premier Inn Atos Card
 
   @priority:high
   Scenario: Premier Inn hotel booking shows "Paid by TMC" payment type
-    Given I am logged in as "premierinn" "user_two" booking a new trip
+    Given I am logged in as "premier" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Premier Inn London" for 1 night
     And I select the first hotel result

@@ -1,4 +1,4 @@
-# Test Name: 69671 Sabre - can book 4 travelers in 2 rooms
+﻿# Test Name: 69671 Sabre - can book 4 travelers in 2 rooms
 # Description: 
 # Status: Active
 # Labels: Sabre,Hotel,Regression,Full Purchase,multi pax,Giata,2026 plan 2
@@ -15,7 +15,7 @@ Feature: 69671 Sabre - Book hotel for 4 travelers in 2 rooms with price match
  # Note: this test is flaky (specially with Sabre) due to cancelation issues, need to check with Shani what's happening
   @priority:critical
   Scenario: 4 travelers booked in 2 Sabre hotel rooms with confirmed status
-    Given I am logged in as "sabre" "user_sabrin_orly" booking a new trip
+    Given I am logged in as "sabrin" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "Maria Fernanda"
     And I have added traveler by name "James Douglas"

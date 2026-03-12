@@ -1,4 +1,4 @@
-# Test Name: 40204 [Merge] Amadeus/Hotels - Hotel results are showing agreements property first and room level has the "Filter non agreement GDS hotels" applied correctly
+﻿# Test Name: 40204 [Merge] Amadeus/Hotels - Hotel results are showing agreements property first and room level has the "Filter non agreement GDS hotels" applied correctly
 # Description: 
 # Status: Active
 # Labels: Regression,No Amadeus Hotel Book,Agreement,Hotel,Results page hotel,Amadeus,merge,Filters,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 40204 Amadeus - Agreement hotels displayed and filterable
 
   @priority:high
   Scenario: Agreement hotels are displayed and agreement filter works in room level
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     When I filter results by "Agreement" checkbox

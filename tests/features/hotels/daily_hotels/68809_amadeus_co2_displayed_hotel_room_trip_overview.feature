@@ -1,4 +1,4 @@
-# Test Name: 68809 Amadeus - Co2 is display with value in room level, hotel level and trip overview
+﻿# Test Name: 68809 Amadeus - Co2 is display with value in room level, hotel level and trip overview
 # Description: 
 # Status: Active
 # Labels: Amadeus,Hotel,Regression,CO2,room level,hotel level,Cart,general,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 68809 Amadeus - CO2 emissions displayed in hotel level, room level, and
 
   @priority:high
   Scenario: CO2 data is visible throughout the Amadeus hotel booking flow
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Amsterdam" for 1 night
     Then the CO2 emissions should be displayed in hotel level results

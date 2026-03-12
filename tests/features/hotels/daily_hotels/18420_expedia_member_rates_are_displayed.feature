@@ -1,4 +1,4 @@
-# Test Name: 18420 Expedia Member Rates - Price with discount is lower than total price
+﻿# Test Name: 18420 Expedia Member Rates - Price with discount is lower than total price
 # Description: 
 # Status: Active
 # Labels: Expedia,Regression,Hotel,price,Check price,Daily Hotels,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 18420 Expedia - Member rates are displayed
 
   @priority:high
   Scenario: Member rates are visible in hotel and room level results
-    Given I am logged in as "expedia" "user_two" booking a new trip
+    Given I am logged in as "expedia" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Verona,Italy,(VRN)" for 1 night
     And I wait to see view rates text in results page

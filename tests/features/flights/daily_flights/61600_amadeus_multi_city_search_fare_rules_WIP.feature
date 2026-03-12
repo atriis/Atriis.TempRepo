@@ -1,4 +1,4 @@
-# TODO: Needs retesting — scenario is almost complete and ready, but Amadeus supplier was having issues with fare rules
+﻿# TODO: Needs retesting — scenario is almost complete and ready, but Amadeus supplier was having issues with fare rules
 #       during final validation so the full run could not be verified. Retest and finish when supplier is back up. Finish
 @daily_flights @provider:amadeus @regression
 Feature: 61600 Amadeus - Multi city search, fare rules displayed
@@ -8,7 +8,7 @@ Feature: 61600 Amadeus - Multi city search, fare rules displayed
 
   @priority:high
   Scenario: Multi-city search BRU-FRA-DFW-BRU with fare rules visible in results
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a multi-city flight with legs "BRU-FRA" and "FRA-DFW" and "DFW-BRU"
     And I click to open fare rules

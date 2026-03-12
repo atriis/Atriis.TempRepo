@@ -1,4 +1,4 @@
-# Test Name: 22522 Booking.com - Credit card can be added for guest traveler
+﻿# Test Name: 22522 Booking.com - Credit card can be added for guest traveler
 # Description: 
 # Status: Active
 # Labels: Booking.com,booking.com 3.1,Hotel,FOP,Regression,credit card,Cart,guest,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 22522 Booking.com - Add credit card for guest traveler
 
   @priority:high
   Scenario: Add credit card for guest traveler booking via Booking.com
-    Given I am logged in as "bookingcom" "user_two" booking a new trip
+    Given I am logged in as "alexandre" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "EZE" for 1 night
     And I select the first hotel result

@@ -1,4 +1,4 @@
-# Test Name: 41742 Amadeus - "Add to cart" button is clickable for "check cancellation policy" rooms
+﻿# Test Name: 41742 Amadeus - "Add to cart" button is clickable for "check cancellation policy" rooms
 # Description: 
 # Status: Active
 # Labels: Amadeus,Hotel,Regression,cancellation policy,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 41742 Amadeus - Add hotel room with "check cancellation policy" label
 
   @priority:high
   Scenario: Add a "check cancellation policy" room type to cart
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Ibis London Blackfriars" for 1 night
     And I select the first hotel result

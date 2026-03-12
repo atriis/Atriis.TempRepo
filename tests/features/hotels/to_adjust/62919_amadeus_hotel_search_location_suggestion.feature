@@ -1,4 +1,4 @@
-# Test Name: 62919 Hotels - 'Woking' location appears as a suggested location
+﻿# Test Name: 62919 Hotels - 'Woking' location appears as a suggested location
 # Description: 
 # Status: Active
 # Labels: Hotel,general,search,location,Regression,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 62919 Amadeus - Hotel search location suggestion appears for Woking
 
   @priority:low
   Scenario: Hotel search shows Woking as a location suggestion
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     # TODO: Create step "When I type {string} in the hotel search location field" that calls DSL typeHotelSearchLocation in HotelSearch.js
     # TODO: Create step "Then {string} should appear as a location suggestion in the dropdown" that calls DSL verifyLocationSuggestion in HotelSearch.js

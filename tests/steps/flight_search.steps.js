@@ -1,23 +1,3 @@
-/**
- * Flight Search Step Definitions
- *
- * Maps Gherkin steps to FlightSearch DSL methods.
- *
- * ===== STEP CATALOG =====
- *
- * Search:
- *   "I search for a one way flight from {string}"
- *   "I search for a one way flight from {string} to {string}"
- *   "I search for a round trip flight from {string} to {string}"
- *   "I search for a flight by schedule from {string} to {string}"
- *   "I search for a random one way flight"
- *   "I search for a random one way flight in {string}"
- *   "I search for a random round trip flight"
- *   "I search for a random round trip flight in {string}"
- *
- * ========================
- */
-
 require("module-alias/register");
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { FlightSearch } = require("../../src/dsl");

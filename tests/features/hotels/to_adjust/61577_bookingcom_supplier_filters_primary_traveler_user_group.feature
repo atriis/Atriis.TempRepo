@@ -1,4 +1,4 @@
-# Test Name: 61577 hotel content is taken from the user group of the primary traveler
+﻿# Test Name: 61577 hotel content is taken from the user group of the primary traveler
 # Description: 
 # Status: Active
 # Labels: Booking.com,Hotel,Regression,traveler,user group,multi pax,supplier,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 61577 Booking.com - Supplier filters reflect primary traveler user grou
 
   @priority:high
   Scenario: Supplier filters displayed are based on primary traveler's user group
-    Given I am logged in as "bookingcom" "user_one" booking a new trip
+    Given I am logged in as "cintia" booking a new trip
     And I have added myself as the traveler
     # TODO: Create step "When I add a second traveler as primary by name {string}" - needs DSL method addTravelerAsPrimary
     When I search for a hotel in "LON" for 1 night

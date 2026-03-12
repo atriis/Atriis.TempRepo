@@ -1,4 +1,4 @@
-# Test Name: 69863 hotel and flight parallel search - take the hotel dates from the selected flight
+﻿# Test Name: 69863 hotel and flight parallel search - take the hotel dates from the selected flight
 # Description: 
 # Status: Active
 # Labels: Regression,Parallel,Flights,Hotel,results,No Amadeus Hotel Book,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 69863 General - Hotel search dates pre-filled from flight search
 
   @priority:high
   Scenario: Hotel search dates are pre-populated from an existing flight search
-    Given I am logged in as "general" "shani_corp_nl" booking a new trip
+    Given I am logged in as "shani_nl" booking a new trip
     And I have added myself as the traveler
     # TODO: Create step "When I search for a flight from {string} to {string}" that calls DSL searchFlight in FlightSearch.js
     # TODO: Create step "When I fill in the NL reference fields" that calls DSL fillNLReferenceFields in Checkout.js

@@ -1,4 +1,4 @@
-# Test Name: 24004 Add and remove travelers
+﻿# Test Name: 24004 Add and remove travelers
 # Description: *add, remove and add again traveler (booker) - validate buttons: I'm the traveler and "add guest" - use primary
 # Status: Active
 # Labels: Regression,No Amadeus Hotel Book,never failed,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 24004 Amadeus - Add and remove traveler from trip
 
   @priority:medium
   Scenario: Add myself as traveler, remove, then add again
-    Given I am logged in as "amadeus" "user_one"
+    Given I am logged in as "ruimariano"
     When I book a new trip
     And I have added myself as the traveler
     Then I remove myself as the traveler

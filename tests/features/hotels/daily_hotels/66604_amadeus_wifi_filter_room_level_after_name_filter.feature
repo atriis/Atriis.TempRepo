@@ -1,4 +1,4 @@
-# Test Name: 66604 Amadeus - can see wi fi in room level
+﻿# Test Name: 66604 Amadeus - can see wi fi in room level
 # Description: 
 # Status: Active
 # Labels: Hotel,Amenities,results,room level,Regression,Amadeus,No Amadeus Hotel Book,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 66604 Amadeus - Wi-Fi amenity filter works in room level after hotel na
 
   @priority:medium
   Scenario: Wi-Fi filter in room level works after filtering hotels by name
-    Given I am logged in as "amadeus" "amy_gadasy" booking a new trip
+    Given I am logged in as "amy" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I click proceed button if visible

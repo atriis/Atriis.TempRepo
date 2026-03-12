@@ -1,4 +1,4 @@
-# Test Name: 63529 HCorpo content is not available
+﻿# Test Name: 63529 HCorpo content is not available
 # Description: 
 # Status: Active
 # Labels: hcorpo,No Amadeus Hotel Book,Regression,Cart,results,66444 hotel results,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 63529 General - hCorpo hotel logo visible and can be added to trip
 
   @priority:medium
   Scenario: hCorpo hotel logo is visible in room level and hotel can be added to cart
-    Given I am logged in as "amadeus" "hcorpo_hotel" booking a new trip
+    Given I am logged in as "hcorpo" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Fairmont Makkah, King Abdul Aziz - 38 Road, Makkah Saudi Arabia" for 1 night
     And I select the first hotel result

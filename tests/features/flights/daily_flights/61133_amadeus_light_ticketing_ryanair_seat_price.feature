@@ -1,4 +1,4 @@
-@daily_flights @provider:amadeus_light_ticketing
+﻿@daily_flights @provider:amadeus_light_ticketing
 Feature: 61133 Amadeus Light Ticketing - Ryanair - Total price in cart is correct after adding seat
   As a corporate traveler using Amadeus Light Ticketing
   I want to add a Ryanair flight and a seat to my trip
@@ -6,7 +6,7 @@ Feature: 61133 Amadeus Light Ticketing - Ryanair - Total price in cart is correc
 
   @priority:critical
   Scenario: Total cart price is the sum of flight price and seat price after adding a seat
-    Given I am logged in as "amadeus_light_ticketing" "user_one" booking a new trip
+    Given I am logged in as "lucas" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "STN" to "BUD"
     When I wait for add to trip text to be visible

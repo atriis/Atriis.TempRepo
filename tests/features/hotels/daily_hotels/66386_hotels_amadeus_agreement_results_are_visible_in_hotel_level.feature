@@ -1,4 +1,4 @@
-# Test Name: 66386 amadeus hotel agreemnst do not send correclty the hotel
+﻿# Test Name: 66386 amadeus hotel agreemnst do not send correclty the hotel
 # Description: 
 # Status: Active
 # Labels: Daily Hotels,Regression,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 66386 Hotels - Amadeus - Agreement results are visible in hotel level
 
   @priority:high
   Scenario: Agreement results are visible in hotel level
-    Given I am logged in as "amadeus" "pcw" booking a new trip
+    Given I am logged in as "pcw" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Cardiff Lane Dublin" for 1 night
     And I wait to see view rates text in results page

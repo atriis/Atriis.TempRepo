@@ -1,22 +1,3 @@
-/**
- * Car Search Step Definitions
- *
- * Maps Gherkin steps to CarSearch DSL methods.
- *
- * ===== STEP CATALOG =====
- *
- * Search:
- *   "I search for a car at {string}"
- *   "I search for a car at {string} with rental agency {string}"
- *   "I search for a car from {string} to {string}"
- *   "I select rental agency {string}"
- *
- * Edit:
- *   "I edit the car search from {string} to {string}"
- *
- * ========================
- */
-
 require("module-alias/register");
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { CarSearch } = require("../../src/dsl");

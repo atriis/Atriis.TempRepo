@@ -1,21 +1,3 @@
-/**
- * Checkout Step Definitions
- *
- * Maps Gherkin steps to Checkout DSL methods for booking finalization.
- * Checkout DSL handles completing the booking and navigating to trip overview.
- *
- * ===== STEP CATALOG =====
- *
- * When Steps:
- *   "I complete the booking"
- *     → Checkout.bookAndFinalize(page)
- *
- *   "I navigate to cart from checkout"
- *     → Checkout.navigateToCartFromCheckout(page)
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");

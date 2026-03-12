@@ -1,4 +1,4 @@
-# Test Name: 56841 Galileo - Hotel - Booking specific hotel
+﻿# Test Name: 56841 Galileo - Hotel - Booking specific hotel
 # Description: 
 # Status: Active
 # Labels: Galileo,Hotel,Regression,specific,Full Purchase,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 56841 Galileo - Hotel booking with financial reference field in checkou
 
   @priority:high
   Scenario: Galileo hotel booking completes with reference field filled in checkout
-    Given I am logged in as "galileo" "user_one" booking a new trip
+    Given I am logged in as "beatriz" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "The Ritz-Carlton Dubai" for 1 night
     And I select the first hotel result

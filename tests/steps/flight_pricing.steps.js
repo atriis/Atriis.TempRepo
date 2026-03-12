@@ -1,17 +1,3 @@
-/**
- * Flight Pricing Step Definitions
- *
- * Maps Gherkin steps to FlightPricing DSL methods.
- *
- * ===== STEP CATALOG =====
- *
- * Fare Selection:
- *   "I add the selected fare to cart"
- *   "I wait for \"Your Selection\" text to be visible"
- *
- * ========================
- */
-
 require("module-alias/register");
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { FlightPricing } = require("../../src/dsl");

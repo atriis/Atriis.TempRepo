@@ -1,4 +1,4 @@
-# Test Name: 23109 - Ehotel - book successfully and "provided by" appears in results and cart
+﻿# Test Name: 23109 - Ehotel - book successfully and "provided by" appears in results and cart
 # Description: book Ehotel
 # Status: Active
 # Labels: Hotel,No Amadeus Hotel Book,Full Purchase,retries,Keeps failing,Ehotel Regression,Daily Hotels,Pre Prod,Giata,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 23109 eHotel - Book hotel and verify provider label
 
   @priority:high
   Scenario: eHotel label is displayed and booking completes successfully
-    Given I am logged in as "ehotel" "user_one" booking a new trip
+    Given I am logged in as "luciana" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     # TODO: Create step "Then I should see a "Provided by" label in hotel level results" that calls DSL method verifyProvidedByLabel in HotelLevelResults.js

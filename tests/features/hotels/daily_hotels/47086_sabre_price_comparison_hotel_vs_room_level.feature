@@ -1,4 +1,4 @@
-# Test Name: 47086 Sabre - Hotel - The first value from the hotel level and the first value of the room level are the same (the lowest)
+﻿# Test Name: 47086 Sabre - Hotel - The first value from the hotel level and the first value of the room level are the same (the lowest)
 # Description: 
 # Status: Active
 # Labels: Regression,Sabre,Hotel,price,GDS,Daily Hotels,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 47086 Sabre - Price comparison between hotel level and room level
 
   @priority:high
   Scenario: Hotel level price matches room level price for Sabre results
-    Given I am logged in as "sabre" "user_one" booking a new trip
+    Given I am logged in as "robsoncruz" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Holiday Inn Oxford" for 1 night
     And I wait to see view rates text in results page

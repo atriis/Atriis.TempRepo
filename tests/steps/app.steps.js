@@ -1,9 +1,3 @@
-/**
- * App (Application) Step Definitions
- *
- * Only the core login/logout and booking steps are defined here.
- */
-
 require("module-alias/register");
 
 const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
@@ -14,6 +8,29 @@ const { expect } = require("@playwright/test");
 setDefaultTimeout(120000);
 
 // ===== GIVEN STEPS =====
+
+/**
+ * Login step without provider — resolves user across all providers automatically.
+ */
+Given("I am logged in as {string}", async function (user) {
+  logger.info("Logging in (no provider)", { user });
+  const session = await App.loginAsUser(user);
+  this.browser = session.browser;
+  this.context = session.context;
+  this.page = session.page;
+});
+
+/**
+ * Login + booking step without provider.
+ */
+Given("I am logged in as {string} booking a new trip", async function (user) {
+  logger.info("Logging in and booking (no provider)", { user });
+  const session = await App.loginAsUserAndBookANewTrip(user);
+  this.browser = session.browser;
+  this.context = session.context;
+  this.page = session.page;
+  logger.info("Setup complete");
+});
 
 /**
  * Parameterized login step (no booking).

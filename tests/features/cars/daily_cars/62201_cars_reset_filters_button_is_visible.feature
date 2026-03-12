@@ -1,4 +1,4 @@
-@daily_cars @provider:amadeus
+﻿@daily_cars @provider:amadeus
 Feature: 62201  Cars - "Reset Filters" button is visible
   As a corporate traveler using Galileo
   I want to search for cars
@@ -6,7 +6,7 @@ Feature: 62201  Cars - "Reset Filters" button is visible
 
   @priority:critical
   Scenario: "Resest Filters" button is visible in search results
-    Given I am logged in as "galileo" "user_one" booking a new trip
+    Given I am logged in as "beatriz" booking a new trip
     And I have added myself as the traveler
     When I search for a car in "dallasfort worth"
     When I wait for add to trip text to be visible

@@ -1,4 +1,4 @@
-# Test Name: 58331 Galileo - Hotel - Special request has a limit of 80 characters and booking is succeeded when special request has special characters
+﻿# Test Name: 58331 Galileo - Hotel - Special request has a limit of 80 characters and booking is succeeded when special request has special characters
 # Description: 
 # Status: Active
 # Labels: Regression,Galileo,Hotel,special request,Full Purchase,progress page,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 58331 Galileo - Special request 80 character limit validation
 
   @priority:medium
   Scenario: Special request field enforces 80 character limit on Galileo hotel booking
-    Given I am logged in as "galileo" "user_one" booking a new trip
+    Given I am logged in as "beatriz" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Ardoe House Hotel and Spa" for 1 night
     And I select the first hotel result

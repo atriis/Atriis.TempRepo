@@ -1,4 +1,4 @@
-# Test Name: 58343 Premier Inn - Booking fee corresponds to the one configured in administration
+﻿# Test Name: 58343 Premier Inn - Booking fee corresponds to the one configured in administration
 # Description: 
 # Status: Active
 # Labels: Premier Inn Regression,Hotel,booking fee,room level,hotel level,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 58343 Premier Inn - Booking fee consistent between hotel level and room
 
   @priority:medium
   Scenario: Booking fee shown in hotel level matches booking fee in room level
-    Given I am logged in as "premierinn" "user_one" booking a new trip
+    Given I am logged in as "bruna_premier" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     # TODO: Create step "When I extract the booking fee from hotel level results" that calls DSL extractBookingFeeHotelLevel in HotelSearch.js

@@ -1,4 +1,4 @@
-# Test Name: 65013 Galileo - Hotel - Price breakdown matches the room level result price
+﻿# Test Name: 65013 Galileo - Hotel - Price breakdown matches the room level result price
 # Description: 
 # Status: Active
 # Labels: Galileo,Hotel,Regression,price,price breakdown,room level,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 65013 Galileo - Price breakdown total matches displayed room price
 
   @priority:high
   Scenario: Total in price breakdown matches displayed room price in Galileo results
-    Given I am logged in as "galileo" "user_one" booking a new trip
+    Given I am logged in as "beatriz" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result

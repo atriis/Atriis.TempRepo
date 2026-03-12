@@ -1,4 +1,4 @@
-# Test Name: 47191 Hotel - 'Paid by traveller' is displayed in cart
+﻿# Test Name: 47191 Hotel - 'Paid by traveller' is displayed in cart
 # Description: 
 # Status: Active
 # Labels: Regression,Hotel,paid by,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 47191 General - Hotel paid by Traveler
 
   @priority:high
   Scenario: Hotel booking shows "Paid by Traveler" payment type
-    Given I am logged in as "general" "hotel_paid_by_traveler" booking a new trip
+    Given I am logged in as "felipe" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     And I select the first hotel result

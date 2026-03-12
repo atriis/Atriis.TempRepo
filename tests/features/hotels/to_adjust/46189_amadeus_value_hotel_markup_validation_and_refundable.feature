@@ -1,4 +1,4 @@
-# Test Name: 46189 [Merge] Amadeus Value Hotels - "Loyalty number" section is not displayed and booking with no markup from supplier and markup from administration, markup up displayed in room list
+﻿# Test Name: 46189 [Merge] Amadeus Value Hotels - "Loyalty number" section is not displayed and booking with no markup from supplier and markup from administration, markup up displayed in room list
 # Description: 
 # Status: Active
 # Labels: Amadeus Value hotel,Regression,Hotel,Clube Viajar,merge,Extras,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 46189 Amadeus Value Hotel - Markup validation in room list and refundab
 
   @priority:critical
   Scenario: Markup is displayed in room list and refundable room can be booked
-    Given I am logged in as "amadeus_value_hotel" "user_one" booking a new trip
+    Given I am logged in as "joao" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result

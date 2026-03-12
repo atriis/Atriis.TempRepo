@@ -1,4 +1,4 @@
-# Test Name: 20182 Book hotel without sets payment in user settings
+﻿# Test Name: 20182 Book hotel without sets payment in user settings
 # Description: 
 # Status: Active
 # Labels: CR7,Regression,No Amadeus Hotel Book,progress page,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 20182 General - Book hotel with no FOP and add credit card in cart
 
   @priority:critical
   Scenario: Book hotel, add credit card in cart, confirm and cancel
-    Given I am logged in as "general" "hotel_no_fop" booking a new trip
+    Given I am logged in as "rebeca" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result

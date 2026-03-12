@@ -1,4 +1,4 @@
-# Test Name: 61097 Galileo hotel - book for 2 travelers and 2 nights
+﻿# Test Name: 61097 Galileo hotel - book for 2 travelers and 2 nights
 # Description: 
 # Status: Active
 # Labels: Regression,Hotel,Galileo,Full Purchase,more than 1 night,No Amadeus Hotel Book,multi pax,Daily Hotels,progress page,66444 hotel results,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 61097 Galileo - Book hotel for 2 travelers, 2 nights with price verific
 
   @priority:critical
   Scenario: 2 travelers booked for 2 nights in Galileo hotel with price match verified
-    Given I am logged in as "galileo" "user_one" booking a new trip
+    Given I am logged in as "beatriz" booking a new trip
     And I have added myself as the traveler
     # TODO: Create step "When I add a second traveler by name {string}" - needs DSL method addSecondTraveler
     When I search for a hotel in "Birmingham" for 2 nights

@@ -1,4 +1,4 @@
-# Test Name: 35785 MERGED: Hotel - Filters are displayed on availability page (room level)
+﻿# Test Name: 35785 MERGED: Hotel - Filters are displayed on availability page (room level)
 # Description: 
 # Status: Active
 # Labels: No Amadeus Hotel Book,Regression,Filters,Hotel,merge,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 35785 MERGED: Hotel - Filters are displayed on availability page (room 
 
   @priority:high
   Scenario: Filters are displayed on availability page (room level)
-    Given I am logged in as "amadeus" "helena_tereza" booking a new trip
+    Given I am logged in as "helenatereza" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "New York City" for 1 night
     And I wait to see view rates text in results page

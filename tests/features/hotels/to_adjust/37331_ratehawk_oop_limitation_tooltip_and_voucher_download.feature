@@ -1,4 +1,4 @@
-# Test Name: 37331 [Merge] Ratehawk - OOP hotel limitation works as expected and voucher is displayed only after booking
+﻿# Test Name: 37331 [Merge] Ratehawk - OOP hotel limitation works as expected and voucher is displayed only after booking
 # Description: 
 # Status: Active
 # Labels: Ratehawk Regression,Hotel,Full Purchase,hotel limitations,Travel policy,merge,progress page,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 37331 Ratehawk - OOP limitation tooltip and voucher download
 
   @priority:high
   Scenario: OOP limitation tooltip is displayed and voucher can be downloaded after booking
-    Given I am logged in as "ratehawk" "user_one" booking a new trip
+    Given I am logged in as "lidi" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "123 Champs-Élysées" for 1 night
     And I select the first hotel result

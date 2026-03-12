@@ -1,17 +1,3 @@
-/**
- * UK Parking Step Definitions
- *
- * Maps Gherkin steps to DSL methods for UK airport parking flows.
- *
- * ===== STEP CATALOG =====
- *
- * When Steps:
- *   "I search for UK parking at {string}"
- *     → UKParkingSearch.searchUKParking(page, airport)
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");

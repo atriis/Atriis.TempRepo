@@ -1,4 +1,4 @@
-@daily_flights @provider:amadeus
+﻿@daily_flights @provider:amadeus
 Feature: 53410 Amadeus - Flight - Search by schedule - Multipax - "My Selection" has the correct price in pricing page and cart
   As a corporate traveler
   I want to add flights to my cart
@@ -6,7 +6,7 @@ Feature: 53410 Amadeus - Flight - Search by schedule - Multipax - "My Selection"
 
   @priority:critical
   Scenario: Add flight by schedule to cart
-    Given I am logged in as "amadeus" "rui_mendes" booking a new trip
+    Given I am logged in as "ruimendes" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "Rui Marista"
     When I search for a flight by schedule from "LIS" to "MAD"

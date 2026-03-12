@@ -1,4 +1,4 @@
-# Test Name: 37287 Hotel - System should not show an option to pay with other credit card in case user doesn't have privileges; if there's billback checkbox must be checked by default
+﻿# Test Name: 37287 Hotel - System should not show an option to pay with other credit card in case user doesn't have privileges; if there's billback checkbox must be checked by default
 # Description: 
 # Status: Active
 # Labels: CR7,No Amadeus Hotel Book,Hotel,Billback,Regression,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 37287 Hotel - System should not show an option to pay with other credit
 
   @priority:high
   Scenario: System should not show an option to pay with other credit card in case user doesn't have privileges; if there's billback checkbox must be checked by default
-    Given I am logged in as "general" "user_lilyaldrin" booking a new trip
+    Given I am logged in as "lily" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Lon" for 1 night
     And I select the first hotel result

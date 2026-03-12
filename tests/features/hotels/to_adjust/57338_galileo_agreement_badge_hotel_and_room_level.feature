@@ -1,4 +1,4 @@
-# Test Name: 57338 Galileo - Hotel - "Filter non agreement GDS hotels" works as expected
+﻿# Test Name: 57338 Galileo - Hotel - "Filter non agreement GDS hotels" works as expected
 # Description: 
 # Status: Active
 # Labels: Galileo,Hotel,Regression,Agreement,GDS,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 57338 Galileo - Agreement badge visible in hotel and room level
 
   @priority:high
   Scenario: Agreement badge is visible in hotel level and room level for Galileo
-    Given I am logged in as "galileo" "user_one" booking a new trip
+    Given I am logged in as "beatriz" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     # TODO: Create step "Then the agreement badge should be visible at hotel level" that calls DSL verifyAgreementBadgeHotelLevel in HotelSearch.js

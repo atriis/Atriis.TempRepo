@@ -1,4 +1,4 @@
-# Test Name: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
+﻿# Test Name: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
 # Description: book for Sabre E2E
 # Status: Active
 # Labels: Hotel,Sabre,GDS,No Amadeus Hotel Book,Full Purchase,share quote,merge,Club,price offer,Results page hotel,Regression,Pre Prod,Daily Hotels,progress page,Giata,2026 plan 1
@@ -14,7 +14,7 @@ Feature: 19201 Sabre - Share hotel price offer and delete quote after booking
 
   @priority:high
   Scenario: Share hotel price offer from results, book and delete quote
-    Given I am logged in as "sabre" "user_one" booking a new trip
+    Given I am logged in as "robsoncruz" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Denver" for 1 night
     # TODO: Create step "When I share the hotel price offer by email" that calls DSL method shareHotelPriceOfferFromResults in HotelSearch.js

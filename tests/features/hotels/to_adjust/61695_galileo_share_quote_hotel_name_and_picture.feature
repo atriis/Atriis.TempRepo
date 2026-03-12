@@ -1,4 +1,4 @@
-# Test Name: 61695 Galileo - Hotel - Hotel name and picture are displayed in share quote email
+﻿# Test Name: 61695 Galileo - Hotel - Hotel name and picture are displayed in share quote email
 # Description: 
 # Status: Active
 # Labels: Galileo,Hotel,share quote,price offer,Regression,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 61695 Galileo - Share quote email contains hotel name and picture
 
   @priority:medium
   Scenario: Share quote email includes hotel name and picture
-    Given I am logged in as "galileo" "user_one" booking a new trip
+    Given I am logged in as "beatriz" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Ardoe House Hotel and Spa" for 1 night
     And I select the first hotel result

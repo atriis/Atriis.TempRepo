@@ -1,4 +1,4 @@
-# Test Name: 63822 Ehotel - book for 2 travelers and 2 nights
+﻿# Test Name: 63822 Ehotel - book for 2 travelers and 2 nights
 # Description: 
 # Status: Active
 # Labels: Hotel,Full Purchase,more than 1 night,multi pax,No Amadeus Hotel Book,Ehotel Regression,progress page,66444 hotel results,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 63822 eHotel - Book hotel for 2 travelers 2 nights with CVV and price m
 
   @priority:critical
   Scenario: 2 travelers booked for 2 nights in eHotel with CVV and price match verified
-    Given I am logged in as "ehotel" "user_one" booking a new trip
+    Given I am logged in as "luciana" booking a new trip
     And I have added myself as the traveler
     # TODO: Create step "When I add a second traveler by name {string}" - needs DSL method addSecondTraveler
     When I search for a hotel in "Amsterdam" for 2 nights

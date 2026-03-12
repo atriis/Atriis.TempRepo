@@ -1,4 +1,4 @@
-# Test Name: 73601 Meal plan type is translated to German in itinerary email
+﻿# Test Name: 73601 Meal plan type is translated to German in itinerary email
 # Description: 
 # Status: Active
 # Labels: Share Itinerary,Language,Cart,Hotel,breakfast,Regression,Email
@@ -14,7 +14,7 @@ Feature: 73601 General - Meal plan translated to German in share itinerary
 
   @priority:medium
   Scenario: Meal plan is translated to German in the shared hotel itinerary
-    Given I am logged in as "general" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result

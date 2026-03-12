@@ -1,4 +1,4 @@
-# Test Name: 65381 NL Gov - Amadeus - Not displaying received agreement results
+﻿# Test Name: 65381 NL Gov - Amadeus - Not displaying received agreement results
 # Description: 
 # Status: Active
 # Labels: Daily Shell,Regression,Amadeus,Hotel,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 65381 Amadeus - Agreement filter shows NL government hotels
 
   @priority:high
   Scenario: Agreement filter displays correct NL government contracted hotels
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "BRU" for 1 night
     When I filter results by "Agreement" checkbox

@@ -1,4 +1,4 @@
-# Test Name: 59183 Amadeus - Hotel - Room level results are displayed when agreement is configured with "Separate from other agreement" checked
+﻿# Test Name: 59183 Amadeus - Hotel - Room level results are displayed when agreement is configured with "Separate from other agreement" checked
 # Description: 
 # Status: Active
 # Labels: Regression,Hotel,Amadeus,room level,2026 plan 2
@@ -14,7 +14,7 @@ Feature: 59183 Amadeus - Agreement filter shows separate room level results
 
   @priority:medium
   Scenario: Agreement filter in hotel results shows room level results correctly
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     When I filter results by "Agreement" checkbox

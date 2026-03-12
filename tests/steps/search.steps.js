@@ -1,28 +1,3 @@
-/**
- * Search Step Definitions
- *
- * Maps Gherkin steps to Search DSL methods for traveler management.
- * Search DSL handles adding travelers and managing traveler data.
- *
- * ===== STEP CATALOG =====
- *
- * Given Steps:
- *   "I have added myself as the traveler"
- *     → Search.addMeAsTraveler(page)
- *
- *   "I have added traveler by name {string}"
- *     → Search.addTravelerByName(page, travelerName)
- *
- *   "I have added a random guest traveler"
- *     → Search.addRandomGuest(page)
- *
- * Then Steps:
- *   "the search title should contain {string}"
- *     → Search.validateSearchTitleContains(page, text)
- *
- * ========================
- */
-
 require("module-alias/register");
 
 const { Given, Then, setDefaultTimeout } = require("@cucumber/cucumber");
