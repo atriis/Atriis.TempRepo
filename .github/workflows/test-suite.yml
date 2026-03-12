@@ -141,6 +141,7 @@ jobs:
           RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
+          USER_RUIMENDES: ${{ secrets.USER_RUIMENDES }}
           USER_AMADEUS_GDS: ${{ secrets.USER_AMADEUS_GDS }}
           USER_BEATRIZ: ${{ secrets.USER_BEATRIZ }}
           USER_ROBSONCRUZ: ${{ secrets.USER_ROBSONCRUZ }}
