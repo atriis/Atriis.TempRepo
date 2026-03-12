@@ -14,7 +14,7 @@ Feature: 58343 Premier Inn - Booking fee corresponds to the one configured in ad
 
   @priority:medium
   Scenario: Booking fee shown in hotel level matches booking fee in room level
-    Given I am logged in as "bruna_premier" booking a new trip
+    Given I am logged in as "magalimonica" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     And I wait to see view rates text in results page

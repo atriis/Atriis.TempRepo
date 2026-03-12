@@ -273,6 +273,7 @@ jobs:
           USER_LILY: ${{ secrets.USER_LILY }}
           USER_CALEB: ${{ secrets.USER_CALEB }}
           USER_TEL: ${{ secrets.USER_TEL }}
+          USER_MAGALIMONICA: ${{ secrets.USER_MAGALIMONICA }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Hotels Results

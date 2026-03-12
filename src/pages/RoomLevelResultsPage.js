@@ -7,6 +7,7 @@ const SELECTORS = {
   VIEW_HOTEL_ON_MAP_BUTTON: "button.map-btn.is-paddingless",
   MAP_MODAL: ".map-modal .google-map-loader, .map-modal .el-dialog__body .google-map-loader",
   FIRST_ROOM_PRICE_AMOUNT: ".room-list > :nth-child(2) .price-details-main .amount",
+  SECOND_ROOM_PRICE_AMOUNT: ".room-list > :nth-child(3) .price-details-main .amount",
   REFUNDABLE_CHECKBOX_LABEL: "label.el-checkbox",
   REFUNDABLE_CHECKBOX_INNER: ".el-checkbox__inner",
   REFUNDABLE_CHECKBOX_INPUT: "input.el-checkbox__original",
@@ -38,6 +39,7 @@ const SELECTORS = {
   TOOLTIP_POPPER: '[role="tooltip"], .el-tooltip__popper, .el-popper',
   TERMS_AND_CONDITIONS_BUTTON: ".room-list button:has-text('Terms & Conditions')",
   TERMS_AND_CONDITIONS_DIALOG: ".terms-conditions-dialog",
+  ALL_ROOM_PRICE_AMOUNTS: ".room-list > div .price-details-main .amount",
 };
 
 class RoomLevelResultsPage {
@@ -231,7 +233,41 @@ class RoomLevelResultsPage {
       throw new Error(`Could not parse room-level price from text: "${priceText}"`);
     }
 
-    return parsedPrice;
+    return Math.round(parsedPrice);
+  }
+
+  /**
+   * Gets the second displayed room-level price (the room option that includes the booking fee).
+   * @returns {Promise<number>} Second room price as a number
+   */
+  async getSecondRoomLevelPrice() {
+    const price = this.page.locator(SELECTORS.SECOND_ROOM_PRICE_AMOUNT).first();
+    await price.waitFor({ state: 'visible', timeout: 30000 });
+
+    const priceText = (await price.textContent())?.trim() ?? '';
+    const parsedPrice = parseFloat(priceText.replace(/[^0-9.]/g, ''));
+
+    if (Number.isNaN(parsedPrice)) {
+      throw new Error(`Could not parse second room-level price from text: "${priceText}"`);
+    }
+
+    return Math.round(parsedPrice);
+  }
+
+  /**
+   * Gets all room-level prices from the room list for debugging.
+   * @returns {Promise<number[]>} All room prices as rounded numbers
+   */
+  async getAllRoomLevelPrices() {
+    const roomPrices = this.page.locator(SELECTORS.ALL_ROOM_PRICE_AMOUNTS);
+    const count = await roomPrices.count();
+    const prices = [];
+    for (let i = 0; i < count; i++) {
+      const text = (await roomPrices.nth(i).textContent())?.trim() ?? '';
+      const parsed = parseFloat(text.replace(/[^0-9.]/g, ''));
+      prices.push({ index: i, text, price: Math.round(parsed) });
+    }
+    return prices;
   }
 
   async isCO2LabelVisible({ timeout = 10000 } = {}) {

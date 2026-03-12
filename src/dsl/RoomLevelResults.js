@@ -74,8 +74,9 @@ const RoomLevelResults = {
   },
 
   /**
-   * Extracts the booking fee displayed at room level (first room card).
-   * The booking fee in Premier Inn is reflected in the total price shown at room level.
+   * Extracts the booking fee displayed at room level (second room card).
+   * Premier Inn shows the booking fee on the second room option; the difference
+   * between the second room price and the hotel-level price should be ~10 GBP.
    * @param {import('playwright').Page} page
    * @returns {Promise<number>} The booking fee as a number
    */
@@ -84,7 +85,7 @@ const RoomLevelResults = {
 
     const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
     await roomLevelResultsPage.waitForViewHotelOnMapText();
-    return roomLevelResultsPage.getFirstRoomLevelPrice();
+    return roomLevelResultsPage.getSecondRoomLevelPrice();
   },
 
   /**
@@ -103,16 +104,21 @@ const RoomLevelResults = {
       throw new Error(`roomFee must be a number, got: ${typeof roomFee}`);
     }
 
-    const difference = Math.abs(hotelFee - roomFee);
-    const tolerance = 0.01;
+    // Premier Inn booking fee (10 GBP): the second room at room level includes the booking fee,
+    // so secondRoomPrice - hotelFee should equal exactly 10, with tolerance of 1 GBP for rounding.
+    const EXPECTED_BOOKING_FEE = 10;
+    const tolerance = 1;
+    const actualDifference = Math.abs(Math.round(hotelFee) - Math.round(roomFee));
+    const deviation = Math.abs(actualDifference - EXPECTED_BOOKING_FEE);
 
-    if (difference > tolerance) {
+    if (deviation > tolerance) {
       throw new Error(
-        `Booking fee mismatch: hotel level shows ${hotelFee}, room level shows ${roomFee} (difference: ${difference}, tolerance: ${tolerance})`
+        `Booking fee mismatch: expected absolute difference between hotel and second room price to be ~${EXPECTED_BOOKING_FEE} GBP, ` +
+        `but hotel=${Math.round(hotelFee)}, room=${Math.round(roomFee)} (difference: ${actualDifference}, deviation from expected: ${deviation})`
       );
     }
 
-    return { hotelFee, roomFee, difference };
+    return { hotelFee, roomFee, actualDifference };
   },
 
   async compareHotelAndRoomLevelPrices(page, hotelLevelPrice, roomLevelPrice) {
