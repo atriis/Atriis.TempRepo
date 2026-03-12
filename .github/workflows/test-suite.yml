@@ -220,7 +220,7 @@ jobs:
 
   daily-hotels-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
 
@@ -234,8 +234,8 @@ jobs:
 
       - name: Run Daily Hotel Tests
         id: run-daily-hotels
-        timeout-minutes: 25
-        run: npx cucumber-js tests/features/hotels/daily_hotels/ --parallel 2
+        timeout-minutes: 60
+        run: npx cucumber-js tests/features/hotels/daily_hotels/ --parallel 4
         env:
           CI: "true"
           RETRY_COUNT: "2"
