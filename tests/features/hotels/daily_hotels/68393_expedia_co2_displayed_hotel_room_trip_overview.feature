@@ -17,7 +17,6 @@ Feature: 68393 Expedia - CO2 emissions displayed in hotel level, room level, and
     Given I am logged in as "bruna_co2" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
-    And I click proceed button if visible
     Then the CO2 emissions should be displayed in hotel level results
     And I select the first hotel result
     Then the CO2 emissions should be displayed in room level results

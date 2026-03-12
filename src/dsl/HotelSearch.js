@@ -1,6 +1,7 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const HotelSearchPage = require("@pages/HotelSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
+const { CommonPage } = require("@pages/CommonPage");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveLocation } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
@@ -109,6 +110,15 @@ const HotelSearch = {
     });
 
     await searchPage.waitAndClickSearchButton();
+
+    // Handle the "Proceed" confirmation modal that may appear before navigation
+    // completes (e.g. conflicting trip items). Race it against the URL change so
+    // tests without the modal are not delayed.
+    const commonPage = getPageObject(page, CommonPage);
+    await Promise.race([
+      page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 }),
+      commonPage.clickProceedButtonIfVisible(5000),
+    ]);
     await page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
     await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
 
