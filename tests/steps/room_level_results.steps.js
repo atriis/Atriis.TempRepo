@@ -68,6 +68,23 @@ When("I extract the price from room level results", async function () {
   logger.info("Stored room level price", { roomLevelPrice: this.roomLevelPrice });
 });
 
+When("I extract the booking fee from the first room result", async function () {
+  logger.info("Extracting booking fee from first room result");
+  this.roomBookingFee = await RoomLevelResults.extractBookingFeeRoomLevel(this.page);
+  logger.info("Stored room booking fee", { roomBookingFee: this.roomBookingFee });
+});
+
+Then("the booking fee from hotel level should match the booking fee from room level", async function () {
+  if (this.hotelBookingFee === undefined) {
+    throw new Error("No hotel booking fee stored. Run 'I extract the booking fee from the first hotel result' before this step.");
+  }
+  if (this.roomBookingFee === undefined) {
+    throw new Error("No room booking fee stored. Run 'I extract the booking fee from the first room result' before this step.");
+  }
+  logger.info("Comparing booking fees", { hotelBookingFee: this.hotelBookingFee, roomBookingFee: this.roomBookingFee });
+  await RoomLevelResults.compareBookingFees(this.page, this.hotelBookingFee, this.roomBookingFee);
+});
+
 // ========================================
 // THEN STEPS - ASSERTIONS
 // ========================================

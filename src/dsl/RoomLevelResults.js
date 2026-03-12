@@ -73,6 +73,48 @@ const RoomLevelResults = {
     return roomLevelResultsPage.getFirstRoomLevelPrice();
   },
 
+  /**
+   * Extracts the booking fee displayed at room level (first room card).
+   * The booking fee in Premier Inn is reflected in the total price shown at room level.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>} The booking fee as a number
+   */
+  async extractBookingFeeRoomLevel(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    await roomLevelResultsPage.waitForViewHotelOnMapText();
+    return roomLevelResultsPage.getFirstRoomLevelPrice();
+  },
+
+  /**
+   * Compares booking fees from hotel level and room level within a tolerance.
+   * @param {import('playwright').Page} page
+   * @param {number} hotelFee - Booking fee extracted at hotel level
+   * @param {number} roomFee - Booking fee extracted at room level
+   * @throws {Error} If fees differ beyond tolerance
+   */
+  async compareBookingFees(page, hotelFee, roomFee) {
+    if (!page) throw new Error('page parameter is required');
+    if (typeof hotelFee !== 'number' || Number.isNaN(hotelFee)) {
+      throw new Error(`hotelFee must be a number, got: ${typeof hotelFee}`);
+    }
+    if (typeof roomFee !== 'number' || Number.isNaN(roomFee)) {
+      throw new Error(`roomFee must be a number, got: ${typeof roomFee}`);
+    }
+
+    const difference = Math.abs(hotelFee - roomFee);
+    const tolerance = 0.01;
+
+    if (difference > tolerance) {
+      throw new Error(
+        `Booking fee mismatch: hotel level shows ${hotelFee}, room level shows ${roomFee} (difference: ${difference}, tolerance: ${tolerance})`
+      );
+    }
+
+    return { hotelFee, roomFee, difference };
+  },
+
   async compareHotelAndRoomLevelPrices(page, hotelLevelPrice, roomLevelPrice) {
     if (!page) throw new Error('page parameter is required');
     if (typeof hotelLevelPrice !== 'number' || Number.isNaN(hotelLevelPrice)) {
