@@ -78,9 +78,11 @@ class ResultsPage {
     await this.getAddToTripButton().waitFor({ state: "visible", timeout: 60000 });
   }
 
-  /** Scrolls to the first "Add to trip" button */
+  /** Scrolls to the first "Add to trip" button, waiting for it to appear first */
   async scrollToFirstAddToTripButton() {
-    await this.getAddToTripButton().scrollIntoViewIfNeeded();
+    const button = this.getAddToTripButton();
+    await button.waitFor({ state: "visible", timeout: 60000 });
+    await button.scrollIntoViewIfNeeded();
   }
 
   /** Clicks the first available "Add to trip" button */
