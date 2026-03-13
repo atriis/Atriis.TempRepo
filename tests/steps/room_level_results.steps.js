@@ -79,6 +79,21 @@ When("I check terms and conditions in room level", async function () {
   this.termsDialogVisible = await RoomLevelResults.checkTermsAndConditions(this.page);
 });
 
+When("I filter room results by refundable", async function () {
+  logger.info("Filtering room results by refundable");
+  await RoomLevelResults.filterRoomsByRefundable(this.page);
+});
+
+When("I verify the room price appears in the terms and conditions", async function () {
+  if (this.roomLevelPrice === undefined) {
+    throw new Error(
+      "No room level price stored. Run 'When I extract the price from room level results' before this step."
+    );
+  }
+  logger.info("Verifying room price appears in terms and conditions", { price: this.roomLevelPrice });
+  await RoomLevelResults.verifyPriceInTermsAndConditions(this.page, this.roomLevelPrice);
+});
+
 Then("terms and conditions are displayed", async function () {
   if (this.termsDialogVisible === undefined) {
     throw new Error("Terms dialog state not recorded. Run 'When I check terms and conditions in room level' before this step.");

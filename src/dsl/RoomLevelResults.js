@@ -335,6 +335,41 @@ const RoomLevelResults = {
     const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
     return await roomLevelResultsPage.clickTermsAndConditionsButton();
   },
+
+  /**
+   * Enables the "Refundable" filter in room level results.
+   * @param {import('playwright').Page} page
+   */
+  async filterRoomsByRefundable(page) {
+    if (!page) throw new Error('page parameter is required');
+    const p = getPageObject(page, RoomLevelResultsPage);
+    await p.clickRefundableCheckbox();
+    await p.verifyRefundableTagIsVisible();
+  },
+
+  /**
+   * Opens the Terms & Conditions dialog on the first room card and verifies
+   * that the stored price (from room level results) appears in the dialog text.
+   * This confirms the cancellation fee is shown with markup applied.
+   * @param {import('playwright').Page} page
+   * @param {number} price - The price extracted from room level results
+   */
+  async verifyPriceInTermsAndConditions(page, price) {
+    if (!page) throw new Error('page parameter is required');
+    if (typeof price !== 'number' || Number.isNaN(price)) {
+      throw new Error(`price must be a number, got: ${typeof price}`);
+    }
+
+    const p = getPageObject(page, RoomLevelResultsPage);
+    const dialogText = await p.getTermsAndConditionsText();
+
+    const priceRegex = new RegExp(String(price));
+    if (!priceRegex.test(dialogText)) {
+      throw new Error(
+        `Expected Terms & Conditions dialog to contain price "${price}", but got text: "${dialogText.slice(-200)}"`
+      );
+    }
+  },
 };
 
 module.exports = RoomLevelResults;

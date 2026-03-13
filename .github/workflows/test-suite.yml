@@ -275,6 +275,7 @@ jobs:
           USER_TEL: ${{ secrets.USER_TEL }}
           USER_VERED: ${{ secrets.USER_VERED }}
           USER_MAGALIMONICA: ${{ secrets.USER_MAGALIMONICA }}
+          USER_REBECCACARDINAL: ${{ secrets.USER_REBECCACARDINAL }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Hotels Results

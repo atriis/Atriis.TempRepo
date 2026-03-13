@@ -123,3 +123,76 @@ Then("payment restrictions are displayed for {string} option", async function (o
   logger.info("Verifying payment restrictions are displayed", { optionText });
   await CartPayment.verifyPaymentRestrictions(this.page, optionText);
 });
+
+// ===== Missing card info flow (feature 64405) =====
+
+Then("the default card should have a complete missing info button", async function () {
+  logger.info("Verifying default card has complete missing info button");
+  await CartPayment.verifyCompleteMissingInfoButtonVisible(this.page);
+});
+
+Then("the cart should show the in order to proceed warning", async function () {
+  logger.info("Verifying 'In order to proceed' warning is visible");
+  await CartPayment.verifyInOrderToProceedWarningVisible(this.page);
+});
+
+Then("the cart should not show the in order to proceed warning", async function () {
+  logger.info("Verifying 'In order to proceed' warning is gone");
+  await CartPayment.verifyInOrderToProceedWarningGone(this.page);
+});
+
+When("I click complete missing info for the holder name card", async function () {
+  logger.info("Clicking complete missing info button for holder name card");
+  await CartPayment.clickCompleteMissingInfo(this.page);
+});
+
+Then("the card form should show missing details for card holder name", async function () {
+  logger.info("Verifying card form shows missing details for card holder name");
+  await CartPayment.verifyMissingCardDetailsForm(this.page, {
+    sectionTitle: "Missing details",
+    labels: ["Card holder name *"],
+  });
+});
+
+Then("the card form should show missing details for country", async function () {
+  logger.info("Verifying card form shows missing details for country");
+  await CartPayment.verifyMissingCardDetailsForm(this.page, {
+    sectionTitle: "Missing details",
+    labels: ["Country *"],
+  });
+});
+
+When("I save the card form with empty required fields", async function () {
+  logger.info("Saving card form with empty required fields to trigger validation");
+  await CartPayment.saveCardFormAndVerifyValidationError(this.page);
+});
+
+When("I fill in the card holder name as {string}", async function (name) {
+  logger.info("Filling card holder name", { name });
+  await CartPayment.fillMissingCardHolderName(this.page, name);
+});
+
+When("I save the missing card details", async function () {
+  logger.info("Saving missing card details");
+  await CartPayment.saveMissingCardDetails(this.page);
+});
+
+When("I click to edit the card", async function () {
+  logger.info("Clicking edit card link");
+  await CartPayment.clickEditCard(this.page);
+});
+
+When("I select the no country card", async function () {
+  logger.info("Selecting the no country card");
+  await CartPayment.selectNoCountryCard(this.page);
+});
+
+When("I select the first available country", async function () {
+  logger.info("Selecting first available country from dropdown");
+  await CartPayment.selectFirstCountry(this.page);
+});
+
+Then("the no country card should be displayed in cart", async function () {
+  logger.info("Verifying no country card is displayed in cart");
+  await CartPayment.verifyCardNameVisible(this.page, "no country");
+});
