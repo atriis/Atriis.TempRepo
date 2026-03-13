@@ -1,4 +1,5 @@
 const { getPageObject } = require("@utils/pageObjectCache");
+const { expect } = require("@playwright/test");
 const HotelSearchPage = require("@pages/HotelSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const { CommonPage } = require("@pages/CommonPage");
@@ -123,6 +124,31 @@ const HotelSearch = {
     await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
 
     return { searched: true, where, nights };
+  },
+
+  /**
+   * Verifies the hotel destination field is pre-populated with the expected airport code.
+   * Used to confirm the hotel search form inherits the flight destination when opened from the cart.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedAirport - Airport code to look for (e.g. "FRA")
+   * @returns {Promise<void>}
+   * @throws {Error} If the field is empty or does not contain the expected airport
+   */
+  async verifyHotelSearchPrePopulated(page, expectedAirport) {
+    if (!page) throw new Error('page is required');
+    if (!expectedAirport || typeof expectedAirport !== 'string') {
+      throw new Error('expectedAirport must be a non-empty string, got: ' + typeof expectedAirport);
+    }
+
+    const hotelSearchPage = getPageObject(page, HotelSearchPage);
+    const destinationValue = await hotelSearchPage.getHotelDestinationValue();
+
+    if (!destinationValue) {
+      throw new Error(`Hotel destination field is empty - expected it to be pre-populated with "${expectedAirport}"`);
+    }
+
+    expect(destinationValue).toBe(expectedAirport);
   },
 };
 

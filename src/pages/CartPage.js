@@ -94,6 +94,10 @@ const SELECTORS = {
   // Share itinerary / quotes dropdown
   SHARE_BUTTON: ".share-container .share-btn",
   SHARE_POPPER_MENU: "ul.share-popper[role='menu']:visible",
+
+  // Add hotel from cart product carousel
+  ADD_HOTEL_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Hotel")',
+  ADD_HOTEL_SEARCH_DRAWER: '.app-drawer.atrs-edit-search-drawer',
 };
 
 class CartPage {
@@ -923,6 +927,18 @@ class CartPage {
   getLocationLabelOnCartByIndex(index) {
       const selector = SELECTORS.LOCATION_LABEL;
       return this.page.locator(selector).nth(index);
+  }
+
+  /**
+   * Clicks the Hotel button in the "Add more services" product carousel.
+   * Waits for the search drawer to open after clicking.
+   * @param {number} [timeout=10000]
+   */
+  async clickAddHotelFromCarousel({ timeout = 10000 } = {}) {
+    const btn = this.page.locator(SELECTORS.ADD_HOTEL_CAROUSEL_BUTTON);
+    await btn.waitFor({ state: 'visible', timeout });
+    await btn.click();
+    await this.page.locator(SELECTORS.ADD_HOTEL_SEARCH_DRAWER).waitFor({ state: 'visible', timeout });
   }
 
   /**

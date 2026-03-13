@@ -747,6 +747,19 @@ const Cart = {
     const actualDestination = await cartPage.getTripDestinationInfoText();
     expect(actualDestination.toLowerCase()).toContain(city.toLowerCase());
   },
+
+  /**
+   * Clicks the Hotel button from the "Add more services" product carousel in the cart.
+   * Navigates to the hotel search form (edit-search drawer).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async clickAddHotelFromCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickAddHotelFromCarousel();
+  },
 };
 
 

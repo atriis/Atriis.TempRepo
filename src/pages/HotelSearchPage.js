@@ -98,6 +98,18 @@ class HotelSearchPage {
       .filter({ hasText: new RegExp('^' + count + '\\s+' + label, 'i') })
       .click();
   }
+
+  /**
+   * Gets the current value of the hotel destination field.
+   * Used to verify the field is pre-populated (e.g. from a flight destination).
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>} The destination input value
+   */
+  async getHotelDestinationValue({ timeout = 10000 } = {}) {
+    const field = this.page.locator(SELECTORS.HOTEL_DESTINATION_FIELD);
+    await field.waitFor({ state: 'visible', timeout });
+    return (await field.inputValue()).trim();
+  }
 }
 
 module.exports = HotelSearchPage;

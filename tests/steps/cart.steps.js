@@ -296,3 +296,8 @@ Then("the payment method for extras should not be changeable", async function ()
   logger.info("Verifying payment method for extras cannot be changed");
   await Cart.verifyExtrasPaymentNotChangeable(this.page);
 });
+
+When("I click to add a hotel to my trip from cart", async function () {
+  logger.info("Clicking to add a hotel from cart product carousel");
+  await Cart.clickAddHotelFromCart(this.page);
+});
