@@ -116,7 +116,7 @@ const Results = {
     
     const commonPage = getPageObject(page, CommonPage);
     await commonPage.waitForOOPVisible();
-    return await page.locator(SELECTORS.OOP_INFO).isVisible();
+    return await page.locator(SELECTORS.OOP_INFO).first().isVisible();
   },
 
   /**
@@ -132,7 +132,7 @@ const Results = {
     
     const commonPage = getPageObject(page, CommonPage);
     await commonPage.waitForOOPNotVisible();
-    return await page.locator(SELECTORS.OOP_INFO).isHidden();
+    return await page.locator(SELECTORS.OOP_INFO).first().isHidden();
   },
 
   // ===== FLIGHT CAPACITY RESTRICTION MODAL =====

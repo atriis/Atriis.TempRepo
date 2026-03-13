@@ -63,7 +63,8 @@ class CommonPage {
    * Waits until the OOP text is visible
    */
   async waitForOOPVisible() {
-    await this.getOOPInfo().waitFor({ state: "visible", timeout: 30000});
+    // Use .first() to avoid strict mode violation when multiple OOP indicators are present on the page
+    await this.getOOPInfo().first().waitFor({ state: "visible", timeout: 30000});
   }
 
   /**
@@ -92,12 +93,12 @@ class CommonPage {
    * Retrieves the Out of Policy tooltip text.
    *
    * Returns the trimmed text content or empty string if not found.
+   * Uses `li.mb-1` to avoid strict mode violation with generic `.mb-1` elements on the page.
    */
   async getOOPTooltipText() {
     await this.waitForOOPTooltipVisible();
-    const tooltipText = this.page
-      .locator(SELECTORS.OOP_TOOLTIP_TEXT);
-    return (await tooltipText.textContent())?.trim() ?? "";
+    const tooltipText = this.page.locator('li' + SELECTORS.OOP_TOOLTIP_TEXT);
+    return (await tooltipText.first().textContent())?.trim() ?? "";
   }
 
   /**

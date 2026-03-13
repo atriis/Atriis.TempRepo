@@ -79,6 +79,16 @@ When("I check terms and conditions in room level", async function () {
   this.termsDialogVisible = await RoomLevelResults.checkTermsAndConditions(this.page);
 });
 
+When("I filter room results by deposit not required", async function () {
+  logger.info("Filtering room results by deposit not required");
+  await RoomLevelResults.filterRoomsByDepositNotRequired(this.page);
+});
+
+When("I filter room results by deposit required", async function () {
+  logger.info("Filtering room results by deposit required");
+  await RoomLevelResults.filterRoomsByDeposit(this.page);
+});
+
 When("I filter room results by refundable", async function () {
   logger.info("Filtering room results by refundable");
   await RoomLevelResults.filterRoomsByRefundable(this.page);

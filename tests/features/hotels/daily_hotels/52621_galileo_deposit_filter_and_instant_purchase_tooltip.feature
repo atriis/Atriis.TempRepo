@@ -14,9 +14,11 @@ Feature: 52621 Galileo - Deposit filter shows hotels with instant purchase toolt
 
   @priority:medium
   Scenario: Deposit filter is applied and instant purchase tooltip is visible
-    Given I am logged in as "beatriz" booking a new trip
+    Given I am logged in as "inessa" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Blue Mansion" for 1 night
     And I select the first hotel result
-    # TODO: Create step "When I filter room results by deposit required" that calls DSL filterRoomsByDeposit in RoomLevelResults.js
-    # TODO: Create step "Then the instant purchase tooltip should be visible on the deposit room" that calls DSL verifyInstantPurchaseTooltip in RoomLevelResults.js
+    When I wait for the first add to trip button to be visible in room level results
+    And I filter room results by deposit not required
+    Then the out of policy indicator should be visible in results
+    Then the out of policy tooltip in results should be "Hotel is instant purchase"

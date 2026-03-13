@@ -15,6 +15,8 @@ const SELECTORS = {
   REFUNDABLE_FILTER_TITLE: "p.filter-title[title='Refundable']",
   WIFI_FILTER_TITLE: "p.filter-title[title='Wifi']",
   BREAKFAST_FILTER_TITLE: "p.filter-title[title='Breakfast']",
+  DEPOSIT_FILTER_TITLE: "p.filter-title[title='Deposit']",
+  DEPOSIT_NOT_REQUIRED_FILTER_TITLE: "p.filter-title[title='Deposit not required']",
   FIRST_ROOM_CANCELLATION_POLICY: ".room-list > :nth-child(2) .ticket-details p",
   MEMBER_BADGE: ".expedia-membership-badge-container",
   FIRST_ROOM_PRICE: ".room-list > :nth-child(2) .price-details-main",
@@ -95,6 +97,28 @@ class RoomLevelResultsPage {
     return this.page.locator(
       SELECTORS.REFUNDABLE_CHECKBOX_LABEL,
       { has: this.page.locator(SELECTORS.BREAKFAST_FILTER_TITLE) },
+    );
+  }
+
+  /**
+   * Gets the Deposit filter checkbox root container locator.
+   * @returns {Locator} Playwright locator for the Deposit checkbox container
+   */
+  getDepositCheckboxRoot() {
+    return this.page.locator(
+      SELECTORS.REFUNDABLE_CHECKBOX_LABEL,
+      { has: this.page.locator(SELECTORS.DEPOSIT_FILTER_TITLE) },
+    );
+  }
+
+  /**
+   * Gets the "Deposit not required" filter checkbox root container locator.
+   * @returns {Locator} Playwright locator for the Deposit not required checkbox container
+   */
+  getDepositNotRequiredCheckboxRoot() {
+    return this.page.locator(
+      SELECTORS.REFUNDABLE_CHECKBOX_LABEL,
+      { has: this.page.locator(SELECTORS.DEPOSIT_NOT_REQUIRED_FILTER_TITLE) },
     );
   }
 
@@ -285,6 +309,44 @@ class RoomLevelResultsPage {
     await value.waitFor({ state: "visible", timeout: 10000 });
     return (await value.textContent()).trim();
   }
+  /**
+   * Enables the "Deposit" filter.
+   * Waits until the checkbox state is confirmed.
+   */
+  async clickDepositCheckbox() {
+    const root = this.getDepositCheckboxRoot();
+    const inner = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INNER);
+    const input = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INPUT);
+
+    await inner.scrollIntoViewIfNeeded();
+    await inner.waitFor({ state: "visible" });
+    await inner.click();
+
+    await this.page.waitForFunction(
+      el => el.checked,
+      await input.elementHandle(),
+    );
+  }
+
+  /**
+   * Enables the "Deposit not required" filter.
+   * Waits until the checkbox state is confirmed.
+   */
+  async clickDepositNotRequiredCheckbox() {
+    const root = this.getDepositNotRequiredCheckboxRoot();
+    const inner = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INNER);
+    const input = root.locator(SELECTORS.REFUNDABLE_CHECKBOX_INPUT);
+
+    await inner.scrollIntoViewIfNeeded();
+    await inner.waitFor({ state: "visible" });
+    await inner.click();
+
+    await this.page.waitForFunction(
+      el => el.checked,
+      await input.elementHandle(),
+    );
+  }
+
   /**
    * Enables the "Wi-Fi" amenity filter.
    * Waits until the checkbox state is confirmed.

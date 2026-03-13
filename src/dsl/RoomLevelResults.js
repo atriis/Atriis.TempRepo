@@ -337,6 +337,29 @@ const RoomLevelResults = {
   },
 
   /**
+   * Enables the "Deposit not required" filter option in room level results.
+   * Filters to show only rooms that do not require an upfront deposit.
+   * The option lives in the "Payment" filter section (paymentMethods key).
+   * @param {import('playwright').Page} page
+   */
+  async filterRoomsByDepositNotRequired(page) {
+    if (!page) throw new Error('page parameter is required');
+    const p = getPageObject(page, RoomLevelResultsPage);
+    await p.clickDepositNotRequiredCheckbox();
+  },
+
+  /**
+   * Enables the "Deposit" filter in room level results.
+   * Filters to show only rooms that require a deposit (instant purchase).
+   * @param {import('playwright').Page} page
+   */
+  async filterRoomsByDeposit(page) {
+    if (!page) throw new Error('page parameter is required');
+    const p = getPageObject(page, RoomLevelResultsPage);
+    await p.clickDepositCheckbox();
+  },
+
+  /**
    * Enables the "Refundable" filter in room level results.
    * @param {import('playwright').Page} page
    */
