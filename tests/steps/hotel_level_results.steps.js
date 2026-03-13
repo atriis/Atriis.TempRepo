@@ -81,7 +81,6 @@ Then("I should see member rates displayed in hotel level results", async functio
 Then("the corporate rates badge should be visible on hotel level results", async function () {
   logger.info("Verifying corporate preferred badge is visible on hotel level results");
   await HotelLevelResults.verifyCorporatePreferredBadge(this.page);
-  await this.page.pause();
 });
 
 Then("the CO2 emissions should be displayed in hotel level results", async function () {

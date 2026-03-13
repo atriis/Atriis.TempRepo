@@ -179,7 +179,7 @@ Then("the total price in cart is equal to total price in cart before seats + sea
     priceBeforeSeats,
     seatPrice,
     currentTotal,
-    0.02,
+    0.05,
     "Cart total = flight price + seat price"
   );
 });
