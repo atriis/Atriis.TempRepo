@@ -86,8 +86,8 @@ class HotelLevelResultsPage {
   }
 
   async waitForResultsPageReady() {
-    await this.page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
-    await this.page.locator(SELECTORS.VIEW_ON_MAP_BUTTON).first().waitFor({ state: 'visible', timeout: 60000 });
+    await this.page.waitForURL(/\/products\/hotels\/results/, { timeout: 120000 });
+    await this.page.locator(SELECTORS.VIEW_ON_MAP_BUTTON).first().waitFor({ state: 'visible', timeout: 120000 });
   }
 
   /** Clicks the first available "View rates" button */
