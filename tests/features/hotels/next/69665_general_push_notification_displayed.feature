@@ -17,8 +17,8 @@ Feature: 69665 General - Push notification displayed when adding hotel to cart
     Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
-    # TODO: Create step "Then a push notification should be displayed in hotel results" that calls DSL verifyPushNotification in HotelSearch.js
     And I select the first hotel result
     And I add a refundable room to my cart
+     # TODO: Create step "Then a push notification should be displayed in hotel results" that calls DSL verifyPushNotification in HotelSearch.js
     Then the booking status should be "Pending booking"
 
