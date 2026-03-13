@@ -396,7 +396,24 @@ const Cart = {
   },
 
   /**
-   * Opens the fare rules drawer from cart flight details and waits for content.
+   * Clicks the proceed-to-checkout button WITHOUT waiting for checkout page navigation.
+   * Use this when the platform is expected to block checkout (e.g., missing card details)
+   * and show an inline validation warning instead of navigating to checkout.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async clickProceedToCheckoutButton(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.acceptTermsAndConditions();
+    await cartPage.waitForProceedToCheckout();
+    await cartPage.clickProceedToCheckout();
+  },
+
+  /**
    *
    * @param {import('playwright').Page} page - Playwright page instance
    * @param {number} index - Zero-based index of the fare rules button (default: 1)

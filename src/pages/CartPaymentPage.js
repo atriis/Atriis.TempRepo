@@ -49,6 +49,22 @@ const SELECTORS = {
   ADD_PAYMENT_METHOD_BTN_NAME: "Add payment method",
   ADD_CARD_DETAILS_BTN_NAME: "Add card details",
   CLOSE_DIALOG_BTN_NAME: "Close this dialog",
+
+  // Missing card details flow
+  COMPLETE_MISSING_INFO_BTN: '.missing-card-btn',
+  FORM_PAYMENT_ERR: '.form-payment-err',
+  SELECTED_CARD_SECTION_TITLE: '.selected-card .section-title',
+  SELECTED_CARD_SAVE_BTN: '.selected-card .btn',
+  SELECTED_CARD_CARD_NAME: '.selected-card .card-name',
+  MISSING_CARD_DETAILS_LABEL: '.missing-card-details .label',
+  MISSING_CARD_DETAILS_INPUT_DANGER: '.missing-card-details .is-danger',
+  MISSING_CARD_DETAILS_COUNTRY_SELECT: '.missing-card-details .el-select',
+  MISSING_CARD_DETAILS_COUNTRY_OPTION: '.el-select-dropdown__item',
+  // Card holder name input inside the missing-card-details el-input (no placeholder)
+  MISSING_CARD_HOLDER_NAME_INPUT: '.missing-card-details .el-input input',
+  EDIT_CARD_LINK: '.ticket-top-section .is-clickable',
+  LAST_FOUR_DIGIT: '.last-four-digit',
+  NO_COUNTRY_CARD_CHECKBOX: '.select-credit-card > :nth-child(1) > :nth-child(2) > :nth-child(2) [type="checkbox"]',
 };
 
 class CartPaymentPage {
@@ -576,6 +592,184 @@ class CartPaymentPage {
       texts.push((await labels.nth(i).textContent()).trim());
     }
     return texts;
+  }
+
+  // ===== Missing card info flow =====
+
+  /**
+   * Checks if the "Complete missing info" button is visible on a card.
+   * @returns {Promise<boolean>}
+   */
+  async isCompleteMissingInfoButtonVisible() {
+    const btn = this.page.locator(SELECTORS.COMPLETE_MISSING_INFO_BTN).first();
+    try {
+      await btn.waitFor({ state: 'visible', timeout: 10000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Clicks the "Complete missing info" button to open the card edit form.
+   */
+  async clickCompleteMissingInfoButton() {
+    const btn = this.page.locator(SELECTORS.COMPLETE_MISSING_INFO_BTN).first();
+    await btn.waitFor({ state: 'visible', timeout: 10000 });
+    await btn.click();
+  }
+
+  /**
+   * Gets the visible text of the "In order to proceed" payment error message.
+   * @returns {Promise<string|null>} text content or null if not visible
+   */
+  async getFormPaymentErrorText() {
+    const el = this.page.locator(SELECTORS.FORM_PAYMENT_ERR).first();
+    try {
+      await el.waitFor({ state: 'visible', timeout: 10000 });
+      return (await el.textContent()).trim();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Checks if the "In order to proceed" payment error message is visible.
+   * @returns {Promise<boolean>}
+   */
+  async isFormPaymentErrorVisible() {
+    const el = this.page.locator(SELECTORS.FORM_PAYMENT_ERR).first();
+    try {
+      await el.waitFor({ state: 'visible', timeout: 10000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the "In order to proceed" payment error message is hidden/gone.
+   * @returns {Promise<boolean>}
+   */
+  async isFormPaymentErrorHidden() {
+    const el = this.page.locator(SELECTORS.FORM_PAYMENT_ERR).first();
+    try {
+      await el.waitFor({ state: 'hidden', timeout: 10000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Gets the "Missing details" section title text from the selected card form.
+   * @returns {Promise<string|null>}
+   */
+  async getSelectedCardSectionTitle() {
+    const el = this.page.locator(SELECTORS.SELECTED_CARD_SECTION_TITLE).first();
+    try {
+      await el.waitFor({ state: 'visible', timeout: 10000 });
+      return (await el.textContent()).trim();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Gets all label texts from the missing card details form.
+   * @returns {Promise<string[]>}
+   */
+  async getMissingCardDetailsLabels() {
+    const labels = this.page.locator(SELECTORS.MISSING_CARD_DETAILS_LABEL);
+    await labels.first().waitFor({ state: 'visible', timeout: 10000 });
+    const count = await labels.count();
+    const texts = [];
+    for (let i = 0; i < count; i++) {
+      texts.push((await labels.nth(i).textContent()).trim());
+    }
+    return texts;
+  }
+
+  /**
+   * Clicks the "Save" button in the selected card form (missing card details form).
+   */
+  async clickSelectedCardSaveButton() {
+    const btn = this.page.locator(SELECTORS.SELECTED_CARD_SAVE_BTN).first();
+    await btn.waitFor({ state: 'visible', timeout: 10000 });
+    await btn.click();
+  }
+
+  /**
+   * Checks if a validation error (is-danger) is shown in the missing card details form.
+   * @returns {Promise<boolean>}
+   */
+  async isValidationErrorVisible() {
+    const el = this.page.locator(SELECTORS.MISSING_CARD_DETAILS_INPUT_DANGER).first();
+    try {
+      await el.waitFor({ state: 'visible', timeout: 5000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Fills the card holder name field in the missing card details form.
+   * Uses the input inside .missing-card-details .el-input (no placeholder attribute).
+   * @param {string} name
+   */
+  async fillMissingCardHolderName(name) {
+    if (!name || typeof name !== 'string') {
+      throw new Error('name must be a non-empty string');
+    }
+    const input = this.page.locator(SELECTORS.MISSING_CARD_HOLDER_NAME_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.fill(name);
+  }
+
+  /**
+   * Clicks the edit card link in the trip overview (ticket top section).
+   */
+  async clickEditCardLink() {
+    const link = this.page.locator(SELECTORS.EDIT_CARD_LINK).first();
+    await link.waitFor({ state: 'visible', timeout: 10000 });
+    await link.click();
+  }
+
+  /**
+   * Clicks the checkbox for the "no country" card (second card in the first group).
+   */
+  async clickNoCountryCardCheckbox() {
+    const checkbox = this.page.locator(SELECTORS.NO_COUNTRY_CARD_CHECKBOX).first();
+    await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+    await checkbox.click();
+  }
+
+  /**
+   * Selects the first available country in the country dropdown in the missing card details form.
+   */
+  async selectFirstCountryInDropdown() {
+    const dropdown = this.page.locator(SELECTORS.MISSING_CARD_DETAILS_COUNTRY_SELECT).first();
+    await dropdown.waitFor({ state: 'visible', timeout: 10000 });
+    await dropdown.click();
+    const firstOption = this.page.locator(SELECTORS.MISSING_CARD_DETAILS_COUNTRY_OPTION).first();
+    await firstOption.waitFor({ state: 'visible', timeout: 10000 });
+    await firstOption.click();
+  }
+
+  /**
+   * Gets all card name texts from the card list.
+   * @returns {Promise<string[]>}
+   */
+  async getAllCardNames() {
+    const cards = this.page.locator(SELECTORS.CARD_NAME_LIST);
+    await cards.first().waitFor({ state: 'visible', timeout: 10000 });
+    const count = await cards.count();
+    const names = [];
+    for (let i = 0; i < count; i++) {
+      names.push((await cards.nth(i).textContent()).trim());
+    }
+    return names;
   }
 }
 

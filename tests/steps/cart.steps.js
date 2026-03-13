@@ -28,6 +28,13 @@ When("I proceed to checkout", async function () {
   await Cart.acceptTermsAndConditionsAndProceedToCheckout(this.page);
 });
 
+When("I click the proceed to checkout button", async function () {
+  logger.info("Clicking proceed to checkout button");
+    const cartPage = new CartPage(this.page);
+  await cartPage.waitForProceedToCheckout();
+  await cartPage.clickProceedToCheckout();
+});
+
 When("I hold the trip", async function () {
   logger.info("Holding the trip");
   const result = await Cart.holdTrip(this.page);

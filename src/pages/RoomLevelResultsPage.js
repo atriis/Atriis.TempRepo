@@ -467,6 +467,28 @@ class RoomLevelResultsPage {
     await dialog.waitFor({ state: 'hidden', timeout: 5000 });
     return isVisible;
   }
+
+  /**
+   * Opens the Terms & Conditions dialog and returns its full text content.
+   * Closes the dialog before returning so subsequent steps are not blocked.
+   * @returns {Promise<string>} Full text content of the T&C dialog
+   */
+  async getTermsAndConditionsText() {
+    const btn = this.page.locator(SELECTORS.TERMS_AND_CONDITIONS_BUTTON).first();
+    await btn.scrollIntoViewIfNeeded();
+    await btn.waitFor({ state: 'visible', timeout: 15000 });
+    await btn.click();
+
+    const dialog = this.page.locator(SELECTORS.TERMS_AND_CONDITIONS_DIALOG).first();
+    await dialog.waitFor({ state: 'visible', timeout: 15000 });
+
+    const text = (await dialog.textContent()) ?? '';
+
+    await this.page.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'hidden', timeout: 5000 });
+
+    return text.trim();
+  }
 }
 
 module.exports = RoomLevelResultsPage;

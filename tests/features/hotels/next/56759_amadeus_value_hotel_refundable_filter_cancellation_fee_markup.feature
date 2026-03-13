@@ -18,7 +18,8 @@ Feature: 56759 Amadeus Value Hotel - Refundable filter with cancellation fee and
     And I have added myself as the traveler
     When I search for a hotel in "London, United Kingdom" for 1 night
     And I select the first hotel result
-    # TODO: Create step "When I filter room results by refundable" that calls DSL filterRoomsByRefundable in RoomLevelResults.js
-    # TODO: Create step "Then the cancellation fee with markup should be displayed" that calls DSL verifyCancellationFeeWithMarkup in RoomLevelResults.js
-    And I add a refundable room to my cart
+    And I filter room results by refundable
+    And I extract the price from room level results
+    And I verify the room price appears in the terms and conditions
+    When I add the first available room to my cart
     Then the hotel should appear as refundable in my cart

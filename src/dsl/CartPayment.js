@@ -319,6 +319,155 @@ class CartPayment {
     const isVisible = await paymentPage.isPaymentRestrictionsContainerVisible();
     expect(isVisible, `Expected payment restrictions to be displayed for "${optionText}"`).toBe(true);
   }
+
+  // ===== Missing card info flow (feature 64405) =====
+
+  /**
+   * Verifies that the "Complete missing info" button is visible on the current card.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async verifyCompleteMissingInfoButtonVisible(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const isVisible = await paymentPage.isCompleteMissingInfoButtonVisible();
+    expect(isVisible, 'Expected "Complete missing info" button to be visible on card').toBe(true);
+  }
+
+  /**
+   * Clicks the "Complete missing info" button to open the card edit form.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async clickCompleteMissingInfo(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.clickCompleteMissingInfoButton();
+  }
+
+  /**
+   * Verifies the "In order to proceed, please add all required information" warning is visible.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async verifyInOrderToProceedWarningVisible(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const isVisible = await paymentPage.isFormPaymentErrorVisible();
+    expect(isVisible, 'Expected "In order to proceed" warning to be visible').toBe(true);
+  }
+
+  /**
+   * Verifies the "In order to proceed" warning is NOT visible (dismissed).
+   * @param {import('@playwright/test').Page} page
+   */
+  static async verifyInOrderToProceedWarningGone(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const el = paymentPage.page.locator('.form-payment-err').first();
+    await expect(el).toBeHidden({ timeout: 30000 });
+  }
+
+  /**
+   * Verifies the missing card details form shows "Missing details" title and expected labels.
+   * Optionally checks card display name and masked digits.
+   * @param {import('@playwright/test').Page} page
+   * @param {object} options
+   * @param {string} options.sectionTitle - Expected section title (e.g., "Missing details")
+   * @param {string[]} options.labels - Expected field labels (e.g., ["Card holder name *"])
+   */
+  static async verifyMissingCardDetailsForm(page, { sectionTitle, labels } = {}) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+
+    if (sectionTitle) {
+      const actual = await paymentPage.getSelectedCardSectionTitle();
+      expect(actual, `Expected section title to be "${sectionTitle}"`).toBe(sectionTitle);
+    }
+
+    if (labels && labels.length > 0) {
+      const actualLabels = await paymentPage.getMissingCardDetailsLabels();
+      for (const expectedLabel of labels) {
+        const found = actualLabels.some(l => l.includes(expectedLabel.replace(' *', '').trim()));
+        expect(found, `Expected label "${expectedLabel}" to be present in form. Found: ${JSON.stringify(actualLabels)}`).toBe(true);
+      }
+    }
+  }
+
+  /**
+   * Clicks Save in the missing card details form and verifies a validation error appears.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async saveCardFormAndVerifyValidationError(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.clickSelectedCardSaveButton();
+    const hasError = await paymentPage.isValidationErrorVisible();
+    expect(hasError, 'Expected a validation error (red border) to appear after saving empty required field').toBe(true);
+  }
+
+  /**
+   * Fills in the card holder name in the missing card details form.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} name - Card holder name to enter
+   */
+  static async fillMissingCardHolderName(page, name) {
+    if (!page) throw new Error("page is required");
+    if (!name || typeof name !== 'string') throw new Error("name must be a non-empty string, got: " + typeof name);
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.fillMissingCardHolderName(name);
+  }
+
+  /**
+   * Saves the missing card details form (clicks Save button).
+   * @param {import('@playwright/test').Page} page
+   */
+  static async saveMissingCardDetails(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.clickSelectedCardSaveButton();
+  }
+
+  /**
+   * Clicks the edit card link to open card selection from the trip overview.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async clickEditCard(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.clickEditCardLink();
+  }
+
+  /**
+   * Clicks the checkbox for the "no country" card (second card in the select panel).
+   * @param {import('@playwright/test').Page} page
+   */
+  static async selectNoCountryCard(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.clickNoCountryCardCheckbox();
+  }
+
+  /**
+   * Selects the first available country in the country dropdown in missing card details form.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async selectFirstCountry(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.selectFirstCountryInDropdown();
+  }
+
+  /**
+   * Verifies that a card with the given name text is visible in the FOP panel.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} cardNameText - Partial or full card name text to match
+   */
+  static async verifyCardNameVisible(page, cardNameText) {
+    if (!page) throw new Error("page is required");
+    if (!cardNameText || typeof cardNameText !== 'string') throw new Error("cardNameText must be a non-empty string");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const names = await paymentPage.getAllCardNames();
+    const found = names.some(n => n.includes(cardNameText));
+    expect(found, `Expected card with name "${cardNameText}" to be visible. Found: ${JSON.stringify(names)}`).toBe(true);
+  }
 }
 
 module.exports = CartPayment;
