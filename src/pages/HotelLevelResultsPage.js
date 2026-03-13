@@ -139,11 +139,6 @@ class HotelLevelResultsPage {
     await viewRatesButton.click();
   }
 
-  /** Waits for View Rates text to be visible in results page */
-  async waitForViewRatesTextInResultsPage() {
-    await this.getViewRatesButton().waitFor({ state: "visible" });
-  }
-
   /**
    * Gets the first displayed hotel-level price from results.
    * @returns {Promise<number>} First hotel price as a number
