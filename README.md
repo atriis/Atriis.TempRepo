@@ -122,13 +122,25 @@ atriis-automation/
 ├── .github/
 │   ├── workflows/
 │   │   └── test-suite.yml            # CI/CD pipeline (GitHub Actions)
+│   ├── agents/                       # AI agent definitions (20 agents)
+│   │   ├── ado-pipeline.agent.md     # ADO → full test lifecycle orchestrator
+│   │   ├── feature-pipeline.agent.md # Manual description → test orchestrator
+│   │   ├── regression-pipeline.agent.md  # Run suite → fix → report
+│   │   ├── ci-monitor.agent.md       # Daily CI health check orchestrator
+│   │   ├── todo-pipeline.agent.md    # Resolve TODO comments orchestrator
+│   │   ├── domain-flights.agent.md   # Flight domain knowledge
+│   │   ├── domain-hotels.agent.md    # Hotel domain knowledge
+│   │   ├── domain-transportation.agent.md # Transportation domain knowledge
+│   │   ├── domain-shell.agent.md     # Cross-domain/generic patterns
+│   │   └── ...                       # Sub-agents and standalone agents
 │   ├── instructions/                 # Detailed architecture guides
 │   │   ├── page-objects.md
 │   │   ├── dsl.md
 │   │   ├── tests.md
 │   │   ├── architecture.md
 │   │   └── ...
-│   └── README.md                     # AI Copilot usage guide
+│   ├── AGENTS.md                     # Agent registry and architecture
+│   └── copilot-instructions.md       # AI Copilot coding rules
 ├── cucumber.js                       # Cucumber configuration
 ├── playwright.config.js              # Playwright runner configuration (used by Playwright Test only)
 ├── package.json
@@ -495,7 +507,16 @@ Then('flight results are displayed', async () => {
 
 The framework includes GitHub Actions workflows in `.github/workflows/`:
 
-- **test-suite.yml**: Runs smoke, daily, and shell tests on push/PR
+- **test-suite.yml**: Main CI pipeline with 6 test jobs + summary:
+  - `smoke-tests` — Critical path smoke tests
+  - `daily-flights` — Flight regression suite
+  - `daily-hotels` — Hotel regression suite
+  - `daily-cars` — Car rental regression suite
+  - `daily-rails` — Rail booking regression suite
+  - `daily-shell` — Cross-domain/shell tests
+  - `summary` — Aggregated results
+- **Schedule**: Daily at 21:00 UTC, also on push and PR
+- **Artifacts**: Both JUnit XML and Cucumber JSON reports
 
 ### Retry Logic (CI Only)
 
@@ -518,6 +539,49 @@ The retry mechanism is implemented in:
 | Cucumber Report | JUnit XML | `test-results/cucumber-junit.xml` | CI/CD integration format |
 
 **Screenshot Naming:** `scenario_name_TIMESTAMP.png` (e.g., `search_returns_results_2026-02-23T10-30-45-123Z.png`)
+
+---
+
+## AI Agent Ecosystem
+
+This project includes **20 custom AI agents** that automate the test lifecycle. See [.github/AGENTS.md](.github/AGENTS.md) for the full registry and architecture.
+
+### Quick Reference
+
+| Agent | Usage | Purpose |
+|-------|-------|---------|
+| `@ado-pipeline 74500` | ADO work item → test | End-to-end: fetch bug → generate test → run → fix → report |
+| `@feature-pipeline` | Description → test | QA describes scenario → generates working automated test |
+| `@regression-pipeline @smoke` | Run suite | Execute suite → fix failures → generate report |
+| `@ci-monitor` | Daily health | Check CI → fix failures → daily health report |
+| `@todo-pipeline path/` | Resolve TODOs | Implement missing steps/DSL → run until passing |
+| `@code-reviewer` | Review changes | Check code quality against project patterns |
+| `@generate-dsl-method` | Create DSL method | Focused single-method creation |
+| `@test-case-converter` | Convert manual tests | ADO/spreadsheet/docs → Gherkin feature files |
+| `@testim-converter` | Migrate from Testim | Legacy Testim tests → Cucumber BDD format |
+| `@context-bridge` | Cross-project context | Coverage gaps, selector discovery, bug-to-test |
+
+### Pipeline Architecture
+
+```
+Orchestrator → Sub-Agent → Sub-Agent → ... → Report
+     │              │            │
+     │         consults     consults
+     │              │            │
+     │         Domain Agent  Domain Agent
+     │
+  State object passed forward at each phase
+  User checkpoint between every phase (semi-auto)
+```
+
+### Domain Agents
+
+Domain agents provide specialized knowledge and are consulted by pipeline agents:
+
+- **`@domain-flights`** — Flight suppliers (7 GDS + 6 NDC), GDS cancellation rules, pricing validation
+- **`@domain-hotels`** — Hotel suppliers (10), refundable-only policy, per-supplier test users
+- **`@domain-transportation`** — Cars/Rail/Ground/Parking, supplier-specific flows
+- **`@domain-shell`** — Login, cart, checkout, approval workflows, cross-domain patterns
 
 ---
 

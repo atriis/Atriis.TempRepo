@@ -2,36 +2,230 @@
 
 Custom agents for the Playwright + Cucumber BDD automation framework. Use these with `@agent-name` or through `runSubagent()` calls.
 
-## Available Agents
+## Architecture Overview
 
-### batch-test-fixer
-**Purpose**: Run 3 test cases sequentially, auto-resolve TODO comments, and iterate until each test passes.
-
-**Workflow**:
-1. Collect 3 test paths + users from input
-2. For each test:
-   - Run feature file
-   - Parse for TODO comments in steps/DSL
-   - Implement missing functionality
-   - Commit atomic fix
-   - Rerun (up to 5 iterations)
-3. Report final status for all 3 tests
-
-**Usage**:
 ```
-@batch-test-fixer
+┌─── ORCHESTRATORS (invoke sub-agents, manage state, pause for review) ───┐
+│                                                                          │
+│  @ado-pipeline         ADO work item → full test lifecycle               │
+│  @feature-pipeline     Manual description → full test lifecycle          │
+│  @regression-pipeline  Run suite → fix failures → report                 │
+│  @ci-monitor           Check GitHub Actions → fix → daily report         │
+│  @todo-pipeline        Resolve TODO comments → implement → run → pass    │
+│                                                                          │
+├─── SUB-AGENTS (single responsibility, called by orchestrators) ──────────┤
+│                                                                          │
+│  @ado-fetcher              Fetch & parse ADO work items                  │
+│  @test-generator-pipeline  Generate Gherkin + steps + DSL                │
+│  @test-runner-pipeline     Execute tests, capture results                │
+│  @test-fixer-pipeline      Analyze failures, apply minimal fixes         │
+│  @test-reporter-pipeline   Generate reports, post to ADO/Cortex.QA       │
+│  @ci-checker               Parse GitHub Actions results                  │
+│                                                                          │
+├─── DOMAIN AGENTS (specialized knowledge, consulted by sub-agents) ───────┤
+│                                                                          │
+│  @domain-flights           Flight booking domain knowledge               │
+│  @domain-hotels            Hotel booking domain knowledge                │
+│  @domain-transportation    Cars/Rail/Ground/Parking knowledge            │
+│  @domain-shell             Generic/cross-domain patterns                 │
+│                                                                          │
+├─── STANDALONE AGENTS (independent, not part of pipelines) ───────────────┤
+│                                                                          │
+│  @code-reviewer            Review changes for quality                    │
+│  @context-bridge           Connect Cortex.QA ↔ Atriis.OBT ↔ Automation  │
+│  @generate-dsl-method      Create/update DSL methods                     │
+│  @test-case-converter      Manual test cases → Gherkin                   │
+│  @testim-converter         Testim exports → Gherkin                      │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
 
-Test 1: tests/features/flights/general/random_roundtrip.feature
-User 1: amadeus user_one
+### Data Flow (Pipelines)
 
-Test 2: tests/features/hotels/daily_hotels/68393_expedia_co2.feature  
-User 2: expedia user_co2
-
-Test 3: tests/features/cars/general/basic_car_search.feature
-User 3: hertz user_standard
+```
+Orchestrator → Sub-Agent → Sub-Agent → ... → Report
+     │              │            │
+     │         consults     consults
+     │              │            │
+     │         Domain Agent  Domain Agent
+     │
+  State object passed forward at each phase
+  User checkpoint between every phase (semi-auto)
 ```
 
 ---
+
+## Orchestrator Agents
+
+### ado-pipeline
+**Purpose**: End-to-end pipeline from ADO work item to working automated test.
+
+**Trigger**: `@ado-pipeline 74500` or `@ado-pipeline Bug #74500`
+
+**Phases**: Fetch ADO → Generate Test → Run → Fix (×5) → Report
+
+**Sub-agents used**: `@ado-fetcher` → `@test-generator-pipeline` + `@domain-*` → `@test-runner-pipeline` → `@test-fixer-pipeline` → `@test-reporter-pipeline`
+
+**Checkpoints**: After every phase (semi-auto)
+
+---
+
+### feature-pipeline
+**Purpose**: End-to-end pipeline from a QA engineer's plain-English description to working automated test.
+
+**Trigger**: `@feature-pipeline I need a test that searches for a round-trip flight...`
+
+**Phases**: Parse & Classify → Generate Test → Run → Fix (×5) → Report
+
+**Sub-agents used**: `@test-generator-pipeline` + `@domain-*` → `@test-runner-pipeline` → `@test-fixer-pipeline` → `@test-reporter-pipeline`
+
+**Checkpoints**: After every phase (semi-auto)
+
+---
+
+### regression-pipeline
+**Purpose**: Run a full test suite, collect failures, auto-fix, and generate a comprehensive regression report.
+
+**Trigger**: `@regression-pipeline @regression` or `@regression-pipeline @smoke`
+
+**Phases**: Run Suite → Classify Failures → Fix-Rerun Loop (×5) → Report
+
+**Sub-agents used**: `@test-runner-pipeline` → `@test-fixer-pipeline` + `@domain-*` → `@test-reporter-pipeline`
+
+**Checkpoints**: After every phase (semi-auto)
+
+---
+
+### ci-monitor
+**Purpose**: Daily CI health check — fetch GitHub Actions results, fix failures, generate daily report.
+
+**Trigger**: `@ci-monitor` or `@ci-monitor --branch main`
+
+**Phases**: Check CI → Classify → Fix-Rerun Loop (×5) → Daily Report
+
+**Sub-agents used**: `@ci-checker` → `@test-fixer-pipeline` + `@domain-*` → `@test-runner-pipeline` → `@test-reporter-pipeline`
+
+**Requires**: GitHub CLI (`gh`) — see agent for setup guide
+
+**Checkpoints**: After every phase (semi-auto)
+
+---
+
+### todo-pipeline
+**Purpose**: Resolve TODO comments in existing tests — scan for TODOs, implement missing step definitions, DSL methods, and page object updates, run tests until passing.
+
+**Trigger**: `@todo-pipeline {featurePath}` or `@todo-pipeline --scan` or `@todo-pipeline --scan --domain hotels`
+
+**Phases**: Scan TODOs → Implement (bottom-up: locators → pages → DSL → steps) → Run → Fix (×5) → Report
+
+**Sub-agents used**: `@test-generator-pipeline` + `@domain-*` → `@test-runner-pipeline` → `@test-fixer-pipeline` → `@test-reporter-pipeline`
+
+**Features**:
+- Deduplicates shared TODOs across files (one implementation resolves many)
+- Bottom-up implementation order (locators first, steps last)
+- Batches files by domain for efficiency
+- Removes resolved TODO comments, keeps future-note TODOs
+
+**Checkpoints**: After every phase (semi-auto)
+
+---
+
+## Sub-Agents
+
+### ado-fetcher
+**Purpose**: Fetch and parse an ADO work item (Bug, Test Case, or User Story) into structured context.
+
+**Input**: Work item ID
+**Output**: Structured source context + resolved domain
+**Uses**: Azure CLI (`az boards work-item show`)
+
+---
+
+### test-generator-pipeline
+**Purpose**: Generate Gherkin feature files, step definitions, and DSL methods from structured context.
+
+**Input**: Source context (from ADO or manual) + domain
+**Output**: Feature file path, new/reused steps, DSL methods created
+**Consults**: Domain agents for specialized patterns
+
+---
+
+### test-runner-pipeline
+**Purpose**: Execute Cucumber tests and capture structured results.
+
+**Input**: Feature file path(s)
+**Output**: Pass/fail status, errors, screenshots, duration
+**Read-only**: Never modifies test code
+
+---
+
+### test-fixer-pipeline
+**Purpose**: Analyze test failures and apply the smallest safe fixes.
+
+**Input**: Failure details + generation context + domain
+**Output**: Fixes applied per file
+**Iterates**: Up to 5 times (controlled by orchestrator)
+**Scans**: AtriisAutomation, Atriis.App, Cortex.QA for context
+
+---
+
+### test-reporter-pipeline
+**Purpose**: Generate and distribute test execution reports.
+
+**Input**: Complete pipeline state
+**Output**: JSON report in `test-results/`, Markdown in Cortex.QA, ADO comment
+**Destinations**: AtriisAutomation `test-results/`, Cortex.QA `docs/findings/`, ADO work item comments
+
+---
+
+### ci-checker
+**Purpose**: Parse GitHub Actions CI results into structured failure data.
+
+**Input**: Branch name or run ID
+**Output**: Failures with domain, category, and persistence tracking
+**Uses**: GitHub CLI (`gh run list`, `gh run view`, `gh run download`)
+
+---
+
+## Domain Agents
+
+### domain-flights
+**Purpose**: Flight-specific knowledge — locators, DSL methods, test data, routes, validation rules, and common failure patterns.
+
+**Scope**: Flight search, results, selection, cabin class, carriers, NDC, pricing, PNR
+
+**Consulted by**: `@test-generator-pipeline`, `@test-fixer-pipeline` when domain = `flights`
+
+---
+
+### domain-hotels
+**Purpose**: Hotel-specific knowledge — locators, DSL methods, test data, validation rules, supplier-specific flows.
+
+**Scope**: Hotel search, results, room selection, rate plans, cancellation policies, suppliers
+
+**Consulted by**: `@test-generator-pipeline`, `@test-fixer-pipeline` when domain = `hotels`
+
+---
+
+### domain-transportation
+**Purpose**: Transportation-specific knowledge covering Cars, Rail, Ground Transport, and Parking.
+
+**Scope**: Car rental, train booking, airport transfers, parking facilities
+
+**Consulted by**: `@test-generator-pipeline`, `@test-fixer-pipeline` when domain = `transportation`
+
+---
+
+### domain-shell
+**Purpose**: Base/generic agent for cross-domain and non-product-specific scenarios.
+
+**Scope**: Login, trip management, travelers, cart, checkout, approval, manual quotes, per-diem
+
+**Consulted by**: `@test-generator-pipeline`, `@test-fixer-pipeline` when domain = `shell` or cross-domain
+
+---
+
+## Standalone Agents
 
 ### code-reviewer
 **Purpose**: Review pending code changes for stability, maintainability, and pattern adherence.
@@ -50,24 +244,10 @@ User 3: hertz user_standard
 
 ---
 
-### fix-tests
-**Purpose**: Make failing tests pass with minimal, safe changes.
-
-**Scope**: Scans frameworks, selectors, flows, root causes
-
----
-
 ### generate-dsl-method
 **Purpose**: Create/update DSL methods following project patterns.
 
 **Output**: Method in correct DSL file + barrel export updates
-
----
-
-### generate-test
-**Purpose**: Generate Gherkin feature + step definitions for new test scenarios.
-
-**Reuses**: Existing steps/DSL patterns before creating new ones
 
 ---
 
@@ -81,26 +261,77 @@ User 3: hertz user_standard
 
 ---
 
+## Pipeline State Contract
+
+All pipeline agents share this state structure. Each sub-agent adds its section:
+
+```json
+{
+  "pipelineId": "ado-74500-2026-03-14",
+  "trigger": "ado | manual | regression | ci",
+  "phase": "init | fetched | generated | executed | fixed | reported",
+  "source": {
+    "type": "bug | test_case | user_story | feature_request",
+    "id": 74500,
+    "title": "...",
+    "description": "...",
+    "domain": "flights"
+  },
+  "domain": "flights | hotels | transportation | shell",
+  "generation": {
+    "featurePath": "tests/features/...",
+    "stepDefPaths": [],
+    "dslMethodsCreated": [],
+    "newStepsCreated": [],
+    "reusedSteps": []
+  },
+  "execution": {
+    "passed": false,
+    "totalScenarios": 3,
+    "passedScenarios": 2,
+    "failedScenarios": 1,
+    "errors": []
+  },
+  "fixes": {
+    "iteration": 0,
+    "maxIterations": 5,
+    "fixesApplied": [],
+    "history": []
+  },
+  "report": {
+    "testResultsPath": "",
+    "cortexQAPath": "",
+    "adoCommentPosted": false,
+    "summary": ""
+  }
+}
+```
+
 ## Adding New Agents
 
 1. Create `.agent.md` file in `.github/agents/`
-2. Include YAML frontmatter with name and description
-3. Define workflow phases and implementation notes
-4. Update this AGENTS.md registry
-5. Commit: `chore(agents): add {agent-name}`
+2. Include YAML frontmatter with `description` and `tools`
+3. Define: Role, Input, Process, Output (state contract), Checkpoint, Rules
+4. If pipeline sub-agent: define its state contribution
+5. If domain agent: define scope, patterns, validation rules, common failures
+6. Update this AGENTS.md registry
+7. Commit: `chore(agents): add {agent-name}`
 
 ## Agent Invocation
 
 ### From VS Code Chat
 ```
-@batch-test-fixer
+@ado-pipeline 74500
+@feature-pipeline I need a test for hotel search...
+@regression-pipeline @smoke
+@ci-monitor
 ```
 
 ### Programmatic
 ```javascript
 runSubagent({
-  agentName: 'batch-test-fixer',
-  description: 'Run 3 tests with auto TODO resolution',
-  prompt: 'Run flights, hotels, cars tests...'
+  agentName: 'ado-pipeline',
+  description: 'Run ADO-to-automation pipeline',
+  prompt: 'Process ADO bug #74500 through the full pipeline'
 })
 ```

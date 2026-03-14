@@ -101,5 +101,44 @@ Review all pending changes and classify them into one or more categories:
     - Use Playwright assertions with auto-retry: `expect(locator).toBeVisible()`
     - DSL can have assertion methods for reusability (e.g., `Cart.expectBookingStatus`)
   - **Path aliases:**
-    - `@dsl` → `src/dsl/` (barrel export)
+    - `@dsl` → `src/dsl/` (barrel export via `src/dsl/index.js`)
     - `@pages/*` → `src/pages/*`
+    - `@utils/*` → `src/utils/*`
+
+## Real Project Reference
+
+### DSL Modules (24 — exported from `src/dsl/index.js`)
+`AmtrakSearch`, `App`, `BenerailResults`, `BenerailSearch`, `CarResults`, `CarSearch`, `Cart`, `CartPayment`, `Checkout`, `DynamicAndReferenceFields`, `EvolviResults`, `EvolviSearch`, `FlightPricing`, `FlightResults`, `FlightSearch`, `GroundTransportSearch`, `HotelLevelResults`, `HotelSearch`, `ManualQuoteSearch`, `Results`, `RoomLevelResults`, `Search`, `Trips`, `UKParkingSearch`
+
+### Page Objects (26 files in `src/pages/`)
+`AmtrakResultsPage`, `CarResultsPage`, `CarSearchPage`, `CartPage`, `CartPaymentPage`, `CheckoutPage`, `CommonPage`, `DynamicAndReferenceFieldsPage`, `EvolviResultsPage`, `EvolviSearchPage`, `FlightPricingPage`, `FlightResultsPage`, `FlightSearchPage`, `GroundTransportSearchPage`, `HotelLevelResultsPage`, `HotelSearchPage`, `LoginPage`, `LogoutPage`, `ManualQuoteSearchPage`, `MenuPage`, `ResultsPage`, `RoomLevelResultsPage`, `SearchPage`, `TravelRequestPage`, `TripsPage`, `UKParkingSearchPage`
+
+### Step Definition Files (28 files in `tests/steps/`)
+`amtrak.steps.js`, `amtrak_results.steps.js`, `app.steps.js`, `benerail_results.steps.js`, `benerail_search.steps.js`, `cars.step.js`, `cart.steps.js`, `cart_fop.steps.js`, `car_results.steps.js`, `car_search.steps.js`, `checkout.steps.js`, `common.steps.js`, `dynamic_fields.steps.js`, `evolvi_results.steps.js`, `evolvi_search.steps.js`, `flight_pricing.steps.js`, `flight_results.steps.js`, `flight_search.steps.js`, `ground_transport.steps.js`, `hotel_level_results.steps.js`, `hotel_search.steps.js`, `manual_quote.steps.js`, `parking.steps.js`, `results.steps.js`, `room_level_results.steps.js`, `search.steps.js`, `smoke.steps.js`, `trips.steps.js`
+
+### Utility Pattern
+- **Page Object cache**: `const { getPageObject } = require('@utils/pageObjectCache');` then `const searchPage = getPageObject(page, SearchPage);`
+- **Logger**: `const logger = require('@utils/logger').child('ModuleName');` — NEVER `console.log()`
+- **Helpers**: `calendar.helper.js`, `dom.js`, `numbers.js`, `priceExtraction.js`, `route.helper.js`, `search.constants.js`, `text.js`, `wait.js`
+
+## Domain-Specific Review Rules
+
+### Flights
+- **ALWAYS verify GDS flights are cancelled** after test — leaving PNRs active costs real money
+- **NEVER use low-cost flights from GDS suppliers** — unreliable, causes false failures
+- **Don't hardcode routes from `flights.json`** — hardcode in test logic instead
+
+### Hotels
+- **ALWAYS verify refundable filter** is applied before room selection
+- **NEVER book non-refundable hotels** — real money, cannot reverse
+- **Each supplier has specific test users** — verify correct user in `.env`
+
+### General
+- **No hardcoded sleeps** (`page.waitForTimeout()`) — use `waitForSelector` > timeout increase > `networkidle`
+- **Code used in 5+ tests is considered stable** — flag if someone modifies it without clear justification
+
+## Integration with Pipeline Agents
+This agent is standalone but complements the pipeline:
+- Run **before committing** pipeline-generated code to catch pattern violations
+- The `@test-fixer-pipeline` and `@test-generator-pipeline` produce code that should pass this review
+- If reviewing pipeline output, be lenient on TODO comments (they indicate deliberate incompleteness)

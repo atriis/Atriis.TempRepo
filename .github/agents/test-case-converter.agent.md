@@ -161,12 +161,15 @@ Place the feature file based on product and context:
 - `tests/features/flights/<provider>/` — Provider-specific (e.g., `lufthansa/`)
 - `tests/features/hotels/general/` — General hotel scenarios
 - `tests/features/hotels/<provider>/` — Provider-specific hotel scenarios
+- `tests/features/hotels/to_adjust/` — Hotels with TODOs pending implementation
+- `tests/features/hotels/generated/` — Pipeline-generated hotel tests (complete)
 - `tests/features/cars/daily_cars/` — Car scenarios
 - `tests/features/rails/<provider>/` — Rail provider scenarios (evolvi, benerail, amtrak)
 - `tests/features/ground_transport/` — Ground transport scenarios
 - `tests/features/parking/` — Parking scenarios
 - `tests/features/manual_quote/` — Manual quote scenarios
 - `tests/features/shell/` — Shell/platform scenarios
+- `tests/features/smoke/` — Smoke test scenarios
 
 Naming: `<descriptive_snake_case_name>.feature`
 If a ticket ID exists: `<ticket_id>_<descriptive_name>.feature`
@@ -182,9 +185,43 @@ At the bottom, list:
 
 ## Reference locations
 
-- Step definitions: `tests/steps/`
-- DSL methods: `src/dsl/`
-- Page objects: `src/pages/`
-- Feature files: `tests/features/`
-- Test data: `src/data/`
-- Utils: `src/utils/`
+- Step definitions: `tests/steps/` (28 files — one per domain area)
+- DSL methods: `src/dsl/` (24 modules — barrel-exported from `src/dsl/index.js`)
+- Page objects: `src/pages/` (26 files)
+- Feature files: `tests/features/` (9 domain folders)
+- Test data: `src/data/` (`flights.json`, `hotels.json`, `cars.json`, `benerail.json`, `evolvi.json`, `amtrak.json`, `groundtransport.json`, `cards.json`, `tripStatus.json`)
+- Utils: `src/utils/` (`pageObjectCache.js`, `logger.js`, `calendar.helper.js`, `dom.js`, `wait.js`, etc.)
+- Config: `src/config/config.js`
+
+## Domain-Specific Conversion Rules
+
+### Flights
+- **Suppliers**: Amadeus GDS, Galileo GDS, Sabre GDS, Fusion, Ypsilon, Amadeus Light Ticketing, Galileo ACH, + NDC (American Airlines, United, Lufthansa, Iberia, AFKL, British Airways)
+- **ALWAYS include cancellation step** for GDS flight tests — real PNRs cost money
+- **NEVER use low-cost flights from GDS suppliers** in converted tests
+- **Don't reference routes from flights.json** — hardcode in feature file
+
+### Hotels
+- **Suppliers**: Amadeus GDS, Galileo GDS, Sabre GDS, Expedia, Booking.com, Ratehawk, eHotel, Travelodge, Premier Inn, Go Global
+- **ALWAYS include refundable filter step** before room selection
+- **NEVER convert a test that books non-refundable** — flag as issue
+- **Use correct supplier test user** from `.env`
+
+### Transportation
+- **Cars**: Amadeus GDS, Galileo GDS, Sabre GDS, SunnyCars
+- **Rails**: Benerail, Evolvi, Amtrak (each has its own step files: `benerail_search.steps.js`, `evolvi_search.steps.js`, `amtrak.steps.js`)
+- **Ground/Parking**: not fully implemented — flag if converting these
+
+### Shell (Cross-Domain)
+- **Login**: username/password only — `Given I am logged in as {string} {string}`
+- **Payment**: test credit card or invoice
+- **Approval**: testable but requires email validation
+
+## Prefer Scenario Outline
+When converting test cases with multiple data sets, **always use Scenario Outline with Examples tables** — this is the project preference.
+
+## Integration with Pipeline Agents
+This agent's output can be consumed by:
+- `@todo-pipeline` — to resolve any TODOs left in the converted feature file
+- `@test-runner-pipeline` — to execute the converted test
+- `@test-fixer-pipeline` — to fix failures after first run

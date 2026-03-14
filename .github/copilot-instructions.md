@@ -17,6 +17,21 @@ Playwright + Cucumber BDD test automation framework for a corporate travel booki
 - JavaScript (ES6+) – Test & DSL implementation
 - Node.js (>=18.0.0) – Runtime
 
+## AI Agent Ecosystem
+
+This project has **20 custom agents** organized into pipelines. See [AGENTS.md](AGENTS.md) for full registry.
+
+| Category | Agents | Purpose |
+|----------|--------|---------|
+| **Orchestrators** (5) | `@ado-pipeline`, `@feature-pipeline`, `@regression-pipeline`, `@ci-monitor`, `@todo-pipeline` | End-to-end workflows with user checkpoints |
+| **Sub-Agents** (6) | `@ado-fetcher`, `@test-generator-pipeline`, `@test-runner-pipeline`, `@test-fixer-pipeline`, `@test-reporter-pipeline`, `@ci-checker` | Single-responsibility tasks called by orchestrators |
+| **Domain Agents** (4) | `@domain-flights`, `@domain-hotels`, `@domain-transportation`, `@domain-shell` | Domain-specific knowledge consulted during generation/fixing |
+| **Standalone** (5) | `@code-reviewer`, `@context-bridge`, `@generate-dsl-method`, `@test-case-converter`, `@testim-converter` | Independent tools not part of pipelines |
+
+### Cross-Project References
+- **Atriis.App** (`../Atriis.App/src/app/Atriis.OBT/`) – Vue source for UI selectors (`data-testid` preferred)
+- **Cortex.QA** (`../Cortex.QA/`) – QA knowledge hub for findings, reports, and ADO investigation context
+
 ## How Tests Flow
 
 ```
@@ -72,6 +87,28 @@ Playwright + Cucumber BDD test automation framework for a corporate travel booki
 - **Existing patterns over new abstractions** – Extend existing DSL/Pages before creating
 - **Simple and explicit over over-engineered** – Clear method names, minimal nesting
 - **Separation of concerns** – Each layer has one job
+
+## Domain-Specific Critical Rules
+
+### Flights
+- **ALWAYS cancel GDS flights** after test – real PNRs cost money
+- **NEVER use low-cost flights from GDS suppliers** – unreliable, causes false failures
+- **Suppliers**: Amadeus GDS, Galileo GDS, Sabre GDS, Fusion, Ypsilon, Amadeus Light Ticketing, Galileo ACH, + NDC (American Airlines, United, Lufthansa, Iberia, AFKL, British Airways)
+
+### Hotels
+- **NEVER book non-refundable hotels** – always filter by refundable at room level first
+- **Each supplier has specific test users** in `.env`
+- **Suppliers**: Amadeus GDS, Galileo GDS, Sabre GDS, Expedia, Booking.com, Ratehawk, eHotel, Travelodge, Premier Inn, Go Global
+
+### Transportation
+- **Cars**: Amadeus GDS, Galileo GDS, Sabre GDS, SunnyCars
+- **Rails**: Benerail, Evolvi, Amtrak (each has its own step/DSL files)
+- **Ground Transport / Parking**: Not fully implemented yet
+
+### General
+- **Login**: Username/password only (no SSO/MFA in tests)
+- **Payment**: Test credit card and invoice are the two available methods
+- **No hardcoded sleeps** – use `waitForSelector` > timeout increase > `waitForLoadState('networkidle')`
 
 ## Detailed Guidelines
 
@@ -129,8 +166,11 @@ When working with Copilot, follow these rules strictly:
 - **Atomic actions** – One Playwright action per method: `click()`, `fill()`, `waitFor()`
 - **Meaningful names** – `clickBookButton()` not `clickButton()`
 - **Declare locators in constructor** – Never inline selectors
+- **SELECTORS constant** – Use UPPER_SNAKE_CASE outside the class
+- **Use `getPageObject(page, PageClass)`** from `@utils/pageObjectCache` – never `new PageClass(page)` directly
 - **Validate parameters** – Index ranges, selector existence
 - **Use explicit waits** – Always include timeout on waitFor calls
+- **Prefer `data-testid`** – Check `../Atriis.App/src/app/Atriis.OBT/` for real selectors
 
 ## Environment & Configuration
 
@@ -143,8 +183,11 @@ Users are auto-discovered from environment variables. No code changes needed:
 
 ### CI/CD Features
 
+- **CI Workflow**: `.github/workflows/test-suite.yml` with 6 test jobs (smoke, daily-cars, daily-flights, daily-shell, daily-hotels, daily-rails) + summary
+- **Schedule**: Daily at 21:00 UTC, also on push and PR
 - **Retry Logic**: Enabled only in CI (`CI=true`), configured via `RETRY_COUNT` and `RETRY_DELAY`
 - **Screenshot Capture**: Automatic on failure, saved to `test-results/screenshots/`
+- **Playwright Traces**: Captured on failure alongside screenshots
 - **Cucumber Reports**: JSON + JUnit XML formats in `test-results/`
 
 ## Common Scenarios

@@ -83,6 +83,46 @@ The output must follow this **exact format**:
 - If implementation cannot be done safely, use:  
   `throw new Error("TODO: ...");`
 - Follow the project pattern: step definitions call DSL methods, never Page Objects directly.
+- **Import pattern**: `const { FlightSearch, Cart } = require('@dsl');` or `require('../../src/dsl');`
+- **Logger pattern**: `const logger = require('@utils/logger').child('StepModuleName');`
+- **Step pattern**: `When('I search for a flight from {string} to {string}', async function (from, to) { ... })`
+- **Add new steps to the most related existing step file** — 28 step files exist in `tests/steps/`
+
+## Testim Migration Context
+
+**Status**: Migration from Testim to this Cucumber BDD framework is **in progress**.
+- Testim tests are being gradually retired as Cucumber equivalents are created
+- Some Testim tests cover flows that already have Cucumber equivalents — **always check first**
+- Testim tests often use raw selectors — these must be mapped to existing Page Object `SELECTORS` or new ones found from `../Atriis.App/src/app/Atriis.OBT/`
+- Testim tests may use waits like `waitForElement` — convert to Playwright-native waits (`waitForSelector`, `expect().toBeVisible()`)
+
+## Testim-to-Cucumber Selector Mapping
+
+Testim selectors must be converted to project patterns:
+
+| Testim Pattern | Cucumber Equivalent |
+|----------------|--------------------|
+| `await page.click('.btn-primary')` | Page Object method: `await searchPage.clickSearchButton()` |
+| `await page.fill('#origin', 'LHR')` | Page Object method: `await searchPage.fillOrigin('LHR')` |
+| `await page.waitForSelector('.results')` | Page Object method with timeout: `await resultsPage.waitForResults()` |
+| Raw `data-testid` | Add to Page Object `SELECTORS` constant |
+
+**Prefer `data-testid`** when available in the Atriis.App source. If not found, use role > CSS > XPath.
+
+## Domain-Specific Conversion Rules
+
+### Flights
+- **ALWAYS include cancellation** for GDS flights — Testim tests may not cancel; you must add it
+- **NEVER use low-cost flights from GDS suppliers**
+- If Testim test uses routes, hardcode them in the feature file (don't read from `flights.json`)
+
+### Hotels
+- **ALWAYS add refundable filter** step — Testim tests may skip this; you must include it
+- **NEVER book non-refundable hotels**
+
+### General
+- Convert `page.waitForTimeout(N)` to proper waits (never keep hard sleeps)
+- Convert `console.log()` to `logger.info()` pattern
 
 ## TODO list requirements
 
@@ -95,9 +135,25 @@ At the bottom, list:
 
 ## Reference locations
 
-- Step definitions: `tests/steps/`
-- DSL methods: `src/dsl/`
-- Page objects: `src/pages/`
-- Feature files: `tests/features/`
-- Test data: `src/data/`
-- Utils: `src/utils/`
+- Step definitions: `tests/steps/` (28 files — one per domain area)
+- DSL methods: `src/dsl/` (24 modules — barrel-exported from `src/dsl/index.js`)
+- Page objects: `src/pages/` (26 files with `SELECTORS` constants)
+- Feature files: `tests/features/` (9 domain folders: `flights/`, `hotels/`, `cars/`, `rails/`, `ground_transport/`, `parking/`, `manual_quote/`, `shell/`, `smoke/`)
+- Test data: `src/data/` (`flights.json`, `hotels.json`, `cars.json`, `benerail.json`, `evolvi.json`, `amtrak.json`, `groundtransport.json`, `cards.json`, `tripStatus.json`)
+- Utils: `src/utils/` (`pageObjectCache.js`, `logger.js`, `calendar.helper.js`, `dom.js`, `wait.js`, etc.)
+- App source (for selectors): `../Atriis.App/src/app/Atriis.OBT/src/modules/products/`
+
+## Feature File Placement
+
+- `tests/features/flights/general/` — General flight scenarios
+- `tests/features/hotels/general/` — General hotel scenarios  
+- `tests/features/cars/daily_cars/` — Car scenarios
+- `tests/features/rails/<provider>/` — Rail scenarios (evolvi, benerail, amtrak)
+- Use ticket ID prefix if available: `<ticket_id>_<descriptive_name>.feature`
+
+## Integration with Pipeline Agents
+
+After converting a Testim test:
+- Use `@test-runner-pipeline` to execute and verify it passes
+- Use `@todo-pipeline` if TODOs were left in the converted file
+- Use `@code-reviewer` to validate the output follows project patterns

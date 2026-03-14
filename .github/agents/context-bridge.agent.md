@@ -11,11 +11,13 @@ You are a **senior QA Automation Engineer** with access to three connected proje
 
 ### 1. AtriisAutomation (this project)
 The Cucumber BDD + Playwright automation framework.
-- **Tests**: `tests/features/` — Gherkin scenarios grouped by product
-- **Steps**: `tests/steps/` — Step definitions
-- **DSL**: `src/dsl/` — Business workflows
-- **Pages**: `src/pages/` — UI selectors and actions
-- **Data**: `src/data/` — Test data files (flights.json, hotels.json, etc.)
+- **Tests**: `tests/features/` — Gherkin scenarios: `flights/`, `hotels/`, `cars/`, `rails/`, `ground_transport/`, `parking/`, `manual_quote/`, `shell/`, `smoke/`
+- **Steps**: `tests/steps/` — 28 step definition files (one per domain/feature area)
+- **DSL**: `src/dsl/` — 24 business workflow modules (barrel-exported from `src/dsl/index.js`)
+- **Pages**: `src/pages/` — 26 page objects with `SELECTORS` constants + atomic actions
+- **Data**: `src/data/` — `flights.json`, `hotels.json`, `cars.json`, `benerail.json`, `evolvi.json`, `amtrak.json`, `groundtransport.json`, `cards.json`, `tripStatus.json`
+- **Config**: `src/config/config.js` — provider + user configuration (auto-discovered from `.env`)
+- **Utils**: `src/utils/` — `pageObjectCache.js`, `logger.js`, `calendar.helper.js`, `dom.js`, `wait.js`, etc.
 
 ### 2. Cortex.QA (`../Cortex.QA/`)
 The QA knowledge base fed from Azure DevOps and external sources.
@@ -118,12 +120,49 @@ The application source code being tested.
 ## Rules
 
 - **Never invent steps** — search `tests/steps/` and match exact phrasing before proposing new steps
-- **Never invent selectors** — always scan `../Atriis.App/src/app/Atriis.OBT/src/modules/products/<product>/components/` to find real selectors from the Atriis.OBT templates; check existing `src/pages/` for already-mapped ones
+- **Never invent selectors** — always scan `../Atriis.App/src/app/Atriis.OBT/src/modules/products/<product>/components/` to find real selectors from templates; check existing `src/pages/` for already-mapped ones
+- **Prefer `data-testid`** — if not found, use role > CSS > XPath
 - **Never add business logic to steps** — steps call DSL; DSL calls Pages
-- **Always check Cortex.QA first** before fetching from ADO live — the findings file may already have everything needed
-- **Reference files by relative path** — always link to actual files so the QA can open them
+- **Always check Cortex.QA first** before fetching from ADO live — the findings file may already have everything
+- **Reference files by relative path** — always link to actual files so QA can open them
 - **Keep Gherkin human-readable** — non-technical QAs must understand every line
-- **Stay in scope** — only generate tests grounded in actual app behavior found in the Atriis.OBT source or ADO evidence
+- **Stay in scope** — only generate tests grounded in actual app behavior found in Atriis.OBT or ADO evidence
+- **Use `getPageObject(page, PageClass)`** — never `new PageClass(page)` directly (use the cache)
+- **Logger pattern** — `const logger = require('@utils/logger').child('ModuleName');` never `console.log()`
+
+## Domain-Specific Rules
+
+### Flights
+- **Suppliers**: Amadeus GDS, Galileo GDS, Sabre GDS, Fusion, Ypsilon, Amadeus Light Ticketing, Galileo ACH, American Airlines NDC, United Airlines NDC, Lufthansa NDC, Iberia NDC, AFKL NDC, British Airways NDC
+- **ALWAYS cancel GDS flights** after test — real PNRs cost money
+- **NEVER use low-cost flights from GDS suppliers**
+- **Don't read routes from `flights.json`** — hardcode in test logic
+
+### Hotels
+- **Suppliers**: Amadeus GDS, Galileo GDS, Sabre GDS, Expedia, Booking.com, Ratehawk, eHotel, Travelodge, Premier Inn, Go Global
+- **NEVER book non-refundable hotels** — always filter by refundable first
+- **Each supplier has specific test users** in `.env`
+
+### Transportation
+- **Cars**: Amadeus GDS, Galileo GDS, Sabre GDS, SunnyCars
+- **Rails**: Benerail, Evolvi, Amtrak
+- **Ground**: Transferz, Groundscope (⚠️ not fully implemented)
+- **Parking**: UK Parking (⚠️ not fully implemented)
+- **Hardcode pickup/dropoff locations** per test
+
+### Shell (Cross-Domain)
+- **Login**: username/password only (no SSO/MFA)
+- **Payment**: test credit card and invoice
+- **Manual quotes**: not fully implemented yet
+- **Approval workflows**: testable but requires email validation
+
+## Integration with Pipeline Agents
+
+This agent provides context that the pipeline agents consume:
+- `@ado-fetcher` may call this agent's **Task A** logic for bug-to-test context
+- `@test-generator-pipeline` benefits from **Task B** coverage gap analysis
+- `@test-fixer-pipeline` uses **Task E** selector discovery
+- The pipeline agents handle execution; this agent handles **discovery and context gathering**
 
 ## Output Format
 
