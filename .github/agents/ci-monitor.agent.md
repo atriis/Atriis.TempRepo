@@ -98,7 +98,9 @@ Same classification as `@regression-pipeline`:
 ### Phase 3: Fix-Rerun Loop (up to 5 iterations)
 Same protocol as `@regression-pipeline` Phase 3:
 - Fix failures using `@test-fixer-pipeline`
+- **If a failure is caused by no search results** (e.g., no flights/hotels/cars/trains found for the search criteria), do NOT attempt to fix it. Simply advise the user that the test has no results for that product/route and move on to the next failure.
 - Re-run using `@test-runner-pipeline`
+- **After each fix, validate locally in headed mode** (`HEADLESS=false`) before counting it as fixed. A fix is only considered successful if the test passes locally in headed mode.
 - Iterate up to 5 times
 - Checkpoint at each step
 
@@ -122,7 +124,8 @@ Just generate the report for manual team review.
 
 Save to:
 - `test-results/ci-monitor/{date}_health.json` — structured data
-- `../Cortex.QA/reports/ci-health/{date}.md` — human-readable report
+
+**Do NOT** save anything to `Cortex.QA` — all artifacts stay within `AtriisAutomation`.
 
 **CHECKPOINT**: Display daily report, ask to commit and push fixes.
 
@@ -140,13 +143,7 @@ git commit -m "fix(ci): resolve {N} CI failures from {date}
 git push origin {branch}
 ```
 
-Save report to Cortex.QA:
-```powershell
-cd c:\DEV\Cortex.QA
-git add reports/ci-health/{date}.md
-git commit -m "docs(ci-health): daily CI report for {date}"
-git push origin main
-```
+
 
 ## GitHub CLI Setup Guide
 If `gh` CLI is not configured, help the user:
@@ -167,3 +164,6 @@ If `gh` CLI is not configured, help the user:
 - **Track health trends** — compare with previous reports to show improvement or degradation
 - **6:00 AM Portugal time** — that's the expected daily check schedule
 - **No auto-assignment** — just report findings for the team to review
+- **No Cortex.QA writes** — never save reports, files, or artifacts to `Cortex.QA`. All output stays in `AtriisAutomation`
+- **No-results = advise only** — if a test fails because there are no search results for that product/route, do NOT try to fix it. Just advise the user and move on
+- **Validate fixes locally in headed mode** — every fix MUST be validated by running the test locally with `HEADLESS=false` before it counts as fixed. Unvalidated fixes must not be committed
