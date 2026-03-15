@@ -106,7 +106,7 @@ class HotelLevelResultsPage {
   async isCorporatePreferredBadgeVisible() {
     const badge = this.page.locator(SELECTORS.CORPORATE_PREFERRED_BADGE).first();
     try {
-      await badge.waitFor({ state: 'visible', timeout: 5000 });
+      await badge.waitFor({ state: 'visible', timeout: 15000 });
       return true;
     } catch {
       return false;

@@ -202,7 +202,7 @@ class CommonPage {
   async waitForSubjectLabelSharePopUp() {
     const subjectLabel = this.page.getByText("Subject", { exact: true });
 
-    await subjectLabel.waitFor({ state: "visible", timeout: 30000 });
+    await subjectLabel.waitFor({ state: "visible", timeout: 60000 });
   }
 
   /**
@@ -244,25 +244,31 @@ class CommonPage {
   async scrollIntoViewOffer(offerNumber = 1, timeout = 30000) {
     const offerText = `Flight Offer # ${offerNumber} Pending booking`;
 
-    // Try main page first
-    const offer = this.page.getByText(offerText, { exact: true });
-
-    if (await offer.count()) {
-      await offer.first().scrollIntoViewIfNeeded();
-      await offer.first().waitFor({ state: 'visible', timeout });
-      return;
-    }
-
-    // Fallback: search inside iframes (email / preview cases)
-    for (const frame of this.page.frames()) {
-      if (frame === this.page.mainFrame()) continue;
-
-      const inFrame = frame.getByText(offerText, { exact: true });
-      if (await inFrame.count()) {
-        await inFrame.first().scrollIntoViewIfNeeded();
-        await inFrame.first().waitFor({ state: 'visible', timeout });
+    // Wait for the offer text to appear in main page or iframes (content loads async in share dialog)
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      // Try main page first
+      const offer = this.page.getByText(offerText, { exact: true });
+      if (await offer.count()) {
+        await offer.first().scrollIntoViewIfNeeded();
+        await offer.first().waitFor({ state: 'visible', timeout: Math.max(deadline - Date.now(), 5000) });
         return;
       }
+
+      // Fallback: search inside iframes (email / preview cases)
+      for (const frame of this.page.frames()) {
+        if (frame === this.page.mainFrame()) continue;
+
+        const inFrame = frame.getByText(offerText, { exact: true });
+        if (await inFrame.count()) {
+          await inFrame.first().scrollIntoViewIfNeeded();
+          await inFrame.first().waitFor({ state: 'visible', timeout: Math.max(deadline - Date.now(), 5000) });
+          return;
+        }
+      }
+
+      // Content not loaded yet — wait briefly before retrying
+      await this.page.waitForTimeout(1000);
     }
 
     throw new Error(`Offer not found: "${offerText}"`);

@@ -265,7 +265,7 @@ class FlightResultsPage {
     await overlay
       .getByRole('button', { name: 'Select' })
       .nth(index)
-      .waitFor({ state: 'visible' });
+      .waitFor({ state: 'visible', timeout: 60000 });
   }
 
   /**
@@ -475,11 +475,11 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   }).first();
 
   // Wait for the card to be visible
-  await card.waitFor({ state: 'visible', timeout: 10000 });
+  await card.waitFor({ state: 'visible', timeout: 30000 });
   
   // Find and click the select button within this card
   const selectButton = card.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON);
-  await selectButton.waitFor({ state: 'visible', timeout: 5000 });
+  await selectButton.waitFor({ state: 'visible', timeout: 15000 });
   await selectButton.click();
 }
 

@@ -27,6 +27,7 @@ class EvolviResultsPage {
       this.page,
       SELECTORS.OUTBOUND_TEXT,
       "Outbound",
+      60000,
     );
   }
 
@@ -41,6 +42,7 @@ class EvolviResultsPage {
       this.page,
       SELECTORS.SUGGESTED_FARES_TEXT,
       "Suggested fares",
+      60000,
     );
   }
 

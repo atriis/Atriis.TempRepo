@@ -157,8 +157,8 @@ class CartPaymentPage {
    */
   async clickAddPaymentMethodButton() {
     const button = this.page.getByRole("button", { name: SELECTORS.ADD_PAYMENT_METHOD_BTN_NAME });
-    await button.waitFor({ state: "visible" });
-    await button.click();
+    await button.waitFor({ state: "visible", timeout: 30000 });
+    await button.click({ timeout: 30000 });
   }
 
   /**

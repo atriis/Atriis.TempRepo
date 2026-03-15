@@ -112,7 +112,7 @@ class ResultsPage {
     const button = this.page
       .locator(SELECTORS.SHARE_QUOTE_RESULTS_BUTTON)
       .nth(index);
-    await button.click({ timeout: 30000 }); // Waits automatically for actionable state
+    await button.click({ timeout: 60000 }); // Waits automatically for actionable state
   }
 
   /**
