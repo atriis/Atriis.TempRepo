@@ -7,15 +7,16 @@
 # Updated: 2025-08-13T09:49:02Z
 
 @regression @provider:amadeus
-Feature: 65381 Amadeus - Agreement filter shows NL government hotels
+Feature: 65381 NL Gov - Amadeus - Agreement is displayed in results
   As a corporate traveler using Amadeus for NL government
   I want to filter by agreement hotels and see government-contracted hotels
   So that I can book within the approved government hotel agreements
 
   @priority:high
-  Scenario: Agreement filter displays correct NL government contracted hotels
+  Scenario: Agreement is displayed in results
     Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "BRU" for 1 night
-    When I filter results by "Agreement" checkbox
-    # TODO: Create step "Then the agreement hotel results should include NL government contracted properties" that calls DSL verifyNLGovAgreementResults in HotelSearch.js
+    And I wait to see view rates text in results page
+    When I filter results by "TMC" checkbox
+    Then handshake badge should be visible in hotel level results
