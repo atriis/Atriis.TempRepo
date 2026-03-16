@@ -255,21 +255,52 @@ Before attempting any fix, classify the failure:
 - If failed and iteration < 5 → continue
 - If iteration = 5 → mark as "needs manual intervention", move to next file
 
-### Phase 5: Move Resolved Files
+### Phase 5: Move Resolved Files & Update CI
 After all TODOs are resolved and tests pass for a file:
-- **Move the feature file** from `to_adjust/` to the proper domain folder:
-  - Hotels: `tests/features/hotels/generated/`
-  - Flights: `tests/features/flights/generated/`
-  - Cars: `tests/features/cars/generated/`
-  - etc.
-- This signals the file is complete and ready for regression
+
+#### 5a: Determine Destination Folder
+Move the feature file from `to_adjust/`, `next/`, or `next_blocked/` to the correct domain subfolder based on what the test does:
+
+**Hotels:**
+| Test Type | Destination | CI Job |
+|-----------|-------------|--------|
+| Search, filter, UI, non-booking flows | `tests/features/hotels/daily_hotels/` | `daily-hotels-tests` |
+| Full booking flows (book + cancel) | `tests/features/hotels/hotels_booking/` | — (not yet in CI) |
+
+**Other Domains:**
+| Domain | Destination | CI Job |
+|--------|-------------|--------|
+| Flights (non-booking) | `tests/features/flights/daily_flights/` | `daily-flights-tests` |
+| Cars (non-booking) | `tests/features/cars/daily_cars/` | `daily-cars-tests` |
+| Shell | `tests/features/shell/daily_shell/` | `daily-shell-tests` |
+| Rails | `tests/features/rails/daily_rails/` | `daily-rails-tests` |
+
+**Decision logic:**
+- If the scenario includes steps like "When I complete the booking", "Then the booking should be confirmed", "When I cancel the trip" → it's a **booking** test → `hotels_booking/`
+- If the scenario only searches, filters, verifies UI elements, adds to cart but does NOT complete a booking → it's a **daily** test → `daily_hotels/`
+
+#### 5b: Add Users to CI Workflow (`test-suite.yml`)
+After moving the file, check if the feature uses any test users that are NOT yet listed in the corresponding CI job's `env:` section in `.github/workflows/test-suite.yml`.
+
+1. **Extract users from the feature file**: Look for `Given I am logged in as {string} {string}` steps. The user key maps to `USER_<LABEL>` env var (e.g., `"galileogaliei"` → `USER_GALILEOGALIEI`).
+2. **Check `test-suite.yml`**: Search the CI job's env section for each `USER_<LABEL>`. If not present, add it.
+3. **Add missing users**: Insert `USER_<LABEL>: ${{ secrets.USER_<LABEL> }}` in the env block of the appropriate CI job, before `GENERAL_PASSWORD`.
+4. **Only add to CI jobs whose folder contains the moved file** — e.g., if moved to `daily_hotels/`, add to `daily-hotels-tests`; if moved to `hotels_booking/`, no CI job exists yet so skip this step but note it in the report.
+
+**Example:**
+```yaml
+# In daily-hotels-tests env section, add:
+USER_GALILEOGALIEI: ${{ secrets.USER_GALILEOGALIEI }}
+```
+
+> **Note**: The user's email/password must also exist in `.env` for local runs (`USER_GALILEOGALIEI="galileogaliei@gdggalileo.com"`). If the `.env` entry was already added during implementation (Phase 2), no action needed here.
 
 ### Phase 6: Repeat for Next File
 If multiple files were selected:
 - Move to the next feature file → return to Phase 2
 - Track cumulative progress across all files
 
-### Phase 6: Report
+### Phase 7: Report
 **Invoke**: `@test-reporter-pipeline` with complete state
 
 Generate TODO resolution report:
@@ -283,11 +314,11 @@ Generate TODO resolution report:
   TODOs Kept:          3 (future notes)
 
   Results per File:
-  ├── 22074_general_oop_... ✅ PASSED (3/3 TODOs resolved)
-  ├── 19201_sabre_share_... ✅ PASSED (4/4 TODOs resolved)
-  ├── 29744_amadeus_...     ✅ PASSED (4/4 TODOs, new DSL: Approval.js)
+  ├── 22074_general_oop_... ✅ PASSED → daily_hotels/ (3/3 TODOs)
+  ├── 19201_sabre_share_... ✅ PASSED → daily_hotels/ (4/4 TODOs)
+  ├── 29744_amadeus_...     ✅ PASSED → hotels_booking/ (4/4 TODOs)
   ├── 28676_general_oop_... ❌ NEEDS MANUAL (2/3 TODOs, 1 locator missing)
-  └── 37302_ratehawk_...    ✅ PASSED (2/2 TODOs resolved)
+  └── 37302_ratehawk_...    ✅ PASSED → daily_hotels/ (2/2 TODOs)
 
   New Artifacts:
   ├── Step definitions:  8 new steps across 3 files
@@ -295,21 +326,27 @@ Generate TODO resolution report:
   ├── DSL files:         1 new (Approval.js)
   └── Page objects:      3 files modified (4 locators added)
 
+  CI Updates:
+  ├── Users added to daily-hotels-tests: USER_GALILEOGALIEI, USER_SHANI_NL
+  └── Users skipped (no CI job): USER_TLGG (hotels_booking/)
+
   Fix Iterations:        7 total across all files
 ═══════════════════════════════════════════════
 ```
 
 **CHECKPOINT**: Show report, ask to commit.
 
-### Phase 7: Commit
+### Phase 8: Commit
 ```powershell
 cd c:\DEV\AtriisAutomation
 git add {all created/modified files}
+git add .github/workflows/test-suite.yml  # if CI users were added
 git commit -m "feat(todo-resolver): implement {N} TODOs across {M} feature files
 
 - Steps created: {count}
 - DSL methods: {count}
 - Page objects modified: {count}
+- CI users added: {list}
 - All tests passing: {yes/no}"
 ```
 
@@ -357,7 +394,8 @@ The agent understands these TODO formats:
 - **Prioritize shared steps first** — create steps used by multiple files before file-specific ones
 - **Remove TODO comments cleanly** — no replacement comment, no empty lines left behind
 - **Never remove future-note TODOs** — only remove TODOs that you fully implemented
-- **Move resolved files** from `to_adjust/` to `{domain}/generated/` folder when complete
+- **Move resolved files** from source folder to the correct domain subfolder (`daily_hotels/` for non-booking, `hotels_booking/` for booking flows, etc.) — see Phase 5a for decision logic
+- **Add users to CI** — after moving, check `test-suite.yml` for missing `USER_*` env vars and add them to the appropriate CI job — see Phase 5b
 - **One file at a time** — complete one feature before moving to the next
 - **Respect layer boundaries** — page objects don't get business logic, steps don't get Playwright
 - **Source selectors from Atriis.App** — always check the Vue source for real selectors
