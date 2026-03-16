@@ -857,12 +857,9 @@ const Cart = {
   async verifyPassengerTitleStatus(page, expectedText) {
     if (!page) throw new Error('page is required');
     if (!expectedText || typeof expectedText !== 'string') throw new Error('expectedText must be a non-empty string');
-    const cartPage = getPageObject(page, CartPage);
-    const raw = await cartPage.getPassengerTitleStatusText();
-    // Normalize whitespace/newlines (the DOM has separate elements for *, Title, and 0/1)
-    const actual = raw.replace(/\s+/g, '');
-    const expected = expectedText.replace(/\s+/g, '');
-    expect(actual).toContain(expected);
+    // Use auto-retrying assertion — after save + API reload, Vue reactivity may need time to update the DOM
+    const statusLocator = page.locator('.passenger-title .extra__description .is-flex');
+    await expect(statusLocator).toContainText(expectedText.replace(/\s+/g, ''), { timeout: 15000 });
   },
 
   /**
@@ -908,8 +905,9 @@ const Cart = {
     await cartPage.clickPassengerTitleEdit();
     await cartPage.selectFirstTitleOption();
     await cartPage.clickPassengerTitleSave();
-    // Wait for success toast
+    // Wait for success toast and UI to update the title status
     await page.locator('.el-notification__title').filter({ hasText: 'Success' }).waitFor({ state: 'visible', timeout: 10000 });
+    await page.waitForLoadState('networkidle');
   },
 };
 

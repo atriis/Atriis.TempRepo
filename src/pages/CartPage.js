@@ -106,6 +106,7 @@ const SELECTORS = {
   PASSENGER_TITLE_SUCCESS_ICON: '.passenger-title .success-icon.green',
   PASSENGER_TITLE_ERROR_BORDER: '.passenger-title .error-border',
   PASSENGER_TITLE_DROPDOWN_TRIGGER: '.passenger-title .app-select',
+  PASSENGER_TITLE_DROPDOWN_OPTION: '.app-select-popper .el-select-dropdown__item',
   PASSENGER_TITLE_SAVE_BUTTON: '.passenger-title .btn--primary',
 };
 
@@ -1055,6 +1056,9 @@ class CartPage {
     const btn = this.page.locator(SELECTORS.PASSENGER_TITLE_CLICKABLE).first();
     await btn.waitFor({ state: 'visible', timeout });
     await btn.click();
+    // Wait for the title form (Save button) to appear after clicking Add/Edit
+    const saveBtn = this.page.locator(SELECTORS.PASSENGER_TITLE_SAVE_BUTTON).first();
+    await saveBtn.waitFor({ state: 'visible', timeout });
   }
 
   /**
@@ -1067,8 +1071,8 @@ class CartPage {
     const dropdown = this.page.locator(SELECTORS.PASSENGER_TITLE_DROPDOWN_TRIGGER).first();
     await dropdown.waitFor({ state: 'visible', timeout });
     await dropdown.click();
-    // Select the first option from the dropdown
-    const option = this.page.locator('.el-select-dropdown__item').first();
+    // Scope to .app-select-popper (the popper class from app-select.vue) to avoid hitting hidden dropdown items
+    const option = this.page.locator(SELECTORS.PASSENGER_TITLE_DROPDOWN_OPTION).first();
     await option.waitFor({ state: 'visible', timeout: 5000 });
     await option.click();
   }

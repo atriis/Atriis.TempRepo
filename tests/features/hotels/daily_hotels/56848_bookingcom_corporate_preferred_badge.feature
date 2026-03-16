@@ -16,7 +16,7 @@ Feature: 56848 Booking.com - Hotel is marked as 'Corporate Preferred' according 
   Scenario: Hotel is marked as 'Corporate Preferred' according to the admin configuration
     Given I am logged in as "cintia" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Springhill Suites Pittsburgh" for 1 night
+    When I search for a hotel in "Springhill Suites Pittsburgh Mt. Lebanon" for 1 night
     And I wait to see view rates text in results page
     When I filter hotel results by hotel name "Springhill Suites By Marriott Pittsburgh"
     Then the corporate rates badge should be visible on hotel level results

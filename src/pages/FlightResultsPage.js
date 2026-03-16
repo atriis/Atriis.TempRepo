@@ -321,9 +321,9 @@ class FlightResultsPage {
    * Waits for the "Fare rules" button to be visible.
    *
    * @param {number} index - Zero-based index of the fare rules button (default: 0)
-   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @param {number} timeout - Max wait time in ms (default: 60000, accounts for NDC search loading)
    */
-  async waitForFareRulesButton(index = 0, timeout = 30000) {
+  async waitForFareRulesButton(index = 0, timeout = 60000) {
     await this.getFareRulesButton()
       .nth(index)
       .waitFor({ state: 'visible', timeout });

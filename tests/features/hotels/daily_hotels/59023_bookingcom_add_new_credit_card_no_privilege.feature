@@ -15,7 +15,7 @@ Feature: 59023 Booking.com - Add new credit card without cardholder privilege re
   @priority:high
   Scenario: Add new credit card for Booking.com hotel when no privilege restriction applies
     Given I am logged in as "discover" booking a new trip
-    When I search for a hotel in "The White Swan" for 1 night
+    When I search for a hotel in "The White Swan, The Green, Scotter, Gainsborough, UK" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
