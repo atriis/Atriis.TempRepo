@@ -30,6 +30,15 @@ const SELECTORS = {
   // Notification panel close button
   NOTIFICATION_PANEL_CLOSE: '.app-notification .close',
 
+  // Push notification badge (header bell icon badge count)
+  NOTIFICATION_BELL_BADGE: 'sup.notification-number',
+
+  // Mandatory reminder popup dialog (app-reminder-popup.vue)
+  REMINDER_POPUP_DIALOG: '.el-dialog .el-dialog__title',
+  REMINDER_POPUP_CONTAINER: '.el-dialog.app-dialog',
+  REMINDER_POPUP_CHECKBOX: '.el-checkbox',
+  REMINDER_POPUP_CLOSE_BUTTON: 'button:has-text("close")',
+
   // Shopping cart icon
   SHOPPING_CART_ICON: 'span:has-text("shopping_cart")',
 };
@@ -313,6 +322,70 @@ class CommonPage {
     const closeBtn = this.page.locator(SELECTORS.NOTIFICATION_PANEL_CLOSE).first();
     await closeBtn.waitFor({ state: 'visible', timeout: 15000 });
     await closeBtn.click();
+  }
+
+  /**
+   * Checks if the push notification badge (bell icon count) is visible in the header.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async isNotificationBadgeVisible({ timeout = 15000 } = {}) {
+    const badge = this.page.locator(SELECTORS.NOTIFICATION_BELL_BADGE).first();
+    try {
+      await badge.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the notification panel (.app-notification) is visible.
+   * @param {object} [options]
+   * @param {number} [options.timeout=5000]
+   * @returns {Promise<boolean>}
+   */
+  async isNotificationPanelVisible({ timeout = 5000 } = {}) {
+    const panel = this.page.locator(SELECTORS.NOTIFICATION_PANEL_CLOSE).first();
+    try {
+      await panel.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the mandatory reminder popup dialog is visible.
+   * @param {object} [options]
+   * @param {number} [options.timeout=5000]
+   * @returns {Promise<boolean>}
+   */
+  async isReminderPopupVisible({ timeout = 5000 } = {}) {
+    const title = this.page.locator(SELECTORS.REMINDER_POPUP_DIALOG).first();
+    try {
+      await title.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Dismisses the mandatory reminder popup by checking "Got it" and clicking "close".
+   * @param {object} [options]
+   * @param {number} [options.timeout=5000]
+   */
+  async dismissReminderPopup({ timeout = 5000 } = {}) {
+    const dialog = this.page.locator(SELECTORS.REMINDER_POPUP_CONTAINER).first();
+    await dialog.waitFor({ state: 'visible', timeout });
+    const checkbox = dialog.locator(SELECTORS.REMINDER_POPUP_CHECKBOX).first();
+    await checkbox.click();
+    const closeBtn = dialog.locator(SELECTORS.REMINDER_POPUP_CLOSE_BUTTON).first();
+    await closeBtn.waitFor({ state: 'visible', timeout });
+    await closeBtn.click();
+    await dialog.waitFor({ state: 'hidden', timeout: 10000 });
   }
 
   /**

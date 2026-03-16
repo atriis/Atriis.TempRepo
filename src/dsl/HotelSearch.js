@@ -95,8 +95,10 @@ const HotelSearch = {
     const hotelSearchPage = getPageObject(page, HotelSearchPage);
     const searchPage = getPageObject(page, SearchPage);
 
-    await hotelSearchPage.clickHotelTab();
-    await hotelSearchPage.waitForBookAndStayAtYourHotelText();
+    if (!options.fromDrawer) {
+      await hotelSearchPage.clickHotelTab();
+      await hotelSearchPage.waitForBookAndStayAtYourHotelText();
+    }
 
     await hotelSearchPage.typeHotelDestination(where);
 
@@ -149,6 +151,43 @@ const HotelSearch = {
     }
 
     expect(destinationValue).toBe(expectedAirport);
+  },
+
+  /**
+   * Types text into the hotel search location field without selecting a suggestion.
+   * Used to trigger the autocomplete dropdown for inspection.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} text - Text to type in the location field
+   */
+  async typeInHotelSearchLocationField(page, text) {
+    if (!page) throw new Error('page is required');
+    if (!text || typeof text !== 'string') {
+      throw new Error('text must be a non-empty string, got: ' + typeof text);
+    }
+
+    const hotelSearchPage = getPageObject(page, HotelSearchPage);
+    await hotelSearchPage.clickHotelTab();
+    await hotelSearchPage.waitForBookAndStayAtYourHotelText();
+    await hotelSearchPage.typeInHotelDestinationField(text);
+  },
+
+  /**
+   * Verifies that a specific location appears as a suggestion in the hotel search autocomplete dropdown.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedSuggestion - Text expected to appear in a dropdown suggestion
+   * @throws {Error} If the suggestion is not found in the dropdown
+   */
+  async verifyLocationSuggestionVisible(page, expectedSuggestion) {
+    if (!page) throw new Error('page is required');
+    if (!expectedSuggestion || typeof expectedSuggestion !== 'string') {
+      throw new Error('expectedSuggestion must be a non-empty string, got: ' + typeof expectedSuggestion);
+    }
+
+    const hotelSearchPage = getPageObject(page, HotelSearchPage);
+    const isVisible = await hotelSearchPage.isLocationSuggestionVisible(expectedSuggestion);
+    expect(isVisible, `Expected "${expectedSuggestion}" to appear as a location suggestion in the dropdown`).toBe(true);
   },
 };
 

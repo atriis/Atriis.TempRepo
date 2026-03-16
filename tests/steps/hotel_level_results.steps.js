@@ -26,7 +26,7 @@ When("I select a hotel with member rates", async function () {
   await HotelLevelResults.clickFirstHotelWithMemberRate(this.page);
 });
 
-When("I wait to see view rates text in results page", async function () {
+When("I wait to see view rates text in results page", { timeout: 180000 }, async function () {
   logger.info("Waiting to see view rates text in results page");
   const hotelLevelResultsPage = new HotelLevelResultsPage(this.page);
   await hotelLevelResultsPage.waitForViewRatesText();
@@ -163,4 +163,14 @@ Then("the {string} filter tag should be visible in hotel results", async functio
 Then(/^"[Hh]otel [Ww]asn't [Ff]ound" error message is not displayed$/, async function () {
   logger.info('Verifying hotel results are displayed without "Hotel wasn\'t found" message');
   await HotelLevelResults.verifyHotelWasntFoundMessageNotDisplayed(this.page);
+});
+
+Then("handshake badge should be visible in hotel level results", async function () {
+  logger.info("Verifying handshake agreement badge is visible in hotel level results");
+  await HotelLevelResults.verifyHandshakeBadgeVisible(this.page);
+});
+
+Then("TMC badge filter should be visible in hotel level results", async function () {
+  logger.info("Verifying TMC agreement filter is visible in hotel level results");
+  await HotelLevelResults.verifyAgreementFilterVisible(this.page);
 });

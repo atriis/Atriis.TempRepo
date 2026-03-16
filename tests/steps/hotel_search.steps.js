@@ -19,6 +19,11 @@ When("I search for a hotel in {string} for {int} night(s) with {int} rooms", asy
   await HotelSearch.searchHotelMultiRoom(this.page, { where: location, nights, rooms });
 });
 
+When("I search for a hotel in {string} for {int} night(s) from the cart drawer", async function (location, nights) {
+  logger.info("Searching for hotel from cart drawer", { location, nights });
+  await HotelSearch.searchHotelByNights(this.page, { where: location, nights }, { fromDrawer: true });
+});
+
 // ========================================
 // THEN STEPS - HOTEL SEARCH
 // ========================================
@@ -26,4 +31,14 @@ When("I search for a hotel in {string} for {int} night(s) with {int} rooms", asy
 Then("the hotel search location should be pre-populated with {string}", async function (expectedAirport) {
   logger.info("Verifying hotel search location is pre-populated", { expectedAirport });
   await HotelSearch.verifyHotelSearchPrePopulated(this.page, expectedAirport);
+});
+
+When("I type {string} in the hotel search location field", async function (text) {
+  logger.info("Typing in hotel search location field", { text });
+  await HotelSearch.typeInHotelSearchLocationField(this.page, text);
+});
+
+Then("{string} should appear as a location suggestion in the dropdown", async function (expectedSuggestion) {
+  logger.info("Verifying location suggestion is visible", { expectedSuggestion });
+  await HotelSearch.verifyLocationSuggestionVisible(this.page, expectedSuggestion);
 });

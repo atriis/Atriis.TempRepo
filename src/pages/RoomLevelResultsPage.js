@@ -42,6 +42,8 @@ const SELECTORS = {
   TERMS_AND_CONDITIONS_BUTTON: ".room-list button:has-text('Terms & Conditions')",
   TERMS_AND_CONDITIONS_DIALOG: ".terms-conditions-dialog",
   ALL_ROOM_PRICE_AMOUNTS: ".room-list > div .price-details-main .amount",
+  // Agreement badge (handshake icon) in room results — target the icon, not the wrapper section
+  AGREEMENT_BADGE: '.ticket-agreement .agreement-img',
 };
 
 class RoomLevelResultsPage {
@@ -550,6 +552,27 @@ class RoomLevelResultsPage {
     await dialog.waitFor({ state: 'hidden', timeout: 5000 });
 
     return text.trim();
+  }
+
+  /**
+   * Checks if any agreement badge (handshake icon) is visible in room level results.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isAnyAgreementBadgeVisible({ timeout = 30000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.AGREEMENT_BADGE).first().waitFor({ state: 'attached', timeout });
+      const count = await this.page.locator(SELECTORS.AGREEMENT_BADGE).count();
+      for (let i = 0; i < count; i++) {
+        if (await this.page.locator(SELECTORS.AGREEMENT_BADGE).nth(i).isVisible()) {
+          return true;
+        }
+      }
+      return false;
+    } catch {
+      return false;
+    }
   }
 }
 

@@ -43,6 +43,12 @@ const SELECTORS = {
   AGREEMENT_TOOLTIP_DESCRIPTION: '.el-popper.is-light .agreement-tooltip__description',
   // "Hotel wasn't found" no-results section
   HOTEL_NO_RESULTS: '.hotel-no-results',
+  // Hotel details drawer amenities section
+  HOTEL_AMENITIES: '.hotel-amenities',
+  // More details button inside a hotel card
+  MORE_DETAILS_BUTTON: '.more-details-btn',
+  // Agreement badge (any) in hotel card
+  AGREEMENT_BADGE: '.hotel-preview .ticket-agreement',
 };
 
 class HotelLevelResultsPage {
@@ -70,24 +76,24 @@ class HotelLevelResultsPage {
     await viewRatesButton.scrollIntoViewIfNeeded();
   }
 
-  /** Waits until the first "View rates" button is visible (120s timeout for CI/CD) */
+  /** Waits until the first "View rates" button is visible (180s timeout for slow GDS suppliers) */
   async waitForViewRatesText() {
     const viewRatesButton = this.getViewRatesButton();
 
     // Wait for results page to be ready before looking for buttons (map button signals results loaded)
     await this.waitForResultsPageReady();
 
-    // Ensure the button exists, then scroll it into view (120s timeout for slower CI environments)
-    await viewRatesButton.waitFor({ state: "attached", timeout: 120000 });
-    await viewRatesButton.scrollIntoViewIfNeeded({ timeout: 120000 });
+    // Ensure the button exists, then scroll it into view (180s timeout for slower GDS suppliers like Galileo)
+    await viewRatesButton.waitFor({ state: "attached", timeout: 180000 });
+    await viewRatesButton.scrollIntoViewIfNeeded({ timeout: 180000 });
 
-    // Confirm it is visible and ready for interaction (120s timeout)
-    await viewRatesButton.waitFor({ state: "visible", timeout: 120000 });
+    // Confirm it is visible and ready for interaction
+    await viewRatesButton.waitFor({ state: "visible", timeout: 180000 });
   }
 
   async waitForResultsPageReady() {
-    await this.page.waitForURL(/\/products\/hotels\/results/, { timeout: 120000 });
-    await this.page.locator(SELECTORS.VIEW_ON_MAP_BUTTON).first().waitFor({ state: 'visible', timeout: 120000 });
+    await this.page.waitForURL(/\/products\/hotels\/results/, { timeout: 180000 });
+    await this.page.locator(SELECTORS.VIEW_ON_MAP_BUTTON).first().waitFor({ state: 'visible', timeout: 180000 });
   }
 
   /** Clicks the first available "View rates" button */
@@ -289,19 +295,19 @@ class HotelLevelResultsPage {
       throw new Error('index must be >= 1, got: ' + index);
     }
     // Close any open hotel details drawer first via Escape key
-    const amenitiesVisible = await this.page.locator('.hotel-amenities').first().isVisible().catch(() => false);
+    const amenitiesVisible = await this.page.locator(SELECTORS.HOTEL_AMENITIES).first().isVisible().catch(() => false);
     if (amenitiesVisible) {
       await this.page.keyboard.press('Escape');
-      await this.page.locator('.hotel-amenities').first().waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+      await this.page.locator(SELECTORS.HOTEL_AMENITIES).first().waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
     }
     const hotelCard = this.page.locator(SELECTORS.HOTEL_CARD).nth(index - 1);
     await hotelCard.waitFor({ state: 'visible', timeout: 30000 });
     await hotelCard.scrollIntoViewIfNeeded();
-    const moreDetailsBtn = hotelCard.locator('.more-details-btn').first();
+    const moreDetailsBtn = hotelCard.locator(SELECTORS.MORE_DETAILS_BUTTON).first();
     await moreDetailsBtn.waitFor({ state: 'visible', timeout: 15000 });
     await moreDetailsBtn.click();
     // Wait for the hotel details drawer with amenities to open and load
-    await this.page.locator('.hotel-amenities').first().waitFor({ state: 'visible', timeout: 15000 });
+    await this.page.locator(SELECTORS.HOTEL_AMENITIES).first().waitFor({ state: 'visible', timeout: 15000 });
     // Give the drawer content time to fully load before reading amenity state
     await this.page.waitForTimeout(1000);
   }
@@ -452,6 +458,22 @@ class HotelLevelResultsPage {
     const tag = this.page.locator(SELECTORS.HOTEL_FILTER_SUMMARY_TAG(text)).first();
     try {
       await tag.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if any agreement badge (handshake icon) is visible in hotel level results.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isAnyAgreementBadgeVisible({ timeout = 10000 } = {}) {
+    const badge = this.page.locator(SELECTORS.AGREEMENT_BADGE).first();
+    try {
+      await badge.waitFor({ state: 'visible', timeout });
       return true;
     } catch {
       return false;

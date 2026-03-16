@@ -436,6 +436,30 @@ const HotelLevelResults = {
    * @param {import('playwright').Page} page
    * @throws {Error} If the "Hotel wasn't found" message is unexpectedly visible
    */
+  /**
+   * Verifies that at least one agreement badge (handshake icon) is visible in hotel level results.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If no agreement badge is visible
+   */
+  async verifyHandshakeBadgeVisible(page) {
+    if (!page) throw new Error('page is required');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const isVisible = await hotelLevelResultsPage.isAnyAgreementBadgeVisible();
+    if (!isVisible) throw new Error('No agreement badge (handshake) is visible in hotel level results');
+  },
+
+  /**
+   * Verifies that the Agreement filter section is visible in the hotel-level filter panel.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the Agreement filter section is not visible
+   */
+  async verifyAgreementFilterVisible(page) {
+    if (!page) throw new Error('page is required');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const isVisible = await hotelLevelResultsPage.isFilterSectionVisible('Agreement');
+    if (!isVisible) throw new Error('Agreement filter section is not visible in hotel level results');
+  },
+
   async verifyHotelWasntFoundMessageNotDisplayed(page) {
     if (!page) throw new Error('page is required');
 

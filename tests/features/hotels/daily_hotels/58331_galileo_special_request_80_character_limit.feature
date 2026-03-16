@@ -7,21 +7,24 @@
 # Updated: 2025-11-27T12:00:22Z
 
 @regression @provider:galileo
-Feature: 58331 Galileo - Special request 80 character limit validation
+Feature:  58331 Galileo - Hotel - Special request has a limit of 80 characters and booking is succeeded when special request has special characters
   As a corporate traveler using Galileo
   I want to add a special request to my hotel booking with character limit validation
   So that my requests are submitted within the allowed character limit
 
   @priority:medium
-  Scenario: Special request field enforces 80 character limit on Galileo hotel booking
-    Given I am logged in as "beatriz" booking a new trip
+  Scenario: Special request has a limit of 80 characters and booking is succeeded when special request has special characters
+    Given I am logged in as "edwardcullen" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Ardoe House Hotel and Spa" for 1 night
+    When I search for a hotel in "Blue Mansion Hotel, Oosteinderweg, Aalsmeer, Netherlands" for 1 night
+    And I wait to see view rates text in results page
+    And I filter hotel results by hotel name "Blue Mansion Hotel"
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "When I add a special request text of {int} characters" that calls DSL addSpecialRequest in Cart.js
-    # TODO: Create step "Then the special request should be truncated to {int} characters" that calls DSL verifySpecialRequestLimit in Cart.js
+    Then the hotel should appear as refundable in cart
+    When I add a special request text of 100 characters
+    Then the special request should be truncated to 80 characters
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"

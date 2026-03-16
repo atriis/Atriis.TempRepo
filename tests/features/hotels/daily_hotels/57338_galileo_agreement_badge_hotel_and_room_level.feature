@@ -14,9 +14,13 @@ Feature: 57338 Galileo - Agreement badge visible in hotel and room level
 
   @priority:high
   Scenario: Agreement badge is visible in hotel level and room level for Galileo
-    Given I am logged in as "beatriz" booking a new trip
+    Given I am logged in as "canisso" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
-    # TODO: Create step "Then the agreement badge should be visible at hotel level" that calls DSL verifyAgreementBadgeHotelLevel in HotelSearch.js
+    And I wait to see view rates text in results page
+    Then handshake badge should be visible in hotel level results
+    Then TMC badge filter should be visible in hotel level results
     And I select the first hotel result
-    # TODO: Create step "Then the agreement badge should be visible in room level results" that calls DSL verifyAgreementInRoomLevel in RoomLevelResults.js
+    When I wait for the first add to trip button in room level results to be visible
+    Then handshake badge should be visible in room level results
+    Then TMC badge filter should be visible in room level results

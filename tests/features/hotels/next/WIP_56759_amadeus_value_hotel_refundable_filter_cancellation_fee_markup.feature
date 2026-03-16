@@ -22,4 +22,4 @@ Feature: 56759 Amadeus Value Hotel - Refundable filter with cancellation fee and
     And I extract the price from room level results
     And I verify the room price appears in the terms and conditions
     When I add the first available room to my cart
-    Then the hotel should appear as refundable in my cart
+    Then the hotel should appear as refundable in cart

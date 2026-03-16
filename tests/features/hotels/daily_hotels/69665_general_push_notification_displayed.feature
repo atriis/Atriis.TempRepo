@@ -7,18 +7,22 @@
 # Updated: 2025-10-31T04:14:30Z
 
 @regression @provider:general
-Feature: 69665 General - Push notification displayed when adding hotel to cart
+Feature: 69665 Hotels - Push Notification  'Hotel Content Source' and 'Country' filters are being correctly applied
   As a corporate traveler
   I want to see a push notification when a hotel is added to my cart
   So that I receive real-time feedback on my booking actions
 
   @priority:medium
-  Scenario: Push notification is displayed when hotel is added to cart
-    Given I am logged in as "ruimariano" booking a new trip
+  Scenario: Push Notification  'Hotel Content Source' and 'Country' filters are being correctly applied
+    Given I am logged in as "sammau" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-     # TODO: Create step "Then a push notification should be displayed in hotel results" that calls DSL verifyPushNotification in HotelSearch.js
+    Then a push notification should be displayed
     Then the booking status should be "Pending booking"
-
+    When I click to add a hotel to my trip from cart
+    When I search for a hotel in "Rome, Italy" for 1 night from the cart drawer
+    And I select the first hotel result
+    And I add a refundable room to my cart
+    Then the booking status should be "Pending booking"

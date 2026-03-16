@@ -832,6 +832,37 @@ class CartPage {
     await this.page.locator(SELECTORS.SPECIAL_REQUEST_SAVE_BTN).click();
     await this.page.locator(SELECTORS.SPECIAL_REQUEST_SUCCESS).waitFor({ state: 'visible', timeout });
   }
+
+  /**
+   * Opens the special request panel and types the given text WITHOUT saving.
+   * Useful for verifying truncation/character limit before save.
+   *
+   * @param {string} text - The text to type into the special request textarea
+   * @param {object} [options]
+   * @param {number} [options.timeout=20000] - Max wait time per action in ms
+   */
+  async fillSpecialRequestWithoutSaving(text, { timeout = 20000 } = {}) {
+    if (typeof text !== 'string') throw new Error('text must be a string, got: ' + typeof text);
+    const clickable = this.page.locator(SELECTORS.SPECIAL_REQUEST_CLICKABLE);
+    await clickable.waitFor({ state: 'visible', timeout });
+    await clickable.click();
+    const textarea = this.page.locator(SELECTORS.SPECIAL_REQUEST_TEXTAREA);
+    await textarea.waitFor({ state: 'visible', timeout });
+    await textarea.fill(text);
+  }
+
+  /**
+   * Gets the current text value from the special request textarea.
+   * Assumes the special request panel is already open.
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>} The current textarea value
+   */
+  async getSpecialRequestValue({ timeout = 10000 } = {}) {
+    const textarea = this.page.locator(SELECTORS.SPECIAL_REQUEST_TEXTAREA);
+    await textarea.waitFor({ state: 'visible', timeout });
+    return (await textarea.inputValue()).trim();
+  }
+
   /**
    * Checks if CO2 eco-label is visible in trip overview.
    * @param {number} timeout - Maximum wait time in milliseconds

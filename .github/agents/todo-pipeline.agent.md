@@ -127,7 +127,37 @@ For each feature file with TODOs:
 4. Read referenced page objects
 5. Consult `@domain-{domain}` for domain-specific patterns
 
-#### Step 2b: Implement by Category (bottom-up)
+#### Step 2b: Scan for Existing Implementations (MANDATORY — No Duplication)
+
+**Before implementing ANY TODO**, perform a full project scan to prevent duplication. This step is **non-negotiable**.
+
+For each TODO (step, DSL method, page method, or locator):
+
+1. **Search the entire project** for existing implementations:
+   - Steps: search all files in `tests/steps/` for the step phrase or semantically similar phrases
+   - DSL: search all files in `src/dsl/` for methods that do the same thing (even under a different name)
+   - Pages: search all files in `src/pages/` for locators/methods that already target the same element or action
+   - Use grep/semantic search across the full codebase, not just the files referenced by the current feature
+
+2. **Check for near-matches** — look for steps/methods that do almost the same thing but with slightly different wording or parameters. Examples:
+   - TODO says `"When I fill in the reference fields"` → check if `"When I fill in the mandatory reference fields"` already exists
+   - TODO says `selectRoom(page, roomIndex)` → check if `selectRoomByIndex(page, index)` already exists
+   - TODO says `clickRefundableFilter()` → check if `clickFilter(filterName)` already exists with a broader signature
+
+3. **Decision logic:**
+   - **Exact match exists** → reuse it directly, resolve the TODO, done
+   - **Near-match exists and can safely be broadened** (e.g., adding an optional parameter, renaming for clarity) → broaden it to cover both cases
+   - **Near-match exists but you're NOT SURE if broadening is safe** → **do NOT touch the existing method**; create a new one instead. Safety over cleverness.
+   - **No match exists** → create new implementation
+
+4. **Report findings in the checkpoint:**
+   - List which TODOs were resolved by reusing existing code
+   - List which existing methods were broadened (and what changed)
+   - List which new implementations were created (and why existing ones couldn't be reused)
+
+> **Principle: When in doubt, don't touch existing code. Create new. We can always consolidate later — but breaking existing tests by modifying a shared method is far worse than a little duplication.**
+
+#### Step 2c: Implement by Category (bottom-up)
 
 **Order matters** — implement bottom-up to avoid cascading failures:
 
@@ -142,8 +172,12 @@ For each feature file with TODOs:
    - Add atomic action methods using the new locators
    - One Playwright action per method
    - Include timeout on waitFor calls
+   - **Centralize ALL selectors in the SELECTORS constant** at the top of the page file — never use inline string selectors like `this.page.locator('.some-class')` inside methods. Always define them as `SELECTORS.SOME_NAME` and reference that constant.
 
 3. **DSL methods** (`dsl` category)
+   - **SCAN FIRST** — search ALL `src/dsl/*.js` files for methods that already perform the same action (this was already done in Step 2b, use those results)
+   - If an existing method covers the same workflow → reuse it, do not create a duplicate
+   - If an existing method is close but not quite right → only modify it if you are confident the change is safe; otherwise create a new method alongside it
    - Check if DSL file exists; create if TODO says "Create DSL file"
    - Add method with full input validation (page first, type checks)
    - Compose from Page Object methods only
@@ -152,9 +186,11 @@ For each feature file with TODOs:
 
 4. **Step definitions** (`step` category)
    - Parse the TODO comment for the exact step phrase
+   - **SCAN FIRST** — search ALL `tests/steps/*.steps.js` files for the step phrase or semantically equivalent phrases (this was already done in Step 2b, use those results)
+   - If an existing step covers the same action → reuse it, do not create a duplicate
+   - If an existing step is close but slightly different → only broaden it if you are confident it won't break other tests; otherwise create a new step
    - **Prioritize shared steps first** — if multiple files need the same step, create it once
-   - Check if step already exists in `tests/steps/` (may have been created for another feature)
-   - If not, create in the correct `tests/steps/{domain}.steps.js`
+   - If no match exists, create in the correct `tests/steps/{domain}.steps.js`
    - Step body: extract params → call DSL → log with logger
    - Follow existing patterns in the same file
 
@@ -163,14 +199,14 @@ For each feature file with TODOs:
    - If yes → implement
    - If no (e.g., "adjust when we have data-test-id") → leave as-is, note in report
 
-#### Step 2c: Remove Resolved TODO Comments
+#### Step 2d: Remove Resolved TODO Comments
 After implementing each TODO:
 - **Remove the `# TODO:` comment line cleanly** — no replacement comment, just delete the line
 - Remove `// TODO:` comments from source files only if the implementation satisfies them
 - **Keep** TODOs that say "adjust when..." or "replace with..." — these are future notes
 - **Never leave empty lines** where TODO comments were — clean up any blank line artifacts
 
-#### Step 2d: Verify Syntax
+#### Step 2e: Verify Syntax
 Before running, quick-check:
 - Feature file parses (no Gherkin syntax errors)
 - Step definitions have matching signatures
@@ -199,17 +235,23 @@ Before running, quick-check:
 ### Phase 4: Fix-Rerun Loop (up to 5 iterations)
 Same protocol as `@ado-pipeline`:
 
-**4a. Fix**
+**4a. Triage the failure first**
+Before attempting any fix, classify the failure:
+- **No search results** (hotel search returned 0 hotels, flight search returned 0 flights, car search returned 0 cars, etc.) → **STOP IMMEDIATELY**. Do not attempt to fix this. No amount of code changes will produce search results — this is a data/environment/supplier issue. Mark the file as "blocked: no search results" and move to the next file.
+- **Code/locator/step error** → proceed with fix.
+
+**4b. Fix**
 **Invoke**: `@test-fixer-pipeline` with errors + generation context
 **Also consults**: `@domain-{domain}` for domain knowledge
 
 **CHECKPOINT**: Show fixes, ask to re-run.
 
-**4b. Re-run**
+**4c. Re-run**
 **Invoke**: `@test-runner-pipeline`
 
 **CHECKPOINT**: Show results.
 - If passed → move to next file or report
+- If failed due to no search results → STOP, mark as blocked
 - If failed and iteration < 5 → continue
 - If iteration = 5 → mark as "needs manual intervention", move to next file
 
@@ -306,15 +348,26 @@ The agent understands these TODO formats:
 - `@batch-test-fixer` can delegate TODO resolution to this pipeline
 
 ## Rules
+- **SCAN THE ENTIRE PROJECT BEFORE CREATING ANYTHING** — search `tests/steps/`, `src/dsl/`, and `src/pages/` for existing steps, methods, and locators that already do what the TODO requires, or that could be broadened to cover it
+- **Never duplicate** — if an existing step/method/locator already covers the TODO's intent, reuse it
+- **If unsure about broadening an existing method, DON'T TOUCH IT** — create a new one instead. Breaking existing tests is worse than having a near-duplicate. We can consolidate later.
 - **Always ask user to pick files/folders** — never process everything without confirmation
-- **Bottom-up implementation** — locators → page objects → DSL → steps → feature cleanup
+- **Bottom-up implementation** — scan for existing → locators → page objects → DSL → steps → feature cleanup
 - **Attempt `data-testid` first** — if not found in Atriis.App, pick another selector strategy
 - **Prioritize shared steps first** — create steps used by multiple files before file-specific ones
-- **Dedup before implementing** — check if the step/method already exists elsewhere
 - **Remove TODO comments cleanly** — no replacement comment, no empty lines left behind
 - **Never remove future-note TODOs** — only remove TODOs that you fully implemented
 - **Move resolved files** from `to_adjust/` to `{domain}/generated/` folder when complete
 - **One file at a time** — complete one feature before moving to the next
 - **Respect layer boundaries** — page objects don't get business logic, steps don't get Playwright
 - **Source selectors from Atriis.App** — always check the Vue source for real selectors
+- **Centralize selectors at the top of page files** — every CSS/XPath/text selector used in a Page Object method MUST be declared in the `SELECTORS` constant at the top of the file, using `UPPER_SNAKE_CASE`. Never inline selector strings like `this.page.locator('.some-class')` inside methods — always reference `SELECTORS.SOME_NAME` instead. This keeps selectors easy to find, update, and reuse.
 - **5 fix iterations max** — per file, not per batch
+- **No search results = STOP** — if a test fails because a product search (hotels, flights, cars, rails) returned zero results, do NOT attempt to fix it. Search results depend on supplier availability, test data, and environment — no code change can solve this. Mark the file as "blocked: no search results" and move on. We need results in order to proceed with creating or validating steps.
+
+### Hotels — Critical Cost Rules
+- **NEVER book non-refundable hotels** — non-refundable bookings cost real money to the company. When implementing hotel booking steps, ALWAYS ensure the scenario filters by refundable rooms first. If a TODO creates a hotel booking flow without a refundable filter step, add one.
+- **ALWAYS filter by refundable at room level** — before selecting any room, the scenario MUST include a step that filters results to show only refundable rooms. This is the first safeguard.
+- **ALWAYS verify refundable status in cart before booking** — after adding a room to the cart and before proceeding to checkout/booking, the scenario MUST include a step that validates the hotel in the cart is marked as refundable. This is the second safeguard. If either safeguard is missing, add it.
+- **ALWAYS cancel hotel booking trips** — every hotel test that completes a booking MUST include a cancellation step at the end. If the feature file doesn't have a cancellation step after booking, add one. Uncancelled bookings are charged to the company.
+- If you are generating or implementing hotel steps and the scenario books a hotel without these safeguards, **stop and flag it** to the user before proceeding.

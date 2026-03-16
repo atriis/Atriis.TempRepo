@@ -245,3 +245,13 @@ When("I apply room level filter {string} with option {string}", async function (
   logger.info("Applying room level filter", { filterName, optionText });
   await RoomLevelResults.applyRoomFilter(this.page, filterName, optionText);
 });
+
+Then("handshake badge should be visible in room level results", async function () {
+  logger.info("Verifying handshake agreement badge is visible in room level results");
+  await RoomLevelResults.verifyHandshakeBadgeVisible(this.page);
+});
+
+Then("TMC badge filter should be visible in room level results", async function () {
+  logger.info("Verifying TMC agreement filter is visible in room level results");
+  await RoomLevelResults.verifyAgreementFilterVisible(this.page);
+});

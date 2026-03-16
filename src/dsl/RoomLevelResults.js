@@ -377,6 +377,30 @@ const RoomLevelResults = {
    * @param {import('playwright').Page} page
    * @param {number} price - The price extracted from room level results
    */
+  /**
+   * Verifies that at least one agreement badge (handshake icon) is visible in room level results.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If no agreement badge is visible
+   */
+  async verifyHandshakeBadgeVisible(page) {
+    if (!page) throw new Error('page is required');
+    const p = getPageObject(page, RoomLevelResultsPage);
+    const isVisible = await p.isAnyAgreementBadgeVisible();
+    if (!isVisible) throw new Error('No agreement badge (handshake) is visible in room level results');
+  },
+
+  /**
+   * Verifies that the Agreement filter section is visible in the room-level filter panel.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the Agreement filter section is not visible
+   */
+  async verifyAgreementFilterVisible(page) {
+    if (!page) throw new Error('page is required');
+    const p = getPageObject(page, RoomLevelResultsPage);
+    const isVisible = await p.isRoomFilterSectionVisible('Agreement');
+    if (!isVisible) throw new Error('Agreement filter section is not visible in room level results');
+  },
+
   async verifyPriceInTermsAndConditions(page, price) {
     if (!page) throw new Error('page parameter is required');
     if (typeof price !== 'number' || Number.isNaN(price)) {

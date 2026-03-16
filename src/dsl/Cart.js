@@ -578,6 +578,36 @@ const Cart = {
   },
 
   /**
+   * Generates a text string of a specific character count and types it into the special request field.
+   * Does NOT save — allows inspection of truncation before saving.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} charCount - Number of characters to generate and type
+   */
+  async addSpecialRequestTextOfLength(page, charCount) {
+    if (!page) throw new Error('page is required');
+    if (typeof charCount !== 'number' || charCount < 1) throw new Error('charCount must be a positive number, got: ' + charCount);
+    const text = 'A'.repeat(charCount);
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.fillSpecialRequestWithoutSaving(text);
+  },
+
+  /**
+   * Verifies that the special request textarea value has been truncated to the expected character count.
+   * Assumes the special request panel is already open with text filled in.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} maxLength - Expected maximum number of characters
+   */
+  async verifySpecialRequestTruncatedTo(page, maxLength) {
+    if (!page) throw new Error('page is required');
+    if (typeof maxLength !== 'number' || maxLength < 1) throw new Error('maxLength must be a positive number, got: ' + maxLength);
+    const cartPage = getPageObject(page, CartPage);
+    const value = await cartPage.getSpecialRequestValue();
+    expect(value.length, `Expected special request to be truncated to ${maxLength} characters, but got ${value.length}`).toBeLessThanOrEqual(maxLength);
+  },
+
+  /**
    * Verifies that CO2 emissions data is displayed in the trip overview.
    * Checks that the eco-label is visible and the CO2 value is a non-zero number.
    * @param {import('playwright').Page} page
@@ -776,6 +806,43 @@ const Cart = {
     if (!page) throw new Error('page is required');
     const cartPage = getPageObject(page, CartPage);
     await cartPage.clickAddHotelFromCarousel();
+  },
+
+  /**
+   * Verifies that a push notification is displayed — either a bell badge in the header
+   * or a mandatory notification dialog/banner in the cart.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If no notification indicator is visible
+   */
+  async verifyPushNotificationDisplayed(page) {
+    if (!page) throw new Error('page is required');
+    const commonPage = getPageObject(page, CommonPage);
+    const reminderVisible = await commonPage.isReminderPopupVisible({ timeout: 10000 });
+    if (reminderVisible) {
+      await commonPage.dismissReminderPopup();
+      return;
+    }
+    const badgeVisible = await commonPage.isNotificationBadgeVisible({ timeout: 5000 });
+    if (badgeVisible) return;
+    const mandatoryVisible = await commonPage.isMandatoryNotificationVisible({ timeout: 5000 });
+    if (mandatoryVisible) return;
+    const panelVisible = await commonPage.isNotificationPanelVisible({ timeout: 5000 });
+    if (panelVisible) return;
+    throw new Error('No push notification is visible (checked reminder popup, bell badge, mandatory banner, and notification panel)');
+  },
+
+  /**
+   * Dismisses the mandatory reminder popup if it is currently visible.
+   * Does nothing if no popup is present.
+   * @param {import('playwright').Page} page
+   */
+  async dismissReminderPopupIfVisible(page) {
+    if (!page) throw new Error('page is required');
+    const commonPage = getPageObject(page, CommonPage);
+    const visible = await commonPage.isReminderPopupVisible({ timeout: 5000 });
+    if (visible) {
+      await commonPage.dismissReminderPopup();
+    }
   },
 };
 

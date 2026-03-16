@@ -254,6 +254,16 @@ When("I add a special request with text {string}", async function (text) {
   await Cart.addSpecialRequest(this.page, text);
 });
 
+When("I add a special request text of {int} characters", async function (charCount) {
+  logger.info(`Adding special request text of ${charCount} characters`);
+  await Cart.addSpecialRequestTextOfLength(this.page, charCount);
+});
+
+Then("the special request should be truncated to {int} characters", async function (maxLength) {
+  logger.info(`Verifying special request is truncated to ${maxLength} characters`);
+  await Cart.verifySpecialRequestTruncatedTo(this.page, maxLength);
+});
+
 When("I send the email", async function () {
   logger.info("Sending email and waiting for success notification");
   await Cart.sendQuoteAndWaitForSuccess(this.page);
@@ -307,4 +317,9 @@ Then("the payment method for extras should not be changeable", async function ()
 When("I click to add a hotel to my trip from cart", async function () {
   logger.info("Clicking to add a hotel from cart product carousel");
   await Cart.clickAddHotelFromCart(this.page);
+});
+
+Then("a push notification should be displayed", async function () {
+  logger.info("Verifying push notification badge is visible in header");
+  await Cart.verifyPushNotificationDisplayed(this.page);
 });

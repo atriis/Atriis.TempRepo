@@ -11,6 +11,7 @@ const SELECTORS = {
   HOTEL_HEADING: "#pane-hotel > h4",
   HOTEL_DESTINATION_FIELD: "[placeholder='Where would you like to stay?']",
   AUTOCOMPLETE_FIRST_OPTION: ".el-autocomplete-suggestion__list li[id*='item-0']",
+  AUTOCOMPLETE_LIST: ".el-autocomplete-suggestion__list",
   CHECK_IN_INPUT: "[placeholder='Check in']",
   ROOMS_DROPDOWN: '.hotel-search-cmp .app-select:has(.select-icon:text("sensor_door"))',
   ROOMS_DROPDOWN_OPTION: '.app-select-popper .el-select-dropdown__item',
@@ -97,6 +98,34 @@ class HotelSearchPage {
       .locator(SELECTORS.ROOMS_DROPDOWN_OPTION)
       .filter({ hasText: new RegExp('^' + count + '\\s+' + label, 'i') })
       .click();
+  }
+
+  /**
+   * Types into the hotel destination field without selecting a suggestion.
+   * Used when you want to trigger the autocomplete dropdown to inspect suggestions.
+   * @param {string} text - Text to type in the destination field
+   */
+  async typeInHotelDestinationField(text) {
+    const destinationField = this.page.locator(SELECTORS.HOTEL_DESTINATION_FIELD);
+    await destinationField.waitFor({ state: 'visible', timeout: 10000 });
+    await destinationField.click();
+    await destinationField.fill(text);
+  }
+
+  /**
+   * Checks if a location suggestion containing the given text is visible in the autocomplete dropdown.
+   * @param {string} text - Text to look for in the suggestion list
+   * @param {number} [timeout=10000]
+   * @returns {Promise<boolean>} True if a matching suggestion is visible
+   */
+  async isLocationSuggestionVisible(text, timeout = 10000) {
+    const suggestion = this.page.locator(SELECTORS.AUTOCOMPLETE_LIST).locator('li').filter({ hasText: text });
+    try {
+      await suggestion.first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
