@@ -3,6 +3,13 @@
  * Contains only UI-level interactions.
  */
 
+const SELECTORS = {
+  REFERENCE_FIELD_SECTION: '.general-section',
+  INPUT_WRAPPER: '.el-input__wrapper',
+  INPUT_INNER: '.el-input__inner',
+  SAVE_BUTTON_MODAL: '.el-dialog__footer button:has-text("Save")',
+};
+
 class DynamicAndReferenceFieldsPage {
   constructor(page) {
     this.page = page;
@@ -92,6 +99,42 @@ class DynamicAndReferenceFieldsPage {
       await this.scrollToTextField(index);
     }
     await this.getTextFieldInput(index).fill(text);
+  }
+
+  /**
+   * Finds a reference field by its label text and fills it with a value.
+   * Uses case-insensitive label matching to locate the field container,
+   * then finds the input within the same article/section.
+   *
+   * @param {string} labelText - The visible label text (e.g. "ORDER NUMBER")
+   * @param {string} value - The value to fill in
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<void>}
+   */
+  async fillReferenceFieldByLabel(labelText, value, { timeout = 10000 } = {}) {
+    if (!labelText) throw new Error('labelText is required');
+    if (value === undefined || value === null) throw new Error('value is required');
+
+    // Find the label element containing the field name
+    const label = this.page.locator(`text=${labelText}`).first();
+    await label.waitFor({ state: 'visible', timeout });
+
+    // Find the closest ancestor article that contains both the label and input
+    const fieldContainer = label.locator('xpath=ancestor::article[1]');
+    const input = fieldContainer.locator(SELECTORS.INPUT_INNER).first();
+
+    // If no input found in article, try the next sibling approach
+    const inputExists = await input.count();
+    if (inputExists > 0) {
+      await input.scrollIntoViewIfNeeded();
+      await input.fill(value);
+    } else {
+      // Fallback: find input near the label
+      const nearbyInput = label.locator('..').locator(SELECTORS.INPUT_INNER).first();
+      await nearbyInput.scrollIntoViewIfNeeded();
+      await nearbyInput.fill(value);
+    }
   }
 
 

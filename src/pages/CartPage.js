@@ -98,6 +98,15 @@ const SELECTORS = {
   // Add hotel from cart product carousel
   ADD_HOTEL_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Hotel")',
   ADD_HOTEL_SEARCH_DRAWER: '.app-drawer.atrs-edit-search-drawer',
+
+  // Passenger title (Travelodge extras - passenger-title.vue)
+  PASSENGER_TITLE_SECTION: '.passenger-title',
+  PASSENGER_TITLE_STATUS: '.passenger-title .extra__description .is-flex',
+  PASSENGER_TITLE_CLICKABLE: '.passenger-title .is-clickable',
+  PASSENGER_TITLE_SUCCESS_ICON: '.passenger-title .success-icon.green',
+  PASSENGER_TITLE_ERROR_BORDER: '.passenger-title .error-border',
+  PASSENGER_TITLE_DROPDOWN_TRIGGER: '.passenger-title .app-select',
+  PASSENGER_TITLE_SAVE_BUTTON: '.passenger-title .btn--primary',
 };
 
 class CartPage {
@@ -1003,6 +1012,76 @@ class CartPage {
     const el = this.page.locator(SELECTORS.QUOTE_TITLE).first();
     await el.waitFor({ state: 'visible', timeout });
     return (await el.innerText()).trim();
+  }
+
+  // ========================================
+  // Passenger Title (Travelodge extras)
+  // ========================================
+
+  /**
+   * Gets the passenger title status text (e.g. "* Title0/1" or "Title1/1").
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getPassengerTitleStatusText({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.PASSENGER_TITLE_STATUS).first();
+    await el.waitFor({ state: 'visible', timeout });
+    return (await el.innerText()).trim();
+  }
+
+  /**
+   * Checks whether the passenger title section has an error border (red border).
+   * @returns {Promise<boolean>}
+   */
+  async hasPassengerTitleErrorBorder() {
+    return this.page.locator(SELECTORS.PASSENGER_TITLE_ERROR_BORDER).isVisible();
+  }
+
+  /**
+   * Checks whether the passenger title has a green success check icon.
+   * @returns {Promise<boolean>}
+   */
+  async hasPassengerTitleSuccessIcon() {
+    return this.page.locator(SELECTORS.PASSENGER_TITLE_SUCCESS_ICON).isVisible();
+  }
+
+  /**
+   * Clicks the Add/Edit button to open the passenger title form.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   */
+  async clickPassengerTitleEdit({ timeout = 10000 } = {}) {
+    const btn = this.page.locator(SELECTORS.PASSENGER_TITLE_CLICKABLE).first();
+    await btn.waitFor({ state: 'visible', timeout });
+    await btn.click();
+  }
+
+  /**
+   * Selects a title from the dropdown in the passenger title form.
+   * Opens the app-select dropdown and picks the first available option.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   */
+  async selectFirstTitleOption({ timeout = 10000 } = {}) {
+    const dropdown = this.page.locator(SELECTORS.PASSENGER_TITLE_DROPDOWN_TRIGGER).first();
+    await dropdown.waitFor({ state: 'visible', timeout });
+    await dropdown.click();
+    // Select the first option from the dropdown
+    const option = this.page.locator('.el-select-dropdown__item').first();
+    await option.waitFor({ state: 'visible', timeout: 5000 });
+    await option.click();
+  }
+
+  /**
+   * Clicks the Save button in the passenger title form.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   */
+  async clickPassengerTitleSave({ timeout = 10000 } = {}) {
+    const btn = this.page.locator(SELECTORS.PASSENGER_TITLE_SAVE_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout });
+    await btn.click();
   }
 }
 // Export CartPage and SELECTORS for use in tests and DSL

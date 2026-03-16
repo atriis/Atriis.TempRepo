@@ -32,3 +32,8 @@ When("I navigate to cart from checkout", async function () {
   logger.info("Navigating to cart from checkout page");
   await Checkout.navigateToCartFromCheckout(this.page);
 });
+
+Then("{string} should be displayed in the checkout page", async function (expectedText) {
+  logger.info("Verifying text is displayed in checkout page", { expectedText });
+  await this.page.locator(`text=${expectedText}`).first().waitFor({ state: 'visible', timeout: 15000 });
+});

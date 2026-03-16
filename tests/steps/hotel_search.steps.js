@@ -24,6 +24,16 @@ When("I search for a hotel in {string} for {int} night(s) from the cart drawer",
   await HotelSearch.searchHotelByNights(this.page, { where: location, nights }, { fromDrawer: true });
 });
 
+When("I initiate a hotel search in {string} for {int} night(s)", async function (location, nights) {
+  logger.info("Initiating hotel search (no URL wait)", { location, nights });
+  await HotelSearch.initiateHotelSearch(this.page, { where: location, nights });
+});
+
+When("I wait for hotel results to load", async function () {
+  logger.info("Waiting for hotel results page to load");
+  await HotelSearch.waitForHotelResults(this.page);
+});
+
 // ========================================
 // THEN STEPS - HOTEL SEARCH
 // ========================================
@@ -41,4 +51,19 @@ When("I type {string} in the hotel search location field", async function (text)
 Then("{string} should appear as a location suggestion in the dropdown", async function (expectedSuggestion) {
   logger.info("Verifying location suggestion is visible", { expectedSuggestion });
   await HotelSearch.verifyLocationSuggestionVisible(this.page, expectedSuggestion);
+});
+
+When("I open the hotel search and verify available properties only is checked", async function () {
+  logger.info("Opening hotel search and verifying available properties checkbox");
+  await HotelSearch.openHotelSearchAndVerifyAvailableProperties(this.page);
+});
+
+When("I edit the hotel search from results and verify available properties only is checked", async function () {
+  logger.info("Editing hotel search from results and verifying available properties checkbox");
+  await HotelSearch.editHotelSearchAndVerifyAvailableProperties(this.page);
+});
+
+When("I edit the hotel search from cart and verify available properties only is checked", async function () {
+  logger.info("Editing hotel search from cart and verifying available properties checkbox");
+  await HotelSearch.editHotelSearchFromCartAndVerifyAvailableProperties(this.page);
 });

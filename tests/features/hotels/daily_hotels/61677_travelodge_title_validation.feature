@@ -14,16 +14,21 @@ Feature: 61677 Travelodge - Title field required before proceeding to checkout
 
   @priority:high
   Scenario: Title field shows red border when empty and allows proceeding when filled
-    Given I am logged in as "pluto" booking a new trip
+    Given I am logged in as "tlgg" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "Then the title field should show a red border indicating it is required" that calls DSL verifyTitleFieldRequired in Cart.js
-    # TODO: Create step "When I fill in the title field" that calls DSL fillTitleField in Cart.js
-    # TODO: Create step "Then the title field should show a green border indicating it is valid" that calls DSL verifyTitleFieldValid in Cart.js
-    When I proceed to checkout
-    And I complete the booking
-    Then the booking status should be "Confirmed"
-
+    Then the hotel should appear as refundable in cart
+    Then the passenger title status should show "Title0/1"
+    When I accept Terms & Conditions
+    And I click the proceed to checkout button
+    Then the cart should show the in order to proceed warning
+    Then the passenger title should have a red error border
+    When I add a passenger title
+    Then the passenger title status should show "Title1/1"
+    And the passenger title should have a green success icon
+    And the passenger title should not have a red error border
+    When I click the proceed to checkout button
+    Then "Travellers Reference Questions" should be displayed in the checkout page

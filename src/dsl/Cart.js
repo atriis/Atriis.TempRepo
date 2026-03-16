@@ -844,6 +844,73 @@ const Cart = {
       await commonPage.dismissReminderPopup();
     }
   },
+
+  // ========================================
+  // Passenger Title (Travelodge extras)
+  // ========================================
+
+  /**
+   * Verifies the passenger title status text matches expected (e.g. "* Title0/1").
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Expected status text
+   */
+  async verifyPassengerTitleStatus(page, expectedText) {
+    if (!page) throw new Error('page is required');
+    if (!expectedText || typeof expectedText !== 'string') throw new Error('expectedText must be a non-empty string');
+    const cartPage = getPageObject(page, CartPage);
+    const raw = await cartPage.getPassengerTitleStatusText();
+    // Normalize whitespace/newlines (the DOM has separate elements for *, Title, and 0/1)
+    const actual = raw.replace(/\s+/g, '');
+    const expected = expectedText.replace(/\s+/g, '');
+    expect(actual).toContain(expected);
+  },
+
+  /**
+   * Verifies the passenger title section has a red error border.
+   * @param {import('playwright').Page} page
+   */
+  async verifyPassengerTitleHasErrorBorder(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const hasError = await cartPage.hasPassengerTitleErrorBorder();
+    expect(hasError, 'Expected passenger title section to have red error border').toBe(true);
+  },
+
+  /**
+   * Verifies the passenger title section does NOT have a red error border.
+   * @param {import('playwright').Page} page
+   */
+  async verifyPassengerTitleNoErrorBorder(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const hasError = await cartPage.hasPassengerTitleErrorBorder();
+    expect(hasError, 'Expected passenger title section to NOT have red error border').toBe(false);
+  },
+
+  /**
+   * Verifies the passenger title has a green success icon.
+   * @param {import('playwright').Page} page
+   */
+  async verifyPassengerTitleHasSuccessIcon(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const hasIcon = await cartPage.hasPassengerTitleSuccessIcon();
+    expect(hasIcon, 'Expected passenger title to have green check icon').toBe(true);
+  },
+
+  /**
+   * Opens the passenger title form, selects the first available title, and saves.
+   * @param {import('playwright').Page} page
+   */
+  async addPassengerTitle(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickPassengerTitleEdit();
+    await cartPage.selectFirstTitleOption();
+    await cartPage.clickPassengerTitleSave();
+    // Wait for success toast
+    await page.locator('.el-notification__title').filter({ hasText: 'Success' }).waitFor({ state: 'visible', timeout: 10000 });
+  },
 };
 
 

@@ -15,6 +15,8 @@ const SELECTORS = {
   CHECK_IN_INPUT: "[placeholder='Check in']",
   ROOMS_DROPDOWN: '.hotel-search-cmp .app-select:has(.select-icon:text("sensor_door"))',
   ROOMS_DROPDOWN_OPTION: '.app-select-popper .el-select-dropdown__item',
+  AVAILABLE_PROPERTIES_CHECKBOX: '.el-checkbox',
+  AVAILABLE_PROPERTIES_LABEL: 'text=Available properties only',
 };
 
 
@@ -138,6 +140,21 @@ class HotelSearchPage {
     const field = this.page.locator(SELECTORS.HOTEL_DESTINATION_FIELD);
     await field.waitFor({ state: 'visible', timeout });
     return (await field.inputValue()).trim();
+  }
+
+  /**
+   * Checks if the 'Available properties only' checkbox is checked.
+   * Looks for the el-checkbox near the 'Available properties only' label.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isAvailablePropertiesChecked({ timeout = 10000 } = {}) {
+    const label = this.page.locator(SELECTORS.AVAILABLE_PROPERTIES_LABEL).first();
+    await label.waitFor({ state: 'visible', timeout });
+    const checkbox = label.locator('..').locator(SELECTORS.AVAILABLE_PROPERTIES_CHECKBOX).first();
+    const isChecked = await checkbox.evaluate(el => el.classList.contains('is-checked'));
+    return isChecked;
   }
 }
 

@@ -3,6 +3,7 @@ const { expect } = require("@playwright/test");
 const HotelSearchPage = require("@pages/HotelSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const { CommonPage } = require("@pages/CommonPage");
+const { ResultsPage } = require("@pages/ResultsPage");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveLocation } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
@@ -129,6 +130,56 @@ const HotelSearch = {
   },
 
   /**
+   * Fills hotel search form and clicks the Search button, but does NOT wait
+   * for navigation to the results page. Use this when a post-search popup
+   * (e.g. reference field) needs to be handled before results load.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string|object} whereInput - Destination or { where, nights }
+   * @param {object} [options]
+   * @param {number} [options.nights] - Number of nights
+   * @returns {Promise<{where: string, nights: number}>}
+   */
+  async initiateHotelSearch(page, whereInput, options = {}) {
+    if (!page) throw new Error('page is required');
+
+    let where, nights;
+    if (typeof whereInput === 'object' && whereInput !== null && (whereInput.where || whereInput.destination)) {
+      where = resolveLocation(whereInput, ['where', 'destination'], hotelLocations);
+      nights = whereInput.nights || SEARCH_DEFAULTS.HOTEL.NIGHTS;
+    } else {
+      where = resolveLocation(whereInput, ['where', 'destination'], hotelLocations);
+      nights = options.nights || SEARCH_DEFAULTS.HOTEL.NIGHTS;
+    }
+
+    const hotelSearchPage = getPageObject(page, HotelSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await hotelSearchPage.clickHotelTab();
+    await hotelSearchPage.waitForBookAndStayAtYourHotelText();
+    await hotelSearchPage.typeHotelDestination(where);
+    await hotelSearchPage.clickCheckInField();
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, { startIndex: 0, endIndex: nights });
+    await searchPage.waitAndClickSearchButton();
+
+    return { where, nights };
+  },
+
+  /**
+   * Waits for the hotel results page URL to load.
+   * Use after `initiateHotelSearch` + any post-search popup handling.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async waitForHotelResults(page) {
+    if (!page) throw new Error('page is required');
+    await page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
+    await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
+  },
+
+  /**
    * Verifies the hotel destination field is pre-populated with the expected airport code.
    * Used to confirm the hotel search form inherits the flight destination when opened from the cart.
    *
@@ -188,6 +239,70 @@ const HotelSearch = {
     const hotelSearchPage = getPageObject(page, HotelSearchPage);
     const isVisible = await hotelSearchPage.isLocationSuggestionVisible(expectedSuggestion);
     expect(isVisible, `Expected "${expectedSuggestion}" to appear as a location suggestion in the dropdown`).toBe(true);
+  },
+
+  /**
+   * Verifies the "Available properties only" checkbox is checked on the hotel search form.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyAvailablePropertiesChecked(page) {
+    if (!page) throw new Error('page is required');
+    const hotelSearchPage = getPageObject(page, HotelSearchPage);
+    const isChecked = await hotelSearchPage.isAvailablePropertiesChecked();
+    expect(isChecked, 'Expected "Available properties only" checkbox to be checked').toBe(true);
+  },
+
+  /**
+   * Opens the hotel search tab and verifies the "Available properties only" checkbox is checked.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async openHotelSearchAndVerifyAvailableProperties(page) {
+    if (!page) throw new Error('page is required');
+    const hotelSearchPage = getPageObject(page, HotelSearchPage);
+    await hotelSearchPage.clickHotelTab();
+    await hotelSearchPage.waitForBookAndStayAtYourHotelText();
+    await this.verifyAvailablePropertiesChecked(page);
+  },
+
+  /**
+   * Clicks the edit search button from results, verifies the "Available properties only"
+   * checkbox is still checked, then closes the edit drawer.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async editHotelSearchAndVerifyAvailableProperties(page) {
+    if (!page) throw new Error('page is required');
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    await resultsPage.clickEditButton();
+    // Wait for the edit-search drawer to be visible
+    await page.locator('.atrs-edit-search-drawer').waitFor({ state: 'visible', timeout: 10000 });
+    await this.verifyAvailablePropertiesChecked(page);
+    // Close the edit drawer
+    await page.locator('.atrs-edit-search-drawer .close-btn').first().click();
+  },
+
+  /**
+   * Opens the hotel search drawer from the cart product carousel and verifies
+   * the "Available properties only" checkbox is still checked, then closes the drawer.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async editHotelSearchFromCartAndVerifyAvailableProperties(page) {
+    if (!page) throw new Error('page is required');
+    const { CartPage } = require("@pages/CartPage");
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.clickAddHotelFromCarousel();
+    await this.verifyAvailablePropertiesChecked(page);
+    // Close the drawer by pressing Escape
+    await page.keyboard.press('Escape');
   },
 };
 

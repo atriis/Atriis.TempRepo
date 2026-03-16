@@ -281,6 +281,9 @@ jobs:
           USER_CANISSO: ${{ secrets.USER_CANISSO }}
           USER_SAMMAU: ${{ secrets.USER_SAMMAU }}
           USER_CAROLDYNAMICS: ${{ secrets.USER_CAROLDYNAMICS }}
+          USER_SHANI_NL: ${{ secrets.USER_SHANI_NL }}
+          USER_TLGG: ${{ secrets.USER_TLGG }}
+          USER_GALILEOGALIEI: ${{ secrets.USER_GALILEOGALIEI }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Hotels Results

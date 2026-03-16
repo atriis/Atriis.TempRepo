@@ -323,3 +323,32 @@ Then("a push notification should be displayed", async function () {
   logger.info("Verifying push notification badge is visible in header");
   await Cart.verifyPushNotificationDisplayed(this.page);
 });
+
+// ========================================
+// PASSENGER TITLE (Travelodge extras)
+// ========================================
+
+Then("the passenger title status should show {string}", async function (expectedText) {
+  logger.info("Verifying passenger title status text", { expectedText });
+  await Cart.verifyPassengerTitleStatus(this.page, expectedText);
+});
+
+Then("the passenger title should have a red error border", async function () {
+  logger.info("Verifying passenger title has red error border");
+  await Cart.verifyPassengerTitleHasErrorBorder(this.page);
+});
+
+Then("the passenger title should not have a red error border", async function () {
+  logger.info("Verifying passenger title has no red error border");
+  await Cart.verifyPassengerTitleNoErrorBorder(this.page);
+});
+
+Then("the passenger title should have a green success icon", async function () {
+  logger.info("Verifying passenger title has green success icon");
+  await Cart.verifyPassengerTitleHasSuccessIcon(this.page);
+});
+
+When("I add a passenger title", async function () {
+  logger.info("Adding passenger title (opening form, selecting first title, saving)");
+  await Cart.addPassengerTitle(this.page);
+});
