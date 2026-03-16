@@ -23,7 +23,11 @@
     "bdd:hotels:galileo": "set PROVIDER=galileo && npx cucumber-js tests/features/hotels/galileo/",
     "bdd:cars:general": "npx cucumber-js tests/features/cars/",
     "bdd:cars:galileo": "set PROVIDER=galileo && npx cucumber-js tests/features/cars/galileo/",
-    "bdd:manual_quote": "set PROVIDER=amadeus && npx cucumber-js tests/features/manual_quote/"
+    "bdd:manual_quote": "set PROVIDER=amadeus && npx cucumber-js tests/features/manual_quote/",
+    "allure:generate": "npx allure generate allure-results --clean -o allure-report",
+    "allure:open": "npx allure open allure-report",
+    "allure:report": "npm run allure:generate && npm run allure:open",
+    "report": "node scripts/generate-report.js"
   },
   "keywords": [
     "playwright",
@@ -38,10 +42,13 @@
     "@cucumber/pretty-formatter": "^2.4.1",
     "@faker-js/faker": "^10.3.0",
     "@playwright/test": "^1.40.0",
+    "allure-commandline": "^2.38.0",
+    "allure-cucumberjs": "^3.6.0",
     "cross-env": "^7.0.3",
     "dotenv": "^17.2.3",
     "eslint": "^10.0.0",
     "module-alias": "^2.2.3",
+    "multiple-cucumber-html-reporter": "^3.10.0",
     "playwright-trx-reporter": "^1.0.10"
   },
   "engines": {

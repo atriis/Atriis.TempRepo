@@ -11,7 +11,8 @@ module.exports = {
       'progress',
       '@cucumber/pretty-formatter',
       'json:test-results/cucumber-report.json',  // For JSON reporting
-      'junit:test-results/cucumber-junit.xml'    // For JUnit reporting
+      'junit:test-results/cucumber-junit.xml',   // For JUnit reporting
+      'allure-cucumberjs/reporter'               // For Allure reporting
     ],
     // Retry configuration: Only used when CI=true (set in environment)
     // Usage in CI: RETRY_COUNT=2 RETRY_DELAY=2000 npx cucumber-js
