@@ -45,10 +45,6 @@ test-results/
 playwright-report/
 playwright/.cache/
 
-# Allure
-allure-results/
-allure-report/
-
 # Browser authentication states (sensitive - contains OIDC tokens)
 .auth-states/
 
