@@ -116,6 +116,19 @@ const SELECTORS = {
   SHARE_DIALOG_CLOSE: '.el-dialog__header [fill="currentColor"], .el-dialog__headerbtn',
   // Hotel address in share email preview
   SHARE_EMAIL_HOTEL_ADDRESS: "[target='_blank']",
+
+  // Share email preview — hotel name and image (inside iframe srcdoc)
+  SHARE_EMAIL_HOTEL_IMAGE: 'img',
+
+  // Expired quote actions (hotel-quote-card.vue)
+  CHECK_AVAILABILITY_BUTTON: '.check-price-btn',
+  REMOVE_QUOTE_BUTTON: '.delete-btn',
+
+  // Check price dialog (check-price.vue)
+  CHECK_PRICE_DIALOG_TITLE: '.check-price .title',
+  CHECK_PRICE_DIALOG_SUBTITLE: '.check-price .sub-title',
+  CHECK_PRICE_PROCEED_BUTTON: '.check-price .proceed-btn',
+  CHECK_PRICE_STATUS_LABEL: '.check-price .app-label--quote',
 };
 
 class CartPage {
@@ -1159,6 +1172,109 @@ class CartPage {
     }
 
     return null;
+  }
+
+  /**
+   * Checks if the share email preview iframe contains a hotel image.
+   * @returns {Promise<boolean>} True if an image with a real src is found
+   */
+  async hasHotelImageInSharePreview() {
+    const frames = this.page.frames();
+    for (const frame of frames) {
+      const images = frame.locator(SELECTORS.SHARE_EMAIL_HOTEL_IMAGE);
+      const count = await images.count();
+      for (let i = 0; i < count; i++) {
+        const src = await images.nth(i).getAttribute('src');
+        if (src && src.startsWith('http') && !src.includes('logo')) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Gets all text content from the share email preview iframe.
+   * @returns {Promise<string>} Full text content of the iframe
+   */
+  async getSharePreviewTextContent() {
+    const frames = this.page.frames();
+    for (const frame of frames) {
+      const body = frame.locator('body');
+      const count = await body.count();
+      if (count > 0) {
+        const text = await body.textContent();
+        if (text && text.trim().length > 10) return text.trim();
+      }
+    }
+    return '';
+  }
+
+  // ===== EXPIRED QUOTE ACTIONS =====
+
+  /**
+   * Checks if the Check Availability button is visible on an expired quote.
+   * @returns {Promise<boolean>}
+   */
+  async isCheckAvailabilityButtonVisible() {
+    const btn = this.page.locator(SELECTORS.CHECK_AVAILABILITY_BUTTON).first();
+    return btn.isVisible();
+  }
+
+  /**
+   * Checks if the Remove Quote button is visible on an expired quote.
+   * @returns {Promise<boolean>}
+   */
+  async isRemoveQuoteButtonVisible() {
+    const btn = this.page.locator(SELECTORS.REMOVE_QUOTE_BUTTON).first();
+    return btn.isVisible();
+  }
+
+  /**
+   * Clicks the Check Availability button on an expired quote.
+   */
+  async clickCheckAvailabilityButton() {
+    const btn = this.page.locator(SELECTORS.CHECK_AVAILABILITY_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout: 15000 });
+    await btn.click();
+  }
+
+  /**
+   * Gets the title text from the check price dialog.
+   * @returns {Promise<string>}
+   */
+  async getCheckPriceDialogTitle() {
+    const title = this.page.locator(SELECTORS.CHECK_PRICE_DIALOG_TITLE).first();
+    await title.waitFor({ state: 'visible', timeout: 30000 });
+    return (await title.textContent()).trim();
+  }
+
+  /**
+   * Gets the subtitle text from the check price dialog.
+   * @returns {Promise<string>}
+   */
+  async getCheckPriceDialogSubtitle() {
+    const subtitle = this.page.locator(SELECTORS.CHECK_PRICE_DIALOG_SUBTITLE).first();
+    await subtitle.waitFor({ state: 'visible', timeout: 15000 });
+    return (await subtitle.textContent()).trim();
+  }
+
+  /**
+   * Checks if the Proceed button is visible in the check price dialog.
+   * @returns {Promise<boolean>}
+   */
+  async isCheckPriceProceedButtonVisible() {
+    const btn = this.page.locator(SELECTORS.CHECK_PRICE_PROCEED_BUTTON).first();
+    return btn.isVisible();
+  }
+
+  /**
+   * Gets the status label text from the check price dialog.
+   * @returns {Promise<string>}
+   */
+  async getCheckPriceStatusLabel() {
+    const label = this.page.locator(SELECTORS.CHECK_PRICE_STATUS_LABEL).first();
+    const count = await label.count();
+    if (count === 0) return '';
+    return (await label.textContent()).trim();
   }
 }
 // Export CartPage and SELECTORS for use in tests and DSL

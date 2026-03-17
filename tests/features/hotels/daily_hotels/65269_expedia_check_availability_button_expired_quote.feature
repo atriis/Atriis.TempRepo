@@ -14,6 +14,10 @@ Feature: 65269 Expedia - Check availability button shown on expired hotel quote
 
   @priority:medium
   Scenario: Check availability button is shown when hotel quote has expired
-    # TODO: Create step "Given I navigate to an existing expired Expedia hotel quote" that calls DSL navigateToExpiredQuote in Trip.js
-    # TODO: Create step "Then the check availability button should be visible" that calls DSL verifyCheckAvailabilityButton in Cart.js
-    # TODO: Create step "When I click the check availability button" that calls DSL clickCheckAvailability in Cart.js
+    Given I am logged in as "edi"
+    When I navigate to trip 3628213
+    Then the booking status should be "Expired"
+    And the check availability button should be visible
+    And the remove quote button should be visible
+    When I click the check availability button
+    Then the check availability result should be displayed

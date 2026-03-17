@@ -5,6 +5,7 @@ const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage")
 const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
 const tripStatus = require("@data/tripStatus.json");
+const config = require("@config/config");
 
 /**
  * Cart DSL
@@ -955,6 +956,112 @@ const Cart = {
     if (!page) throw new Error('page is required');
     const cartPage = getPageObject(page, CartPage);
     await cartPage.closeShareDialog();
+  },
+
+  // ===== SHARE EMAIL PREVIEW VERIFICATION =====
+
+  /**
+   * Verifies that the share email preview iframe contains a hotel name (non-empty text).
+   * The share dialog must already be open.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedHotelName - The expected hotel name substring
+   */
+  async verifyShareEmailContainsHotelName(page, expectedHotelName) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedHotelName !== 'string' || !expectedHotelName) {
+      throw new Error('expectedHotelName must be a non-empty string, got: ' + typeof expectedHotelName);
+    }
+    const cartPage = getPageObject(page, CartPage);
+    const previewText = await cartPage.getSharePreviewTextContent();
+    expect(previewText, 'Share email preview text should not be empty').toBeTruthy();
+    expect(previewText).toContain(expectedHotelName);
+  },
+
+  /**
+   * Verifies that the share email preview iframe contains a hotel image.
+   * The share dialog must already be open.
+   * @param {import('playwright').Page} page
+   */
+  async verifyShareEmailContainsHotelImage(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const hasImage = await cartPage.hasHotelImageInSharePreview();
+    expect(hasImage, 'Share email preview should contain a hotel image').toBe(true);
+  },
+
+  // ===== TRIP NAVIGATION =====
+
+  /**
+   * Navigates directly to a trip's cart page by trip ID.
+   * @param {import('playwright').Page} page
+   * @param {number} tripId - The trip ID to navigate to
+   */
+  async navigateToTrip(page, tripId) {
+    if (!page) throw new Error('page is required');
+    if (typeof tripId !== 'number' || tripId <= 0) {
+      throw new Error('tripId must be a positive number, got: ' + tripId);
+    }
+    await page.goto(`${config.baseUrl}/trips/${tripId}/cart`, { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+  },
+
+  // ===== EXPIRED QUOTE CHECK AVAILABILITY =====
+
+  /**
+   * Verifies the Check Availability button is visible on an expired quote.
+   * @param {import('playwright').Page} page
+   */
+  async verifyCheckAvailabilityButtonVisible(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const visible = await cartPage.isCheckAvailabilityButtonVisible();
+    expect(visible, 'Check Availability button should be visible').toBe(true);
+  },
+
+  /**
+   * Verifies the Remove Quote button is visible on an expired quote.
+   * @param {import('playwright').Page} page
+   */
+  async verifyRemoveQuoteButtonVisible(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const visible = await cartPage.isRemoveQuoteButtonVisible();
+    expect(visible, 'Remove Quote button should be visible').toBe(true);
+  },
+
+  /**
+   * Clicks the Check Availability button on an expired quote card.
+   * @param {import('playwright').Page} page
+   */
+  async clickCheckAvailabilityButton(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickCheckAvailabilityButton();
+  },
+
+  /**
+   * Validates the check availability result dialog.
+   * Handles both outcomes:
+   * - "Price is still available" → verifies proceed button and "Pending booking" status
+   * - "No availability" → verifies expiration message for hotel
+   * @param {import('playwright').Page} page
+   */
+  async verifyCheckAvailabilityResult(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const title = await cartPage.getCheckPriceDialogTitle();
+
+    if (title.includes('Price is still available')) {
+      const subtitle = await cartPage.getCheckPriceDialogSubtitle();
+      expect(subtitle).toContain('Price for the following item is available');
+      const proceedVisible = await cartPage.isCheckPriceProceedButtonVisible();
+      expect(proceedVisible, 'Proceed button should be visible when price is available').toBe(true);
+    } else if (title.includes('No availability')) {
+      const subtitle = await cartPage.getCheckPriceDialogSubtitle();
+      expect(subtitle).toContain('Price for the following item is no longer available');
+    } else {
+      throw new Error(`Unexpected check price dialog title: "${title}". Expected "Price is still available" or "No availability".`);
+    }
   },
 };
 

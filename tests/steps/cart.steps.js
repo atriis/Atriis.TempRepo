@@ -367,3 +367,50 @@ When("I close the share dialog", async function () {
   logger.info("Closing share dialog");
   await Cart.closeShareDialog(this.page);
 });
+
+// ========================================
+// SHARE EMAIL PREVIEW VERIFICATION
+// ========================================
+
+Then("the share quote email preview should contain the hotel name {string}", async function (expectedHotelName) {
+  logger.info("Verifying share email preview contains hotel name", { expectedHotelName });
+  await Cart.verifyShareEmailContainsHotelName(this.page, expectedHotelName);
+});
+
+Then("the share quote email preview should contain a hotel picture", async function () {
+  logger.info("Verifying share email preview contains hotel picture");
+  await Cart.verifyShareEmailContainsHotelImage(this.page);
+});
+
+// ========================================
+// TRIP NAVIGATION
+// ========================================
+
+When("I navigate to trip {int}", async function (tripId) {
+  logger.info("Navigating to trip", { tripId });
+  await Cart.navigateToTrip(this.page, tripId);
+});
+
+// ========================================
+// EXPIRED QUOTE — CHECK AVAILABILITY
+// ========================================
+
+Then("the check availability button should be visible", async function () {
+  logger.info("Verifying check availability button is visible");
+  await Cart.verifyCheckAvailabilityButtonVisible(this.page);
+});
+
+Then("the remove quote button should be visible", async function () {
+  logger.info("Verifying remove quote button is visible");
+  await Cart.verifyRemoveQuoteButtonVisible(this.page);
+});
+
+When("I click the check availability button", async function () {
+  logger.info("Clicking check availability button on expired quote");
+  await Cart.clickCheckAvailabilityButton(this.page);
+});
+
+Then("the check availability result should be displayed", async function () {
+  logger.info("Verifying check availability result dialog");
+  await Cart.verifyCheckAvailabilityResult(this.page);
+});
