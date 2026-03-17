@@ -20,6 +20,5 @@ Feature: 73594 Amadeus - Special request 120 character limit for Amadeus hotels
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "When I add a special request text of {int} characters" (120) that calls DSL addSpecialRequest in Cart.js
-    # TODO: Create step "Then the special request field should accept up to {int} characters for Amadeus" (120) that calls DSL verifySpecialRequestLimit in Cart.js
-
+    When I add a special request text of 120 characters
+    Then the special request should be truncated to 120 characters

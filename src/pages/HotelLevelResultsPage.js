@@ -49,6 +49,14 @@ const SELECTORS = {
   MORE_DETAILS_BUTTON: '.more-details-btn',
   // Agreement badge (any) in hotel card
   AGREEMENT_BADGE: '.hotel-preview .ticket-agreement',
+  // Last hotel item in hotel list (lazy-loaded sentinel element)
+  LAST_HOTEL_VIEW_RATES_BUTTON: "[id='last-item'] .btn--primary",
+  // Share mode button in hotel-list-sort bar
+  SHARE_MODE_BUTTON: '.share-btn-container .share-btn',
+  // Individual hotel share button (visible only in share mode)
+  HOTEL_SHARE_ADD_BUTTON: '.hotel-preview .share-btn.py-2',
+  // Share bar email button (appears after selecting hotels to share)
+  SHARE_BAR_EMAIL_BUTTON: '.share-bar .share-btn',
 };
 
 class HotelLevelResultsPage {
@@ -491,6 +499,45 @@ class HotelLevelResultsPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Scrolls to the last hotel in the list and clicks its "View rates" button.
+   * The last hotel uses id="last-item" as a sentinel element.
+   */
+  /**
+   * Clicks the share mode button to enter share mode on hotel-level results.
+   */
+  async clickShareModeButton() {
+    const btn = this.page.locator(SELECTORS.SHARE_MODE_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout: 15000 });
+    await btn.click();
+  }
+
+  /**
+   * Clicks the share/add button on the first hotel card (in share mode).
+   */
+  async clickFirstHotelShareButton() {
+    const btn = this.page.locator(SELECTORS.HOTEL_SHARE_ADD_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout: 15000 });
+    await btn.click();
+  }
+
+  /**
+   * Clicks the email button in the share bar to open the share email dialog.
+   */
+  async clickShareBarEmailButton() {
+    const btn = this.page.locator(SELECTORS.SHARE_BAR_EMAIL_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout: 15000 });
+    await btn.click();
+  }
+
+  async scrollToAndClickLastHotelViewRates() {
+    const lastHotelButton = this.page.locator(SELECTORS.LAST_HOTEL_VIEW_RATES_BUTTON);
+    await lastHotelButton.waitFor({ state: 'attached', timeout: 60000 });
+    await lastHotelButton.scrollIntoViewIfNeeded();
+    await lastHotelButton.waitFor({ state: 'visible', timeout: 30000 });
+    await lastHotelButton.click();
   }
 }
 

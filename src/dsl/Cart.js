@@ -909,6 +909,53 @@ const Cart = {
     await page.locator('.el-notification__title').filter({ hasText: 'Success' }).waitFor({ state: 'visible', timeout: 10000 });
     await page.waitForLoadState('networkidle');
   },
+
+  // ===== HOTEL ADDRESS VERIFICATION =====
+
+  /**
+   * Opens the More Details drawer and verifies the hotel address contains the expected text.
+   * Closes the drawer after verification.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedAddress - The expected address substring
+   */
+  async verifyHotelAddressInMoreDetails(page, expectedAddress) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedAddress !== 'string' || !expectedAddress) {
+      throw new Error('expectedAddress must be a non-empty string, got: ' + typeof expectedAddress);
+    }
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickMoreDetailsHotel();
+    const address = await cartPage.getHotelAddressText();
+    expect(address).toContain(expectedAddress);
+    await cartPage.closeMoreDetailsDrawer();
+  },
+
+  /**
+   * Verifies the hotel address in the open share dialog preview contains the expected text.
+   * The share dialog must already be open (via clickShareQuoteAndWaitForSubjectField or clickShareItineraryAndWaitForSubjectField).
+   * @param {import('playwright').Page} page
+   * @param {string} expectedAddress - The expected address substring
+   */
+  async verifyHotelAddressInSharePreview(page, expectedAddress) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedAddress !== 'string' || !expectedAddress) {
+      throw new Error('expectedAddress must be a non-empty string, got: ' + typeof expectedAddress);
+    }
+    const cartPage = getPageObject(page, CartPage);
+    const address = await cartPage.getHotelAddressFromSharePreview();
+    expect(address, 'Hotel address not found in share preview').not.toBeNull();
+    expect(address).toContain(expectedAddress);
+  },
+
+  /**
+   * Closes the share dialog (quote or itinerary).
+   * @param {import('playwright').Page} page
+   */
+  async closeShareDialog(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.closeShareDialog();
+  },
 };
 
 

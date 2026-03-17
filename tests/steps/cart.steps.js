@@ -352,3 +352,18 @@ When("I add a passenger title", async function () {
   logger.info("Adding passenger title (opening form, selecting first title, saving)");
   await Cart.addPassengerTitle(this.page);
 });
+
+Then("the hotel address in more details should contain {string}", async function (expectedAddress) {
+  logger.info("Verifying hotel address in More Details drawer", { expectedAddress });
+  await Cart.verifyHotelAddressInMoreDetails(this.page, expectedAddress);
+});
+
+Then("the hotel address in the share preview should contain {string}", async function (expectedAddress) {
+  logger.info("Verifying hotel address in share preview", { expectedAddress });
+  await Cart.verifyHotelAddressInSharePreview(this.page, expectedAddress);
+});
+
+When("I close the share dialog", async function () {
+  logger.info("Closing share dialog");
+  await Cart.closeShareDialog(this.page);
+});

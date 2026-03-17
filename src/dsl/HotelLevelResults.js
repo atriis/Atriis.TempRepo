@@ -473,6 +473,41 @@ const HotelLevelResults = {
       throw new Error('"Hotel wasn\'t found" error message is displayed but should not be');
     }
   },
+
+  /**
+   * Scrolls to the last hotel in search results and clicks its View rates button.
+   * @param {import('playwright').Page} page
+   */
+  async clickLastHotelOption(page) {
+    if (!page) throw new Error('page is required');
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.waitForViewRatesText();
+    await hotelLevelResultsPage.scrollToAndClickLastHotelViewRates();
+  },
+  /**
+   * Enters share mode, selects the first hotel for sharing, opens the email dialog.
+   * Must be called from hotel-level results page (before navigating to room level).
+   * @param {import('playwright').Page} page
+   */
+  async shareHotelPriceOfferByEmail(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const commonPage = getPageObject(page, CommonPage);
+
+    // Enter share mode from hotel-level results
+    await hotelLevelResultsPage.clickShareModeButton();
+
+    // Select the first hotel for sharing
+    await hotelLevelResultsPage.clickFirstHotelShareButton();
+
+    // Click email button in the share bar
+    await hotelLevelResultsPage.clickShareBarEmailButton();
+
+    // Wait for the email dialog to appear
+    await commonPage.waitForSubjectLabelSharePopUp();
+  },
 };
 
 module.exports = HotelLevelResults;

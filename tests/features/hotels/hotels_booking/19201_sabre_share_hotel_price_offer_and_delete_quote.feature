@@ -7,21 +7,24 @@
 # Updated: 2025-11-10T01:30:47Z
 
 @regression @provider:sabre
-Feature: 19201 Sabre - Share hotel price offer and delete quote after booking
+Feature: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
   As a corporate traveler using Sabre
   I want to share a hotel price offer and then book and delete the quote
   So that I can manage hotel quotes from search to completion
 
   @priority:high
   Scenario: Share hotel price offer from results, book and delete quote
-    Given I am logged in as "robsoncruz" booking a new trip
+    Given I am logged in as "sabrin" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Denver" for 1 night
-    # TODO: Create step "When I share the hotel price offer by email" that calls DSL method shareHotelPriceOfferFromResults in HotelSearch.js
-    # TODO: Create step "When I add the first available hotel to my cart" that covers: select first hotel result + view rates + add first room
+    And I select the first hotel result
+    And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
+    Then the hotel should appear as refundable in cart
+    When I click the share quote button
+    And I send the share
     When I proceed to checkout
     And I complete the booking
+    Then the hotel should appear as refundable in cart
     Then the booking status should be "Confirmed"
-    # TODO: Create step "Then the hotel should appear as refundable in the trip overview"
-    # TODO: Create step "When I delete the quote from the cart" that calls DSL method deleteQuoteFromCart in Cart.js
+    Then I successfully cancel the trip

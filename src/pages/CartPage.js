@@ -108,6 +108,14 @@ const SELECTORS = {
   PASSENGER_TITLE_DROPDOWN_TRIGGER: '.passenger-title .app-select',
   PASSENGER_TITLE_DROPDOWN_OPTION: '.app-select-popper .el-select-dropdown__item',
   PASSENGER_TITLE_SAVE_BUTTON: '.passenger-title .btn--primary',
+
+  // Hotel address in More Details drawer
+  HOTEL_ADDRESS: '.hotel-address',
+  MORE_DETAILS_DRAWER_CLOSE: "[aria-label='More details'] [fill='currentColor'], [aria-label='More details'] .el-dialog__close",
+  // Share dialog close button
+  SHARE_DIALOG_CLOSE: '.el-dialog__header [fill="currentColor"], .el-dialog__headerbtn',
+  // Hotel address in share email preview
+  SHARE_EMAIL_HOTEL_ADDRESS: "[target='_blank']",
 };
 
 class CartPage {
@@ -1086,6 +1094,71 @@ class CartPage {
     const btn = this.page.locator(SELECTORS.PASSENGER_TITLE_SAVE_BUTTON).first();
     await btn.waitFor({ state: 'visible', timeout });
     await btn.click();
+  }
+
+  /**
+   * Clicks the More Details link on the hotel cart card to open the details drawer.
+   */
+  async clickMoreDetailsHotel() {
+    const moreDetails = this.page.locator(SELECTORS.MORE_DETAILS_HOTEL_BUTTON).first();
+    await moreDetails.waitFor({ state: 'visible', timeout: 15000 });
+    await moreDetails.click();
+  }
+
+  /**
+   * Gets the hotel address text from the More Details drawer.
+   * @returns {Promise<string>} The hotel address text
+   */
+  async getHotelAddressText() {
+    const address = this.page.locator(SELECTORS.HOTEL_ADDRESS).first();
+    await address.waitFor({ state: 'visible', timeout: 15000 });
+    return (await address.textContent()).trim();
+  }
+
+  /**
+   * Closes the More Details drawer.
+   */
+  async closeMoreDetailsDrawer() {
+    const closeBtn = this.page.locator(SELECTORS.MORE_DETAILS_DRAWER_CLOSE).first();
+    await closeBtn.waitFor({ state: 'visible', timeout: 10000 });
+    await closeBtn.click();
+  }
+
+  /**
+   * Closes the share quote/itinerary dialog.
+   */
+  async closeShareDialog() {
+    const closeBtn = this.page.locator(SELECTORS.SHARE_DIALOG_CLOSE).first();
+    await closeBtn.waitFor({ state: 'visible', timeout: 10000 });
+    await closeBtn.click();
+  }
+
+  /**
+   * Gets the hotel address text from the share email preview.
+   * Searches both the main page and iframes for the address link.
+   * @returns {Promise<string|null>} The hotel address text or null
+   */
+  async getHotelAddressFromSharePreview() {
+    // Try main page first
+    const mainElements = this.page.locator(SELECTORS.SHARE_EMAIL_HOTEL_ADDRESS);
+    const count = await mainElements.count();
+    for (let i = 0; i < count; i++) {
+      const text = (await mainElements.nth(i).textContent()).trim();
+      if (text.length > 5) return text;
+    }
+
+    // Search in iframes (email preview)
+    const frames = this.page.frames();
+    for (const frame of frames) {
+      const frameElements = frame.locator(SELECTORS.SHARE_EMAIL_HOTEL_ADDRESS);
+      const frameCount = await frameElements.count();
+      for (let i = 0; i < frameCount; i++) {
+        const text = (await frameElements.nth(i).textContent()).trim();
+        if (text.length > 5) return text;
+      }
+    }
+
+    return null;
   }
 }
 // Export CartPage and SELECTORS for use in tests and DSL

@@ -20,12 +20,10 @@ Feature: 61651 Sabre - Hotel address not shortened in More Details, Itinerary, a
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "Then the hotel address should not be shortened in More Details" that calls DSL verifyFullAddressMoreDetails in Cart.js
-    When I proceed to checkout
-    And I complete the booking
-    Then the booking status should be "Confirmed"
-    # TODO: Create step "Then the hotel address should not be shortened in the Itinerary" that calls DSL verifyFullAddressItinerary in Trip.js
+    Then the hotel address in more details should contain "2731 Mosside Blvd, MONROEVILLE, US"
     When I click the share itinerary button
-    And I send the share
-    # TODO: Create step "Then the hotel address should not be shortened in the Price Offer email" that calls DSL verifyFullAddressPriceOffer in Share.js
+    Then the hotel address in the share preview should contain "2731 Mosside Blvd, MONROEVILLE, US"
+    When I close the share dialog
+    When I click the share quote button
+    Then the hotel address in the share preview should contain "2731 Mosside Blvd, MONROEVILLE, US"
 

@@ -14,9 +14,11 @@ Feature: 41742 Amadeus - Add hotel room with "check cancellation policy" label
 
   @priority:high
   Scenario: Add a "check cancellation policy" room type to cart
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "danielaoliveira" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Ibis London Blackfriars" for 1 night
+    And I wait to see view rates text in results page
+    When I filter hotel results by hotel name "Ibis London Blackfriars"
     And I select the first hotel result
-    # TODO: Create step "When I add the room marked as check cancellation policy" that calls DSL addCheckCancellationPolicyRoom in RoomLevelResults.js
+    When I add the room marked as check cancellation policy
     Then the booking status should be "Pending booking"

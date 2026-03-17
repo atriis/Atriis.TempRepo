@@ -17,5 +17,6 @@ Feature: 58334 Amadeus - Scroll to last hotel and redirect to room level at top
     Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
-    # TODO: Create step "When I scroll to the last hotel in results and click it" that calls DSL scrollToLastHotelAndClick in HotelSearch.js
-    # TODO: Create step "Then the room level page should be displayed at the top" that calls DSL verifyRoomLevelAtTop in RoomLevelResults.js
+    And I wait to see view rates text in results page
+    When I select the last hotel result
+    Then the room level page should be displayed at the top

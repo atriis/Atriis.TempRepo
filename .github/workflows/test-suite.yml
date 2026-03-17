@@ -284,6 +284,7 @@ jobs:
           USER_SHANI_NL: ${{ secrets.USER_SHANI_NL }}
           USER_TLGG: ${{ secrets.USER_TLGG }}
           USER_GALILEOGALIEI: ${{ secrets.USER_GALILEOGALIEI }}
+          USER_DANIELAOLIVEIRA: ${{ secrets.USER_DANIELAOLIVEIRA }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Hotels Results

@@ -44,6 +44,14 @@ const SELECTORS = {
   ALL_ROOM_PRICE_AMOUNTS: ".room-list > div .price-details-main .amount",
   // Agreement badge (handshake icon) in room results — target the icon, not the wrapper section
   AGREEMENT_BADGE: '.ticket-agreement .agreement-img',
+  // Room level results header ("Showing X rooms" text)
+  ROOM_RESULTS_HEADER: '.is-6',
+  // Room card with "Check cancelation policy" text (note: single 'l' in source)
+  // Uses .check-cancellation class which Vue adds when refundableStatus == None
+  CHECK_CANCELLATION_POLICY_ROOM: '.room-preview:has(.check-cancellation)',
+  CHECK_CANCELLATION_POLICY_ADD_BUTTON: '.add-btn',
+  // Terms & conditions dialog that may appear after adding check cancellation policy room
+  TERMS_CONDITIONS_ACCEPT_BUTTON: '.app-terms-conditions .ml-auto, .app-terms-conditions button:has-text("Accept")',
 };
 
 class RoomLevelResultsPage {
@@ -572,6 +580,52 @@ class RoomLevelResultsPage {
       return false;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Checks if the page is scrolled to the top (scrollY close to 0).
+   * @returns {Promise<boolean>} True if the page is at the top
+   */
+  async isPageScrolledToTop() {
+    const scrollY = await this.page.evaluate(() => window.scrollY);
+    return scrollY < 50;
+  }
+
+  /**
+   * Waits for the room level results header ("Showing" text) to be visible.
+   * Used to confirm the room level page has loaded.
+   */
+  async waitForRoomResultsHeader() {
+    await this.page.locator(SELECTORS.ROOM_RESULTS_HEADER).first().waitFor({ state: 'visible', timeout: 60000 });
+  }
+
+  /**
+   * Finds a room card with "Check cancellation policy" label and clicks its Add to trip button.
+   * Scrolls to the room first to ensure visibility.
+   * @throws {Error} If no room with "Check cancellation policy" is found
+   */
+  async clickAddToTripOnCheckCancellationPolicyRoom() {
+    const roomCard = this.page.locator(SELECTORS.CHECK_CANCELLATION_POLICY_ROOM).first();
+    await roomCard.waitFor({ state: 'visible', timeout: 30000 });
+    await roomCard.scrollIntoViewIfNeeded();
+
+    const addButton = roomCard.locator(SELECTORS.CHECK_CANCELLATION_POLICY_ADD_BUTTON);
+    await addButton.waitFor({ state: 'visible', timeout: 15000 });
+    await addButton.click();
+  }
+
+  /**
+   * Handles the terms & conditions/cancellation policy dialog that may appear after adding a room.
+   * Clicks accept/proceed if the dialog appears, otherwise does nothing.
+   */
+  async handleCancellationTermsDialogIfVisible() {
+    try {
+      const acceptButton = this.page.locator(SELECTORS.TERMS_CONDITIONS_ACCEPT_BUTTON).first();
+      await acceptButton.waitFor({ state: 'visible', timeout: 5000 });
+      await acceptButton.click();
+    } catch {
+      // Dialog did not appear, continue
     }
   }
 }

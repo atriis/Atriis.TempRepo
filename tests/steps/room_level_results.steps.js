@@ -255,3 +255,13 @@ Then("TMC badge filter should be visible in room level results", async function 
   logger.info("Verifying TMC agreement filter is visible in room level results");
   await RoomLevelResults.verifyAgreementFilterVisible(this.page);
 });
+
+Then("the room level page should be displayed at the top", async function () {
+  logger.info("Verifying room level page is displayed at the top");
+  await RoomLevelResults.verifyRoomLevelPageAtTop(this.page);
+});
+
+When("I add the room marked as check cancellation policy", async function () {
+  logger.info("Adding room with 'Check cancellation policy' label to cart");
+  await RoomLevelResults.addCheckCancellationPolicyRoomToCart(this.page);
+});

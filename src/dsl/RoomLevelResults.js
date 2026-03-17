@@ -417,6 +417,43 @@ const RoomLevelResults = {
       );
     }
   },
+
+  /**
+   * Verifies that the room level page is displayed starting at the top.
+   * Used after navigating from hotel level to confirm the scroll position resets.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the page is not scrolled to the top
+   */
+  async verifyRoomLevelPageAtTop(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    await roomLevelResultsPage.waitForRoomResultsHeader();
+
+    const isAtTop = await roomLevelResultsPage.isPageScrolledToTop();
+    if (!isAtTop) {
+      throw new Error('Expected room level page to be displayed at the top, but page is scrolled down');
+    }
+  },
+
+  /**
+  /**
+   * Adds a room marked as "Check cancellation policy" to the cart.
+   * Handles the optional cancellation terms dialog and conflict quote modal.
+   * @param {import('playwright').Page} page
+   */
+  async addCheckCancellationPolicyRoomToCart(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    await roomLevelResultsPage.waitForViewHotelOnMapText();
+    await resultsPage.waitForAddToTripText();
+    await roomLevelResultsPage.clickAddToTripOnCheckCancellationPolicyRoom();
+    await roomLevelResultsPage.handleCancellationTermsDialogIfVisible();
+    await Results.clickProceedConflictQuoteModal(page);
+  },
 };
 
 module.exports = RoomLevelResults;

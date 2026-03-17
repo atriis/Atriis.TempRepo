@@ -174,3 +174,13 @@ Then("TMC badge filter should be visible in hotel level results", async function
   logger.info("Verifying TMC agreement filter is visible in hotel level results");
   await HotelLevelResults.verifyAgreementFilterVisible(this.page);
 });
+
+When("I select the last hotel result", async function () {
+  logger.info("Scrolling to and selecting the last hotel in results");
+  await HotelLevelResults.clickLastHotelOption(this.page);
+});
+
+When("I share the hotel price offer by email from results", async function () {
+  logger.info("Sharing hotel price offer by email from hotel-level results page");
+  await HotelLevelResults.shareHotelPriceOfferByEmail(this.page);
+});
