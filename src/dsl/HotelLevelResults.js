@@ -633,6 +633,47 @@ const HotelLevelResults = {
     expect(hotelMonth.toLowerCase()).toBe(flightMonth.toLowerCase());
     expect(hotelDay).toBe(flightDay);
   },
+
+  /**
+   * Verifies that at least one hotel name in results matches the given regex pattern.
+   *
+   * @param {import('playwright').Page} page
+   * @param {RegExp|string} pattern - Regex pattern to match against hotel names
+   * @returns {Promise<{matched: boolean, names: string[]}>}
+   */
+  async verifyHotelNamesMatchPattern(page, pattern) {
+    if (!page) throw new Error('page is required');
+    if (!pattern) throw new Error('pattern is required');
+
+    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const names = await hotelLevelResultsPage.getAllHotelNames();
+
+    const matchingNames = names.filter(name => regex.test(name));
+    if (matchingNames.length === 0) {
+      throw new Error(`No hotel names match pattern ${regex}. Found: ${names.join(', ')}`);
+    }
+
+    return { matched: true, names: matchingNames };
+  },
+
+  /**
+   * Verifies that the hotel at a specific position has the expected name.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} index - 1-based hotel position
+   * @param {string} expectedName - Expected hotel name (substring match)
+   */
+  async verifyHotelNameAtIndex(page, index, expectedName) {
+    if (!page) throw new Error('page is required');
+    if (typeof index !== 'number' || index < 1) throw new Error('index must be >= 1, got: ' + index);
+    if (!expectedName || typeof expectedName !== 'string') throw new Error('expectedName must be a non-empty string');
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const actualName = await hotelLevelResultsPage.getHotelNameAtIndex(index);
+
+    expect(actualName).toContain(expectedName);
+  },
 };
 
 module.exports = HotelLevelResults;

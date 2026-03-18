@@ -17,6 +17,11 @@ const SELECTORS = {
   ROOMS_DROPDOWN_OPTION: '.app-select-popper .el-select-dropdown__item',
   AVAILABLE_PROPERTIES_CHECKBOX: '.el-checkbox',
   AVAILABLE_PROPERTIES_LABEL: 'text=Available properties only',
+  // Point of Interest (POI) modal — triggered via bookmarks icon in hotel autocomplete suffix
+  POI_BOOKMARKS_ICON: '.hotel-autocomplete .material-symbols-outlined:has-text("bookmarks")',
+  POI_MODAL: '.poi-list',
+  POI_LIST_ITEM: '.poi-list .title-container',
+  POI_PREFERRED_HOTEL: '.poi-list .hotel-container',
 };
 
 
@@ -155,6 +160,31 @@ class HotelSearchPage {
     const checkbox = label.locator('..').locator(SELECTORS.AVAILABLE_PROPERTIES_CHECKBOX).first();
     const isChecked = await checkbox.evaluate(el => el.classList.contains('is-checked'));
     return isChecked;
+  }
+
+  /**
+   * Clicks the bookmarks icon that opens the POI modal.
+   */
+  async clickPoiBookmarksIcon() {
+    const icon = this.page.locator(SELECTORS.POI_BOOKMARKS_ICON);
+    await icon.waitFor({ state: 'visible', timeout: 10000 });
+    await icon.click();
+  }
+
+  /**
+   * Waits for the POI modal list to be visible.
+   */
+  async waitForPoiModal() {
+    await this.page.locator(SELECTORS.POI_MODAL).waitFor({ state: 'visible', timeout: 15000 });
+  }
+
+  /**
+   * Clicks the first POI list item (the point of interest address).
+   */
+  async clickFirstPoiItem() {
+    const item = this.page.locator(SELECTORS.POI_LIST_ITEM).first();
+    await item.waitFor({ state: 'visible', timeout: 10000 });
+    await item.click();
   }
 }
 

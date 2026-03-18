@@ -65,6 +65,8 @@ const SELECTORS = {
   SUPPLIER_FILTER_ITEM: (supplierId) => `.hotel-filter .suppliers-filter .el-checkbox:has(img[alt*="${supplierId}"])`,
   // Hotel info bar date text (check-in and check-out displayed as "MMM dd-MMM dd")
   HOTEL_INFO_BAR_DATES: '.hotel-info-bar .date-room-wrapper p:first-child',
+  // Hotel name text inside hotel cards
+  HOTEL_NAME: '.hotel-preview .hotel-name h4',
 };
 
 class HotelLevelResultsPage {
@@ -603,6 +605,31 @@ class HotelLevelResultsPage {
     const dateElement = this.page.locator(SELECTORS.HOTEL_INFO_BAR_DATES);
     await dateElement.waitFor({ state: 'visible', timeout: 30000 });
     return (await dateElement.textContent()).trim();
+  }
+
+  /**
+   * Gets the hotel name at a specific 1-based index.
+   * @param {number} index - 1-based hotel card index
+   * @returns {Promise<string>} The hotel name text
+   */
+  async getHotelNameAtIndex(index) {
+    if (typeof index !== 'number' || index < 1) {
+      throw new Error('index must be >= 1, got: ' + index);
+    }
+    const name = this.page.locator(SELECTORS.HOTEL_NAME).nth(index - 1);
+    await name.waitFor({ state: 'visible', timeout: 30000 });
+    return (await name.textContent()).trim();
+  }
+
+  /**
+   * Gets all visible hotel names from results.
+   * @returns {Promise<string[]>} Array of hotel name strings
+   */
+  async getAllHotelNames() {
+    const names = this.page.locator(SELECTORS.HOTEL_NAME);
+    await names.first().waitFor({ state: 'visible', timeout: 30000 });
+    const allNames = await names.allTextContents();
+    return allNames.map(n => n.trim());
   }
 }
 

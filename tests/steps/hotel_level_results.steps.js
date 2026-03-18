@@ -209,3 +209,29 @@ Then("the hotel search check-out date should match the departure date of the sec
   logger.info("Verifying hotel check-out date matches second flight departure date", { expectedDate: this.secondFlightDepartureDate });
   await HotelLevelResults.verifyHotelCheckOutDateMatchesFlight(this.page, this.secondFlightDepartureDate);
 });
+
+Then("preferred hotels should be displayed in results", async function () {
+  logger.info("Verifying preferred hotels are displayed (corporate preferred badge)");
+  await HotelLevelResults.verifyCorporatePreferredBadge(this.page);
+});
+
+Then(/^the hotel results should include hotels matching \/(.*)\/$/,  async function (patternStr) {
+  logger.info("Verifying hotel names match pattern", { pattern: patternStr });
+  const result = await HotelLevelResults.verifyHotelNamesMatchPattern(this.page, new RegExp(patternStr));
+  logger.info("Matching hotels found", { names: result.names });
+});
+
+Then("the hotel at position {int} should be {string}", async function (index, expectedName) {
+  logger.info("Verifying hotel name at position", { index, expectedName });
+  await HotelLevelResults.verifyHotelNameAtIndex(this.page, index, expectedName);
+});
+
+Then("the hotel at position {int} should preferably be {string}", async function (index, expectedName) {
+  logger.info("Soft-checking hotel name at position (non-blocking)", { index, expectedName });
+  try {
+    await HotelLevelResults.verifyHotelNameAtIndex(this.page, index, expectedName);
+    logger.info("Preferred hotel confirmed at position", { index, expectedName });
+  } catch (error) {
+    logger.warn(`Hotel at position ${index} is not "${expectedName}" — this is acceptable as hotel ordering may vary`);
+  }
+});

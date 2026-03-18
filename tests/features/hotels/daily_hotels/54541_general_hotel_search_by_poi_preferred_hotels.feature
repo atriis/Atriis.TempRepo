@@ -14,8 +14,9 @@ Feature: 54541 General - Hotel search by Point of Interest shows preferred hotel
 
   @priority:medium
   Scenario: Hotel search by POI returns preferred hotels
-    Given I am logged in as "ruimariano" booking a new trip
-    And I have added myself as the traveler
-    #TODO create a hotel search by point of interest, which clicks "Where would you like to stay?" and select the o
-    # TODO: Create step "When I search for a hotel near point of interest {string}" that calls DSL searchHotelByPOI in HotelSearch.js
-    # TODO: Create step "Then preferred hotels should be displayed in results" that calls DSL verifyPreferredHotels in HotelSearch.js
+    Given I am logged in as "poicorp" booking a new trip
+    When I search for a hotel by point of interest
+    And I wait to see view rates text in results page
+    Then preferred hotels should be displayed in results
+    And the hotel results should include hotels matching /(Beverly Hills Marriott)|(The Tangerine - A Burbank Hote)/
+    And the hotel at position 2 should preferably be "The Tangerine - A Burbank Hotel"

@@ -67,3 +67,8 @@ When("I edit the hotel search from cart and verify available properties only is 
   logger.info("Editing hotel search from cart and verifying available properties checkbox");
   await HotelSearch.editHotelSearchFromCartAndVerifyAvailableProperties(this.page);
 });
+
+When("I search for a hotel by point of interest", async function () {
+  logger.info("Searching for a hotel by selecting a Point of Interest");
+  await HotelSearch.searchHotelByPointOfInterest(this.page);
+});

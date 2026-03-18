@@ -304,6 +304,39 @@ const HotelSearch = {
     // Close the drawer by pressing Escape
     await page.keyboard.press('Escape');
   },
+
+  /**
+   * Searches for a hotel by selecting a Point of Interest from the POI modal.
+   * Opens hotel tab → clicks bookmarks icon → selects first POI → sets dates → searches.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} [options]
+   * @param {number} [options.nights=3] - Number of nights
+   * @returns {Promise<{searched: boolean, nights: number}>}
+   */
+  async searchHotelByPointOfInterest(page, options = {}) {
+    if (!page) throw new Error('page is required');
+
+    const nights = options.nights || SEARCH_DEFAULTS.HOTEL.NIGHTS;
+    if (nights < 1) throw new Error(`"nights" must be >= 1. Got ${nights}`);
+
+    const hotelSearchPage = getPageObject(page, HotelSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await hotelSearchPage.clickHotelTab();
+    await hotelSearchPage.waitForBookAndStayAtYourHotelText();
+    await hotelSearchPage.clickPoiBookmarksIcon();
+    await hotelSearchPage.waitForPoiModal();
+    await hotelSearchPage.clickFirstPoiItem();
+    await hotelSearchPage.clickCheckInField();
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, { startIndex: 0, endIndex: nights });
+    await searchPage.waitAndClickSearchButton();
+    await page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
+    await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
+
+    return { searched: true, nights };
+  },
 };
 
 module.exports = HotelSearch;
