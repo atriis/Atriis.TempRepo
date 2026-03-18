@@ -169,6 +169,18 @@ class CartPayment {
   }
 
   /**
+   * Saves the card selection by clicking the Save button (.btn-save).
+   * @param {import('@playwright/test').Page} page
+   */
+  static async saveCardSelection(page) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.clickSaveCardButton();
+  }
+
+  /**
    * Verifies payment restriction field label is visible after selecting billback card.
    * @param {import('@playwright/test').Page} page
    */

@@ -508,6 +508,131 @@ const HotelLevelResults = {
     // Wait for the email dialog to appear
     await commonPage.waitForSubjectLabelSharePopUp();
   },
+
+  /**
+   * Verifies that the hotel sort dropdown has the expected label selected.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedLabel - The expected sort label text (e.g. "Most recommended")
+   * @throws {Error} If the selected sort label doesn't match
+   */
+  async verifySortSelected(page, expectedLabel) {
+    if (!page) throw new Error('page is required');
+    if (!expectedLabel || typeof expectedLabel !== 'string') throw new Error(`expectedLabel must be a non-empty string, got: ${typeof expectedLabel}`);
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const actual = await hotelLevelResultsPage.getSelectedSortLabel();
+    if (!actual.toLowerCase().includes(expectedLabel.toLowerCase())) {
+      throw new Error(`Expected sort filter to have "${expectedLabel}" selected, but got "${actual}"`);
+    }
+  },
+
+  /**
+   * Verifies the number of supplier filters in the hotel filter panel.
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount - Expected number of supplier filters
+   * @throws {Error} If actual count doesn't match
+   */
+  async verifySupplierFilterCount(page, expectedCount) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedCount !== 'number' || expectedCount < 0) throw new Error(`expectedCount must be a non-negative number, got: ${expectedCount}`);
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const actualCount = await hotelLevelResultsPage.getSupplierFilterCount();
+    if (actualCount !== expectedCount) {
+      throw new Error(`Expected ${expectedCount} supplier filter(s), but found ${actualCount}`);
+    }
+  },
+
+  /**
+   * Verifies that a specific supplier is visible in the supplier filter panel.
+   * @param {import('playwright').Page} page
+   * @param {string} supplierName - Supplier name (e.g. "bookingcom", "amadeus")
+   * @throws {Error} If the supplier filter is not visible
+   */
+  async verifySupplierFilterVisible(page, supplierName) {
+    if (!page) throw new Error('page is required');
+    if (!supplierName || typeof supplierName !== 'string') throw new Error(`supplierName must be a non-empty string, got: ${typeof supplierName}`);
+    const SUPPLIER_ID_MAP = {
+      expedia: 'EXPEDIARAPID',
+      bookingcom: 'BOOKINGCOM',
+      amadeus: 'AMADEUS',
+      amadeusteldar: 'AMADEUS-TE',
+      ratehawk: 'RATEHAWK',
+      sabre: 'SABRE',
+      hcorpo: 'HCORPO',
+    };
+    const key = supplierName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const supplierId = SUPPLIER_ID_MAP[key] || supplierName.toUpperCase();
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const isVisible = await hotelLevelResultsPage.isSupplierFilterVisible(supplierId);
+    if (!isVisible) throw new Error(`Supplier filter "${supplierName}" (${supplierId}) is not visible in the hotel filter panel`);
+  },
+
+  /**
+   * Verifies that the hotel search check-in date matches the expected date from a flight.
+   * Flight dates are in format "EEE, dd MMM" (e.g. "Thu, 11 Dec").
+   * Hotel dates are displayed as "MMM dd-MMM dd" (e.g. "Dec 11- Dec 15").
+   *
+   * @param {Object} page - Playwright page
+   * @param {string} expectedFlightDate - Flight date text like "Thu, 11 Dec"
+   */
+  async verifyHotelCheckInDateMatchesFlight(page, expectedFlightDate) {
+    if (!page) throw new Error('page is required');
+    if (!expectedFlightDate || typeof expectedFlightDate !== 'string') {
+      throw new Error('expectedFlightDate must be a non-empty string, got: ' + expectedFlightDate);
+    }
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const dateText = await hotelLevelResultsPage.getHotelInfoBarDateText();
+
+    // Parse flight date "Thu, 11 Dec" → extract day and month
+    const flightMatch = expectedFlightDate.match(/(\d+)\s+(\w+)/);
+    if (!flightMatch) throw new Error(`Could not parse flight date: "${expectedFlightDate}"`);
+    const flightDay = flightMatch[1].padStart(2, '0');
+    const flightMonth = flightMatch[2]; // e.g. "Dec"
+
+    // Hotel dates format: "MMM dd- MMM dd" or "MMM dd-MMM dd"
+    // Check-in is the left part before the dash
+    const hotelCheckIn = dateText.split('-')[0].trim();
+    // hotelCheckIn is like "Dec 11"
+    const hotelMatch = hotelCheckIn.match(/(\w+)\s+(\d+)/);
+    if (!hotelMatch) throw new Error(`Could not parse hotel check-in date from: "${dateText}"`);
+    const hotelMonth = hotelMatch[1];
+    const hotelDay = hotelMatch[2].padStart(2, '0');
+
+    expect(hotelMonth.toLowerCase()).toBe(flightMonth.toLowerCase());
+    expect(hotelDay).toBe(flightDay);
+  },
+
+  /**
+   * Verifies that the hotel search check-out date matches the expected date from a flight.
+   *
+   * @param {Object} page - Playwright page
+   * @param {string} expectedFlightDate - Flight date text like "Mon, 15 Dec"
+   */
+  async verifyHotelCheckOutDateMatchesFlight(page, expectedFlightDate) {
+    if (!page) throw new Error('page is required');
+    if (!expectedFlightDate || typeof expectedFlightDate !== 'string') {
+      throw new Error('expectedFlightDate must be a non-empty string, got: ' + expectedFlightDate);
+    }
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const dateText = await hotelLevelResultsPage.getHotelInfoBarDateText();
+
+    // Parse flight date "Mon, 15 Dec" → extract day and month
+    const flightMatch = expectedFlightDate.match(/(\d+)\s+(\w+)/);
+    if (!flightMatch) throw new Error(`Could not parse flight date: "${expectedFlightDate}"`);
+    const flightDay = flightMatch[1].padStart(2, '0');
+    const flightMonth = flightMatch[2];
+
+    // Check-out is the right part after the dash
+    const hotelCheckOut = dateText.split('-')[1].trim();
+    const hotelMatch = hotelCheckOut.match(/(\w+)\s+(\d+)/);
+    if (!hotelMatch) throw new Error(`Could not parse hotel check-out date from: "${dateText}"`);
+    const hotelMonth = hotelMatch[1];
+    const hotelDay = hotelMatch[2].padStart(2, '0');
+
+    expect(hotelMonth.toLowerCase()).toBe(flightMonth.toLowerCase());
+    expect(hotelDay).toBe(flightDay);
+  },
 };
 
 module.exports = HotelLevelResults;

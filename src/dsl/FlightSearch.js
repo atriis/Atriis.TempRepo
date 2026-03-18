@@ -255,6 +255,99 @@ const FlightSearch = {
       returnIndex,
     });
   },
+
+  /**
+   * Searches a round trip flight with advanced search options.
+   * Opens advanced search, fills origin/destination, selects dates, 
+   * and optionally changes the return date type and time.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} from - Origin airport code
+   * @param {string} to - Destination airport code
+   * @param {Object} options
+   * @param {string} options.returnDateType - "Departure" or "Arrival" (default: null = don't change)
+   * @param {string} options.returnFlightTime - "Anytime", "Morning", etc. (default: null = don't change)
+   * @param {boolean} options.parallelHotel - Check parallel hotel search (default: false)
+   */
+  async searchRoundTripAdvanced(
+    page,
+    from,
+    to,
+    {
+      returnDateType = null,
+      returnFlightTime = null,
+      parallelHotel = false,
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    } = {},
+  ) {
+    if (!page) throw new Error('page is required');
+    if (!from || typeof from !== 'string') throw new Error('from must be a non-empty string, got: ' + from);
+    if (!to || typeof to !== 'string') throw new Error('to must be a non-empty string, got: ' + to);
+
+    logger.info('Starting advanced round trip flight search', { from, to, returnDateType, returnFlightTime, parallelHotel });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectRoundTrip();
+
+    // Enable advanced search (splits into departure + return sections)
+    await flightSearchPage.clickAdvancedSearchButton();
+    // Wait for advanced search panel animation to complete before filling fields
+    await page.waitForTimeout(500);
+
+    // Fill origin and destination
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+
+    // Autocomplete popper must fully close before clicking date fields; no dismiss event available
+    await page.waitForTimeout(1000);
+
+    // Select departure date
+    await searchPage.clickDepartureDateField();
+    // Wait for calendar panel open animation to settle
+    await page.waitForTimeout(500);
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      startIndex: departureIndex,
+      endIndex: null,
+    });
+
+    // Wait for departure calendar close animation before opening return calendar
+    await page.waitForTimeout(500);
+
+    // Select return date (use advanced-specific return date field)
+    await flightSearchPage.clickAdvancedReturnDateField();
+    // Wait for return calendar panel open animation to settle
+    await page.waitForTimeout(500);
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      startIndex: returnIndex,
+      endIndex: null,
+    });
+
+    // Change return date type if specified
+    if (returnDateType) {
+      await flightSearchPage.selectReturnDateType(returnDateType);
+    }
+
+    // Change return flight time if specified
+    if (returnFlightTime) {
+      await flightSearchPage.selectReturnFlightTime(returnFlightTime);
+    }
+
+    // Enable parallel hotel search if requested
+    if (parallelHotel) {
+      await flightSearchPage.checkParallelHotelSearch();
+    }
+
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'roundTrip', searchType: 'completeTrip', advanced: true };
+  },
 };
 
 module.exports = FlightSearch;

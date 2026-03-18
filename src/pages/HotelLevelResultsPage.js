@@ -17,7 +17,7 @@ const SELECTORS = {
   SEARCH_HOTEL_FILTER: '[placeholder="Search hotel"]',
   CO2_LABEL: ".hotel-info .eco-label",
   CO2_VALUE: ".hotel-info .eco-label .is-size-7",
-  SUPPLIER_LOGO_IMG: (supplierId) => `.hotel-supplier-carousel img[alt*="${supplierId}"]`,
+  SUPPLIER_LOGO_IMG: (supplierId) => `.hotel-supplier-carousel img[alt*="${supplierId}"], .supplier-img img[alt*="${supplierId}"]`,
   SUSTAINABILITY_FILTER_CHECKBOX: 'input.el-checkbox__original[value="ecoCertificated"]',
   // Sort dropdown in hotel list header
   SORT_SELECT: '.hotel-list-sort .sort .el-select',
@@ -51,12 +51,20 @@ const SELECTORS = {
   AGREEMENT_BADGE: '.hotel-preview .ticket-agreement',
   // Last hotel item in hotel list (lazy-loaded sentinel element)
   LAST_HOTEL_VIEW_RATES_BUTTON: "[id='last-item'] .btn--primary",
+  // Selected sort value in the hotel-list-sort dropdown
+  SORT_SELECTED_ITEM: '.hotel-list-sort .sort .el-select .el-select__placeholder',
   // Share mode button in hotel-list-sort bar
   SHARE_MODE_BUTTON: '.share-btn-container .share-btn',
   // Individual hotel share button (visible only in share mode)
   HOTEL_SHARE_ADD_BUTTON: '.hotel-preview .share-btn.py-2',
   // Share bar email button (appears after selecting hotels to share)
   SHARE_BAR_EMAIL_BUTTON: '.share-bar .share-btn',
+  // Supplier filter checkboxes in hotel filter panel
+  SUPPLIER_FILTER_CHECKBOX: '.hotel-filter .suppliers-filter .el-checkbox',
+  // Supplier filter checkbox by supplier name (img alt contains supplier ID)
+  SUPPLIER_FILTER_ITEM: (supplierId) => `.hotel-filter .suppliers-filter .el-checkbox:has(img[alt*="${supplierId}"])`,
+  // Hotel info bar date text (check-in and check-out displayed as "MMM dd-MMM dd")
+  HOTEL_INFO_BAR_DATES: '.hotel-info-bar .date-room-wrapper p:first-child',
 };
 
 class HotelLevelResultsPage {
@@ -532,12 +540,69 @@ class HotelLevelResultsPage {
     await btn.click();
   }
 
+  /**
+   * Gets the currently selected sort option label from the hotel list sort dropdown.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<string>} The selected sort label text
+   */
+  async getSelectedSortLabel({ timeout = 10000 } = {}) {
+    const item = this.page.locator(SELECTORS.SORT_SELECTED_ITEM).first();
+    await item.waitFor({ state: 'visible', timeout });
+    return (await item.textContent()).trim();
+  }
+
+  /**
+   * Counts the number of supplier filter checkboxes in the hotel filter panel.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<number>} The number of supplier checkboxes
+   */
+  async getSupplierFilterCount({ timeout = 15000 } = {}) {
+    const checkboxes = this.page.locator(SELECTORS.SUPPLIER_FILTER_CHECKBOX);
+    try {
+      await checkboxes.first().waitFor({ state: 'visible', timeout });
+    } catch {
+      return 0;
+    }
+    return checkboxes.count();
+  }
+
+  /**
+   * Checks if a specific supplier is visible in the supplier filter panel.
+   * @param {string} supplierId - The supplier ID (e.g. "BOOKINGCOM", "AMADEUS")
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isSupplierFilterVisible(supplierId, { timeout = 10000 } = {}) {
+    if (!supplierId || typeof supplierId !== 'string') throw new Error('supplierId must be a non-empty string');
+    const item = this.page.locator(SELECTORS.SUPPLIER_FILTER_ITEM(supplierId)).first();
+    try {
+      await item.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async scrollToAndClickLastHotelViewRates() {
     const lastHotelButton = this.page.locator(SELECTORS.LAST_HOTEL_VIEW_RATES_BUTTON);
     await lastHotelButton.waitFor({ state: 'attached', timeout: 60000 });
     await lastHotelButton.scrollIntoViewIfNeeded();
     await lastHotelButton.waitFor({ state: 'visible', timeout: 30000 });
     await lastHotelButton.click();
+  }
+
+  /**
+   * Extracts the hotel search date text from the hotel info bar.
+   * Returns the raw text like "Dec 11- Dec 15".
+   * @returns {Promise<string>} The date text from the info bar
+   */
+  async getHotelInfoBarDateText() {
+    const dateElement = this.page.locator(SELECTORS.HOTEL_INFO_BAR_DATES);
+    await dateElement.waitFor({ state: 'visible', timeout: 30000 });
+    return (await dateElement.textContent()).trim();
   }
 }
 

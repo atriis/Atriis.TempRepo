@@ -75,6 +75,10 @@ const SELECTORS = {
   DELIVERY_METHOD_FIRST_RADIO: ".uk-rail-delivery-method .el-radio-group > :nth-child(1) .el-radio__inner",
   GREEN_ICON_DELIVERY_METHOD: ".uk-rail-delivery-method .material-symbols-outlined",
 
+  // "Provided by" label in cart hotel preview (hotel-provided-by.vue)
+  PROVIDER_LABEL: 'section.hotel-preview .provider-label',
+  // Hotel quote price in cart (hotel-quote-card.vue → app-price → h4.amount)
+  HOTEL_QUOTE_PRICE: '.quote-payment-card .price-wrapper .amount',
   // Hotel rooms badge in cart trip summary (.dates-and-rooms from hotel-quote-summary.vue)
   ROOMS_BADGE: '.dates-and-rooms, .dates span',
 
@@ -114,6 +118,11 @@ const SELECTORS = {
   MORE_DETAILS_DRAWER_CLOSE: "[aria-label='More details'] [fill='currentColor'], [aria-label='More details'] .el-dialog__close",
   // Share dialog close button
   SHARE_DIALOG_CLOSE: '.el-dialog__header [fill="currentColor"], .el-dialog__headerbtn',
+  // Share dialog language dropdown
+  SHARE_LANGUAGE_DROPDOWN: '.app-share-quotes .app-select .el-select',
+  SHARE_LANGUAGE_OPTION: (text) => `.app-select-popper .el-select-dropdown__item:has-text("${text}")`,
+  // Share email preview iframe
+  SHARE_EMAIL_IFRAME: '.email-content-container iframe',
   // Hotel address in share email preview
   SHARE_EMAIL_HOTEL_ADDRESS: "[target='_blank']",
 
@@ -161,6 +170,33 @@ class CartPage {
     const label = this.page.locator(SELECTORS.CANCELLATION_POLICY_LABEL).first();
     await label.waitFor({ state: 'visible', timeout });
     return (await label.textContent()).trim();
+  }
+
+  /**
+   * Checks whether the "Provided by" label is visible in the cart hotel preview.
+   * @param {number} timeout - Maximum wait time in ms
+   * @returns {Promise<boolean>}
+   */
+  async isProviderLabelVisible({ timeout = 10000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.PROVIDER_LABEL).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Gets the hotel quote price from the cart (the price shown on the hotel card).
+   * @param {number} timeout - Maximum wait time in ms
+   * @returns {Promise<number>} The price as a numeric value
+   */
+  async getHotelQuotePrice({ timeout = 15000 } = {}) {
+    const el = this.page.locator(SELECTORS.HOTEL_QUOTE_PRICE).first();
+    await el.waitFor({ state: 'visible', timeout });
+    const text = await el.innerText();
+    const match = text.replace(/[^0-9.,]/g, '').replace(',', '.');
+    return parseFloat(match) || null;
   }
 
   /**
@@ -1196,13 +1232,17 @@ class CartPage {
    * @returns {Promise<string>} Full text content of the iframe
    */
   async getSharePreviewTextContent() {
-    const frames = this.page.frames();
-    for (const frame of frames) {
-      const body = frame.locator('body');
-      const count = await body.count();
-      if (count > 0) {
-        const text = await body.textContent();
-        if (text && text.trim().length > 10) return text.trim();
+    const iframeLocator = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first();
+    const count = await iframeLocator.count();
+    if (count > 0) {
+      const frame = await iframeLocator.contentFrame();
+      if (frame) {
+        const body = frame.locator('body');
+        const bodyCount = await body.count();
+        if (bodyCount > 0) {
+          const text = await body.textContent();
+          if (text && text.trim().length > 0) return text.trim();
+        }
       }
     }
     return '';
@@ -1264,6 +1304,42 @@ class CartPage {
   async isCheckPriceProceedButtonVisible() {
     const btn = this.page.locator(SELECTORS.CHECK_PRICE_PROCEED_BUTTON).first();
     return btn.isVisible();
+  }
+
+  /**
+   * Selects a language in the share dialog language dropdown.
+   * @param {string} language - The language label to select (e.g. "German", "English")
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async selectShareLanguage(language, { timeout = 15000 } = {}) {
+    if (!language || typeof language !== 'string') throw new Error('language must be a non-empty string');
+    const dropdown = this.page.locator(SELECTORS.SHARE_LANGUAGE_DROPDOWN).first();
+    await dropdown.waitFor({ state: 'visible', timeout });
+    await dropdown.click();
+    const option = this.page.locator(SELECTORS.SHARE_LANGUAGE_OPTION(language)).first();
+    await option.waitFor({ state: 'visible', timeout });
+    await option.click();
+    // Email preview iframe re-renders via srcdoc after language change; no load event to listen for
+    await this.page.waitForTimeout(3000);
+  }
+
+  /**
+   * Checks if the share email preview iframe contains the given text.
+   * @param {string} text - Text to search for in the email preview
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async sharePreviewContainsText(text, { timeout = 15000 } = {}) {
+    if (!text || typeof text !== 'string') throw new Error('text must be a non-empty string');
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+      const content = await this.getSharePreviewTextContent();
+      if (content.includes(text)) return true;
+      await this.page.waitForTimeout(1000);
+    }
+    return false;
   }
 
   /**

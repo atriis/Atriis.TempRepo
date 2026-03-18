@@ -17,12 +17,19 @@ Feature: 54602 eHotel - Price from room level matches price after adding to cart
     Given I am logged in as "luciana" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
+    And I extract the price from hotel level results
     And I select the first hotel result
-    # TODO: Create step "When I sort room results by price" that calls DSL sortRoomsByPrice in RoomLevelResults.js
-    # TODO: Create step "When I extract the room price from room level results" that calls DSL extractRoomPrice in RoomLevelResults.js
-    And I add a refundable room to my cart
+    And I wait for the first add to trip button in room level results to be visible
+    And I extract the price from room level results
+    And I add the first available room to my cart
+    Then the hotel level price should match the room level price
     Then the booking status should be "Pending booking"
-    # TODO: Create step "Then the price in cart should match the price from room level results" that calls DSL comparePrices in Cart.js
-    When I add a credit card as payment method
-    Then I successfully cancel the trip
-
+    When I extract the hotel quote price from cart
+    Then the price in cart should match the room level price
+    When I click add payment method button
+    When I click the card "testim ehotel" checkbox
+    When I save the card selection
+    Then the payment type should be "Paid by Traveler"
+    

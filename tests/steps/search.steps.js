@@ -41,3 +41,9 @@ Then("I remove myself as the traveler", async function () {
   const result = await Search.removeTraveler(this.page);
   expect(result.removed, "Traveler should be removed").toBe(true);
 });
+
+Given("I have added {string} as primary traveler", async function (travelerName) {
+  logger.info("Adding traveler as primary by name", { travelerName });
+  const result = await Search.addTravelerAsPrimaryByName(this.page, travelerName);
+  expect(result.starIconVisible, "Star icon should be visible after adding primary traveler").toBe(true);
+});

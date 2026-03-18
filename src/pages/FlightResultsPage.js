@@ -29,6 +29,11 @@ const SELECTORS = {
 
   // Fare rules leg tabs inside the drawer
   FARE_RULES_LEG_TAB: '.fare-rules-tabs .el-tabs__item',
+
+  // Flight preview segment date text (format: "EEE, dd MMM" e.g. "Thu, 11 Dec")
+  FLIGHT_DATE: '.flight-date',
+  // Flight preview card
+  FLIGHT_PREVIEW: '.flight-list .flight-preview',
 };
 
 class FlightResultsPage {
@@ -491,6 +496,34 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   // Dynamic title: e.g., "Depart from London", "Depart from Madrid"
   getFlightDurationFromLocationTitle(location) {
     return this.page.getByText(location, { exact: false }).first();
+  }
+
+  /**
+   * Extracts the arrival date text from a flight result preview card.
+   * Returns the date in the format displayed in the UI (e.g., "Thu, 11 Dec").
+   * @param {number} cardIndex - Zero-based index of the flight preview card (default: 0)
+   * @returns {Promise<string>} The arrival date text
+   */
+  async getFlightArrivalDate(cardIndex = 0) {
+    const card = this.page.locator(SELECTORS.FLIGHT_PREVIEW).nth(cardIndex);
+    await card.waitFor({ state: 'visible', timeout: 60000 });
+    // Arrival date is the second .flight-date element in the card
+    const arrivalDate = card.locator(SELECTORS.FLIGHT_DATE).nth(1);
+    return (await arrivalDate.textContent()).trim();
+  }
+
+  /**
+   * Extracts the departure date text from a flight result preview card.
+   * Returns the date in the format displayed in the UI (e.g., "Mon, 15 Dec").
+   * @param {number} cardIndex - Zero-based index of the flight preview card (default: 0)
+   * @returns {Promise<string>} The departure date text
+   */
+  async getFlightDepartureDate(cardIndex = 0) {
+    const card = this.page.locator(SELECTORS.FLIGHT_PREVIEW).nth(cardIndex);
+    await card.waitFor({ state: 'visible', timeout: 60000 });
+    // Departure date is the first .flight-date element in the card
+    const departureDate = card.locator(SELECTORS.FLIGHT_DATE).nth(0);
+    return (await departureDate.textContent()).trim();
   }
 
 }

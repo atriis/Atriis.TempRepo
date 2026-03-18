@@ -283,8 +283,13 @@ jobs:
           USER_CAROLDYNAMICS: ${{ secrets.USER_CAROLDYNAMICS }}
           USER_SHANI_NL: ${{ secrets.USER_SHANI_NL }}
           USER_TLGG: ${{ secrets.USER_TLGG }}
+          USER_LUCIANA: ${{ secrets.USER_LUCIANA }}
           USER_GALILEOGALIEI: ${{ secrets.USER_GALILEOGALIEI }}
+          USER_AMOS: ${{ secrets.USER_AMOS }}
+          USER_SUZANAVOND: ${{ secrets.USER_SUZANAVOND }}
           USER_DANIELAOLIVEIRA: ${{ secrets.USER_DANIELAOLIVEIRA }}
+          USER_VALERIA: ${{ secrets.USER_VALERIA }}
+          USER_BRUNAFILTERNONAGREEMENT: ${{ secrets.USER_BRUNAFILTERNONAGREEMENT }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Hotels Results

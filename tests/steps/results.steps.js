@@ -32,6 +32,11 @@ When("I add the first result to trip", async function () {
   await Results.waitAndClickAddToTripButton(this.page);
 });
 
+When("I handle conflicting quotes if visible", async function () {
+  logger.info("Checking for conflicting quotes modal");
+  await Results.clickProceedConflictQuoteModal(this.page);
+});
+
 When("I select and add round trip journey to trip", async function () {
   logger.info("Selecting round trip journey and adding to trip");
   await Results.clickSelectButtonRoundTripAndClickAddToTrip(this.page);

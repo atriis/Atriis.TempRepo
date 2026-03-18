@@ -46,6 +46,11 @@ const SELECTORS = {
     "[placeholder='Search by name, user group, username or email']",
   FIRST_TRAVELER_OPTION: "[id*='item-0']",
   TRIP_TRAVELER_TAG: ".trip-traveler-tag",
+  // Edit traveler dialog — primary traveler checkbox
+  PRIMARY_TRAVELER_CHECKBOX: '.edit-traveler .el-checkbox',
+  // Edit traveler dialog — autocomplete input for searching traveler
+  EDIT_TRAVELER_NAME_FIELD: ".edit-traveler [placeholder='Search by name, user group, username or email']",
+  EDIT_TRAVELER_OPTION: '.user-autocomplete-popper li',
 
   // Edit Search
   SEARCH_TITLE: '.locations.is-flex.is-align-items-center',
@@ -622,6 +627,36 @@ class SearchPage {
     if (!actualText.toLowerCase().includes(expectedText.toLowerCase())) {
       throw new Error(`Search title "${actualText}" does not contain "${expectedText}"`);
     }
+  }
+
+  /**
+   * Checks the "Use as primary traveller" checkbox in the edit-traveler dialog.
+   * The add-traveler dialog must already be open.
+   */
+  async checkPrimaryTravelerCheckbox() {
+    const checkbox = this.page.locator(SELECTORS.PRIMARY_TRAVELER_CHECKBOX).first();
+    await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+    await checkbox.click();
+  }
+
+  /**
+   * Fills the traveler name in the edit-traveler panel's autocomplete.
+   * Scoped to the .edit-traveler section to avoid targeting the general traveler search.
+   * @param {string} name - traveler name to search for
+   */
+  async fillInEditTravelerName(name) {
+    const input = this.page.locator(SELECTORS.EDIT_TRAVELER_NAME_FIELD);
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.fill(name);
+  }
+
+  /**
+   * Selects the first option from the edit-traveler autocomplete dropdown.
+   */
+  async selectEditTravelerOption() {
+    const option = this.page.locator(SELECTORS.EDIT_TRAVELER_OPTION).first();
+    await option.waitFor({ state: 'visible', timeout: 30000 });
+    await option.click();
   }
 
 }

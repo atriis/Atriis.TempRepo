@@ -414,3 +414,41 @@ Then("the check availability result should be displayed", async function () {
   logger.info("Verifying check availability result dialog");
   await Cart.verifyCheckAvailabilityResult(this.page);
 });
+
+When("I change the share language to {string}", async function (language) {
+  logger.info("Changing share language", { language });
+  await Cart.changeShareLanguage(this.page, language);
+});
+
+Then("{string} should be displayed in the share email preview", async function (text) {
+  logger.info("Verifying share email preview contains text", { text });
+  await Cart.verifySharePreviewContainsText(this.page, text);
+});
+
+Then("I should see a provided by label in cart", async function () {
+  logger.info("Verifying 'Provided by' label is visible in cart");
+  await Cart.verifyProviderLabelInCart(this.page);
+});
+
+When("I extract the hotel quote price from cart", async function () {
+  logger.info("Extracting hotel quote price from cart");
+  this.cartHotelPrice = await Cart.extractHotelQuotePrice(this.page);
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(this.cartHotelPrice);
+  logger.info("Stored cart hotel quote price", { cartHotelPrice: this.cartHotelPrice });
+});
+
+Then("the price in cart should match the room level price", async function () {
+  if (this.roomLevelPrice === undefined) {
+    throw new Error("No room level price stored. Run 'When I extract the price from room level results' before this step.");
+  }
+  if (this.cartHotelPrice === undefined) {
+    throw new Error("No cart hotel price stored. Run 'When I extract the hotel quote price from cart' before this step.");
+  }
+  logger.info("Comparing cart hotel price with room level price", {
+    cartHotelPrice: this.cartHotelPrice,
+    roomLevelPrice: this.roomLevelPrice,
+  });
+  const diff = Math.abs(this.cartHotelPrice - this.roomLevelPrice);
+  expect(diff).toBeLessThanOrEqual(1);
+});

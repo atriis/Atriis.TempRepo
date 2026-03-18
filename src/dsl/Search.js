@@ -130,7 +130,29 @@ const Search = {
     
     const searchPage = getPageObject(page, SearchPage);
     await searchPage.validateSearchTitleContains(text);
-  }
+  },
+
+  /**
+   * Add a traveler by name and set them as primary.
+   * @param {import('playwright').Page} page
+   * @param {string} name - traveler name to search for
+   */
+  async addTravelerAsPrimaryByName(page, name) {
+    if (!page) throw new Error('page is required');
+    if (!name || typeof name !== 'string') throw new Error('name must be a non-empty string');
+
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.clickAddTravelerButton();
+    // Wait for the edit-traveler panel to appear
+    await page.locator('.edit-traveler').waitFor({ state: 'visible', timeout: 10000 });
+    await searchPage.checkPrimaryTravelerCheckbox();
+    // Fill the autocomplete inside the edit-traveler panel (scoped)
+    await searchPage.fillInEditTravelerName(name);
+    await searchPage.selectEditTravelerOption();
+    // Wait for the traveler to be selected
+    const starIconVisible = await searchPage.isStarIconVisible();
+    return { selected: true, starIconVisible };
+  },
 };
 
 module.exports = Search;

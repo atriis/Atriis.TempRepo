@@ -180,7 +180,32 @@ When("I select the last hotel result", async function () {
   await HotelLevelResults.clickLastHotelOption(this.page);
 });
 
+Then("the sort filter has {string} selected", async function (expectedLabel) {
+  logger.info("Verifying sort filter selection", { expectedLabel });
+  await HotelLevelResults.verifySortSelected(this.page, expectedLabel);
+});
+
 When("I share the hotel price offer by email from results", async function () {
   logger.info("Sharing hotel price offer by email from hotel-level results page");
   await HotelLevelResults.shareHotelPriceOfferByEmail(this.page);
+});
+
+Then("there should be {int} supplier(s) in the supplier filters", async function (expectedCount) {
+  logger.info("Verifying supplier filter count", { expectedCount });
+  await HotelLevelResults.verifySupplierFilterCount(this.page, expectedCount);
+});
+
+Then("the {string} supplier filter should be visible", async function (supplierName) {
+  logger.info("Verifying supplier filter is visible", { supplierName });
+  await HotelLevelResults.verifySupplierFilterVisible(this.page, supplierName);
+});
+
+Then("the hotel search check-in date should match the arrival date of the first flight", async function () {
+  logger.info("Verifying hotel check-in date matches first flight arrival date", { expectedDate: this.firstFlightArrivalDate });
+  await HotelLevelResults.verifyHotelCheckInDateMatchesFlight(this.page, this.firstFlightArrivalDate);
+});
+
+Then("the hotel search check-out date should match the departure date of the second flight", async function () {
+  logger.info("Verifying hotel check-out date matches second flight departure date", { expectedDate: this.secondFlightDepartureDate });
+  await HotelLevelResults.verifyHotelCheckOutDateMatchesFlight(this.page, this.secondFlightDepartureDate);
 });

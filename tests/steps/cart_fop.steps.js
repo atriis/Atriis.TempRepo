@@ -49,6 +49,11 @@ When("I click the card {string} checkbox", async function (cardName) {
   await CartPayment.selectCardByName(this.page, cardName);
 });
 
+When("I save the card selection", async function () {
+  logger.info("Saving card selection");
+  await CartPayment.saveCardSelection(this.page);
+});
+
 When("I click payment restriction field", async function () {
   logger.info("Opening payment restriction field");
   await CartPayment.openPaymentRestrictionOptions(this.page);

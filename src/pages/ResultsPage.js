@@ -13,7 +13,8 @@ const SELECTORS = {
   SHARE_QUOTE_EMAIL_BUTTON: 'button:has(span:text("email"))',
   FILTER_CHECKBOX_LABEL: 'label.el-checkbox',
   FILTER_CHECKBOX_INNER: '.el-checkbox__input',
-  FILTER_VIEW_MORE_AIRLINES_EXPANDER: 'p.view-more-btn'
+  FILTER_VIEW_MORE_AIRLINES_EXPANDER: 'p.view-more-btn',
+  CONFLICT_MODAL_PROCEED: '.conflicting-quotes-dialog .btn:has-text("Proceed")'
 };
 
 class ResultsPage {
@@ -117,6 +118,8 @@ class ResultsPage {
 
   /**
    * Handles the "Conflicting Quotes" modal if it appears.
+   * Races between the conflict modal and the cart page loading.
+   * If neither appears within timeout, returns false (e.g., parallel search navigated elsewhere).
    *
    * Returns:
    * - true  → modal was shown and handled
@@ -124,21 +127,35 @@ class ResultsPage {
    */
   async handleConflictQuoteModalIfVisible() {
     const proceedButton = this.page
-      .locator(COMMON_SELECTORS.PROCEED_BUTTON)
+      .locator(SELECTORS.CONFLICT_MODAL_PROCEED)
       .first();
+    const tripOverviewTitle = this.page
+      .locator(CART_SELECTORS.TRIP_OVERVIEW_TITLE);
 
+    // Race: wait for either the conflict modal's Proceed button or the cart page
+    // If neither appears (e.g., parallel hotel search navigates to hotel results), return false
+    let result;
     try {
-      await proceedButton.waitFor({ state: "visible" });
+      result = await Promise.race([
+        proceedButton
+          .waitFor({ state: "visible", timeout: 90000 })
+          .then(() => "modal"),
+        tripOverviewTitle
+          .waitFor({ state: "visible", timeout: 90000 })
+          .then(() => "cart"),
+      ]);
     } catch {
+      return false;
+    }
+
+    if (result === "cart") {
       return false;
     }
 
     await proceedButton.click();
 
     // Confirm navigation to Trip Overview
-    await this.page
-      .locator(CART_SELECTORS.TRIP_OVERVIEW_TITLE)
-      .waitFor({ state: "visible" });
+    await tripOverviewTitle.waitFor({ state: "visible", timeout: 60000 });
 
     return true;
   }

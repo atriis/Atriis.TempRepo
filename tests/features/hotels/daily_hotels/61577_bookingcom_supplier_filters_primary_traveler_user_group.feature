@@ -14,8 +14,12 @@ Feature: 61577 Booking.com - Supplier filters reflect primary traveler user grou
 
   @priority:high
   Scenario: Supplier filters displayed are based on primary traveler's user group
-    Given I am logged in as "cintia" booking a new trip
+    Given I am logged in as "amos" booking a new trip
     And I have added myself as the traveler
-    # TODO: Create step "When I add a second traveler as primary by name {string}" - needs DSL method addTravelerAsPrimary
+    And I have added "becky leshin" as primary traveler
     When I search for a hotel in "LON" for 1 night
-    # TODO: Create step "Then the supplier filters should match the primary traveler's allowed suppliers" that calls DSL verifySupplierFiltersForPrimaryTraveler in HotelSearch.js
+    And I click proceed button if visible
+    And I wait to see view rates text in results page
+    Then the "bookingcom" supplier logo should be visible in hotel results
+    And there should be 1 supplier in the supplier filters
+    And the "bookingcom" supplier filter should be visible

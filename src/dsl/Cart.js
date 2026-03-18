@@ -1063,6 +1063,62 @@ const Cart = {
       throw new Error(`Unexpected check price dialog title: "${title}". Expected "Price is still available" or "No availability".`);
     }
   },
+
+  /**
+   * Changes the language in the share itinerary/quote dialog.
+   * The share dialog must already be open.
+   * @param {import('playwright').Page} page
+   * @param {string} language - The language label to select (e.g. "German", "English")
+   */
+  async changeShareLanguage(page, language) {
+    if (!page) throw new Error('page is required');
+    if (!language || typeof language !== 'string') throw new Error(`language must be a non-empty string, got: ${typeof language}`);
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.selectShareLanguage(language);
+  },
+
+  /**
+   * Verifies that the share email preview contains the specified text.
+   * The share dialog must already be open.
+   * @param {import('playwright').Page} page
+   * @param {string} text - Text to verify in the email preview
+   * @throws {Error} If the text is not found in the preview
+   */
+  async verifySharePreviewContainsText(page, text) {
+    if (!page) throw new Error('page is required');
+    if (!text || typeof text !== 'string') throw new Error(`text must be a non-empty string, got: ${typeof text}`);
+    const cartPage = getPageObject(page, CartPage);
+    const found = await cartPage.sharePreviewContainsText(text);
+    if (!found) {
+      const content = await cartPage.getSharePreviewTextContent();
+      throw new Error(`Expected share email preview to contain "${text}", but it was not found. Preview content: "${content.slice(0, 500)}"`);
+    }
+  },
+
+  /**
+   * Verifies the "Provided by" label is visible in the cart hotel preview.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the label is not visible
+   */
+  async verifyProviderLabelInCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const isVisible = await cartPage.isProviderLabelVisible();
+    if (!isVisible) {
+      throw new Error('"Provided by" label is not visible in the cart hotel preview');
+    }
+  },
+
+  /**
+   * Extracts the hotel quote price from the cart (the price displayed on the hotel card).
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>} The hotel price in the cart
+   */
+  async extractHotelQuotePrice(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    return cartPage.getHotelQuotePrice();
+  },
 };
 
 

@@ -42,8 +42,12 @@ const SELECTORS = {
   TERMS_AND_CONDITIONS_BUTTON: ".room-list button:has-text('Terms & Conditions')",
   TERMS_AND_CONDITIONS_DIALOG: ".terms-conditions-dialog",
   ALL_ROOM_PRICE_AMOUNTS: ".room-list > div .price-details-main .amount",
+  // Active filter badge tag in the room-filter summary bar
+  ROOM_FILTER_SUMMARY_TAG: (text) => `.room-filter-summary .el-tag:has-text("${text}")`,
   // Agreement badge (handshake icon) in room results — target the icon, not the wrapper section
   AGREEMENT_BADGE: '.ticket-agreement .agreement-img',
+  // "Provided by" label inside room-preview (hotel-provided-by.vue)
+  PROVIDER_LABEL: '.room-list .provider-label',
   // Room level results header ("Showing X rooms" text)
   ROOM_RESULTS_HEADER: '.is-6',
   // Room card with "Check cancelation policy" text (note: single 'l' in source)
@@ -207,6 +211,20 @@ class RoomLevelResultsPage {
    */
   async waitForHotelMapModal() {
     await this.page.locator(SELECTORS.MAP_MODAL).first().waitFor({ state: "visible", timeout: 15000 });
+  }
+
+  /**
+   * Checks whether the "Provided by" label is visible in room level results.
+   * @param {number} timeout - Maximum wait time in ms
+   * @returns {Promise<boolean>}
+   */
+  async isProviderLabelVisible({ timeout = 10000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.PROVIDER_LABEL).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -613,6 +631,24 @@ class RoomLevelResultsPage {
     const addButton = roomCard.locator(SELECTORS.CHECK_CANCELLATION_POLICY_ADD_BUTTON);
     await addButton.waitFor({ state: 'visible', timeout: 15000 });
     await addButton.click();
+  }
+
+  /**
+   * Checks if an active filter badge tag is visible in the room-filter summary bar.
+   * @param {string} text - Tag text (e.g. "TMC", "My Corporate")
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isFilterTagVisible(text, { timeout = 10000 } = {}) {
+    if (!text || typeof text !== 'string') throw new Error('text must be a non-empty string');
+    const tag = this.page.locator(SELECTORS.ROOM_FILTER_SUMMARY_TAG(text)).first();
+    try {
+      await tag.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**

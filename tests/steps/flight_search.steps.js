@@ -59,3 +59,12 @@ When("I search for a multi-city flight with legs {string} and {string} and {stri
   logger.info('Searching for multi-city flight', { legs });
   await FlightSearch.searchFlightMultiCity(this.page, legs);
 });
+
+When("I search for a round trip flight from {string} to {string} with advanced search and return date type {string} and time {string} and parallel hotel", async function (from, to, returnDateType, returnFlightTime) {
+  logger.info('Searching for advanced round trip flight with parallel hotel', { from, to, returnDateType, returnFlightTime });
+  await FlightSearch.searchRoundTripAdvanced(this.page, from, to, {
+    returnDateType,
+    returnFlightTime,
+    parallelHotel: true,
+  });
+});

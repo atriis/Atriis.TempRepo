@@ -437,6 +437,19 @@ const RoomLevelResults = {
   },
 
   /**
+   * Verifies that a filter tag with the given text is visible in the room-filter summary bar.
+   * @param {import('playwright').Page} page
+   * @param {string} tagText - The tag text to look for (e.g. "TMC", "My Corporate")
+   * @throws {Error} If the tag is not visible
+   */
+  async verifyRoomFilterTag(page, tagText) {
+    if (!page) throw new Error('page is required');
+    if (!tagText || typeof tagText !== 'string') throw new Error(`tagText must be a non-empty string, got: ${typeof tagText}`);
+    const p = getPageObject(page, RoomLevelResultsPage);
+    const isVisible = await p.isFilterTagVisible(tagText);
+    if (!isVisible) throw new Error(`Room filter tag "${tagText}" is not visible in the filter summary`);
+  },
+
   /**
    * Adds a room marked as "Check cancellation policy" to the cart.
    * Handles the optional cancellation terms dialog and conflict quote modal.
@@ -453,6 +466,20 @@ const RoomLevelResults = {
     await roomLevelResultsPage.clickAddToTripOnCheckCancellationPolicyRoom();
     await roomLevelResultsPage.handleCancellationTermsDialogIfVisible();
     await Results.clickProceedConflictQuoteModal(page);
+  },
+
+  /**
+   * Verifies the "Provided by" label is visible in room level results.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the label is not visible
+   */
+  async verifyProviderLabelVisible(page) {
+    if (!page) throw new Error('page parameter is required');
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const isVisible = await roomLevelResultsPage.isProviderLabelVisible();
+    if (!isVisible) {
+      throw new Error('"Provided by" label is not visible in room level results');
+    }
   },
 };
 

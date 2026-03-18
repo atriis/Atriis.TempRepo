@@ -458,7 +458,33 @@ async isGreenCircleIconVisibleInPricingOptions(page, index = 0) {
     await expect(
       flightResultsPage.getFlightDurationFromLocationTitle(location)
     ).toBeVisible();
-  }
+  },
+
+  /**
+   * Extracts the arrival date text from a flight result card.
+   * @param {Object} page - Playwright page
+   * @param {number} cardIndex - Zero-based index (default: 0)
+   * @returns {Promise<string>} Date text like "Thu, 11 Dec"
+   */
+  async extractFlightArrivalDate(page, cardIndex = 0) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    return flightResultsPage.getFlightArrivalDate(cardIndex);
+  },
+
+  /**
+   * Extracts the departure date text from a flight result card.
+   * @param {Object} page - Playwright page
+   * @param {number} cardIndex - Zero-based index (default: 0)
+   * @returns {Promise<string>} Date text like "Mon, 15 Dec"
+   */
+  async extractFlightDepartureDate(page, cardIndex = 0) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    return flightResultsPage.getFlightDepartureDate(cardIndex);
+  },
 
 }
 
