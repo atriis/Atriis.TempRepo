@@ -282,10 +282,18 @@ Move the feature file from `to_adjust/`, `next/`, or `next_blocked/` to the corr
 #### 5b: Add Users to CI Workflow (`test-suite.yml`)
 After moving the file, check if the feature uses any test users that are NOT yet listed in the corresponding CI job's `env:` section in `.github/workflows/test-suite.yml`.
 
+**CRITICAL: Never create duplicate users.** Before adding ANY user to `.env` or CI:
+1. **Search `.env` for the email address first** — if the same email already exists under a different `USER_<LABEL>`, do NOT create a new env var. Instead, update the feature file to use the existing label.
+   - Example: Feature says `"tree"` → would need `USER_TREE`. But `.env` already has `USER_CHRISTREE="tree@tree.com"` → change the feature to use `"christree"` instead.
+2. **Only add truly new users** — users whose email does not appear anywhere in `.env` under any label.
+3. **Never add aliases** — one email = one `USER_*` entry. No exceptions.
+
+**Steps for CI workflow updates:**
 1. **Extract users from the feature file**: Look for `Given I am logged in as {string} {string}` steps. The user key maps to `USER_<LABEL>` env var (e.g., `"galileogaliei"` → `USER_GALILEOGALIEI`).
-2. **Check `test-suite.yml`**: Search the CI job's env section for each `USER_<LABEL>`. If not present, add it.
-3. **Add missing users**: Insert `USER_<LABEL>: ${{ secrets.USER_<LABEL> }}` in the env block of the appropriate CI job, before `GENERAL_PASSWORD`.
-4. **Only add to CI jobs whose folder contains the moved file** — e.g., if moved to `daily_hotels/`, add to `daily-hotels-tests`; if moved to `hotels_booking/`, no CI job exists yet so skip this step but note it in the report.
+2. **Check `.env` for the email** — if the email already exists under a different label, update the feature file to use the existing label. Do NOT create a new env var.
+3. **Check `test-suite.yml`**: Search the CI job's env section for each `USER_<LABEL>`. If not present, add it.
+4. **Add missing users**: Insert `USER_<LABEL>: ${{ secrets.USER_<LABEL> }}` in the env block of the appropriate CI job, before `GENERAL_PASSWORD`.
+5. **Only add to CI jobs whose folder contains the moved file** — e.g., if moved to `daily_hotels/`, add to `daily-hotels-tests`; if moved to `hotels_booking/`, no CI job exists yet so skip this step but note it in the report.
 
 **Example:**
 ```yaml
