@@ -274,6 +274,7 @@ jobs:
           USER_CALEB: ${{ secrets.USER_CALEB }}
           USER_TEL: ${{ secrets.USER_TEL }}
           USER_VERED: ${{ secrets.USER_VERED }}
+          USER_PAPATINHO: ${{ secrets.USER_PAPATINHO }}
           USER_POICORP: ${{ secrets.USER_POICORP }}
           USER_MAGALIMONICA: ${{ secrets.USER_MAGALIMONICA }}
           USER_INESSA: ${{ secrets.USER_INESSA }}
