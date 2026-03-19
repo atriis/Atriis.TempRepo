@@ -631,6 +631,17 @@ class HotelLevelResultsPage {
     const allNames = await names.allTextContents();
     return allNames.map(n => n.trim());
   }
+
+  /**
+   * Clicks a supplier filter checkbox by supplier ID.
+   * @param {string} supplierId - The supplier ID to match in the checkbox img alt (e.g. "SABRE")
+   */
+  async clickSupplierFilterCheckbox(supplierId) {
+    if (!supplierId || typeof supplierId !== 'string') throw new Error('supplierId must be a non-empty string');
+    const checkbox = this.page.locator(SELECTORS.SUPPLIER_FILTER_ITEM(supplierId)).first();
+    await checkbox.waitFor({ state: 'visible', timeout: 15000 });
+    await checkbox.click();
+  }
 }
 
 module.exports = HotelLevelResultsPage;

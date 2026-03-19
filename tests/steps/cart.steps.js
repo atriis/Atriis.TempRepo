@@ -452,3 +452,49 @@ Then("the price in cart should match the room level price", async function () {
   const diff = Math.abs(this.cartHotelPrice - this.roomLevelPrice);
   expect(diff).toBeLessThanOrEqual(1);
 });
+// ========================================
+// LOYALTY NUMBER EXTRAS
+// ========================================
+
+When("I expand the loyalty number extras section", async function () {
+  logger.info("Expanding loyalty number extras section");
+  await Cart.expandLoyaltyExtras(this.page);
+});
+
+When("I select the first hotel chain in the loyalty section", async function () {
+  logger.info("Selecting first hotel chain in loyalty section");
+  this.selectedChainText = await Cart.selectFirstLoyaltyChain(this.page);
+  logger.info("Selected hotel chain", { chain: this.selectedChainText });
+});
+
+Then("the selected hotel chain should contain a chain code", async function () {
+  if (!this.selectedChainText) {
+    throw new Error("No hotel chain selected. Run 'When I select the first hotel chain in the loyalty section' before this step.");
+  }
+  logger.info("Verifying hotel chain contains code", { chain: this.selectedChainText });
+  await Cart.verifyHotelChainHasCode(this.page, this.selectedChainText);
+});
+
+When("I add a new loyalty number {string} for hotel chain {string}", async function (loyaltyNumber, chainText) {
+  logger.info("Adding new loyalty number", { loyaltyNumber, chainText });
+  await Cart.addNewLoyaltyNumber(this.page, chainText, loyaltyNumber);
+});
+
+Then("the loyalty number {string} and chain {string} should be saved", async function (expectedNumber, expectedChain) {
+  logger.info("Verifying loyalty number is saved", { expectedNumber, expectedChain });
+  await Cart.verifyLoyaltyNumberSaved(this.page, expectedChain, expectedNumber);
+});
+
+// ========================================
+// PREMIER INN EXTRAS (BREAKFAST/PAYMENT)
+// ========================================
+
+Then("the payment method label should be visible in the extras panel", async function () {
+  logger.info("Verifying payment method label is visible in extras");
+  await Cart.verifyPremierInnPaymentLabelVisible(this.page);
+});
+
+Then("the breakfast type option should not be visible in extras", async function () {
+  logger.info("Verifying breakfast type option is NOT visible in extras");
+  await Cart.verifyPremierInnBreakfastNotVisible(this.page);
+});

@@ -20,6 +20,8 @@ Feature: 35188 Amadeus - Hotel chain codes and loyalty program are expandable in
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "Then the hotel chain codes should be visible in cart" that calls DSL method verifyChainCodesVisible in Cart.js
-    # TODO: Create step "When I expand the loyalty program section in cart" that calls DSL method expandLoyaltySection in Cart.js
+    And the hotel should appear as refundable in cart
+    When I expand the loyalty number extras section
+    And I select the first hotel chain in the loyalty section
+    Then the selected hotel chain should contain a chain code
 

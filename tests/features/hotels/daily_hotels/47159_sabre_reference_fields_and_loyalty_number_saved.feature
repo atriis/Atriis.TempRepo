@@ -14,16 +14,16 @@ Feature: 47159 Sabre - Reference fields required and loyalty number saved after 
 
   @priority:high
   Scenario: Reference fields are filled and loyalty number is saved to profile
-    Given I am logged in as "robsoncruz" booking a new trip
+    Given I am logged in as "christree" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "MCO" for 1 night
-    # TODO: Create step "When I fill in the reference fields" that calls DSL fillReferenceFields in Checkout.js
-    When I filter results by "Sabre" checkbox
+    When I initiate a hotel search in "MCO" for 1 night
+    And I select the trip purpose as "BILLABLE" and proceed
+    And I wait for hotel results to load
+    And I wait to see view rates text in results page
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    When I proceed to checkout
-    And I complete the booking
-    Then the booking status should be "Confirmed"
-    # TODO: Create step "When I save my loyalty number {string} for hotel chain {string}" that calls DSL saveLoyaltyNumber in Trip.js
+    When I expand the loyalty number extras section
+    And I add a new loyalty number "131034317J" for hotel chain "Exclusively Choice (EC)"
+    Then the loyalty number "131034317J" and chain "Exclusively Choice (EC)" should be saved
 

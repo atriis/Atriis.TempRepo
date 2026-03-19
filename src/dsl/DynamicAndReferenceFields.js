@@ -42,6 +42,28 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Selects a given option from the Trip Purpose reference field and proceeds.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} option - The trip purpose option to select (e.g. "BILLABLE", "CONFERENCE")
+   * @returns {Promise<void>}
+   */
+  async selectTripPurposeAndProceed(page, option) {
+    if (!page) throw new Error('page is required');
+    if (!option || typeof option !== 'string') throw new Error('option must be a non-empty string');
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const commonPage = getPageObject(page, CommonPage);
+
+    await dynamicFieldsPage.clickToOpenDropdown("TRIP PURPOSE");
+    await dynamicFieldsPage.waitForDropdownOption(option);
+    await dynamicFieldsPage.selectDropdownOption(option);
+
+    await commonPage.getProceedButton().waitFor({ state: "visible" });
+    await commonPage.clickProceedButton();
+  },
+
+  /**
    * Fills in a checkout number field with the value "11111".
    * Used for checkout workflows that require a reference or tracking number.
    *

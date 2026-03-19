@@ -39,3 +39,8 @@ When("I fill in NL reference fields education and courses", async function () {
     logger.info("NL reference field did not appear within timeout — proceeding without error");
   }
 });
+
+When("I select the trip purpose as {string} and proceed", async function (option) {
+  logger.info(`Selecting trip purpose as "${option}" and proceeding`);
+  await DynamicAndReferenceFields.selectTripPurposeAndProceed(this.page, option);
+});

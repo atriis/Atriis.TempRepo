@@ -291,6 +291,8 @@ jobs:
           USER_DANIELAOLIVEIRA: ${{ secrets.USER_DANIELAOLIVEIRA }}
           USER_VALERIA: ${{ secrets.USER_VALERIA }}
           USER_BRUNAFILTERNONAGREEMENT: ${{ secrets.USER_BRUNAFILTERNONAGREEMENT }}
+          USER_CHRISTREE: ${{ secrets.USER_CHRISTREE }}
+          USER_JULIANAPREMIER: ${{ secrets.USER_JULIANAPREMIER }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Hotels Results

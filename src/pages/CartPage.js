@@ -138,6 +138,24 @@ const SELECTORS = {
   CHECK_PRICE_DIALOG_SUBTITLE: '.check-price .sub-title',
   CHECK_PRICE_PROCEED_BUTTON: '.check-price .proceed-btn',
   CHECK_PRICE_STATUS_LABEL: '.check-price .app-label--quote',
+
+  // Loyalty number extras (loyalty-number.vue)
+  LOYALTY_SECTION: '.quote-extras--loyalty-number',
+  LOYALTY_CLICKABLE: '.quote-extras--loyalty-number .is-clickable',
+  LOYALTY_NEW_RADIO: '.quote-extras--loyalty-number .el-radio-group .el-radio:nth-child(2)',
+  LOYALTY_CHAIN_SELECT: '.quote-extras--loyalty-number .select-container .select-element:first-child .el-select',
+  LOYALTY_NUMBER_INPUT: '.quote-extras--loyalty-number .select-container .select-element:last-child input',
+  LOYALTY_SAVE_BUTTON: '.quote-extras--loyalty-number .btns .no-border',
+  LOYALTY_SUCCESS_ICON: '.quote-extras--loyalty-number .success-icon.green',
+  LOYALTY_CARD: '.quote-extras--loyalty-number .extras-card',
+  LOYALTY_CHAIN_SELECTED_TEXT: '.quote-extras--loyalty-number .select-container .select-element:first-child .el-select .el-select__placeholder',
+
+  // Premier Inn extras - breakfast visibility (premier-inn.vue)
+  PREMIER_INN_PAYMENT_LABEL: '.quote-extras--premier-inn .extras-card label.label',
+  PREMIER_INN_BREAKFAST_LABEL: '.quote-extras--premier-inn .extras-card label.label:has-text("Breakfast")',
+
+  // Existing loyalty dropdown (selected value text after saving a loyalty number)
+  LOYALTY_EXISTING_DROPDOWN_TEXT: '.quote-extras--loyalty-number .extras-card .el-select .el-select__placeholder',
 };
 
 class CartPage {
@@ -1352,7 +1370,144 @@ class CartPage {
     if (count === 0) return '';
     return (await label.textContent()).trim();
   }
+
+  // ========================================
+  // LOYALTY NUMBER EXTRAS
+  // ========================================
+
+  /**
+   * Expands the loyalty number extras section by clicking its clickable area.
+   */
+  async expandLoyaltySection() {
+    const clickable = this.page.locator(SELECTORS.LOYALTY_CLICKABLE);
+    await clickable.waitFor({ state: 'visible', timeout: 15000 });
+    await clickable.click();
+  }
+
+  /**
+   * Clicks the "New" radio button in the loyalty number section.
+   */
+  async selectNewLoyaltyRadio() {
+    const radio = this.page.locator(SELECTORS.LOYALTY_NEW_RADIO);
+    await radio.waitFor({ state: 'visible', timeout: 10000 });
+    await radio.click();
+  }
+
+  /**
+   * Selects a hotel chain from the loyalty chain dropdown by visible label text.
+   * @param {string} chainText - Text to match in the dropdown option (e.g. "Choic Hotels (EC)")
+   */
+  async selectLoyaltyChain(chainText) {
+    const select = this.page.locator(SELECTORS.LOYALTY_CHAIN_SELECT);
+    await select.waitFor({ state: 'visible', timeout: 10000 });
+    await select.click();
+    const option = this.page.locator('.el-select-dropdown__item').filter({ hasText: chainText }).first();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    await option.click();
+  }
+
+  /**
+   * Selects the first hotel chain option from the loyalty chain dropdown.
+   * @returns {Promise<string>} The text of the selected chain option
+   */
+  async selectFirstLoyaltyChain() {
+    const select = this.page.locator(SELECTORS.LOYALTY_CHAIN_SELECT);
+    await select.waitFor({ state: 'visible', timeout: 10000 });
+    await select.click();
+    const option = this.page.locator('.el-select-dropdown__item').first();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    const text = (await option.textContent()).trim();
+    await option.click();
+    return text;
+  }
+
+  /**
+   * Fills in the loyalty number input field.
+   * @param {string} number - The loyalty number to enter
+   */
+  async fillLoyaltyNumber(number) {
+    const input = this.page.locator(SELECTORS.LOYALTY_NUMBER_INPUT);
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.fill(number);
+  }
+
+  /**
+   * Clicks the Save button in the loyalty number section.
+   */
+  async clickLoyaltySaveButton() {
+    const btn = this.page.locator(SELECTORS.LOYALTY_SAVE_BUTTON);
+    await btn.waitFor({ state: 'visible', timeout: 10000 });
+    await btn.click();
+  }
+
+  /**
+   * Waits for the loyalty success icon (green checkmark) to appear.
+   */
+  async waitForLoyaltySuccessIcon() {
+    await this.page.locator(SELECTORS.LOYALTY_SUCCESS_ICON)
+      .waitFor({ state: 'visible', timeout: 30000 });
+  }
+
+  /**
+   * Checks if the loyalty extras card panel is currently visible.
+   * @returns {Promise<boolean>}
+   */
+  async isLoyaltyCardVisible() {
+    return this.page.locator(SELECTORS.LOYALTY_CARD).isVisible();
+  }
+
+  /**
+   * Gets the current value of the loyalty number input field.
+   * @returns {Promise<string>}
+   */
+  async getLoyaltyNumberInputValue() {
+    const input = this.page.locator(SELECTORS.LOYALTY_NUMBER_INPUT);
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    return input.inputValue();
+  }
+
+  /**
+   * Gets the selected hotel chain text from the loyalty chain dropdown.
+   * @returns {Promise<string>}
+   */
+  async getLoyaltyChainSelectedText() {
+    const placeholder = this.page.locator(SELECTORS.LOYALTY_CHAIN_SELECTED_TEXT);
+    await placeholder.waitFor({ state: 'visible', timeout: 10000 });
+    return (await placeholder.textContent()).trim();
+  }
+
+  /**
+   * Gets the text of the existing loyalty dropdown after a loyalty number has been saved.
+   * In "Existing" mode, the dropdown shows "ChainName - LoyaltyNumber".
+   * @returns {Promise<string>}
+   */
+  async getExistingLoyaltyDropdownText() {
+    const dropdown = this.page.locator(SELECTORS.LOYALTY_EXISTING_DROPDOWN_TEXT).first();
+    await dropdown.waitFor({ state: 'visible', timeout: 10000 });
+    return (await dropdown.textContent()).trim();
+  }
+
+  // ========================================
+  // PREMIER INN EXTRAS (BREAKFAST/PAYMENT)
+  // ========================================
+
+  /**
+   * Checks if the payment method label is visible in Premier Inn extras.
+   * @returns {Promise<boolean>}
+   */
+  async isPremierInnPaymentLabelVisible() {
+    return this.page.locator(SELECTORS.PREMIER_INN_PAYMENT_LABEL).first().isVisible();
+  }
+
+  /**
+   * Checks if the breakfast type option label is visible in Premier Inn extras.
+   * @returns {Promise<boolean>}
+   */
+  async isPremierInnBreakfastOptionVisible() {
+    return this.page.locator(SELECTORS.PREMIER_INN_BREAKFAST_LABEL).isVisible();
+  }
 }
+
 // Export CartPage and SELECTORS for use in tests and DSL
 module.exports = {
   CartPage,

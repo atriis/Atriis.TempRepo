@@ -235,3 +235,15 @@ Then("the hotel at position {int} should preferably be {string}", async function
     logger.warn(`Hotel at position ${index} is not "${expectedName}" — this is acceptable as hotel ordering may vary`);
   }
 });
+
+When("I filter hotel results by {string} {string}", async function (filterName, optionText) {
+  logger.info("Clicking hotel filter checkbox", { filterName, optionText });
+  if (filterName.toLowerCase() === 'supplier' || filterName.toLowerCase() === 'suppliers') {
+    await HotelLevelResults.clickSupplierFilter(this.page, optionText);
+  } else {
+    const hotelLevelResultsPage = new HotelLevelResultsPage(this.page);
+    const checkbox = this.page.locator(`.hotel-filter .filter-container:has(h4:has-text("${filterName}")) label.el-checkbox:has-text("${optionText}")`);
+    await checkbox.waitFor({ state: 'visible', timeout: 15000 });
+    await checkbox.click();
+  }
+});

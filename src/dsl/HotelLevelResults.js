@@ -674,6 +674,29 @@ const HotelLevelResults = {
 
     expect(actualName).toContain(expectedName);
   },
+
+  /**
+   * Clicks a supplier filter checkbox to filter hotel results by supplier.
+   * @param {import('playwright').Page} page
+   * @param {string} supplierName - Supplier name (e.g. "sabre", "amadeus", "expedia")
+   */
+  async clickSupplierFilter(page, supplierName) {
+    if (!page) throw new Error('page is required');
+    if (!supplierName || typeof supplierName !== 'string') throw new Error('supplierName must be a non-empty string');
+    const SUPPLIER_ID_MAP = {
+      expedia: 'EXPEDIARAPID',
+      bookingcom: 'BOOKINGCOM',
+      amadeus: 'AMADEUS',
+      amadeusteldar: 'AMADEUS-TE',
+      ratehawk: 'RATEHAWK',
+      sabre: 'SABRE',
+      hcorpo: 'HCORPO',
+    };
+    const key = supplierName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const supplierId = SUPPLIER_ID_MAP[key] || supplierName.toUpperCase();
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.clickSupplierFilterCheckbox(supplierId);
+  },
 };
 
 module.exports = HotelLevelResults;

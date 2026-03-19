@@ -1119,6 +1119,119 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     return cartPage.getHotelQuotePrice();
   },
+
+  // ===== LOYALTY NUMBER EXTRAS =====
+
+  /**
+   * Expands the loyalty number extras section in the cart.
+   * @param {import('playwright').Page} page
+   * @param {number} [index=0] - The index of the extras edit button to click
+   */
+  async expandLoyaltyExtras(page, index = 0) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickEditExtrasButton(index);
+    await cartPage.waitForSaveButton();
+  },
+
+  /**
+   * Selects the first hotel chain from the loyalty dropdown and returns its text.
+   * Assumes the loyalty panel is already open.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The selected hotel chain text
+   */
+  async selectFirstLoyaltyChain(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.selectNewLoyaltyRadio();
+    return cartPage.selectFirstLoyaltyChain();
+  },
+
+  /**
+   * Verifies that hotel chain options contain a code pattern like "(XX)".
+   * @param {import('playwright').Page} page
+   * @param {string} chainText - The hotel chain text to validate
+   */
+  async verifyHotelChainHasCode(page, chainText) {
+    if (!page) throw new Error('page is required');
+    if (!chainText || typeof chainText !== 'string') throw new Error('chainText must be a non-empty string');
+    const hasCode = /\(/.test(chainText);
+    expect(hasCode, `Hotel chain "${chainText}" should contain a code in parentheses`).toBe(true);
+  },
+
+  /**
+   * Adds a new loyalty number with a specific hotel chain.
+   * Full flow: open panel → new radio → select chain → fill number → save → verify green checkmark.
+   * @param {import('playwright').Page} page
+   * @param {string} chainText - Hotel chain text to select (e.g. "Choic Hotels (EC)")
+   * @param {string} loyaltyNumber - Loyalty number to enter (e.g. "131034317J")
+   * @param {number} [index=0] - Extras edit button index
+   */
+  async addNewLoyaltyNumber(page, chainText, loyaltyNumber, index = 0) {
+    if (!page) throw new Error('page is required');
+    if (!chainText || typeof chainText !== 'string') throw new Error('chainText must be a non-empty string');
+    if (!loyaltyNumber || typeof loyaltyNumber !== 'string') throw new Error('loyaltyNumber must be a non-empty string');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickEditExtrasButton(index);
+    await cartPage.waitForSaveButton();
+    await cartPage.selectNewLoyaltyRadio();
+    await cartPage.selectLoyaltyChain(chainText);
+    await cartPage.fillLoyaltyNumber(loyaltyNumber);
+    await cartPage.clickLoyaltySaveButton();
+    await cartPage.waitForLoyaltySuccessIcon();
+  },
+
+  /**
+   * Verifies that a previously saved loyalty number and hotel chain are visible.
+   * Opens the loyalty panel again and checks the field values.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedChain - Expected hotel chain text (partial match)
+   * @param {string} expectedNumber - Expected loyalty number
+   * @param {number} [index=0] - Extras edit button index
+   */
+  async verifyLoyaltyNumberSaved(page, expectedChain, expectedNumber, index = 0) {
+    if (!page) throw new Error('page is required');
+    if (!expectedChain || typeof expectedChain !== 'string') throw new Error('expectedChain must be a non-empty string');
+    if (!expectedNumber || typeof expectedNumber !== 'string') throw new Error('expectedNumber must be a non-empty string');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.expandLoyaltySection();
+
+    // After saving, the panel switches to "Existing" mode with a dropdown
+    // showing "ChainName - LoyaltyNumber" (without the chain code in parentheses).
+    const existingText = await cartPage.getExistingLoyaltyDropdownText();
+    // Strip chain code suffix like " (EC)" from expected chain for comparison
+    const chainNameOnly = expectedChain.replace(/\s*\([^)]+\)\s*$/, '').trim();
+    expect(existingText).toContain(chainNameOnly);
+    expect(existingText).toContain(expectedNumber);
+  },
+
+  // ===== PREMIER INN EXTRAS (BREAKFAST/PAYMENT) =====
+
+  /**
+   * Verifies the payment method label is visible in the Premier Inn extras panel.
+   * Assumes the panel is already open.
+   * @param {import('playwright').Page} page
+   */
+  async verifyPremierInnPaymentLabelVisible(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const isVisible = await cartPage.isPremierInnPaymentLabelVisible();
+    expect(isVisible, 'Payment method label should be visible in Premier Inn extras').toBe(true);
+  },
+
+  /**
+   * Verifies that the breakfast type option is NOT visible in Premier Inn extras.
+   * This is expected when breakfast is disabled in administration.
+   * @param {import('playwright').Page} page
+   */
+  async verifyPremierInnBreakfastNotVisible(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const isVisible = await cartPage.isPremierInnBreakfastOptionVisible();
+    expect(isVisible, 'Breakfast type option should not be visible in Premier Inn extras').toBe(false);
+  },
 };
 
 
