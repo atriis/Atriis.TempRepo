@@ -17,11 +17,14 @@ Feature: 37302 Ratehawk - Book refundable hotel with price verification
     Given I am logged in as "lidi" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "123 Champs-Élysées" for 1 night
-    # TODO: Create step "When I filter hotel results by refundable" that calls DSL method filterByRefundable in HotelSearch.js
-    # TODO: Create step "When I check the terms and conditions in room level" that calls DSL method checkTermsAndConditions in RoomLevelResults.js
-    # TODO: Create step "When I extract the room price from room level results" that calls DSL method extractRoomPrice in RoomLevelResults.js
+    And I select the first hotel result
+    And I wait for the first add to trip button in room level results to be visible
+    And I extract the price from room level results
     And I add a refundable room to my cart
-    Then the hotel should appear as refundable in my cart
+    Then the booking status should be "Pending booking"
+    Then the hotel should appear as refundable in cart
+    
+    
     # TODO: Create step "Then the price in cart should match the price from room level results" that calls DSL method comparePrices in Cart.js
     When I proceed to checkout
     And I complete the booking
