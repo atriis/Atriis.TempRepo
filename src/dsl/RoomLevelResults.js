@@ -481,6 +481,30 @@ const RoomLevelResults = {
       throw new Error('"Provided by" label is not visible in room level results');
     }
   },
+
+  /**
+   * Clicks the price details button on the first room to open the price breakdown dialog.
+   * @param {import('playwright').Page} page
+   */
+  async clickPriceBreakdownButton(page) {
+    if (!page) throw new Error('page parameter is required');
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    await roomLevelResultsPage.clickPriceDetailsButton();
+  },
+
+  /**
+   * Extracts all price breakdown values from the open dialog.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{nightPrice: number, subtotal: number, total: number}>}
+   */
+  async extractPriceBreakdownValues(page) {
+    if (!page) throw new Error('page parameter is required');
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const nightPrice = await roomLevelResultsPage.getPriceBreakdownNightPrice();
+    const subtotal = await roomLevelResultsPage.getPriceBreakdownSubtotal();
+    const total = await roomLevelResultsPage.getPriceBreakdownTotal();
+    return { nightPrice, subtotal, total };
+  },
 };
 
 module.exports = RoomLevelResults;

@@ -56,6 +56,10 @@ const SELECTORS = {
   CHECK_CANCELLATION_POLICY_ADD_BUTTON: '.add-btn',
   // Terms & conditions dialog that may appear after adding check cancellation policy room
   TERMS_CONDITIONS_ACCEPT_BUTTON: '.app-terms-conditions .ml-auto, .app-terms-conditions button:has-text("Accept")',
+  // Price breakdown dialog elements (inside .room-price-details)
+  PRICE_BREAKDOWN_NIGHT_PRICE: '.room-price-details tbody td',
+  PRICE_BREAKDOWN_SUBTOTAL: '.price-details .price-details-row:first-child .amount',
+  PRICE_BREAKDOWN_TOTAL: '.price-details .price-details-row:has-text("Total") .amount',
 };
 
 class RoomLevelResultsPage {
@@ -649,6 +653,54 @@ class RoomLevelResultsPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Extracts the first non-empty night price from the price breakdown table.
+   * Scans all <td> cells in the breakdown table and returns the first numeric value.
+   * @returns {Promise<number>} The night price as a number
+   */
+  async getPriceBreakdownNightPrice() {
+    const dialog = this.page.locator(SELECTORS.PRICE_DETAILS_DIALOG).first();
+    await dialog.waitFor({ state: 'visible', timeout: 10000 });
+    const cells = dialog.locator('tbody td');
+    const count = await cells.count();
+    for (let i = 0; i < count; i++) {
+      const text = (await cells.nth(i).textContent())?.trim() ?? '';
+      const parsed = parseFloat(text.replace(/[^0-9.]/g, ''));
+      if (!Number.isNaN(parsed) && parsed > 0) return Math.round(parsed);
+    }
+    throw new Error('Could not find a non-empty night price in the price breakdown table');
+  }
+
+  /**
+   * Extracts the subtotal price from the price breakdown dialog.
+   * @returns {Promise<number>} The subtotal price as a number
+   */
+  async getPriceBreakdownSubtotal() {
+    const dialog = this.page.locator(SELECTORS.PRICE_DETAILS_DIALOG).first();
+    await dialog.waitFor({ state: 'visible', timeout: 10000 });
+    const subtotal = dialog.locator(SELECTORS.PRICE_BREAKDOWN_SUBTOTAL).first();
+    await subtotal.waitFor({ state: 'visible', timeout: 10000 });
+    const text = (await subtotal.textContent())?.trim() ?? '';
+    const parsed = parseFloat(text.replace(/[^0-9.]/g, ''));
+    if (Number.isNaN(parsed)) throw new Error(`Could not parse subtotal from text: "${text}"`);
+    return Math.round(parsed);
+  }
+
+  /**
+   * Extracts the total price from the price breakdown dialog.
+   * @returns {Promise<number>} The total price as a number
+   */
+  async getPriceBreakdownTotal() {
+    const dialog = this.page.locator(SELECTORS.PRICE_DETAILS_DIALOG).first();
+    await dialog.waitFor({ state: 'visible', timeout: 10000 });
+    const total = dialog.locator(SELECTORS.PRICE_BREAKDOWN_TOTAL).last();
+    await total.waitFor({ state: 'visible', timeout: 10000 });
+    const text = (await total.textContent())?.trim() ?? '';
+    const parsed = parseFloat(text.replace(/[^0-9.]/g, ''));
+    if (Number.isNaN(parsed)) throw new Error(`Could not parse total from text: "${text}"`);
+    return Math.round(parsed);
   }
 
   /**

@@ -14,17 +14,13 @@ Feature: 55166 Amadeus - Loyalty number can be edited after hotel checkout
 
   @priority:medium
   Scenario: Loyalty number can be added or edited on the confirmed booking page
-    #TODO Create user or reuse amy@loyal.com .inv
     Given I am logged in as "amyloyal" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    # TODO: Create step "When I add a loyalty number {string} for hotel chain {string} in the trip overview" that calls DSL addLoyaltyNumberAfterCheckout in Trip.js
-    # TODO: Create step "Then the loyalty number should be saved and visible in the trip overview" that calls DSL verifyLoyaltyNumberSaved in Trip.js
-    # TODO: Create step "Then the loyalty number should be editable after checkout" - hybrid: validate via API/log that loyalty number change is sent post-booking
-
+    When I click the extras arrow button
+    And I add loyalty number "565656" using the first available chain

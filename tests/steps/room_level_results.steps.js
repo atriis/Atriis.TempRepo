@@ -25,15 +25,6 @@ When("I add the first available room to my cart", async function () {
   await RoomLevelResults.addFirstHotelRoomLevelToCart(this.page);
 });
 
-When("I wait for the first add to trip button in room level results to be visible", async function () {
-  logger.info("Waiting for first add to trip button in room level results to be visible");
-  const roomLevelResultsPage = new RoomLevelResultsPage(this.page);
-  const resultsPage = new ResultsPage(this.page);
-    await roomLevelResultsPage.waitForViewHotelOnMapText();
-    await resultsPage.scrollToFirstAddToTripButton();
-    await resultsPage.waitForAddToTripText();
-});
-
 When("I wait for the first add to trip button to be visible in room level results", async function () {
   logger.info("Waiting for first add to trip button to be visible in room level results");
   const roomLevelResultsPage = new RoomLevelResultsPage(this.page);
@@ -176,6 +167,65 @@ Then("the member rate price should be lower than the regular price", async funct
 Then("the room level results should display {int} nights", async function (nights) {
   logger.info(`Verifying ${nights} nights displayed in room level results`);
   await RoomLevelResults.verifyNightsCountInRoomLevel(this.page, nights);
+});
+
+When("I click the first price breakdown button", async function () {
+  logger.info("Clicking price details button to open price breakdown");
+  await RoomLevelResults.clickPriceBreakdownButton(this.page);
+});
+
+When("I extract prices from the price breakdown", async function () {
+  logger.info("Extracting prices from price breakdown dialog");
+  const values = await RoomLevelResults.extractPriceBreakdownValues(this.page);
+  this.priceBreakdownNight = values.nightPrice;
+  this.priceBreakdownSubtotal = values.subtotal;
+  this.priceBreakdownTotal = values.total;
+  logger.info("Stored price breakdown values", values);
+});
+
+Then("the room level price should match the price breakdown total", async function () {
+  if (this.roomLevelPrice === undefined) {
+    throw new Error("No room level price stored. Run 'When I extract the price from room level results' before this step.");
+  }
+  if (this.priceBreakdownTotal === undefined) {
+    throw new Error("No price breakdown total stored. Run 'When I extract prices from the price breakdown' before this step.");
+  }
+  logger.info("Comparing room level price with price breakdown total", {
+    roomLevelPrice: this.roomLevelPrice,
+    priceBreakdownTotal: this.priceBreakdownTotal,
+  });
+  const diff = Math.abs(this.roomLevelPrice - this.priceBreakdownTotal);
+  expect(diff).toBeLessThanOrEqual(1);
+});
+
+Then("the night price should match the price breakdown total", async function () {
+  if (this.priceBreakdownNight === undefined) {
+    throw new Error("No price breakdown night price stored. Run 'When I extract prices from the price breakdown' before this step.");
+  }
+  if (this.priceBreakdownTotal === undefined) {
+    throw new Error("No price breakdown total stored. Run 'When I extract prices from the price breakdown' before this step.");
+  }
+  logger.info("Comparing night price with price breakdown total", {
+    priceBreakdownNight: this.priceBreakdownNight,
+    priceBreakdownTotal: this.priceBreakdownTotal,
+  });
+  const diff = Math.abs(this.priceBreakdownNight - this.priceBreakdownTotal);
+  expect(diff).toBeLessThanOrEqual(1);
+});
+
+Then("the subtotal should match the price breakdown total", async function () {
+  if (this.priceBreakdownSubtotal === undefined) {
+    throw new Error("No price breakdown subtotal stored. Run 'When I extract prices from the price breakdown' before this step.");
+  }
+  if (this.priceBreakdownTotal === undefined) {
+    throw new Error("No price breakdown total stored. Run 'When I extract prices from the price breakdown' before this step.");
+  }
+  logger.info("Comparing subtotal with price breakdown total", {
+    priceBreakdownSubtotal: this.priceBreakdownSubtotal,
+    priceBreakdownTotal: this.priceBreakdownTotal,
+  });
+  const diff = Math.abs(this.priceBreakdownSubtotal - this.priceBreakdownTotal);
+  expect(diff).toBeLessThanOrEqual(1);
 });
 
 Then("the hotel level price should match the room level price", async function () {

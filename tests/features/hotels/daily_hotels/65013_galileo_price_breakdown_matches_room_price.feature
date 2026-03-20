@@ -14,10 +14,14 @@ Feature: 65013 Galileo - Price breakdown total matches displayed room price
 
   @priority:high
   Scenario: Total in price breakdown matches displayed room price in Galileo results
-    Given I am logged in as "beatriz" booking a new trip
+    Given I am logged in as "galileogaliei" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "London, UK" for 1 night
+    When I search for a hotel in "London" for 1 night
     And I select the first hotel result
-    # TODO: Create step "When I extract the total price from room level results" that calls DSL extractRoomLevelTotalPrice in RoomLevelResults.js
-    # TODO: Create step "When I open the price breakdown for the first room" that calls DSL openPriceBreakdown in RoomLevelResults.js
-    # TODO: Create step "Then the price breakdown total should match the displayed room price" that calls DSL comparePriceBreakdownWithRoomPrice in RoomLevelResults.js
+    And I wait for the first add to trip button to be visible in room level results
+    When I extract the price from room level results
+    And I click the first price breakdown button
+    And I extract prices from the price breakdown
+    Then the room level price should match the price breakdown total
+    And the night price should match the price breakdown total
+    And the subtotal should match the price breakdown total
