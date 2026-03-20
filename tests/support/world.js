@@ -5,11 +5,12 @@
  * Holds the Playwright browser and page instances.
  */
 
-const { setWorldConstructor } = require("@cucumber/cucumber");
+const { setWorldConstructor, World } = require("@cucumber/cucumber");
 const { launchBrowser } = require("./browserFactory");
 
-class CustomWorld {
-  constructor() {
+class CustomWorld extends World {
+  constructor(options) {
+    super(options);
     this.browser = null;
     this.context = null;
     this.page = null;
