@@ -8,6 +8,7 @@ module.exports = {
       'tests/support/**/*.js'
     ],
     format: [
+      'summary',
       'progress',
       '@cucumber/pretty-formatter',
       'json:test-results/cucumber-report.json',
