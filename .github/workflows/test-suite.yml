@@ -248,6 +248,7 @@ jobs:
           USER_BRUNA_TELDAR: ${{ secrets.USER_BRUNA_TELDAR }}
           USER_HCORPO: ${{ secrets.USER_HCORPO }}
           USER_AMY: ${{ secrets.USER_AMY }}
+          USER_AMYLOYAL: ${{ secrets.USER_AMYLOYAL }}
           USER_JOAO: ${{ secrets.USER_JOAO }}
           USER_SABRIN: ${{ secrets.USER_SABRIN }}
           USER_ROBSONCRUZ: ${{ secrets.USER_ROBSONCRUZ }}
@@ -287,6 +288,7 @@ jobs:
           USER_TLGG: ${{ secrets.USER_TLGG }}
           USER_LUCIANA: ${{ secrets.USER_LUCIANA }}
           USER_GALILEOGALIEI: ${{ secrets.USER_GALILEOGALIEI }}
+          USER_MARKSUNHOT: ${{ secrets.USER_MARKSUNHOT }}
           USER_GALILEO: ${{ secrets.USER_GALILEO }}
           USER_AMOS: ${{ secrets.USER_AMOS }}
           USER_SUZANAVOND: ${{ secrets.USER_SUZANAVOND }}

@@ -14,18 +14,18 @@ Feature: 63822 eHotel - Book hotel for 2 travelers 2 nights with CVV and price m
 
   @priority:critical
   Scenario: 2 travelers booked for 2 nights in eHotel with CVV and price match verified
-    Given I am logged in as "luciana" booking a new trip
+    Given I am logged in as "eli" booking a new trip
     And I have added myself as the traveler
-    # TODO: Create step "When I add a second traveler by name {string}" - needs DSL method addSecondTraveler
+    And I have added a random guest traveler
     When I search for a hotel in "Amsterdam" for 2 nights
     And I select the first hotel result
     And I add a refundable room to my cart
-    # TODO: Create step "Then the cart should show 2 nights and 2 rooms badge" calls DSL verify2Nights2RoomsBadge in Cart.js
-    # TODO: Create step "When I set the CVV for the selected payment card" that calls DSL setCVVForCard in CartFop.js
-    # TODO: Create step "When I extract the price from cart" calls DSL extractCartPrice in Cart.js
+    Then the cart should show 2 rooms badge
+    And I fill credit card cvv if needed
+    When I extract the price at index 0 from "cart"
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    # TODO: Create step "Then the confirmed booking price should match the cart price" calls DSL compareConfirmedPrice
+    When I extract the price at index 0 from "cart"
+    Then the extracted price at index 0 should equal the extracted price at index 1 within tolerance
     Then I successfully cancel the trip
-

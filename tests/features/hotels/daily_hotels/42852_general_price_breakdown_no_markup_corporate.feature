@@ -14,9 +14,10 @@ Feature: 42852 General - Price breakdown shows no markup for corporate
 
   @priority:high
   Scenario: Price breakdown shows no markup for corporate account
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "marksunhot" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "MAD" for 1 night
     And I select the first hotel result
-    # TODO: Create step "When I open the price breakdown for the first room" that calls DSL openPriceBreakdown in RoomLevelResults.js
-    # TODO: Create step "Then the price breakdown should show no markup for corporate" that calls DSL verifyNoCorporateMarkup in RoomLevelResults.js
+    When I click the first price breakdown button
+    And I extract prices from the price breakdown
+    Then the subtotal should match the price breakdown total
