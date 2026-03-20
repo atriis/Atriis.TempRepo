@@ -127,13 +127,20 @@ For each feature file with TODOs:
 4. Read referenced page objects
 5. Consult `@domain-{domain}` for domain-specific patterns
 
-#### Step 2b: Scan for Existing Implementations (MANDATORY — No Duplication)
+#### Step 2b: Understand → Scan → Create (MANDATORY — No Duplication)
 
-**Before implementing ANY TODO**, perform a full project scan to prevent duplication. This step is **non-negotiable**.
+**Before implementing ANY TODO**, you MUST follow this exact sequence. This is **non-negotiable**.
 
 For each TODO (step, DSL method, page method, or locator):
 
-1. **Search the entire project** for existing implementations:
+**0. Understand the TODO first** — read the TODO comment carefully and determine:
+   - What is the intent? What action or verification does it describe?
+   - What Gherkin step phrase does it map to? (exact wording matters)
+   - What layer does it belong to? (step, DSL, page, locator)
+   - What domain concepts are involved? (e.g., "OOP justification", "refundable filter", "share quote")
+   - Only after you fully understand the TODO's intent, proceed to scan.
+
+1. **Search the entire project** for existing implementations that already fulfill this intent:
    - Steps: search all files in `tests/steps/` for the step phrase or semantically similar phrases
    - DSL: search all files in `src/dsl/` for methods that do the same thing (even under a different name)
    - Pages: search all files in `src/pages/` for locators/methods that already target the same element or action
@@ -303,6 +310,14 @@ USER_GALILEOGALIEI: ${{ secrets.USER_GALILEOGALIEI }}
 
 > **Note**: The user's email/password must also exist in `.env` for local runs (`USER_GALILEOGALIEI="galileogaliei@gdggalileo.com"`). If the `.env` entry was already added during implementation (Phase 2), no action needed here.
 
+#### 5c: User Placement in `.env` — Group by Supplier
+When adding a new user to `.env`, **place it near other users of the same supplier**:
+- If the user name contains a recognizable supplier (e.g., `sabre`, `amadeus`, `galileo`, `ratehawk`, `expedia`, etc.) → add the `USER_*` entry next to other users of that supplier in `.env`
+- If no supplier can be inferred from the user name → add to a general/shared section
+- This keeps `.env` organized and makes it easy to find users per supplier
+
+> **CI (`test-suite.yml`) is different** — there is no supplier grouping in CI. Just find the CI job that matches the folder the test was moved to, and add the `USER_*: ${{ secrets.USER_* }}` reference there.
+
 ### Phase 6: Repeat for Next File
 If multiple files were selected:
 - Move to the next feature file → return to Phase 2
@@ -393,7 +408,7 @@ The agent understands these TODO formats:
 - `@batch-test-fixer` can delegate TODO resolution to this pipeline
 
 ## Rules
-- **SCAN THE ENTIRE PROJECT BEFORE CREATING ANYTHING** — search `tests/steps/`, `src/dsl/`, and `src/pages/` for existing steps, methods, and locators that already do what the TODO requires, or that could be broadened to cover it
+- **UNDERSTAND → SCAN → CREATE (in that order, always)** — for every TODO: (1) read and understand what it's asking for, (2) search `tests/steps/`, `src/dsl/`, and `src/pages/` for existing steps, methods, and locators that already do what the TODO requires or could be broadened to cover it, (3) only create new code if nothing existing can be reused. Never skip straight to creating.
 - **Never duplicate** — if an existing step/method/locator already covers the TODO's intent, reuse it
 - **If unsure about broadening an existing method, DON'T TOUCH IT** — create a new one instead. Breaking existing tests is worse than having a near-duplicate. We can consolidate later.
 - **Always ask user to pick files/folders** — never process everything without confirmation
@@ -403,7 +418,8 @@ The agent understands these TODO formats:
 - **Remove TODO comments cleanly** — no replacement comment, no empty lines left behind
 - **Never remove future-note TODOs** — only remove TODOs that you fully implemented
 - **Move resolved files** from source folder to the correct domain subfolder (`daily_hotels/` for non-booking, `hotels_booking/` for booking flows, etc.) — see Phase 5a for decision logic
-- **Add users to CI** — after moving, check `test-suite.yml` for missing `USER_*` env vars and add them to the appropriate CI job — see Phase 5b
+- **Add users to CI** — after moving, check `test-suite.yml` for missing `USER_*` env vars and add them to the appropriate CI job — see Phase 5b. CI placement is purely by job/folder, not by supplier.
+- **Group users by supplier in `.env`** — when adding a new user to `.env`, place it near other users of the same supplier (e.g., sabre users next to sabre users). If no supplier can be inferred, add to a general section — see Phase 5c
 - **One file at a time** — complete one feature before moving to the next
 - **Respect layer boundaries** — page objects don't get business logic, steps don't get Playwright
 - **Source selectors from Atriis.App** — always check the Vue source for real selectors

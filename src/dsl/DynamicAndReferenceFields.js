@@ -179,6 +179,87 @@ const DynamicAndReferenceFields = {
       return { fieldFound: false };
     }
   },
+
+  /**
+   * Verifies that all specified field labels are visible in the reference fields popup.
+   * @param {import('playwright').Page} page
+   * @param {string[]} labels - Array of label texts to check
+   * @returns {Promise<{allVisible: boolean, results: Array<{label: string, visible: boolean}>}>}
+   */
+  async verifyReferenceFieldLabelsVisible(page, labels) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(labels)) throw new Error('labels must be an array, got: ' + typeof labels);
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const results = [];
+    for (const label of labels) {
+      const visible = await dynamicFieldsPage.isFieldLabelVisible(label);
+      results.push({ label, visible });
+    }
+    const allVisible = results.every(r => r.visible);
+    return { allVisible, results };
+  },
+
+  /**
+   * Verifies that specific field labels have expected values.
+   * @param {import('playwright').Page} page
+   * @param {Array<{label: string, expectedValue: string}>} fieldValuePairs
+   * @returns {Promise<{allMatch: boolean, results: Array<{label: string, expected: string, actual: string, match: boolean}>}>}
+   */
+  async verifyReferenceFieldValues(page, fieldValuePairs) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(fieldValuePairs)) throw new Error('fieldValuePairs must be an array');
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const results = [];
+    for (const { label, expectedValue } of fieldValuePairs) {
+      const actual = await dynamicFieldsPage.getFieldValueByLabel(label);
+      const match = actual.toLowerCase().includes(expectedValue.toLowerCase());
+      results.push({ label, expected: expectedValue, actual, match });
+    }
+    const allMatch = results.every(r => r.match);
+    return { allMatch, results };
+  },
+
+  /**
+   * Verifies that specified reference fields are not editable (disabled).
+   * @param {import('playwright').Page} page
+   * @param {string[]} fieldLabels - Array of field label texts to check
+   * @returns {Promise<{allDisabled: boolean, results: Array<{label: string, disabled: boolean}>}>}
+   */
+  async verifyReferenceFieldsNotEditable(page, fieldLabels) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(fieldLabels)) throw new Error('fieldLabels must be an array');
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const results = [];
+    for (const label of fieldLabels) {
+      const disabled = await dynamicFieldsPage.isFieldDisabled(label);
+      results.push({ label, disabled });
+    }
+    const allDisabled = results.every(r => r.disabled);
+    return { allDisabled, results };
+  },
+
+  /**
+   * Clicks the Proceed button and verifies that a validation error appears.
+   * Used to verify that mandatory fields are enforced.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<boolean>} True if validation error is visible after clicking proceed
+   */
+  async clickProceedAndVerifyMandatoryError(page) {
+    if (!page) throw new Error('page is required');
+
+    const commonPage = getPageObject(page, CommonPage);
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+
+    await commonPage.getProceedButton().waitFor({ state: 'visible', timeout: 10000 });
+    await commonPage.clickProceedButton();
+
+    // Wait briefly for validation to trigger
+    await page.waitForTimeout(1000);
+    return dynamicFieldsPage.isValidationErrorVisible();
+  },
 };
 
 // Export DynamicAndReferenceFields DSL for use in tests

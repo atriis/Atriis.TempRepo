@@ -76,12 +76,6 @@ Then("the out of policy tooltip in results should be {string}", async function (
   expect(actualText).toBe(expectedText);
 });
 
-Then("the out of policy tooltip in results page should be {string}", async function (expectedText) {
-  logger.info("Verifying OOP tooltip in results page", { expectedText });
-  const actualText = await Results.hoverAndGetOOPTooltipTextInResults(this.page);
-  expect(actualText).toBe(expectedText);
-});
-
 // ===== THEN STEPS - FLIGHT CAPACITY =====
 
 Then("the flight capacity restriction modal should be visible", async function () {

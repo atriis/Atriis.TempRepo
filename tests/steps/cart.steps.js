@@ -452,6 +452,29 @@ Then("the price in cart should match the room level price", async function () {
   const diff = Math.abs(this.cartHotelPrice - this.roomLevelPrice);
   expect(diff).toBeLessThanOrEqual(1);
 });
+
+When("I save the current cart price as the pre-booking price", async function () {
+  if (this.cartHotelPrice === undefined) {
+    throw new Error("No cart hotel price stored. Run 'When I extract the hotel quote price from cart' before this step.");
+  }
+  this.preBookingPrice = this.cartHotelPrice;
+  logger.info("Saved pre-booking price", { preBookingPrice: this.preBookingPrice });
+});
+
+Then("the price in cart should match the pre-booking price", async function () {
+  if (this.preBookingPrice === undefined) {
+    throw new Error("No pre-booking price stored. Run 'When I save the current cart price as the pre-booking price' before this step.");
+  }
+  if (this.cartHotelPrice === undefined) {
+    throw new Error("No cart hotel price stored. Run 'When I extract the hotel quote price from cart' before this step.");
+  }
+  logger.info("Comparing cart price with pre-booking price", {
+    cartHotelPrice: this.cartHotelPrice,
+    preBookingPrice: this.preBookingPrice,
+  });
+  const diff = Math.abs(this.cartHotelPrice - this.preBookingPrice);
+  expect(diff).toBeLessThanOrEqual(1);
+});
 // ========================================
 // LOYALTY NUMBER EXTRAS
 // ========================================
@@ -497,4 +520,53 @@ Then("the payment method label should be visible in the extras panel", async fun
 Then("the breakfast type option should not be visible in extras", async function () {
   logger.info("Verifying breakfast type option is NOT visible in extras");
   await Cart.verifyPremierInnBreakfastNotVisible(this.page);
+});
+
+// ========================================
+// MORE DETAILS DRAWER — PRICE
+// ========================================
+
+When("I click more details in cart", async function () {
+  logger.info("Opening More Details drawer in cart");
+  await Cart.openMoreDetailsInCart(this.page);
+});
+
+When("I extract the price from more details", async function () {
+  logger.info("Extracting price from More Details drawer");
+  this.moreDetailsPrice = await Cart.extractPriceFromMoreDetails(this.page);
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(this.moreDetailsPrice);
+  logger.info("Stored more details price", { moreDetailsPrice: this.moreDetailsPrice });
+});
+
+When("I close more details in cart", async function () {
+  logger.info("Closing More Details drawer in cart");
+  await Cart.closeMoreDetailsInCart(this.page);
+});
+
+When("I check terms and conditions in cart", async function () {
+  logger.info("Checking terms and conditions are displayed in cart");
+  this.cartTermsText = await Cart.checkTermsAndConditionsInCart(this.page);
+  logger.info("Cart terms and conditions text", { cartTermsText: this.cartTermsText });
+});
+
+When("I add loyalty number {string} using the first available chain", async function (loyaltyNumber) {
+  logger.info("Adding loyalty number with first available chain", { loyaltyNumber });
+  this.selectedChainText = await Cart.addLoyaltyNumberWithFirstAvailableChain(this.page, loyaltyNumber);
+  logger.info("Added loyalty number with chain", { chain: this.selectedChainText });
+});
+
+Then("the price in more details should match the price in cart", async function () {
+  if (this.moreDetailsPrice === undefined) {
+    throw new Error("No more details price stored. Run 'When I extract the price from more details' before this step.");
+  }
+  if (this.cartHotelPrice === undefined) {
+    throw new Error("No cart hotel price stored. Run 'When I extract the hotel quote price from cart' before this step.");
+  }
+  logger.info("Comparing more details price with cart price", {
+    moreDetailsPrice: this.moreDetailsPrice,
+    cartHotelPrice: this.cartHotelPrice,
+  });
+  const diff = Math.abs(this.moreDetailsPrice - this.cartHotelPrice);
+  expect(diff).toBeLessThanOrEqual(1);
 });

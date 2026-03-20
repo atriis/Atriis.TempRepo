@@ -44,3 +44,44 @@ When("I select the trip purpose as {string} and proceed", async function (option
   logger.info(`Selecting trip purpose as "${option}" and proceeding`);
   await DynamicAndReferenceFields.selectTripPurposeAndProceed(this.page, option);
 });
+
+// ===== REFERENCE FIELD VALIDATION STEPS =====
+
+Then("the reference fields popup should show the following labels:", async function (dataTable) {
+  const labels = dataTable.raw().map(row => row[0]);
+  logger.info("Verifying reference field labels are visible", { labels });
+  const result = await DynamicAndReferenceFields.verifyReferenceFieldLabelsVisible(this.page, labels);
+  const missing = result.results.filter(r => !r.visible).map(r => r.label);
+  if (missing.length > 0) {
+    throw new Error(`Reference field labels not visible: ${missing.join(', ')}`);
+  }
+});
+
+Then("the reference fields should have the following values:", async function (dataTable) {
+  const pairs = dataTable.hashes().map(row => ({ label: row.field, expectedValue: row.value }));
+  logger.info("Verifying reference field values", { pairs });
+  const result = await DynamicAndReferenceFields.verifyReferenceFieldValues(this.page, pairs);
+  const mismatches = result.results.filter(r => !r.match);
+  if (mismatches.length > 0) {
+    const details = mismatches.map(m => `"${m.label}": expected "${m.expected}", got "${m.actual}"`).join('; ');
+    throw new Error(`Reference field value mismatches: ${details}`);
+  }
+});
+
+Then("the following reference fields should not be editable:", async function (dataTable) {
+  const labels = dataTable.raw().map(row => row[0]);
+  logger.info("Verifying reference fields are not editable", { labels });
+  const result = await DynamicAndReferenceFields.verifyReferenceFieldsNotEditable(this.page, labels);
+  const editable = result.results.filter(r => !r.disabled).map(r => r.label);
+  if (editable.length > 0) {
+    throw new Error(`Reference fields should not be editable but are: ${editable.join(', ')}`);
+  }
+});
+
+Then("clicking proceed should show a mandatory field validation error", async function () {
+  logger.info("Clicking proceed to verify mandatory field validation error");
+  const errorVisible = await DynamicAndReferenceFields.clickProceedAndVerifyMandatoryError(this.page);
+  if (!errorVisible) {
+    throw new Error("Expected a mandatory field validation error after clicking Proceed, but none was shown");
+  }
+});

@@ -23,10 +23,15 @@ Feature: 37302 Ratehawk - Book refundable hotel with price verification
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     Then the hotel should appear as refundable in cart
-    
-    
-    # TODO: Create step "Then the price in cart should match the price from room level results" that calls DSL method comparePrices in Cart.js
+    When I extract the hotel quote price from cart
+    Then the price in cart should match the room level price
+    When I click more details in cart
+    And I extract the price from more details
+    Then the price in more details should match the price in cart
+    When I close more details in cart
+    And I fill in the OOP justification text "BBBBB"
     When I proceed to checkout
     And I complete the booking
+    Then the booking status should be "Confirmed"
     Then I successfully cancel the trip
 

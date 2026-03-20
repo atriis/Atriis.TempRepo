@@ -116,6 +116,8 @@ const SELECTORS = {
   // Hotel address in More Details drawer
   HOTEL_ADDRESS: '.hotel-address',
   MORE_DETAILS_DRAWER_CLOSE: "[aria-label='More details'] [fill='currentColor'], [aria-label='More details'] .el-dialog__close",
+  // More Details drawer — total price in footer (hotel-quote-more-details.vue → app-footer → app-price → h4.amount)
+  MORE_DETAILS_TOTAL_PRICE: '.cart-more-details-drawer .app-footer .total-price .amount',
   // Share dialog close button
   SHARE_DIALOG_CLOSE: '.el-dialog__header [fill="currentColor"], .el-dialog__headerbtn',
   // Share dialog language dropdown
@@ -1180,6 +1182,21 @@ class CartPage {
     const address = this.page.locator(SELECTORS.HOTEL_ADDRESS).first();
     await address.waitFor({ state: 'visible', timeout: 15000 });
     return (await address.textContent()).trim();
+  }
+
+  /**
+   * Gets the total price from the More Details drawer footer.
+   * The drawer must already be open.
+   * @param {object} options
+   * @param {number} options.timeout - Maximum wait time (default: 15000ms)
+   * @returns {Promise<number>} The total price as a numeric value
+   */
+  async getMoreDetailsTotalPrice({ timeout = 15000 } = {}) {
+    const el = this.page.locator(SELECTORS.MORE_DETAILS_TOTAL_PRICE).first();
+    await el.waitFor({ state: 'visible', timeout });
+    const text = await el.innerText();
+    const match = text.replace(/[^0-9.,]/g, '').replace(',', '.');
+    return parseFloat(match) || null;
   }
 
   /**

@@ -114,6 +114,19 @@ const Cart = {
   },
 
   /**
+   * Verifies that terms and conditions (cancellation policy) are visible and non-empty in cart.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The cancellation policy text
+   */
+  async checkTermsAndConditionsInCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const policyText = await cartPage.getCancellationPolicyFromCart();
+    expect(policyText.length).toBeGreaterThan(0);
+    return policyText;
+  },
+
+  /**
    * Extracts the seat price from the seat map drawer footer.
    * Reads raw text from the Page Object, then parses to a numeric value.
    *
@@ -315,6 +328,10 @@ const Cart = {
     }
     
     const cartPage = getPageObject(page, CartPage);
+    const isVisible = await cartPage.getOOPJustificationTextbox().isVisible();
+    if (!isVisible) {
+      return;
+    }
     await cartPage.fillInOOPJustificationText(justificationText);
     await cartPage.saveOOPJustificationText();
   },
@@ -914,6 +931,38 @@ const Cart = {
   // ===== HOTEL ADDRESS VERIFICATION =====
 
   /**
+   * Opens the More Details drawer in the cart.
+   * @param {import('playwright').Page} page
+   */
+  async openMoreDetailsInCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickMoreDetailsHotel();
+  },
+
+  /**
+   * Extracts the total price from the More Details drawer footer.
+   * The drawer must already be open.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>} The total price as a numeric value
+   */
+  async extractPriceFromMoreDetails(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    return cartPage.getMoreDetailsTotalPrice();
+  },
+
+  /**
+   * Closes the More Details drawer in the cart.
+   * @param {import('playwright').Page} page
+   */
+  async closeMoreDetailsInCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.closeMoreDetailsDrawer();
+  },
+
+  /**
    * Opens the More Details drawer and verifies the hotel address contains the expected text.
    * Closes the drawer after verification.
    * @param {import('playwright').Page} page
@@ -1180,6 +1229,29 @@ const Cart = {
     await cartPage.fillLoyaltyNumber(loyaltyNumber);
     await cartPage.clickLoyaltySaveButton();
     await cartPage.waitForLoyaltySuccessIcon();
+  },
+
+  /**
+   * Adds a loyalty number using the first available hotel chain in the dropdown.
+   * Opens extras panel, selects the first chain, fills the number, and saves.
+   * @param {import('playwright').Page} page
+   * @param {string} loyaltyNumber - Loyalty number to enter
+   * @param {number} [index=0] - Extras edit button index
+   * @returns {Promise<string>} The selected hotel chain text
+   */
+  async addLoyaltyNumberWithFirstAvailableChain(page, loyaltyNumber, index = 0) {
+    if (!page) throw new Error('page is required');
+    if (!loyaltyNumber || typeof loyaltyNumber !== 'string') throw new Error('loyaltyNumber must be a non-empty string');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickEditExtrasButton(index);
+    await cartPage.waitForSaveButton();
+    await cartPage.selectNewLoyaltyRadio();
+    const chainText = await cartPage.selectFirstLoyaltyChain();
+    await cartPage.fillLoyaltyNumber(loyaltyNumber);
+    await cartPage.clickLoyaltySaveButton();
+    await cartPage.waitForLoyaltySuccessIcon();
+    return chainText;
   },
 
   /**

@@ -14,18 +14,23 @@ Feature: 40953 Galileo - Book hotel with terms and conditions and price verifica
 
   @priority:critical
   Scenario: Terms and conditions are accessible in room level and cart, and price matches after booking
-    Given I am logged in as "beatriz" booking a new trip
+    Given I am logged in as "galileo" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
-    # TODO: Create step "When I check terms and conditions in room level" that calls DSL checkTermsAndConditions in RoomLevelResults.js
-    # TODO: Create step "When I extract the room price from room level results" that calls DSL extractRoomPrice in RoomLevelResults.js
+    When I check terms and conditions in room level
+    Then terms and conditions are displayed
+    And I extract the price from room level results
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step "When I check terms and conditions in cart" that calls DSL checkTermsAndConditions in Cart.js
-    # TODO: Create step "Then the price in cart should match the price from room level results" that calls DSL comparePrices in Cart.js
-    When I proceed to checkout
+    Then the hotel should appear as refundable in cart
+    When I check terms and conditions in cart
+    And I extract the hotel quote price from cart
+    And I save the current cart price as the pre-booking price
+    And I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
+    And I extract the hotel quote price from cart
+    Then the price in cart should match the pre-booking price
     Then I successfully cancel the trip
 
