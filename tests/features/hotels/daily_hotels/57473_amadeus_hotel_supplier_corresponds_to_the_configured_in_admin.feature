@@ -21,5 +21,5 @@ Feature: 57473 Amadeus - Hotel - Supplier corresponds to the one that is configu
     And I filter hotel results by hotel name "Hilton Cambridge"
     Then the "Amadeus" supplier logo should be visible in hotel results
     And I select the first hotel result
-    And I wait for the first add to trip button in room level results to be visible
+    And I wait for the first add to trip button to be visible in room level results
     Then the "Amadeus" supplier logo should be visible in room level results

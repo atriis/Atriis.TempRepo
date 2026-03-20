@@ -35,6 +35,6 @@ Feature: 22074 General - OOP policy displayed in hotel and room level results fo
     And I fill in NL reference fields education and courses
     And I wait for hotel results to load
     When I select the first hotel result
-    And I wait for the first add to trip button in room level results to be visible
+    And I wait for the first add to trip button to be visible in room level results
     Then the out of policy indicator should be visible in results
     Then the out of policy tooltip in results should be "Hotel cost per night is greater than or equals 50 EUR"

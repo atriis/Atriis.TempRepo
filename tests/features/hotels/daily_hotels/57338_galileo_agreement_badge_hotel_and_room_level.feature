@@ -21,6 +21,6 @@ Feature: 57338 Galileo - Agreement badge visible in hotel and room level
     Then handshake badge should be visible in hotel level results
     Then TMC badge filter should be visible in hotel level results
     And I select the first hotel result
-    When I wait for the first add to trip button in room level results to be visible
+    When I wait for the first add to trip button to be visible in room level results
     Then handshake badge should be visible in room level results
     Then TMC badge filter should be visible in room level results

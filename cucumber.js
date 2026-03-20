@@ -1,20 +1,19 @@
 module.exports = {
   default: {
     require: [
-      'tests/support/world.js',   // World class
-      'tests/support/hooks.js',   // Before/After hooks (includes alias registration)
-      'tests/support/retry-handler.js',  // Retry handler for CI environments
+      'tests/support/world.js',
+      'tests/support/hooks.js',
+      'tests/support/retry-handler.js',
       'tests/steps/**/*.js',
       'tests/support/**/*.js'
     ],
     format: [
       'progress',
       '@cucumber/pretty-formatter',
-      'json:test-results/cucumber-report.json',  // For JSON reporting
-      'junit:test-results/cucumber-junit.xml'    // For JUnit reporting
+      'json:test-results/cucumber-report.json',
+      'junit:test-results/cucumber-junit.xml',
+      'allure-cucumberjs/reporter'
     ],
-    // Retry configuration: Only used when CI=true (set in environment)
-    // Usage in CI: RETRY_COUNT=2 RETRY_DELAY=2000 npx cucumber-js
-    retry: process.env.CI ? 1 : 0,  // Retry once in CI, never locally
+    retry: process.env.CI ? 1 : 0,
   }
 };

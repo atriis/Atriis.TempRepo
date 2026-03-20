@@ -21,5 +21,5 @@ Feature: 59183 Amadeus - Hotel - Room level results are displayed when agreement
     When I filter hotel results by hotel name "The Trafalgar St. James London, Curio Co"
     Then handshake badge should be visible in hotel level results
     And I select the first hotel result
-    When I wait for the first add to trip button in room level results to be visible
+    When I wait for the first add to trip button to be visible in room level results
     Then the "amadeus" supplier logo should be visible in hotel results

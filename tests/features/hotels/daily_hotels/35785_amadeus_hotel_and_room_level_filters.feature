@@ -22,5 +22,5 @@ Feature: 35785 MERGED: Hotel - Filters are displayed on availability page (room 
     When I apply hotel level filter "Agreement" with option "My corporate"
     Then the "My corporate" filter tag should be visible in hotel results
     And I select the first hotel result
-    And I wait for the first add to trip button in room level results to be visible
+    And I wait for the first add to trip button to be visible in room level results
     Then I see room level filter sections

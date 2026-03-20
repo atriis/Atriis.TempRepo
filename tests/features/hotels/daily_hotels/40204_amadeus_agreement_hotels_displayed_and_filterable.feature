@@ -23,7 +23,7 @@ Feature: 40204 Amadeus - Agreement hotels displayed and filterable
     Then the "My Corporate" filter tag should be visible in hotel results
     Then the sort filter has "Most recommended" selected
     And I select the first hotel result
-    And I wait for the first add to trip button in room level results to be visible
+    And I wait for the first add to trip button to be visible in room level results
     Then handshake badge should be visible in room level results
     Then the "TMC" filter tag should be visible in room level results
     Then the "My Corporate" filter tag should be visible in room level results

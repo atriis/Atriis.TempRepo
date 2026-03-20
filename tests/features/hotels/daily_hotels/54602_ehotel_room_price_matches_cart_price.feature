@@ -21,7 +21,7 @@ Feature: 54602 eHotel - Price from room level matches price after adding to cart
     When I sort hotel results by "Price"
     And I extract the price from hotel level results
     And I select the first hotel result
-    And I wait for the first add to trip button in room level results to be visible
+    And I wait for the first add to trip button to be visible in room level results
     And I extract the price from room level results
     And I add the first available room to my cart
     Then the hotel level price should match the room level price

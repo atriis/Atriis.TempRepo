@@ -18,6 +18,6 @@ Feature: 62140 Travelodge - Correct number of nights displayed in room level
     And I have added myself as the traveler
     When I search for a hotel in "London Borough of Camden" for 3 nights
     And I select the first hotel result
-    And I wait for the first add to trip button in room level results to be visible
+    And I wait for the first add to trip button to be visible in room level results
     And the room level results should display 3 nights
 

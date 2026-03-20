@@ -18,7 +18,7 @@ Feature: 46171 Ratehawk - "Paid at hotel" icon and tooltip visible
     And I have added myself as the traveler
     When I search for a hotel in "Porto, Portugal" for 1 night
     And I select the first hotel result
-    And I wait for the first add to trip button in room level results to be visible
+    And I wait for the first add to trip button to be visible in room level results
     When I click on price details button in room level results
     And I hover over info icon next to taxes and fees
     Then the "Paid at hotel" tooltip should be correct

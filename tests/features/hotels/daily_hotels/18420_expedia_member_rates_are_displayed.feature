@@ -20,6 +20,6 @@ Feature: 18420 Expedia - Member rates are displayed
     And I wait to see view rates text in results page
     Then I should see member rates displayed in hotel level results
     When I select a hotel with member rates
-    And I wait for the first add to trip button in room level results to be visible
+    And I wait for the first add to trip button to be visible in room level results
     Then I should see member rates displayed in room level results
     Then the member rate price should be lower than the regular price

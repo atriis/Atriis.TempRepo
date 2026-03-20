@@ -18,7 +18,7 @@ Feature: 63529 General - hCorpo hotel logo visible and can be added to trip
     And I have added myself as the traveler
     When I search for a hotel in "Fairmont Makkah, King Abdul Aziz - 38 Road, Makkah Saudi Arabia" for 1 night
     And I select the first hotel result
-    And I wait for the first add to trip button in room level results to be visible
+    And I wait for the first add to trip button to be visible in room level results
     Then the "hCorpo" supplier logo should be visible in room level results
     And I add the first available room to my cart
     Then the booking status should be "Pending booking"

@@ -18,7 +18,7 @@ Feature: 23109 eHotel - Book hotel and verify provider label
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result
-    And I wait for the first add to trip button in room level results to be visible
+    And I wait for the first add to trip button to be visible in room level results
     Then I should see a provided by label in room level results
     And I add a refundable room to my cart
     Then I should see a provided by label in cart
