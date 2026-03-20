@@ -68,6 +68,14 @@ jobs:
           name: smoke-screenshots
           path: test-results/screenshots/
 
+      - name: Upload Smoke Allure Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-allure-results
+          path: allure-results/
+          if-no-files-found: ignore
+
   daily-cars-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -116,6 +124,14 @@ jobs:
         with:
           name: daily-cars-screenshots
           path: test-results/screenshots/
+
+      - name: Upload Daily Cars Allure Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-cars-allure-results
+          path: allure-results/
+          if-no-files-found: ignore
 
   daily-flights-tests:
     runs-on: ubuntu-latest
@@ -170,6 +186,14 @@ jobs:
           name: daily-flights-screenshots
           path: test-results/screenshots/
 
+      - name: Upload Daily Flights Allure Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-flights-allure-results
+          path: allure-results/
+          if-no-files-found: ignore
+
   daily-shell-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -217,6 +241,14 @@ jobs:
         with:
           name: daily-shell-screenshots
           path: test-results/screenshots/
+
+      - name: Upload Daily Shell Allure Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-shell-allure-results
+          path: allure-results/
+          if-no-files-found: ignore
 
   daily-hotels-tests:
     runs-on: ubuntu-latest
@@ -321,6 +353,14 @@ jobs:
           name: daily-hotels-screenshots
           path: test-results/screenshots/
 
+      - name: Upload Daily Hotels Allure Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-hotels-allure-results
+          path: allure-results/
+          if-no-files-found: ignore
+
   daily-rails-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -369,6 +409,14 @@ jobs:
           name: daily-rails-screenshots
           path: test-results/screenshots/
 
+      - name: Upload Daily Rails Allure Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-rails-allure-results
+          path: allure-results/
+          if-no-files-found: ignore
+
   summary:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -397,6 +445,76 @@ jobs:
         with:
           path: all-results
         continue-on-error: true
+
+      - name: Download Allure Results
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-allure-results'
+          path: allure-results
+          merge-multiple: true
+        continue-on-error: true
+
+      - name: Download previous Allure history
+        if: always()
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          name: allure-history
+          path: previous-history
+          workflow: test-suite.yml
+          search_artifacts: true
+          if_no_artifact_found: ignore
+
+      - name: Copy history into Allure results
+        if: always()
+        shell: bash
+        run: |
+          if [ -d "previous-history" ]; then
+            echo "📂 Found previous history, copying into allure-results/history..."
+            mkdir -p allure-results/history
+            cp -r previous-history/* allure-results/history/ 2>/dev/null || true
+            echo "✅ History copied"
+          else
+            echo "ℹ️ No previous history found (first run)"
+          fi
+
+      - name: Generate Allure Report
+        if: always()
+        uses: simple-elf/allure-report-action@v1.9
+        with:
+          allure_results: allure-results
+          allure_report: allure-report
+          keep_reports: 20
+
+      - name: Upload Allure Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload Allure History
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-history
+          path: allure-report/history/
+          retention-days: 90
+          if-no-files-found: ignore
+          overwrite: true
+
+      - name: Post Allure Summary
+        if: always()
+        run: |
+          echo "### 📊 Allure Report" >> $GITHUB_STEP_SUMMARY
+          echo "Download the **allure-report** artifact from this run to view the full report locally." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To view: unzip the artifact and open \`index.html\`, or run:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "npx allure open allure-report" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Check for test results
         if: always()
