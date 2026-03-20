@@ -1,4 +1,4 @@
-﻿# Test Name: HYBRID for 73877 Email adress is sent according to the web confirmation - exception with traveler
+# Test Name: HYBRID for 73877 Email adress is sent according to the web confirmation - exception with traveler
 # Description: 
 # Status: Active
 # Labels: Hotel,Web confirmation,Full Purchase,No Amadeus Hotel Book,Ehotel Regression,hybrid
@@ -19,8 +19,6 @@ Feature: HYBRID for 73877 Email adress is sent according to the web confirmation
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     And I fill credit card cvv if needed
     When I proceed to checkout
     And I complete the booking

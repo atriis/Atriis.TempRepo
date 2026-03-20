@@ -1,4 +1,4 @@
-﻿# Test Name: 69671 Sabre - can book 4 travelers in 2 rooms
+# Test Name: 69671 Sabre - can book 4 travelers in 2 rooms
 # Description: 
 # Status: Active
 # Labels: Sabre,Hotel,Regression,Full Purchase,multi pax,Giata,2026 plan 2
@@ -23,8 +23,6 @@ Feature: 69671 Sabre - Book hotel for 4 travelers in 2 rooms with price match
     When I search for a hotel in "Leipzig,Germany,(LEJ)" for 1 night with 2 rooms
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     Then the cart should show 2 rooms badge
     When I proceed to checkout
     And I complete the booking

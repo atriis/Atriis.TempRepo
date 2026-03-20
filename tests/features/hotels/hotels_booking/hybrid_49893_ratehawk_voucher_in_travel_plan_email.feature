@@ -1,4 +1,4 @@
-﻿# Test Name: HYBRID for 49893 Voucher in travel plan is Ratehawk voucher, not Atriis generated one
+# Test Name: HYBRID for 49893 Voucher in travel plan is Ratehawk voucher, not Atriis generated one
 # Description: 
 # Status: Active
 # Labels: Ratehawk Regression,Hotel,No Amadeus Hotel Book,Full Purchase,hybrid,Email,Share Itinerary,Voucher,progress page,2026 plan 2
@@ -19,8 +19,6 @@ Feature: 49893 Ratehawk - Travel plan email contains Ratehawk voucher, not Atrii
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"

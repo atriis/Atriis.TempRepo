@@ -1,4 +1,4 @@
-﻿# Test Name: 20182 Book hotel without sets payment in user settings
+# Test Name: 20182 Book hotel without sets payment in user settings
 # Description: 
 # Status: Active
 # Labels: CR7,Regression,No Amadeus Hotel Book,progress page,2026 plan 1
@@ -19,8 +19,6 @@ Feature: 20182 General - Book hotel with no FOP and add credit card in cart
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     When I add a credit card as payment method
     When I proceed to checkout
     And I complete the booking

@@ -1,4 +1,4 @@
-﻿# Test Name: 63822 Ehotel - book for 2 travelers and 2 nights
+# Test Name: 63822 Ehotel - book for 2 travelers and 2 nights
 # Description: 
 # Status: Active
 # Labels: Hotel,Full Purchase,more than 1 night,multi pax,No Amadeus Hotel Book,Ehotel Regression,progress page,66444 hotel results,2026 plan 2
@@ -20,8 +20,6 @@ Feature: 63822 eHotel - Book hotel for 2 travelers 2 nights with CVV and price m
     When I search for a hotel in "Amsterdam" for 2 nights
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     # TODO: Create step "Then the cart should show 2 nights and 2 rooms badge" calls DSL verify2Nights2RoomsBadge in Cart.js
     # TODO: Create step "When I set the CVV for the selected payment card" that calls DSL setCVVForCard in CartFop.js
     # TODO: Create step "When I extract the price from cart" calls DSL extractCartPrice in Cart.js

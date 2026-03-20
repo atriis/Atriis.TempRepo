@@ -1,4 +1,4 @@
-﻿# Test Name: 62899 Sabre - Hotel - Booking is successful for a passenger with last name that has a dash (-)
+# Test Name: 62899 Sabre - Hotel - Booking is successful for a passenger with last name that has a dash (-)
 # Description: 
 # Status: Active
 # Labels: Sabre,Hotel,Regression,Full Purchase,name,2026 plan 2
@@ -19,8 +19,6 @@ Feature: 62899 Sabre - Book hotel for traveler with dash in last name
     When I search for a hotel in "Denver" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"

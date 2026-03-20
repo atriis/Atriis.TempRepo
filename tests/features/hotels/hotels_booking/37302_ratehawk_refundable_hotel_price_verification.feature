@@ -1,4 +1,4 @@
-ï»¿# Test Name: 37302 [Merge] RateHawk - Total pricing with additional fees is correct, price does not change after adding to cart and booking is successful
+# Test Name: 37302 [Merge] RateHawk - Total pricing with additional fees is correct, price does not change after adding to cart and booking is successful
 # Description: 
 # Status: Active
 # Labels: CR7,No Amadeus Hotel Book,Hotel,additional fees,merge,Ratehawk Regression,Pre Prod,price,Full Purchase,progress page,Giata,2026 plan 1
@@ -16,13 +16,11 @@ Feature: 37302 Ratehawk - Book refundable hotel with price verification
   Scenario: Refundable hotel price matches between room level and cart
     Given I am logged in as "lidi" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "123 Champs-Ã‰lysÃ©es" for 1 night
+    When I search for a hotel in "123 Champs-Élysées" for 1 night
     And I select the first hotel result
     And I wait for the first add to trip button in room level results to be visible
     And I extract the price from room level results
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     When I extract the hotel quote price from cart
     Then the price in cart should match the room level price
     When I click more details in cart

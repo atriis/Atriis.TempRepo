@@ -1,4 +1,4 @@
-﻿# Test Name: 56841 Galileo - Hotel - Booking specific hotel
+# Test Name: 56841 Galileo - Hotel - Booking specific hotel
 # Description: 
 # Status: Active
 # Labels: Galileo,Hotel,Regression,specific,Full Purchase,2026 plan 1
@@ -21,8 +21,6 @@ Feature: 56841 Galileo - Hotel - Booking specific hotel
     And I filter hotel results by hotel name "the ritz-carlton, dubai international financial centre"
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     When I proceed to checkout
     And I wait for booking details in checkout
     And I fill in the "ORDER NUMBER" reference field with "1111"

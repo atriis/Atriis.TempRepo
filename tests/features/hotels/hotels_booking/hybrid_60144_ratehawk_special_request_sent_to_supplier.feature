@@ -1,4 +1,4 @@
-﻿# Test Name: HYBRID for 60144 Ratehawk - Special request information is being sent
+# Test Name: HYBRID for 60144 Ratehawk - Special request information is being sent
 # Description: 
 # Status: Active
 # Labels: Ratehawk Regression,Hotel,Full Purchase,hybrid,special request,progress page,2026 plan 2
@@ -19,8 +19,6 @@ Feature: 60144 Ratehawk - Special request information is sent to supplier
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     When I add a special request with text "Please arrange for a quiet room"
     When I proceed to checkout
     And I complete the booking

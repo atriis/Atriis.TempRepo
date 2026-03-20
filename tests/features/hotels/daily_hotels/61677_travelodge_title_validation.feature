@@ -1,4 +1,4 @@
-﻿# Test Name: 61677 - Travelodge - title validation
+# Test Name: 61677 - Travelodge - title validation
 # Description: for book - waiting for test account
 # Status: Active
 # Labels: Regression,Travelodge,Hotel,No Amadeus Hotel Book,Cart,66444 hotel results,2026 plan 2
@@ -19,8 +19,6 @@ Feature: 61677 Travelodge - Title field required before proceeding to checkout
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     Then the passenger title status should show "Title0/1"
     When I accept Terms & Conditions
     And I click the proceed to checkout button

@@ -1,4 +1,4 @@
-﻿# Test Name: 35188 [Merge] Amadeus - Fare Rules refundable can't change to non-refundable after adding hotel to cart and hotels chain codes are being displayed
+# Test Name: 35188 [Merge] Amadeus - Fare Rules refundable can't change to non-refundable after adding hotel to cart and hotels chain codes are being displayed
 # Description: 
 # Status: Active
 # Labels: Regression,Fare Rules,Amadeus,Hotel,hotel chain codes,2026 plan 1
@@ -19,8 +19,6 @@ Feature: 35188 Amadeus - Hotel chain codes and loyalty program are expandable in
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    And the hotel should appear as refundable in cart
     When I expand the loyalty number extras section
     And I select the first hotel chain in the loyalty section
     Then the selected hotel chain should contain a chain code

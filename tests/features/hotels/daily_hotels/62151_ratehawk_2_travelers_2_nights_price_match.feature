@@ -20,8 +20,6 @@ Feature: 62151 Ratehawk - Book hotel for 2 travelers 2 nights with price match
     When I search for a hotel in "London" for 2 nights
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     Then the cart should show 2 rooms badge
     And I fill credit card cvv if needed
     When I extract the price at index 0 from "cart"

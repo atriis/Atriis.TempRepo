@@ -21,8 +21,6 @@ Feature: 23109 eHotel - Book hotel and verify provider label
     And I wait for the first add to trip button in room level results to be visible
     Then I should see a provided by label in room level results
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     Then I should see a provided by label in cart
     When I fill credit card cvv if needed
     When I proceed to checkout

@@ -1,4 +1,4 @@
-﻿# Test Name: 64405 booking.com - credit card without card holder name and country
+# Test Name: 64405 booking.com - credit card without card holder name and country
 # Description: 
 # Status: Active
 # Labels: Booking.com,FOP,Regression,No Amadeus Hotel Book,Hotel,Cart,2026 plan 2
@@ -19,8 +19,6 @@ Feature: 64405 Booking.com - Credit card validation without cardholder name and 
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     And the default card should have a complete missing info button
     When I accept Terms & Conditions
     And I click the proceed to checkout button

@@ -1,4 +1,4 @@
-﻿# Test Name: HYBRID for 61652 expedia - send the traveler's phone in case valid, and the user group's phone in case not valid
+# Test Name: HYBRID for 61652 expedia - send the traveler's phone in case valid, and the user group's phone in case not valid
 # Description: 
 # Status: Active
 # Labels: Expedia,Hotel,Regression,traveler,hybrid,phone number,progress page,2026 plan 2
@@ -19,8 +19,6 @@ Feature: 61652 HYBRID Expedia - Send the traveler's phone in case valid, and the
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     And I fill credit card cvv if needed
     When I proceed to checkout
     And I complete the booking
@@ -34,8 +32,6 @@ Feature: 61652 HYBRID Expedia - Send the traveler's phone in case valid, and the
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     And I fill credit card cvv if needed
     When I proceed to checkout
     And I complete the booking

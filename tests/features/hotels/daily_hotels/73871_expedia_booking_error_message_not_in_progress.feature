@@ -1,4 +1,4 @@
-﻿# Test Name: 73871 Expedia - In case of booking error we show the error and the status is not in progress
+# Test Name: 73871 Expedia - In case of booking error we show the error and the status is not in progress
 # Description: 
 # Status: Active
 # Labels: Regression,Expedia,FOP,Booking error,Hotel
@@ -19,8 +19,6 @@ Feature: 73871 Expedia - In case of booking error we show the error and the stat
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     And I fill credit card cvv if needed
     When I proceed to checkout
     When I complete the booking without navigating to trip overview

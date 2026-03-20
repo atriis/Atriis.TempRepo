@@ -1,4 +1,4 @@
-﻿# Test Name: 66654 Ratehawk - 'Check-In Date' Travel Policy - OOP icon is not displayed for in policy hotels
+# Test Name: 66654 Ratehawk - 'Check-In Date' Travel Policy - OOP icon is not displayed for in policy hotels
 # Description: 
 # Status: Active
 # Labels: Ratehawk Regression,Hotel,Full Purchase,special request,2026 plan 2
@@ -19,8 +19,6 @@ Feature: 66654 Ratehawk - 'Check-In Date' Travel Policy - OOP icon is not displa
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     Then the out of policy indicator should not be visible in cart
     When I proceed to checkout
     And I complete the booking

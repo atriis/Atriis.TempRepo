@@ -1,4 +1,4 @@
-﻿# Test Name: 58331 Galileo - Hotel - Special request has a limit of 80 characters and booking is succeeded when special request has special characters
+# Test Name: 58331 Galileo - Hotel - Special request has a limit of 80 characters and booking is succeeded when special request has special characters
 # Description: 
 # Status: Active
 # Labels: Regression,Galileo,Hotel,special request,Full Purchase,progress page,2026 plan 2
@@ -21,8 +21,6 @@ Feature:  58331 Galileo - Hotel - Special request has a limit of 80 characters a
     And I filter hotel results by hotel name "Blue Mansion Hotel"
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     When I add a special request text of 100 characters
     Then the special request should be truncated to 80 characters
     When I proceed to checkout

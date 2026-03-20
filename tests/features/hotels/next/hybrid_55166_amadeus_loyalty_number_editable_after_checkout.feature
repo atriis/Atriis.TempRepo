@@ -14,7 +14,8 @@ Feature: 55166 Amadeus - Loyalty number can be edited after hotel checkout
 
   @priority:medium
   Scenario: Loyalty number can be added or edited on the confirmed booking page
-    Given I am logged in as "ruimariano" booking a new trip
+    #TODO Create user or reuse amy@loyal.com .inv
+    Given I am logged in as "amyloyal" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result

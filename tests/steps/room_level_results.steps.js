@@ -3,6 +3,7 @@ const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { RoomLevelResults } = require("../../src/dsl");
 const { ResultsPage } = require("../../src/pages/ResultsPage");
+const Cart = require("../../src/dsl/Cart");
 const RoomLevelResultsPage = require("../../src/pages/RoomLevelResultsPage");
 const logger = require("@utils/logger").child("RoomResults");
 
@@ -15,6 +16,8 @@ setDefaultTimeout(120000);
 When("I add a refundable room to my cart", async function () {
   logger.info("Adding refundable room to cart");
   await RoomLevelResults.addRefundableHotelRoomLevelToCart(this.page);
+  await Cart.expectBookingStatusToBe("Pending booking", { page: this.page });
+  await Cart.expectHotelToBeRefundableInCart(this.page);
 });
 
 When("I add the first available room to my cart", async function () {

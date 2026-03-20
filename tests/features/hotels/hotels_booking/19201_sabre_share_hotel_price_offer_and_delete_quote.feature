@@ -1,4 +1,4 @@
-﻿# Test Name: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
+# Test Name: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
 # Description: book for Sabre E2E
 # Status: Active
 # Labels: Hotel,Sabre,GDS,No Amadeus Hotel Book,Full Purchase,share quote,merge,Club,price offer,Results page hotel,Regression,Pre Prod,Daily Hotels,progress page,Giata,2026 plan 1
@@ -19,8 +19,6 @@ Feature: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
     When I search for a hotel in "Denver" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     When I click the share quote button
     And I send the share
     When I proceed to checkout

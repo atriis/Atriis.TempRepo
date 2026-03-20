@@ -1,4 +1,4 @@
-﻿# Test Name: 40953 [Merge] Galileo - Hotel - Check "Terms and Conditions" are displayed, price does not change before and after booking
+# Test Name: 40953 [Merge] Galileo - Hotel - Check "Terms and Conditions" are displayed, price does not change before and after booking
 # Description: 
 # Status: Active
 # Labels: Regression,Galileo,Gray Dawes,Hotel,Full Purchase,Pre Prod,Sanity,Terms and Conditions,merge,price,Check price,Daily Hotels,progress page,Giata,2026 plan 1
@@ -22,8 +22,6 @@ Feature: 40953 Galileo - Book hotel with terms and conditions and price verifica
     Then terms and conditions are displayed
     And I extract the price from room level results
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
-    Then the hotel should appear as refundable in cart
     When I check terms and conditions in cart
     And I extract the hotel quote price from cart
     And I save the current cart price as the pre-booking price
