@@ -82,3 +82,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Allure
+allure-results/
+allure-report/
