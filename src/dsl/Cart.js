@@ -1179,6 +1179,26 @@ const Cart = {
   },
 
   /**
+   * Verifies that the share email preview does NOT contain the hotel price.
+   * Extracts the hotel price from the cart and checks it's absent from the preview.
+   * The share dialog must already be open.
+   * @param {import('playwright').Page} page
+   */
+  async verifySharePreviewDoesNotContainPrice(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const hotelPrice = await cartPage.getHotelQuotePrice();
+    if (!hotelPrice) throw new Error('Could not extract hotel price from cart');
+    const content = await cartPage.getSharePreviewTextContent();
+    // Format price as it would appear in the email (e.g., "93.41", "93,41")
+    const priceStr = hotelPrice.toFixed(2);
+    const priceStrComma = priceStr.replace('.', ',');
+    if (content.includes(priceStr) || content.includes(priceStrComma)) {
+      throw new Error(`Expected share email preview to NOT contain the hotel price "${priceStr}", but it was found. Preview content: "${content.slice(0, 500)}"`);
+    }
+  },
+
+  /**
    * Verifies the "Provided by" label is visible in the cart hotel preview.
    * @param {import('playwright').Page} page
    * @throws {Error} If the label is not visible

@@ -435,6 +435,11 @@ Then("{string} should be displayed in the share email preview", async function (
   await Cart.verifySharePreviewContainsText(this.page, text);
 });
 
+Then("the travel plan email should not include the hotel price", async function () {
+  logger.info("Verifying travel plan email does not include hotel price");
+  await Cart.verifySharePreviewDoesNotContainPrice(this.page);
+});
+
 Then("I should see a provided by label in cart", async function () {
   logger.info("Verifying 'Provided by' label is visible in cart");
   await Cart.verifyProviderLabelInCart(this.page);
