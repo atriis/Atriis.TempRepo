@@ -418,6 +418,7 @@ jobs:
           if-no-files-found: ignore
 
   summary:
+    name: Summary
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs:
@@ -496,7 +497,7 @@ jobs:
           if [ -d "allure-results" ]; then
             file_count=$(find allure-results -type f 2>/dev/null | wc -l)
             echo "✅ Found $file_count file(s) in allure-results/"
-            find allure-results -type f | head -20
+            find allure-results -type f 2>/dev/null | head -20 || true
           else
             echo "⚠️ allure-results/ directory does not exist"
           fi

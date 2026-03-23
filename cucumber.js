@@ -9,7 +9,6 @@ module.exports = {
     ],
     format: [
       'summary',
-      'progress',
       '@cucumber/pretty-formatter',
       'json:test-results/cucumber-report.json',
       'junit:test-results/cucumber-junit.xml',
