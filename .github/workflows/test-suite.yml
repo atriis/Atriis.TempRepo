@@ -12,7 +12,7 @@ on:
 # Structured logging configuration for all jobs
 env:
   LOG_LEVEL: info
-  LOG_FORMAT: json
+  LOG_FORMAT: pretty
 
 # Make scheduled runs able to publish check runs (dorny/test-reporter)
 permissions:
@@ -419,7 +419,7 @@ jobs:
 
   summary:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     needs:
       - smoke-tests
       - daily-cars-tests
@@ -484,12 +484,132 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install Allure CLI
+        if: always()
+        run: npm install allure@3
+
+      - name: Debug Allure Results
+        if: always()
+        shell: bash
+        run: |
+          echo "📂 Checking allure-results directory..."
+          if [ -d "allure-results" ]; then
+            file_count=$(find allure-results -type f 2>/dev/null | wc -l)
+            echo "✅ Found $file_count file(s) in allure-results/"
+            find allure-results -type f | head -20
+          else
+            echo "⚠️ allure-results/ directory does not exist"
+          fi
+
       - name: Generate Allure Report
         if: always()
         shell: bash
         run: |
-          npx --yes allure-commandline generate allure-results --clean -o allure-report
-          echo "✅ Allure report generated"
+          if [ -d "allure-results" ] && [ "$(find allure-results -name '*.json' -type f 2>/dev/null | wc -l)" -gt 0 ]; then
+            npx allure generate ./allure-results -o allure-report
+            if [ -f "allure-report/index.html" ]; then
+              echo "✅ Allure report generated successfully"
+            else
+              echo "❌ Allure report generation produced no index.html"
+            fi
+          else
+            echo "⚠️ No Allure result files found — skipping report generation"
+            mkdir -p allure-report
+            echo "<html><body><h1>No Allure results available</h1><p>No test jobs produced Allure result files for this run.</p></body></html>" > allure-report/index.html
+          fi
+
+      - name: Generate Cucumber HTML Report
+        if: always()
+        shell: bash
+        run: |
+          echo "📊 Merging Cucumber JSON reports..."
+          mkdir -p cucumber-html-report
+
+          # Merge all cucumber JSON files and generate HTML report
+          node -e "
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+            const files = execSync('find all-results -name cucumber-report.json -type f 2>/dev/null')
+              .toString().trim().split('\n').filter(Boolean);
+
+            if (files.length === 0) { console.log('⚠️ No cucumber JSON files found'); process.exit(0); }
+
+            let merged = [];
+            for (const file of files) {
+              try {
+                const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+                merged = merged.concat(Array.isArray(data) ? data : [data]);
+              } catch(e) { console.log('⚠️ Skipping invalid JSON: ' + file); }
+            }
+            fs.writeFileSync('cucumber-html-report/merged-report.json', JSON.stringify(merged, null, 2));
+            console.log('✅ Merged ' + files.length + ' report(s) with ' + merged.length + ' feature(s)');
+
+            // Parse results
+            let totalScenarios = 0, passed = 0, failed = 0, skipped = 0;
+            const suiteRows = [];
+            for (const feature of merged) {
+              const name = feature.name || 'Unknown';
+              let fp = 0, ff = 0, fsk = 0;
+              for (const el of (feature.elements || [])) {
+                if (el.type !== 'scenario') continue;
+                totalScenarios++;
+                const steps = el.steps || [];
+                const hasFail = steps.some(s => s.result && s.result.status === 'failed');
+                const allSkip = steps.every(s => !s.result || s.result.status === 'skipped' || s.result.status === 'undefined');
+                if (hasFail) { failed++; ff++; }
+                else if (allSkip) { skipped++; fsk++; }
+                else { passed++; fp++; }
+              }
+              if (fp + ff + fsk > 0) suiteRows.push({ name, passed: fp, failed: ff, skipped: fsk });
+            }
+            fs.writeFileSync('cucumber-html-report/summary.json', JSON.stringify({ totalScenarios, passed, failed, skipped, suiteRows }));
+
+            // Generate HTML
+            const passRate = totalScenarios > 0 ? ((passed / totalScenarios) * 100).toFixed(1) : '0.0';
+            const rows = suiteRows.map(r =>
+              '<tr><td>' + r.name + '</td><td class=\"pass\">' + r.passed + '</td><td class=\"fail\">' + r.failed +
+              '</td><td class=\"skip\">' + r.skipped + '</td><td><span class=\"badge ' +
+              (r.failed > 0 ? 'badge-fail\">FAIL' : 'badge-pass\">PASS') + '</span></td></tr>'
+            ).join('\n');
+            const html = '<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Cucumber Report - Run #' +
+              (process.env.GITHUB_RUN_NUMBER || '') + '</title><style>' +
+              'body{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:1200px;margin:0 auto;padding:20px;background:#f6f8fa}' +
+              'h1{color:#24292e}h2{color:#586069;margin-top:30px}' +
+              '.summary{display:flex;gap:20px;margin:20px 0}' +
+              '.card{background:white;border-radius:8px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.12);text-align:center;flex:1}' +
+              '.card .num{font-size:2em;font-weight:bold}.card .label{color:#586069;margin-top:5px}' +
+              '.pass{color:#22863a}.fail{color:#cb2431}.skip{color:#b08800}.rate{color:#0366d6}' +
+              'table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.12)}' +
+              'th{background:#24292e;color:white;padding:12px;text-align:left}td{padding:10px 12px;border-bottom:1px solid #e1e4e8}' +
+              'tr:hover{background:#f6f8fa}.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.85em;font-weight:600}' +
+              '.badge-pass{background:#dcffe4;color:#22863a}.badge-fail{background:#ffdce0;color:#cb2431}' +
+              '.footer{margin-top:30px;color:#586069;font-size:.9em}</style></head><body>' +
+              '<h1>🥒 Cucumber Test Report</h1>' +
+              '<p>Run #' + (process.env.GITHUB_RUN_NUMBER || 'N/A') + ' | ' + new Date().toISOString().split('T')[0] +
+              ' | Trigger: ' + (process.env.GITHUB_EVENT_NAME || 'unknown') + '</p>' +
+              '<div class=\"summary\">' +
+              '<div class=\"card\"><div class=\"num\">' + totalScenarios + '</div><div class=\"label\">Total Scenarios</div></div>' +
+              '<div class=\"card\"><div class=\"num pass\">✅ ' + passed + '</div><div class=\"label\">Passed</div></div>' +
+              '<div class=\"card\"><div class=\"num fail\">❌ ' + failed + '</div><div class=\"label\">Failed</div></div>' +
+              '<div class=\"card\"><div class=\"num skip\">⏭️ ' + skipped + '</div><div class=\"label\">Skipped</div></div>' +
+              '<div class=\"card\"><div class=\"num rate\">' + passRate + '%</div><div class=\"label\">Pass Rate</div></div>' +
+              '</div><h2>Features</h2>' +
+              '<table><tr><th>Feature</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Status</th></tr>' +
+              rows + '</table>' +
+              '<div class=\"footer\">Generated by Atriis Test Automation CI</div></body></html>';
+            fs.writeFileSync('cucumber-html-report/index.html', html);
+            console.log('✅ Cucumber HTML report generated');
+          "
+        continue-on-error: true
+
+      - name: Upload Cucumber HTML Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cucumber-html-report
+          path: cucumber-html-report/
+          retention-days: 30
+          if-no-files-found: ignore
 
       - name: Upload Allure Report
         if: always()
@@ -510,16 +630,51 @@ jobs:
           if-no-files-found: ignore
           overwrite: true
 
-      - name: Post Allure Summary
+      - name: Post Reports Summary
         if: always()
+        shell: bash
         run: |
-          echo "### 📊 Allure Report" >> $GITHUB_STEP_SUMMARY
-          echo "Download the **allure-report** artifact from this run to view the full report locally." >> $GITHUB_STEP_SUMMARY
+          echo "## 📋 Test Execution Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "To view: unzip the artifact and open \`index.html\`, or run:" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "npx allure open allure-report" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+          # Parse cucumber summary if available
+          if [ -f "cucumber-html-report/summary.json" ]; then
+            node -e "
+              const s = JSON.parse(require('fs').readFileSync('cucumber-html-report/summary.json', 'utf8'));
+              const passRate = s.totalScenarios > 0 ? ((s.passed / s.totalScenarios) * 100).toFixed(1) : '0.0';
+              const status = s.failed > 0 ? '❌ SOME TESTS FAILED' : '✅ ALL TESTS PASSED';
+              console.log('| Metric | Value |');
+              console.log('|--------|-------|');
+              console.log('| **Status** | ' + status + ' |');
+              console.log('| Total Scenarios | ' + s.totalScenarios + ' |');
+              console.log('| ✅ Passed | ' + s.passed + ' |');
+              console.log('| ❌ Failed | ' + s.failed + ' |');
+              console.log('| ⏭️ Skipped | ' + s.skipped + ' |');
+              console.log('| Pass Rate | **' + passRate + '%** |');
+            " >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ No Cucumber results summary available" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Reports" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Report | How to View |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🥒 **Cucumber HTML** | Download **cucumber-html-report** artifact → open \`index.html\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 **Allure Report** | Download **allure-report** artifact → run \`npx allure open allure-report\` |" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🏗️ Job Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Smoke Tests | \`${{ needs.smoke-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Daily Cars | \`${{ needs.daily-cars-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Daily Flights | \`${{ needs.daily-flights-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Daily Shell | \`${{ needs.daily-shell-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Daily Hotels | \`${{ needs.daily-hotels-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Daily Rails | \`${{ needs.daily-rails-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
 
       - name: Check for test results
         if: always()
