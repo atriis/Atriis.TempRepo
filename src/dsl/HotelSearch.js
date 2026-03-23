@@ -63,6 +63,9 @@ const HotelSearch = {
 
   /**
    * Searches for a hotel by number of nights.
+   * Fills the search form, clicks Search, and waits for the results page URL to load.
+   * Use this when no popup (e.g. trip purpose / reference fields) appears between
+   * clicking Search and reaching results. See `initiateHotelSearch` for the alternative.
    */
   async searchHotelByNights(
     page,
@@ -190,7 +193,9 @@ const HotelSearch = {
   /**
    * Fills hotel search form and clicks the Search button, but does NOT wait
    * for navigation to the results page. Use this when a post-search popup
-   * (e.g. reference field) needs to be handled before results load.
+   * (e.g. trip purpose / reference fields) needs to be handled before results load.
+   * After dismissing the popup, results will load normally.
+   * Contrast with `searchHotelByNights`, which waits for the results URL immediately.
    *
    * @param {import('playwright').Page} page
    * @param {string|object} whereInput - Destination or { where, nights }

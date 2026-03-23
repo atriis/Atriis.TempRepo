@@ -292,6 +292,31 @@ const HotelLevelResults = {
   },
 
   /**
+   * Waits for hotel map markers to be visible.
+   * @param {import('playwright').Page} page
+   */
+  async waitForMapMarkers(page) {
+    if (!page) throw new Error('page is required');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.waitForMapMarkers();
+  },
+
+  /**
+   * Drags the hotel results map in a given direction.
+   * @param {import('playwright').Page} page
+   * @param {'left'|'right'|'up'|'down'} direction
+   */
+  async dragResultsMap(page, direction = 'right') {
+    if (!page) throw new Error('page is required');
+    const validDirections = ['left', 'right', 'up', 'down'];
+    if (!validDirections.includes(direction)) {
+      throw new Error(`direction must be one of ${validDirections.join(', ')}, got: ${direction}`);
+    }
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.dragMap(direction);
+  },
+
+  /**
    * Opens the first hotel preview from the map in a new browser tab.
    * @param {import('playwright').Page} page
    */

@@ -9,6 +9,8 @@ setDefaultTimeout(120000);
 // WHEN STEPS - HOTEL SEARCH
 // ========================================
 
+// Fills search form, clicks Search, and waits for results URL.
+// Use when no popup appears after clicking Search.
 When("I search for a hotel in {string} for {int} night(s)", async function (location, nights) {
   logger.info("Searching for hotel", { location, nights });
   await HotelSearch.searchHotelByNights(this.page, { where: location, nights: nights });
@@ -24,6 +26,9 @@ When("I search for a hotel in {string} for {int} night(s) from the cart drawer",
   await HotelSearch.searchHotelByNights(this.page, { where: location, nights }, { fromDrawer: true });
 });
 
+// Fills search form and clicks Search, but does NOT wait for results URL.
+// Use when a popup (e.g. trip purpose) appears after clicking Search and must be
+// handled before results load. Follow with the popup step, then a wait-for-results step.
 When("I initiate a hotel search in {string} for {int} night(s)", async function (location, nights) {
   logger.info("Initiating hotel search (no URL wait)", { location, nights });
   await HotelSearch.initiateHotelSearch(this.page, { where: location, nights });

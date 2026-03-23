@@ -188,10 +188,34 @@ class HotelLevelResultsPage {
     await this.page.locator(SELECTORS.MAP_CONTAINER).waitFor({ state: 'visible', timeout: 30000 });
   }
 
+  async waitForMapMarkers({ timeout = 30000 } = {}) {
+    await this.page.locator(SELECTORS.MAP_MARKER).first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Drags the map in a given direction by performing a mouse drag gesture.
+   * @param {'left'|'right'|'up'|'down'} direction
+   * @param {number} [distance=300] - pixels to drag
+   */
+  async dragMap(direction = 'right', { distance = 300, timeout = 10000 } = {}) {
+    const mapContainer = this.page.locator(SELECTORS.MAP_CONTAINER).first();
+    await mapContainer.waitFor({ state: 'visible', timeout });
+    const box = await mapContainer.boundingBox();
+    if (!box) throw new Error('Map container not visible or has no bounding box');
+    const centerX = box.x + box.width / 2;
+    const centerY = box.y + box.height / 2;
+    const offsets = { left: [-distance, 0], right: [distance, 0], up: [0, -distance], down: [0, distance] };
+    const [dx, dy] = offsets[direction] || offsets.right;
+    await this.page.mouse.move(centerX, centerY);
+    await this.page.mouse.down();
+    await this.page.mouse.move(centerX + dx, centerY + dy, { steps: 10 });
+    await this.page.mouse.up();
+  }
+
   async selectFirstMapMarker() {
     const firstMarker = this.page.locator(SELECTORS.MAP_MARKER).first();
     await firstMarker.waitFor({ state: 'visible', timeout: 30000 });
-    await firstMarker.click();
+    await firstMarker.click({ force: true });
     await this.page.locator(SELECTORS.SELECTED_MAP_PREVIEW).first().waitFor({ state: 'visible', timeout: 10000 });
   }
 

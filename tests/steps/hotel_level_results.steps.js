@@ -57,6 +57,16 @@ When("I open the hotel results map view", async function () {
   await HotelLevelResults.openResultsMapView(this.page);
 });
 
+When("I wait for the hotel map markers to load", async function () {
+  logger.info("Waiting for hotel map markers to load");
+  await HotelLevelResults.waitForMapMarkers(this.page);
+});
+
+When("I drag the hotel map to the {string}", async function (direction) {
+  logger.info("Dragging hotel map", { direction });
+  await HotelLevelResults.dragResultsMap(this.page, direction);
+});
+
 When("I open the first hotel from the map preview in a new browser tab", async function () {
   logger.info("Opening first hotel from map preview in a new browser tab");
   this.hotelMapPopupPage = await HotelLevelResults.openFirstHotelFromMapPreviewInNewTab(this.page);
