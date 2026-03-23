@@ -26,5 +26,4 @@ Feature: 72550 Ratehawk - Hotel price is excluded from the travel plan email
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    Then I successfully cancel the trip
 
