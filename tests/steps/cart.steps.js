@@ -274,6 +274,16 @@ Then("the download voucher button should be visible in the trip overview", async
   await Cart.verifyVoucherDownloadVisible(this.page);
 });
 
+Then("the download voucher options for english and french should be visible in cart", async function () {
+  logger.info("Verifying download voucher options (English and French) are visible in cart");
+  await Cart.verifyVoucherDownloadOptionsVisible(this.page);
+});
+
+Then("the download voucher options for english and french should not be visible in cart", async function () {
+  logger.info("Verifying download voucher options (English and French) are not visible in cart");
+  await Cart.verifyVoucherDownloadOptionsNotVisible(this.page);
+});
+
 Then("the car location at airport index {int} should contain {string} on cart", async function (index, expectedAirport) {
   logger.info("Verifying car airport location contains expected airport location on cart", { index, expectedAirport });
   await Cart.expectAirportLocationOnCartToContain(this.page, index, expectedAirport);

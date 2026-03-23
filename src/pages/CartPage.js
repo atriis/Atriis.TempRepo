@@ -94,6 +94,7 @@ const SELECTORS = {
 
   // Voucher download box in hotel-quote-card.vue (.voucher-box)
   DOWNLOAD_VOUCHER_BOX: ".download-text",
+  VOUCHER_DOWNLOAD_LINKS: ".voucher-box .download-links",
 
   // Share itinerary / quotes dropdown
   SHARE_BUTTON: ".share-container .share-btn",
@@ -985,6 +986,38 @@ class CartPage {
     const box = this.page.locator(SELECTORS.DOWNLOAD_VOUCHER_BOX).first();
     try {
       await box.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the voucher download links (English/French) are visible in the trip overview.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async areVoucherDownloadLinksVisible({ timeout = 15000 } = {}) {
+    const links = this.page.locator(SELECTORS.VOUCHER_DOWNLOAD_LINKS).first();
+    try {
+      await links.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks that the voucher box is NOT present in the trip overview.
+   * @param {object} [options]
+   * @param {number} [options.timeout=5000]
+   * @returns {Promise<boolean>} true if voucher box is hidden/absent
+   */
+  async isVoucherBoxHidden({ timeout = 5000 } = {}) {
+    const box = this.page.locator(SELECTORS.DOWNLOAD_VOUCHER_BOX).first();
+    try {
+      await box.waitFor({ state: 'hidden', timeout });
       return true;
     } catch {
       return false;

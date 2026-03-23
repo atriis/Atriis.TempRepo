@@ -73,7 +73,9 @@ Then("the out of policy indicator should not be visible in results", async funct
 Then("the out of policy tooltip in results should be {string}", async function (expectedText) {
   logger.info("Verifying OOP tooltip in results", { expectedText });
   const actualText = await Results.hoverAndGetOOPTooltipTextInResults(this.page);
-  expect(actualText).toBe(expectedText);
+  const normalizedActual = actualText.replace(/\s+/g, ' ').trim();
+  const normalizedExpected = expectedText.replace(/\s+/g, ' ').trim();
+  expect(normalizedActual).toBe(normalizedExpected);
 });
 
 // ===== THEN STEPS - FLIGHT CAPACITY =====

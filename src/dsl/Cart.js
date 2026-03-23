@@ -664,6 +664,40 @@ const Cart = {
   },
 
   /**
+   * Verifies that the voucher download options (English and French links) are visible.
+   * Only present after a confirmed booking for suppliers that provide a voucher.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the voucher download links are not visible
+   */
+  async verifyVoucherDownloadOptionsVisible(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const isVisible = await cartPage.areVoucherDownloadLinksVisible();
+
+    if (!isVisible) {
+      throw new Error('Download voucher options (English and French) are not visible in the trip overview');
+    }
+  },
+
+  /**
+   * Verifies that the voucher download options are NOT visible.
+   * Expected before a booking is confirmed.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the voucher download box is unexpectedly visible
+   */
+  async verifyVoucherDownloadOptionsNotVisible(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const isHidden = await cartPage.isVoucherBoxHidden();
+
+    if (!isHidden) {
+      throw new Error('Download voucher options should not be visible before booking confirmation');
+    }
+  },
+
+  /**
    * Verifies that a car location at a specific airport index contains the expected airport name.
    * 
    * @param {import('playwright').Page} page - Playwright page instance

@@ -480,6 +480,21 @@ class CartPayment {
     const found = names.some(n => n.includes(cardNameText));
     expect(found, `Expected card with name "${cardNameText}" to be visible. Found: ${JSON.stringify(names)}`).toBe(true);
   }
+
+  /**
+   * Selects a saved card by its 1-based index and saves the selection.
+   * @param {import('@playwright/test').Page} page
+   * @param {number} index - 1-based index of the card to select
+   */
+  static async selectCardByIndexAndSave(page, index) {
+    if (!page) throw new Error("page is required");
+    if (typeof index !== 'number' || index < 1) {
+      throw new Error(`index must be >= 1, got: ${index}`);
+    }
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.clickCardCheckboxByIndex(index);
+    await paymentPage.clickSaveCardButton();
+  }
 }
 
 module.exports = CartPayment;

@@ -54,6 +54,11 @@ When("I save the card selection", async function () {
   await CartPayment.saveCardSelection(this.page);
 });
 
+When("I select card {int} and save", async function (index) {
+  logger.info("Selecting card by index and saving", { index });
+  await CartPayment.selectCardByIndexAndSave(this.page, index);
+});
+
 When("I click payment restriction field", async function () {
   logger.info("Opening payment restriction field");
   await CartPayment.openPaymentRestrictionOptions(this.page);

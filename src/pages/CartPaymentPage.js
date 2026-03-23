@@ -758,6 +758,23 @@ class CartPaymentPage {
   }
 
   /**
+   * Clicks the round checkbox for a saved card by its 1-based index.
+   * @param {number} index - 1-based index of the card to select
+   */
+  async clickCardCheckboxByIndex(index) {
+    if (typeof index !== 'number' || index < 1) {
+      throw new Error(`index must be >= 1, got: ${index}`);
+    }
+    const checkboxes = this.page.locator(SELECTORS.CARD_CHECKBOX);
+    await checkboxes.first().waitFor({ state: 'visible', timeout: 20000 });
+    const total = await checkboxes.count();
+    if (index > total) {
+      throw new Error(`Card index ${index} out of range. Only ${total} cards available.`);
+    }
+    await checkboxes.nth(index - 1).click();
+  }
+
+  /**
    * Gets all card name texts from the card list.
    * @returns {Promise<string[]>}
    */
