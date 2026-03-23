@@ -29,6 +29,11 @@ When("I initiate a hotel search in {string} for {int} night(s)", async function 
   await HotelSearch.initiateHotelSearch(this.page, { where: location, nights });
 });
 
+When("I search for a hotel in {string} for {int} night(s) {int} months ahead", async function (location, nights, monthsAhead) {
+  logger.info("Searching for hotel with custom months ahead", { location, nights, monthsAhead });
+  await HotelSearch.searchHotelByNights(this.page, { where: location, nights }, { monthsAhead });
+});
+
 When("I wait for hotel results to load", async function () {
   logger.info("Waiting for hotel results page to load");
   await HotelSearch.waitForHotelResults(this.page);

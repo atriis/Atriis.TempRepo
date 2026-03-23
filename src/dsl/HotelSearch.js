@@ -104,8 +104,9 @@ const HotelSearch = {
     await hotelSearchPage.typeHotelDestination(where);
 
     // Calendar flow
+    const monthsAhead = options.monthsAhead || 3;
     await hotelSearchPage.clickCheckInField();
-    await searchPage.clickCalendarNextArrow();
+    await searchPage.clickCalendarNextArrow(monthsAhead);
 
     // Check-in + check-out selection
     await selectDatesByNthAvailable(page, {
