@@ -3,6 +3,23 @@ const HotelLevelResultsPage = require("@pages/HotelLevelResultsPage");
 const { CommonPage } = require("@pages/CommonPage");
 const { expect } = require("@playwright/test");
 
+const HOTEL_SUPPLIER_ID_MAP = {
+  expedia: 'EXPEDIARAPID',
+  bookingcom: 'BOOKINGCOM',
+  amadeus: 'AMADEUS',
+  amadeusaggregators: 'AMADEUS-TE',
+  ratehawk: 'RATEHAWK',
+  sabre: 'SABRE',
+  hcorpo: 'HCORPO',
+};
+
+function resolveHotelSupplierId(supplierName, { strict = false } = {}) {
+  const key = supplierName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const supplierId = HOTEL_SUPPLIER_ID_MAP[key];
+  if (!supplierId && strict) throw new Error('Unknown supplier: ' + supplierName);
+  return supplierId || supplierName.toUpperCase();
+}
+
 /**
  * HotelLevelResults DSL
  *
@@ -124,19 +141,7 @@ const HotelLevelResults = {
     if (!supplierName || typeof supplierName !== 'string') {
       throw new Error('supplierName must be a non-empty string, got: ' + typeof supplierName);
     }
-    const SUPPLIER_ID_MAP = {
-      expedia: 'EXPEDIARAPID',
-      bookingcom: 'BOOKINGCOM',
-      amadeus: 'AMADEUS',
-      amadeusteldar: 'AMADEUS-TE',
-      ratehawk: 'RATEHAWK',
-      sabre: 'SABRE',
-    };
-    const key = supplierName.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const supplierId = SUPPLIER_ID_MAP[key];
-    if (!supplierId) {
-      throw new Error('Unknown supplier: ' + supplierName);
-    }
+    const supplierId = resolveHotelSupplierId(supplierName, { strict: true });
     const p = getPageObject(page, HotelLevelResultsPage);
     return p.isSupplierLogoVisible(supplierId);
   },
@@ -550,17 +555,7 @@ const HotelLevelResults = {
   async verifySupplierFilterVisible(page, supplierName) {
     if (!page) throw new Error('page is required');
     if (!supplierName || typeof supplierName !== 'string') throw new Error(`supplierName must be a non-empty string, got: ${typeof supplierName}`);
-    const SUPPLIER_ID_MAP = {
-      expedia: 'EXPEDIARAPID',
-      bookingcom: 'BOOKINGCOM',
-      amadeus: 'AMADEUS',
-      amadeusteldar: 'AMADEUS-TE',
-      ratehawk: 'RATEHAWK',
-      sabre: 'SABRE',
-      hcorpo: 'HCORPO',
-    };
-    const key = supplierName.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const supplierId = SUPPLIER_ID_MAP[key] || supplierName.toUpperCase();
+    const supplierId = resolveHotelSupplierId(supplierName);
     const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
     const isVisible = await hotelLevelResultsPage.isSupplierFilterVisible(supplierId);
     if (!isVisible) throw new Error(`Supplier filter "${supplierName}" (${supplierId}) is not visible in the hotel filter panel`);
@@ -680,20 +675,32 @@ const HotelLevelResults = {
    * @param {import('playwright').Page} page
    * @param {string} supplierName - Supplier name (e.g. "sabre", "amadeus", "expedia")
    */
+  async verifySupplierLogoNotVisible(page, supplierName) {
+    if (!page) throw new Error('page is required');
+    if (!supplierName || typeof supplierName !== 'string') {
+      throw new Error('supplierName must be a non-empty string, got: ' + typeof supplierName);
+    }
+    const supplierId = resolveHotelSupplierId(supplierName, { strict: true });
+    const p = getPageObject(page, HotelLevelResultsPage);
+    const isVisible = await p.isSupplierLogoVisible(supplierId, { timeout: 5000 });
+    if (isVisible) throw new Error(`Supplier logo for "${supplierName}" (${supplierId}) should NOT be visible but was found in hotel results`);
+  },
+
+  async verifySupplierFilterNotVisible(page, supplierName) {
+    if (!page) throw new Error('page is required');
+    if (!supplierName || typeof supplierName !== 'string') {
+      throw new Error('supplierName must be a non-empty string, got: ' + typeof supplierName);
+    }
+    const supplierId = resolveHotelSupplierId(supplierName);
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const isVisible = await hotelLevelResultsPage.isSupplierFilterVisible(supplierId, { timeout: 5000 });
+    if (isVisible) throw new Error(`Supplier filter "${supplierName}" (${supplierId}) should NOT be visible but was found in the hotel filter panel`);
+  },
+
   async clickSupplierFilter(page, supplierName) {
     if (!page) throw new Error('page is required');
     if (!supplierName || typeof supplierName !== 'string') throw new Error('supplierName must be a non-empty string');
-    const SUPPLIER_ID_MAP = {
-      expedia: 'EXPEDIARAPID',
-      bookingcom: 'BOOKINGCOM',
-      amadeus: 'AMADEUS',
-      amadeusteldar: 'AMADEUS-TE',
-      ratehawk: 'RATEHAWK',
-      sabre: 'SABRE',
-      hcorpo: 'HCORPO',
-    };
-    const key = supplierName.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const supplierId = SUPPLIER_ID_MAP[key] || supplierName.toUpperCase();
+    const supplierId = resolveHotelSupplierId(supplierName);
     const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
     await hotelLevelResultsPage.clickSupplierFilterCheckbox(supplierId);
   },

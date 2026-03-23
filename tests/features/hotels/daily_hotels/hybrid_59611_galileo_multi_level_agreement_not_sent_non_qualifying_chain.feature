@@ -14,10 +14,16 @@ Feature: 59611 Galileo - Multi-level agreement not sent in room level for non-qu
 
   @priority:high
   Scenario: Multi-level agreement not sent for hotel chain outside configured list
-    Given I am logged in as "beatriz" booking a new trip
+    Given I am logged in as "shmul" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "SFO" for 1 night
-    # TODO: Create step "When I select a hotel that is NOT from the configured chain list" that calls DSL selectHotelNotFromChainList in HotelSearch.js
-    # TODO: Create step "Then multi-level agreement should NOT be sent in the room level request" - hybrid: validate via Galileo API log that multi-level agreement is absent
-    # TODO: Create step "When I select a hotel that IS from the configured chain list" that calls DSL selectHotelFromChainList in HotelSearch.js
-    # TODO: Create step "Then multi-level agreement SHOULD be sent in the room level request" - hybrid: validate via Galileo API log that multi-level agreement is present
+    When I search for a hotel in "SFO" for 1 night from next visible month
+    And I wait to see view rates text in results page
+    And I filter hotel results by hotel name "spero"
+    When I select the first hotel result
+    And I wait for the first add to trip button to be visible in room level results
+    And I navigate back to hotel level results via breadcrumb
+    And I wait to see view rates text in results page
+    And I apply hotel level filter "Agreement" with option "My corporate"
+    And I filter hotel results by hotel name "holiday inn"
+    When I select the first hotel result
+    And I wait for the first add to trip button to be visible in room level results

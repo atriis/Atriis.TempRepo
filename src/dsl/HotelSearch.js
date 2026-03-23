@@ -4,7 +4,7 @@ const HotelSearchPage = require("@pages/HotelSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const { CommonPage } = require("@pages/CommonPage");
 const { ResultsPage } = require("@pages/ResultsPage");
-const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const { selectDatesByNthAvailable, selectDatesByNthAvailableFromNextVisibleMonth } = require("@utils/calendar.helper");
 const { resolveLocation } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const hotelLocations = require("@data/hotels.json");
@@ -119,6 +119,63 @@ const HotelSearch = {
     // Handle the "Proceed" confirmation modal that may appear before navigation
     // completes (e.g. conflicting trip items). Race it against the URL change so
     // tests without the modal are not delayed.
+    const commonPage = getPageObject(page, CommonPage);
+    await Promise.race([
+      page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 }),
+      commonPage.clickProceedButtonIfVisible(5000),
+    ]);
+    await page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
+    await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
+
+    return { searched: true, where, nights };
+  },
+
+  /**
+   * Searches for a hotel, selecting dates from the next visible month
+   * in the calendar without clicking the forward arrow.
+   */
+  async searchHotelByNightsNextVisibleMonth(
+    page,
+    whereInput = hotelLocations.defaultLocation,
+    options = {},
+  ) {
+    if (!page) throw new Error('page is required');
+
+    let where, nights;
+    if (
+      typeof whereInput === 'object' &&
+      whereInput !== null &&
+      (whereInput.where || whereInput.destination) &&
+      whereInput.nights !== undefined
+    ) {
+      where = resolveLocation(whereInput, ['where', 'destination'], hotelLocations);
+      nights = whereInput.nights || SEARCH_DEFAULTS.HOTEL.NIGHTS;
+    } else {
+      where = resolveLocation(whereInput, ['where', 'destination'], hotelLocations);
+      nights = options.nights || SEARCH_DEFAULTS.HOTEL.NIGHTS;
+    }
+
+    if (nights < 1) throw new Error(`"nights" must be >= 1. Got ${nights}`);
+
+    const hotelSearchPage = getPageObject(page, HotelSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    if (!options.fromDrawer) {
+      await hotelSearchPage.clickHotelTab();
+      await hotelSearchPage.waitForBookAndStayAtYourHotelText();
+    }
+
+    await hotelSearchPage.typeHotelDestination(where);
+    await hotelSearchPage.clickCheckInField();
+
+    // Select from the second visible month table (no arrow clicks)
+    await selectDatesByNthAvailableFromNextVisibleMonth(page, {
+      startIndex: 0,
+      endIndex: nights,
+    });
+
+    await searchPage.waitAndClickSearchButton();
+
     const commonPage = getPageObject(page, CommonPage);
     await Promise.race([
       page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 }),

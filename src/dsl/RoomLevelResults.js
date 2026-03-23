@@ -284,6 +284,7 @@ const RoomLevelResults = {
       hcorpo: 'AMADEUS-HD',
       bookingcom: 'BOOKINGCOM',
       amadeus: 'AMADEUS',
+      amadeusaggregators: 'AMADEUS-TE',
       ratehawk: 'RATEHAWK',
     };
     const key = supplierName.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -504,6 +505,19 @@ const RoomLevelResults = {
     const subtotal = await roomLevelResultsPage.getPriceBreakdownSubtotal();
     const total = await roomLevelResultsPage.getPriceBreakdownTotal();
     return { nightPrice, subtotal, total };
+  },
+
+  /**
+   * Navigates back to hotel level results by clicking a breadcrumb link.
+   * @param {import('playwright').Page} page
+   * @param {string} [linkText='Hotels'] - The breadcrumb link text to click
+   */
+  async navigateBackViaBreakcrumb(page, linkText = 'Hotels') {
+    if (!page) throw new Error('page parameter is required');
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    await roomLevelResultsPage.clickBreadcrumbLink(linkText);
+    await page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
+    await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
   },
 };
 

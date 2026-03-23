@@ -149,8 +149,61 @@ async function selectDatesByValue(
   await end.click();
 }
 
+/**
+ * Selects dates from the SECOND visible month table in the calendar.
+ * Use this when the calendar shows two months side-by-side and you want
+ * to pick from the next month without clicking the forward arrow.
+ *
+ * @param {Object} page - Playwright page instance
+ * @param {Object} opts
+ * @param {number} [opts.startIndex=0] - index of the first selectable day in the second month
+ * @param {number|null} [opts.endIndex=null] - index of the second selectable day
+ */
+async function selectDatesByNthAvailableFromNextVisibleMonth(
+  page,
+  { startIndex = 0, endIndex = null } = {},
+) {
+  if (startIndex < 0) {
+    throw new Error(`startIndex must be >= 0. Received: ${startIndex}`);
+  }
+  if (endIndex !== null && endIndex < 0) {
+    throw new Error(`endIndex must be >= 0. Received: ${endIndex}`);
+  }
+
+  const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
+  const monthTables = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE);
+  const tableCount = await monthTables.count();
+  if (tableCount < 2) {
+    throw new Error(
+      `Expected at least 2 month tables in the calendar, found ${tableCount}. Cannot select from next visible month.`,
+    );
+  }
+
+  const secondMonthTable = monthTables.nth(1);
+  const days = secondMonthTable.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
+  const count = await days.count();
+  const maxIndexNeeded = endIndex === null ? startIndex : Math.max(startIndex, endIndex);
+
+  if (count <= maxIndexNeeded) {
+    throw new Error(
+      `Not enough available dates in the second month table. Found ${count}, need at least ${maxIndexNeeded + 1}.`,
+    );
+  }
+
+  const start = days.nth(startIndex);
+  await start.waitFor({ state: "visible" });
+  await start.click();
+
+  if (endIndex === null) return;
+
+  const end = days.nth(endIndex);
+  await end.waitFor({ state: "visible" });
+  await end.click();
+}
+
 module.exports = {
   selectDatesByNthAvailable,
+  selectDatesByNthAvailableFromNextVisibleMonth,
   selectDatesByValue,
   defaultDateSelectorBuilder,
 };

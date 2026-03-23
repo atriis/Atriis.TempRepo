@@ -60,6 +60,7 @@ const SELECTORS = {
   PRICE_BREAKDOWN_NIGHT_PRICE: '.room-price-details tbody td',
   PRICE_BREAKDOWN_SUBTOTAL: '.price-details .price-details-row:first-child .amount',
   PRICE_BREAKDOWN_TOTAL: '.price-details .price-details-row:has-text("Total") .amount',
+  BREADCRUMB_LINK: (text) => `nav.breadcrumb a:has-text("${text}")`,
 };
 
 class RoomLevelResultsPage {
@@ -715,6 +716,19 @@ class RoomLevelResultsPage {
     } catch {
       // Dialog did not appear, continue
     }
+  }
+
+  /**
+   * Clicks a breadcrumb link by its text (e.g. "Hotels") to navigate back.
+   * @param {string} linkText - The visible text of the breadcrumb link
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async clickBreadcrumbLink(linkText, { timeout = 15000 } = {}) {
+    if (!linkText || typeof linkText !== 'string') throw new Error('linkText must be a non-empty string');
+    const link = this.page.locator(SELECTORS.BREADCRUMB_LINK(linkText)).first();
+    await link.waitFor({ state: 'visible', timeout });
+    await link.click();
   }
 }
 

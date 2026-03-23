@@ -18,4 +18,4 @@ Feature: 37263 Amadeus - Amadeus Plus hotel (Teldar) logo is displayed
     And I have added myself as the traveler
     When I search for a hotel in "Madrid Reina Victoria, Plaza de Santa Ana, Madrid, Spain" for 1 night
     And I wait to see view rates text in results page
-    Then the "Amadeus Teldar" supplier logo should be visible in hotel results
+    Then the "Amadeus Aggregators" supplier logo should be visible in hotel results

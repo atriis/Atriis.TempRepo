@@ -328,3 +328,8 @@ Then("I should see a provided by label in room level results", async function ()
   logger.info("Verifying 'Provided by' label is visible in room level results");
   await RoomLevelResults.verifyProviderLabelVisible(this.page);
 });
+
+When("I navigate back to hotel level results via breadcrumb", async function () {
+  logger.info("Navigating back to hotel level results via breadcrumb");
+  await RoomLevelResults.navigateBackViaBreakcrumb(this.page);
+});

@@ -200,6 +200,16 @@ Then("the {string} supplier filter should be visible", async function (supplierN
   await HotelLevelResults.verifySupplierFilterVisible(this.page, supplierName);
 });
 
+Then("the {string} supplier logo should not be visible in hotel results", async function (supplierName) {
+  logger.info("Verifying supplier logo is NOT visible", { supplierName });
+  await HotelLevelResults.verifySupplierLogoNotVisible(this.page, supplierName);
+});
+
+Then("the {string} supplier filter should not be visible", async function (supplierName) {
+  logger.info("Verifying supplier filter is NOT visible", { supplierName });
+  await HotelLevelResults.verifySupplierFilterNotVisible(this.page, supplierName);
+});
+
 Then("the hotel search check-in date should match the arrival date of the first flight", async function () {
   logger.info("Verifying hotel check-in date matches first flight arrival date", { expectedDate: this.firstFlightArrivalDate });
   await HotelLevelResults.verifyHotelCheckInDateMatchesFlight(this.page, this.firstFlightArrivalDate);
