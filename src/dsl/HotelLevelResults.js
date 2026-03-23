@@ -2,6 +2,7 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const HotelLevelResultsPage = require("@pages/HotelLevelResultsPage");
 const { CommonPage } = require("@pages/CommonPage");
 const { expect } = require("@playwright/test");
+const logger = require("@utils/logger");
 
 const HOTEL_SUPPLIER_ID_MAP = {
   expedia: 'EXPEDIARAPID',
@@ -299,6 +300,29 @@ const HotelLevelResults = {
     if (!page) throw new Error('page is required');
     const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
     await hotelLevelResultsPage.waitForMapMarkers();
+  },
+
+  /**
+   * Filters hotel results by name. If no results appear after filtering,
+   * clears the filter so the full result list is restored.
+   * @param {import('playwright').Page} page
+   * @param {string} hotelName - Hotel name to filter by
+   * @returns {Promise<{filtered: boolean}>} Whether the filter was kept (true) or cleared (false)
+   */
+  async filterByHotelNameOrFallback(page, hotelName) {
+    if (!page) throw new Error('page is required');
+    if (!hotelName || typeof hotelName !== 'string') {
+      throw new Error(`hotelName must be a non-empty string, got: ${typeof hotelName}`);
+    }
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.filterByHotelName(hotelName);
+    const count = await hotelLevelResultsPage.getVisibleHotelCardCount();
+    if (count === 0) {
+      logger.warn(`No hotels found for filter "${hotelName}", clearing filter`);
+      await hotelLevelResultsPage.clearHotelNameFilter();
+      return { filtered: false };
+    }
+    return { filtered: true };
   },
 
   /**

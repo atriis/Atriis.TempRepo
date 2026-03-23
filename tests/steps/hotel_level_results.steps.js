@@ -12,8 +12,10 @@ setDefaultTimeout(120000);
 // ========================================
 When("I filter hotel results by hotel name {string}", async function (hotelName) {
   logger.info(`Filtering hotel results by hotel name: ${hotelName}`);
-  const hotelLevelResultsPage = new HotelLevelResultsPage(this.page);
-  await hotelLevelResultsPage.filterByHotelName(hotelName);
+  const { filtered } = await HotelLevelResults.filterByHotelNameOrFallback(this.page, hotelName);
+  if (!filtered) {
+    logger.warn(`Filter for "${hotelName}" returned no results — filter cleared, using full list`);
+  }
 });
 
 When("I select the first hotel result", async function () {

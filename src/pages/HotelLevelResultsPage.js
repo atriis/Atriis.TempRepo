@@ -235,6 +235,15 @@ class HotelLevelResultsPage {
     await this.page.locator(SELECTORS.SEARCH_HOTEL_FILTER).fill(hotelName);
   }
 
+  async clearHotelNameFilter() {
+    await this.page.locator(SELECTORS.SEARCH_HOTEL_FILTER).clear();
+  }
+
+  async getVisibleHotelCardCount({ timeout = 5000 } = {}) {
+    await this.page.waitForTimeout(timeout);
+    return this.page.locator(SELECTORS.HOTEL_CARD).count();
+  }
+
   /**
    * Checks if CO2 eco-label is visible in hotel level results.
    * @param {number} timeout - Maximum wait time in milliseconds
