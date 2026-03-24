@@ -677,6 +677,55 @@ jobs:
           echo "| Daily Hotels | \`${{ needs.daily-hotels-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Daily Rails | \`${{ needs.daily-rails-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
 
+      - name: Parse JUnit Results into Summary
+        if: always()
+        shell: bash
+        run: |
+          XML_FILES=$(find all-results -name "cucumber-junit.xml" -type f 2>/dev/null)
+          if [ -z "$XML_FILES" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📄 JUnit Test Results" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ No JUnit XML files found" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📄 JUnit Test Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            node -e "
+              const fs = require('fs');
+              const files = process.argv.slice(1);
+              const rows = [];
+              let totalTests = 0, totalFail = 0, totalError = 0, totalSkipped = 0, totalTime = 0;
+
+              for (const file of files) {
+                const xml = fs.readFileSync(file, 'utf8');
+                // Extract suite-level attributes from each <testsuite>
+                const suiteRegex = /<testsuite\s+([^>]+)>/g;
+                let match;
+                while ((match = suiteRegex.exec(xml)) !== null) {
+                  const attrs = match[1];
+                  const get = (name) => { const m = attrs.match(new RegExp(name + '=\"([^\"]*)\"|' + name + \"='([^']*)'\"));  return m ? (m[1] || m[2] || '') : ''; };
+                  const name = get('name') || 'Unknown';
+                  const tests = parseInt(get('tests')) || 0;
+                  const failures = parseInt(get('failures')) || 0;
+                  const errors = parseInt(get('errors')) || 0;
+                  const skipped = parseInt(get('skipped')) || 0;
+                  const time = parseFloat(get('time')) || 0;
+                  const passed = tests - failures - errors - skipped;
+                  totalTests += tests; totalFail += failures; totalError += errors; totalSkipped += skipped; totalTime += time;
+                  const status = (failures + errors) > 0 ? '❌ FAIL' : '✅ PASS';
+                  rows.push('| ' + name.substring(0, 60) + ' | ' + tests + ' | ' + passed + ' | ' + (failures + errors) + ' | ' + skipped + ' | ' + time.toFixed(1) + 's | ' + status + ' |');
+                }
+              }
+
+              const totalPassed = totalTests - totalFail - totalError - totalSkipped;
+              console.log('| Suite | Tests | Passed | Failed | Skipped | Time | Status |');
+              console.log('|-------|-------|--------|--------|---------|------|--------|');
+              rows.forEach(r => console.log(r));
+              console.log('| **Total** | **' + totalTests + '** | **' + totalPassed + '** | **' + (totalFail + totalError) + '** | **' + totalSkipped + '** | **' + totalTime.toFixed(1) + 's** | ' + ((totalFail + totalError) > 0 ? '❌' : '✅') + ' |');
+            " $XML_FILES >> $GITHUB_STEP_SUMMARY
+          fi
+        continue-on-error: true
+
       - name: Check for test results
         if: always()
         id: check-results
