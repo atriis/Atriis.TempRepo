@@ -19,6 +19,7 @@ Feature: 72550 Ratehawk - Hotel price is excluded from the travel plan email
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
+    And I log the trip number from the URL
     Then the booking status should be "Pending booking"
     When I click the share itinerary button
     Then the travel plan email should not include the hotel price

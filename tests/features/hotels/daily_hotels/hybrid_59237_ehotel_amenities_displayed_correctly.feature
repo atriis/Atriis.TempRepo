@@ -20,3 +20,4 @@ Feature: 59237 eHotel - Hotel amenities displayed correctly according to supplie
     Then hotel 1 should display the "Gym" amenity
     When I sort hotel results by "Price"
     Then hotel 1 should not display the "Gym" amenity
+    And I log the trip number from the URL

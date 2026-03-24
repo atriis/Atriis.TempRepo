@@ -20,5 +20,6 @@ Feature: 65011 Expedia - OwnerType is saved correctly when adding FOP in cart
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
+    And I log the trip number from the URL
     When I add a credit card as payment method
     Then the payment type should be "Paid by Traveler"

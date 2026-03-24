@@ -16,7 +16,7 @@ Feature: 56841 Galileo - Hotel - Booking specific hotel
   Scenario: Booking a specific hotel
     Given I am logged in as "galileogaliei" booking a new trip
     And I have added a random guest traveler
-    When I search for a hotel in "'The Ritz-Carlton, Dubai International Financial Centre'" for 1 night
+    When I search for a hotel in "The Ritz-Carlton, Dubai International Financial Centre" for 1 night
     And I wait to see view rates text in results page
     And I filter hotel results by hotel name "the ritz-carlton, dubai international financial centre"
     And I select the first hotel result

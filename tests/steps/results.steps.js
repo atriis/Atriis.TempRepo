@@ -105,3 +105,11 @@ Then("the reset filters button should be visible and disabled", async function (
   logger.info("Verifying reset filters button is visible and disabled");
   await Results.validateResetFiltersButtonIsVisibleAndDisabled(this.page);
 });
+
+When("I log the trip number from the URL", async function () {
+  const url = this.page.url();
+  const match = url.match(/\/trips\/(\d+)/);
+  const tripId = match ? match[1] : 'unknown';
+  logger.info(`[TRIP ID] ${tripId}`, { tripId, url });
+  console.log(`\n>>> TRIP ID: ${tripId} <<<\n`);
+});

@@ -19,6 +19,7 @@ Feature: HYBRID for 73878 Email adress is sent according to the web confirmation
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
+    And I log the trip number from the URL
     And I fill credit card cvv if needed
     When I proceed to checkout
     And I complete the booking

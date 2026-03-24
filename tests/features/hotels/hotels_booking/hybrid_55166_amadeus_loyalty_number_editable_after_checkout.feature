@@ -19,6 +19,7 @@ Feature: 55166 Amadeus - Loyalty number can be edited after hotel checkout
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
+    And I log the trip number from the URL
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"

@@ -18,6 +18,7 @@ Feature: 59611 Galileo - Multi-level agreement not sent in room level for non-qu
     And I have added myself as the traveler
     When I search for a hotel in "SFO" for 1 night from day 12 of next visible month
     And I wait to see view rates text in results page
+    And I log the trip number from the URL
     And I filter hotel results by hotel name "spero"
     When I select the first hotel result
     And I wait for the first add to trip button to be visible in room level results

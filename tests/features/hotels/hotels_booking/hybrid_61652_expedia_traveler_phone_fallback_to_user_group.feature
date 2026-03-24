@@ -32,6 +32,7 @@ Feature: 61652 HYBRID Expedia - Send the traveler's phone in case valid, and the
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
+    And I log the trip number from the URL
     And I fill credit card cvv if needed
     When I proceed to checkout
     And I complete the booking

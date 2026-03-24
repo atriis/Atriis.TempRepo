@@ -19,6 +19,7 @@ Feature: 60144 Ratehawk - Special request information is sent to supplier
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
+    And I log the trip number from the URL
     When I add a special request with text "Please arrange for a quiet room"
     When I proceed to checkout
     And I complete the booking
