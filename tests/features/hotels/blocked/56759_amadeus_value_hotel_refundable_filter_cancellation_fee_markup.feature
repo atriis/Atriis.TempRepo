@@ -7,6 +7,7 @@
 # Updated: 2025-06-09T10:38:30Z
 
 @regression @provider:amadeus_value_hotel
+#Blocked by supplier
 Feature: 56759 Amadeus Value Hotel - Refundable filter with cancellation fee and markup
   As a corporate traveler using Amadeus Value Hotels
   I want to filter by refundable rooms and see the cancellation fee including markup

@@ -7,6 +7,7 @@
 # Updated: 2025-09-16T06:13:45Z
 
 @regression @provider:general
+#Blocked by supplier
 Feature: 52657 Go Global - FOP validation and credit card booking for guest
   As a travel agent using Go Global
   I want to validate the payment methods available and book with a credit card for a guest traveler

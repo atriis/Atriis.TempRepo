@@ -227,14 +227,14 @@ Then("the {string} supplier filter should not be visible", async function (suppl
   await HotelLevelResults.verifySupplierFilterNotVisible(this.page, supplierName);
 });
 
-Then("the hotel search check-in date should match the arrival date of the first flight", async function () {
-  logger.info("Verifying hotel check-in date matches first flight arrival date", { expectedDate: this.firstFlightArrivalDate });
-  await HotelLevelResults.verifyHotelCheckInDateMatchesFlight(this.page, this.firstFlightArrivalDate);
+Then("the hotel search check-in date should match the arrival date of the outbound first flight", async function () {
+  logger.info("Verifying hotel check-in date matches outbound first flight arrival date", { expectedDate: this.outboundFirstFlightArrivalDate });
+  await HotelLevelResults.verifyHotelCheckInDateMatchesFlight(this.page, this.outboundFirstFlightArrivalDate);
 });
 
-Then("the hotel search check-out date should match the departure date of the second flight", async function () {
-  logger.info("Verifying hotel check-out date matches second flight departure date", { expectedDate: this.secondFlightDepartureDate });
-  await HotelLevelResults.verifyHotelCheckOutDateMatchesFlight(this.page, this.secondFlightDepartureDate);
+Then("the hotel search check-out date should match the departure date of the inbound first flight", async function () {
+  logger.info("Verifying hotel check-out date matches inbound first flight departure date", { expectedDate: this.inboundFirstFlightDepartureDate });
+  await HotelLevelResults.verifyHotelCheckOutDateMatchesFlight(this.page, this.inboundFirstFlightDepartureDate);
 });
 
 Then("preferred hotels should be displayed in results", async function () {

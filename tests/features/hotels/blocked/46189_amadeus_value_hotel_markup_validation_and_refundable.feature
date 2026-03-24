@@ -7,6 +7,7 @@
 # Updated: 2025-01-27T12:38:36Z
 
 @regression @provider:amadeus_value_hotel
+#Blocked by supplier
 Feature: 46189 Amadeus Value Hotel - Markup validation in room list and refundable booking
   As a corporate traveler using Amadeus Value Hotels
   I want to see the markup applied to hotel rates in room level
