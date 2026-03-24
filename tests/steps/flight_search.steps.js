@@ -68,3 +68,11 @@ When("I search for a round trip flight from {string} to {string} with advanced s
     parallelHotel: true,
   });
 });
+
+When("I search for a round trip flight from {string} to {string} with advanced search as return date type {string} with parallel hotel", async function (from, to, returnDateType) {
+  logger.info('Searching for advanced round trip flight with parallel hotel', { from, to, returnDateType });
+  await FlightSearch.searchRoundTripAdvanced(this.page, from, to, {
+    returnDateType,
+    parallelHotel: true,
+  });
+});

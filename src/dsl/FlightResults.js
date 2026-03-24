@@ -486,6 +486,19 @@ async isGreenCircleIconVisibleInPricingOptions(page, index = 0) {
     return flightResultsPage.getFlightDepartureDate(cardIndex);
   },
 
+  /**
+   * Extracts the inbound (return) departure date from a round-trip flight result card.
+   * @param {Object} page - Playwright page
+   * @param {number} cardIndex - Zero-based index (default: 0)
+   * @returns {Promise<string>} Date text like "Mon, 15 Dec"
+   */
+  async extractInboundFlightDepartureDate(page, cardIndex = 0) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    return flightResultsPage.getInboundFlightDepartureDate(cardIndex);
+  },
+
 }
 
 module.exports = FlightResults;

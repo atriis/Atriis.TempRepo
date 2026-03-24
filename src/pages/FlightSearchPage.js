@@ -8,6 +8,8 @@ const SELECTORS = {
   TRIP_TYPE: ".search-for-select  .el-radio",
   ADVANCED_SEARCH_BUTTON: ".advanced-search-container .btn",
   ALLOW_NEARBY_AIRPORTS_CHECKBOX: ".advanced-search-container .el-checkbox__inner",
+  // Advanced search — departure leg selectors
+  DEPARTURE_APP_SELECT: 'section.departure .app-select',
   // Advanced search — return leg selectors
   RETURN_APP_SELECT: 'section.return .app-select',
   DROPDOWN_OPTION: (text) => `.el-select-dropdown__item:visible:has-text("${text}")`,
@@ -74,6 +76,16 @@ class FlightSearchPage {
    */
   async toggleAllowNearbyAirportsCheckbox() {
     await this.page.locator(SELECTORS.ALLOW_NEARBY_AIRPORTS_CHECKBOX).click();
+  }
+
+  /**
+   * Selects a value from the departure leg date type dropdown in advanced search.
+   * Date type is the first app-select in the departure section.
+   * @param {string} value - "Departure" or "Arrival"
+   */
+  async selectDepartureDateType(value) {
+    await this.page.locator(SELECTORS.DEPARTURE_APP_SELECT).nth(0).click();
+    await this.page.locator(SELECTORS.DROPDOWN_OPTION(value)).click();
   }
 
   /**

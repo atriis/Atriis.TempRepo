@@ -526,5 +526,19 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     return (await departureDate.textContent()).trim();
   }
 
+  /**
+   * Extracts the inbound (return) departure date from a round-trip flight result card.
+   * In a round-trip card, .flight-date elements are: outbound departure (0), outbound arrival (1),
+   * inbound departure (2), inbound arrival (3).
+   * @param {number} cardIndex - Zero-based index of the flight preview card (default: 0)
+   * @returns {Promise<string>} The inbound departure date text
+   */
+  async getInboundFlightDepartureDate(cardIndex = 0) {
+    const card = this.page.locator(SELECTORS.FLIGHT_PREVIEW).nth(cardIndex);
+    await card.waitFor({ state: 'visible', timeout: 60000 });
+    const departureDate = card.locator(SELECTORS.FLIGHT_DATE).nth(2);
+    return (await departureDate.textContent()).trim();
+  }
+
 }
 module.exports = FlightResultsPage;

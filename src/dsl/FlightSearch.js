@@ -265,7 +265,8 @@ const FlightSearch = {
    * @param {string} from - Origin airport code
    * @param {string} to - Destination airport code
    * @param {Object} options
-   * @param {string} options.returnDateType - "Departure" or "Arrival" (default: null = don't change)
+   * @param {string} options.departureDateType - "Departure" or "Arrival" for outbound leg (default: null = don't change)
+   * @param {string} options.returnDateType - "Departure" or "Arrival" for return leg (default: null = don't change)
    * @param {string} options.returnFlightTime - "Anytime", "Morning", etc. (default: null = don't change)
    * @param {boolean} options.parallelHotel - Check parallel hotel search (default: false)
    */
@@ -274,6 +275,7 @@ const FlightSearch = {
     from,
     to,
     {
+      departureDateType = null,
       returnDateType = null,
       returnFlightTime = null,
       parallelHotel = false,
@@ -285,7 +287,7 @@ const FlightSearch = {
     if (!from || typeof from !== 'string') throw new Error('from must be a non-empty string, got: ' + from);
     if (!to || typeof to !== 'string') throw new Error('to must be a non-empty string, got: ' + to);
 
-    logger.info('Starting advanced round trip flight search', { from, to, returnDateType, returnFlightTime, parallelHotel });
+    logger.info('Starting advanced round trip flight search', { from, to, departureDateType, returnDateType, returnFlightTime, parallelHotel });
 
     const flightSearchPage = getPageObject(page, FlightSearchPage);
     const searchPage = getPageObject(page, SearchPage);
@@ -322,11 +324,15 @@ const FlightSearch = {
     await flightSearchPage.clickAdvancedReturnDateField();
     // Wait for return calendar panel open animation to settle
     await page.waitForTimeout(500);
-    await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: returnIndex,
       endIndex: null,
     });
+
+    // Change departure date type if specified
+    if (departureDateType) {
+      await flightSearchPage.selectDepartureDateType(departureDateType);
+    }
 
     // Change return date type if specified
     if (returnDateType) {

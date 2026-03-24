@@ -304,15 +304,15 @@ Then("the Flight Duration filter for {string} should be visible", async function
   await FlightResults.assertFlightDurationFromLocationVisible(this.page, location);
 });
 
-When("I extract the arrival date of the first flight", async function () {
-  logger.info("Extracting arrival date of the first flight");
-  this.firstFlightArrivalDate = await FlightResults.extractFlightArrivalDate(this.page, 0);
-  logger.info("First flight arrival date extracted", { date: this.firstFlightArrivalDate });
+When("I extract the arrival date of the outbound first flight option", async function () {
+  logger.info("Extracting arrival date of the outbound first flight option");
+  this.outboundFirstFlightArrivalDate = await FlightResults.extractFlightArrivalDate(this.page, 0);
+  logger.info("Outbound first flight arrival date extracted", { date: this.outboundFirstFlightArrivalDate });
 });
 
-When("I extract the departure date of the second flight", async function () {
-  logger.info("Extracting departure date of the second flight (return leg)");
-  this.secondFlightDepartureDate = await FlightResults.extractFlightDepartureDate(this.page, 0);
-  logger.info("Second flight departure date extracted", { date: this.secondFlightDepartureDate });
+When("I extract the departure date of the inbound first flight option", async function () {
+  logger.info("Extracting departure date of the inbound first flight option");
+  this.inboundFirstFlightDepartureDate = await FlightResults.extractInboundFlightDepartureDate(this.page, 0);
+  logger.info("Inbound first flight departure date extracted", { date: this.inboundFirstFlightDepartureDate });
 });
 

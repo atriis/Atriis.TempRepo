@@ -64,7 +64,7 @@ const SELECTORS = {
   // Supplier filter checkbox by supplier name (img alt contains supplier ID)
   SUPPLIER_FILTER_ITEM: (supplierId) => `.hotel-filter .suppliers-filter .el-checkbox:has(img[alt*="${supplierId}"])`,
   // Hotel info bar date text (check-in and check-out displayed as "MMM dd-MMM dd")
-  HOTEL_INFO_BAR_DATES: '.hotel-info-bar .date-room-wrapper p:first-child',
+  HOTEL_INFO_BAR_DATES: '.hotel-info-bar .date-room-wrapper p:first-of-type',
   // Hotel name text inside hotel cards
   HOTEL_NAME: '.hotel-preview .hotel-name h4',
 };
