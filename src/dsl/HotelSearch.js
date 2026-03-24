@@ -136,6 +136,10 @@ const HotelSearch = {
   /**
    * Searches for a hotel, selecting dates from the next visible month
    * in the calendar without clicking the forward arrow.
+   * @param {import('playwright').Page} page
+   * @param {Object} whereInput - { where, nights, startDay? }
+   * @param {number} [whereInput.startDay=1] - Day of month to check in (1-based)
+   * @param {Object} [options]
    */
   async searchHotelByNightsNextVisibleMonth(
     page,
@@ -168,13 +172,17 @@ const HotelSearch = {
       await hotelSearchPage.waitForBookAndStayAtYourHotelText();
     }
 
+    const startDay = whereInput.startDay || options.startDay || 1;
+    if (startDay < 1 || startDay > 28) throw new Error(`startDay must be between 1 and 28, got: ${startDay}`);
+    const startIndex = startDay - 1;
+
     await hotelSearchPage.typeHotelDestination(where);
     await hotelSearchPage.clickCheckInField();
 
     // Select from the second visible month table (no arrow clicks)
     await selectDatesByNthAvailableFromNextVisibleMonth(page, {
-      startIndex: 0,
-      endIndex: nights,
+      startIndex,
+      endIndex: startIndex + nights,
     });
 
     await searchPage.waitAndClickSearchButton();

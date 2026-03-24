@@ -303,6 +303,20 @@ const HotelLevelResults = {
   },
 
   /**
+   * Filters hotel results by name. Throws if no results appear after filtering.
+   * @param {import('playwright').Page} page
+   * @param {string} hotelName - Hotel name to filter by
+   */
+  async filterByHotelName(page, hotelName) {
+    if (!page) throw new Error('page is required');
+    if (!hotelName || typeof hotelName !== 'string') {
+      throw new Error(`hotelName must be a non-empty string, got: ${typeof hotelName}`);
+    }
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.filterByHotelName(hotelName);
+  },
+
+  /**
    * Filters hotel results by name. If no results appear after filtering,
    * clears the filter so the full result list is restored.
    * @param {import('playwright').Page} page

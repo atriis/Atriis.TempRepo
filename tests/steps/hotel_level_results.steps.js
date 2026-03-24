@@ -12,6 +12,11 @@ setDefaultTimeout(120000);
 // ========================================
 When("I filter hotel results by hotel name {string}", async function (hotelName) {
   logger.info(`Filtering hotel results by hotel name: ${hotelName}`);
+  await HotelLevelResults.filterByHotelName(this.page, hotelName);
+});
+
+When("I filter hotel results by hotel name {string} or skip if unavailable", async function (hotelName) {
+  logger.info(`Filtering hotel results by hotel name (with fallback): ${hotelName}`);
   const { filtered } = await HotelLevelResults.filterByHotelNameOrFallback(this.page, hotelName);
   if (!filtered) {
     logger.warn(`Filter for "${hotelName}" returned no results — filter cleared, using full list`);

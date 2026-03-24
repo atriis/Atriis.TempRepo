@@ -19,7 +19,7 @@ Feature: 61097 Galileo - Book hotel for 2 travelers, 2 nights with price verific
     And I have added a random guest traveler
     When I search for a hotel in "London" for 2 nights
     And I wait to see view rates text in results page
-    And I filter hotel results by hotel name "Travelodge Birmingham Fort Dunlop"
+    And I filter hotel results by hotel name "Travelodge Birmingham Fort Dunlop" or skip if unavailable
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the cart should show 2 rooms badge

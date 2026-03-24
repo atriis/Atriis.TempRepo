@@ -171,7 +171,9 @@ async function selectDatesByNthAvailableFromNextVisibleMonth(
   }
 
   const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
+  await picker.waitFor({ state: "visible", timeout: 10000 });
   const monthTables = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE);
+  await monthTables.nth(1).waitFor({ state: "attached", timeout: 10000 });
   const tableCount = await monthTables.count();
   if (tableCount < 2) {
     throw new Error(

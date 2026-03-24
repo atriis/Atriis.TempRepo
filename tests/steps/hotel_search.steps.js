@@ -44,6 +44,11 @@ When("I search for a hotel in {string} for {int} night(s) from next visible mont
   await HotelSearch.searchHotelByNightsNextVisibleMonth(this.page, { where: location, nights });
 });
 
+When("I search for a hotel in {string} for {int} night(s) from day {int} of next visible month", async function (location, nights, startDay) {
+  logger.info("Searching for hotel from specific day of next visible month", { location, nights, startDay });
+  await HotelSearch.searchHotelByNightsNextVisibleMonth(this.page, { where: location, nights, startDay });
+});
+
 When("I wait for hotel results to load", async function () {
   logger.info("Waiting for hotel results page to load");
   await HotelSearch.waitForHotelResults(this.page);
