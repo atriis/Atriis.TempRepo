@@ -15,8 +15,9 @@ Feature: 28676 General - OOP hotel booking with justification and cancel
   @priority:critical
   Scenario: OOP hotel requires justification in hotel, room, and cart levels
     Given I am logged in as "shani_nl" booking a new trip
-    And I have added traveler by name "Shani Corp"
-    When I search for a hotel in "Denver" for 1 night
+    And I have added traveler by name "Justin List"
+    When I initiate a hotel search in "hyatt place denver downtown" for 1 night
+    And I select the trip purpose as "BILLABLE" and proceed
     Then the out of policy indicator should be visible in results
     And the out of policy tooltip in results should be "Out of policy"
     When I select the first hotel result
