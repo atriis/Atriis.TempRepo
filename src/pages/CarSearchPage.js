@@ -8,8 +8,11 @@ const logger = require("@utils/logger").child("CarSearchPage");
 const SELECTORS = {
   CAR_TAB: "#tab-car",
   DROPOFF_DATE_INPUT: "[placeholder='Drop-off Date']",
+  DATE_PICKER_PANEL: ".el-picker-panel:visible",
   PICKUP_NEXT_ARROW: "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
   DROPOFF_NEXT_ARROW: "span.el-date-picker__next-btn button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']",
+  DATE_RANGE_HEADER_LABEL: ".el-date-range-picker__header div",
+  DATE_PICKER_HEADER_LABEL: ".el-date-picker__header-label",
   DROPOFF_DIFFERENT_LOCATION_CHECKBOX: ".car-form .el-checkbox__inner",
 
   // XPath used due to complex dropdown structure
@@ -23,6 +26,66 @@ const SELECTORS = {
 class CarSearchPage {
   constructor(page) {
     this.page = page;
+  }
+
+  getActiveDatePickerPanel() {
+    return this.page.locator(SELECTORS.DATE_PICKER_PANEL).last();
+  }
+
+  async getDropoffSecondCalendarCurrentMonthLabel() {
+    const panel = this.getActiveDatePickerPanel();
+    await panel.waitFor({ state: "visible" });
+
+    const rangeHeaders = panel.locator(SELECTORS.DATE_RANGE_HEADER_LABEL);
+    const rangeHeaderCount = await rangeHeaders.count();
+
+    if (rangeHeaderCount > 0) {
+      const texts = (await rangeHeaders.allTextContents())
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
+
+      if (texts.length >= 2) {
+        return texts[1];
+      }
+
+      if (texts.length === 1) {
+        return texts[0];
+      }
+    }
+
+    const singlePickerHeaders = panel.locator(SELECTORS.DATE_PICKER_HEADER_LABEL);
+
+    if (await singlePickerHeaders.first().isVisible()) {
+      const texts = (await singlePickerHeaders.allTextContents())
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
+
+      if (texts.length >= 2) {
+        return texts[1];
+      }
+
+      if (texts.length === 1) {
+        return texts[0];
+      }
+    }
+
+    throw new Error("Could not read drop-off second calendar month label");
+  }
+
+  async waitForDropoffSecondCalendarMonthChange(previousLabel, timeout = 3000) {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const currentLabel = await this.getDropoffSecondCalendarCurrentMonthLabel();
+      if (currentLabel !== previousLabel) {
+        return currentLabel;
+      }
+      await this.page.waitForTimeout(100);
+    }
+
+    const currentLabel = await this.getDropoffSecondCalendarCurrentMonthLabel();
+    throw new Error(
+      `Drop-off second calendar month did not change. Before: "${previousLabel}", After: "${currentLabel}"`,
+    );
   }
 
   /** Switches UI to Car search if needed */
@@ -70,18 +133,49 @@ class CarSearchPage {
     if (times < 1) {
       throw new Error(`times must be >= 1, got ${times}`);
     }
-    const secondNextArrow = this.page
-      .locator(SELECTORS.DROPOFF_NEXT_ARROW)
-      .nth(1);
 
-    // Ensure the arrow is initially visible
-    await secondNextArrow.waitFor({ state: "visible" });
-
+    const maxRetriesPerMonthChange = 3;
     for (let i = 0; i < times; i++) {
-      await secondNextArrow.click();
+      let monthAfter = null;
+      let monthBeforeForSuccessLog = null;
+      let lastError = null;
 
-      // Wait for the calendar to re-render and the arrow to be usable again
-      await secondNextArrow.waitFor({ state: "visible" });
+      for (let attempt = 1; attempt <= maxRetriesPerMonthChange; attempt++) {
+        const monthBefore = await this.getDropoffSecondCalendarCurrentMonthLabel();
+        monthBeforeForSuccessLog = monthBefore;
+        const secondNextArrow = this.getActiveDatePickerPanel()
+          .locator(SELECTORS.DROPOFF_NEXT_ARROW)
+          .first();
+
+        await secondNextArrow.waitFor({ state: "visible" });
+
+        try {
+          await secondNextArrow.click({ timeout: 2000 });
+        } catch {
+          // Fallback for transient overlay/interception issues.
+          await secondNextArrow.click({ force: true, timeout: 2000 });
+        }
+
+        await secondNextArrow.waitFor({ state: "visible" });
+
+        try {
+          monthAfter = await this.waitForDropoffSecondCalendarMonthChange(monthBefore);
+          break;
+        } catch (error) {
+          lastError = error;
+          if (attempt < maxRetriesPerMonthChange) {
+            // Re-open calendar to recover from stale/stuck date picker state.
+            await this.clickDropoffDateField();
+            await this.getActiveDatePickerPanel().waitFor({ state: "visible" });
+          }
+        }
+      }
+
+      if (!monthAfter) {
+        throw new Error(
+          `Failed to move drop-off second calendar month after ${maxRetriesPerMonthChange} attempts. Last error: ${lastError?.message || "unknown error"}`,
+        );
+      }
     }
   }
 
@@ -95,8 +189,8 @@ class CarSearchPage {
    * @throws {Error} If agencyName is not provided
    */
   async typeRentalAgencyName(agencyName) {
-    if (!agencyName || typeof agencyName !== 'string') {
-      throw new Error('agencyName must be a non-empty string');
+    if (!agencyName || typeof agencyName !== "string") {
+      throw new Error("agencyName must be a non-empty string");
     }
     const rentalAgencyField = this.page.locator(
       SELECTORS.RENTAL_AGENCY_DROPDOWN_FIELD,
@@ -113,8 +207,8 @@ class CarSearchPage {
    * @throws {Error} If agencyName is not provided
    */
   async clickRentalAgencyDropdownOption(agencyName) {
-    if (!agencyName || typeof agencyName !== 'string') {
-      throw new Error('agencyName must be a non-empty string');
+    if (!agencyName || typeof agencyName !== "string") {
+      throw new Error("agencyName must be a non-empty string");
     }
     await this.page
       .locator(SELECTORS.RENTAL_AGENCY_DROPDOWN_OPTION(agencyName))
