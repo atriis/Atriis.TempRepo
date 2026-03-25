@@ -116,7 +116,7 @@ For comprehensive guidelines on each layer, see:
 
 - **[Cucumber Implementation](instructions/cucumber.md)** – BDD execution, hooks, world setup, tags, step definitions
 - **[Tests (Gherkin)](instructions/tests.md)** – Feature files, scenario syntax, tags, step placeholders
-- **[Step Definitions](instructions/tests.md#step-definitions)** – Glue code connecting Gherkin to DSL
+- **[Step Definitions](instructions/tests.md)** – Glue code connecting Gherkin to DSL
 - **[DSL](instructions/dsl.md)** – Business workflows, method composition, assertions
 - **[Page Objects](instructions/page-objects.md)** – Locator rules, atomic actions, initialization
 - **[Error Handling](instructions/error-handling.md)** – Input validation, error messages
