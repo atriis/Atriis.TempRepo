@@ -1,155 +1,149 @@
-# Atriis Automation – AI-Assisted Development Guide
+﻿# Atriis Automation – AI-Assisted Development Guide
 
-This guide explains how to use GitHub Copilot effectively and safely in this Playwright + Cucumber BDD test automation framework.
+This guide explains how to use GitHub Copilot and the custom AI agents in this Playwright + Cucumber BDD test automation framework.
 
-**For non-developers (QA Engineers)**: This project provides approved prompts that simplify AI usage. You don't need to write complex instructions—just follow the steps below.
-
----
-
-## Quick Start (3 Steps)
-
-Using prompts in this repository is simple and **always the same**:
-
-1. Open the prompt file you need from the `prompts/` folder
-2. Copy **the entire content** of the file
-3. Paste it into **Copilot Chat**
-4. Below the pasted prompt, add your specific context:
-   - scenario
-   - files
-   - error messages
-   - questions
-
-That’s it.
-
-You do **not** need to:
-- reference the filename in chat
-- modify the prompt text
-- configure Copilot settings
-- choose a model or agent
-- invent your own wording
-
-The behavior comes from **what you paste**, not from the filename.
+**For non-developers (QA Engineers)**: This project has ready-to-use agents that do the heavy lifting. You do not need to write complex Copilot prompts. Just invoke the right agent and describe what you need.
 
 ---
 
-## Step 1 – Decide what you want to do
+## Quick Start
 
-Pick **ONE** of the actions below:
+Using an agent is always the same three steps:
 
-### A) Review existing code
-→ Use: `code-reviewer.prompt.md`
+1. **Open Copilot Chat** in VS Code
+2. **Type the agent name** in the chat -- e.g. @feature-pipeline
+3. **Describe your task** below the agent name
 
-### B) Create a new automated test
-→ Use: `generate-test.prompt.md`
-
-### C) Add or update a DSL method
-→ Use: `generate-dsl-method.prompt.md`
-
-### D) Understand existing code
-→ Use: `explain-code.prompt.md`
-
-❗ Do NOT invent your own prompts  
-❗ Always start from one of the approved prompt files
+That's it. The agent reads the codebase, follows project rules, and produces working code.
 
 ---
 
-## Step 2 – Paste the prompt content
+## Available Agents
 
-1. Open the correct prompt file from the `prompts/` folder
-2. Copy **the entire content**
-3. Paste it into Copilot Chat **without changes**
+All agents live in .github/agents/. See [AGENTS.md](AGENTS.md) for the full registry.
 
----
+### Orchestrators -- end-to-end workflows
 
-## Step 3 – Provide the required information
+| Agent | How to invoke | What it does |
+|-------|--------------|-------------|
+| @ado-pipeline | @ado-pipeline 74500 | ADO work item -- generates Gherkin test -- runs -- fixes until passing -- reports |
+| @feature-pipeline | Describe a scenario | QA description -- generates feature + steps + DSL -- runs -- fixes -- reports |
+| @regression-pipeline | @regression-pipeline @smoke | Runs test suite -- collects failures -- auto-fixes -- generates report |
+| @ci-monitor | (no args) | Checks latest CI run -- fixes failures -- daily health report |
+| @todo-pipeline | @todo-pipeline path/ | Scans TODO steps -- implements missing DSL/steps -- runs until passing |
 
-After pasting the prompt, add the information below depending on your task.
+### Sub-Agents -- also usable standalone
 
-### If you are reviewing code
-Include:
-- What changed (short description)
-- Files changed (paths or diff)
-- Any known concerns or questions
+| Agent | Purpose |
+|-------|---------|
+| @ado-fetcher | Fetch and parse an ADO work item into structured context |
+| @test-generator-pipeline | Generate Gherkin + steps + DSL from structured context |
+| @test-runner-pipeline | Run tests and capture structured results |
+| @test-fixer-pipeline | Analyse failures and apply the smallest safe fixes |
+| @test-reporter-pipeline | Generate reports, write to Cortex.QA, post ADO comments |
+| @ci-checker | Parse GitHub Actions results and return structured failures |
 
-Example:
-> These files were changed:
-> - src/dsl/Search.js
-> - tests/search.flight.spec.js  
->  
-> Please review for stability and DSL clarity.
+### Domain Agents -- specialist knowledge
 
----
+| Agent | Covers |
+|-------|--------|
+| @domain-flights | GDS (Amadeus, Galileo, Sabre) + NDC (AA, UA, LH, IB, AFKL, BA) flights |
+| @domain-hotels | 10 hotel suppliers, refundable-only rules, per-supplier test users |
+| @domain-transportation | Cars, Rail (Benerail, Evolvi, Amtrak), Ground Transport, Parking |
+| @domain-shell | Login, cart, checkout, approvals, cross-domain patterns |
 
-### If you are generating a test
-Include:
-- Business scenario (what the user is doing)
-- Preconditions (if any)
-- Expected outcome
-- Existing test or DSL to reuse (if known)
+### Standalone Tools
 
-Example:
-> Scenario: Search for a one-way flight and verify results are shown  
-> Preconditions: User is logged in  
-> Expected outcome: Results page loads successfully  
-> Similar test: tests/search.roundtrip.spec.js
-
----
-
-### If you are adding/updating a DSL method
-Include:
-- What the method should represent (user intent)
-- Where it will be used (test name or scenario)
-- What already exists (if relevant)
-
-Example:
-> I need a DSL method to select a vehicle type in ground transport search.  
-> This will be used in tests for supplier XYZ.  
-> There is already a GroundTransportSearch DSL.
+| Agent | How to invoke | Purpose |
+|-------|--------------|---------|
+| @code-reviewer | After making changes | Review stability, maintainability, adherence to project patterns |
+| @generate-dsl-method | Describe the method | Create or update a single DSL method |
+| @test-case-converter | Paste manual test | Convert ADO/spreadsheet test cases to Gherkin feature files |
+| @testim-converter | Paste Testim test | Migrate Testim tests to Cucumber BDD format |
+| @context-bridge | (no args) | Explore coverage gaps, find selectors, link bugs to tests |
 
 ---
 
-### If you are explaining code
-Include:
-- File(s) to explain
-- What is confusing or unclear (if applicable)
+## Common Task Recipes
 
-Example:
-> Please explain src/dsl/FlightSearch.js.  
-> I want to understand how it differs from the Page Object.
+### I have a bug in ADO and want an automated test
 
----
+```
+@ado-pipeline 74500
+```
 
-### If you are dealing with an error or failure
-Always include:
-- Exact error message (copy/paste)
-- Stack trace or Playwright output (if available)
-- When it happens (test name, step)
-- What you already tried (if anything)
-
-Example:
-> Error: Timeout waiting for locator  
-> Test: search.flight.spec.js  
-> Happens after clicking “Search”  
-> I already tried increasing the timeout.
+The agent fetches the bug, generates a Gherkin scenario, implements steps and DSL, runs the test, and fixes failures -- with checkpoints for your approval.
 
 ---
 
-## Step 4 – Important rules (read carefully)
+### I want to automate a scenario not in ADO
 
-- Always follow `copilot-instructions.md`
-- Never ask Copilot to “just fix it”
-- Never invent new patterns
-- Prefer reuse over creation
-- If something is unclear, ask for explanation first
-
-When in doubt: **review first, then change**.
+```
+@feature-pipeline
+I want to test that a traveler can search for a hotel in Paris,
+filter by refundable rooms, and see prices in EUR.
+User is "bruna". Supplier is Ratehawk.
+```
 
 ---
 
-## Goal of this system
+### I need to add a DSL method
 
-This prompt library exists to ensure:
-- stable, non-flaky tests
-- consistent architecture
-- safe AI usage for non-developers
-- long-term maintainability of the framework
+```
+@generate-dsl-method
+Add a method to HotelSearch.js called selectRoomType(page, roomType)
+that filters hotel results by room type using the filter panel.
+```
+
+---
+
+### My test is failing and I do not know why
+
+```
+@test-fixer-pipeline
+<paste the error message and failing feature file path>
+```
+
+---
+
+### I want to review code before committing
+
+```
+@code-reviewer
+Files changed:
+- src/dsl/HotelSearch.js
+- tests/steps/hotel_search.steps.js
+Please review for stability and DSL clarity.
+```
+
+---
+
+### I want to run the smoke suite and get a report
+
+```
+@regression-pipeline @smoke
+```
+
+---
+
+## Important Rules
+
+- **Never ask Copilot to just fix it** -- always describe the behaviour you expect
+- **Never invent new patterns** -- always check for existing DSL/pages first
+- **Never skip layers** -- steps to DSL to pages (never steps to pages directly)
+- **When in doubt, review first** -- use @code-reviewer before committing
+
+---
+
+## Reference
+
+| Resource | Location |
+|----------|----------|
+| Agent registry | [AGENTS.md](AGENTS.md) |
+| Architecture rules | [instructions/architecture.md](instructions/architecture.md) |
+| DSL guidelines | [instructions/dsl.md](instructions/dsl.md) |
+| Page Object guidelines | [instructions/page-objects.md](instructions/page-objects.md) |
+| Gherkin / step guidelines | [instructions/tests.md](instructions/tests.md) |
+| Copilot coding rules | [copilot-instructions.md](copilot-instructions.md) |
+| Main project README | [../README.md](../README.md) |
+
