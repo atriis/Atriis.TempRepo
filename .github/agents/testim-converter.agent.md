@@ -316,14 +316,17 @@ At the bottom of the output, list:
 
 ## Feature File Placement
 
-- `tests/features/flights/daily_flights/` — Migrated flight scenarios (primary target)
+- `tests/features/flights/next/` — Newly converted flight scenarios (staging area before promotion to daily_flights)
 - `tests/features/flights/general/` — General/reusable flight scenarios
 - `tests/features/flights/travel_policy/` — Flight travel policy scenarios
-- `tests/features/hotels/daily_hotels/` — Migrated hotel scenarios (primary target)
+- `tests/features/hotels/next/` — Newly converted hotel scenarios (staging area before promotion to daily_hotels)
 - `tests/features/hotels/to_adjust/` — Hotel scenarios needing adjustment
-- `tests/features/cars/daily_cars/` — Car scenarios
+- `tests/features/cars/next/` — Newly converted car scenarios
 - `tests/features/rails/<provider>/` — Rail scenarios (evolvi, benerail, amtrak)
 - Filename format: `<ticket_id>_<descriptive_name>.feature`
+
+> **Why `next/`?** Converted tests land in `next/` first so they can be reviewed and validated
+> before being promoted to the `daily_*` folders that run in CI.
 
 ## Integration with Pipeline Agents
 

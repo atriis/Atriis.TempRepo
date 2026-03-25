@@ -1,0 +1,26 @@
+# Test Name: 35650 Amadeus - Codeshare flights are displayed
+# Description:
+# Status: Active
+# Labels: Regression,Flights,No Amadeus Hotel Book,Amadeus,2026 plan 1
+# Owner: Bruna Santos
+# Created: 2023-09-08T09:11:19Z
+# Updated: 2025-02-03T09:10:37Z
+
+@regression @provider:amadeus
+Feature: 35650 Amadeus - Codeshare flights are displayed
+  As a corporate traveler
+  I want to see codeshare flight information in results
+  So that I can identify flights operated by a different carrier
+
+  @priority:high
+  Scenario: Codeshare "Operated by" text is displayed in results and flight details
+    Given I am logged in as "testim_prof" booking a new trip
+    And I have added myself as the traveler
+    When I search for a one way flight from "AMS" to "YMQ"
+    And I wait for add to trip text to be visible
+    And I filter results by carrier "DL"
+    # TODO: Verify "Operated by" text is visible in the first flight result (.flight-operator)
+    # Testim: waitForText(page, ".flight-list > :nth-child(1) .flight-operator", /Operated by/)
+    When I click to open flight details
+    # TODO: Verify "Operated by" text is visible in the flight details drawer (.el-drawer__open .flight-operator)
+    # Testim: waitForText(page, ".el-drawer__open .flight-operator", /Operated by/)

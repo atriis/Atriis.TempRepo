@@ -163,6 +163,20 @@ jobs:
           USER_ROBSONCRUZ: ${{ secrets.USER_ROBSONCRUZ }}
           USER_LUCAS: ${{ secrets.USER_LUCAS }}
           USER_CLARA: ${{ secrets.USER_CLARA }}
+          USER_BRUNA_NLGOV: ${{ secrets.USER_BRUNA_NLGOV }}
+          USER_TESTIM_PROF: ${{ secrets.USER_TESTIM_PROF }}
+          USER_BRUNALEE: ${{ secrets.USER_BRUNALEE }}
+          USER_SENDTOQCORP: ${{ secrets.USER_SENDTOQCORP }}
+          USER_TAYLOR: ${{ secrets.USER_TAYLOR }}
+          USER_AIRPLUS: ${{ secrets.USER_AIRPLUS }}
+          USER_SEAT_ZERO: ${{ secrets.USER_SEAT_ZERO }}
+          USER_PINI_NLGOV: ${{ secrets.USER_PINI_NLGOV }}
+          USER_BRUNAOLIVEIRA: ${{ secrets.USER_BRUNAOLIVEIRA }}
+          USER_RYANAIR_AMS: ${{ secrets.USER_RYANAIR_AMS }}
+          USER_CVVNDC: ${{ secrets.USER_CVVNDC }}
+          USER_TESTIM_MEAL: ${{ secrets.USER_TESTIM_MEAL }}
+          USER_BRUNINAITA: ${{ secrets.USER_BRUNINAITA }}
+          USER_MULTIPAX: ${{ secrets.USER_MULTIPAX }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Flights Results
