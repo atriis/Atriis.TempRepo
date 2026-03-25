@@ -16,7 +16,7 @@ Feature: 63529 General - hCorpo hotel logo visible and can be added to trip
   Scenario: hCorpo hotel logo is visible in room level and hotel can be added to cart
     Given I am logged in as "hcorpo" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Fairmont Makkah, King Abdul Aziz - 38 Road, Makkah Saudi Arabia" for 1 night
+    When I search for a hotel in "Ibis Styles Makkah Hotel" for 1 night
     And I select the first hotel result
     And I wait for the first add to trip button to be visible in room level results
     Then the "hCorpo" supplier logo should be visible in room level results

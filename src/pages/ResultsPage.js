@@ -132,23 +132,21 @@ class ResultsPage {
     const tripOverviewTitle = this.page
       .locator(CART_SELECTORS.TRIP_OVERVIEW_TITLE);
 
-    // Race: wait for either the conflict modal's Proceed button or the cart page
-    // If neither appears (e.g., parallel hotel search navigates to hotel results), return false
-    let result;
-    try {
-      result = await Promise.race([
-        proceedButton
-          .waitFor({ state: "visible", timeout: 90000 })
-          .then(() => "modal"),
-        tripOverviewTitle
-          .waitFor({ state: "visible", timeout: 90000 })
-          .then(() => "cart"),
-      ]);
-    } catch {
-      return false;
-    }
+    // Race: wait for either the conflict modal's Proceed button or the cart page.
+    // Each promise has its own .catch so the losing/orphaned promise never
+    // becomes an unhandled rejection (e.g. when the page closes mid-wait).
+    const modalPromise = proceedButton
+      .waitFor({ state: "visible", timeout: 90000 })
+      .then(() => "modal")
+      .catch(() => null);
+    const cartPromise = tripOverviewTitle
+      .waitFor({ state: "visible", timeout: 90000 })
+      .then(() => "cart")
+      .catch(() => null);
 
-    if (result === "cart") {
+    const result = await Promise.race([modalPromise, cartPromise]);
+
+    if (!result || result === "cart") {
       return false;
     }
 

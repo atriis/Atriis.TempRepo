@@ -326,9 +326,11 @@ jobs:
           USER_SUZANAVOND: ${{ secrets.USER_SUZANAVOND }}
           USER_DANIELAOLIVEIRA: ${{ secrets.USER_DANIELAOLIVEIRA }}
           USER_VALERIA: ${{ secrets.USER_VALERIA }}
+          USER_SHMUL: ${{ secrets.USER_SHMUL }}
           USER_BRUNAFILTERNONAGREEMENT: ${{ secrets.USER_BRUNAFILTERNONAGREEMENT }}
           USER_BRUNA_NLGOV: ${{ secrets.USER_BRUNA_NLGOV }}
           USER_CHRISTREE: ${{ secrets.USER_CHRISTREE }}
+          USER_PERRY: ${{ secrets.USER_PERRY }}
           USER_JULIANAPREMIER: ${{ secrets.USER_JULIANAPREMIER }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
