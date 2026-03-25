@@ -294,6 +294,11 @@ Then("the green circle icon at index {int} {string} should be displayed in prici
   expect(isVisible).toBe(true);
 });
 
+Then('the fare component text color should be {string} in pricing options', async function (expectedColor) {
+  logger.info('Verifying fare component text color in pricing options', { expectedColor });
+  await FlightResults.verifyFareComponentTextColorInPricingOptions(this.page, expectedColor);
+});
+
 Then("the Flight Duration filter should be visible", async function () {
   logger.info("Verifying Flight Duration filter is visible");
   await FlightResults.assertFlightDurationTitleVisible(this.page);

@@ -378,6 +378,25 @@ async isGreenCircleIconVisibleInPricingOptions(page, index = 0) {
   return await flightResultsPage.getGreenIconInPricingOptions(index).isVisible();
 },
 
+async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 0) {
+  if (!page) {
+    throw new Error('page is required');
+  }
+
+  if (!expectedColor || typeof expectedColor !== 'string') {
+    throw new Error(`expectedColor must be a non-empty string, got: ${typeof expectedColor}`);
+  }
+
+  if (typeof index !== 'number' || index < 0) {
+    throw new Error(`index must be >= 0, got ${index}`);
+  }
+
+  const flightResultsPage = getPageObject(page, FlightResultsPage);
+  const actualColor = await flightResultsPage.getFareComponentTextColorInPricingOptions(index);
+
+  expect(actualColor).toBe(expectedColor);
+},
+
  async selectFareWithBaggage(page, baggageText) {
   if (!page) {
     throw new Error('page is required');

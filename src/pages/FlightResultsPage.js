@@ -23,6 +23,7 @@ const SELECTORS = {
   GREEN_CIRCLE_ICON_PRICING_OPTIONS: 'span.material-symbols-outlined.green',
   PRICING_OPTIONS_OVERLAY: '.el-overlay:has(.app-drawer.flight-details-drawer)',
   PRICING_OPTIONS_BAGGAGE_CLASS: '.leg-details .baggage span',
+  PRICING_OPTIONS_FARE_COMPONENT_TEXT: 'text=Fare component',
 
   //Fare rules note
   FARE_RULES_NOTE: '.note',
@@ -320,6 +321,26 @@ class FlightResultsPage {
   async getAmountPriceValuePricingOptions(index = 0) {
     const overlay = this.getPricingOptionsOverlay();
     return extractNumber(overlay, SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE, index);
+  }
+
+  /**
+   * Reads computed CSS color of the fare component text inside pricing options.
+   *
+   * @param {number} index - Zero-based index of fare component label (default: 0)
+   * @returns {Promise<string>} CSS color value (for example, "rgb(0, 0, 0)")
+   */
+  async getFareComponentTextColorInPricingOptions(index = 0) {
+    const overlay = this.getPricingOptionsOverlay();
+    const fareComponentLabels = overlay.locator(SELECTORS.PRICING_OPTIONS_FARE_COMPONENT_TEXT);
+    const fareComponentLabelCount = await fareComponentLabels.count();
+
+    const target = fareComponentLabelCount > index
+      ? fareComponentLabels.nth(index)
+      : overlay.locator(SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE).nth(index);
+
+    await target.waitFor({ state: 'visible', timeout: 30000 });
+
+    return target.evaluate((element) => window.getComputedStyle(element).color);
   }
 
   /**
