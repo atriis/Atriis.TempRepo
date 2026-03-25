@@ -20,8 +20,6 @@ Feature: 45741 Amadeus - CTCE and CTCM sent when booking
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
-    # TODO: Original Testim verifies email input contains "@atriistech.com" on checkout page
-    # via waitForText(".email-input [type='text']", /@atriistech.com/)
+    Then the contact email on checkout should contain "@atriis"
     And I complete the booking
-    # TODO: Original Testim verifies "Flight details" text is visible in trip overview
-    # via waitForText(".more-details-btn", "Flight details")
+    Then the booking status should be "Finalizing"

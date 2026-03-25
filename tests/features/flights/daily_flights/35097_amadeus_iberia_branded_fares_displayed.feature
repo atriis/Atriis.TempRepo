@@ -18,12 +18,7 @@ Feature: 35097 Amadeus - Iberia branded fares are being displayed
     And I filter results by carrier "iberia"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    When I click more details in cart
-    # TODO: Verify carrier name "Iberia" is displayed in more details drawer
-    # Original Testim: waitForText(".main-details-wrapper .carrier-name", "Iberia")
-    # Proposed step: Then the carrier name in more details should be "Iberia"
-    # TODO: Click branded fares button in flight details
-    # Original Testim: page.click(".flight-details > :nth-child(1) > :nth-child(3) .btn")
-    # TODO: Verify ancillaries text is displayed
-    # Original Testim: waitForText(".included > :nth-child(1)", "The following ancillaries are included in this brand.")
-    # Proposed step: Then the branded fare ancillaries text should be visible
+    When I open flight details in cart
+    Then the carrier name in more details should be "Iberia"
+    When I open branded fares from flight details
+    Then the branded fare ancillaries text should be visible

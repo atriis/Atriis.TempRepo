@@ -17,9 +17,7 @@ Feature: 67979 Amadeus Ryanair - Seat price calculation outbound and inbound
     And I have added myself as the traveler
     When I search for a round trip flight from "STN" to "BUD"
     And I wait for add to trip text to be visible
-    # TODO: Filter by Ryanair using preferred airlines filter panel
-    # Testim: Filter_by_airline_using__Preferred_Airlines__filter_in_results('Ryanair')
-    # Uses .carriers-filter panel (not search box), different from standard carrier filter
+    And I filter results by carrier "FR"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     # TODO: Extract initial total, add outbound seat, verify price

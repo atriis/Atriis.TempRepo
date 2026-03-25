@@ -13,6 +13,7 @@ const SELECTORS = {
   GO_TO_TRIP_BUTTON: ".btn-container > :nth-child(1)",
   BOOKING_ERROR_DIALOG: ".booking-error-dialog",
   BACK_TO_TRIP_BUTTON: ".back-to-trip-btn",
+  EMAIL_INPUT: ".email-input .el-input__inner",
 };
 
 class CheckoutPage {
@@ -113,6 +114,17 @@ class CheckoutPage {
     );
 
     await this.getGoToTripButton().click();
+  }
+
+  /**
+   * Gets the email input value on the checkout page.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<string>} The email input value
+   */
+  async getEmailInputValue(timeout = 10000) {
+    const input = this.page.locator(SELECTORS.EMAIL_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    return input.inputValue();
   }
 }
 

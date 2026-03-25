@@ -1442,6 +1442,52 @@ const Cart = {
     const isVisible = await cartPage.isContactPhoneVisibleInCart();
     if (!isVisible) throw new Error('eHotel Contact Phone is not visible in the cart booking confirmation section');
   },
+
+  // ===== FLIGHT DETAILS / BRANDED FARES IN CART =====
+
+  /**
+   * Opens the flight details drawer in the cart.
+   * @param {import('playwright').Page} page
+   */
+  async openFlightDetailsInCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickFlightDetailsButton();
+  },
+
+  /**
+   * Verifies the carrier name in the cart more details drawer.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedName
+   */
+  async verifyCarrierNameInCartDetails(page, expectedName) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedName !== 'string') throw new Error('expectedName must be a string, got: ' + typeof expectedName);
+    const cartPage = getPageObject(page, CartPage);
+    const actual = await cartPage.getCarrierNameInDetails();
+    expect(actual).toContain(expectedName);
+  },
+
+  /**
+   * Opens branded fares and verifies ancillaries text in the cart flight details drawer.
+   * The flight details drawer must already be open.
+   * @param {import('playwright').Page} page
+   */
+  async openBrandedFaresAndVerifyAncillariesInCart(page) {
+    if (!page) throw new Error('page is required');
+    const FlightResults = require('./FlightResults');
+    await FlightResults.openBrandedFaresAndVerifyAncillaries(page);
+  },
+
+  /**
+   * Closes the branded fares drawer in the cart.
+   * @param {import('playwright').Page} page
+   */
+  async closeBrandedFaresDrawerInCart(page) {
+    if (!page) throw new Error('page is required');
+    const FlightResults = require('./FlightResults');
+    await FlightResults.closeBrandedFaresDrawer(page);
+  },
 };
 
 

@@ -518,6 +518,93 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     return flightResultsPage.getInboundFlightDepartureDate(cardIndex);
   },
 
+  // ===== CODESHARE / OPERATED BY =====
+
+  /**
+   * Verifies "Operated by" text is visible in the first flight result.
+   * @param {import('playwright').Page} page
+   */
+  async verifyOperatedByInResults(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const isVisible = await flightResultsPage.isFlightOperatorVisibleInResults();
+    expect(isVisible).toBe(true);
+  },
+
+  /**
+   * Verifies "Operated by" text is visible in the flight details drawer.
+   * @param {import('playwright').Page} page
+   */
+  async verifyOperatedByInFlightDetails(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const isVisible = await flightResultsPage.isFlightOperatorVisibleInDrawer();
+    expect(isVisible).toBe(true);
+  },
+
+  // ===== BRANDED FARES =====
+
+  /**
+   * Opens branded fares from the flight details drawer and verifies ancillaries text.
+   * Flight details drawer must already be open.
+   * @param {import('playwright').Page} page
+   */
+  async openBrandedFaresAndVerifyAncillaries(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    await flightResultsPage.clickBrandedFaresButtonInDetails();
+    await flightResultsPage.waitForBrandedFaresDrawer();
+  },
+
+  /**
+   * Closes the branded fares drawer.
+   * @param {import('playwright').Page} page
+   */
+  async closeBrandedFaresDrawer(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.closeBrandedFaresDrawer();
+  },
+
+  /**
+   * Verifies that the branded fare ancillaries text is visible.
+   * @param {import('playwright').Page} page
+   */
+  async verifyAncillariesTextVisible(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const isVisible = await flightResultsPage.isAncillariesTextVisible();
+    expect(isVisible).toBe(true);
+  },
+
+  /**
+   * Opens branded fares from the pricing options drawer.
+   * The pricing options drawer must already be open.
+   * Clicks the brand name link in the first leg pricing option.
+   * @param {import('playwright').Page} page
+   */
+  async openBrandedFaresFromPricingOptions(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    await flightResultsPage.clickBrandNameInPricingOptions();
+    await flightResultsPage.waitForBrandedFaresDrawer();
+  },
+
+  /**
+   * Verifies carrier name text in the more details drawer.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedName - Expected carrier name (e.g., "Iberia")
+   */
+  async verifyCarrierNameInDetails(page, expectedName) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedName !== 'string') throw new Error('expectedName must be a string, got: ' + typeof expectedName);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const actual = await flightResultsPage.getCarrierNameInDetails();
+    expect(actual).toContain(expectedName);
+  },
+
 }
 
 module.exports = FlightResults;

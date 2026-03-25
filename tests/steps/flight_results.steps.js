@@ -321,3 +321,46 @@ When("I extract the departure date of the inbound first flight option", async fu
   logger.info("Inbound first flight departure date extracted", { date: this.inboundFirstFlightDepartureDate });
 });
 
+// ========================================
+// CODESHARE / OPERATED BY
+// ========================================
+
+Then('the "Operated by" text should be visible in the flight results', async function () {
+  logger.info("Verifying 'Operated by' text is visible in flight results");
+  await FlightResults.verifyOperatedByInResults(this.page);
+});
+
+Then('the "Operated by" text should be visible in flight details', async function () {
+  logger.info("Verifying 'Operated by' text is visible in flight details drawer");
+  await FlightResults.verifyOperatedByInFlightDetails(this.page);
+});
+
+// ========================================
+// BRANDED FARES
+// ========================================
+
+When("I open branded fares from flight details", async function () {
+  logger.info("Opening branded fares from flight details");
+  await FlightResults.openBrandedFaresAndVerifyAncillaries(this.page);
+});
+
+When("I open branded fares from pricing options", async function () {
+  logger.info("Opening branded fares from pricing options");
+  await FlightResults.openBrandedFaresFromPricingOptions(this.page);
+});
+
+When("I close branded fares drawer", async function () {
+  logger.info("Closing branded fares drawer");
+  await FlightResults.closeBrandedFaresDrawer(this.page);
+});
+
+Then("the branded fare ancillaries text should be visible", async function () {
+  logger.info("Verifying branded fare ancillaries text is visible");
+  await FlightResults.verifyAncillariesTextVisible(this.page);
+});
+
+Then("the carrier name in more details should be {string}", async function (expectedName) {
+  logger.info("Verifying carrier name in more details", { expectedName });
+  await FlightResults.verifyCarrierNameInDetails(this.page, expectedName);
+});
+

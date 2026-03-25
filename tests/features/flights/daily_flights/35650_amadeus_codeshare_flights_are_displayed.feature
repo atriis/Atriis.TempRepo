@@ -19,8 +19,6 @@ Feature: 35650 Amadeus - Codeshare flights are displayed
     When I search for a one way flight from "AMS" to "YMQ"
     And I wait for add to trip text to be visible
     And I filter results by carrier "DL"
-    # TODO: Verify "Operated by" text is visible in the first flight result (.flight-operator)
-    # Testim: waitForText(page, ".flight-list > :nth-child(1) .flight-operator", /Operated by/)
+    Then the "Operated by" text should be visible in the flight results
     When I click to open flight details
-    # TODO: Verify "Operated by" text is visible in the flight details drawer (.el-drawer__open .flight-operator)
-    # Testim: waitForText(page, ".el-drawer__open .flight-operator", /Operated by/)
+    Then the "Operated by" text should be visible in flight details

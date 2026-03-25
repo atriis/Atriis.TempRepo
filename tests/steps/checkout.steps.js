@@ -37,3 +37,8 @@ Then("{string} should be displayed in the checkout page", async function (expect
   logger.info("Verifying text is displayed in checkout page", { expectedText });
   await this.page.locator(`text=${expectedText}`).first().waitFor({ state: 'visible', timeout: 15000 });
 });
+
+Then("the contact email on checkout should contain {string}", async function (expectedText) {
+  logger.info("Verifying contact email contains expected text", { expectedText });
+  await Checkout.verifyContactEmailContains(this.page, expectedText);
+});

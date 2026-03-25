@@ -116,6 +116,8 @@ const SELECTORS = {
   PASSENGER_TITLE_DROPDOWN_OPTION: '.app-select-popper .el-select-dropdown__item',
   PASSENGER_TITLE_SAVE_BUTTON: '.passenger-title .btn--primary',
 
+  // Flight branded fares in cart — selectors shared with FlightResultsPage since same Vue component renders the drawer
+
   // Hotel address in More Details drawer
   HOTEL_ADDRESS: '.hotel-address',
   MORE_DETAILS_DRAWER_CLOSE: "[aria-label='More details'] [fill='currentColor'], [aria-label='More details'] .el-dialog__close",
@@ -1612,6 +1614,17 @@ class CartPage {
     } catch {
       return false;
     }
+  }
+
+  // ===== FLIGHT DETAILS / BRANDED FARES IN CART =====
+
+  /**
+   * Clicks the Flight details button in the cart.
+   */
+  async clickFlightDetailsButton() {
+    const btn = this.page.locator(SELECTORS.FLIGHT_DETAILS_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout: 15000 });
+    await btn.click();
   }
 }
 

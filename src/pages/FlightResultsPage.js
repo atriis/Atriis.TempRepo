@@ -35,6 +35,21 @@ const SELECTORS = {
   FLIGHT_DATE: '.flight-date',
   // Flight preview card
   FLIGHT_PREVIEW: '.flight-list .flight-preview',
+
+  // Codeshare / Operated by
+  FLIGHT_OPERATOR: '.flight-operator',
+  FLIGHT_OPERATOR_IN_DRAWER: '.app-drawer.flight-details-drawer .flight-operator',
+
+  // Branded fares
+  BRANDED_FARES_DRAWER: "[aria-label='Branded fares']",
+  BRANDED_FARES_DRAWER_CLOSE: "[aria-label='Branded fares'] .el-drawer__header [xmlns='http://www.w3.org/2000/svg']",
+  BRAND_NAME: '.brand-name',
+  ANCILLARIES_INCLUDED_TEXT: '.included .service-title',
+  BRAND_NAME_BUTTON_IN_DETAILS: '.flight-details-bottom-bar .text-background button',
+  BRAND_NAME_IN_PRICING_OPTIONS: '.leg-pricing-option .brand-name',
+
+  // Carrier name in flight details drawer
+  CARRIER_NAME_IN_DETAILS: '.flight-details-top-bar .carrier-name',
 };
 
 class FlightResultsPage {
@@ -559,6 +574,122 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     await card.waitFor({ state: 'visible', timeout: 60000 });
     const departureDate = card.locator(SELECTORS.FLIGHT_DATE).nth(2);
     return (await departureDate.textContent()).trim();
+  }
+
+  // ===== CODESHARE / OPERATED BY =====
+
+  /**
+   * Checks if "Operated by" text is visible in the first flight result.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<boolean>}
+   */
+  async isFlightOperatorVisibleInResults(timeout = 10000) {
+    try {
+      const operator = this.page.locator(SELECTORS.FLIGHT_OPERATOR).first();
+      await operator.waitFor({ state: 'visible', timeout });
+      const text = await operator.textContent();
+      return text.includes('Operated by');
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if "Operated by" text is visible in the flight details drawer.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<boolean>}
+   */
+  async isFlightOperatorVisibleInDrawer(timeout = 10000) {
+    try {
+      const operator = this.page.locator(SELECTORS.FLIGHT_OPERATOR_IN_DRAWER).first();
+      await operator.waitFor({ state: 'visible', timeout });
+      const text = await operator.textContent();
+      return text.includes('Operated by');
+    } catch {
+      return false;
+    }
+  }
+
+  // ===== BRANDED FARES =====
+
+  /**
+   * Clicks the branded fares button inside the flight details drawer.
+   * The button is within .flight-details section.
+   * @param {number} index - Zero-based index of the button (default: 0)
+   */
+  async clickBrandedFaresButtonInDetails() {
+    // The brand name (e.g. "MAINBASIC") is a clickable button in the flight-details-bottom-bar
+    const btn = this.page.locator(SELECTORS.BRAND_NAME_BUTTON_IN_DETAILS).first();
+    await btn.waitFor({ state: 'visible', timeout: 15000 });
+    await btn.click();
+  }
+
+  /**
+   * Waits for the branded fares drawer to be visible.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   */
+  async waitForBrandedFaresDrawer(timeout = 15000) {
+    await this.page.locator(SELECTORS.BRANDED_FARES_DRAWER).waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Checks if the ancillaries included text is visible in the branded fares drawer.
+   * Looks for "The following ancillaries are included in this brand."
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<boolean>}
+   */
+  async isAncillariesTextVisible(timeout = 10000) {
+    try {
+      const text = this.page.getByText('The following ancillaries are included in this brand.');
+      await text.first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Closes the branded fares drawer.
+   */
+  async closeBrandedFaresDrawer() {
+    const closeBtn = this.page.locator(SELECTORS.BRANDED_FARES_DRAWER_CLOSE).first();
+    await closeBtn.waitFor({ state: 'visible', timeout: 10000 });
+    await closeBtn.click();
+  }
+
+  /**
+   * Clicks the brand name link in the pricing options drawer.
+   * Waits for pricing option content to load first.
+   */
+  async clickBrandNameInPricingOptions() {
+    const brandBtn = this.page.locator(SELECTORS.BRAND_NAME_IN_PRICING_OPTIONS).first();
+    await brandBtn.waitFor({ state: 'visible', timeout: 60000 });
+    await brandBtn.click();
+  }
+
+  /**
+   * Checks if a brand name is visible in the branded fares section.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<boolean>}
+   */
+  async isBrandNameVisible(timeout = 10000) {
+    try {
+      await this.page.locator(SELECTORS.BRAND_NAME).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Gets the carrier name text from the more details drawer.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<string>}
+   */
+  async getCarrierNameInDetails(timeout = 10000) {
+    const el = this.page.locator(SELECTORS.CARRIER_NAME_IN_DETAILS).first();
+    await el.waitFor({ state: 'visible', timeout });
+    return (await el.textContent()).trim();
   }
 
 }

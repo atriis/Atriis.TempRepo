@@ -613,3 +613,25 @@ Then("the hotel booking should display a contact phone number", async function (
   logger.info("Verifying eHotel Contact Phone is visible in cart");
   await Cart.verifyContactPhoneVisibleInCart(this.page);
 });
+
+// ===== FLIGHT DETAILS / BRANDED FARES IN CART =====
+
+When("I open flight details in cart", async function () {
+  logger.info("Opening flight details drawer in cart");
+  await Cart.openFlightDetailsInCart(this.page);
+});
+
+Then("the carrier name in cart details should be {string}", async function (expectedName) {
+  logger.info("Verifying carrier name in cart details drawer", { expectedName });
+  await Cart.verifyCarrierNameInCartDetails(this.page, expectedName);
+});
+
+When("I open branded fares from cart flight details", async function () {
+  logger.info("Opening branded fares from cart flight details and verifying ancillaries");
+  await Cart.openBrandedFaresAndVerifyAncillariesInCart(this.page);
+});
+
+When("I close branded fares drawer in cart", async function () {
+  logger.info("Closing branded fares drawer in cart");
+  await Cart.closeBrandedFaresDrawerInCart(this.page);
+});

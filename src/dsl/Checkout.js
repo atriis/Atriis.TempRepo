@@ -118,6 +118,21 @@ const Checkout = {
 
     return { navigatedToCart: true };
   },
+
+  /**
+   * Verifies the contact email on the checkout page contains the expected text.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Substring expected in the email value
+   */
+  async verifyContactEmailContains(page, expectedText) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedText !== 'string') throw new Error('expectedText must be a string, got: ' + typeof expectedText);
+
+    const { expect } = require("@playwright/test");
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const emailValue = await checkoutPage.getEmailInputValue();
+    expect(emailValue).toContain(expectedText);
+  },
 };
 
 module.exports = Checkout;

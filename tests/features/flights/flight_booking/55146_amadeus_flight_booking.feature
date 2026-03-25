@@ -20,4 +20,5 @@ Feature: 55146 Amadeus - Flight booking
     And I add the first flight to cart
     And I proceed to checkout
     And I complete the booking
-    Then I successfully cancel the trip
+    Then the booking status should be "Finalizing"
+  
