@@ -145,11 +145,38 @@ For each Testim function/action, search the project in this order:
 
 Testim tests use **email addresses** for login. You must map them to **user labels** used in the project.
 
-The mapping rule: look at the email prefix or known user labels. Common examples:
-- `ruimariano@amadeus.com` → `"ruimariano"`
-- `bsgalileoflight@galileoflight.com` → Look for matching env var / user label
-- `pini@gov2.nl` → Look for matching env var / user label
-- `test@io.com` → Look for matching env var / user label
+**How the user system works:**
+1. Users are defined in `.env` as `USER_<LABEL>=email@domain.com`
+2. `config.js` auto-discovers all `USER_*` env vars via `createLabelUsers()`
+3. `config.resolveUser(label)` finds the user across all providers by label (case-insensitive)
+4. In Gherkin, the label is used directly: `Given I am logged in as "{label}"`
+
+**When converting a Testim test with a new email:**
+1. Determine a short, descriptive label from the email (e.g. `ruimariano@amadeus.com` → `ruimariano`)
+2. **Add the user to `.env`** if it does not already exist:
+   ```bash
+   USER_RUIMARIANO=ruimariano@amadeus.com
+   ```
+3. **Add the user to `.env.example`** as documentation (without the real email):
+   ```bash
+   USER_RUIMARIANO=<email>
+   ```
+4. **Add the user to the relevant CI job** in `.github/workflows/test-suite.yml` under the `env:` block:
+   ```yaml
+   USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
+   ```
+5. **Add the secret** in GitHub → Settings → Secrets → Actions (mention this in TODOs if you cannot do it)
+6. Use the label in Gherkin:
+   ```gherkin
+   Given I am logged in as "ruimariano" booking a new trip
+   ```
+
+**Common mappings (already in `.env`):**
+- `ruimariano@amadeus.com` → `"ruimariano"` (`USER_RUIMARIANO`)
+- `shani@nl.com` → `"shani_nl"` (`USER_SHANI_NL`)
+- `eli@test.com` → `"eli"` (`USER_ELI`)
+
+**Important:** Always search `.env` and `.env.example` first to check if the user already exists before adding a new one. If you are unsure about the label, add a TODO.
 
 **Login step patterns** (in order of preference):
 ```gherkin
@@ -275,6 +302,7 @@ At the bottom of the output, list:
 - Ambiguous mappings (Testim action unclear — needs human review)
 - Inline `page.*` actions that have no existing step/DSL coverage
 - Any assumptions about user mapping (email → label)
+- **New users** that need to be added to `.env`, `.env.example`, and the CI workflow secret + `env:` block in `.github/workflows/test-suite.yml`
 
 ## Reference locations
 
