@@ -8,7 +8,6 @@ const {
   expectNumberToBeGreaterThanOrEqual,
   expectNumberToBeLessThan,
   expectNumberToBeLessThanOrEqual,
-  expectSumToBeEqual,
   expectSumToBeEqualWithTolerance,
 } = require("../../src/assertions/numberAssertions");
 const { extractPriceFromLocation } = require("../../src/utils/priceExtraction");
