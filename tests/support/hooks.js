@@ -15,6 +15,7 @@ const config = require("../../src/config/config");
 const { App } = require("../../src/dsl");
 const logger = require("@utils/logger").child("Hooks");
 const { recordFailure, isRetryEnabled } = require("./retry-handler");
+const { attachment, ContentType } = require("allure-js-commons");
 
 setDefaultTimeout(120000);
 
@@ -161,8 +162,11 @@ After(async function (scenario) {
         scenario: scenario.pickle.name 
       });
 
-      // Attach to Cucumber report as well
+      // Attach to Cucumber report
       this.attach(screenshot, "image/png");
+
+      // Attach to Allure report
+      await attachment(filename, screenshot, ContentType.PNG);
       logger.warn("Test failed - screenshot captured", { scenario: scenario.pickle.name });
     } catch (error) {
       logger.error("Failed to capture screenshot", { error: error.message });

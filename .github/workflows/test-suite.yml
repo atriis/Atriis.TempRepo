@@ -689,41 +689,81 @@ jobs:
             echo "### 📄 JUnit Test Results" >> $GITHUB_STEP_SUMMARY
             echo "⚠️ No JUnit XML files found" >> $GITHUB_STEP_SUMMARY
           else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### 📄 JUnit Test Results" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
             node -e "
               const fs = require('fs');
               const files = process.argv.slice(1);
-              const rows = [];
-              let totalTests = 0, totalFail = 0, totalError = 0, totalSkipped = 0, totalTime = 0;
+              const out = [];
+              let totalTests = 0, totalFail = 0, totalSkipped = 0, totalTime = 0;
+              const allFailures = [];
 
+              // --- Per-file summary table (like dorny) ---
+              const fileRows = [];
               for (const file of files) {
                 const xml = fs.readFileSync(file, 'utf8');
-                // Extract suite-level attributes from each <testsuite>
+                let fTests = 0, fFail = 0, fSkip = 0, fTime = 0;
+
+                // Parse each <testsuite>
                 const suiteRegex = /<testsuite\s+([^>]+)>/g;
                 let match;
                 while ((match = suiteRegex.exec(xml)) !== null) {
                   const attrs = match[1];
-                  const get = (name) => { const m = attrs.match(new RegExp(name + '=\"([^\"]*)\"|' + name + \"='([^']*)'\"));  return m ? (m[1] || m[2] || '') : ''; };
-                  const name = get('name') || 'Unknown';
-                  const tests = parseInt(get('tests')) || 0;
-                  const failures = parseInt(get('failures')) || 0;
-                  const errors = parseInt(get('errors')) || 0;
-                  const skipped = parseInt(get('skipped')) || 0;
-                  const time = parseFloat(get('time')) || 0;
-                  const passed = tests - failures - errors - skipped;
-                  totalTests += tests; totalFail += failures; totalError += errors; totalSkipped += skipped; totalTime += time;
-                  const status = (failures + errors) > 0 ? '❌ FAIL' : '✅ PASS';
-                  rows.push('| ' + name.substring(0, 60) + ' | ' + tests + ' | ' + passed + ' | ' + (failures + errors) + ' | ' + skipped + ' | ' + time.toFixed(1) + 's | ' + status + ' |');
+                  const get = (n) => { const m = attrs.match(new RegExp(n + '=\"([^\"]*)\"|' + n + \"='([^']*)'\"));  return m ? (m[1] || m[2] || '') : ''; };
+                  fTests += parseInt(get('tests')) || 0;
+                  fFail += (parseInt(get('failures')) || 0) + (parseInt(get('errors')) || 0);
+                  fSkip += parseInt(get('skipped')) || 0;
+                  fTime += parseFloat(get('time')) || 0;
+                }
+
+                // Parse individual <testcase> for failure details
+                const tcRegex = /<testcase\s+([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
+                let tc;
+                while ((tc = tcRegex.exec(xml)) !== null) {
+                  const tcAttrs = tc[1];
+                  const tcBody = tc[2] || '';
+                  const getName = (n) => { const m = tcAttrs.match(new RegExp(n + '=\"([^\"]*)\"|' + n + \"='([^']*)'\"));  return m ? (m[1] || m[2] || '') : ''; };
+                  if (tcBody.includes('<failure') || tcBody.includes('<error')) {
+                    const tcName = getName('name') || 'Unknown test';
+                    const msgMatch = tcBody.match(/message=\"([^\"]*)\"/);
+                    const msg = msgMatch ? msgMatch[1].substring(0, 200) : '';
+                    allFailures.push({ file: file.replace('all-results/', ''), name: tcName, message: msg });
+                  }
+                }
+
+                const fPassed = fTests - fFail - fSkip;
+                totalTests += fTests; totalFail += fFail; totalSkipped += fSkip; totalTime += fTime;
+                const label = file.replace('all-results/', '');
+                const passedIcon = fPassed > 0 ? fPassed + '✅' : '';
+                const failedIcon = fFail > 0 ? fFail + '❌' : '';
+                fileRows.push('| ' + label + ' | ' + passedIcon + ' | ' + failedIcon + ' | ' + (fSkip || '') + ' | ' + Math.round(fTime) + 's |');
+              }
+
+              const totalPassed = totalTests - totalFail - totalSkipped;
+              const badge = totalFail > 0 ? 'tests ' + totalPassed + ' passed, ' + totalFail + ' failed' : 'tests ' + totalPassed + ' passed';
+
+              out.push('');
+              out.push('### 📄 Test Results');
+              out.push('');
+              out.push('**' + totalTests + ' tests** — ' + totalPassed + ' passed, ' + totalFail + ' failed, ' + totalSkipped + ' skipped');
+              out.push('');
+              out.push('| Report | Passed | Failed | Skipped | Time |');
+              out.push('|--------|--------|--------|---------|------|');
+              fileRows.forEach(r => out.push(r));
+              out.push('| **Total** | **' + totalPassed + '** | **' + totalFail + '** | **' + totalSkipped + '** | **' + Math.round(totalTime) + 's** |');
+
+              // --- Failed tests detail ---
+              if (allFailures.length > 0) {
+                out.push('');
+                out.push('### ❌ Failed Tests');
+                out.push('');
+                out.push('| Test | Error | Source |');
+                out.push('|------|-------|--------|');
+                for (const f of allFailures) {
+                  const escapedMsg = f.message.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+                  out.push('| ' + f.name.substring(0, 80) + ' | ' + escapedMsg.substring(0, 120) + ' | ' + f.file + ' |');
                 }
               }
 
-              const totalPassed = totalTests - totalFail - totalError - totalSkipped;
-              console.log('| Suite | Tests | Passed | Failed | Skipped | Time | Status |');
-              console.log('|-------|-------|--------|--------|---------|------|--------|');
-              rows.forEach(r => console.log(r));
-              console.log('| **Total** | **' + totalTests + '** | **' + totalPassed + '** | **' + (totalFail + totalError) + '** | **' + totalSkipped + '** | **' + totalTime.toFixed(1) + 's** | ' + ((totalFail + totalError) > 0 ? '❌' : '✅') + ' |');
+              console.log(out.join('\n'));
             " $XML_FILES >> $GITHUB_STEP_SUMMARY
           fi
         continue-on-error: true
