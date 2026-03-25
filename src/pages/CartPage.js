@@ -159,6 +159,11 @@ const SELECTORS = {
 
   // Existing loyalty dropdown (selected value text after saving a loyalty number)
   LOYALTY_EXISTING_DROPDOWN_TEXT: '.quote-extras--loyalty-number .extras-card .el-select .el-select__placeholder',
+
+  // eHotel supplier details in cart (hotel-quote-card.vue → booking-confirm section)
+  EHOTEL_PIN_CODE: '.booking-confirm p:has-text("Pincode:")',
+  EHOTEL_CONFIRMATION_NUMBER: '.booking-confirm p:has-text("Confirmation Number:")',
+  EHOTEL_CONTACT_PHONE: '.booking-confirm p:has-text("Contact phone")',
 };
 
 class CartPage {
@@ -1555,6 +1560,48 @@ class CartPage {
    */
   async isPremierInnBreakfastOptionVisible() {
     return this.page.locator(SELECTORS.PREMIER_INN_BREAKFAST_LABEL).isVisible();
+  }
+
+  /**
+   * Checks whether the eHotel PIN code is visible in the cart booking confirmation section.
+   * @param {number} timeout - Maximum wait time in ms
+   * @returns {Promise<boolean>}
+   */
+  async isPinCodeVisibleInCart({ timeout = 30000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.EHOTEL_PIN_CODE).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks whether the eHotel Confirmation Number is visible in the cart booking confirmation section.
+   * @param {number} timeout - Maximum wait time in ms
+   * @returns {Promise<boolean>}
+   */
+  async isConfirmationNumberVisibleInCart({ timeout = 30000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.EHOTEL_CONFIRMATION_NUMBER).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks whether the eHotel Contact Phone is visible in the cart booking confirmation section.
+   * @param {number} timeout - Maximum wait time in ms
+   * @returns {Promise<boolean>}
+   */
+  async isContactPhoneVisibleInCart({ timeout = 30000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.EHOTEL_CONTACT_PHONE).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 

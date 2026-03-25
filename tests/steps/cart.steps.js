@@ -585,3 +585,20 @@ Then("the price in more details should match the price in cart", async function 
   const diff = Math.abs(this.moreDetailsPrice - this.cartHotelPrice);
   expect(diff).toBeLessThanOrEqual(1);
 });
+
+// ===== EHOTEL SUPPLIER DETAILS =====
+
+Then("the hotel booking should display a pin code", async function () {
+  logger.info("Verifying eHotel PIN code is visible in cart");
+  await Cart.verifyPinCodeVisibleInCart(this.page);
+});
+
+Then("the hotel booking should display a confirmation number", async function () {
+  logger.info("Verifying eHotel Confirmation Number is visible in cart");
+  await Cart.verifyConfirmationNumberVisibleInCart(this.page);
+});
+
+Then("the hotel booking should display a contact phone number", async function () {
+  logger.info("Verifying eHotel Contact Phone is visible in cart");
+  await Cart.verifyContactPhoneVisibleInCart(this.page);
+});

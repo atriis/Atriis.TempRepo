@@ -1358,6 +1358,44 @@ const Cart = {
     const isVisible = await cartPage.isPremierInnBreakfastOptionVisible();
     expect(isVisible, 'Breakfast type option should not be visible in Premier Inn extras').toBe(false);
   },
+
+  // ===== EHOTEL SUPPLIER DETAILS =====
+
+  /**
+   * Verifies the eHotel PIN code is visible in the cart booking confirmation section.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the PIN code is not visible
+   */
+  async verifyPinCodeVisibleInCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const isVisible = await cartPage.isPinCodeVisibleInCart();
+    if (!isVisible) throw new Error('eHotel PIN code is not visible in the cart booking confirmation section');
+  },
+
+  /**
+   * Verifies the eHotel Confirmation Number is visible in the cart booking confirmation section.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the Confirmation Number is not visible
+   */
+  async verifyConfirmationNumberVisibleInCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const isVisible = await cartPage.isConfirmationNumberVisibleInCart();
+    if (!isVisible) throw new Error('eHotel Confirmation Number is not visible in the cart booking confirmation section');
+  },
+
+  /**
+   * Verifies the eHotel Contact Phone is visible in the cart booking confirmation section.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the Contact Phone is not visible
+   */
+  async verifyContactPhoneVisibleInCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const isVisible = await cartPage.isContactPhoneVisibleInCart();
+    if (!isVisible) throw new Error('eHotel Contact Phone is not visible in the cart booking confirmation section');
+  },
 };
 
 
