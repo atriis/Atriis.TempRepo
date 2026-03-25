@@ -97,9 +97,9 @@ const { expect } = require('@playwright/test');
 const { App, FlightSearch, FlightResults } = require('@dsl');
 
 // Background steps (setup)
-Given('I am logged in as {string} {string}', 
-  async (provider, userKey) => {
-    await App.loginAndBookANewTrip(provider, userKey);
+Given('I am logged in as {string}', 
+  async (userKey) => {
+    await App.loginAsUserAndBookANewTrip(userKey);
   }
 );
 

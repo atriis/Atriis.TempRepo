@@ -142,11 +142,12 @@ const { App, FlightSearch } = require('@dsl');
 // - this.page: Playwright page object (set by Before hook)
 // - this.newTripPageFor(supplier, userKey): Login helper
 
-Given('I am logged in as {string} user {string}', async function (supplier, userKey) {
+Given('I am logged in as {string}', async function (userKey) {
   // Before hook sets up browser & page; helper method logs in
-  const user = this.config[`${supplier}.user_${userKey}`];
-  await App.loginAs(this.page, user);
-  console.log(`Logged in as ${supplier} user ${userKey}`);
+  const session = await App.loginAsUserAndBookANewTrip(userKey);
+  this.browser = session.browser;
+  this.context = session.context;
+  this.page = session.page;
 });
 
 When('I search for a one-way flight from {string} to {string}', async function (from, to) {

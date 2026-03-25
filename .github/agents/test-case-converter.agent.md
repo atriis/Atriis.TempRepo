@@ -62,8 +62,8 @@ The output must follow this **exact format**:
 ## Existing Step Catalog (search before inventing)
 
 ### Login & Setup
-- `Given I am logged in as {string} {string}` — login only
-- `Given I am logged in as {string} {string} booking a new trip` — login + open booking
+- `Given I am logged in as {string}` — login only
+- `Given I am logged in as {string} booking a new trip` — login + open booking
 - `When I book a new trip` — open trip booking page mid-test
 
 ### Traveler
@@ -213,7 +213,7 @@ At the bottom, list:
 - **Ground/Parking**: not fully implemented — flag if converting these
 
 ### Shell (Cross-Domain)
-- **Login**: username/password only — `Given I am logged in as {string} {string}`
+- **Login**: username/password only — `Given I am logged in as {string}`
 - **Payment**: test credit card or invoice
 - **Approval**: testable but requires email validation
 

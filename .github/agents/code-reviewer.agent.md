@@ -82,7 +82,7 @@ Review all pending changes and classify them into one or more categories:
     - Tags: `@regression`, `@priority:critical`, `@provider:amadeus`, `@slow` (above Feature/Scenario)
     - Gherkin: Feature name → Background (setup) → Scenarios with Given-When-Then
     - Organization: `tests/features/flights/general/`, `tests/features/hotels/daily_hotels/`, etc.
-    - Parameters: `Given I am logged in as {string} {string}` not hardcoded values
+    - Parameters: `Given I am logged in as {string}` not hardcoded values
   - **Naming conventions:**
     - **Files:** `*Page.js` (Page Objects), `*.js` (DSL), `*.steps.js` (step definitions), `*.helper.js` (utilities)
     - **DSL objects:** PascalCase (e.g., `FlightSearch`, `Cart`)

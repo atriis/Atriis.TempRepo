@@ -149,7 +149,7 @@ When working with Copilot, follow these rules strictly:
 - **Read like user stories** – Avoid technical jargon
 - **Use proper tags** – `@smoke`, `@regression`, `@priority:critical`, `@provider:amadeus`
 - **Follow Given-When-Then** – One action per step when possible
-- **Use step parameters** – `Given I am logged in as {string} {string}` not hardcoded values
+- **Use step parameters** – `Given I am logged in as {string}` not hardcoded values
 - **Be idempotent** – Scenarios should run in any order
 
 ### DSL Method Guidelines

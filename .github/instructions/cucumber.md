@@ -752,13 +752,13 @@ Scenario: Different users see different pricing
 **Step definition:**
 
 ```javascript
-Given('I am logged in as {string} {string}', 
-  async function (provider, userKey) {
-    const user = config.users?.[provider]?.[userKey];
-    if (!user) throw new Error(`User not found`);
+Given('I am logged in as {string}', 
+  async function (userKey) {
+    const { provider, userConfig } = config.resolveUser(userKey);
+    if (!userConfig) throw new Error(`User not found`);
     
     await this.page.goto(config.baseUrl);
-    await App.loginAs(this.page, user);
+    await App.loginAs(this.page, userConfig);
   }
 );
 ```

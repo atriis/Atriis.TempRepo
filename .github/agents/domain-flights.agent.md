@@ -68,7 +68,7 @@ Other agents (especially `@test-generator-pipeline` and `@test-fixer-pipeline`) 
 ## Gherkin Patterns for Flights
 ```gherkin
 # Search
-Given I am logged in as {string} {string} booking a new trip
+Given I am logged in as {string} booking a new trip
 When I search for a one way flight from {string}
 When I search for a round trip flight from {string}
 When I search for a multi-city flight from {string}

@@ -67,7 +67,7 @@ Other agents (especially `@test-generator-pipeline` and `@test-fixer-pipeline`) 
 ## Gherkin Patterns for Hotels
 ```gherkin
 # Search
-Given I am logged in as {string} {string} booking a new trip
+Given I am logged in as {string} booking a new trip
 When I search for a hotel in {string}
 When I search for a hotel named {string} in {string}
 When I search for a hotel for {int} guests

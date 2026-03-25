@@ -102,7 +102,7 @@ Add to the orchestrator state:
     "dslMethodsCreated": ["FlightSearch.verifyPriceConsistency"],
     "pageObjectsModified": ["FlightSearchPage"],
     "newStepsCreated": ["I verify the flight price is consistent after {string}"],
-    "reusedSteps": ["I am logged in as {string} {string}", "I search for a one way flight from {string}"]
+    "reusedSteps": ["I am logged in as {string}", "I search for a one way flight from {string}"]
   }
 }
 ```

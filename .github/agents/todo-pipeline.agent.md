@@ -296,7 +296,7 @@ After moving the file, check if the feature uses any test users that are NOT yet
 3. **Never add aliases** — one email = one `USER_*` entry. No exceptions.
 
 **Steps for CI workflow updates:**
-1. **Extract users from the feature file**: Look for `Given I am logged in as {string} {string}` steps. The user key maps to `USER_<LABEL>` env var (e.g., `"galileogaliei"` → `USER_GALILEOGALIEI`).
+1. **Extract users from the feature file**: Look for `Given I am logged in as {string}` steps. The user key maps to `USER_<LABEL>` env var (e.g., `"galileogaliei"` → `USER_GALILEOGALIEI`).
 2. **Check `.env` for the email** — if the email already exists under a different label, update the feature file to use the existing label. Do NOT create a new env var.
 3. **Check `test-suite.yml`**: Search the CI job's env section for each `USER_<LABEL>`. If not present, add it.
 4. **Add missing users**: Insert `USER_<LABEL>: ${{ secrets.USER_<LABEL> }}` in the env block of the appropriate CI job, before `GENERAL_PASSWORD`.

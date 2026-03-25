@@ -158,9 +158,6 @@ Given I am logged in as "{userLabel}" booking a new trip
 
 # If Login() alone (no booking):
 Given I am logged in as "{userLabel}"
-
-# If provider is explicit and needed:
-Given I am logged in as "{provider}" "{user}" booking a new trip
 ```
 
 ### D) Produce output

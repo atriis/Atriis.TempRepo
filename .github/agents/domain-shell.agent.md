@@ -57,8 +57,8 @@ Other agents consult you when the resolved domain is `shell` or when the scenari
 ## Gherkin Patterns (Shared/Generic)
 ```gherkin
 # Authentication
-Given I am logged in as {string} {string}
-Given I am logged in as {string} {string} booking a new trip
+Given I am logged in as {string}
+Given I am logged in as {string} booking a new trip
 
 # Trip
 Given I have a new trip
@@ -123,7 +123,7 @@ Then the trip status should be {string}
 
 ### ❌ DON'Ts
 - **NEVER assume manual quotes are fully implemented** — consult existing code first
-- **NEVER skip login step** — always include `Given I am logged in as {string} {string}`
+- **NEVER skip login step** — always include `Given I am logged in as {string}`
 - **NEVER use SSO or MFA** in test scenarios — only username/password authentication
 - **NEVER assume cart behaves identically** across all suppliers — test each flow separately
 - **NEVER generate approval tests without email validation setup** — they will fail
