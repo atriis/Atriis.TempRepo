@@ -360,6 +360,52 @@ const Cart = {
     await cartPage.saveOOPJustificationText();
   },
 
+  /**
+   * Opens the OOP justification dropdown and verifies the number of available options.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount - Expected number of options in the dropdown
+   * @returns {Promise<void>}
+   */
+  async openJustificationDropdownAndVerifyCount(page, expectedCount) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedCount !== 'number') throw new Error(`expectedCount must be a number, got: ${typeof expectedCount}`);
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // Scroll dropdown into view before clicking — it may be below the fold
+    const dropdown = cartPage.getJustificationDropdown();
+    await dropdown.scrollIntoViewIfNeeded({ timeout: 10000 });
+    await dropdown.click();
+
+    // Wait for the popper to render options (el-select opens with animation)
+    const options = cartPage.getAllVisibleJustificationOptions();
+    await options.first().waitFor({ state: 'visible', timeout: 10000 });
+
+    const count = await options.count();
+    expect(count, `Expected ${expectedCount} justification options, got ${count}`).toBe(expectedCount);
+  },
+
+  /**
+   * Verifies that specific options are present in the open OOP justification dropdown.
+   * The dropdown must already be open before calling this method.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string[]} expectedOptions - Array of option labels expected to be visible
+   * @returns {Promise<void>}
+   */
+  async verifyJustificationDropdownContainsOptions(page, expectedOptions) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(expectedOptions)) throw new Error(`expectedOptions must be an array, got: ${typeof expectedOptions}`);
+
+    const cartPage = getPageObject(page, CartPage);
+    for (const optionText of expectedOptions) {
+      const option = cartPage.getJustificationOption(optionText);
+      const visible = await option.isVisible();
+      expect(visible, `Expected justification option "${optionText}" to be visible in dropdown`).toBe(true);
+    }
+  },
+
   // ===== PRICE CHANGE MODAL =====
 
 

@@ -83,6 +83,17 @@ When("I select OOP justification option {string}", async function (option) {
   await Cart.selectOOPJustificationDropdownOptionAndSave(this.page, option);
 });
 
+When("I open the OOP justification dropdown and verify there are {int} options", async function (count) {
+  logger.info("Opening OOP justification dropdown and verifying option count", { count });
+  await Cart.openJustificationDropdownAndVerifyCount(this.page, count);
+});
+
+Then("the OOP justification dropdown should contain the following options:", async function (dataTable) {
+  const options = dataTable.raw().map(row => row[0]);
+  logger.info("Verifying OOP justification dropdown options", { options });
+  await Cart.verifyJustificationDropdownContainsOptions(this.page, options);
+});
+
 When("I click to edit extras at index {int}", async function (index) {
   logger.info("Clicking to edit extras at index", { index });
   const cartPage = new CartPage(this.page);

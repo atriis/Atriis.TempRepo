@@ -45,6 +45,21 @@ When("I select the trip purpose as {string} and proceed", async function (option
   await DynamicAndReferenceFields.selectTripPurposeAndProceed(this.page, option);
 });
 
+When("I select the {string} reference field as {string} and proceed", async function (fieldName, optionText) {
+  logger.info(`Selecting reference field "${fieldName}" as "${optionText}" and proceeding`);
+  const result = await DynamicAndReferenceFields.selectReferenceFieldDropdownIfVisible(
+    this.page, fieldName, optionText
+  );
+  if (!result.fieldFound) {
+    throw new Error(`Reference field "${fieldName}" did not appear — expected it to be visible for this test flow`);
+  }
+});
+
+When("I click proceed on the reference fields popup", async function () {
+  logger.info("Clicking Proceed button on reference fields popup");
+  await DynamicAndReferenceFields.proceedThroughReferenceFieldsPopup(this.page);
+});
+
 // ===== REFERENCE FIELD VALIDATION STEPS =====
 
 Then("the reference fields popup should show the following labels:", async function (dataTable) {

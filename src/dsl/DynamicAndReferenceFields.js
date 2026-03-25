@@ -158,6 +158,8 @@ const DynamicAndReferenceFields = {
     try {
       // Wait for the label text that contains the field name to appear
       const label = page.locator('label').filter({ hasText: fieldName }).first();
+      // Scroll into view first — the field may be below the fold in the popup
+      await label.scrollIntoViewIfNeeded({ timeout });
       await label.waitFor({ state: 'visible', timeout });
 
       // Find the el-select dropdown within the same field container
@@ -259,6 +261,22 @@ const DynamicAndReferenceFields = {
     // Wait briefly for validation to trigger
     await page.waitForTimeout(1000);
     return dynamicFieldsPage.isValidationErrorVisible();
+  },
+
+  /**
+   * Waits for the reference fields popup Proceed button to be visible and clicks it.
+   * Use when the popup appears and all required fields are already pre-filled,
+   * so no field selection is needed — just dismiss the popup to continue.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async proceedThroughReferenceFieldsPopup(page) {
+    if (!page) throw new Error('page is required');
+
+    const commonPage = getPageObject(page, CommonPage);
+    await commonPage.getProceedButton().waitFor({ state: 'visible', timeout: 15000 });
+    await commonPage.clickProceedButton();
   },
 };
 

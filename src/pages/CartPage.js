@@ -49,6 +49,8 @@ const SELECTORS = {
 
   // OOP Justification selectors
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
+  OOP_JUSTIFICATION_SECTION: '.oop-justification', // Section containing the OOP justification dropdown/text (oop-justification.vue)
+  OOP_JUSTIFICATION_SELECT: '.oop-justification .app-select .el-select', // The el-select wrapper inside the OOP justification section
   
   // Extras
   EDIT_EXTRAS_BUTTON: ".extra__btns", //All edit buttons in extras section have the same class, so we will use nth(index) to click the right one when needed
@@ -328,9 +330,7 @@ class CartPage {
    * @returns {Locator} Playwright locator for the justification dropdown.
    */
   getJustificationDropdown() {
-    return this.page.getByRole("combobox", {
-      name: "Select your justification",
-    });
+    return this.page.locator(SELECTORS.OOP_JUSTIFICATION_SELECT);
   }
 
   /**
@@ -341,6 +341,16 @@ class CartPage {
    */
   getJustificationOption(optionName) {
     return this.page.getByRole("option", { name: optionName });
+  }
+
+  /**
+   * Gets all visible dropdown option items (li elements).
+   * The OOP justification dropdown must be open before calling this.
+   *
+   * @returns {Locator} Playwright locator for all visible dropdown option list items.
+   */
+  getAllVisibleJustificationOptions() {
+    return this.page.locator(`${SELECTORS.DROPDOWN_OPTION}:visible`);
   }
 
   /**
