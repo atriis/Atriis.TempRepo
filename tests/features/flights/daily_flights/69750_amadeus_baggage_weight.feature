@@ -20,11 +20,17 @@ Feature: 69750 Amadeus - Baggage weight sent in AddMultiElement
     And I filter results by carrier "RK"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    And I add a credit card as payment method
-    # TODO: Add "ABAG" baggage option
-    # Testim: Add__ABAG__baggage_option() — opens baggage panel and selects ABAG option
-    # Need new step: When I add baggage option "ABAG"
-    # DSL: Cart.addBaggageOption(page, "ABAG") → CartPage baggage selectors
+    When I click add payment method button
+    And I select card 1 and save
+    And I fill credit card cvv if needed
+    When I click to edit extras at index 1
+    And I wait for the save button
+    And I click number of baggage
+    And I click dropdown option "EXCESS BAGGAGE REQUEST"
+    And I click the save button
+    Then the baggage green icon should be visible
+    And I click to edit extras at index 1
+    Then the baggage option "EXCESS BAGGAGE REQUEST" should be saved
     And I accept Terms & Conditions
     And I hold the trip
     Then I successfully cancel the trip

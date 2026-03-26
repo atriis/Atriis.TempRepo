@@ -1557,6 +1557,19 @@ const Cart = {
   },
 
   /**
+   * Verifies the selected baggage option contains the expected text.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedOption - Expected baggage option text (e.g. "EXCESS BAGGAGE REQUEST")
+   */
+  async verifyBaggageOptionSaved(page, expectedOption) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedOption !== 'string') throw new Error('expectedOption must be a string, got: ' + typeof expectedOption);
+    const cartPage = getPageObject(page, CartPage);
+    const actualText = await cartPage.getSelectedBaggageOptionText();
+    expect(actualText, `Baggage option should contain "${expectedOption}"`).toContain(expectedOption);
+  },
+
+  /**
    * Verifies specific passenger initials are visible in the trip.
    * @param {import('playwright').Page} page
    * @param {string} initials - e.g. "AO", "PR"

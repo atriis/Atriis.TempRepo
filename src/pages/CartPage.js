@@ -69,6 +69,7 @@ const SELECTORS = {
   NUMBER_OF_BAGGAGE_DROPDOWN_FIELD: "//span[normalize-space()='Number of baggage']", // XPath used due to complex dropdown structure - TODO: adjust when we have a data-test-id selector.
   DROPDOWN_OPTION: 'li.el-select-dropdown__item', // Dropdown option selector (used with hasText filter for partial matching)
   GREEN_ICON_BAGGAGE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green",  // Green icon next to added baggage
+  BAGGAGE_SELECTED_OPTION: '.flight-baggage .el-select__selected-item span', // Selected baggage option text inside the flight-baggage section
   
   // Flight Meals (flight-meals.vue)
   MEAL_DROPDOWN_CARET: ".flight-meals .el-select__caret",
@@ -432,6 +433,18 @@ class CartPage {
    */
   getBaggageGreenIcon() {
     return this.page.locator(SELECTORS.GREEN_ICON_BAGGAGE);
+  }
+
+  /**
+   * Gets the text of the currently selected baggage option.
+   * Scoped to .flight-baggage to avoid matching other extras dropdowns.
+   *
+   * @returns {Promise<string>} The selected baggage option text
+   */
+  async getSelectedBaggageOptionText() {
+    const locator = this.page.locator(SELECTORS.BAGGAGE_SELECTED_OPTION).first();
+    await locator.waitFor({ state: 'visible', timeout: 10000 });
+    return (await locator.textContent()).trim();
   }
 
   /**
