@@ -203,9 +203,65 @@ async function selectDatesByNthAvailableFromNextVisibleMonth(
   await end.click();
 }
 
+/**
+ * Selects the Nth occurrence of a specific weekday from next month in the calendar.
+ * Clicks the forward arrow once to navigate to next month, then selects the date.
+ * Works with both single-month and dual-month calendar pickers.
+ *
+ * @param {Object} page - Playwright page instance
+ * @param {Object} opts
+ * @param {string} opts.dayOfWeek - Day name: "monday","tuesday","wednesday","thursday","friday","saturday","sunday"
+ * @param {number} [opts.nth=1] - Which occurrence to select (1 = first, 2 = second, etc.)
+ */
+async function selectNthWeekdayFromNextMonth(page, { dayOfWeek, nth = 1 } = {}) {
+  if (!dayOfWeek || typeof dayOfWeek !== 'string') {
+    throw new Error('dayOfWeek must be a non-empty string');
+  }
+  if (!Number.isInteger(nth) || nth < 1) {
+    throw new Error(`nth must be a positive integer, got: ${nth}`);
+  }
+
+  const dayMap = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+  const targetDay = dayMap[dayOfWeek.toLowerCase()];
+  if (targetDay === undefined) {
+    throw new Error(`Invalid dayOfWeek "${dayOfWeek}". Use: ${Object.keys(dayMap).join(', ')}`);
+  }
+
+  // Calculate which day number (1-based) the Nth weekday falls on in the next month
+  const now = new Date();
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  let count = 0;
+  let dayNumber = null;
+  for (let d = 1; d <= 31; d++) {
+    const candidate = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), d);
+    if (candidate.getMonth() !== nextMonth.getMonth()) break;
+    if (candidate.getDay() === targetDay) {
+      count++;
+      if (count === nth) {
+        dayNumber = d;
+        break;
+      }
+    }
+  }
+  if (dayNumber === null) {
+    throw new Error(`Could not find ${nth}${nth === 1 ? 'st' : nth === 2 ? 'nd' : nth === 3 ? 'rd' : 'th'} ${dayOfWeek} in next month`);
+  }
+
+  // Navigate to next month with the forward arrow
+  const nextArrow = page.locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW).first();
+  await nextArrow.waitFor({ state: 'visible', timeout: 10000 });
+  await nextArrow.click();
+
+  // dayNumber is 1-based, available cells are 0-indexed → index = dayNumber - 1
+  const index = dayNumber - 1;
+
+  await selectDatesByNthAvailable(page, { startIndex: index });
+}
+
 module.exports = {
   selectDatesByNthAvailable,
   selectDatesByNthAvailableFromNextVisibleMonth,
   selectDatesByValue,
+  selectNthWeekdayFromNextMonth,
   defaultDateSelectorBuilder,
 };

@@ -1,7 +1,7 @@
 const FlightSearchPage = require("@pages/FlightSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const flightRoutes = require("@data/flights.json");
-const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const { selectDatesByNthAvailable, selectNthWeekdayFromNextMonth } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { generateRandomFlightRoute } = require("@utils/data/generateRandomFlightRoute");
@@ -80,6 +80,43 @@ const FlightSearch = {
     await searchPage.waitAndClickSearchButton();
 
     return { searched: true, from, to, tripType, searchType };
+  },
+
+  /**
+   * Search a one-way flight selecting the Nth occurrence of a specific weekday
+   * from the next visible month in the calendar (no arrow click).
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} from - Origin airport code
+   * @param {string} to - Destination airport code
+   * @param {string} dayOfWeek - "monday","tuesday",...,"sunday"
+   * @param {number} nth - Which occurrence (1=first, 2=second, etc.)
+   */
+  async searchOneWayOnNthWeekday(page, from, to, dayOfWeek, nth) {
+    if (!page) throw new Error('page is required');
+    if (!from || typeof from !== 'string') throw new Error('from must be a non-empty string');
+    if (!to || typeof to !== 'string') throw new Error('to must be a non-empty string');
+    if (!dayOfWeek || typeof dayOfWeek !== 'string') throw new Error('dayOfWeek must be a non-empty string');
+    if (!Number.isInteger(nth) || nth < 1) throw new Error(`nth must be a positive integer, got: ${nth}`);
+
+    logger.info(`Starting oneWay flight search on ${nth}${nth === 1 ? 'st' : nth === 2 ? 'nd' : 'th'} ${dayOfWeek} of next month`, { from, to });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectOneWayTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+
+    // Open calendar and navigate to next month, then pick the specific weekday
+    await searchPage.clickDepartureDateField();
+    await selectNthWeekdayFromNextMonth(page, { dayOfWeek, nth });
+
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'oneWay', dayOfWeek, nth };
   },
 
   /**
