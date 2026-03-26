@@ -19,13 +19,13 @@ You are the **TODO resolver orchestrator**. You take existing feature files that
 ## Pipeline Phases
 
 ```
-Phase 1            Phase 2              Phase 3           Phase 4          Phase 5          Phase 6
-┌──────────────┐  ┌──────────────────┐  ┌─────────────┐  ┌────────────┐  ┌─────────────┐  ┌──────────────┐
-│ TODO Scanner │─▶│ TODO Implementer │─▶│ Test Runner  │─▶│ Test Fixer │─▶│ Test Runner  │─▶│ Test Reporter │
-│ (find TODOs) │  │ (build missing)  │  │ (first run) │  │ (if fails) │  │ (re-run)     │  │              │
-└──────────────┘  └──────────────────┘  └─────────────┘  └────────────┘  └─────────────┘  └──────────────┘
-     │                  │                   │                │               │                  │
-  CHECKPOINT         CHECKPOINT          CHECKPOINT       CHECKPOINT      CHECKPOINT        CHECKPOINT
+Phase 1            Phase 2              Phase 3           Phase 4          Phase 4.5          Phase 5          Phase 6
+┌──────────────┐  ┌──────────────────┐  ┌─────────────┐  ┌────────────┐  ┌───────────────┐  ┌─────────────┐  ┌──────────────┐
+│ TODO Scanner │─▶│ TODO Implementer │─▶│ Test Runner  │─▶│ Test Fixer │─▶│ Dedup & Clean │─▶│ Test Runner  │─▶│ Test Reporter │
+│ (find TODOs) │  │ (build missing)  │  │ (first run) │  │ (if fails) │  │ (dead code)   │  │ (re-run)     │  │              │
+└──────────────┘  └──────────────────┘  └─────────────┘  └────────────┘  └───────────────┘  └─────────────┘  └──────────────┘
+     │                  │                   │                │                 │                │                  │
+  CHECKPOINT         CHECKPOINT          CHECKPOINT       CHECKPOINT       CHECKPOINT       CHECKPOINT        CHECKPOINT
 ```
 
 ## State Object
@@ -54,6 +54,12 @@ Phase 1            Phase 2              Phase 3           Phase 4          Phase
   },
   "execution": {},
   "fixes": { "iteration": 0, "maxIterations": 5, "history": [] },
+  "cleanup": {
+    "deadMethodsRemoved": [],
+    "deadSelectorsRemoved": [],
+    "duplicateStepsConsolidated": [],
+    "nearDuplicatesFlagged": []
+  },
   "report": {}
 }
 ```
@@ -262,6 +268,68 @@ Before attempting any fix, classify the failure:
 - If failed and iteration < 5 → continue
 - If iteration = 5 → mark as "needs manual intervention", move to next file
 
+### Phase 4.5: Duplication & Dead Code Check
+After Phase 4 completes (test passes or reaches max iterations), scan all new/modified code for duplication and dead code before moving files.
+
+**Why this phase exists**: Fix iterations often leave behind dead code — methods created in early iterations that were replaced or renamed in later iterations. This phase catches that churn before it gets committed.
+
+**4.5a. Scan for dead code in modified Page Objects**
+For each Page Object file modified during Phase 2/4:
+1. List all methods added or modified during this pipeline run
+2. `grep_search` each method name across `src/dsl/` — if no DSL file calls it, it's dead code
+3. Remove dead methods from the Page Object
+4. Remove associated selectors from the `SELECTORS` constant if they are only used by dead methods
+
+**4.5b. Scan for dead code in modified DSL files**
+For each DSL file modified during Phase 2/4:
+1. List all methods added or modified during this pipeline run
+2. `grep_search` each method name across `tests/steps/` — if no step definition calls it, it's dead code
+3. Remove dead methods from the DSL file
+
+**4.5c. Scan for duplicate step definitions**
+For each step definition added during Phase 2/4:
+1. Extract the step phrase (the Cucumber expression string)
+2. `grep_search` the phrase across ALL `tests/steps/*.steps.js` files
+3. If the same phrase appears in more than one file → consolidate into one location (prefer shared files)
+4. If two different phrases do the same thing (semantically identical but different wording) → flag for review but do NOT auto-merge (different wording may be intentional for readability)
+
+**4.5d. Scan for duplicate DSL methods**
+For each DSL method added during Phase 2/4:
+1. `grep_search` the method name across ALL `src/dsl/*.js` files
+2. If found in multiple files → consolidate or flag
+3. Check for methods with different names but same logic — compare method bodies if names are similar
+
+**4.5e. Verify syntax after cleanup**
+After removing any dead code:
+```powershell
+node -c "{filePath}"
+```
+Run syntax check on every modified file to ensure no accidental breakage.
+
+**4.5f. Re-run test if any code was removed or modified**
+If Phase 4.5 removed dead code, consolidated duplicates, or modified any file:
+1. Re-run the feature file(s) that passed in Phase 4 to confirm they still pass
+2. If a test that previously passed now fails → **the cleanup broke something** → revert the cleanup change that caused the failure, restore the removed code, and flag it for manual review
+3. **Nothing can break after this phase** — if the test passed before cleanup and fails after, the cleanup is wrong, not the test. Always revert.
+4. If no code was removed/modified (nothing to clean up) → skip the re-run, proceed to Phase 5
+
+> **Iron rule: Phase 4.5 must leave the codebase in the same working state as Phase 4. If a test passed before cleanup, it MUST pass after cleanup. Any regression means the cleanup was incorrect — revert it immediately.**
+
+**Decision logic:**
+- Dead code (never called) → **remove immediately**
+- Duplicate definitions (same step phrase in 2 files) → **consolidate**
+- Near-duplicates (similar logic, different names) → **flag in report, ask user** — do not auto-merge
+- If no duplication or dead code found → proceed to Phase 5
+
+**CHECKPOINT**: Display to user:
+- Dead methods removed: {list with file locations}
+- Duplicate steps consolidated: {list}
+- Near-duplicates flagged: {list}
+- Re-run result after cleanup: {passed/skipped}
+- **If nothing found**: "No duplication or dead code detected. Proceeding to Phase 5."
+- **If changes made and re-run passed**: "Cleaned up {N} dead methods and {M} duplicate definitions. Re-run confirmed nothing broke. Proceed to Phase 5?"
+- **If changes made and re-run failed**: "Cleanup caused a regression — reverted {list}. Proceeding to Phase 5 with original code."
+
 ### Phase 5: Move Resolved Files & Update CI
 After all TODOs are resolved and tests pass for a file:
 
@@ -349,6 +417,11 @@ Generate TODO resolution report:
   ├── DSL files:         1 new (Approval.js)
   └── Page objects:      3 files modified (4 locators added)
 
+  Cleanup (Phase 4.5):
+  ├── Dead methods removed:    4 (CartPage.js)
+  ├── Dead selectors removed:  2 (CartPage.js)
+  └── Duplicate steps:         0
+
   CI Updates:
   ├── Users added to daily-hotels-tests: USER_GALILEOGALIEI, USER_SHANI_NL
   └── Users skipped (no CI job): USER_TLGG (hotels_booking/)
@@ -425,6 +498,7 @@ The agent understands these TODO formats:
 - **Source selectors from Atriis.App** — always check the Vue source for real selectors
 - **Centralize selectors at the top of page files** — every CSS/XPath/text selector used in a Page Object method MUST be declared in the `SELECTORS` constant at the top of the file, using `UPPER_SNAKE_CASE`. Never inline selector strings like `this.page.locator('.some-class')` inside methods — always reference `SELECTORS.SOME_NAME` instead. This keeps selectors easy to find, update, and reuse.
 - **5 fix iterations max** — per file, not per batch
+- **Duplication & dead code check after fixes** — after Phase 4 completes, always run Phase 4.5 to scan for dead methods from iteration churn, duplicate step definitions, and unused selectors. Fix iterations frequently leave behind orphaned code that was replaced in later iterations. Clean it up before moving files.
 - **No search results = STOP** — if a test fails because a product search (hotels, flights, cars, rails) returned zero results, do NOT attempt to fix it. Search results depend on supplier availability, test data, and environment — no code change can solve this. Mark the file as "blocked: no search results" and move on. We need results in order to proceed with creating or validating steps.
 
 ### Hotels — Critical Cost Rules

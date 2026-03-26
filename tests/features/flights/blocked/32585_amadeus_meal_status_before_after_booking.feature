@@ -17,16 +17,17 @@ Feature: 32585 Amadeus - Meal status displayed in cart before and after booking
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "NYC"
     And I add the first flight to cart
-    # TODO: Add meal to one-way flight
-    # Testim: Add_meal_to_one_way_flight() — opens meal section, selects a meal option
-    # Need new step: When I add a meal to the flight
-    # DSL: Cart.addMealToFlight(page) → CartPage selectors for meal panel
-    # TODO: Validate meal status is displayed before booking
-    # Testim: validate_meal_status_before_booking() — checks meal indicator/icon is visible
-    # Need new step: Then the meal status should be visible in cart
+    Then the booking status should be "Pending booking"
+    When I click to edit extras at index 2
+    And I add a meal to the flight
+    Then I should see a success notification
+    Then the booking status should be "Pending booking"
+    When I click to edit extras at index 2
+    Then the selected meal should be "BLML" with status "Reservation in progress, proceed to checkout for finalization"
     And I add a credit card as payment method
     And I proceed to checkout
     And I complete the booking
-    # TODO: Validate meal status is displayed after booking
-    # Testim: validate_meal_status_after_booking() — checks meal indicator persists after booking
-    # Need same step: Then the meal status should be visible in cart
+    When I click the extras arrow button
+    And I click to edit extras at index 2
+    Then the selected meal should be "BLML" with status matching "(In progress)|(Declined by)"
+    

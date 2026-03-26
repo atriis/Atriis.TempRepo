@@ -14,6 +14,12 @@ const SELECTORS = {
   BOOKING_ERROR_DIALOG: ".booking-error-dialog",
   BACK_TO_TRIP_BUTTON: ".back-to-trip-btn",
   EMAIL_INPUT: ".email-input .el-input__inner",
+
+  // Contact details (reference-form-contact-details.vue)
+  CONTACT_DETAILS_CHECKBOX: ".contact-details-container .el-checkbox__inner",
+  CONTACT_PHONE_COUNTRY_CODE: ".reference-form-contact-details .el-input:nth-of-type(1) .el-input__inner",
+  CONTACT_PHONE_AREA_CODE: ".reference-form-contact-details .el-input:nth-of-type(2) .el-input__inner",
+  CONTACT_PHONE_NUMBER: ".reference-form-contact-details .el-input:nth-of-type(3) .el-input__inner",
 };
 
 class CheckoutPage {
@@ -125,6 +131,45 @@ class CheckoutPage {
     const input = this.page.locator(SELECTORS.EMAIL_INPUT).first();
     await input.waitFor({ state: 'visible', timeout });
     return input.inputValue();
+  }
+
+  /**
+   * Clicks the "Don't share contact details with airlines" checkbox.
+   */
+  async clickContactDetailsCheckbox() {
+    const cb = this.page.locator(SELECTORS.CONTACT_DETAILS_CHECKBOX).first();
+    await cb.waitFor({ state: 'visible', timeout: 10000 });
+    await cb.click();
+  }
+
+  /**
+   * Fills the contact phone country code field.
+   * @param {string} value
+   */
+  async fillContactPhoneCountryCode(value) {
+    const input = this.page.locator(SELECTORS.CONTACT_PHONE_COUNTRY_CODE).first();
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.fill(value);
+  }
+
+  /**
+   * Fills the contact phone area code field.
+   * @param {string} value
+   */
+  async fillContactPhoneAreaCode(value) {
+    const input = this.page.locator(SELECTORS.CONTACT_PHONE_AREA_CODE).first();
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.fill(value);
+  }
+
+  /**
+   * Fills the contact phone number field.
+   * @param {string} value
+   */
+  async fillContactPhoneNumber(value) {
+    const input = this.page.locator(SELECTORS.CONTACT_PHONE_NUMBER).first();
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.fill(value);
   }
 }
 

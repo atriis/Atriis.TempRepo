@@ -364,3 +364,13 @@ Then("the carrier name in more details should be {string}", async function (expe
   await FlightResults.verifyCarrierNameInDetails(this.page, expectedName);
 });
 
+When("I extract the price from pricing option at index {int}", async function (index) {
+  logger.info("Extracting price from pricing option at index", { index });
+  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
+  const flightResultsPage = new FlightResultsPage(this.page);
+  const price = await flightResultsPage.getAmountPriceValuePricingOptions(index);
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(price);
+  logger.info("Extracted pricing option price", { index, price });
+});
+

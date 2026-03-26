@@ -70,6 +70,14 @@ const SELECTORS = {
   DROPDOWN_OPTION: 'li.el-select-dropdown__item', // Dropdown option selector (used with hasText filter for partial matching)
   GREEN_ICON_BAGGAGE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green",  // Green icon next to added baggage
   
+  // Flight Meals (flight-meals.vue)
+  MEAL_DROPDOWN_CARET: ".flight-meals .el-select__caret",
+  MEAL_DROPDOWN_OPTION_4: ".el-scrollbar__view > li:nth-of-type(4) span",
+  MEAL_SAVE_BUTTON: ".flight-meals .no-border",
+  MEAL_CANCEL_BUTTON: ".flight-meals .clear-btn",
+  MEAL_SELECTED_TEXT: ".flight-meals .el-select__placeholder span",
+  MEAL_STATUS_HELP_TEXT: ".flight-meals .help",
+  
   // Delivery Method (UK Rail) selectors
   DELIVERY_METHOD_SECTION: ".uk-rail-delivery-method",
   DELIVERY_METHOD_CLICKABLE: ".uk-rail-delivery-method .is-clickable",
@@ -1624,6 +1632,62 @@ class CartPage {
   async clickFlightDetailsButton() {
     const btn = this.page.locator(SELECTORS.FLIGHT_DETAILS_BUTTON).first();
     await btn.waitFor({ state: 'visible', timeout: 15000 });
+    await btn.click();
+  }
+
+  // ========================================
+  // Flight Meals
+  // ========================================
+
+  /**
+   * Selects a meal from the dropdown (4th option — typically "Bland Meal").
+   */
+  async selectMealFromDropdown() {
+    const caret = this.page.locator(SELECTORS.MEAL_DROPDOWN_CARET).first();
+    await caret.waitFor({ state: 'visible', timeout: 10000 });
+    await caret.click();
+    const option = this.page.locator(SELECTORS.MEAL_DROPDOWN_OPTION_4).first();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    await option.click();
+  }
+
+  /**
+   * Clicks the save button in the meal panel.
+   */
+  async clickMealSaveButton() {
+    const btn = this.page.locator(SELECTORS.MEAL_SAVE_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout: 10000 });
+    await btn.click();
+  }
+
+  /**
+   * Gets the meal status help text (e.g. "Reservation in progress, proceed to checkout for finalization").
+   * @param {number} [timeout=15000]
+   * @returns {Promise<string>}
+   */
+  async getMealStatusHelpText({ timeout = 15000 } = {}) {
+    const el = this.page.locator(SELECTORS.MEAL_STATUS_HELP_TEXT).first();
+    await el.waitFor({ state: 'visible', timeout });
+    return (await el.innerText()).trim();
+  }
+
+  /**
+   * Gets the currently selected meal text (e.g. "Diabetic Meal (DBML)").
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getMealSelectedText({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.MEAL_SELECTED_TEXT).first();
+    await el.waitFor({ state: 'visible', timeout });
+    return (await el.innerText()).trim();
+  }
+
+  /**
+   * Clicks the Cancel button in the meal panel to close it.
+   */
+  async clickMealCancelButton() {
+    const btn = this.page.locator(SELECTORS.MEAL_CANCEL_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout: 10000 });
     await btn.click();
   }
 }

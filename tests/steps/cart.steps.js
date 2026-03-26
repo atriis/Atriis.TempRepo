@@ -635,3 +635,20 @@ When("I close branded fares drawer in cart", async function () {
   logger.info("Closing branded fares drawer in cart");
   await Cart.closeBrandedFaresDrawerInCart(this.page);
 });
+
+When("I add a meal to the flight", async function () {
+  logger.info("Selecting meal and saving");
+  await Cart.addMealToFlight(this.page);
+});
+
+Then("the selected meal should be {string} with status {string}", async function (expectedMeal, expectedStatus) {
+  logger.info("Verifying meal selection and status", { expectedMeal, expectedStatus });
+  const result = await Cart.verifyMealSelectionAndStatus(this.page, expectedMeal, expectedStatus);
+  logger.info("Meal verification result", result);
+});
+
+Then("the selected meal should be {string} with status matching {string}", async function (expectedMeal, statusPattern) {
+  logger.info("Verifying meal selection and status (regex)", { expectedMeal, statusPattern });
+  const result = await Cart.verifyMealSelectionAndStatus(this.page, expectedMeal, new RegExp(statusPattern));
+  logger.info("Meal verification result", result);
+});

@@ -1488,6 +1488,62 @@ const Cart = {
     const FlightResults = require('./FlightResults');
     await FlightResults.closeBrandedFaresDrawer(page);
   },
+
+  /**
+   * Adds a meal to the flight in the cart.
+   * Opens the meal panel, selects a meal from the dropdown, and saves.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async addMealToFlight(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // Select a meal (4th option in dropdown — typically Diabetic Meal DBML)
+    await cartPage.selectMealFromDropdown();
+
+    // Save
+    await cartPage.clickMealSaveButton();
+
+    // Wait for success toast confirming meal was saved
+    await page.locator('.el-notification__title').filter({ hasText: 'Success' }).waitFor({ state: 'visible', timeout: 30000 });
+    await page.waitForLoadState('networkidle');
+  },
+
+  /**
+   * Verifies the selected meal text and status message in the meal panel.
+   * Assumes the meal panel is already open (caller used "I click to edit extras at index").
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMeal - Expected meal text (e.g. "Diabetic Meal (DBML)")
+   * @param {string|RegExp} expectedStatus - Expected status message (string or regex)
+   * @returns {Promise<{ meal: string, status: string }>}
+   */
+  async verifyMealSelectionAndStatus(page, expectedMeal, expectedStatus) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedMeal !== 'string') throw new Error('expectedMeal must be a string, got: ' + typeof expectedMeal);
+
+    const { expect } = require("@playwright/test");
+    const cartPage = getPageObject(page, CartPage);
+
+    // Verify the selected meal text
+    const mealText = await cartPage.getMealSelectedText();
+    expect(mealText).toContain(expectedMeal);
+
+    // Verify the status help text
+    const statusText = await cartPage.getMealStatusHelpText();
+    if (expectedStatus instanceof RegExp) {
+      expect(statusText).toMatch(expectedStatus);
+    } else {
+      expect(statusText).toContain(expectedStatus);
+    }
+
+    // Close the panel to avoid overlay blocking subsequent actions
+    await cartPage.clickMealCancelButton();
+
+    return { meal: mealText, status: statusText };
+  },
 };
 
 

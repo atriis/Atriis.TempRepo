@@ -133,6 +133,35 @@ const Checkout = {
     const emailValue = await checkoutPage.getEmailInputValue();
     expect(emailValue).toContain(expectedText);
   },
+
+  /**
+   * Unchecks the "Don't share contact details with airlines" checkbox
+   * and fills in the traveler phone number on the checkout page.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} countryCode - Phone country code (e.g. "1")
+   * @param {string} areaCode - Phone area code (e.g. "505")
+   * @param {string} phoneNumber - Phone number (e.g. "1001000")
+   */
+  async uncheckContactSharingAndEditPhone(page, countryCode, areaCode, phoneNumber) {
+    if (!page) throw new Error('page is required');
+    if (typeof countryCode !== 'string') throw new Error('countryCode must be a string, got: ' + typeof countryCode);
+    if (typeof areaCode !== 'string') throw new Error('areaCode must be a string, got: ' + typeof areaCode);
+    if (typeof phoneNumber !== 'string') throw new Error('phoneNumber must be a string, got: ' + typeof phoneNumber);
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+
+    // Ensure checkout page is loaded
+    await checkoutPage.waitForBookingDetailsText();
+
+    // Uncheck the "Don't share contact details" checkbox to enable phone fields
+    await checkoutPage.clickContactDetailsCheckbox();
+
+    // Fill phone fields
+    await checkoutPage.fillContactPhoneCountryCode(countryCode);
+    await checkoutPage.fillContactPhoneAreaCode(areaCode);
+    await checkoutPage.fillContactPhoneNumber(phoneNumber);
+  },
 };
 
 module.exports = Checkout;

@@ -16,12 +16,6 @@ Feature: 59788 Amadeus - One way pricing options are not duplicated
     When I search for a one way flight from "LHR" to "MNL"
     And I click proceed on the reference fields popup
     And I click to open first pricing options
-    # TODO: Extract price from first pricing option, close drawer,
-    # reopen pricing options, extract price from second option,
-    # and verify the two prices are NOT equal (tolerance 0.09)
-    # Original Testim flow:
-    #   1. Open pricing options → extract price from option 1
-    #   2. Close pricing options drawer
-    #   3. Open pricing options again → extract price from option 2
-    #   4. Verify option1 != option2 (tolerance 0.09)
-    # Proposed new step: Then the pricing options should not have duplicate prices
+    When I extract the price from pricing option at index 0
+    And I extract the price from pricing option at index 1
+    Then the extracted price at index 0 should not equal the extracted price at index 1

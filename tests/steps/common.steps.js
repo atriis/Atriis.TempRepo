@@ -12,6 +12,7 @@ const {
 } = require("../../src/assertions/numberAssertions");
 const { extractPriceFromLocation } = require("../../src/utils/priceExtraction");
 const { CommonPage } = require("@pages/CommonPage");
+const { expect } = require("@playwright/test");
 const logger = require("@utils/logger").child("Common");
 
 setDefaultTimeout(120000);
@@ -77,6 +78,13 @@ Then("the extracted price at index {int} should equal the extracted price at ind
   const priceA = this.extractedPrices[indexA];
   const priceB = this.extractedPrices[indexB];
   expectNumbersToBeEqual(priceA, priceB, `Price comparison [${indexA}] vs [${indexB}]`);
+});
+
+Then("the extracted price at index {int} should not equal the extracted price at index {int}", function (indexA, indexB) {
+  logger.info("Asserting extracted prices are not equal", { indexA, indexB });
+  const priceA = this.extractedPrices[indexA];
+  const priceB = this.extractedPrices[indexB];
+  expect(priceA).not.toBe(priceB);
 });
 
 Then("the extracted price at index {int} should equal the extracted price at index {int} within tolerance", function (indexA, indexB) {

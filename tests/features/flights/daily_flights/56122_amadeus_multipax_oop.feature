@@ -16,17 +16,9 @@ Feature: 56122 Amadeus - Multi-pax OOP triggered correctly
     Given I am logged in as "bruninaita" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "Bruna Samara"
-    # TODO: Add third traveler by name
-    # Testim: add_third_traveller('Brunao Oliveira')
-    # Existing step handles one additional traveler — need to add a second
-    # Reuse: Given I have added traveler by name "Brunao Oliveira"
     And I have added traveler by name "Brunao Oliveira"
     When I search for a one way flight from "LON" to "BER"
     And I wait for add to trip text to be visible
-    # TODO: Type price filter value "500" in results
-    # Testim: page.type("#el-id-5422-414", '500')
-    # TODO: Verify no OOP for price under threshold (negative element validation)
-    # Testim: Converting a 'negative-element-validation' step — manual
+    Then the out of policy indicator should not be visible in results
     And I click to open first pricing options
-    # TODO: Verify no OOP in pricing options (negative element validation)
-    # Testim: Converting a 'negative-element-validation' step — manual
+    Then the out of policy indicator should not be visible in results

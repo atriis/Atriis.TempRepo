@@ -33,6 +33,13 @@ When("I navigate to cart from checkout", async function () {
   await Checkout.navigateToCartFromCheckout(this.page);
 });
 
+When("I uncheck contact sharing and edit the phone to {string}", async function (phone) {
+  logger.info("Unchecking contact sharing and editing phone", { phone });
+  const parts = phone.split(/\s+/);
+  if (parts.length !== 3) throw new Error(`Phone must be "countryCode areaCode number" (3 space-separated parts), got: "${phone}"`);
+  await Checkout.uncheckContactSharingAndEditPhone(this.page, parts[0], parts[1], parts[2]);
+});
+
 Then("{string} should be displayed in the checkout page", async function (expectedText) {
   logger.info("Verifying text is displayed in checkout page", { expectedText });
   await this.page.locator(`text=${expectedText}`).first().waitFor({ state: 'visible', timeout: 15000 });
