@@ -19,22 +19,20 @@ Feature: 28643 Amadeus - Paid seats price calculation and booking
     And I wait for add to trip text to be visible
     And I filter results by carrier "KL"
     And I click to open first pricing options
-    # TODO: Select first pricing option and add to trip
-    # Testim: clicks first option ".flicking-camera > :nth-child(1) .btn--primary"
-    # then clicks ".add-btn"
+    And I select the first option from pricing options
     And I add to trip from pricing options
     And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
-    When I extract the price at index 0 from "cart"
-    # TODO: Open seating panel and add seats
-    # Testim: scrolls to seating → clicks seating panel → clicks "Add Seats" →
-    # selects available seat → extracts seat cost → saves
+    When I extract the price at index 3 from "cart"
+    When I click to edit extras at index 4
+    And I click add seats in extras
+    And I wait for the seat map to load
     And I select the first available flight seat
-    When I extract the price at index 1 from "cart"
-    # TODO: Validate flight cost + seat cost = total cost
-    # Testim: validate_number1_number2_number3(flightCost, seatCost, totalCost)
-    # Need custom validation: extracted price 0 + seat cost = extracted price 1
+    And I extract seat price in seat map drawer
+    And I save and close seat map drawer
+    Then the total price in cart is equal to total price in cart before seats + seats price
     And I proceed to checkout
     And I complete the booking
-    # TODO: Verify seat icon is visible in trip overview after booking
-    # Testim: scrolls to seating → checks ".yellow" (seat status icon) visible
+    Then the quote destination should contain "Flight to"
+    And I click the extras arrow button
+    Then the seat icon should be visible in trip overview

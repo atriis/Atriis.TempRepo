@@ -17,6 +17,9 @@ Feature: 69506 Amadeus - Send passive to queue
     Given I am logged in as "sendtoqcorp" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "LON" to "PAR"
+    And I wait for add to trip text to be visible
+    And I log the trip number from the URL
     And I add the first flight to cart
+    Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking

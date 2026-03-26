@@ -47,3 +47,9 @@ Given("I have added {string} as primary traveler", async function (travelerName)
   const result = await Search.addTravelerAsPrimaryByName(this.page, travelerName);
   expect(result.starIconVisible, "Star icon should be visible after adding primary traveler").toBe(true);
 });
+
+Given("I have added a random guest traveler with name {string} {string}", async function (firstName, lastName) {
+  logger.info("Adding random guest traveler with custom name", { firstName, lastName });
+  const result = await Search.addRandomGuestWithName(this.page, firstName, lastName);
+  expect(result.added, "Guest traveler should be added").toBe(true);
+});

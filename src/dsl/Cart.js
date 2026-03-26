@@ -1544,6 +1544,56 @@ const Cart = {
 
     return { meal: mealText, status: statusText };
   },
+
+  /**
+   * Verifies the seat icon is visible in the trip overview extras section.
+   * @param {import('playwright').Page} page
+   */
+  async verifySeatIconVisibleInTripOverview(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const visible = await cartPage.isSeatIconVisibleInExtras();
+    expect(visible, 'Seat icon should be visible in trip overview').toBe(true);
+  },
+
+  /**
+   * Verifies specific passenger initials are visible in the trip.
+   * @param {import('playwright').Page} page
+   * @param {string} initials - e.g. "AO", "PR"
+   */
+  async verifyPassengerInitialsVisible(page, initials) {
+    if (!page) throw new Error('page is required');
+    if (typeof initials !== 'string') throw new Error('initials must be a string, got: ' + typeof initials);
+    const cartPage = getPageObject(page, CartPage);
+    const visible = await cartPage.isTravelerInitialsVisible(initials);
+    expect(visible, `Passenger initials "${initials}" should be visible`).toBe(true);
+  },
+
+  /**
+   * Verifies the hotel autocomplete destination field shows the expected text.
+   * @param {import('playwright').Page} page
+   * @param {string} expected - Expected destination text (e.g. "London,United Kingdom,(LON)")
+   */
+  async verifyHotelAutocompleteDestination(page, expected) {
+    if (!page) throw new Error('page is required');
+    if (typeof expected !== 'string') throw new Error('expected must be a string, got: ' + typeof expected);
+    const cartPage = getPageObject(page, CartPage);
+    const actual = await cartPage.getHotelSearchDestinationValue();
+    expect(actual).toContain(expected);
+  },
+
+  /**
+   * Verifies hotel search check-in and check-out date fields are filled (not empty).
+   * @param {import('playwright').Page} page
+   */
+  async verifyHotelSearchDatesAreFilled(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const checkInFilled = await cartPage.isHotelCheckInDateFilled();
+    expect(checkInFilled, 'Hotel check-in date should be filled').toBe(true);
+    const checkOutFilled = await cartPage.isHotelCheckOutDateFilled();
+    expect(checkOutFilled, 'Hotel check-out date should be filled').toBe(true);
+  },
 };
 
 

@@ -114,6 +114,17 @@ const SELECTORS = {
   ADD_HOTEL_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Hotel")',
   ADD_HOTEL_SEARCH_DRAWER: '.app-drawer.atrs-edit-search-drawer',
 
+  // Seating icon in extras section (flight-seating.vue — .yellow class = PendingApproval/PendingPayment)
+  SEAT_ICON_IN_EXTRAS: '.flight-seating .material-symbols-outlined.seats',
+
+  // Traveler initials (trip-traveler-tag.vue)
+  TRAVELER_INITIALS: '.avatar-initials',
+
+  // Hotel autocomplete destination value (hotel-autocomplete inside cart search drawer)
+  HOTEL_SEARCH_DESTINATION_INPUT: ".hotel-autocomplete .el-input__inner",
+  HOTEL_SEARCH_CHECK_IN_INPUT: "[placeholder='Check in']",
+  HOTEL_SEARCH_CHECK_OUT_INPUT: "[placeholder='Check out']",
+
   // Passenger title (Travelodge extras - passenger-title.vue)
   PASSENGER_TITLE_SECTION: '.passenger-title',
   PASSENGER_TITLE_STATUS: '.passenger-title .extra__description .is-flex',
@@ -1680,6 +1691,77 @@ class CartPage {
     const el = this.page.locator(SELECTORS.MEAL_SELECTED_TEXT).first();
     await el.waitFor({ state: 'visible', timeout });
     return (await el.innerText()).trim();
+  }
+
+  // ===== SEATING ICON =====
+
+  /**
+   * Checks if the seat icon is visible in the extras section.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<boolean>}
+   */
+  async isSeatIconVisibleInExtras(timeout = 10000) {
+    try {
+      await this.page.locator(SELECTORS.SEAT_ICON_IN_EXTRAS).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // ===== TRAVELER INITIALS =====
+
+  /**
+   * Checks if a specific set of traveler initials is visible.
+   * @param {string} initials - The initials text to look for (e.g., "AO", "PR")
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<boolean>}
+   */
+  async isTravelerInitialsVisible(initials, timeout = 10000) {
+    try {
+      const el = this.page.locator(SELECTORS.TRAVELER_INITIALS, { hasText: initials }).first();
+      await el.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // ===== HOTEL SEARCH FROM CART =====
+
+  /**
+   * Gets the value of the hotel search destination autocomplete input.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<string>}
+   */
+  async getHotelSearchDestinationValue(timeout = 10000) {
+    const input = this.page.locator(SELECTORS.HOTEL_SEARCH_DESTINATION_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    return await input.inputValue();
+  }
+
+  /**
+   * Checks if the hotel search check-in date field has a value.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<boolean>}
+   */
+  async isHotelCheckInDateFilled(timeout = 10000) {
+    const input = this.page.locator(SELECTORS.HOTEL_SEARCH_CHECK_IN_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    const value = await input.inputValue();
+    return value.length > 0;
+  }
+
+  /**
+   * Checks if the hotel search check-out date field has a value.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<boolean>}
+   */
+  async isHotelCheckOutDateFilled(timeout = 10000) {
+    const input = this.page.locator(SELECTORS.HOTEL_SEARCH_CHECK_OUT_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    const value = await input.inputValue();
+    return value.length > 0;
   }
 
   /**

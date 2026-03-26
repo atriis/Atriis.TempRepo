@@ -55,6 +55,9 @@ When("I select the {string} reference field as {string} and proceed", async func
   }
 });
 
+// Expects the reference fields popup to be present — waits up to 15s and FAILS if it never appears.
+// Use this when the popup is guaranteed to show (e.g., after adding to cart with mandatory reference fields).
+// For an optional/soft click that won't fail, use: "I click proceed button if visible" (common.steps.js)
 When("I click proceed on the reference fields popup", async function () {
   logger.info("Clicking Proceed button on reference fields popup");
   await DynamicAndReferenceFields.proceedThroughReferenceFieldsPopup(this.page);

@@ -18,17 +18,10 @@ Feature: 28647 Amadeus - Multi-pax booking with rail banner
     And I have added traveler by name "pit rip"
     When I search for a round trip flight from "AMS" to "BRU"
     And I click proceed on the reference fields popup
-    # TODO: Validate rail banner is displayed in results
-    # Testim: verifies "Best" tab active, "Rail" available message,
-    # "Lower CO2 emission" text, and "Rail options" button
-    # Need new step: Then the rail banner should be visible in results
-    # DSL: FlightResults.validateRailBanner(page) → FlightResultsPage selectors
+    Then the rail banner should be visible in results
     And I add the first flight to cart
     And I proceed to checkout
     And I complete the booking
-    # TODO: Verify "Flight details" text is visible in trip overview
-    # Testim: waitForText(page, ".more-details-btn", 'Flight details')
-    # TODO: Verify passenger initials are displayed
-    # Testim: verifies "AO" and "PR" initials for the two passengers
-    # Need new step: Then the passenger initials "AO" should be visible
-    # And the passenger initials "PR" should be visible
+    Then the quote destination should contain "Flight to"
+    Then the passenger initials "AO" should be visible
+    And the passenger initials "PR" should be visible

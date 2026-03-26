@@ -13,20 +13,12 @@ Feature: 58325 Amadeus - Booking succeeds with traveler name containing space or
   So that special characters in names don't prevent booking
 
   Scenario: Book and hold flight with traveler name containing space
-    # TODO: This test uses a custom guest traveler with space-containing names
-    # Testim: Add_random_traveler_with_space() — adds guest with names like "Tyler  " and "Carol  Smith"
-    # Need new step: Given I have added a random guest traveler with space in name
-    # Or modify existing addRandomGuest to handle name variants
     Given I am logged in as "bruna_nlgov" booking a new trip
-    And I have added a random guest traveler
-    When I search for a random one way flight
+    And I have added a random guest traveler with name "Mary Jane" "De La Cruz"
+    When I search for a one way flight from "PAR" to "DOH" 
     And I add the first flight to cart
-    # TODO: Select FOP (conditional payment method selection)
-    # Testim: Selecting_fop() — clicks add-form-payment, selects card, saves
-    And I click add payment method button
-    And I select card 1 and save
-    # TODO: Fill free text justification if OOP (conditional)
-    # Testim: Fill_free_text_justification_in_cart_if_needed()
+    Then the booking status should be "Pending booking"
+    When I add a credit card as payment method
     And I accept Terms & Conditions
     And I hold the trip
     Then I successfully cancel the trip

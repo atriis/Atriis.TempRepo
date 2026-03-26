@@ -605,6 +605,17 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     expect(actual).toContain(expectedName);
   },
 
+  /**
+   * Verifies the EU Rail options banner is visible in flight results.
+   * @param {import('playwright').Page} page
+   */
+  async verifyRailBannerVisible(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const visible = await flightResultsPage.isRailBannerVisible();
+    expect(visible, 'Rail banner should be visible in flight results').toBe(true);
+  },
+
 }
 
 module.exports = FlightResults;

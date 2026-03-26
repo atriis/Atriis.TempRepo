@@ -153,6 +153,41 @@ const Search = {
     const starIconVisible = await searchPage.isStarIconVisible();
     return { selected: true, starIconVisible };
   },
+
+  /**
+   * Adds a random guest traveler with a specific first and last name.
+   * All other data (DOB, email, phone) is randomly generated.
+   * @param {Object} page - Playwright page instance
+   * @param {string} firstName - Guest's first name
+   * @param {string} lastName - Guest's last name
+   * @returns {{ added: boolean, starIconVisible: boolean, guestData: Object }}
+   */
+  async addRandomGuestWithName(page, firstName, lastName) {
+    if (!page) throw new Error('page is required');
+    if (!firstName || typeof firstName !== 'string') throw new Error('firstName must be a non-empty string');
+    if (!lastName || typeof lastName !== 'string') throw new Error('lastName must be a non-empty string');
+
+    const searchPage = getPageObject(page, SearchPage);
+    const { dateOfBirth, email, phone } = generateRandomGuestData();
+
+    await searchPage.clickAddTravelerButton();
+    await searchPage.clickAddGuestTravelerButton();
+    await searchPage.fillInRandomFirstName(firstName);
+    await searchPage.fillInRandomLastName(lastName);
+    await searchPage.selectGenderMale();
+    await searchPage.fillInRandomDateOfBirth(dateOfBirth);
+    await searchPage.fillInRandomEmail(email);
+    await searchPage.fillInRandomPhone(phone);
+    await searchPage.clickAddGuestButton();
+
+    const starIconVisible = await searchPage.isStarIconVisible();
+
+    return {
+      added: true,
+      starIconVisible,
+      guestData: { firstName, lastName, dateOfBirth, email, phone },
+    };
+  },
 };
 
 module.exports = Search;

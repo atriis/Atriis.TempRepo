@@ -173,6 +173,10 @@ Then("I should see a success notification", async function () {
 
 // ===== WHEN STEPS =====
 
+// Soft/optional click — checks if the Proceed button is visible, waits up to 10s, clicks if it appears.
+// Silently skips if the button never shows up (does NOT fail).
+// Use this when the popup may or may not appear depending on the flow.
+// For a strict click that FAILS if missing, use: "I click proceed on the reference fields popup" (dynamic_fields.steps.js)
 When("I click proceed button if visible", async function () {
   logger.info("Attempting to click Proceed button if visible");
   const commonPage = new CommonPage(this.page);

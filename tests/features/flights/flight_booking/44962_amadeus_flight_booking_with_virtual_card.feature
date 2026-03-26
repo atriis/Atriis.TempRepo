@@ -18,5 +18,4 @@ Feature: 44962 Amadeus - Flight booking with virtual card
     Then the payment type should be "Paid by TMC"
     When I proceed to checkout
     And I complete the booking
-    # TODO: Original Testim verifies "Flight details" text is visible in trip overview
-    # via waitForText(".more-details-btn", "Flight details") — no existing step covers this
+    Then the quote destination should contain "Flight to"

@@ -50,6 +50,9 @@ const SELECTORS = {
 
   // Carrier name in flight details drawer
   CARRIER_NAME_IN_DETAILS: '.flight-details-top-bar .carrier-name',
+
+  // EU Rail options banner (eu-rail-options.vue — appears in flight results when rail is available)
+  EU_RAIL_OPTIONS_BANNER: '.eu-rail-options',
 };
 
 class FlightResultsPage {
@@ -690,6 +693,22 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     const el = this.page.locator(SELECTORS.CARRIER_NAME_IN_DETAILS).first();
     await el.waitFor({ state: 'visible', timeout });
     return (await el.textContent()).trim();
+  }
+
+  // ===== RAIL BANNER =====
+
+  /**
+   * Checks if the EU Rail options banner is visible in flight results.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<boolean>}
+   */
+  async isRailBannerVisible(timeout = 30000) {
+    try {
+      await this.page.locator(SELECTORS.EU_RAIL_OPTIONS_BANNER).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
 }

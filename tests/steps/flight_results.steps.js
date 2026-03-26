@@ -374,3 +374,12 @@ When("I extract the price from pricing option at index {int}", async function (i
   logger.info("Extracted pricing option price", { index, price });
 });
 
+// ========================================
+// THEN STEPS - RAIL BANNER
+// ========================================
+
+Then("the rail banner should be visible in results", async function () {
+  logger.info("Verifying rail banner is visible in flight results");
+  await FlightResults.verifyRailBannerVisible(this.page);
+});
+

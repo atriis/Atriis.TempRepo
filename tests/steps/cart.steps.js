@@ -652,3 +652,35 @@ Then("the selected meal should be {string} with status matching {string}", async
   const result = await Cart.verifyMealSelectionAndStatus(this.page, expectedMeal, new RegExp(statusPattern));
   logger.info("Meal verification result", result);
 });
+
+// ========================================
+// SEATING ICON
+// ========================================
+
+Then("the seat icon should be visible in trip overview", async function () {
+  logger.info("Verifying seat icon is visible in trip overview");
+  await Cart.verifySeatIconVisibleInTripOverview(this.page);
+});
+
+// ========================================
+// PASSENGER INITIALS
+// ========================================
+
+Then("the passenger initials {string} should be visible", async function (initials) {
+  logger.info("Verifying passenger initials are visible", { initials });
+  await Cart.verifyPassengerInitialsVisible(this.page, initials);
+});
+
+// ========================================
+// HOTEL AUTOCOMPLETE FROM CART
+// ========================================
+
+Then("the hotel destination autocomplete should show {string}", async function (expected) {
+  logger.info("Verifying hotel autocomplete destination", { expected });
+  await Cart.verifyHotelAutocompleteDestination(this.page, expected);
+});
+
+Then("the hotel search check-in and check-out dates should be filled", async function () {
+  logger.info("Verifying hotel search date fields are filled");
+  await Cart.verifyHotelSearchDatesAreFilled(this.page);
+});
