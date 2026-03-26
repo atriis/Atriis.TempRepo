@@ -5,7 +5,8 @@ module.exports = {
       'tests/support/hooks.js',
       'tests/support/retry-handler.js',
       'tests/steps/**/*.js',
-      'tests/support/**/*.js'
+      'tests/support/**/*.js',
+      'node_modules/allure-cucumberjs'
     ],
     format: [
       'summary',
