@@ -7,8 +7,8 @@ Feature: Flight pricing options fare component visual validation
   # Source: ADO #74825 - [Flights new flow][Pricing options][FE] - Incorrect Text Color in Fare Component
   # Note: Step catalog currently has no direct text-color assertion step.
 
-  Scenario: Verify pricing options fare component is rendered and ready for color validation
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+  Scenario: 74825 Verify pricing options fare component is rendered and ready for color validation
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "lhrToMad"
     Then flight results should be available
