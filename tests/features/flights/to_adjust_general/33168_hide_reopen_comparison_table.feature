@@ -1,0 +1,21 @@
+# Test Name: 33168 After selecting 'hide comparison', can re-open comparison table
+# Status: Active
+# Labels: Regression,Flights,No Amadeus Hotel Book,2026 plan 1
+# Owner: Bruna Santos
+# Created: 2023-07-11T02:59:07Z
+# Updated: 2023-07-11T03:14:54Z
+
+@regression @flights @general
+Feature: 33168 Flights - After selecting hide comparison can reopen comparison table
+  As a corporate traveler
+  I want to hide and reopen the comparison table
+  So that I can manage my view of flight comparisons
+
+  Scenario: Hide and reopen comparison table in flight results
+    Given I am logged in as "testim_prof" booking a new trip
+    And I have added myself as the traveler
+    When I search for a round trip flight from "LIS" to "TLV"
+    # TODO: Step needed for "Click comparison button to hide" — click ".comparison-btn span"
+    # TODO: Step needed for "Verify 'Show Comparison' text is displayed"
+    # TODO: Step needed for "Click comparison button to show" — click ".comparison-btn span"
+    # TODO: Step needed for "Verify comparison table is visible and 'Hide Comparison' text is displayed"
