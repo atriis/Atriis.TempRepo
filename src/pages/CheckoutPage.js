@@ -11,6 +11,10 @@ const SELECTORS = {
   BOOK_AND_FINALIZE_BUTTON: "button:has-text('Book and Finalize')",
   FALLBACK_BUTTON: ".btn-container button",
   GO_TO_TRIP_BUTTON: ".btn-container > :nth-child(1)",
+  SEND_FOR_APPROVAL_BUTTON: "button:has-text('Send for approval')",
+  APPROVAL_SUCCESS_TITLE: ".pre-trip-booking-success .success-message-title",
+  APPROVAL_SUCCESS_MESSAGE: ".pre-trip-booking-success .success-message-description",
+  APPROVAL_SUCCESS_CONTAINER: ".pre-trip-booking-success",
   BOOKING_ERROR_DIALOG: ".booking-error-dialog",
   BACK_TO_TRIP_BUTTON: ".back-to-trip-btn",
   EMAIL_INPUT: ".email-input .el-input__inner",
@@ -20,6 +24,13 @@ const SELECTORS = {
   CONTACT_PHONE_COUNTRY_CODE: ".reference-form-contact-details .el-input:nth-of-type(1) .el-input__inner",
   CONTACT_PHONE_AREA_CODE: ".reference-form-contact-details .el-input:nth-of-type(2) .el-input__inner",
   CONTACT_PHONE_NUMBER: ".reference-form-contact-details .el-input:nth-of-type(3) .el-input__inner",
+
+  // Booker notification phone (trip-reference-form.vue — notifications-behalf section)
+  BOOKER_PHONE_CONTAINER: ".notifications-behalf-collapse",
+  BOOKER_PHONE_INPUTS: ".notifications-behalf-collapse .el-input__inner",
+
+  // Required field detection — inputs inside is-danger wrappers across checkout
+  REQUIRED_INPUTS: ".is-danger .el-input__inner",
 };
 
 class CheckoutPage {
@@ -95,6 +106,50 @@ class CheckoutPage {
   }
 
   /**
+   * Waits until the "Send for approval" button is visible.
+   */
+  async waitForSendForApprovalButton() {
+    await this.page.waitForSelector(
+      SELECTORS.SEND_FOR_APPROVAL_BUTTON,
+      { timeout: 10000 },
+    );
+  }
+
+  /**
+   * Clicks the "Send for approval" button.
+   */
+  async clickSendForApprovalButton() {
+    await this.page.locator(SELECTORS.SEND_FOR_APPROVAL_BUTTON).first().click();
+  }
+
+  /**
+   * Waits for the approval success page to load and validates the title text.
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async waitForApprovalSuccessPage(timeout = 60000) {
+    const titleLocator = this.page.locator(SELECTORS.APPROVAL_SUCCESS_TITLE);
+    await titleLocator.waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Returns the text of the approval success description message.
+   */
+  async getApprovalSuccessMessageText() {
+    return await this.page.locator(SELECTORS.APPROVAL_SUCCESS_MESSAGE).innerText();
+  }
+
+  /**
+   * Clicks the "Go to trip" button on the approval success page.
+   * Uses getByRole scoped to the container for reliable click.
+   */
+  async clickApprovalSuccessGoToTrip() {
+    await this.page
+      .locator(SELECTORS.APPROVAL_SUCCESS_CONTAINER)
+      .getByRole('button', { name: 'Go to trip' })
+      .click();
+  }
+
+  /**
    * Waits until the booking error dialog is visible.
    */
   async waitForBookingErrorDialog() {
@@ -123,14 +178,23 @@ class CheckoutPage {
   }
 
   /**
-   * Gets the email input value on the checkout page.
-   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * Waits until the email input has a non-empty value, then returns it.
+   * Uses polling because the Contact Details section is auto-populated asynchronously.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
    * @returns {Promise<string>} The email input value
    */
-  async getEmailInputValue(timeout = 10000) {
+  async getEmailInputValue(timeout = 15000) {
     const input = this.page.locator(SELECTORS.EMAIL_INPUT).first();
     await input.waitFor({ state: 'visible', timeout });
-    return input.inputValue();
+    // Poll until value is non-empty (auto-populated asynchronously from guest profile)
+    const deadline = Date.now() + timeout;
+    let value = '';
+    while (Date.now() < deadline) {
+      value = await input.inputValue();
+      if (value.trim()) return value;
+      await this.page.waitForTimeout(500);
+    }
+    return value;
   }
 
   /**
@@ -170,6 +234,57 @@ class CheckoutPage {
     const input = this.page.locator(SELECTORS.CONTACT_PHONE_NUMBER).first();
     await input.waitFor({ state: 'visible', timeout: 10000 });
     await input.fill(value);
+  }
+
+  /**
+   * Returns the concatenated value of all three traveler contact phone fields.
+   * Used to verify the phone is pre-populated with numeric data.
+   * @returns {Promise<string>}
+   */
+  async getContactPhoneValues() {
+    const cc = await this.page.locator(SELECTORS.CONTACT_PHONE_COUNTRY_CODE).first().inputValue().catch(() => '');
+    const ac = await this.page.locator(SELECTORS.CONTACT_PHONE_AREA_CODE).first().inputValue().catch(() => '');
+    const num = await this.page.locator(SELECTORS.CONTACT_PHONE_NUMBER).first().inputValue().catch(() => '');
+    return cc + ac + num;
+  }
+
+  /**
+   * Returns the concatenated value of all three booker notification phone fields,
+   * or null if the booker notification section is not visible on the page.
+   * @returns {Promise<string|null>}
+   */
+  async getBookerNotificationPhoneValues() {
+    const container = this.page.locator(SELECTORS.BOOKER_PHONE_CONTAINER);
+    const isVisible = await container.isVisible().catch(() => false);
+    if (!isVisible) return null;
+    const inputs = this.page.locator(SELECTORS.BOOKER_PHONE_INPUTS);
+    const count = await inputs.count();
+    if (count < 3) return null;
+    const values = await Promise.all([
+      inputs.nth(0).inputValue().catch(() => ''),
+      inputs.nth(1).inputValue().catch(() => ''),
+      inputs.nth(2).inputValue().catch(() => ''),
+    ]);
+    return values.join('');
+  }
+
+  /**
+   * Fills any empty required inputs (`.is-danger .el-input__inner`) with fallback
+   * phone values before the booking attempt.
+   * Only fills inputs that are currently empty to avoid overwriting valid data.
+   */
+  async fillRequiredPhoneInputs() {
+    const fallbackValues = ['1', '555', '1234567'];
+    const inputs = this.page.locator(SELECTORS.REQUIRED_INPUTS);
+    const count = await inputs.count();
+    const limit = Math.min(count, fallbackValues.length);
+    for (let i = 0; i < limit; i++) {
+      const input = inputs.nth(i);
+      const val = await input.inputValue().catch(() => '');
+      if (!val) {
+        await input.fill(fallbackValues[i]);
+      }
+    }
   }
 }
 

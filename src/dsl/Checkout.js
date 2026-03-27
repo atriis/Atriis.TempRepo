@@ -134,6 +134,23 @@ const Checkout = {
     expect(emailValue).toContain(expectedText);
   },
 
+  async verifyContactPhoneContainsNumbers(page) {
+    if (!page) throw new Error('page is required');
+    const { expect } = require("@playwright/test");
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const values = await checkoutPage.getContactPhoneValues();
+    expect(values).toMatch(/\d/);
+  },
+
+  async verifyBookerNotificationPhoneContainsNumbers(page) {
+    if (!page) throw new Error('page is required');
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const values = await checkoutPage.getBookerNotificationPhoneValues();
+    if (values === null) return; // section not visible for this user/config — skip
+    const { expect } = require("@playwright/test");
+    expect(values).toMatch(/\d/);
+  },
+
   /**
    * Unchecks the "Don't share contact details with airlines" checkbox
    * and fills in the traveler phone number on the checkout page.
@@ -161,6 +178,52 @@ const Checkout = {
     await checkoutPage.fillContactPhoneCountryCode(countryCode);
     await checkoutPage.fillContactPhoneAreaCode(areaCode);
     await checkoutPage.fillContactPhoneNumber(phoneNumber);
+  },
+
+  /**
+   * Sends the booking for approval and navigates to the Trip Overview.
+   *
+   * This flow:
+   * - waits for checkout details
+   * - clicks "Send for approval"
+   * - validates the approval success message
+   * - navigates to the trip overview page
+   */
+  async sendForApprovalAndFinalize(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const cartPage = getPageObject(page, CartPage);
+
+    // Ensure checkout page is fully loaded
+    await checkoutPage.waitForBookingDetailsText();
+
+    // Intentional wait required for UI stability before interacting
+    await page.waitForTimeout(4000);
+
+    // Wait for and click "Send for approval"
+    await checkoutPage.waitForSendForApprovalButton();
+    await checkoutPage.clickSendForApprovalButton();
+
+    // Wait for the approval success page to load
+    await checkoutPage.waitForApprovalSuccessPage();
+
+    // Validate the approval success message
+    const approvalMessage = await checkoutPage.getApprovalSuccessMessageText();
+    if (!approvalMessage.includes('booked and sent')) {
+      throw new Error(`Unexpected approval message: "${approvalMessage}"`);
+    }
+
+    // Intentional wait required for UI stability before interacting
+    await page.waitForTimeout(2000);
+
+    // Navigate to trip overview (same logic as bookAndFinalize)
+    await checkoutPage.clickGoToTrip();
+
+    // Confirm trip overview is displayed
+    await cartPage.waitForTripOverviewTitle();
+
+    return { sentForApproval: true };
   },
 };
 

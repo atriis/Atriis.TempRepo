@@ -18,6 +18,11 @@ When("I complete the booking without navigating to trip overview", async functio
   await Checkout.bookTripWithoutNavigatingToTripOverview(this.page);
 });
 
+When("I send booking for approval", async function () {
+  logger.info("Sending booking for approval");
+  await Checkout.sendForApprovalAndFinalize(this.page);
+});
+
 Then("a booking error message should be displayed", async function () {
   logger.info("Verifying booking error message is displayed");
   await Checkout.verifyBookingErrorMessage(this.page);
@@ -48,4 +53,14 @@ Then("{string} should be displayed in the checkout page", async function (expect
 Then("the contact email on checkout should contain {string}", async function (expectedText) {
   logger.info("Verifying contact email contains expected text", { expectedText });
   await Checkout.verifyContactEmailContains(this.page, expectedText);
+});
+
+Then("the contact telephone on checkout should contain numbers", async function () {
+  logger.info("Verifying contact telephone on checkout contains numeric values");
+  await Checkout.verifyContactPhoneContainsNumbers(this.page);
+});
+
+Then("the booker notification phone on checkout should contain numbers", async function () {
+  logger.info("Verifying booker notification phone on checkout contains numeric values");
+  await Checkout.verifyBookerNotificationPhoneContainsNumbers(this.page);
 });
