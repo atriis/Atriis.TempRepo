@@ -3,8 +3,8 @@ name: Test Suite
 on:
   # push:
   #  branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  # pull_request:
+  #  branches: [ main ]
   schedule:
     # - cron: '0 21 * * *'  # Daily at 21:00 UTC (21:00 Portugal winter / 22:00 Portugal summer)
     - cron: '0 20 29 3 *'  # One-time: Sunday March 29 2026 at 21:00 Portugal time (WEST = UTC+1)
@@ -288,6 +288,7 @@ jobs:
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
+          USER_REBECA: ${{ secrets.USER_REBECA }}
           USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
           USER_RUIMENDES: ${{ secrets.USER_RUIMENDES }}
           USER_HELENATEREZA: ${{ secrets.USER_HELENATEREZA }}
@@ -296,6 +297,7 @@ jobs:
           USER_HCORPO: ${{ secrets.USER_HCORPO }}
           USER_AMY: ${{ secrets.USER_AMY }}
           USER_AMYLOYAL: ${{ secrets.USER_AMYLOYAL }}
+          USER_TAL: ${{ secrets.USER_TAL }}
           USER_JOAO: ${{ secrets.USER_JOAO }}
           USER_SABRIN: ${{ secrets.USER_SABRIN }}
           USER_ROBSONCRUZ: ${{ secrets.USER_ROBSONCRUZ }}
@@ -327,6 +329,7 @@ jobs:
           USER_MAGALIMONICA: ${{ secrets.USER_MAGALIMONICA }}
           USER_INESSA: ${{ secrets.USER_INESSA }}
           USER_REBECCACARDIN: ${{ secrets.USER_REBECCACARDIN }}
+          USER_REBECCA: ${{ secrets.USER_REBECCA }}
           USER_EDWARDCULLEN: ${{ secrets.USER_EDWARDCULLEN }}
           USER_CANISSO: ${{ secrets.USER_CANISSO }}
           USER_SAMMAU: ${{ secrets.USER_SAMMAU }}

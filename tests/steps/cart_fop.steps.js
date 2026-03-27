@@ -206,3 +206,13 @@ Then("the no country card should be displayed in cart", async function () {
   logger.info("Verifying no country card is displayed in cart");
   await CartPayment.verifyCardNameVisible(this.page, "no country");
 });
+
+Then("the CVV field should not be displayed", async function () {
+  logger.info("Verifying CVV field is not displayed");
+  await CartPayment.verifyCVVFieldNotVisible(this.page);
+});
+
+When("I fill the credit card CVV", async function () {
+  logger.info("Filling credit card CVV (mandatory)");
+  await CartPayment.fillCreditCardCVV(this.page);
+});

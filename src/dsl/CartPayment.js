@@ -178,6 +178,7 @@ class CartPayment {
     }
     const paymentPage = getPageObject(page, CartPaymentPage);
     await paymentPage.clickSaveCardButton();
+    await page.waitForLoadState('networkidle');
   }
 
   /**
@@ -494,6 +495,35 @@ class CartPayment {
     const paymentPage = getPageObject(page, CartPaymentPage);
     await paymentPage.clickCardCheckboxByIndex(index);
     await paymentPage.clickSaveCardButton();
+  }
+
+  /**
+   * Asserts that the CVV field is NOT displayed in the payment panel.
+   * Use this to verify that a payment option does not require CVV entry.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async verifyCVVFieldNotVisible(page) {
+    if (!page) throw new Error('page is required');
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const isVisible = await paymentPage.isCVVFieldVisible({ timeout: 3000 });
+    expect(isVisible, 'Expected CVV field to not be displayed, but it is visible').toBe(false);
+  }
+
+  /**
+   * Fills the CVV field and asserts it is visible — fails the test if CVV field is not shown.
+   * Use this when CVV is required (not optional). Complements fillCreditCardCVVifNeeded.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} [cvv='123'] - CVV code to enter
+   */
+  static async fillCreditCardCVV(page, cvv = '123') {
+    if (!page) throw new Error('page is required');
+    if (!cvv || typeof cvv !== 'string') throw new Error('cvv must be a non-empty string, got: ' + typeof cvv);
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const isVisible = await paymentPage.isCVVFieldVisible({ timeout: 20000 });
+    if (!isVisible) {
+      throw new Error('CVV field is not displayed — expected CVV to be required for this payment option');
+    }
+    await paymentPage.fillCVV(cvv);
   }
 }
 

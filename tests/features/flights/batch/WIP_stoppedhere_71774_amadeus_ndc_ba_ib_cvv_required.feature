@@ -19,10 +19,11 @@ Feature: 71774 Amadeus NDC - CVV required for BA and IB when FOP is credit card
     And I filter results by carrier "IB"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # TODO: Create step to verify CVV field not displayed 
-    #TODO Create step to click "Edit" the saved FOP in cart
-    And I select the "Cvv Required" payment option
-    #TODO Create step to fill credit card cvv (not if needed, this should fail if no cvv field is displayed)
+    Then the CVV field should not be displayed
+    When I click to edit the card
+    And I click the card "Cvv Required" checkbox
+    And I save the card selection
+    When I fill the credit card CVV
     And I proceed to checkout
     And I complete the booking
     Then the booking status should be "Ticketing Complete"

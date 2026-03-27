@@ -16,7 +16,7 @@ Feature: 37302 Ratehawk - Book refundable hotel with price verification
   Scenario: Refundable hotel price matches between room level and cart
     Given I am logged in as "lidi" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "123 Champs-�lys�es" for 1 night
+    When I search for a hotel in "123 Champs-elysees" for 1 night
     And I select the first hotel result
     And I wait for the first add to trip button to be visible in room level results
     And I extract the price from room level results

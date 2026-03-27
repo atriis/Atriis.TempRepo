@@ -62,7 +62,7 @@ const SELECTORS = {
   MISSING_CARD_DETAILS_COUNTRY_OPTION: '.el-select-dropdown__item',
   // Card holder name input inside the missing-card-details el-input (no placeholder)
   MISSING_CARD_HOLDER_NAME_INPUT: '.missing-card-details .el-input input',
-  EDIT_CARD_LINK: '.ticket-top-section .is-clickable',
+  EDIT_CARD_LINK: '.edit-payment-btn .is-clickable',
   LAST_FOUR_DIGIT: '.last-four-digit',
   NO_COUNTRY_CARD_CHECKBOX: '.select-credit-card > :nth-child(1) > :nth-child(2) > :nth-child(2) [type="checkbox"]',
 };
@@ -772,6 +772,21 @@ class CartPaymentPage {
       throw new Error(`Card index ${index} out of range. Only ${total} cards available.`);
     }
     await checkboxes.nth(index - 1).click();
+  }
+
+  /**
+   * Checks whether the CVV input field is currently visible.
+   * @param {object} [options]
+   * @param {number} [options.timeout=3000]
+   * @returns {Promise<boolean>}
+   */
+  async isCVVFieldVisible({ timeout = 3000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.CVV_INPUT).waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
