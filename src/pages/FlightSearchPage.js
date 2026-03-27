@@ -45,9 +45,15 @@ class FlightSearchPage {
 
   /**
    * Opens the Flight search tab.
+   * Skips gracefully if not found (e.g. when searching from within the cart modal
+   * which is already a dedicated flight search form with no product tabs).
    */
   async clickFlightTab() {
-    await this.page.click(SELECTORS.FLIGHT_TAB);
+    const tab = this.page.locator(SELECTORS.FLIGHT_TAB);
+    const isVisible = await tab.isVisible().catch(() => false);
+    if (isVisible) {
+      await tab.click();
+    }
   }
 
   /**

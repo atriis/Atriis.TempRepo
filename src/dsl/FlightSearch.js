@@ -391,6 +391,37 @@ const FlightSearch = {
 
     return { searched: true, from, to, tripType: 'roundTrip', searchType: 'completeTrip', advanced: true };
   },
+
+  /**
+   * Edits the flight search from/to fields in the edit-search modal.
+   *
+   * Used when the search modal opens from the cart with pre-filled airport values.
+   * Clears the existing airport binding using real keyboard events and types
+   * the new values, then submits the search.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} from - New origin airport code
+   * @param {string} to - New destination airport code
+   */
+  async editFlightSearch(page, from, to) {
+    if (!page) throw new Error('page is required');
+    if (!from || typeof from !== 'string') throw new Error('from must be a non-empty string, got: ' + from);
+    if (!to || typeof to !== 'string') throw new Error('to must be a non-empty string, got: ' + to);
+
+    logger.info('Editing flight search in modal', { from, to });
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    // Wait for search form to be ready — FROM input must be visible and pre-filled
+    await searchPage.waitForFromFieldVisible();
+
+    await searchPage.editFromField(from);
+    await searchPage.editToField(to);
+
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to };
+  },
 };
 
 module.exports = FlightSearch;

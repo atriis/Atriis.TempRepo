@@ -68,6 +68,11 @@ const SELECTORS = {
   AUTOCOMPLETE_LIST:
     ".el-scrollbar__view.el-autocomplete-suggestion__list li[id*='item-0']:visible",
 
+  // Precise positional selectors for editing pre-filled airport fields
+  // (airport-autocomplete renders as section.airport-autocomplete; first = From, second = To)
+  EDIT_FROM_INPUT: '.airport-autocomplete:nth-of-type(1) input',
+  EDIT_TO_INPUT: '.airport-autocomplete:nth-of-type(2) input',
+
   // Location inputs (fallbacks for different suppliers)
   FROM_PLACEHOLDER: [
     "input[placeholder='From... Station or Location' i]",
@@ -334,6 +339,60 @@ class SearchPage {
 
     // Small wait for UI to process the blur event and autocomplete selection
     await this.page.waitForTimeout(100);
+  }
+
+  /**
+   * Waits for the FROM airport input to be visible — used to confirm the search
+   * form is ready for editing (works for both fresh search and add-to-trip context).
+   */
+  async waitForFromFieldVisible() {
+    const input = this.page.locator(SELECTORS.EDIT_FROM_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout: 15000 });
+  }
+
+  /**
+   * Edits a pre-filled "From" field.
+   *
+   * Used when the search modal opens with an existing airport value already bound
+   * (e.g. clicking "Add a flight" from the cart). The programmatic fill() bypasses
+   * Vue's reactive airport binding and the old value re-renders. Instead, we use
+   * real keyboard events (Ctrl+A + Backspace) to clear the Vue model, then
+   * pressSequentially to trigger the autocomplete properly.
+   *
+   * @param {string} from - New origin airport code to type
+   */
+  async editFromField(from) {
+    const input = this.page.locator(SELECTORS.EDIT_FROM_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.click();
+    await input.fill('');
+    await this.page.waitForTimeout(300);
+    await input.pressSequentially(from, { delay: 100 });
+    const firstSuggestion = this.page.locator(SELECTORS.AUTOCOMPLETE_LIST).first();
+    await firstSuggestion.waitFor({ state: 'visible', timeout: 15000 });
+    await firstSuggestion.click();
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
+   * Edits a pre-filled "To" field.
+   *
+   * Same technique as editFromField — uses real keyboard events to clear the
+   * Vue-bound airport object before typing the new destination.
+   *
+   * @param {string} to - New destination airport code to type
+   */
+  async editToField(to) {
+    const input = this.page.locator(SELECTORS.EDIT_TO_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.click();
+    await input.fill('');
+    await this.page.waitForTimeout(300);
+    await input.pressSequentially(to, { delay: 100 });
+    const firstSuggestion = this.page.locator(SELECTORS.AUTOCOMPLETE_LIST).first();
+    await firstSuggestion.waitFor({ state: 'visible', timeout: 15000 });
+    await firstSuggestion.click();
+    await this.page.waitForTimeout(500);
   }
 
 /**

@@ -29,6 +29,11 @@ When("I search for a round trip flight from {string} to {string}", async functio
   await FlightSearch.searchFlightRoundTrip(this.page, { from, to });
 });
 
+When("I edit the flight search from {string} to {string}", async function (from, to) {
+  logger.info('Editing flight search in modal', { from, to });
+  await FlightSearch.editFlightSearch(this.page, from, to);
+});
+
 When("I search for a flight by schedule from {string} to {string}", async function (from, to) {
   logger.info('Searching for flight by schedule', { from, to });
   await FlightSearch.searchFlightBySchedule(this.page, { from, to });
