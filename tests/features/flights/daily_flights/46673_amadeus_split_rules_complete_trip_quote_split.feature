@@ -18,12 +18,5 @@ Feature: 46673 Amadeus - Split rules complete trip quote is split correctly
     And I filter results by carrier "AA, DL"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # TODO: Verify two separate quotes exist in cart:
-    # - First quote (non-last): "Flight to Dallas"
-    #   Original Testim: waitForText("[islastquote='false'] .has-text-weight-semibold", "Flight to Dallas")
-    # - Last quote: "Flight to Boston"
-    #   Original Testim: waitForText(".last-quote .has-text-weight-semibold", "Flight to Boston")
-    # Proposed steps:
-    #   Then the first quote destination should contain "Dallas"
-    #   And the last quote destination should contain "Boston"
-    # These need new DSL methods in Cart.js using CartPage selectors for [islastquote] and .last-quote
+    Then the first quote destination should contain "Dallas"
+    And the last quote destination should contain "Boston"

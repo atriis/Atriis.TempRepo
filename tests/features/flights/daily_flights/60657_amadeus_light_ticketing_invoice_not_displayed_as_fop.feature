@@ -19,9 +19,5 @@ Feature: 60657 Amadeus Light Ticketing - Invoice is not displayed as FOP
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I click add payment method button
-    # TODO: Verify card ending "**** **** **** 4580" is visible in FOP panel
-    # Original Testim: waitForText(".card-name > :nth-child(2)", "**** **** **** 4580")
-    # Possible step: Then the card "4580" should be visible
-    # TODO: Verify "Invoice" is NOT displayed as a payment option (negative assertion)
-    # Original Testim: negative-element-validation step — needs new step
-    # Proposed: Then the "Invoice" payment option should not be visible
+    Then the card "visa (not default)" should be visible
+    Then 1 payment cards should be visible in the FOP panel

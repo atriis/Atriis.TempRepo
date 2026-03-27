@@ -15,24 +15,15 @@ Feature: 71774 Amadeus NDC - CVV required for BA and IB when FOP is credit card
   Scenario: CVV is required for Iberia NDC booking with credit card
     Given I am logged in as "cvvndc" booking a new trip
     And I have added myself as the traveler
-    # TODO: Search round trip with preferred carrier and max 1 stop
-    # Testim: Copy_of_Search_flights_round_trip__with_preferred_carrier__up_to_1_stop('MAD', 'BOG', 'Iberia')
-    # This sets preferred carrier filter and max stops before searching
-    # Need new step: When I search for a round trip flight from "MAD" to "BOG" with preferred carrier "Iberia" and max 1 stop
     When I search for a round trip flight from "MAD" to "BOG"
-    # TODO: Add first NDC flight to trip
-    # Testim: Copy_of_Add_to_trip_first_flight__NDC_content()
-    # Filters for NDC content specifically before clicking Add to trip
+    And I filter results by carrier "IB"
     And I add the first flight to cart
-    # TODO: Verify CVV not required and random CVV is selected for default card
-    # Testim: CVV_not_required__random_cvv_is_seelcted()
-    # Checks that default card does not require CVV input
-    # TODO: Select different credit card where CVV IS required and random CVV not selected
-    # Testim: Select_different_cc__cvv_required__random_cvv_not_selected()
-    # Switches card and verifies CVV field becomes mandatory
-    # TODO: Set CVV manually
-    # Testim: Set_cvv() — fills CVV field
-    # Need new steps for CVV validation workflow
+    Then the booking status should be "Pending booking"
+    # TODO: Create step to verify CVV field not displayed 
+    #TODO Create step to click "Edit" the saved FOP in cart
+    And I select the "Cvv Required" payment option
+    #TODO Create step to fill credit card cvv (not if needed, this should fail if no cvv field is displayed)
     And I proceed to checkout
     And I complete the booking
+    Then the booking status should be "Ticketing Complete"
     Then I successfully cancel the trip

@@ -29,4 +29,3 @@ Feature: 46716 Amadeus - Split rules by schedule quote is split correctly
     # TODO: Verify SECOND quote also shows "Pending booking" status
     # Testim: scrollTo bottom → waitForText(page, "[aria-describedby='el-tooltip-4725']", 'Pending booking')
     # Need a step like: Then the second quote booking status should be "Pending booking"
-    And I successfully cancel the trip

@@ -1,0 +1,34 @@
+# Test Name: 55056 Amadeus - Split rules - After adding 2 different round trip flights and then holding them, the split rule configuration is applied correctly
+# Description:
+# Status: Active
+# Labels: Regression,Amadeus,split ticket,split rules,Flights,2026 plan 1
+# Owner: Bruna Santos
+# Created: 2024-12-03T11:24:42Z
+# Updated: 2025-09-14T09:38:19Z
+
+@regression @flights @amadeus @split-rules @hold
+Feature: 55056 Amadeus - Split rules applied correctly when holding 2 round trip flights
+  As a corporate traveler
+  I want to add two different round trip flights and hold them
+  So that the split rule configuration is applied correctly to both quotes
+
+  Scenario: Two round trip flights held with correct split rules and PNR codes
+  #Edit is not working
+    Given I am logged in as "ruimariano" booking a new trip
+    And I have added a random guest traveler
+    When I search for a round trip flight from "LON" to "DOH"
+    And I filter results by carrier "Qatar Airways"
+    And I add the first flight to cart
+    Then the booking status should be "Pending booking"
+    When I accept Terms & Conditions
+    And I hold the trip
+    When I click to add a flight to my trip from cart
+    When I edit the flight search from "BKK" to "SIN"
+    And I wait for add to trip text to be visible
+    And I add the first flight to cart
+    Then the booking status should be "Pending booking"
+    When I accept Terms & Conditions
+    And I hold the trip
+    Then the last quote status should be "On hold"
+    And all quotes should have PNR codes
+    Then I successfully cancel the trip

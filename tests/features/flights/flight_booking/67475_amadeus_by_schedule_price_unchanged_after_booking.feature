@@ -20,6 +20,6 @@ Feature: 67475 Amadeus - By schedule price does not change after booking
     When I extract the price at index 0 from "cart"
     And I proceed to checkout
     And I complete the booking
+    Then the quote destination should contain "Flight to"
     And I extract the price at index 0 from "cart"
     Then the extracted price at index 0 should equal the extracted price at index 1 within tolerance
-    # NOTE: Original Testim tolerance was 0.59, framework uses 0.02. Adjust if needed.
