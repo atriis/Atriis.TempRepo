@@ -877,6 +877,49 @@ const Cart = {
     expect(actualTitle.toLowerCase()).toContain(city.toLowerCase());
   },
 
+  async verifyFirstQuoteDestination(page, city) {
+    if (!page) throw new Error('page is required');
+    if (!city || typeof city !== 'string') throw new Error(`city must be a non-empty string, got: ${typeof city}`);
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualTitle = await cartPage.getFirstQuoteTitleText();
+    expect(actualTitle.toLowerCase()).toContain(city.toLowerCase());
+  },
+
+  /**
+   * Verifies the last quote's booking status matches the expected value.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedStatus - e.g. "On hold"
+   */
+  async verifyLastQuoteStatus(page, expectedStatus) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedStatus !== 'string') throw new Error('expectedStatus must be a string, got: ' + typeof expectedStatus);
+    const cartPage = getPageObject(page, CartPage);
+    const actual = await cartPage.getLastQuoteStatus();
+    expect(actual.toLowerCase()).toContain(expectedStatus.toLowerCase());
+  },
+
+  /**
+   * Verifies that all quotes in the cart have visible PNR codes.
+   * Expects at least 2 PNR code elements to be visible (one per held quote).
+   * @param {import('playwright').Page} page
+   */
+  async verifyAllQuotesHavePnrCodes(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const count = await cartPage.countVisiblePnrCodes();
+    expect(count, `Expected at least 2 PNR codes to be visible, found ${count}`).toBeGreaterThanOrEqual(2);
+  },
+
+  async verifyLastQuoteDestination(page, city) {
+    if (!page) throw new Error('page is required');
+    if (!city || typeof city !== 'string') throw new Error(`city must be a non-empty string, got: ${typeof city}`);
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualTitle = await cartPage.getLastQuoteTitleText();
+    expect(actualTitle.toLowerCase()).toContain(city.toLowerCase());
+  },
+
   /**
    * Verifies that the destination text in the cart info bar (top of page) contains the expected city.
    *
@@ -904,6 +947,19 @@ const Cart = {
     if (!page) throw new Error('page is required');
     const cartPage = getPageObject(page, CartPage);
     await cartPage.clickAddHotelFromCarousel();
+  },
+
+  /**
+   * Clicks the Flight button from the "Add more services" product carousel in the cart.
+   * Navigates to the flight search page.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async clickAddFlightFromCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickAddFlightFromCarousel();
   },
 
   /**

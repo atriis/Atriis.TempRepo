@@ -46,6 +46,10 @@ const SELECTORS = {
 
   // Quote title selector (base-quote-header.vue)
   QUOTE_TITLE: '.quote-payment-card h6.quote-title',
+  FIRST_QUOTE_TITLE: '.quote-payment-card:not(.last-quote) h6.quote-title',
+  LAST_QUOTE_TITLE: '.last-quote h6.quote-title',
+  LAST_QUOTE_STATUS_LABEL: '.last-quote .app-label--quote',
+  PNR_CODE: '.pnr-code',
 
   // OOP Justification selectors
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
@@ -111,8 +115,9 @@ const SELECTORS = {
   SHARE_BUTTON: ".share-container .share-btn",
   SHARE_POPPER_MENU: "ul.share-popper[role='menu']:visible",
 
-  // Add hotel from cart product carousel
+  // Add product from cart product carousel
   ADD_HOTEL_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Hotel")',
+  ADD_FLIGHT_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Flight")',
   ADD_HOTEL_SEARCH_DRAWER: '.app-drawer.atrs-edit-search-drawer',
 
   // Seating icon in extras section (flight-seating.vue — .yellow class = PendingApproval/PendingPayment)
@@ -1142,6 +1147,39 @@ class CartPage {
   }
 
   /**
+   * Clicks the Flight button in the "Add more services" product carousel.
+   * Navigates to the flight search page.
+   * @param {number} [timeout=10000]
+   */
+  async clickAddFlightFromCarousel({ timeout = 10000 } = {}) {
+    const btn = this.page.locator(SELECTORS.ADD_FLIGHT_CAROUSEL_BUTTON);
+    await btn.waitFor({ state: 'visible', timeout });
+    await btn.click();
+    await this.page.waitForLoadState('networkidle', { timeout: 30000 });
+  }
+
+  /**
+   * Gets the booking status text of the last quote in the cart.
+   * @param {number} [timeout=30000]
+   * @returns {Promise<string>}
+   */
+  async getLastQuoteStatus({ timeout = 30000 } = {}) {
+    const locator = this.page.locator(SELECTORS.LAST_QUOTE_STATUS_LABEL);
+    await locator.waitFor({ state: 'visible', timeout });
+    return (await locator.innerText()).trim();
+  }
+
+  /**
+   * Counts the number of visible PNR code elements across all quotes.
+   * @param {number} [timeout=10000]
+   * @returns {Promise<number>}
+   */
+  async countVisiblePnrCodes({ timeout = 10000 } = {}) {
+    await this.page.locator(SELECTORS.PNR_CODE).first().waitFor({ state: 'visible', timeout });
+    return await this.page.locator(SELECTORS.PNR_CODE).count();
+  }
+
+  /**
    * Gets the trip title text from the cart info bar (e.g. "Trip to Ashdod").
    * @param {number} [timeout=10000]
    * @returns {Promise<string>}
@@ -1170,6 +1208,18 @@ class CartPage {
    */
   async getQuoteTitleText({ timeout = 10000 } = {}) {
     const el = this.page.locator(SELECTORS.QUOTE_TITLE).first();
+    await el.waitFor({ state: 'visible', timeout });
+    return (await el.innerText()).trim();
+  }
+
+  async getFirstQuoteTitleText({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.FIRST_QUOTE_TITLE).first();
+    await el.waitFor({ state: 'visible', timeout });
+    return (await el.innerText()).trim();
+  }
+
+  async getLastQuoteTitleText({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.LAST_QUOTE_TITLE).first();
     await el.waitFor({ state: 'visible', timeout });
     return (await el.innerText()).trim();
   }

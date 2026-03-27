@@ -330,6 +330,16 @@ Then("the quote destination should contain {string}", async function (city) {
   await Cart.verifyQuoteDestination(this.page, city);
 });
 
+Then("the first quote destination should contain {string}", async function (city) {
+  logger.info("Verifying first (non-last) quote destination contains city", { city });
+  await Cart.verifyFirstQuoteDestination(this.page, city);
+});
+
+Then("the last quote destination should contain {string}", async function (city) {
+  logger.info("Verifying last quote destination contains city", { city });
+  await Cart.verifyLastQuoteDestination(this.page, city);
+});
+
 Then("the trip destination on top of the page should contain {string}", async function (city) {
   logger.info("Verifying trip destination on top of page contains city", { city });
   await Cart.verifyTripDestinationTopPage(this.page, city);
@@ -343,6 +353,21 @@ Then("the payment method for extras should not be changeable", async function ()
 When("I click to add a hotel to my trip from cart", async function () {
   logger.info("Clicking to add a hotel from cart product carousel");
   await Cart.clickAddHotelFromCart(this.page);
+});
+
+When("I click to add a flight to my trip from cart", async function () {
+  logger.info("Clicking to add a flight from cart product carousel");
+  await Cart.clickAddFlightFromCart(this.page);
+});
+
+Then("the last quote status should be {string}", async function (expectedStatus) {
+  logger.info("Verifying last quote status", { expectedStatus });
+  await Cart.verifyLastQuoteStatus(this.page, expectedStatus);
+});
+
+Then("all quotes should have PNR codes", async function () {
+  logger.info("Verifying all quotes have PNR codes");
+  await Cart.verifyAllQuotesHavePnrCodes(this.page);
 });
 
 Then("a push notification should be displayed", async function () {
