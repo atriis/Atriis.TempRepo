@@ -37,3 +37,24 @@ Then("the car location label at index {int} should contain {string} on results",
   logger.info("Verifying car location label at index contains expected label on results", { index, expectedLabel });
   await CarResults.expectLocationLabelToContain(this.page, index, expectedLabel);
 });
+
+Then("the payment type on results should be {string}", async function (expectedPaymentType) {
+  logger.info("Verifying car payment type on results", { expectedPaymentType });
+  await CarResults.expectPaymentTypeOnResults(this.page, expectedPaymentType);
+});
+
+Then("the car FOP on results should be {string}", async function (expectedFOP) {
+  logger.info("Verifying car FOP on results", { expectedFOP, agency: this.currentCarAgency || null });
+  await CarResults.expectCurrentFOPOnResults(this.page, expectedFOP, { agencyName: this.currentCarAgency });
+});
+
+Then("the car FOP for agency {string} on results should be {string}", async function (agencyName, expectedFOP) {
+  logger.info("Verifying car FOP for agency on results", { agencyName, expectedFOP });
+  await CarResults.expectCurrentFOPOnResults(this.page, expectedFOP, { agencyName });
+});
+
+When("I capture the current car FOP on results", async function () {
+  logger.info("Capturing current car FOP on results");
+  this.currentCarFOP = await CarResults.getCurrentFOPOnResults(this.page);
+  logger.info("Captured current car FOP on results", { currentCarFOP: this.currentCarFOP });
+});

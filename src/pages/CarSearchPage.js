@@ -10,7 +10,7 @@ const SELECTORS = {
   DROPOFF_DATE_INPUT: "[placeholder='Drop-off Date']",
   DATE_PICKER_PANEL: ".el-picker-panel:visible",
   PICKUP_NEXT_ARROW: "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
-  DROPOFF_NEXT_ARROW: "span.el-date-picker__next-btn button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']",
+  DROPOFF_NEXT_ARROW: "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
   DATE_RANGE_HEADER_LABEL: ".el-date-range-picker__header div",
   DATE_PICKER_HEADER_LABEL: ".el-date-picker__header-label",
   DROPOFF_DIFFERENT_LOCATION_CHECKBOX: ".car-form .el-checkbox__inner",

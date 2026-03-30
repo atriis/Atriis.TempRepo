@@ -172,6 +172,25 @@ Then("the card form should show missing details for country", async function () 
   });
 });
 
+Then("the current car FOP should be shown on cart", async function () {
+  if (!this.currentCarFOP) {
+    throw new Error("currentCarFOP is not set. Use step: I capture the current car FOP on results");
+  }
+
+  logger.info("Verifying current car FOP is shown on cart", { currentCarFOP: this.currentCarFOP });
+  await CartPayment.verifyPaymentType(this.page, this.currentCarFOP);
+});
+
+Then("the current car FOP should remain the same after booking", async function () {
+  if (!this.currentCarFOP) {
+    throw new Error("currentCarFOP is not set. Use step: I capture the current car FOP on results");
+  }
+
+  logger.info("Verifying current car FOP remains the same after booking", { currentCarFOP: this.currentCarFOP });
+  await CartPayment.expectBookingStatusToBe("Confirmed", { page: this.page });
+  await CartPayment.verifyPaymentType(this.page, this.currentCarFOP, { timeout: 60_000 });
+});
+
 When("I save the card form with empty required fields", async function () {
   logger.info("Saving card form with empty required fields to trigger validation");
   await CartPayment.saveCardFormAndVerifyValidationError(this.page);

@@ -20,6 +20,7 @@ When("I search for a car in {string}", async function (place) {
 
 When("I search for a car in {string} with rental agency {string}", async function (place, agencyName) {
   logger.info("Searching for car with rental agency", { place, agencyName });
+  this.currentCarAgency = agencyName;
   await CarSearch.searchCarByPlaceAndRentalAgency(this.page, place, agencyName);
 });
 

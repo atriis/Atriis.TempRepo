@@ -104,6 +104,8 @@ jobs:
           USER_ROBSONCRUZ: ${{ secrets.USER_ROBSONCRUZ }}
           USER_BEATRIZ: ${{ secrets.USER_BEATRIZ }}
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
+          USER_ISPREPAID_ON: ${{ secrets.USER_ISPREPAID_ON }}
+          USER_ISPREPAID_OFF: ${{ secrets.USER_ISPREPAID_OFF }}
 
       - name: Upload Daily Cars Results
         if: always()

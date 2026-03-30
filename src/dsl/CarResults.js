@@ -129,6 +129,73 @@ const CarResults = {
     const text = await carResultsPage.getLocationLabelByIndex(index).innerText();
     expect(text.toLowerCase()).toContain(expectedLabel.toLowerCase());
   },
+
+  /**
+   * Verifies the payment type label displayed on the car results page at the given index.
+   * Expected values: "Pre paid" (when Is Prepaid = true) or "Pay On Departure" (when Is Prepaid = false).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedPaymentType - Expected text, e.g. "Pre paid" or "Pay On Departure"
+   * @param {number} [index=0] - Zero-based index of the car result card to check
+   * @throws {Error} If page, expectedPaymentType, or index are invalid
+   * @returns {Promise<void>}
+   */
+  async expectPaymentTypeOnResults(page, expectedPaymentType, index = 0) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedPaymentType || typeof expectedPaymentType !== 'string') {
+      throw new Error(`expectedPaymentType must be a non-empty string, got: ${expectedPaymentType}`);
+    }
+
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.waitForPaymentTypeVisible(index);
+    const text = await carResultsPage.getPaymentTypeLabelAtIndex(index).innerText();
+    expect(text.trim()).toBe(expectedPaymentType);
+  },
+
+  /**
+   * Gets the current visible FOP (payment type) from car results.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>}
+   */
+  async getCurrentFOPOnResults(page, { agencyName } = {}) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForAddToTripText();
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    return await carResultsPage.getCurrentFOPText({ agencyName });
+  },
+
+  /**
+   * Verifies that the expected FOP (payment type) is shown on car results.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedFOP
+   * @returns {Promise<void>}
+   */
+  async expectCurrentFOPOnResults(page, expectedFOP, { agencyName } = {}) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!expectedFOP || typeof expectedFOP !== 'string') {
+      throw new Error('expectedFOP must be a non-empty string');
+    }
+
+    const actualFOP = await CarResults.getCurrentFOPOnResults(page, { agencyName });
+    const normalizedActual = actualFOP.toLowerCase().replace(/\s+/g, ' ').trim();
+    const normalizedExpected = expectedFOP.toLowerCase().replace(/\s+/g, ' ').trim();
+
+    expect(normalizedActual).toContain(normalizedExpected);
+  },
 };
 
 module.exports = CarResults;
