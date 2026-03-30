@@ -12,6 +12,7 @@ Feature: 71774 Amadeus NDC - CVV required for BA and IB when FOP is credit card
   I want CVV to be required for BA and IB NDC bookings
   So that payment authorization is properly secured for these carriers
 
+#No results for IB
   Scenario: CVV is required for Iberia NDC booking with credit card
     Given I am logged in as "cvvndc" booking a new trip
     And I have added myself as the traveler
