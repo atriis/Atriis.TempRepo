@@ -11,8 +11,6 @@ Feature: 32980 By Schedule - Edit search from pricing page works as expected
   I want to edit search from the by-schedule pricing page
   So that I can adjust my search without starting over
 
-  # TODO: New user needed — testim@amadeus.com → USER_TESTIM_AMADEUS (same as 31202)
-
   Scenario: Edit search from by-schedule pricing page
     Given I am logged in as "testim_amadeus" booking a new trip
     And I have added myself as the traveler

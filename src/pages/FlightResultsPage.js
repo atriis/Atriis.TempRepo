@@ -57,6 +57,10 @@ const SELECTORS = {
   // Separated Tickets tag (flight-selection.vue / flight-preview.vue — shown when split rules apply)
   // Uses text-based selector since the tag is wrapped in el-tooltip which can interfere with CSS-class visibility checks
   SEPARATED_TICKETS_TAG: 'p.separated-tickets-tag',
+
+  // Marine Fare icon (flight-preview.vue / flight-by-schedule-pricing-option.vue)
+  // Uses anchor material icon + "Marine fare" text — no data-testid available
+  MARINE_FARE_ANCHOR_ICON: 'span.material-symbols-outlined:has-text("anchor")',
 };
 
 class FlightResultsPage {
@@ -724,6 +728,37 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     try {
       // Use text matching — more reliable than CSS class when el-tooltip wraps the trigger
       const locator = this.page.getByText('Separated Tickets').first();
+      await locator.waitFor({ state: 'attached', timeout });
+      return await locator.isVisible();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the Marine Fare icon (anchor) is visible in flight results.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isMarineFareIconVisible(timeout = 15000) {
+    try {
+      const locator = this.page.locator(SELECTORS.MARINE_FARE_ANCHOR_ICON).first();
+      await locator.waitFor({ state: 'attached', timeout });
+      return await locator.isVisible();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the Marine Fare icon (anchor) is visible in the pricing options modal.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isMarineFareIconVisibleInPricingOptions(timeout = 15000) {
+    try {
+      const overlay = this.getPricingOptionsOverlay();
+      const locator = overlay.locator(SELECTORS.MARINE_FARE_ANCHOR_ICON).first();
       await locator.waitFor({ state: 'attached', timeout });
       return await locator.isVisible();
     } catch {

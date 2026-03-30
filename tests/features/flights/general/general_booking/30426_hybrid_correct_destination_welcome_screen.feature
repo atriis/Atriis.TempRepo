@@ -22,3 +22,4 @@ Feature: 30426 Flights - Correct destination in welcome screen
     And I proceed to checkout
     And I click proceed button if visible
     And I complete the booking
+    Then the quote destination should contain "Flight to"

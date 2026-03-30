@@ -161,6 +161,7 @@ jobs:
           AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
           USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
           USER_RUIMENDES: ${{ secrets.USER_RUIMENDES }}
+          USER_BRUNAMARINEFARES: ${{ secrets.USER_BRUNAMARINEFARES }}
           USER_AMADEUS_GDS: ${{ secrets.USER_AMADEUS_GDS }}
           USER_BEATRIZ: ${{ secrets.USER_BEATRIZ }}
           USER_ROBSONCRUZ: ${{ secrets.USER_ROBSONCRUZ }}
@@ -176,6 +177,7 @@ jobs:
           USER_PINI_NLGOV: ${{ secrets.USER_PINI_NLGOV }}
           USER_BRUNAOLIVEIRA: ${{ secrets.USER_BRUNAOLIVEIRA }}
           USER_RYANAIR_AMS: ${{ secrets.USER_RYANAIR_AMS }}
+          USER_TESTIM_AMADEUS: ${{ secrets.USER_TESTIM_AMADEUS }}
           USER_CVVNDC: ${{ secrets.USER_CVVNDC }}
           USER_TESTIM_MEAL: ${{ secrets.USER_TESTIM_MEAL }}
           USER_BRUNINAITA: ${{ secrets.USER_BRUNINAITA }}

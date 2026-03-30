@@ -11,9 +11,6 @@ Feature: 31202 By Schedule - Cheapest combination price not higher than your sel
   I want the cheapest combination price to never exceed the your selection price
   So that I know the cheapest option is truly the best deal
 
-  # TODO: New user needed — testim@amadeus.com → USER_TESTIM_AMADEUS
-  # Add to .env: USER_TESTIM_AMADEUS="testim@amadeus.com"
-
   Scenario: Cheapest combination price is not higher than your selection
     Given I am logged in as "testim_amadeus" booking a new trip
     And I have added a random guest traveler

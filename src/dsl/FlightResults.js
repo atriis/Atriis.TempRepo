@@ -628,6 +628,28 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     expect(visible, '"Separated Tickets" indicator should be visible in flight results').toBe(true);
   },
 
+  /**
+   * Verifies the Marine Fare icon (anchor) is visible in flight results.
+   * @param {import('playwright').Page} page
+   */
+  async verifyMarineFareIconVisibleInResults(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const visible = await flightResultsPage.isMarineFareIconVisible();
+    expect(visible, 'Marine Fare icon should be visible in flight results').toBe(true);
+  },
+
+  /**
+   * Verifies the Marine Fare icon (anchor) is visible in pricing options.
+   * @param {import('playwright').Page} page
+   */
+  async verifyMarineFareIconVisibleInPricingOptions(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const visible = await flightResultsPage.isMarineFareIconVisibleInPricingOptions();
+    expect(visible, 'Marine Fare icon should be visible in pricing options').toBe(true);
+  },
+
 }
 
 module.exports = FlightResults;

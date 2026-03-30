@@ -1,5 +1,5 @@
 require("module-alias/register");
-const { When, setDefaultTimeout } = require("@cucumber/cucumber");
+const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { FlightSearch } = require("../../src/dsl");
 const logger = require("@utils/logger").child('FlightSearch');
 
@@ -85,4 +85,22 @@ When("I search for a round trip flight from {string} to {string} with advanced s
     returnDateType,
     parallelHotel: true,
   });
+});
+
+// ========================================
+// WHEN STEPS - FLIGHT TAB NAVIGATION
+// ========================================
+
+When("I click on the flight tab", async function () {
+  logger.info('Clicking on flight tab');
+  await FlightSearch.clickFlightTab(this.page);
+});
+
+// ========================================
+// THEN STEPS - FLIGHT SEARCH VERIFICATION
+// ========================================
+
+Then("the car search checkbox should be checked by default", async function () {
+  logger.info('Verifying car search checkbox is checked by default');
+  await FlightSearch.verifyCarSearchCheckboxChecked(this.page);
 });

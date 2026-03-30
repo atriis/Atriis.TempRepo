@@ -11,12 +11,7 @@ Feature: 34941 Flights - Car search checkbox is selected by default when configu
   I want the car search checkbox to be pre-selected when configured by admin
   So that I don't have to manually enable it each time
 
-  # TODO: New user needed — carolinaferreira@joysettings.com → USER_CAROLINAFERREIRA
-  # Add to .env: USER_CAROLINAFERREIRA="carolinaferreira@joysettings.com"
-  # Add to .env.example: USER_CAROLINAFERREIRA=
-  # Add to CI workflow secrets
-
   Scenario: Car search checkbox is selected by default in flight search
     Given I am logged in as "carolinaferreira" booking a new trip
-    # TODO: Step needed for "Click on flight tab"
-    # TODO: Step needed for "Verify car search checkbox is checked by default"
+    When I click on the flight tab
+    Then the car search checkbox should be checked by default

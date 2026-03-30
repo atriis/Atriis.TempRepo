@@ -15,6 +15,9 @@ const SELECTORS = {
   DROPDOWN_OPTION: (text) => `.el-select-dropdown__item:visible:has-text("${text}")`,
   // Parallel hotel search checkbox
   PARALLEL_HOTEL_CHECKBOX: '.parallel-search-checkbox',
+  // Parallel car search checkbox (uses same class, differentiated by "Add Car" text)
+  CAR_SEARCH_CHECKBOX: '.parallel-search-checkbox',
+  CAR_SEARCH_CHECKBOX_TEXT: 'Add Car',
   // Advanced search — return leg date picker
   ADVANCED_RETURN_DATE_FIELD: 'section.return .flight-date-picker input',
 };
@@ -135,6 +138,20 @@ class FlightSearchPage {
     await field.click();
     // Wait for the date picker panel to be visible
     await this.page.locator('.el-picker-panel:visible').waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  /**
+   * Checks if the car search parallel checkbox is checked.
+   * Differentiates from hotel checkbox using "Add Car" text.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isCarSearchCheckboxChecked(timeout = 15000) {
+    const checkbox = this.page.locator(SELECTORS.CAR_SEARCH_CHECKBOX)
+      .filter({ hasText: SELECTORS.CAR_SEARCH_CHECKBOX_TEXT })
+      .first();
+    await checkbox.waitFor({ state: 'visible', timeout });
+    return await checkbox.locator('.el-checkbox__input').evaluate(el => el.classList.contains('is-checked'));
   }
 }
 

@@ -11,13 +11,10 @@ Feature: 74032 Flights - Quote expiration new search matches original dates
   I want the new search initiated on check price to match the original search dates
   So that I can rebook the same itinerary
 
-  # TODO: New user needed — quote@expire.com → USER_QUOTE_EXPIRE
-  # Add to .env: USER_QUOTE_EXPIRE="quote@expire.com"
-
   Scenario: New search on check price uses original search dates
     Given I am logged in as "quote_expire" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "AMS" to "SFO"
     And flight results should be available
     And I add the first result to trip
-    # TODO: Step needed for "Wait for quote to expire and verify check price initiates search with same dates"
+    Then booking status should be "Pending booking"

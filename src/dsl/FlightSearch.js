@@ -422,6 +422,28 @@ const FlightSearch = {
 
     return { searched: true, from, to };
   },
+
+  /**
+   * Clicks the flight tab to navigate to the flight search form.
+   * @param {import('playwright').Page} page
+   */
+  async clickFlightTab(page) {
+    if (!page) throw new Error('page is required');
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    await flightSearchPage.clickFlightTab();
+  },
+
+  /**
+   * Verifies the car search checkbox is checked by default in the flight search form.
+   * @param {import('playwright').Page} page
+   */
+  async verifyCarSearchCheckboxChecked(page) {
+    if (!page) throw new Error('page is required');
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const isChecked = await flightSearchPage.isCarSearchCheckboxChecked();
+    const { expect } = require('@playwright/test');
+    expect(isChecked, 'Car search checkbox should be checked by default').toBe(true);
+  },
 };
 
 module.exports = FlightSearch;

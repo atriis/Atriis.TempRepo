@@ -11,8 +11,6 @@ Feature: 42814 Flights - No result message for filtered flights
   I want to see a clear message when my filter returns no results
   So that I know to reset filters or edit my search
 
-  # TODO: New user needed — testim@amadeus.com → USER_TESTIM_AMADEUS (same as 31202)
-
   Scenario: No results message and reset filters button are displayed
     Given I am logged in as "testim_amadeus" booking a new trip
     And I have added myself as the traveler

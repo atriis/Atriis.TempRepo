@@ -2,6 +2,9 @@ require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { FlightResults } = require("../../src/dsl");
+const FlightResultsPage = require("../../src/pages/FlightResultsPage");
+const { ResultsPage } = require("../../src/pages/ResultsPage");
+const { CommonPage } = require("../../src/pages/CommonPage");
 const { expectNumbersToBeEqualWithTolerance } = require("../../src/assertions/numberAssertions");
 const logger = require("@utils/logger").child("FlightResults");
 
@@ -18,7 +21,6 @@ When("I select one flight segment by schedule", async function () {
 
 When("I wait for the change flight button to be visible", async function () {
   logger.info("Waiting for change flight button to appear");
-  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
   await flightResultsPage.waitForChangeFlightButton();
@@ -40,7 +42,6 @@ When("I add the first flight to cart", async function () {
 
 When("I filter results by carrier {string}", async function (carrier) {
   logger.info("Filtering results by carrier", { carrier });
-  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
   // Wait for initial results to load (works in both share and normal mode)
@@ -71,7 +72,6 @@ When("I filter results by carrier {string}", async function (carrier) {
 
 When("I click on \"Pricing Options\" for the first result", async function () {
   logger.info("Clicking Pricing Options for first result");
-  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
   // Wait for filter to apply and results to stabilize
@@ -83,7 +83,6 @@ When("I click on \"Pricing Options\" for the first result", async function () {
 
 When("I extract the price from first pricing option", async function () {
   logger.info("Extracting price from first pricing option");
-  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
   const price = await flightResultsPage.getAmountPriceValuePricingOptions(0);
@@ -129,7 +128,6 @@ When("I click share from pricing options", async function () {
 
 When("I add to trip from pricing options", async function () {
   logger.info("Clicking add to trip from pricing options");
-  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
   await flightResultsPage.clickAddToTripButtonPricingOptionsModal();
@@ -137,7 +135,6 @@ When("I add to trip from pricing options", async function () {
 
 When("I close pricing options modal", async function () {
   logger.info("Closing pricing options modal");
-  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
   await flightResultsPage.clickXToClosePricingOptionsModal();
@@ -145,7 +142,6 @@ When("I close pricing options modal", async function () {
 
 When("I close fare rules window", async function () {
   logger.info("Closing fare rules window");
-  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
   await flightResultsPage.clickXToClosePricingOptionsModal(1);
@@ -153,7 +149,6 @@ When("I close fare rules window", async function () {
 
 When("I close flight details window", async function () {
   logger.info("Closing flight details window");
-  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   
   await flightResultsPage.clickXToCloseFlightDetailsModal();
@@ -190,8 +185,6 @@ When("I select 2 options from carriers {string} and {string}", async function (c
 
 When('I click on the "Share" button to open the share dialog', async function () {
   logger.info("Clicking Share button to open share dialog");
-  const { ResultsPage } = require("../../src/pages/ResultsPage");
-  const { CommonPage } = require("../../src/pages/CommonPage");
   const resultsPage = new ResultsPage(this.page);
   const commonPage = new CommonPage(this.page);
   
@@ -366,7 +359,6 @@ Then("the carrier name in more details should be {string}", async function (expe
 
 When("I extract the price from pricing option at index {int}", async function (index) {
   logger.info("Extracting price from pricing option at index", { index });
-  const FlightResultsPage = require("../../src/pages/FlightResultsPage");
   const flightResultsPage = new FlightResultsPage(this.page);
   const price = await flightResultsPage.getAmountPriceValuePricingOptions(index);
   if (!this.extractedPrices) this.extractedPrices = [];
@@ -387,8 +379,19 @@ Then('the {string} indicator should be visible in results', async function (indi
   logger.info('Verifying indicator is visible in results', { indicatorName });
   if (indicatorName === 'Separated Tickets') {
     await FlightResults.verifySeparatedTicketsIndicatorVisible(this.page);
+  } else if (indicatorName === 'Marine Fare') {
+    await FlightResults.verifyMarineFareIconVisibleInResults(this.page);
   } else {
-    throw new Error(`Unknown indicator: "${indicatorName}". Supported: "Separated Tickets"`);
+    throw new Error(`Unknown indicator: "${indicatorName}". Supported: "Separated Tickets", "Marine Fare"`);
+  }
+});
+
+Then('the {string} indicator should be visible in pricing options', async function (indicatorName) {
+  logger.info('Verifying indicator is visible in pricing options', { indicatorName });
+  if (indicatorName === 'Marine Fare') {
+    await FlightResults.verifyMarineFareIconVisibleInPricingOptions(this.page);
+  } else {
+    throw new Error(`Unknown indicator: "${indicatorName}". Supported: "Marine Fare"`);
   }
 });
 
