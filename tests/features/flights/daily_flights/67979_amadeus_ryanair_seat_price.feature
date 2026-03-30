@@ -20,12 +20,14 @@ Feature: 67979 Amadeus Ryanair - Seat price calculation outbound and inbound
     And I filter results by carrier "FR"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # TODO: Extract initial total, add outbound seat, verify price
-    # Testim: Adding_seats_and_extracting_values()
-    # opens seating → extracts total before seats → adds outbound seat → extracts seat price
-    # TODO: Validate total = initial + outbound seat price
-    # Testim: Checking_if_total_price_in_cart_is_correct_after_adding_seats(totalBeforeSeats, outboundSeat, totalAfterOutSeat)
-    # TODO: Add inbound seat and extract combined seat prices
-    # Testim: Adding_outbound_seat_and_extracting_values()
-    # TODO: Validate total = initial + outbound + inbound seat prices
-    # Testim: Validate_number1_number2_number3(totalBeforeSeats, outAndInbSeatPrices, totalAfterInbAndOutSeats)
+    And I extract the price at index 4 from "cart"
+    When I click to edit extras at index 2
+    And I click add seats in extras
+    And I wait for the seat map to load
+    And I select the first available flight seat
+    And I click next flight button
+    And I wait for the seat map to load
+    And I select the first available flight seat
+    And I extract seat price in seat map drawer
+    And I save and close seat map drawer
+    Then the total price in cart is equal to total price in cart before seats + seats price

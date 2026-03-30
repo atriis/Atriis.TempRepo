@@ -18,6 +18,6 @@ Feature: 45589 NDC Iberia - Trip overview more details
     And I add the first flight to cart
     And I proceed to checkout
     And I complete the booking
-    # TODO: Step needed for "Click 'Flight details' button in trip overview"
+    When I click to open flight details
     # TODO: Step needed for "Verify flight details table headers: Traveler, Ticket number, FF, Meal, Seat"
     # TODO: Step needed for "Verify seat selection is available from trip overview"

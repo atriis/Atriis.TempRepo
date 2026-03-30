@@ -122,6 +122,8 @@ const SELECTORS = {
 
   // Seat map segment tabs (flight-deck.vue el-tabs)
   SEAT_MAP_SEGMENT_TAB: '.flights-tabs .el-tabs__item', // Tab items for outbound/inbound segments
+  // Next flight button in seat map drawer footer (flight-deck.vue app-btn class="cancel-btn" type="primary")
+  NEXT_FLIGHT_BUTTON: 'button:has-text("Next flight")',
   // Seat tooltip red message (plane-seat.vue — .tooltip-item.red for unselectableMessage or cantBuyPaidSeats)
   // The tooltip is rendered by Element Plus as .el-popper.is-light (effect="light" in plane-seat.vue)
   SEAT_TOOLTIP_RED_MESSAGE: '.el-popper.is-light .tooltip-item.red',
@@ -872,6 +874,16 @@ class CartPage {
     const priceEl = this.page.locator(SELECTORS.SEAT_MAP_PRICE).first();
     await priceEl.waitFor({ state: 'visible', timeout: 15000 });
     return (await priceEl.innerText()).trim();
+  }
+
+  /**
+   * Clicks the 'Next flight' button in the seat map drawer to advance to the next segment.
+   * The button is disabled on the last segment (mergedFlights.length - 1 === currentTabIndex).
+   */
+  async clickNextFlightButton() {
+    const btn = this.page.locator(SELECTORS.NEXT_FLIGHT_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout: 15000 });
+    await btn.click();
   }
 
   /**

@@ -22,5 +22,5 @@ Feature: 65396 Amadeus - Validate both segments included with different non-low-
     # Testim: Select_flights_by_carrier__by_schedule_('LH', 'LX')
     And I add "Your Selection" fare to trip
     And I handle conflicting quotes if visible
-    # TODO: Step needed for "Verify 'Pending booking' status is displayed"
+    Then the booking status should be "Pending booking"
     # TODO: Step needed for "Verify both outbound and return segments show 'BCN' as destination"

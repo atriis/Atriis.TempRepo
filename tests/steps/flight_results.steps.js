@@ -383,7 +383,7 @@ Then("the rail banner should be visible in results", async function () {
   await FlightResults.verifyRailBannerVisible(this.page);
 });
 
-Then('the "{string}" indicator should be visible in results', async function (indicatorName) {
+Then('the {string} indicator should be visible in results', async function (indicatorName) {
   logger.info('Verifying indicator is visible in results', { indicatorName });
   if (indicatorName === 'Separated Tickets') {
     await FlightResults.verifySeparatedTicketsIndicatorVisible(this.page);

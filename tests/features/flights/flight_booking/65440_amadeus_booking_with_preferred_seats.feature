@@ -18,26 +18,15 @@ Feature: 65440 Amadeus - Booking successful with preferred seats
     And I filter airline results by "Alaska" checkbox
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    When I click to edit extras at index 4
+    When I click to edit extras at index 5
     And I click add seats in extras
     And I wait for the seat map to load
-    # TODO: then I select a preferred seat (testim code below)
-    #// Find all preferred seats
-    #const preferredSeats = Array.from(document.querySelectorAll('.plane-seat.preferred'));
-#// If any preferred seats exist, pick one at random and click it
-#if (preferredSeats.length > 0) {
- # const randomIndex = Math.floor(Math.random() * preferredSeats.length);
-  #const selectedSeat = preferredSeats[randomIndex];
-
-  #console.log('Clicking preferred seat:', selectedSeat);
-  #selectedSeat.scrollIntoView({ behavior: 'smooth' });
-  #selectedSeat.click();
-#} else {
- # throw new Error('No preferred seats found.');
-#}
- 
- #TODO And I click next flight button
- #and reuse the preferred seat selection for the return flight  
-  And I save and close seat map drawer
-
+    And I select a random preferred seat
+    And I click next flight button
+    And I wait for the seat map to load
+    And I select a random preferred seat
+    And I save and close seat map drawer
+    And I proceed to checkout
+    And I complete the booking
+    Then the quote destination should contain "Flight to"
   

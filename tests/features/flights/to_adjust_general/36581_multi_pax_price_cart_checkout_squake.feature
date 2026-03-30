@@ -17,8 +17,8 @@ Feature: 36581 Flights - Multi pax price displayed correctly in cart and checkou
   Scenario: Multi pax flight price is correct in cart and checkout with CO2 tooltip
     Given I am logged in as "sebastian" booking a new trip
     And I have added myself as the traveler
-    # TODO: Step needed for "Add second traveler by name" — Search.addTravelerByName(page, "josh")
-    # TODO: Step needed for "Add third traveler by name" — Search.addTravelerByName(page, "bene")
+    And I have added traveler by name "josh"
+    And I have added traveler by name "bene"
     When I search for a one way flight from "LIS" to "NYC"
     # TODO: Step needed for "Close mandatory notification popup"
     # TODO: Step needed for "Verify CO2 Squake tooltip in results"

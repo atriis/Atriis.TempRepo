@@ -16,7 +16,7 @@ Feature: 42332 Flights - Adding FF is successfully saved in the UI
     And I have added myself as the traveler
     And I have added a random guest traveler
     When I search for a one way flight from "AMS" to "PAR"
-    # TODO: Step needed for "Answer reference fields for Chris Tree user and proceed"
+    And I click proceed on the reference fields popup
     And I filter results by carrier "KL"
     And I add the first flight to cart
     # TODO: Step needed for "Add frequent flyer number in cart"

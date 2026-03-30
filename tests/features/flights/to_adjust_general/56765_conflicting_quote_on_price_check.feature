@@ -18,7 +18,7 @@ Feature: 56765 Flights - Conflicting quote should appear on price check
     When I book a new trip
     And I have added myself as the traveler
     And I search for a round trip flight from "LON" to "DOH"
-    # TODO: Step needed for "Fill NL reference fields education and courses"
+    And I fill in NL reference fields education and courses
     And I add the first flight to cart
     # TODO: Step needed for "Cancel quote from cart before checkout"
     # TODO: Step needed for "Click show cancelled items"

@@ -18,5 +18,6 @@ Feature: 31205 By Schedule - Search and add to cart works as expected
     And I have added a random guest traveler
     When I search for a flight by schedule from "SFO" to "DUB"
     And I select flight segments by schedule
-    # TODO: Step needed for "Validate add to cart from by-schedule pricing page"
+    And I add to trip from pricing options
+    And I handle conflicting quotes if visible
     Then I successfully cancel the trip

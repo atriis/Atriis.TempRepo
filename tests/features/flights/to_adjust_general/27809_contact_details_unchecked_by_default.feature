@@ -14,7 +14,7 @@ Feature: 27809 Flights - Contact details unchecking checkbox refused by default
   Scenario: Contact details checkbox is unchecked by default and booking succeeds
     Given I am logged in as "coreytaylor" booking a new trip
     And I have added myself as the traveler
-    # TODO: Step needed for "Add manual quote flight one way LON to MAD"
+    When I search and add a flight manual quote
     # TODO: Step needed for "Fill free text justification in cart if needed"
     And I click the proceed to checkout button
     # TODO: Step needed for "Verify contact details checkbox is unchecked by default"

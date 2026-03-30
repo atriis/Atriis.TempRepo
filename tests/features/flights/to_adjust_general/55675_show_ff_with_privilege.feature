@@ -16,10 +16,10 @@ Feature: 55675 Flights - Show travelers FF for user with privilege
 
   Scenario: FF is shown for travelers when booker has privilege
     Given I am logged in as "admin_cansee" booking a new trip
-    # TODO: Step needed for "Add traveler by name 'Annie Massk'"
-    # TODO: Step needed for "Add second traveler by name 'Molly Massk'"
+    And I have added traveler by name "Annie Massk"
+    And I have added traveler by name "Molly Massk"
     When I search for a round trip flight from "CLT" to "LGA"
-    # TODO: Step needed for "Filter on AA carrier"
+    And I filter airline results by "AA" checkbox
     And I add the first flight to cart
     # TODO: Step needed for "Navigate to frequent flyer section"
     # TODO: Step needed for "Validate FF is visible for traveler 1"

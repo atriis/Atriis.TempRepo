@@ -16,8 +16,8 @@ Feature: 66548 Multi Pax - Correct price in pricing options and flight details
   Scenario: Multi pax pricing is correct in pricing options and flight details
     Given I am logged in as "sabre_testim" booking a new trip
     And I have added a random guest traveler
-    # TODO: Step needed for "Add second random guest traveler"
-    # TODO: Step needed for "Add third random guest traveler"
+    And I have added a random guest traveler
+    And I have added a random guest traveler
     # TODO: Step needed for "Search flights (route TBD from Testim)"
     # TODO: Step needed for "Validate price in pricing options is per traveler"
     # TODO: Step needed for "Validate price in flight details is total for all pax"

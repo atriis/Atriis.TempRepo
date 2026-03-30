@@ -14,7 +14,9 @@ Feature: 47762 Flights - No OOP for insufficient passengers with dynamic field
   Scenario: OOP indicator is not visible when not enough passengers have the dynamic field
     Given I am logged in as "poly" booking a new trip
     And I have added myself as the traveler
-    # TODO: Step needed for "Add 3 more travelers (total 4)" — complex multi-traveler addition
+    And I have added a random guest traveler
+    And I have added a random guest traveler
+    And I have added a random guest traveler
     When I search for a round trip flight from "LON" to "MAD"
     And I add the first flight to cart
     And I handle conflicting quotes if visible

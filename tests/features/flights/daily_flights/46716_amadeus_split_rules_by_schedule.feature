@@ -21,8 +21,8 @@ Feature: 46716 Amadeus - Split rules by schedule quote is split correctly
     And I wait for the change flight button to be visible
     And I filter results by carrier "BA"
     And I select one flight segment by schedule
-    # TODO: Verify "Separated Tickets" indicator is visible in pricing options
-    # Testim: waitForText(page, "[aria-describedby='...'] > :nth-child(2)", 'Separated Tickets')
+    And I wait for "Your Selection" text to be visible
+    Then the "Separated Tickets" indicator should be visible in results
     And I add to trip from pricing options
     And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"

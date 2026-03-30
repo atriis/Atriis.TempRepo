@@ -24,5 +24,5 @@ Feature: 65398 Amadeus - Validate both segments included with same low-cost carr
     # TODO: Step needed for "Add flights from pricing page — option with 'Not Separate Tickets'"
     # Testim: Add_flights_from_pricing_page_to_cart___Option_with_Not_Separate_Tickets()
     And I handle conflicting quotes if visible
-    # TODO: Step needed for "Verify 'Pending booking' status is displayed"
+    Then the booking status should be "Pending booking"
     # TODO: Step needed for "Verify both outbound and return segments are present in the trip"

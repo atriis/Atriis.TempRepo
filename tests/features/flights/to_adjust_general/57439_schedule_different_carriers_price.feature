@@ -15,7 +15,8 @@ Feature: 57439 Amadeus By Schedule - Different carriers My Selection correct pri
     Given I am logged in as "ruimendes" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "DUB" to "PAR"
-    # TODO: Step needed for "Select first segment flight"
-    # TODO: Step needed for "Select second segment flight (different carrier)"
-    # TODO: Step needed for "Add My Selection to cart"
-    # TODO: Step needed for "Verify price in cart matches pricing page"
+    And I select flight segments by schedule
+    And I extract the price from first pricing option
+    And I add to trip from pricing options
+    And I handle conflicting quotes if visible
+    # TODO: Step needed for "Verify price in cart matches pricing page price" — compare extracted pricing option price vs cart price

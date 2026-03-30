@@ -16,8 +16,9 @@ Feature: 33042 By Schedule - Price for selected flights does not change after ad
   Scenario: Price does not change after adding by-schedule selection to cart
     Given I am logged in as "testim_amadeus" booking a new trip
     And I have added a random guest traveler
-    # TODO: Step needed for "Search by schedule non-stop: FRA to YUL"
-    # TODO: Step needed for "Select flights by carrier (AC, AC) in by-schedule"
-    # TODO: Step needed for "Extract price from pricing page"
-    # TODO: Step needed for "Add to cart and handle conflicting quotes"
-    # TODO: Step needed for "Verify price in cart matches pricing page price"
+    When I search for a flight by schedule from "FRA" to "YUL"
+    And I select flight segments by schedule
+    And I extract the price from first pricing option
+    And I add to trip from pricing options
+    And I handle conflicting quotes if visible
+    # TODO: Step needed for "Verify price in cart matches pricing page price" — compare extracted pricing option price vs cart price

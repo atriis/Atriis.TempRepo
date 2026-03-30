@@ -542,6 +542,33 @@ const Cart = {
   },
 
   /**
+   * Selects a random preferred seat from the seat map.
+   * Targets .plane-seat.preferred elements and clicks a random one via the .is-flex ancestor
+   * which carries the Vue handleSeatSelect click handler (same pattern as selectFirstAvailableFlightSeat).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async selectRandomPreferredSeat(page) {
+    if (!page) throw new Error('page is required');
+
+    const selected = await page.evaluate(() => {
+      const preferredSeats = Array.from(document.querySelectorAll('.deck-wrapper .plane-seat.preferred .seat'));
+      if (preferredSeats.length === 0) return false;
+      const randomIndex = Math.floor(Math.random() * preferredSeats.length);
+      const selectedSeat = preferredSeats[randomIndex];
+      selectedSeat.scrollIntoView({ behavior: 'instant' });
+      const clickTarget = selectedSeat.closest('.is-flex') || selectedSeat;
+      clickTarget.click();
+      return true;
+    });
+
+    if (!selected) {
+      throw new Error('No preferred seats found in the seat map');
+    }
+  },
+
+  /**
    * Selects the first available seat with a price (containing $, €, or £).
    * Clicks the .is-flex ancestor div which carries the Vue handleSeatSelect click handler.
    *

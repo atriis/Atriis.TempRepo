@@ -18,5 +18,5 @@ Feature: 57331 Flights - Time limit hour displayed in flight details after hold
     And I add the first flight to cart
     And I accept Terms & Conditions
     And I hold the trip
-    # TODO: Step needed for "Click 'Flight details' / 'more details' button"
+    When I click more details in cart
     # TODO: Step needed for "Verify time limit hour is displayed in HH:MM format"

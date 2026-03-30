@@ -17,7 +17,7 @@ Feature: 56121 Flights - Booking details booker and traveler contact info with P
   Scenario: Contact info and PNR remark are displayed in booking details
     Given I am logged in as "booker_mobile" booking a new trip
     And I have added myself as the traveler
-    # TODO: Step needed for "Add second traveler by name 'Karoline Paxton'"
+    And I have added traveler by name "Karoline Paxton"
     When I search for a round trip flight from "OSL" to "ZRH"
     And I add the first flight to cart
     And I proceed to checkout

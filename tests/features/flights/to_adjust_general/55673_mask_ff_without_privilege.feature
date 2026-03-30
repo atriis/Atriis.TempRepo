@@ -17,10 +17,10 @@ Feature: 55673 Flights - Mask travelers FF for user without privilege
   Scenario: FF is masked for traveler when booker lacks privilege
     Given I am logged in as "booker_cantsee" booking a new trip
     And I have added myself as the traveler
-    # TODO: Step needed for "Add second random guest traveler"
-    # TODO: Step needed for "Add third traveler by name 'Annie Massk'"
+    And I have added a random guest traveler
+    And I have added traveler by name "Annie Massk"
     When I search for a round trip flight from "CLT" to "LGA"
-    # TODO: Step needed for "Filter on AA carrier"
+    And I filter airline results by "AA" checkbox
     And I add the first flight to cart
     # TODO: Step needed for "Navigate to frequent flyer section"
     # TODO: Step needed for "Validate FF is masked for the non-booker traveler"

@@ -23,3 +23,4 @@ Feature: 69506 Amadeus - Send passive to queue
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
+    Then the quote destination should contain "Flight to"

@@ -21,7 +21,7 @@ Feature: 33856 Flights - Marine Fare icon is displayed in results and pricing op
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "NYC"
     And flight results should be available
-    # TODO: Step needed for "Filter by Marine Fare checkbox in results" — use existing "I filter results by {string} checkbox" with "Marine fare"
+    And I filter results by "Marine fare" checkbox
     # TODO: Step needed for "Verify Marine Fare icon is displayed in results"
     And I click on "Pricing Options" for the first result
     # TODO: Step needed for "Verify Marine Fare icon is displayed in pricing options"

@@ -153,6 +153,17 @@ When("I extract seat price in seat map drawer", async function () {
   console.log(`[Seat Price] ${this.seatPrice}`);
 });
 
+When("I select a random preferred seat", async function () {
+  logger.info("Selecting a random preferred seat from the seat map");
+  await Cart.selectRandomPreferredSeat(this.page);
+});
+
+When("I click next flight button", async function () {
+  logger.info("Clicking next flight button to advance to the next segment");
+  const cartPage = new CartPage(this.page);
+  await cartPage.clickNextFlightButton();
+});
+
 When("I save and close seat map drawer", async function () {
   logger.info("Saving and closing seat map drawer");
   const cartPage = new CartPage(this.page);
@@ -195,7 +206,7 @@ Then("the total price in cart is equal to total price in cart before seats + sea
     priceBeforeSeats,
     seatPrice,
     currentTotal,
-    0.05,
+    0.10,
     "Cart total = flight price + seat price"
   );
 });

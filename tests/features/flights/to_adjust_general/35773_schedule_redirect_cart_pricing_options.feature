@@ -18,7 +18,8 @@ Feature: 35773 Flights - Search by schedule redirects to cart from pricing optio
     Given I am logged in as "henry" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "SYD" to "TYO"
-    # TODO: Step needed for "Select flights by carrier (QF, NH) in by-schedule"
-    # TODO: Step needed for "Add flights from pricing page to cart in by-schedule"
-    # TODO: Step needed for "Verify Pending booking status"
+    And I select flight segments by schedule
+    And I add to trip from pricing options
+    And I handle conflicting quotes if visible
+    Then the booking status should be "Pending booking"
     Then I successfully cancel the trip

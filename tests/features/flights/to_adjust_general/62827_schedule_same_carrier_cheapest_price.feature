@@ -15,6 +15,8 @@ Feature: 62827 Amadeus By Schedule - Same carrier cheapest package matches prici
     Given I am logged in as "coreytaylor" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "DUB" to "PRG"
-    # TODO: Step needed for "Add cheapest package (same carrier) to cart"
-    # TODO: Step needed for "Verify price in cart matches pricing page price"
+    And I select flight segments by schedule
+    And I add to trip from pricing options
+    And I handle conflicting quotes if visible
+    # TODO: Step needed for "Verify price in cart matches pricing page price" — extract and compare pricing option vs cart price
     Then I successfully cancel the trip
