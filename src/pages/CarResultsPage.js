@@ -196,6 +196,18 @@ class CarResultsPage {
     const scopeHint = agencyName ? ` for agency "${agencyName}"` : '';
     throw new Error(`Could not detect current car FOP on results${scopeHint}. Expected "Pay on departure" or "Pre paid".`);
   }
+
+  /**
+   * Returns a locator for all car result title elements (.car-title in car-preview component).
+   * @returns {import('playwright').Locator}
+   */
+  getCarTitles() {
+    return this.page.locator('.car-title');
+  }
+
+  async waitForCarTitlesVisible() {
+    await this.page.locator('.car-title').first().waitFor({ state: 'visible', timeout: 60000 });
+  }
 }
 
 module.exports = CarResultsPage;

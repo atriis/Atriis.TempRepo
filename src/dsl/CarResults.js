@@ -196,6 +196,39 @@ const CarResults = {
 
     expect(normalizedActual).toContain(normalizedExpected);
   },
+
+  /**
+   * Selects the first city center pickup location from the pick-up location selection page.
+   * Navigates from the vendor list to the actual car results with individual car cards.
+   */
+  async selectFirstCityCenterPickupLocation(page) {
+    if (!page) throw new Error('page is required');
+    await Results.waitAndClickSelectButton(page);
+  },
+
+  /**
+   * Asserts that none of the visible car result titles contain the given word as a standalone word.
+   * Uses word-boundary regex. Regression for ADO Bug #75326.
+   */
+  async assertCarTitlesDoNotContainWord(page, word) {
+    if (!page) throw new Error('page is required');
+    if (!word || typeof word !== 'string') throw new Error(`word must be a non-empty string, got: ${word}`);
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.waitForCarTitlesVisible();
+
+    const titleLocators = carResultsPage.getCarTitles();
+    const count = await titleLocators.count();
+    const wordRegex = new RegExp(`\\b${word}\\b`, 'i');
+
+    for (let i = 0; i < count; i++) {
+      const text = await titleLocators.nth(i).innerText();
+      expect(
+        wordRegex.test(text),
+        `Car title at index ${i} contains unexpected word "${word}": "${text.trim()}"`
+      ).toBe(false);
+    }
+  },
 };
 
 module.exports = CarResults;

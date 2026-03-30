@@ -38,6 +38,16 @@ Then("the car location label at index {int} should contain {string} on results",
   await CarResults.expectLocationLabelToContain(this.page, index, expectedLabel);
 });
 
+When("I select the first city center pickup location", async function () {
+  logger.info("Selecting the first city center pickup location");
+  await CarResults.selectFirstCityCenterPickupLocation(this.page);
+});
+
+Then("none of the car result titles should contain the word {string}", async function (word) {
+  logger.info("Verifying car result titles do not contain unexpected word", { word });
+  await CarResults.assertCarTitlesDoNotContainWord(this.page, word);
+});
+
 Then("the payment type on results should be {string}", async function (expectedPaymentType) {
   logger.info("Verifying car payment type on results", { expectedPaymentType });
   await CarResults.expectPaymentTypeOnResults(this.page, expectedPaymentType);
