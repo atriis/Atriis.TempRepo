@@ -159,6 +159,11 @@ When("I save and close seat map drawer", async function () {
   await cartPage.saveAndCloseSeatMapDrawer();
 });
 
+Then("seat selection should be restricted with message {string}", async function (expectedMessage) {
+  logger.info("Verifying seat selection is restricted", { expectedMessage });
+  await Cart.verifySeatSelectionRestricted(this.page, expectedMessage);
+});
+
 When("I select default delivery method and save", async function () {
   logger.info("Selecting default delivery method (atriis - on site travel management printer)");
   await Cart.selectDefaultDeliveryMethod(this.page);

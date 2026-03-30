@@ -53,6 +53,10 @@ const SELECTORS = {
 
   // EU Rail options banner (eu-rail-options.vue — appears in flight results when rail is available)
   EU_RAIL_OPTIONS_BANNER: '.eu-rail-options',
+
+  // Separated Tickets tag (flight-selection.vue / flight-preview.vue — shown when split rules apply)
+  // Uses text-based selector since the tag is wrapped in el-tooltip which can interfere with CSS-class visibility checks
+  SEPARATED_TICKETS_TAG: 'p.separated-tickets-tag',
 };
 
 class FlightResultsPage {
@@ -706,6 +710,22 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     try {
       await this.page.locator(SELECTORS.EU_RAIL_OPTIONS_BANNER).first().waitFor({ state: 'visible', timeout });
       return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the Separated Tickets indicator is visible in flight results.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isSeparatedTicketsIndicatorVisible(timeout = 15000) {
+    try {
+      // Use text matching — more reliable than CSS class when el-tooltip wraps the trigger
+      const locator = this.page.getByText('Separated Tickets').first();
+      await locator.waitFor({ state: 'attached', timeout });
+      return await locator.isVisible();
     } catch {
       return false;
     }

@@ -13,21 +13,18 @@ Feature: 71775 Amadeus NDC - CVV not required for non-BA/IB carriers
   So that payment is seamless for carriers that don't need CVV
 
   Scenario: CVV not required for AA NDC booking with credit card
-    Given I am logged in as "cvvndc" booking a new trip
+   Given I am logged in as "cvvndc" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "LGA" to "CLT"
-    And I wait for add to trip text to be visible
+    When I search for a round trip flight from "LGA" to "CLT"
     And I filter results by carrier "AA"
-    # TODO: Add first NDC flight to trip
-    # Testim: Copy_of_Add_to_trip_first_flight__NDC_content()
-    # Filters for NDC content before clicking Add to trip
     And I add the first flight to cart
-    # TODO: Verify CVV not required and random CVV is auto-selected
-    # Testim: Validate_cvv_not_required__random_cvv_selected()
-    # Checks that CVV field is not required for this carrier
-    # TODO: Verify switching to different card still doesn't require CVV
-    # Testim: Validate_cvv_required__random_cvv_not_selected()
-    # Need new steps for CVV validation workflow
+    Then the booking status should be "Pending booking"
+    Then the CVV field should not be displayed
+    When I click to edit the card
+    And I click the card "Cvv Required" checkbox
+    And I save the card selection
+    Then the CVV field should not be displayed
     And I proceed to checkout
     And I complete the booking
-    Then I successfully cancel the trip
+    Then the quote destination should contain "Flight to"
+  

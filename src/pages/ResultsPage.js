@@ -13,7 +13,7 @@ const SELECTORS = {
   SHARE_QUOTE_EMAIL_BUTTON: 'button:has(span:text("email"))',
   FILTER_CHECKBOX_LABEL: 'label.el-checkbox',
   FILTER_CHECKBOX_INNER: '.el-checkbox__input',
-  FILTER_VIEW_MORE_AIRLINES_EXPANDER: 'p.view-more-btn',
+  FILTER_VIEW_MORE_AIRLINES_EXPANDER: '.carriers-filter .view-more-btn',
   CONFLICT_MODAL_PROCEED: '.conflicting-quotes-dialog .btn:has-text("Proceed")'
 };
 

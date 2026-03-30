@@ -616,6 +616,18 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     expect(visible, 'Rail banner should be visible in flight results').toBe(true);
   },
 
+  /**
+   * Verifies the "Separated Tickets" indicator is visible in flight results.
+   * This tag appears when split rules apply and the system issues tickets per carrier.
+   * @param {import('playwright').Page} page
+   */
+  async verifySeparatedTicketsIndicatorVisible(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const visible = await flightResultsPage.isSeparatedTicketsIndicatorVisible();
+    expect(visible, '"Separated Tickets" indicator should be visible in flight results').toBe(true);
+  },
+
 }
 
 module.exports = FlightResults;

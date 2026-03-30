@@ -1663,6 +1663,41 @@ const Cart = {
     const checkOutFilled = await cartPage.isHotelCheckOutDateFilled();
     expect(checkOutFilled, 'Hotel check-out date should be filled').toBe(true);
   },
+
+  /**
+   * Validates that seat selection is restricted across all flight segments.
+   * Assumes the seating extras panel is already open (inline).
+   * Clicks "Add Seats" to open the seat map drawer, iterates over each segment tab,
+   * clicks a seat, and verifies the red restriction tooltip appears.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMessage - Partial text expected in the red tooltip
+   */
+  async verifySeatSelectionRestricted(page, expectedMessage) {
+    if (!page) throw new Error('page is required');
+    if (!expectedMessage || typeof expectedMessage !== 'string') {
+      throw new Error('expectedMessage must be a non-empty string, got: ' + typeof expectedMessage);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // Click "Add Seats" in the inline seating panel to open the seat map drawer
+    await cartPage.clickAddSeatsButton();
+    await cartPage.waitForSeatMapToLoad();
+
+    const tabCount = await cartPage.getSeatMapSegmentTabCount();
+
+    for (let i = 0; i < tabCount; i++) {
+      if (i > 0) {
+        await cartPage.clickSeatMapSegmentTab(i);
+        await cartPage.waitForSeatMapToLoad();
+      }
+
+      await cartPage.hoverFirstAvailableSeat();
+      const tooltipText = await cartPage.getSeatTooltipRedMessage();
+      expect(tooltipText.toLowerCase()).toContain(expectedMessage.toLowerCase());
+    }
+  },
 };
 
 

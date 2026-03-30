@@ -26,6 +26,5 @@ Feature: 46716 Amadeus - Split rules by schedule quote is split correctly
     And I add to trip from pricing options
     And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
-    # TODO: Verify SECOND quote also shows "Pending booking" status
-    # Testim: scrollTo bottom → waitForText(page, "[aria-describedby='el-tooltip-4725']", 'Pending booking')
-    # Need a step like: Then the second quote booking status should be "Pending booking"
+    Then the first quote destination should contain "London"
+    And the last quote destination should contain "New York"

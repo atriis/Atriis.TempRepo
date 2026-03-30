@@ -19,10 +19,6 @@ Feature: 71430 Amadeus - Seat chargeable with price 0 prevents seat selection
     And I wait for add to trip text to be visible
     And I filter results by carrier "AA"
     And I add the first flight to cart
-    # TODO: Validate seat selection restricted
-    # Testim flow: open seating panel → click "Add Seats" → hover a seat →
-    # verify tooltip: "Chargeable seat selection not available, try at check in or with the airline"
-    # for BOTH outbound and inbound segments
-    # Need new step: Then seat selection should be restricted with chargeable message
-    # DSL: Cart.validateSeatSelectionRestricted(page) → CartPage selectors for seating panel + tooltip
-    Then I successfully cancel the trip
+    Then the booking status should be "Pending booking"
+    When I click to edit extras at index 3
+    Then seat selection should be restricted with message "Chargeable seat selection not available"

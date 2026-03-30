@@ -120,6 +120,14 @@ const SELECTORS = {
   ADD_FLIGHT_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Flight")',
   ADD_HOTEL_SEARCH_DRAWER: '.app-drawer.atrs-edit-search-drawer',
 
+  // Seat map segment tabs (flight-deck.vue el-tabs)
+  SEAT_MAP_SEGMENT_TAB: '.flights-tabs .el-tabs__item', // Tab items for outbound/inbound segments
+  // Seat tooltip red message (plane-seat.vue — .tooltip-item.red for unselectableMessage or cantBuyPaidSeats)
+  // The tooltip is rendered by Element Plus as .el-popper.is-light (effect="light" in plane-seat.vue)
+  SEAT_TOOLTIP_RED_MESSAGE: '.el-popper.is-light .tooltip-item.red',
+  // First available seat in the deck (has a seat number visible)
+  FIRST_AVAILABLE_SEAT: '.deck-wrapper .seat',
+
   // Seating icon in extras section (flight-seating.vue — .yellow class = PendingApproval/PendingPayment)
   SEAT_ICON_IN_EXTRAS: '.flight-seating .material-symbols-outlined.seats',
 
@@ -1834,6 +1842,48 @@ class CartPage {
     const btn = this.page.locator(SELECTORS.MEAL_CANCEL_BUTTON).first();
     await btn.waitFor({ state: 'visible', timeout: 10000 });
     await btn.click();
+  }
+
+  /**
+   * Returns the number of segment tabs in the seat map drawer.
+   * @returns {Promise<number>}
+   */
+  async getSeatMapSegmentTabCount() {
+    return this.page.locator(SELECTORS.SEAT_MAP_SEGMENT_TAB).count();
+  }
+
+  /**
+   * Clicks a segment tab by index (0-based) in the seat map drawer.
+   * @param {number} index
+   */
+  async clickSeatMapSegmentTab(index) {
+    const tab = this.page.locator(SELECTORS.SEAT_MAP_SEGMENT_TAB).nth(index);
+    await tab.waitFor({ state: 'visible', timeout: 15000 });
+    await tab.click();
+  }
+
+  /**
+   * Hovers over the first available (non-occupied) seat in the seat map to trigger its tooltip.
+   * For seats without photos, mouseenter on the outer wrapper sets isTooltipOpen=true.
+   * Do NOT click — clicking calls openToolTip() which toggles isTooltipOpen off.
+   */
+  async hoverFirstAvailableSeat() {
+    // Find a seat that is NOT occupied (no 'occupied' class on the parent .plane-seat)
+    const seat = this.page.locator('.deck-wrapper .plane-seat:not(.occupied) .seat').first();
+    await seat.waitFor({ state: 'visible', timeout: 15000 });
+    await seat.hover();
+  }
+
+  /**
+   * Gets the red tooltip message text displayed on a seat.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<string>} The red tooltip text
+   */
+  async getSeatTooltipRedMessage({ timeout = 10000 } = {}) {
+    const msg = this.page.locator(SELECTORS.SEAT_TOOLTIP_RED_MESSAGE).first();
+    await msg.waitFor({ state: 'visible', timeout });
+    return (await msg.innerText()).trim();
   }
 }
 

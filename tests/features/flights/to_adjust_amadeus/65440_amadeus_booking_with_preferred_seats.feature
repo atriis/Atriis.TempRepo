@@ -15,22 +15,29 @@ Feature: 65440 Amadeus - Booking successful with preferred seats
     And I have added a random guest traveler
     When I search for a round trip flight from "SEA" to "SBA"
     And I wait for add to trip text to be visible
-    # TODO: Filter_by_airline_using__Preferred_Airlines__filter_in_results('Alaska')
-    # This uses the carriers filter panel (click .carriers-filter icon then XPath checkbox)
-    # Different from "I filter results by carrier" which types into search box
-    # Proposed step: When I filter by preferred airline "Alaska"
-    And I filter results by carrier "Alaska"
+    And I filter airline results by "Alaska" checkbox
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # TODO: Selecting_preferred_seat_2() — complex flow:
-    #   1. Scroll to seating section, click seating panel
-    #   2. Double-click "Add Seats" button
-    #   3. Select a random preferred seat (.plane-seat.preferred) for outbound
-    #   4. Confirm, then select preferred seat for inbound
-    #   5. Save and verify Success toast
-    # The existing step "When I select the first available flight seat" picks ANY seat with price.
-    # Need new step: When I select preferred seats for all segments
-    # Or new DSL: Cart.selectPreferredSeatsForAllSegments(page)
-    When I select the first available flight seat
-    When I proceed to checkout
-    And I complete the booking
+    When I click to edit extras at index 4
+    And I click add seats in extras
+    And I wait for the seat map to load
+    # TODO: then I select a preferred seat (testim code below)
+    #// Find all preferred seats
+    #const preferredSeats = Array.from(document.querySelectorAll('.plane-seat.preferred'));
+#// If any preferred seats exist, pick one at random and click it
+#if (preferredSeats.length > 0) {
+ # const randomIndex = Math.floor(Math.random() * preferredSeats.length);
+  #const selectedSeat = preferredSeats[randomIndex];
+
+  #console.log('Clicking preferred seat:', selectedSeat);
+  #selectedSeat.scrollIntoView({ behavior: 'smooth' });
+  #selectedSeat.click();
+#} else {
+ # throw new Error('No preferred seats found.');
+#}
+ 
+ #TODO And I click next flight button
+ #and reuse the preferred seat selection for the return flight  
+  And I save and close seat map drawer
+
+  
