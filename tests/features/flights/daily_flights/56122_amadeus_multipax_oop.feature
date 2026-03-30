@@ -18,7 +18,7 @@ Feature: 56122 Amadeus - Multi-pax OOP triggered correctly
     And I have added traveler by name "Bruna Samara"
     And I have added traveler by name "Brunao Oliveira"
     When I search for a one way flight from "LON" to "BER"
-    And I wait for add to trip text to be visible
+    And flight results should be available
     Then the out of policy indicator should not be visible in results
     And I click to open first pricing options
     Then the out of policy indicator should not be visible in results

@@ -24,4 +24,4 @@ Feature: 34382 Amadeus - Results are displayed with Pricing Options on search By
     And I click to open first pricing options
     And I select the first option from pricing options
     And I add to trip from pricing options
-    Then I wait for add to trip text to be visible
+    Then flight results should be available

@@ -18,7 +18,7 @@ Feature: 38628 Amadeus - Baggage OOP + CO2 emissions + contact info
     # TODO: Search round trip with dates 2 months ahead
     When I search for a round trip flight from "TLV" to "BUD"
     And I click proceed on the reference fields popup
-    And I wait for add to trip text to be visible
+    And flight results should be available
     # TODO: Validate CO2 emissions displayed in results
     # Testim: validate_CO2() — checks CO2 icon and values in flight results
     # Need new step: Then CO2 emissions data should be visible in results

@@ -16,7 +16,7 @@ Feature: 28643 Amadeus - Paid seats price calculation and booking
     Given I am logged in as "ruimariano" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "LON" to "AMS"
-    And I wait for add to trip text to be visible
+    And flight results should be available
     And I filter results by carrier "KL"
     And I click to open first pricing options
     And I select the first option from pricing options

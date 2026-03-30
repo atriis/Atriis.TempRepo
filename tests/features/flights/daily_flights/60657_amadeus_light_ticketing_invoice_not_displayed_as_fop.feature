@@ -14,7 +14,7 @@ Feature: 60657 Amadeus Light Ticketing - Invoice is not displayed as FOP
     Given I am logged in as "lucas" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "STN" to "MAD"
-    And I wait for add to trip text to be visible
+    And flight results should be available
     And I filter results by carrier "FR"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"

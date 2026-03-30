@@ -18,7 +18,7 @@ Feature: 69863 General - Hotel search dates pre-filled from flight search
     And I have added myself as the traveler
     And I search for a round trip flight from "BKK" to "NYC" with advanced search as return date type "Arrival" with parallel hotel
     And I fill in NL reference fields education and courses
-    And I wait for add to trip text to be visible
+    And flight results should be available
     When I filter results by carrier "Qatar Airways"
     And I extract the arrival date of the outbound first flight option
     And I extract the departure date of the inbound first flight option

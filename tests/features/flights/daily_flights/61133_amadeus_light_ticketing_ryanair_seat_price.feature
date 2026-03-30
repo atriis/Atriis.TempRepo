@@ -9,7 +9,7 @@ Feature: 61133 Amadeus Light Ticketing - Ryanair - Total price in cart is correc
     Given I am logged in as "lucas" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "STN" to "BUD"
-    When I wait for add to trip text to be visible
+    And flight results should be available
     When I filter airline results by "Ryanair" checkbox
     And I add the first flight to cart
     And I extract the price at index 4 from "cart"

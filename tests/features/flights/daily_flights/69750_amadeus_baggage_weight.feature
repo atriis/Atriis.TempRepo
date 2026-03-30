@@ -16,7 +16,7 @@ Feature: 69750 Amadeus - Baggage weight sent in AddMultiElement
     Given I am logged in as "lucas" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "STN" to "RAK"
-    And I wait for add to trip text to be visible
+    And flight results should be available
     And I filter results by carrier "RK"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"

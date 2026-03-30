@@ -14,7 +14,7 @@ Feature: 46256 Amadeus - Split ticket carriers into two quotes
     Given I am logged in as "ruimendes" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LAS" to "LAX"
-    And I wait for add to trip text to be visible
+    And flight results should be available
     And I filter airline results by "Multi carrier" checkbox
     Then the "Separated Tickets" indicator should be visible in results
     And I add the first flight to cart

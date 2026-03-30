@@ -14,7 +14,7 @@ Feature: 46673 Amadeus - Split rules complete trip quote is split correctly
     Given I am logged in as "ruimendes" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "BOS" to "DFW"
-    And I wait for add to trip text to be visible
+    And flight results should be available
     And I filter results by carrier "AA, DL"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"

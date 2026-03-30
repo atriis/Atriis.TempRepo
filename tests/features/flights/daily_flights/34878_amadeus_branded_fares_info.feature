@@ -16,7 +16,7 @@ Feature: 34878 Amadeus - Branded fares info in results, pricing options, and car
     Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "JFK" to "CDG"
-    And I wait for add to trip text to be visible
+    And flight results should be available
     When I click to open flight details
     And I open branded fares from flight details
     Then the branded fare ancillaries text should be visible

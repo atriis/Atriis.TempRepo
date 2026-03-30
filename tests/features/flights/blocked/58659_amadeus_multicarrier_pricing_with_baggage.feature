@@ -17,7 +17,7 @@ Feature: 58659 Amadeus - Multicarrier pricing options with baggage
     And I have added myself as the traveler
     When I search for a one way flight from "AUH" to "KCH"
     And I click proceed on the reference fields popup
-    And I wait for add to trip text to be visible
+    And flight results should be available
     # TODO: Filter results by "Checked baggage fees" advisory filter
     # Testim: scrolls to advisories filter section, checks "Checked baggage fees" checkbox,
     # verifies first result shows baggage icon and carrier name "Multiple Carriers"

@@ -15,7 +15,7 @@ Feature: 59787 Amadeus - Round trip pricing options are not duplicated
     And I have added myself as the traveler
     When I search for a round trip flight from "LHR" to "MNL"
     And I click proceed on the reference fields popup
-    And I wait for add to trip text to be visible
+    And flight results should be available
     And I click to open first pricing options
     # TODO: Verify pricing options for outbound and inbound segments have different prices
     # Original Testim: Extracts price from ".flicking-camera > :nth-child(1) .price-wrapper > :nth-child(2) .amount"

@@ -17,7 +17,7 @@ Feature: 35650 Amadeus - Codeshare flights are displayed
     Given I am logged in as "testim_prof" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "AMS" to "YMQ"
-    And I wait for add to trip text to be visible
+    And flight results should be available
     And I filter results by carrier "DL"
     Then the "Operated by" text should be visible in the flight results
     When I click to open flight details

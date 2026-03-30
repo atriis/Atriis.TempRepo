@@ -24,7 +24,7 @@ Feature: 55056 Amadeus - Split rules applied correctly when holding 2 round trip
     And I hold the trip
     When I click to add a flight to my trip from cart
     When I edit the flight search from "BKK" to "SIN"
-    And I wait for add to trip text to be visible
+    And flight results should be available
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I accept Terms & Conditions
