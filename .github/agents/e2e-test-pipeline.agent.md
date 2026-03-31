@@ -102,6 +102,30 @@ Each sub-agent adds its section to this state without modifying others' sections
 
 ## Execution Protocol
 
+### Phase 0: Git Pre-flight
+**Performed by the orchestrator** before anything else.
+
+Run the following commands in `c:\DEV\Atriis.Test.Automation`:
+
+```powershell
+cd c:\DEV\Atriis.Test.Automation
+git checkout main
+git pull
+git status
+```
+
+Display the output to the user:
+- Current branch
+- Any uncommitted changes or untracked files
+- Confirmation that the repo is up to date
+
+If `git status` shows uncommitted changes, **warn the user** before proceeding:
+> "⚠️ There are uncommitted changes in Atriis.Test.Automation. These may be overwritten during the pipeline. Proceed anyway?"
+
+If the user says no, stop the pipeline.
+
+---
+
 ### Phase 1: Generate Test Cases
 **Invoke**: `@test-generator-pipeline` in **Gherkin-Only mode**
 
