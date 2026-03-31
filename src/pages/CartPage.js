@@ -21,10 +21,12 @@ const SELECTORS = {
   // Price breakdown button
   PRICE_BREAKDOWN_BUTTON: ".price-breakdown-btn",
   PRICE_BREAKDOWN_CLOSE_BUTTON: '.app-drawer.flight-price-breakdown-drawer [aria-label="Close this dialog"]',
+  PRICE_BREAKDOWN_BOOKED_BY: '.flight-price-breakdown-drawer p.booked-by-at',
 
   // Trip cancellation selectors
   TRIP_ACTIONS_DROPDOWN_ICON: ".dropdowns-container .expand-icon",
   CANCEL_TRIP_OPTION: ".el-dropdown-menu__item span.mr-2",
+  CANCEL_TRIP_DROPDOWN_ITEM: ".el-dropdown-menu__item",
   TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label='Trip cancellation'] .el-dialog__title",
   CONFIRM_CANCEL_BUTTON: "role=button[name='Cancel trip']",
   CANCELLATION_SUCCESS_MESSAGE: "text='Cancellation confirmed!'",
@@ -156,6 +158,7 @@ const SELECTORS = {
   // Hotel address in More Details drawer
   HOTEL_ADDRESS: '.hotel-address',
   MORE_DETAILS_DRAWER_CLOSE: "[aria-label='More details'] [fill='currentColor'], [aria-label='More details'] .el-dialog__close",
+  TIME_LIMIT_CONTAINER: '.time-limit-container',
   // More Details drawer — total price in footer (hotel-quote-more-details.vue → app-footer → app-price → h4.amount)
   MORE_DETAILS_TOTAL_PRICE: '.cart-more-details-drawer .app-footer .total-price .amount',
   // Share dialog close button
@@ -198,6 +201,11 @@ const SELECTORS = {
 
   // Existing loyalty dropdown (selected value text after saving a loyalty number)
   LOYALTY_EXISTING_DROPDOWN_TEXT: '.quote-extras--loyalty-number .extras-card .el-select .el-select__placeholder',
+
+  // Flight Frequent Flyer (FQTV) extras (flight-frequent-flyer.vue)
+  FQTV_SECTION: '.flight-frequent-flyer',
+  FQTV_CLICKABLE: '.flight-frequent-flyer .is-clickable',
+  FQTV_SELECTED_TEXT: '.flight-frequent-flyer .el-select__placeholder span',
 
   // eHotel supplier details in cart (hotel-quote-card.vue → booking-confirm section)
   EHOTEL_PIN_CODE: '.booking-confirm p:has-text("Pincode:")',
@@ -610,6 +618,18 @@ class CartPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Checks if the "Cancel trip" option in the actions dropdown is disabled.
+   * @returns {Promise<boolean>} true if the cancel trip option has the is-disabled class
+   */
+  async isCancelTripOptionDisabled() {
+    const cancelItem = this.page
+      .locator(SELECTORS.CANCEL_TRIP_DROPDOWN_ITEM, { hasText: "Cancel trip" })
+      .first();
+    await cancelItem.waitFor({ state: "visible", timeout: 10000 });
+    return cancelItem.evaluate((el) => el.classList.contains("is-disabled"));
   }
 
   /**
@@ -1729,6 +1749,18 @@ class CartPage {
     await btn.click();
   }
 
+  /**
+   * Gets the time limit text from the flight details drawer.
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>} The time limit text (e.g. "Mon, 31 Mar 26 14:00")
+   */
+  async getTimeLimitText({ timeout = 10000 } = {}) {
+    const container = this.page.locator(SELECTORS.TIME_LIMIT_CONTAINER);
+    await container.waitFor({ state: 'visible', timeout });
+    const text = await container.locator('p').innerText();
+    return text.trim();
+  }
+
   // ========================================
   // Flight Meals
   // ========================================
@@ -1896,6 +1928,29 @@ class CartPage {
     const msg = this.page.locator(SELECTORS.SEAT_TOOLTIP_RED_MESSAGE).first();
     await msg.waitFor({ state: 'visible', timeout });
     return (await msg.innerText()).trim();
+  }
+
+  /**
+   * Gets the "Booked by" text from the price breakdown drawer.
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>} The full "Booked by ... on ..." text
+   */
+  async getBookedByText({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.PRICE_BREAKDOWN_BOOKED_BY);
+    await el.waitFor({ state: 'visible', timeout });
+    return (await el.innerText()).trim();
+  }
+
+  /**
+   * Returns the selected FQTV text from the Frequent Flyer section.
+   * Assumes the FQTV section is already expanded (e.g. via edit extras).
+   * @param {number} [timeout=15000] - Timeout for waiting
+   * @returns {Promise<string>} The FQTV selected text (e.g. "LH - 12321")
+   */
+  async getFqtvSelectedText(timeout = 15000) {
+    const text = this.page.locator(SELECTORS.FQTV_SELECTED_TEXT).first();
+    await text.waitFor({ state: 'visible', timeout });
+    return (await text.innerText()).trim();
   }
 }
 

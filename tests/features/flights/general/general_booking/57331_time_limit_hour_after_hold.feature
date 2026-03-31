@@ -18,5 +18,7 @@ Feature: 57331 Flights - Time limit hour displayed in flight details after hold
     And I add the first flight to cart
     And I accept Terms & Conditions
     And I hold the trip
-    When I click more details in cart
-    # TODO: Step needed for "Verify time limit hour is displayed in HH:MM format"
+    When I open flight details in cart
+    Then the time limit hour should be displayed in flight details
+    When I close flight details window
+    Then I successfully cancel the trip

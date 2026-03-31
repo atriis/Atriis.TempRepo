@@ -11,13 +11,9 @@ Feature: 64455 Flights - Corporate content limitation Only Search With is applie
   I want the 'Only Search With' content limitation to restrict airline results
   So that only approved airlines appear in search results
 
-  # TODO: New user needed — brunasantos@corptlcsabre.com → USER_BRUNATLS
-  # Add to .env: USER_BRUNATLS="brunasantos@corptlcsabre.com"
-
   Scenario: Only configured airline results are displayed when content limitation is applied
     Given I am logged in as "brunatls" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "NYC"
-    And flight results should be available
-    # TODO: Step needed for "Verify only BA airline icon is displayed in the results grid"
-    # TODO: Step needed for "Verify all results are from BA only"
+    And I wait for add to trip text to be visible
+    Then all flight results should be from airline "British Airways"

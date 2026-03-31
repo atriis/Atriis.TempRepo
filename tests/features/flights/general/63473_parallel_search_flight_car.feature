@@ -11,14 +11,14 @@ Feature: 63473 Flights - Parallel search redirect to car results after pricing o
   I want to be redirected to car results after selecting from pricing options
   So that I can complete both bookings efficiently
 
-  # TODO: New user needed — carCorp@gdg.com → USER_CARCORP
-  # Add to .env: USER_CARCORP="carCorp@gdg.com"
-
   Scenario: User redirected to car results after selecting from flight pricing options
     Given I am logged in as "carcorp" booking a new trip
     And I have added myself as the traveler
-    # TODO: Step needed for "Search flight with parallel car search"
+    When I search for a round trip flight from "LON" to "PAR" with parallel car search
+    And flight results should be available
     And I click to open first pricing options
     And I select the first option from pricing options
-    # TODO: Step needed for "Verify car results are displayed after flight selection"
-    Then I successfully cancel the trip
+    Then I should see the heading "Flight To London"
+    And I select the first option from pricing options
+    And I add to trip from pricing options
+    Then the "Rental Agency" filter should be visible in car results

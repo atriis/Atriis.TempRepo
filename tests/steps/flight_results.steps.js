@@ -395,3 +395,8 @@ Then('the {string} indicator should be visible in pricing options', async functi
   }
 });
 
+Then('all flight results should be from airline {string}', async function (airlineName) {
+  logger.info('Verifying all flight results are from airline', { airlineName });
+  await FlightResults.verifyAllResultsFromAirline(this.page, airlineName);
+});
+

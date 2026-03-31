@@ -16,8 +16,9 @@ Feature: 47762 Flights - No OOP for insufficient passengers with dynamic field
     And I have added myself as the traveler
     And I have added a random guest traveler
     And I have added a random guest traveler
-    And I have added a random guest traveler
+    And I have added traveler by name "lior nodyn"
     When I search for a round trip flight from "LON" to "MAD"
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
+    Then the booking status should be "Pending booking"
     Then the out of policy indicator should not be visible in cart
+    Then the out of policy free text justification should not be visible in cart

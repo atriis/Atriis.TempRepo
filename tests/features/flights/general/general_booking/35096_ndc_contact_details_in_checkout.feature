@@ -16,6 +16,7 @@ Feature: 35096 NDC Flights - Contact details are displayed in checkout page
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "FRA"
     And I add the first flight to cart
+    Then the booking status should be "Pending booking"
     And I proceed to checkout
     Then "Contact details" should be displayed in the checkout page
     When I navigate to cart from checkout

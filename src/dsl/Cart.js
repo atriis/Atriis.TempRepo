@@ -315,6 +315,22 @@ const Cart = {
   },
 
   /**
+   * Verifies that the OOP free text justification textbox is not visible in cart.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async verifyOOPFreeTextJustificationNotVisibleInCart(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const isVisible = await cartPage.getOOPJustificationTextbox().isVisible();
+    expect(isVisible).toBe(false);
+  },
+
+  /**
    * Fills in the OOP justification text and saves it immediately.
    * Business-level action combining text input and save.
    *
@@ -1724,6 +1740,82 @@ const Cart = {
       const tooltipText = await cartPage.getSeatTooltipRedMessage();
       expect(tooltipText.toLowerCase()).toContain(expectedMessage.toLowerCase());
     }
+  },
+
+  /**
+   * Verifies that the time limit hour is displayed in flight details after hold.
+   * Expects the time limit container to be visible and contain a time in HH:MM format.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<string>} The time limit text
+   */
+  async verifyTimeLimitHourInFlightDetails(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const text = await cartPage.getTimeLimitText();
+    expect(text).toBeTruthy();
+    // Verify the text contains a time pattern (HH:MM)
+    expect(text).toMatch(/\d{1,2}:\d{2}/);
+    return text;
+  },
+
+  /**
+   * Verifies that the "Booked by" text with date/time is visible in the price breakdown drawer.
+   * Expects the text to match pattern: "Booked by {name} on {date}".
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<string>} The booked-by text
+   */
+  async verifyBookedByTextInPriceBreakdown(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const text = await cartPage.getBookedByText();
+    expect(text).toBeTruthy();
+    expect(text.toLowerCase()).toContain('booked by');
+    return text;
+  },
+
+  /**
+   * Verifies that the cancel trip button is disabled in the trip actions dropdown.
+   * Hovers over the three dots to open the dropdown, then checks the disabled state.
+   * @param {import('playwright').Page} page
+   */
+  async verifyCancelTripButtonIsDisabled(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
+    await cartPage.hoverTripActionsDropdownIcon();
+    await cartPage.waitForDropdownMenu();
+
+    const isDisabled = await cartPage.isCancelTripOptionDisabled();
+    expect(isDisabled, 'Cancel trip button should be disabled during Finalizing status').toBe(true);
+  },
+
+  /**
+   * Verifies the FQTV displayed in the cart extras matches expected text.
+   * Clicks the FQTV section to expand it, then checks the selected value.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedText - Expected FQTV text (e.g. "LH - 12321")
+   * @returns {Promise<void>}
+   */
+  async verifyFqtvDisplayed(page, expectedText) {
+    if (!page) throw new Error('page is required');
+    if (!expectedText || typeof expectedText !== 'string') throw new Error('expectedText must be a non-empty string');
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualText = await cartPage.getFqtvSelectedText();
+    expect(actualText, `FQTV should show "${expectedText}" but got "${actualText}"`).toContain(expectedText);
   },
 };
 

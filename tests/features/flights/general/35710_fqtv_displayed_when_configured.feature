@@ -11,13 +11,12 @@ Feature: 35710 Flights - Existing FQTV is displayed when configured
   I want to see my existing frequent flyer number in the cart
   So that I know it will be applied to my booking
 
-  # TODO: New user needed — marinasimoes@fqtv.com → USER_MARINASIMOES
-  # Add to .env: USER_MARINASIMOES="marinasimoes@fqtv.com"
-
   Scenario: Existing FQTV is displayed in cart when configured
     Given I am logged in as "marinasimoes" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "MUC" to "LHR"
     And I filter results by carrier "LH"
     And I add the first flight to cart
-    # TODO: Step needed for "Verify FQTV is displayed in cart" — check ".flight-frequent-flyer" shows "LH - 12321"
+    Then the booking status should be "Pending booking"
+    When I click to edit extras at index 1
+    Then the FQTV should show "LH - 12321"

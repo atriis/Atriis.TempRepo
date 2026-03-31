@@ -50,6 +50,8 @@ const SELECTORS = {
 
   // Carrier name in flight details drawer
   CARRIER_NAME_IN_DETAILS: '.flight-details-top-bar .carrier-name',
+  // Carrier name in flight results list
+  CARRIER_NAME_IN_RESULTS: '.flight-list .flight-preview .carrier-name',
 
   // EU Rail options banner (eu-rail-options.vue — appears in flight results when rail is available)
   EU_RAIL_OPTIONS_BANNER: '.eu-rail-options',
@@ -489,12 +491,28 @@ async clickAddToTripButtonPricingOptionsModal() {
     addButton.click({ timeout: 30000 })
   ]);
   
-  // Wait for modal to close after adding to trip
-  await this.getPricingOptionsOverlay().waitFor({ state: 'hidden', timeout: 30000 });
+  // Race: wait for either the modal to close or a "Conflicting Quotes" dialog to appear
+  const overlayHidden = this.getPricingOptionsOverlay()
+    .waitFor({ state: 'hidden', timeout: 60000 })
+    .then(() => 'hidden')
+    .catch(() => null);
+  const conflictDialog = this.page
+    .locator('.conflicting-quotes-dialog .btn:has-text("Proceed")')
+    .first()
+    .waitFor({ state: 'visible', timeout: 60000 })
+    .then(() => 'conflict')
+    .catch(() => null);
+
+  const result = await Promise.race([overlayHidden, conflictDialog]);
+
+  if (result === 'conflict') {
+    await this.page.locator('.conflicting-quotes-dialog .btn:has-text("Proceed")').first().click();
+    // After clicking Proceed, wait for overlay to close
+    await this.getPricingOptionsOverlay().waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {});
+  }
   
   // Wait for any page updates to complete (API calls, DOM updates, potential navigation)
   await this.page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {
-    // Fallback: if networkidle times out, wait for load state
     return this.page.waitForLoadState('load', { timeout: 15000 }).catch(() => {});
   });
   
@@ -764,6 +782,24 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Gets all carrier name texts from the flight results list.
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string[]>} Array of carrier name strings
+   */
+  async getAllCarrierNamesInResults({ timeout = 10000 } = {}) {
+    const firstCarrier = this.page.locator(SELECTORS.CARRIER_NAME_IN_RESULTS).first();
+    await firstCarrier.waitFor({ state: 'visible', timeout });
+    const elements = this.page.locator(SELECTORS.CARRIER_NAME_IN_RESULTS);
+    const count = await elements.count();
+    const names = [];
+    for (let i = 0; i < count; i++) {
+      const text = await elements.nth(i).innerText();
+      names.push(text.trim());
+    }
+    return names;
   }
 
 }

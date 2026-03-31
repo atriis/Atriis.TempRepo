@@ -36,6 +36,22 @@ jobs:
       - run: npx playwright install --with-deps
       - run: mkdir -p test-results test-results/screenshots
 
+      - name: Load environment variables
+        shell: bash
+        run: |
+          while IFS= read -r line || [ -n "$line" ]; do
+            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
+              key="${BASH_REMATCH[1]}"
+              value="${BASH_REMATCH[2]}"
+              value="${value#\"}"
+              value="${value%\"}"
+              echo "$key=$value" >> "$GITHUB_ENV"
+            fi
+          done <<< "$ENV_FILE"
+        env:
+          ENV_FILE: ${{ secrets.ENV }}
+
       - name: Run Smoke Tests
         id: run-smoke
         timeout-minutes: 15
@@ -44,9 +60,6 @@ jobs:
           CI: "true"
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
-          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
-          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Smoke Results
         if: always()
@@ -91,6 +104,22 @@ jobs:
       - run: npx playwright install --with-deps
       - run: mkdir -p test-results test-results/screenshots
 
+      - name: Load environment variables
+        shell: bash
+        run: |
+          while IFS= read -r line || [ -n "$line" ]; do
+            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
+              key="${BASH_REMATCH[1]}"
+              value="${BASH_REMATCH[2]}"
+              value="${value#\"}"
+              value="${value%\"}"
+              echo "$key=$value" >> "$GITHUB_ENV"
+            fi
+          done <<< "$ENV_FILE"
+        env:
+          ENV_FILE: ${{ secrets.ENV }}
+
       - name: Run Daily Cars Tests
         id: run-daily-cars
         timeout-minutes: 25
@@ -99,15 +128,6 @@ jobs:
           CI: "true"
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
-          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
-          USER_ROBSONCRUZ: ${{ secrets.USER_ROBSONCRUZ }}
-          USER_BEATRIZ: ${{ secrets.USER_BEATRIZ }}
-          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
-          USER_ISPREPAID_ON: ${{ secrets.USER_ISPREPAID_ON }}
-          USER_ISPREPAID_OFF: ${{ secrets.USER_ISPREPAID_OFF }}
-          USER_PMAC: ${{ secrets.USER_PMAC }}
-          USER_KAYLESUN: ${{ secrets.USER_KAYLESUN }}
 
       - name: Upload Daily Cars Results
         if: always()
@@ -152,6 +172,22 @@ jobs:
       - run: npx playwright install --with-deps
       - run: mkdir -p test-results test-results/screenshots
 
+      - name: Load environment variables
+        shell: bash
+        run: |
+          while IFS= read -r line || [ -n "$line" ]; do
+            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
+              key="${BASH_REMATCH[1]}"
+              value="${BASH_REMATCH[2]}"
+              value="${value#\"}"
+              value="${value%\"}"
+              echo "$key=$value" >> "$GITHUB_ENV"
+            fi
+          done <<< "$ENV_FILE"
+        env:
+          ENV_FILE: ${{ secrets.ENV }}
+
       - name: Run Daily Flights Tests
         id: run-daily-flights
         timeout-minutes: 35
@@ -160,31 +196,6 @@ jobs:
           CI: "true"
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
-          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
-          USER_RUIMENDES: ${{ secrets.USER_RUIMENDES }}
-          USER_BRUNAMARINEFARES: ${{ secrets.USER_BRUNAMARINEFARES }}
-          USER_AMADEUS_GDS: ${{ secrets.USER_AMADEUS_GDS }}
-          USER_BEATRIZ: ${{ secrets.USER_BEATRIZ }}
-          USER_ROBSONCRUZ: ${{ secrets.USER_ROBSONCRUZ }}
-          USER_LUCAS: ${{ secrets.USER_LUCAS }}
-          USER_CLARA: ${{ secrets.USER_CLARA }}
-          USER_BRUNA_NLGOV: ${{ secrets.USER_BRUNA_NLGOV }}
-          USER_TESTIM_PROF: ${{ secrets.USER_TESTIM_PROF }}
-          USER_BRUNALEE: ${{ secrets.USER_BRUNALEE }}
-          USER_SENDTOQCORP: ${{ secrets.USER_SENDTOQCORP }}
-          USER_TAYLOR: ${{ secrets.USER_TAYLOR }}
-          USER_AIRPLUS: ${{ secrets.USER_AIRPLUS }}
-          USER_SEAT_ZERO: ${{ secrets.USER_SEAT_ZERO }}
-          USER_PINI_NLGOV: ${{ secrets.USER_PINI_NLGOV }}
-          USER_BRUNAOLIVEIRA: ${{ secrets.USER_BRUNAOLIVEIRA }}
-          USER_RYANAIR_AMS: ${{ secrets.USER_RYANAIR_AMS }}
-          USER_TESTIM_AMADEUS: ${{ secrets.USER_TESTIM_AMADEUS }}
-          USER_CVVNDC: ${{ secrets.USER_CVVNDC }}
-          USER_TESTIM_MEAL: ${{ secrets.USER_TESTIM_MEAL }}
-          USER_BRUNINAITA: ${{ secrets.USER_BRUNINAITA }}
-          USER_MULTIPAX: ${{ secrets.USER_MULTIPAX }}
-          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Flights Results
         if: always()
@@ -229,6 +240,22 @@ jobs:
       - run: npx playwright install --with-deps
       - run: mkdir -p test-results test-results/screenshots
 
+      - name: Load environment variables
+        shell: bash
+        run: |
+          while IFS= read -r line || [ -n "$line" ]; do
+            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
+              key="${BASH_REMATCH[1]}"
+              value="${BASH_REMATCH[2]}"
+              value="${value#\"}"
+              value="${value%\"}"
+              echo "$key=$value" >> "$GITHUB_ENV"
+            fi
+          done <<< "$ENV_FILE"
+        env:
+          ENV_FILE: ${{ secrets.ENV }}
+
       - name: Run Daily Shell Tests
         id: run-daily-shell
         timeout-minutes: 20
@@ -237,10 +264,6 @@ jobs:
           CI: "true"
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
-          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          USER_HARRYPOTTER: ${{ secrets.USER_HARRYPOTTER }}
-          USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
-          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Shell Results
         if: always()
@@ -285,6 +308,22 @@ jobs:
       - run: npx playwright install --with-deps
       - run: mkdir -p test-results test-results/screenshots
 
+      - name: Load environment variables
+        shell: bash
+        run: |
+          while IFS= read -r line || [ -n "$line" ]; do
+            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
+              key="${BASH_REMATCH[1]}"
+              value="${BASH_REMATCH[2]}"
+              value="${value#\"}"
+              value="${value%\"}"
+              echo "$key=$value" >> "$GITHUB_ENV"
+            fi
+          done <<< "$ENV_FILE"
+        env:
+          ENV_FILE: ${{ secrets.ENV }}
+
       - name: Run Daily Hotel Tests
         id: run-daily-hotels
         timeout-minutes: 60
@@ -293,70 +332,6 @@ jobs:
           CI: "true"
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
-          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          USER_REBECA: ${{ secrets.USER_REBECA }}
-          USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
-          USER_RUIMENDES: ${{ secrets.USER_RUIMENDES }}
-          USER_HELENATEREZA: ${{ secrets.USER_HELENATEREZA }}
-          USER_PCW: ${{ secrets.USER_PCW }}
-          USER_BRUNA_TELDAR: ${{ secrets.USER_BRUNA_TELDAR }}
-          USER_HCORPO: ${{ secrets.USER_HCORPO }}
-          USER_AMY: ${{ secrets.USER_AMY }}
-          USER_AMYLOYAL: ${{ secrets.USER_AMYLOYAL }}
-          USER_TAL: ${{ secrets.USER_TAL }}
-          USER_JOAO: ${{ secrets.USER_JOAO }}
-          USER_SABRIN: ${{ secrets.USER_SABRIN }}
-          USER_ROBSONCRUZ: ${{ secrets.USER_ROBSONCRUZ }}
-          USER_BEATRIZ: ${{ secrets.USER_BEATRIZ }}
-          USER_LIDI: ${{ secrets.USER_LIDI }}
-          USER_EXPEDIA: ${{ secrets.USER_EXPEDIA }}
-          USER_NATALIA: ${{ secrets.USER_NATALIA }}
-          USER_ROBBYSILVA: ${{ secrets.USER_ROBBYSILVA }}
-          USER_BRUNA_CO2: ${{ secrets.USER_BRUNA_CO2 }}
-          USER_EDI: ${{ secrets.USER_EDI }}
-          USER_CINTIA: ${{ secrets.USER_CINTIA }}
-          USER_ALEXANDRE: ${{ secrets.USER_ALEXANDRE }}
-          USER_BRUNANINA: ${{ secrets.USER_BRUNANINA }}
-          USER_DISCOVER: ${{ secrets.USER_DISCOVER }}
-          USER_STRICTION: ${{ secrets.USER_STRICTION }}
-          USER_ELI: ${{ secrets.USER_ELI }}
-          USER_PLUTO: ${{ secrets.USER_PLUTO }}
-          USER_BRUNA_PREMIER: ${{ secrets.USER_BRUNA_PREMIER }}
-          USER_PREMIER: ${{ secrets.USER_PREMIER }}
-          USER_SHANI: ${{ secrets.USER_SHANI }}
-          USER_FELIPE: ${{ secrets.USER_FELIPE }}
-          USER_ZAC: ${{ secrets.USER_ZAC }}
-          USER_LILY: ${{ secrets.USER_LILY }}
-          USER_CALEB: ${{ secrets.USER_CALEB }}
-          USER_TEL: ${{ secrets.USER_TEL }}
-          USER_VERED: ${{ secrets.USER_VERED }}
-          USER_PAPATINHO: ${{ secrets.USER_PAPATINHO }}
-          USER_POICORP: ${{ secrets.USER_POICORP }}
-          USER_MAGALIMONICA: ${{ secrets.USER_MAGALIMONICA }}
-          USER_INESSA: ${{ secrets.USER_INESSA }}
-          USER_REBECCACARDIN: ${{ secrets.USER_REBECCACARDIN }}
-          USER_REBECCA: ${{ secrets.USER_REBECCA }}
-          USER_EDWARDCULLEN: ${{ secrets.USER_EDWARDCULLEN }}
-          USER_CANISSO: ${{ secrets.USER_CANISSO }}
-          USER_SAMMAU: ${{ secrets.USER_SAMMAU }}
-          USER_CAROLDYNAMICS: ${{ secrets.USER_CAROLDYNAMICS }}
-          USER_SHANI_NL: ${{ secrets.USER_SHANI_NL }}
-          USER_TLGG: ${{ secrets.USER_TLGG }}
-          USER_LUCIANA: ${{ secrets.USER_LUCIANA }}
-          USER_GALILEOGALIEI: ${{ secrets.USER_GALILEOGALIEI }}
-          USER_MARKSUNHOT: ${{ secrets.USER_MARKSUNHOT }}
-          USER_GALILEO: ${{ secrets.USER_GALILEO }}
-          USER_AMOS: ${{ secrets.USER_AMOS }}
-          USER_SUZANAVOND: ${{ secrets.USER_SUZANAVOND }}
-          USER_DANIELAOLIVEIRA: ${{ secrets.USER_DANIELAOLIVEIRA }}
-          USER_VALERIA: ${{ secrets.USER_VALERIA }}
-          USER_SHMUL: ${{ secrets.USER_SHMUL }}
-          USER_BRUNAFILTERNONAGREEMENT: ${{ secrets.USER_BRUNAFILTERNONAGREEMENT }}
-          USER_BRUNA_NLGOV: ${{ secrets.USER_BRUNA_NLGOV }}
-          USER_CHRISTREE: ${{ secrets.USER_CHRISTREE }}
-          USER_PERRY: ${{ secrets.USER_PERRY }}
-          USER_JULIANAPREMIER: ${{ secrets.USER_JULIANAPREMIER }}
-          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Hotels Results
         if: always()
@@ -401,6 +376,22 @@ jobs:
       - run: npx playwright install --with-deps
       - run: mkdir -p test-results test-results/screenshots
 
+      - name: Load environment variables
+        shell: bash
+        run: |
+          while IFS= read -r line || [ -n "$line" ]; do
+            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
+              key="${BASH_REMATCH[1]}"
+              value="${BASH_REMATCH[2]}"
+              value="${value#\"}"
+              value="${value%\"}"
+              echo "$key=$value" >> "$GITHUB_ENV"
+            fi
+          done <<< "$ENV_FILE"
+        env:
+          ENV_FILE: ${{ secrets.ENV }}
+
       - name: Run Daily Rails Tests
         id: run-daily-rails
         timeout-minutes: 25
@@ -409,10 +400,6 @@ jobs:
           CI: "true"
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
-          AUTOMATION_APP_BASEURL: ${{ secrets.AUTOMATION_APP_BASEURL }}
-          USER_MARCOLUIS: ${{ secrets.USER_MARCOLUIS }}
-          USER_JIM: ${{ secrets.USER_JIM }}
-          GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
 
       - name: Upload Daily Rails Results
         if: always()

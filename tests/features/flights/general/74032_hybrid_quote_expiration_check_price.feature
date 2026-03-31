@@ -16,5 +16,5 @@ Feature: 74032 Flights - Quote expiration new search matches original dates
     And I have added myself as the traveler
     When I search for a round trip flight from "AMS" to "SFO"
     And flight results should be available
-    And I add the first result to trip
-    Then booking status should be "Pending booking"
+    And I add the first flight to cart
+    Then the booking status should be "Pending booking"

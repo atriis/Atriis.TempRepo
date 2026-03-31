@@ -239,6 +239,11 @@ Then("the out of policy indicator should not be visible in cart", async function
   expect(isHidden).toBe(true);
 });
 
+Then("the out of policy free text justification should not be visible in cart", async function () {
+  logger.info("Verifying OOP free text justification is not visible in cart");
+  await Cart.verifyOOPFreeTextJustificationNotVisibleInCart(this.page);
+});
+
 Then("the out of policy tooltip in cart should be {string}", async function (expectedText) {
   logger.info("Verifying OOP tooltip in cart", { expectedText });
   const actualText = await Cart.hoverAndGetOOPTooltipTextInCart(this.page);
@@ -643,6 +648,24 @@ Then("the price in more details should match the price in cart", async function 
   expect(diff).toBeLessThanOrEqual(1);
 });
 
+Then("the time limit hour should be displayed in flight details", async function () {
+  logger.info("Verifying time limit hour is displayed in flight details");
+  const text = await Cart.verifyTimeLimitHourInFlightDetails(this.page);
+  logger.info("Time limit text found", { text });
+});
+
+Then("the cancel trip button should be disabled", async function () {
+  logger.info("Verifying cancel trip button is disabled");
+  await Cart.verifyCancelTripButtonIsDisabled(this.page);
+});
+
+// ===== FQTV (FREQUENT FLYER) =====
+
+Then("the FQTV should show {string}", async function (expectedText) {
+  logger.info("Verifying FQTV shows expected text", { expectedText });
+  await Cart.verifyFqtvDisplayed(this.page, expectedText);
+});
+
 // ===== EHOTEL SUPPLIER DETAILS =====
 
 Then("the hotel booking should display a pin code", async function () {
@@ -724,6 +747,12 @@ Then("the passenger initials {string} should be visible", async function (initia
 Then("the hotel destination autocomplete should show {string}", async function (expected) {
   logger.info("Verifying hotel autocomplete destination", { expected });
   await Cart.verifyHotelAutocompleteDestination(this.page, expected);
+});
+
+Then("the booked by text with date and time should be visible in price breakdown", async function () {
+  logger.info("Verifying 'Booked by' text with date/time in price breakdown");
+  const text = await Cart.verifyBookedByTextInPriceBreakdown(this.page);
+  logger.info("Booked by text found", { text });
 });
 
 Then("the hotel search check-in and check-out dates should be filled", async function () {

@@ -10,6 +10,9 @@ const SELECTORS = {
   CAR_MODEL_SUBTITLE: '.car-model-subtitle',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
   LOCATION_AIRPORT: 'a[href*="maps.google.com"][target="_blank"]',
+  // Filter sidebar
+  CAR_FILTER_CONTAINER: '.car-filter-container',
+  FILTER_TITLE: '.car-filter-container h4.filter-title',
   // Payment type label on each car result card (.payment-method <p>)
   PAYMENT_TYPE_LABEL: '.payment-method p',
   PAYMENT_METHOD_TEXT: '.btns-container .payment-method p',
@@ -222,6 +225,24 @@ class CarResultsPage {
 
   async waitForCarModelVisible({ timeout = 60000 } = {}) {
     await this.page.locator(SELECTORS.CAR_MODEL_SUBTITLE).first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Checks if a filter with the given title text is visible in the car filter sidebar.
+   * @param {string} filterTitle - The expected filter title text (e.g. "Rental Agency")
+   * @param {number} timeout - Timeout in ms (default: 30000)
+   * @returns {Promise<boolean>}
+   */
+  async isFilterTitleVisible(filterTitle, timeout = 30000) {
+    const filterEl = this.page
+      .locator(SELECTORS.FILTER_TITLE, { hasText: filterTitle })
+      .first();
+    try {
+      await filterEl.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 

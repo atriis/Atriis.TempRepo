@@ -11,14 +11,13 @@ Feature: 64917 GDS - Booking successful with mandatory reference field
   I want to fill in the mandatory GDS reference field and complete the booking
   So that my booking is processed correctly
 
-  # TODO: New user needed — lolalohan@gdsmandatoryref.com → USER_LOLALOHAN
-  # Add to .env: USER_LOLALOHAN="lolalohan@gdsmandatoryref.com"
-
   Scenario: GDS booking succeeds when mandatory reference field is filled
     Given I am logged in as "lolalohan" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LIS" to "GRU"
     And I add the first flight to cart
+    Then the booking status should be "Pending booking"
     And I proceed to checkout
-    # TODO: Step needed for "Fill in GDS mandatory reference field"
+    And I fill in the "GDS ONLY" reference field with "def"
     And I complete the booking
+    Then the quote destination should contain "Flight to"

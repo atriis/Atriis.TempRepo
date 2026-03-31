@@ -245,6 +245,20 @@ const CarResults = {
     await carResultsPage.waitForCarModelVisible();
     await expect(carResultsPage.getCarModelSubtitle()).toBeVisible();
   },
+
+  /**
+   * Verifies that a filter with the given title is visible on the car results page.
+   * @param {import('playwright').Page} page
+   * @param {string} filterTitle - The expected filter title (e.g. "Rental Agency")
+   */
+  async verifyFilterVisibleOnResults(page, filterTitle) {
+    if (!page) throw new Error('page is required');
+    if (!filterTitle || typeof filterTitle !== 'string') throw new Error('filterTitle must be a non-empty string, got: ' + typeof filterTitle);
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const isVisible = await carResultsPage.isFilterTitleVisible(filterTitle);
+    expect(isVisible, `Filter "${filterTitle}" should be visible on car results page`).toBe(true);
+  },
 };
 
 module.exports = CarResults;

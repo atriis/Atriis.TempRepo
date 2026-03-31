@@ -104,3 +104,8 @@ Then("the car search checkbox should be checked by default", async function () {
   logger.info('Verifying car search checkbox is checked by default');
   await FlightSearch.verifyCarSearchCheckboxChecked(this.page);
 });
+
+When("I search for a round trip flight from {string} to {string} with parallel car search", async function (from, to) {
+  logger.info('Searching for round trip flight with parallel car search', { from, to });
+  await FlightSearch.searchFlightRoundTripWithParallelCar(this.page, { from, to });
+});

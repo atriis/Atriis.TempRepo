@@ -153,6 +153,20 @@ class FlightSearchPage {
     await checkbox.waitFor({ state: 'visible', timeout });
     return await checkbox.locator('.el-checkbox__input').evaluate(el => el.classList.contains('is-checked'));
   }
+
+  /**
+   * Enables the "Add Car" parallel search checkbox if not already checked.
+   */
+  async checkParallelCarSearch() {
+    const checkbox = this.page.locator(SELECTORS.CAR_SEARCH_CHECKBOX)
+      .filter({ hasText: SELECTORS.CAR_SEARCH_CHECKBOX_TEXT })
+      .first();
+    await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+    const isChecked = await checkbox.locator('.el-checkbox__input').evaluate(el => el.classList.contains('is-checked'));
+    if (!isChecked) {
+      await checkbox.click();
+    }
+  }
 }
 
 module.exports = FlightSearchPage;

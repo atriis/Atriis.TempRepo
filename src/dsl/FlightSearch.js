@@ -444,6 +444,40 @@ const FlightSearch = {
     const { expect } = require('@playwright/test');
     expect(isChecked, 'Car search checkbox should be checked by default').toBe(true);
   },
+
+  /**
+   * Searches for a round trip flight with the parallel car search checkbox enabled.
+   * @param {import('playwright').Page} page
+   * @param {string|Object} routeInput - Route key or {from, to} object
+   */
+  async searchFlightRoundTripWithParallelCar(page, routeInput = flightRoutes.defaultRoute) {
+    if (!page) throw new Error('page is required');
+
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
+    logger.info('Starting roundTrip flight search with parallel car', { from, to });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectRoundTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      startIndex: SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      endIndex: SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    });
+
+    // Enable parallel car search
+    await flightSearchPage.checkParallelCarSearch();
+
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'roundTrip', searchType: 'completeTrip', parallelCar: true };
+  },
 };
 
 module.exports = FlightSearch;

@@ -73,3 +73,8 @@ Then("the car model should be visible in the results", async function () {
   logger.info("Verifying car model is visible in results");
   await CarResults.expectCarModelIsVisible(this.page);
 });
+
+Then("the {string} filter should be visible in car results", async function (filterTitle) {
+  logger.info("Verifying filter is visible in car results", { filterTitle });
+  await CarResults.verifyFilterVisibleOnResults(this.page, filterTitle);
+});

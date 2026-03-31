@@ -650,6 +650,27 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     expect(visible, 'Marine Fare icon should be visible in pricing options').toBe(true);
   },
 
+  /**
+   * Verifies that all flight results are from a specific airline.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} airlineName - Expected airline name (e.g., "British Airways")
+   * @returns {Promise<void>}
+   */
+  async verifyAllResultsFromAirline(page, airlineName) {
+    if (!page) throw new Error('page is required');
+    if (!airlineName || typeof airlineName !== 'string') {
+      throw new Error('airlineName must be a non-empty string');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const names = await flightResultsPage.getAllCarrierNamesInResults();
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) {
+      expect(name).toBe(airlineName);
+    }
+  },
+
 }
 
 module.exports = FlightResults;

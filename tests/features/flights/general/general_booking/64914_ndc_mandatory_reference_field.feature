@@ -11,15 +11,14 @@ Feature: 64914 NDC - Booking successful with mandatory reference field
   I want to fill in the mandatory NDC reference field and complete the booking
   So that my booking is processed correctly
 
-  # TODO: New user needed — marianagabi@reffieldmand.com → USER_MARIANAGABI
-  # Add to .env: USER_MARIANAGABI="marianagabi@reffieldmand.com"
-
   Scenario: NDC booking succeeds when mandatory reference field is filled
     Given I am logged in as "marianagabi" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "AMS" to "PAR"
     And I add the first flight to cart
+    Then the booking status should be "Pending booking"
     And I proceed to checkout
-    # TODO: Step needed for "Fill in NDC mandatory reference field"
+    And I fill in the "NDC ONLY" reference field with "abc"
     And I complete the booking
-    Then I successfully cancel the trip
+    Then the quote destination should contain "Flight to"
+    And I attempt to cancel the trip safely
