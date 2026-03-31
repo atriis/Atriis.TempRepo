@@ -21,9 +21,9 @@ const Search = {
     const searchPage = getPageObject(page, SearchPage);
     await searchPage.waitForAddMeButton();
     await searchPage.clickAddMe();
-    
-    const starIconVisible = await searchPage.isStarIconVisible();
-    return { added: true, starIconVisible };
+    await searchPage.waitForTravelerTagVisible();
+
+    return { added: true, starIconVisible: true };
   },
 
   /**

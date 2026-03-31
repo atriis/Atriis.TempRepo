@@ -106,6 +106,8 @@ jobs:
           GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
           USER_ISPREPAID_ON: ${{ secrets.USER_ISPREPAID_ON }}
           USER_ISPREPAID_OFF: ${{ secrets.USER_ISPREPAID_OFF }}
+          USER_PMAC: ${{ secrets.USER_PMAC }}
+          USER_KAYLESUN: ${{ secrets.USER_KAYLESUN }}
 
       - name: Upload Daily Cars Results
         if: always()

@@ -6,6 +6,8 @@
 const SELECTORS = {
   // Search results
   LOCATION_LABEL: '.location-label',
+  // Car model subtitle — visible only for SunnyCars supplier when makeModel is populated
+  CAR_MODEL_SUBTITLE: '.car-model-subtitle',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
   LOCATION_AIRPORT: 'a[href*="maps.google.com"][target="_blank"]',
   // Payment type label on each car result card (.payment-method <p>)
@@ -207,6 +209,19 @@ class CarResultsPage {
 
   async waitForCarTitlesVisible() {
     await this.page.locator('.car-title').first().waitFor({ state: 'visible', timeout: 60000 });
+  }
+
+  /**
+   * Returns the first car model subtitle element.
+   * Rendered only for SunnyCars supplier when makeModel is present.
+   * @returns {import('playwright').Locator}
+   */
+  getCarModelSubtitle() {
+    return this.page.locator(SELECTORS.CAR_MODEL_SUBTITLE).first();
+  }
+
+  async waitForCarModelVisible({ timeout = 60000 } = {}) {
+    await this.page.locator(SELECTORS.CAR_MODEL_SUBTITLE).first().waitFor({ state: 'visible', timeout });
   }
 }
 

@@ -229,6 +229,22 @@ const CarResults = {
       ).toBe(false);
     }
   },
+
+  /**
+   * Verifies that the car model subtitle element is visible in results.
+   * This element is only rendered for SunnyCars supplier when makeModel is populated.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is not provided or car model subtitle is not visible
+   * @returns {Promise<void>}
+   */
+  async expectCarModelIsVisible(page) {
+    if (!page) throw new Error('page is required');
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.waitForCarModelVisible();
+    await expect(carResultsPage.getCarModelSubtitle()).toBeVisible();
+  },
 };
 
 module.exports = CarResults;

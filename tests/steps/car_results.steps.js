@@ -68,3 +68,8 @@ When("I capture the current car FOP on results", async function () {
   this.currentCarFOP = await CarResults.getCurrentFOPOnResults(this.page);
   logger.info("Captured current car FOP on results", { currentCarFOP: this.currentCarFOP });
 });
+
+Then("the car model should be visible in the results", async function () {
+  logger.info("Verifying car model is visible in results");
+  await CarResults.expectCarModelIsVisible(this.page);
+});
