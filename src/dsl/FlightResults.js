@@ -321,6 +321,49 @@ const FlightResults = {
     await flightResultsPage.waitForFlightDetailsHeadline();
   },
 
+  /**
+   * Opens the seat preview drawer from flight results and waits for it to load.
+   * Accepts either a rendered seat map or the unavailable-state panel.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} index - Zero-based index of the Seats button (default: 0)
+   * @returns {Promise<{opened: boolean, state: 'map' | 'unavailable'}>}
+   */
+  async openSeatMapFromResults(page, index = 0) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForSeatsButton(index);
+    await flightResultsPage.clickSeatsButton(index);
+    const state = await flightResultsPage.waitForSeatMapOrUnavailableState();
+    return { opened: true, state };
+  },
+
+  /**
+   * Verifies the preview-only message in the results seat drawer.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<string>}
+   */
+  async verifySeatPreviewOnlyMessage(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const expectedMessage = 'Preview only. Seat selection available at checkout.';
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const actualMessage = await flightResultsPage.getSeatPreviewOnlyMessage();
+
+    expect(actualMessage).toBe(expectedMessage);
+    return actualMessage;
+  },
+
 async clickToOpenFareRulesFromResultsModal(page) {
  if (!page) {
    throw new Error('page is required');

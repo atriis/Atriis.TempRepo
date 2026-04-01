@@ -30,7 +30,7 @@ When("I proceed to checkout", async function () {
 
 When("I click the proceed to checkout button", async function () {
   logger.info("Clicking proceed to checkout button");
-    const cartPage = new CartPage(this.page);
+  const cartPage = new CartPage(this.page);
   await cartPage.waitForProceedToCheckout();
   await cartPage.clickProceedToCheckout();
 });
@@ -39,6 +39,12 @@ When("I hold the trip", async function () {
   logger.info("Holding the trip");
   const result = await Cart.holdTrip(this.page);
   expect(result.status.toLowerCase()).toContain(tripStatus.label.onHold.status.toLowerCase());
+});
+
+When("I click hold flight button", async function () {    
+  logger.info("Clicking hold flight button");
+  const cartPage = new CartPage(this.page);
+  await cartPage.clickHoldButton();
 });
 
 When("I attempt to cancel the trip safely", async function () {
@@ -659,11 +665,21 @@ Then("the cancel trip button should be disabled", async function () {
   await Cart.verifyCancelTripButtonIsDisabled(this.page);
 });
 
+Then("the hold flight button should be disabled", async function () {
+  logger.info("Verifying hold flight button is disabled");
+  await Cart.verifyHoldFlightButtonIsDisabled(this.page);
+});
+
 // ===== FQTV (FREQUENT FLYER) =====
 
 Then("the FQTV should show {string}", async function (expectedText) {
   logger.info("Verifying FQTV shows expected text", { expectedText });
   await Cart.verifyFqtvDisplayed(this.page, expectedText);
+});
+
+Then("the FQTV should show {string} for {string}", async function (expectedText, travelerName) {
+  logger.info("Verifying FQTV shows expected text for traveler", { expectedText, travelerName });
+  await Cart.verifyFqtvDisplayedForTraveler(this.page, expectedText, travelerName);
 });
 
 // ===== EHOTEL SUPPLIER DETAILS =====
@@ -688,6 +704,17 @@ Then("the hotel booking should display a contact phone number", async function (
 When("I open flight details in cart", async function () {
   logger.info("Opening flight details drawer in cart");
   await Cart.openFlightDetailsInCart(this.page);
+});
+
+Then("the flight details table headers should be visible", async function () {
+  logger.info("Verifying post-ticketing flight details table headers");
+  const headers = await Cart.verifyFlightDetailsTableHeaders(this.page);
+  logger.info("Flight details table headers found", { headers });
+});
+
+Then("seat selection should be available from flight details", async function () {
+  logger.info("Verifying seat selection is available from post-ticketing flight details");
+  await Cart.verifySeatSelectionAvailableFromFlightDetails(this.page);
 });
 
 Then("the carrier name in cart details should be {string}", async function (expectedName) {

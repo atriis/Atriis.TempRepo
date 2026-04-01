@@ -12,12 +12,10 @@ Feature: 55440 Flights - Seat map from results
   I want to access the seat map from flight search results
   So that I can preview seat availability before adding to cart
 
-  # TODO: New user needed — anthonydubu@amadeus.com → USER_ANTHONYDUBU
-  # Add to .env: USER_ANTHONYDUBU="anthonydubu@amadeus.com"
-
   Scenario: Seat map is accessible from search results
     Given I am logged in as "anthonydubu" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "NYC"
-    # TODO: Step needed for "Open seat map from results and verify it loads"
-    # TODO: Step needed for "Verify loading messages are displayed during search"
+    And I wait for add to trip text to be visible
+    And I open seat map from results and verify it loads
+    Then the seat preview only message should be visible

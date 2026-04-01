@@ -6,6 +6,7 @@ const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
 const tripStatus = require("@data/tripStatus.json");
 const config = require("@config/config");
+const logger = require("@utils/logger").child("Cart-DSL");
 
 /**
  * Cart DSL
@@ -1568,6 +1569,42 @@ const Cart = {
   },
 
   /**
+   * Verifies the post-ticketing table headers in the cart flight details drawer.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string[]>}
+   */
+  async verifyFlightDetailsTableHeaders(page) {
+    if (!page) throw new Error('page is required');
+
+    const expectedHeaders = ['Traveler', 'Ticket number', 'FF', 'Meal', 'Seat'];
+    const cartPage = getPageObject(page, CartPage);
+    const actualHeaders = await cartPage.getPostTicketingTableHeaders();
+
+    expect(actualHeaders, 'Flight details table headers should match the post-ticketing columns').toEqual(expectedHeaders);
+    return actualHeaders;
+  },
+
+  /**
+   * Verifies seat selection can be opened from the post-ticketing flight details table.
+   * Accepts either a rendered seat map or the supplier empty state when the
+   * seat map is unavailable.
+   * @param {import('playwright').Page} page
+   */
+  async verifySeatSelectionAvailableFromFlightDetails(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickPostTicketingSeatButton();
+    const state = await cartPage.waitForSeatMapOrUnavailableState();
+
+    if (state === 'unavailable') {
+      logger.warn('Seat selection drawer opened, but seating map is not available at the moment');
+    }
+
+    return state;
+  },
+
+  /**
    * Opens branded fares and verifies ancillaries text in the cart flight details drawer.
    * The flight details drawer must already be open.
    * @param {import('playwright').Page} page
@@ -1802,6 +1839,20 @@ const Cart = {
   },
 
   /**
+   * Verifies that the Hold flight button is disabled (e.g. after clicking Hold without payment).
+   * @param {import('playwright').Page} page
+   */
+  async verifyHoldFlightButtonIsDisabled(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const isDisabled = await cartPage.isHoldButtonDisabled();
+    expect(isDisabled, 'Hold flight button should be disabled without payment method').toBe(true);
+  },
+
+  /**
    * Verifies the FQTV displayed in the cart extras matches expected text.
    * Clicks the FQTV section to expand it, then checks the selected value.
    *
@@ -1816,6 +1867,27 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     const actualText = await cartPage.getFqtvSelectedText();
     expect(actualText, `FQTV should show "${expectedText}" but got "${actualText}"`).toContain(expectedText);
+  },
+
+  /**
+   * Selects a traveler tab by name in the cart FQTV extras and verifies the
+   * visible FQTV value for that traveler.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedText - Expected FQTV text (e.g. "AA - DCA45299")
+   * @param {string} travelerName - Full traveler name shown in the tab
+   * @returns {Promise<void>}
+   */
+  async verifyFqtvDisplayedForTraveler(page, expectedText, travelerName) {
+    if (!page) throw new Error('page is required');
+    if (!expectedText || typeof expectedText !== 'string') throw new Error('expectedText must be a non-empty string');
+    if (!travelerName || typeof travelerName !== 'string') throw new Error('travelerName must be a non-empty string');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickFqtvTravelerTabByName(travelerName);
+
+    const actualText = await cartPage.getFqtvSelectedText();
+    expect(actualText, `FQTV for traveler "${travelerName}" should show "${expectedText}" but got "${actualText}"`).toContain(expectedText);
   },
 };
 

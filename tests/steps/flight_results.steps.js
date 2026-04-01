@@ -129,7 +129,7 @@ When("I click share from pricing options", async function () {
 When("I add to trip from pricing options", async function () {
   logger.info("Clicking add to trip from pricing options");
   const flightResultsPage = new FlightResultsPage(this.page);
-  
+
   await flightResultsPage.clickAddToTripButtonPricingOptionsModal();
 });
 
@@ -212,6 +212,12 @@ When("I click to open flight details", async function () {
   await FlightResults.clickToOpenFlightDetails(this.page);
 });
 
+When("I open seat map from results and verify it loads", async function () {
+  logger.info("Opening seat map from results");
+  const result = await FlightResults.openSeatMapFromResults(this.page);
+  logger.info("Seat map from results opened", result);
+});
+
 When("I click to open fare rules from modal", async function () {
   logger.info("Clicking to open fare rules from flight details");
   await FlightResults.clickToOpenFareRulesFromResultsModal(this.page);
@@ -268,6 +274,12 @@ Then("I should see the fare rules note about strictest terms", async function ()
   logger.info("Verifying fare rules note about strictest terms");
   const noteText = await FlightResults.getFareRulesNoteText(this.page);
   expect(noteText).toContain('Fare rules would be applied according to the strictest terms');
+});
+
+Then("the seat preview only message should be visible", async function () {
+  logger.info("Verifying results seat preview only message");
+  const actualMessage = await FlightResults.verifySeatPreviewOnlyMessage(this.page);
+  logger.info("Seat preview only message found", { actualMessage });
 });
 
 When("I should click fare rules for the second flight leg", async function () {

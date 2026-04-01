@@ -17,6 +17,10 @@ const SELECTORS = {
   CONFLICT_MODAL_PROCEED: '.conflicting-quotes-dialog .btn:has-text("Proceed")'
 };
 
+const AIRLINE_FILTER_ALIASES = {
+  AA: 'American Airlines',
+};
+
 class ResultsPage {
   constructor(page) {
     this.page = page;
@@ -215,10 +219,22 @@ class ResultsPage {
     if (typeof option !== 'string' || !option.trim()) {
       throw new Error(`option must be a non-empty string, got: ${typeof option}`);
     }
-    const checkbox = this.page
-      .locator(SELECTORS.FILTER_CHECKBOX_LABEL, { has: this.page.locator(`p:text-is('${option}')`) })
+    const optionText = option.trim();
+    const exactCheckbox = this.page
+      .locator(SELECTORS.FILTER_CHECKBOX_LABEL, { has: this.page.locator(`p:text-is('${optionText}')`) })
       .locator(SELECTORS.FILTER_CHECKBOX_INNER)
       .first();
+
+    const checkbox = await exactCheckbox.isVisible()
+      ? exactCheckbox
+      : this.page
+          .locator(
+            SELECTORS.FILTER_CHECKBOX_LABEL,
+            { has: this.page.locator(`p:text-is('${AIRLINE_FILTER_ALIASES[optionText] || optionText}')`) }
+          )
+          .locator(SELECTORS.FILTER_CHECKBOX_INNER)
+          .first();
+
     await checkbox.waitFor({ state: 'visible' });
     await checkbox.click();
   }

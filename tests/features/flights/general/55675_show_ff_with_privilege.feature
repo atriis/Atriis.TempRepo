@@ -11,9 +11,6 @@ Feature: 55675 Flights - Show travelers FF for user with privilege
   I want to show frequent flyer numbers for users with the profile viewing privilege
   So that authorized bookers can see traveler FF info
 
-  # TODO: New user needed — admin@cansee.com → USER_ADMIN_CANSEE
-  # Add to .env: USER_ADMIN_CANSEE="admin@cansee.com"
-
   Scenario: FF is shown for travelers when booker has privilege
     Given I am logged in as "admin_cansee" booking a new trip
     And I have added traveler by name "Annie Massk"
@@ -21,6 +18,7 @@ Feature: 55675 Flights - Show travelers FF for user with privilege
     When I search for a round trip flight from "CLT" to "LGA"
     And I filter airline results by "AA" checkbox
     And I add the first flight to cart
-    # TODO: Step needed for "Navigate to frequent flyer section"
-    # TODO: Step needed for "Validate FF is visible for traveler 1"
-    # TODO: Step needed for "Validate FF is visible for traveler 2"
+    Then the booking status should be "Pending booking"
+    When I click to edit extras at index 1
+    Then the FQTV should show "AA - DCA45299" for "Annie Massk"
+    Then the FQTV should show "AA - LPL20677" for "Molly Massk"

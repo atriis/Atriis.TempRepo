@@ -14,8 +14,13 @@ Feature: 53913 Flights - Hold should act like the Checkout button
   Scenario: Hold button requires payment method like checkout
     Given I am logged in as "airplus" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "LON" to "MAD"
+    When I search for a round trip flight from "MEX" to "MAD"
     And I add the first flight to cart
-    # TODO: Step needed for "Click Hold button and verify it requires payment (button disabled without payment)"
+    Then the booking status should be "Pending booking"
+    And I accept Terms & Conditions
+    And I click hold flight button
+    Then the hold flight button should be disabled
     And I add a credit card as payment method
-    # TODO: Step needed for "Verify Hold button is now enabled after adding payment"
+    And I hold the trip
+    Then I successfully cancel the trip
+  

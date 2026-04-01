@@ -16,8 +16,10 @@ Feature: 45589 NDC Iberia - Trip overview more details
     And I have added myself as the traveler
     When I search for a one way flight from "MAD" to "LON"
     And I add the first flight to cart
+    Then the booking status should be "Pending booking"
     And I proceed to checkout
     And I complete the booking
-    When I click to open flight details
-    # TODO: Step needed for "Verify flight details table headers: Traveler, Ticket number, FF, Meal, Seat"
-    # TODO: Step needed for "Verify seat selection is available from trip overview"
+    Then the quote destination should contain "Flight to"
+    When I open flight details in cart
+    Then the flight details table headers should be visible
+    And seat selection should be available from flight details

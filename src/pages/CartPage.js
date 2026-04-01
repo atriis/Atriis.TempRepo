@@ -33,6 +33,8 @@ const SELECTORS = {
 
   // Product details selectors
   FLIGHT_DETAILS_BUTTON: ".more-details-btn",
+  POST_TICKETING_TABLE_HEADERS: '.flight-post-ticketing-details .post-ticketing-table thead th',
+  POST_TICKETING_FIRST_SEAT_BUTTON: '.flight-post-ticketing-details .post-ticketing-table tbody tr:first-child td:nth-child(5) .add-seats-btn',
   MORE_DETAILS_HOTEL_BUTTON: ".more-details",
   MORE_DETAILS_CAR_BUTTON: ".more-details.is-flex",
   LOCATION_LABEL: '.location-label',
@@ -68,6 +70,7 @@ const SELECTORS = {
   // General
   ADD_SEATS_BUTTON: 'button:has-text("Add Seats")', // Button to open seat selection (text from $t('btn.add') + $t('common.seats'))
   SEAT_MAP_CONTAINER: '.deck-wrapper', // Appears only when seat map data is loaded (v-if="!isLoading && seatsMap.length > 0")
+  SEAT_MAP_UNAVAILABLE_STATE: '.flight-deck .no-results',
   SEAT_ELEMENT: '.seat', // div.seat inside plane-seat.vue component
   SEAT_MAP_PRICE: '.total-sum-wrapper .price', // Price element in the seat map footer (app-price component)
   SEAT_MAP_SAVE_CLOSE_BUTTON: 'button:has-text("Save And Close")', // Save & Close button in seat map drawer
@@ -206,6 +209,8 @@ const SELECTORS = {
   FQTV_SECTION: '.flight-frequent-flyer',
   FQTV_CLICKABLE: '.flight-frequent-flyer .is-clickable',
   FQTV_SELECTED_TEXT: '.flight-frequent-flyer .el-select__placeholder span',
+  FQTV_SELECTED_TEXT_VISIBLE: '.flight-frequent-flyer .el-tab-pane:visible .el-select__placeholder span',
+  FQTV_TRAVELER_TAB: '.flight-frequent-flyer .frequent-flyer-tab .el-tabs__item',
 
   // eHotel supplier details in cart (hotel-quote-card.vue → booking-confirm section)
   EHOTEL_PIN_CODE: '.booking-confirm p:has-text("Pincode:")',
@@ -788,6 +793,14 @@ class CartPage {
   }
 
   /**
+   * Checks if the Hold button is disabled.
+   * @returns {Promise<boolean>} true if the hold button has the disabled attribute
+   */
+  async isHoldButtonDisabled() {
+    return this.page.locator(SELECTORS.HOLD_BUTTON).isDisabled();
+  }
+
+  /**
    * Waits for the booking status label to show "on hold" text.
    * Used after clicking the hold button to wait for status to update.
    */
@@ -884,6 +897,23 @@ class CartPage {
    */
   async waitForSeatMapToLoad() {
     await this.page.locator(SELECTORS.SEAT_MAP_CONTAINER).first().waitFor({ state: 'visible', timeout: 30000 });
+  }
+
+  /**
+   * Waits for the seat-selection drawer to show either a seat map or the
+   * supplier empty state when no seat map is available.
+   * @returns {Promise<'map' | 'unavailable'>}
+   */
+  async waitForSeatMapOrUnavailableState() {
+    const seatMap = this.page.locator(SELECTORS.SEAT_MAP_CONTAINER).first();
+    const unavailableState = this.page.locator(SELECTORS.SEAT_MAP_UNAVAILABLE_STATE).first();
+
+    const state = await Promise.any([
+      seatMap.waitFor({ state: 'visible', timeout: 30000 }).then(() => 'map'),
+      unavailableState.waitFor({ state: 'visible', timeout: 30000 }).then(() => 'unavailable'),
+    ]);
+
+    return state;
   }
 
   /**
@@ -1750,6 +1780,28 @@ class CartPage {
   }
 
   /**
+   * Gets the visible post-ticketing table headers from the flight details drawer.
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string[]>}
+   */
+  async getPostTicketingTableHeaders({ timeout = 15000 } = {}) {
+    const headers = this.page.locator(SELECTORS.POST_TICKETING_TABLE_HEADERS);
+    await headers.first().waitFor({ state: 'visible', timeout });
+    const values = await headers.allInnerTexts();
+    return values.map((value) => value.trim());
+  }
+
+  /**
+   * Clicks the first seat-selection button in the post-ticketing table.
+   * @param {{ timeout?: number }} options
+   */
+  async clickPostTicketingSeatButton({ timeout = 15000 } = {}) {
+    const button = this.page.locator(SELECTORS.POST_TICKETING_FIRST_SEAT_BUTTON).first();
+    await button.waitFor({ state: 'visible', timeout });
+    await button.click();
+  }
+
+  /**
    * Gets the time limit text from the flight details drawer.
    * @param {{ timeout?: number }} options
    * @returns {Promise<string>} The time limit text (e.g. "Mon, 31 Mar 26 14:00")
@@ -1948,9 +2000,25 @@ class CartPage {
    * @returns {Promise<string>} The FQTV selected text (e.g. "LH - 12321")
    */
   async getFqtvSelectedText(timeout = 15000) {
-    const text = this.page.locator(SELECTORS.FQTV_SELECTED_TEXT).first();
+    const text = this.page.locator(SELECTORS.FQTV_SELECTED_TEXT_VISIBLE).first();
     await text.waitFor({ state: 'visible', timeout });
     return (await text.innerText()).trim();
+  }
+
+  /**
+   * Clicks the FQTV traveler tab by visible traveler name.
+   * @param {string} travelerName - Full traveler name shown in the tab
+   * @param {number} [timeout=15000] - Timeout for waiting
+   * @returns {Promise<void>}
+   */
+  async clickFqtvTravelerTabByName(travelerName, timeout = 15000) {
+    if (!travelerName || typeof travelerName !== 'string') {
+      throw new Error('travelerName must be a non-empty string');
+    }
+
+    const tab = this.page.locator(SELECTORS.FQTV_TRAVELER_TAB, { hasText: travelerName }).first();
+    await tab.waitFor({ state: 'visible', timeout });
+    await tab.click();
   }
 }
 
