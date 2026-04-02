@@ -9,6 +9,7 @@ const SELECTORS = {
   // Proceed and Save buttons
   PROCEED_BUTTON: "button:has-text('Proceed')",
   SAVE_BUTTON: "button:has-text('Save')",
+  HEADINGS: 'h1, h2, h3, h4, h5, h6',
 
   // Modal buttons
   GO_BACK_BUTTON: "button:has-text('Go back')",
@@ -411,6 +412,15 @@ class CommonPage {
   }
 
   /**
+   * Gets the first heading element containing the given text.
+   * @param {string} text - Partial text content of the heading
+   * @returns {Locator} Playwright locator for the heading
+   */
+  getHeadingContainingText(text) {
+    return this.page.locator(SELECTORS.HEADINGS, { hasText: text }).first();
+  }
+
+  /**
    * Checks if a heading with the given text is visible.
    * @param {string} text - The text content of the heading to check
    * @param {number} timeout - Maximum wait time (default: 30000ms)
@@ -419,6 +429,21 @@ class CommonPage {
   async isHeadingVisible(text, { timeout = 30000 } = {}) {
     try {
       await this.getHeadingByText(text).waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if a heading containing the given text is visible.
+   * @param {string} text - Partial text content of the heading to check
+   * @param {{ timeout?: number }} options - Wait options
+   * @returns {Promise<boolean>} True if heading is visible
+   */
+  async isHeadingContainingTextVisible(text, { timeout = 30000 } = {}) {
+    try {
+      await this.getHeadingContainingText(text).waitFor({ state: 'visible', timeout });
       return true;
     } catch {
       return false;

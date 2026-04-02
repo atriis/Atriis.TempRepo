@@ -16,4 +16,9 @@ Feature: 32980 By Schedule - Edit search from pricing page works as expected
     And I have added myself as the traveler
     When I search for a flight by schedule from "JFK" to "ATL"
     And I select flight segments by schedule
-    # TODO: Step needed for "Edit search from pricing page and verify new results"
+    And I wait for add to trip text to be visible
+    When I click edit search and wait for the "Complete trip" search mode option
+    And I change the departure location to "SEA" in the edit flight search
+    And I search from the edit flight search form
+    Then flight results should be available
+    And flight search results should reflect the updated departure location "SEA"

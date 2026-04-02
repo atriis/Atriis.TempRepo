@@ -30,6 +30,26 @@ const Results = {
   },
 
   /**
+   * Verifies that a results button containing the expected text is visible.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedText - Visible button text to wait for
+   * @returns {Promise<boolean>} True if the button becomes visible
+   */
+  async isResultButtonTextVisible(page, expectedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForResultButtonText(expectedText);
+    return true;
+  },
+
+  /**
    * Waits for the "Select" button and clicks the first available option.
    * @param {import('playwright').Page} page - Playwright page instance
    * @returns {Promise<{clicked: boolean}>}

@@ -1,4 +1,5 @@
 const FlightSearchPage = require("@pages/FlightSearchPage");
+const { ResultsPage } = require("@pages/ResultsPage");
 const { SearchPage } = require("@pages/SearchPage");
 const flightRoutes = require("@data/flights.json");
 const { selectDatesByNthAvailable, selectNthWeekdayFromNextMonth } = require("@utils/calendar.helper");
@@ -223,6 +224,51 @@ const FlightSearch = {
   },
 
   /**
+   * Round-trip flight search with a requested cabin class.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string|Object} routeInput - Route key or {from, to}
+   * @param {string} cabinClass - Cabin class to select in the search form
+   * @param {Object} options - Date-selection options
+   */
+  async searchFlightRoundTripWithCabinClass(
+    page,
+    routeInput,
+    cabinClass,
+    {
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    } = {},
+  ) {
+    if (!page) throw new Error('page is required');
+    if (!routeInput) throw new Error('routeInput is required');
+    if (!cabinClass || typeof cabinClass !== 'string') {
+      throw new Error('cabinClass must be a non-empty string, got: ' + cabinClass);
+    }
+
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
+    logger.info('Starting roundTrip flight search with cabin class', { from, to, cabinClass });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectRoundTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      startIndex: departureIndex,
+      endIndex: returnIndex,
+    });
+    await flightSearchPage.selectFlightClass(cabinClass);
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'roundTrip', searchType: 'completeTrip', cabinClass };
+  },
+
+  /**
    * Multi-city flight search: completePTrip + multiCity + multiple legs
    *
    * @param {Object} page - Playwright page object
@@ -421,6 +467,197 @@ const FlightSearch = {
     await searchPage.waitAndClickSearchButton();
 
     return { searched: true, from, to };
+  },
+
+  /**
+   * Opens the edit-search form from flight results and waits for the expected search mode option.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} searchMode - Visible search mode label, e.g. "Complete trip"
+   */
+  async clickEditSearchAndWaitForSearchMode(page, searchMode) {
+    if (!page) throw new Error('page is required');
+    if (!searchMode || typeof searchMode !== 'string') {
+      throw new Error('searchMode must be a non-empty string, got: ' + searchMode);
+    }
+
+    logger.info('Opening edit search from results', { searchMode });
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+
+    await resultsPage.clickEditButton();
+    await flightSearchPage.waitForSearchModeOption(searchMode);
+
+    return { opened: true, searchMode };
+  },
+
+  /**
+   * Changes the search mode in the edit-flight-search form.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} searchMode - Supported values: "Complete trip" or "By schedule"
+   */
+  async changeSearchTypeInEditFlightSearch(page, searchMode) {
+    if (!page) throw new Error('page is required');
+    if (!searchMode || typeof searchMode !== 'string') {
+      throw new Error('searchMode must be a non-empty string, got: ' + searchMode);
+    }
+
+    logger.info('Changing flight search mode in edit search', { searchMode });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const normalizedSearchMode = searchMode.trim().toLowerCase();
+
+    if (normalizedSearchMode === 'by schedule') {
+      await flightSearchPage.selectBySchedule();
+    } else if (normalizedSearchMode === 'complete trip') {
+      await flightSearchPage.selectCompleteTrip();
+    } else {
+      throw new Error(`searchMode must be "Complete trip" or "By schedule", got: ${searchMode}`);
+    }
+
+    await flightSearchPage.waitForSearchModeOption(searchMode);
+
+    return { updated: true, searchMode };
+  },
+
+  /**
+   * Changes the edit-search mode and selects fresh round-trip dates before submitting.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} searchMode - Supported values: "Complete trip" or "By schedule"
+   * @param {Object} options
+   * @param {number} options.monthsAhead - Number of months to advance before selecting dates
+   * @param {number} options.departureIndex - Zero-based available-day index for departure
+   * @param {number} options.returnIndex - Zero-based available-day index for return
+   */
+  async changeSearchTypeAndUpdateDatesInEditFlightSearch(
+    page,
+    searchMode,
+    {
+      monthsAhead = 1,
+      departureIndex = 10,
+      returnIndex = 17,
+    } = {},
+  ) {
+    if (!page) throw new Error('page is required');
+    if (!searchMode || typeof searchMode !== 'string') {
+      throw new Error('searchMode must be a non-empty string, got: ' + searchMode);
+    }
+    if (!Number.isInteger(monthsAhead) || monthsAhead < 0) {
+      throw new Error(`monthsAhead must be an integer >= 0, got: ${monthsAhead}`);
+    }
+    if (!Number.isInteger(departureIndex) || departureIndex < 0) {
+      throw new Error(`departureIndex must be an integer >= 0, got: ${departureIndex}`);
+    }
+    if (!Number.isInteger(returnIndex) || returnIndex < 0) {
+      throw new Error(`returnIndex must be an integer >= 0, got: ${returnIndex}`);
+    }
+
+    logger.info('Changing flight search mode and updating dates in edit search', {
+      searchMode,
+      monthsAhead,
+      departureIndex,
+      returnIndex,
+    });
+
+    await this.changeSearchTypeInEditFlightSearch(page, searchMode);
+
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.clickDepartureDateField();
+    await searchPage.clickCalendarNextArrow(monthsAhead);
+    await selectDatesByNthAvailable(page, {
+      startIndex: departureIndex,
+      endIndex: returnIndex,
+    });
+
+    const departureDate = await searchPage.getDepartureDateFieldValue();
+    const returnDate = await searchPage.getReturnDateFieldValue();
+
+    return {
+      updated: true,
+      searchMode,
+      departureDate,
+      returnDate,
+    };
+  },
+
+  /**
+   * Changes the departure location in the edit-search form.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} from - New origin airport code
+   */
+  async changeDepartureLocationInEditSearch(page, from) {
+    if (!page) throw new Error('page is required');
+    if (!from || typeof from !== 'string') {
+      throw new Error('from must be a non-empty string, got: ' + from);
+    }
+
+    logger.info('Changing departure location in edit search', { from });
+
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.waitForFromFieldVisible();
+    await searchPage.editFromField(from);
+
+    return { updated: true, from };
+  },
+
+  /**
+   * Opens advanced search in the flight search form.
+   *
+   * @param {Object} page - Playwright page object
+   */
+  async openAdvancedSearch(page) {
+    if (!page) throw new Error('page is required');
+
+    logger.info('Opening advanced flight search');
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const isExpanded = await flightSearchPage.isAdvancedSearchExpanded();
+    if (!isExpanded) {
+      await flightSearchPage.clickAdvancedSearchButton();
+    }
+    await flightSearchPage.waitForAdvancedSearchOptions();
+
+    return { opened: true };
+  },
+
+  /**
+   * Selects a stop option from the advanced-search Stops dropdown.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} stopsOption - Stops option label, e.g. "Up to two stops"
+   */
+  async selectStopsOption(page, stopsOption) {
+    if (!page) throw new Error('page is required');
+    if (!stopsOption || typeof stopsOption !== 'string') {
+      throw new Error('stopsOption must be a non-empty string, got: ' + stopsOption);
+    }
+
+    logger.info('Selecting flight stops option', { stopsOption });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    await flightSearchPage.selectStopsOption(stopsOption);
+
+    return { selected: true, stopsOption };
+  },
+
+  /**
+   * Submits the edit-search form.
+   *
+   * @param {Object} page - Playwright page object
+   */
+  async searchFromEditFlightSearch(page) {
+    if (!page) throw new Error('page is required');
+
+    logger.info('Submitting edit flight search form');
+
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true };
   },
 
   /**

@@ -29,9 +29,49 @@ When("I search for a round trip flight from {string} to {string}", async functio
   await FlightSearch.searchFlightRoundTrip(this.page, { from, to });
 });
 
+When('I search for a round trip {string} class flight from {string} to {string}', async function (cabinClass, from, to) {
+  logger.info('Searching for round trip flight with cabin class', { cabinClass, from, to });
+  await FlightSearch.searchFlightRoundTripWithCabinClass(this.page, { from, to }, cabinClass);
+});
+
 When("I edit the flight search from {string} to {string}", async function (from, to) {
   logger.info('Editing flight search in modal', { from, to });
   await FlightSearch.editFlightSearch(this.page, from, to);
+});
+
+When('I click edit search and wait for the {string} search mode option', async function (searchMode) {
+  logger.info('Opening edit flight search', { searchMode });
+  await FlightSearch.clickEditSearchAndWaitForSearchMode(this.page, searchMode);
+});
+
+When('I change the search type to {string} in the edit flight search', async function (searchMode) {
+  logger.info('Changing edit flight search mode', { searchMode });
+  await FlightSearch.changeSearchTypeInEditFlightSearch(this.page, searchMode);
+});
+
+When('I change the search type to {string} and update dates in the edit flight search', async function (searchMode) {
+  logger.info('Changing edit flight search mode and updating dates', { searchMode });
+  this.editedFlightSearch = await FlightSearch.changeSearchTypeAndUpdateDatesInEditFlightSearch(this.page, searchMode);
+});
+
+When('I change the departure location to {string} in the edit flight search', async function (from) {
+  logger.info('Changing departure location in edit flight search', { from });
+  await FlightSearch.changeDepartureLocationInEditSearch(this.page, from);
+});
+
+When('I click advanced search in the flight search form', async function () {
+  logger.info('Opening advanced flight search');
+  await FlightSearch.openAdvancedSearch(this.page);
+});
+
+When('I select {string} in the flight search stops dropdown', async function (stopsOption) {
+  logger.info('Selecting flight stops option', { stopsOption });
+  await FlightSearch.selectStopsOption(this.page, stopsOption);
+});
+
+When('I search from the edit flight search form', async function () {
+  logger.info('Submitting edit flight search form');
+  await FlightSearch.searchFromEditFlightSearch(this.page);
 });
 
 When("I search for a flight by schedule from {string} to {string}", async function (from, to) {

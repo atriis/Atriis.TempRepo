@@ -6,6 +6,19 @@ const Results = require("./Results");
 const { CommonPage } = require("@src/pages/CommonPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 
+function extractDayToken(dateText) {
+  if (!dateText || typeof dateText !== 'string') {
+    throw new Error('dateText must be a non-empty string');
+  }
+
+  const match = dateText.match(/\b(\d{1,2})\b/);
+  if (!match) {
+    throw new Error(`Could not extract day token from date text: ${dateText}`);
+  }
+
+  return match[1];
+}
+
 /**
  * FlightResults DSL
  *
@@ -24,15 +37,85 @@ const FlightResults = {
     if (!page) {
       throw new Error('page is required');
     }
-    
-    const resultsPage = getPageObject(page, ResultsPage);
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
 
     try {
-      await resultsPage.waitForAddToTripText();
+      await flightResultsPage.waitForFlightResults();
       return true;
     } catch {
       return false;
     }
+  },
+
+  /**
+   * Waits for a visible alert on the flight results page.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedText - Exact alert text
+   * @returns {Promise<{visible: boolean, expectedText: string}>}
+   */
+  async verifyAlertTextDisplayed(page, expectedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForAlertText(expectedText);
+
+    return { visible: true, expectedText };
+  },
+
+  /**
+   * Verifies that a flight-comparison row has no visible prices.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} stopLabel - Comparison row label
+   * @returns {Promise<{stopLabel: string, priceCount: number}>}
+   */
+  async verifyComparisonRowHasNoPrices(page, stopLabel) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!stopLabel || typeof stopLabel !== 'string') {
+      throw new Error('stopLabel must be a non-empty string');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const priceCount = await flightResultsPage.getComparisonPriceCount(stopLabel);
+
+    expect(priceCount, `Expected "${stopLabel}" comparison row to have no prices, got ${priceCount}`).toBe(0);
+
+    return { stopLabel, priceCount };
+  },
+
+  /**
+   * Verifies that a flight-comparison row has at least one visible price.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} stopLabel - Comparison row label
+   * @returns {Promise<{stopLabel: string, priceCount: number}>}
+   */
+  async verifyComparisonRowHasPrices(page, stopLabel) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!stopLabel || typeof stopLabel !== 'string') {
+      throw new Error('stopLabel must be a non-empty string');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const priceCount = await flightResultsPage.getComparisonPriceCount(stopLabel);
+
+    expect(priceCount, `Expected "${stopLabel}" comparison row to have prices`).toBeGreaterThan(0);
+
+    return { stopLabel, priceCount };
   },
 
   /**
@@ -236,6 +319,57 @@ const FlightResults = {
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     await flightResultsPage.waitForPricingOptionsButton(index);
     await flightResultsPage.clickPricingOptionsButton(index);
+  },
+
+  /**
+   * Verifies the pricing options header contains the expected fare text.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedText - Expected text inside the pricing options header
+   * @returns {Promise<{expectedText: string, actualText: string}>}
+   */
+  async verifyPricingOptionsHeaderContains(page, expectedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const actualText = await flightResultsPage.getPricingOptionsHeaderText();
+
+    expect(actualText).toContain(expectedText);
+
+    return { expectedText, actualText };
+  },
+
+  /**
+   * Verifies that a specific brand name is visible in pricing options.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedBrandName - Brand name expected in the pricing options drawer
+   * @returns {Promise<{expectedBrandName: string, brandNames: string[]}>}
+   */
+  async verifyPricingOptionsBrandDisplayed(page, expectedBrandName) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedBrandName || typeof expectedBrandName !== 'string') {
+      throw new Error('expectedBrandName must be a non-empty string');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const brandNames = await flightResultsPage.getPricingOptionsBrandNames();
+
+    expect(
+      brandNames.some((brandName) => brandName.toLowerCase() === expectedBrandName.toLowerCase()),
+      `Expected pricing options brands to include "${expectedBrandName}", got: ${brandNames.join(', ')}`,
+    ).toBe(true);
+
+    return { expectedBrandName, brandNames };
   },
 
   /**
@@ -549,6 +683,21 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Extracts the departure location code from a flight result card segment.
+   *
+   * @param {Object} page - Playwright page
+   * @param {number} cardIndex - Zero-based result card index (default: 0)
+   * @param {number} segmentIndex - Zero-based segment index within the card (default: 0)
+   * @returns {Promise<string>} Departure location code like "SEA"
+   */
+  async extractFlightDepartureLocationCode(page, cardIndex = 0, segmentIndex = 0) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    return flightResultsPage.getFlightDepartureLocationCode(cardIndex, segmentIndex);
+  },
+
+  /**
    * Extracts the inbound (return) departure date from a round-trip flight result card.
    * @param {Object} page - Playwright page
    * @param {number} cardIndex - Zero-based index (default: 0)
@@ -559,6 +708,59 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     return flightResultsPage.getInboundFlightDepartureDate(cardIndex);
+  },
+
+  /**
+   * Verifies the first round-trip result reflects the edited departure and return dates.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string} expectedDepartureDate - Edited departure date value from the search form
+   * @param {string} expectedReturnDate - Edited return date value from the search form
+   */
+  async verifyResultsReflectEditedDates(page, expectedDepartureDate, expectedReturnDate) {
+    if (!page) throw new Error('page is required');
+    if (!expectedDepartureDate || typeof expectedDepartureDate !== 'string') {
+      throw new Error('expectedDepartureDate must be a non-empty string');
+    }
+    if (!expectedReturnDate || typeof expectedReturnDate !== 'string') {
+      throw new Error('expectedReturnDate must be a non-empty string');
+    }
+
+    const expectedDepartureDay = extractDayToken(expectedDepartureDate);
+    const expectedReturnDay = extractDayToken(expectedReturnDate);
+    const actualDepartureDate = await this.extractFlightDepartureDate(page, 0);
+    const actualReturnDate = await this.extractInboundFlightDepartureDate(page, 0);
+
+    expect(actualDepartureDate).toContain(expectedDepartureDay);
+    expect(actualReturnDate).toContain(expectedReturnDay);
+
+    return {
+      actualDepartureDate,
+      actualReturnDate,
+      expectedDepartureDay,
+      expectedReturnDay,
+    };
+  },
+
+  /**
+   * Verifies the first result reflects the edited departure location.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string} expectedDepartureLocation - Updated departure location code
+   */
+  async verifyResultsReflectUpdatedDepartureLocation(page, expectedDepartureLocation) {
+    if (!page) throw new Error('page is required');
+    if (!expectedDepartureLocation || typeof expectedDepartureLocation !== 'string') {
+      throw new Error('expectedDepartureLocation must be a non-empty string');
+    }
+
+    const actualDepartureLocation = await this.extractFlightDepartureLocationCode(page, 0, 0);
+    expect(actualDepartureLocation.toUpperCase()).toBe(expectedDepartureLocation.trim().toUpperCase());
+
+    return {
+      actualDepartureLocation,
+      expectedDepartureLocation: expectedDepartureLocation.trim().toUpperCase(),
+    };
   },
 
   // ===== CODESHARE / OPERATED BY =====

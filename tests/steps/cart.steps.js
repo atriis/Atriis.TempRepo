@@ -6,7 +6,10 @@ const Cart = require("@dsl/Cart");
 const { CartPage } = require("@pages/CartPage");
 const tripStatus = require("@data/tripStatus.json");
 const logger = require("@utils/logger").child("Cart");
-const { expectSumToBeEqualWithTolerance } = require("../../src/assertions/numberAssertions");
+const {
+  expectNumbersToBeEqualWithTolerance,
+  expectSumToBeEqualWithTolerance,
+} = require("../../src/assertions/numberAssertions");
 
 setDefaultTimeout(120000);
 
@@ -226,6 +229,27 @@ Then("I successfully cancel the trip", async function () {
 Then("the booking status should be {string}", async function (status) {
   logger.info("Verifying booking status", { status });
   await Cart.expectBookingStatusToBe(status, { page: this.page });
+});
+
+Then('the cart total price should match the last extracted price', async function () {
+  if (!Array.isArray(this.extractedPrices) || this.extractedPrices.length === 0) {
+    throw new Error("No extracted price stored. Run a price-extraction step before comparing with cart total price.");
+  }
+
+  const expectedPrice = this.extractedPrices[this.extractedPrices.length - 1];
+  const cartTotalPrice = await Cart.extractCartTotalPrice(this.page);
+
+  logger.info('Comparing cart total price with last extracted price', {
+    expectedPrice,
+    cartTotalPrice,
+  });
+
+  expectNumbersToBeEqualWithTolerance(
+    cartTotalPrice,
+    expectedPrice,
+    1,
+    'Cart total price vs extracted price',
+  );
 });
 
 Then("the payment type should be {string}", async function (expectedType) {

@@ -19,4 +19,4 @@ Feature: 57439 Amadeus By Schedule - Different carriers My Selection correct pri
     And I extract the price from first pricing option
     And I add to trip from pricing options
     And I handle conflicting quotes if visible
-    # TODO: Step needed for "Verify price in cart matches pricing page price" — compare extracted pricing option price vs cart price
+    Then the cart total price should match the last extracted price

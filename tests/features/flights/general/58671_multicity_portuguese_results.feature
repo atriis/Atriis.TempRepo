@@ -11,12 +11,9 @@ Feature: 58671 Flights - Multicity Portuguese results are displayed
   I want to see multi-city flight results in Portuguese
   So that I can use the application in my preferred language
 
-  # TODO: New user needed — aiva@amadeusportuguese.com → USER_AIVA
-  # Add to .env: USER_AIVA="aiva@amadeusportuguese.com"
-
   Scenario: Multi-city results are displayed in Portuguese
     Given I am logged in as "aiva" booking a new trip
-    # TODO: Step needed for "Verify welcome screen displays 'Bem-vindo' (Portuguese)"
+    And the welcome heading should contain "Bem-vindo"
     And I have added myself as the traveler
-    # TODO: Step needed for "Search multi-city flights in Portuguese interface"
-    # TODO: Step needed for "Verify results are displayed"
+    When I search for a multi-city flight with legs "LON-MAD" and "MAD-ROM" and "ROM-LON"
+    Then the "Adicionar à viagem" text should be visible in results

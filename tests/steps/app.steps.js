@@ -88,3 +88,9 @@ Then("I should be redirected to the login page", async function () {
   const url = await this.page.url();
   expect(url).toContain("login");
 });
+
+Then("the welcome heading should contain {string}", async function (expectedText) {
+  logger.info("Verifying welcome heading contains text", { expectedText });
+  const isVisible = await App.isHeadingContainingTextVisible(this.page, expectedText);
+  expect(isVisible).toBe(true);
+});

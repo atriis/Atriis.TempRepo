@@ -1369,6 +1369,17 @@ const Cart = {
     return cartPage.getHotelQuotePrice();
   },
 
+  /**
+   * Extracts the cart grand total price from the trip summary sidebar.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>} The cart total price
+   */
+  async extractCartTotalPrice(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    return cartPage.getCartTotalPrice();
+  },
+
   // ===== LOYALTY NUMBER EXTRAS =====
 
   /**

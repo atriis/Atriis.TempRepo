@@ -11,15 +11,11 @@ Feature: 35108 Flights - Business class pricing options display Business brands
   I want to see Business brands like BSFLXPLUS in pricing options
   So that I can choose the appropriate business class fare
 
-  # TODO: New user needed — sabre@testim.com → USER_SABRE_TESTIM
-  # Add to .env: USER_SABRE_TESTIM="sabre@testim.com"
-
   Scenario: Business class pricing options display Business brands BSFLXPLUS
     Given I am logged in as "sabre_testim" booking a new trip
     And I have added myself as the traveler
-    # TODO: Step needed for "Search round trip flight with Business class" — FlightSearch.searchRoundTripBusiness(page, from, to)
-    When I search for a round trip flight from "LHR" to "KUL"
+    When I search for a round trip "Business" class flight from "LHR" to "KUL"
     And flight results should be available
     And I filter results by carrier "EK"
     And I click on "Pricing Options" for the first result
-    # TODO: Step needed for "Verify Business Flexplus brand is displayed in pricing options"
+    Then the "Business Flexplus" brand should be displayed in pricing options

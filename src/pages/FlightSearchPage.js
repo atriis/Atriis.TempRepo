@@ -6,8 +6,12 @@
 const SELECTORS = {
   FLIGHT_TAB: "#tab-flight",
   TRIP_TYPE: ".search-for-select  .el-radio",
+  SEARCH_MODE_SECTION: '.search-for-select',
+  FLIGHT_CLASS_FIELD: '.class-input .app-select',
   ADVANCED_SEARCH_BUTTON: ".advanced-search-container .btn",
   ALLOW_NEARBY_AIRPORTS_CHECKBOX: ".advanced-search-container .el-checkbox__inner",
+  ADVANCED_SEARCH_OPTIONS: '.flight-more-search-inputs',
+  FLIGHT_STOPS_FIELD: '.flight-more-search-inputs > :nth-child(1)',
   // Advanced search — departure leg selectors
   DEPARTURE_APP_SELECT: 'section.departure .app-select',
   // Advanced search — return leg selectors
@@ -74,10 +78,61 @@ class FlightSearchPage {
   }
 
   /**
+   * Selects a cabin class from the flight class dropdown.
+   *
+   * @param {string} value
+   */
+  async selectFlightClass(value) {
+    if (!value || typeof value !== 'string') {
+      throw new Error('value must be a non-empty string');
+    }
+
+    const classField = this.page.locator(SELECTORS.FLIGHT_CLASS_FIELD).first();
+    await classField.waitFor({ state: 'visible', timeout: 10000 });
+    await classField.click();
+    await this.page.locator(SELECTORS.DROPDOWN_OPTION(value)).click();
+    await classField.getByText(value, { exact: true }).first().waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  /**
+   * Waits for a search mode option to be visible in the search form.
+   *
+   * @param {string} searchMode
+   */
+  async waitForSearchModeOption(searchMode) {
+    if (!searchMode || typeof searchMode !== 'string') {
+      throw new Error('searchMode must be a non-empty string');
+    }
+
+    const option = this.page
+      .locator(SELECTORS.SEARCH_MODE_SECTION)
+      .getByText(searchMode, { exact: true })
+      .first();
+
+    await option.waitFor({ state: 'visible', timeout: 30000 });
+  }
+
+  /**
    * Opens the Advanced Search options panel.
    */
   async clickAdvancedSearchButton() {
     await this.page.locator(SELECTORS.ADVANCED_SEARCH_BUTTON).click();
+  }
+
+  /**
+   * Waits for advanced-search-only inputs to be visible.
+   */
+  async waitForAdvancedSearchOptions() {
+    await this.page.locator(SELECTORS.ADVANCED_SEARCH_OPTIONS).waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  /**
+   * Checks whether the advanced search section is already expanded.
+   *
+   * @returns {Promise<boolean>}
+   */
+  async isAdvancedSearchExpanded() {
+    return await this.page.locator(SELECTORS.ADVANCED_SEARCH_OPTIONS).isVisible().catch(() => false);
   }
 
   /**
@@ -115,6 +170,24 @@ class FlightSearchPage {
   async selectReturnFlightTime(value) {
     await this.page.locator(SELECTORS.RETURN_APP_SELECT).nth(1).click();
     await this.page.locator(SELECTORS.DROPDOWN_OPTION(value)).click();
+  }
+
+  /**
+   * Selects a value from the Stops dropdown in advanced search.
+   *
+   * @param {string} value
+   */
+  async selectStopsOption(value) {
+    if (!value || typeof value !== 'string') {
+      throw new Error('value must be a non-empty string');
+    }
+
+    const stopsDropdown = this.page.locator(SELECTORS.FLIGHT_STOPS_FIELD).first();
+    await stopsDropdown.waitFor({ state: 'visible', timeout: 10000 });
+    await stopsDropdown.click();
+    await this.page.locator(SELECTORS.DROPDOWN_OPTION(value)).click();
+
+    await stopsDropdown.getByText(value, { exact: true }).first().waitFor({ state: 'visible', timeout: 10000 });
   }
 
   /**

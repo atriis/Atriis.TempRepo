@@ -16,4 +16,4 @@ Feature: 33825 AFKL - Pricing Options economy pricing text is displayed
     And I have added myself as the traveler
     When I search for a round trip flight from "PAR" to "BKK"
     And I click on "Pricing Options" for the first result
-    # TODO: Step needed for "Verify 'Economy pricing' text is displayed in pricing options modal" — assert text ".main-info-wrapper > :nth-child(1)" contains "Economy pricing"
+    Then the "Economy pricing" text should be displayed in pricing options

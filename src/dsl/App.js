@@ -3,6 +3,7 @@ const { launchBrowser } = require("@utils/browserFactory");
 const LoginPage = require("@pages/LoginPage");
 const LogoutPage = require("@pages/LogoutPage");
 const MenuPage = require("@pages/MenuPage");
+const { CommonPage } = require("@pages/CommonPage");
 const config = require("@config/config");
 const logger = require("@utils/logger").child("App");
 
@@ -203,6 +204,23 @@ const App = {
 
     // Confirms login screen is visible again
     await loginPage.waitForgotPasswordText();
+  },
+
+  /**
+   * Verifies a heading containing the expected text is visible.
+   * Useful for localized welcome screens where the heading also includes the user name.
+   */
+  async isHeadingContainingTextVisible(page, expectedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+
+    const commonPage = getPageObject(page, CommonPage);
+    return commonPage.isHeadingContainingTextVisible(expectedText, { timeout: 30000 });
   },
 };
 

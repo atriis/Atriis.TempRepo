@@ -1,3 +1,4 @@
+const { waitForText } = require("@utils/wait");
 const { SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
 const { SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 
@@ -11,10 +12,12 @@ const SELECTORS = {
   SHARE_MAIN_BUTTON: 'button.share-btn.mr-4',
   SHARE_QUOTE_RESULTS_BUTTON: '.share-btn.py-2',
   SHARE_QUOTE_EMAIL_BUTTON: 'button:has(span:text("email"))',
+  ALERT_TEXT: "[role='alert'] p",
   FILTER_CHECKBOX_LABEL: 'label.el-checkbox',
   FILTER_CHECKBOX_INNER: '.el-checkbox__input',
   FILTER_VIEW_MORE_AIRLINES_EXPANDER: '.carriers-filter .view-more-btn',
-  CONFLICT_MODAL_PROCEED: '.conflicting-quotes-dialog .btn:has-text("Proceed")'
+  CONFLICT_MODAL_PROCEED: '.conflicting-quotes-dialog .btn:has-text("Proceed")',
+  EDIT_SEARCH_BUTTON_NAME: /^Edit(?: search)?$/i,
 };
 
 const AIRLINE_FILTER_ALIASES = {
@@ -33,6 +36,17 @@ class ResultsPage {
   getAddToTripButton() {
     return this.page
       .locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Add to trip")`)
+      .first();
+  }
+
+  /**
+   * Gets the first result action button containing the given text.
+   * @param {string} text - Visible button text
+   * @returns {Locator} Playwright locator for the first matching result button
+   */
+  getResultButtonByText(text) {
+    return this.page
+      .locator(SELECTORS.RESULTS_BUTTON, { hasText: text })
       .first();
   }
 
@@ -64,7 +78,7 @@ class ResultsPage {
   }
 
   getEditButton() {
-     return this.page.getByRole('button', { name: 'Edit' });
+      return this.page.getByRole('button', { name: SELECTORS.EDIT_SEARCH_BUTTON_NAME });
   }
 
   /** 
@@ -81,6 +95,15 @@ class ResultsPage {
    */
   async waitForAddToTripText() {
     await this.getAddToTripButton().waitFor({ state: "visible", timeout: 60000 });
+  }
+
+  /**
+   * Waits until the first result button containing the given text is visible.
+   * @param {string} text - Visible button text
+   * @param {number} timeout - Maximum wait time in milliseconds
+   */
+  async waitForResultButtonText(text, timeout = 60000) {
+    await this.getResultButtonByText(text).waitFor({ state: 'visible', timeout });
   }
 
   /** Scrolls to the first "Add to trip" button, waiting for it to appear first */
@@ -243,6 +266,24 @@ class ResultsPage {
      await this.getEditButton().waitFor({ state: 'visible' }); 
      await this.getEditButton().click();
  }
+
+    /**
+     * Waits for a visible alert with the exact expected text.
+     *
+     * @param {string} expectedText
+     * @param {number} timeout
+     */
+    async waitForAlertText(expectedText, timeout = 60000) {
+      if (!expectedText || typeof expectedText !== 'string') {
+        throw new Error('expectedText must be a non-empty string');
+      }
+
+      if (typeof timeout !== 'number' || timeout < 0) {
+        throw new Error(`timeout must be a non-negative number, got ${timeout}`);
+      }
+
+      await waitForText(this.page, SELECTORS.ALERT_TEXT, expectedText, timeout);
+    }
 
  async clickViewMoreAirlinesExpanderIfVisible() {
     const expander = this.page.locator(SELECTORS.FILTER_VIEW_MORE_AIRLINES_EXPANDER);

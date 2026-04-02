@@ -58,6 +58,7 @@ const SELECTORS = {
   // Multi-city
   MULTI_CITY_SECTION: 'section.multi-city',
   MULTI_CITY_LINE: '.multi-city-line',
+  MULTI_CITY_AIRPORT_AUTOCOMPLETE: '.airport-autocomplete',
   MULTI_CITY_DATEPICKER_INPUT: '.flight-date-picker input',
   ADD_FLIGHT_ROW_BUTTON: '.add-flight-btn',
 
@@ -364,8 +365,9 @@ class SearchPage {
   async editFromField(from) {
     const input = this.page.locator(SELECTORS.EDIT_FROM_INPUT).first();
     await input.waitFor({ state: 'visible', timeout: 10000 });
-    await input.click();
-    await input.fill('');
+    await input.focus();
+    await this.page.keyboard.press('Control+A');
+    await this.page.keyboard.press('Backspace');
     await this.page.waitForTimeout(300);
     await input.pressSequentially(from, { delay: 100 });
     const firstSuggestion = this.page.locator(SELECTORS.AUTOCOMPLETE_LIST).first();
@@ -385,8 +387,9 @@ class SearchPage {
   async editToField(to) {
     const input = this.page.locator(SELECTORS.EDIT_TO_INPUT).first();
     await input.waitFor({ state: 'visible', timeout: 10000 });
-    await input.click();
-    await input.fill('');
+    await input.focus();
+    await this.page.keyboard.press('Control+A');
+    await this.page.keyboard.press('Backspace');
     await this.page.waitForTimeout(300);
     await input.pressSequentially(to, { delay: 100 });
     const firstSuggestion = this.page.locator(SELECTORS.AUTOCOMPLETE_LIST).first();
@@ -462,6 +465,32 @@ class SearchPage {
 
     // Wait until the date picker panel is visible
     await this.getDatePickerPanel().waitFor({ state: "visible" });
+  }
+
+  /**
+   * Reads the current departure date input value from the search form.
+   * @returns {Promise<string>}
+   */
+  async getDepartureDateFieldValue() {
+    const field = this.page
+      .locator(SELECTORS.DEPARTURE_PLACEHOLDER)
+      .nth(1);
+
+    await field.waitFor({ state: 'visible', timeout: 10000 });
+    return (await field.inputValue()).trim();
+  }
+
+  /**
+   * Reads the current return date input value from the search form.
+   * @returns {Promise<string>}
+   */
+  async getReturnDateFieldValue() {
+    const field = this.page
+      .locator(SELECTORS.RETURN_PLACEHOLDER)
+      .first();
+
+    await field.waitFor({ state: 'visible', timeout: 10000 });
+    return (await field.inputValue()).trim();
   }
 
   /**
@@ -572,7 +601,10 @@ class SearchPage {
    * Selects the "Multi City" trip type.
    */
   async selectMultiCityTrip() {
-    await this.clickTripType(/multi.city/i);
+    const labels = this.page.locator(SELECTORS.TRIP_TYPE_RADIO_LABELS);
+    const target = labels.nth(2);
+    await target.waitFor({ state: 'visible', timeout: 60000 });
+    await target.click();
   }
 
   /**
@@ -606,8 +638,11 @@ class SearchPage {
   async fillMultiCityLeg(from, to, legIndex) {
     const row = this.page.locator(SELECTORS.MULTI_CITY_LINE).nth(legIndex);
 
+    // Use the row structure instead of localized placeholders.
+    const airportInputs = row.locator(SELECTORS.MULTI_CITY_AIRPORT_AUTOCOMPLETE);
+
     // From field
-    const fromInput = row.locator('input[placeholder*="From" i]').first();
+    const fromInput = airportInputs.nth(0).locator('input').first();
     await fromInput.waitFor({ state: 'visible' });
     await fromInput.click();
     await fromInput.fill(from);
@@ -616,7 +651,7 @@ class SearchPage {
     await this.page.waitForTimeout(150);
 
     // To field — Tab focus moves here, then click to ensure correct focus before fill
-    const toInput = row.locator('input[placeholder*="To" i]').first();
+    const toInput = airportInputs.nth(1).locator('input').first();
     await toInput.waitFor({ state: 'visible' });
     await toInput.click();
     await toInput.fill(to);

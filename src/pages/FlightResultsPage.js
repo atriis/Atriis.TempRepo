@@ -1,6 +1,10 @@
 const { waitForText } = require("@utils/wait");
 const { extractNumber } = require("@utils/dom");
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * Page Object for flight results page.
  * Contains only UI-level interactions.
@@ -10,6 +14,10 @@ const SELECTORS = {
   // Flight selection
   CHANGE_FLIGHT_BUTTON: '.change-flight-btn-wrapper',
   CHANGE_FLIGHT_TEXT: 'Change flight',
+  COMPARISON_TABLE: '.ticket-layout-container .el-table__body-wrapper',
+  COMPARISON_ROW: '.ticket-layout-container .el-table__body-wrapper tbody tr',
+  COMPARISON_STOP_TYPE: '.stop-type',
+  COMPARISON_PRICE_CELL: '.cell-price',
   BY_SCHEDULE_PRICING_PAGE: '.flight-by-schedule-pricing',
   BY_SCHEDULE_ADD_TO_TRIP_BUTTON: '.flight-by-schedule-pricing .add-btn',
   SEARCH_FLIGHT_FILTER: '[placeholder="Search flight"]',
@@ -36,6 +44,7 @@ const SELECTORS = {
   PRICING_OPTIONS_SELECT_TO_SHARE_BUTTON_NAME: 'Select to share',
   PRICING_OPTIONS_UNSELECT_BUTTON_TEXT: 'Unselect',
   PRICING_OPTIONS_AMOUNT_VALUE: '.leg-pricing-option .amount',
+  PRICING_OPTIONS_HEADER: '.main-info-wrapper .options-header h4',
   PRICING_OPTIONS_ADD_TO_TRIP_BUTTON: '.add-btn',
   PRICING_OPTIONS_SHARE_QUOTE_BUTTON: '.share-btn:not(.add-btn)',
   PRICING_OPTIONS_SHARE_QUOTE_FOOTER_BUTTON: '.summary-and-actions .share-btn',
@@ -58,6 +67,8 @@ const SELECTORS = {
   FLIGHT_DATE: '.flight-date',
   // Flight preview card
   FLIGHT_PREVIEW: '.flight-list .flight-preview',
+  FLIGHT_PREVIEW_SEGMENT: '.flight-info-container',
+  FLIGHT_LOCATION_CODE: '.loc-code',
 
   // Codeshare / Operated by
   FLIGHT_OPERATOR: '.flight-operator',
@@ -249,6 +260,45 @@ class FlightResultsPage {
     ]);
   }
 
+  /**
+   * Waits for the flight comparison table to be visible.
+   *
+   * @param {number} timeout
+   */
+  async waitForComparisonTable(timeout = 60000) {
+    await this.page.locator(SELECTORS.COMPARISON_TABLE).first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Gets the comparison-table row for a stop label such as "Non Stop" or "1 Stop".
+   *
+   * @param {string} stopLabel
+   * @returns {import('@playwright/test').Locator}
+   */
+  getComparisonRow(stopLabel) {
+    if (!stopLabel || typeof stopLabel !== 'string') {
+      throw new Error('stopLabel must be a non-empty string');
+    }
+
+    return this.page
+      .locator(SELECTORS.COMPARISON_ROW)
+      .filter({ hasText: new RegExp(`^\\s*${escapeRegExp(stopLabel)}\\s*`, 'i') })
+      .first();
+  }
+
+  /**
+   * Counts visible price cells in a comparison-table stop row.
+   *
+   * @param {string} stopLabel
+   * @returns {Promise<number>}
+   */
+  async getComparisonPriceCount(stopLabel) {
+    await this.waitForComparisonTable();
+    const row = this.getComparisonRow(stopLabel);
+    await row.waitFor({ state: 'visible', timeout: 30000 });
+    return await row.locator(SELECTORS.COMPARISON_PRICE_CELL).count();
+  }
+
   // ===== PRICING OPTIONS MODAL =====
 
   /**
@@ -375,6 +425,21 @@ class FlightResultsPage {
   async getAmountPriceValuePricingOptions(index = 0) {
     const overlay = this.getPricingOptionsOverlay();
     return extractNumber(overlay, SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE, index);
+  }
+
+  /**
+   * Reads the pricing options header text shown above the fare cards.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @returns {Promise<string>} Header text
+   */
+  async getPricingOptionsHeaderText(timeout = 30000) {
+    const overlay = this.getPricingOptionsOverlay();
+    const header = overlay.locator(SELECTORS.PRICING_OPTIONS_HEADER).first();
+
+    await header.waitFor({ state: 'visible', timeout });
+
+    return (await header.textContent())?.replace(/\s+/g, ' ').trim() ?? '';
   }
 
   /**
@@ -745,6 +810,27 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   }
 
   /**
+   * Extracts the departure location code from a flight result preview segment.
+   * In each segment, the first .loc-code element is the origin airport/city code.
+   *
+   * @param {number} cardIndex - Zero-based index of the flight preview card (default: 0)
+   * @param {number} segmentIndex - Zero-based index of the segment within the card (default: 0)
+   * @returns {Promise<string>} The departure location code text, for example "SEA"
+   */
+  async getFlightDepartureLocationCode(cardIndex = 0, segmentIndex = 0) {
+    const card = this.page.locator(SELECTORS.FLIGHT_PREVIEW).nth(cardIndex);
+    await card.waitFor({ state: 'visible', timeout: 60000 });
+
+    const segment = card.locator(SELECTORS.FLIGHT_PREVIEW_SEGMENT).nth(segmentIndex);
+    await segment.waitFor({ state: 'visible', timeout: 60000 });
+
+    const departureLocationCode = segment.locator(SELECTORS.FLIGHT_LOCATION_CODE).nth(0);
+    await departureLocationCode.waitFor({ state: 'visible', timeout: 60000 });
+
+    return (await departureLocationCode.textContent())?.trim() ?? '';
+  }
+
+  /**
    * Extracts the inbound (return) departure date from a round-trip flight result card.
    * In a round-trip card, .flight-date elements are: outbound departure (0), outbound arrival (1),
    * inbound departure (2), inbound arrival (3).
@@ -847,6 +933,23 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     const brandBtn = this.page.locator(SELECTORS.BRAND_NAME_IN_PRICING_OPTIONS).first();
     await brandBtn.waitFor({ state: 'visible', timeout: 60000 });
     await brandBtn.click();
+  }
+
+  /**
+   * Gets all visible brand names from the pricing options drawer.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @returns {Promise<string[]>}
+   */
+  async getPricingOptionsBrandNames(timeout = 30000) {
+    const overlay = this.getPricingOptionsOverlay();
+    const brands = overlay.locator(SELECTORS.BRAND_NAME_IN_PRICING_OPTIONS);
+
+    await brands.first().waitFor({ state: 'visible', timeout });
+
+    return (await brands.allTextContents())
+      .map((text) => text.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
   }
 
   /**

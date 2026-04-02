@@ -16,5 +16,7 @@ Feature: 46237 Flights - Edit complete search to by-schedule displays schedule r
     And I have added myself as the traveler
     When I search for a round trip flight from "TLV" to "AMS"
     And flight results should be available
-    # TODO: Step needed for "Click edit search, switch to 'By schedule' radio, and search again"
-    # TODO: Step needed for "Verify by-schedule results are displayed (Select button visible)"
+    When I click edit search and wait for the "Complete trip" search mode option
+    And I change the search type to "By schedule" in the edit flight search
+    And I search from the edit flight search form
+    Then I wait for select text to be visible

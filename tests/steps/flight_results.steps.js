@@ -1,7 +1,7 @@
 require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
-const { FlightResults } = require("../../src/dsl");
+const { FlightPricing, FlightResults } = require("../../src/dsl");
 const FlightResultsPage = require("../../src/pages/FlightResultsPage");
 const { ResultsPage } = require("../../src/pages/ResultsPage");
 const { CommonPage } = require("../../src/pages/CommonPage");
@@ -84,26 +84,25 @@ When("I click on \"Pricing Options\" for the first result", async function () {
 When("I extract the price from first pricing option", async function () {
   logger.info("Extracting price from first pricing option");
   const flightResultsPage = new FlightResultsPage(this.page);
+
+  const price = await flightResultsPage.isBySchedulePricingPageVisible()
+    ? await FlightPricing.extractYourSelectionPrice(this.page)
+    : await flightResultsPage.getAmountPriceValuePricingOptions(0);
   
-  const price = await flightResultsPage.getAmountPriceValuePricingOptions(0);
-  
-  // Store pricing options prices by carrier
-  if (!this.pricingOptionsPrices) this.pricingOptionsPrices = {};
-  if (!this.currentCarrier) {
-    throw new Error("Current carrier not set. Filter by carrier before extracting pricing options.");
+  // Store pricing options prices by carrier when a carrier-scoped flow set one.
+  if (this.currentCarrier) {
+    if (!this.pricingOptionsPrices) this.pricingOptionsPrices = {};
+    if (!this.pricingOptionsPrices[this.currentCarrier]) {
+      this.pricingOptionsPrices[this.currentCarrier] = [];
+    }
+    this.pricingOptionsPrices[this.currentCarrier].push(price);
   }
-  
-  // Store price for current carrier
-  if (!this.pricingOptionsPrices[this.currentCarrier]) {
-    this.pricingOptionsPrices[this.currentCarrier] = [];
-  }
-  this.pricingOptionsPrices[this.currentCarrier].push(price);
   
   // ALSO store in extractedPrices array for common assertions
   if (!this.extractedPrices) this.extractedPrices = [];
   this.extractedPrices.push(price);
   
-  logger.info("Extracted pricing option price", { carrier: this.currentCarrier, price });
+  logger.info("Extracted pricing option price", { carrier: this.currentCarrier ?? null, price });
 });
 
 When("I click to open first pricing options", async function () {
@@ -248,6 +247,40 @@ Then("flight results should be available", async function () {
   expect(isDisplayed).toBe(true);
 });
 
+Then('the alert {string} should be displayed', async function (expectedText) {
+  logger.info('Verifying alert is displayed', { expectedText });
+  await FlightResults.verifyAlertTextDisplayed(this.page, expectedText);
+});
+
+Then('the flight comparison row for {string} should have no prices', async function (stopLabel) {
+  logger.info('Verifying comparison row has no prices', { stopLabel });
+  await FlightResults.verifyComparisonRowHasNoPrices(this.page, stopLabel);
+});
+
+Then('the flight comparison row for {string} should have prices', async function (stopLabel) {
+  logger.info('Verifying comparison row has prices', { stopLabel });
+  await FlightResults.verifyComparisonRowHasPrices(this.page, stopLabel);
+});
+
+Then('the edited flight search results should reflect the updated dates', async function () {
+  logger.info('Verifying edited flight results reflect updated dates', { editedFlightSearch: this.editedFlightSearch });
+
+  if (!this.editedFlightSearch?.departureDate || !this.editedFlightSearch?.returnDate) {
+    throw new Error('editedFlightSearch departureDate and returnDate must be set before validating edited results');
+  }
+
+  await FlightResults.verifyResultsReflectEditedDates(
+    this.page,
+    this.editedFlightSearch.departureDate,
+    this.editedFlightSearch.returnDate,
+  );
+});
+
+Then('flight search results should reflect the updated departure location {string}', async function (expectedDepartureLocation) {
+  logger.info('Verifying edited flight results reflect updated departure location', { expectedDepartureLocation });
+  await FlightResults.verifyResultsReflectUpdatedDepartureLocation(this.page, expectedDepartureLocation);
+});
+
 Then("The shared price for carrier {string} should match the prices from results", async function (carrier) {
   const resultsPrice = this.resultsPrices[carrier];
   const sharedPrice = this.sharedPrices[carrier];
@@ -302,6 +335,16 @@ Then("the green circle icon at index {int} {string} should be displayed in prici
 Then('the fare component text color should be {string} in pricing options', async function (expectedColor) {
   logger.info('Verifying fare component text color in pricing options', { expectedColor });
   await FlightResults.verifyFareComponentTextColorInPricingOptions(this.page, expectedColor);
+});
+
+Then('the {string} brand should be displayed in pricing options', async function (expectedBrandName) {
+  logger.info('Verifying brand is displayed in pricing options', { expectedBrandName });
+  await FlightResults.verifyPricingOptionsBrandDisplayed(this.page, expectedBrandName);
+});
+
+Then('the {string} text should be displayed in pricing options', async function (expectedText) {
+  logger.info('Verifying text is displayed in pricing options', { expectedText });
+  await FlightResults.verifyPricingOptionsHeaderContains(this.page, expectedText);
 });
 
 Then("the Flight Duration filter should be visible", async function () {

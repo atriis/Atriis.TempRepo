@@ -12,6 +12,16 @@ const Results = require("./Results");
  */
 const FlightPricing = {
 
+  async extractYourSelectionPrice(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+    await flightPricingPage.waitForYourSelectionText();
+    return flightPricingPage.getYourSelectionPrice();
+  },
+
   async addYourSelectionFareToCart(page) {
     if (!page) {
       throw new Error('page is required');

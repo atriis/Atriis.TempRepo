@@ -78,6 +78,12 @@ Then("the out of policy tooltip in results should be {string}", async function (
   expect(normalizedActual).toBe(normalizedExpected);
 });
 
+Then("the {string} text should be visible in results", async function (expectedText) {
+  logger.info("Verifying text is visible in results", { expectedText });
+  const isVisible = await Results.isResultButtonTextVisible(this.page, expectedText);
+  expect(isVisible).toBe(true);
+});
+
 // ===== THEN STEPS - FLIGHT CAPACITY =====
 
 Then("the flight capacity restriction modal should be visible", async function () {
