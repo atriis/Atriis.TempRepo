@@ -37,6 +37,7 @@ const CarSearch = {
    * Searches for a car by place (airport or city).
    * @param {Object} page - Playwright page instance
    * @param {string|Object} placeInput - Location or location object
+   * @param {number} monthsAhead - Number of months ahead to search
    * @param {Object} options - Search configuration
    * @param {number} options.pickupIndex - Pickup date index (>= 0)
    * @param {number} options.dropoffIndex - Drop-off date index (>= 0)
@@ -45,6 +46,7 @@ const CarSearch = {
   async searchCarByPlace(
     page,
     placeInput = carLocations.defaultLocation,
+    monthsAhead = 3,
     {
       pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
       dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
@@ -75,7 +77,7 @@ const CarSearch = {
 
     // Pickup date
     await searchPage.clickPickupDateField();
-    await searchPage.clickCalendarNextArrow();
+    await searchPage.clickCalendarNextArrow(monthsAhead);
 
     await selectDatesByNthAvailable(page, {
       startIndex: pickupIndex,
@@ -93,7 +95,7 @@ const CarSearch = {
 
     await searchPage.waitAndClickSearchButton();
 
-    return { searched: true, place, pickupIndex, dropoffIndex };
+    return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex };
   },
 
   /**
@@ -101,6 +103,7 @@ const CarSearch = {
    * @param {Object} page - Playwright page instance
    * @param {string|Object} placeInput - Location or location object
    * @param {string} agencyName - Rental agency name (required)
+   * @param {number} monthsAhead - Number of months ahead to search
    * @param {Object} options - Search configuration
    * @throws {Error} If agencyName is not provided
    */
@@ -108,6 +111,7 @@ const CarSearch = {
     page,
     placeInput = carLocations.defaultLocation,
     agencyName,
+    monthsAhead = 3,
     options = {},
   ) {
     if (!page) {
@@ -126,7 +130,7 @@ const CarSearch = {
     await CarSearch.selectRentalAgencyByName(page, agencyName);
 
     // Reuse the main search flow
-    return CarSearch.searchCarByPlace(page, placeInput, options);
+    return CarSearch.searchCarByPlace(page, placeInput, monthsAhead, options);
   },
 
   /**
@@ -137,6 +141,7 @@ const CarSearch = {
    * @param {Object} options - Search configuration
    * @param {number} options.pickupIndex - Pickup date index (>= 0)
    * @param {number} options.dropoffIndex - Drop-off date index (>= 0)
+   * @param {number} monthsAhead - Number of months ahead to search
    * @throws {Error} If page, pickUpLocation, or dropOffLocation are missing
    * @throws {Error} If pickupIndex or dropoffIndex are negative
    */
@@ -144,6 +149,7 @@ const CarSearch = {
     page,
     pickUpLocation,
     dropOffLocation,
+    monthsAhead = 3,
     {
       pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
       dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
@@ -194,7 +200,7 @@ const CarSearch = {
 
     // Pickup date
     await searchPage.clickPickupDateField();
-    await searchPage.clickCalendarNextArrow();
+    await searchPage.clickCalendarNextArrow(monthsAhead);
 
     await selectDatesByNthAvailable(page, {
       startIndex: pickupIndex,
@@ -215,7 +221,7 @@ const CarSearch = {
 
     await searchPage.waitAndClickSearchButton();
 
-    return { searched: true, pickupPlace, dropoffPlace, pickupIndex, dropoffIndex };
+    return { searched: true, pickupPlace, dropoffPlace, monthsAhead, pickupIndex, dropoffIndex };
   },
 
   /**
@@ -223,6 +229,7 @@ const CarSearch = {
    * @param {Object} page - Playwright page instance
    * @param {string|Object} pickUpLocation - Pickup location
    * @param {string|Object} dropOffLocation - Drop-off location
+   * @param {number} monthsAhead - Number of months ahead to search
    * @param {Object} options - Search configuration
    * @param {number} options.pickupIndex - Pickup date index (>= 0)
    * @param {number} options.dropoffIndex - Drop-off date index (>= 0)
@@ -232,6 +239,7 @@ const CarSearch = {
     page,
     pickUpLocation,
     dropOffLocation,
+    monthsAhead = 0,
     {
       pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
       dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
@@ -261,6 +269,14 @@ const CarSearch = {
       carLocations,
     );
 
+    if (pickupIndex < 0) {
+      throw new Error(`pickupIndex must be >= 0, got ${pickupIndex}`);
+    }
+
+    if (dropoffIndex < 0) {
+      throw new Error(`dropoffIndex must be >= 0, got ${dropoffIndex}`);
+    }
+
     const carSearchPage = getPageObject(page, CarSearchPage);
     const searchPage = getPageObject(page, SearchPage);
     const resultsPage = getPageObject(page, ResultsPage);
@@ -272,7 +288,7 @@ const CarSearch = {
 
     // Pickup date
     await searchPage.clickPickupDateField();
-    await searchPage.clickCalendarNextArrow();
+    await searchPage.clickCalendarNextArrow(monthsAhead);
 
     await selectDatesByNthAvailable(page, {
       startIndex: pickupIndex,
@@ -284,16 +300,37 @@ const CarSearch = {
 
     // Drop-off date
     await carSearchPage.clickDropoffDateField();
-    await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
 
-    await selectDatesByNthAvailable(page, {
-      startIndex: dropoffIndex,
-      endIndex: null,
-    });
+    try {
+      // Prefer selecting from the currently shown month.
+      await selectDatesByNthAvailable(page, {
+        startIndex: dropoffIndex,
+        endIndex: null,
+        pickerPosition: "last",
+      });
+    } catch (error) {
+      const shouldTryNextMonth =
+        typeof error?.message === "string" &&
+        error.message.includes("Not enough available dates in the calendar");
+
+      if (!shouldTryNextMonth) {
+        throw error;
+      }
+
+      // Transition-month fallback: if there are not enough selectable days left
+      // in the current month, move to the next month and pick again.
+      await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
+
+      await selectDatesByNthAvailable(page, {
+        startIndex: dropoffIndex,
+        endIndex: null,
+        pickerPosition: "last",
+      });
+    }
 
     await searchPage.waitAndClickSearchButton();
 
-    return { searched: true, pickupPlace, dropoffPlace, pickupIndex, dropoffIndex };
+    return { searched: true, pickupPlace, dropoffPlace, monthsAhead, pickupIndex, dropoffIndex };
   },
 };
 

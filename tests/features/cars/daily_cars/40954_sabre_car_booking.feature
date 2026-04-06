@@ -7,7 +7,7 @@ Feature: Sabre Car Booking Flow
   Scenario: Add car and complete booking
     Given I am logged in as "robsoncruz" booking a new trip
     And I have added a random guest traveler
-    When I search for a car in "LHR"
+    When I search for a car at "LHR" with 1 months ahead
     And I add the first car to cart
     Then the booking status should be "Pending booking"
     And I proceed to checkout

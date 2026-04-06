@@ -13,7 +13,7 @@ Feature: 75105 [Cars][GTP Admin] Is Prepaid Agreement Override Flag
   Scenario: Is Prepaid = true on TMC agreement shows Pre paid on results and cart
     Given I am logged in as "isprepaid_on" booking a new trip
     And I have added myself as the traveler
-    When I search for a car at "LHR" with rental agency "Enterprise"
+    When I search for a car at "LHR" with rental agency "Enterprise" and 1 months ahead
     Then the payment type on results should be "Pre paid"
     When I add the first car to cart
     Then the payment type should be "Pre paid"
@@ -23,7 +23,7 @@ Feature: 75105 [Cars][GTP Admin] Is Prepaid Agreement Override Flag
   Scenario: Is Prepaid = false with no billing number shows Pay On Departure on results and cart
     Given I am logged in as "isprepaid_off" booking a new trip
     And I have added myself as the traveler
-    When I search for a car at "LHR" with rental agency "Enterprise"
+    When I search for a car at "LHR" with rental agency "Enterprise" and 1 months ahead
     Then the payment type on results should be "Pay On Departure"
     When I add the first car to cart
     Then the payment type should be "Pay On Departure"

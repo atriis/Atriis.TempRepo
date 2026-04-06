@@ -8,6 +8,6 @@ Feature: 62201  Cars - "Reset Filters" button is visible
   Scenario: "Resest Filters" button is visible in search results
     Given I am logged in as "beatriz" booking a new trip
     And I have added myself as the traveler
-    When I search for a car in "dallasfort worth"
+    When I search for a car at "dallasfort worth" with 1 months ahead
     When I wait for add to trip text to be visible
     Then the reset filters button should be visible and disabled

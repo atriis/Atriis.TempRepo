@@ -1,5 +1,5 @@
 @daily_cars @provider:amadeus @regression
-Feature: Car Search Results - Quote Title Should Not Contain Unexpected "Car" Word
+Feature: 75326 Car Search Results - Quote Title Should Not Contain Unexpected "Car" Word
   As a corporate traveler
   When I search for cars via Amadeus
   The result title should show only the car category and type (e.g. "Compact 2/3 Doors")
@@ -11,6 +11,6 @@ Feature: Car Search Results - Quote Title Should Not Contain Unexpected "Car" Wo
   Scenario: Car result titles do not contain the word "car" as standalone text
     Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
-    When I search for a car at "LON"
+    When I search for a car at "LON" with 3 months ahead
     And I select the first city center pickup location
     Then none of the car result titles should contain the word "car"

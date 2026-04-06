@@ -32,10 +32,13 @@ const { SELECTORS } = require("@pages/SearchPage");
  * @param {Object} opts
  * @param {number} [opts.startIndex=0] - index of the first selectable day
  * @param {number|null} [opts.endIndex=null] - index of the second selectable day
+ * @param {string} [opts.pickerPosition="first"] - which date picker to use ("first" or "last")
+ * @param {number} [opts.monthTableIndex=0] - which month table to try first (0-based)
+ * @throws {Error} If indices are invalid or if there are not enough available dates
  */
 async function selectDatesByNthAvailable(
   page,
-  { startIndex = 0, endIndex = null } = {},
+  { startIndex = 0, endIndex = null, pickerPosition = "first", monthTableIndex = 0 } = {},
 ) {
   if (startIndex < 0) {
     throw new Error(`startIndex must be >= 0. Received: ${startIndex}`);
@@ -45,24 +48,57 @@ async function selectDatesByNthAvailable(
     throw new Error(`endIndex must be >= 0. Received: ${endIndex}`);
   }
 
+  if (pickerPosition !== "first" && pickerPosition !== "last") {
+    throw new Error(
+      `pickerPosition must be either "first" or "last". Received: ${pickerPosition}`,
+    );
+  }
+
+  if (!Number.isInteger(monthTableIndex) || monthTableIndex < 0) {
+    throw new Error(
+      `monthTableIndex must be an integer >= 0. Received: ${monthTableIndex}`,
+    );
+  }
+
   // The calendar must already be open before calling this helper
-  const picker = page.locator(SELECTORS.DATE_PICKER_PANEL).first();
-  const monthTable = picker
-    .locator(SELECTORS.DATE_PICKER_MONTH_TABLE)
-    .first();
-  const days = monthTable.locator(
-    SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL,
-  );
-
-  // Ensure there are enough selectable days available
-  const count = await days.count();
-
+  const pickers = page.locator(SELECTORS.DATE_PICKER_PANEL);
+  const picker = pickerPosition === "last" ? pickers.last() : pickers.first();
   const maxIndexNeeded =
     endIndex === null ? startIndex : Math.max(startIndex, endIndex);
 
+  const monthTables = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE);
+  const tableCount = await monthTables.count();
+
+  if (tableCount === 0) {
+    throw new Error("Date picker month table not found.");
+  }
+
+  let days = null;
+  let count = 0;
+
+  // Try the requested month-table first, then fallback to other tables in the same picker.
+  for (let i = 0; i < tableCount; i++) {
+    const tableIndex = (monthTableIndex + i) % tableCount;
+    const candidateDays = monthTables
+      .nth(tableIndex)
+      .locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL);
+    const candidateCount = await candidateDays.count();
+
+    if (candidateCount > maxIndexNeeded) {
+      days = candidateDays;
+      count = candidateCount;
+      break;
+    }
+
+    if (candidateCount > count) {
+      days = candidateDays;
+      count = candidateCount;
+    }
+  }
+
   if (count <= maxIndexNeeded) {
     throw new Error(
-      `Not enough available dates in the calendar. Found ${count}, need at least ${maxIndexNeeded + 1}.`,
+      `Not enough available dates in the calendar. Found ${count}, need at least ${maxIndexNeeded + 1}. (pickerPosition=${pickerPosition}, monthTableCount=${tableCount})`,
     );
   }
 
