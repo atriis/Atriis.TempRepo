@@ -2,7 +2,7 @@ const FlightSearchPage = require("@pages/FlightSearchPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { SearchPage } = require("@pages/SearchPage");
 const flightRoutes = require("@data/flights.json");
-const { selectDatesByNthAvailable, selectNthWeekdayFromNextMonth } = require("@utils/calendar.helper");
+const { selectDatesByNthAvailable, selectNthWeekdayFromNextMonth, selectTodayFromVisibleCalendar } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { generateRandomFlightRoute } = require("@utils/data/generateRandomFlightRoute");
@@ -205,6 +205,41 @@ const FlightSearch = {
   },
 
   /**
+   * One-way flight search with today's departure date.
+   *
+   * Used for short-notice travel-policy scenarios that must remain within the same day.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string|Object} routeInput - Route key or {from, to}
+   */
+  async searchFlightOneWaySameDay(page, routeInput) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!routeInput) {
+      throw new Error('routeInput is required');
+    }
+
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
+    logger.info('Starting same-day oneWay flight search', { from, to });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectOneWayTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+    await searchPage.clickDepartureDateField();
+    await selectTodayFromVisibleCalendar(page);
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'oneWay', searchType: 'completeTrip', departureDate: 'today' };
+  },
+
+  /**
    * Round-trip flight search: completeTrip + roundTrip + default route from routes
    */
   async searchFlightRoundTrip(
@@ -221,6 +256,54 @@ const FlightSearch = {
       departureIndex,
       returnIndex,
     });
+  },
+
+  /**
+   * Round-trip flight search with an advanced-search preferred carrier filter.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string|Object} routeInput - Route key or {from, to}
+   * @param {string} carrier - Preferred carrier label, e.g. "Qantas"
+   * @param {Object} options - Date-selection options
+   */
+  async searchFlightRoundTripWithPreferredCarrier(
+    page,
+    routeInput,
+    carrier,
+    {
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    } = {},
+  ) {
+    if (!page) throw new Error('page is required');
+    if (!routeInput) throw new Error('routeInput is required');
+    if (!carrier || typeof carrier !== 'string') {
+      throw new Error('carrier must be a non-empty string, got: ' + carrier);
+    }
+
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
+    logger.info('Starting roundTrip flight search with preferred carrier', { from, to, carrier });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectRoundTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      startIndex: departureIndex,
+      endIndex: returnIndex,
+    });
+
+    await this.openAdvancedSearch(page);
+    await flightSearchPage.clearPreferredCarriers();
+    await flightSearchPage.selectPreferredCarrier(carrier);
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'roundTrip', searchType: 'completeTrip', carrier };
   },
 
   /**
@@ -642,6 +725,78 @@ const FlightSearch = {
     await flightSearchPage.selectStopsOption(stopsOption);
 
     return { selected: true, stopsOption };
+  },
+
+  /**
+   * Verifies the Stops dropdown does not accept free text input.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} freeText
+   * @param {string} expectedSelectionText
+   */
+  async verifyStopsDropdownRejectsFreeText(page, freeText, expectedSelectionText = 'Up to one stop') {
+    if (!page) throw new Error('page is required');
+    if (!freeText || typeof freeText !== 'string') {
+      throw new Error('freeText must be a non-empty string, got: ' + freeText);
+    }
+    if (!expectedSelectionText || typeof expectedSelectionText !== 'string') {
+      throw new Error('expectedSelectionText must be a non-empty string, got: ' + expectedSelectionText);
+    }
+
+    logger.info('Verifying flight stops dropdown rejects free text', { freeText, expectedSelectionText });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const { expect } = require('@playwright/test');
+
+    await flightSearchPage.waitForAdvancedSearchOptions();
+    const result = await flightSearchPage.typeFreeTextInStopsDropdown(freeText);
+    await flightSearchPage.waitForStopsDropdownDisplayText(expectedSelectionText);
+
+    const displayedText = await flightSearchPage.getStopsDropdownDisplayText();
+
+    expect(displayedText, 'Stops dropdown should keep its default selection text').toContain(expectedSelectionText);
+    expect(result.inputValue, 'Stops dropdown should not keep the typed free text').not.toBe(freeText);
+
+    return {
+      freeText,
+      expectedSelectionText,
+      displayedText,
+      inputValue: result.inputValue,
+      isEditable: result.isEditable,
+    };
+  },
+
+  /**
+   * Updates the edit-search form to run a by-schedule search with a preferred carrier.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} from - Origin airport code
+   * @param {string} to - Destination airport code
+   * @param {string} carrier - Preferred carrier label, e.g. "United"
+   */
+  async searchFlightByScheduleWithPreferredCarrierInEditSearch(page, from, to, carrier) {
+    if (!page) throw new Error('page is required');
+    if (!from || typeof from !== 'string') throw new Error('from must be a non-empty string, got: ' + from);
+    if (!to || typeof to !== 'string') throw new Error('to must be a non-empty string, got: ' + to);
+    if (!carrier || typeof carrier !== 'string') {
+      throw new Error('carrier must be a non-empty string, got: ' + carrier);
+    }
+
+    logger.info('Searching from edit flight search by schedule with preferred carrier', { from, to, carrier });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await searchPage.waitForFromFieldVisible();
+    await searchPage.editFromField(from);
+    await searchPage.editToField(to);
+    await flightSearchPage.selectBySchedule();
+    await this.openAdvancedSearch(page);
+    await flightSearchPage.clearPreferredCarriers();
+    await flightSearchPage.selectPreferredCarrier(carrier);
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'roundTrip', searchType: 'bySchedule', carrier };
   },
 
   /**

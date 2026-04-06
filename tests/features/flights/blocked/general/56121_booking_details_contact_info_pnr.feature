@@ -11,9 +11,6 @@ Feature: 56121 Flights - Booking details booker and traveler contact info with P
   I want to see booker and traveler contact info on the booking details page
   So that all contact information is correctly captured with PNR remarks
 
-  # TODO: New user needed — booker@mobile.uni → USER_BOOKER_MOBILE
-  # Add to .env: USER_BOOKER_MOBILE="booker@mobile.uni"
-
   Scenario: Contact info and PNR remark are displayed in booking details
     Given I am logged in as "booker_mobile" booking a new trip
     And I have added myself as the traveler
@@ -21,6 +18,13 @@ Feature: 56121 Flights - Booking details booker and traveler contact info with P
     When I search for a round trip flight from "OSL" to "ZRH"
     And I add the first flight to cart
     And I proceed to checkout
-    # TODO: Step needed for "Validate booking page layout (traveler and booker contact info)"
-    # TODO: Step needed for "Edit traveler contact info"
+    Then "Booker notification" should be displayed in the checkout page
+    And "Share booker phone number with travel agency" should be displayed in the checkout page
+    And "Contact details" should be displayed in the checkout page
+    And the contact telephone on checkout should contain numbers
+    And the booker notification phone on checkout should contain numbers
+    And I uncheck contact sharing and edit the phone to "1 505 1001000"
+    And I edit the contact email to "traveler@mobile.uni"
     And I complete the booking
+    Then the booking status should be "Confirmed"
+    Then I successfully cancel the trip

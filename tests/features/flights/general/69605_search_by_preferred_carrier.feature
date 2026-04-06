@@ -11,13 +11,13 @@ Feature: 69605 Flights - Search by preferred carrier
   I want to search flights by preferred carrier
   So that results are pre-filtered by my preferred airline
 
-  # TODO: New user needed — tripstatus@app.com → USER_TRIPSTATUS
-  # Add to .env: USER_TRIPSTATUS="tripstatus@app.com"
-
   Scenario: Search flights with preferred carrier filter
-    Given I am logged in as "tripstatus" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
-    # TODO: Step needed for "Search round trip with preferred carrier: SYD to MEL, carrier Qantas"
-    # TODO: Step needed for "Validate results are displayed filtered by preferred carrier"
-    # TODO: Step needed for "Back to search page"
-    # TODO: Step needed for "Validate by-schedule results with preferred carrier"
+    When I search for a round trip flight from "SYD" to "MEL" with preferred carrier "Qantas"
+    Then flight results should be available
+    And all flight results should be from airline "Qantas"
+    When I click edit search and wait for the "Complete trip" search mode option
+    And I search for a flight by schedule from "LAX" to "DEN" with preferred carrier "United" in the edit flight search
+    Then I wait for select text to be visible
+    And all flight results should be from airline "United"

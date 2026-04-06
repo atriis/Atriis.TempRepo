@@ -11,13 +11,15 @@ Feature: 59769 Flights - Multi City Frosch TMC original currency displayed
   I want to see original currency in multi-city flight results
   So that costs are displayed in my home currency
 
-  # TODO: New user needed — tomblink182@froschtestimcorp.com → USER_TOMBLINK182 (same as 59765)
-
   Scenario: Original currency is displayed in multi-city results and pricing options
     Given I am logged in as "tomblink182" booking a new trip
     And I have added myself as the traveler
-    # TODO: Step needed for "Search multi-city flights MIA→BOS, DFW→MIA" — 4 airport codes in multi-city
-    # TODO: Step needed for "Verify USD currency in results"
-    # TODO: Step needed for "Verify USD currency in pricing options"
+    When I search for a multi-city flight with legs "MIA-BOS" and "DFW-MIA"
+    And flight results should be available
+    Then the original currency symbol "$" should be visible in flight results
+    When I click on "Pricing Options" for the first result
+    Then the original currency symbol "$" should be visible in pricing options
+    When I close pricing options modal
     And I add the first flight to cart
-    # TODO: Step needed for "Verify USD currency in cart"
+    Then the booking status should be "Pending booking"
+    And the original currency symbol "$" should be visible in cart

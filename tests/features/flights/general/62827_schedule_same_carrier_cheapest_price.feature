@@ -15,8 +15,13 @@ Feature: 62827 Amadeus By Schedule - Same carrier cheapest package matches prici
     Given I am logged in as "coreytaylor" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "DUB" to "PRG"
-    And I select flight segments by schedule
-    And I add to trip from pricing options
-    And I handle conflicting quotes if visible
-    # TODO: Step needed for "Verify price in cart matches pricing page price" — extract and compare pricing option vs cart price
-    Then I successfully cancel the trip
+    And I filter results by carrier "Lufthansa"
+    And I select one flight segment by schedule
+    And I wait for the change flight button to be visible
+    And I filter results by carrier "Lufthansa"
+    And I select one flight segment by schedule
+    And I wait for "Cheapest package" text to be visible
+    And I extract the price from "Cheapest package" fare
+    And I add "Cheapest package" fare to trip
+    Then the booking status should be "Pending booking"
+    Then the cart total price should match the last extracted price

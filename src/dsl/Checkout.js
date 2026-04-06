@@ -181,6 +181,23 @@ const Checkout = {
   },
 
   /**
+   * Edits the traveler contact email on the checkout page.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} email
+   */
+  async editContactEmail(page, email) {
+    if (!page) throw new Error('page is required');
+    if (typeof email !== 'string') throw new Error('email must be a string, got: ' + typeof email);
+    if (!email.trim()) throw new Error('email must be a non-empty string');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+
+    await checkoutPage.waitForBookingDetailsText();
+    await checkoutPage.fillContactEmail(email);
+  },
+
+  /**
    * Sends the booking for approval and navigates to the Trip Overview.
    *
    * This flow:

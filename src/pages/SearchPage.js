@@ -40,6 +40,7 @@ const SELECTORS = {
     "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
   DATE_PICKER_MONTH_TABLE: "table.el-date-table",
   DATE_PICKER_AVAILABLE_DAY_CELL: "td.available .el-date-table-cell__text",
+  DATE_PICKER_TODAY_AVAILABLE_DAY_CELL: "td.available.today .el-date-table-cell__text",
 
   // Traveler search
   TRAVELER_NAME_FIELD:
@@ -53,6 +54,7 @@ const SELECTORS = {
   EDIT_TRAVELER_OPTION: '.user-autocomplete-popper li',
 
   // Edit Search
+  EDIT_SEARCH_DRAWER: '.atrs-edit-search-drawer',
   SEARCH_TITLE: '.locations.is-flex.is-align-items-center',
 
   // Multi-city
@@ -70,9 +72,8 @@ const SELECTORS = {
     ".el-scrollbar__view.el-autocomplete-suggestion__list li[id*='item-0']:visible",
 
   // Precise positional selectors for editing pre-filled airport fields
-  // (airport-autocomplete renders as section.airport-autocomplete; first = From, second = To)
-  EDIT_FROM_INPUT: '.airport-autocomplete:nth-of-type(1) input',
-  EDIT_TO_INPUT: '.airport-autocomplete:nth-of-type(2) input',
+  // inside the edit-search drawer.
+  EDIT_AIRPORT_AUTOCOMPLETE: '.airport-autocomplete input',
 
   // Location inputs (fallbacks for different suppliers)
   FROM_PLACEHOLDER: [
@@ -112,6 +113,19 @@ const SELECTORS = {
 class SearchPage {
   constructor(page) {
     this.page = page;
+  }
+
+  /**
+   * Gets an airport input inside the visible edit-search drawer.
+   *
+   * @param {number} index - Zero-based airport input index in the drawer
+   * @returns {import('@playwright/test').Locator}
+   */
+  getEditAirportInput(index) {
+    return this.page
+      .locator(SELECTORS.EDIT_SEARCH_DRAWER)
+      .locator(SELECTORS.EDIT_AIRPORT_AUTOCOMPLETE)
+      .nth(index);
   }
 
   /**
@@ -347,7 +361,7 @@ class SearchPage {
    * form is ready for editing (works for both fresh search and add-to-trip context).
    */
   async waitForFromFieldVisible() {
-    const input = this.page.locator(SELECTORS.EDIT_FROM_INPUT).first();
+    const input = this.getEditAirportInput(0);
     await input.waitFor({ state: 'visible', timeout: 15000 });
   }
 
@@ -363,7 +377,7 @@ class SearchPage {
    * @param {string} from - New origin airport code to type
    */
   async editFromField(from) {
-    const input = this.page.locator(SELECTORS.EDIT_FROM_INPUT).first();
+    const input = this.getEditAirportInput(0);
     await input.waitFor({ state: 'visible', timeout: 10000 });
     await input.focus();
     await this.page.keyboard.press('Control+A');
@@ -385,7 +399,7 @@ class SearchPage {
    * @param {string} to - New destination airport code to type
    */
   async editToField(to) {
-    const input = this.page.locator(SELECTORS.EDIT_TO_INPUT).first();
+    const input = this.getEditAirportInput(1);
     await input.waitFor({ state: 'visible', timeout: 10000 });
     await input.focus();
     await this.page.keyboard.press('Control+A');

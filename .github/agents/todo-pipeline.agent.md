@@ -330,61 +330,13 @@ If Phase 4.5 removed dead code, consolidated duplicates, or modified any file:
 - **If changes made and re-run passed**: "Cleaned up {N} dead methods and {M} duplicate definitions. Re-run confirmed nothing broke. Proceed to Phase 5?"
 - **If changes made and re-run failed**: "Cleanup caused a regression — reverted {list}. Proceeding to Phase 5 with original code."
 
-### Phase 5: Move Resolved Files & Update CI
+### Phase 5: Leave Placement To User
 After all TODOs are resolved and tests pass for a file:
 
-#### 5a: Determine Destination Folder
-Move the feature file from `to_adjust/`, `next/`, or `next_blocked/` to the correct domain subfolder based on what the test does:
-
-**Hotels:**
-| Test Type | Destination | CI Job |
-|-----------|-------------|--------|
-| Search, filter, UI, non-booking flows | `tests/features/hotels/daily_hotels/` | `daily-hotels-tests` |
-| Full booking flows (book + cancel) | `tests/features/hotels/hotels_booking/` | — (not yet in CI) |
-
-**Other Domains:**
-| Domain | Destination | CI Job |
-|--------|-------------|--------|
-| Flights (non-booking) | `tests/features/flights/daily_flights/` | `daily-flights-tests` |
-| Cars (non-booking) | `tests/features/cars/daily_cars/` | `daily-cars-tests` |
-| Shell | `tests/features/shell/daily_shell/` | `daily-shell-tests` |
-| Rails | `tests/features/rails/daily_rails/` | `daily-rails-tests` |
-
-**Decision logic:**
-- If the scenario includes steps like "When I complete the booking", "Then the booking should be confirmed", "When I cancel the trip" → it's a **booking** test → `hotels_booking/`
-- If the scenario only searches, filters, verifies UI elements, adds to cart but does NOT complete a booking → it's a **daily** test → `daily_hotels/`
-
-#### 5b: Add Users to CI Workflow (`test-suite.yml`)
-After moving the file, check if the feature uses any test users that are NOT yet listed in the corresponding CI job's `env:` section in `.github/workflows/test-suite.yml`.
-
-**CRITICAL: Never create duplicate users.** Before adding ANY user to `.env` or CI:
-1. **Search `.env` for the email address first** — if the same email already exists under a different `USER_<LABEL>`, do NOT create a new env var. Instead, update the feature file to use the existing label.
-   - Example: Feature says `"tree"` → would need `USER_TREE`. But `.env` already has `USER_CHRISTREE="tree@tree.com"` → change the feature to use `"christree"` instead.
-2. **Only add truly new users** — users whose email does not appear anywhere in `.env` under any label.
-3. **Never add aliases** — one email = one `USER_*` entry. No exceptions.
-
-**Steps for CI workflow updates:**
-1. **Extract users from the feature file**: Look for `Given I am logged in as {string}` steps. The user key maps to `USER_<LABEL>` env var (e.g., `"galileogaliei"` → `USER_GALILEOGALIEI`).
-2. **Check `.env` for the email** — if the email already exists under a different label, update the feature file to use the existing label. Do NOT create a new env var.
-3. **Check `test-suite.yml`**: Search the CI job's env section for each `USER_<LABEL>`. If not present, add it.
-4. **Add missing users**: Insert `USER_<LABEL>: ${{ secrets.USER_<LABEL> }}` in the env block of the appropriate CI job, before `GENERAL_PASSWORD`.
-5. **Only add to CI jobs whose folder contains the moved file** — e.g., if moved to `daily_hotels/`, add to `daily-hotels-tests`; if moved to `hotels_booking/`, no CI job exists yet so skip this step but note it in the report.
-
-**Example:**
-```yaml
-# In daily-hotels-tests env section, add:
-USER_GALILEOGALIEI: ${{ secrets.USER_GALILEOGALIEI }}
-```
-
-> **Note**: The user's email/password must also exist in `.env` for local runs (`USER_GALILEOGALIEI="galileogaliei@gdggalileo.com"`). If the `.env` entry was already added during implementation (Phase 2), no action needed here.
-
-#### 5c: User Placement in `.env` — Group by Supplier
-When adding a new user to `.env`, **place it near other users of the same supplier**:
-- If the user name contains a recognizable supplier (e.g., `sabre`, `amadeus`, `galileo`, `ratehawk`, `expedia`, etc.) → add the `USER_*` entry next to other users of that supplier in `.env`
-- If no supplier can be inferred from the user name → add to a general/shared section
-- This keeps `.env` organized and makes it easy to find users per supplier
-
-> **CI (`test-suite.yml`) is different** — there is no supplier grouping in CI. Just find the CI job that matches the folder the test was moved to, and add the `USER_*: ${{ secrets.USER_* }}` reference there.
+- **Do not move the feature file automatically.** Leave it in its current folder.
+- **Do not update CI automatically.** User handling in this pipeline is limited to local `.env` updates only.
+- If the feature required a truly new local user to run, you may still add that user to `.env` following the no-duplicates rule.
+- If the user explicitly asks for folder placement later, treat that as a separate follow-up task.
 
 ### Phase 6: Repeat for Next File
 If multiple files were selected:
@@ -404,12 +356,12 @@ Generate TODO resolution report:
   TODOs Resolved:     15
   TODOs Kept:          3 (future notes)
 
-  Results per File:
-  ├── 22074_general_oop_... ✅ PASSED → daily_hotels/ (3/3 TODOs)
-  ├── 19201_sabre_share_... ✅ PASSED → daily_hotels/ (4/4 TODOs)
-  ├── 29744_amadeus_...     ✅ PASSED → hotels_booking/ (4/4 TODOs)
-  ├── 28676_general_oop_... ❌ NEEDS MANUAL (2/3 TODOs, 1 locator missing)
-  └── 37302_ratehawk_...    ✅ PASSED → daily_hotels/ (2/2 TODOs)
+   Results per File:
+   ├── 22074_general_oop_... ✅ PASSED (3/3 TODOs)
+   ├── 19201_sabre_share_... ✅ PASSED (4/4 TODOs)
+   ├── 29744_amadeus_...     ✅ PASSED (4/4 TODOs)
+   ├── 28676_general_oop_... ❌ NEEDS MANUAL (2/3 TODOs, 1 locator missing)
+   └── 37302_ratehawk_...    ✅ PASSED (2/2 TODOs)
 
   New Artifacts:
   ├── Step definitions:  8 new steps across 3 files
@@ -422,9 +374,8 @@ Generate TODO resolution report:
   ├── Dead selectors removed:  2 (CartPage.js)
   └── Duplicate steps:         0
 
-  CI Updates:
-  ├── Users added to daily-hotels-tests: USER_GALILEOGALIEI, USER_SHANI_NL
-  └── Users skipped (no CI job): USER_TLGG (hotels_booking/)
+   Placement:
+   └── Final feature-file placement left to the user
 
   Fix Iterations:        7 total across all files
 ═══════════════════════════════════════════════
@@ -436,13 +387,12 @@ Generate TODO resolution report:
 ```powershell
 cd c:\DEV\AtriisAutomation
 git add {all created/modified files}
-git add .github/workflows/test-suite.yml  # if CI users were added
 git commit -m "feat(todo-resolver): implement {N} TODOs across {M} feature files
 
 - Steps created: {count}
 - DSL methods: {count}
 - Page objects modified: {count}
-- CI users added: {list}
+- .env users added: {list}
 - All tests passing: {yes/no}"
 ```
 
@@ -490,9 +440,9 @@ The agent understands these TODO formats:
 - **Prioritize shared steps first** — create steps used by multiple files before file-specific ones
 - **Remove TODO comments cleanly** — no replacement comment, no empty lines left behind
 - **Never remove future-note TODOs** — only remove TODOs that you fully implemented
-- **Move resolved files** from source folder to the correct domain subfolder (`daily_hotels/` for non-booking, `hotels_booking/` for booking flows, etc.) — see Phase 5a for decision logic
-- **Add users to CI** — after moving, check `test-suite.yml` for missing `USER_*` env vars and add them to the appropriate CI job — see Phase 5b. CI placement is purely by job/folder, not by supplier.
-- **Group users by supplier in `.env`** — when adding a new user to `.env`, place it near other users of the same supplier (e.g., sabre users next to sabre users). If no supplier can be inferred, add to a general section — see Phase 5c
+- **Do not move resolved files automatically** — leave final folder placement to the user unless they explicitly ask for it in a separate follow-up task
+- **Do not update CI automatically** — this pipeline only updates local `.env` users when needed
+- **Group users by supplier in `.env`** — when adding a new user to `.env`, place it near other users of the same supplier (e.g., sabre users next to sabre users). If no supplier can be inferred, add to a general section
 - **One file at a time** — complete one feature before moving to the next
 - **Respect layer boundaries** — page objects don't get business logic, steps don't get Playwright
 - **Source selectors from Atriis.App** — always check the Vue source for real selectors

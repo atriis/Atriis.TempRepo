@@ -15,7 +15,7 @@ Feature: 33168 Flights - After selecting hide comparison can reopen comparison t
     Given I am logged in as "testim_prof" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LIS" to "TLV"
-    # TODO: Step needed for "Click comparison button to hide" — click ".comparison-btn span"
-    # TODO: Step needed for "Verify 'Show Comparison' text is displayed"
-    # TODO: Step needed for "Click comparison button to show" — click ".comparison-btn span"
-    # TODO: Step needed for "Verify comparison table is visible and 'Hide Comparison' text is displayed"
+    And I hide the comparison table in flight results
+    Then the flight comparison toggle should display "Show Comparison"
+    When I show the comparison table in flight results
+    Then the comparison table should be visible in flight results and the toggle should display "Hide Comparison"

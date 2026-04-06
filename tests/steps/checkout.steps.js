@@ -45,6 +45,11 @@ When("I uncheck contact sharing and edit the phone to {string}", async function 
   await Checkout.uncheckContactSharingAndEditPhone(this.page, parts[0], parts[1], parts[2]);
 });
 
+When("I edit the contact email to {string}", async function (email) {
+  logger.info("Editing contact email", { email });
+  await Checkout.editContactEmail(this.page, email);
+});
+
 Then("{string} should be displayed in the checkout page", async function (expectedText) {
   logger.info("Verifying text is displayed in checkout page", { expectedText });
   await this.page.locator(`text=${expectedText}`).first().waitFor({ state: 'visible', timeout: 15000 });

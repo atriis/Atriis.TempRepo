@@ -176,6 +176,34 @@ const Cart = {
   },
 
   /**
+   * Verifies the original-currency text shown for the flight in cart contains the expected symbol.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} currencySymbol
+   * @returns {Promise<{currencySymbol: string, originalPriceText: string}>}
+   */
+  async verifyOriginalCurrencySymbolVisibleInCart(page, currencySymbol) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!currencySymbol || typeof currencySymbol !== 'string') {
+      throw new Error('currencySymbol must be a non-empty string');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForTripOverviewTitle();
+
+    const originalPriceText = await cartPage.getFirstFlightOriginalPriceText();
+
+    expect(originalPriceText, 'Expected cart flight summary to display original currency text').toContain('Original');
+    expect(originalPriceText, 'Expected cart flight summary to display the requested original currency symbol')
+      .toContain(currencySymbol);
+
+    return { currencySymbol, originalPriceText };
+  },
+
+  /**
    * Asserts that the payment type label matches the expected value.
    *
    * @param {import('playwright').Page} page
@@ -423,6 +451,54 @@ const Cart = {
     }
   },
 
+  /**
+   * Verifies that the OOP justification dropdown is visible in cart and that selecting
+   * and saving one option persists the selected value.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{selectedOption: string, selectedValue: string}>}
+   */
+  async verifyOOPJustificationDropdownSaveWorksInCart(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const commonPage = getPageObject(page, CommonPage);
+
+    await cartPage.waitForTripOverviewTitle();
+    await commonPage.waitForOOPVisible();
+    await cartPage.waitForJustificationDropdownVisible();
+
+    const isFreeTextVisible = await cartPage.getOOPJustificationTextbox().isVisible().catch(() => false);
+    expect(isFreeTextVisible, 'Expected dropdown justification for this OOP scenario, not a free-text field').toBe(false);
+
+    const justificationDropdown = cartPage.getJustificationDropdown();
+    await justificationDropdown.scrollIntoViewIfNeeded({ timeout: 10000 });
+    await cartPage.openJustificationDropdown();
+
+    const options = cartPage.getAllVisibleJustificationOptions();
+    await options.first().waitFor({ state: 'visible', timeout: 10000 });
+
+    const optionCount = await options.count();
+    expect(optionCount, 'Expected at least one OOP justification option to be available').toBeGreaterThan(0);
+
+    const selectedOption = await cartPage.selectFirstVisibleJustificationOption();
+    expect(selectedOption, 'Expected the selected OOP justification option to have text').not.toBe('');
+
+    await cartPage.saveOOPJustificationText();
+    await cartPage.waitForSaveJustificationButtonHidden();
+    await commonPage.waitForOOPVisible();
+
+    const selectedValue = await cartPage.getSelectedJustificationValueText();
+    expect(
+      selectedValue,
+      `Expected the saved OOP justification dropdown value to contain "${selectedOption}"`,
+    ).toContain(selectedOption);
+
+    return { selectedOption, selectedValue };
+  },
+
   // ===== PRICE CHANGE MODAL =====
 
 
@@ -470,7 +546,7 @@ const Cart = {
       await proceedBtn.click();
       clickedModal = true;
       // Wait for checkout page to load after dismissing modal
-      await checkoutHeading.waitFor({ state: "visible", timeout: 30000 });
+      await checkoutHeading.waitFor({ state: "visible", timeout: 60000 });
     }
 
     return { proceeded: true, clickedModal };

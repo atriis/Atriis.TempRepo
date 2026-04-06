@@ -119,6 +119,186 @@ const FlightResults = {
   },
 
   /**
+   * Hides the comparison table from flight results.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{hidden: boolean}>}
+   */
+  async hideComparisonTable(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    await flightResultsPage.waitForFlightResults();
+    await flightResultsPage.waitForComparisonTable();
+    await flightResultsPage.waitForComparisonToggleText('Hide Comparison');
+    await flightResultsPage.clickComparisonToggle();
+    await flightResultsPage.waitForComparisonToggleText('Show Comparison');
+
+    return { hidden: true };
+  },
+
+  /**
+   * Shows the comparison table from flight results.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{visible: boolean}>}
+   */
+  async showComparisonTable(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    await flightResultsPage.waitForFlightResults();
+    await flightResultsPage.waitForComparisonToggleText('Show Comparison');
+    await flightResultsPage.clickComparisonToggle();
+    await flightResultsPage.waitForComparisonTable();
+    await flightResultsPage.waitForComparisonToggleText('Hide Comparison');
+
+    return { visible: true };
+  },
+
+  /**
+   * Verifies the comparison toggle label.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   * @returns {Promise<{expectedText: string, actualText: string}>}
+   */
+  async verifyComparisonToggleText(page, expectedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    await flightResultsPage.waitForComparisonToggleText(expectedText);
+    const actualText = await flightResultsPage.getComparisonToggleText();
+
+    expect(actualText).toBe(expectedText);
+
+    return { expectedText, actualText };
+  },
+
+  /**
+   * Verifies the comparison table is visible and the toggle label matches.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   * @returns {Promise<{tableVisible: boolean, expectedText: string}>}
+   */
+  async verifyComparisonTableVisibleWithToggleText(page, expectedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    await flightResultsPage.waitForComparisonTable();
+    await this.verifyComparisonToggleText(page, expectedText);
+
+    return { tableVisible: true, expectedText };
+  },
+
+  /**
+   * Verifies that the first flight result highlights the expected airport codes.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string[]} airportCodes - Airport codes expected to be marked
+   * @returns {Promise<{airportCodes: string[], markedCodes: string[]}>}
+   */
+  async verifyMarkedAirportCodesInFirstResult(page, airportCodes) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!Array.isArray(airportCodes) || airportCodes.length === 0) {
+      throw new Error('airportCodes must be a non-empty array, got: ' + JSON.stringify(airportCodes));
+    }
+
+    const normalizedCodes = airportCodes.map((airportCode) => {
+      if (!airportCode || typeof airportCode !== 'string') {
+        throw new Error('each airport code must be a non-empty string, got: ' + airportCode);
+      }
+
+      return airportCode.trim().toUpperCase();
+    });
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const markedCodes = (await flightResultsPage.getMarkedLocationCodesInFirstFlightResult())
+      .map((airportCode) => airportCode.toUpperCase());
+
+    expect(markedCodes, 'Expected the first flight result to highlight the requested airport changes')
+      .toEqual(expect.arrayContaining(normalizedCodes));
+
+    return { airportCodes: normalizedCodes, markedCodes };
+  },
+
+  /**
+   * Verifies that the first flight result displays the requested original-currency symbol.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} currencySymbol - Expected currency symbol, e.g. "$"
+   * @returns {Promise<{currencySymbol: string, priceText: string}>}
+   */
+  async verifyOriginalCurrencySymbolVisibleInResults(page, currencySymbol) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!currencySymbol || typeof currencySymbol !== 'string') {
+      throw new Error('currencySymbol must be a non-empty string');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const priceText = await flightResultsPage.getFirstFlightResultPriceText();
+
+    expect(priceText, 'Expected the first flight result to display the original currency symbol')
+      .toContain(currencySymbol);
+
+    return { currencySymbol, priceText };
+  },
+
+  /**
+   * Verifies that the pricing options drawer displays the requested original-currency symbol.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} currencySymbol - Expected currency symbol, e.g. "$"
+   * @returns {Promise<{currencySymbol: string, originalPriceTexts: string[]}>}
+   */
+  async verifyOriginalCurrencySymbolVisibleInPricingOptions(page, currencySymbol) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!currencySymbol || typeof currencySymbol !== 'string') {
+      throw new Error('currencySymbol must be a non-empty string');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const originalPriceTexts = await flightResultsPage.getPricingOptionsOriginalPriceTexts();
+
+    expect(
+      originalPriceTexts.some((text) => text.includes(currencySymbol)),
+      `Expected pricing options to display the original currency symbol ${currencySymbol}`,
+    ).toBe(true);
+
+    return { currencySymbol, originalPriceTexts };
+  },
+
+  /**
    * Adds the first flight result to the cart.
    *
    * This flow:

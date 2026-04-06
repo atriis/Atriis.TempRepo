@@ -198,6 +198,16 @@ class CheckoutPage {
   }
 
   /**
+   * Fills the traveler contact email field.
+   * @param {string} value
+   */
+  async fillContactEmail(value) {
+    const input = this.page.locator(SELECTORS.EMAIL_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.fill(value);
+  }
+
+  /**
    * Clicks the "Don't share contact details with airlines" checkbox.
    */
   async clickContactDetailsCheckbox() {

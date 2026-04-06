@@ -19,6 +19,11 @@ When("I search for a one way flight from {string} to {string}", async function (
   await FlightSearch.searchFlightOneWay(this.page, { from, to });
 });
 
+When('I search for a same day one way flight from {string} to {string}', async function (from, to) {
+  logger.info('Searching for same-day one-way flight', { from, to });
+  await FlightSearch.searchFlightOneWaySameDay(this.page, { from, to });
+});
+
 When("I search for a one way flight from {string} to {string} on the {int} {string} of next month", async function (from, to, nth, dayOfWeek) {
   logger.info('Searching for one-way flight on specific weekday of next month', { from, to, nth, dayOfWeek });
   await FlightSearch.searchOneWayOnNthWeekday(this.page, from, to, dayOfWeek, nth);
@@ -27,6 +32,11 @@ When("I search for a one way flight from {string} to {string} on the {int} {stri
 When("I search for a round trip flight from {string} to {string}", async function (from, to) {
   logger.info('Searching for round trip flight', { from, to });
   await FlightSearch.searchFlightRoundTrip(this.page, { from, to });
+});
+
+When('I search for a round trip flight from {string} to {string} with preferred carrier {string}', async function (from, to, carrier) {
+  logger.info('Searching for round trip flight with preferred carrier', { from, to, carrier });
+  await FlightSearch.searchFlightRoundTripWithPreferredCarrier(this.page, { from, to }, carrier);
 });
 
 When('I search for a round trip {string} class flight from {string} to {string}', async function (cabinClass, from, to) {
@@ -69,6 +79,11 @@ When('I select {string} in the flight search stops dropdown', async function (st
   await FlightSearch.selectStopsOption(this.page, stopsOption);
 });
 
+Then('free text {string} should not be accepted in the flight search stops dropdown', async function (freeText) {
+  logger.info('Verifying flight stops dropdown rejects free text', { freeText });
+  await FlightSearch.verifyStopsDropdownRejectsFreeText(this.page, freeText);
+});
+
 When('I search from the edit flight search form', async function () {
   logger.info('Submitting edit flight search form');
   await FlightSearch.searchFromEditFlightSearch(this.page);
@@ -77,6 +92,11 @@ When('I search from the edit flight search form', async function () {
 When("I search for a flight by schedule from {string} to {string}", async function (from, to) {
   logger.info('Searching for flight by schedule', { from, to });
   await FlightSearch.searchFlightBySchedule(this.page, { from, to });
+});
+
+When('I search for a flight by schedule from {string} to {string} with preferred carrier {string} in the edit flight search', async function (from, to, carrier) {
+  logger.info('Searching from edit flight search by schedule with preferred carrier', { from, to, carrier });
+  await FlightSearch.searchFlightByScheduleWithPreferredCarrierInEditSearch(this.page, from, to, carrier);
 });
 
 When("I search for a random one way flight", async function () {
@@ -106,6 +126,17 @@ When("I search for a multi-city flight with legs {string} and {string} and {stri
     return { from: parts[0], to: parts[1] };
   };
   const legs = [leg1, leg2, leg3].map(parseLeg);
+  logger.info('Searching for multi-city flight', { legs });
+  await FlightSearch.searchFlightMultiCity(this.page, legs);
+});
+
+When("I search for a multi-city flight with legs {string} and {string}", async function (leg1, leg2) {
+  const parseLeg = (leg) => {
+    const parts = leg.toUpperCase().split('-');
+    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
+    return { from: parts[0], to: parts[1] };
+  };
+  const legs = [leg1, leg2].map(parseLeg);
   logger.info('Searching for multi-city flight', { legs });
   await FlightSearch.searchFlightMultiCity(this.page, legs);
 });

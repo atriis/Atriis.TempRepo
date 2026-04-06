@@ -1,7 +1,6 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const FlightPricingPage = require("@pages/FlightPricingPage");
 const { CartPage } = require("@pages/CartPage");
-const { ResultsPage } = require("@pages/ResultsPage");
 const Results = require("./Results");
 
 /**
@@ -12,36 +11,51 @@ const Results = require("./Results");
  */
 const FlightPricing = {
 
-  async extractYourSelectionPrice(page) {
+  async extractFarePrice(page, fareTitle) {
     if (!page) {
       throw new Error('page is required');
     }
 
+    if (!fareTitle || typeof fareTitle !== 'string') {
+      throw new Error('fareTitle must be a non-empty string');
+    }
+
     const flightPricingPage = getPageObject(page, FlightPricingPage);
-    await flightPricingPage.waitForYourSelectionText();
-    return flightPricingPage.getYourSelectionPrice();
+    await flightPricingPage.waitForFareTitleText(fareTitle);
+    return flightPricingPage.getFarePrice(fareTitle);
+  },
+
+  async extractYourSelectionPrice(page) {
+    return this.extractFarePrice(page, 'Your selection');
+  },
+
+  async addFareToCart(page, fareTitle) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!fareTitle || typeof fareTitle !== 'string') {
+      throw new Error('fareTitle must be a non-empty string');
+    }
+
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+    const cartPage = getPageObject(page, CartPage);
+
+    await flightPricingPage.waitForFareTitleText(fareTitle);
+
+    await Promise.all([
+      page.waitForLoadState('domcontentloaded', { timeout: 45000 }).catch(() => {}),
+      flightPricingPage.clickAddToTripForFare(fareTitle),
+    ]);
+
+    await Results.clickProceedConflictQuoteModal(page);
+    await cartPage.waitForPendingBookingText({ timeout: 90000 });
+
+    return { added: true, fareTitle };
   },
 
   async addYourSelectionFareToCart(page) {
-    if (!page) {
-      throw new Error('page is required');
-    }
-    
-    const flightPricingPage = getPageObject(page, FlightPricingPage);
-    const cartPage = getPageObject(page, CartPage);
-    const resultsPage = getPageObject(page, ResultsPage);
-
-    await flightPricingPage.waitForYourSelectionText();
-    await resultsPage.waitForAddToTripText();
-    await resultsPage.clickFirstAddToTripButton();
-
-    // Some suppliers show a conflict modal; handle it defensively
-    await Results.clickProceedConflictQuoteModal(page);
-
-    // Ensure the flight is now present in the cart
-    await cartPage.waitForPendingBookingText();
-
-    return { added: true };
+    return this.addFareToCart(page, 'Your selection');
   },
 };
 

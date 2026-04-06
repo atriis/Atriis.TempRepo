@@ -59,6 +59,7 @@ const SELECTORS = {
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
   OOP_JUSTIFICATION_SECTION: '.oop-justification', // Section containing the OOP justification dropdown/text (oop-justification.vue)
   OOP_JUSTIFICATION_SELECT: '.oop-justification .app-select .el-select', // The el-select wrapper inside the OOP justification section
+  OOP_JUSTIFICATION_SELECTED_VALUE: '.oop-justification .el-select__selected-item',
   
   // Extras
   EDIT_EXTRAS_BUTTON: ".extra__btns", //All edit buttons in extras section have the same class, so we will use nth(index) to click the right one when needed
@@ -99,6 +100,7 @@ const SELECTORS = {
   PROVIDER_LABEL: 'section.hotel-preview .provider-label',
   // Hotel quote price in cart (hotel-quote-card.vue → app-price → h4.amount)
   HOTEL_QUOTE_PRICE: '.quote-payment-card .price-wrapper .amount',
+  FLIGHT_QUOTE_ORIGINAL_PRICE: '.flight-quote-summary .original-price',
   // Hotel rooms badge in cart trip summary (.dates-and-rooms from hotel-quote-summary.vue)
   ROOMS_BADGE: '.dates-and-rooms, .dates span',
 
@@ -366,6 +368,15 @@ class CartPage {
   }
 
   /**
+   * Gets the OOP justification section locator.
+   *
+   * @returns {Locator} Playwright locator for the justification section.
+   */
+  getOOPJustificationSection() {
+    return this.page.locator(SELECTORS.OOP_JUSTIFICATION_SECTION);
+  }
+
+  /**
    * Gets the Save Justification button locator.
    *
    * @returns {Locator} Playwright locator for the Save button.
@@ -401,6 +412,24 @@ class CartPage {
    */
   getAllVisibleJustificationOptions() {
     return this.page.locator(`${SELECTORS.DROPDOWN_OPTION}:visible`);
+  }
+
+  /**
+   * Gets the first visible justification dropdown option.
+   *
+   * @returns {Locator} Playwright locator for the first visible option.
+   */
+  getFirstVisibleJustificationOption() {
+    return this.getAllVisibleJustificationOptions().first();
+  }
+
+  /**
+   * Gets the selected justification text element shown in the dropdown.
+   *
+   * @returns {Locator} Playwright locator for the selected dropdown value.
+   */
+  getSelectedJustificationValue() {
+    return this.page.locator(SELECTORS.OOP_JUSTIFICATION_SELECTED_VALUE).first();
   }
 
   /**
@@ -651,6 +680,18 @@ class CartPage {
   }
 
   /**
+   * Gets the original-currency text from the first flight quote summary in cart.
+   *
+   * @returns {Promise<string>}
+   */
+  async getFirstFlightOriginalPriceText() {
+    const originalPrice = this.page.locator(SELECTORS.FLIGHT_QUOTE_ORIGINAL_PRICE).first();
+    await originalPrice.waitFor({ state: 'visible', timeout: 30000 });
+
+    return ((await originalPrice.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
    * Hovers over the Share button and waits for the visible share dropdown menu.
    */
   async hoverShareButton() {
@@ -716,12 +757,26 @@ class CartPage {
   }
 
   /**
+   * Waits for the OOP justification dropdown to be visible.
+   */
+  async waitForJustificationDropdownVisible() {
+    await this.getJustificationDropdown().waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  /**
    * Clicks the Save Justification button.
    */
   async saveOOPJustificationText() {
     const saveButton = this.getSaveJustificationButton();
     await saveButton.waitFor({ state: "visible", timeout: 10000 });
     await saveButton.click();
+  }
+
+  /**
+   * Waits for the Save Justification button to be hidden after persisting the selection.
+   */
+  async waitForSaveJustificationButtonHidden() {
+    await this.getSaveJustificationButton().waitFor({ state: 'hidden', timeout: 10000 });
   }
 
   /**
@@ -747,6 +802,30 @@ class CartPage {
    */
   async selectJustificationDropdownOption(justificationOption) {
     await this.getJustificationOption(justificationOption).click();
+  }
+
+  /**
+   * Selects the first visible justification option from the open dropdown.
+   *
+   * @returns {Promise<string>} Text of the selected option
+   */
+  async selectFirstVisibleJustificationOption() {
+    const firstOption = this.getFirstVisibleJustificationOption();
+    await firstOption.waitFor({ state: 'visible', timeout: 10000 });
+    const optionText = ((await firstOption.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+    await firstOption.click();
+    return optionText;
+  }
+
+  /**
+   * Reads the selected justification value text shown in the dropdown.
+   *
+   * @returns {Promise<string>}
+   */
+  async getSelectedJustificationValueText() {
+    const selectedValue = this.getSelectedJustificationValue();
+    await selectedValue.waitFor({ state: 'visible', timeout: 10000 });
+    return ((await selectedValue.textContent()) ?? '').replace(/\s+/g, ' ').trim();
   }
 
   /**

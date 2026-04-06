@@ -14,6 +14,7 @@ const SELECTORS = {
   // Flight selection
   CHANGE_FLIGHT_BUTTON: '.change-flight-btn-wrapper',
   CHANGE_FLIGHT_TEXT: 'Change flight',
+  COMPARISON_TOGGLE: '.comparison-btn span',
   COMPARISON_TABLE: '.ticket-layout-container .el-table__body-wrapper',
   COMPARISON_ROW: '.ticket-layout-container .el-table__body-wrapper tbody tr',
   COMPARISON_STOP_TYPE: '.stop-type',
@@ -69,6 +70,8 @@ const SELECTORS = {
   FLIGHT_PREVIEW: '.flight-list .flight-preview',
   FLIGHT_PREVIEW_SEGMENT: '.flight-info-container',
   FLIGHT_LOCATION_CODE: '.loc-code',
+  MARKED_FLIGHT_LOCATION_CODE: '.loc-code.marked, .loc-code.markedEdge',
+  FIRST_FLIGHT_RESULT_PRICE_WRAPPER: '.flight-list .flight-preview .price-wrapper',
 
   // Codeshare / Operated by
   FLIGHT_OPERATOR: '.flight-operator',
@@ -261,6 +264,85 @@ class FlightResultsPage {
   }
 
   /**
+   * Gets the airport codes marked/highlighted in the first visible flight result.
+   *
+   * @returns {Promise<string[]>}
+   */
+  async getMarkedLocationCodesInFirstFlightResult() {
+    await this.waitForFlightResults();
+
+    const firstResult = this.page.locator(SELECTORS.FLIGHT_PREVIEW).first();
+    await firstResult.waitFor({ state: 'visible', timeout: 30000 });
+
+    const markedCodes = firstResult.locator(SELECTORS.MARKED_FLIGHT_LOCATION_CODE);
+    await markedCodes.first().waitFor({ state: 'visible', timeout: 30000 });
+
+    const codes = await markedCodes.allTextContents();
+
+    return codes.map((code) => code.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  }
+
+  /**
+   * Gets the normalized price-wrapper text from the first visible flight result.
+   *
+   * @returns {Promise<string>}
+   */
+  async getFirstFlightResultPriceText() {
+    await this.waitForFlightResults();
+
+    const priceWrapper = this.page.locator(SELECTORS.FIRST_FLIGHT_RESULT_PRICE_WRAPPER).first();
+    await priceWrapper.waitFor({ state: 'visible', timeout: 30000 });
+
+    const text = await priceWrapper.textContent();
+
+    return text?.replace(/\s+/g, ' ').trim() ?? '';
+  }
+
+  /**
+   * Waits for the comparison toggle button to be visible.
+   *
+   * @param {number} timeout
+   */
+  async waitForComparisonToggle(timeout = 60000) {
+    await this.page.locator(SELECTORS.COMPARISON_TOGGLE).first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Clicks the comparison toggle button.
+   */
+  async clickComparisonToggle() {
+    await this.waitForComparisonToggle();
+    await this.page.locator(SELECTORS.COMPARISON_TOGGLE).first().click();
+  }
+
+  /**
+   * Waits for the comparison toggle to display an exact label.
+   *
+   * @param {string} expectedText
+   * @param {number} timeout
+   */
+  async waitForComparisonToggleText(expectedText, timeout = 30000) {
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+
+    await this.waitForComparisonToggle(timeout);
+    await waitForText(this.page, SELECTORS.COMPARISON_TOGGLE, expectedText, timeout);
+  }
+
+  /**
+   * Gets the current comparison toggle label.
+   *
+   * @returns {Promise<string>}
+   */
+  async getComparisonToggleText() {
+    await this.waitForComparisonToggle();
+    const toggleText = await this.page.locator(SELECTORS.COMPARISON_TOGGLE).first().textContent();
+
+    return toggleText.replace(/[\r\n]+/g, '').trim();
+  }
+
+  /**
    * Waits for the flight comparison table to be visible.
    *
    * @param {number} timeout
@@ -425,6 +507,23 @@ class FlightResultsPage {
   async getAmountPriceValuePricingOptions(index = 0) {
     const overlay = this.getPricingOptionsOverlay();
     return extractNumber(overlay, SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE, index);
+  }
+
+  /**
+   * Gets all original-price texts shown in the pricing options drawer.
+   *
+   * @returns {Promise<string[]>}
+   */
+  async getPricingOptionsOriginalPriceTexts() {
+    const overlay = this.getPricingOptionsOverlay();
+    const amountValues = overlay.locator(SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE);
+
+    await overlay.waitFor({ state: 'visible', timeout: 30000 });
+    await amountValues.first().waitFor({ state: 'visible', timeout: 30000 });
+
+    const texts = await amountValues.allTextContents();
+
+    return texts.map((text) => text.replace(/\s+/g, ' ').trim()).filter(Boolean);
   }
 
   /**

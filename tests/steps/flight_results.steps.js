@@ -36,6 +36,16 @@ When("I add the first flight to cart", async function () {
   await FlightResults.addFirstFlightToCart(this.page);
 });
 
+When('I hide the comparison table in flight results', async function () {
+  logger.info('Hiding comparison table in flight results');
+  await FlightResults.hideComparisonTable(this.page);
+});
+
+When('I show the comparison table in flight results', async function () {
+  logger.info('Showing comparison table in flight results');
+  await FlightResults.showComparisonTable(this.page);
+});
+
 // ========================================
 // WHEN STEPS - RESULTS FILTERING
 // ========================================
@@ -262,6 +272,16 @@ Then('the flight comparison row for {string} should have prices', async function
   await FlightResults.verifyComparisonRowHasPrices(this.page, stopLabel);
 });
 
+Then('the flight comparison toggle should display {string}', async function (expectedText) {
+  logger.info('Verifying flight comparison toggle text', { expectedText });
+  await FlightResults.verifyComparisonToggleText(this.page, expectedText);
+});
+
+Then('the comparison table should be visible in flight results and the toggle should display {string}', async function (expectedText) {
+  logger.info('Verifying comparison table visibility and toggle text', { expectedText });
+  await FlightResults.verifyComparisonTableVisibleWithToggleText(this.page, expectedText);
+});
+
 Then('the edited flight search results should reflect the updated dates', async function () {
   logger.info('Verifying edited flight results reflect updated dates', { editedFlightSearch: this.editedFlightSearch });
 
@@ -453,5 +473,22 @@ Then('the {string} indicator should be visible in pricing options', async functi
 Then('all flight results should be from airline {string}', async function (airlineName) {
   logger.info('Verifying all flight results are from airline', { airlineName });
   await FlightResults.verifyAllResultsFromAirline(this.page, airlineName);
+});
+
+Then('airport codes {string} and {string} should be marked in the first flight result', async function (firstAirportCode, secondAirportCode) {
+  logger.info('Verifying airport codes are marked in the first flight result', {
+    airportCodes: [firstAirportCode, secondAirportCode],
+  });
+  await FlightResults.verifyMarkedAirportCodesInFirstResult(this.page, [firstAirportCode, secondAirportCode]);
+});
+
+Then('the original currency symbol {string} should be visible in flight results', async function (currencySymbol) {
+  logger.info('Verifying original currency symbol is visible in flight results', { currencySymbol });
+  await FlightResults.verifyOriginalCurrencySymbolVisibleInResults(this.page, currencySymbol);
+});
+
+Then('the original currency symbol {string} should be visible in pricing options', async function (currencySymbol) {
+  logger.info('Verifying original currency symbol is visible in pricing options', { currencySymbol });
+  await FlightResults.verifyOriginalCurrencySymbolVisibleInPricingOptions(this.page, currencySymbol);
 });
 

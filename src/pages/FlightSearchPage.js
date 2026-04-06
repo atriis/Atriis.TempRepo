@@ -12,6 +12,12 @@ const SELECTORS = {
   ALLOW_NEARBY_AIRPORTS_CHECKBOX: ".advanced-search-container .el-checkbox__inner",
   ADVANCED_SEARCH_OPTIONS: '.flight-more-search-inputs',
   FLIGHT_STOPS_FIELD: '.flight-more-search-inputs > :nth-child(1)',
+  FLIGHT_STOPS_COMBOBOX: '.flight-more-search-inputs > :nth-child(1) input[role="combobox"]',
+  FLIGHT_STOPS_DISPLAY_TEXT: '.flight-more-search-inputs > :nth-child(1) .el-select__placeholder',
+  PREFERRED_CARRIER_FIELD: '.flight-more-search-inputs > :nth-child(2)',
+  PREFERRED_CARRIER_INPUT: '.flight-more-search-inputs > :nth-child(2) input[role="combobox"]',
+  PREFERRED_CARRIER_CLEAR_ICON: '.el-tag__close',
+  VISIBLE_DROPDOWN_ITEMS: '.el-select-dropdown__item:visible',
   // Advanced search — departure leg selectors
   DEPARTURE_APP_SELECT: 'section.departure .app-select',
   // Advanced search — return leg selectors
@@ -25,6 +31,10 @@ const SELECTORS = {
   // Advanced search — return leg date picker
   ADVANCED_RETURN_DATE_FIELD: 'section.return .flight-date-picker input',
 };
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 class FlightSearchPage {
   /**
@@ -188,6 +198,118 @@ class FlightSearchPage {
     await this.page.locator(SELECTORS.DROPDOWN_OPTION(value)).click();
 
     await stopsDropdown.getByText(value, { exact: true }).first().waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  /**
+   * Clears all selected preferred carriers from the advanced-search multi-select.
+   */
+  async clearPreferredCarriers() {
+    const preferredCarrierField = this.page.locator(SELECTORS.PREFERRED_CARRIER_FIELD).first();
+    await preferredCarrierField.waitFor({ state: 'visible', timeout: 10000 });
+
+    const clearIcons = preferredCarrierField.locator(SELECTORS.PREFERRED_CARRIER_CLEAR_ICON);
+    let remaining = await clearIcons.count();
+
+    while (remaining > 0) {
+      await clearIcons.nth(0).click({ force: true });
+      await this.page.waitForTimeout(200);
+      remaining = await clearIcons.count();
+    }
+  }
+
+  /**
+   * Selects a preferred carrier from the advanced-search multi-select.
+   *
+   * @param {string} value
+   */
+  async selectPreferredCarrier(value) {
+    if (!value || typeof value !== 'string') {
+      throw new Error('value must be a non-empty string');
+    }
+
+    const preferredCarrierField = this.page.locator(SELECTORS.PREFERRED_CARRIER_FIELD).first();
+    const preferredCarrierInput = this.page.locator(SELECTORS.PREFERRED_CARRIER_INPUT).first();
+    const preferredCarrierOption = this.page
+      .locator(SELECTORS.VISIBLE_DROPDOWN_ITEMS)
+      .filter({ hasText: new RegExp(`^${escapeRegExp(value)}(?:\\s*\\(|$)`, 'i') })
+      .first();
+
+    await preferredCarrierField.waitFor({ state: 'visible', timeout: 10000 });
+    await preferredCarrierField.click();
+    await preferredCarrierInput.waitFor({ state: 'visible', timeout: 10000 });
+    await preferredCarrierInput.fill(value);
+    await preferredCarrierOption.waitFor({ state: 'visible', timeout: 10000 });
+    await preferredCarrierOption.click();
+
+    await this.page.waitForFunction(
+      ([selector, text]) => {
+        const element = document.querySelector(selector);
+
+        return !!element && element.textContent.replace(/\s+/g, ' ').includes(text);
+      },
+      [SELECTORS.PREFERRED_CARRIER_FIELD, value],
+      { timeout: 10000 },
+    );
+  }
+
+  /**
+   * Attempts to type free text into the Stops dropdown.
+   *
+   * @param {string} value
+   * @returns {Promise<{typedValue: string, inputValue: string, isEditable: boolean}>}
+   */
+  async typeFreeTextInStopsDropdown(value) {
+    if (!value || typeof value !== 'string') {
+      throw new Error('value must be a non-empty string');
+    }
+
+    const stopsDropdown = this.page.locator(SELECTORS.FLIGHT_STOPS_FIELD).first();
+    const combobox = this.page.locator(SELECTORS.FLIGHT_STOPS_COMBOBOX).first();
+
+    await stopsDropdown.waitFor({ state: 'visible', timeout: 10000 });
+    await stopsDropdown.click();
+
+    await combobox.waitFor({ state: 'attached', timeout: 10000 });
+    const isEditable = await combobox.isEditable().catch(() => false);
+    await this.page.keyboard.type(value);
+
+    const inputValue = await combobox.inputValue().catch(() => '');
+    await this.page.keyboard.press('Tab');
+
+    return { typedValue: value, inputValue, isEditable };
+  }
+
+  /**
+   * Waits for the Stops dropdown to show the expected text.
+   *
+   * @param {string} expectedText
+   * @param {number} timeout
+   */
+  async waitForStopsDropdownDisplayText(expectedText, timeout = 10000) {
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+
+    await this.page.waitForFunction(
+      ([selector, text]) => {
+        const element = document.querySelector(selector);
+
+        return !!element && element.textContent.replace(/\s+/g, ' ').includes(text);
+      },
+      [SELECTORS.FLIGHT_STOPS_FIELD, expectedText],
+      { timeout },
+    );
+  }
+
+  /**
+   * Gets the current visible Stops dropdown text.
+   *
+   * @returns {Promise<string>}
+   */
+  async getStopsDropdownDisplayText() {
+    const displayText = await this.page.locator(SELECTORS.FLIGHT_STOPS_FIELD).first().textContent();
+
+    return displayText.replace(/\s+/g, ' ').trim();
   }
 
   /**

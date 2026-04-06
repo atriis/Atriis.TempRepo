@@ -294,10 +294,64 @@ async function selectNthWeekdayFromNextMonth(page, { dayOfWeek, nth = 1 } = {}) 
   await selectDatesByNthAvailable(page, { startIndex: index });
 }
 
+/**
+ * Selects today's visible available date from the currently open calendar.
+ *
+ * This is used for short-notice / same-day scenarios where the UI must keep
+ * the departure date on the current day rather than using the default nth-available strategy.
+ *
+ * @param {Object} page - Playwright page instance
+ * @param {Object} opts
+ * @param {string} [opts.pickerPosition="first"] - which visible picker to use ("first" or "last")
+ * @param {number} [opts.monthTableIndex=0] - preferred month table index inside the picker
+ */
+async function selectTodayFromVisibleCalendar(
+  page,
+  { pickerPosition = "first", monthTableIndex = 0 } = {},
+) {
+  if (pickerPosition !== "first" && pickerPosition !== "last") {
+    throw new Error(
+      `pickerPosition must be either "first" or "last". Received: ${pickerPosition}`,
+    );
+  }
+
+  if (!Number.isInteger(monthTableIndex) || monthTableIndex < 0) {
+    throw new Error(
+      `monthTableIndex must be an integer >= 0. Received: ${monthTableIndex}`,
+    );
+  }
+
+  const pickers = page.locator(SELECTORS.DATE_PICKER_PANEL);
+  const picker = pickerPosition === "last" ? pickers.last() : pickers.first();
+  const monthTables = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE);
+  const tableCount = await monthTables.count();
+
+  if (tableCount === 0) {
+    throw new Error("Date picker month table not found.");
+  }
+
+  for (let i = 0; i < tableCount; i++) {
+    const tableIndex = (monthTableIndex + i) % tableCount;
+    const todayCell = monthTables
+      .nth(tableIndex)
+      .locator(SELECTORS.DATE_PICKER_TODAY_AVAILABLE_DAY_CELL)
+      .first();
+
+    if (await todayCell.count() > 0) {
+      await todayCell.waitFor({ state: "visible", timeout: 10000 });
+      await todayCell.click();
+      return;
+    }
+  }
+
+  throw new Error("Could not find a visible available date cell for today in the open calendar.");
+}
+
 module.exports = {
   selectDatesByNthAvailable,
   selectDatesByNthAvailableFromNextVisibleMonth,
   selectDatesByValue,
+  selectTodayFromVisibleCalendar,
   selectNthWeekdayFromNextMonth,
   defaultDateSelectorBuilder,
 };

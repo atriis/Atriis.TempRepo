@@ -97,6 +97,11 @@ When("I open the OOP justification dropdown and verify there are {int} options",
   await Cart.openJustificationDropdownAndVerifyCount(this.page, count);
 });
 
+Then('the OOP justification dropdown should be displayed and saving should work as expected', async function () {
+  logger.info('Verifying OOP justification dropdown is displayed and can be saved');
+  await Cart.verifyOOPJustificationDropdownSaveWorksInCart(this.page);
+});
+
 Then("the OOP justification dropdown should contain the following options:", async function (dataTable) {
   const options = dataTable.raw().map(row => row[0]);
   logger.info("Verifying OOP justification dropdown options", { options });
@@ -229,6 +234,11 @@ Then("I successfully cancel the trip", async function () {
 Then("the booking status should be {string}", async function (status) {
   logger.info("Verifying booking status", { status });
   await Cart.expectBookingStatusToBe(status, { page: this.page });
+});
+
+Then('the original currency symbol {string} should be visible in cart', async function (currencySymbol) {
+  logger.info('Verifying original currency symbol is visible in cart', { currencySymbol });
+  await Cart.verifyOriginalCurrencySymbolVisibleInCart(this.page, currencySymbol);
 });
 
 Then('the cart total price should match the last extracted price', async function () {
