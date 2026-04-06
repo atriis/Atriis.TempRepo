@@ -137,6 +137,14 @@ class ResultsPage {
     await waitForText(this.page, SELECTORS.NO_RESULTS_TITLE, expectedText, timeout);
   }
 
+  async waitForNoResults(timeout = 60000) {
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be a non-negative number, got ${timeout}`);
+    }
+
+    await this.getNoResultsContainer().waitFor({ state: 'visible', timeout });
+  }
+
   async waitForNoResultsActionButtons(timeout = 60000) {
     if (typeof timeout !== 'number' || timeout < 0) {
       throw new Error(`timeout must be a non-negative number, got ${timeout}`);

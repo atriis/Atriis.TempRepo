@@ -12,9 +12,17 @@ Feature: 53411 By Schedule - Multipax cheapest package has correct price
   So that the total cost is accurate for multi-pax bookings
 
   Scenario: Cheapest package price is correct in pricing page and cart for multi-pax
-    Given I am logged in as "ruimendes" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
-    When I search for a flight by schedule from "LON" to "MAD"
-    And I select flight segments by schedule
-    # TODO: Step needed for "Verify cheapest package price in pricing page matches cart price"
+    When I search for a flight by schedule from "LON" to "FRA"
+    And I filter results by carrier "Lufthansa"
+    And I select one flight segment by schedule
+    And I wait for the change flight button to be visible
+    And I filter results by carrier "Lufthansa"
+    And I select one flight segment by schedule
+    And I wait for "Cheapest package" text to be visible
+    And I extract the price from "Cheapest package" fare
+    And I add "Cheapest package" fare to trip
+    Then the booking status should be "Pending booking"
+    Then the cart total price should be the last extracted price multiplied by the number of travelers 2

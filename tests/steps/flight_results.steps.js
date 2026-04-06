@@ -251,6 +251,17 @@ When("I scroll to the Flight Duration filter for {string}", async function (loca
   await FlightResults.scrollToFlightDurationFromLocationTitle(this.page, location);
 });
 
+When('I adjust the Limit Layover Duration filter from the half timepoint of the longest point', async function () {
+  logger.info('Adjusting Limit Layover Duration filter from midpoint of longest range');
+  await FlightResults.adjustLimitLayoverDurationFilterFromMidpoint(this.page);
+});
+
+Then('all pricing option segments {string} and {string} and {string} should be visible and selectable', async function (firstRoute, secondRoute, thirdRoute) {
+  const segmentRoutes = [firstRoute, secondRoute, thirdRoute];
+  logger.info('Verifying pricing option segments are visible and selectable', { segmentRoutes });
+  await FlightResults.verifyMultiCitySegmentsVisibleInPricingOptions(this.page, segmentRoutes);
+});
+
 // ========================================
 // THEN STEPS - ASSERTIONS
 // ========================================

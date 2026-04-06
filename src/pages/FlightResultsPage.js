@@ -1,8 +1,50 @@
+const { expect } = require("@playwright/test");
 const { waitForText } = require("@utils/wait");
 const { extractNumber } = require("@utils/dom");
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function parseDurationToMinutes(value) {
+  if (!value || typeof value !== 'string') {
+    throw new Error('value must be a non-empty string');
+  }
+
+  const matches = [...value.matchAll(/(\d+)\s*([dhm])/gi)];
+  if (!matches.length) {
+    throw new Error(`Could not parse duration text: ${value}`);
+  }
+
+  return matches.reduce((total, [, amountText, unit]) => {
+    const amount = Number.parseInt(amountText, 10);
+
+    if (unit.toLowerCase() === 'd') {
+      return total + (amount * 24 * 60);
+    }
+
+    if (unit.toLowerCase() === 'h') {
+      return total + (amount * 60);
+    }
+
+    return total + amount;
+  }, 0);
+}
+
+function parseDurationRange(rangeText) {
+  if (!rangeText || typeof rangeText !== 'string') {
+    throw new Error('rangeText must be a non-empty string');
+  }
+
+  const [startText, endText] = rangeText.split(/\s+-\s+/);
+  if (!startText || !endText) {
+    throw new Error(`Could not parse duration range text: ${rangeText}`);
+  }
+
+  return {
+    startMinutes: parseDurationToMinutes(startText),
+    endMinutes: parseDurationToMinutes(endText),
+  };
 }
 
 /**
@@ -12,6 +54,7 @@ function escapeRegExp(value) {
 
 const SELECTORS = {
   // Flight selection
+  PRODUCT_LOADER: '.app-product-loader',
   CHANGE_FLIGHT_BUTTON: '.change-flight-btn-wrapper',
   CHANGE_FLIGHT_TEXT: 'Change flight',
   COMPARISON_TOGGLE: '.comparison-btn span',
@@ -52,6 +95,7 @@ const SELECTORS = {
   PRICING_OPTIONS_CLOSE_MODAL: '[aria-label="Close this dialog"]',
   PRICING_OPTIONS_OVERLAY: '.el-overlay:has(.app-drawer.flight-details-drawer)',
   PRICING_OPTIONS_OVERLAY_HEADING_TEXT: 'Pricing Options',
+  PRICING_OPTIONS_TAB: '.pricing-options-tabs .el-tabs__item',
   PRICING_OPTIONS_BAGGAGE_CLASS: '.leg-details .baggage span',
   PRICING_OPTIONS_FARE_COMPONENT_TEXT: 'text=Fare component',
   GREEN_CIRCLE_ICON_PRICING_OPTIONS: 'span.material-symbols-outlined.green',
@@ -72,6 +116,12 @@ const SELECTORS = {
   FLIGHT_LOCATION_CODE: '.loc-code',
   MARKED_FLIGHT_LOCATION_CODE: '.loc-code.marked, .loc-code.markedEdge',
   FIRST_FLIGHT_RESULT_PRICE_WRAPPER: '.flight-list .flight-preview .price-wrapper',
+  LIMIT_LAYOVER_DURATION_FILTER_CONTAINER: '.view-txt-link',
+  LIMIT_LAYOVER_DURATION_FILTER_LABEL: 'Limit Layover Duration',
+  TIME_SLIDER_SECTION: '.app-time-slider',
+  TIME_SLIDER_RANGE_LABEL: '.time-label',
+  TIME_SLIDER_RUNWAY: '.time-slider .el-slider__runway',
+  TIME_SLIDER_HANDLE: '.time-slider .el-slider__button-wrapper',
 
   // Codeshare / Operated by
   FLIGHT_OPERATOR: '.flight-operator',
@@ -249,18 +299,36 @@ class FlightResultsPage {
   }
 
   /**
-   * Waits for flight results to be loaded by checking for result actions.
-   * Works in both normal mode (Add to trip/Select) and share mode (Pricing Options).
+   * Waits for actual flight result cards to be visible.
    * 
    * @param {number} timeout - Max wait time in ms (default: 60000)
    */
   async waitForFlightResults(timeout = 60000) {
-    // Wait for either pricing options button OR action buttons to appear
-    // This works in both share mode and regular mode
-    await Promise.race([
-      this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).first().waitFor({ state: 'visible', timeout }),
-      this.page.locator(SELECTORS.RESULTS_BUTTON).first().waitFor({ state: 'visible', timeout })
-    ]);
+    await this.page.locator(SELECTORS.FLIGHT_PREVIEW).first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Returns whether the flight results product loader is currently visible.
+   *
+   * @param {number} timeout - Max wait time in ms to detect visibility (default: 3000)
+   * @returns {Promise<boolean>}
+   */
+  async isResultsLoaderVisible(timeout = 3000) {
+    try {
+      await this.page.locator(SELECTORS.PRODUCT_LOADER).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Waits for the flight results product loader to be hidden.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 120000)
+   */
+  async waitForResultsLoaderToFinish(timeout = 120000) {
+    await this.page.locator(SELECTORS.PRODUCT_LOADER).first().waitFor({ state: 'hidden', timeout });
   }
 
   /**
@@ -388,8 +456,8 @@ class FlightResultsPage {
    *
    * @param {number} index - Zero-based index of the pricing options button (default: 0)
    */
-  async waitForPricingOptionsButton(index = 0) {
-    await this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).nth(index).waitFor({ state: "visible" });
+  async waitForPricingOptionsButton(index = 0, timeout = 60000) {
+    await this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).nth(index).waitFor({ state: "visible", timeout });
   }
 
   /**
@@ -539,6 +607,48 @@ class FlightResultsPage {
     await header.waitFor({ state: 'visible', timeout });
 
     return (await header.textContent())?.replace(/\s+/g, ' ').trim() ?? '';
+  }
+
+  getPricingOptionsTab(index = 0) {
+    const overlay = this.getPricingOptionsOverlay();
+    return overlay.locator(SELECTORS.PRICING_OPTIONS_TAB).nth(index);
+  }
+
+  async getPricingOptionsTabCount() {
+    const overlay = this.getPricingOptionsOverlay();
+    await overlay.waitFor({ state: 'visible', timeout: 30000 });
+    return await overlay.locator(SELECTORS.PRICING_OPTIONS_TAB).count();
+  }
+
+  async waitForPricingOptionsTabCount(expectedMinimum = 1, timeout = 30000) {
+    if (typeof expectedMinimum !== 'number' || expectedMinimum < 1) {
+      throw new Error(`expectedMinimum must be >= 1, got: ${expectedMinimum}`);
+    }
+
+    await expect.poll(
+      async () => await this.getPricingOptionsTabCount(),
+      { timeout },
+    ).toBeGreaterThanOrEqual(expectedMinimum);
+  }
+
+  async waitForPricingOptionsTabRouteText(index, expectedRoute, timeout = 30000) {
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got: ${index}`);
+    }
+
+    if (!expectedRoute || typeof expectedRoute !== 'string') {
+      throw new Error('expectedRoute must be a non-empty string');
+    }
+    const tab = this.getPricingOptionsTab(index);
+    await expect(tab).toContainText(expectedRoute, { timeout });
+  }
+
+  async waitForPricingOptionsTabGreenIcon(index, timeout = 30000) {
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got: ${index}`);
+    }
+    const tab = this.getPricingOptionsTab(index);
+    await expect(tab).toContainText('check_circle', { timeout });
   }
 
   /**
@@ -878,6 +988,124 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   // Dynamic title: e.g., "Depart from London", "Depart from Madrid"
   getFlightDurationFromLocationTitle(location) {
     return this.page.getByText(location, { exact: false }).first();
+  }
+
+  getLimitLayoverDurationFilterContainer() {
+    return this.page
+      .locator(SELECTORS.LIMIT_LAYOVER_DURATION_FILTER_CONTAINER)
+      .filter({ has: this.page.getByText(new RegExp(`^${escapeRegExp(SELECTORS.LIMIT_LAYOVER_DURATION_FILTER_LABEL)}$`, 'i')) })
+      .first();
+  }
+
+  getLimitLayoverDurationExpandButton() {
+    return this.getLimitLayoverDurationFilterContainer().locator('button').first();
+  }
+
+  getLimitLayoverDurationSliderSection() {
+    return this.getLimitLayoverDurationFilterContainer().locator(SELECTORS.TIME_SLIDER_SECTION).first();
+  }
+
+  getLimitLayoverDurationRangeLabel() {
+    return this.getLimitLayoverDurationSliderSection().locator(SELECTORS.TIME_SLIDER_RANGE_LABEL).first();
+  }
+
+  async expandLimitLayoverDurationFilter() {
+    const container = this.getLimitLayoverDurationFilterContainer();
+    const sliderSection = this.getLimitLayoverDurationSliderSection();
+
+    await container.waitFor({ state: 'visible', timeout: 10000 });
+
+    const isExpanded = await sliderSection.isVisible().catch(() => false);
+    if (isExpanded) {
+      return;
+    }
+
+    const expandButton = this.getLimitLayoverDurationExpandButton();
+    await expandButton.scrollIntoViewIfNeeded();
+    await expandButton.click();
+    await sliderSection.waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  async getLimitLayoverDurationFilterSummary() {
+    await this.expandLimitLayoverDurationFilter();
+
+    const rangeLabel = this.getLimitLayoverDurationRangeLabel();
+    const rangeText = ((await rangeLabel.textContent()) || '').replace(/\s+/g, ' ').trim();
+
+    if (!rangeText) {
+      throw new Error('No visible Limit Layover Duration range label was found');
+    }
+
+    const { startMinutes, endMinutes } = parseDurationRange(rangeText);
+
+    return { rangeText, startMinutes, endMinutes };
+  }
+
+  async adjustLimitLayoverDurationFilterFromMidpoint() {
+    const summary = await this.getLimitLayoverDurationFilterSummary();
+    const totalRangeMinutes = summary.endMinutes - summary.startMinutes;
+
+    if (totalRangeMinutes <= 0) {
+      throw new Error(`Limit Layover Duration range must be positive, got: ${summary.rangeText}`);
+    }
+
+    const targetStartMinutes = Math.floor(summary.startMinutes + (totalRangeMinutes / 2));
+    const section = this.getLimitLayoverDurationSliderSection();
+    const runway = section.locator(SELECTORS.TIME_SLIDER_RUNWAY).first();
+    const lowerHandle = section.locator(SELECTORS.TIME_SLIDER_HANDLE).first();
+
+    await section.scrollIntoViewIfNeeded();
+    await runway.waitFor({ state: 'visible', timeout: 10000 });
+    await lowerHandle.waitFor({ state: 'visible', timeout: 10000 });
+
+    const runwayBox = await runway.boundingBox();
+    const handleBox = await lowerHandle.boundingBox();
+
+    if (!runwayBox || !handleBox) {
+      throw new Error('Could not determine Limit Layover Duration slider geometry');
+    }
+
+    const currentX = handleBox.x + (handleBox.width / 2);
+    const currentY = handleBox.y + (handleBox.height / 2);
+    const targetX = runwayBox.x + (runwayBox.width * ((targetStartMinutes - summary.startMinutes) / totalRangeMinutes));
+
+    await this.page.mouse.move(currentX, currentY);
+    await this.page.mouse.down();
+    await this.page.mouse.move(targetX, currentY, { steps: 12 });
+    await this.page.mouse.up();
+
+    await this.page.waitForFunction(
+      ([containerSelector, labelText, rangeSelector, previousRangeText]) => {
+        const containers = Array.from(document.querySelectorAll(containerSelector));
+        const container = containers.find((element) =>
+          element.textContent.replace(/\s+/g, ' ').includes(labelText),
+        );
+
+        if (!container) {
+          return false;
+        }
+
+        const rangeElement = container.querySelector(rangeSelector);
+        if (!rangeElement) {
+          return false;
+        }
+
+        return rangeElement.textContent.replace(/\s+/g, ' ').trim() !== previousRangeText;
+      },
+      [
+        SELECTORS.LIMIT_LAYOVER_DURATION_FILTER_CONTAINER,
+        SELECTORS.LIMIT_LAYOVER_DURATION_FILTER_LABEL,
+        SELECTORS.TIME_SLIDER_RANGE_LABEL,
+        summary.rangeText,
+      ],
+      { timeout: 15000 },
+    );
+
+    return {
+      adjusted: true,
+      originalRangeText: summary.rangeText,
+      targetStartMinutes,
+    };
   }
 
   /**

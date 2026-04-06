@@ -262,6 +262,34 @@ Then('the cart total price should match the last extracted price', async functio
   );
 });
 
+Then('the cart total price should be the last extracted price multiplied by the number of travelers {int}', async function (travelerCount) {
+  if (!Array.isArray(this.extractedPrices) || this.extractedPrices.length === 0) {
+    throw new Error('No extracted price stored. Run a price-extraction step before comparing with cart total price.');
+  }
+
+  if (!Number.isInteger(travelerCount) || travelerCount < 1) {
+    throw new Error(`travelerCount must be a positive integer, got: ${travelerCount}`);
+  }
+
+  const extractedPrice = this.extractedPrices[this.extractedPrices.length - 1];
+  const expectedPrice = extractedPrice * travelerCount;
+  const cartTotalPrice = await Cart.extractCartTotalPrice(this.page);
+
+  logger.info('Comparing cart total price with extracted price multiplied by traveler count', {
+    extractedPrice,
+    travelerCount,
+    expectedPrice,
+    cartTotalPrice,
+  });
+
+  expectNumbersToBeEqualWithTolerance(
+    cartTotalPrice,
+    expectedPrice,
+    1,
+    `Cart total price vs extracted price x ${travelerCount}`,
+  );
+});
+
 Then("the payment type should be {string}", async function (expectedType) {
   logger.info("Verifying payment type", { expectedType });
   await Cart.verifyPaymentType(this.page, expectedType);

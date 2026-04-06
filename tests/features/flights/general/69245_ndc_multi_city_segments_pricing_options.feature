@@ -14,6 +14,9 @@ Feature: 69245 NDC Flights - Multi city all segments displayed in pricing option
   Scenario: All NDC multi-city segments are visible in pricing options
     Given I am logged in as "clara" booking a new trip
     And I have added myself as the traveler
-    When I search for a multi-city flight with legs "FRA-MUC" and "MUC-BRU" and "FRA-GVA"
+    When I search for a multi-city flight with legs "FRA-BER" and "BER-MUC" and "MUC-ZRH"
+    And flight results should be available
     And I click to open first pricing options
-    # TODO: Step needed for "Verify all 3 segments are visible in pricing options modal"
+    Then all pricing option segments "FRA-BER" and "BER-MUC" and "MUC-ZRH" should be visible and selectable
+    And I add to trip from pricing options
+    And the booking status should be "Pending booking"

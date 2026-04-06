@@ -15,5 +15,8 @@ Feature: 69243 GDS Flights - Multi city all segments displayed in pricing option
     Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a multi-city flight with legs "MAD-LHR" and "DUB-ORY" and "BRU-MAD"
+    And flight results should be available
     And I click to open first pricing options
-    # TODO: Step needed for "Verify all 3 segments are visible in pricing options modal"
+    Then all pricing option segments "MAD-LHR" and "DUB-ORY" and "BRU-MAD" should be visible and selectable
+    And I add to trip from pricing options
+    And the booking status should be "Pending booking"

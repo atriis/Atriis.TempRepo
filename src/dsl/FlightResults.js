@@ -39,12 +39,27 @@ const FlightResults = {
     }
 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+    const timeout = 120000;
+    const startTime = Date.now();
 
     try {
-      await flightResultsPage.waitForFlightResults();
+      if (await flightResultsPage.isResultsLoaderVisible()) {
+        await flightResultsPage.waitForResultsLoaderToFinish(timeout);
+      }
+
+      const remainingTimeout = Math.max(1000, timeout - (Date.now() - startTime));
+      await flightResultsPage.waitForFlightResults(remainingTimeout);
       return true;
     } catch {
-      return false;
+      const remainingTimeout = Math.max(1000, timeout - (Date.now() - startTime));
+
+      try {
+        await resultsPage.waitForNoResults(remainingTimeout);
+        return false;
+      } catch {
+        return false;
+      }
     }
   },
 
@@ -497,7 +512,8 @@ const FlightResults = {
     }
     
     const flightResultsPage = getPageObject(page, FlightResultsPage);
-    await flightResultsPage.waitForPricingOptionsButton(index);
+    await flightResultsPage.waitForFlightResults(90000);
+    await flightResultsPage.waitForPricingOptionsButton(index, 90000);
     await flightResultsPage.clickPricingOptionsButton(index);
   },
 
@@ -550,6 +566,54 @@ const FlightResults = {
     ).toBe(true);
 
     return { expectedBrandName, brandNames };
+  },
+
+  /**
+   * Verifies that each multi-city segment is visible in pricing options and can be selected in sequence.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string[]} segmentRoutes - Array of routes in FROM-TO format
+   * @returns {Promise<{verified: boolean, segmentRoutes: string[]}>}
+   */
+  async verifyMultiCitySegmentsVisibleInPricingOptions(page, segmentRoutes) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!Array.isArray(segmentRoutes) || segmentRoutes.length < 2) {
+      throw new Error(`segmentRoutes must be an array of at least 2 routes, got: ${JSON.stringify(segmentRoutes)}`);
+    }
+
+    const normalizedRoutes = segmentRoutes.map((route, index) => {
+      if (!route || typeof route !== 'string') {
+        throw new Error(`segmentRoutes[${index}] must be a non-empty string`);
+      }
+
+      return route.toUpperCase().split('-').map((part) => part.trim()).join(' - ');
+    });
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+  await flightResultsPage.waitForPricingOptionsTabCount(normalizedRoutes.length, 60000);
+  const tabCount = await flightResultsPage.getPricingOptionsTabCount();
+
+    expect(
+      tabCount,
+      `Expected at least ${normalizedRoutes.length} pricing options tabs, got: ${tabCount}`,
+    ).toBeGreaterThanOrEqual(normalizedRoutes.length);
+
+    for (let index = 0; index < normalizedRoutes.length; index += 1) {
+      await flightResultsPage.waitForPricingOptionsTabRouteText(index, normalizedRoutes[index]);
+      await flightResultsPage.waitForSelectButtonInPricingOptionsModal();
+      await flightResultsPage.clickSelectButtonInPricingOptionsModal();
+
+      await flightResultsPage.waitForPricingOptionsTabGreenIcon(index);
+
+      if (index < normalizedRoutes.length - 1) {
+        await flightResultsPage.waitForPricingOptionsTabRouteText(index + 1, normalizedRoutes[index + 1]);
+      }
+    }
+
+    return { verified: true, segmentRoutes: normalizedRoutes };
   },
 
   /**
@@ -834,6 +898,25 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     await expect(
       flightResultsPage.getFlightDurationFromLocationTitle(location)
     ).toBeVisible();
+  },
+
+  /**
+   * Adjusts the Limit Layover Duration filter by moving its lower bound to the midpoint.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{adjusted: boolean, originalRangeText: string, targetStartMinutes: number}>}
+   */
+  async adjustLimitLayoverDurationFilterFromMidpoint(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const result = await flightResultsPage.adjustLimitLayoverDurationFilterFromMidpoint();
+
+    await flightResultsPage.waitForFlightResults();
+
+    return result;
   },
 
   /**

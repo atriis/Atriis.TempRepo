@@ -11,12 +11,10 @@ Feature: 64721 Flights - Correct policy calculation for long connection
   I want the travel policy to be correctly calculated for flights with long connections
   So that OOP indicators accurately reflect policy rules
 
-  # TODO: New user needed — region@policy.com → USER_REGION
-  # Add to .env: USER_REGION="region@policy.com"
-
   Scenario: Travel policy is correctly calculated for long connection flight
     Given I am logged in as "region" booking a new trip
     And I have added myself as the traveler
-    # TODO: Step needed for "Search flights (route TBD from Testim)"
-    # TODO: Step needed for "Adjust flight duration filter"
-    # TODO: Step needed for "Verify travel not from EU to EU is not OOP"
+    When I search for a round trip flight from "EDI" to "HKG"
+    And flight results should be available
+    And I adjust the Limit Layover Duration filter from the half timepoint of the longest point
+    Then the out of policy indicator should not be visible in results
