@@ -6,8 +6,7 @@ on:
   # pull_request:
   #  branches: [ main ]
   schedule:
-    # - cron: '0 21 * * *'  # Daily at 21:00 UTC (21:00 Portugal winter / 22:00 Portugal summer)
-    - cron: '0 20 29 3 *'  # One-time: Sunday March 29 2026 at 21:00 Portugal time (WEST = UTC+1)
+     - cron: '0 21 * * *'  # Daily at 21:00 UTC (21:00 Portugal winter / 22:00 Portugal summer)
   workflow_dispatch:
 
 # Structured logging configuration for all jobs
@@ -26,9 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
 
@@ -37,20 +36,9 @@ jobs:
       - run: mkdir -p test-results test-results/screenshots
 
       - name: Load environment variables
-        shell: bash
-        run: |
-          while IFS= read -r line || [ -n "$line" ]; do
-            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
-              key="${BASH_REMATCH[1]}"
-              value="${BASH_REMATCH[2]}"
-              value="${value#\"}"
-              value="${value%\"}"
-              echo "$key=$value" >> "$GITHUB_ENV"
-            fi
-          done <<< "$ENV_FILE"
-        env:
-          ENV_FILE: ${{ secrets.ENV }}
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
 
       - name: Run Smoke Tests
         id: run-smoke
@@ -63,28 +51,28 @@ jobs:
 
       - name: Upload Smoke Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: smoke-results
           path: test-results/cucumber-junit.xml
 
       - name: Upload Smoke Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: smoke-report
           path: test-results/cucumber-report.json
 
       - name: Upload Smoke Screenshots
         if: failure() && steps.run-smoke.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: smoke-screenshots
           path: test-results/screenshots/
 
       - name: Upload Smoke Allure Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: smoke-allure-results
           path: allure-results/
@@ -94,9 +82,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
 
@@ -105,20 +93,9 @@ jobs:
       - run: mkdir -p test-results test-results/screenshots
 
       - name: Load environment variables
-        shell: bash
-        run: |
-          while IFS= read -r line || [ -n "$line" ]; do
-            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
-              key="${BASH_REMATCH[1]}"
-              value="${BASH_REMATCH[2]}"
-              value="${value#\"}"
-              value="${value%\"}"
-              echo "$key=$value" >> "$GITHUB_ENV"
-            fi
-          done <<< "$ENV_FILE"
-        env:
-          ENV_FILE: ${{ secrets.ENV }}
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
 
       - name: Run Daily Cars Tests
         id: run-daily-cars
@@ -131,28 +108,28 @@ jobs:
 
       - name: Upload Daily Cars Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-cars-results
           path: test-results/cucumber-junit.xml
 
       - name: Upload Daily Cars Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-cars-report
           path: test-results/cucumber-report.json
 
       - name: Upload Daily Cars Screenshots
         if: failure() && steps.run-daily-cars.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-cars-screenshots
           path: test-results/screenshots/
 
       - name: Upload Daily Cars Allure Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-cars-allure-results
           path: allure-results/
@@ -162,9 +139,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
 
@@ -173,20 +150,9 @@ jobs:
       - run: mkdir -p test-results test-results/screenshots
 
       - name: Load environment variables
-        shell: bash
-        run: |
-          while IFS= read -r line || [ -n "$line" ]; do
-            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
-              key="${BASH_REMATCH[1]}"
-              value="${BASH_REMATCH[2]}"
-              value="${value#\"}"
-              value="${value%\"}"
-              echo "$key=$value" >> "$GITHUB_ENV"
-            fi
-          done <<< "$ENV_FILE"
-        env:
-          ENV_FILE: ${{ secrets.ENV }}
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
 
       - name: Run Daily Flights Tests
         id: run-daily-flights
@@ -199,28 +165,28 @@ jobs:
 
       - name: Upload Daily Flights Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-flights-results
           path: test-results/cucumber-junit.xml
 
       - name: Upload Daily Flights Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-flights-report
           path: test-results/cucumber-report.json
 
       - name: Upload Daily Flights Screenshots
         if: failure() && steps.run-daily-flights.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-flights-screenshots
           path: test-results/screenshots/
 
       - name: Upload Daily Flights Allure Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-flights-allure-results
           path: allure-results/
@@ -230,9 +196,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
 
@@ -241,20 +207,9 @@ jobs:
       - run: mkdir -p test-results test-results/screenshots
 
       - name: Load environment variables
-        shell: bash
-        run: |
-          while IFS= read -r line || [ -n "$line" ]; do
-            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
-              key="${BASH_REMATCH[1]}"
-              value="${BASH_REMATCH[2]}"
-              value="${value#\"}"
-              value="${value%\"}"
-              echo "$key=$value" >> "$GITHUB_ENV"
-            fi
-          done <<< "$ENV_FILE"
-        env:
-          ENV_FILE: ${{ secrets.ENV }}
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
 
       - name: Run Daily Shell Tests
         id: run-daily-shell
@@ -267,28 +222,28 @@ jobs:
 
       - name: Upload Daily Shell Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-shell-results
           path: test-results/cucumber-junit.xml
 
       - name: Upload Daily Shell Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-shell-report
           path: test-results/cucumber-report.json
 
       - name: Upload Daily Shell Screenshots
         if: failure() && steps.run-daily-shell.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-shell-screenshots
           path: test-results/screenshots/
 
       - name: Upload Daily Shell Allure Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-shell-allure-results
           path: allure-results/
@@ -298,9 +253,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 65
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
 
@@ -309,20 +264,9 @@ jobs:
       - run: mkdir -p test-results test-results/screenshots
 
       - name: Load environment variables
-        shell: bash
-        run: |
-          while IFS= read -r line || [ -n "$line" ]; do
-            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
-              key="${BASH_REMATCH[1]}"
-              value="${BASH_REMATCH[2]}"
-              value="${value#\"}"
-              value="${value%\"}"
-              echo "$key=$value" >> "$GITHUB_ENV"
-            fi
-          done <<< "$ENV_FILE"
-        env:
-          ENV_FILE: ${{ secrets.ENV }}
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
 
       - name: Run Daily Hotel Tests
         id: run-daily-hotels
@@ -335,28 +279,28 @@ jobs:
 
       - name: Upload Daily Hotels Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-hotels-results
           path: test-results/cucumber-junit.xml
 
       - name: Upload Daily Hotels Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-hotels-report
           path: test-results/cucumber-report.json
 
       - name: Upload Daily Hotels Screenshots
         if: failure() && steps.run-daily-hotels.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-hotels-screenshots
           path: test-results/screenshots/
 
       - name: Upload Daily Hotels Allure Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-hotels-allure-results
           path: allure-results/
@@ -366,9 +310,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
 
@@ -377,20 +321,9 @@ jobs:
       - run: mkdir -p test-results test-results/screenshots
 
       - name: Load environment variables
-        shell: bash
-        run: |
-          while IFS= read -r line || [ -n "$line" ]; do
-            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
-              key="${BASH_REMATCH[1]}"
-              value="${BASH_REMATCH[2]}"
-              value="${value#\"}"
-              value="${value%\"}"
-              echo "$key=$value" >> "$GITHUB_ENV"
-            fi
-          done <<< "$ENV_FILE"
-        env:
-          ENV_FILE: ${{ secrets.ENV }}
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
 
       - name: Run Daily Rails Tests
         id: run-daily-rails
@@ -403,28 +336,28 @@ jobs:
 
       - name: Upload Daily Rails Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-rails-results
           path: test-results/cucumber-junit.xml
 
       - name: Upload Daily Rails Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-rails-report
           path: test-results/cucumber-report.json
 
       - name: Upload Daily Rails Screenshots
         if: failure() && steps.run-daily-rails.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-rails-screenshots
           path: test-results/screenshots/
 
       - name: Upload Daily Rails Allure Results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: daily-rails-allure-results
           path: allure-results/
@@ -449,20 +382,20 @@ jobs:
       checks: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Download all artifacts
         if: always()
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: all-results
         continue-on-error: true
 
       - name: Download Allure Results
         if: always()
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: '*-allure-results'
           path: allure-results
@@ -494,7 +427,7 @@ jobs:
 
       - name: Setup Node.js for Allure
         if: always()
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
 
@@ -618,7 +551,7 @@ jobs:
 
       - name: Upload Cucumber HTML Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: cucumber-html-report
           path: cucumber-html-report/
@@ -627,7 +560,7 @@ jobs:
 
       - name: Upload Allure Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: allure-report
           path: allure-report/
@@ -636,7 +569,7 @@ jobs:
 
       - name: Upload Allure History
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: allure-history
           path: allure-report/history/

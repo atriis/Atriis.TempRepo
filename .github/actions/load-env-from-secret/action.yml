@@ -1,0 +1,26 @@
+name: Load Environment From Secret
+description: Parse dotenv-style secret content and export values to GITHUB_ENV.
+
+inputs:
+  env-file-content:
+    description: Dotenv-style file content stored in a GitHub secret.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Export environment variables
+      shell: bash
+      env:
+        ENV_FILE_CONTENT: ${{ inputs.env-file-content }}
+      run: |
+        while IFS= read -r line || [ -n "$line" ]; do
+          [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+          if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
+            key="${BASH_REMATCH[1]}"
+            value="${BASH_REMATCH[2]}"
+            value="${value#\"}"
+            value="${value%\"}"
+            echo "$key=$value" >> "$GITHUB_ENV"
+          fi
+        done <<< "$ENV_FILE_CONTENT"
