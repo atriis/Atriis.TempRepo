@@ -53,6 +53,7 @@ When('I show the comparison table in flight results', async function () {
 When("I filter results by carrier {string}", async function (carrier) {
   logger.info("Filtering results by carrier", { carrier });
   const flightResultsPage = new FlightResultsPage(this.page);
+  const resultsPage = new ResultsPage(this.page);
   
   // Wait for initial results to load (works in both share and normal mode)
   await flightResultsPage.waitForFlightResults();
@@ -72,8 +73,11 @@ When("I filter results by carrier {string}", async function (carrier) {
   // Wait for filtered results to stabilize
   await this.page.waitForTimeout(2000);
   
-  // Wait for filtered results to load
-  await flightResultsPage.waitForFlightResults();
+  // Filtering can either keep visible results or transition into the no-results state.
+  await Promise.any([
+    flightResultsPage.waitForFlightResults(),
+    resultsPage.waitForNoResultsTitle('No results found'),
+  ]);
 });
 
 // ========================================
@@ -491,4 +495,3 @@ Then('the original currency symbol {string} should be visible in pricing options
   logger.info('Verifying original currency symbol is visible in pricing options', { currencySymbol });
   await FlightResults.verifyOriginalCurrencySymbolVisibleInPricingOptions(this.page, currencySymbol);
 });
-

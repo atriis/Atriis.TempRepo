@@ -260,6 +260,62 @@ const Results = {
   },
 
   /**
+   * Validates the no-results title shown after filters remove all results.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedText - Expected no-results title
+   * @returns {Promise<{visible: boolean, expectedText: string}>}
+   */
+  async validateNoResultsTitle(page, expectedText = 'No results found') {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForNoResultsTitle(expectedText);
+
+    return { visible: true, expectedText };
+  },
+
+  /**
+   * Validates the no-results state shows Reset Filters and Edit search actions.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{resetFiltersVisible: boolean, editSearchVisible: boolean}>}
+   */
+  async validateNoResultsActionButtonsVisible(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForNoResultsActionButtons();
+
+    await expect(resultsPage.getNoResultsResetFiltersButton()).toBeVisible();
+    await expect(resultsPage.getNoResultsEditSearchButton()).toBeVisible();
+
+    return { resetFiltersVisible: true, editSearchVisible: true };
+  },
+
+  /**
+   * Clicks Reset Filters from the no-results state.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{clicked: boolean}>}
+   */
+  async clickNoResultsResetFilters(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.clickNoResultsResetFiltersButton();
+
+    return { clicked: true };
+  },
+
+  /**
    * Clicks a filter checkbox by its label text.
    * @param {import('playwright').Page} page - Playwright page instance
    * @param {string} option - The label text of the checkbox (e.g. 'Iberia')

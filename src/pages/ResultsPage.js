@@ -12,6 +12,8 @@ const SELECTORS = {
   SHARE_MAIN_BUTTON: 'button.share-btn.mr-4',
   SHARE_QUOTE_RESULTS_BUTTON: '.share-btn.py-2',
   SHARE_QUOTE_EMAIL_BUTTON: 'button:has(span:text("email"))',
+  NO_RESULTS_CONTAINER: '.app-no-results',
+  NO_RESULTS_TITLE: '.app-no-results h3',
   ALERT_TEXT: "[role='alert'] p",
   FILTER_CHECKBOX_LABEL: 'label.el-checkbox',
   FILTER_CHECKBOX_INNER: '.el-checkbox__input',
@@ -77,6 +79,22 @@ class ResultsPage {
     return this.page.getByRole('button', { name: 'Reset Filters' });
   }
 
+  getNoResultsContainer() {
+    return this.page.locator(SELECTORS.NO_RESULTS_CONTAINER).first();
+  }
+
+  getNoResultsTitle() {
+    return this.page.locator(SELECTORS.NO_RESULTS_TITLE).first();
+  }
+
+  getNoResultsResetFiltersButton() {
+    return this.getNoResultsContainer().getByRole('button', { name: 'Reset Filters' });
+  }
+
+  getNoResultsEditSearchButton() {
+    return this.getNoResultsContainer().getByRole('button', { name: 'Edit search' });
+  }
+
   getEditButton() {
       return this.page.getByRole('button', { name: SELECTORS.EDIT_SEARCH_BUTTON_NAME });
   }
@@ -104,6 +122,38 @@ class ResultsPage {
    */
   async waitForResultButtonText(text, timeout = 60000) {
     await this.getResultButtonByText(text).waitFor({ state: 'visible', timeout });
+  }
+
+  async waitForNoResultsTitle(expectedText, timeout = 60000) {
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be a non-negative number, got ${timeout}`);
+    }
+
+    await this.getNoResultsContainer().waitFor({ state: 'visible', timeout });
+    await waitForText(this.page, SELECTORS.NO_RESULTS_TITLE, expectedText, timeout);
+  }
+
+  async waitForNoResultsActionButtons(timeout = 60000) {
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be a non-negative number, got ${timeout}`);
+    }
+
+    await this.getNoResultsResetFiltersButton().waitFor({ state: 'visible', timeout });
+    await this.getNoResultsEditSearchButton().waitFor({ state: 'visible', timeout });
+  }
+
+  async clickNoResultsResetFiltersButton(timeout = 60000) {
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be a non-negative number, got ${timeout}`);
+    }
+
+    const resetFiltersButton = this.getNoResultsResetFiltersButton();
+    await resetFiltersButton.waitFor({ state: 'visible', timeout });
+    await resetFiltersButton.click({ timeout });
   }
 
   /** Scrolls to the first "Add to trip" button, waiting for it to appear first */

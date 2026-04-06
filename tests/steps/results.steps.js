@@ -112,6 +112,21 @@ Then("the reset filters button should be visible and disabled", async function (
   await Results.validateResetFiltersButtonIsVisibleAndDisabled(this.page);
 });
 
+Then('the no results found message should be displayed', async function () {
+  logger.info('Verifying no-results message is displayed');
+  await Results.validateNoResultsTitle(this.page);
+});
+
+Then('the reset filters and edit search buttons should be visible in no results state', async function () {
+  logger.info('Verifying no-results action buttons are visible');
+  await Results.validateNoResultsActionButtonsVisible(this.page);
+});
+
+When('I click reset filters in no results state', async function () {
+  logger.info('Clicking reset filters in no-results state');
+  await Results.clickNoResultsResetFilters(this.page);
+});
+
 When("I log the trip number from the URL", async function () {
   const url = this.page.url();
   const match = url.match(/\/trips\/(\d+)/);

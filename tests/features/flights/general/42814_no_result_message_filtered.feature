@@ -16,6 +16,7 @@ Feature: 42814 Flights - No result message for filtered flights
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "MAD"
     And I filter results by carrier "hjklp"
-    # TODO: Step needed for "Verify 'No results found' message is displayed"
-    # TODO: Step needed for "Verify 'Reset Filters' and 'Edit search' buttons are visible"
-    # TODO: Step needed for "Click Reset Filters and verify results are restored"
+    Then the no results found message should be displayed
+    And the reset filters and edit search buttons should be visible in no results state
+    When I click reset filters in no results state
+    Then flight results should be available
