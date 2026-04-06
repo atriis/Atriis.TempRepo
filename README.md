@@ -233,6 +233,15 @@ npx playwright install --with-deps
 mkdir allure-results
 ```
 
+> **Windows long path issue**
+> If cloning or checking out the repository fails with a `Filename too long` or `file is too long` error on Windows, run:
+>
+> ```bash
+> git config --global core.longpaths true
+> ```
+>
+> Then retry the clone or checkout operation.
+
 > **Why is `allure-results/` required?**
 > The Cucumber formatter `allure-cucumberjs/reporter` is always active and writes results to
 > `allure-results/` on every execution. The directory must exist before the first run.
@@ -241,13 +250,36 @@ mkdir allure-results
 
 ## Environment Setup
 
-### 1. Copy the environment template
+Choose one of the following options to create your local `.env`.
+
+### How it works
+
+- `.env` is the local runtime configuration file used by the automation project.
+- The framework loads values from `.env` when tests start, including the base URL, shared password, browser settings, and `USER_<LABEL>` accounts used by Gherkin steps.
+- `Atriis.Automation.Env` in 1Password is the source of truth for the shared team-managed `.env` values.
+- `npm run env:sync` downloads that 1Password document and writes it into the repo as your local `.env`.
+- The sync is a full overwrite of `.env`, not a merge. If you keep machine-specific local changes, back them up before syncing.
+- `.env.example` is only a template for bootstrapping or manual setup when you are not syncing from 1Password.
+
+### Option A. Sync from 1Password
+
+If your local environment is sourced from the 1Password document `Atriis.Automation.Env`, refresh `.env` with:
+
+```bash
+npm run env:sync
+```
+
+This runs `op document get "Atriis.Automation.Env" --out-file .env --force` through the local helper script.
+If you are not signed in, the 1Password CLI will prompt you to authenticate through the desktop app or CLI session.
+Use this whenever the shared document changes in 1Password and you want the latest values locally.
+
+### Option B. Copy the environment template
 
 ```bash
 cp .env.example .env
 ```
 
-### 2. Fill in the required values
+### Fill in the required values
 
 ```bash
 ########################################
@@ -260,10 +292,10 @@ AUTOMATION_TIMEOUT_MS=30000       # default operation timeout in ms
 ########################################
 # User Authentication — Simple Label Format (Recommended)
 # Format:  USER_<LABEL>=email@domain.com
-# Gherkin: Given I am logged in as "bruna"
+# Gherkin: Given I am logged in as "eli"
 ########################################
-USER_BRUNA=bruna@company.com
 USER_ELI=eli@company.com
+USER_JOAO=joao@company.com
 # ... add more as needed
 
 GENERAL_PASSWORD=your_shared_password
@@ -271,7 +303,7 @@ GENERAL_PASSWORD=your_shared_password
 
 See `.env.example` for the complete list including GDS/NDC supplier-specific users.
 
-### 3. Verify the setup
+### Verify the setup
 
 ```bash
 # Dry-run: list all scenarios without opening a browser
@@ -287,15 +319,15 @@ npx cucumber-js --dry-run
 Add `USER_<LABEL>=email@company.com` to `.env`:
 
 ```bash
-USER_BRUNA=bruna@atriis.com
-USER_TESTER=tester@atriis.com
+USER_ELI=eli@atriis.com
+USER_JOAO=joao@atriis.com
 ```
 
 Reference in Gherkin with a single string:
 
 ```gherkin
-Given I am logged in as "bruna" booking a new trip
-Given I am logged in as "tester" booking a new trip
+Given I am logged in as "eli" booking a new trip
+Given I am logged in as "joao" booking a new trip
 ```
 
 The framework resolves the email from the environment variable automatically — no changes to `config.js` needed.
@@ -303,24 +335,24 @@ The framework resolves the email from the environment variable automatically —
 #### Adding a User to CI (GitHub Secrets)
 
 1. Add a secret in **GitHub → Settings → Secrets → Actions**:
-   - Name: `USER_BRUNA`, Value: `bruna@company.com`
+   - Name: `USER_ELI`, Value: `eli@company.com`
 2. Reference it in `.github/workflows/test-suite.yml` under the job's `env:` block:
    ```yaml
    env:
-     USER_BRUNA: ${{ secrets.USER_BRUNA }}
+     USER_ELI: ${{ secrets.USER_ELI }}
      GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
    ```
 
-#### Legacy Provider-Based Users (Still Supported)
+Only the label-based format is supported in this project.
 
 ```bash
-# .env
-AMADEUS_USER_ONE_EMAIL=user@company.com
+USER_RUIMARIANO=ruimariano@company.com
+USER_GO_GLOBAL=go-global@company.com
 ```
 
 ```gherkin
-# Feature file (legacy format)
-Given I am logged in as "amadeus" "user_one"
+Given I am logged in as "ruimariano"
+Given I am logged in as "go_global" booking a new trip
 ```
 
 ---
@@ -437,7 +469,7 @@ Feature: One-Way Flight Search
 
   @smoke @priority:critical
   Scenario: Search returns results for valid route
-    Given I am logged in as "bruna" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     When I search for a one-way flight from "LON" to "NYC"
     Then flight results are displayed
     And results show at least 1 flight
@@ -574,7 +606,7 @@ This project includes **20 custom AI agents** that automate the test lifecycle. 
 
 1. **Write Gherkin that reads like a user story**
    ```gherkin
-   Given I am logged in as "bruna" booking a new trip
+  Given I am logged in as "ruimariano" booking a new trip
    When I search for a one-way flight from "LON" to "NYC"
    Then flight results are displayed
    ```

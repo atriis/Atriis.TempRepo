@@ -45,7 +45,7 @@ Feature: One-Way Flight Search
   So I can book the best option for my trip
 
   Background:
-    Given I am logged in as "amadeus" "user_one"
+    Given I am logged in as "ruimariano" booking a new trip
     And I am on the New Trip page
 
   @smoke @priority:critical @provider:amadeus
@@ -223,7 +223,7 @@ Scenarios must run independently, in any order:
 # ✅ GOOD: Each scenario sets its own preconditions
 @regression
 Scenario: Search displays results
-  Given I am logged in as "amadeus" "user_one"
+  Given I am logged in as "ruimariano"
   When I search for a one-way flight
   Then results are displayed
 
@@ -240,16 +240,16 @@ Scenario: Pagination works
 ```gherkin
 # Parameterized scenarios — flexible test data
 @regression
-Scenario Outline: Search works for multiple suppliers
-  Given I am logged in as "<provider>" "<user>"
+Scenario Outline: Search works for multiple users
+  Given I am logged in as "<label>"
   When I search for a one-way flight from "LON" to "NYC"
   Then flight results are displayed
 
   Examples:
-    | provider   | user     |
-    | amadeus    | user_one |
-    | lufthansa  | user_one |
-    | sabre      | user_one |
+    | label      |
+    | ruimariano |
+    | robsoncruz |
+    | lidi       |
 ```
 
 ## Assertions in Gherkin
@@ -282,7 +282,7 @@ Then('results show at least {int} flights', async (count) => {
 |----|-----|
 | `When I search for a flight` | `When I click the search button and fill departure field` |
 | `Then results are displayed` | `Then I can see the results div with class flight-result` |
-| `Given I am logged in as "amadeus" "user_one"` | `Given I log in with amadeus/@amadeus.com/password123` |
+| `Given I am logged in as "ruimariano"` | `Given I log in with amadeus/@amadeus.com/password123` |
 | Use Background for common setup | Repeat setup in every scenario |
 | Use descriptive variable names | Use x, y, temp, data1 |
 | One scenario per business intent | Multiple intents in one scenario |
@@ -292,14 +292,14 @@ Use descriptive scenario names with proper tags:
 ```gherkin
 @regression @flights @priority:critical
 Scenario: Add One-Way Flight to Cart
-  Given I am logged in as "amadeus" user "user_one"
+  Given I am logged in as "ruimariano" booking a new trip
   When I search for a one-way flight from "LHR" to "DOH"
   And I select the first available flight
   Then the flight should be added to my cart
 
 @regression @flights @priority:critical
 Scenario: Add Round-Trip Flight to Cart
-  Given I am logged in as "amadeus" user "user_one"
+  Given I am logged in as "ruimariano" booking a new trip
   When I search for a round-trip flight from "LAX" to "JFK"
   And I select a flight for both legs
   Then both flights should be added to my cart

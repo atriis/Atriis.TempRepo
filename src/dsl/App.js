@@ -53,98 +53,44 @@ async function performLogin(page, { email, password }) {
   await menuPage.waitForLogoutIcon();
 }
 
+async function createSession(userConfig) {
+  const browser = await launchBrowser();
+  const context = await browser.newContext({
+    viewport: config.viewport,
+    screen: config.viewport,
+    ignoreHTTPSErrors: true,
+  });
+  const page = await context.newPage();
+
+  await page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
+  await performLogin(page, userConfig);
+
+  return { browser, context, page };
+}
+
 const App = {
   /**
-   * Logs in with provider/user and returns a ready session.
-   *
-   * @param {string} provider
-   * @param {string} user
-   * @returns {Promise<{browser: import('@playwright/test').Browser, context: import('@playwright/test').BrowserContext, page: import('@playwright/test').Page}>}
-   */
-  async login(provider, user) {
-    if (!provider || typeof provider !== "string") {
-      throw new Error("provider must be a non-empty string");
-    }
-
-    if (!user || typeof user !== "string") {
-      throw new Error("user must be a non-empty string");
-    }
-
-    const userConfig = config.users?.[provider]?.[user];
-    if (!userConfig) {
-      throw new Error(`User not found in config: ${provider}.${user}`);
-    }
-
-    const browser = await launchBrowser();
-    const context = await browser.newContext({
-      viewport: config.viewport,
-      screen: config.viewport,
-      ignoreHTTPSErrors: true,
-    });
-    const page = await context.newPage();
-
-    await page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
-    await performLogin(page, userConfig);
-
-    return { browser, context, page };
-  },
-
-  /**
-   * Logs in with provider/user and starts a new trip in a fresh tab.
-   *
-   * @param {string} provider
-   * @param {string} user
-   * @returns {Promise<{browser: import('@playwright/test').Browser, context: import('@playwright/test').BrowserContext, page: import('@playwright/test').Page}>}
-   */
-  async loginAndBookANewTrip(provider, user) {
-    if (!provider || typeof provider !== "string") {
-      throw new Error("provider must be a non-empty string");
-    }
-
-    if (!user || typeof user !== "string") {
-      throw new Error("user must be a non-empty string");
-    }
-
-    const userConfig = config.users?.[provider]?.[user];
-    if (!userConfig) {
-      throw new Error(`User not found in config: ${provider}.${user}`);
-    }
-
-    const browser = await launchBrowser();
-    const context = await browser.newContext({
-      viewport: config.viewport,
-      screen: config.viewport,
-      ignoreHTTPSErrors: true,
-    });
-    const page = await context.newPage();
-
-    await page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
-    await performLogin(page, userConfig);
-
-    const newTripPage = await App.bookANewTrip(page);
-    return { browser, context, page: newTripPage };
-  },
-
-  /**
-   * Logs in without specifying a provider — resolves user across all providers.
+   * Logs in with a supported label-based user key.
    *
    * @param {string} userKey - e.g. 'eli'
    */
   async loginAsUser(userKey) {
-    const { provider, userConfig } = config.resolveUser(userKey);
-    logger.info(`Resolved user "${userKey}" to provider "${provider}"`);
-    return App.login(provider, userKey);
+    const { userConfig } = config.resolveUser(userKey);
+    logger.info(`Resolved user label "${userKey}"`);
+    return createSession(userConfig);
   },
 
   /**
-   * Logs in without specifying a provider, then starts a new trip.
+   * Logs in with a supported label-based user key, then starts a new trip.
    *
    * @param {string} userKey - e.g. 'eli'
    */
   async loginAsUserAndBookANewTrip(userKey) {
-    const { provider, userConfig } = config.resolveUser(userKey);
-    logger.info(`Resolved user "${userKey}" to provider "${provider}"`);
-    return App.loginAndBookANewTrip(provider, userKey);
+    const { userConfig } = config.resolveUser(userKey);
+    logger.info(`Resolved user label "${userKey}"`);
+    const session = await createSession(userConfig);
+    const newTripPage = await App.bookANewTrip(session.page);
+    return { ...session, page: newTripPage };
   },
 
   /**

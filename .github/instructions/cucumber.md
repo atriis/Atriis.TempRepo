@@ -184,7 +184,7 @@ If a scenario uses **parameterized login steps**, the Before hook detects and sk
 ```gherkin
 # Before hook SKIPS (parameterized login)
 Scenario: Search flights
-  Given I am logged in as "amadeus" "user_one"
+  Given I am logged in as "ruimariano"
   # ^ Before hook auto-skips; this step handles login
 
 # Before hook RUNS (no parameterized login)
@@ -417,7 +417,7 @@ Feature: One-Way Flight Search
   So that I can find the best option
 
   Background:
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
 
   @priority:critical
@@ -464,7 +464,7 @@ Feature: Flight Search
   So that I can complete my booking
 
   Background:
-    Given I am logged in as "amadeus" "user_one" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
 
   # One scenario = one business outcome
   Scenario: Search returns available flights
@@ -536,7 +536,7 @@ Scenario: Login works
 | `@slow` | Long-running tests | Full booking flow |
 | `@fast` | Quick tests | Validation checks |
 | `@provider:PROVIDER` | Provider-specific | `@provider:amadeus`, `@provider:lufthansa` |
-| `@user:USERKEY` | User-specific | `@user:user_two`, `@user:user_with_policy` |
+| `@user:USERKEY` | User-specific | `@user:ruimariano`, `@user:shani_nl` |
 | `@loginOnly` | Skip new trip booking | Just login, no trip |
 | `@wip` | Work-in-progress | Incomplete scenarios |
 | `@skip` | Skip entirely | Broken or disabled |
@@ -596,18 +596,16 @@ Located in `src/config/config.js`:
 
 ```javascript
 const config = {
-  baseUrl: "https://atriis-platform.com",
+  baseUrl: process.env.AUTOMATION_APP_BASEURL,
   viewport: { width: 1920, height: 1080 },
-  
+
   users: {
-    amadeus: {
-      user_one: { email: "user@amadeus.com", password: "pwd" },
-      user_two: { email: "user2@amadeus.com", password: "pwd" },
+    labels: {
+      ruimariano: { email: process.env.USER_RUIMARIANO, password: process.env.GENERAL_PASSWORD },
+      eli: { email: process.env.USER_ELI, password: process.env.GENERAL_PASSWORD },
+      go_global: { email: process.env.USER_GO_GLOBAL, password: process.env.GENERAL_PASSWORD },
     },
-    lufthansa: {
-      user_one: { email: "user@luft.com", password: "pwd" },
-    },
-    // ... other providers
+    // ... additional labels auto-discovered from USER_* env vars
   }
 };
 ```
@@ -617,18 +615,18 @@ const config = {
 Users are auto-discovered from environment variables:
 
 ```bash
-# Env var pattern: PROVIDER_USER_KEY_EMAIL
-AMADEUS_USER_ONE_EMAIL="user@amadeus.com"
-AMADEUS_USER_TWO_EMAIL="user2@amadeus.com"
+# Recommended label format
+USER_RUIMARIANO="ruimariano@amadeus.com"
+USER_ELI="eli@tel.com"
 
 # Auto-discovered as:
-config.users.amadeus.user_one = { email: "user@amadeus.com", ... }
+config.users.labels.ruimariano = { email: "ruimariano@amadeus.com", ... }
+config.users.labels.eli = { email: "eli@tel.com", ... }
 ```
 
 **Config loads in this order:**
 1. Environment variables (highest priority)
-2. Hardcoded users object
-3. File-based configuration
+2. Label discovery from `USER_*`
 
 ---
 
@@ -744,7 +742,7 @@ Use when you need multiple users in one test:
 
 ```gherkin
 Scenario: Different users see different pricing
-  Given I am logged in as "amadeus" "user_one"
+  Given I am logged in as "ruimariano"
   When I search for a flight
   Then the price should equal {float}
 ```

@@ -24,36 +24,11 @@ Given("I am logged in as {string}", async function (user) {
  * Login + booking step without provider.
  */
 Given("I am logged in as {string} booking a new trip", async function (user) {
-  logger.info("Logging in and booking (no provider)", { user });
+  logger.info("Logging in and booking", { user });
   const session = await App.loginAsUserAndBookANewTrip(user);
   this.browser = session.browser;
   this.context = session.context;
   this.page = session.page;
-  logger.info("Setup complete");
-});
-
-/**
- * Parameterized login step (no booking).
- */
-Given("I am logged in as {string} {string}", async function (provider, user) {
-  logger.info("Logging in from scenario", { provider, user });
-  const session = await App.login(provider, user);
-  this.browser = session.browser;
-  this.context = session.context;
-  this.page = session.page;
-});
-
-/**
- * Parameterized login step + booking.
- */
-Given("I am logged in as {string} {string} booking a new trip", async function (provider, user) {
-  logger.info("Logging in from scenario outline", { provider, user });
-
-  const session = await App.loginAndBookANewTrip(provider, user);
-  this.browser = session.browser;
-  this.context = session.context;
-  this.page = session.page;
-
   logger.info("Setup complete");
 });
 

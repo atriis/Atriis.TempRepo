@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Playwright end-to-end automation framework",
   "scripts": {
+    "env:sync": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/sync-env-from-1password.ps1",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",

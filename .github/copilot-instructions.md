@@ -177,9 +177,9 @@ When working with Copilot, follow these rules strictly:
 ### User Discovery
 
 Users are auto-discovered from environment variables. No code changes needed:
-- Env var: `AMADEUS_USER_ONE_EMAIL=user@example.com`
-- Config key: `amadeus.user_one`
-- Gherkin usage: `Given I am logged in as "amadeus" "user_one"`
+- Preferred env var: `USER_RUIMARIANO=user@example.com`
+- Preferred Gherkin usage: `Given I am logged in as "ruimariano"`
+- Only single-label login steps are supported: `Given I am logged in as {string}`
 
 ### CI/CD Features
 

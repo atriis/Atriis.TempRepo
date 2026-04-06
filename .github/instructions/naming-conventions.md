@@ -187,7 +187,7 @@ Use domain language (user intent), not UI language:
 
 ```gherkin
 # ✅ GOOD
-Given I am logged in as "amadeus" user "user_one"
+Given I am logged in as "ruimariano" booking a new trip
 When I search for a one-way flight from "LHR" to "MAD"
 Then I should see available flight options
 

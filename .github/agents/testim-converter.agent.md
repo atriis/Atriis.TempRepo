@@ -173,8 +173,8 @@ Testim tests use **email addresses** for login. You must map them to **user labe
 
 **Common mappings (already in `.env`):**
 - `ruimariano@amadeus.com` → `"ruimariano"` (`USER_RUIMARIANO`)
-- `shani@nl.com` → `"shani_nl"` (`USER_SHANI_NL`)
-- `eli@test.com` → `"eli"` (`USER_ELI`)
+- `shani@testimcorpnl.com` → `"shani_nl"` (`USER_SHANI_NL`)
+- `eli@tel.com` → `"eli"` (`USER_ELI`)
 
 **Important:** Always search `.env` and `.env.example` first to check if the user already exists before adding a new one. If you are unsure about the label, add a TODO.
 

@@ -113,7 +113,7 @@ Feature: Flight Search and Booking
   So that I can complete my travel booking
 
   Background:
-    Given I am logged in as "amadeus" user "user_one"
+    Given I am logged in as "ruimariano" booking a new trip
 
   Scenario: Search for a one-way flight
     When I search for a one-way flight from "LHR" to "MAD"
