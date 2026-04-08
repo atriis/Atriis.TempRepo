@@ -361,6 +361,24 @@ For each issue or failing scenario found during testing:
    - Area path: same as parent work item
 3. **Link Test Case** to original work item with link type `Microsoft.VSTS.Common.TestedBy-Forward`
 4. **Display** the ADO Test Case ID and URL
+5. **Add to Regression Suite** — MANDATORY, never skip:
+   - List available test plans:
+     ```powershell
+     az devops invoke --area testplan --resource plans --route-parameters "project=TMC2" --http-method GET --output json | ConvertFrom-Json | Select-Object -ExpandProperty value | Select-Object id, name | Sort-Object -Property id -Descending | Select-Object -First 10
+     ```
+   - Display as numbered list, highlight the current sprint plan
+   - **Ask**: "Which plan should this Test Case be added to? (press Enter for most recent)"
+   - Wait for user to paste a plan URL or type a plan ID
+   - If user pastes a URL like `https://dev.azure.com/atriis/TMC2/_testPlans/define?planId=74856&suiteId=74999`, extract `planId` and `suiteId` directly
+   - Add TC to the chosen plan/suite using the `test` API (NOT `testplan` API — it returns `count:0`):
+     ```python
+     # Use api-version=5.0 on the /test/ endpoint — the /testplan/ endpoint silently fails
+     url = f"https://dev.azure.com/{ORG}/{PROJECT}/_apis/test/Plans/{PLAN_ID}/Suites/{SUITE_ID}/testcases/{TC_ID}?api-version=5.0"
+     req = urllib.request.Request(url, data=b"{}", method="POST")
+     req.add_header("Authorization", "Bearer " + token)
+     req.add_header("Content-Type", "application/json")
+     ```
+   - Verify by querying suite membership and confirming TC ID appears in the list
 
 **Receives**: `state.adoTestCase`
 
@@ -368,7 +386,8 @@ For each issue or failing scenario found during testing:
 - Test Case created: #{adoTcId} -- {title}
 - URL: {adoTcUrl}
 - Linked to: #{workItemId}
-- **Ask**: "ADO Test Case published. Proceed to deploy feature file to Atriis.Test.Automation?"
+- Added to suite: Plan {planId} / Suite {suiteId} ✅
+- **Ask**: "ADO Test Case published and added to suite. Proceed to deploy feature file to Atriis.Test.Automation?"
 
 ---
 
