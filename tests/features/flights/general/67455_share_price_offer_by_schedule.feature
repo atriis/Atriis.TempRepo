@@ -14,5 +14,11 @@ Feature: 67455 Flights - Share price offer from search by schedule results
   Scenario: Share price offer from search by schedule results
     Given I am logged in as "ryanair_ams" booking a new trip
     And I have added a random guest traveler
-    # TODO: Step needed for "Search flights by schedule (route TBD from Testim)"
-    # TODO: Step needed for "Share price offer from search by schedule results"
+    When I search for a flight by schedule from "DUB" to "LON"
+    And I wait for select text to be visible  
+    And I click on the "Share" button
+    And I click on the 1 share button in results page
+    And I click on the 2 flight in by schedule stepper
+    And I click on the 1 share button in results page
+    And I click on the "Share" button to open the share dialog
+    Then I wait to see "Subject" field in share dialog

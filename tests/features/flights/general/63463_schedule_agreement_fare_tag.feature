@@ -11,12 +11,10 @@ Feature: 63463 Flights - Search by schedule display agreement fare tag in pricin
   I want to see the agreement/PTC fare tag in the pricing page
   So that I can identify negotiated fares
 
-  # TODO: New user needed — agreement@fare.uni → USER_AGREEMENT
-  # Add to .env: USER_AGREEMENT="agreement@fare.uni"
-
   Scenario: Agreement fare tag is displayed in pricing page for by-schedule search
     Given I am logged in as "agreement" booking a new trip
     And I have added myself as the traveler
-    # TODO: Step needed for "Search by schedule with carrier filter: EWR to CPH, carrier Scandinavian"
-    # TODO: Step needed for "Select flights with agreement fare"
-    # TODO: Step needed for "Verify agreement indication is displayed in pricing page"
+    When I search for a flight by schedule from "EWR" to "CPH" with preferred carrier "Scandinavian" and stops "No stops"
+    And I select flight segments by schedule
+    And I wait for "Your Selection" text to be visible
+    Then the agreement indicator should be visible in the pricing page

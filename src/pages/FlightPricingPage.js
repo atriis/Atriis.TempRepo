@@ -7,10 +7,13 @@ const { waitForText } = require("@utils/wait");
  */
 
 const SELECTORS = {
+  PRICING_PAGE_SECTION: 'section.flight-by-schedule-pricing',
   PRICING_FARE_CARD: '.flight-by-schedule-pricing-option',
   PRICING_FARE_CARD_TITLE: '.header .title',
   PRICING_FARE_PRICE: '.bottom-bar .price',
   PRICING_FARE_ADD_TO_TRIP_BUTTON: '.add-btn',
+  PRICING_FARE_AGREEMENT_SECTION: '.more-info',
+  PRICING_FARE_AGREEMENT_ICON: '.agreement-icon',
   YOUR_SELECTION_TEXT: "section.flight-by-schedule-pricing .best-combination-wrapper .header .title",
   YOUR_SELECTION_CARD: '.flight-by-schedule-pricing .flight-by-schedule-pricing-option',
   YOUR_SELECTION_CARD_TITLE: '.header .title',
@@ -116,6 +119,37 @@ class FlightPricingPage {
    */
   async getYourSelectionPrice() {
     return this.getFarePrice('Your selection');
+  }
+
+  /**
+   * Checks whether a fare card shows an agreement icon and the expected agreement label.
+   *
+   * @param {string} fareTitle
+   * @param {string} agreementName
+   * @returns {Promise<{iconVisible: boolean, labelVisible: boolean}>}
+   */
+  async getAgreementIndicatorState(fareTitle, agreementName) {
+    if (!fareTitle || typeof fareTitle !== 'string') {
+      throw new Error('fareTitle must be a non-empty string');
+    }
+
+    if (!agreementName || typeof agreementName !== 'string') {
+      throw new Error('agreementName must be a non-empty string');
+    }
+
+    const fareCard = this.getFareCard(fareTitle);
+    const agreementSection = fareCard.locator(SELECTORS.PRICING_FARE_AGREEMENT_SECTION).first();
+    const agreementIcon = agreementSection.locator(SELECTORS.PRICING_FARE_AGREEMENT_ICON).first();
+    const agreementLabel = agreementSection.getByText(agreementName, { exact: true }).first();
+
+    await this.page.locator(SELECTORS.PRICING_PAGE_SECTION).waitFor({ state: 'visible', timeout: 60000 });
+    await fareCard.waitFor({ state: 'visible', timeout: 60000 });
+    await agreementSection.waitFor({ state: 'visible', timeout: 30000 });
+
+    const iconVisible = await agreementIcon.isVisible().catch(() => false);
+    const labelVisible = await agreementLabel.isVisible().catch(() => false);
+
+    return { iconVisible, labelVisible };
   }
 }
 

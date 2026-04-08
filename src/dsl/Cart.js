@@ -38,7 +38,6 @@ const Cart = {
     await page.waitForLoadState('networkidle', { timeout: 30000 });
 
     // Confirm correct page state
-    await cartPage.waitForDetailsText();
     await cartPage.waitForTripOverviewTitle();
     // Open actions menu and cancel
     await cartPage.hoverTripActionsDropdownIcon();
@@ -72,7 +71,6 @@ const Cart = {
     
     const cartPage = getPageObject(page, CartPage);
     try {
-      await cartPage.waitForDetailsText();
       await cartPage.waitForTripOverviewTitle();
       await cartPage.hoverTripActionsDropdownIcon();
       await cartPage.waitForDropdownMenu();

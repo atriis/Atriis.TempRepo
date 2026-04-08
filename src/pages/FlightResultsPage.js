@@ -57,6 +57,8 @@ const SELECTORS = {
   PRODUCT_LOADER: '.app-product-loader',
   CHANGE_FLIGHT_BUTTON: '.change-flight-btn-wrapper',
   CHANGE_FLIGHT_TEXT: 'Change flight',
+  FLIGHT_STEPPER_PAGE_CONTAINER: '.flight-stepper .page-container',
+  FLIGHT_STEPPER_PAGE_TITLE: '.page-title',
   COMPARISON_TOGGLE: '.comparison-btn span',
   COMPARISON_TABLE: '.ticket-layout-container .el-table__body-wrapper',
   COMPARISON_ROW: '.ticket-layout-container .el-table__body-wrapper tbody tr',
@@ -284,6 +286,24 @@ class FlightResultsPage {
       SELECTORS.CHANGE_FLIGHT_BUTTON,
       SELECTORS.CHANGE_FLIGHT_TEXT
     );
+  }
+
+  /**
+   * Clicks a segment in the by-schedule flight stepper.
+   *
+   * @param {number} segmentNumber - UI-visible segment number (1-based)
+   */
+  async clickByScheduleFlightSegment(segmentNumber) {
+    if (!Number.isInteger(segmentNumber) || segmentNumber < 1) {
+      throw new Error(`segmentNumber must be an integer >= 1, got: ${segmentNumber}`);
+    }
+
+    const segment = this.page
+      .locator(SELECTORS.FLIGHT_STEPPER_PAGE_CONTAINER)
+      .nth(segmentNumber - 1);
+
+    await segment.waitFor({ state: 'visible', timeout: 15000 });
+    await segment.locator(SELECTORS.FLIGHT_STEPPER_PAGE_TITLE).first().click({ timeout: 10000 });
   }
 
   /**

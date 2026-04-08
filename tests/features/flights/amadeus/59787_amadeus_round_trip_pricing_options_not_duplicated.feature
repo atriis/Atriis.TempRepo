@@ -17,8 +17,10 @@ Feature: 59787 Amadeus - Round trip pricing options are not duplicated
     And I click proceed on the reference fields popup
     And flight results should be available
     And I click to open first pricing options
-    # TODO: Verify pricing options for outbound and inbound segments have different prices
-    # Original Testim: Extracts price from ".flicking-camera > :nth-child(1) .price-wrapper > :nth-child(2) .amount"
-    # Then scrolls until "Flight To" heading appears, extracts second segment price
-    # And verifies the two prices are NOT equal (tolerance 0.09)
-    # Proposed new step: Then the pricing options for each segment should have different prices
+    When I extract the price from pricing option at index 0
+    And I extract the price from pricing option at index 1
+    Then the extracted price at index 0 should not equal the extracted price at index 1
+    And I select the first option from pricing options
+    When I extract the price from pricing option at index 0
+    And I extract the price from pricing option at index 1
+    Then the extracted price at index 0 should not equal the extracted price at index 1

@@ -31,6 +31,13 @@ When("I select flight segments by schedule", async function () {
   await FlightResults.selectSegmentsBySchedule(this.page);
 });
 
+When('I wait for flight results to be available', async function () {
+  logger.info('Waiting for flight results to be available');
+  const flightResultsPage = new FlightResultsPage(this.page);
+
+  await flightResultsPage.waitForFlightResults();
+});
+
 When("I add the first flight to cart", async function () {
   logger.info("Adding first flight to cart");
   await FlightResults.addFirstFlightToCart(this.page);
@@ -205,6 +212,16 @@ When('I click on the "Share" button', async function () {
   await FlightResults.waitForAddToTripButtonAndClickShareButton(this.page);
 });
 
+When('I click on the {int} share button in results page', async function (buttonNumber) {
+  logger.info('Clicking share button in results page', { buttonNumber });
+  await FlightResults.clickShareQuoteButtonInResults(this.page, buttonNumber);
+});
+
+When('I click on the {int} flight in by schedule stepper', async function (segmentNumber) {
+  logger.info('Clicking flight in by schedule stepper', { segmentNumber });
+  await FlightResults.clickByScheduleFlightSegment(this.page, segmentNumber);
+});
+
 When("I select 2 options from carriers {string} and {string}", async function (carrier1, carrier2) {
   logger.info("Selecting 2 options from carriers", { carrier1, carrier2 });
   
@@ -232,6 +249,11 @@ When('I click on the "Share" button to open the share dialog', async function ()
   
   await resultsPage.clickShareQuoteToGetEmailPopUp();
   await commonPage.waitForSubjectLabelSharePopUp();
+});
+
+Then('I wait to see {string} field in share dialog', async function (fieldLabel) {
+  logger.info('Waiting for field in share dialog', { fieldLabel });
+  await FlightResults.waitForFieldInShareDialog(this.page, fieldLabel);
 });
 
 When('I click to share two quotes from results page and verify safety text is NOT displayed', async function () {

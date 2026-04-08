@@ -70,6 +70,11 @@ Then("the contact telephone on checkout should contain numbers", async function 
   await Checkout.verifyContactPhoneContainsNumbers(this.page);
 });
 
+Then("the contact details checkbox should be unchecked by default", async function () {
+  logger.info("Verifying contact details checkbox is unchecked by default");
+  await Checkout.verifyContactDetailsCheckboxUncheckedByDefault(this.page);
+});
+
 Then("the booker notification phone on checkout should contain numbers", async function () {
   logger.info("Verifying booker notification phone on checkout contains numeric values");
   await Checkout.verifyBookerNotificationPhoneContainsNumbers(this.page);

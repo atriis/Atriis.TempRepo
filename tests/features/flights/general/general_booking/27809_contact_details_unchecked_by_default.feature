@@ -15,8 +15,10 @@ Feature: 27809 Flights - Contact details unchecking checkbox refused by default
     Given I am logged in as "coreytaylor" booking a new trip
     And I have added myself as the traveler
     When I search and add a flight manual quote
-    # TODO: Step needed for "Fill free text justification in cart if needed"
+    Then the booking status should be "On hold"
+    And I fill in the OOP justification text "bbbb"
     And I click the proceed to checkout button
-    # TODO: Step needed for "Verify contact details checkbox is unchecked by default"
+    Then the contact details checkbox should be unchecked by default
     And I complete the booking
+    Then the quote destination should contain "Flight to"
     Then I successfully cancel the trip

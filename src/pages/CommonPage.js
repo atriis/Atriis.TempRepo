@@ -207,12 +207,24 @@ class CommonPage {
 
   //This can be used when sharing quotes or itinerary from Results page as well
   /**
+   * Waits until a field label is visible in the share pop-up.
+   *
+   * @param {string} fieldLabel
+   */
+  async waitForFieldLabelSharePopUp(fieldLabel) {
+    if (!fieldLabel || typeof fieldLabel !== "string") {
+      throw new Error("fieldLabel must be a non-empty string");
+    }
+
+    const label = this.page.getByText(fieldLabel, { exact: true });
+    await label.waitFor({ state: "visible", timeout: 60000 });
+  }
+
+  /**
    * Waits until the "Subject" label is visible.
    */
   async waitForSubjectLabelSharePopUp() {
-    const subjectLabel = this.page.getByText("Subject", { exact: true });
-
-    await subjectLabel.waitFor({ state: "visible", timeout: 60000 });
+    await this.waitForFieldLabelSharePopUp("Subject");
   }
 
   /**

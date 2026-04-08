@@ -1,5 +1,5 @@
 require("module-alias/register");
-const { When, setDefaultTimeout } = require("@cucumber/cucumber");
+const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { FlightPricing } = require("@dsl");
 const FlightPricingPage = require("@pages/FlightPricingPage");
 const logger = require("@utils/logger").child("FlightPricing");
@@ -31,4 +31,9 @@ When('I extract the price from {string} fare', async function (fareTitle) {
   this.extractedPrices.push(price);
 
   logger.info('Extracted fare price from by-schedule pricing page', { fareTitle, price });
+});
+
+Then('the agreement indicator should be visible in the pricing page', async function () {
+  logger.info('Verifying agreement indicator is visible in by-schedule pricing page');
+  await FlightPricing.verifyAgreementIndicatorVisible(this.page);
 });

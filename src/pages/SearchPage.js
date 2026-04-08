@@ -517,10 +517,20 @@ class SearchPage {
    * @param {number} monthsAhead
    */
   async clickCalendarNextArrow(monthsAhead = 3) {
-    const nextArrow = this.page.locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW).first();
-    await nextArrow.waitFor({ state: "visible" });
     for (let i = 0; i < monthsAhead; i++) {
-      await nextArrow.click();
+      const nextArrow = this.page.locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW).first();
+      await nextArrow.waitFor({ state: "visible", timeout: 10000 });
+      await nextArrow.scrollIntoViewIfNeeded().catch(() => {});
+
+      try {
+        await nextArrow.click({ timeout: 3000 });
+      } catch (error) {
+        if (!(error instanceof Error) || !/not stable|intercepts pointer events|timeout/i.test(error.message)) {
+          throw error;
+        }
+
+        await nextArrow.click({ force: true, timeout: 3000 });
+      }
     }
   }
 

@@ -2,6 +2,7 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const FlightPricingPage = require("@pages/FlightPricingPage");
 const { CartPage } = require("@pages/CartPage");
 const Results = require("./Results");
+const { expect } = require("@playwright/test");
 
 /**
  * FlightPricing DSL
@@ -56,6 +57,28 @@ const FlightPricing = {
 
   async addYourSelectionFareToCart(page) {
     return this.addFareToCart(page, 'Your selection');
+  },
+
+  async verifyAgreementIndicatorVisible(page, fareTitle = 'Your selection', agreementName = 'Agency') {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!fareTitle || typeof fareTitle !== 'string') {
+      throw new Error('fareTitle must be a non-empty string, got: ' + fareTitle);
+    }
+
+    if (!agreementName || typeof agreementName !== 'string') {
+      throw new Error('agreementName must be a non-empty string, got: ' + agreementName);
+    }
+
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+    const { iconVisible, labelVisible } = await flightPricingPage.getAgreementIndicatorState(fareTitle, agreementName);
+
+    expect(iconVisible, `Agreement icon should be visible in pricing fare "${fareTitle}"`).toBe(true);
+    expect(labelVisible, `Agreement label "${agreementName}" should be visible in pricing fare "${fareTitle}"`).toBe(true);
+
+    return { fareTitle, agreementName, iconVisible, labelVisible };
   },
 };
 

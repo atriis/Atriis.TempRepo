@@ -11,7 +11,7 @@ const SELECTORS = {
   RESULTS_BUTTON: ".btn.btn--primary",
   SHARE_MAIN_BUTTON: 'button.share-btn.mr-4',
   SHARE_QUOTE_RESULTS_BUTTON: '.share-btn.py-2',
-  SHARE_QUOTE_EMAIL_BUTTON: 'button:has(span:text("email"))',
+  SHARE_QUOTE_EMAIL_BUTTON: '.share-bar button.share-btn.is-hidden-mobile',
   NO_RESULTS_CONTAINER: '.app-no-results',
   NO_RESULTS_TITLE: '.app-no-results h3',
   ALERT_TEXT: "[role='alert'] p",
@@ -290,11 +290,9 @@ class ResultsPage {
    * where the button may be temporarily disabled after closing pricing options.
    */
   async clickShareQuoteToGetEmailPopUp() {
-    // Wait a bit for the button to potentially re-enable after closing pricing options
-    await this.page.waitForTimeout(1000);
-    
-    // Click with force if button is disabled but clickable
-    await this.page.locator(SELECTORS.SHARE_QUOTE_EMAIL_BUTTON).click({ force: true });
+    const button = this.page.locator(SELECTORS.SHARE_QUOTE_EMAIL_BUTTON).first();
+    await button.waitFor({ state: 'visible', timeout: 10000 });
+    await button.click({ timeout: 10000 });
   }
 
   /**

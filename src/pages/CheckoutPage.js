@@ -25,7 +25,8 @@ const SELECTORS = {
   EMAIL_INPUT: ".email-input .el-input__inner",
 
   // Contact details (reference-form-contact-details.vue)
-  CONTACT_DETAILS_CHECKBOX: ".contact-details-container .el-checkbox__inner",
+  CONTACT_DETAILS_CHECKBOX: ".reference-form-contact-details .share-checkbox-container .el-checkbox__inner",
+  CONTACT_DETAILS_CHECKBOX_INPUT: ".reference-form-contact-details .share-checkbox-container .el-checkbox__original",
   CONTACT_PHONE_COUNTRY_CODE: ".reference-form-contact-details .el-input:nth-of-type(1) .el-input__inner",
   CONTACT_PHONE_AREA_CODE: ".reference-form-contact-details .el-input:nth-of-type(2) .el-input__inner",
   CONTACT_PHONE_NUMBER: ".reference-form-contact-details .el-input:nth-of-type(3) .el-input__inner",
@@ -249,6 +250,16 @@ class CheckoutPage {
     const cb = this.page.locator(SELECTORS.CONTACT_DETAILS_CHECKBOX).first();
     await cb.waitFor({ state: 'visible', timeout: 10000 });
     await cb.click();
+  }
+
+  /**
+   * Checks whether the contact details sharing checkbox is checked.
+   * @returns {Promise<boolean>}
+   */
+  async isContactDetailsCheckboxChecked() {
+    const checkboxInput = this.page.locator(SELECTORS.CONTACT_DETAILS_CHECKBOX_INPUT).first();
+    await checkboxInput.waitFor({ state: 'attached', timeout: 10000 });
+    return checkboxInput.isChecked();
   }
 
   /**

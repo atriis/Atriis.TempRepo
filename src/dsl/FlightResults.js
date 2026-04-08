@@ -611,9 +611,81 @@ const FlightResults = {
     }
     
     const resultsPage = getPageObject(page, ResultsPage);
-    await resultsPage.waitForAddToTripText();
+
+    await Promise.any([
+      resultsPage.waitForAddToTripText(),
+      resultsPage.waitForSelectText(),
+      resultsPage.waitForShareMainButton(),
+    ]);
+
     await resultsPage.clickShareMainButton();
     return { clicked: true };
+  },
+
+  /**
+   * Clicks a share quote button from results share mode using the UI-visible button number.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} buttonNumber - UI-visible share button number (1-based)
+   * @returns {Promise<{clicked: boolean, buttonNumber: number}>}
+   */
+  async clickShareQuoteButtonInResults(page, buttonNumber) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!Number.isInteger(buttonNumber) || buttonNumber < 1) {
+      throw new Error(`buttonNumber must be an integer >= 1, got: ${buttonNumber}`);
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.clickShareQuoteButton(buttonNumber);
+
+    return { clicked: true, buttonNumber };
+  },
+
+  /**
+   * Navigates to a specific by-schedule flight segment using the stepper.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} segmentNumber - UI-visible segment number (1-based)
+   * @returns {Promise<{clicked: boolean, segmentNumber: number}>}
+   */
+  async clickByScheduleFlightSegment(page, segmentNumber) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!Number.isInteger(segmentNumber) || segmentNumber < 1) {
+      throw new Error(`segmentNumber must be an integer >= 1, got: ${segmentNumber}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickByScheduleFlightSegment(segmentNumber);
+
+    return { clicked: true, segmentNumber };
+  },
+
+  /**
+   * Waits for a field label to be visible in the share dialog.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} fieldLabel
+   * @returns {Promise<{visible: boolean, fieldLabel: string}>}
+   */
+  async waitForFieldInShareDialog(page, fieldLabel) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!fieldLabel || typeof fieldLabel !== 'string') {
+      throw new Error('fieldLabel must be a non-empty string');
+    }
+
+    const commonPage = getPageObject(page, CommonPage);
+    await commonPage.waitForFieldLabelSharePopUp(fieldLabel);
+
+    return { visible: true, fieldLabel };
   },
 
   /**
