@@ -28,6 +28,7 @@ module.exports = {
   Results: require("./Results"),
   RoomLevelResults: require("./RoomLevelResults"),
   Search: require("./Search"),
+  TravelRequest: require("./TravelRequest"),
   Trips: require("./Trips"),
   UKParkingSearch: require("./UKParkingSearch"),
 };
