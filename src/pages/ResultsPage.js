@@ -15,11 +15,22 @@ const SELECTORS = {
   NO_RESULTS_CONTAINER: '.app-no-results',
   NO_RESULTS_TITLE: '.app-no-results h3',
   ALERT_TEXT: "[role='alert'] p",
+  AIRPORTS_FILTER_CONTAINER: '.filter-container',
+  AIRPORTS_FILTER_HEADER: 'h4',
+  AIRPORT_ROUTE_TOGGLE_CONTAINER: '.view-txt-link',
+  AIRPORT_ROUTE_TOGGLE_LABEL: '.view-more-btn',
+  AIRPORT_FILTER_GROUP: '.airports-filter',
+  FILTER_GROUP_TITLE: 'h4.filter-title',
   FILTER_CHECKBOX_LABEL: 'label.el-checkbox',
   FILTER_CHECKBOX_INNER: '.el-checkbox__input',
+  AIRPORT_OPTION_TEXT: '.airports-content',
+  FILTER_VIEW_MORE_CONTAINER: '.view-txt-link',
+  FILTER_VIEW_MORE_BUTTON: 'button',
+  FILTER_VIEW_MORE_LABEL: '.view-more-btn',
   FILTER_VIEW_MORE_AIRLINES_EXPANDER: '.carriers-filter .view-more-btn',
   CONFLICT_MODAL_PROCEED: '.conflicting-quotes-dialog .btn:has-text("Proceed")',
   EDIT_SEARCH_BUTTON_NAME: /^Edit(?: search)?$/i,
+  SHARE_BAR_CLOSE_BUTTON: '.share-bar span.material-symbols-outlined.is-clickable',
 };
 
 const AIRLINE_FILTER_ALIASES = {
@@ -248,6 +259,15 @@ class ResultsPage {
   }
 
   /**
+   * Clicks the X (close) button on the share bar to exit share mode.
+   */
+  async clickExitShareModeButton() {
+    const button = this.page.locator(SELECTORS.SHARE_BAR_CLOSE_BUTTON);
+    await button.waitFor({ state: 'visible', timeout: 10000 });
+    await button.click();
+  }
+
+  /**
    * Waits for the main Share button to be visible.
    * Used before clicking the share button to ensure it's ready.
    */
@@ -290,6 +310,137 @@ class ResultsPage {
     const { CommonPage } = require("@pages/CommonPage");
     const commonPage = new CommonPage(this.page);
     return commonPage.getAmountPriceValue(index);
+  }
+
+  getAirportsFilterContainer() {
+    return this.page
+      .locator(SELECTORS.AIRPORTS_FILTER_CONTAINER)
+      .filter({ has: this.page.locator(SELECTORS.AIRPORTS_FILTER_HEADER, { hasText: 'Airports' }) })
+      .first();
+  }
+
+  getAirportRouteContainer(routeLabel) {
+    return this.getAirportsFilterContainer()
+      .locator('div')
+      .filter({
+        has: this.page.locator(SELECTORS.AIRPORT_ROUTE_TOGGLE_LABEL, { hasText: routeLabel }),
+      })
+      .first();
+  }
+
+  getAirportRouteToggle(routeLabel) {
+    return this.getAirportRouteContainer(routeLabel)
+      .locator('button')
+      .first();
+  }
+
+  getAirportSection(routeLabel, sectionTitle) {
+    return this.getAirportRouteContainer(routeLabel)
+      .locator(SELECTORS.AIRPORT_FILTER_GROUP)
+      .filter({
+        has: this.page.locator(SELECTORS.FILTER_GROUP_TITLE, { hasText: sectionTitle }),
+      })
+      .first();
+  }
+
+  getAirportOptionCheckbox(routeLabel, sectionTitle, airportCode) {
+    return this.getAirportSection(routeLabel, sectionTitle)
+      .locator(SELECTORS.FILTER_CHECKBOX_LABEL)
+      .filter({
+        has: this.page.locator(SELECTORS.AIRPORT_OPTION_TEXT, { hasText: new RegExp(`^${airportCode}\\s*-`) }),
+      })
+      .locator(SELECTORS.FILTER_CHECKBOX_INNER)
+      .first();
+  }
+
+  getAirportSectionViewMoreButton(routeLabel, sectionTitle) {
+    return this.getAirportSection(routeLabel, sectionTitle)
+      .locator(SELECTORS.FILTER_VIEW_MORE_CONTAINER)
+      .filter({
+        has: this.page.locator(SELECTORS.FILTER_VIEW_MORE_LABEL, { hasText: 'View more' }),
+      })
+      .locator(SELECTORS.FILTER_VIEW_MORE_BUTTON)
+      .first();
+  }
+
+  async scrollAirportFilterElementIntoView(locator, timeout = 60000) {
+    if (!locator) {
+      throw new Error('locator is required');
+    }
+
+    await this.getAirportsFilterContainer().waitFor({ state: 'visible', timeout });
+    await this.getAirportsFilterContainer().scrollIntoViewIfNeeded();
+    await locator.waitFor({ state: 'attached', timeout });
+    await locator.scrollIntoViewIfNeeded();
+  }
+
+  async waitForAirportRouteLabel(routeLabel, timeout = 60000) {
+    if (!routeLabel || typeof routeLabel !== 'string') {
+      throw new Error('routeLabel must be a non-empty string');
+    }
+
+    const routeLabelLocator = this.page
+      .locator(SELECTORS.AIRPORT_ROUTE_TOGGLE_LABEL, { hasText: routeLabel })
+      .first();
+
+    await this.scrollAirportFilterElementIntoView(routeLabelLocator, timeout);
+    await routeLabelLocator.waitFor({ state: 'visible', timeout });
+  }
+
+  async expandAirportRouteIfNeeded(routeLabel, sectionTitle, timeout = 60000) {
+    if (!routeLabel || typeof routeLabel !== 'string') {
+      throw new Error('routeLabel must be a non-empty string');
+    }
+
+    if (!sectionTitle || typeof sectionTitle !== 'string') {
+      throw new Error('sectionTitle must be a non-empty string');
+    }
+
+    await this.waitForAirportRouteLabel(routeLabel, timeout);
+
+    const section = this.getAirportSection(routeLabel, sectionTitle);
+    if (!(await section.isVisible())) {
+      const routeToggle = this.getAirportRouteToggle(routeLabel);
+      await this.scrollAirportFilterElementIntoView(routeToggle, timeout);
+      await routeToggle.waitFor({ state: 'visible', timeout });
+      await routeToggle.click();
+    }
+
+    await this.scrollAirportFilterElementIntoView(section, timeout);
+    await section.waitFor({ state: 'visible', timeout });
+  }
+
+  async waitForAirportSection(routeLabel, sectionTitle, timeout = 60000) {
+    if (!sectionTitle || typeof sectionTitle !== 'string') {
+      throw new Error('sectionTitle must be a non-empty string');
+    }
+
+    await this.expandAirportRouteIfNeeded(routeLabel, sectionTitle, timeout);
+  }
+
+  async selectAirportOption(routeLabel, sectionTitle, airportCode, timeout = 60000) {
+    if (!airportCode || typeof airportCode !== 'string') {
+      throw new Error('airportCode must be a non-empty string');
+    }
+
+    await this.expandAirportRouteIfNeeded(routeLabel, sectionTitle, timeout);
+
+    const normalizedAirportCode = airportCode.trim().toUpperCase();
+    let checkbox = this.getAirportOptionCheckbox(routeLabel, sectionTitle, normalizedAirportCode);
+
+    if (!(await checkbox.isVisible())) {
+      const viewMoreButton = this.getAirportSectionViewMoreButton(routeLabel, sectionTitle);
+      if (await viewMoreButton.isVisible()) {
+        await this.scrollAirportFilterElementIntoView(viewMoreButton, timeout);
+        await viewMoreButton.click();
+      }
+
+      checkbox = this.getAirportOptionCheckbox(routeLabel, sectionTitle, normalizedAirportCode);
+    }
+
+    await this.scrollAirportFilterElementIntoView(checkbox, timeout);
+    await checkbox.waitFor({ state: 'visible', timeout });
+    await checkbox.click();
   }
 
   /**

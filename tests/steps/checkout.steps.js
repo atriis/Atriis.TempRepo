@@ -13,6 +13,11 @@ When("I complete the booking", async function () {
   await Checkout.bookAndFinalize(this.page);
 });
 
+When("I complete the Fusion credit card verification booking", async function () {
+  logger.info("Completing booking with Fusion card verification");
+  await Checkout.bookAndFinalizeWithFusionCardVerification(this.page);
+});
+
 When("I complete the booking without navigating to trip overview", async function () {
   logger.info("Completing booking without navigating to trip overview");
   await Checkout.bookTripWithoutNavigatingToTripOverview(this.page);

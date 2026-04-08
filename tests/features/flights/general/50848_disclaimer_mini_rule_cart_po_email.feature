@@ -19,7 +19,11 @@ Feature: 50848 Flights - Disclaimer in mini rule icon cart and PO email
     And I filter results by carrier "BA"
     And I add the first flight to cart
     And I click to open price breakdown in cart
-    # TODO: Step needed for "Verify mini rule disclaimer text contains 'In case displayed fees differ from the airline's fare rules, the airline's rules will prevail'"
+    Then the mini rule disclaimer in price breakdown should contain "In case displayed fees differ from the airline's fare rules, the airline's rules will prevail"
     When I close price breakdown modal
-    # TODO: Step needed for "Open share quote and verify disclaimer in price offer email"
-    # TODO: Step needed for "Switch to detailed view and verify disclaimer in detailed email"
+    And I click the share quote button
+    Then "* in case displayed fees differ from the airline's fare rules, the airline's rules will prevail" should be displayed in the share email preview
+    When I switch the share email preview to detailed view
+    Then "* in case displayed fees differ from the airline's fare rules, the airline's rules will prevail" should be displayed in the share email preview
+    And I close the share dialog
+

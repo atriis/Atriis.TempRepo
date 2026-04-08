@@ -11,12 +11,10 @@ Feature: 43843 Flights - Prevent bookings outside of TMC time limit
   I want to prevent bookings outside of TMC office hours
   So that flights are not booked when support is unavailable
 
-  # TODO: New user needed — John@testim.tlmt → USER_JOHN_TLMT
-  # Add to .env: USER_JOHN_TLMT="John@testim.tlmt"
-
   Scenario: Booking restricted message is displayed outside TMC time limit
     Given I am logged in as "john_tlmt" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "LON" to "CAI"
-    # TODO: Step needed for "Hover over time limit icon and verify booking restricted message"
-    # TODO: Step needed for "Verify message contains 'Booking restricted due to office hours'"
+    And flight results should be available
+    When I hover over time limit icon and verify booking restricted message
+    Then I verify message contains "Booking restricted due to office hours"

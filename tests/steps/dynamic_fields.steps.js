@@ -75,6 +75,26 @@ Then("the reference fields popup should show the following labels:", async funct
   }
 });
 
+Then("the following checkout reference fields should be visible:", async function (dataTable) {
+  const labels = dataTable.raw().map(row => row[0]);
+  logger.info("Verifying checkout reference field labels are visible", { labels });
+  const result = await DynamicAndReferenceFields.verifyCheckoutReferenceFieldLabelsVisible(this.page, labels);
+  const missing = result.results.filter(r => !r.visible).map(r => r.label);
+  if (missing.length > 0) {
+    throw new Error(`Checkout reference field labels not visible: ${missing.join(', ')}`);
+  }
+});
+
+Then("the following checkout reference fields should not be visible:", async function (dataTable) {
+  const labels = dataTable.raw().map(row => row[0]);
+  logger.info("Verifying checkout reference field labels are hidden", { labels });
+  const result = await DynamicAndReferenceFields.verifyCheckoutReferenceFieldLabelsNotVisible(this.page, labels);
+  const visible = result.results.filter(r => r.visible).map(r => r.label);
+  if (visible.length > 0) {
+    throw new Error(`Checkout reference field labels should be hidden but are visible: ${visible.join(', ')}`);
+  }
+});
+
 Then("the reference fields should have the following values:", async function (dataTable) {
   const pairs = dataTable.hashes().map(row => ({ label: row.field, expectedValue: row.value }));
   logger.info("Verifying reference field values", { pairs });

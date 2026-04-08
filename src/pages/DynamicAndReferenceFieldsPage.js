@@ -152,8 +152,12 @@ class DynamicAndReferenceFieldsPage {
    * @returns {Promise<boolean>}
    */
   async isFieldLabelVisible(labelText, { timeout = 10000 } = {}) {
+    if (!labelText) throw new Error('labelText is required');
+
     const label = this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: labelText }).first();
     try {
+      await label.waitFor({ state: 'attached', timeout });
+      await label.scrollIntoViewIfNeeded();
       await label.waitFor({ state: 'visible', timeout });
       return true;
     } catch {

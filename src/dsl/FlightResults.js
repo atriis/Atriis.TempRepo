@@ -86,6 +86,51 @@ const FlightResults = {
   },
 
   /**
+   * Hovers over the office-hours restriction icon and returns the tooltip title text.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>}
+   */
+  async hoverTimeLimitIconAndGetBookingRestrictedMessage(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForFlightResults();
+    await flightResultsPage.hoverOfficeHoursRestrictionInfoIcon();
+
+    const message = await flightResultsPage.getOfficeHoursRestrictionTooltipTitle();
+    expect(message).toBeTruthy();
+
+    return message;
+  },
+
+  /**
+   * Verifies that the office-hours restriction tooltip title contains the expected text.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   * @returns {Promise<string>}
+   */
+  async verifyBookingRestrictedMessageContains(page, expectedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const actualText = await flightResultsPage.getOfficeHoursRestrictionTooltipTitle();
+
+    expect(actualText).toContain(expectedText);
+
+    return actualText;
+  },
+
+  /**
    * Verifies that a flight-comparison row has no visible prices.
    *
    * @param {import('playwright').Page} page - Playwright page instance
@@ -262,6 +307,112 @@ const FlightResults = {
   },
 
   /**
+   * Verifies that a per-leg airport filter route label is visible.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} routeLabel
+   * @returns {Promise<{routeLabel: string}>}
+   */
+  async verifyAirportFilterRouteLabelVisible(page, routeLabel) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!routeLabel || typeof routeLabel !== 'string') {
+      throw new Error('routeLabel must be a non-empty string');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForAirportRouteLabel(routeLabel);
+
+    return { routeLabel };
+  },
+
+  /**
+   * Verifies that the expected airport filter sections are visible under a route label.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} routeLabel
+   * @param {string[]} sectionTitles
+   * @returns {Promise<{routeLabel: string, sectionTitles: string[]}>}
+   */
+  async verifyAirportFilterSectionsVisible(page, routeLabel, sectionTitles) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!routeLabel || typeof routeLabel !== 'string') {
+      throw new Error('routeLabel must be a non-empty string');
+    }
+
+    if (!Array.isArray(sectionTitles) || sectionTitles.length === 0) {
+      throw new Error('sectionTitles must be a non-empty array, got: ' + JSON.stringify(sectionTitles));
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    for (const sectionTitle of sectionTitles) {
+      if (!sectionTitle || typeof sectionTitle !== 'string') {
+        throw new Error('each sectionTitle must be a non-empty string, got: ' + sectionTitle);
+      }
+
+      await resultsPage.waitForAirportSection(routeLabel, sectionTitle);
+    }
+
+    return { routeLabel, sectionTitles };
+  },
+
+  /**
+   * Applies route-scoped airport filters by airport code.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} routeLabel
+   * @param {Array<{sectionTitle: string, airportCode: string}>} selections
+   * @returns {Promise<{routeLabel: string, selections: Array<{sectionTitle: string, airportCode: string}>}>}
+   */
+  async filterByAirportCodesForRoute(page, routeLabel, selections) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!routeLabel || typeof routeLabel !== 'string') {
+      throw new Error('routeLabel must be a non-empty string');
+    }
+
+    if (!Array.isArray(selections) || selections.length === 0) {
+      throw new Error('selections must be a non-empty array, got: ' + JSON.stringify(selections));
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    await flightResultsPage.waitForFlightResults();
+
+    for (const selection of selections) {
+      if (!selection || typeof selection !== 'object') {
+        throw new Error('each selection must be an object, got: ' + selection);
+      }
+
+      const { sectionTitle, airportCode } = selection;
+      if (!sectionTitle || typeof sectionTitle !== 'string') {
+        throw new Error('sectionTitle must be a non-empty string, got: ' + sectionTitle);
+      }
+
+      if (!airportCode || typeof airportCode !== 'string') {
+        throw new Error('airportCode must be a non-empty string, got: ' + airportCode);
+      }
+
+      await resultsPage.selectAirportOption(routeLabel, sectionTitle, airportCode);
+
+      await Promise.any([
+        flightResultsPage.waitForFlightResults(),
+        resultsPage.waitForNoResultsTitle('No results found'),
+      ]);
+    }
+
+    return { routeLabel, selections };
+  },
+
+  /**
    * Verifies that the first flight result displays the requested original-currency symbol.
    *
    * @param {import('playwright').Page} page - Playwright page instance
@@ -311,6 +462,71 @@ const FlightResults = {
     ).toBe(true);
 
     return { currencySymbol, originalPriceTexts };
+  },
+
+  /**
+   * Verifies that pricing options are displayed in ascending (lowest-to-highest) price order.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{verified: boolean, amounts: number[]}>}
+   */
+  async verifyPricingOptionsInAscendingOrder(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const amounts = await flightResultsPage.getAllPricingOptionAmounts();
+
+    if (amounts.length < 2) {
+      throw new Error(`Expected at least 2 pricing options to verify order, got: ${amounts.length}`);
+    }
+
+    for (let i = 1; i < amounts.length; i++) {
+      expect(
+        amounts[i],
+        `Expected pricing option ${i + 1} (${amounts[i]}) to be >= pricing option ${i} (${amounts[i - 1]})`,
+      ).toBeGreaterThanOrEqual(amounts[i - 1]);
+    }
+
+    return { verified: true, amounts };
+  },
+
+  /**
+   * Opens the share quote email dialog from the first flight result, verifies that the
+   * email preview contains the requested original-currency symbol, then closes the dialog.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} currencySymbol - Expected currency symbol, e.g. "$"
+   * @returns {Promise<{currencySymbol: string, found: boolean}>}
+   */
+  async verifyOriginalCurrencyInShareQuoteFromResults(page, currencySymbol) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!currencySymbol || typeof currencySymbol !== 'string') {
+      throw new Error('currencySymbol must be a non-empty string');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    const commonPage = getPageObject(page, CommonPage);
+    const cartPage = getPageObject(page, CartPage);
+
+    // Enter share mode and select the first result quote
+    await FlightResults.waitForAddToTripButtonAndClickShareButton(page);
+    await resultsPage.clickShareQuoteButton(1);
+    await resultsPage.clickShareQuoteToGetEmailPopUp();
+    await commonPage.waitForSubjectLabelSharePopUp();
+
+    // Verify the email preview contains the currency symbol
+    const found = await cartPage.sharePreviewContainsText(currencySymbol);
+    expect(found, `Expected share quote email preview to contain the currency symbol "${currencySymbol}"`).toBe(true);
+
+    // Close the share dialog so the test can continue
+    await cartPage.closeShareDialog();
+
+    return { currencySymbol, found };
   },
 
   /**
@@ -401,6 +617,20 @@ const FlightResults = {
   },
 
   /**
+   * Exits share mode by clicking the X button on the share bar.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   */
+  async exitShareMode(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.clickExitShareModeButton();
+  },
+
+  /**
    * Filters flight results by carrier, extracts the price, and shares that quote.
    * Use for sharing a quote from a specific carrier (e.g., KLM, Air France).
    *
@@ -438,6 +668,32 @@ const FlightResults = {
     await resultsPage.clickShareQuoteButton(index + 1);
     
     return { price, shared: true };
+  },
+
+  /**
+   * Shares the first two available flight quotes from results by email.
+   * Mirrors the legacy Testim flow for simple multi-quote sharing from results.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{shared: boolean, quotesSelected: number}>}
+   */
+  async shareFirstTwoQuotesByEmailFromResults(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    const commonPage = getPageObject(page, CommonPage);
+
+    await FlightResults.waitForAddToTripButtonAndClickShareButton(page);
+
+    // Index 0 is the disabled share entry in this results share mode.
+    await resultsPage.clickShareQuoteButton(1);
+    await resultsPage.clickShareQuoteButton(2);
+    await resultsPage.clickShareQuoteToGetEmailPopUp();
+    await commonPage.waitForSubjectLabelSharePopUp();
+
+    return { shared: true, quotesSelected: 2 };
   },
 
   /**

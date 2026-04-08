@@ -203,6 +203,60 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Verifies that specific checkout reference field labels are visible.
+   * @param {import('playwright').Page} page
+   * @param {string[]} labels
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<{allVisible: boolean, results: Array<{label: string, visible: boolean}>}>}
+   */
+  async verifyCheckoutReferenceFieldLabelsVisible(page, labels, { timeout = 15000 } = {}) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(labels)) throw new Error('labels must be an array, got: ' + typeof labels);
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+
+    await checkoutPage.waitForBookingDetailsText();
+
+    const results = [];
+    for (const label of labels) {
+      const visible = await dynamicFieldsPage.isFieldLabelVisible(label, { timeout });
+      results.push({ label, visible });
+    }
+
+    const allVisible = results.every(result => result.visible);
+    return { allVisible, results };
+  },
+
+  /**
+   * Verifies that specific checkout reference field labels are not visible.
+   * @param {import('playwright').Page} page
+   * @param {string[]} labels
+   * @param {object} [options]
+   * @param {number} [options.timeout=2000]
+   * @returns {Promise<{allHidden: boolean, results: Array<{label: string, visible: boolean}>}>}
+   */
+  async verifyCheckoutReferenceFieldLabelsNotVisible(page, labels, { timeout = 2000 } = {}) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(labels)) throw new Error('labels must be an array, got: ' + typeof labels);
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+
+    await checkoutPage.waitForBookingDetailsText();
+
+    const results = [];
+    for (const label of labels) {
+      const visible = await dynamicFieldsPage.isFieldLabelVisible(label, { timeout });
+      results.push({ label, visible });
+    }
+
+    const allHidden = results.every(result => !result.visible);
+    return { allHidden, results };
+  },
+
+  /**
    * Verifies that specific field labels have expected values.
    * @param {import('playwright').Page} page
    * @param {Array<{label: string, expectedValue: string}>} fieldValuePairs

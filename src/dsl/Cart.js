@@ -609,6 +609,32 @@ const Cart = {
   },
 
   /**
+   * Verifies the mini-rule disclaimer text inside the cart price breakdown drawer.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   * @returns {Promise<{expectedText: string, actualText: string}>}
+   */
+  async verifyMiniRuleDisclaimerInPriceBreakdown(page, expectedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+
+    const normalizeText = (text) => text.replace(/[’]/g, "'").replace(/\s+/g, ' ').trim();
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualText = await cartPage.getPriceBreakdownMiniRuleDisclaimerText();
+
+    expect(normalizeText(actualText)).toContain(normalizeText(expectedText));
+
+    return { expectedText, actualText };
+  },
+
+  /**
    * Puts a trip on hold and returns the new status.
    * 
    * Flow:
@@ -1383,6 +1409,18 @@ const Cart = {
   },
 
   /**
+   * Switches the open share quote preview to Detailed mode.
+   * The share dialog must already be open.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async switchSharePreviewToDetailedView(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.selectShareDetailedView();
+  },
+
+  /**
    * Verifies that the share email preview contains the specified text.
    * The share dialog must already be open.
    * @param {import('playwright').Page} page
@@ -1397,6 +1435,24 @@ const Cart = {
     if (!found) {
       const content = await cartPage.getSharePreviewTextContent();
       throw new Error(`Expected share email preview to contain "${text}", but it was not found. Preview content: "${content.slice(0, 500)}"`);
+    }
+  },
+
+  /**
+   * Verifies that the share email preview does NOT contain the specified text.
+   * The share dialog must already be open.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} text
+   */
+  async verifySharePreviewDoesNotContainText(page, text) {
+    if (!page) throw new Error('page is required');
+    if (!text || typeof text !== 'string') throw new Error(`text must be a non-empty string, got: ${typeof text}`);
+
+    const cartPage = getPageObject(page, CartPage);
+    const content = await cartPage.getSharePreviewTextContent();
+    if (content.includes(text)) {
+      throw new Error(`Expected share email preview to NOT contain "${text}", but it was found. Preview content: "${content.slice(0, 500)}"`);
     }
   },
 

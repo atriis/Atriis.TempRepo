@@ -94,6 +94,13 @@ Then("the extracted price at index {int} should be greater than the extracted pr
   expectNumberToBeGreaterThan(priceA, priceB, `Price [${indexA}] vs [${indexB}]`);
 });
 
+Then("the extracted price at index {int} should be less than or equal to the extracted price at index {int}", function (indexA, indexB) {
+  logger.info("Asserting extracted price is less than or equal to another", { indexA, indexB });
+  const priceA = this.extractedPrices[indexA];
+  const priceB = this.extractedPrices[indexB];
+  expectNumberToBeLessThanOrEqual(priceA, priceB, `Price [${indexA}] vs [${indexB}]`);
+});
+
 Then("the extracted price at index {int} should equal the extracted price at index {int} within tolerance", function (indexA, indexB) {
   logger.info("Asserting extracted prices are equal within tolerance", { indexA, indexB, tolerance: 0.02 });
   const priceA = this.extractedPrices[indexA];

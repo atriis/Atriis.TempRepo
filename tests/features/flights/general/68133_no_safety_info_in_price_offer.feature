@@ -16,4 +16,4 @@ Feature: 68133 Flights - Safety info text not displayed in price offer from resu
     And I have added myself as the traveler
     When I search for a one way flight from "MME" to "AMS"
     And flight results should be available
-    # TODO: Step needed for "Click to share two quotes from results page and verify safety text is NOT displayed"
+    And I click to share two quotes from results page and verify safety text is NOT displayed

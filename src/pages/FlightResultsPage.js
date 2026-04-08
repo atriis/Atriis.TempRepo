@@ -116,6 +116,8 @@ const SELECTORS = {
   FLIGHT_LOCATION_CODE: '.loc-code',
   MARKED_FLIGHT_LOCATION_CODE: '.loc-code.marked, .loc-code.markedEdge',
   FIRST_FLIGHT_RESULT_PRICE_WRAPPER: '.flight-list .flight-preview .price-wrapper',
+  OFFICE_HOURS_INFO_ICON: 'button.add-to-trip .app-tooltip__content',
+  OFFICE_HOURS_TOOLTIP_TITLE: '.app-tooltip.hours-limitation-description .app-tooltip__title',
   LIMIT_LAYOVER_DURATION_FILTER_CONTAINER: '.view-txt-link',
   LIMIT_LAYOVER_DURATION_FILTER_LABEL: 'Limit Layover Duration',
   TIME_SLIDER_SECTION: '.app-time-slider',
@@ -305,6 +307,29 @@ class FlightResultsPage {
    */
   async waitForFlightResults(timeout = 60000) {
     await this.page.locator(SELECTORS.FLIGHT_PREVIEW).first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Hovers over the office-hours restriction info icon shown on restricted results.
+   *
+   * @param {{ timeout?: number }} options
+   */
+  async hoverOfficeHoursRestrictionInfoIcon({ timeout = 10000 } = {}) {
+    const trigger = this.page.locator(SELECTORS.OFFICE_HOURS_INFO_ICON).first();
+    await trigger.waitFor({ state: 'visible', timeout });
+    await trigger.hover();
+  }
+
+  /**
+   * Gets the office-hours restriction tooltip title.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>}
+   */
+  async getOfficeHoursRestrictionTooltipTitle({ timeout = 10000 } = {}) {
+    const title = this.page.locator(SELECTORS.OFFICE_HOURS_TOOLTIP_TITLE).first();
+    await title.waitFor({ state: 'visible', timeout });
+    return (await title.textContent())?.trim() ?? '';
   }
 
   /**
@@ -575,6 +600,32 @@ class FlightResultsPage {
   async getAmountPriceValuePricingOptions(index = 0) {
     const overlay = this.getPricingOptionsOverlay();
     return extractNumber(overlay, SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE, index);
+  }
+
+  /**
+   * Gets all pricing option amounts as numbers, in display order.
+   *
+   * @returns {Promise<number[]>}
+   */
+  async getAllPricingOptionAmounts() {
+    const overlay = this.getPricingOptionsOverlay();
+    await overlay.waitFor({ state: 'visible', timeout: 30000 });
+
+    const amountElements = overlay.locator(SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE);
+    await amountElements.first().waitFor({ state: 'visible', timeout: 30000 });
+
+    const count = await amountElements.count();
+    const amounts = [];
+
+    for (let i = 0; i < count; i++) {
+      const text = await amountElements.nth(i).textContent();
+      const value = text ? Number(text.replace(/[^0-9.]/g, '')) : null;
+      if (value !== null && !isNaN(value) && value > 0) {
+        amounts.push(value);
+      }
+    }
+
+    return amounts;
   }
 
   /**

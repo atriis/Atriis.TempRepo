@@ -361,12 +361,21 @@ class CartPaymentPage {
     if (!cvv || typeof cvv !== 'string') {
       throw new Error('cvv must be a non-empty string');
     }
-    const cvvInput = this.page.locator(SELECTORS.CVV_INPUT);
-    if (await cvvInput.isVisible()) {
+
+    const cvvInputs = this.page.locator(SELECTORS.CVV_INPUT);
+    const totalInputs = await cvvInputs.count();
+
+    for (let index = 0; index < totalInputs; index += 1) {
+      const cvvInput = cvvInputs.nth(index);
+      if (!(await cvvInput.isVisible().catch(() => false))) {
+        continue;
+      }
+
+      await cvvInput.scrollIntoViewIfNeeded().catch(() => {});
       await cvvInput.click();
       await cvvInput.clear();
-      // Type with 100ms delay between each character for stability
-      await this.page.keyboard.type(cvv, { delay: 100 });
+      await cvvInput.fill('');
+      await cvvInput.type(cvv, { delay: 100 });
     }
   }
 

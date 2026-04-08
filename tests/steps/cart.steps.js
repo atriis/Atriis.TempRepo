@@ -77,6 +77,11 @@ When("I click the share itinerary button", async function () {
   await Cart.clickShareItineraryAndWaitForSubjectField(this.page);
 });
 
+When('I switch the share email preview to detailed view', async function () {
+  logger.info('Switching the share email preview to detailed view');
+  await Cart.switchSharePreviewToDetailedView(this.page);
+});
+
 When("I send the share", async function () {
   logger.info("Sending share with success notification");
   await Cart.sendQuoteAndWaitForSuccess(this.page);
@@ -842,6 +847,11 @@ Then("the booked by text with date and time should be visible in price breakdown
   logger.info("Verifying 'Booked by' text with date/time in price breakdown");
   const text = await Cart.verifyBookedByTextInPriceBreakdown(this.page);
   logger.info("Booked by text found", { text });
+});
+
+Then('the mini rule disclaimer in price breakdown should contain {string}', async function (expectedText) {
+  logger.info('Verifying mini rule disclaimer in price breakdown', { expectedText });
+  await Cart.verifyMiniRuleDisclaimerInPriceBreakdown(this.page, expectedText);
 });
 
 Then("the hotel search check-in and check-out dates should be filled", async function () {

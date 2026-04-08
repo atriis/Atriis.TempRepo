@@ -2,6 +2,8 @@
 
 A **Playwright + Cucumber BDD** test automation framework for a corporate travel booking platform.
 
+> **👋 QA engineer?** Start here instead: [docs/QA-ONBOARDING.md](docs/QA-ONBOARDING.md) — setup, how to run tests, how to write tests, and a full step catalog. No coding knowledge required.
+
 ## Overview
 
 This framework enables behavior-driven testing for a multi-product travel platform supporting flights, hotels, cars, rail, ground transportation, parking, and manual quotes. Tests are written in human-readable Gherkin syntax and execute against multiple suppliers and user types.

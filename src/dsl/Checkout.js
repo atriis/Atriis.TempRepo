@@ -61,6 +61,27 @@ const Checkout = {
   },
 
   /**
+   * Finalizes the booking for Fusion low-cost flights that require a card verification step,
+   * then navigates to the trip overview page.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{finalized: boolean}>}
+   */
+  async bookAndFinalizeWithFusionCardVerification(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const cartPage = getPageObject(page, CartPage);
+
+    await Checkout.bookTripWithoutNavigatingToTripOverview(page);
+    await checkoutPage.completeFusionCardVerification();
+    await checkoutPage.clickGoToTrip();
+    await cartPage.waitForTripOverviewTitle();
+
+    return { finalized: true };
+  },
+
+  /**
    * Verifies that a booking error dialog is displayed after a failed booking attempt.
    *
    * This flow:

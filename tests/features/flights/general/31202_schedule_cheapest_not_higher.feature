@@ -12,8 +12,16 @@ Feature: 31202 By Schedule - Cheapest combination price not higher than your sel
   So that I know the cheapest option is truly the best deal
 
   Scenario: Cheapest combination price is not higher than your selection
-    Given I am logged in as "testim_amadeus" booking a new trip
+    Given I am logged in as "ruimariano" booking a new trip
     And I have added a random guest traveler
-    When I search for a flight by schedule from "LON" to "YUL"
-    And I select flight segments by schedule
-    # TODO: Step needed for "Verify cheapest combination price <= your selection price in pricing page"
+    And I have added myself as the traveler
+    When I search for a flight by schedule from "LON" to "FRA"
+    And I filter results by carrier "Lufthansa"
+    And I select one flight segment by schedule
+    And I wait for the change flight button to be visible
+    And I filter results by carrier "Lufthansa"
+    And I select one flight segment by schedule
+    And I wait for "Cheapest package" text to be visible
+    And I extract the price from "Cheapest package" fare
+    And I extract the price from "Your selection" fare
+    Then the extracted price at index 0 should be less than or equal to the extracted price at index 1

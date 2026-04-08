@@ -11,6 +11,11 @@ const SELECTORS = {
   BOOK_AND_FINALIZE_BUTTON: "button:has-text('Book and Finalize')",
   FALLBACK_BUTTON: ".btn-container button",
   GO_TO_TRIP_BUTTON: ".btn-container > :nth-child(1)",
+  FUSION_VERIFICATION_TITLE: ".booking-success .success-message__title",
+  FUSION_VERIFY_NOW_BUTTON: ".success-message__email span",
+  FUSION_3DS_DIALOG_TITLE: ".app-dialog .el-dialog__title",
+  FUSION_3DS_DIALOG_CONTAINER: ".app-dialog",
+  FUSION_3DS_DIALOG_HEADER: ".el-dialog__header",
   SEND_FOR_APPROVAL_BUTTON: "button:has-text('Send for approval')",
   APPROVAL_SUCCESS_TITLE: ".pre-trip-booking-success .success-message-title",
   APPROVAL_SUCCESS_MESSAGE: ".pre-trip-booking-success .success-message-description",
@@ -175,6 +180,36 @@ class CheckoutPage {
     );
 
     await this.getGoToTripButton().click();
+  }
+
+  /**
+   * Completes the Fusion 3DS verification screen shown after booking low-cost flights.
+   * Mirrors the legacy Testim flow for this provider-specific confirmation path:
+   * wait for the verification screen, click Verify now, wait for the provider flow,
+   * click the dialog header, then wait for Go to trip.
+   *
+   * @param {number} timeout
+   */
+  async completeFusionCardVerification(timeout = 90000) {
+    await waitForText(
+      this.page,
+      SELECTORS.FUSION_VERIFICATION_TITLE,
+      'Card verification needed!',
+      timeout,
+    );
+
+    const verifyNowButton = this.page.locator(SELECTORS.FUSION_VERIFY_NOW_BUTTON).first();
+    await verifyNowButton.waitFor({ state: 'visible', timeout: 30000 });
+    await verifyNowButton.click();
+
+    await this.page.waitForTimeout(18000);
+
+    const dialogHeader = this.page.locator(SELECTORS.FUSION_3DS_DIALOG_HEADER).first();
+    if (await dialogHeader.isVisible().catch(() => false)) {
+      await dialogHeader.click().catch(() => {});
+    }
+
+    await this.getGoToTripButton().waitFor({ state: 'visible', timeout });
   }
 
   /**

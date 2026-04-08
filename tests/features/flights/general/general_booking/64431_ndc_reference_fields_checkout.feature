@@ -11,14 +11,17 @@ Feature: 64431 NDC Flights - Only NDC reference fields displayed in checkout
   I want to see only NDC-specific reference fields in checkout
   So that I fill in the correct fields for NDC bookings
 
-  # TODO: New user needed — yoko@reffieldsndconly.com → USER_YOKO
-  # Add to .env: USER_YOKO="yoko@reffieldsndconly.com"
-
   Scenario: Only NDC reference fields are displayed in checkout
     Given I am logged in as "yoko" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "CDG" to "AMS"
+    When I search for a one way flight from "AMS" to "CDG"
     And I add the first flight to cart
     And I proceed to checkout
-    # TODO: Step needed for "Verify only NDC reference fields are displayed (not GDS or LCC fields)"
+    Then the following checkout reference fields should be visible:
+      | ndc only |
+      | ndc and gds |
+    And the following checkout reference fields should not be visible:
+      | gds only |
+    And I navigate to cart from checkout
+    Then the booking status should be "On hold"
     Then I successfully cancel the trip

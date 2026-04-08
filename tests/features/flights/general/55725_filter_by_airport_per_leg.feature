@@ -15,7 +15,9 @@ Feature: 55725 Flights - Filter by airport should be per leg
     Given I am logged in as "bruna_galileo" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "MIL" to "LON"
-    # TODO: Step needed for "Verify airport filter shows 'Milan to London' per-leg label"
-    # TODO: Step needed for "Verify Milan Airports and London Airports filter sections are displayed separately"
-    # TODO: Step needed for "Filter by specific airports per leg and verify results change"
-    # TODO: Step needed for "Verify 'No results found' when filtering by incompatible airport combination"
+    Then the airport filter route label "Milan to London" should be visible
+    And the airport filter sections "Milan Airports" and "London Airports" should be visible for route "Milan to London"
+    When I filter airports for route "Milan to London" by "BGY" in "Milan Airports" and "STN" in "London Airports"
+    Then all flight results should be from airline "Ryanair"
+    When I filter results by carrier "British Airways"
+    Then the no results found message should be displayed

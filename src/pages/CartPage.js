@@ -22,6 +22,7 @@ const SELECTORS = {
   PRICE_BREAKDOWN_BUTTON: ".price-breakdown-btn",
   PRICE_BREAKDOWN_CLOSE_BUTTON: '.app-drawer.flight-price-breakdown-drawer [aria-label="Close this dialog"]',
   PRICE_BREAKDOWN_BOOKED_BY: '.flight-price-breakdown-drawer p.booked-by-at',
+  PRICE_BREAKDOWN_MINI_RULE_DISCLAIMER: '.flight-price-breakdown-drawer .mini-rule-disclaimer',
 
   // Trip cancellation selectors
   TRIP_ACTIONS_DROPDOWN_ICON: ".dropdowns-container .expand-icon",
@@ -171,6 +172,7 @@ const SELECTORS = {
   // Share dialog language dropdown
   SHARE_LANGUAGE_DROPDOWN: '.app-share-quotes .app-select .el-select',
   SHARE_LANGUAGE_OPTION: (text) => `.app-select-popper .el-select-dropdown__item:has-text("${text}")`,
+  SHARE_DETAILED_RADIO: '.app-share-quotes .radio-btns .el-radio',
   // Share email preview iframe
   SHARE_EMAIL_IFRAME: '.email-content-container iframe',
   // Hotel address in share email preview
@@ -909,6 +911,12 @@ class CartPage {
     await this.page.locator(SELECTORS.PRICE_BREAKDOWN_CLOSE_BUTTON).click();
   }
 
+  async getPriceBreakdownMiniRuleDisclaimerText({ timeout = 10000 } = {}) {
+    const disclaimer = this.page.locator(SELECTORS.PRICE_BREAKDOWN_MINI_RULE_DISCLAIMER).first();
+    await disclaimer.waitFor({ state: 'visible', timeout });
+    return (await disclaimer.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
   /**
    * Clicks edit button in Extras section.
    * @param {number} [index=0] - The index of the extras section (0-based)
@@ -1551,6 +1559,7 @@ class CartPage {
     const iframeLocator = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first();
     const count = await iframeLocator.count();
     if (count > 0) {
+      const srcDoc = await iframeLocator.getAttribute('srcdoc');
       const frame = await iframeLocator.contentFrame();
       if (frame) {
         const body = frame.locator('body');
@@ -1559,6 +1568,16 @@ class CartPage {
           const text = await body.textContent();
           if (text && text.trim().length > 0) return text.trim();
         }
+      }
+
+      if (srcDoc && srcDoc.trim().length > 0) {
+        return srcDoc
+          .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+          .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&nbsp;/gi, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
       }
     }
     return '';
@@ -1638,6 +1657,41 @@ class CartPage {
     await option.click();
     // Email preview iframe re-renders via srcdoc after language change; no load event to listen for
     await this.page.waitForTimeout(3000);
+  }
+
+  async selectShareDetailedView({ timeout = 30000 } = {}) {
+    const detailedRadio = this.page
+      .locator(SELECTORS.SHARE_DETAILED_RADIO)
+      .filter({ hasText: 'Detailed' })
+      .first();
+    const iframeLocator = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first();
+
+    await detailedRadio.waitFor({ state: 'visible', timeout });
+
+    const previousSrcDoc = await iframeLocator.getAttribute('srcdoc');
+    const previousContent = await this.getSharePreviewTextContent();
+
+    await detailedRadio.click();
+
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+      const radioClasses = (await detailedRadio.getAttribute('class')) || '';
+      const currentSrcDoc = await iframeLocator.getAttribute('srcdoc');
+      const currentContent = await this.getSharePreviewTextContent();
+
+      const isDetailedSelected = radioClasses.includes('is-checked');
+      const previewChanged =
+        (currentSrcDoc && currentSrcDoc !== previousSrcDoc) ||
+        (currentContent && currentContent !== previousContent);
+
+      if (isDetailedSelected && previewChanged) {
+        return;
+      }
+
+      await this.page.waitForTimeout(500);
+    }
+
+    throw new Error('Timed out waiting for the share preview to switch to detailed view');
   }
 
   /**

@@ -1,7 +1,7 @@
 require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
-const { FlightPricing, FlightResults } = require("../../src/dsl");
+const { Cart, FlightPricing, FlightResults } = require("../../src/dsl");
 const FlightResultsPage = require("../../src/pages/FlightResultsPage");
 const { ResultsPage } = require("../../src/pages/ResultsPage");
 const { CommonPage } = require("../../src/pages/CommonPage");
@@ -78,6 +78,35 @@ When("I filter results by carrier {string}", async function (carrier) {
     flightResultsPage.waitForFlightResults(),
     resultsPage.waitForNoResultsTitle('No results found'),
   ]);
+});
+
+When('I filter airports for route {string} by {string} in {string} and {string} in {string}', async function (routeLabel, firstAirportCode, firstSectionTitle, secondAirportCode, secondSectionTitle) {
+  logger.info('Filtering airports for route', {
+    routeLabel,
+    selections: [
+      { sectionTitle: firstSectionTitle, airportCode: firstAirportCode },
+      { sectionTitle: secondSectionTitle, airportCode: secondAirportCode },
+    ],
+  });
+
+  await FlightResults.filterByAirportCodesForRoute(this.page, routeLabel, [
+    { sectionTitle: firstSectionTitle, airportCode: firstAirportCode },
+    { sectionTitle: secondSectionTitle, airportCode: secondAirportCode },
+  ]);
+});
+
+Then('the airport filter route label {string} should be visible', async function (routeLabel) {
+  logger.info('Verifying airport filter route label is visible', { routeLabel });
+  await FlightResults.verifyAirportFilterRouteLabelVisible(this.page, routeLabel);
+});
+
+Then('the airport filter sections {string} and {string} should be visible for route {string}', async function (firstSectionTitle, secondSectionTitle, routeLabel) {
+  logger.info('Verifying airport filter sections are visible for route', {
+    routeLabel,
+    sectionTitles: [firstSectionTitle, secondSectionTitle],
+  });
+
+  await FlightResults.verifyAirportFilterSectionsVisible(this.page, routeLabel, [firstSectionTitle, secondSectionTitle]);
 });
 
 // ========================================
@@ -203,6 +232,27 @@ When('I click on the "Share" button to open the share dialog', async function ()
   
   await resultsPage.clickShareQuoteToGetEmailPopUp();
   await commonPage.waitForSubjectLabelSharePopUp();
+});
+
+When('I click to share two quotes from results page and verify safety text is NOT displayed', async function () {
+  const hiddenSafetyText = 'Safety information and travel restriction are available for this trip, please Click here for details';
+
+  logger.info('Sharing two quotes from results and verifying safety text is absent in the price offer preview');
+  await FlightResults.shareFirstTwoQuotesByEmailFromResults(this.page);
+  await Cart.switchSharePreviewToDetailedView(this.page);
+  await Cart.verifySharePreviewDoesNotContainText(this.page, hiddenSafetyText);
+});
+
+When('I hover over time limit icon and verify booking restricted message', async function () {
+  logger.info('Hovering over time limit icon and verifying booking restricted message');
+  this.bookingRestrictedMessage = await FlightResults.hoverTimeLimitIconAndGetBookingRestrictedMessage(this.page);
+  logger.info('Booking restricted message found', { message: this.bookingRestrictedMessage });
+});
+
+Then('I verify message contains {string}', async function (expectedText) {
+  logger.info('Verifying booking restricted message contains expected text', { expectedText });
+  const actualText = await FlightResults.verifyBookingRestrictedMessageContains(this.page, expectedText);
+  logger.info('Booking restricted message validated', { actualText });
 });
 
 When("I scroll into offers and get prices", async function () {
@@ -505,4 +555,19 @@ Then('the original currency symbol {string} should be visible in flight results'
 Then('the original currency symbol {string} should be visible in pricing options', async function (currencySymbol) {
   logger.info('Verifying original currency symbol is visible in pricing options', { currencySymbol });
   await FlightResults.verifyOriginalCurrencySymbolVisibleInPricingOptions(this.page, currencySymbol);
+});
+
+Then('pricing options should be displayed in increasing price order', async function () {
+  logger.info('Verifying pricing options are displayed in increasing price order');
+  await FlightResults.verifyPricingOptionsInAscendingOrder(this.page);
+});
+
+Then('the original currency symbol {string} should be visible in the share quote from results', async function (currencySymbol) {
+  logger.info('Verifying original currency symbol is visible in share quote from results', { currencySymbol });
+  await FlightResults.verifyOriginalCurrencyInShareQuoteFromResults(this.page, currencySymbol);
+});
+
+When('I exit share mode', async function () {
+  logger.info('Exiting share mode');
+  await FlightResults.exitShareMode(this.page);
 });
