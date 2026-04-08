@@ -10,7 +10,6 @@ const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { SearchPage } = require("@pages/SearchPage");
 const { TravelRequestPage } = require("@pages/TravelRequestPage");
-const { CheckoutPage } = require("@pages/CheckoutPage");
 const { CommonPage } = require("@pages/CommonPage");
 
 const TravelRequest = {

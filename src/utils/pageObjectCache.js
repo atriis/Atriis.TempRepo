@@ -93,6 +93,4 @@ function getCacheStats() {
 
 module.exports = {
   getPageObject,
-  clearPageCache,
-  getCacheStats,
 };

@@ -1,9 +1,10 @@
-require("module-alias/register");
+﻿require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const Cart = require("@dsl/Cart");
 const { CartPage } = require("@pages/CartPage");
+const { getPageObject } = require("@utils/pageObjectCache");
 const tripStatus = require("@data/tripStatus.json");
 const logger = require("@utils/logger").child("Cart");
 const {
@@ -22,7 +23,7 @@ When("I click to open fare rules in cart", async function () {
 
 When("I accept Terms & Conditions", async function () {
   logger.info("Accepting T&Cs");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.acceptTermsAndConditions();
 });
 
@@ -33,7 +34,7 @@ When("I proceed to checkout", async function () {
 
 When("I click the proceed to checkout button", async function () {
   logger.info("Clicking proceed to checkout button");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.waitForProceedToCheckout();
   await cartPage.clickProceedToCheckout();
 });
@@ -46,7 +47,7 @@ When("I hold the trip", async function () {
 
 When("I click hold flight button", async function () {    
   logger.info("Clicking hold flight button");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.clickHoldButton();
 });
 
@@ -63,7 +64,7 @@ When("I click to open price breakdown in cart", async function () {
 
 When("I close price breakdown modal", async function () {
   logger.info("Closing price breakdown modal");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.clickXToClosePriceBreakdownModal();
 });
 
@@ -115,49 +116,49 @@ Then("the OOP justification dropdown should contain the following options:", asy
 
 When("I click to edit extras at index {int}", async function (index) {
   logger.info("Clicking to edit extras at index", { index });
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.clickEditExtrasButton(index);
 });
 
 When("I wait for the save button", async function () {
   logger.info("Waiting for save button to be visible");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.waitForSaveButton();
 });
 
 When("I click the save button", async function () {
   logger.info("Clicking save button");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.clickSaveButton();
 });
 
 When("I click number of baggage", async function () {
   logger.info("Clicking number of baggage dropdown");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.clickNumberOfBaggage();
 });
 
 When("I click dropdown option {string}", async function (option) {
   logger.info("Clicking dropdown option", { option });
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.clickDropdownOption(option);
 });
 
 When("I click the extras arrow button", async function () {
   logger.info("Clicking extras arrow button to expand/collapse");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.clickArrowButtonExtras();
 });
 
 When("I click add seats in extras", async function () {
   logger.info("Clicking 'Add seats' button in extras");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.clickAddSeatsButton();
 });
 
 When("I wait for the seat map to load", async function () {
   logger.info("Waiting for seat map to load");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.waitForSeatMapToLoad();
 });
 
@@ -179,13 +180,13 @@ When("I select a random preferred seat", async function () {
 
 When("I click next flight button", async function () {
   logger.info("Clicking next flight button to advance to the next segment");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.clickNextFlightButton();
 });
 
 When("I save and close seat map drawer", async function () {
   logger.info("Saving and closing seat map drawer");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   await cartPage.saveAndCloseSeatMapDrawer();
 });
 
@@ -209,7 +210,7 @@ When("I extract cancellation policy from cart", async function () {
 
 Then("the total price in cart is equal to total price in cart before seats + seats price", async function () {
   const { expect: pwExpect } = require("@playwright/test");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   const priceBeforeSeats = this.extractedPrices[0];
   const seatPrice = this.seatPrice;
 
@@ -338,7 +339,7 @@ Then("passport details are displayed as {string}", async function (expectedText)
 
 Then("the baggage green icon should be visible", async function () {
   logger.info("Verifying baggage green icon is visible");
-  const cartPage = new CartPage(this.page);
+  const cartPage = getPageObject(this.page, CartPage);
   const icon = cartPage.getBaggageGreenIcon();
   await expect(icon).toBeVisible({ timeout: 30000 });
 });
@@ -537,7 +538,7 @@ When("I navigate to trip {int}", async function (tripId) {
 });
 
 // ========================================
-// EXPIRED QUOTE — CHECK AVAILABILITY
+// EXPIRED QUOTE â€” CHECK AVAILABILITY
 // ========================================
 
 Then("the check availability button should be visible", async function () {
@@ -673,7 +674,7 @@ Then("the breakfast type option should not be visible in extras", async function
 });
 
 // ========================================
-// MORE DETAILS DRAWER — PRICE
+// MORE DETAILS DRAWER â€” PRICE
 // ========================================
 
 When("I click more details in cart", async function () {

@@ -219,10 +219,7 @@ async function waitForEnabled(locator, timeout = 5000) {
 }
 
 module.exports = {
-  getText,
   extractNumber,
-  scrollToElement,
   typeIntoNthAvailableInput,
   pressTab,
-  waitForEnabled,
 };

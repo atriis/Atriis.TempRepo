@@ -62,6 +62,4 @@ function generateRandomFlightRoute(region) {
 
 module.exports = {
   generateRandomFlightRoute,
-  getAllRouteKeys,
-  getAllRouteKeysByRegion,
 };

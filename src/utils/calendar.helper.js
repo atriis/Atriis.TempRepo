@@ -350,8 +350,6 @@ async function selectTodayFromVisibleCalendar(
 module.exports = {
   selectDatesByNthAvailable,
   selectDatesByNthAvailableFromNextVisibleMonth,
-  selectDatesByValue,
   selectTodayFromVisibleCalendar,
   selectNthWeekdayFromNextMonth,
-  defaultDateSelectorBuilder,
 };

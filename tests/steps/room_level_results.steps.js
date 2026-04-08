@@ -5,6 +5,7 @@ const { RoomLevelResults } = require("../../src/dsl");
 const { ResultsPage } = require("../../src/pages/ResultsPage");
 const Cart = require("../../src/dsl/Cart");
 const RoomLevelResultsPage = require("../../src/pages/RoomLevelResultsPage");
+const { getPageObject } = require("@utils/pageObjectCache");
 const logger = require("@utils/logger").child("RoomResults");
 
 setDefaultTimeout(120000);
@@ -27,8 +28,8 @@ When("I add the first available room to my cart", async function () {
 
 When("I wait for the first add to trip button to be visible in room level results", async function () {
   logger.info("Waiting for first add to trip button to be visible in room level results");
-  const roomLevelResultsPage = new RoomLevelResultsPage(this.page);
-  const resultsPage = new ResultsPage(this.page);
+  const roomLevelResultsPage = getPageObject(this.page, RoomLevelResultsPage);
+  const resultsPage = getPageObject(this.page, ResultsPage);
   await roomLevelResultsPage.waitForViewHotelOnMapText();
   await resultsPage.scrollToFirstAddToTripButton();
   await resultsPage.waitForAddToTripText();
@@ -271,19 +272,19 @@ Then("only rooms with breakfast should be displayed", async function () {
 
 When("I click on price details button in room level results", async function () {
   logger.info("Clicking price details button in room level results");
-  const roomLevelResultsPage = new RoomLevelResultsPage(this.page);
+  const roomLevelResultsPage = getPageObject(this.page, RoomLevelResultsPage);
   await roomLevelResultsPage.clickPriceDetailsButton();
 });
 
 When("I hover over info icon next to taxes and fees", async function () {
   logger.info("Hovering over info icon next to taxes and fees");
-  const roomLevelResultsPage = new RoomLevelResultsPage(this.page);
+  const roomLevelResultsPage = getPageObject(this.page, RoomLevelResultsPage);
   await roomLevelResultsPage.hoverPayAtHotelInfoIcon();
 });
 
 Then("the {string} tooltip should be correct", async function (tooltipText) {
   logger.info("Verifying tooltip text", { expected: tooltipText });
-  const roomLevelResultsPage = new RoomLevelResultsPage(this.page);
+  const roomLevelResultsPage = getPageObject(this.page, RoomLevelResultsPage);
   const actualText = await roomLevelResultsPage.getPayAtHotelTooltipText();
   logger.info("Tooltip text found", { actual: actualText });
   expect(actualText).toBe("Paid at the hotel");

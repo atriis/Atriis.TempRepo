@@ -32,9 +32,7 @@ const SELECTORS = {
   ADVANCED_RETURN_DATE_FIELD: 'section.return .flight-date-picker input',
 };
 
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+const { escapeRegExp } = require("@utils/text");
 
 class FlightSearchPage {
   /**

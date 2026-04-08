@@ -1,5 +1,6 @@
 const { extractNumber } = require("@utils/dom");
 const { waitForText } = require("@utils/wait");
+const { escapeRegExp } = require("@utils/text");
 
 /**
  * Page Object for flight pricing page.
@@ -19,10 +20,6 @@ const SELECTORS = {
   YOUR_SELECTION_CARD_TITLE: '.header .title',
   YOUR_SELECTION_PRICE: '.bottom-bar .price',
 };
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 class FlightPricingPage {
   constructor(page) {

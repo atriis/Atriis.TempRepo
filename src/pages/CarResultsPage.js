@@ -2,6 +2,7 @@
  * Page Object for car results page.
  * Contains only UI-level interactions.
  */
+const { escapeRegex } = require("@utils/text");
 
 const SELECTORS = {
   // Search results
@@ -29,10 +30,6 @@ const KNOWN_PAYMENT_TYPES = [
 class CarResultsPage {
   constructor(page) {
     this.page = page;
-  }
-
-  escapeRegex(value) {
-    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   /**
@@ -109,7 +106,7 @@ class CarResultsPage {
     }
 
     if (agencyName) {
-      const agency = this.page.getByText(new RegExp(this.escapeRegex(agencyName), 'i')).first();
+      const agency = this.page.getByText(new RegExp(escapeRegex(agencyName), 'i')).first();
       await agency.waitFor({ state: 'visible', timeout });
 
       const cardFromAddToTrip = agency

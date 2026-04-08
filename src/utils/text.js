@@ -40,8 +40,12 @@ function caseInsensitiveContains(text) {
   return new RegExp(escapeRegex(text), "i");
 }
 
+// escapeRegExp is an alias for escapeRegex (used by page objects)
+const escapeRegExp = escapeRegex;
+
 module.exports = {
   escapeRegex,
+  escapeRegExp,
   normalizeText,
   caseInsensitiveContains,
 };

@@ -1,4 +1,4 @@
-require("module-alias/register");
+﻿require("module-alias/register");
 
 const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const {
@@ -12,6 +12,7 @@ const {
 } = require("../../src/assertions/numberAssertions");
 const { extractPriceFromLocation } = require("../../src/utils/priceExtraction");
 const { CommonPage } = require("@pages/CommonPage");
+const { getPageObject } = require("@utils/pageObjectCache");
 const { expect } = require("@playwright/test");
 const logger = require("@utils/logger").child("Common");
 
@@ -159,7 +160,7 @@ Then("the sum of prices at index {int} from {string} and index {int} from {strin
 
 Then('I should see the heading {string}', async function (text) {
   const { expect } = require('@playwright/test');
-  const commonPage = new CommonPage(this.page);
+  const commonPage = getPageObject(this.page, CommonPage);
   
   await expect(commonPage.getHeadingByText(text)).toBeVisible({ timeout: 30000 });
 });
@@ -176,23 +177,23 @@ When("I extract the price at index {int} from {string}", async function (index, 
   this.extractedPrices.push(price);
   
   logger.info("Extracted price", { location, price });
-  console.log(`[Price] index=${index} location="${location}" → ${price}`);
+  console.log(`[Price] index=${index} location="${location}" â†’ ${price}`);
 });
 
 Then("I should see a success notification", async function () {
   logger.info("Verifying success notification is visible");
-  const commonPage = new CommonPage(this.page);
+  const commonPage = getPageObject(this.page, CommonPage);
   await commonPage.getSuccessNotification().waitFor({ state: "visible" });
 });
 
 // ===== WHEN STEPS =====
 
-// Soft/optional click — checks if the Proceed button is visible, waits up to 10s, clicks if it appears.
+// Soft/optional click â€” checks if the Proceed button is visible, waits up to 10s, clicks if it appears.
 // Silently skips if the button never shows up (does NOT fail).
 // Use this when the popup may or may not appear depending on the flow.
 // For a strict click that FAILS if missing, use: "I click proceed on the reference fields popup" (dynamic_fields.steps.js)
 When("I click proceed button if visible", async function () {
   logger.info("Attempting to click Proceed button if visible");
-  const commonPage = new CommonPage(this.page);
+  const commonPage = getPageObject(this.page, CommonPage);
   await commonPage.clickProceedButtonIfVisible();
 });

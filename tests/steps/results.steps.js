@@ -1,8 +1,9 @@
-require("module-alias/register");
+﻿require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { Results } = require("@dsl");
 const { ResultsPage } = require("@pages/ResultsPage");
+const { getPageObject } = require("@utils/pageObjectCache");
 const { expect } = require("@playwright/test");
 const logger = require("@utils/logger").child("Results");
 
@@ -17,13 +18,13 @@ When("I select and add one way journey to trip", async function () {
 
 When("I wait for select text to be visible", async function () {
   logger.info("Waiting for 'Select' text to be visible in results");
-  const resultsPage = new ResultsPage(this.page);
+  const resultsPage = getPageObject(this.page, ResultsPage);
   await resultsPage.waitForSelectText();
 });
 
 When("I wait for add to trip text to be visible", async function () {
   logger.info("Waiting for 'Add to trip' button to be visible");
-  const resultsPage = new ResultsPage(this.page);
+  const resultsPage = getPageObject(this.page, ResultsPage);
   await resultsPage.waitForAddToTripText();
 });
 
@@ -96,7 +97,7 @@ Then("the flight capacity restriction modal should be visible", async function (
 
 When("I filter results by {string} checkbox", async function (option) {
   logger.info("Filtering results by checkbox", { option });
-  const resultsPage = new ResultsPage(this.page);
+  const resultsPage = getPageObject(this.page, ResultsPage);
   await resultsPage.filterByCheckboxOption(option);
 });
 

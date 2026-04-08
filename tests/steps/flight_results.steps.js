@@ -1,10 +1,11 @@
-require("module-alias/register");
+﻿require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { Cart, FlightPricing, FlightResults } = require("../../src/dsl");
 const FlightResultsPage = require("../../src/pages/FlightResultsPage");
 const { ResultsPage } = require("../../src/pages/ResultsPage");
 const { CommonPage } = require("../../src/pages/CommonPage");
+const { getPageObject } = require("@utils/pageObjectCache");
 const { expectNumbersToBeEqualWithTolerance } = require("../../src/assertions/numberAssertions");
 const logger = require("@utils/logger").child("FlightResults");
 
@@ -21,7 +22,7 @@ When("I select one flight segment by schedule", async function () {
 
 When("I wait for the change flight button to be visible", async function () {
   logger.info("Waiting for change flight button to appear");
-  const flightResultsPage = new FlightResultsPage(this.page);
+  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
   
   await flightResultsPage.waitForChangeFlightButton();
 });
@@ -33,7 +34,7 @@ When("I select flight segments by schedule", async function () {
 
 When('I wait for flight results to be available', async function () {
   logger.info('Waiting for flight results to be available');
-  const flightResultsPage = new FlightResultsPage(this.page);
+  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
 
   await flightResultsPage.waitForFlightResults();
 });
@@ -59,8 +60,8 @@ When('I show the comparison table in flight results', async function () {
 
 When("I filter results by carrier {string}", async function (carrier) {
   logger.info("Filtering results by carrier", { carrier });
-  const flightResultsPage = new FlightResultsPage(this.page);
-  const resultsPage = new ResultsPage(this.page);
+  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
+  const resultsPage = getPageObject(this.page, ResultsPage);
   
   // Wait for initial results to load (works in both share and normal mode)
   await flightResultsPage.waitForFlightResults();
@@ -122,7 +123,7 @@ Then('the airport filter sections {string} and {string} should be visible for ro
 
 When("I click on \"Pricing Options\" for the first result", async function () {
   logger.info("Clicking Pricing Options for first result");
-  const flightResultsPage = new FlightResultsPage(this.page);
+  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
   
   // Wait for filter to apply and results to stabilize
   await this.page.waitForTimeout(1500);
@@ -133,7 +134,7 @@ When("I click on \"Pricing Options\" for the first result", async function () {
 
 When("I extract the price from first pricing option", async function () {
   logger.info("Extracting price from first pricing option");
-  const flightResultsPage = new FlightResultsPage(this.page);
+  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
 
   const price = await flightResultsPage.isBySchedulePricingPageVisible()
     ? await FlightPricing.extractYourSelectionPrice(this.page)
@@ -177,28 +178,28 @@ When("I click share from pricing options", async function () {
 
 When("I add to trip from pricing options", async function () {
   logger.info("Clicking add to trip from pricing options");
-  const flightResultsPage = new FlightResultsPage(this.page);
+  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
 
   await flightResultsPage.clickAddToTripButtonPricingOptionsModal();
 });
 
 When("I close pricing options modal", async function () {
   logger.info("Closing pricing options modal");
-  const flightResultsPage = new FlightResultsPage(this.page);
+  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
   
   await flightResultsPage.clickXToClosePricingOptionsModal();
 });
 
 When("I close fare rules window", async function () {
   logger.info("Closing fare rules window");
-  const flightResultsPage = new FlightResultsPage(this.page);
+  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
   
   await flightResultsPage.clickXToClosePricingOptionsModal(1);
 });
 
 When("I close flight details window", async function () {
   logger.info("Closing flight details window");
-  const flightResultsPage = new FlightResultsPage(this.page);
+  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
   
   await flightResultsPage.clickXToCloseFlightDetailsModal();
 });
@@ -244,8 +245,8 @@ When("I select 2 options from carriers {string} and {string}", async function (c
 
 When('I click on the "Share" button to open the share dialog', async function () {
   logger.info("Clicking Share button to open share dialog");
-  const resultsPage = new ResultsPage(this.page);
-  const commonPage = new CommonPage(this.page);
+  const resultsPage = getPageObject(this.page, ResultsPage);
+  const commonPage = getPageObject(this.page, CommonPage);
   
   await resultsPage.clickShareQuoteToGetEmailPopUp();
   await commonPage.waitForSubjectLabelSharePopUp();
@@ -521,7 +522,7 @@ Then("the carrier name in more details should be {string}", async function (expe
 
 When("I extract the price from pricing option at index {int}", async function (index) {
   logger.info("Extracting price from pricing option at index", { index });
-  const flightResultsPage = new FlightResultsPage(this.page);
+  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
   const price = await flightResultsPage.getAmountPriceValuePricingOptions(index);
   if (!this.extractedPrices) this.extractedPrices = [];
   this.extractedPrices.push(price);

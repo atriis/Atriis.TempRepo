@@ -306,7 +306,8 @@ class ResultsPage {
    */
   async getAmountPriceValueResults(index = 0) {
     const { CommonPage } = require("@pages/CommonPage");
-    const commonPage = new CommonPage(this.page);
+    const { getPageObject } = require("@utils/pageObjectCache");
+    const commonPage = getPageObject(this.page, CommonPage);
     return commonPage.getAmountPriceValue(index);
   }
 

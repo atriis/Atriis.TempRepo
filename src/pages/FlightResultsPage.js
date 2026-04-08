@@ -1,10 +1,7 @@
 const { expect } = require("@playwright/test");
 const { waitForText } = require("@utils/wait");
 const { extractNumber } = require("@utils/dom");
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+const { escapeRegExp } = require("@utils/text");
 
 function parseDurationToMinutes(value) {
   if (!value || typeof value !== 'string') {

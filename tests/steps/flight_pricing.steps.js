@@ -1,7 +1,8 @@
-require("module-alias/register");
+﻿require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { FlightPricing } = require("@dsl");
 const FlightPricingPage = require("@pages/FlightPricingPage");
+const { getPageObject } = require("@utils/pageObjectCache");
 const logger = require("@utils/logger").child("FlightPricing");
 
 setDefaultTimeout(120000);
@@ -17,7 +18,7 @@ When('I add {string} fare to trip', async function (fareTitle) {
 
 When('I wait for {string} text to be visible', async function (fareTitle) {
   logger.info('Waiting for pricing fare text to be visible', { fareTitle });
-  const flightPricingPage = new FlightPricingPage(this.page);
+  const flightPricingPage = getPageObject(this.page, FlightPricingPage);
 
   await flightPricingPage.waitForFareTitleText(fareTitle);
 });

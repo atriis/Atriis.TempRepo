@@ -1,9 +1,10 @@
-require("module-alias/register");
+﻿require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { HotelLevelResults } = require("../../src/dsl");
 const logger = require("@utils/logger").child("HotelResults");
 const HotelLevelResultsPage = require("../../src/pages/HotelLevelResultsPage");
+const { getPageObject } = require("@utils/pageObjectCache");
 
 setDefaultTimeout(120000);
 
@@ -19,7 +20,7 @@ When("I filter hotel results by hotel name {string} or skip if unavailable", asy
   logger.info(`Filtering hotel results by hotel name (with fallback): ${hotelName}`);
   const { filtered } = await HotelLevelResults.filterByHotelNameOrFallback(this.page, hotelName);
   if (!filtered) {
-    logger.warn(`Filter for "${hotelName}" returned no results — filter cleared, using full list`);
+    logger.warn(`Filter for "${hotelName}" returned no results â€” filter cleared, using full list`);
   }
 });
 
@@ -35,7 +36,7 @@ When("I select a hotel with member rates", async function () {
 
 When("I wait to see view rates text in results page", { timeout: 180000 }, async function () {
   logger.info("Waiting to see view rates text in results page");
-  const hotelLevelResultsPage = new HotelLevelResultsPage(this.page);
+  const hotelLevelResultsPage = getPageObject(this.page, HotelLevelResultsPage);
   await hotelLevelResultsPage.waitForViewRatesText();
 });
 
@@ -55,7 +56,7 @@ When("I extract the booking fee from the first hotel result", async function () 
 
 When("I wait for the hotel results page to load", async function () {
   logger.info("Waiting for hotel results page to load");
-  const hotelLevelResultsPage = new HotelLevelResultsPage(this.page);
+  const hotelLevelResultsPage = getPageObject(this.page, HotelLevelResultsPage);
   await hotelLevelResultsPage.waitForResultsPageReady();
 });
 
@@ -259,7 +260,7 @@ Then("the hotel at position {int} should preferably be {string}", async function
     await HotelLevelResults.verifyHotelNameAtIndex(this.page, index, expectedName);
     logger.info("Preferred hotel confirmed at position", { index, expectedName });
   } catch (error) {
-    logger.warn(`Hotel at position ${index} is not "${expectedName}" — this is acceptable as hotel ordering may vary`);
+    logger.warn(`Hotel at position ${index} is not "${expectedName}" â€” this is acceptable as hotel ordering may vary`);
   }
 });
 
@@ -268,7 +269,7 @@ When("I filter hotel results by {string} {string}", async function (filterName, 
   if (filterName.toLowerCase() === 'supplier' || filterName.toLowerCase() === 'suppliers') {
     await HotelLevelResults.clickSupplierFilter(this.page, optionText);
   } else {
-    const hotelLevelResultsPage = new HotelLevelResultsPage(this.page);
+    const hotelLevelResultsPage = getPageObject(this.page, HotelLevelResultsPage);
     const checkbox = this.page.locator(`.hotel-filter .filter-container:has(h4:has-text("${filterName}")) label.el-checkbox:has-text("${optionText}")`);
     await checkbox.waitFor({ state: 'visible', timeout: 15000 });
     await checkbox.click();

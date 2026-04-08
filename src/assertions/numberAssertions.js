@@ -147,6 +147,5 @@ module.exports = {
   expectNumberToBeGreaterThanOrEqual,
   expectNumberToBeLessThan,
   expectNumberToBeLessThanOrEqual,
-  expectSumToBeEqual,
   expectSumToBeEqualWithTolerance,
 };
