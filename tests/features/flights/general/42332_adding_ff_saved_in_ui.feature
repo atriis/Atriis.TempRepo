@@ -16,10 +16,11 @@ Feature: 42332 Flights - Adding FF is successfully saved in the UI
     And I have added myself as the traveler
     And I have added a random guest traveler
     When I search for a one way flight from "AMS" to "PAR"
-    And I click proceed on the reference fields popup
+    And I select the trip purpose as "BILLABLE" and proceed
     And I filter results by carrier "KL"
     And I add the first flight to cart
-    # TODO: Step needed for "Add frequent flyer number in cart"
+    Then the booking status should be "Pending booking"
+    When I click to edit extras at index 0
+    And I add loyalty number "BB10101010" using the first available airline
     Then I should see a success notification
-    # TODO: Step needed for "Verify FF number was saved and displayed in cart"
-    Then I successfully cancel the trip
+    And the frequent flyer should have a green success icon

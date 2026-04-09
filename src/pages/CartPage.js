@@ -216,6 +216,10 @@ const SELECTORS = {
   FQTV_SELECTED_TEXT: '.flight-frequent-flyer .el-select__placeholder span',
   FQTV_SELECTED_TEXT_VISIBLE: '.flight-frequent-flyer .el-tab-pane:visible .el-select__placeholder span',
   FQTV_TRAVELER_TAB: '.flight-frequent-flyer .frequent-flyer-tab .el-tabs__item',
+  FQTV_NEW_RADIO: '.flight-frequent-flyer .el-tab-pane:visible .el-radio:has-text("New")',
+  FQTV_CARRIER_SELECT: '.flight-frequent-flyer .el-tab-pane:visible .ff-inputs .el-select',
+  FQTV_NUMBER_INPUT: '.flight-frequent-flyer .el-tab-pane:visible .ff-inputs input',
+  FQTV_SUCCESS_ICON: '.flight-frequent-flyer .success-icon.green',
 
   // eHotel supplier details in cart (hotel-quote-card.vue → booking-confirm section)
   EHOTEL_PIN_CODE: '.booking-confirm p:has-text("Pincode:")',
@@ -2169,6 +2173,29 @@ class CartPage {
   }
 
   /**
+   * Returns all visible selected FQTV texts from the Frequent Flyer section.
+   * Useful for separate-ticket flows where more than one carrier is shown.
+   * @param {number} [timeout=15000] - Timeout for waiting
+   * @returns {Promise<string[]>} The visible FQTV selected texts
+   */
+  async getAllFqtvSelectedTexts(timeout = 15000) {
+    const texts = this.page.locator(SELECTORS.FQTV_SELECTED_TEXT_VISIBLE);
+    await texts.first().waitFor({ state: 'visible', timeout });
+
+    const count = await texts.count();
+    const values = [];
+
+    for (let index = 0; index < count; index += 1) {
+      const value = (await texts.nth(index).innerText()).trim();
+      if (value) {
+        values.push(value);
+      }
+    }
+
+    return values;
+  }
+
+  /**
    * Clicks the FQTV traveler tab by visible traveler name.
    * @param {string} travelerName - Full traveler name shown in the tab
    * @param {number} [timeout=15000] - Timeout for waiting
@@ -2182,6 +2209,81 @@ class CartPage {
     const tab = this.page.locator(SELECTORS.FQTV_TRAVELER_TAB, { hasText: travelerName }).first();
     await tab.waitFor({ state: 'visible', timeout });
     await tab.click();
+  }
+
+  /**
+   * Clicks the Frequent Flyer row action to open the FQTV form.
+   * @param {number} [timeout=15000] - Timeout for waiting
+   * @returns {Promise<void>}
+   */
+  async clickFqtvClickable(timeout = 15000) {
+    const clickable = this.page.locator(SELECTORS.FQTV_CLICKABLE).first();
+    await clickable.waitFor({ state: 'visible', timeout });
+    await clickable.click();
+  }
+
+  /**
+   * Clicks the "New" radio button in the flight frequent flyer section.
+   * @param {number} [timeout=10000] - Timeout for waiting
+   * @returns {Promise<void>}
+   */
+  async selectNewFqtvRadio(index = 0, timeout = 10000) {
+    const radio = this.page.locator(SELECTORS.FQTV_NEW_RADIO).nth(index);
+    await radio.waitFor({ state: 'visible', timeout });
+    await radio.click();
+  }
+
+  /**
+   * Selects the first available airline from the flight frequent flyer carrier dropdown.
+   * @param {number} [index=0] - Segment index in the frequent flyer form
+   * @param {number} [timeout=10000] - Timeout for waiting
+   * @returns {Promise<string>} The selected airline label text
+   */
+  async selectFirstFqtvCarrier(index = 0, timeout = 10000) {
+    const select = this.page.locator(SELECTORS.FQTV_CARRIER_SELECT).nth(index);
+    await select.waitFor({ state: 'visible', timeout });
+    await select.click();
+
+    const option = this.page.locator(SELECTORS.DROPDOWN_OPTION).first();
+    await option.waitFor({ state: 'visible', timeout });
+    const text = (await option.textContent())?.trim() ?? '';
+    await option.click();
+
+    return text;
+  }
+
+  /**
+   * Fills the flight frequent flyer number input.
+   * @param {string} number - Frequent flyer number to enter
+   * @param {number} [index=0] - Segment index in the frequent flyer form
+   * @param {number} [timeout=10000] - Timeout for waiting
+   * @returns {Promise<void>}
+   */
+  async fillFqtvNumber(number, index = 0, timeout = 10000) {
+    if (!number || typeof number !== 'string') {
+      throw new Error('number must be a non-empty string');
+    }
+
+    const input = this.page.locator(SELECTORS.FQTV_NUMBER_INPUT).nth(index);
+    await input.waitFor({ state: 'visible', timeout });
+    await input.fill(number);
+  }
+
+  /**
+   * Waits for the flight frequent flyer green success icon to be visible.
+   * @param {number} [timeout=30000] - Timeout for waiting
+   * @returns {Promise<void>}
+   */
+  async waitForFqtvSuccessIcon(timeout = 30000) {
+    await this.page.locator(SELECTORS.FQTV_SUCCESS_ICON).waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Checks whether the flight frequent flyer section shows the green success icon.
+   * @returns {Promise<boolean>}
+   */
+  async hasFqtvSuccessIcon() {
+    return this.page.locator(SELECTORS.FQTV_SUCCESS_ICON).isVisible();
   }
 }
 

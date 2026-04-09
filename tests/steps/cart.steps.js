@@ -659,6 +659,12 @@ When("I add a new loyalty number {string} for hotel chain {string}", async funct
   await Cart.addNewLoyaltyNumber(this.page, chainText, loyaltyNumber);
 });
 
+When("I add loyalty number {string} using the first available airline", async function (loyaltyNumber) {
+  logger.info("Adding loyalty number with first available airline", { loyaltyNumber });
+  this.selectedFqtvAirline = await Cart.addLoyaltyNumberWithFirstAvailableAirline(this.page, loyaltyNumber);
+  logger.info("Added loyalty number with airline", { airline: this.selectedFqtvAirline });
+});
+
 Then("the loyalty number {string} and chain {string} should be saved", async function (expectedNumber, expectedChain) {
   logger.info("Verifying loyalty number is saved", { expectedNumber, expectedChain });
   await Cart.verifyLoyaltyNumberSaved(this.page, expectedChain, expectedNumber);
@@ -747,6 +753,11 @@ Then("the FQTV should show {string}", async function (expectedText) {
 Then("the FQTV should show {string} for {string}", async function (expectedText, travelerName) {
   logger.info("Verifying FQTV shows expected text for traveler", { expectedText, travelerName });
   await Cart.verifyFqtvDisplayedForTraveler(this.page, expectedText, travelerName);
+});
+
+Then("the frequent flyer should have a green success icon", async function () {
+  logger.info("Verifying frequent flyer has green success icon");
+  await Cart.verifyFqtvHasSuccessIcon(this.page);
 });
 
 // ===== EHOTEL SUPPLIER DETAILS =====

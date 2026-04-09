@@ -1612,6 +1612,30 @@ const Cart = {
   },
 
   /**
+   * Adds a flight frequent flyer number using the first available airline.
+    * Assumes the frequent flyer extras panel is already open.
+   * @param {import('playwright').Page} page
+   * @param {string} loyaltyNumber - Frequent flyer number to enter
+   * @returns {Promise<string>} The selected airline label text
+   */
+  async addLoyaltyNumberWithFirstAvailableAirline(page, loyaltyNumber) {
+    if (!page) throw new Error('page is required');
+    if (!loyaltyNumber || typeof loyaltyNumber !== 'string') {
+      throw new Error('loyaltyNumber must be a non-empty string');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForSaveButton();
+    await cartPage.selectNewFqtvRadio();
+    const airlineText = await cartPage.selectFirstFqtvCarrier();
+    await cartPage.fillFqtvNumber(loyaltyNumber);
+    await cartPage.clickSaveButton();
+    await cartPage.getSaveButton().waitFor({ state: 'hidden', timeout: 15000 });
+
+    return airlineText;
+  },
+
+  /**
    * Verifies that a previously saved loyalty number and hotel chain are visible.
    * Opens the loyalty panel again and checks the field values.
    * @param {import('playwright').Page} page
@@ -2022,8 +2046,9 @@ const Cart = {
     if (!expectedText || typeof expectedText !== 'string') throw new Error('expectedText must be a non-empty string');
 
     const cartPage = getPageObject(page, CartPage);
-    const actualText = await cartPage.getFqtvSelectedText();
-    expect(actualText, `FQTV should show "${expectedText}" but got "${actualText}"`).toContain(expectedText);
+    const actualTexts = await cartPage.getAllFqtvSelectedTexts();
+    const hasMatch = actualTexts.some((text) => text.includes(expectedText));
+    expect(hasMatch, `FQTV should show "${expectedText}" but got "${actualTexts.join(', ')}"`).toBe(true);
   },
 
   /**
@@ -2043,8 +2068,24 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     await cartPage.clickFqtvTravelerTabByName(travelerName);
 
-    const actualText = await cartPage.getFqtvSelectedText();
-    expect(actualText, `FQTV for traveler "${travelerName}" should show "${expectedText}" but got "${actualText}"`).toContain(expectedText);
+    const actualTexts = await cartPage.getAllFqtvSelectedTexts();
+    const hasMatch = actualTexts.some((text) => text.includes(expectedText));
+    expect(hasMatch, `FQTV for traveler "${travelerName}" should show "${expectedText}" but got "${actualTexts.join(', ')}"`).toBe(true);
+  },
+
+  /**
+   * Verifies the flight frequent flyer section shows the green success icon.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async verifyFqtvHasSuccessIcon(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForFqtvSuccessIcon();
+
+    const hasIcon = await cartPage.hasFqtvSuccessIcon();
+    expect(hasIcon, 'Expected frequent flyer to have green check icon').toBe(true);
   },
 };
 

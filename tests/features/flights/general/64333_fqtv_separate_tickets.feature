@@ -11,14 +11,18 @@ Feature: 64333 Flights - Add FQTV to single quote with separate tickets
   I want to add FQTV to a single quote with separate tickets/carriers
   So that frequent flyer points are assigned correctly to each carrier
 
-  # TODO: New user needed — multifqtv@corp.club → USER_MULTIFQTV
-  # Add to .env: USER_MULTIFQTV="multifqtv@corp.club"
-
   Scenario: FQTV is saved for single quote with separate tickets
     Given I am logged in as "multifqtv" booking a new trip
-    And I have added a random guest traveler
+    And I have added myself as the traveler
     When I search for a flight by schedule from "ATL" to "EWR"
-    And I select flight segments by schedule
-    And I handle conflicting quotes if visible
-    # TODO: Step needed for "Validate FQTV can be added and saved for separate ticket carriers"
-    Then I successfully cancel the trip
+    And I filter results by carrier "DL"
+    And I select one flight segment by schedule
+    And I wait for the change flight button to be visible
+    And I filter results by carrier "UA"
+    And I select one flight segment by schedule
+    And I wait for "Your Selection" text to be visible
+    And I add "Your Selection" fare to trip
+    Then the booking status should be "Pending booking"
+    And I click to edit extras at index 1
+    Then the FQTV should show "DL - 1741551211"
+    And the FQTV should show "UA - N7J91W1"
