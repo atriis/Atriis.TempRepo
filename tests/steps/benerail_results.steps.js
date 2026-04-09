@@ -1,6 +1,6 @@
 require("module-alias/register");
 
-const { When, setDefaultTimeout } = require("@cucumber/cucumber");
+const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { BenerailResults } = require("@dsl");
 const logger = require("@utils/logger").child("BenerailResults");
 
@@ -21,4 +21,384 @@ When("I add a Benerail one way to the trip", async function () {
 When("I add a Benerail round trip to the trip", async function () {
   logger.info("Adding Benerail round trip to trip");
   await BenerailResults.addBenerailRoundtripToTrip(this.page);
+});
+
+// ===== TODO STUBS — need DSL/Page implementation =====
+
+// --- Fare Rules ---
+Then("the fare rules should be accessible in Benerail results", async function () {
+  throw new Error("TODO: implement 'the fare rules should be accessible in Benerail results' — open fare rules modal from results page and assert it loads (see test 29414)");
+});
+
+Then("the fare rules should be accessible in the Benerail cart", async function () {
+  throw new Error("TODO: implement 'the fare rules should be accessible in the Benerail cart' — open fare rules modal from cart page and assert it loads (see test 29414)");
+});
+
+Then("the fare rules should be accessible in the Benerail trip overview after booking", async function () {
+  throw new Error("TODO: implement 'the fare rules should be accessible in the Benerail trip overview after booking' — open fare rules from the trip overview page and assert it loads (see test 29414)");
+});
+
+Then("the fare rules link should be visible in the Benerail trip overview", async function () {
+  throw new Error("TODO: implement 'the fare rules link should be visible in the Benerail trip overview' — assert the fare rules link is rendered in the Benerail block on the trip overview (see test 22999)");
+});
+
+Then("the fare rules should be visible in the Benerail share quote email", async function () {
+  throw new Error("TODO: implement 'the fare rules should be visible in the Benerail share quote email' — share quote, open email preview, assert fare rules content is included (see test 59289)");
+});
+
+Then("the fare rules should be visible in the Benerail share itinerary email", async function () {
+  throw new Error("TODO: implement 'the fare rules should be visible in the Benerail share itinerary email' — share itinerary, open email preview, assert fare rules content is included (see test 59289)");
+});
+
+// --- Policy / OOP ---
+Then("the OOP justification mandatory error should be displayed", async function () {
+  throw new Error("TODO: implement 'the OOP justification mandatory error should be displayed' — attempt checkout without selecting OOP justification and assert the mandatory error is shown (see test 21020)");
+});
+
+Then("the OOP indicator should be displayed when two Benerail policy rules are combined", async function () {
+  throw new Error("TODO: implement 'the OOP indicator should be displayed when two Benerail policy rules are combined' — search with a user whose policy has combined OOP rules and assert badge/icon is shown (see test 59265)");
+});
+
+Then("the travel policy should be triggered for 1st class and destination in Benerail", async function () {
+  throw new Error("TODO: implement 'the travel policy should be triggered for 1st class and destination in Benerail' — verify OOP indicator is triggered when selecting 1st class on a destination-restricted route (see test 56134)");
+});
+
+// --- Approval flow ---
+Then("the approval flow should have the correct approvers assigned", async function () {
+  throw new Error("TODO: implement 'the approval flow should have the correct approvers assigned' — after booking with approval-flow policy, verify approvers list is correct on trip/approval page (see test 22999)");
+});
+
+Then("the approval flow should have the correct approvers for duration and origin rules", async function () {
+  throw new Error("TODO: implement 'the approval flow should have the correct approvers for duration and origin rules' — after booking under duration & origin policy, verify approvers list (see test 23004)");
+});
+
+// --- Cancellation with Warning ---
+When("I cancel the Benerail trip with warning and continue", async function () {
+  throw new Error("TODO: implement 'I cancel the Benerail trip with warning and continue' — cancel the Benerail trip through UI, confirm the warning dialog that appears, then continue (different from standard Trip_Cancelation) (see tests 23004, hybrid_61642)");
+});
+
+When("I cancel the quoted Benerail booking from cart with warning", async function () {
+  throw new Error("TODO: implement 'I cancel the quoted Benerail booking from cart with warning' — cancel a quoted/pending Benerail booking from the cart, handle the cancellation warning dialog (see test 22999)");
+});
+
+// --- Checkout alias ---
+When("I checkout the Benerail booking", async function () {
+  throw new Error("TODO: implement 'I checkout the Benerail booking' — alias for 'I proceed to checkout' specifically for Benerail approval-flow test (see test 22999); consider reusing When('I proceed to checkout') instead");
+});
+
+// --- Barcode ---
+Then("the mobile barcode should be visible in cart and itinerary mail", async function () {
+  throw new Error("TODO: implement 'the mobile barcode should be visible in cart and itinerary mail' — assert the mobile barcode element is rendered in cart, then send itinerary email and verify barcode is included (see test 22999)");
+});
+
+// --- Expiry ---
+Then("the Benerail expiry tooltip should show at least {int} minutes", async function (minutes) {
+  throw new Error(`TODO: implement 'the Benerail expiry tooltip should show at least ${minutes} minutes' — hover or read the expiry countdown element in cart and assert the value >= ${minutes} minutes (see test 29414)`);
+});
+
+Then("the Benerail expiry counter should be visible and show minutes remaining", async function () {
+  throw new Error("TODO: implement 'the Benerail expiry counter should be visible and show minutes remaining' — assert the booking expiry countdown widget is visible in cart (see test 65020)");
+});
+
+When("I navigate to a specific Benerail trip and verify it shows Expired status", async function () {
+  throw new Error("TODO: implement 'I navigate to a specific Benerail trip and verify it shows Expired status' — navigate to a stored trip URL and assert the trip status badge shows 'Expired' (see test 65020)");
+});
+
+Then("the Delete button should be displayed and the Search again button should be clickable", async function () {
+  throw new Error("TODO: implement 'the Delete button should be displayed and the Search again button should be clickable' — on an expired Benerail trip, assert Delete and Search again CTAs are visible and functional (see test 65020)");
+});
+
+Then("the time left to book counter should be visible in the Benerail checkout", async function () {
+  throw new Error("TODO: implement 'the time left to book counter should be visible in the Benerail checkout' — assert the expiry countdown widget is visible on the checkout page (see test 66407)");
+});
+
+// --- Birth Date ---
+Then("the birth date section should be visible and required in the Benerail cart", async function () {
+  throw new Error("TODO: implement 'the birth date section should be visible and required in the Benerail cart' — assert the date-of-birth input section is visible and marked as required for guest travelers in cart (see test 33896)");
+});
+
+When("I save the birth date in the Benerail cart", async function () {
+  throw new Error("TODO: implement 'I save the birth date in the Benerail cart' — fill in a valid date-of-birth for the guest traveler in the cart and click save (see test 33896)");
+});
+
+Then("the birth date should be saved successfully in the Benerail cart", async function () {
+  throw new Error("TODO: implement 'the birth date should be saved successfully in the Benerail cart' — assert that the saved date-of-birth value is properly displayed after saving (see test 33896)");
+});
+
+// --- 1st Class ---
+When("I verify the second result is in 2nd class", async function () {
+  throw new Error("TODO: implement 'I verify the second result is in 2nd class' — assert the second Benerail result row shows 2nd class label (see test 52934)");
+});
+
+When("I select the second Benerail result", async function () {
+  throw new Error("TODO: implement 'I select the second Benerail result' — click the Select button on the second Benerail result row (see test 52934)");
+});
+
+When("I expand the 1st class options for the first Benerail result", async function () {
+  throw new Error("TODO: implement 'I expand the 1st class options for the first Benerail result' — click the 1st class toggle/expand button on the first result (see test 52934)");
+});
+
+Then("the 1st class alternative should be visible for the first result", async function () {
+  throw new Error("TODO: implement 'the 1st class alternative should be visible for the first result' — assert the 1st class option row is rendered for the first result (see test 52934)");
+});
+
+When("I select the 1st class Benerail option and add to trip", async function () {
+  throw new Error("TODO: implement 'I select the 1st class Benerail option and add to trip' — click Select on the 1st class row and add to the trip (see test 52934)");
+});
+
+Then("the cart should show 1st Class for the Benerail booking", async function () {
+  throw new Error("TODO: implement 'the cart should show 1st Class for the Benerail booking' — assert the cart displays '1st Class' or equivalent label for the Benerail quote (see test 52934)");
+});
+
+When("I open the Benerail seat selection in cart", async function () {
+  throw new Error("TODO: implement 'I open the Benerail seat selection in cart' — click the seat selection button/link in the Benerail cart block (see test 52934)");
+});
+
+Then("the Book and Finalize button should be visible in the Benerail seat dialog", async function () {
+  throw new Error("TODO: implement 'the Book and Finalize button should be visible in the Benerail seat dialog' — assert Book and Finalize CTA is visible within the seat selection dialog (see test 52934)");
+});
+
+// --- Price for multiple travelers ---
+When("I set the age association for the second traveler", async function () {
+  throw new Error("TODO: implement 'I set the age association for the second traveler' — select age category/association for the second traveler in Benerail extras (see test 34821)");
+});
+
+Then("the total price should reflect both travelers correctly", async function () {
+  throw new Error("TODO: implement 'the total price should reflect both travelers correctly' — assert the pricing breakdown in results/cart shows correct total for 2 travelers (see test 34821)");
+});
+
+Then("the booking status should show In Progress or Finalizing", async function () {
+  throw new Error("TODO: implement 'the booking status should show In Progress or Finalizing' — after completing booking, assert the trip status badge is In Progress or Finalizing (see test 34821)");
+});
+
+// --- Share from results ---
+Then("the journey details button should be visible in Benerail results", async function () {
+  throw new Error("TODO: implement 'the journey details button should be visible in Benerail results' — assert the Journey Details expand button is rendered on Benerail results cards (see test 35111)");
+});
+
+When("I send the Benerail price offer from results", async function () {
+  throw new Error("TODO: implement 'I send the Benerail price offer from results' — click share, select Price Offer, fill email, send from the results page (see test 35111)");
+});
+
+When("I close the Benerail share bar", async function () {
+  throw new Error("TODO: implement 'I close the Benerail share bar' — close the share options bar/panel in Benerail results (see test 35111)");
+});
+
+Then("the traveler name should appear in the share quote email preview", async function () {
+  throw new Error("TODO: implement 'the traveler name should appear in the share quote email preview' — share quote, open preview, assert traveler name is shown in the email body (see test 35111)");
+});
+
+Then("the EU Rail label should appear in the share itinerary email preview", async function () {
+  throw new Error("TODO: implement 'the EU Rail label should appear in the share itinerary email preview' — share itinerary, open preview, assert EU Rail branding label is present in the email body (see test 35111)");
+});
+
+// --- Journey details time comparison ---
+When("I extract the departure and arrival times from the Benerail results", async function () {
+  throw new Error("TODO: implement 'I extract the departure and arrival times from the Benerail results' — read and store departure/arrival times displayed on the first result card (see test 44941)");
+});
+
+When("I open journey details for the first Benerail result", async function () {
+  throw new Error("TODO: implement 'I open journey details for the first Benerail result' — click the Journey Details button on the first Benerail result to open the details panel (see test 44941)");
+});
+
+When("I extract the departure and arrival times from the journey details panel", async function () {
+  throw new Error("TODO: implement 'I extract the departure and arrival times from the journey details panel' — read and store departure/arrival times from the open journey details panel (see test 44941)");
+});
+
+Then("the journey details times should match the results page times", async function () {
+  throw new Error("TODO: implement 'the journey details times should match the results page times' — compare previously stored results-page times vs journey-details-panel times and assert they match (see test 44941)");
+});
+
+When("I close the Benerail journey details panel", async function () {
+  throw new Error("TODO: implement 'I close the Benerail journey details panel' — click close/X on the journey details panel (see test 44941)");
+});
+
+Then("the traveler should still be visible in the Benerail cart", async function () {
+  throw new Error("TODO: implement 'the traveler should still be visible in the Benerail cart' — after adding quote to cart, assert traveler is displayed in the cart header/traveler section (see test 44941)");
+});
+
+// --- Share 2 ways ---
+When("I click the share icon in Benerail results", async function () {
+  throw new Error("TODO: implement 'I click the share icon in Benerail results' — click the share/send icon button on the Benerail results page (see test 46315)");
+});
+
+When("I click the share price offer button in Benerail results", async function () {
+  throw new Error("TODO: implement 'I click the share price offer button in Benerail results' — select the Price Offer share option from the share panel (see test 46315)");
+});
+
+Then("the Include in price offer option should be visible", async function () {
+  throw new Error("TODO: implement 'the Include in price offer option should be visible' — assert the 'Include in price offer' checkbox or button is displayed in the share panel (see test 46315)");
+});
+
+// --- Air-rail mixed ---
+Then("the Rail is available for this route message should be visible in flight results", async function () {
+  throw new Error("TODO: implement 'the Rail is available for this route message should be visible in flight results' — assert the Air-Rail informational banner/message is visible on the flight results page (see test 47148)");
+});
+
+When("I click the Rail Options button in flight results", async function () {
+  throw new Error("TODO: implement 'I click the Rail Options button in flight results' — click the 'Rail Options' CTA that appears in the flight results when air-rail mixed is available (see test 47148)");
+});
+
+Then("the first Benerail result Select button should be visible", async function () {
+  throw new Error("TODO: implement 'the first Benerail result Select button should be visible' — after clicking Rail Options, assert the Benerail results are loaded and the first result has a Select button (see test 47148)");
+});
+
+// --- Results improvements ---
+Then("the Benerail results page improvements should be visible", async function () {
+  throw new Error("TODO: implement 'the Benerail results page improvements should be visible' — assert various UI improvement elements are present on the results page (see test 51524)");
+});
+
+Then("the seat price should not be included in the journey price", async function () {
+  throw new Error("TODO: implement 'the seat price should not be included in the journey price' — assert the displayed journey price does NOT include seat reservation price (see test 51524)");
+});
+
+Then("the seat selection improvements should be validated in results", async function () {
+  throw new Error("TODO: implement 'the seat selection improvements should be validated in results' — validate seat selection UI improvements: layout, labels, pricing breakdown (see test 51524)");
+});
+
+// --- Mandatory age association ---
+Then("the Age Association mandatory field should not be displayed in the Benerail extras", async function () {
+  throw new Error("TODO: implement 'the Age Association mandatory field should not be displayed in the Benerail extras' — assert the Age Association field is NOT marked as mandatory in the Benerail extras section (see test 56162)");
+});
+
+// --- Passenger details ---
+When("I select a Benerail result container to see passenger details", async function () {
+  throw new Error("TODO: implement 'I select a Benerail result container to see passenger details' — expand or select a result container that reveals the passenger details section (see test 62001)");
+});
+
+Then("the passenger details should be correctly displayed in Benerail results", async function () {
+  throw new Error("TODO: implement 'the passenger details should be correctly displayed in Benerail results' — assert traveler name, ticket type, and other passenger details are shown correctly (see test 62001)");
+});
+
+// --- Route/refundable in itinerary ---
+Then("the Benerail route displayed should be the correct one", async function () {
+  throw new Error("TODO: implement 'the Benerail route displayed should be the correct one' — assert origin/destination stations shown on the results page match the searched route (see test 62008)");
+});
+
+Then("the Benerail route in cart should be the correct one", async function () {
+  throw new Error("TODO: implement 'the Benerail route in cart should be the correct one' — assert origin/destination stations in the cart block match the searched route (see test 62008)");
+});
+
+Then("the Benerail ticket should be marked as refundable in cart", async function () {
+  throw new Error("TODO: implement 'the Benerail ticket should be marked as refundable in cart' — assert the refundable/cancellable indicator is displayed in the Benerail cart block (see test 62008)");
+});
+
+When("I select a seat for the Benerail booking", async function () {
+  throw new Error("TODO: implement 'I select a seat for the Benerail booking' — open seat selection, pick a seat, confirm selection (see test 62008)");
+});
+
+Then("the trip overview should show the journey details button", async function () {
+  throw new Error("TODO: implement 'the trip overview should show the journey details button' — after completing booking, assert the Journey Details button is visible in the trip overview for the Benerail segment (see test 62008)");
+});
+
+Then("the Benerail ticket should be marked as refundable in the itinerary after booking", async function () {
+  throw new Error("TODO: implement 'the Benerail ticket should be marked as refundable in the itinerary after booking' — on the trip overview/itinerary page, assert the Benerail ticket has a refundable indicator (see test 62008)");
+});
+
+// --- Train details ---
+Then("the train details should be displayed in the Benerail journey details", async function () {
+  throw new Error("TODO: implement 'the train details should be displayed in the Benerail journey details' — open journey details and assert train number, type, and departure/arrival fields are visible (see test 62215)");
+});
+
+// --- Earlier/Later navigation ---
+Then("the first Benerail result should depart from 06:00 or later", async function () {
+  throw new Error("TODO: implement 'the first Benerail result should depart from 06:00 or later' — assert the first result departure time is >= 06:00 on the initial results page (see test 62220)");
+});
+
+When("I click Later and extract the first result departure time", async function () {
+  throw new Error("TODO: implement 'I click Later and extract the first result departure time' — click the Later navigation button, wait for results to refresh, read and store the first result departure time (see tests 62220, 62825)");
+});
+
+When("I click Earlier and extract the first result departure time", async function () {
+  throw new Error("TODO: implement 'I click Earlier and extract the first result departure time' — click the Earlier navigation button, wait for results to refresh, read and store the first result departure time (see test 62220)");
+});
+
+Then("the Earlier results departure time should be before the Later results time", async function () {
+  throw new Error("TODO: implement 'the Earlier results departure time should be before the Later results time' — compare stored Earlier vs Later departure times and assert Earlier < Later (see test 62220)");
+});
+
+When("I click Later and extract the subsequent first result departure time", async function () {
+  throw new Error("TODO: implement 'I click Later and extract the subsequent first result departure time' — click Later a second time, wait for refresh, read and store the new first result departure time (see test 62825)");
+});
+
+Then("the second Later click should display results later than the first Later click", async function () {
+  throw new Error("TODO: implement 'the second Later click should display results later than the first Later click' — compare first Later time vs second Later time and assert second > first (see test 62825)");
+});
+
+// --- Check-in ---
+Then("the check-in required notice should be visible in cart", async function () {
+  throw new Error("TODO: implement 'the check-in required notice should be visible in cart' — assert the check-in required notice/badge is shown in the Benerail cart block (see test 62469)");
+});
+
+Then("the Check-in button should be visible in cart", async function () {
+  throw new Error("TODO: implement 'the Check-in button should be visible in cart' — assert the Check-in button/link is visible in the Benerail cart block (see test 62469)");
+});
+
+When("I click the Check-in button in cart", async function () {
+  throw new Error("TODO: implement 'I click the Check-in button in cart' — click the Check-in button in the Benerail cart block to open the check-in panel (see test 62469)");
+});
+
+Then("the check-in panel should show the Outbound leg", async function () {
+  throw new Error("TODO: implement 'the check-in panel should show the Outbound leg' — assert the Outbound leg section is visible in the check-in information panel (see test 62469)");
+});
+
+Then("the check-in panel should show the Available from time", async function () {
+  throw new Error("TODO: implement 'the check-in panel should show the Available from time' — assert the 'Available from' timestamp section is displayed in the check-in panel (see test 62469)");
+});
+
+// --- Notification banner ---
+When("I close the mandatory notification banner if visible", async function () {
+  throw new Error("TODO: implement 'I close the mandatory notification banner if visible' — conditionally close the mandatory notification banner if it appears on the Benerail results page (see test 62825)");
+});
+
+// --- No trains found ---
+Then("the no trains found message should be displayed in Benerail results", async function () {
+  throw new Error("TODO: implement 'the no trains found message should be displayed in Benerail results' — assert the empty-state / no-results message is displayed (see test 62867 — edge case where no content is returned)");
+});
+
+// --- Loyalty card ---
+Then("the new and existing loyalty card options should be saved at trip level", async function () {
+  throw new Error("TODO: implement 'the new and existing loyalty card options should be saved at trip level' — add/save a new loyalty card during booking, then re-open and verify it is available as existing (see test 63920)");
+});
+
+// --- Journey summary (direct/changes) ---
+Then("the journey summary should correctly indicate non-direct routes", async function () {
+  throw new Error("TODO: implement 'the journey summary should correctly indicate non-direct routes' — assert journey summary shows number of changes or 'Direct' label correctly for the searched route (see test 67510)");
+});
+
+// --- Journey selection stepper ---
+Then("the Benerail journey stepper should be visible for the outbound selection", async function () {
+  throw new Error("TODO: implement 'the Benerail journey stepper should be visible for the outbound selection' — assert the step indicator/stepper element is visible during outbound journey selection (see test 68009)");
+});
+
+Then("the Benerail journey stepper should be visible for the return selection", async function () {
+  throw new Error("TODO: implement 'the Benerail journey stepper should be visible for the return selection' — after selecting outbound, assert the stepper advances and return selection stepper is visible (see test 68009)");
+});
+
+// --- Agreement UI ---
+Then("the Benerail agreement UI should be displayed in results", async function () {
+  throw new Error("TODO: implement 'the Benerail agreement UI should be displayed in results' — assert the agreement terms/consent UI component is rendered in the Benerail results page (see test 68824)");
+});
+
+// --- API steps ---
+When("I extract the trip number from the current URL", async function () {
+  throw new Error("TODO: implement 'I extract the trip number from the current URL' — read the current page URL, extract the trip ID number, and store in this.tripId for subsequent API validation steps (see test 72539)");
+});
+
+Then("the Benerail GetTrip API should contain ticket information", async function () {
+  throw new Error("TODO: implement 'the Benerail GetTrip API should contain ticket information' — call GetTrip API with this.tripId, parse the response, assert ticket fields (e.g. ticketNumber, ticketType) are present. Note: requires ~120s wait for async processing (see test 72539)");
+});
+
+When("I cancel the Benerail trip via API", async function () {
+  throw new Error("TODO: implement 'I cancel the Benerail trip via API' — call the cancellation API endpoint with this.tripId and the current user credentials (see test 72539)");
+});
+
+// --- Agreements account nav ---
+Then("the Benerail search tab should still be visible", async function () {
+  throw new Error("TODO: implement 'the Benerail search tab should still be visible' — after Benerail search with agreements, assert the Search tab link is still present in the nav (see test hybrid_44798)");
+});
+
+// --- Results confirmation ---
+Then("the Benerail search results should be displayed", async function () {
+  throw new Error("TODO: implement 'the Benerail search results should be displayed' — wait for and assert the Benerail results page has loaded with at least one result visible (see test hybrid_62913)");
 });

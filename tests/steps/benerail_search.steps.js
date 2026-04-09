@@ -1,6 +1,6 @@
 require("module-alias/register");
 
-const { When, setDefaultTimeout } = require("@cucumber/cucumber");
+const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { BenerailSearch } = require("@dsl");
 const logger = require("@utils/logger").child("BenerailSearch");
 
@@ -16,4 +16,38 @@ When("I search for a one way Benerail train from {string}", async function (rout
 When("I search for a round trip Benerail train from {string}", async function (routeKey) {
   logger.info("Searching for round trip Benerail train", { routeKey });
   await BenerailSearch.searchBenerailRoundTrip(this.page, routeKey);
+});
+
+// ===== TODO STUBS — need DSL/Page implementation =====
+
+When("I navigate to the Benerail rail search tab", async function () {
+  throw new Error("TODO: implement 'I navigate to the Benerail rail search tab' — navigate to the rail search tab within an existing trip (no booking flow) using BenerailSearch or AppPage");
+});
+
+Then("the dynamic fields section should be visible in the Benerail search form", async function () {
+  throw new Error("TODO: implement 'the dynamic fields section should be visible in the Benerail search form' — assert that corporate dynamic fields are rendered in the search form even when no reference fields are configured");
+});
+
+Then("the linked reference questions should be visible in the Benerail search form", async function () {
+  throw new Error("TODO: implement 'the linked reference questions should be visible in the Benerail search form' — assert that linked reference questions appear in the Benerail search form for the configured corporate");
+});
+
+When("I fill in the reference and dynamic fields for the Benerail search", async function () {
+  throw new Error("TODO: implement 'I fill in the reference and dynamic fields for the Benerail search' — fill in corporate reference and dynamic field inputs on the Benerail search form before proceeding");
+});
+
+When("I fill in the reference fields for the guest traveler", async function () {
+  throw new Error("TODO: implement 'I fill in the reference fields for the guest traveler' — fill the optional reference field inputs that appear for a guest traveler on the Benerail search form");
+});
+
+When("I fill in the reference field if required", async function () {
+  throw new Error("TODO: implement 'I fill in the reference field if required' — conditionally fill the reference field on the Benerail search form if the popup is visible (like click_on_proceed_after_search but also fills data)");
+});
+
+Then("the Benerail autocomplete improvements should be validated", async function () {
+  throw new Error("TODO: implement 'the Benerail autocomplete improvements should be validated' — test autocomplete behaviour: type partial station name, verify dropdown suggestions, select station. See test 63183 for full scenario.");
+});
+
+Then("the Benerail time-picker component should function correctly", async function () {
+  throw new Error("TODO: implement 'the Benerail time-picker component should function correctly' — verify redesigned time-picker: open, set time, close, verify value persists. See test 68008 for full scenario.");
 });

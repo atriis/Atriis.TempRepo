@@ -811,6 +811,10 @@ Then("the selected meal should be {string} with status {string}", async function
   logger.info("Meal verification result", result);
 });
 
+Then("the car loyalty should not be prepopulated", async function () {
+  throw new Error("TODO: Implement verification that car loyalty section is empty/not prepopulated in cart.");
+});
+
 Then("the selected meal should be {string} with status matching {string}", async function (expectedMeal, statusPattern) {
   logger.info("Verifying meal selection and status (regex)", { expectedMeal, statusPattern });
   const result = await Cart.verifyMealSelectionAndStatus(this.page, expectedMeal, new RegExp(statusPattern));

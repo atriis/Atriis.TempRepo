@@ -31,8 +31,59 @@
     "beleuToBeabc": {
       "from": "BELEU",
       "to": "BEABC"
+    },
+    "bebmiToSchiphol": {
+      "from": "BEBMI",
+      "to": "schiphol airport (nl)"
+    },
+    "defraToBebmi": {
+      "from": "DEFRA",
+      "to": "BEBMI"
+    },
+    "bebmiToDefra": {
+      "from": "BEBMI",
+      "to": "DEFRA"
+    },
+    "nlabkToNlasc": {
+      "from": "NLABK",
+      "to": "NLASC"
+    },
+    "nlbanToAmsterdamCe": {
+      "from": "NLBAN",
+      "to": "amsterdam ce"
+    },
+    "beabtToNlasc": {
+      "from": "BEABT",
+      "to": "nlasc"
+    },
+    "berlinhbfToBebmi": {
+      "from": "Berlin Hbf",
+      "to": "BEBMI"
+    },
+    "munichToZurich": {
+      "from": "München",
+      "to": "Zürich"
+    },
+    "deduiToNlasc": {
+      "from": "DEDUI",
+      "to": "NLASC"
+    },
+    "bebmiToGbspx": {
+      "from": "BEBMI",
+      "to": "GBSPX"
+    },
+    "bebmiToAmsterdamCe": {
+      "from": "BEBMI",
+      "to": "amsterdam ce"
+    },
+    "bebmiToNlaho": {
+      "from": "BEBMI",
+      "to": "NLAHO"
+    },
+    "bebmiToNlban": {
+      "from": "BEBMI",
+      "to": "NLBAN"
     }
-
   },
   "defaultRoute": "beleuToBeabc"
 }

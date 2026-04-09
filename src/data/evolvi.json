@@ -19,6 +19,38 @@
     "plgToVic": {
       "from": "PLG",
       "to": "VIC"
+    },
+    "oxfToWin": {
+      "from": "OXF",
+      "to": "WIN"
+    },
+    "nclTo105": {
+      "from": "NCL",
+      "to": "105"
+    },
+    "licToLic": {
+      "from": "LIC",
+      "to": "LIC"
+    },
+    "lonToLds": {
+      "from": "LON",
+      "to": "LDS"
+    },
+    "182To115": {
+      "from": "182",
+      "to": "115"
+    },
+    "glcToEus": {
+      "from": "GLC",
+      "to": "EUS"
+    },
+    "licToEus": {
+      "from": "LIC",
+      "to": "EUS"
+    },
+    "lichfieldCityToLichfieldTrentValley": {
+      "from": "Lichfield City",
+      "to": "Lichfield Trent Valley"
     }
 
   },

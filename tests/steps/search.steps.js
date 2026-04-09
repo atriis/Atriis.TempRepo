@@ -1,6 +1,6 @@
 require("module-alias/register");
 
-const { Given, Then, setDefaultTimeout } = require("@cucumber/cucumber");
+const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { Search } = require("@dsl");
 const { expect } = require("@playwright/test");
 const logger = require("@utils/logger").child("Search");
@@ -52,4 +52,24 @@ Given("I have added a random guest traveler with name {string} {string}", async 
   logger.info("Adding random guest traveler with custom name", { firstName, lastName });
   const result = await Search.addRandomGuestWithName(this.page, firstName, lastName);
   expect(result.added, "Guest traveler should be added").toBe(true);
+});
+
+When("I open the traveler drawer", async function () {
+  throw new Error("TODO: implement 'I open the traveler drawer' — open traveler section from search page");
+});
+
+When("I click add guest traveler", async function () {
+  throw new Error("TODO: implement 'I click add guest traveler' — click add guest traveler button in traveler drawer");
+});
+
+Then("the gender field should display Please select gender", async function () {
+  throw new Error("TODO: implement 'the gender field should display Please select gender' — validate guest gender dropdown placeholder text");
+});
+
+When("I close the guest traveler dialog", async function () {
+  throw new Error("TODO: implement 'I close the guest traveler dialog' — close add guest popup/dialog");
+});
+
+Given("I add a third traveler named {string}", async function (travelerName) {
+  throw new Error(`TODO: implement 'I add a third traveler named {string}' — add an additional traveler named ${travelerName}`);
 });

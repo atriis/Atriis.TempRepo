@@ -78,3 +78,11 @@ Then("the {string} filter should be visible in car results", async function (fil
   logger.info("Verifying filter is visible in car results", { filterTitle });
   await CarResults.verifyFilterVisibleOnResults(this.page, filterTitle);
 });
+
+When("I open the first car location link in results", async function () {
+  throw new Error("TODO: Implement opening first car location link in results using CarResults DSL/Page methods.");
+});
+
+Then("I should see the selected car location in Google Maps", async function () {
+  throw new Error("TODO: Implement Google Maps location validation for the newly opened tab/window.");
+});

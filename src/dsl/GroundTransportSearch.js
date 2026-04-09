@@ -13,6 +13,74 @@ const groundTransportRoutes = require("@data/groundtransport.json");
  */
 
 const GroundTransportSearch = {
+  async searchGroundTransport(
+    page,
+    {
+      fromMode = "airport",
+      toMode = "specificAddress",
+      from,
+      to,
+      vehicleType = groundTransportRoutes.vehicleTypes.all,
+      travellerNumber = 1,
+      pickupIndex = SEARCH_DEFAULTS.GROUND_TRANSPORT.PICKUP_INDEX,
+    } = {},
+  ) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!from || typeof from !== 'string') {
+      throw new Error('from must be a non-empty string');
+    }
+
+    if (!to || typeof to !== 'string') {
+      throw new Error('to must be a non-empty string');
+    }
+
+    if (travellerNumber < 1) {
+      throw new Error(`travellerNumber must be >= 1, got ${travellerNumber}`);
+    }
+
+    if (pickupIndex < 0) {
+      throw new Error(`pickupIndex must be >= 0, got ${pickupIndex}`);
+    }
+
+    const groundTransportSearchPage = getPageObject(page, GroundTransportSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await groundTransportSearchPage.clickGroundTransportTab();
+
+    if (fromMode === "airport") {
+      await groundTransportSearchPage.clickFromAirport();
+    } else if (fromMode === "specificAddress") {
+      await groundTransportSearchPage.clickFromSpecificAddress();
+    } else {
+      throw new Error(`fromMode must be "airport" or "specificAddress", got ${fromMode}`);
+    }
+
+    await groundTransportSearchPage.fillInPickUpField(from);
+
+    if (toMode === "airport") {
+      await groundTransportSearchPage.clickToAirport();
+    } else if (toMode === "specificAddress") {
+      await groundTransportSearchPage.clickToSpecificAddress();
+    } else {
+      throw new Error(`toMode must be "airport" or "specificAddress", got ${toMode}`);
+    }
+
+    await groundTransportSearchPage.fillInDropOffField(to);
+    await searchPage.clickPickupDateField();
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      startIndex: pickupIndex,
+      endIndex: null,
+    });
+
+    await groundTransportSearchPage.selectVehicleType(vehicleType);
+    await groundTransportSearchPage.selectTravellerNumber(travellerNumber);
+    await searchPage.clickSearchButton();
+  },
+
   /**
    * Searches for ground transport from an airport to a specific address.
    *
@@ -43,45 +111,21 @@ const GroundTransportSearch = {
       pickupIndex = SEARCH_DEFAULTS.GROUND_TRANSPORT.PICKUP_INDEX,
     } = {},
   ) {
-    if (!page) {
-      throw new Error('page is required');
-    }
-    
-    if (travellerNumber < 1) {
-      throw new Error(`travellerNumber must be >= 1, got ${travellerNumber}`);
-    }
-    
-    if (pickupIndex < 0) {
-      throw new Error(`pickupIndex must be >= 0, got ${pickupIndex}`);
-    }
     const { from, to } = resolveRoute(
       routeInput,
       groundTransportRoutes.routes,
       "groundtransport",
     );
 
-    const groundTransportSearchPage = getPageObject(page, GroundTransportSearchPage);
-    const searchPage = getPageObject(page, SearchPage);
-
-    await groundTransportSearchPage.clickGroundTransportTab();
-    await groundTransportSearchPage.clickFromAirport();
-    await groundTransportSearchPage.fillInPickUpField(from);
-    await groundTransportSearchPage.clickToSpecificAddress();
-    await groundTransportSearchPage.fillInDropOffField(to);
-    await searchPage.clickPickupDateField();
-    await searchPage.clickCalendarNextArrow();
-    await selectDatesByNthAvailable(page, {
-      startIndex: pickupIndex,
-      endIndex: null,
+    await this.searchGroundTransport(page, {
+      fromMode: "airport",
+      toMode: "specificAddress",
+      from,
+      to,
+      vehicleType,
+      travellerNumber,
+      pickupIndex,
     });
-
-    // Select vehicle type (mandatory field)
-    await groundTransportSearchPage.selectVehicleType(vehicleType);
-
-    // Select traveller number (mandatory field)
-    await groundTransportSearchPage.selectTravellerNumber(travellerNumber);
-
-    await searchPage.clickSearchButton();
   },
 };
 
