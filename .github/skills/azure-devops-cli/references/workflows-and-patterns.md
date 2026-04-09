@@ -568,7 +568,6 @@ monitor_pipeline() {
 # Bulk update work items based on query
 bulk_update_work_items() {
   local wiql=$1
-  shift
   local updates=("$@")
 
   # Query work items
