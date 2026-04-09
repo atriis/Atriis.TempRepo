@@ -501,6 +501,22 @@ const Cart = {
 
 
   /**
+   * Accepts every visible terms and conditions checkbox in cart.
+   * Useful for trips with multiple quotes that each require acceptance.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{acceptedCount: number}>}
+   */
+  async acceptAllTermsAndConditions(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    return cartPage.acceptAllTermsAndConditions();
+  },
+
+  /**
    * Accepts terms and proceeds to checkout.
    * Used by Flights, Hotels, and Cars.
    * 

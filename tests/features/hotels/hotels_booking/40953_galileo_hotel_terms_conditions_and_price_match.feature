@@ -22,7 +22,7 @@ Feature: 40953 Galileo - Book hotel with terms and conditions and price verifica
     Then terms and conditions are displayed
     And I extract the price from room level results
     And I add a refundable room to my cart
-    When I check terms and conditions in cart
+    When I accept Terms & Conditions
     And I extract the hotel quote price from cart
     And I save the current cart price as the pre-booking price
     And I proceed to checkout

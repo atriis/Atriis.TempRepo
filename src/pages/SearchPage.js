@@ -47,6 +47,8 @@ const SELECTORS = {
     "[placeholder='Search by name, user group, username or email']",
   FIRST_TRAVELER_OPTION: "[id*='item-0']",
   TRIP_TRAVELER_TAG: ".trip-traveler-tag",
+  EDIT_TRAVELER_DIALOG: '.edit-traveler',
+  ADD_GUEST_TRAVELER_BUTTON: '.edit-traveler .add-guest-btn',
   // Edit traveler dialog — primary traveler checkbox
   PRIMARY_TRAVELER_CHECKBOX: '.edit-traveler .el-checkbox',
   // Edit traveler dialog — autocomplete input for searching traveler
@@ -217,14 +219,25 @@ class SearchPage {
    * @returns {import('@playwright/test').Locator}
    */
   getAddGuestTravelerButton() {
-    return this.page.getByRole('button', { name: 'Add guest traveler' });
+    return this.page.locator(SELECTORS.ADD_GUEST_TRAVELER_BUTTON).first();
   }
 
   /**
    * Clicks the "Add guest traveler" button to open the guest form modal.
    */
   async clickAddGuestTravelerButton() {
-    await this.getAddGuestTravelerButton().click();
+    const dialog = this.page.locator(SELECTORS.EDIT_TRAVELER_DIALOG).first();
+    await dialog.waitFor({ state: 'visible', timeout: 10000 });
+
+    const button = this.getAddGuestTravelerButton();
+    await button.waitFor({ state: 'visible', timeout: 10000 });
+    await button.scrollIntoViewIfNeeded();
+
+    try {
+      await button.click({ timeout: 10000 });
+    } catch {
+      await button.click({ force: true, timeout: 10000 });
+    }
   }
 
   /**

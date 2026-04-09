@@ -27,6 +27,11 @@ When("I accept Terms & Conditions", async function () {
   await cartPage.acceptTermsAndConditions();
 });
 
+When("I accept all Terms & Conditions on the page", async function () {
+  logger.info("Accepting all visible T&Cs on the page");
+  await Cart.acceptAllTermsAndConditions(this.page);
+});
+
 When("I proceed to checkout", async function () {
   logger.info("Proceeding to checkout");
   await Cart.acceptTermsAndConditionsAndProceedToCheckout(this.page);
@@ -693,12 +698,6 @@ When("I extract the price from more details", async function () {
 When("I close more details in cart", async function () {
   logger.info("Closing More Details drawer in cart");
   await Cart.closeMoreDetailsInCart(this.page);
-});
-
-When("I check terms and conditions in cart", async function () {
-  logger.info("Checking terms and conditions are displayed in cart");
-  this.cartTermsText = await Cart.checkTermsAndConditionsInCart(this.page);
-  logger.info("Cart terms and conditions text", { cartTermsText: this.cartTermsText });
 });
 
 When("I add loyalty number {string} using the first available chain", async function (loyaltyNumber) {

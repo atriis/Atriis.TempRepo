@@ -8,7 +8,8 @@ const { waitForText } = require("@utils/wait");
 const SELECTORS = {
 
   // Cart general selectors
-  TERMS_CHECKBOX: ".el-checkbox__inner",
+  TERMS_CHECKBOX: ".quote-terms-checkbox .el-checkbox__inner",
+  TERMS_CHECKBOX_INPUT: ".quote-terms-checkbox .el-checkbox__input",
   PROCEED_TO_CHECKOUT_BUTTON: ".btn-container:has-text('Proceed to Checkout')",
   QUOTE_STATUS_LABEL: ".app-label--quote",
   HOLD_BUTTON: ".btn--default.mt-2",
@@ -513,6 +514,35 @@ class CartPage {
     const checkbox = this.page.locator(SELECTORS.TERMS_CHECKBOX).nth(0);
     await checkbox.waitFor({ state: "visible" });
     await checkbox.click();
+  }
+
+  /**
+   * Accepts every visible quote terms and conditions checkbox on the cart page.
+   * Scrolls each checkbox into view before clicking to support multi-quote carts.
+   */
+  async acceptAllTermsAndConditions() {
+    const checkboxInputs = this.page.locator(SELECTORS.TERMS_CHECKBOX_INPUT);
+    await checkboxInputs.first().waitFor({ state: 'visible', timeout: 10000 });
+
+    const total = await checkboxInputs.count();
+    let acceptedCount = 0;
+
+    for (let index = 0; index < total; index += 1) {
+      const checkboxInput = checkboxInputs.nth(index);
+      await checkboxInput.scrollIntoViewIfNeeded();
+
+      const isChecked = await checkboxInput.evaluate((element) => element.classList.contains('is-checked'));
+      if (isChecked) {
+        continue;
+      }
+
+      const checkbox = checkboxInput.locator('.el-checkbox__inner');
+      await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+      await checkbox.click();
+      acceptedCount += 1;
+    }
+
+    return { acceptedCount };
   }
 
   /**
