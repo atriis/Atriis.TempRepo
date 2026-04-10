@@ -22,4 +22,6 @@ Feature: 72577 Amadeus Light Ticketing - Booking ticketed on approval
     And I fill credit card cvv if needed
     And I proceed to checkout
     And I send booking for approval
+    And the trip status should be "In Approval"
     Then the booking status should be "Ticketing Complete"
+    

@@ -12,6 +12,8 @@ const SELECTORS = {
   TERMS_CHECKBOX_INPUT: ".quote-terms-checkbox .el-checkbox__input",
   PROCEED_TO_CHECKOUT_BUTTON: ".btn-container:has-text('Proceed to Checkout')",
   QUOTE_STATUS_LABEL: ".app-label--quote",
+  QUOTE_CARD_STATUS_LABEL: '.quote-payment-card .app-label--quote',
+  ANY_STATUS_LABEL: '.app-label, .app-label--quote',
   HOLD_BUTTON: ".btn--default.mt-2",
 
   // Refundable hotel text
@@ -45,6 +47,7 @@ const SELECTORS = {
 
   // Trip Overview selectors
   TRIP_OVERVIEW_TITLE: ".payments-title",
+  TRIP_OVERVIEW_STATUS_LABEL: 'xpath=//*[contains(@class,"payments-title")]/following-sibling::*[contains(@class,"app-label")][1]',
 
   // Trip title and destination selectors (cart-info-bar.vue)
   TRIP_TITLE: '.cart-info-bar h4.trip-title',
@@ -52,6 +55,7 @@ const SELECTORS = {
 
   // Quote title selector (base-quote-header.vue)
   QUOTE_TITLE: '.quote-payment-card h6.quote-title',
+  FLIGHT_QUOTE_HEADING_TEXT: 'Flight to',
   FIRST_QUOTE_TITLE: '.quote-payment-card:not(.last-quote) h6.quote-title',
   LAST_QUOTE_TITLE: '.last-quote h6.quote-title',
   LAST_QUOTE_STATUS_LABEL: '.last-quote .app-label--quote',
@@ -295,7 +299,51 @@ class CartPage {
    * @returns {Promise<string>} The booking status text
    */
   async getBookingStatus({ timeout = 30000, page = this.page } = {}) {
-    const locator = page.locator(SELECTORS.QUOTE_STATUS_LABEL).first();
+    const quoteCardLocator = page.locator(SELECTORS.QUOTE_CARD_STATUS_LABEL).first();
+
+    try {
+      await quoteCardLocator.waitFor({ state: 'visible', timeout });
+      return (await quoteCardLocator.innerText()).trim();
+    } catch {
+      const locator = page.locator(SELECTORS.QUOTE_STATUS_LABEL).first();
+      await locator.waitFor({ state: 'visible', timeout });
+      return (await locator.innerText()).trim();
+    }
+  }
+
+  /**
+   * Waits for any visible status label that contains the expected text.
+   * Useful when the page shows multiple status badges and we need an exact state.
+   *
+   * @param {string} expectedText
+   * @param {object} options
+   * @param {number} [options.timeout=30000]
+   * @param {import('@playwright/test').Page} [options.page=this.page]
+   * @returns {Promise<string>}
+   */
+  async getStatusByExpectedText(expectedText, { timeout = 30000, page = this.page } = {}) {
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(`expectedText must be a non-empty string, got: ${typeof expectedText}`);
+    }
+
+    const locator = page.locator(SELECTORS.ANY_STATUS_LABEL, {
+      hasText: new RegExp(expectedText, 'i'),
+    }).first();
+
+    await locator.waitFor({ state: 'visible', timeout });
+    return (await locator.innerText()).trim();
+  }
+
+  /**
+   * Gets the trip-level status badge shown beside the Trip overview heading.
+   *
+   * @param {object} options
+   * @param {number} [options.timeout=30000]
+   * @param {import('@playwright/test').Page} [options.page=this.page]
+   * @returns {Promise<string>}
+   */
+  async getTripOverviewStatus({ timeout = 30000, page = this.page } = {}) {
+    const locator = page.locator(SELECTORS.TRIP_OVERVIEW_STATUS_LABEL).first();
     await locator.waitFor({ state: 'visible', timeout });
     return (await locator.innerText()).trim();
   }
@@ -575,6 +623,24 @@ class CartPage {
    */
   async waitForTripOverviewTitle() {
     await waitForText(this.page, SELECTORS.TRIP_OVERVIEW_TITLE, "Trip overview");
+  }
+
+  /**
+   * Waits for trip overview quote content to render after navigation.
+   * The title can appear before the quote card finishes loading.
+   *
+   * @param {number} [timeout=60000]
+   */
+  async waitForTripOverviewQuoteContent(timeout = 60000) {
+    const quoteTitle = this.page.locator(SELECTORS.QUOTE_TITLE).first();
+    const quoteStatus = this.page.locator(SELECTORS.QUOTE_CARD_STATUS_LABEL).first();
+    const flightHeading = this.page.getByText(SELECTORS.FLIGHT_QUOTE_HEADING_TEXT, { exact: false }).first();
+
+    await Promise.any([
+      quoteTitle.waitFor({ state: 'visible', timeout }),
+      quoteStatus.waitFor({ state: 'visible', timeout }),
+      flightHeading.waitFor({ state: 'visible', timeout }),
+    ]);
   }
 
   /**

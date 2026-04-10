@@ -190,8 +190,40 @@ const Cart = {
     const mappedStatus = tripStatus?.label?.[expectedStatus]?.status;
     const expectedText = mappedStatus || expectedStatus;
     const cartPage = getPageObject(page, CartPage);
-    const actualStatus = await cartPage.getBookingStatus({ timeout, page });
+    const actualStatus = expectedText.toLowerCase() === 'ticketing complete'
+      ? await cartPage.getStatusByExpectedText(expectedText, { timeout, page })
+      : await cartPage.getBookingStatus({ timeout, page });
 
+    expect(actualStatus.toLowerCase()).toContain(expectedText.toLowerCase());
+  },
+
+  /**
+   * Verifies the trip-level status badge shown beside the Trip overview title.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedStatus
+   * @param {object} [options]
+   * @param {number} [options.timeout=60000]
+   */
+  async verifyTripStatus(page, expectedStatus, { timeout = 60000 } = {}) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedStatus || typeof expectedStatus !== 'string') {
+      throw new Error('expectedStatus must be a non-empty string');
+    }
+
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be >= 0, got ${timeout}`);
+    }
+
+    const mappedStatus = tripStatus?.label?.[expectedStatus]?.status;
+    const expectedText = mappedStatus || expectedStatus;
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.waitForTripOverviewTitle();
+    const actualStatus = await cartPage.getTripOverviewStatus({ timeout, page });
     expect(actualStatus.toLowerCase()).toContain(expectedText.toLowerCase());
   },
 

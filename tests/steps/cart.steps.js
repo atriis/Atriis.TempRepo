@@ -253,6 +253,11 @@ Then("the booking status should be {string}", async function (status) {
   await Cart.expectBookingStatusToBe(status, { page: this.page });
 });
 
+Then("the trip status should be {string}", async function (status) {
+  logger.info("Verifying trip status", { status });
+  await Cart.verifyTripStatus(this.page, status);
+});
+
 Then('the original currency symbol {string} should be visible in cart', async function (currencySymbol) {
   logger.info('Verifying original currency symbol is visible in cart', { currencySymbol });
   await Cart.verifyOriginalCurrencySymbolVisibleInCart(this.page, currencySymbol);

@@ -272,11 +272,12 @@ const Checkout = {
     // Intentional wait required for UI stability before interacting
     await page.waitForTimeout(2000);
 
-    // Navigate to trip overview (same logic as bookAndFinalize)
-    await checkoutPage.clickGoToTrip();
+    // Navigate to trip overview from the approval success page
+    await checkoutPage.clickApprovalSuccessGoToTrip();
 
-    // Confirm trip overview is displayed
+    // Confirm trip overview content is displayed
     await cartPage.waitForTripOverviewTitle();
+    await cartPage.waitForTripOverviewQuoteContent();
 
     return { sentForApproval: true };
   },

@@ -11,15 +11,15 @@ const SELECTORS = {
   BOOK_AND_FINALIZE_BUTTON: "button:has-text('Book and Finalize')",
   FALLBACK_BUTTON: ".btn-container button",
   GO_TO_TRIP_BUTTON: ".btn-container > :nth-child(1)",
+  GO_TO_TRIP_BUTTON_NAME: "Go to trip",
   FUSION_VERIFICATION_TITLE: ".booking-success .success-message__title",
   FUSION_VERIFY_NOW_BUTTON: ".success-message__email span",
   FUSION_3DS_DIALOG_TITLE: ".app-dialog .el-dialog__title",
   FUSION_3DS_DIALOG_CONTAINER: ".app-dialog",
   FUSION_3DS_DIALOG_HEADER: ".el-dialog__header",
   SEND_FOR_APPROVAL_BUTTON: "button:has-text('Send for approval')",
-  APPROVAL_SUCCESS_TITLE: ".pre-trip-booking-success .success-message-title",
-  APPROVAL_SUCCESS_MESSAGE: ".pre-trip-booking-success .success-message-description",
-  APPROVAL_SUCCESS_CONTAINER: ".pre-trip-booking-success",
+  APPROVAL_SUCCESS_TITLE: "text=Trip Submitted for Approval",
+  APPROVAL_SUCCESS_MESSAGE: "text=/Your order has been booked and sent to your approver for approval/i",
   BOOKING_ERROR_DIALOG: ".booking-error-dialog",
   BACK_TO_TRIP_BUTTON: ".back-to-trip-btn",
   EMAIL_INPUT: ".email-input .el-input__inner",
@@ -141,7 +141,9 @@ class CheckoutPage {
    * Returns the text of the approval success description message.
    */
   async getApprovalSuccessMessageText() {
-    return await this.page.locator(SELECTORS.APPROVAL_SUCCESS_MESSAGE).innerText();
+    const messageLocator = this.page.locator(SELECTORS.APPROVAL_SUCCESS_MESSAGE).first();
+    await messageLocator.waitFor({ state: 'visible', timeout: 60000 });
+    return await messageLocator.innerText();
   }
 
   /**
@@ -150,8 +152,8 @@ class CheckoutPage {
    */
   async clickApprovalSuccessGoToTrip() {
     await this.page
-      .locator(SELECTORS.APPROVAL_SUCCESS_CONTAINER)
-      .getByRole('button', { name: 'Go to trip' })
+      .getByRole('button', { name: SELECTORS.GO_TO_TRIP_BUTTON_NAME })
+      .first()
       .click();
   }
 
