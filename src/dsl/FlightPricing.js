@@ -59,6 +59,28 @@ const FlightPricing = {
     return this.addFareToCart(page, 'Your selection');
   },
 
+  async addFirstAdditionalPricingOptionToCart(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+    const cartPage = getPageObject(page, CartPage);
+
+    await flightPricingPage.waitForYourSelectionText();
+    await flightPricingPage.expandAdditionalPricingOptions();
+
+    await Promise.all([
+      page.waitForLoadState('domcontentloaded', { timeout: 45000 }).catch(() => {}),
+      flightPricingPage.clickAddToTripForFirstAdditionalPricingOption(),
+    ]);
+
+    await Results.clickProceedConflictQuoteModal(page);
+    await cartPage.waitForPendingBookingText({ timeout: 90000 });
+
+    return { added: true, fareTitle: 'Additional pricing options (first)' };
+  },
+
   async verifyAgreementIndicatorVisible(page, fareTitle = 'Your selection', agreementName = 'Agency') {
     if (!page) {
       throw new Error('page is required');

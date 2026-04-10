@@ -1,3 +1,4 @@
+const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { CheckoutPage } = require("@pages/CheckoutPage");
 const { CartPage } = require("@pages/CartPage");
@@ -178,6 +179,32 @@ const Checkout = {
 
     const isChecked = await checkoutPage.isContactDetailsCheckboxChecked();
     expect(isChecked, 'Expected contact details checkbox to be unchecked by default').toBe(false);
+  },
+
+  /**
+   * Verifies the checkout trip summary total matches the expected cart total.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedTotal
+   * @returns {Promise<{checkoutTotal: number, expectedTotal: number}>}
+   */
+  async verifyCheckoutTotalMatchesExpected(page, expectedTotal) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedTotal !== 'number' || Number.isNaN(expectedTotal)) {
+      throw new Error(`expectedTotal must be a valid number, got: ${expectedTotal}`);
+    }
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    await checkoutPage.waitForBookingDetailsText();
+
+    const checkoutTotal = await checkoutPage.getCheckoutTotalPrice();
+    if (checkoutTotal === null) {
+      throw new Error('Checkout total price is not visible');
+    }
+
+    expect(Math.abs(checkoutTotal - expectedTotal)).toBeLessThanOrEqual(1);
+
+    return { checkoutTotal, expectedTotal };
   },
 
   async verifyBookerNotificationPhoneContainsNumbers(page) {

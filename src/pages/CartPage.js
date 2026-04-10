@@ -1,5 +1,16 @@
 const { waitForText } = require("@utils/wait");
 
+function parseAmountText(text, label) {
+  const normalized = (text ?? '').replace(/[^\d.,-]/g, '').replace(/,/g, '.');
+  const amount = Number.parseFloat(normalized);
+
+  if (Number.isNaN(amount)) {
+    throw new Error(`Could not parse ${label} from text: "${text}"`);
+  }
+
+  return amount;
+}
+
 /**
  * Page Object for cart page.
  * Contains only UI-level interactions.
@@ -26,6 +37,20 @@ const SELECTORS = {
   PRICE_BREAKDOWN_CLOSE_BUTTON: '.app-drawer.flight-price-breakdown-drawer [aria-label="Close this dialog"]',
   PRICE_BREAKDOWN_BOOKED_BY: '.flight-price-breakdown-drawer p.booked-by-at',
   PRICE_BREAKDOWN_MINI_RULE_DISCLAIMER: '.flight-price-breakdown-drawer .mini-rule-disclaimer',
+  FLIGHT_PRICE_BREAKDOWN_DRAWER: '.flight-price-breakdown-drawer',
+  FLIGHT_PRICE_BREAKDOWN_SEGMENT: '.price-breakdown-segment',
+  FLIGHT_PRICE_BREAKDOWN_PASSENGER_NAME: '.passenger-name',
+  FLIGHT_PRICE_BREAKDOWN_RATE_ROW: '.rate-information .amounts > div',
+  FLIGHT_PRICE_BREAKDOWN_ROW_AMOUNT: '.amount',
+  FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_ROW: '.rate-information .amounts .subtotal',
+  FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_PASSENGERS: '.passengers',
+  FLIGHT_PRICE_BREAKDOWN_TOTAL: '.summary-and-actions .amount',
+  FLIGHT_CO2_TOOLTIP_TRIGGER_IN_CART: '.flight-quote-card .co2-emissions-label .info-icon',
+  FLIGHT_CO2_TOOLTIP_TRIGGER_IN_MORE_DETAILS: "[aria-label='More details'] .co2-emissions-label .info-icon",
+  FLIGHT_CO2_TOOLTIP_DESCRIPTION: '.co2-emissions-tooltip .emission-description-bold',
+  FLIGHT_QUOTE_CARD: '.flight-quote-card',
+  FLIGHT_QUOTE_SEGMENT: '.flight-info.cart-format',
+  FLIGHT_QUOTE_LOCATION_CODE: '.loc-code',
 
   // Trip cancellation selectors
   TRIP_ACTIONS_DROPDOWN_ICON: ".dropdowns-container .expand-icon",
@@ -221,8 +246,10 @@ const SELECTORS = {
   FQTV_SELECTED_TEXT_VISIBLE: '.flight-frequent-flyer .el-tab-pane:visible .el-select__placeholder span',
   FQTV_TRAVELER_TAB: '.flight-frequent-flyer .frequent-flyer-tab .el-tabs__item',
   FQTV_NEW_RADIO: '.flight-frequent-flyer .el-tab-pane:visible .el-radio:has-text("New")',
-  FQTV_CARRIER_SELECT: '.flight-frequent-flyer .el-tab-pane:visible .ff-inputs .el-select',
-  FQTV_NUMBER_INPUT: '.flight-frequent-flyer .el-tab-pane:visible .ff-inputs input',
+  FQTV_CARRIER_SELECT: '.flight-frequent-flyer .el-tab-pane:visible .ff-inputs > .app-column:last-child .el-select',
+  FQTV_CARRIER_INPUT: '.flight-frequent-flyer .el-tab-pane:visible .ff-inputs > .app-column:last-child .el-select input.el-select__input',
+  FQTV_CARRIER_OPTION_TEXT: '.el-select-dropdown__item span',
+  FQTV_NUMBER_INPUT: '.flight-frequent-flyer .el-tab-pane:visible .ff-inputs > .app-column:first-child input',
   FQTV_SUCCESS_ICON: '.flight-frequent-flyer .success-icon.green',
 
   // eHotel supplier details in cart (hotel-quote-card.vue → booking-confirm section)
@@ -1018,6 +1045,122 @@ class CartPage {
   }
 
   /**
+   * Hovers the flight CO2 tooltip trigger shown in the cart flight card.
+   *
+   * @param {{ timeout?: number }} options
+   */
+  async hoverFlightCO2TooltipInCart({ timeout = 10000 } = {}) {
+    const trigger = this.page.locator(SELECTORS.FLIGHT_CO2_TOOLTIP_TRIGGER_IN_CART).first();
+    await trigger.waitFor({ state: 'visible', timeout });
+    await trigger.hover();
+  }
+
+  /**
+   * Hovers the flight CO2 tooltip trigger inside the flight More Details drawer.
+   *
+   * @param {{ timeout?: number }} options
+   */
+  async hoverFlightCO2TooltipInMoreDetails({ timeout = 10000 } = {}) {
+    const trigger = this.page.locator(SELECTORS.FLIGHT_CO2_TOOLTIP_TRIGGER_IN_MORE_DETAILS).first();
+    await trigger.waitFor({ state: 'visible', timeout });
+    await trigger.hover();
+  }
+
+  /**
+   * Gets the visible flight CO2 tooltip description.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>}
+   */
+  async getFlightCO2TooltipDescription({ timeout = 10000 } = {}) {
+    const description = this.page.locator(SELECTORS.FLIGHT_CO2_TOOLTIP_DESCRIPTION).first();
+    await description.waitFor({ state: 'visible', timeout });
+    return (await description.textContent())?.replace(/\s+/g, ' ').trim() ?? '';
+  }
+
+  /**
+   * Gets the numeric total shown in the flight price breakdown drawer footer.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<number>}
+   */
+  async getFlightPriceBreakdownTotal({ timeout = 10000 } = {}) {
+    const total = this.page.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_TOTAL).first();
+    await total.waitFor({ state: 'visible', timeout });
+    return parseAmountText(await total.textContent(), 'flight price breakdown total');
+  }
+
+  /**
+   * Gets the structured per-passenger-group values displayed in the flight price breakdown drawer.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<Array<{passengerNames: string[], passengerCount: number, price: number, discount: number, tax: number, handlingFee: number, ccCharge: number, optionalServices: number, other: number, subtotal: number}>>}
+   */
+  async getFlightPriceBreakdownSegments({ timeout = 30000 } = {}) {
+    const drawer = this.page.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_DRAWER).first();
+    await drawer.waitFor({ state: 'visible', timeout });
+
+    const segments = drawer.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_SEGMENT);
+    await segments.first().waitFor({ state: 'visible', timeout });
+    const segmentCount = await segments.count();
+    const summaries = [];
+
+    for (let index = 0; index < segmentCount; index++) {
+      const segment = segments.nth(index);
+      const passengerNames = (await segment.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_PASSENGER_NAME).allInnerTexts())
+        .map((name) => name.replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
+      const passengerLabel = (await segment.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_PASSENGERS).first().textContent().catch(() => ''))
+        ?.replace(/\s+/g, ' ')
+        .trim() ?? '';
+      const passengerCountMatch = passengerLabel.match(/X\s*(\d+)/i);
+      const passengerCount = passengerCountMatch
+        ? Number.parseInt(passengerCountMatch[1], 10)
+        : passengerNames.length;
+
+      summaries.push({
+        passengerNames,
+        passengerCount,
+        price: await this.getFlightPriceBreakdownAmountByLabel(segment, 'Price'),
+        discount: await this.getFlightPriceBreakdownAmountByLabel(segment, 'Discount'),
+        tax: await this.getFlightPriceBreakdownAmountByLabel(segment, 'Tax'),
+        handlingFee: await this.getFlightPriceBreakdownAmountByLabel(segment, 'Handling fee'),
+        ccCharge: await this.getFlightPriceBreakdownAmountByLabel(segment, 'CC Charge'),
+        optionalServices: await this.getFlightPriceBreakdownAmountByLabel(segment, 'Optional services'),
+        other: await this.getFlightPriceBreakdownAmountByLabel(segment, 'Other'),
+        subtotal: await this.getFlightPriceBreakdownSubtotalForSegment(segment),
+      });
+    }
+
+    return summaries;
+  }
+
+  async getFlightPriceBreakdownAmountByLabel(segment, label) {
+    const row = segment.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_RATE_ROW).filter({ hasText: label }).first();
+    const rowCount = await row.count();
+    if (!rowCount) {
+      return 0;
+    }
+
+    const amount = row.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_ROW_AMOUNT).last();
+    const amountCount = await amount.count();
+    if (!amountCount) {
+      return 0;
+    }
+
+    return parseAmountText(await amount.textContent(), `${label} amount`);
+  }
+
+  async getFlightPriceBreakdownSubtotalForSegment(segment) {
+    const subtotal = segment.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_ROW)
+      .first()
+      .locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_ROW_AMOUNT)
+      .last();
+    await subtotal.waitFor({ state: 'visible', timeout: 10000 });
+    return parseAmountText(await subtotal.textContent(), 'flight price breakdown subtotal');
+  }
+
+  /**
    * Clicks edit button in Extras section.
    * @param {number} [index=0] - The index of the extras section (0-based)
    */
@@ -1479,6 +1622,69 @@ class CartPage {
     const el = this.page.locator(SELECTORS.LAST_QUOTE_TITLE).first();
     await el.waitFor({ state: 'visible', timeout });
     return (await el.innerText()).trim();
+  }
+
+  /**
+   * Gets all visible flight route location codes rendered in the cart quote segments.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string[]>}
+   */
+  async getVisibleFlightQuoteLocationCodes({ timeout = 15000 } = {}) {
+    const quoteCards = this.page.locator(SELECTORS.FLIGHT_QUOTE_CARD);
+    await quoteCards.first().waitFor({ state: 'visible', timeout });
+
+    const segments = quoteCards.locator(SELECTORS.FLIGHT_QUOTE_SEGMENT);
+    await segments.first().waitFor({ state: 'visible', timeout });
+
+    const locationCodes = segments.locator(SELECTORS.FLIGHT_QUOTE_LOCATION_CODE);
+    const count = await locationCodes.count();
+    const codes = [];
+
+    for (let index = 0; index < count; index += 1) {
+      const code = (await locationCodes.nth(index).textContent())?.trim();
+      if (code) {
+        codes.push(code);
+      }
+    }
+
+    return codes;
+  }
+
+  /**
+   * Gets the outbound-arrival and return-departure location codes for a round-trip cart.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<{outboundArrivalCode: string, returnDepartureCode: string, locationCodes: string[]}>}
+   */
+  async getRoundTripMiddleLocationCodes({ timeout = 15000 } = {}) {
+    const locationCodes = await this.getVisibleFlightQuoteLocationCodes({ timeout });
+
+    if (locationCodes.length < 4) {
+      throw new Error(`Expected at least 4 visible flight location codes in cart, got ${locationCodes.length}: ${locationCodes.join(', ')}`);
+    }
+
+    return {
+      outboundArrivalCode: locationCodes[1],
+      returnDepartureCode: locationCodes[2],
+      locationCodes,
+    };
+  }
+
+  /**
+   * Returns the number of visible flight segments in the cart quote card.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<number>}
+   */
+  async getVisibleFlightQuoteSegmentCount({ timeout = 15000 } = {}) {
+    const quoteCards = this.page.locator(SELECTORS.FLIGHT_QUOTE_CARD);
+    await quoteCards.first().waitFor({ state: 'visible', timeout });
+
+    const segments = quoteCards.locator(SELECTORS.FLIGHT_QUOTE_SEGMENT);
+    await segments.first().waitFor({ state: 'visible', timeout });
+
+    return segments.count();
   }
 
   // ========================================
@@ -2310,12 +2516,46 @@ class CartPage {
     await select.waitFor({ state: 'visible', timeout });
     await select.click();
 
-    const option = this.page.locator(SELECTORS.DROPDOWN_OPTION).first();
+    const option = this.page.locator(`${SELECTORS.DROPDOWN_OPTION}:visible`).first();
     await option.waitFor({ state: 'visible', timeout });
     const text = (await option.textContent())?.trim() ?? '';
     await option.click();
 
     return text;
+  }
+
+  /**
+   * Selects a specific airline from the flight frequent flyer carrier dropdown.
+   * @param {string} carrierText - Visible airline text to select
+   * @param {number} [index=0] - Segment index in the frequent flyer form
+   * @param {number} [timeout=10000] - Timeout for waiting
+   * @returns {Promise<string>} The selected airline label text
+   */
+  async selectFqtvCarrier(carrierText, index = 0, timeout = 10000) {
+    if (!carrierText || typeof carrierText !== 'string') {
+      throw new Error('carrierText must be a non-empty string');
+    }
+
+    const select = this.page.locator(SELECTORS.FQTV_CARRIER_SELECT).nth(index);
+    await select.waitFor({ state: 'visible', timeout });
+    await select.click();
+
+    const input = this.page.locator(SELECTORS.FQTV_CARRIER_INPUT).nth(index);
+    await input.waitFor({ state: 'visible', timeout });
+    await input.click();
+    await input.fill(carrierText);
+
+    const option = this.page.locator(`${SELECTORS.FQTV_CARRIER_OPTION_TEXT}:visible`).filter({ hasText: carrierText }).first();
+
+    try {
+      await option.waitFor({ state: 'visible', timeout: 3000 });
+      await option.click();
+    } catch {
+      await input.press('ArrowDown');
+      await input.press('Enter');
+    }
+
+    return carrierText;
   }
 
   /**

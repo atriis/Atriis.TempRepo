@@ -211,6 +211,14 @@ When("I extract cancellation policy from cart", async function () {
   logger.info("Extracted cancellation policy from cart", { cartCancellationPolicy: this.cartCancellationPolicy });
 });
 
+When('I save the current flight cart total for checkout comparison', async function () {
+  logger.info('Saving current flight cart total for checkout comparison');
+  this.flightCartTotalForCheckout = await Cart.extractCartTotalPrice(this.page);
+  logger.info('Saved flight cart total for checkout comparison', {
+    flightCartTotalForCheckout: this.flightCartTotalForCheckout,
+  });
+});
+
 // ===== THEN STEPS =====
 
 Then("the total price in cart is equal to total price in cart before seats + seats price", async function () {
@@ -347,6 +355,35 @@ Then("the CO2 emissions should be displayed in the trip overview", async functio
   expect(result.visible).toBe(true);
 });
 
+Then('the CO2 Squake tooltip should be visible in cart', async function () {
+  logger.info('Verifying CO2 Squake tooltip is visible in cart');
+  const result = await Cart.verifyFlightCO2SquakeTooltipInCart(this.page);
+  logger.info('CO2 Squake tooltip verified in cart', {
+    cartTooltipText: result.cartTooltipText,
+    detailsTooltipText: result.detailsTooltipText,
+  });
+  expect(result.visible).toBe(true);
+});
+
+Then('the flight price breakdown should match the totals for {int} travelers', async function (travelerCount) {
+  if (typeof this.flightCartTotalForCheckout !== 'number') {
+    throw new Error("No stored flight cart total found. Run 'I save the current flight cart total for checkout comparison' before this step.");
+  }
+
+  logger.info('Verifying flight price breakdown totals', {
+    travelerCount,
+    flightCartTotalForCheckout: this.flightCartTotalForCheckout,
+  });
+
+  const result = await Cart.verifyFlightPriceBreakdownForTravelerCount(
+    this.page,
+    travelerCount,
+    this.flightCartTotalForCheckout,
+  );
+
+  logger.info('Flight price breakdown totals verified', result);
+});
+
 Then("passport details are displayed as {string}", async function (expectedText) {
   logger.info("Asserting passport details are displayed", { expectedText });
   const actualText = await Cart.getPassportDetailsText(this.page, 0);
@@ -449,6 +486,18 @@ Then("the first quote destination should contain {string}", async function (city
 Then("the last quote destination should contain {string}", async function (city) {
   logger.info("Verifying last quote destination contains city", { city });
   await Cart.verifyLastQuoteDestination(this.page, city);
+});
+
+Then('both outbound and return segments should include location code {string}', async function (locationCode) {
+  logger.info('Verifying round-trip cart segments include location code on both legs', { locationCode });
+  const result = await Cart.verifyRoundTripSegmentsIncludeLocationCode(this.page, locationCode);
+  logger.info('Round-trip cart location code verified', result);
+});
+
+Then('both outbound and return segments should be present in the trip', async function () {
+  logger.info('Verifying both outbound and return segments are present in the trip');
+  const result = await Cart.verifyRoundTripSegmentsArePresent(this.page);
+  logger.info('Round-trip segments are present in the trip', result);
 });
 
 Then("the trip destination on top of the page should contain {string}", async function (city) {
@@ -674,6 +723,16 @@ When("I add loyalty number {string} using the first available airline", async fu
   logger.info("Adding loyalty number with first available airline", { loyaltyNumber });
   this.selectedFqtvAirline = await Cart.addLoyaltyNumberWithFirstAvailableAirline(this.page, loyaltyNumber);
   logger.info("Added loyalty number with airline", { airline: this.selectedFqtvAirline });
+});
+
+When("I add the following FQTV entries:", async function (dataTable) {
+  const entries = dataTable.hashes().map((row) => ({
+    carrier: row.carrier,
+    number: row.number,
+  }));
+
+  logger.info("Adding FQTV entries", { entries });
+  await Cart.addFqtvEntries(this.page, entries);
 });
 
 Then("the loyalty number {string} and chain {string} should be saved", async function (expectedNumber, expectedChain) {

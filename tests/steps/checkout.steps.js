@@ -79,3 +79,16 @@ Then("the booker notification phone on checkout should contain numbers", async f
   logger.info("Verifying booker notification phone on checkout contains numeric values");
   await Checkout.verifyBookerNotificationPhoneContainsNumbers(this.page);
 });
+
+Then('the checkout total price should match the saved flight cart total', async function () {
+  if (typeof this.flightCartTotalForCheckout !== 'number') {
+    throw new Error("No stored flight cart total found. Run 'I save the current flight cart total for checkout comparison' before this step.");
+  }
+
+  logger.info('Verifying checkout total price matches saved flight cart total', {
+    flightCartTotalForCheckout: this.flightCartTotalForCheckout,
+  });
+
+  const result = await Checkout.verifyCheckoutTotalMatchesExpected(this.page, this.flightCartTotalForCheckout);
+  logger.info('Checkout total price matched saved flight cart total', result);
+});

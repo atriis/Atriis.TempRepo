@@ -117,6 +117,16 @@ Then('the airport filter sections {string} and {string} should be visible for ro
   await FlightResults.verifyAirportFilterSectionsVisible(this.page, routeLabel, [firstSectionTitle, secondSectionTitle]);
 });
 
+Then('the CO2 Squake tooltip should be visible in flight results', async function () {
+  logger.info('Verifying CO2 Squake tooltip is visible in flight results');
+  const result = await FlightResults.verifyCO2SquakeTooltipInResults(this.page);
+  logger.info('CO2 Squake tooltip verified in flight results', {
+    resultTooltipText: result.resultTooltipText,
+    detailsTooltipText: result.detailsTooltipText,
+  });
+  expect(result.visible).toBe(true);
+});
+
 // ========================================
 // WHEN STEPS - PRICING OPTIONS
 // ========================================

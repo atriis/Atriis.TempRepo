@@ -907,6 +907,94 @@ const Cart = {
   },
 
   /**
+   * Verifies the flight CO2 tooltip is available from both the cart flight card
+   * and the flight More Details drawer.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{visible: boolean, cartTooltipText: string, detailsTooltipText: string}>}
+   */
+  async verifyFlightCO2SquakeTooltipInCart(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const expectedText = 'Emissions are calculated per passenger in the selected class of service.';
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.waitForTripOverviewTitle();
+    await cartPage.hoverFlightCO2TooltipInCart();
+    const cartTooltipText = await cartPage.getFlightCO2TooltipDescription();
+    expect(cartTooltipText).toBe(expectedText);
+
+    await cartPage.clickFlightDetailsButton();
+    await cartPage.hoverFlightCO2TooltipInMoreDetails();
+    const detailsTooltipText = await cartPage.getFlightCO2TooltipDescription();
+    expect(detailsTooltipText).toBe(expectedText);
+    await cartPage.closeMoreDetailsDrawer();
+
+    return { visible: true, cartTooltipText, detailsTooltipText };
+  },
+
+  /**
+   * Verifies the flight price breakdown matches the expected traveler count and saved cart total.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} travelerCount
+   * @param {number} expectedCartTotal
+   * @returns {Promise<{travelerCount: number, breakdownTotal: number, calculatedTotal: number}>}
+   */
+  async verifyFlightPriceBreakdownForTravelerCount(page, travelerCount, expectedCartTotal) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!Number.isInteger(travelerCount) || travelerCount < 1) {
+      throw new Error(`travelerCount must be a positive integer, got: ${travelerCount}`);
+    }
+
+    if (typeof expectedCartTotal !== 'number' || Number.isNaN(expectedCartTotal)) {
+      throw new Error(`expectedCartTotal must be a valid number, got: ${expectedCartTotal}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const breakdownSegments = await cartPage.getFlightPriceBreakdownSegments();
+
+    expect(breakdownSegments.length, 'Expected at least one flight price breakdown segment').toBeGreaterThan(0);
+
+    const passengerCount = breakdownSegments.reduce((sum, segment) => sum + segment.passengerCount, 0);
+    expect(passengerCount).toBe(travelerCount);
+
+    let calculatedTotal = 0;
+
+    for (const segment of breakdownSegments) {
+      const discount = Math.abs(segment.discount);
+      const perPassengerAmount =
+        segment.price +
+        segment.tax +
+        segment.handlingFee +
+        segment.ccCharge +
+        segment.optionalServices +
+        segment.other -
+        discount;
+      const expectedSubtotal = perPassengerAmount * segment.passengerCount;
+      const subtotalDelta = Math.abs(segment.subtotal - expectedSubtotal);
+
+      expect(
+        subtotalDelta,
+        `Expected breakdown subtotal ${segment.subtotal} to match ${expectedSubtotal} for ${segment.passengerCount} travelers`,
+      ).toBeLessThanOrEqual(1);
+
+      calculatedTotal += segment.subtotal;
+    }
+
+    const breakdownTotal = await cartPage.getFlightPriceBreakdownTotal();
+    expect(Math.abs(breakdownTotal - calculatedTotal)).toBeLessThanOrEqual(1);
+    expect(Math.abs(breakdownTotal - expectedCartTotal)).toBeLessThanOrEqual(1);
+
+    return { travelerCount: passengerCount, breakdownTotal, calculatedTotal };
+  },
+
+  /**
    * Verifies that the "Download Voucher" box is visible in the trip overview.
    * Only present for suppliers that provide their own voucher (e.g. Ratehawk).
    * @param {import('playwright').Page} page
@@ -1132,6 +1220,56 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     const actualTitle = await cartPage.getLastQuoteTitleText();
     expect(actualTitle.toLowerCase()).toContain(city.toLowerCase());
+  },
+
+  /**
+   * Verifies a round-trip cart contains the expected airport/city code on both legs.
+   * For a route like LIS -> BCN -> LIS, the connection/turn-point code should appear
+   * once as the outbound arrival and once as the return departure.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} locationCode
+   * @returns {Promise<{matches: number, locationCodes: string[]}>}
+   */
+  async verifyRoundTripSegmentsIncludeLocationCode(page, locationCode) {
+    if (!page) throw new Error('page is required');
+    if (!locationCode || typeof locationCode !== 'string') {
+      throw new Error(`locationCode must be a non-empty string, got: ${typeof locationCode}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const locationCodes = await cartPage.getVisibleFlightQuoteLocationCodes();
+    const normalizedCode = locationCode.trim().toUpperCase();
+    const matches = locationCodes.filter((code) => code.toUpperCase() === normalizedCode).length;
+
+    expect(
+      matches,
+      `Expected location code ${normalizedCode} to appear on both round-trip legs, but found ${matches}. Visible codes: ${locationCodes.join(', ')}`,
+    ).toBeGreaterThanOrEqual(2);
+
+    return { matches, locationCodes };
+  },
+
+  /**
+   * Verifies that a round-trip cart contains both legs by checking the outbound
+   * arrival code matches the return departure code.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{outboundArrivalCode: string, returnDepartureCode: string, locationCodes: string[]}>}
+   */
+  async verifyRoundTripSegmentsArePresent(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const segmentCount = await cartPage.getVisibleFlightQuoteSegmentCount();
+    const locationCodes = await cartPage.getVisibleFlightQuoteLocationCodes();
+
+    expect(
+      segmentCount,
+      `Expected both outbound and return segments to be visible in the cart, but found ${segmentCount}. Visible codes: ${locationCodes.join(', ')}`,
+    ).toBeGreaterThanOrEqual(2);
+
+    return { segmentCount, locationCodes };
   },
 
   /**
@@ -1687,6 +1825,47 @@ const Cart = {
     await cartPage.getSaveButton().waitFor({ state: 'hidden', timeout: 15000 });
 
     return airlineText;
+  },
+
+  /**
+   * Adds flight frequent flyer entries for each visible segment in the cart.
+   * Assumes the frequent flyer extras panel is already open.
+   * @param {import('playwright').Page} page
+   * @param {{ carrier: string, number: string }[]} entries - FQTV entries ordered by segment
+   * @returns {Promise<void>}
+   */
+  async addFqtvEntries(page, entries) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(entries) || entries.length === 0) {
+      throw new Error('entries must be a non-empty array');
+    }
+
+    entries.forEach((entry, index) => {
+      if (!entry || typeof entry !== 'object') {
+        throw new Error(`entries[${index}] must be an object`);
+      }
+
+      if (!entry.carrier || typeof entry.carrier !== 'string') {
+        throw new Error(`entries[${index}].carrier must be a non-empty string`);
+      }
+
+      if (!entry.number || typeof entry.number !== 'string') {
+        throw new Error(`entries[${index}].number must be a non-empty string`);
+      }
+    });
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForSaveButton();
+
+    for (let index = 0; index < entries.length; index += 1) {
+      const entry = entries[index];
+      await cartPage.selectNewFqtvRadio(index);
+      await cartPage.fillFqtvNumber(entry.number, index);
+      await cartPage.selectFqtvCarrier(entry.carrier, index);
+    }
+
+    await cartPage.clickSaveButton();
+    await cartPage.getSaveButton().waitFor({ state: 'hidden', timeout: 15000 });
   },
 
   /**

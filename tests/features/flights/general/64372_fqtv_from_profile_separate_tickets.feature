@@ -11,13 +11,18 @@ Feature: 64372 Flights - Save correct FQTV from traveler profile with separate t
   I want my FQTV from my traveler profile to be correctly saved
   So that frequent flyer points are correctly applied per carrier
 
-  # TODO: New user needed — multifqtv@corp.club → USER_MULTIFQTV (same as 64333)
-
   Scenario: Correct FQTV from profile is saved for separate tickets
     Given I am logged in as "multifqtv" booking a new trip
     And I have added myself as the traveler
-    When I search for a flight by schedule from "IAH" to "ATL"
-    And I select flight segments by schedule
-    And I handle conflicting quotes if visible
-    # TODO: Step needed for "Validate FQTV from profile is correctly saved per carrier"
-    Then I successfully cancel the trip
+    When I search for a flight by schedule from "ATL" to "EWR"
+    And I filter results by carrier "DL"
+    And I select one flight segment by schedule
+    And I wait for the change flight button to be visible
+    And I filter results by carrier "UA"
+    And I select one flight segment by schedule
+    And I wait for "Your Selection" text to be visible
+    And I add "Your Selection" fare to trip
+    Then the booking status should be "Pending booking"
+    And I click to edit extras at index 1
+    Then the FQTV should show "DL - 1741551211"
+    And the FQTV should show "UA - N7J91W1"

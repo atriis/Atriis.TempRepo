@@ -11,25 +11,25 @@ Feature: 36581 Flights - Multi pax price displayed correctly in cart and checkou
   I want to see the correct total price in the cart and checkout
   So that I can verify the cost before booking
 
-  # TODO: New user needed — sebastian@one.com → USER_SEBASTIAN
-  # Add to .env: USER_SEBASTIAN="sebastian@one.com"
-
+#BUG with user, need to check this one later
   Scenario: Multi pax flight price is correct in cart and checkout with CO2 tooltip
     Given I am logged in as "sebastian" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "josh"
     And I have added traveler by name "bene"
     When I search for a one way flight from "LIS" to "NYC"
-    # TODO: Step needed for "Close mandatory notification popup"
-    # TODO: Step needed for "Verify CO2 Squake tooltip in results"
+    And flight results should be available
+    Then the CO2 Squake tooltip should be visible in flight results
     And I add the first result to trip
-    # TODO: Step needed for "Verify CO2 Squake tooltip in cart"
+    Then the booking status should be "Pending booking"
+    And I save the current flight cart total for checkout comparison
+    Then the CO2 Squake tooltip should be visible in cart
     And I click to open price breakdown in cart
-    # TODO: Step needed for "Verify prices in price breakdown for multi pax"
+    Then the flight price breakdown should match the totals for 3 travelers
     When I close price breakdown modal
     And I add a credit card as payment method
     And I proceed to checkout
-    # TODO: Step needed for "Handle price change prompt if visible"
-    # TODO: Step needed for "Verify price in checkout matches cart"
+    And I wait for booking details in checkout
+    Then the checkout total price should match the saved flight cart total
     When I navigate to cart from checkout
     Then I successfully cancel the trip

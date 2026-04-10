@@ -131,6 +131,39 @@ const FlightResults = {
   },
 
   /**
+   * Verifies the CO2 Squake tooltip is available from both the first result card
+   * and the Flight Details drawer.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{visible: boolean, resultTooltipText: string, detailsTooltipText: string}>}
+   */
+  async verifyCO2SquakeTooltipInResults(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const expectedText = 'Emissions are calculated per passenger in the selected class of service.';
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    await flightResultsPage.waitForFlightResults();
+    await flightResultsPage.openResultsCO2Tooltip();
+    const resultTooltipText = await flightResultsPage.getCO2TooltipDescription();
+    expect(resultTooltipText).toBe(expectedText);
+    await flightResultsPage.closeCO2Tooltip();
+
+    await flightResultsPage.waitForFlightDetailsButton();
+    await flightResultsPage.clickFlightDetailsButton();
+    await flightResultsPage.waitForFlightDetailsHeadline();
+    await flightResultsPage.openFlightDetailsCO2Tooltip();
+    const detailsTooltipText = await flightResultsPage.getCO2TooltipDescription();
+    expect(detailsTooltipText).toBe(expectedText);
+    await flightResultsPage.closeCO2Tooltip();
+    await flightResultsPage.clickXToCloseFlightDetailsModal();
+
+    return { visible: true, resultTooltipText, detailsTooltipText };
+  },
+
+  /**
    * Verifies that a flight-comparison row has no visible prices.
    *
    * @param {import('playwright').Page} page - Playwright page instance

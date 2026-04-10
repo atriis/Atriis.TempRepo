@@ -16,6 +16,11 @@ When('I add {string} fare to trip', async function (fareTitle) {
   await FlightPricing.addFareToCart(this.page, fareTitle);
 });
 
+When('I add the first Additional pricing options fare to trip', async function () {
+  logger.info('Adding the first Additional pricing options fare to trip');
+  await FlightPricing.addFirstAdditionalPricingOptionToCart(this.page);
+});
+
 When('I wait for {string} text to be visible', async function (fareTitle) {
   logger.info('Waiting for pricing fare text to be visible', { fareTitle });
   const flightPricingPage = getPageObject(this.page, FlightPricingPage);

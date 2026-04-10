@@ -117,6 +117,11 @@ const SELECTORS = {
   FIRST_FLIGHT_RESULT_PRICE_WRAPPER: '.flight-list .flight-preview .price-wrapper',
   OFFICE_HOURS_INFO_ICON: 'button.add-to-trip .app-tooltip__content',
   OFFICE_HOURS_TOOLTIP_TITLE: '.app-tooltip.hours-limitation-description .app-tooltip__title',
+  RESULTS_CO2_TOOLTIP_TRIGGER: '.flight-list .flight-preview .co2-emissions-label .info-icon',
+  FLIGHT_DETAILS_DRAWER: "[aria-label='Flight details']",
+  FLIGHT_DETAILS_CO2_TOOLTIP_TRIGGER: "[aria-label='Flight details'] .co2-emissions-label .info-icon",
+  CO2_TOOLTIP_DESCRIPTION: '.co2-emissions-tooltip .emission-description-bold',
+  CO2_TOOLTIP_CLOSE_BUTTON: '.co2-emissions-tooltip .header .material-symbols-outlined',
   LIMIT_LAYOVER_DURATION_FILTER_CONTAINER: '.view-txt-link',
   LIMIT_LAYOVER_DURATION_FILTER_LABEL: 'Limit Layover Duration',
   TIME_SLIDER_SECTION: '.app-time-slider',
@@ -347,6 +352,51 @@ class FlightResultsPage {
     const title = this.page.locator(SELECTORS.OFFICE_HOURS_TOOLTIP_TITLE).first();
     await title.waitFor({ state: 'visible', timeout });
     return (await title.textContent())?.trim() ?? '';
+  }
+
+  /**
+   * Opens the CO2 tooltip from the first visible flight result.
+   *
+   * @param {{ timeout?: number }} options
+   */
+  async openResultsCO2Tooltip({ timeout = 10000 } = {}) {
+    const trigger = this.page.locator(SELECTORS.RESULTS_CO2_TOOLTIP_TRIGGER).first();
+    await trigger.waitFor({ state: 'visible', timeout });
+    await trigger.click();
+  }
+
+  /**
+   * Opens the CO2 tooltip inside the Flight Details drawer.
+   *
+   * @param {{ timeout?: number }} options
+   */
+  async openFlightDetailsCO2Tooltip({ timeout = 10000 } = {}) {
+    const trigger = this.page.locator(SELECTORS.FLIGHT_DETAILS_CO2_TOOLTIP_TRIGGER).first();
+    await trigger.waitFor({ state: 'visible', timeout });
+    await trigger.click();
+  }
+
+  /**
+   * Gets the visible CO2 tooltip description text.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>}
+   */
+  async getCO2TooltipDescription({ timeout = 10000 } = {}) {
+    const description = this.page.locator(SELECTORS.CO2_TOOLTIP_DESCRIPTION).first();
+    await description.waitFor({ state: 'visible', timeout });
+    return (await description.textContent())?.replace(/\s+/g, ' ').trim() ?? '';
+  }
+
+  /**
+   * Closes the visible CO2 tooltip.
+   *
+   * @param {{ timeout?: number }} options
+   */
+  async closeCO2Tooltip({ timeout = 10000 } = {}) {
+    const closeButton = this.page.locator(SELECTORS.CO2_TOOLTIP_CLOSE_BUTTON).first();
+    await closeButton.waitFor({ state: 'visible', timeout });
+    await closeButton.click();
   }
 
   /**

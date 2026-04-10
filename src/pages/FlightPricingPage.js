@@ -19,6 +19,10 @@ const SELECTORS = {
   YOUR_SELECTION_CARD: '.flight-by-schedule-pricing .flight-by-schedule-pricing-option',
   YOUR_SELECTION_CARD_TITLE: '.header .title',
   YOUR_SELECTION_PRICE: '.bottom-bar .price',
+  ADDITIONAL_PRICING_OPTIONS_TOGGLE: 'button:has-text("Additional pricing options")',
+  ADDITIONAL_PRICING_OPTIONS_WRAPPER: '.additional-pricing-options-wrapper',
+  ADDITIONAL_PRICING_OPTIONS_FIRST_CARD: '.additional-pricing-options-wrapper .flight-by-schedule-pricing-option',
+  ADDITIONAL_PRICING_OPTIONS_FIRST_ADD_TO_TRIP_BUTTON: '.additional-pricing-options-wrapper .flight-by-schedule-pricing-option .add-btn',
 };
 
 class FlightPricingPage {
@@ -116,6 +120,33 @@ class FlightPricingPage {
    */
   async getYourSelectionPrice() {
     return this.getFarePrice('Your selection');
+  }
+
+  /**
+   * Expands the Additional pricing options section if it is collapsed.
+   */
+  async expandAdditionalPricingOptions() {
+    const toggle = this.page.locator(SELECTORS.ADDITIONAL_PRICING_OPTIONS_TOGGLE).first();
+    const wrapper = this.page.locator(SELECTORS.ADDITIONAL_PRICING_OPTIONS_WRAPPER).first();
+
+    await toggle.waitFor({ state: 'visible', timeout: 30000 });
+
+    if (!(await wrapper.isVisible().catch(() => false))) {
+      await toggle.click({ timeout: 30000 });
+    }
+
+    await wrapper.waitFor({ state: 'visible', timeout: 30000 });
+    await this.page.locator(SELECTORS.ADDITIONAL_PRICING_OPTIONS_FIRST_CARD).first().waitFor({ state: 'visible', timeout: 30000 });
+  }
+
+  /**
+   * Clicks Add to trip on the first card under Additional pricing options.
+   */
+  async clickAddToTripForFirstAdditionalPricingOption() {
+    const addButton = this.page.locator(SELECTORS.ADDITIONAL_PRICING_OPTIONS_FIRST_ADD_TO_TRIP_BUTTON).first();
+    await addButton.waitFor({ state: 'visible', timeout: 30000 });
+    await addButton.scrollIntoViewIfNeeded();
+    await addButton.click({ timeout: 30000 });
   }
 
   /**

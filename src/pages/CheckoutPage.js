@@ -37,6 +37,7 @@ const SELECTORS = {
 
   // Required field detection — inputs inside is-danger wrappers across checkout
   REQUIRED_INPUTS: ".is-danger .el-input__inner",
+  CHECKOUT_TOTAL_PRICE: '.price-summary .price-total .amount',
 };
 
 class CheckoutPage {
@@ -324,6 +325,19 @@ class CheckoutPage {
       inputs.nth(2).inputValue().catch(() => ''),
     ]);
     return values.join('');
+  }
+
+  /**
+   * Gets the total price displayed in the checkout trip summary.
+   * @returns {Promise<number|null>}
+   */
+  async getCheckoutTotalPrice() {
+    const total = this.page.locator(SELECTORS.CHECKOUT_TOTAL_PRICE).first();
+    await total.waitFor({ state: 'visible', timeout: 15000 });
+    const text = await total.innerText();
+    const normalized = text.replace(/[^0-9.,]/g, '').replace(/,/g, '.');
+    const value = Number.parseFloat(normalized);
+    return Number.isNaN(value) ? null : value;
   }
 
   /**

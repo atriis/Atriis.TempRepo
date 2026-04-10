@@ -11,18 +11,17 @@ Feature: 65398 Amadeus - Validate both segments included with same low-cost carr
   I want both outbound and return segments included in a round trip by schedule
   So that the booking includes both legs when using the same low-cost carrier
 
-  # TODO: New user needed — corporate.amadeus.lcc@soniatest.com → USER_CORPORATE_AMADEUS_LCC
-  #   Add to .env, .env.example, and CI workflow secrets
-
   Scenario: Both segments are present when using same low-cost carrier (EasyJet)
     Given I am logged in as "corporate_amadeus_lcc" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "AMS" to "LON"
-    # TODO: Step needed for "Select first segment filtered by carrier 'EasyJet' and second by 'EasyJet'"
-    # Testim: Select_flights_by_carrier__by_schedule____Select_option('EasyJet', 'EasyJet')
-    # TODO: Step needed for "Click proceed after search (click_on_procced_after_search)"
-    # TODO: Step needed for "Add flights from pricing page — option with 'Not Separate Tickets'"
-    # Testim: Add_flights_from_pricing_page_to_cart___Option_with_Not_Separate_Tickets()
+    And I filter results by carrier "EasyJet"
+    And I select one flight segment by schedule
+    And I wait for the change flight button to be visible
+    And I filter results by carrier "EasyJet"
+    And I select one flight segment by schedule
+    And I wait for "Your Selection" text to be visible
+    And I add the first Additional pricing options fare to trip
     And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
-    # TODO: Step needed for "Verify both outbound and return segments are present in the trip"
+    And both outbound and return segments should be present in the trip
