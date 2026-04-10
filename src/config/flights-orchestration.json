@@ -1,0 +1,131 @@
+{
+  "domain": "flights",
+  "description": "Flights domain orchestration configuration. Maps suppliers to Cucumber tag expressions, users, and execution policies.",
+
+  "defaultUser": "ruimariano",
+
+  "suppliers": {
+    "AMADEUS": {
+      "type": "GDS",
+      "tags": "@amadeus and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/amadeus", "tests/features/flights/general", "tests/features/flights/daily_flights"],
+      "users": ["ruimariano", "ruimendes", "helenatereza", "bruna_nlgov", "adam", "lucas", "suzanavond"],
+      "notes": "Primary GDS. Includes light-ticketing and low-cost via Amadeus distribution."
+    },
+    "SABRE": {
+      "type": "GDS",
+      "tags": "@sabre and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/general"],
+      "users": ["robsoncruz", "brunajuliana", "christree", "sabrin"],
+      "notes": "Sabre GDS. Also powers some schedule and split-ticket flows."
+    },
+    "UAPIGALILEO": {
+      "type": "GDS",
+      "tags": "@galileo and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/general"],
+      "users": ["beatriz", "bruna_galileo", "edwardcullen", "galileo", "inessa", "shmul"],
+      "notes": "Galileo GDS via UAPI."
+    },
+    "AFKL": {
+      "type": "NDC",
+      "tags": "@afkl and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/general"],
+      "users": ["afkl"],
+      "notes": "Air France / KLM NDC. Dynamic pricing — price can vary between retries."
+    },
+    "LUFTHANSA": {
+      "type": "NDC",
+      "tags": "@lufthansa and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/lufthansa", "tests/features/flights/general"],
+      "users": ["clara"],
+      "notes": "Lufthansa NDC direct. Includes NDC LH scenarios."
+    },
+    "NDCBA": {
+      "type": "NDC",
+      "tags": "@ba and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/general"],
+      "users": ["ian"],
+      "notes": "British Airways NDC."
+    },
+    "IBERIA": {
+      "type": "NDC",
+      "tags": "@iberia and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/general"],
+      "users": ["iberia", "ami"],
+      "notes": "Iberia NDC."
+    },
+    "UNITED": {
+      "type": "NDC",
+      "tags": "@united and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/general"],
+      "users": ["united"],
+      "notes": "United Airlines NDC."
+    },
+    "AMERICANAIRLINE": {
+      "type": "NDC",
+      "tags": "@aa and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/to_adjust_aa"],
+      "users": ["ian"],
+      "notes": "American Airlines NDC. Most scenarios are still in to_adjust status."
+    },
+    "FUSION": {
+      "type": "LowCost",
+      "tags": "@fusion and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/general"],
+      "users": ["mike", "amsnewflowfusion"],
+      "notes": "Travel Fusion low-cost aggregator. Unreliable — skip from smoke tests."
+    },
+    "YPSILON": {
+      "type": "LowCost",
+      "tags": "@ypsilon and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/general"],
+      "users": ["james"],
+      "notes": "Ypsilon low-cost aggregator. Known flaky in test environments."
+    },
+    "NDCLH": {
+      "type": "NDC",
+      "tags": "@ndc and @lufthansa and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/general", "tests/features/flights/amadeus"],
+      "users": ["clara"],
+      "notes": "Lufthansa-group NDC via Amadeus distribution."
+    },
+    "LDSSABRE": {
+      "type": "GDS",
+      "tags": "@lds and @sabre and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/general"],
+      "users": ["robsoncruz", "brunajuliana"],
+      "notes": "LDS Sabre profile. Limited product set."
+    },
+    "UAPIWORLDSPAN": {
+      "type": "GDS",
+      "tags": "@worldspan and not @blocked and not @to_adjust",
+      "featurePaths": ["tests/features/flights/general"],
+      "users": ["beatriz"],
+      "notes": "UAPI-Worldspan GDS. Limited route coverage."
+    }
+  },
+
+  "execution": {
+    "maxParallel": 3,
+    "timeoutPerSupplierSeconds": 300,
+    "retryFailedScenarios": false,
+    "continueOnSupplierFailure": true,
+    "headless": true,
+    "screenshotsOnFailure": true,
+    "tracesOnFailure": true
+  },
+
+  "businessRules": [
+    "ALWAYS cancel GDS flights after test — real PNRs cost money",
+    "NEVER use low-cost flights from GDS suppliers — unreliable, false failures",
+    "Price must stay consistent from search through cart (+/- 5% tolerance on NDC)",
+    "NDC dynamic pricing: do not retry price-consistency assertions"
+  ],
+
+  "knownIssues": {
+    "YPSILON": "Unreliable in test environment — use sparingly",
+    "FUSION": "Low-cost carrier with limited refund policies",
+    "AMERICANAIRLINE": "Most AA NDC scenarios still in to_adjust — limited coverage",
+    "NDCLH": "Dynamic pricing may produce different offers on retry"
+  }
+}
