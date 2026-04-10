@@ -17,6 +17,8 @@ Feature: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
     Given I am logged in as "sabrin" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Denver" for 1 night
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
     And I add a refundable room to my cart
     When I click the share quote button
@@ -25,4 +27,4 @@ Feature: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
     And I complete the booking
     Then the hotel should appear as refundable in cart
     Then the booking status should be "Confirmed"
-    Then I successfully cancel the trip
+    Then I successfully cancel the trip with 60 seconds wait

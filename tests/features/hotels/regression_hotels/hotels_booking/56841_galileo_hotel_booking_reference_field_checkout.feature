@@ -26,4 +26,4 @@ Feature: 56841 Galileo - Hotel - Booking specific hotel
     And I fill in the "ORDER NUMBER" reference field with "1111"
     And I complete the booking
     Then the booking status should be "Confirmed"
-    Then I successfully cancel the trip
+    Then I successfully cancel the trip with 60 seconds wait

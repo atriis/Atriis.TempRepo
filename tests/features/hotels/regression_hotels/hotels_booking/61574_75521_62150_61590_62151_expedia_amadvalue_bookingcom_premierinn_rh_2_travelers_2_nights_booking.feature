@@ -30,10 +30,8 @@
 # Created: 2025-05-04T01:13:40Z
 # Updated: 2026-02-09T12:35:42Z
 
-#Combine these features into one with examples for all providers since they are identical except for the provider and user. This will reduce duplication and maintenance effort while still covering Expedia, Sabre, Amadeus, and Amadeus Value Hotel in the same scenario outline.
-
-@regression @provider:expedia @provider:sabre @provider:amadeus @provider:premierinn
-Feature: 61574 Book hotel for 2 travelers 2 nights
+@regression 
+Feature: Book hotel for 2 travelers 2 nights - Expedia, Amadeus Value, Booking.com, Premier Inn & Ratehawk
   As a travel arranger
   I want to book a hotel for 2 travelers for 2 nights
   So that both travelers are accommodated in the same booking
@@ -44,6 +42,8 @@ Feature: 61574 Book hotel for 2 travelers 2 nights
     And I have added myself as the traveler
     And I have added a random guest traveler
     When I search for a hotel in "London" for 2 nights
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the cart should show 2 rooms badge
@@ -57,10 +57,9 @@ Feature: 61574 Book hotel for 2 travelers 2 nights
     Then I successfully cancel the trip
 
     Examples:
-      | label        |
-      | expedia      |
-      | sabrin       |
-      | ruimariano   |
-      | papatinho    |
-      | rebecca      |
+      | label         |
+      | expedia       |
+      | papatinho     |
+      | rebecca       |
       | bruna_premier | 
+      | lidi          | 

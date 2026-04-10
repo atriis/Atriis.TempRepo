@@ -17,6 +17,8 @@ Feature: 64405 Booking.com - Credit card validation without cardholder name and 
     Given I am logged in as "rebeccacardin" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "London" for 1 night
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
     And I add a refundable room to my cart
     And the default card should have a complete missing info button

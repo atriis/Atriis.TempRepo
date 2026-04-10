@@ -17,6 +17,8 @@ Feature: 49893 Ratehawk - Travel plan email contains Ratehawk voucher, not Atrii
     Given I am logged in as "lidi" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
     And I add a refundable room to my cart
     And I log the trip number from the URL

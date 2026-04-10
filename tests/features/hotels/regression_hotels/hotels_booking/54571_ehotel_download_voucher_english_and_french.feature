@@ -17,6 +17,8 @@ Feature: 54571 eHotel - Download hotel voucher in English and French
    Given I am logged in as "luciana" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
     And I add a refundable room to my cart
     When I click add payment method button

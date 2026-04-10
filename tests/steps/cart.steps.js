@@ -242,6 +242,12 @@ Then("I successfully cancel the trip", async function () {
   expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
 });
 
+Then("I successfully cancel the trip with 60 seconds wait", async function () {
+  logger.info("Cancelling the trip successfully after a 60-second wait");
+  const result = await Cart.cancelTripStrictWithWait(this.page, 60000);
+  expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
+});
+
 Then("the booking status should be {string}", async function (status) {
   logger.info("Verifying booking status", { status });
   await Cart.expectBookingStatusToBe(status, { page: this.page });

@@ -102,12 +102,18 @@ chore(deps): update Playwright to 1.42.0
 Before committing:
 
 - [ ] Code follows project patterns (object literal DSLs, SELECTORS const, step definitions)
-- [ ] Tests pass: `npx cucumber-js --tags "@smoke"` or `npx cucumber-js [file]`
+- [ ] Relevant tests have been run by the responsible person: `npx cucumber-js --tags "@smoke"` or `npx cucumber-js [file]`
 - [ ] No debug code (`console.log`, `page.pause()`, commented blocks)
 - [ ] No unused imports
 - [ ] Commit message: `<type>(<scope>): <subject>` (max 80 chars)
 - [ ] Related files included (Step Defs + DSL/Page Object + Feature file if applicable)
 - [ ] Code formatted consistently
+
+### Test Execution Responsibility
+
+- Test execution is a manual responsibility of the engineer preparing or approving the change.
+- AI agents should not automatically run tests as part of commit preparation unless the user explicitly asks for it.
+- When tests have not been run yet, the commit request should proceed only with the user's confirmation.
 
 ## Multi-File Changes
 
@@ -143,13 +149,14 @@ test(flights): add random intercontinental flight test
 ## When to Commit
 
 **Commit:**
-✅ Feature complete and tested
+✅ Feature complete and tested by the responsible person
 ✅ Fix works, doesn't break existing code
 ✅ All related files updated (DSL + Page + Test)
-✅ Tests pass
+✅ Tests pass when run manually by the responsible person
 
 **Don't commit:**
 ❌ Syntax errors or failing tests
+❌ Automatically trigger tests unless the user explicitly requested them
 ❌ Incomplete work (use `git stash`)
 ❌ Debug code still present
 

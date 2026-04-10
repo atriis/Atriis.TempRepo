@@ -17,10 +17,12 @@ Feature: 20182 General - Book hotel with no FOP and add credit card in cart
     Given I am logged in as "rebeca" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
     And I add a refundable room to my cart
     When I add a credit card as payment method
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    Then I successfully cancel the trip
+    Then I successfully cancel the trip with 60 seconds wait

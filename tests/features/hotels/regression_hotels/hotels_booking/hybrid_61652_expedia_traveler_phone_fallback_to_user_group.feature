@@ -17,6 +17,8 @@ Feature: 61652 HYBRID Expedia - Send the traveler's phone in case valid, and the
     Given I am logged in as "shani_nl" booking a new trip
     And I have added traveler by name "inbal idfon"
     When I search for a hotel in "LON" for 1 night
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
     And I add a refundable room to my cart
     And I fill credit card cvv if needed
@@ -30,6 +32,8 @@ Feature: 61652 HYBRID Expedia - Send the traveler's phone in case valid, and the
     Given I am logged in as "shani_nl" booking a new trip
     And I have added traveler by name "valeria fone"
     When I search for a hotel in "LON" for 1 night
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
     And I add a refundable room to my cart
     And I log the trip number from the URL

@@ -12,7 +12,6 @@ Feature: 69671 Sabre - Book hotel for 4 travelers in 2 rooms with price match
   I want to book a Sabre hotel for 4 travelers in 2 rooms
   So that all travelers are accommodated and the booking is confirmed
 
- # Note: this test is flaky (specially with Sabre) due to cancelation issues, need to check with Shani what's happening
   @priority:critical
   Scenario: 4 travelers booked in 2 Sabre hotel rooms with confirmed status
     Given I am logged in as "sabrin" booking a new trip
@@ -21,11 +20,13 @@ Feature: 69671 Sabre - Book hotel for 4 travelers in 2 rooms with price match
     And I have added traveler by name "James Douglas"
     And I have added a random guest traveler
     When I search for a hotel in "Leipzig,Germany,(LEJ)" for 1 night with 2 rooms
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the cart should show 2 rooms badge
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
-    Then I successfully cancel the trip
+    Then I successfully cancel the trip with 60 seconds wait
 

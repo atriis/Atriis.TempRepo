@@ -17,6 +17,8 @@ Feature: 40953 Galileo - Book hotel with terms and conditions and price verifica
     Given I am logged in as "galileo" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "London, UK" for 1 night
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
     When I check terms and conditions in room level
     Then terms and conditions are displayed
@@ -30,5 +32,5 @@ Feature: 40953 Galileo - Book hotel with terms and conditions and price verifica
     Then the booking status should be "Confirmed"
     And I extract the hotel quote price from cart
     Then the price in cart should match the pre-booking price
-    Then I successfully cancel the trip
+    Then I successfully cancel the trip with 60 seconds wait
 

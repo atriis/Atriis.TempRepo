@@ -17,6 +17,8 @@ Feature: 23109 eHotel - Book hotel and verify provider label
     Given I am logged in as "eli" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
     And I wait for the first add to trip button to be visible in room level results
     Then I should see a provided by label in room level results

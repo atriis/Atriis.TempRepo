@@ -59,6 +59,28 @@ const Cart = {
   },
 
   /**
+   * STRICT cancel flow with an explicit pre-cancellation wait.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} waitMs
+   * @returns {Promise<{cancelled: boolean, messageVisible: boolean}>}
+   */
+  async cancelTripStrictWithWait(page, waitMs) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!Number.isInteger(waitMs) || waitMs < 0) {
+      throw new Error(`waitMs must be a non-negative integer, got: ${waitMs}`);
+    }
+
+    logger.info('Waiting before strict trip cancellation', { waitMs });
+    await page.waitForTimeout(waitMs);
+
+    return this.cancelTripStrict(page);
+  },
+
+  /**
    * SAFE cancel flow (never throws, returns status)
    *
    * @param {import('playwright').Page} page

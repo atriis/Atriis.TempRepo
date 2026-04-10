@@ -6,7 +6,7 @@ on:
   # pull_request:
   #  branches: [ main ]
   schedule:
-     - cron: '0 21 * * *'  # Daily at 21:00 UTC (21:00 Portugal winter / 22:00 Portugal summer)
+    - cron: '0 19 12 4 *'  # April 12 at 19:00 UTC, which is 20:00 in Portugal during DST
   workflow_dispatch:
 
 # Structured logging configuration for all jobs
@@ -21,360 +21,109 @@ permissions:
   checks: write
 
 jobs:
-  smoke-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v5
+  # smoke-tests:
+  #   Temporarily disabled. Leave only the hotel job active.
 
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 20
+  # daily-cars-tests:
+  #   Temporarily disabled. Leave only the hotel job active.
 
-      - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: mkdir -p test-results test-results/screenshots
+  # daily-flights-tests:
+  #   Temporarily disabled. Leave only the hotel job active.
 
-      - name: Load environment variables
-        uses: ./.github/actions/load-env-from-secret
-        with:
-          env-file-content: ${{ secrets.ENV }}
+  # daily-shell-tests:
+  #   Temporarily disabled. Leave only the hotel job active.
 
-      - name: Run Smoke Tests
-        id: run-smoke
-        timeout-minutes: 15
-        run: npx cucumber-js tests/features/smoke/
-        env:
-          CI: "true"
-          RETRY_COUNT: "2"
-          RETRY_DELAY: "3000"
-
-      - name: Upload Smoke Results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: smoke-results
-          path: test-results/cucumber-junit.xml
-
-      - name: Upload Smoke Report
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: smoke-report
-          path: test-results/cucumber-report.json
-
-      - name: Upload Smoke Screenshots
-        if: failure() && steps.run-smoke.outcome == 'failure'
-        uses: actions/upload-artifact@v5
-        with:
-          name: smoke-screenshots
-          path: test-results/screenshots/
-
-      - name: Upload Smoke Allure Results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: smoke-allure-results
-          path: allure-results/
-          if-no-files-found: ignore
-
-  daily-cars-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 20
-
-      - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: mkdir -p test-results test-results/screenshots
-
-      - name: Load environment variables
-        uses: ./.github/actions/load-env-from-secret
-        with:
-          env-file-content: ${{ secrets.ENV }}
-
-      - name: Run Daily Cars Tests
-        id: run-daily-cars
-        timeout-minutes: 25
-        run: npx cucumber-js tests/features/cars/daily_cars/ --parallel 2
-        env:
-          CI: "true"
-          RETRY_COUNT: "2"
-          RETRY_DELAY: "3000"
-
-      - name: Upload Daily Cars Results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-cars-results
-          path: test-results/cucumber-junit.xml
-
-      - name: Upload Daily Cars Report
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-cars-report
-          path: test-results/cucumber-report.json
-
-      - name: Upload Daily Cars Screenshots
-        if: failure() && steps.run-daily-cars.outcome == 'failure'
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-cars-screenshots
-          path: test-results/screenshots/
-
-      - name: Upload Daily Cars Allure Results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-cars-allure-results
-          path: allure-results/
-          if-no-files-found: ignore
-
-  daily-flights-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 20
-
-      - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: mkdir -p test-results test-results/screenshots
-
-      - name: Load environment variables
-        uses: ./.github/actions/load-env-from-secret
-        with:
-          env-file-content: ${{ secrets.ENV }}
-
-      - name: Run Daily Flights Tests
-        id: run-daily-flights
-        timeout-minutes: 35
-        run: npx cucumber-js tests/features/flights/daily_flights/ --parallel 2
-        env:
-          CI: "true"
-          RETRY_COUNT: "2"
-          RETRY_DELAY: "3000"
-
-      - name: Upload Daily Flights Results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-flights-results
-          path: test-results/cucumber-junit.xml
-
-      - name: Upload Daily Flights Report
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-flights-report
-          path: test-results/cucumber-report.json
-
-      - name: Upload Daily Flights Screenshots
-        if: failure() && steps.run-daily-flights.outcome == 'failure'
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-flights-screenshots
-          path: test-results/screenshots/
-
-      - name: Upload Daily Flights Allure Results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-flights-allure-results
-          path: allure-results/
-          if-no-files-found: ignore
-
-  daily-shell-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 20
-
-      - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: mkdir -p test-results test-results/screenshots
-
-      - name: Load environment variables
-        uses: ./.github/actions/load-env-from-secret
-        with:
-          env-file-content: ${{ secrets.ENV }}
-
-      - name: Run Daily Shell Tests
-        id: run-daily-shell
-        timeout-minutes: 20
-        run: npx cucumber-js tests/features/shell/daily_shell/
-        env:
-          CI: "true"
-          RETRY_COUNT: "2"
-          RETRY_DELAY: "3000"
-
-      - name: Upload Daily Shell Results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-shell-results
-          path: test-results/cucumber-junit.xml
-
-      - name: Upload Daily Shell Report
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-shell-report
-          path: test-results/cucumber-report.json
-
-      - name: Upload Daily Shell Screenshots
-        if: failure() && steps.run-daily-shell.outcome == 'failure'
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-shell-screenshots
-          path: test-results/screenshots/
-
-      - name: Upload Daily Shell Allure Results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-shell-allure-results
-          path: allure-results/
-          if-no-files-found: ignore
-
-  daily-hotels-tests:
+  regression-hotels-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 65
+    outputs:
+      should_run: ${{ steps.schedule-guard.outputs.should_run }}
     steps:
-      - uses: actions/checkout@v5
+      - name: Allow only the scheduled run for 2026-04-12
+        id: schedule-guard
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-      - uses: actions/setup-node@v5
+          if [ "$(date -u +%F)" = "2026-04-12" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping scheduled execution outside 2026-04-12."
+          fi
+
+      - if: steps.schedule-guard.outputs.should_run == 'true'
+        uses: actions/checkout@v5
+
+      - if: steps.schedule-guard.outputs.should_run == 'true'
+        uses: actions/setup-node@v5
         with:
           node-version: 20
 
-      - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: mkdir -p test-results test-results/screenshots
+      - if: steps.schedule-guard.outputs.should_run == 'true'
+        run: npm ci
+      - if: steps.schedule-guard.outputs.should_run == 'true'
+        run: npx playwright install --with-deps
+      - if: steps.schedule-guard.outputs.should_run == 'true'
+        run: mkdir -p test-results test-results/screenshots
 
       - name: Load environment variables
+        if: steps.schedule-guard.outputs.should_run == 'true'
         uses: ./.github/actions/load-env-from-secret
         with:
           env-file-content: ${{ secrets.ENV }}
 
-      - name: Run Daily Hotel Tests
-        id: run-daily-hotels
+      - name: Run Regression Hotel Tests
+        if: steps.schedule-guard.outputs.should_run == 'true'
+        id: run-regression-hotels
         timeout-minutes: 60
-        run: npx cucumber-js tests/features/hotels/daily_hotels/ --parallel 4
+        run: npx cucumber-js tests/features/hotels/regression_hotels/ --parallel 4
         env:
           CI: "true"
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
 
-      - name: Upload Daily Hotels Results
-        if: always()
+      - name: Upload Regression Hotels Results
+        if: always() && steps.schedule-guard.outputs.should_run == 'true'
         uses: actions/upload-artifact@v5
         with:
-          name: daily-hotels-results
+          name: regression-hotels-results
           path: test-results/cucumber-junit.xml
 
-      - name: Upload Daily Hotels Report
-        if: always()
+      - name: Upload Regression Hotels Report
+        if: always() && steps.schedule-guard.outputs.should_run == 'true'
         uses: actions/upload-artifact@v5
         with:
-          name: daily-hotels-report
+          name: regression-hotels-report
           path: test-results/cucumber-report.json
 
-      - name: Upload Daily Hotels Screenshots
-        if: failure() && steps.run-daily-hotels.outcome == 'failure'
+      - name: Upload Regression Hotels Screenshots
+        if: failure() && steps.schedule-guard.outputs.should_run == 'true' && steps.run-regression-hotels.outcome == 'failure'
         uses: actions/upload-artifact@v5
         with:
-          name: daily-hotels-screenshots
+          name: regression-hotels-screenshots
           path: test-results/screenshots/
 
-      - name: Upload Daily Hotels Allure Results
-        if: always()
+      - name: Upload Regression Hotels Allure Results
+        if: always() && steps.schedule-guard.outputs.should_run == 'true'
         uses: actions/upload-artifact@v5
         with:
-          name: daily-hotels-allure-results
+          name: regression-hotels-allure-results
           path: allure-results/
           if-no-files-found: ignore
-
-  daily-rails-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 20
-
-      - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: mkdir -p test-results test-results/screenshots
-
-      - name: Load environment variables
-        uses: ./.github/actions/load-env-from-secret
-        with:
-          env-file-content: ${{ secrets.ENV }}
-
-      - name: Run Daily Rails Tests
-        id: run-daily-rails
-        timeout-minutes: 25
-        run: npx cucumber-js tests/features/rails/daily_rails/
-        env:
-          CI: "true"
-          RETRY_COUNT: "2"
-          RETRY_DELAY: "3000"
-
-      - name: Upload Daily Rails Results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-rails-results
-          path: test-results/cucumber-junit.xml
-
-      - name: Upload Daily Rails Report
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-rails-report
-          path: test-results/cucumber-report.json
-
-      - name: Upload Daily Rails Screenshots
-        if: failure() && steps.run-daily-rails.outcome == 'failure'
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-rails-screenshots
-          path: test-results/screenshots/
-
-      - name: Upload Daily Rails Allure Results
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: daily-rails-allure-results
-          path: allure-results/
-          if-no-files-found: ignore
+  # daily-rails-tests:
+  #   Temporarily disabled. Leave only the hotel job active.
 
   summary:
     name: Summary
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs:
-      - smoke-tests
-      - daily-cars-tests
-      - daily-flights-tests
-      - daily-shell-tests
-      - daily-hotels-tests
-      - daily-rails-tests
-    if: always()
+      - regression-hotels-tests
+    if: always() && needs.regression-hotels-tests.outputs.should_run == 'true'
 
     permissions:
       contents: read
@@ -472,7 +221,6 @@ jobs:
           echo "📊 Merging Cucumber JSON reports..."
           mkdir -p cucumber-html-report
 
-          # Merge all cucumber JSON files and generate HTML report
           node -e "
             const fs = require('fs');
             const { execSync } = require('child_process');
@@ -491,7 +239,6 @@ jobs:
             fs.writeFileSync('cucumber-html-report/merged-report.json', JSON.stringify(merged, null, 2));
             console.log('✅ Merged ' + files.length + ' report(s) with ' + merged.length + ' feature(s)');
 
-            // Parse results
             let totalScenarios = 0, passed = 0, failed = 0, skipped = 0;
             const suiteRows = [];
             for (const feature of merged) {
@@ -511,7 +258,6 @@ jobs:
             }
             fs.writeFileSync('cucumber-html-report/summary.json', JSON.stringify({ totalScenarios, passed, failed, skipped, suiteRows }));
 
-            // Generate HTML
             const passRate = totalScenarios > 0 ? ((passed / totalScenarios) * 100).toFixed(1) : '0.0';
             const rows = suiteRows.map(r =>
               '<tr><td>' + r.name + '</td><td class=\"pass\">' + r.passed + '</td><td class=\"fail\">' + r.failed +
@@ -584,7 +330,6 @@ jobs:
           echo "## 📋 Test Execution Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Parse cucumber summary if available
           if [ -f "cucumber-html-report/summary.json" ]; then
             node -e "
               const s = JSON.parse(require('fs').readFileSync('cucumber-html-report/summary.json', 'utf8'));
@@ -616,12 +361,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Smoke Tests | \`${{ needs.smoke-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Daily Cars | \`${{ needs.daily-cars-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Daily Flights | \`${{ needs.daily-flights-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Daily Shell | \`${{ needs.daily-shell-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Daily Hotels | \`${{ needs.daily-hotels-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Daily Rails | \`${{ needs.daily-rails-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Regression Hotels | \`${{ needs.regression-hotels-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
 
       - name: Parse JUnit Results into Summary
         if: always()
@@ -640,31 +380,28 @@ jobs:
               let totalTests = 0, totalFail = 0, totalSkipped = 0, totalTime = 0;
               const allFailures = [];
 
-              // --- Per-file summary table (like dorny) ---
               const fileRows = [];
               for (const file of files) {
                 const xml = fs.readFileSync(file, 'utf8');
                 let fTests = 0, fFail = 0, fSkip = 0, fTime = 0;
 
-                // Parse each <testsuite>
                 const suiteRegex = /<testsuite\s+([^>]+)>/g;
                 let match;
                 while ((match = suiteRegex.exec(xml)) !== null) {
                   const attrs = match[1];
-                  const get = (n) => { const m = attrs.match(new RegExp(n + '=\"([^\"]*)\"|' + n + \"='([^']*)'\"));  return m ? (m[1] || m[2] || '') : ''; };
+                  const get = (n) => { const m = attrs.match(new RegExp(n + '=\"([^\"]*)\"|' + n + \"='([^']*)'\")); return m ? (m[1] || m[2] || '') : ''; };
                   fTests += parseInt(get('tests')) || 0;
                   fFail += (parseInt(get('failures')) || 0) + (parseInt(get('errors')) || 0);
                   fSkip += parseInt(get('skipped')) || 0;
                   fTime += parseFloat(get('time')) || 0;
                 }
 
-                // Parse individual <testcase> for failure details
                 const tcRegex = /<testcase\s+([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
                 let tc;
                 while ((tc = tcRegex.exec(xml)) !== null) {
                   const tcAttrs = tc[1];
                   const tcBody = tc[2] || '';
-                  const getName = (n) => { const m = tcAttrs.match(new RegExp(n + '=\"([^\"]*)\"|' + n + \"='([^']*)'\"));  return m ? (m[1] || m[2] || '') : ''; };
+                  const getName = (n) => { const m = tcAttrs.match(new RegExp(n + '=\"([^\"]*)\"|' + n + \"='([^']*)'\")); return m ? (m[1] || m[2] || '') : ''; };
                   if (tcBody.includes('<failure') || tcBody.includes('<error')) {
                     const tcName = getName('name') || 'Unknown test';
                     const msgMatch = tcBody.match(/message=\"([^\"]*)\"/);
@@ -682,8 +419,6 @@ jobs:
               }
 
               const totalPassed = totalTests - totalFail - totalSkipped;
-              const badge = totalFail > 0 ? 'tests ' + totalPassed + ' passed, ' + totalFail + ' failed' : 'tests ' + totalPassed + ' passed';
-
               out.push('');
               out.push('### 📄 Test Results');
               out.push('');
@@ -694,7 +429,6 @@ jobs:
               fileRows.forEach(r => out.push(r));
               out.push('| **Total** | **' + totalPassed + '** | **' + totalFail + '** | **' + totalSkipped + '** | **' + Math.round(totalTime) + 's** |');
 
-              // --- Failed tests detail ---
               if (allFailures.length > 0) {
                 out.push('');
                 out.push('### ❌ Failed Tests');
@@ -721,7 +455,7 @@ jobs:
           if [ -d "all-results" ]; then
             echo "Directory structure:"
             ls -la all-results/ || echo "Failed to list all-results"
-            
+
             xml_count=$(find all-results -name "*.xml" -type f 2>/dev/null | wc -l)
             if [ "$xml_count" -gt 0 ]; then
               echo "found=true" >> $GITHUB_OUTPUT

@@ -17,6 +17,8 @@ Feature: 37135 Premier Inn - Book hotel with CVV and Extras
     Given I am logged in as "perry" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
     And I add a refundable room to my cart
     When I add Premier Inn Extras Services in cart
