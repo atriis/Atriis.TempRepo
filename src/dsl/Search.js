@@ -105,10 +105,12 @@ const Search = {
     await searchPage.clickAddGuestButton();
     
     const starIconVisible = await searchPage.isStarIconVisible();
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
 
     return {
       added: true,
       starIconVisible,
+      selectedTravelerCount,
       guestData: { firstName, lastName, dateOfBirth, email, phone },
     };
   },
@@ -181,10 +183,12 @@ const Search = {
     await searchPage.clickAddGuestButton();
 
     const starIconVisible = await searchPage.isStarIconVisible();
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
 
     return {
       added: true,
       starIconVisible,
+      selectedTravelerCount,
       guestData: { firstName, lastName, dateOfBirth, email, phone },
     };
   },

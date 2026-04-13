@@ -11,6 +11,14 @@ const logger = require("@utils/logger").child("FlightResults");
 
 setDefaultTimeout(120000);
 
+function getTravelerCount(world) {
+  if (Number.isInteger(world.selectedTravelerCount) && world.selectedTravelerCount > 0) {
+    return world.selectedTravelerCount;
+  }
+
+  return (world.guestTravelerCount ?? 0) + 1;
+}
+
 // ========================================
 // WHEN STEPS - FLIGHT SELECTION & CART
 // ========================================
@@ -419,6 +427,43 @@ Then("The shared price for carrier {string} should match the price from pricing 
   }
   // Use tolerance for floating point comparison
   expectNumbersToBeEqualWithTolerance(sharedPrice, pricingOptionsPrice, 0.02, `${carrier} shared price from pricing options`);
+});
+
+Then("the price in pricing options should be per traveler", async function () {
+  logger.info("Verifying pricing options price is per traveler");
+  const result = await FlightResults.verifyPricingOptionsPriceIsPerTraveler(this.page);
+  this.perTravelerPrice = result.pricingOptionsPrice;
+  logger.info("Pricing options per-traveler price verified", result);
+});
+
+When("I extract the total price from flight details", async function () {
+  logger.info("Extracting total price from flight details");
+  this.flightDetailsTotalPrice = await FlightResults.extractTotalPriceFromFlightDetails(this.page);
+  logger.info("Extracted flight details total price", { flightDetailsTotalPrice: this.flightDetailsTotalPrice });
+});
+
+Then("the price in flight details should be total for all pax", async function () {
+  const perTravelerPrice = this.perTravelerPrice ?? this.extractedPrices?.[this.extractedPrices.length - 1];
+
+  if (perTravelerPrice == null) {
+    throw new Error("No per-traveler price stored. Run the pricing options extraction step before validating flight details total.");
+  }
+
+  const travelerCount = getTravelerCount(this);
+  logger.info("Verifying flight details total price for all travelers", {
+    perTravelerPrice,
+    travelerCount,
+    flightDetailsTotalPrice: this.flightDetailsTotalPrice ?? null,
+  });
+
+  const result = await FlightResults.verifyFlightDetailsPriceIsTotalForAllPax(
+    this.page,
+    perTravelerPrice,
+    travelerCount,
+    this.flightDetailsTotalPrice,
+  );
+
+  logger.info("Flight details total price verified for all travelers", result);
 });
 
 Then("I should see the fare rules note about strictest terms", async function () {

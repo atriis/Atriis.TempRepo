@@ -11,13 +11,17 @@ Feature: 66548 Multi Pax - Correct price in pricing options and flight details
   I want to see the correct per-traveler price in pricing options and total in flight details
   So that I can verify the pricing is accurate
 
-  # TODO: New user needed — sabre@testim.com → USER_SABRE_TESTIM (same as 35108)
-
   Scenario: Multi pax pricing is correct in pricing options and flight details
     Given I am logged in as "sabre_testim" booking a new trip
     And I have added a random guest traveler
     And I have added a random guest traveler
     And I have added a random guest traveler
-    # TODO: Step needed for "Search flights (route TBD from Testim)"
-    # TODO: Step needed for "Validate price in pricing options is per traveler"
-    # TODO: Step needed for "Validate price in flight details is total for all pax"
+    When I search for a round trip flight from "LON" to "MAD"
+    Then flight results should be displayed
+    And I click on "Pricing Options" for the first result
+    And I extract the price from first pricing option
+    Then the price in pricing options should be per traveler
+    Then I close pricing options modal
+    When I click to open flight details
+    And I extract the total price from flight details
+    Then the price in flight details should be total for all pax

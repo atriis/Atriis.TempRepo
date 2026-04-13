@@ -47,6 +47,9 @@ const SELECTORS = {
     "[placeholder='Search by name, user group, username or email']",
   FIRST_TRAVELER_OPTION: "[id*='item-0']",
   TRIP_TRAVELER_TAG: ".trip-traveler-tag",
+  SELECTED_TRAVELER_NAME: '.trip-traveler-tag .traveler-name.black',
+  EDIT_TRAVELER_MODAL: '.el-dialog.app-dialog',
+  EDIT_TRAVELER_MODAL_CLOSE_BUTTON: '.el-dialog__headerbtn',
   EDIT_TRAVELER_DIALOG: '.edit-traveler',
   ADD_GUEST_TRAVELER_BUTTON: '.edit-traveler .add-guest-btn',
   // Edit traveler dialog — primary traveler checkbox
@@ -138,9 +141,53 @@ class SearchPage {
     return this.page.locator(SELECTORS.DATE_PICKER_PANEL);
   }
 
+  getEditTravelerModal() {
+    return this.page.locator(SELECTORS.EDIT_TRAVELER_MODAL).last();
+  }
+
+  async closeVisibleEditTravelerModal() {
+    const modal = this.getEditTravelerModal();
+
+    if ((await modal.count()) === 0) {
+      return;
+    }
+
+    const isVisible = await modal.isVisible().catch(() => false);
+    if (!isVisible) {
+      return;
+    }
+
+    const closeButton = modal.locator(SELECTORS.EDIT_TRAVELER_MODAL_CLOSE_BUTTON).first();
+    if ((await closeButton.count()) > 0) {
+      await closeButton.click({ force: true, timeout: 3000 });
+    }
+
+    await modal.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+  }
+
   // Opens traveler selection panel
-  async clickAddTravelerButton() {
-    await this.page.click(SELECTORS.ADD_TRAVELER_BUTTON);
+  async clickAddTravelerButton({ retries = 1 } = {}) {
+    await this.closeVisibleEditTravelerModal();
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      await this.page.click(SELECTORS.ADD_TRAVELER_BUTTON);
+
+      const modal = this.getEditTravelerModal();
+      await modal.waitFor({ state: 'visible', timeout: 10000 });
+
+      try {
+        await modal.locator(SELECTORS.EDIT_TRAVELER_DIALOG).first().waitFor({ state: 'visible', timeout: 3000 });
+        return;
+      } catch (error) {
+        if (attempt === retries) {
+          throw error;
+        }
+
+        await this.closeVisibleEditTravelerModal();
+
+        await this.page.waitForTimeout(300);
+      }
+    }
   }
 
   // Waits until the UI is ready to confirm traveler identity
@@ -204,6 +251,13 @@ class SearchPage {
     await removeButton.click();
   }
 
+  async getSelectedTravelerCount() {
+    const selectedTravelerNames = this.page.locator(SELECTORS.SELECTED_TRAVELER_NAME);
+    await selectedTravelerNames.first().waitFor({ state: 'visible', timeout: 10000 });
+
+    return await selectedTravelerNames.count();
+  }
+
   // Searches and selects an existing traveler
   async fillInTravelerName(name) {
     await this.page.fill(SELECTORS.TRAVELER_NAME_FIELD, name);
@@ -226,7 +280,11 @@ class SearchPage {
    * Clicks the "Add guest traveler" button to open the guest form modal.
    */
   async clickAddGuestTravelerButton() {
-    const dialog = this.page.locator(SELECTORS.EDIT_TRAVELER_DIALOG).first();
+    const dialog = this.page
+      .locator(SELECTORS.EDIT_TRAVELER_MODAL)
+      .last()
+      .locator(SELECTORS.EDIT_TRAVELER_DIALOG)
+      .first();
     await dialog.waitFor({ state: 'visible', timeout: 10000 });
 
     const button = this.getAddGuestTravelerButton();
@@ -259,7 +317,10 @@ class SearchPage {
    * Clicks the "Add guest" button to submit the guest form and add the traveler.
    */
   async clickAddGuestButton() {
+    const modal = this.getEditTravelerModal();
+
     await this.getAddGuestButton().click();
+    await modal.waitFor({ state: 'hidden', timeout: 10000 });
   }
 
   // Guest form fields

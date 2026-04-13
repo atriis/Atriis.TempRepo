@@ -5,6 +5,7 @@ const { ResultsPage } = require("@pages/ResultsPage");
 const Results = require("./Results");
 const { CommonPage } = require("@src/pages/CommonPage");
 const { getPageObject } = require("@utils/pageObjectCache");
+const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 
 function extractDayToken(dateText) {
   if (!dateText || typeof dateText !== 'string') {
@@ -523,6 +524,67 @@ const FlightResults = {
     }
 
     return { verified: true, amounts };
+  },
+
+  async verifyPricingOptionsPriceIsPerTraveler(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const resultsPerTravelerPrice = await flightResultsPage.getFirstFlightResultPriceValue();
+    const pricingOptionsPrice = await flightResultsPage.getAmountPriceValuePricingOptions(0);
+    const hasPerTravellerLabel = await flightResultsPage.isPricingOptionsPerTravellerLabelVisible();
+
+    if (pricingOptionsPrice == null) {
+      throw new Error('Could not extract pricing options price from the first option');
+    }
+
+    expect(hasPerTravellerLabel, 'Expected the pricing options drawer to display the per-traveller indicator').toBe(true);
+    expectNumbersToBeEqualWithTolerance(
+      pricingOptionsPrice,
+      resultsPerTravelerPrice,
+      0.02,
+      'Pricing options price vs results per-traveler price',
+    );
+
+    return { resultsPerTravelerPrice, pricingOptionsPrice, hasPerTravellerLabel };
+  },
+
+  async extractTotalPriceFromFlightDetails(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    return await flightResultsPage.getFlightDetailsTotalPrice();
+  },
+
+  async verifyFlightDetailsPriceIsTotalForAllPax(page, perTravelerPrice, travelerCount, flightDetailsTotalPrice = null) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (typeof perTravelerPrice !== 'number' || Number.isNaN(perTravelerPrice)) {
+      throw new Error(`perTravelerPrice must be a valid number, got: ${perTravelerPrice}`);
+    }
+
+    if (!Number.isInteger(travelerCount) || travelerCount < 1) {
+      throw new Error(`travelerCount must be a positive integer, got: ${travelerCount}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const actualTotalPrice = flightDetailsTotalPrice ?? await flightResultsPage.getFlightDetailsTotalPrice();
+    const expectedTotalPrice = perTravelerPrice * travelerCount;
+
+    expectNumbersToBeEqualWithTolerance(
+      actualTotalPrice,
+      expectedTotalPrice,
+      0.02,
+      `Flight details total price vs per-traveler price x ${travelerCount}`,
+    );
+
+    return { perTravelerPrice, travelerCount, expectedTotalPrice, actualTotalPrice };
   },
 
   /**

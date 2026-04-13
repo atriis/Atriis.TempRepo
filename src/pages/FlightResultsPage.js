@@ -87,6 +87,7 @@ const SELECTORS = {
   PRICING_OPTIONS_SELECT_TO_SHARE_BUTTON_NAME: 'Select to share',
   PRICING_OPTIONS_UNSELECT_BUTTON_TEXT: 'Unselect',
   PRICING_OPTIONS_AMOUNT_VALUE: '.leg-pricing-option .amount',
+  PRICING_OPTIONS_PER_TRAVELLER_INDICATOR: '.leg-pricing-option .trip-type span',
   PRICING_OPTIONS_HEADER: '.main-info-wrapper .options-header h4',
   PRICING_OPTIONS_ADD_TO_TRIP_BUTTON: '.add-btn',
   PRICING_OPTIONS_SHARE_QUOTE_BUTTON: '.share-btn:not(.add-btn)',
@@ -115,10 +116,12 @@ const SELECTORS = {
   FLIGHT_LOCATION_CODE: '.loc-code',
   MARKED_FLIGHT_LOCATION_CODE: '.loc-code.marked, .loc-code.markedEdge',
   FIRST_FLIGHT_RESULT_PRICE_WRAPPER: '.flight-list .flight-preview .price-wrapper',
+  FIRST_FLIGHT_RESULT_AMOUNT: '.flight-list .flight-preview .price-wrapper .amount',
   OFFICE_HOURS_INFO_ICON: 'button.add-to-trip .app-tooltip__content',
   OFFICE_HOURS_TOOLTIP_TITLE: '.app-tooltip.hours-limitation-description .app-tooltip__title',
   RESULTS_CO2_TOOLTIP_TRIGGER: '.flight-list .flight-preview .co2-emissions-label .info-icon',
   FLIGHT_DETAILS_DRAWER: "[aria-label='Flight details']",
+  FLIGHT_DETAILS_TOTAL_PRICE_AMOUNT: "[aria-label='Flight details'] .policy-and-price .price-wrapper .amount",
   FLIGHT_DETAILS_CO2_TOOLTIP_TRIGGER: "[aria-label='Flight details'] .co2-emissions-label .info-icon",
   CO2_TOOLTIP_DESCRIPTION: '.co2-emissions-tooltip .emission-description-bold',
   CO2_TOOLTIP_CLOSE_BUTTON: '.co2-emissions-tooltip .header .material-symbols-outlined',
@@ -458,6 +461,15 @@ class FlightResultsPage {
     return text?.replace(/\s+/g, ' ').trim() ?? '';
   }
 
+  async getFirstFlightResultPriceValue() {
+    await this.waitForFlightResults();
+
+    const price = this.page.locator(SELECTORS.FIRST_FLIGHT_RESULT_AMOUNT).first();
+    await price.waitFor({ state: 'visible', timeout: 30000 });
+
+    return await extractNumber(this.page, SELECTORS.FIRST_FLIGHT_RESULT_AMOUNT, 0);
+  }
+
   /**
    * Waits for the comparison toggle button to be visible.
    *
@@ -618,6 +630,18 @@ class FlightResultsPage {
       .getByRole('button', { name: SELECTORS.PRICING_OPTIONS_SELECT_BUTTON_NAME })
       .nth(index)
       .waitFor({ state: 'visible', timeout: 60000 });
+  }
+
+  async isPricingOptionsPerTravellerLabelVisible(timeout = 30000) {
+    const overlay = this.getPricingOptionsOverlay();
+    const label = overlay.locator(SELECTORS.PRICING_OPTIONS_PER_TRAVELLER_INDICATOR).first();
+
+    try {
+      await label.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -915,6 +939,13 @@ class FlightResultsPage {
       state: 'visible',
       timeout,
     });
+  }
+
+  async getFlightDetailsTotalPrice(timeout = 30000) {
+    const totalPrice = this.page.locator(SELECTORS.FLIGHT_DETAILS_TOTAL_PRICE_AMOUNT).first();
+    await totalPrice.waitFor({ state: 'visible', timeout });
+
+    return await extractNumber(this.page, SELECTORS.FLIGHT_DETAILS_TOTAL_PRICE_AMOUNT, 0);
   }
 
   /**

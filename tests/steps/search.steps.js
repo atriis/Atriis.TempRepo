@@ -25,6 +25,8 @@ Given("I have added a random guest traveler", async function () {
   logger.info("Adding random guest traveler");
   const result = await Search.addRandomGuest(this.page);
   expect(result.starIconVisible, "Star icon should be visible after adding guest").toBe(true);
+  this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
+  this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
 // ===== WHEN STEPS =====
@@ -52,6 +54,8 @@ Given("I have added a random guest traveler with name {string} {string}", async 
   logger.info("Adding random guest traveler with custom name", { firstName, lastName });
   const result = await Search.addRandomGuestWithName(this.page, firstName, lastName);
   expect(result.added, "Guest traveler should be added").toBe(true);
+  this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
+  this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
 When("I open the traveler drawer", async function () {
