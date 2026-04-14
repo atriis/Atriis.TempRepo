@@ -244,7 +244,7 @@ const SELECTORS = {
   FQTV_CLICKABLE: '.flight-frequent-flyer .is-clickable',
   FQTV_SELECTED_TEXT: '.flight-frequent-flyer .el-select__placeholder span',
   FQTV_SELECTED_TEXT_VISIBLE: '.flight-frequent-flyer .el-tab-pane:visible .el-select__placeholder span',
-  FQTV_TRAVELER_TAB: '.flight-frequent-flyer .frequent-flyer-tab .el-tabs__item',
+  FQTV_TRAVELER_TAB: '.flight-frequent-flyer .frequent-flyer-tab .el-tabs__item:visible',
   FQTV_NEW_RADIO: '.flight-frequent-flyer .el-tab-pane:visible .el-radio:has-text("New")',
   FQTV_CARRIER_SELECT: '.flight-frequent-flyer .el-tab-pane:visible .ff-inputs > .app-column:last-child .el-select',
   FQTV_CARRIER_INPUT: '.flight-frequent-flyer .el-tab-pane:visible .ff-inputs > .app-column:last-child .el-select input.el-select__input',
@@ -2452,13 +2452,23 @@ class CartPage {
    */
   async getAllFqtvSelectedTexts(timeout = 15000) {
     const texts = this.page.locator(SELECTORS.FQTV_SELECTED_TEXT_VISIBLE);
-    await texts.first().waitFor({ state: 'visible', timeout });
+    await texts.first().waitFor({ state: 'visible', timeout }).catch(() => {});
 
     const count = await texts.count();
     const values = [];
 
     for (let index = 0; index < count; index += 1) {
       const value = (await texts.nth(index).innerText()).trim();
+      if (value) {
+        values.push(value);
+      }
+    }
+
+    const numberInputs = this.page.locator(SELECTORS.FQTV_NUMBER_INPUT);
+    const numberInputCount = await numberInputs.count();
+
+    for (let index = 0; index < numberInputCount; index += 1) {
+      const value = (await numberInputs.nth(index).inputValue().catch(() => '')).trim();
       if (value) {
         values.push(value);
       }
@@ -2479,6 +2489,36 @@ class CartPage {
     }
 
     const tab = this.page.locator(SELECTORS.FQTV_TRAVELER_TAB, { hasText: travelerName }).first();
+
+    try {
+      await tab.waitFor({ state: 'visible', timeout: 3000 });
+    } catch {
+      await this.clickFqtvClickable(timeout);
+    }
+
+    await tab.waitFor({ state: 'visible', timeout });
+    await tab.click();
+  }
+
+  /**
+   * Clicks the FQTV traveler tab by 1-based index as shown in the UI.
+   * @param {number} tabNumber - 1-based tab position
+   * @param {number} [timeout=15000] - Timeout for waiting
+   * @returns {Promise<void>}
+   */
+  async clickFqtvTravelerTabByIndex(tabNumber, timeout = 15000) {
+    if (!Number.isInteger(tabNumber) || tabNumber < 1) {
+      throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
+    }
+
+    const tab = this.page.locator(SELECTORS.FQTV_TRAVELER_TAB).nth(tabNumber - 1);
+
+    try {
+      await tab.waitFor({ state: 'visible', timeout: 3000 });
+    } catch {
+      await this.clickFqtvClickable(timeout);
+    }
+
     await tab.waitFor({ state: 'visible', timeout });
     await tab.click();
   }

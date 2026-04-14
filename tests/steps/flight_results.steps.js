@@ -130,7 +130,6 @@ Then('the CO2 Squake tooltip should be visible in flight results', async functio
   const result = await FlightResults.verifyCO2SquakeTooltipInResults(this.page);
   logger.info('CO2 Squake tooltip verified in flight results', {
     resultTooltipText: result.resultTooltipText,
-    detailsTooltipText: result.detailsTooltipText,
   });
   expect(result.visible).toBe(true);
 });

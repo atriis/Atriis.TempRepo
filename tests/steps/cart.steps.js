@@ -725,6 +725,16 @@ When("I add loyalty number {string} using the first available airline", async fu
   logger.info("Added loyalty number with airline", { airline: this.selectedFqtvAirline });
 });
 
+When("I add loyalty number {string} using the first available airline for traveler tab {int}", async function (loyaltyNumber, tabNumber) {
+  logger.info("Adding loyalty number with first available airline for traveler tab", { loyaltyNumber, tabNumber });
+  this.selectedFqtvAirline = await Cart.addLoyaltyNumberWithFirstAvailableAirlineForTravelerTab(
+    this.page,
+    tabNumber,
+    loyaltyNumber,
+  );
+  logger.info("Added loyalty number with airline for traveler tab", { airline: this.selectedFqtvAirline, tabNumber });
+});
+
 When("I add the following FQTV entries:", async function (dataTable) {
   const entries = dataTable.hashes().map((row) => ({
     carrier: row.carrier,
@@ -823,6 +833,11 @@ Then("the FQTV should show {string}", async function (expectedText) {
 Then("the FQTV should show {string} for {string}", async function (expectedText, travelerName) {
   logger.info("Verifying FQTV shows expected text for traveler", { expectedText, travelerName });
   await Cart.verifyFqtvDisplayedForTraveler(this.page, expectedText, travelerName);
+});
+
+Then("the FQTV should show {string} for traveler tab {int}", async function (expectedText, tabNumber) {
+  logger.info("Verifying FQTV shows expected text for traveler tab", { expectedText, tabNumber });
+  await Cart.verifyFqtvDisplayedForTravelerTab(this.page, expectedText, tabNumber);
 });
 
 Then("the frequent flyer should have a green success icon", async function () {

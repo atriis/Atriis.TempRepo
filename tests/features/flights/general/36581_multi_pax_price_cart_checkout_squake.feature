@@ -11,7 +11,6 @@ Feature: 36581 Flights - Multi pax price displayed correctly in cart and checkou
   I want to see the correct total price in the cart and checkout
   So that I can verify the cost before booking
 
-#BUG with user, need to check this one later
   Scenario: Multi pax flight price is correct in cart and checkout with CO2 tooltip
     Given I am logged in as "sebastian" booking a new trip
     And I have added myself as the traveler
@@ -32,4 +31,5 @@ Feature: 36581 Flights - Multi pax price displayed correctly in cart and checkou
     And I wait for booking details in checkout
     Then the checkout total price should match the saved flight cart total
     When I navigate to cart from checkout
+    Then the booking status should be "On hold"
     Then I successfully cancel the trip

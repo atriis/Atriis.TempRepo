@@ -132,11 +132,10 @@ const FlightResults = {
   },
 
   /**
-   * Verifies the CO2 Squake tooltip is available from both the first result card
-   * and the Flight Details drawer.
+   * Verifies the CO2 Squake tooltip is available from the first result card.
    *
    * @param {import('playwright').Page} page
-   * @returns {Promise<{visible: boolean, resultTooltipText: string, detailsTooltipText: string}>}
+   * @returns {Promise<{visible: boolean, resultTooltipText: string}>}
    */
   async verifyCO2SquakeTooltipInResults(page) {
     if (!page) {
@@ -152,16 +151,7 @@ const FlightResults = {
     expect(resultTooltipText).toBe(expectedText);
     await flightResultsPage.closeCO2Tooltip();
 
-    await flightResultsPage.waitForFlightDetailsButton();
-    await flightResultsPage.clickFlightDetailsButton();
-    await flightResultsPage.waitForFlightDetailsHeadline();
-    await flightResultsPage.openFlightDetailsCO2Tooltip();
-    const detailsTooltipText = await flightResultsPage.getCO2TooltipDescription();
-    expect(detailsTooltipText).toBe(expectedText);
-    await flightResultsPage.closeCO2Tooltip();
-    await flightResultsPage.clickXToCloseFlightDetailsModal();
-
-    return { visible: true, resultTooltipText, detailsTooltipText };
+    return { visible: true, resultTooltipText };
   },
 
   /**

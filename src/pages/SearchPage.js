@@ -158,7 +158,7 @@ class SearchPage {
     }
 
     const closeButton = modal.locator(SELECTORS.EDIT_TRAVELER_MODAL_CLOSE_BUTTON).first();
-    if ((await closeButton.count()) > 0) {
+    if ((await closeButton.count()) > 0 && await closeButton.isVisible().catch(() => false)) {
       await closeButton.click({ force: true, timeout: 3000 });
     }
 

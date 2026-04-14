@@ -1828,6 +1828,66 @@ const Cart = {
   },
 
   /**
+   * Adds a flight frequent flyer number for a specific traveler tab using the
+   * first available airline.
+   * Assumes the frequent flyer extras panel is already open.
+   * @param {import('playwright').Page} page
+   * @param {string} travelerName - Full traveler name shown in the FQTV tabs
+   * @param {string} loyaltyNumber - Frequent flyer number to enter
+   * @returns {Promise<string>} The selected airline label text
+   */
+  async addLoyaltyNumberWithFirstAvailableAirlineForTraveler(page, travelerName, loyaltyNumber) {
+    if (!page) throw new Error('page is required');
+    if (!travelerName || typeof travelerName !== 'string') {
+      throw new Error('travelerName must be a non-empty string');
+    }
+    if (!loyaltyNumber || typeof loyaltyNumber !== 'string') {
+      throw new Error('loyaltyNumber must be a non-empty string');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickFqtvTravelerTabByName(travelerName);
+    await cartPage.waitForSaveButton();
+    await cartPage.selectNewFqtvRadio();
+    const airlineText = await cartPage.selectFirstFqtvCarrier();
+    await cartPage.fillFqtvNumber(loyaltyNumber);
+    await cartPage.clickSaveButton();
+    await cartPage.getSaveButton().waitFor({ state: 'hidden', timeout: 15000 });
+
+    return airlineText;
+  },
+
+  /**
+   * Adds a flight frequent flyer number for a specific traveler tab position
+   * using the first available airline.
+   * Assumes the frequent flyer extras panel is already open.
+   * @param {import('playwright').Page} page
+   * @param {number} tabNumber - 1-based traveler tab position
+   * @param {string} loyaltyNumber - Frequent flyer number to enter
+   * @returns {Promise<string>} The selected airline label text
+   */
+  async addLoyaltyNumberWithFirstAvailableAirlineForTravelerTab(page, tabNumber, loyaltyNumber) {
+    if (!page) throw new Error('page is required');
+    if (!Number.isInteger(tabNumber) || tabNumber < 1) {
+      throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
+    }
+    if (!loyaltyNumber || typeof loyaltyNumber !== 'string') {
+      throw new Error('loyaltyNumber must be a non-empty string');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickFqtvTravelerTabByIndex(tabNumber);
+    await cartPage.waitForSaveButton();
+    await cartPage.selectNewFqtvRadio();
+    const airlineText = await cartPage.selectFirstFqtvCarrier();
+    await cartPage.fillFqtvNumber(loyaltyNumber);
+    await cartPage.clickSaveButton();
+    await cartPage.getSaveButton().waitFor({ state: 'hidden', timeout: 15000 });
+
+    return airlineText;
+  },
+
+  /**
    * Adds flight frequent flyer entries for each visible segment in the cart.
    * Assumes the frequent flyer extras panel is already open.
    * @param {import('playwright').Page} page
@@ -2304,6 +2364,29 @@ const Cart = {
     const actualTexts = await cartPage.getAllFqtvSelectedTexts();
     const hasMatch = actualTexts.some((text) => text.includes(expectedText));
     expect(hasMatch, `FQTV for traveler "${travelerName}" should show "${expectedText}" but got "${actualTexts.join(', ')}"`).toBe(true);
+  },
+
+  /**
+   * Selects a traveler tab by 1-based position in the cart FQTV extras and
+   * verifies the visible FQTV value for that tab.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedText - Expected FQTV text fragment
+   * @param {number} tabNumber - 1-based traveler tab position
+   * @returns {Promise<void>}
+   */
+  async verifyFqtvDisplayedForTravelerTab(page, expectedText, tabNumber) {
+    if (!page) throw new Error('page is required');
+    if (!expectedText || typeof expectedText !== 'string') throw new Error('expectedText must be a non-empty string');
+    if (!Number.isInteger(tabNumber) || tabNumber < 1) {
+      throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickFqtvTravelerTabByIndex(tabNumber);
+
+    const actualTexts = await cartPage.getAllFqtvSelectedTexts();
+    const hasMatch = actualTexts.some((text) => text.includes(expectedText));
+    expect(hasMatch, `FQTV for traveler tab ${tabNumber} should show "${expectedText}" but got "${actualTexts.join(', ')}"`).toBe(true);
   },
 
   /**

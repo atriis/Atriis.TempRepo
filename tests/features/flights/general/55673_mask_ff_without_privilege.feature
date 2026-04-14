@@ -11,9 +11,6 @@ Feature: 55673 Flights - Mask travelers FF for user without privilege
   I want to mask frequent flyer numbers for users without the profile viewing privilege
   So that traveler privacy is maintained
 
-  # TODO: New user needed — booker@cantsee.com → USER_BOOKER_CANTSEE
-  # Add to .env: USER_BOOKER_CANTSEE="booker@cantsee.com"
-
   Scenario: FF is masked for traveler when booker lacks privilege
     Given I am logged in as "booker_cantsee" booking a new trip
     And I have added myself as the traveler
@@ -22,7 +19,9 @@ Feature: 55673 Flights - Mask travelers FF for user without privilege
     When I search for a round trip flight from "CLT" to "LGA"
     And I filter airline results by "AA" checkbox
     And I add the first flight to cart
-    # TODO: Step needed for "Navigate to frequent flyer section"
-    # TODO: Step needed for "Validate FF is masked for the non-booker traveler"
-    # TODO: Step needed for "Validate FF is NOT masked for the booker"
-    # TODO: Step needed for "Add FF for guest and verify it is masked"
+    Then the booking status should be "Pending booking"
+    When I click to edit extras at index 1
+    Then the FQTV should show "AA-******299" for "Annie Massk"
+    Then the FQTV should show "AA - 123456" for "Rebecca Cantsee"
+    When I add loyalty number "123450555" using the first available airline for traveler tab 2
+    Then the FQTV should show "******555" for traveler tab 2
