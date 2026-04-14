@@ -5,6 +5,7 @@ const { Results } = require("@dsl");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { expect } = require("@playwright/test");
+const { getStoredFlightNumbers, getTravelerCount } = require("../support/scenarioState");
 const logger = require("@utils/logger").child("Results");
 
 setDefaultTimeout(120000);
@@ -38,6 +39,11 @@ When("I handle conflicting quotes if visible", async function () {
   await Results.clickProceedConflictQuoteModal(this.page);
 });
 
+Then("the conflicting quote modal should be visible", async function () {
+  logger.info("Verifying conflicting quote modal is visible");
+  await Results.verifyConflictQuoteModalVisible(this.page);
+});
+
 When("I select and add round trip journey to trip", async function () {
   logger.info("Selecting round trip journey and adding to trip");
   await Results.clickSelectButtonRoundTripAndClickAddToTrip(this.page);
@@ -48,6 +54,40 @@ When("I select and add round trip journey to trip", async function () {
 When("I validate flight capacity modal and go back", async function () {
   logger.info("Validating flight capacity modal and going back");
   const result = await Results.validateFlightCapacityModalIsVisibleInResultsAndClickGoBack(this.page);
+  expect(result.modalVisible).toBe(true);
+});
+
+When("I validate the flight capacity restriction modal details", async function () {
+  const storedFlightNumbers = getStoredFlightNumbers(this);
+  const passengerCount = getTravelerCount(this);
+  logger.info("Validating flight capacity restriction modal details", {
+    flightNumbers: storedFlightNumbers,
+    passengerCount,
+  });
+
+  const result = await Results.verifyFlightCapacityRestrictionModalContent(
+    this.page,
+    storedFlightNumbers,
+    passengerCount,
+  );
+
+  expect(result.modalVisible).toBe(true);
+});
+
+When("I validate flight capacity modal and click proceed anyway", async function () {
+  const storedFlightNumbers = getStoredFlightNumbers(this);
+  const passengerCount = getTravelerCount(this);
+  logger.info("Validating flight capacity modal and proceeding anyway", {
+    flightNumbers: storedFlightNumbers,
+    passengerCount,
+  });
+
+  const result = await Results.verifyFlightCapacityModalContentAndProceed(
+    this.page,
+    storedFlightNumbers,
+    passengerCount,
+  );
+
   expect(result.modalVisible).toBe(true);
 });
 

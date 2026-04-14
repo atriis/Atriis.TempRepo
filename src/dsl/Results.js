@@ -83,6 +83,16 @@ const Results = {
     return { proceeded };
   },
 
+  async verifyConflictQuoteModalVisible(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    const visible = await resultsPage.waitForConflictQuoteModal();
+    expect(visible, 'Expected the conflicting quote modal to be visible').toBe(true);
+  },
+
   // ===== JOURNEY SELECTION WORKFLOWS =====
 
   /**
@@ -164,9 +174,13 @@ const Results = {
    * @param {import('playwright').Page} page - Playwright page instance
    * @returns {Promise<boolean>} True if modal is visible
    */
-  async isFlightCapacityRestrictionModalVisible(page) {
+  async isFlightCapacityRestrictionModalVisible(page, timeout = 30000) {
     if (!page) {
       throw new Error('page is required');
+    }
+
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be a non-negative number, got: ${timeout}`);
     }
     
     const modal = page.getByRole("heading", {
@@ -175,7 +189,7 @@ const Results = {
     });
     
     try {
-      await modal.waitFor({ state: 'visible', timeout: 30000 });
+      await modal.waitFor({ state: 'visible', timeout });
       return true;
     } catch {
       return false;
@@ -202,6 +216,39 @@ const Results = {
   },
 
   /**
+   * Validates the currently visible Flight Capacity Restriction modal content.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} flightNumber
+   * @param {number} passengerCount
+   * @returns {Promise<{modalVisible: boolean, modalText: string}>}
+   */
+  async verifyFlightCapacityRestrictionModalContent(page, flightNumbers, passengerCount) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const normalizedFlightNumbers = Array.isArray(flightNumbers)
+      ? flightNumbers.filter((flightNumber) => typeof flightNumber === 'string' && flightNumber.trim())
+      : [flightNumbers].filter((flightNumber) => typeof flightNumber === 'string' && flightNumber.trim());
+
+    if (!normalizedFlightNumbers.length) {
+      throw new Error(`flightNumbers must include at least one non-empty string, got: ${typeof flightNumbers}`);
+    }
+
+    if (!Number.isInteger(passengerCount) || passengerCount < 1) {
+      throw new Error(`passengerCount must be an integer >= 1, got: ${passengerCount}`);
+    }
+
+    const commonPage = getPageObject(page, CommonPage);
+    const modalText = await commonPage.assertFlightCapacityRestrictionModalContent({
+      flightNumbers: normalizedFlightNumbers,
+      passengerCount,
+    });
+    return { modalVisible: true, modalText };
+  },
+
+  /**
    * Validates Flight Capacity Restriction modal is visible and clicks 'Proceed Anyway'.
    * Used when booking exceeds traveler capacity but user wants to continue.
    * @param {import('playwright').Page} page - Playwright page instance
@@ -219,6 +266,26 @@ const Results = {
     await commonPage.clickProceedAnywayOnFlightCapacityRestrictionPopUp();
     await Results.clickProceedConflictQuoteModal(page);
     return { modalVisible };
+  },
+
+  /**
+   * Validates the visible Flight Capacity Restriction modal content and clicks 'Proceed Anyway'.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} flightNumber
+   * @param {number} passengerCount
+   * @returns {Promise<{modalVisible: boolean, modalText: string}>}
+   */
+  async verifyFlightCapacityModalContentAndProceed(page, flightNumbers, passengerCount) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const commonPage = getPageObject(page, CommonPage);
+    const verification = await Results.verifyFlightCapacityRestrictionModalContent(page, flightNumbers, passengerCount);
+    await commonPage.clickProceedAnywayOnFlightCapacityRestrictionPopUp();
+    await Results.clickProceedConflictQuoteModal(page);
+    return verification;
   },
 
   /**

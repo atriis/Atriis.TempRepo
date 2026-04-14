@@ -7,16 +7,27 @@ const { ResultsPage } = require("../../src/pages/ResultsPage");
 const { CommonPage } = require("../../src/pages/CommonPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { expectNumbersToBeEqualWithTolerance } = require("../../src/assertions/numberAssertions");
+const { getTravelerCount } = require("../support/scenarioState");
 const logger = require("@utils/logger").child("FlightResults");
 
 setDefaultTimeout(120000);
 
-function getTravelerCount(world) {
-  if (Number.isInteger(world.selectedTravelerCount) && world.selectedTravelerCount > 0) {
-    return world.selectedTravelerCount;
+async function applyResultsSearchFilter(world, filterText) {
+  if (!filterText || typeof filterText !== 'string') {
+    throw new Error(`filterText must be a non-empty string, got: ${typeof filterText}`);
   }
 
-  return (world.guestTravelerCount ?? 0) + 1;
+  const flightResultsPage = getPageObject(world.page, FlightResultsPage);
+  const resultsPage = getPageObject(world.page, ResultsPage);
+
+  await flightResultsPage.waitForFlightResults();
+  await flightResultsPage.typeInSearchFlightFilter(filterText);
+  await world.page.waitForTimeout(2000);
+
+  await Promise.any([
+    flightResultsPage.waitForFlightResults(),
+    resultsPage.waitForNoResultsTitle('No results found'),
+  ]);
 }
 
 // ========================================
@@ -68,12 +79,7 @@ When('I show the comparison table in flight results', async function () {
 
 When("I filter results by carrier {string}", async function (carrier) {
   logger.info("Filtering results by carrier", { carrier });
-  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
-  const resultsPage = getPageObject(this.page, ResultsPage);
-  
-  // Wait for initial results to load (works in both share and normal mode)
-  await flightResultsPage.waitForFlightResults();
-  
+
   // Store current carrier for pricing options tracking
   this.currentCarrier = carrier;
   
@@ -82,18 +88,27 @@ When("I filter results by carrier {string}", async function (carrier) {
   if (!this.carriers.includes(carrier)) {
     this.carriers.push(carrier);
   }
-  
-  // Type in filter (this also waits for filter element visibility)
-  await flightResultsPage.typeInSearchFlightFilter(carrier);
-  
-  // Wait for filtered results to stabilize
-  await this.page.waitForTimeout(2000);
-  
-  // Filtering can either keep visible results or transition into the no-results state.
-  await Promise.any([
-    flightResultsPage.waitForFlightResults(),
-    resultsPage.waitForNoResultsTitle('No results found'),
-  ]);
+
+  await applyResultsSearchFilter(this, carrier);
+});
+
+When("I filter results by the stored flight number", async function () {
+  const storedFlightNumbers = Array.isArray(this.storedFlightNumbers)
+    ? this.storedFlightNumbers.filter((flightNumber) => typeof flightNumber === 'string' && flightNumber.trim())
+    : [];
+  const filterValue = storedFlightNumbers.length
+    ? storedFlightNumbers.join(', ')
+    : this.storedFlightNumber;
+
+  if (!filterValue || typeof filterValue !== 'string') {
+    throw new Error(`A stored flight number must be available before filtering, got: ${typeof filterValue}`);
+  }
+
+  logger.info("Filtering results by stored flight number", {
+    filterValue,
+    storedFlightNumbers,
+  });
+  await applyResultsSearchFilter(this, filterValue);
 });
 
 When('I filter airports for route {string} by {string} in {string} and {string} in {string}', async function (routeLabel, firstAirportCode, firstSectionTitle, secondAirportCode, secondSectionTitle) {

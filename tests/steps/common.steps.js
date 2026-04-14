@@ -42,6 +42,45 @@ Given("I work on tab {int}", async function (tabNumber) {
   await this.page.bringToFront();
 });
 
+When("I close tab {int}", async function (tabNumber) {
+  logger.info("Closing tab for scenario", { tabNumber });
+
+  if (!this.context) {
+    throw new Error("Browser context is not available. Login step must run first.");
+  }
+
+  if (!Number.isInteger(tabNumber) || tabNumber < 1) {
+    throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
+  }
+
+  const pages = this.context.pages();
+  const targetIndex = tabNumber - 1;
+
+  if (targetIndex >= pages.length) {
+    throw new Error(
+      `Requested tab ${tabNumber} but only ${pages.length} tab(s) are open`,
+    );
+  }
+
+  const pageToClose = pages[targetIndex];
+  const isClosingActivePage = this.page === pageToClose;
+
+  await pageToClose.close();
+
+  const remainingPages = this.context.pages();
+  if (remainingPages.length === 0) {
+    throw new Error("Cannot continue because closing the tab left no open pages.");
+  }
+
+  if (isClosingActivePage) {
+    this.page = remainingPages[Math.max(0, targetIndex - 1)] || remainingPages[remainingPages.length - 1];
+  } else if (!this.page || this.page.isClosed()) {
+    this.page = remainingPages[remainingPages.length - 1];
+  }
+
+  await this.page.bringToFront();
+});
+
 // ===== WHEN STEPS - PRICE EXTRACTION =====
 
 Then("the extracted price at index {int} should equal {float}", function (index, expectedValue) {

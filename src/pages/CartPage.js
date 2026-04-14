@@ -56,9 +56,20 @@ const SELECTORS = {
   TRIP_ACTIONS_DROPDOWN_ICON: ".dropdowns-container .expand-icon",
   CANCEL_TRIP_OPTION: ".el-dropdown-menu__item span.mr-2",
   CANCEL_TRIP_DROPDOWN_ITEM: ".el-dropdown-menu__item",
+  SHOW_CANCELLED_ITEMS_OPTION: '.el-dropdown-menu__item',
   TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label='Trip cancellation'] .el-dialog__title",
   CONFIRM_CANCEL_BUTTON: "role=button[name='Cancel trip']",
   CANCELLATION_SUCCESS_MESSAGE: "text='Cancellation confirmed!'",
+  CANCELLED_QUOTES_SECTION: '.cancelled-quotes-container',
+  CANCELLED_QUOTES_TITLE: '.cancelled-quotes-title',
+  CANCELLED_QUOTE_CHECK_PRICE_BUTTON: '.cancelled-quotes-container .check-price-btn',
+  ACTIVE_QUOTE_ACTIONS_DROPDOWN_ICON: '.quote-payment-card .base-quote-header .expand-icon.is-clickable',
+  ACTIVE_QUOTE_CANCEL_OPTION: '.el-dropdown-menu__item',
+  BASIC_CANCEL_QUOTE_DIALOG: '.app-confirm.dialog-no-header',
+  BASIC_CANCEL_QUOTE_CONFIRM_BUTTON: '.dialog-no-header .btn--primary',
+  DETAILED_CANCEL_QUOTE_MODAL: '.cancel-quote-modal',
+  DETAILED_CANCEL_QUOTE_CONFIRM_BUTTON: '.cancel-quote-modal .app-footer .btn--primary',
+  DETAILED_CANCEL_QUOTE_CLOSE_BUTTON: '.cancel-quote-modal .close-btn',
 
   // Product details selectors
   FLIGHT_DETAILS_BUTTON: ".more-details-btn",
@@ -85,6 +96,7 @@ const SELECTORS = {
   LAST_QUOTE_TITLE: '.last-quote h6.quote-title',
   LAST_QUOTE_STATUS_LABEL: '.last-quote .app-label--quote',
   PNR_CODE: '.pnr-code',
+  FLIGHT_QUOTE_NUMBER_TEXT: '.flight-info.cart-format .carrier-container .carrier-name + p',
 
   // OOP Justification selectors
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
@@ -716,6 +728,86 @@ class CartPage {
     await this.page
       .locator(SELECTORS.CANCEL_TRIP_OPTION, { hasText: "Cancel trip" })
       .waitFor({ state: "visible", timeout: 15000 });
+  }
+
+  /**
+   * Clicks the "Show cancelled items" option in the trip actions dropdown.
+   */
+  async clickShowCancelledItemsOption() {
+    const option = this.page
+      .locator(SELECTORS.SHOW_CANCELLED_ITEMS_OPTION, { hasText: 'Show cancelled items' })
+      .first();
+    await option.waitFor({ state: 'visible', timeout: 15000 });
+    await option.click();
+  }
+
+  /**
+   * Waits for the cancelled quotes section to be visible.
+   */
+  async waitForCancelledQuotesSection({ timeout = 15000 } = {}) {
+    const section = this.page.locator(SELECTORS.CANCELLED_QUOTES_SECTION).first();
+    await section.waitFor({ state: 'visible', timeout });
+    await this.page.locator(SELECTORS.CANCELLED_QUOTES_TITLE).first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Opens the actions dropdown on the first visible active quote card.
+   */
+  async openActiveQuoteActionsDropdown() {
+    const icon = this.page.locator(SELECTORS.ACTIVE_QUOTE_ACTIONS_DROPDOWN_ICON).first();
+    await icon.waitFor({ state: 'visible', timeout: 15000 });
+    await icon.hover();
+    await this.page.waitForTimeout(1000);
+  }
+
+  /**
+   * Clicks the cancel option from the active quote actions dropdown.
+   */
+  async clickActiveQuoteCancelOption() {
+    const option = this.page.locator(SELECTORS.ACTIVE_QUOTE_CANCEL_OPTION, { hasText: 'Cancel item' }).first();
+    await option.waitFor({ state: 'visible', timeout: 15000 });
+    await option.click();
+  }
+
+  /**
+   * Waits for either the basic or detailed quote cancellation prompt.
+   * Returns the prompt type that became visible.
+   */
+  async waitForQuoteCancellationPrompt({ timeout = 15000 } = {}) {
+    const detailedModal = this.page.locator(SELECTORS.DETAILED_CANCEL_QUOTE_MODAL).first();
+    const basicDialog = this.page.locator(SELECTORS.BASIC_CANCEL_QUOTE_DIALOG).first();
+
+    return Promise.any([
+      detailedModal.waitFor({ state: 'visible', timeout }).then(() => 'detailed'),
+      basicDialog.waitFor({ state: 'visible', timeout }).then(() => 'basic'),
+    ]);
+  }
+
+  /**
+   * Confirms quote cancellation in the visible prompt and waits until it closes.
+   */
+  async confirmQuoteCancellation(promptType) {
+    if (promptType === 'detailed') {
+      const confirmButton = this.page.locator(SELECTORS.DETAILED_CANCEL_QUOTE_CONFIRM_BUTTON).first();
+      await confirmButton.waitFor({ state: 'visible', timeout: 15000 });
+      await confirmButton.click();
+
+      const closeButton = this.page.locator(SELECTORS.DETAILED_CANCEL_QUOTE_CLOSE_BUTTON).first();
+      await closeButton.waitFor({ state: 'visible', timeout: 60000 });
+      await closeButton.click();
+      await this.page.locator(SELECTORS.DETAILED_CANCEL_QUOTE_MODAL).first().waitFor({ state: 'hidden', timeout: 30000 });
+      return;
+    }
+
+    if (promptType === 'basic') {
+      const confirmButton = this.page.locator(SELECTORS.BASIC_CANCEL_QUOTE_CONFIRM_BUTTON).last();
+      await confirmButton.waitFor({ state: 'visible', timeout: 15000 });
+      await confirmButton.click();
+      await this.page.locator(SELECTORS.BASIC_CANCEL_QUOTE_DIALOG).first().waitFor({ state: 'hidden', timeout: 60000 });
+      return;
+    }
+
+    throw new Error(`Unsupported quote cancellation prompt type: ${promptType}`);
   }
 
   /**
@@ -1625,6 +1717,55 @@ class CartPage {
   }
 
   /**
+   * Gets the first visible flight number shown in the cart quote card.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>}
+   */
+  async getFirstVisibleFlightNumber({ timeout = 15000 } = {}) {
+    const flightNumber = this.page.locator(SELECTORS.FLIGHT_QUOTE_NUMBER_TEXT).first();
+    await flightNumber.waitFor({ state: 'visible', timeout });
+
+    const rawText = ((await flightNumber.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+    const match = rawText.match(/\b[A-Z0-9]{2,3}\d{1,4}\b/);
+
+    if (!match) {
+      throw new Error(`Could not extract a flight number from cart text: "${rawText}"`);
+    }
+
+    return match[0];
+  }
+
+  /**
+   * Gets all visible flight numbers shown in the cart quote card.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string[]>}
+   */
+  async getVisibleFlightNumbers({ timeout = 15000 } = {}) {
+    const flightNumbers = this.page.locator(SELECTORS.FLIGHT_QUOTE_NUMBER_TEXT);
+    await flightNumbers.first().waitFor({ state: 'visible', timeout });
+
+    const count = await flightNumbers.count();
+    const values = [];
+
+    for (let index = 0; index < count; index += 1) {
+      const rawText = ((await flightNumbers.nth(index).innerText()) ?? '').replace(/\s+/g, ' ').trim();
+      const match = rawText.match(/\b[A-Z0-9]{2,3}\d{1,4}\b/);
+
+      if (match) {
+        values.push(match[0]);
+      }
+    }
+
+    if (!values.length) {
+      throw new Error('Could not extract any flight numbers from the cart quote card');
+    }
+
+    return values;
+  }
+
+  /**
    * Gets all visible flight route location codes rendered in the cart quote segments.
    *
    * @param {{ timeout?: number }} options
@@ -1945,6 +2086,24 @@ class CartPage {
   async isCheckPriceProceedButtonVisible() {
     const btn = this.page.locator(SELECTORS.CHECK_PRICE_PROCEED_BUTTON).first();
     return btn.isVisible();
+  }
+
+  /**
+   * Clicks the first Check Price button inside the cancelled quotes section.
+   */
+  async clickFirstCancelledQuoteCheckPriceButton() {
+    const button = this.page.locator(SELECTORS.CANCELLED_QUOTE_CHECK_PRICE_BUTTON).first();
+    await button.waitFor({ state: 'visible', timeout: 30000 });
+    await button.click();
+  }
+
+  /**
+   * Clicks the Proceed button in the check price dialog.
+   */
+  async clickCheckPriceProceedButton() {
+    const button = this.page.locator(SELECTORS.CHECK_PRICE_PROCEED_BUTTON).first();
+    await button.waitFor({ state: 'visible', timeout: 15000 });
+    await button.click();
   }
 
   /**

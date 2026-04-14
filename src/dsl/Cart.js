@@ -110,6 +110,64 @@ const Cart = {
     }
   },
 
+  async cancelFirstActiveQuote(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.waitForTripOverviewTitle();
+    await cartPage.openActiveQuoteActionsDropdown();
+    await cartPage.clickActiveQuoteCancelOption();
+
+    const promptType = await cartPage.waitForQuoteCancellationPrompt();
+    await cartPage.confirmQuoteCancellation(promptType);
+
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
+    await cartPage.waitForTripOverviewTitle();
+  },
+
+  async showCancelledItems(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.waitForCancelledQuotesSection({ timeout: 5000 });
+      return;
+    } catch {
+      // Section is not visible yet; open it from the trip actions menu.
+    }
+
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
+    await cartPage.hoverTripActionsDropdownIcon();
+    await cartPage.waitForDropdownMenu();
+    await cartPage.clickShowCancelledItemsOption();
+    await cartPage.waitForCancelledQuotesSection();
+  },
+
+  async clickCheckPriceAndProceedOnFirstCancelledQuote(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.clickFirstCancelledQuoteCheckPriceButton();
+    const title = await cartPage.getCheckPriceDialogTitle();
+    const proceedVisible = await cartPage.isCheckPriceProceedButtonVisible();
+
+    expect(
+      proceedVisible,
+      `Proceed button should be visible in the check price dialog. Dialog title: "${title}"`,
+    ).toBe(true);
+
+    await cartPage.clickCheckPriceProceedButton();
+  },
+
   async expectHotelToBeRefundableInCart(page) {
     if (!page) {
       throw new Error('page is required');
@@ -1177,6 +1235,32 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     const actualTitle = await cartPage.getQuoteTitleText();
     expect(actualTitle.toLowerCase()).toContain(city.toLowerCase());
+  },
+
+  /**
+   * Extracts the first visible flight number from the cart quote card.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>}
+   */
+  async extractFirstFlightNumber(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    return await cartPage.getFirstVisibleFlightNumber();
+  },
+
+  /**
+   * Extracts all visible flight numbers from the cart quote card.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string[]>}
+   */
+  async extractVisibleFlightNumbers(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    return await cartPage.getVisibleFlightNumbers();
   },
 
   async verifyFirstQuoteDestination(page, city) {

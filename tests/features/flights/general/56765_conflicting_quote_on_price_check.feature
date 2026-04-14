@@ -14,12 +14,18 @@ Feature: 56765 Flights - Conflicting quote should appear on price check
   Scenario: Conflicting quote appears on price check after cancellation
     Given I am logged in as "shani_nl" booking a new trip
     And I have added myself as the traveler
-    # TODO: Step needed for "Create first trip (search, add, navigate to cart)"
+    And I search for a round trip flight from "LON" to "DOH"
+    And I fill in NL reference fields education and courses
+    And I add the first flight to cart
+    Then the booking status should be "Pending booking"
+    And I close tab 2
     When I book a new trip
     And I have added myself as the traveler
     And I search for a round trip flight from "LON" to "DOH"
     And I fill in NL reference fields education and courses
     And I add the first flight to cart
-    # TODO: Step needed for "Cancel quote from cart before checkout"
-    # TODO: Step needed for "Click show cancelled items"
-    # TODO: Step needed for "Click check price on cancelled quote and verify conflicting quote modal appears"
+    Then the booking status should be "Pending booking"
+    Then I successfully cancel the quote
+    When I show cancelled items
+    And I click check price and proceed on the first cancelled quote
+    Then the conflicting quote modal should be visible

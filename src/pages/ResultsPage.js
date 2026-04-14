@@ -259,6 +259,19 @@ class ResultsPage {
   }
 
   /**
+   * Waits for the conflicting quote modal to become visible.
+   * Returns true once the Proceed button is visible.
+   */
+  async waitForConflictQuoteModal(timeout = 30000) {
+    const proceedButton = this.page
+      .locator(SELECTORS.CONFLICT_MODAL_PROCEED)
+      .first();
+
+    await proceedButton.waitFor({ state: 'visible', timeout });
+    return true;
+  }
+
+  /**
    * Clicks the X (close) button on the share bar to exit share mode.
    */
   async clickExitShareModeButton() {

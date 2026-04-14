@@ -1,4 +1,5 @@
 const { extractNumber } = require("@utils/dom");
+const { escapeRegExp } = require("@utils/text");
 
 /**
  * Page Object for common elements across pages.
@@ -13,6 +14,12 @@ const SELECTORS = {
 
   // Modal buttons
   GO_BACK_BUTTON: "button:has-text('Go back')",
+  FLIGHT_CAPACITY_MODAL_CONTAINER: '.app-dialog.conflicting-quotes-dialog',
+  FLIGHT_CAPACITY_MODAL_CONTENT: '.app-dialog.conflicting-quotes-dialog .flight-capacity-violation-warning',
+  FLIGHT_CAPACITY_MODAL_HEADING_TEXT: 'Flight Capacity Restriction',
+  FLIGHT_CAPACITY_SEARCH_ALTERNATIVE_TEXT: 'Please search for alternative flight or proceed with justification',
+  FLIGHT_CAPACITY_PROCEED_ANYWAY_TEXT: 'Proceed anyway',
+  FLIGHT_CAPACITY_GO_BACK_TEXT: 'Go back',
 
   // 'Out of Policy' indicator
   OOP_TOOLTIP_TEXT: ".mb-1",
@@ -128,16 +135,94 @@ class CommonPage {
    */
   async waitFlightCapacityRestrictionPopUpOOPDisplayed() {
     await this.page.getByRole("heading", {
-      name: "Flight Capacity Restriction",
+      name: SELECTORS.FLIGHT_CAPACITY_MODAL_HEADING_TEXT,
       level: 2,
     }).waitFor({ state: "visible", timeout: 30000 });
+  }
+
+  /**
+   * Gets the Flight Capacity Restriction modal content container.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getFlightCapacityRestrictionModalContent() {
+    return this.page.locator(SELECTORS.FLIGHT_CAPACITY_MODAL_CONTENT).first();
+  }
+
+  /**
+   * Gets the Proceed anyway button inside the Flight Capacity Restriction modal.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getFlightCapacityRestrictionProceedAnywayButton() {
+    return this.page.getByRole('button', { name: SELECTORS.FLIGHT_CAPACITY_PROCEED_ANYWAY_TEXT });
+  }
+
+  /**
+   * Gets the Go back button inside the Flight Capacity Restriction modal.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getFlightCapacityRestrictionGoBackButton() {
+    return this.page.getByRole('button', { name: SELECTORS.FLIGHT_CAPACITY_GO_BACK_TEXT });
+  }
+
+  /**
+   * Validates the visible Flight Capacity Restriction modal content.
+   *
+   * @param {{ flightNumber: string, passengerCount: number, timeout?: number }} options
+   * @returns {Promise<string>}
+   */
+  async assertFlightCapacityRestrictionModalContent({ flightNumbers, passengerCount, timeout = 30000 } = {}) {
+    const normalizedFlightNumbers = Array.isArray(flightNumbers)
+      ? flightNumbers.filter((flightNumber) => typeof flightNumber === 'string' && flightNumber.trim())
+      : [flightNumbers].filter((flightNumber) => typeof flightNumber === 'string' && flightNumber.trim());
+
+    if (!normalizedFlightNumbers.length) {
+      throw new Error(`flightNumbers must include at least one non-empty string, got: ${typeof flightNumbers}`);
+    }
+
+    if (!Number.isInteger(passengerCount) || passengerCount < 1) {
+      throw new Error(`passengerCount must be an integer >= 1, got: ${passengerCount}`);
+    }
+
+    await this.waitFlightCapacityRestrictionPopUpOOPDisplayed();
+
+    const modal = this.getFlightCapacityRestrictionModalContent();
+    await modal.waitFor({ state: 'visible', timeout });
+
+    const modalText = ((await modal.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+    for (const flightNumber of normalizedFlightNumbers) {
+      const passengerPattern = new RegExp(
+        `${escapeRegExp(flightNumber)}.*\\d+\\s+passengers?\\s+booked\\s+on\\s+this\\s+flight`,
+        'i',
+      );
+
+      if (!modalText.includes(flightNumber)) {
+        throw new Error(`Flight Capacity Restriction modal does not include flight number ${flightNumber}. Modal text: "${modalText}"`);
+      }
+
+      if (!passengerPattern.test(modalText)) {
+        throw new Error(
+          `Flight Capacity Restriction modal does not include the expected passenger warning text for ${flightNumber}. Modal text: "${modalText}"`,
+        );
+      }
+    }
+
+    if (!modalText.includes(SELECTORS.FLIGHT_CAPACITY_SEARCH_ALTERNATIVE_TEXT)) {
+      throw new Error(
+        `Flight Capacity Restriction modal does not include the expected guidance text. Modal text: "${modalText}"`,
+      );
+    }
+
+    await this.getFlightCapacityRestrictionProceedAnywayButton().waitFor({ state: 'visible', timeout });
+    await this.getFlightCapacityRestrictionGoBackButton().waitFor({ state: 'visible', timeout });
+
+    return modalText;
   }
 
   /**
    * Clicks 'Proceed anyway' button on the Flight Capacity Restriction pop-up.
    */
   async clickProceedAnywayOnFlightCapacityRestrictionPopUp() {
-    await this.page.locator(SELECTORS.PROCEED_BUTTON).click();
+    await this.getFlightCapacityRestrictionProceedAnywayButton().click();
   }
 
   /**
@@ -202,7 +287,7 @@ class CommonPage {
    * Clicks 'Go back' button on the Flight Capacity Restriction pop-up.
    */
   async clickGoBackOnFlightCapacityRestrictionPopUp() {
-    await this.page.locator(SELECTORS.GO_BACK_BUTTON).click();
+    await this.getFlightCapacityRestrictionGoBackButton().click();
   }
 
   //This can be used when sharing quotes or itinerary from Results page as well

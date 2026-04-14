@@ -22,8 +22,9 @@ const Search = {
     await searchPage.waitForAddMeButton();
     await searchPage.clickAddMe();
     await searchPage.waitForTravelerTagVisible();
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
 
-    return { added: true, starIconVisible: true };
+    return { added: true, starIconVisible: true, selectedTravelerCount };
   },
 
   /**
@@ -78,7 +79,13 @@ const Search = {
     
     const searchPage = getPageObject(page, SearchPage);
     await searchPage.clickAddTravelerButton();
-    return await Search.fillInTravelerNameAndSave(page, name);
+    const result = await Search.fillInTravelerNameAndSave(page, name);
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
+
+    return {
+      ...result,
+      selectedTravelerCount,
+    };
   },
 
   /**
@@ -153,7 +160,9 @@ const Search = {
     await searchPage.selectEditTravelerOption();
     // Wait for the traveler to be selected
     const starIconVisible = await searchPage.isStarIconVisible();
-    return { selected: true, starIconVisible };
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
+
+    return { selected: true, starIconVisible, selectedTravelerCount };
   },
 
   /**

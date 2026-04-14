@@ -13,12 +13,14 @@ Given("I have added myself as the traveler", async function () {
   logger.info("Adding traveler: I am the traveler");
   const result = await Search.addMeAsTraveler(this.page);
   expect(result.starIconVisible, "Star icon should be visible after adding traveler").toBe(true);
+  this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
 Given("I have added traveler by name {string}", async function (travelerName) {
   logger.info("Adding traveler by name", { travelerName });
   const result = await Search.addTravelerByName(this.page, travelerName);
   expect(result.starIconVisible, "Star icon should be visible after adding traveler by name").toBe(true);
+  this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
 Given("I have added a random guest traveler", async function () {
@@ -48,6 +50,7 @@ Given("I have added {string} as primary traveler", async function (travelerName)
   logger.info("Adding traveler as primary by name", { travelerName });
   const result = await Search.addTravelerAsPrimaryByName(this.page, travelerName);
   expect(result.starIconVisible, "Star icon should be visible after adding primary traveler").toBe(true);
+  this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
 Given("I have added a random guest traveler with name {string} {string}", async function (firstName, lastName) {

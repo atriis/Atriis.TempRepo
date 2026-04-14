@@ -62,6 +62,21 @@ When("I attempt to cancel the trip safely", async function () {
   this.cancelResult = result;
 });
 
+When("I show cancelled items", async function () {
+  logger.info("Showing cancelled items in cart");
+  await Cart.showCancelledItems(this.page);
+});
+
+When("I click check price and proceed on the first cancelled quote", async function () {
+  logger.info("Checking price and proceeding on first cancelled quote");
+  await Cart.clickCheckPriceAndProceedOnFirstCancelledQuote(this.page);
+});
+
+Then("I successfully cancel the quote", async function () {
+  logger.info("Cancelling the active quote successfully");
+  await Cart.cancelFirstActiveQuote(this.page);
+});
+
 When("I click to open price breakdown in cart", async function () {
   logger.info("Clicking to open price breakdown in cart");
   await Cart.clickToOpenPriceBreakdown(this.page);
@@ -466,6 +481,30 @@ When("I add Premier Inn Extras Services in cart", async function () {
 When("I save Premier Inn Extras Services in cart", async function () {
   logger.info("Saving Premier Inn extras services in cart");
   await Cart.savePremierInnExtras(this.page);
+});
+
+When("I store the first booked flight number", async function () {
+  logger.info("Storing the first booked flight number from cart");
+  this.storedFlightNumber = await Cart.extractFirstFlightNumber(this.page);
+  this.storedFlightNumbers = [this.storedFlightNumber];
+  logger.info("Stored booked flight number", { flightNumber: this.storedFlightNumber });
+});
+
+When("I store the second booked flight number", async function () {
+  logger.info("Storing the second booked flight number from cart");
+  const flightNumbers = await Cart.extractVisibleFlightNumbers(this.page);
+
+  if (flightNumbers.length < 2) {
+    throw new Error(`Expected at least 2 booked flight numbers in cart, got ${flightNumbers.length}: ${flightNumbers.join(', ')}`);
+  }
+
+  this.storedFlightNumbers = flightNumbers;
+  this.storedFlightNumber = flightNumbers[0];
+  this.storedSecondFlightNumber = flightNumbers[1];
+  logger.info("Stored booked flight numbers", {
+    flightNumbers: this.storedFlightNumbers,
+    secondFlightNumber: this.storedSecondFlightNumber,
+  });
 });
 
 Then("the trip title should contain {string}", async function (city) {
