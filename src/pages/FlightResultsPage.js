@@ -104,6 +104,7 @@ const SELECTORS = {
 
   // Fare rules note
   FARE_RULES_NOTE: '.note',
+  FARE_RULES_MAIN_HEADLINE: '.fare-rules .main-headline',
 
   // Fare rules leg tabs inside the drawer
   FARE_RULES_LEG_TAB: '.fare-rules-tabs .el-tabs__item',
@@ -210,6 +211,14 @@ class FlightResultsPage {
    */
   getFareRulesNote() {
     return this.page.locator(SELECTORS.FARE_RULES_NOTE);
+  }
+
+  /**
+   * Gets the fare rules headline that contains the fare basis.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getFareRulesMainHeadline() {
+    return this.page.locator(SELECTORS.FARE_RULES_MAIN_HEADLINE).first();
   }
 
   /**
@@ -846,6 +855,28 @@ class FlightResultsPage {
       state: 'visible',
       timeout,
     });
+  }
+
+  /**
+   * Waits for the fare rules headline to become visible.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async waitForFareRulesMainHeadline(timeout = 30000) {
+    await this.getFareRulesMainHeadline().waitFor({
+      state: 'visible',
+      timeout,
+    });
+  }
+
+  /**
+   * Gets the fare rules headline text.
+   *
+   * @returns {Promise<string>}
+   */
+  async getFareRulesMainHeadlineText() {
+    const headline = this.getFareRulesMainHeadline();
+    return (await headline.textContent()).trim();
   }
 
   /**

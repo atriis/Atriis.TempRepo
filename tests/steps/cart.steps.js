@@ -67,6 +67,11 @@ When("I show cancelled items", async function () {
   await Cart.showCancelledItems(this.page);
 });
 
+When("I click check price button in cart", async function () {
+  logger.info("Clicking check price button on the first cancelled quote");
+  await Cart.clickCheckPriceButtonInCart(this.page);
+});
+
 When("I click check price and proceed on the first cancelled quote", async function () {
   logger.info("Checking price and proceeding on first cancelled quote");
   await Cart.clickCheckPriceAndProceedOnFirstCancelledQuote(this.page);
@@ -75,6 +80,16 @@ When("I click check price and proceed on the first cancelled quote", async funct
 Then("I successfully cancel the quote", async function () {
   logger.info("Cancelling the active quote successfully");
   await Cart.cancelFirstActiveQuote(this.page);
+});
+
+Then("the fare rules should be displayed in the price check modal", async function () {
+  logger.info("Verifying fare rules are displayed in the price check modal");
+  await Cart.verifyFareRulesDisplayedInCheckPriceModal(this.page);
+});
+
+When("I click proceed on the price check dialog", async function () {
+  logger.info("Clicking proceed on the price check dialog");
+  await Cart.clickProceedOnCheckPriceDialog(this.page);
 });
 
 When("I click to open price breakdown in cart", async function () {

@@ -16,6 +16,10 @@ Feature: 55726 Flights - Price check for cancelled flights quotes
     And I have added myself as the traveler
     When I search for a one way flight from "LIS" to "GRU"
     And I add the first result to trip
-    # TODO: Step needed for "Cancel quote and show cancelled items"
-    # TODO: Step needed for "Click check price on cancelled quote"
-    # TODO: Step needed for "Verify booking returns to 'Pending booking' status"
+    Then the booking status should be "Pending booking"
+    Then I successfully cancel the quote
+    When I show cancelled items
+    And I click check price button in cart
+    Then the fare rules should be displayed in the price check modal
+    And I click proceed on the price check dialog
+    Then the booking status should be "Pending booking"

@@ -228,8 +228,10 @@ const SELECTORS = {
   REMOVE_QUOTE_BUTTON: '.delete-btn',
 
   // Check price dialog (check-price.vue)
+  CHECK_PRICE_DIALOG: '.check-price',
   CHECK_PRICE_DIALOG_TITLE: '.check-price .title',
   CHECK_PRICE_DIALOG_SUBTITLE: '.check-price .sub-title',
+  CHECK_PRICE_FARE_RULES_BUTTON: '.check-price .fare-rules-btn',
   CHECK_PRICE_PROCEED_BUTTON: '.check-price .proceed-btn',
   CHECK_PRICE_STATUS_LABEL: '.check-price .app-label--quote',
 
@@ -2089,6 +2091,15 @@ class CartPage {
   }
 
   /**
+   * Clicks the Fare Rules button in the check price dialog.
+   */
+  async clickCheckPriceFareRulesButton() {
+    const button = this.page.locator(SELECTORS.CHECK_PRICE_FARE_RULES_BUTTON).first();
+    await button.waitFor({ state: 'visible', timeout: 15000 });
+    await button.click();
+  }
+
+  /**
    * Clicks the first Check Price button inside the cancelled quotes section.
    */
   async clickFirstCancelledQuoteCheckPriceButton() {
@@ -2104,6 +2115,14 @@ class CartPage {
     const button = this.page.locator(SELECTORS.CHECK_PRICE_PROCEED_BUTTON).first();
     await button.waitFor({ state: 'visible', timeout: 15000 });
     await button.click();
+  }
+
+  /**
+   * Waits for the check price dialog to close.
+   */
+  async waitForCheckPriceDialogToDisappear() {
+    const dialog = this.page.locator(SELECTORS.CHECK_PRICE_DIALOG).first();
+    await dialog.waitFor({ state: 'hidden', timeout: 30000 });
   }
 
   /**

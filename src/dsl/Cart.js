@@ -3,7 +3,9 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const { CartPage, SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
+const { ResultsPage } = require("@pages/ResultsPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
+const FlightResults = require("./FlightResults");
 const tripStatus = require("@data/tripStatus.json");
 const config = require("@config/config");
 const logger = require("@utils/logger").child("Cart-DSL");
@@ -14,6 +16,20 @@ const logger = require("@utils/logger").child("Cart-DSL");
  * Describes how users interact with the cart.
  */
 const Cart = {
+  async ensureCartReadyForStatusCheck(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    const handledImmediateConflictQuote = await resultsPage.handleConflictQuoteModalIfAppears(2000);
+    const handledConflictQuote = handledImmediateConflictQuote || await resultsPage.handleConflictQuoteModalIfVisible();
+
+    if (handledConflictQuote) {
+      await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    }
+  },
+
   /**
    * STRICT cancel flow (returns cancellation status)
    *
@@ -168,6 +184,52 @@ const Cart = {
     await cartPage.clickCheckPriceProceedButton();
   },
 
+  async clickCheckPriceButtonInCart(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.clickFirstCancelledQuoteCheckPriceButton();
+    await cartPage.getCheckPriceDialogTitle();
+  },
+
+  async verifyFareRulesDisplayedInCheckPriceModal(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    await cartPage.clickCheckPriceFareRulesButton();
+    await flightResultsPage.waitForFareRulesMainHeadline();
+
+    const headline = await flightResultsPage.getFareRulesMainHeadlineText();
+    expect(headline).toMatch(/Fare Basis/i);
+
+    await flightResultsPage.clickXToClosePricingOptionsModal(1);
+  },
+
+  async clickProceedOnCheckPriceDialog(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    await cartPage.clickCheckPriceProceedButton();
+    const handledConflictQuote = await resultsPage.handleConflictQuoteModalIfAppears(10000);
+
+    if (handledConflictQuote) {
+      await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    }
+
+    await cartPage.waitForCheckPriceDialogToDisappear();
+  },
+
   async expectHotelToBeRefundableInCart(page) {
     if (!page) {
       throw new Error('page is required');
@@ -248,6 +310,9 @@ const Cart = {
     const mappedStatus = tripStatus?.label?.[expectedStatus]?.status;
     const expectedText = mappedStatus || expectedStatus;
     const cartPage = getPageObject(page, CartPage);
+
+    await Cart.ensureCartReadyForStatusCheck(page);
+
     const actualStatus = expectedText.toLowerCase() === 'ticketing complete'
       ? await cartPage.getStatusByExpectedText(expectedText, { timeout, page })
       : await cartPage.getBookingStatus({ timeout, page });
@@ -279,6 +344,8 @@ const Cart = {
     const mappedStatus = tripStatus?.label?.[expectedStatus]?.status;
     const expectedText = mappedStatus || expectedStatus;
     const cartPage = getPageObject(page, CartPage);
+
+    await Cart.ensureCartReadyForStatusCheck(page);
 
     await cartPage.waitForTripOverviewTitle();
     const actualStatus = await cartPage.getTripOverviewStatus({ timeout, page });
@@ -710,11 +777,8 @@ const Cart = {
     if (typeof index !== 'number' || index < 0) {
       throw new Error(`index must be >= 0, got ${index}`);
     }
-    
-    const flightResultsPage = getPageObject(page, FlightResultsPage);
-    await flightResultsPage.waitForFareRulesButton(index);
-    await flightResultsPage.clickFareRulesButton(index);
-    await flightResultsPage.waitForFareRulesNote();
+
+    await FlightResults.clickToOpenFareRules(page, index);
   },
 
   /**

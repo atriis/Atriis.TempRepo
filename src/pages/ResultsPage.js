@@ -227,32 +227,108 @@ class ResultsPage {
       .first();
     const tripOverviewTitle = this.page
       .locator(CART_SELECTORS.TRIP_OVERVIEW_TITLE);
+    const quoteTitle = this.page
+      .locator(CART_SELECTORS.QUOTE_TITLE)
+      .first();
+    const quoteStatus = this.page
+      .locator(CART_SELECTORS.QUOTE_CARD_STATUS_LABEL)
+      .first();
+    const flightHeading = this.page
+      .getByText(CART_SELECTORS.FLIGHT_QUOTE_HEADING_TEXT, { exact: false })
+      .first();
+    const timeout = 90000;
+    const postCartSettleTimeout = 5000;
 
     // Race: wait for either the conflict modal's Proceed button or the cart page.
     // Each promise has its own .catch so the losing/orphaned promise never
     // becomes an unhandled rejection (e.g. when the page closes mid-wait).
     const modalPromise = proceedButton
-      .waitFor({ state: "visible", timeout: 90000 })
+      .waitFor({ state: "visible", timeout })
       .then(() => "modal")
       .catch(() => null);
-    const cartPromise = tripOverviewTitle
-      .waitFor({ state: "visible", timeout: 90000 })
+    const cartUrlPromise = this.page
+      .waitForURL(/\/cart(?:[/?#]|$)/, { timeout })
+      .then(() => "cart")
+      .catch(() => null);
+    const cartTitlePromise = tripOverviewTitle
+      .waitFor({ state: "visible", timeout })
       .then(() => "cart")
       .catch(() => null);
 
-    const result = await Promise.race([modalPromise, cartPromise]);
+    const result = await Promise.race([modalPromise, cartUrlPromise, cartTitlePromise]);
 
-    if (!result || result === "cart") {
+    if (!result) {
+      return false;
+    }
+
+    if (result === "cart") {
+      const postCartOutcome = await Promise.race([
+        proceedButton
+          .waitFor({ state: "visible", timeout: postCartSettleTimeout })
+          .then(() => "modal")
+          .catch(() => null),
+        Promise.any([
+          quoteTitle.waitFor({ state: "visible", timeout: postCartSettleTimeout }),
+          quoteStatus.waitFor({ state: "visible", timeout: postCartSettleTimeout }),
+          flightHeading.waitFor({ state: "visible", timeout: postCartSettleTimeout }),
+        ])
+          .then(() => "cart-ready")
+          .catch(() => null),
+      ]);
+
+      if (postCartOutcome !== "modal") {
+        return false;
+      }
+    }
+
+    await proceedButton.click();
+
+    try {
+      await proceedButton.waitFor({ state: "hidden", timeout: 10000 });
+    } catch {
+      // Some flows navigate immediately after clicking Proceed.
+    }
+
+    // Confirm navigation to Trip Overview (not present in parallel hotel flows — that's fine)
+    try {
+      await Promise.any([
+        this.page.waitForURL(/\/cart(?:[/?#]|$)/, { timeout: 60000 }),
+        tripOverviewTitle.waitFor({ state: "visible", timeout: 60000 }),
+      ]);
+    } catch {
+      // Parallel hotel flow navigates to hotel results instead of cart — not an error
+    }
+
+    return true;
+  }
+
+  /**
+   * Waits briefly for a conflicting quotes modal after an action on an already-loaded page.
+   * Returns false if the modal does not appear within the timeout.
+   *
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async handleConflictQuoteModalIfAppears(timeout = 5000) {
+    const proceedButton = this.page
+      .locator(SELECTORS.CONFLICT_MODAL_PROCEED)
+      .first();
+
+    const appeared = await proceedButton
+      .waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false);
+
+    if (!appeared) {
       return false;
     }
 
     await proceedButton.click();
 
-    // Confirm navigation to Trip Overview (not present in parallel hotel flows — that's fine)
     try {
-      await tripOverviewTitle.waitFor({ state: "visible", timeout: 60000 });
+      await proceedButton.waitFor({ state: 'hidden', timeout: 10000 });
     } catch {
-      // Parallel hotel flow navigates to hotel results instead of cart — not an error
+      // Some flows navigate immediately after clicking Proceed.
     }
 
     return true;
