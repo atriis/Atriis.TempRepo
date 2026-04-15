@@ -9,11 +9,11 @@
 @regression @provider:general
 Feature: 47191 General - Hotel paid by Traveler
   As a corporate traveler with personal payment configured
-  I want to book a hotel and see "Paid by Traveler" as the payment type
+  I want to book a hotel and see "Paid by Traveller" as the payment type
   So that I know I am personally responsible for payment
 
   @priority:high
-  Scenario: Hotel booking shows "Paid by Traveler" payment type
+  Scenario: Hotel booking shows "Paid by Traveller" payment type
     Given I am logged in as "felipe" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
@@ -21,5 +21,5 @@ Feature: 47191 General - Hotel paid by Traveler
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I add a credit card as payment method
-    Then the payment type should be "Paid by Traveler"
+    Then the payment type should be "Paid by Traveller"
 

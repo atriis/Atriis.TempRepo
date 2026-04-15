@@ -23,6 +23,7 @@ Feature: 37135 Premier Inn - Book hotel with CVV and Extras
     And I add a refundable room to my cart
     When I add Premier Inn Extras Services in cart
     And I save Premier Inn Extras Services in cart
+    Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"

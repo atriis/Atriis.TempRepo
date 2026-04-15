@@ -21,5 +21,5 @@ Feature: 22522 Booking.com - Add credit card for guest traveler
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I add a credit card as payment method
-    Then the payment type should be "Paid by Traveler"
+    Then the payment type should be "Paid by Traveller"
 

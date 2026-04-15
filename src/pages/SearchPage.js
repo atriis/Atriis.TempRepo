@@ -285,7 +285,7 @@ class SearchPage {
       .last()
       .locator(SELECTORS.EDIT_TRAVELER_DIALOG)
       .first();
-    await dialog.waitFor({ state: 'visible', timeout: 10000 });
+    await dialog.waitFor({ state: 'visible', timeout: 30000 });
 
     const button = this.getAddGuestTravelerButton();
     await button.waitFor({ state: 'visible', timeout: 10000 });

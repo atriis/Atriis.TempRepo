@@ -22,4 +22,4 @@ Feature: 65011 Expedia - OwnerType is saved correctly when adding FOP in cart
     Then the booking status should be "Pending booking"
     And I log the trip number from the URL
     When I add a credit card as payment method
-    Then the payment type should be "Paid by Traveler"
+    Then the payment type should be "Paid by Traveller"

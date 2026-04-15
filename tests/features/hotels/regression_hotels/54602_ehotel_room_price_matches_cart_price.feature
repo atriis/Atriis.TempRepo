@@ -31,5 +31,5 @@ Feature: 54602 eHotel - Price from room level matches price after adding to cart
     When I click add payment method button
     When I click the card "testim ehotel" checkbox
     When I save the card selection
-    Then the payment type should be "Paid by Traveler"
+    Then the payment type should be "Paid by Traveller"
     
