@@ -1012,3 +1012,8 @@ Then("the hotel search check-in and check-out dates should be filled", async fun
   logger.info("Verifying hotel search date fields are filled");
   await Cart.verifyHotelSearchDatesAreFilled(this.page);
 });
+
+Then("gender is not selected", async function () {
+  logger.info("Verifying gender is not pre-selected in passenger info");
+  await Cart.verifyGenderIsNotSelected(this.page);
+});

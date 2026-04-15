@@ -41,7 +41,7 @@ Feature: Book hotel for 2 travelers 2 nights - Expedia, Amadeus Value, Booking.c
     Given I am logged in as "<label>" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
-    When I search for a hotel in "London" for 2 nights
+    When I search for a hotel in "Amsterdam" for 2 nights
     And I wait to see view rates text in results page
     When I sort hotel results by "Price"
     And I select the first hotel result

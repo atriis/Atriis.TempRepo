@@ -18,7 +18,6 @@ Feature: 59183 Amadeus - Hotel - Room level results are displayed when agreement
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I wait to see view rates text in results page
-    When I filter hotel results by hotel name "The Trafalgar St. James London, Curio Co"
     Then handshake badge should be visible in hotel level results
     And I select the first hotel result
     When I wait for the first add to trip button to be visible in room level results

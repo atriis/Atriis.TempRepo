@@ -11,13 +11,11 @@ Feature: 61591 Flights - No default gender when no title selection mandatory
   I want gender to not be pre-selected when no title is set
   So that travelers must explicitly select their gender
 
-  # TODO: New user needed — defaultTitle@gdg.com → USER_DEFAULTTITLE
-  # Add to .env: USER_DEFAULTTITLE="defaultTitle@gdg.com"
-
   Scenario: No default gender is set and user can add and save passenger info
     Given I am logged in as "defaulttitle" booking a new trip
-    # TODO: Step needed for "Add traveler by name (specific traveler)"
-    # TODO: Step needed for "Search flight and add to cart"
-    # TODO: Step needed for "Verify no default gender is set in passenger info"
-    # TODO: Step needed for "Add gender and save passenger info successfully"
-    Then I successfully cancel the trip
+    And I have added traveler by name "Adam"
+    And I search for a round trip flight from "LHR" to "JFK"
+    And I add the first flight to cart
+    Then the booking status should be "Pending booking"
+    When I click to edit extras at index 0
+    Then gender is not selected

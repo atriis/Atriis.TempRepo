@@ -1,6 +1,6 @@
 ---
 description: "Analyze test failures and apply the smallest safe fixes to make tests pass. Iterates up to 5 times. Scans AtriisAutomation, Atriis.App, and Cortex.QA for selectors, flow understanding, and root-cause context."
-tools: ["read", "search", "edit", "runCommands"]
+tools: ["read", "search", "edit", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "agent"]
 ---
 
 # Test Fixer (Pipeline Sub-Agent)

@@ -270,6 +270,9 @@ const SELECTORS = {
   EHOTEL_PIN_CODE: '.booking-confirm p:has-text("Pincode:")',
   EHOTEL_CONFIRMATION_NUMBER: '.booking-confirm p:has-text("Confirmation Number:")',
   EHOTEL_CONTACT_PHONE: '.booking-confirm p:has-text("Contact phone")',
+
+  // Flight passenger info section (flight-passenger-info.vue)
+  PASSENGER_INFO_SECTION: '.flight-passenger-info',
 };
 
 class CartPage {
@@ -2808,6 +2811,18 @@ class CartPage {
    */
   async hasFqtvSuccessIcon() {
     return this.page.locator(SELECTORS.FQTV_SUCCESS_ICON).isVisible();
+  }
+
+  /**
+   * Checks whether a gender radio button is checked in the flight passenger info extras.
+   * @returns {Promise<boolean>} true if Male or Female radio is checked
+   */
+  async isGenderSelected() {
+    const section = this.page.locator(SELECTORS.PASSENGER_INFO_SECTION);
+    await section.waitFor({ state: 'visible', timeout: 15000 });
+
+    const checkedRadios = section.locator('.el-radio.is-checked');
+    return (await checkedRadios.count()) > 0;
   }
 }
 

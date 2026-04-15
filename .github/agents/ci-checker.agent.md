@@ -1,6 +1,6 @@
 ---
 description: "Parse GitHub Actions CI results to identify test failures. Fetches the latest workflow run, downloads artifacts (JUnit XML, Cucumber JSON), and returns structured failure data for the regression pipeline."
-tools: ["read", "search", "runCommands"]
+tools: ["read", "search", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection"]
 ---
 
 # CI Checker (Pipeline Sub-Agent)

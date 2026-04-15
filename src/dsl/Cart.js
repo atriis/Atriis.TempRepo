@@ -2551,6 +2551,14 @@ const Cart = {
     const hasIcon = await cartPage.hasFqtvSuccessIcon();
     expect(hasIcon, 'Expected frequent flyer to have green check icon').toBe(true);
   },
+
+  async verifyGenderIsNotSelected(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const isSelected = await cartPage.isGenderSelected();
+    expect(isSelected, 'Expected no gender to be pre-selected in passenger info').toBe(false);
+  },
 };
 
 

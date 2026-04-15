@@ -1,6 +1,6 @@
 ---
 description: "Orchestrator for regression test runs: executes a suite of tests by tag, collects failures, auto-fixes iteratively (up to 5 cycles), re-runs, and generates a comprehensive report. Semi-automatic with checkpoints."
-tools: ["read", "search", "edit", "runCommands"]
+tools: ["read", "search", "edit", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection"]
 ---
 
 # Regression Pipeline Orchestrator

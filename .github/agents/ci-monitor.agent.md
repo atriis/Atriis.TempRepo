@@ -1,6 +1,6 @@
 ---
 description: "Morning CI monitoring orchestrator: checks the latest GitHub Actions test run, identifies failures, auto-fixes iteratively, re-runs failed tests, and generates a daily health report. Designed for daily/scheduled execution."
-tools: ["read", "search", "edit", "runCommands"]
+tools: ["read", "search", "edit", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "agent"]
 ---
 
 # CI Monitor Pipeline Orchestrator

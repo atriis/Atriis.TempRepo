@@ -1,6 +1,6 @@
 ---
 description: "Generate final test execution reports and distribute results. Writes to test-results/ in AtriisAutomation, saves findings to Cortex.QA, and posts ADO comments. Produces JSON, Markdown, and human-readable summaries."
-tools: ["read", "search", "edit", "runCommands"]
+tools: ["read", "search", "edit", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "agent"]
 ---
 
 # Test Reporter (Pipeline Sub-Agent)

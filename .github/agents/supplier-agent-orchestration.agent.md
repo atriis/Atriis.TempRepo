@@ -1,7 +1,7 @@
 ---
 name: supplier-agent-orchestration
 description: "Multi-domain supplier automation orchestrator. Initializes domain agents, loads the supplier registry, runs domain-wide and supplier-specific test flows, and aggregates failures by domain and supplier. Use when: hotels/flights/transportation/shell orchestration, supplier matrix execution, integration regression across many suppliers, modular supplier enablement."
-tools: ["read", "search", "edit", "runCommands", "agent"]
+tools: ["read", "search", "edit", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "agent"]
 agents: ["domain-flights", "domain-hotels", "domain-transportation", "domain-shell", "context-bridge", "test-generator-pipeline", "test-runner-pipeline", "test-fixer-pipeline", "test-reporter-pipeline"]
 ---
 

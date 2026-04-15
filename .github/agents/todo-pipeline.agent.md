@@ -1,6 +1,6 @@
 ---
 description: "Orchestrator for completing incomplete tests: scans feature files for TODO comments, implements missing step definitions, DSL methods, and page object updates, then runs and fixes iteratively until the test passes. Handles single files, folders, or batch scans."
-tools: ["read", "search", "edit", "runCommands"]
+tools: ["read", "search", "edit", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "agent"]
 ---
 
 # TODO Resolver Pipeline Orchestrator

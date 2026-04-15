@@ -1,6 +1,6 @@
 ---
 description: "Execute Cucumber BDD tests and capture structured results for the test automation pipeline. Runs feature files, collects pass/fail status, errors, screenshots, and duration."
-tools: ["read", "search", "runCommands"]
+tools: ["read", "search", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "agent"]
 ---
 
 # Test Runner (Pipeline Sub-Agent)
