@@ -1,0 +1,210 @@
+{
+  "version": 1,
+  "domains": {
+    "hotels": {
+      "enabled": true,
+      "delegate": "domain-hotels",
+      "sharedTimeoutMs": 180000,
+      "sharedRetries": 1,
+      "generalTests": [
+        "schema-validation",
+        "sla-check",
+        "mandatory-field-validation",
+        "contract-compliance"
+      ],
+      "suppliers": [
+        {
+          "name": "AMADEUS",
+          "enabled": true,
+          "authProfile": "AMADEUS",
+          "endpointProfile": "AMADEUS",
+          "featureFlags": [],
+          "supportedFlows": ["search", "availability", "pricing", "booking", "retrieval", "cancellation", "modification"],
+          "knownLimitations": [],
+          "retries": 1,
+          "timeoutMs": 180000,
+          "circuitBreaker": { "failureThreshold": 2, "cooldownMs": 300000 }
+        },
+        {
+          "name": "AMADEUSVALUEHOTEL",
+          "enabled": true,
+          "authProfile": "AMADEUSVALUEHOTEL",
+          "endpointProfile": "AMADEUSVALUEHOTEL",
+          "featureFlags": [],
+          "supportedFlows": ["search", "availability", "pricing", "booking", "retrieval", "cancellation", "modification"],
+          "knownLimitations": [],
+          "retries": 1,
+          "timeoutMs": 180000,
+          "circuitBreaker": { "failureThreshold": 2, "cooldownMs": 300000 }
+        },
+        {
+          "name": "UAPIGALILEO",
+          "enabled": true,
+          "authProfile": "UAPIGALILEO",
+          "endpointProfile": "UAPIGALILEO",
+          "featureFlags": [],
+          "supportedFlows": ["search", "availability", "pricing", "booking", "retrieval", "cancellation", "modification"],
+          "knownLimitations": [],
+          "retries": 1,
+          "timeoutMs": 180000,
+          "circuitBreaker": { "failureThreshold": 2, "cooldownMs": 300000 }
+        },
+        {
+          "name": "SABRE",
+          "enabled": true,
+          "authProfile": "SABRE",
+          "endpointProfile": "SABRE",
+          "featureFlags": [],
+          "supportedFlows": ["search", "availability", "pricing", "booking", "retrieval", "cancellation", "modification"],
+          "knownLimitations": [],
+          "retries": 1,
+          "timeoutMs": 180000,
+          "circuitBreaker": { "failureThreshold": 2, "cooldownMs": 300000 }
+        },
+        {
+          "name": "TRAVELODGE",
+          "enabled": true,
+          "authProfile": "TRAVELODGE",
+          "endpointProfile": "TRAVELODGE",
+          "featureFlags": [],
+          "supportedFlows": ["search", "availability", "pricing", "booking", "retrieval", "cancellation"],
+          "knownLimitations": ["modification-not-supported"],
+          "retries": 1,
+          "timeoutMs": 180000,
+          "circuitBreaker": { "failureThreshold": 2, "cooldownMs": 300000 }
+        },
+        {
+          "name": "RATEHAWK",
+          "enabled": true,
+          "authProfile": "RATEHAWK",
+          "endpointProfile": "RATEHAWK",
+          "featureFlags": ["voucher-flow"],
+          "supportedFlows": ["search", "availability", "pricing", "booking", "retrieval", "cancellation", "modification"],
+          "knownLimitations": [],
+          "retries": 1,
+          "timeoutMs": 180000,
+          "circuitBreaker": { "failureThreshold": 2, "cooldownMs": 300000 }
+        },
+        {
+          "name": "EHOTEL",
+          "enabled": true,
+          "authProfile": "EHOTEL",
+          "endpointProfile": "EHOTEL",
+          "featureFlags": [],
+          "supportedFlows": ["search", "availability", "pricing", "booking", "retrieval", "cancellation", "modification"],
+          "knownLimitations": [],
+          "retries": 1,
+          "timeoutMs": 180000,
+          "circuitBreaker": { "failureThreshold": 2, "cooldownMs": 300000 }
+        },
+        {
+          "name": "BOOKINGCOM",
+          "enabled": true,
+          "authProfile": "BOOKINGCOM",
+          "endpointProfile": "BOOKINGCOM",
+          "featureFlags": [],
+          "supportedFlows": ["search", "availability", "pricing", "booking", "retrieval", "cancellation"],
+          "knownLimitations": ["modification-limited"],
+          "retries": 1,
+          "timeoutMs": 180000,
+          "circuitBreaker": { "failureThreshold": 2, "cooldownMs": 300000 }
+        },
+        {
+          "name": "EXPEDIARAPID",
+          "enabled": true,
+          "authProfile": "EXPEDIARAPID",
+          "endpointProfile": "EXPEDIARAPID",
+          "featureFlags": [],
+          "supportedFlows": ["search", "availability", "pricing", "booking", "retrieval", "cancellation"],
+          "knownLimitations": ["modification-not-supported"],
+          "retries": 1,
+          "timeoutMs": 180000,
+          "circuitBreaker": { "failureThreshold": 2, "cooldownMs": 300000 }
+        },
+        {
+          "name": "PREMIERINN",
+          "enabled": true,
+          "authProfile": "PREMIERINN",
+          "endpointProfile": "PREMIERINN",
+          "featureFlags": [],
+          "supportedFlows": ["search", "availability", "pricing", "booking", "retrieval", "cancellation"],
+          "knownLimitations": ["modification-not-supported"],
+          "retries": 1,
+          "timeoutMs": 180000,
+          "circuitBreaker": { "failureThreshold": 2, "cooldownMs": 300000 }
+        },
+        {
+          "name": "SUNHOTELS",
+          "enabled": true,
+          "authProfile": "SUNHOTELS",
+          "endpointProfile": "SUNHOTELS",
+          "featureFlags": [],
+          "supportedFlows": ["search", "availability", "pricing", "booking", "retrieval", "cancellation"],
+          "knownLimitations": ["modification-not-supported"],
+          "retries": 1,
+          "timeoutMs": 180000,
+          "circuitBreaker": { "failureThreshold": 2, "cooldownMs": 300000 }
+        },
+        {
+          "name": "GOGLOBAL",
+          "enabled": true,
+          "authProfile": "GOGLOBAL",
+          "endpointProfile": "GOGLOBAL",
+          "featureFlags": [],
+          "supportedFlows": ["search", "availability", "pricing", "booking", "retrieval", "cancellation", "modification"],
+          "knownLimitations": [],
+          "retries": 1,
+          "timeoutMs": 180000,
+          "circuitBreaker": { "failureThreshold": 2, "cooldownMs": 300000 }
+        }
+      ]
+    },
+    "flights": {
+      "enabled": true,
+      "delegate": "domain-flights",
+      "suppliers": [
+        { "name": "AMADEUS", "enabled": true },
+        { "name": "UAPIGALILEO", "enabled": true },
+        { "name": "SABRE", "enabled": true },
+        { "name": "AFKL", "enabled": true },
+        { "name": "AMERICANAIRLINE", "enabled": true },
+        { "name": "FUSION", "enabled": true },
+        { "name": "IBERIA", "enabled": true },
+        { "name": "LDSSABRE", "enabled": true },
+        { "name": "LUFTHANSA", "enabled": true },
+        { "name": "NDCBA", "enabled": true },
+        { "name": "NDCLH", "enabled": true },
+        { "name": "UAPIWORLDSPAN", "enabled": true },
+        { "name": "UNITED", "enabled": true },
+        { "name": "YPSILON", "enabled": true }
+      ]
+    },
+    "transportation": {
+      "enabled": true,
+      "delegate": "domain-transportation",
+      "suppliers": [
+        { "name": "AMADEUS", "enabled": true },
+        { "name": "UAPIGALILEO", "enabled": true },
+        { "name": "SABRE", "enabled": true },
+        { "name": "TRANSFERZ", "enabled": true },
+        { "name": "SUNNYCARS", "enabled": true },
+        { "name": "EVOLVI", "enabled": true },
+        { "name": "BENERAILMOOVE", "enabled": true },
+        { "name": "DEUTSCHEBAHN", "enabled": true },
+        { "name": "GROUNDSCOPE", "enabled": true },
+        { "name": "AMTRAK", "enabled": true },
+        { "name": "HOLIDAYEXTRASPARKING", "enabled": true }
+      ]
+    },
+    "shell": {
+      "enabled": true,
+      "delegate": "domain-shell",
+      "suppliers": [
+        { "name": "YOKOY", "enabled": true },
+        { "name": "Switch", "enabled": true },
+        { "name": "SQUAKE", "enabled": true },
+        { "name": "UMBRELLA", "enabled": true }
+      ]
+    }
+  }
+}

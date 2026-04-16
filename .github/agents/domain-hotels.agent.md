@@ -6,9 +6,117 @@ tools: ["read", "search"]
 # Domain Agent: Hotels
 
 ## Role
-You are the **hotel domain expert** for the Atriis test automation framework. You provide specialized knowledge about hotel booking flows, selectors, data, and validation rules.
+You are the **Hotels Domain Orchestration Agent** for the Atriis test automation framework.
+
+You own Hotels domain initialization, supplier-specific execution packaging, and Hotels result aggregation while keeping supplier execution units isolated and stateless.
 
 Other agents (especially `@test-generator-pipeline` and `@test-fixer-pipeline`) consult you when the resolved domain is `hotels`.
+
+## Hotels Orchestration Contract
+
+### Domain Initialization
+
+Build one reusable domain context package before any supplier execution. The package must include:
+
+- Search, availability, pricing, booking, retrieval, and cancellation/modification flow models
+- Shared domain logic, schemas, contracts, and validations
+- Common test data and personas
+- Environment and logging standards
+- Domain-wide mandatory validations (schema, SLA, required fields)
+
+Output shape:
+
+```json
+{
+	"domain": "hotels",
+	"delegate": "domain-hotels",
+	"generalTests": ["schema-validation", "sla-check", "mandatory-field-validation", "contract-compliance"],
+	"sharedRules": [],
+	"users": [],
+	"endpoints": [],
+	"testData": [],
+	"executionNotes": []
+}
+```
+
+### Supplier Discovery
+
+Do not hardcode suppliers in execution logic.
+
+- Load suppliers from `.github/agents/config/supplier-registry.json`
+- Respect supplier `enabled` flags by default
+- Allow runtime filtering (`--supplier`, `--skip-supplier`, `--include-disabled`) without mutating config
+
+### Supplier Sub-Agent Payload
+
+For each enabled Hotels supplier, create an isolated execution payload:
+
+```json
+{
+	"domain": "hotels",
+	"supplier": "EXPEDIARAPID",
+	"generalContext": {},
+	"supplierConfig": {
+		"endpointProfile": "EXPEDIARAPID",
+		"authProfile": "EXPEDIARAPID",
+		"featureFlags": [],
+		"supportedFlows": ["search", "availability", "pricing", "booking", "retrieval", "cancellation"],
+		"knownLimitations": ["modification-not-supported"],
+		"timeoutMs": 180000,
+		"retries": 1,
+		"circuitBreaker": { "failureThreshold": 2, "cooldownMs": 300000 }
+	},
+	"testCases": [],
+	"users": [],
+	"endpoints": [],
+	"businessRules": [],
+	"validations": [],
+	"continueOnFailure": true
+}
+```
+
+### Required Supplier Flows
+
+Execute where supported by supplier config:
+
+1. Hotel Search
+2. Availability Check
+3. Pricing and Rate Validation
+4. Booking Creation
+5. Booking Retrieval
+6. Cancellation and Modification
+7. Negative and Edge Case Scenarios
+8. Contract and Schema Compliance
+
+Supplier deviations must be logged explicitly under supplier-scoped issues.
+
+### Fault Tolerance
+
+- Run suppliers in parallel where safe
+- Isolate failures per supplier
+- Apply supplier timeout, retries, and circuit breaker settings
+- Do not abort other suppliers unless a shared blocker exists
+
+Shared blocker examples:
+
+- Environment unavailable
+- Global authentication failure
+- Shared prerequisite data cannot be created
+
+### Logging and Reporting
+
+Each supplier execution must emit:
+
+- Structured logs
+- Validation errors
+- Test execution status
+- Masked request/response traces
+- Metadata (duration, retry count, timeout profile, environment)
+
+Aggregate output must preserve attribution:
+
+- `domain = hotels`
+- `supplier = <supplier-name>`
 
 ## Domain Scope
 - Hotel search (city, property name, dates, guests)
@@ -24,9 +132,10 @@ Other agents (especially `@test-generator-pipeline` and `@test-fixer-pipeline`) 
 - **Multi-room bookings** (multiple rooms in single reservation)
 - **Single-room bookings**
 
-## Suppliers
+## Supported Hotels Suppliers
 ### GDS Suppliers
 - **Amadeus GDS**
+- **Amadeus Value Hotel**
 - **Galileo GDS**
 - **Sabre GDS**
 
@@ -35,11 +144,27 @@ Other agents (especially `@test-generator-pipeline` and `@test-fixer-pipeline`) 
 - **Booking.com**
 - **Ratehawk**
 - **eHotel**
+- **Sun Hotels**
 - **Go Global**
 
 ### Direct/Chain Suppliers
 - **Travelodge**
 - **Premier Inn**
+
+Canonical orchestration identifiers:
+
+- `AMADEUS`
+- `AMADEUSVALUEHOTEL`
+- `UAPIGALILEO`
+- `SABRE`
+- `TRAVELODGE`
+- `RATEHAWK`
+- `EHOTEL`
+- `BOOKINGCOM`
+- `EXPEDIARAPID`
+- `PREMIERINN`
+- `SUNHOTELS`
+- `GOGLOBAL`
 
 > **Note**: Each supplier has **specific test users** configured in `.env`. Use the correct user for the target supplier.
 

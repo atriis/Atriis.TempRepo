@@ -25,7 +25,7 @@ Custom agents for the Playwright + Cucumber BDD automation framework. Use these 
 ├─── DOMAIN AGENTS (specialized knowledge, consulted by sub-agents) ───────┤
 │                                                                          │
 │  @domain-flights           Flight booking domain knowledge               │
-│  @domain-hotels            Hotel booking domain knowledge                │
+│  @domain-hotels            Hotels orchestration + domain knowledge       │
 │  @domain-transportation    Cars/Rail/Ground/Parking knowledge            │
 │  @domain-shell             Generic/cross-domain patterns                 │
 │                                                                          │
@@ -199,11 +199,13 @@ Orchestrator → Sub-Agent → Sub-Agent → ... → Report
 ---
 
 ### domain-hotels
-**Purpose**: Hotel-specific knowledge — locators, DSL methods, test data, validation rules, supplier-specific flows.
+**Purpose**: Hotels domain orchestration and domain knowledge — initializes shared Hotels context, prepares supplier execution payloads, and defines hotel-specific locators, DSL methods, test data, validation rules, and supplier-specific flows.
 
-**Scope**: Hotel search, results, room selection, rate plans, cancellation policies, suppliers
+**Scope**: Hotel search, availability, pricing, booking, retrieval, cancellation/modification, schema and contract checks, supplier-specific caveats
 
-**Consulted by**: `@test-generator-pipeline`, `@test-fixer-pipeline` when domain = `hotels`
+**Supplier source of truth**: `.github/agents/config/supplier-registry.json`
+
+**Consulted by**: `@supplier-agent-orchestration`, `@test-generator-pipeline`, `@test-fixer-pipeline` when domain = `hotels`
 
 ---
 
