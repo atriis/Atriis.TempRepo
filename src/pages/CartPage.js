@@ -2035,6 +2035,44 @@ class CartPage {
     return '';
   }
 
+  /**
+   * Gets the raw srcdoc HTML from the share email preview iframe.
+   * Unlike getSharePreviewTextContent(), this preserves HTML tags for pattern matching.
+   * @returns {Promise<string>} Raw HTML string from the iframe srcdoc attribute
+   */
+  async getSharePreviewRawHtml() {
+    const iframeLocator = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first();
+    const count = await iframeLocator.count();
+    if (count > 0) {
+      const srcDoc = await iframeLocator.getAttribute('srcdoc');
+      if (srcDoc && srcDoc.trim().length > 0) return srcDoc;
+    }
+    return '';
+  }
+
+  /**
+   * Extracts equipment values from the share email preview HTML.
+   * Parses "Equipment: {value}" labels from the srcdoc HTML.
+   * @returns {Promise<string[]>} Equipment values (e.g., ["High-Speed Train", "320"])
+   */
+  async getSharePreviewEquipmentValues() {
+    const srcDoc = await this.getSharePreviewRawHtml();
+    const matches = srcDoc.match(/<span>Equipment:\s*<\/span>\s*([^<]+)/gi) || [];
+    return matches.map(m => {
+      const match = m.match(/<span>Equipment:\s*<\/span>\s*(.+)/i);
+      return match ? match[1].trim() : '';
+    }).filter(Boolean);
+  }
+
+  /**
+   * Checks whether the share email preview HTML contains flight number information.
+   * @returns {Promise<boolean>}
+   */
+  async sharePreviewContainsFlightNumber() {
+    const srcDoc = await this.getSharePreviewRawHtml();
+    return /Flight<\/span>\s*#:/i.test(srcDoc);
+  }
+
   // ===== EXPIRED QUOTE ACTIONS =====
 
   /**

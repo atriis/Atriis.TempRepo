@@ -1592,7 +1592,97 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     }
   },
 
+  // ===== ADVISORY VERIFICATION =====
+
+  /**
+   * Hovers over the advisory icon in flight results and verifies the tooltip text.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Expected tooltip text (e.g. "Mixed transportation")
+   */
+  async verifyAdvisoryTooltipText(page, expectedText) {
+    if (!page) throw new Error('page is required');
+    if (!expectedText || typeof expectedText !== 'string') throw new Error(`expectedText must be a non-empty string, got: ${typeof expectedText}`);
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.hoverAdvisoryIcon();
+    const isVisible = await flightResultsPage.isAdvisoryTooltipVisible(expectedText);
+    expect(isVisible, `Expected advisory tooltip to contain "${expectedText}"`).toBeTruthy();
+  },
+
+  /**
+   * Verifies the full mixed transportation advisory in flight details:
+   * (1) Each segment shows a transport equipment icon (flight, directions_railway, directions_bus)
+   * (2) Connection messages display "Connection: Change transportation" with "Change to {type}..."
+   * (3) Connection advisory icon matches the next segment's transport type
+   * @param {import('playwright').Page} page
+   */
+  async verifyFlightDetailsConnectionAdvisory(page) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    const validIcons = ['flight', 'directions_railway', 'directions_bus'];
+
+    // 1. Verify connection advisory messages exist with "Change transportation"
+    const hasAdvisory = await flightResultsPage.hasConnectionAdvisoryInDetails();
+    expect(hasAdvisory, 'Expected flight details to contain a connection advisory with "Change transportation"').toBeTruthy();
+
+    const advisories = await flightResultsPage.getFlightDetailsConnectionAdvisories();
+    expect(advisories.length, 'Expected at least one connection advisory message').toBeGreaterThan(0);
+    for (const advisory of advisories) {
+      // Verify message contains "Connection" context and "Change to {transport type}" instruction
+      expect(advisory.text, `Connection advisory should contain "Change to", got: "${advisory.text}"`).toContain('Change to');
+      expect(advisory.text, `Connection advisory should reference transport change context, got: "${advisory.text}"`).toMatch(/change\s+to/i);
+      // Verify the advisory icon is a valid transport icon (train/bus/flight)
+      if (advisory.icon) {
+        expect(validIcons, `Advisory icon "${advisory.icon}" should be a valid transport icon`).toContain(advisory.icon);
+      }
+    }
+
+    // 2. Verify per-segment equipment icons
+    const segments = await flightResultsPage.getFlightDetailsSegmentEquipment();
+    expect(segments.length, 'Expected at least 2 segments for a mixed itinerary').toBeGreaterThanOrEqual(2);
+
+    const hasMultipleTypes = new Set(segments.map(s => s.icon)).size > 1;
+    expect(hasMultipleTypes, `Expected mixed transport types across segments, but all segments have the same icon: ${segments[0]?.icon}`).toBeTruthy();
+
+    for (const segment of segments) {
+      expect(validIcons, `Segment equipment icon "${segment.icon}" should be one of: ${validIcons.join(', ')}`).toContain(segment.icon);
+    }
+
+    // 3. Verify connection advisory icon matches the next segment's transport type
+    const connectionIcons = await flightResultsPage.getConnectionAdvisoryIcons();
+    expect(connectionIcons.length, 'Expected at least one connection advisory icon').toBeGreaterThan(0);
+    for (const icon of connectionIcons) {
+      expect(validIcons, `Connection advisory icon "${icon}" should be a valid transport icon`).toContain(icon);
+    }
+  },
+
+  /**
+   * Verifies that the share email preview contains equipment information for flight segments.
+   * Checks that segment/equipment text (aircraft names or transport types) appears in the preview.
+   * @param {import('playwright').Page} page
+   */
+  async verifyShareEmailContainsEquipment(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // Extract equipment values from the share email HTML
+    const equipmentValues = await cartPage.getSharePreviewEquipmentValues();
+    expect(equipmentValues.length, 'Share email should contain at least one Equipment label per segment').toBeGreaterThan(0);
+
+    // For mixed itineraries, at least one segment should have non-aircraft equipment (train/bus)
+    const nonAircraftKeywords = ['train', 'bus', 'rail'];
+    const hasNonAircraft = equipmentValues.some(val =>
+      nonAircraftKeywords.some(kw => val.toLowerCase().includes(kw))
+    );
+    expect(hasNonAircraft, `Share email should contain at least one non-aircraft equipment (train/bus) for mixed itinerary. Found: ${equipmentValues.join(', ')}`).toBeTruthy();
+
+    // Verify flight segment info is also present (flight numbers)
+    const hasFlightInfo = await cartPage.sharePreviewContainsFlightNumber();
+    expect(hasFlightInfo, 'Share email should contain flight number information').toBeTruthy();
+  },
 }
 
 module.exports = FlightResults;
-

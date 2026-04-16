@@ -939,6 +939,17 @@ const FlightSearch = {
 
     return { searched: true, from, to, tripType: 'roundTrip', searchType: 'completeTrip', parallelCar: true };
   },
+
+  /**
+   * Clicks the flight tab and checks the "Allow nearby airports" checkbox.
+   * @param {import('playwright').Page} page
+   */
+  async clickFlightTabAndCheckNearbyAirports(page) {
+    if (!page) throw new Error('page is required');
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    await flightSearchPage.clickFlightTab();
+    await flightSearchPage.toggleAllowNearbyAirportsCheckbox();
+  },
 };
 
 module.exports = FlightSearch;

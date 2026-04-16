@@ -163,6 +163,23 @@ const SELECTORS = {
   // Marine Fare icon (flight-preview.vue / flight-by-schedule-pricing-option.vue)
   // Uses anchor material icon + "Marine fare" text — no data-testid available
   MARINE_FARE_ANCHOR_ICON: 'span.material-symbols-outlined:has-text("anchor")',
+
+  // Advisory icons in flight preview segment (flight-preview-segment.vue)
+  // Orange material icons for train/bus transportation advisories
+  ADVISORY_ICON_ORANGE: '.flight-info-container span.material-symbols-outlined.orange',
+
+  // Flight details drawer — connection advisory message (flight-details.vue)
+  // Works in both results drawer ([aria-label='Flight details']) and cart drawer ([aria-label='More details'])
+  FLIGHT_DETAILS_CONNECTION_MSG: '.connection-msg',
+  FLIGHT_DETAILS_TRANSPORT_ICON: '.connection-msg .material-symbols-outlined',
+  FLIGHT_DETAILS_MATERIAL_ICON: '.material-symbols-outlined',
+  // Flight details drawer — visible drawer container (results or cart)
+  FLIGHT_DETAILS_VISIBLE_DRAWER: ".app-drawer.flight-details-drawer, [aria-label='More details']",
+  // Flight details — segment top bar with carrier and equipment info
+  FLIGHT_DETAILS_TOP_BAR: '.flight-details-top-bar',
+  FLIGHT_DETAILS_AIRCRAFT_NAME: '.aircraft-name',
+  // Element Plus tooltip (rendered outside component tree)
+  EL_POPPER_VISIBLE: '.el-popper:visible',
 };
 
 class FlightResultsPage {
@@ -1565,5 +1582,117 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     return names;
   }
 
+  // ===== ADVISORY ICONS =====
+
+  /**
+   * Hovers over the first orange advisory icon in flight results to trigger the tooltip.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   */
+  async hoverAdvisoryIcon(timeout = 10000) {
+    const icon = this.page.locator(SELECTORS.ADVISORY_ICON_ORANGE).first();
+    await icon.waitFor({ state: 'visible', timeout });
+    await icon.hover();
+  }
+
+  /**
+   * Checks if a tooltip with the given text is visible after hovering an advisory icon.
+   * Element Plus el-tooltip renders content in a .el-popper element.
+   * @param {string} expectedText
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isAdvisoryTooltipVisible(expectedText, timeout = 10000) {
+    const tooltip = this.page.locator(SELECTORS.EL_POPPER_VISIBLE).filter({ hasText: expectedText });
+    try {
+      await tooltip.first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // ===== FLIGHT DETAILS — CONNECTION ADVISORY =====
+
+  /**
+   * Gets all connection advisory messages from the flight details drawer.
+   * Each message contains "Connection: Change transportation" text and a transport icon.
+   * @returns {Promise<Array<{text: string, icon: string}>>}
+   */
+  async getFlightDetailsConnectionAdvisories() {
+    const drawer = this.page.locator(SELECTORS.FLIGHT_DETAILS_VISIBLE_DRAWER).first();
+    const messages = drawer.locator(SELECTORS.FLIGHT_DETAILS_CONNECTION_MSG);
+    const count = await messages.count();
+    const results = [];
+    for (let i = 0; i < count; i++) {
+      const msg = messages.nth(i);
+      const text = (await msg.textContent()).trim().replace(/\s+/g, ' ');
+      const iconEl = msg.locator(SELECTORS.FLIGHT_DETAILS_MATERIAL_ICON).first();
+      const iconCount = await iconEl.count();
+      const icon = iconCount > 0 ? (await iconEl.textContent()).trim() : '';
+      results.push({ text, icon });
+    }
+    return results;
+  }
+
+  /**
+   * Checks if the flight details drawer contains at least one connection advisory
+   * with "Change transportation" text.
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async hasConnectionAdvisoryInDetails(timeout = 10000) {
+    try {
+      const drawer = this.page.locator(SELECTORS.FLIGHT_DETAILS_VISIBLE_DRAWER).first();
+      const msg = drawer.locator(SELECTORS.FLIGHT_DETAILS_CONNECTION_MSG).first();
+      await msg.waitFor({ state: 'visible', timeout });
+      const text = await msg.textContent();
+      return text.includes('Change transportation') || text.includes('Change to');
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Gets per-segment equipment data from the flight details drawer.
+   * Each segment has: transport icon (flight/directions_railway/directions_bus) and aircraft name text.
+   * @returns {Promise<Array<{icon: string, name: string}>>}
+   */
+  async getFlightDetailsSegmentEquipment() {
+    const drawer = this.page.locator(SELECTORS.FLIGHT_DETAILS_VISIBLE_DRAWER).first();
+    const topBars = drawer.locator(SELECTORS.FLIGHT_DETAILS_TOP_BAR);
+    const count = await topBars.count();
+    const segments = [];
+    for (let i = 0; i < count; i++) {
+      const bar = topBars.nth(i);
+      const iconEl = bar.locator(SELECTORS.FLIGHT_DETAILS_MATERIAL_ICON).last();
+      const icon = (await iconEl.textContent()).trim();
+      const nameEl = bar.locator(SELECTORS.FLIGHT_DETAILS_AIRCRAFT_NAME);
+      const nameCount = await nameEl.count();
+      const name = nameCount > 0 ? (await nameEl.textContent()).trim() : '';
+      segments.push({ icon, name });
+    }
+    return segments;
+  }
+
+  /**
+   * Gets all transport icons from connection advisory messages in flight details.
+   * These icons represent the equipment type of the NEXT segment after a transport change.
+   * @returns {Promise<string[]>}
+   */
+  async getConnectionAdvisoryIcons() {
+    const drawer = this.page.locator(SELECTORS.FLIGHT_DETAILS_VISIBLE_DRAWER).first();
+    const messages = drawer.locator(SELECTORS.FLIGHT_DETAILS_CONNECTION_MSG);
+    const count = await messages.count();
+    const icons = [];
+    for (let i = 0; i < count; i++) {
+      const iconEl = messages.nth(i).locator(SELECTORS.FLIGHT_DETAILS_MATERIAL_ICON).first();
+      const iconCount = await iconEl.count();
+      if (iconCount > 0) {
+        const text = (await iconEl.textContent()).trim();
+        if (text) icons.push(text);
+      }
+    }
+    return icons;
+  }
 }
 module.exports = FlightResultsPage;

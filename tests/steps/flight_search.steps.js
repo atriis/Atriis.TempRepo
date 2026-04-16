@@ -172,6 +172,11 @@ When("I click on the flight tab", async function () {
   await FlightSearch.clickFlightTab(this.page);
 });
 
+When("I click on the flight tab and check Allow nearby airports", async function () {
+  logger.info('Clicking on flight tab and checking Allow nearby airports checkbox');
+  await FlightSearch.clickFlightTabAndCheckNearbyAirports(this.page);
+});
+
 // ========================================
 // THEN STEPS - FLIGHT SEARCH VERIFICATION
 // ========================================

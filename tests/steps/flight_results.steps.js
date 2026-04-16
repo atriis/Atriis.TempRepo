@@ -663,3 +663,22 @@ When('I exit share mode', async function () {
   logger.info('Exiting share mode');
   await FlightResults.exitShareMode(this.page);
 });
+
+// ========================================
+// ADVISORY VERIFICATION
+// ========================================
+
+Then('I hover over the advisory icon and verify tooltip text {string}', async function (expectedText) {
+  logger.info('Hovering over advisory icon and verifying tooltip text', { expectedText });
+  await FlightResults.verifyAdvisoryTooltipText(this.page, expectedText);
+});
+
+Then('the flight details should show connection advisory with transport change', async function () {
+  logger.info('Verifying flight details contain connection advisory with transport change');
+  await FlightResults.verifyFlightDetailsConnectionAdvisory(this.page);
+});
+
+Then('the share email preview should contain equipment for flight segments', async function () {
+  logger.info('Verifying share email preview contains equipment information for flight segments');
+  await FlightResults.verifyShareEmailContainsEquipment(this.page);
+});
