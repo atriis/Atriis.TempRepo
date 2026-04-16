@@ -60,8 +60,42 @@ async function Search_flights_round_trip(from, to) { ... }
 
 **Key insight**: The named function calls in the IIFE are the test steps. The function bodies below show the raw implementation. You must:
 1. Map each named function call to an existing Cucumber step
-2. If no step exists, look inside the function body to understand what it does
-3. Then check if existing DSL methods cover that behavior
+2. If no single step exists, **expand the shared step**: read the function body and convert each action inside it into its own Gherkin step
+3. Then check if existing DSL methods cover each individual action
+
+### Shared Steps (Composite Functions)
+
+Testim "shared steps" are reusable functions that contain **multiple distinct actions** inside. They look like any other named function but perform several things:
+
+```javascript
+// This shared step contains 3 distinct actions
+async function Accept_and_proceed_to_checkout() {
+  await page.click(".fare-rules-btn");          // Action 1: open fare rules
+  await page.click(".el-checkbox__inner");       // Action 2: accept T&C
+  await page.click(".btn-container span");       // Action 3: click proceed
+}
+```
+
+**CRITICAL RULE: Always read the function body of every shared step.** Do NOT assume a shared step maps to a single Cucumber step. You must:
+
+1. **Read the full function body** of each named function call
+2. **Identify each distinct action** inside (clicks, fills, waits, assertions, conditionals)
+3. **Map each action individually** to existing Cucumber steps or DSL methods
+4. **Produce one Gherkin step per action** — not one step per shared function
+
+The only exception is when an existing Cucumber step already covers the **entire** shared step's behavior (e.g., `Login()` + `book_a_new_trip()` → `Given I am logged in as "{user}" booking a new trip`). In that case, a single Gherkin step is correct.
+
+**Example expansion:**
+```
+# Testim shared step: Accept_and_proceed_to_checkout()
+# Function body contains 3 actions → 3 Gherkin steps:
+  When I click to open fare rules in cart
+  And I accept Terms & Conditions
+  And I click the proceed to checkout button
+```
+
+**How to handle shared steps that call other shared steps:**
+If a shared step calls another named function, recursively read that function's body too. Flatten the entire call tree into a linear sequence of Gherkin steps.
 
 ## Process
 
@@ -90,7 +124,7 @@ Every Testim file starts with a metadata comment block:
 # Updated: 2026-01-19T07:43:56Z
 ```
 
-### B) List every step in the IIFE
+### B) List every step in the IIFE and expand shared steps
 
 Write out the complete sequence of function calls from the `(async () => { ... })()` block, ignoring `browser.launch`, `context.newContext`, `page.newPage`, `page.goto`, and `browser.close`.
 
@@ -105,9 +139,39 @@ Example from the above:
 8. `book_and_finalize()`
 9. `Flights___Trip_Overview___Wait_for__Flight_details__text_display()`
 
-**Every single one** of these must become a Gherkin step. Do not skip any.
+**Every single one** of these must become one or more Gherkin steps. Do not skip any.
 
 Also include any **inline** `page.click()`, `page.type()`, `waitForText()`, assertions, etc. that appear directly in the IIFE (not inside a named function). These are test steps too.
+
+#### B.1) Expand each shared step
+
+**After listing the IIFE calls, you MUST read the function body of every single named function** in the Testim file. For each function:
+
+1. Read the full function body from top to bottom
+2. List every `page.*` action, `waitForText()`, assertion, conditional, and nested function call
+3. Check if a single existing Cucumber step covers the **entire** function — if yes, use that one step
+4. If no single step covers it, **expand** the function into multiple Gherkin steps (one per distinct action)
+5. If the function calls another function, recursively expand that one too
+
+**Produce an expanded step list** before writing Gherkin. Example:
+
+```
+IIFE call list (raw):
+  1. Login('ruimariano@amadeus.com')
+  2. book_a_new_trip()
+  3. Accept_and_proceed_to_checkout()
+  4. book_and_finalize()
+
+Expanded (after reading function bodies):
+  1. Login + book_a_new_trip → Given I am logged in as "ruimariano" booking a new trip
+  2. Accept_and_proceed_to_checkout() contains:
+     a. page.click(".fare-rules-btn") → When I click to open fare rules in cart
+     b. page.click(".el-checkbox__inner") → And I accept Terms & Conditions
+     c. page.click(".btn-container span") → And I click the proceed to checkout button
+  3. book_and_finalize() → single step: When I complete the booking
+```
+
+**This expanded list is the source of truth for the Gherkin scenario.** Write the feature file from the expanded list, not from the raw IIFE calls.
 
 ### C) Map to existing project steps
 

@@ -1,0 +1,23 @@
+# Test Name: 68551 Galileo - Flight - Only 'Business' class is displayed in Pricing Options when class is selected in search form
+# Status: Active
+# Labels: Regression,Galileo,Flights,Cabin class,Pricing Options,2026 plan 2
+# Owner: Bruna Santos
+# Created: 2025-10-08T03:56:14Z
+# Updated: 2025-10-08T04:12:17Z
+
+@regression @galileo @flights @cabin_class @pricing_options
+Feature: 68551 Galileo - Only Business class in pricing options when selected
+
+  As a corporate traveler
+  I want only Business class options in pricing options when I search for Business
+  So that results match my cabin class preference
+
+  Scenario: Business class search shows only Business in pricing options
+    Given I am logged in as "bsgalileoflight" booking a new trip
+    And I have added myself as the traveler
+    When I search for a round trip "Business" class flight from "AMS" to "LCY"
+    And I wait for flight results to be available
+    And I click on "Pricing Options" for the first result
+    Then the "Business" text should be displayed in pricing options
+    # TODO: Verify only 1 pricing option with class "Business" is displayed
+    # Testim: List_length__with_css_locator_as_parameter_('1', '.text-center-top...')

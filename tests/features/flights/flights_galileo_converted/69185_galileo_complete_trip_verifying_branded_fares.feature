@@ -1,0 +1,49 @@
+# Test Name: 69185 Galileo - Flight - Complete Trip booking and verifying Branded Fares
+# Status: Active
+# Labels: Flights,Branded fares,Full Purchase,Regression,Galileo,GDS,2026 plan 2
+# Owner: Bruna Santos
+# Created: 2025-10-22T03:09:08Z
+# Updated: 2025-11-03T08:04:24Z
+
+@regression @galileo @flights @branded_fares @full_purchase
+Feature: 69185 Galileo - Complete trip booking verifying branded fares
+
+  As a corporate traveler
+  I want branded fares to be visible at every stage of the booking flow
+  So that I can review ancillary inclusions
+
+  Scenario: Branded fares displayed in results, pricing options, cart and after hold
+    Given I am logged in as "bsgalileoflight" booking a new trip
+    And I have added a random guest traveler
+    When I search for a one way flight from "AMS" to "DOH"
+    And I wait for flight results to be available
+    # Branded fares in flight details (results)
+    And I click to open flight details
+    And I open branded fares from flight details
+    Then the branded fare ancillaries text should be visible
+    When I close branded fares drawer
+    And I close flight details window
+    # Branded fares in pricing options (results)
+    And I open branded fares from pricing options
+    Then the branded fare ancillaries text should be visible
+    When I close branded fares drawer
+    And I close pricing options modal
+    # Add to cart
+    And I add the first flight to cart
+    And I handle conflicting quotes if visible
+    # Branded fares in flight details (cart — before hold)
+    And I click to open flight details
+    And I open branded fares from flight details
+    Then the branded fare ancillaries text should be visible
+    When I close branded fares drawer
+    And I close flight details window
+    # Hold flight
+    And I accept Terms & Conditions
+    And I click hold flight button
+    # Branded fares in flight details (cart — after hold)
+    And I click to open flight details
+    And I open branded fares from flight details
+    Then the branded fare ancillaries text should be visible
+    When I close branded fares drawer
+    And I close flight details window
+    Then I successfully cancel the trip
