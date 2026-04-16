@@ -125,8 +125,9 @@ const SELECTORS = {
   BAGGAGE_SELECTED_OPTION: '.flight-baggage .el-select__selected-item span', // Selected baggage option text inside the flight-baggage section
   
   // Flight Meals (flight-meals.vue)
+  MEAL_EDIT_BUTTON: ".flight-meals .extra__btns", // Edit/Add button in the meal extras row (scoped to flight-meals to avoid matching other extras buttons)
   MEAL_DROPDOWN_CARET: ".flight-meals .el-select__caret",
-  MEAL_DROPDOWN_OPTION_4: ".el-scrollbar__view > li:nth-of-type(4) span",
+  MEAL_DROPDOWN_OPTION_TEXT: '.el-select-dropdown__item span',
   MEAL_SAVE_BUTTON: ".flight-meals .no-border",
   MEAL_CANCEL_BUTTON: ".flight-meals .clear-btn",
   MEAL_SELECTED_TEXT: ".flight-meals .el-select__placeholder span",
@@ -1263,6 +1264,16 @@ class CartPage {
    */
   async clickEditExtrasButton(index = 0) {
     await this.page.locator(SELECTORS.EDIT_EXTRAS_BUTTON).nth(index).click();
+  }
+
+  /**
+   * Opens the meal extras panel by clicking the Edit/Add button scoped to the flight-meals section.
+   */
+  async clickEditMealExtrasButton() {
+    const btn = this.page.locator(SELECTORS.MEAL_EDIT_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout: 10000 });
+    await btn.click();
+    await this.page.locator(SELECTORS.MEAL_DROPDOWN_CARET).first().waitFor({ state: 'visible', timeout: 10000 });
   }
 
   /**
@@ -2476,13 +2487,21 @@ class CartPage {
   // ========================================
 
   /**
-   * Selects a meal from the dropdown (4th option — typically "Bland Meal").
+   * Selects a meal from the dropdown by visible option text.
+   * @param {string} mealName
    */
-  async selectMealFromDropdown() {
+  async selectMealFromDropdown(mealName) {
+    if (!mealName || typeof mealName !== 'string') {
+      throw new Error(`mealName must be a non-empty string, got: ${typeof mealName}`);
+    }
+
     const caret = this.page.locator(SELECTORS.MEAL_DROPDOWN_CARET).first();
     await caret.waitFor({ state: 'visible', timeout: 10000 });
     await caret.click();
-    const option = this.page.locator(SELECTORS.MEAL_DROPDOWN_OPTION_4).first();
+
+    const option = this.page.locator(SELECTORS.MEAL_DROPDOWN_OPTION_TEXT, {
+      hasText: mealName,
+    }).first();
     await option.waitFor({ state: 'visible', timeout: 10000 });
     await option.click();
   }

@@ -155,6 +155,12 @@ When("I click to edit extras at index {int}", async function (index) {
   await cartPage.clickEditExtrasButton(index);
 });
 
+When("I click to edit the meal extras section", async function () {
+  logger.info("Clicking to edit the meal extras section");
+  const cartPage = getPageObject(this.page, CartPage);
+  await cartPage.clickEditMealExtrasButton();
+});
+
 When("I wait for the save button", async function () {
   logger.info("Waiting for save button to be visible");
   const cartPage = getPageObject(this.page, CartPage);
@@ -949,14 +955,19 @@ When("I close branded fares drawer in cart", async function () {
   await Cart.closeBrandedFaresDrawerInCart(this.page);
 });
 
-When("I add a meal to the flight", async function () {
-  logger.info("Selecting meal and saving");
-  await Cart.addMealToFlight(this.page);
+When("I add meal {string} to the flight", async function (mealName) {
+  logger.info("Selecting meal and saving", { mealName });
+  this.selectedMealName = mealName;
+  await Cart.addMealToFlight(this.page, mealName);
 });
 
-Then("the selected meal should be {string} with status {string}", async function (expectedMeal, expectedStatus) {
-  logger.info("Verifying meal selection and status", { expectedMeal, expectedStatus });
-  const result = await Cart.verifyMealSelectionAndStatus(this.page, expectedMeal, expectedStatus);
+Then("the selected meal should have status {string}", async function (expectedStatus) {
+  if (typeof this.selectedMealName !== 'string' || !this.selectedMealName.trim()) {
+    throw new Error('selectedMealName is not set. Add a meal before verifying its status.');
+  }
+
+  logger.info("Verifying selected meal status", { selectedMealName: this.selectedMealName, expectedStatus });
+  const result = await Cart.verifyMealSelectionAndStatus(this.page, this.selectedMealName, expectedStatus);
   logger.info("Meal verification result", result);
 });
 
@@ -964,9 +975,13 @@ Then("the car loyalty should not be prepopulated", async function () {
   throw new Error("TODO: Implement verification that car loyalty section is empty/not prepopulated in cart.");
 });
 
-Then("the selected meal should be {string} with status matching {string}", async function (expectedMeal, statusPattern) {
-  logger.info("Verifying meal selection and status (regex)", { expectedMeal, statusPattern });
-  const result = await Cart.verifyMealSelectionAndStatus(this.page, expectedMeal, new RegExp(statusPattern));
+Then("the selected meal should have status matching {string}", async function (statusPattern) {
+  if (typeof this.selectedMealName !== 'string' || !this.selectedMealName.trim()) {
+    throw new Error('selectedMealName is not set. Add a meal before verifying its status.');
+  }
+
+  logger.info("Verifying selected meal status (regex)", { selectedMealName: this.selectedMealName, statusPattern });
+  const result = await Cart.verifyMealSelectionAndStatus(this.page, this.selectedMealName, new RegExp(statusPattern));
   logger.info("Meal verification result", result);
 });
 

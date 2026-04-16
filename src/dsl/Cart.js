@@ -2252,14 +2252,17 @@ const Cart = {
    * Opens the meal panel, selects a meal from the dropdown, and saves.
    *
    * @param {import('playwright').Page} page
+   * @param {string} mealName
    */
-  async addMealToFlight(page) {
+  async addMealToFlight(page, mealName) {
     if (!page) throw new Error('page is required');
+    if (typeof mealName !== 'string' || !mealName.trim()) {
+      throw new Error('mealName must be a non-empty string, got: ' + typeof mealName);
+    }
 
     const cartPage = getPageObject(page, CartPage);
 
-    // Select a meal (4th option in dropdown — typically Diabetic Meal DBML)
-    await cartPage.selectMealFromDropdown();
+    await cartPage.selectMealFromDropdown(mealName);
 
     // Save
     await cartPage.clickMealSaveButton();
