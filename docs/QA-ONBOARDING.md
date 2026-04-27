@@ -350,7 +350,7 @@ When I select "Non-stop" in the flight search stops dropdown
 ```gherkin
 Then flight results should be available
 When I add the first flight to cart
-When I click on "Pricing Options" for the first result
+When I click to open first pricing options
 When I add to trip from pricing options
 When I select the first option from pricing options
 When I close pricing options modal
@@ -411,7 +411,7 @@ When I search for a car at "New York"
 When I search for a car at "New York" with 1 months ahead
 When I search for a car at "New York" with rental agency "Hertz"
 When I search for a car from "New York" to "Boston"
-When I add a car from airport results to cart
+When I add the first car to cart
 When I add a car from city center results to cart
 When I select rental agency "Sixt"
 ```

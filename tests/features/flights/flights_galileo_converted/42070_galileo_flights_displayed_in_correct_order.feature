@@ -16,7 +16,7 @@ Feature: 42070 Galileo - Flights are displayed in correct order
     Given I am logged in as "bsgalileoflight" booking a new trip
     And I have added a random guest traveler
     When I search for a random round trip flight
-    And I wait for flight results to be available
+    And flight results should be available
     # TODO: Extracting_values — extract flight details (carrier, times, etc.) from results page for later comparison
     And I add the first flight to cart
     # TODO: Validating_values_before_booking — verify extracted values match cart values before booking

@@ -21,7 +21,7 @@ Feature: Smoke Tests
     Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "cdgToLhr"
-    Then flight results should be displayed
+    Then flight results should be available
 
   @priority:high @loginOnly
   Scenario: User can logout successfully

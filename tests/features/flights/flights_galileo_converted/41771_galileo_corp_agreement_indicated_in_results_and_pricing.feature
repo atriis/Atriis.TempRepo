@@ -16,9 +16,9 @@ Feature: 41771 Galileo - Corp agreement indicated in results and pricing options
     Given I am logged in as "victorvinicius" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LAX" to "BOS"
-    And I wait for flight results to be available
+    And flight results should be available
     And I filter results by carrier "DL"
     # TODO: Verify agreement indicator is visible in results (Testim: isVisible(page, ".flight-list > :nth-child(1) [draggable='true']"))
-    And I click on "Pricing Options" for the first result
+    And I click to open first pricing options
     # TODO: Verify agreement indicator is visible in pricing options (Testim: isVisible(page, ".flicking-camera > :nth-child(1) [draggable='true']"))
     Then the agreement indicator should be visible in the pricing page

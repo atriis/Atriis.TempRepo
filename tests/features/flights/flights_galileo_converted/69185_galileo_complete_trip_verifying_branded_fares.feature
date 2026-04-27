@@ -16,7 +16,7 @@ Feature: 69185 Galileo - Complete trip booking verifying branded fares
     Given I am logged in as "bsgalileoflight" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "AMS" to "DOH"
-    And I wait for flight results to be available
+    And flight results should be available
     # Branded fares in flight details (results)
     And I click to open flight details
     And I open branded fares from flight details

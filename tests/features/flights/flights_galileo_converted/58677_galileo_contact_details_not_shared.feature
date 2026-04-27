@@ -16,7 +16,7 @@ Feature: 58677 Galileo - Contact details not shared when checkbox checked
     Given I am logged in as "beatrizpamplonacorp" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "BSL" to "AMS"
-    And I wait for flight results to be available
+    And flight results should be available
     And I filter results by carrier "KLM"
     And I add the first flight to cart
     And I proceed to checkout

@@ -18,10 +18,10 @@ Feature: 66081 Galileo - Correct pricing for Ryanair with multiple passengers
     And I have added a random guest traveler
     And I have added a random guest traveler
     When I search for a one way flight from "AGP" to "BOH"
-    And I wait for flight results to be available
+    And flight results should be available
     And I filter airline results by "Ryanair" checkbox
     # TODO: Check_that_the_amounts_are_displayed_correctly__taking_currency_conversion_into_account
     # Testim: getText on price elements and verify conversion is correct
-    And I click on "Pricing Options" for the first result
+    And I click to open first pricing options
     # TODO: Results___Check_that_the_amounts_are_displayed_correctly__taking_currency_conversion_into_account
     # Testim: getText on pricing options price elements and verify conversion

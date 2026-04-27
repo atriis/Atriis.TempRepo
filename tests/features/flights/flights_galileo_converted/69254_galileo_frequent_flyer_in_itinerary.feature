@@ -16,7 +16,7 @@ Feature: 69254 Galileo - Frequent flyer number displayed in itinerary
     Given I am logged in as "bsgalileoflight" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "LIS" to "ATH"
-    And I wait for flight results to be available
+    And flight results should be available
     And I filter airline results by "Aegean Airlines" checkbox
     And I add the first flight to cart
     # TODO: Adding_Frequent_Flyer — expand FF section, add/verify FF number

@@ -16,7 +16,7 @@ Feature: 69252 Galileo - Fare rules displayed in multi-city search
     Given I am logged in as "bsgalileoflight" booking a new trip
     And I have added myself as the traveler
     When I search for a multi-city flight with legs "IAH-DFW" and "MIA-IAH" and "ORD-IAH"
-    And I wait for flight results to be available
+    And flight results should be available
     # Fare rules in results — with tabs for each leg
     And I click to open fare rules
     Then I should see the fare rules note about strictest terms

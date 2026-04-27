@@ -20,9 +20,9 @@ Feature: 66131 Galileo - Original currency per passenger with LCC complete trip
     And I have added a random guest traveler
     When I search for a one way flight from "BCN" to "LGW"
     And I filter airline results by "EasyJet" checkbox
-    And I wait for flight results to be available
+    And flight results should be available
     # TODO: Results___Check_that_the_amounts_are_displayed_correctly — verify original currency per pax in results
-    And I click on "Pricing Options" for the first result
+    And I click to open first pricing options
     # TODO: Pricing_Options___Check_that_the_amounts_are_displayed_correctly — verify per pax in pricing options
     And I close pricing options modal
     And I add the first flight to cart

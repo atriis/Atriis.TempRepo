@@ -16,5 +16,5 @@ Feature: 41059 Flights - Amadeus AFKL pricing options displayed according to low
     And I have added myself as the traveler
     When I search for a round trip flight from "AMS" to "BHX"
     And I filter results by carrier "KLM"
-    And I click on "Pricing Options" for the first result
+    And I click to open first pricing options
     Then pricing options should be displayed in increasing price order

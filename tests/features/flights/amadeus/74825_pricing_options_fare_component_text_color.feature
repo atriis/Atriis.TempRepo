@@ -12,6 +12,6 @@ Feature: Flight pricing options fare component visual validation
     And I have added myself as the traveler
     When I search for a one way flight from "lhrToMad"
     Then flight results should be available
-    When I click on "Pricing Options" for the first result
+    When I click to open first pricing options
     Then I should see the heading "Pricing Options"
     Then the fare component text color should be "rgb(30, 30, 30)" in pricing options

@@ -15,5 +15,5 @@ Feature: 33825 AFKL - Pricing Options economy pricing text is displayed
     Given I am logged in as "afkl" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "PAR" to "BKK"
-    And I click on "Pricing Options" for the first result
+    And I click to open first pricing options
     Then the "Economy pricing" text should be displayed in pricing options

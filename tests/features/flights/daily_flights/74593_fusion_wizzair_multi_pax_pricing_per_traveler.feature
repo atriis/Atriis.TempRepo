@@ -18,6 +18,6 @@ Feature: 74593 Fusion Wizz Air - Pricing options show per-traveler fare for mult
     When I search for a one way flight from "BCN" to "TIA"
     Then flight results should be available
     When I filter results by carrier "Wizz Air"
-    And I click on "Pricing Options" for the first result
+    And I click to open first pricing options
     And I extract the price from first pricing option
     Then the price in pricing options should be per traveler

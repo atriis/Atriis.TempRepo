@@ -9,7 +9,7 @@ Feature: 45023 Flight Duration - Flight Duration filter is displayed
     Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "MAD"
-    Then flight results should be displayed
+    Then flight results should be available
     When I scroll to the Flight Duration filter
     Then the Flight Duration filter should be visible
     When I scroll to the Flight Duration filter for "Depart from London"

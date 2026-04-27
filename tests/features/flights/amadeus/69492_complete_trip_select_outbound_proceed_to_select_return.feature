@@ -9,7 +9,7 @@ Feature: 69492 Complete Trip – Select Outbound, Proceed to Select Return
     Given I am logged in as "robsoncruz" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "MAD" to "FRA"
-    And I click on "Pricing Options" for the first result
+    And I click to open first pricing options
     Then I should see the heading "Flight To Frankfurt"
     And I select the first option from pricing options
     Then the green circle icon at index 0 "first flight" should be displayed in pricing options

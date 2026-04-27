@@ -17,7 +17,7 @@ Feature: 59769 Flights - Multi City Frosch TMC original currency displayed
     When I search for a multi-city flight with legs "MIA-BOS" and "DFW-MIA"
     And flight results should be available
     Then the original currency symbol "$" should be visible in flight results
-    When I click on "Pricing Options" for the first result
+    When I click to open first pricing options
     Then the original currency symbol "$" should be visible in pricing options
     When I close pricing options modal
     And I add the first flight to cart

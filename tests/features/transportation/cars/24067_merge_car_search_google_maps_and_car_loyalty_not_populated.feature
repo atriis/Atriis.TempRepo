@@ -15,7 +15,7 @@ Feature: 24067 Amadeus - Car search Google Maps and loyalty not populated
   Scenario: Search car, validate Google Maps link, and verify loyalty is not prepopulated
     Given I am logged in as "ampmaccars" booking a new trip
     And I have added a random guest traveler
-    When I search for a car in "London, UK"
+    When I search for a car at "London, UK"
     And I select the first city center pickup location
     And I wait for add to trip text to be visible
     And I open the first car location link in results

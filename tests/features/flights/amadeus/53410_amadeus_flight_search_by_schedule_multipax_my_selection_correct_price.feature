@@ -11,13 +11,13 @@ Feature: 53410 Amadeus - Flight - Search by schedule - Multipax - "My Selection"
     And I have added traveler by name "Rui Marista"
     When I search for a flight by schedule from "LIS" to "MAD"
     And I filter results by carrier "TAP"
-    And I click on "Pricing Options" for the first result
+    And I click to open first pricing options
     And I extract the price from first pricing option
     And I select the first option from pricing options
     And I add to trip from pricing options
     And I wait for the change flight button to be visible
     And I filter results by carrier "Iberia"
-    And I click on "Pricing Options" for the first result
+    And I click to open first pricing options
     And I extract the price from first pricing option
     And I select the first option from pricing options
     And I add to trip from pricing options

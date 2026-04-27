@@ -16,7 +16,7 @@ Feature: 59831 Galileo - Free seats do not send paid seat request
     Given I am logged in as "bsgalileoflight" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip "Business" class flight from "LON" to "LAX"
-    And I wait for flight results to be available
+    And flight results should be available
     And I filter results by carrier "DL"
     And I add the first flight to cart
     # TODO: Adding_free_seat — expand seats section, select free seat, save

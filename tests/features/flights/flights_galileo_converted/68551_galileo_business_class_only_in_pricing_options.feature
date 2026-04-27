@@ -16,8 +16,8 @@ Feature: 68551 Galileo - Only Business class in pricing options when selected
     Given I am logged in as "bsgalileoflight" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip "Business" class flight from "AMS" to "LCY"
-    And I wait for flight results to be available
-    And I click on "Pricing Options" for the first result
+    And flight results should be available
+    And I click to open first pricing options
     Then the "Business" text should be displayed in pricing options
     # TODO: Verify only 1 pricing option with class "Business" is displayed
     # Testim: List_length__with_css_locator_as_parameter_('1', '.text-center-top...')

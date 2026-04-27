@@ -19,7 +19,7 @@ Feature: 59255 Galileo - Baggage not displayed for other traveler after saving f
     # TODO: Inline actions to open advanced search, select nonstop, add preferred carrier "tarom"
     # Testim: click tab-flight, click nonstop, search preferred carrier "tarom"
     When I search for a one way flight from "BRU" to "OTP"
-    And I wait for flight results to be available
+    And flight results should be available
     And I filter results by carrier "RO"
     And I add the first flight to cart
     # TODO: Expand baggage section, select baggage for first traveler, save, verify success

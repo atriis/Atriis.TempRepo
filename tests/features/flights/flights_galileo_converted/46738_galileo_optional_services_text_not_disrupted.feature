@@ -16,7 +16,7 @@ Feature: 46738 Galileo - Optional services text is not disrupted
     Given I am logged in as "beatrizpamplonacorp" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "DUB"
-    And I wait for flight results to be available
+    And flight results should be available
     And I filter results by carrier "Ryanair"
     And I add the first flight to cart
     # TODO: Expand optional services section in cart and verify text is not disrupted

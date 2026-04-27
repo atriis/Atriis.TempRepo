@@ -17,5 +17,5 @@ Feature: 35108 Flights - Business class pricing options display Business brands
     When I search for a round trip "Business" class flight from "LHR" to "KUL"
     And flight results should be available
     And I filter results by carrier "EK"
-    And I click on "Pricing Options" for the first result
+    And I click to open first pricing options
     Then the "Business Flexplus" brand should be displayed in pricing options

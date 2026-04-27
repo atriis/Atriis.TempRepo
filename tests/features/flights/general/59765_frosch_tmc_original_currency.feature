@@ -18,7 +18,7 @@ Feature: 59765 Flights - Frosch TMC original currency displayed across the syste
     And flight results should be available
     Then the original currency symbol "$" should be visible in flight results
     Then the original currency symbol "$" should be visible in the share quote from results
-    When I click on "Pricing Options" for the first result
+    When I click to open first pricing options
     Then the original currency symbol "$" should be visible in pricing options
     When I close pricing options modal
     When I click edit search and wait for the "Complete trip" search mode option

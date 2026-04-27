@@ -17,8 +17,8 @@ Feature: 66548 Multi Pax - Correct price in pricing options and flight details
     And I have added a random guest traveler
     And I have added a random guest traveler
     When I search for a round trip flight from "LON" to "MAD"
-    Then flight results should be displayed
-    And I click on "Pricing Options" for the first result
+    Then flight results should be available
+    And I click to open first pricing options
     And I extract the price from first pricing option
     Then the price in pricing options should be per traveler
     Then I close pricing options modal

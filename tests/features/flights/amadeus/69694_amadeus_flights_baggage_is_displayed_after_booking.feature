@@ -10,7 +10,7 @@ Feature: 69694 Amadeus - Verify baggage is displayed after booking
     And I have added a random guest traveler
     When I search for a one way flight from "LIS" to "TLV"
     And I filter results by carrier "TAP"
-    And I click on "Pricing Options" for the first result
+    And I click to open first pricing options
     When I select the fare with baggage "1 PC"
     And I add to trip from pricing options
     Then the booking status should be "Pending booking"

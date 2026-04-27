@@ -17,7 +17,7 @@ Feature: 60578 Galileo - PNR remark sent per ticket NDC with passive segment
     And I have added a random guest traveler
     And I have added a random guest traveler
     When I search for a round trip flight from "FRA" to "WAW"
-    And I wait for flight results to be available
+    And flight results should be available
     # TODO: Search_flights_and_add_to_trip — selects 2nd result (not first), waits for "To pay"
     And I add the first flight to cart
     And I proceed to checkout

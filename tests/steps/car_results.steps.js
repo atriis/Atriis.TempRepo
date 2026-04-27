@@ -9,11 +9,6 @@ setDefaultTimeout(120000);
 // WHEN STEPS - CAR SELECTION & CART
 // ========================================
 
-When("I add a car from airport results to cart", async function () {
-  logger.info("Adding car from airport results to cart");
-  await CarResults.addCarAirportFromResultsPageToCart(this.page);
-});
-
 When("I add a car from city center results to cart", async function () {
   logger.info("Adding car from city center results to cart");
   await CarResults.addCarCityCenterFromResultsPageToCart(this.page);

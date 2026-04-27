@@ -51,13 +51,6 @@ When("I select flight segments by schedule", async function () {
   await FlightResults.selectSegmentsBySchedule(this.page);
 });
 
-When('I wait for flight results to be available', async function () {
-  logger.info('Waiting for flight results to be available');
-  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
-
-  await flightResultsPage.waitForFlightResults();
-});
-
 When("I add the first flight to cart", async function () {
   logger.info("Adding first flight to cart");
   await FlightResults.addFirstFlightToCart(this.page);
@@ -152,17 +145,6 @@ Then('the CO2 Squake tooltip should be visible in flight results', async functio
 // ========================================
 // WHEN STEPS - PRICING OPTIONS
 // ========================================
-
-When("I click on \"Pricing Options\" for the first result", async function () {
-  logger.info("Clicking Pricing Options for first result");
-  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
-  
-  // Wait for filter to apply and results to stabilize
-  await this.page.waitForTimeout(1500);
-  
-  await flightResultsPage.waitForPricingOptionsButton();
-  await flightResultsPage.clickPricingOptionsButton();
-});
 
 When("I extract the price from first pricing option", async function () {
   logger.info("Extracting price from first pricing option");

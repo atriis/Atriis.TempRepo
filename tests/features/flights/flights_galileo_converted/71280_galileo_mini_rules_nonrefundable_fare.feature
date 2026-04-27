@@ -16,7 +16,7 @@ Feature: 71280 Galileo - Mini rules correctly parse non-refundable fare rules
     Given I am logged in as "carcorp" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "YYZ" to "NYC"
-    And I wait for flight results to be available
+    And flight results should be available
     And I filter results by carrier "AC"
     And I add the first flight to cart
     And I handle conflicting quotes if visible

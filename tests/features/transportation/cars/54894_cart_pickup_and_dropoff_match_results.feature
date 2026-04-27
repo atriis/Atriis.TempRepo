@@ -20,6 +20,6 @@ Feature: 54894 Cart pickup and drop-off locations match the results page
     When I select the first city center pickup location
     # TODO: Map the pickup location assertion from the selected result.
     # TODO: Map the drop-off location assertion from the selected result.
-    When I add the first city center car to cart
+    When I add a car from city center results to cart
     Then the booking status should be "Pending booking"
     # TODO: Map cart assertions that pickup and drop-off locations match the captured result values.

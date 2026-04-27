@@ -17,7 +17,7 @@ Feature: 54519 Galileo - FF number correctly utilized for multiple pax
     And I have added myself as the traveler
     And I have added traveler by name "Shawn Craig"
     When I search for a one way flight from "ORD" to "LAS"
-    And I wait for flight results to be available
+    And flight results should be available
     And I filter results by carrier "UA"
     And I add the first flight to cart
     # TODO: Expand frequent flyer section in cart and verify:

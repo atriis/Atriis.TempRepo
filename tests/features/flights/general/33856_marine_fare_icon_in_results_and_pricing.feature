@@ -18,5 +18,5 @@ Feature: 33856 Flights - Marine Fare icon is displayed in results and pricing op
     And flight results should be available
     And I filter results by "Marine fare" checkbox
     Then the "Marine Fare" indicator should be visible in results
-    When I click on "Pricing Options" for the first result
+    When I click to open first pricing options
     Then the "Marine Fare" indicator should be visible in pricing options

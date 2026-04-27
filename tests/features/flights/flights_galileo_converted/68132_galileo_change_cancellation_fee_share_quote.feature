@@ -16,7 +16,7 @@ Feature: 68132 Galileo - Change fee and cancellation fee correct in shared quote
     Given I am logged in as "bsgalileoflight" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "MME" to "AMS"
-    And I wait for flight results to be available
+    And flight results should be available
     # TODO: Click_to_share_two_quotes_from_results_page — complex shared step:
     # 1. Click share quote button in results page
     # 2. Select first and second flights for sharing

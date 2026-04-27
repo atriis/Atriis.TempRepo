@@ -11,12 +11,12 @@ Feature: Share flight from pricing options
     When I search for a one way flight from "MAD" to "LIS"
     When I click on the "Share" button
     And I filter results by carrier "TAP"
-    And I click on "Pricing Options" for the first result
+    And I click to open first pricing options
     And I extract the price from first pricing option
     And I "Select to share" first option from pricing options
     And I click share from pricing options
     And I filter results by carrier "Iberia"
-    And I click on "Pricing Options" for the first result
+    And I click to open first pricing options
     And I extract the price from first pricing option
     And I "Select to share" first option from pricing options
     And I click share from pricing options
