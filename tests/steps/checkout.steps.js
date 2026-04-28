@@ -18,6 +18,11 @@ When("I complete the Fusion credit card verification booking", async function ()
   await Checkout.bookAndFinalizeWithFusionCardVerification(this.page);
 });
 
+When('I click "Don\'t share the contact details with airlines" checkbox in checkout', async function () {
+  logger.info('Clicking contact details sharing checkbox in checkout');
+  await Checkout.clickContactDetailsCheckbox(this.page);
+});
+
 When("I complete the booking without navigating to trip overview", async function () {
   logger.info("Completing booking without navigating to trip overview");
   await Checkout.bookTripWithoutNavigatingToTripOverview(this.page);
@@ -70,9 +75,9 @@ Then("the contact telephone on checkout should contain numbers", async function 
   await Checkout.verifyContactPhoneContainsNumbers(this.page);
 });
 
-Then("the contact details checkbox should be unchecked by default", async function () {
-  logger.info("Verifying contact details checkbox is unchecked by default");
-  await Checkout.verifyContactDetailsCheckboxUncheckedByDefault(this.page);
+Then("the contact details checkbox should be unchecked", async function () {
+  logger.info("Verifying contact details checkbox is unchecked");
+  await Checkout.verifyContactDetailsCheckboxUnchecked(this.page);
 });
 
 Then("the booker notification phone on checkout should contain numbers", async function () {

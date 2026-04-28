@@ -8,6 +8,7 @@ const FlightResultsPage = require("@pages/FlightResultsPage");
 const FlightResults = require("./FlightResults");
 const tripStatus = require("@data/tripStatus.json");
 const config = require("@config/config");
+const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const logger = require("@utils/logger").child("Cart-DSL");
 
 /**
@@ -352,6 +353,23 @@ const Cart = {
     expect(actualStatus.toLowerCase()).toContain(expectedText.toLowerCase());
   },
 
+  async verifyFlightSegmentDetails(page, expectedSegments) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!Array.isArray(expectedSegments) || expectedSegments.length === 0) {
+      throw new Error('expectedSegments must be a non-empty array');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    const actualSegments = await cartPage.getVisibleFlightQuoteSegmentSummaries();
+    expect(actualSegments, 'Expected displayed flight segment details to match the stored result details').toEqual(expectedSegments);
+
+    return { actualSegments };
+  },
+
   /**
    * Verifies the original-currency text shown for the flight in cart contains the expected symbol.
    *
@@ -378,6 +396,60 @@ const Cart = {
       .toContain(currencySymbol);
 
     return { currencySymbol, originalPriceText };
+  },
+
+  async verifyCartFlightPricesMatchStoredPerTravelerPrices(page, expectedPrices, travelerCount) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedPrices || typeof expectedPrices !== 'object') {
+      throw new Error('expectedPrices must be an object');
+    }
+
+    const { displayPrice, originalPrice } = expectedPrices;
+
+    if (typeof displayPrice !== 'number' || Number.isNaN(displayPrice)) {
+      throw new Error(`expectedPrices.displayPrice must be a valid number, got: ${displayPrice}`);
+    }
+
+    if (typeof originalPrice !== 'number' || Number.isNaN(originalPrice)) {
+      throw new Error(`expectedPrices.originalPrice must be a valid number, got: ${originalPrice}`);
+    }
+
+    if (!Number.isInteger(travelerCount) || travelerCount < 1) {
+      throw new Error(`travelerCount must be a positive integer, got: ${travelerCount}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForTripOverviewTitle();
+
+    const actualDisplayPrice = await cartPage.getFirstFlightDisplayPriceValue();
+    const actualOriginalPrice = await cartPage.getFirstFlightOriginalPriceValue();
+    const expectedDisplayTotal = displayPrice * travelerCount;
+    const expectedOriginalTotal = originalPrice * travelerCount;
+
+    expectNumbersToBeEqualWithTolerance(
+      actualDisplayPrice,
+      expectedDisplayTotal,
+      1,
+      `Cart display price vs stored flight result display price x ${travelerCount}`,
+    );
+
+    expectNumbersToBeEqualWithTolerance(
+      actualOriginalPrice,
+      expectedOriginalTotal,
+      1,
+      `Cart original price vs stored flight result original price x ${travelerCount}`,
+    );
+
+    return {
+      actualDisplayPrice,
+      actualOriginalPrice,
+      expectedDisplayTotal,
+      expectedOriginalTotal,
+      travelerCount,
+    };
   },
 
   /**
@@ -822,6 +894,31 @@ const Cart = {
     expect(normalizeText(actualText)).toContain(normalizeText(expectedText));
 
     return { expectedText, actualText };
+  },
+
+  async verifyNonRefundableMiniRulesInPriceBreakdown(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const normalizeText = (text) => text.replace(/[’]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
+
+    const cartPage = getPageObject(page, CartPage);
+    const subtotalLabel = await cartPage.getFlightPriceBreakdownSubtotalLabel();
+    const beforeDepartureText = await cartPage.getFlightPriceBreakdownBeforeDepartureCancellationPolicyText();
+    const afterDepartureText = await cartPage.getFlightPriceBreakdownAfterDepartureCancellationPolicyText();
+
+    expect(normalizeText(subtotalLabel)).toBe('subtotal');
+    expect(normalizeText(beforeDepartureText)).toContain('before departure');
+    expect(normalizeText(beforeDepartureText)).toContain('non-refundable');
+    expect(normalizeText(afterDepartureText)).toContain('after departure');
+    expect(normalizeText(afterDepartureText)).toContain('non-refundable');
+
+    return {
+      subtotalLabel,
+      beforeDepartureText,
+      afterDepartureText,
+    };
   },
 
   /**
@@ -1949,6 +2046,19 @@ const Cart = {
     await cartPage.clickLoyaltySaveButton();
     await cartPage.waitForLoyaltySuccessIcon();
     return chainText;
+  },
+
+  /**
+   * Opens the flight frequent flyer extras section in the cart.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async openFrequentFlyerExtras(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickFqtvClickable();
+    await cartPage.waitForFqtvContent();
   },
 
   /**

@@ -20,7 +20,7 @@ Feature: 55673 Flights - Mask travelers FF for user without privilege
     And I filter airline results by "AA" checkbox
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    When I click to edit extras at index 1
+    When I click frequent flyer in extras
     Then the FQTV should show "AA-******299" for "Annie Massk"
     Then the FQTV should show "AA - 123456" for "Rebecca Cantsee"
     When I add loyalty number "123450555" using the first available airline for traveler tab 2

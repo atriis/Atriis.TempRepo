@@ -56,6 +56,12 @@ When("I add the first flight to cart", async function () {
   await FlightResults.addFirstFlightToCart(this.page);
 });
 
+When("I store the first flight result details for later comparison", async function () {
+  logger.info("Storing the first flight result details for later comparison");
+  this.storedFlightSegmentDetails = await FlightResults.extractFirstFlightResultSegmentDetails(this.page);
+  logger.info("Stored first flight result details", { segments: this.storedFlightSegmentDetails });
+});
+
 When('I hide the comparison table in flight results', async function () {
   logger.info('Hiding comparison table in flight results');
   await FlightResults.hideComparisonTable(this.page);
@@ -286,10 +292,22 @@ When('I hover over time limit icon and verify booking restricted message', async
   logger.info('Booking restricted message found', { message: this.bookingRestrictedMessage });
 });
 
+When('I hover over the add to trip button in flight results', async function () {
+  logger.info('Hovering over the add to trip button in flight results');
+  this.bookingRestrictedMessage = await FlightResults.hoverAddToTripButtonAndGetTooltipText(this.page);
+  logger.info('Add to trip tooltip opened in flight results', { message: this.bookingRestrictedMessage });
+});
+
 Then('I verify message contains {string}', async function (expectedText) {
   logger.info('Verifying booking restricted message contains expected text', { expectedText });
   const actualText = await FlightResults.verifyBookingRestrictedMessageContains(this.page, expectedText);
   logger.info('Booking restricted message validated', { actualText });
+});
+
+Then('the add to trip tooltip should contain {string}', async function (expectedText) {
+  logger.info('Verifying add to trip tooltip contains expected text', { expectedText });
+  const actualText = await FlightResults.verifyAddToTripTooltipContains(this.page, expectedText);
+  logger.info('Add to trip tooltip validated', { actualText });
 });
 
 When("I scroll into offers and get prices", async function () {
@@ -629,6 +647,24 @@ Then('the original currency symbol {string} should be visible in flight results'
 Then('the original currency symbol {string} should be visible in pricing options', async function (currencySymbol) {
   logger.info('Verifying original currency symbol is visible in pricing options', { currencySymbol });
   await FlightResults.verifyOriginalCurrencySymbolVisibleInPricingOptions(this.page, currencySymbol);
+});
+
+When('I store the first flight result display and original prices', async function () {
+  logger.info('Storing the first flight result display and original prices');
+  this.firstFlightResultPrices = await FlightResults.extractFirstFlightResultDisplayAndOriginalPrices(this.page);
+  logger.info('Stored the first flight result display and original prices', this.firstFlightResultPrices);
+});
+
+Then('the first pricing option display and original prices should match the stored flight result prices', async function () {
+  if (!this.firstFlightResultPrices) {
+    throw new Error('No stored flight result prices found. Run the flight result price storage step before this assertion.');
+  }
+
+  logger.info(
+    'Verifying first pricing option display and original prices against stored flight result prices',
+    this.firstFlightResultPrices,
+  );
+  await FlightResults.verifyFirstPricingOptionMatchesStoredFlightResultPrices(this.page, this.firstFlightResultPrices);
 });
 
 Then('pricing options should be displayed in increasing price order', async function () {

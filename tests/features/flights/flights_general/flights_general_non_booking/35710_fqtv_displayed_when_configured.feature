@@ -18,5 +18,5 @@ Feature: 35710 Flights - Existing FQTV is displayed when configured
     And I filter results by carrier "LH"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    When I click to edit extras at index 1
+    When I click frequent flyer in extras
     Then the FQTV should show "LH - 12321"

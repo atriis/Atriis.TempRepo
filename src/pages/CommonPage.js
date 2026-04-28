@@ -309,7 +309,13 @@ class CommonPage {
    * Waits until the "Subject" label is visible.
    */
   async waitForSubjectLabelSharePopUp() {
-    await this.waitForFieldLabelSharePopUp("Subject");
+    const subjectLabel = this.page.getByText("Subject", { exact: true });
+    const sendButton = this.page.getByRole('button', { name: 'Send' });
+
+    await Promise.any([
+      subjectLabel.waitFor({ state: 'visible', timeout: 60000 }),
+      sendButton.waitFor({ state: 'visible', timeout: 60000 }),
+    ]);
   }
 
   /**

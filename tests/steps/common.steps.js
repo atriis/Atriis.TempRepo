@@ -204,6 +204,27 @@ Then('I should see the heading {string}', async function (text) {
   await expect(commonPage.getHeadingByText(text)).toBeVisible({ timeout: 30000 });
 });
 
+Then('there should be {int} elements matching css locator {string}', async function (expectedCount, cssSelector) {
+  logger.info('Validating list length by css locator', { expectedCount, cssSelector });
+
+  if (!this.page) {
+    throw new Error('page is required');
+  }
+
+  if (!Number.isInteger(expectedCount) || expectedCount < 0) {
+    throw new Error(`expectedCount must be an integer >= 0, got: ${expectedCount}`);
+  }
+
+  if (!cssSelector || typeof cssSelector !== 'string') {
+    throw new Error('cssSelector must be a non-empty string');
+  }
+
+  await expect.poll(
+    async () => await this.page.locator(cssSelector).count(),
+    { timeout: 30000 },
+  ).toBe(expectedCount);
+});
+
 // ===== WHEN STEPS - PRICE EXTRACTION =====
 
 When("I extract the price at index {int} from {string}", async function (index, location) {

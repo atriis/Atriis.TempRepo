@@ -18,14 +18,13 @@ Feature: 46303 Galileo - Can reserve paid seat before booking
     And I have added a random guest traveler
     When I search for a round trip flight from "LHR" to "ATH" with preferred carrier "A3"
     And I add the first flight to cart
-    # Add paid seats
+    Then the booking status should be "Pending booking"
     And I click add seats in extras
     And I wait for the seat map to load
     And I select the first available flight seat
     And I click next flight button
     And I select the first available flight seat
     And I save and close seat map drawer
-    # Checkout
-    And I proceed to checkout
-    And I complete the booking
+    When I accept Terms & Conditions
+    And I hold the trip
     Then I successfully cancel the trip

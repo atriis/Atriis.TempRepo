@@ -20,7 +20,7 @@ Feature: 42332 Flights - Adding FF is successfully saved in the UI
     And I filter results by carrier "KL"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    When I click to edit extras at index 0
+    When I click frequent flyer in extras
     And I add loyalty number "BB10101010" using the first available airline
     Then I should see a success notification
     And the frequent flyer should have a green success icon

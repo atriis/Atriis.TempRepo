@@ -19,5 +19,4 @@ Feature: 68551 Galileo - Only Business class in pricing options when selected
     And flight results should be available
     And I click to open first pricing options
     Then the "Business" text should be displayed in pricing options
-    # TODO: Verify only 1 pricing option with class "Business" is displayed
-    # Testim: List_length__with_css_locator_as_parameter_('1', '.text-center-top...')
+    And there should be 1 elements matching css locator ".cabin-class-tabs .el-tabs__item"

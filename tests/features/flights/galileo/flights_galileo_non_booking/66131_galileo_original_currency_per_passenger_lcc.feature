@@ -21,9 +21,13 @@ Feature: 66131 Galileo - Original currency per passenger with LCC complete trip
     When I search for a one way flight from "BCN" to "LGW"
     And I filter airline results by "EasyJet" checkbox
     And flight results should be available
-    # TODO: Results___Check_that_the_amounts_are_displayed_correctly — verify original currency per pax in results
-    And I click to open first pricing options
-    # TODO: Pricing_Options___Check_that_the_amounts_are_displayed_correctly — verify per pax in pricing options
+    Then the original currency symbol "€" should be visible in flight results
+    When I store the first flight result display and original prices
+    When I click to open first pricing options
+    Then the original currency symbol "€" should be visible in pricing options
+    And the first pricing option display and original prices should match the stored flight result prices
     And I close pricing options modal
     And I add the first flight to cart
-    # TODO: Pricing_Options___Verify_original_currency_is_displayed_per_traveler — verify in cart
+    Then the booking status should be "Pending booking"
+    Then the original currency symbol "€" should be visible in cart
+    And the cart display and original prices should match the stored flight result prices for all travelers

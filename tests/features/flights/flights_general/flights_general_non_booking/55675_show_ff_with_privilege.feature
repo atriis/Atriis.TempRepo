@@ -19,6 +19,6 @@ Feature: 55675 Flights - Show travelers FF for user with privilege
     And I filter airline results by "AA" checkbox
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    When I click to edit extras at index 1
+    When I click frequent flyer in extras
     Then the FQTV should show "AA - DCA45299" for "Annie Massk"
     Then the FQTV should show "AA - LPL20677" for "Molly Massk"

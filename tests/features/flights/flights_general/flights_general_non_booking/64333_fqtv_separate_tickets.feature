@@ -23,12 +23,12 @@ Feature: 64333 Flights - Add FQTV to single quote with separate tickets
     And I wait for "Your Selection" text to be visible
     And I add "Your Selection" fare to trip
     Then the booking status should be "Pending booking"
-    And I click to edit extras at index 1
+    And I click frequent flyer in extras
     And I add the following FQTV entries:
       | carrier | number     |
       | Delta   | 1741551211 |
       | United  | N7J91W1    |
     Then the booking status should be "Pending booking"
-    And I click to edit extras at index 1
+    And I click frequent flyer in extras
     Then the FQTV should show "DL - 1741551211"
     And the FQTV should show "UA - N7J91W1"

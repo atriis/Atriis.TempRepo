@@ -12,7 +12,7 @@ Feature: 55725 Flights - Filter by airport should be per leg
   So that I can filter airports independently for each direction
 
   Scenario: Airport filters are displayed per leg for round trip
-    Given I am logged in as "bruna_galileo" booking a new trip
+    Given I am logged in as "bsgalileoflight" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "MIL" to "LON"
     Then the airport filter route label "Milan to London" should be visible

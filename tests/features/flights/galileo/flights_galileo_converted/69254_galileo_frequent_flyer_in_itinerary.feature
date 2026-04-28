@@ -19,7 +19,8 @@ Feature: 69254 Galileo - Frequent flyer number displayed in itinerary
     And flight results should be available
     And I filter airline results by "Aegean Airlines" checkbox
     And I add the first flight to cart
-    # TODO: Adding_Frequent_Flyer — expand FF section, add/verify FF number
-    # TODO: Click_on_share_itinerary_from_cart — click share itinerary button
+    When I click frequent flyer in extras
+    And I add loyalty number "BB10101010" using the first available airline
+    Then I should see a success notification
     And I click the share itinerary button
-    # TODO: Frequent_Flyer_is_displayed_in_Itinerary — verify FF number appears in share preview
+    Then "BB10101010" should be displayed in the share email preview

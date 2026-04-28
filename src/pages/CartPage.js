@@ -1,15 +1,5 @@
 const { waitForText } = require("@utils/wait");
-
-function parseAmountText(text, label) {
-  const normalized = (text ?? '').replace(/[^\d.,-]/g, '').replace(/,/g, '.');
-  const amount = Number.parseFloat(normalized);
-
-  if (Number.isNaN(amount)) {
-    throw new Error(`Could not parse ${label} from text: "${text}"`);
-  }
-
-  return amount;
-}
+const { parseAmountText } = require("@utils/dom");
 
 /**
  * Page Object for cart page.
@@ -40,6 +30,10 @@ const SELECTORS = {
   FLIGHT_PRICE_BREAKDOWN_DRAWER: '.flight-price-breakdown-drawer',
   FLIGHT_PRICE_BREAKDOWN_SEGMENT: '.price-breakdown-segment',
   FLIGHT_PRICE_BREAKDOWN_PASSENGER_NAME: '.passenger-name',
+  FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_LABEL: '.rate-information .amounts .subtotal > div > span:first-child',
+  FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE: '.change-cancel-fees .cancel-fee',
+  FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE_BEFORE_DEPARTURE: '.fee-section-wrapper > div:first-child',
+  FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE_AFTER_DEPARTURE: '.fee-section-wrapper > .after-departure',
   FLIGHT_PRICE_BREAKDOWN_RATE_ROW: '.rate-information .amounts > div',
   FLIGHT_PRICE_BREAKDOWN_ROW_AMOUNT: '.amount',
   FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_ROW: '.rate-information .amounts .subtotal',
@@ -50,6 +44,9 @@ const SELECTORS = {
   FLIGHT_CO2_TOOLTIP_DESCRIPTION: '.co2-emissions-tooltip .emission-description-bold',
   FLIGHT_QUOTE_CARD: '.flight-quote-card',
   FLIGHT_QUOTE_SEGMENT: '.flight-info.cart-format',
+  FLIGHT_SEGMENT_CARRIER_NAME: '.carrier-container .carrier-name',
+  FLIGHT_SEGMENT_FLIGHT_NUMBER_TEXT: '.carrier-container .carrier-name + p',
+  FLIGHT_SEGMENT_TIME: '.flight-time',
   FLIGHT_QUOTE_LOCATION_CODE: '.loc-code',
 
   // Trip cancellation selectors
@@ -144,6 +141,7 @@ const SELECTORS = {
   PROVIDER_LABEL: 'section.hotel-preview .provider-label',
   // Hotel quote price in cart (hotel-quote-card.vue → app-price → h4.amount)
   HOTEL_QUOTE_PRICE: '.quote-payment-card .price-wrapper .amount',
+  FLIGHT_QUOTE_DISPLAY_PRICE: '.flight-quote-summary .quote-price',
   FLIGHT_QUOTE_ORIGINAL_PRICE: '.flight-quote-summary .original-price',
   // Hotel rooms badge in cart trip summary (.dates-and-rooms from hotel-quote-summary.vue)
   ROOMS_BADGE: '.dates-and-rooms, .dates span',
@@ -918,6 +916,20 @@ class CartPage {
     return ((await originalPrice.textContent()) ?? '').replace(/\s+/g, ' ').trim();
   }
 
+  async getFirstFlightDisplayPriceValue() {
+    const displayPrice = this.page.locator(SELECTORS.FLIGHT_QUOTE_DISPLAY_PRICE).first();
+    await displayPrice.waitFor({ state: 'visible', timeout: 30000 });
+
+    return parseAmountText(await displayPrice.textContent(), 'flight quote display price');
+  }
+
+  async getFirstFlightOriginalPriceValue() {
+    const originalPrice = this.page.locator(SELECTORS.FLIGHT_QUOTE_ORIGINAL_PRICE).first();
+    await originalPrice.waitFor({ state: 'visible', timeout: 30000 });
+
+    return parseAmountText(await originalPrice.textContent(), 'flight quote original price');
+  }
+
   /**
    * Hovers over the Share button and waits for the visible share dropdown menu.
    */
@@ -1140,6 +1152,38 @@ class CartPage {
     const disclaimer = this.page.locator(SELECTORS.PRICE_BREAKDOWN_MINI_RULE_DISCLAIMER).first();
     await disclaimer.waitFor({ state: 'visible', timeout });
     return (await disclaimer.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  async getFlightPriceBreakdownSubtotalLabel({ timeout = 10000 } = {}) {
+    const label = this.page.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_LABEL).first();
+    await label.waitFor({ state: 'visible', timeout });
+    return (await label.textContent())?.replace(/\s+/g, ' ').trim() ?? '';
+  }
+
+  async getFlightPriceBreakdownCancellationPolicySectionText(sectionSelector, { timeout = 10000 } = {}) {
+    const section = this.page
+      .locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_SEGMENT)
+      .first()
+      .locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE)
+      .first()
+      .locator(sectionSelector)
+      .first();
+    await section.waitFor({ state: 'visible', timeout });
+    return (await section.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  async getFlightPriceBreakdownBeforeDepartureCancellationPolicyText({ timeout = 10000 } = {}) {
+    return this.getFlightPriceBreakdownCancellationPolicySectionText(
+      SELECTORS.FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE_BEFORE_DEPARTURE,
+      { timeout },
+    );
+  }
+
+  async getFlightPriceBreakdownAfterDepartureCancellationPolicyText({ timeout = 10000 } = {}) {
+    return this.getFlightPriceBreakdownCancellationPolicySectionText(
+      SELECTORS.FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE_AFTER_DEPARTURE,
+      { timeout },
+    );
   }
 
   /**
@@ -1842,6 +1886,48 @@ class CartPage {
     await segments.first().waitFor({ state: 'visible', timeout });
 
     return segments.count();
+  }
+
+  async getVisibleFlightQuoteSegmentSummaries({ timeout = 15000 } = {}) {
+    const quoteCard = this.page.locator(SELECTORS.FLIGHT_QUOTE_CARD).first();
+    await quoteCard.waitFor({ state: 'visible', timeout });
+
+    const segments = quoteCard.locator(SELECTORS.FLIGHT_QUOTE_SEGMENT);
+    await segments.first().waitFor({ state: 'visible', timeout });
+
+    const count = await segments.count();
+    const summaries = [];
+
+    for (let index = 0; index < count; index += 1) {
+      const segment = segments.nth(index);
+      const carrier = ((await segment.locator(SELECTORS.FLIGHT_SEGMENT_CARRIER_NAME).first().innerText()) ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const flightNumberText = ((await segment.locator(SELECTORS.FLIGHT_SEGMENT_FLIGHT_NUMBER_TEXT).first().innerText()) ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const flightNumberMatch = flightNumberText.match(/\b[A-Z0-9]{2,3}\d{1,4}\b/);
+      const times = segment.locator(SELECTORS.FLIGHT_SEGMENT_TIME);
+
+      await times.nth(1).waitFor({ state: 'visible', timeout });
+
+      if (!flightNumberMatch) {
+        throw new Error(`Could not extract a flight number from cart text: "${flightNumberText}"`);
+      }
+
+      summaries.push({
+        carrier,
+        flightNumber: flightNumberMatch[0],
+        departureTime: ((await times.nth(0).innerText()) ?? '').replace(/\s+/g, ' ').trim(),
+        arrivalTime: ((await times.nth(1).innerText()) ?? '').replace(/\s+/g, ' ').trim(),
+      });
+    }
+
+    if (!summaries.length) {
+      throw new Error('Could not extract any visible flight segment details from the quote card');
+    }
+
+    return summaries;
   }
 
   // ========================================
@@ -2770,6 +2856,25 @@ class CartPage {
     const clickable = this.page.locator(SELECTORS.FQTV_CLICKABLE).first();
     await clickable.waitFor({ state: 'visible', timeout });
     await clickable.click();
+  }
+
+  /**
+   * Waits for the frequent flyer extras content to be visible after opening it.
+   * Accepts either a saved FQTV value, traveler tabs, editable inputs, or a Save button.
+   * @param {number} [timeout=15000] - Timeout for waiting
+   * @returns {Promise<void>}
+   */
+  async waitForFqtvContent(timeout = 15000) {
+    try {
+      await Promise.any([
+        this.page.locator(SELECTORS.FQTV_SELECTED_TEXT_VISIBLE).first().waitFor({ state: 'visible', timeout }),
+        this.page.locator(SELECTORS.FQTV_TRAVELER_TAB).first().waitFor({ state: 'visible', timeout }),
+        this.page.locator(SELECTORS.FQTV_NUMBER_INPUT).first().waitFor({ state: 'visible', timeout }),
+        this.getSaveButton().waitFor({ state: 'visible', timeout }),
+      ]);
+    } catch {
+      throw new Error('Frequent flyer extras did not open');
+    }
   }
 
   /**

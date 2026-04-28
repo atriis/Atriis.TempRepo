@@ -18,7 +18,7 @@ Feature: 27809 Flights - Contact details unchecking checkbox refused by default
     Then the booking status should be "On hold"
     And I fill in the OOP justification text "bbbb"
     And I click the proceed to checkout button
-    Then the contact details checkbox should be unchecked by default
+    Then the contact details checkbox should be unchecked
     And I complete the booking
     Then the quote destination should contain "Flight to"
     Then I successfully cancel the trip

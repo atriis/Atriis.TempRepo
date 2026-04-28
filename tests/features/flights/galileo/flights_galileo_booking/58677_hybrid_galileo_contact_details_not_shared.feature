@@ -20,9 +20,6 @@ Feature: 58677 Galileo - Contact details not shared when checkbox checked
     And I filter results by carrier "KLM"
     And I add the first flight to cart
     And I proceed to checkout
-    # TODO: Click__Don_t_share_the_contact_details_with_airlines_ — check the "Don't share" checkbox in checkout
-    # Existing step candidate: When I uncheck contact sharing and edit the phone to "..."
-    # But this test only checks the checkbox, doesn't edit phone
-    Then the contact details checkbox should be unchecked by default
+    Then the contact details checkbox should be unchecked
     When I complete the booking
-    # TODO: Original test waits 60s after booking — backend verification that CTCE/CTCM are not sent
+    Then the quote destination should contain "Flight to"

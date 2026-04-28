@@ -20,7 +20,7 @@ Feature: 54519 Galileo - FF number correctly utilized for multiple pax
     And flight results should be available
     And I filter results by carrier "UA"
     And I add the first flight to cart
-    # TODO: Expand frequent flyer section in cart and verify:
-    # - Tab "James Root" shows FF "UA - 1234567"
-    # - Tab "Shawn Craig" shows FF "UA-******010"
-    # Testim: scrollToElement(".flight-frequent-flyer .card-title") + click + waitForText on tabs/panes
+    Then the booking status should be "Pending Booking"
+    When I click frequent flyer in extras
+    Then the FQTV should show "UA - 1234567" for "James Root"
+    Then the FQTV should show "UA-******010" for "Shawn Craig"

@@ -17,9 +17,11 @@ Feature: 42070 Galileo - Flights are displayed in correct order
     And I have added a random guest traveler
     When I search for a random round trip flight
     And flight results should be available
-    # TODO: Extracting_values — extract flight details (carrier, times, etc.) from results page for later comparison
+    And I store the first flight result details for later comparison
     And I add the first flight to cart
-    # TODO: Validating_values_before_booking — verify extracted values match cart values before booking
+    Then the booking status should be "Pending Booking"
+    And the stored flight details should match the displayed flight details
     And I proceed to checkout
     And I complete the booking
-    # TODO: Validating_values_after_booking — verify extracted values match trip overview values after booking
+    Then the quote destination should contain "Flight to"
+    And the stored flight details should match the displayed flight details

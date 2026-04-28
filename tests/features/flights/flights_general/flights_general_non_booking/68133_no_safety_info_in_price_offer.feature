@@ -12,7 +12,7 @@ Feature: 68133 Flights - Safety info text not displayed in price offer from resu
   So that the price offer is clean and professional
 
   Scenario: Safety information text is not displayed in price offer from results
-    Given I am logged in as "bruna_galileo" booking a new trip
+    Given I am logged in as "bsgalileoflight" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "MME" to "AMS"
     And flight results should be available

@@ -23,6 +23,6 @@ Feature: 64372 Flights - Save correct FQTV from traveler profile with separate t
     And I wait for "Your Selection" text to be visible
     And I add "Your Selection" fare to trip
     Then the booking status should be "Pending booking"
-    And I click to edit extras at index 1
+    And I click frequent flyer in extras
     Then the FQTV should show "DL - 1741551211"
     And the FQTV should show "UA - N7J91W1"

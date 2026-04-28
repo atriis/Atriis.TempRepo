@@ -6,6 +6,7 @@ const Cart = require("@dsl/Cart");
 const { CartPage } = require("@pages/CartPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const tripStatus = require("@data/tripStatus.json");
+const { getTravelerCount } = require("../support/scenarioState");
 const logger = require("@utils/logger").child("Cart");
 const {
   expectNumbersToBeEqualWithTolerance,
@@ -197,6 +198,11 @@ When("I click add seats in extras", async function () {
   await cartPage.clickAddSeatsButton();
 });
 
+When("I click frequent flyer in extras", async function () {
+  logger.info("Clicking frequent flyer in extras");
+  await Cart.openFrequentFlyerExtras(this.page);
+});
+
 When("I wait for the seat map to load", async function () {
   logger.info("Waiting for seat map to load");
   const cartPage = getPageObject(this.page, CartPage);
@@ -297,6 +303,15 @@ Then("the booking status should be {string}", async function (status) {
   await Cart.expectBookingStatusToBe(status, { page: this.page });
 });
 
+Then("the stored flight details should match the displayed flight details", async function () {
+  if (!Array.isArray(this.storedFlightSegmentDetails) || this.storedFlightSegmentDetails.length === 0) {
+    throw new Error("No stored flight details found. Run 'I store the first flight result details for later comparison' before this step.");
+  }
+
+  logger.info("Comparing stored flight details against the currently displayed flight details");
+  await Cart.verifyFlightSegmentDetails(this.page, this.storedFlightSegmentDetails);
+});
+
 Then("the trip status should be {string}", async function (status) {
   logger.info("Verifying trip status", { status });
   await Cart.verifyTripStatus(this.page, status);
@@ -305,6 +320,24 @@ Then("the trip status should be {string}", async function (status) {
 Then('the original currency symbol {string} should be visible in cart', async function (currencySymbol) {
   logger.info('Verifying original currency symbol is visible in cart', { currencySymbol });
   await Cart.verifyOriginalCurrencySymbolVisibleInCart(this.page, currencySymbol);
+});
+
+Then('the cart display and original prices should match the stored flight result prices for all travelers', async function () {
+  if (!this.firstFlightResultPrices) {
+    throw new Error('No stored flight result prices found. Run the flight result price storage step before this assertion.');
+  }
+
+  const travelerCount = getTravelerCount(this);
+  logger.info('Verifying cart display and original prices against stored flight result prices', {
+    travelerCount,
+    firstFlightResultPrices: this.firstFlightResultPrices,
+  });
+
+  await Cart.verifyCartFlightPricesMatchStoredPerTravelerPrices(
+    this.page,
+    this.firstFlightResultPrices,
+    travelerCount,
+  );
 });
 
 Then('the cart total price should match the last extracted price', async function () {
@@ -1021,6 +1054,11 @@ Then("the booked by text with date and time should be visible in price breakdown
 Then('the mini rule disclaimer in price breakdown should contain {string}', async function (expectedText) {
   logger.info('Verifying mini rule disclaimer in price breakdown', { expectedText });
   await Cart.verifyMiniRuleDisclaimerInPriceBreakdown(this.page, expectedText);
+});
+
+Then('the price breakdown should show subtotal and non-refundable cancellation before and after departure', async function () {
+  logger.info('Verifying non-refundable mini rules in price breakdown');
+  await Cart.verifyNonRefundableMiniRulesInPriceBreakdown(this.page);
 });
 
 Then("the hotel search check-in and check-out dates should be filled", async function () {

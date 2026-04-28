@@ -19,10 +19,6 @@ Feature: 71280 Galileo - Mini rules correctly parse non-refundable fare rules
     And flight results should be available
     And I filter results by carrier "AC"
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
-    # View mini rules in price breakdown
+    Then the booking status should be "Pending booking"
     And I click to open price breakdown in cart
-    # TODO: View_Mini_Rules — verify in price breakdown:
-    # 1. "Subtotal" text visible in rate-information section
-    # 2. Cancel fee section shows "Non-refundable" (before departure)
-    # 3. Cancel fee section shows "Non-refundable" (after departure)
+    And the price breakdown should show subtotal and non-refundable cancellation before and after departure

@@ -17,30 +17,24 @@ Feature: 69185 Galileo - Complete trip booking verifying branded fares
     And I have added a random guest traveler
     When I search for a one way flight from "AMS" to "DOH"
     And flight results should be available
-    # Branded fares in flight details (results)
     And I click to open flight details
     And I open branded fares from flight details
     Then the branded fare ancillaries text should be visible
     When I close branded fares drawer
     And I close flight details window
-    # Branded fares in pricing options (results)
     And I open branded fares from pricing options
     Then the branded fare ancillaries text should be visible
     When I close branded fares drawer
     And I close pricing options modal
-    # Add to cart
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
-    # Branded fares in flight details (cart — before hold)
+    Then the booking status should be "Pending Booking"
     And I click to open flight details
     And I open branded fares from flight details
     Then the branded fare ancillaries text should be visible
     When I close branded fares drawer
     And I close flight details window
-    # Hold flight
     And I accept Terms & Conditions
-    And I click hold flight button
-    # Branded fares in flight details (cart — after hold)
+    And I hold the trip
     And I click to open flight details
     And I open branded fares from flight details
     Then the branded fare ancillaries text should be visible

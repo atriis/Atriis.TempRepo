@@ -15,12 +15,12 @@ Feature: 54024 Galileo - Display rules hiding carrier results works
   Scenario: Restricted carriers show disabled selection and allowed carrier can be added to cart
     Given I am logged in as "beatrizpamplonacorp" booking a new trip
     And I have added myself as the traveler
-    # TODO: Search_flights_one_way___nonstop — search one way with nonstop filter from "DUB" to "MAD"
-    # Need new step: When I search for a one way nonstop flight from "DUB" to "MAD"
     When I search for a one way flight from "DUB" to "MAD"
     And I filter results by carrier "FR"
-    # TODO: Hover over Add to trip button and verify tooltip "Selection is disabled due to your company settings"
+    And I hover over the add to trip button in flight results
+    Then the add to trip tooltip should contain "Selection is disabled due to your company settings"
     And I filter results by carrier "EI"
-    # TODO: Hover over Add to trip button and verify tooltip "Selection is disabled due to your company settings"
+    And I hover over the add to trip button in flight results
+    Then the add to trip tooltip should contain "Selection is disabled due to your company settings"
     And I filter results by carrier "IB"
     And I add the first flight to cart

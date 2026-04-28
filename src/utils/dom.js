@@ -78,6 +78,29 @@ async function extractNumber(context, selector, index = 0) {
 }
 
 /**
+ * Parses a currency/amount text into a number.
+ *
+ * Why this exists:
+ * - Some UI surfaces expose amounts via textContent rather than a stable selector path
+ * - Original/display amounts may include currency symbols, spaces, commas, or parentheses
+ * - Page objects need one shared parser to avoid duplicating amount parsing logic
+ *
+ * @param {string} text - Raw text containing an amount
+ * @param {string} label - Human-readable label for error reporting
+ * @returns {number}
+ */
+function parseAmountText(text, label) {
+  const normalized = (text ?? '').replace(/[^\d.,-]/g, '').replace(/,/g, '.');
+  const amount = Number.parseFloat(normalized);
+
+  if (Number.isNaN(amount)) {
+    throw new Error(`Could not parse ${label} from text: "${text}"`);
+  }
+
+  return amount;
+}
+
+/**
  * Scrolls an element into the visible area of the screen.
  *
  * Why this exists:
@@ -220,6 +243,7 @@ async function waitForEnabled(locator, timeout = 5000) {
 
 module.exports = {
   extractNumber,
+  parseAmountText,
   typeIntoNthAvailableInput,
   pressTab,
 };

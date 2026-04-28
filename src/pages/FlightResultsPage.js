@@ -1,6 +1,6 @@
 const { expect } = require("@playwright/test");
 const { waitForText } = require("@utils/wait");
-const { extractNumber } = require("@utils/dom");
+const { extractNumber, parseAmountText } = require("@utils/dom");
 const { escapeRegExp } = require("@utils/text");
 
 function parseDurationToMinutes(value) {
@@ -114,6 +114,9 @@ const SELECTORS = {
   // Flight preview card
   FLIGHT_PREVIEW: '.flight-list .flight-preview',
   FLIGHT_PREVIEW_SEGMENT: '.flight-info-container',
+  RESULT_SEGMENT_CARRIER_NAME: '.carrier-container .carrier-name',
+  RESULT_SEGMENT_FLIGHT_NUMBER_TEXT: '.carrier-container .carrier-name + p',
+  FLIGHT_TIME: '.flight-time',
   FLIGHT_LOCATION_CODE: '.loc-code',
   MARKED_FLIGHT_LOCATION_CODE: '.loc-code.marked, .loc-code.markedEdge',
   FIRST_FLIGHT_RESULT_PRICE_WRAPPER: '.flight-list .flight-preview .price-wrapper',
@@ -361,6 +364,33 @@ class FlightResultsPage {
   }
 
   /**
+   * Hovers over the first visible add-to-trip button in flight results.
+   * Supports disabled buttons that surface an Element Plus tooltip.
+   *
+   * @param {{ timeout?: number }} options
+   */
+  async hoverFirstAddToTripButtonInResults({ timeout = 10000 } = {}) {
+    const button = this.page.locator(SELECTORS.FLIGHT_PREVIEW).first()
+      .locator(SELECTORS.RESULTS_ADD_TO_TRIP_BUTTON)
+      .first();
+
+    await button.waitFor({ state: 'visible', timeout });
+    await button.hover({ force: true });
+  }
+
+  /**
+   * Gets the visible Element Plus tooltip text.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>}
+   */
+  async getVisibleTooltipText({ timeout = 10000 } = {}) {
+    const tooltip = this.page.locator(SELECTORS.EL_POPPER_VISIBLE).first();
+    await tooltip.waitFor({ state: 'visible', timeout });
+    return (await tooltip.textContent())?.replace(/\s+/g, ' ').trim() ?? '';
+  }
+
+  /**
    * Hovers over the office-hours restriction info icon shown on restricted results.
    *
    * @param {{ timeout?: number }} options
@@ -494,6 +524,28 @@ class FlightResultsPage {
     await price.waitFor({ state: 'visible', timeout: 30000 });
 
     return await extractNumber(this.page, SELECTORS.FIRST_FLIGHT_RESULT_AMOUNT, 0);
+  }
+
+  async getFirstFlightResultDisplayAndOriginalPriceValues() {
+    await this.waitForFlightResults();
+
+    const priceWrapper = this.page.locator(SELECTORS.FIRST_FLIGHT_RESULT_PRICE_WRAPPER).first();
+    const amounts = priceWrapper.locator('.amount');
+
+    await amounts.first().waitFor({ state: 'visible', timeout: 30000 });
+
+    const amountCount = await amounts.count();
+    if (amountCount < 2) {
+      throw new Error(`Expected first flight result to show display and original prices, got ${amountCount} amount element(s)`);
+    }
+
+    const displayPriceText = await amounts.nth(0).textContent();
+    const originalPriceText = await amounts.nth(1).textContent();
+
+    return {
+      displayPrice: parseAmountText(displayPriceText, 'first flight result display price'),
+      originalPrice: parseAmountText(originalPriceText, 'first flight result original price'),
+    };
   }
 
   /**
@@ -760,6 +812,28 @@ class FlightResultsPage {
     const texts = await amountValues.allTextContents();
 
     return texts.map((text) => text.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  }
+
+  async getFirstPricingOptionDisplayAndOriginalPriceValues() {
+    const overlay = this.getPricingOptionsOverlay();
+    const firstPricingOption = overlay.locator(SELECTORS.PRICING_OPTIONS_ITEM).first();
+    const amounts = firstPricingOption.locator('.amount');
+
+    await overlay.waitFor({ state: 'visible', timeout: 30000 });
+    await amounts.first().waitFor({ state: 'visible', timeout: 30000 });
+
+    const amountCount = await amounts.count();
+    if (amountCount < 2) {
+      throw new Error(`Expected first pricing option to show display and original prices, got ${amountCount} amount element(s)`);
+    }
+
+    const displayPriceText = await amounts.nth(0).textContent();
+    const originalPriceText = await amounts.nth(1).textContent();
+
+    return {
+      displayPrice: parseAmountText(displayPriceText, 'first pricing option display price'),
+      originalPrice: parseAmountText(originalPriceText, 'first pricing option original price'),
+    };
   }
 
   /**
@@ -1366,6 +1440,48 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     await card.waitFor({ state: 'visible', timeout: 60000 });
     const departureDate = card.locator(SELECTORS.FLIGHT_DATE).nth(2);
     return (await departureDate.textContent()).trim();
+  }
+
+  async getFirstResultFlightSegmentSummaries({ timeout = 60000 } = {}) {
+    const card = this.page.locator(SELECTORS.FLIGHT_PREVIEW).first();
+    await card.waitFor({ state: 'visible', timeout });
+
+    const segments = card.locator(SELECTORS.FLIGHT_PREVIEW_SEGMENT);
+    await segments.first().waitFor({ state: 'visible', timeout });
+
+    const count = await segments.count();
+    const summaries = [];
+
+    for (let index = 0; index < count; index += 1) {
+      const segment = segments.nth(index);
+      const carrier = ((await segment.locator(SELECTORS.RESULT_SEGMENT_CARRIER_NAME).first().innerText()) ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const flightNumberText = ((await segment.locator(SELECTORS.RESULT_SEGMENT_FLIGHT_NUMBER_TEXT).first().innerText()) ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const flightNumberMatch = flightNumberText.match(/\b[A-Z0-9]{2,3}\d{1,4}\b/);
+      const times = segment.locator(SELECTORS.FLIGHT_TIME);
+
+      await times.nth(1).waitFor({ state: 'visible', timeout });
+
+      if (!flightNumberMatch) {
+        throw new Error(`Could not extract a flight number from results text: "${flightNumberText}"`);
+      }
+
+      summaries.push({
+        carrier,
+        flightNumber: flightNumberMatch[0],
+        departureTime: ((await times.nth(0).innerText()) ?? '').replace(/\s+/g, ' ').trim(),
+        arrivalTime: ((await times.nth(1).innerText()) ?? '').replace(/\s+/g, ' ').trim(),
+      });
+    }
+
+    if (!summaries.length) {
+      throw new Error('Could not extract any flight segment details from the first result card');
+    }
+
+    return summaries;
   }
 
   // ===== CODESHARE / OPERATED BY =====

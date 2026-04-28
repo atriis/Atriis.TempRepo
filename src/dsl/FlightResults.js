@@ -87,6 +87,51 @@ const FlightResults = {
   },
 
   /**
+   * Hovers over the first disabled add-to-trip button in results and returns the tooltip text.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>}
+   */
+  async hoverAddToTripButtonAndGetTooltipText(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForFlightResults();
+    await flightResultsPage.hoverFirstAddToTripButtonInResults();
+
+    const tooltipText = await flightResultsPage.getVisibleTooltipText();
+    expect(tooltipText).toBeTruthy();
+
+    return tooltipText;
+  },
+
+  /**
+   * Verifies that the add-to-trip tooltip text contains the expected text.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   * @returns {Promise<string>}
+   */
+  async verifyAddToTripTooltipContains(page, expectedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const actualText = await flightResultsPage.getVisibleTooltipText();
+
+    expect(actualText).toContain(expectedText);
+
+    return actualText;
+  },
+
+  /**
    * Hovers over the office-hours restriction icon and returns the tooltip title text.
    *
    * @param {import('playwright').Page} page
@@ -488,6 +533,54 @@ const FlightResults = {
     return { currencySymbol, originalPriceTexts };
   },
 
+  async extractFirstFlightResultDisplayAndOriginalPrices(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    return await flightResultsPage.getFirstFlightResultDisplayAndOriginalPriceValues();
+  },
+
+  async verifyFirstPricingOptionMatchesStoredFlightResultPrices(page, expectedPrices) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedPrices || typeof expectedPrices !== 'object') {
+      throw new Error('expectedPrices must be an object');
+    }
+
+    const { displayPrice, originalPrice } = expectedPrices;
+
+    if (typeof displayPrice !== 'number' || Number.isNaN(displayPrice)) {
+      throw new Error(`expectedPrices.displayPrice must be a valid number, got: ${displayPrice}`);
+    }
+
+    if (typeof originalPrice !== 'number' || Number.isNaN(originalPrice)) {
+      throw new Error(`expectedPrices.originalPrice must be a valid number, got: ${originalPrice}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const actualPrices = await flightResultsPage.getFirstPricingOptionDisplayAndOriginalPriceValues();
+
+    expectNumbersToBeEqualWithTolerance(
+      actualPrices.displayPrice,
+      displayPrice,
+      0.02,
+      'Pricing options display price vs stored flight result display price',
+    );
+
+    expectNumbersToBeEqualWithTolerance(
+      actualPrices.originalPrice,
+      originalPrice,
+      0.02,
+      'Pricing options original price vs stored flight result original price',
+    );
+
+    return { expectedPrices, actualPrices };
+  },
+
   /**
    * Verifies that pricing options are displayed in ascending (lowest-to-highest) price order.
    *
@@ -642,6 +735,15 @@ const FlightResults = {
     await cartPage.waitForPendingBookingText();
 
     return { added: true };
+  },
+
+  async extractFirstFlightResultSegmentDetails(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    return await flightResultsPage.getFirstResultFlightSegmentSummaries();
   },
 
   /**

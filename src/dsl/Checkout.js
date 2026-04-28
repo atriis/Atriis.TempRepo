@@ -169,7 +169,7 @@ const Checkout = {
    *
    * @param {import('playwright').Page} page
    */
-  async verifyContactDetailsCheckboxUncheckedByDefault(page) {
+  async verifyContactDetailsCheckboxUnchecked(page) {
     if (!page) throw new Error('page is required');
 
     const { expect } = require("@playwright/test");
@@ -179,6 +179,19 @@ const Checkout = {
 
     const isChecked = await checkoutPage.isContactDetailsCheckboxChecked();
     expect(isChecked, 'Expected contact details checkbox to be unchecked by default').toBe(false);
+  },
+
+  /**
+   * Clicks the contact-details sharing checkbox on checkout.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async clickContactDetailsCheckbox(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    await checkoutPage.waitForBookingDetailsText();
+    await checkoutPage.clickContactDetailsCheckbox();
   },
 
   /**

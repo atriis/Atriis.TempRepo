@@ -17,7 +17,8 @@ Feature: 57415 Galileo - APIS sent when booking for guest traveller
     And I have added a random guest traveler
     When I search for a one way flight from "LHR" to "NYC"
     And I add the first flight to cart
+    Then the booking status should be "Pending Booking"
     And I proceed to checkout
     And I complete the booking
-    # TODO: Verify APIS data was sent — this is a backend validation
-    # The original Testim test just verifies "Flight details" is displayed in trip overview
+    Then the quote destination should contain "Flight to"
+
