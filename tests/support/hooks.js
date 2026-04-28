@@ -125,7 +125,7 @@ Before(async function (testCase) {
 /**
  * After each scenario
  * 
- * - Saves screenshots to disk on failure
+ * - Saves a final screenshot to disk for every scenario
  * - Attaches screenshots to Cucumber report
  * - Records failures for retry in CI environments
  */
@@ -134,45 +134,41 @@ After(async function (scenario) {
     return; // No page to capture
   }
 
-  if (scenario.result.status === Status.FAILED) {
-    try {
-      // Capture screenshot
-      const screenshot = await this.page.screenshot({ fullPage: true });
-      
-      // Create screenshots directory if it doesn't exist
-      const screenshotsDir = path.join("test-results", "screenshots");
-      if (!fs.existsSync(screenshotsDir)) {
-        fs.mkdirSync(screenshotsDir, { recursive: true });
-      }
+  try {
+    const screenshot = await this.page.screenshot({ fullPage: true });
+    const screenshotsDir = path.join("test-results", "screenshots");
+    if (!fs.existsSync(screenshotsDir)) {
+      fs.mkdirSync(screenshotsDir, { recursive: true });
+    }
 
-      // Generate filename with scenario name and timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const scenarioName = scenario.pickle.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .substring(0, 50); // Limit length to avoid long filenames
-      const filename = `${scenarioName}_${timestamp}.png`;
-      const filepath = path.join(screenshotsDir, filename);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const scenarioName = scenario.pickle.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .substring(0, 50);
+    const scenarioStatus = String(scenario.result?.status || "unknown").toLowerCase();
+    const filename = `${scenarioName}_${scenarioStatus}_${timestamp}.png`;
+    const filepath = path.join(screenshotsDir, filename);
 
-      // Save screenshot to disk
-      fs.writeFileSync(filepath, screenshot);
-      logger.info("Screenshot saved to disk", { 
-        file: filepath, 
-        scenario: scenario.pickle.name 
-      });
+    fs.writeFileSync(filepath, screenshot);
+    logger.info("Scenario screenshot saved to disk", {
+      file: filepath,
+      scenario: scenario.pickle.name,
+      status: scenario.result?.status,
+    });
 
-      // Attach to Cucumber & Allure reports (allure-cucumberjs picks up this.attach automatically)
-      this.attach(screenshot, "image/png");
+    this.attach(screenshot, "image/png");
+
+    if (scenario.result.status === Status.FAILED) {
       logger.warn("Test failed - screenshot captured", { scenario: scenario.pickle.name });
-    } catch (error) {
-      logger.error("Failed to capture screenshot", { error: error.message });
     }
+  } catch (error) {
+    logger.error("Failed to capture screenshot", { error: error.message });
+  }
 
-    // Record failure for retry in CI
-    if (isRetryEnabled()) {
-      const error = scenario.result.message || "Scenario failed";
-      recordFailure(scenario, new Error(error));
-    }
+  if (scenario.result.status === Status.FAILED && isRetryEnabled()) {
+    const error = scenario.result.message || "Scenario failed";
+    recordFailure(scenario, new Error(error));
   }
 
   // Close context and browser

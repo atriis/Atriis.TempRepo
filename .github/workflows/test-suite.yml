@@ -6,7 +6,8 @@ on:
   # pull_request:
   #  branches: [ main ]
   schedule:
-    - cron: '0 19 12 4 *'  # April 12 at 19:00 UTC, which is 20:00 in Portugal during DST
+    - cron: '30 18 * * *'  # 19:30 in Portugal during DST (WEST, UTC+1)
+    - cron: '30 19 * * *'  # 19:30 in Portugal during standard time (WET, UTC+0)
   workflow_dispatch:
 
 # Structured logging configuration for all jobs
@@ -21,25 +22,13 @@ permissions:
   checks: write
 
 jobs:
-  # smoke-tests:
-  #   Temporarily disabled. Leave only the hotel job active.
-
-  # daily-cars-tests:
-  #   Temporarily disabled. Leave only the hotel job active.
-
-  # daily-flights-tests:
-  #   Temporarily disabled. Leave only the hotel job active.
-
-  # daily-shell-tests:
-  #   Temporarily disabled. Leave only the hotel job active.
-
-  regression-hotels-tests:
+  schedule-gate:
+    name: Schedule Gate
     runs-on: ubuntu-latest
-    timeout-minutes: 65
     outputs:
       should_run: ${{ steps.schedule-guard.outputs.should_run }}
     steps:
-      - name: Allow only the scheduled run for 2026-04-12
+      - name: Allow manual runs and the daily 19:30 Portugal schedule
         id: schedule-guard
         shell: bash
         run: |
@@ -48,82 +37,332 @@ jobs:
             exit 0
           fi
 
-          if [ "$(date -u +%F)" = "2026-04-12" ]; then
+          scheduled_local_time="$(TZ=Europe/Lisbon date +%H:%M)"
+
+          if [ "$scheduled_local_time" = "19:30" ]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping scheduled execution outside 2026-04-12."
+            echo "Skipping scheduled execution because Portugal local time is $scheduled_local_time, not 19:30."
           fi
 
-      - if: steps.schedule-guard.outputs.should_run == 'true'
-        uses: actions/checkout@v5
+  daily-amadeus-non-booking-tests:
+    name: Flights Amadeus Non Booking
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    needs: schedule-gate
+    if: needs.schedule-gate.outputs.should_run == 'true'
+    steps:
+      - uses: actions/checkout@v5
 
-      - if: steps.schedule-guard.outputs.should_run == 'true'
-        uses: actions/setup-node@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
 
-      - if: steps.schedule-guard.outputs.should_run == 'true'
-        run: npm ci
-      - if: steps.schedule-guard.outputs.should_run == 'true'
-        run: npx playwright install --with-deps
-      - if: steps.schedule-guard.outputs.should_run == 'true'
-        run: mkdir -p test-results test-results/screenshots
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: mkdir -p test-results test-results/screenshots
 
       - name: Load environment variables
-        if: steps.schedule-guard.outputs.should_run == 'true'
         uses: ./.github/actions/load-env-from-secret
         with:
           env-file-content: ${{ secrets.ENV }}
 
-      - name: Run Regression Hotel Tests
-        if: steps.schedule-guard.outputs.should_run == 'true'
-        id: run-regression-hotels
+      - name: Run Flights Amadeus Non Booking Tests
+        id: run-flights-amadeus-non-booking
         timeout-minutes: 60
-        run: npx cucumber-js tests/features/hotels/regression_hotels/ --parallel 4
+        run: npx cucumber-js tests/features/flights/flights_amadeus/flights_amadeus_non_booking/ --parallel 4
         env:
           CI: "true"
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
 
-      - name: Upload Regression Hotels Results
-        if: always() && steps.schedule-guard.outputs.should_run == 'true'
+      - name: Upload Flights Amadeus Non Booking Results
+        if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: regression-hotels-results
+          name: flights-amadeus-non-booking-results
           path: test-results/cucumber-junit.xml
 
-      - name: Upload Regression Hotels Report
-        if: always() && steps.schedule-guard.outputs.should_run == 'true'
+      - name: Upload Flights Amadeus Non Booking Report
+        if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: regression-hotels-report
+          name: flights-amadeus-non-booking-report
           path: test-results/cucumber-report.json
 
-      - name: Upload Regression Hotels Screenshots
-        if: failure() && steps.schedule-guard.outputs.should_run == 'true' && steps.run-regression-hotels.outcome == 'failure'
+      - name: Upload Flights Amadeus Non Booking Allure Results
+        if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: regression-hotels-screenshots
-          path: test-results/screenshots/
-
-      - name: Upload Regression Hotels Allure Results
-        if: always() && steps.schedule-guard.outputs.should_run == 'true'
-        uses: actions/upload-artifact@v5
-        with:
-          name: regression-hotels-allure-results
+          name: flights-amadeus-non-booking-allure-results
           path: allure-results/
           if-no-files-found: ignore
-  # daily-rails-tests:
-  #   Temporarily disabled. Leave only the hotel job active.
+
+      - name: Upload Flights Amadeus Non Booking Screenshots
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: flights-amadeus-non-booking-screenshots
+          path: test-results/screenshots/
+          if-no-files-found: ignore
+
+  daily-flights-general-non-booking-tests:
+    name: Flights General Non Booking
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    needs: schedule-gate
+    if: needs.schedule-gate.outputs.should_run == 'true'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: mkdir -p test-results test-results/screenshots
+
+      - name: Load environment variables
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
+
+      - name: Run Flights General Non Booking Tests
+        id: run-flights-general-non-booking
+        timeout-minutes: 60
+        run: npx cucumber-js tests/features/flights/flights_general/flights_general_non_booking/ --parallel 4
+        env:
+          CI: "true"
+          RETRY_COUNT: "2"
+          RETRY_DELAY: "3000"
+
+      - name: Upload Flights General Non Booking Results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: flights-general-non-booking-results
+          path: test-results/cucumber-junit.xml
+
+      - name: Upload Flights General Non Booking Report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: flights-general-non-booking-report
+          path: test-results/cucumber-report.json
+
+      - name: Upload Flights General Non Booking Allure Results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: flights-general-non-booking-allure-results
+          path: allure-results/
+          if-no-files-found: ignore
+
+      - name: Upload Flights General Non Booking Screenshots
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: flights-general-non-booking-screenshots
+          path: test-results/screenshots/
+          if-no-files-found: ignore
+
+  daily-cars-tests:
+    name: Cars Daily
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    needs: schedule-gate
+    if: needs.schedule-gate.outputs.should_run == 'true'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: mkdir -p test-results test-results/screenshots
+
+      - name: Load environment variables
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
+
+      - name: Run Daily Cars Tests
+        id: run-daily-cars
+        timeout-minutes: 60
+        run: npx cucumber-js tests/features/cars/daily_cars/ --parallel 4
+        env:
+          CI: "true"
+          RETRY_COUNT: "2"
+          RETRY_DELAY: "3000"
+
+      - name: Upload Daily Cars Results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: daily-cars-results
+          path: test-results/cucumber-junit.xml
+
+      - name: Upload Daily Cars Report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: daily-cars-report
+          path: test-results/cucumber-report.json
+
+      - name: Upload Daily Cars Allure Results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: daily-cars-allure-results
+          path: allure-results/
+          if-no-files-found: ignore
+
+      - name: Upload Daily Cars Screenshots
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: daily-cars-screenshots
+          path: test-results/screenshots/
+          if-no-files-found: ignore
+
+  daily-hotels-non-booking-tests:
+    name: Hotels Non Booking
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    needs: schedule-gate
+    if: needs.schedule-gate.outputs.should_run == 'true'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: mkdir -p test-results test-results/screenshots
+
+      - name: Load environment variables
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
+
+      - name: Run Hotels Non Booking Tests
+        id: run-hotels-non-booking
+        timeout-minutes: 60
+        run: npx cucumber-js tests/features/hotels/hotels_non_booking/ --parallel 4
+        env:
+          CI: "true"
+          RETRY_COUNT: "2"
+          RETRY_DELAY: "3000"
+
+      - name: Upload Hotels Non Booking Results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: hotels-non-booking-results
+          path: test-results/cucumber-junit.xml
+
+      - name: Upload Hotels Non Booking Report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: hotels-non-booking-report
+          path: test-results/cucumber-report.json
+
+      - name: Upload Hotels Non Booking Allure Results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: hotels-non-booking-allure-results
+          path: allure-results/
+          if-no-files-found: ignore
+
+      - name: Upload Hotels Non Booking Screenshots
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: hotels-non-booking-screenshots
+          path: test-results/screenshots/
+          if-no-files-found: ignore
+
+  daily-rails-tests:
+    name: Rails Daily
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    needs: schedule-gate
+    if: needs.schedule-gate.outputs.should_run == 'true'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: mkdir -p test-results test-results/screenshots
+
+      - name: Load environment variables
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
+
+      - name: Run Daily Rails Tests
+        id: run-daily-rails
+        timeout-minutes: 60
+        run: npx cucumber-js tests/features/rails/daily_rails/ --parallel 4
+        env:
+          CI: "true"
+          RETRY_COUNT: "2"
+          RETRY_DELAY: "3000"
+
+      - name: Upload Daily Rails Results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: daily-rails-results
+          path: test-results/cucumber-junit.xml
+
+      - name: Upload Daily Rails Report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: daily-rails-report
+          path: test-results/cucumber-report.json
+
+      - name: Upload Daily Rails Allure Results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: daily-rails-allure-results
+          path: allure-results/
+          if-no-files-found: ignore
+
+      - name: Upload Daily Rails Screenshots
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: daily-rails-screenshots
+          path: test-results/screenshots/
+          if-no-files-found: ignore
 
   summary:
     name: Summary
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs:
-      - regression-hotels-tests
-    if: always() && needs.regression-hotels-tests.outputs.should_run == 'true'
+      - schedule-gate
+      - daily-amadeus-non-booking-tests
+      - daily-flights-general-non-booking-tests
+      - daily-cars-tests
+      - daily-hotels-non-booking-tests
+      - daily-rails-tests
+    if: always() && needs.schedule-gate.outputs.should_run == 'true'
 
     permissions:
       contents: read
@@ -361,7 +600,11 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Regression Hotels | \`${{ needs.regression-hotels-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Flights Amadeus Non Booking | \`${{ needs.daily-amadeus-non-booking-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Flights General Non Booking | \`${{ needs.daily-flights-general-non-booking-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cars Daily | \`${{ needs.daily-cars-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Hotels Non Booking | \`${{ needs.daily-hotels-non-booking-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Rails Daily | \`${{ needs.daily-rails-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
 
       - name: Parse JUnit Results into Summary
         if: always()
