@@ -146,6 +146,17 @@ When("I search for a multi-city flight with legs {string} and {string}", async f
   await FlightSearch.searchFlightMultiCity(this.page, legs);
 });
 
+When("I search for a multi-city flight with legs {string} and {string} with parallel car search", async function (leg1, leg2) {
+  const parseLeg = (leg) => {
+    const parts = leg.toUpperCase().split('-');
+    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
+    return { from: parts[0], to: parts[1] };
+  };
+  const legs = [leg1, leg2].map(parseLeg);
+  logger.info('Searching for multi-city flight with parallel car search', { legs });
+  await FlightSearch.searchFlightMultiCityWithParallelCar(this.page, legs);
+});
+
 When("I search for a round trip flight from {string} to {string} with advanced search and return date type {string} and time {string} and parallel hotel", async function (from, to, returnDateType, returnFlightTime) {
   logger.info('Searching for advanced round trip flight with parallel hotel', { from, to, returnDateType, returnFlightTime });
   await FlightSearch.searchRoundTripAdvanced(this.page, from, to, {

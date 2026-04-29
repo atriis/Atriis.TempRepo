@@ -14,10 +14,17 @@ const CarResults = {
    * Adds a car to the cart when searching by airport.
    */
   async addCarAirportFromResultsPageToCart(page) {
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    // Pre-dismiss any Conflicting Quotes modal left open by a preceding action
+    // (e.g. a flight "Add to trip" click triggering a duplicate-trip warning).
+    // Uses a short timeout — if the dialog is already present it resolves instantly;
+    // if it never appears the wait is bounded.
+    await resultsPage.handleConflictQuoteModalIfAppears(5000);
 
     await Results.waitAndClickAddToTripButton(page);
 
-    // Handle optional conflict modal
+    // Handle any Conflicting Quotes modal triggered by the car add itself.
     await Results.clickProceedConflictQuoteModal(page);
 
     return { added: true };

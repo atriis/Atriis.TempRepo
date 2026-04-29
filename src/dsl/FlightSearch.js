@@ -404,6 +404,59 @@ const FlightSearch = {
   },
 
   /**
+   * Multi-city flight search with parallel car search enabled.
+   * Parses legs (array of {from, to}), sets up multi-city search,
+   * enables the parallel car checkbox, then submits.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Array<{from: string, to: string}>} legs - At least 2 leg objects
+   * @returns {Promise<{searched: boolean, legs: Array, tripType: string, parallelCar: boolean}>}
+   */
+  async searchFlightMultiCityWithParallelCar(
+    page,
+    legs,
+    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX } = {},
+  ) {
+    if (!Array.isArray(legs) || legs.length < 2) {
+      throw new Error('legs must be an array of at least 2 {from, to} objects, got: ' + JSON.stringify(legs));
+    }
+
+    logger.info('Starting multi-city flight search with parallel car', { legs });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectMultiCityTrip();
+    await searchPage.waitForMultiCitySection();
+
+    const currentRows = await page.locator('.multi-city-line').count();
+    for (let i = currentRows; i < legs.length; i++) {
+      await searchPage.clickAddFlightRowButton();
+    }
+
+    for (let i = 0; i < legs.length; i++) {
+      const { from, to } = legs[i];
+      await searchPage.fillMultiCityLeg(from, to, i);
+      await searchPage.openMultiCityDatePickerAtIndex(i);
+      await searchPage.clickCalendarNextArrow();
+      await selectDatesByNthAvailable(page, {
+        startIndex: departureIndex + i * 3,
+        endIndex: null,
+      });
+    }
+
+    await flightSearchPage.selectCompleteTrip();
+
+    // Enable parallel car search so car results appear alongside flight results
+    await flightSearchPage.checkParallelCarSearch();
+
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, legs, tripType: 'multiCity', parallelCar: true };
+  },
+
+  /**
    * Flight search by schedule: bySchedule + roundTrip + default route
    */
   async searchFlightBySchedule(
