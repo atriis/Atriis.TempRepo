@@ -1,4 +1,4 @@
-# AtriisAutomation Agents Registry
+# Atriis.Test.Automation Agents Registry
 
 Custom agents for the Playwright + Cucumber BDD automation framework. Use these with `@agent-name` or through `runSubagent()` calls.
 
@@ -7,11 +7,14 @@ Custom agents for the Playwright + Cucumber BDD automation framework. Use these 
 ```
 ┌─── ORCHESTRATORS (invoke sub-agents, manage state, pause for review) ───┐
 │                                                                          │
-│  @ado-pipeline         ADO work item → full test lifecycle               │
-│  @feature-pipeline     Manual description → full test lifecycle          │
-│  @regression-pipeline  Run suite → fix failures → report                 │
-│  @ci-monitor           Check GitHub Actions → fix → daily report         │
-│  @todo-pipeline        Resolve TODO comments → implement → run → pass    │
+│  @ado-pipeline                 ADO work item → full test lifecycle       │
+│  @feature-pipeline             Manual description → full test lifecycle  │
+│  @regression-pipeline          Run suite → fix failures → report         │
+│  @ci-monitor                   Check GitHub Actions → fix → daily report │
+│  @todo-pipeline                Resolve TODOs → implement → run → pass    │
+│  @e2e-test-pipeline            ADO work item → governed end-to-end flow  │
+│  @supplier-agent-orchestration Supplier matrix execution across domains   │
+│  @flights-domain-orchestration Flight supplier orchestration             │
 │                                                                          │
 ├─── SUB-AGENTS (single responsibility, called by orchestrators) ──────────┤
 │                                                                          │
@@ -19,8 +22,10 @@ Custom agents for the Playwright + Cucumber BDD automation framework. Use these 
 │  @test-generator-pipeline  Generate Gherkin + steps + DSL                │
 │  @test-runner-pipeline     Execute tests, capture results                │
 │  @test-fixer-pipeline      Analyze failures, apply minimal fixes         │
-│  @test-reporter-pipeline   Generate reports, post to ADO/Cortex.QA       │
+│  @test-reporter-pipeline   Generate local reports and ADO summaries       │
 │  @ci-checker               Parse GitHub Actions results                  │
+│  @strict-test-governor     Enforce reuse-first and anti-duplication      │
+│  @ado-publish-testcase     Publish generated Gherkin to ADO Test Cases   │
 │                                                                          │
 ├─── DOMAIN AGENTS (specialized knowledge, consulted by sub-agents) ───────┤
 │                                                                          │
@@ -32,8 +37,7 @@ Custom agents for the Playwright + Cucumber BDD automation framework. Use these 
 ├─── STANDALONE AGENTS (independent, not part of pipelines) ───────────────┤
 │                                                                          │
 │  @code-reviewer            Review changes for quality                    │
-│  @context-bridge           Connect Cortex.QA ↔ Atriis.OBT ↔ Automation  │
-│  @generate-dsl-method      Create/update DSL methods                     │
+│  @context-bridge           Connect ADO + Atriis.OBT + Automation         │
 │  @test-case-converter      Manual test cases → Gherkin                   │
 │  @testim-converter         Testim exports → Gherkin                      │
 │                                                                          │
@@ -130,6 +134,39 @@ Orchestrator → Sub-Agent → Sub-Agent → ... → Report
 
 ---
 
+### e2e-test-pipeline
+**Purpose**: Governed end-to-end pipeline from ADO work item to generated feature, validated implementation, execution, reporting, ADO publishing, and deployment.
+
+**Trigger**: `@e2e-test-pipeline 75155` or `@e2e-test-pipeline Bug #75155`
+
+**Phases**: Git Prep → Generate Test → Governance Review → Env Setup → Step Validation → Governance Review → Run & Fix → Report → Child Bugs → Publish ADO Test Case → Deploy
+
+**Sub-agents used**: `@ado-fetcher` → `@test-generator-pipeline` → `@strict-test-governor` → `@todo-pipeline` → `@test-runner-pipeline` → `@test-fixer-pipeline` → `@test-reporter-pipeline` → `@ado-publish-testcase`
+
+**Checkpoints**: After every phase (semi-auto)
+
+---
+
+### supplier-agent-orchestration
+**Purpose**: Run supplier-matrix automation flows across domains and aggregate failures by domain and supplier.
+
+**Trigger**: `@supplier-agent-orchestration ...`
+
+**Phases**: Load registry → Initialize domain agents → Execute supplier flows → Aggregate failures → Report
+
+**Consults**: `@domain-flights`, `@domain-hotels`, `@domain-transportation`, `@domain-shell`
+
+---
+
+### flights-domain-orchestration
+**Purpose**: Execute flight-specific supplier orchestration using configuration-driven runs and aggregate results into JSON/Markdown reports.
+
+**Trigger**: `@flights-domain-orchestration ...`
+
+**Config source**: `src/config/flights-orchestration.json`
+
+---
+
 ## Sub-Agents
 
 ### ado-fetcher
@@ -165,7 +202,7 @@ Orchestrator → Sub-Agent → Sub-Agent → ... → Report
 **Input**: Failure details + generation context + domain
 **Output**: Fixes applied per file
 **Iterates**: Up to 5 times (controlled by orchestrator)
-**Scans**: AtriisAutomation, Atriis.App, Cortex.QA for context
+**Scans**: Atriis.Test.Automation, Atriis.App
 
 ---
 
@@ -173,8 +210,8 @@ Orchestrator → Sub-Agent → Sub-Agent → ... → Report
 **Purpose**: Generate and distribute test execution reports.
 
 **Input**: Complete pipeline state
-**Output**: JSON report in `test-results/`, Markdown in Cortex.QA, ADO comment
-**Destinations**: AtriisAutomation `test-results/`, Cortex.QA `docs/findings/`, ADO work item comments
+**Output**: JSON and Markdown reports in `test-results/`, optional ADO comment
+**Destinations**: Atriis.Test.Automation `test-results/`, ADO work item comments
 
 ---
 
@@ -184,6 +221,22 @@ Orchestrator → Sub-Agent → Sub-Agent → ... → Report
 **Input**: Branch name or run ID
 **Output**: Failures with domain, category, and persistence tracking
 **Uses**: GitHub CLI (`gh run list`, `gh run view`, `gh run download`)
+
+---
+
+### strict-test-governor
+**Purpose**: Review generated or fixed automation code and reject duplication, guessed implementations, or layering violations before execution proceeds.
+
+**Input**: Generated test artifacts or fix diff + surrounding project context
+**Output**: PASS/FAIL review with issues and required fixes
+
+---
+
+### ado-publish-testcase
+**Purpose**: Create or update an ADO Test Case from a generated `.feature` file and add it to a user-selected regression suite.
+
+**Input**: `featurePath`, `workItemId`, `areaPath`, `domain`
+**Output**: ADO Test Case ID, URL, linked suite, and Tested By link to parent work item
 
 ---
 
@@ -237,19 +290,12 @@ Orchestrator → Sub-Agent → Sub-Agent → ... → Report
 ---
 
 ### context-bridge
-**Purpose**: Connect Cortex.QA (ADO bugs, findings) with Atriis.OBT source code for test automation.
+**Purpose**: Connect Azure DevOps work items and Atriis.OBT source code to the automation framework.
 
 **Use When**:
 - Generating tests from ADO bugs
 - Checking coverage gaps
 - Exploring what to test
-
----
-
-### generate-dsl-method
-**Purpose**: Create/update DSL methods following project patterns.
-
-**Output**: Method in correct DSL file + barrel export updates
 
 ---
 
@@ -302,7 +348,6 @@ All pipeline agents share this state structure. Each sub-agent adds its section:
   },
   "report": {
     "testResultsPath": "",
-    "cortexQAPath": "",
     "adoCommentPosted": false,
     "summary": ""
   }

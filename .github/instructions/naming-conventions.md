@@ -139,12 +139,12 @@ Use **camelCase** descriptive nouns:
 
 ```js
 // ✅ GOOD
-const flightSearchPage = new FlightSearchPage(page);
-const searchPage = new SearchPage(page);
+const flightSearchPage = getPageObject(page, FlightSearchPage);
+const searchPage = getPageObject(page, SearchPage);
 const routeKey = generateRandomFlightRoute('europe');
 
 // ❌ BAD
-const fsp = new FlightSearchPage(page);     // Not descriptive
+const fsp = getPageObject(page, FlightSearchPage);     // Not descriptive
 const SearchResults = [];                    // Should be camelCase
 ```
 

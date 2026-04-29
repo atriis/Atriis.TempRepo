@@ -19,18 +19,17 @@ Playwright + Cucumber BDD test automation framework for a corporate travel booki
 
 ## AI Agent Ecosystem
 
-This project has **20 custom agents** organized into pipelines. See [AGENTS.md](AGENTS.md) for full registry.
+This project has **24 custom agents** organized into pipelines. See [AGENTS.md](AGENTS.md) for full registry.
 
 | Category | Agents | Purpose |
 |----------|--------|---------|
-| **Orchestrators** (5) | `@ado-pipeline`, `@feature-pipeline`, `@regression-pipeline`, `@ci-monitor`, `@todo-pipeline` | End-to-end workflows with user checkpoints |
-| **Sub-Agents** (6) | `@ado-fetcher`, `@test-generator-pipeline`, `@test-runner-pipeline`, `@test-fixer-pipeline`, `@test-reporter-pipeline`, `@ci-checker` | Single-responsibility tasks called by orchestrators |
+| **Orchestrators** (8) | `@ado-pipeline`, `@feature-pipeline`, `@regression-pipeline`, `@ci-monitor`, `@todo-pipeline`, `@e2e-test-pipeline`, `@supplier-agent-orchestration`, `@flights-domain-orchestration` | End-to-end or domain orchestration workflows with user checkpoints |
+| **Sub-Agents** (8) | `@ado-fetcher`, `@test-generator-pipeline`, `@test-runner-pipeline`, `@test-fixer-pipeline`, `@test-reporter-pipeline`, `@ci-checker`, `@strict-test-governor`, `@ado-publish-testcase` | Single-responsibility agents called by orchestrators |
 | **Domain Agents** (4) | `@domain-flights`, `@domain-hotels`, `@domain-transportation`, `@domain-shell` | Domain-specific knowledge consulted during generation/fixing |
-| **Standalone** (5) | `@code-reviewer`, `@context-bridge`, `@generate-dsl-method`, `@test-case-converter`, `@testim-converter` | Independent tools not part of pipelines |
+| **Standalone** (4) | `@code-reviewer`, `@context-bridge`, `@test-case-converter`, `@testim-converter` | Independent tools not part of pipelines |
 
 ### Cross-Project References
 - **Atriis.App** (`../Atriis.App/src/app/Atriis.OBT/`) – Vue source for UI selectors (`data-testid` preferred)
-- **Cortex.QA** (`../Cortex.QA/`) – QA knowledge hub for findings, reports, and ADO investigation context
 
 ## How Tests Flow
 

@@ -225,12 +225,7 @@ Testim tests use **email addresses** for login. You must map them to **user labe
    ```bash
    USER_RUIMARIANO=<email>
    ```
-4. **Add the user to the relevant CI job** in `.github/workflows/test-suite.yml` under the `env:` block:
-   ```yaml
-   USER_RUIMARIANO: ${{ secrets.USER_RUIMARIANO }}
-   ```
-5. **Add the secret** in GitHub → Settings → Secrets → Actions (mention this in TODOs if you cannot do it)
-6. Use the label in Gherkin:
+4. Use the label in Gherkin:
    ```gherkin
    Given I am logged in as "ruimariano" booking a new trip
    ```
@@ -366,7 +361,7 @@ At the bottom of the output, list:
 - Ambiguous mappings (Testim action unclear — needs human review)
 - Inline `page.*` actions that have no existing step/DSL coverage
 - Any assumptions about user mapping (email → label)
-- **New users** that need to be added to `.env`, `.env.example`, and the CI workflow secret + `env:` block in `.github/workflows/test-suite.yml`
+- **New users** that need to be added to `.env` and `.env.example`
 
 ## Reference locations
 

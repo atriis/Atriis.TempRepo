@@ -8,7 +8,7 @@ description: Code templates, Playwright cheat sheet, commands, debugging tips, a
 ## Project Structure
 
 ```
-AtriisAutomation/
+Atriis.Test.Automation/
 ├── src/
 │   ├── config/         # Configuration (URLs, viewport, user discovery)
 │   ├── pages/          # Page Objects (SELECTORS + class)
@@ -78,6 +78,8 @@ module.exports = MyPage;
 
 ```js
 const MyPage = require('@pages/MyPage');
+const { getPageObject } = require('@utils/pageObjectCache');
+const logger = require('@utils/logger').child('MyWorkflow-DSL');
 
 /**
  * Business workflows for [Domain/Feature]
@@ -90,9 +92,9 @@ const MyWorkflow = {
    * @returns {Promise<Object>} Result data
    */
   async performBusinessAction(page, data) {
-    console.log(`Performing action with ${data.field1}`);
+    logger.info('Performing business action', { field1: data.field1 });
 
-    const myPage = new MyPage(page);
+    const myPage = getPageObject(page, MyPage);
     await myPage.fillName(data.field1);
     await myPage.clickSubmit();
 

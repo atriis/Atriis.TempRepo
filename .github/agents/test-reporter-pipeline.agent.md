@@ -1,5 +1,5 @@
 ---
-description: "Generate final test execution reports and distribute results. Writes to test-results/ in AtriisAutomation, saves findings to Cortex.QA, and posts ADO comments. Produces JSON, Markdown, and human-readable summaries."
+description: "Generate final test execution reports and distribute results. Writes local artifacts to test-results/ in Atriis.Test.Automation and posts ADO comments. Produces JSON, Markdown, and human-readable summaries."
 tools: ["read", "search", "edit", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "agent"]
 ---
 
@@ -18,7 +18,7 @@ The orchestrator provides the complete pipeline state:
 
 ## Process
 
-### Step 1: Generate AtriisAutomation Report
+### Step 1: Generate Atriis.Test.Automation Report
 Save structured results to `test-results/`:
 
 **JSON report** (`test-results/{workItemId}_pipeline.json`):
@@ -44,11 +44,10 @@ Save structured results to `test-results/`:
 }
 ```
 
-### Step 2: Generate Cortex.QA Finding
-Only generate Cortex.QA findings for **ADO-triggered** pipeline runs (not manual feature requests).
-Save to `../Cortex.QA/docs/findings/`:
+### Step 2: Generate Local Markdown Report
+Save a Markdown summary alongside the JSON report in `test-results/`.
 
-**Markdown report** (`../Cortex.QA/docs/findings/{workItemId}-automation.md`):
+**Markdown report** (`test-results/{workItemId}_pipeline.md`):
 ```markdown
 # ADO #{workItemId} — Automation Report
 
@@ -107,7 +106,7 @@ Print a clean summary for the user:
   Artifacts:
   ├── Feature:  tests/features/flights/general/74500_price_mismatch.feature
   ├── Report:   test-results/74500_pipeline.json
-  └── Finding:  ../Cortex.QA/docs/findings/74500-automation.md
+  └── Markdown: test-results/74500_pipeline.md
   
   ADO Comment: ✅ Posted
 ═══════════════════════════════════════════════
@@ -121,7 +120,7 @@ Add to the orchestrator state:
   "phase": "reported",
   "report": {
     "testResultsPath": "test-results/74500_pipeline.json",
-    "cortexQAPath": "../Cortex.QA/docs/findings/74500-automation.md",
+    "markdownReportPath": "test-results/74500_pipeline.md",
     "adoCommentPosted": true,
     "summary": "3/3 scenarios passed after 2 fix iterations"
   }
@@ -136,9 +135,8 @@ After generating reports, **PAUSE and present to the user**:
 
 ## Rules
 - **Never modify test code** — reporting only
-- **Include all evidence** — screenshots, errors, fix history in test-results/ and Cortex.QA
+- **Include all evidence** — screenshots, errors, and fix history in test-results/
 - **ADO comments: 3-4 lines max** — key metrics only, reference report for details
-- **Cortex.QA findings: ADO-triggered runs only** — manual feature requests don't generate findings
 - **Include duration**: per step AND total scenario duration in reports
 - **Compare with previous runs** — check GitHub CI history for regression/improvement trends
 - **Overwrite per work item** — `{workItemId}_pipeline.json` always contains the latest run

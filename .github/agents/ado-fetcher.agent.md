@@ -20,10 +20,7 @@ The orchestrator provides:
 az boards work-item show --id {workItemId} --expand all --output json
 ```
 
-### Step 2: Check Cortex.QA Findings
-Search `../Cortex.QA/docs/findings/{workItemId}.md` for existing investigation context.
-
-### Step 3: Extract Structured Context
+### Step 2: Extract Structured Context
 Parse the ADO response and extract:
 - **type**: Bug | Test Case | User Story
 - **title**: Work item title
@@ -36,14 +33,12 @@ Parse the ADO response and extract:
 - **attachments**: Note URLs only — do NOT download attachments
 - Do NOT fetch related/linked work items — only the main work item
 
-### Step 3b: Discover Test User
+### Step 3: Discover Test User
 Scan the ADO work item for user references:
 1. Check the description/repro steps for email addresses or user names
 2. Match to existing users in `.env` file
 3. If user is not found in `.env`:
    - **Add the user to `.env`** with the correct environment variable format
-   - **Add the user to `.github/workflows/test-suite.yml`** under the correct job (e.g., `daily-flights-tests` for flight users)
-   - Format: `USER_{UPPERCASE_NAME}: ${{ secrets.USER_{UPPERCASE_NAME} }}`
    - Alert the user that a new secret needs to be created in GitHub
 
 ### Step 4: Resolve Domain
@@ -62,9 +57,24 @@ Determine which domain agent should handle this work item.
 
 ### Step 5: Check Existing Coverage
 Search `tests/features/` for any existing test that references this work item ID:
-```
+```powershell
 grep -r "{workItemId}" tests/features/
 ```
+
+Also check whether the scenario is already covered anywhere else inside `Atriis.Test.Automation`, even if the work item ID is not present in the file. Search for:
+- Existing feature files with the same or very similar scenario title, keywords, tags, or business flow
+- Matching step definitions in `tests/steps/` that indicate the workflow is already automated
+- Supporting DSL or Page Object methods in `src/dsl/` and `src/pages/` when they clearly map to an already-existing automated scenario
+
+If an equivalent automated test already exists in `Atriis.Test.Automation`, include those file paths in `existingTests` and flag that existing coverage to the user before generating a new test.
+
+Also scan for similar tests in `Atriis.Test.Automation` that can be used as examples for the new scenario, even when they are not exact matches. Look for tests with:
+- The same supplier, provider, or product area
+- A similar user journey or business flow
+- Similar tags, traveler type, booking pattern, extras flow, approval flow, or post-booking actions
+- Reusable Gherkin phrasing, step definitions, DSL methods, or Page Object interactions that help model the new scenario
+
+Return those example file paths in `similarTests` so downstream agents can study them as a baseline for implementing the new flow.
 
 ## Output — State Contract
 Return this exact JSON structure to the orchestrator:
@@ -85,7 +95,7 @@ Return this exact JSON structure to the orchestrator:
     "attachments": [],
     "relatedItems": [74501, 74499],
     "existingTests": [],
-    "cortexFindings": "path/to/findings.md or null"
+    "similarTests": []
   },
   "domain": "flights"
 }
@@ -95,7 +105,7 @@ Return this exact JSON structure to the orchestrator:
 After extracting context, **PAUSE and present to the user**:
 - Work item summary (type, title, area)
 - Resolved domain
-- Whether existing tests or findings were found
+- Whether existing tests or similar example tests were found
 - Ask: "Proceed with test generation for this {type}?"
 
 ## Error Handling
@@ -109,8 +119,9 @@ After extracting context, **PAUSE and present to the user**:
 ### Do's
 - ✅ Always use the ADO "Area" field as the primary domain resolver
 - ✅ Scan for user references and validate they exist in `.env`
-- ✅ Add missing users to both `.env` and `test-suite.yml` (alert about secrets)
-- ✅ Check Cortex.QA findings for existing investigation context
+- ✅ Add missing users to `.env` (alert about secrets)
+- ✅ Check for existing test coverage by searching for the work item ID and related keywords in `tests/features/` and across the codebase
+- ✅ Return structured context with all specified fields for downstream agents
 - ✅ Ask the user to clarify if the work item is incomplete or ambiguous
 
 ### Don'ts

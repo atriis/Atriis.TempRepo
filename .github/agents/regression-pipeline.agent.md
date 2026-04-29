@@ -136,7 +136,7 @@ Generate comprehensive regression report:
 
 ### Phase 5: Commit
 ```powershell
-cd c:\DEV\AtriisAutomation
+cd c:\DEV\Atriis.Test.Automation
 git add {all fixed files}
 git commit -m "fix(regression): resolve {N} test failures in {tags} suite
 

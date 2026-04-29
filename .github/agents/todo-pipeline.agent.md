@@ -175,7 +175,7 @@ For each TODO (step, DSL method, page method, or locator):
 **Order matters** — implement bottom-up to avoid cascading failures:
 
 1. **Locators first** (`locator` category)
-   - Check `../Atriis.App/src/app/Atriis.OBT/` for current selectors
+   - Check `../Atriis.App/src/app/Atriis.App/` for current selectors
    - **Attempt to find `data-testid`** first — this is the preferred locator strategy
    - If `data-testid` not found → pick another selector (role > CSS > XPath)
    - Add/update locators in the correct Page Object constructor
@@ -385,7 +385,7 @@ Generate TODO resolution report:
 
 ### Phase 8: Commit
 ```powershell
-cd c:\DEV\AtriisAutomation
+cd c:\DEV\Atriis.Test.Automation
 git add {all created/modified files}
 git commit -m "feat(todo-resolver): implement {N} TODOs across {M} feature files
 

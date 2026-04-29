@@ -58,7 +58,7 @@ Each sub-agent adds its section to this state.
 - Work item: #{id} — {title} ({type})
 - Domain resolved: {domain}
 - Existing tests found: {yes/no}
-- Cortex.QA findings: {yes/no}
+- Similar example tests found: {yes/no}
 - **If existing tests found**: "Existing tests were found for this work item. Should I create a new test anyway, update existing, or skip generation?"
 - **If work item is incomplete/doesn't make sense**: "This work item lacks sufficient detail to generate a test. Here's what I found: {summary}. Please clarify the expected behavior or provide more details."
 - **Ask**: "Proceed with test generation for this {type}?"
@@ -126,12 +126,12 @@ For each iteration (1 to 5):
 
 **CHECKPOINT**: Display to user:
 - Full pipeline summary
-- Artifacts created (test-results, Cortex.QA finding, ADO comment)
+- Artifacts created (test-results, ADO comment)
 - **Ask**: "Pipeline complete. Commit all changes?"
 
 ### Phase 6: Commit (if user approves)
 ```powershell
-cd c:\DEV\AtriisAutomation
+cd c:\DEV\Atriis.Test.Automation
 git add {all generated/modified files}
 git commit -m "feat(pipeline): automate ADO #{workItemId} — {title}
 
@@ -139,13 +139,6 @@ git commit -m "feat(pipeline): automate ADO #{workItemId} — {title}
 - Result: {passed/failed}
 - Fix iterations: {count}
 - Domain: {domain}"
-```
-
-If Cortex.QA files were created:
-```powershell
-cd c:\DEV\Cortex.QA
-git add docs/findings/{workItemId}-automation.md
-git commit -m "docs(findings): automation report for ADO #{workItemId}"
 ```
 
 ## Error Handling

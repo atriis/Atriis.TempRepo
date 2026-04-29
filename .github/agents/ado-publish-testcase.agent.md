@@ -20,7 +20,7 @@ You are the **ADO Test Case Publisher**. Given a Gherkin feature file and an ADO
 
 | Input | Description | Example |
 |-------|-------------|---------|
-| `featurePath` | Path to the Gherkin `.feature` file | `c:\Dev\Cortex.QA\automation\test-cases\generated\75523.feature` |
+| `featurePath` | Path to the Gherkin `.feature` file | `c:\Dev\Atriis.Test.Automation\test-results\generated\75523.feature` |
 | `workItemId` | ADO bug/story this TC covers | `75523` |
 | `areaPath` | ADO area path (from parent work item) | `TMC2\Shell, Other and Analytics` |
 | `domain` | Domain tag to apply | `Shell` |
@@ -45,7 +45,7 @@ Use the **exact** format ADO requires — `parameterizedString` with double-enco
 > ⚠️ **Critical:** The old `<description>` XML format does **NOT** render steps in the ADO UI.  
 > You MUST use `<parameterizedString isformatted="true">` with double-encoded HTML entities.
 
-Write a Python script to a temp file (e.g. `c:\Dev\Cortex.QA\_temp_publish_tc.py`) and run it:
+Write a Python script to a temp file (e.g. `c:\Dev\Atriis.Test.Automation\test-results\_temp_publish_tc.py`) and run it:
 
 ```python
 import json, urllib.request, subprocess, sys, os
@@ -293,7 +293,7 @@ Print and return this block to the orchestrator:
 ==============================================
 ```
 
-Clean up: delete `c:\Dev\Cortex.QA\_temp_publish_tc.py` and any other temp files created.
+Clean up: delete `c:\Dev\Atriis.Test.Automation\test-results\_temp_publish_tc.py` and any other temp files created.
 
 ---
 

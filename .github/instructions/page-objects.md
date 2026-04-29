@@ -51,6 +51,22 @@ module.exports = { SearchPage, SELECTORS };
 
 This allows helpers like `calendar.helper.js` to import SELECTORS directly.
 
+## Instantiation Pattern
+
+Page Objects remain normal classes, but DSL code should obtain them through the shared cache helper:
+
+```js
+const { getPageObject } = require('@utils/pageObjectCache');
+
+// ✅ GOOD: project-standard instantiation
+const cartPage = getPageObject(page, CartPage);
+
+// ❌ AVOID in DSL code: bypasses cache
+const cartPage = new CartPage(page);
+```
+
+Use direct `new PageClass(page)` only inside the cache helper itself or in rare low-level utility code that intentionally bypasses the cache.
+
 ## Locator Rules
 
 ### Declaration

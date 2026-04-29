@@ -24,7 +24,7 @@ Step Functions Execute (call DSL methods)
     ↓
 After Hook (captures screenshot on failure, records for retry)
     ↓
-Cucumber Report (json, junit, progress formatters)
+Cucumber Report (summary, pretty, json, junit, allure formatters)
 ```
 
 ---
@@ -44,15 +44,17 @@ module.exports = {
       'tests/support/hooks.js',           // Before/After hooks
       'tests/support/retry-handler.js',   // CI retry logic
       'tests/steps/**/*.js',              // All step definitions
-      'tests/support/**/*.js'             // Support files
+      'tests/support/**/*.js',            // Support files
+      'node_modules/allure-cucumberjs'    // Allure integration
     ],
     
     // Output formats
     format: [
-      'progress',                         // Console progress
+      'summary',                          // Concise execution summary
       '@cucumber/pretty-formatter',       // Colored output
       'json:test-results/cucumber-report.json',  // JSON for CI/reports
-      'junit:test-results/cucumber-junit.xml'    // JUnit for integrations
+      'junit:test-results/cucumber-junit.xml',   // JUnit for integrations
+      'allure-cucumberjs/reporter'        // Allure report integration
     ],
     
     // Retry: Only in CI, configured by environment variables
@@ -60,6 +62,8 @@ module.exports = {
   }
 }
 ```
+
+The current project setup uses `summary` instead of `progress` and writes Allure output through `allure-cucumberjs/reporter`.
 
 ### Running Tests
 

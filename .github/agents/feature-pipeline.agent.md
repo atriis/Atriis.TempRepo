@@ -111,7 +111,7 @@ Report goes to `test-results/` only (no ADO comment since this is manual).
 
 ### Phase 5: Commit
 ```powershell
-cd c:\DEV\AtriisAutomation
+cd c:\DEV\Atriis.Test.Automation
 git add {all generated/modified files}
 git commit -m "feat(tests): add {domain} test — {scenario_name}
 

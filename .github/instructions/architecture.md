@@ -65,15 +65,20 @@ DSLs use **object literal modules** (not classes). `page` is the first argument:
 
 ```js
 // ✅ ACTUAL pattern
+const { SearchPage } = require('@pages/SearchPage');
+const { getPageObject } = require('@utils/pageObjectCache');
+
 const FlightSearch = {
   async searchFlightOneWay(page, routeInput, options) {
-    const searchPage = new SearchPage(page);  // Page Object created inside
+    const searchPage = getPageObject(page, SearchPage);
     await searchPage.selectOneWayTrip();
     await searchPage.clickSearchButton();
   },
 };
 module.exports = FlightSearch;
 ```
+
+Always instantiate Page Objects from DSLs through `getPageObject(page, PageClass)` so the project-wide page-object cache is used.
 
 ## Step Definition Pattern: Cucumber
 
@@ -87,18 +92,20 @@ const { FlightSearch, FlightResults } = require('@dsl');
 
 // Step definitions call DSL methods
 When('I search for a one-way flight from {string} to {string}',
-  async (origin, destination) => {
-    // Call DSL method with global.page
-    await FlightSearch.searchFlightOneWay(global.page, origin, destination);
+  async function (origin, destination) {
+    // Call DSL method with this.page from the Cucumber World
+    await FlightSearch.searchFlightOneWay(this.page, origin, destination);
   }
 );
 
-Then('flight results are displayed', async () => {
+Then('flight results are displayed', async function () {
   expect(
-    await FlightResults.areResultsVisible(global.page)
+    await FlightResults.areResultsVisible(this.page)
   ).toBe(true);
 });
 ```
+
+Use regular `function` handlers in step definitions when the step needs access to the Cucumber World. The active page lives on `this.page`, not `global.page`.
 
 ## Page Object Pattern: SELECTORS + Class
 

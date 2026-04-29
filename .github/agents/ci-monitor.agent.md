@@ -125,14 +125,14 @@ Just generate the report for manual team review.
 Save to:
 - `test-results/ci-monitor/{date}_health.json` — structured data
 
-**Do NOT** save anything to `Cortex.QA` — all artifacts stay within `AtriisAutomation`.
+**Do NOT** save anything outside `Atriis.Test.Automation` — all artifacts stay within the repository.
 
 **CHECKPOINT**: Display daily report, ask to commit and push fixes.
 
 ### Phase 5: Commit & Push
 If fixes were applied:
 ```powershell
-cd c:\DEV\AtriisAutomation
+cd c:\DEV\Atriis.Test.Automation
 git add {all fixed files}
 git commit -m "fix(ci): resolve {N} CI failures from {date}
 
@@ -164,6 +164,6 @@ If `gh` CLI is not configured, help the user:
 - **Track health trends** — compare with previous reports to show improvement or degradation
 - **6:00 AM Portugal time** — that's the expected daily check schedule
 - **No auto-assignment** — just report findings for the team to review
-- **No Cortex.QA writes** — never save reports, files, or artifacts to `Cortex.QA`. All output stays in `AtriisAutomation`
+- **No external artifact writes** — never save reports, files, or artifacts outside `Atriis.Test.Automation`. All output stays in the repository
 - **No-results = advise only** — if a test fails because there are no search results for that product/route, do NOT try to fix it. Just advise the user and move on
 - **Validate fixes locally in headed mode** — every fix MUST be validated by running the test locally with `HEADLESS=false` before it counts as fixed. Unvalidated fixes must not be committed

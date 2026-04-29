@@ -98,54 +98,59 @@ const { App, FlightSearch, FlightResults } = require('@dsl');
 
 // Background steps (setup)
 Given('I am logged in as {string}', 
-  async (userKey) => {
-    await App.loginAsUserAndBookANewTrip(userKey);
+  async function (userKey) {
+    const session = await App.loginAsUserAndBookANewTrip(userKey);
+    this.browser = session.browser;
+    this.context = session.context;
+    this.page = session.page;
   }
 );
 
-Given('I am on the New Trip page', async () => {
-  expect(await App.isOnNewTripPage()).toBe(true);
+Given('I am on the New Trip page', async function () {
+  expect(await App.isOnNewTripPage(this.page)).toBe(true);
 });
 
 // Action steps (When)
 When('I search for a one-way flight from {string} to {string}', 
-  async (origin, destination) => {
-    await FlightSearch.searchOneWayFlight(global.page, origin, destination);
+  async function (origin, destination) {
+    await FlightSearch.searchOneWayFlight(this.page, origin, destination);
   }
 );
 
 // Assertion steps (Then)
-Then('flight results are displayed', async () => {
+Then('flight results are displayed', async function () {
   expect(
-    await FlightResults.areResultsVisible(global.page)
+    await FlightResults.areResultsVisible(this.page)
   ).toBe(true);
 });
 
-Then('results show at least {int} flight', async (count) => {
-  const resultCount = await FlightResults.getFlightCount(global.page);
+Then('results show at least {int} flight', async function (count) {
+  const resultCount = await FlightResults.getFlightCount(this.page);
   expect(resultCount).toBeGreaterThanOrEqual(count);
 });
 ```
 
 ### Context Access
 
-The current page is stored in `global.page`:
+The current page is stored on the Cucumber World as `this.page`:
 
 ```javascript
-When('I search for a flight', async () => {
-  // global.page is set by Before hook in tests/support/hooks.js
-  await FlightSearch.searchOneWayFlight(global.page, 'LON', 'NYC');
+When('I search for a flight', async function () {
+  // this.page is set by the login step or Before hook in tests/support/hooks.js
+  await FlightSearch.searchOneWayFlight(this.page, 'LON', 'NYC');
 });
 ```
+
+Use regular `function` handlers in step definitions whenever you need access to the World. Arrow functions do not bind the Cucumber World correctly.
 
 ### Error Handling in Steps
 
 Catch and clarify errors:
 
 ```javascript
-Then('flight results are displayed', async () => {
+Then('flight results are displayed', async function () {
   try {
-    expect(await FlightResults.areResultsVisible(global.page)).toBe(true);
+    expect(await FlightResults.areResultsVisible(this.page)).toBe(true);
   } catch (error) {
     console.error('✗ Results not visible. Possible causes:');
     console.error('  - Search failed to complete');
@@ -270,8 +275,8 @@ Then booking status is "Pending Booking"
 In step definitions, use `expect()` for clarity:
 
 ```javascript
-Then('results show at least {int} flights', async (count) => {
-  const flightCount = await FlightResults.getFlightCount(global.page);
+Then('results show at least {int} flights', async function (count) {
+  const flightCount = await FlightResults.getFlightCount(this.page);
   expect(flightCount).toBeGreaterThanOrEqual(count);
 });
 ```

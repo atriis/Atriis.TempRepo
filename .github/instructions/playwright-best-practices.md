@@ -131,8 +131,10 @@ class CartPage {
 }
 
 // DSL (src/dsl/Cart.js) — Contains assertion logic
+const { getPageObject } = require('@utils/pageObjectCache');
+
 async expectBookingStatus(page, expectedStatus, { timeout = 60000 } = {}) {
-  const proceedBtn = new CartPage(page);
+  const cartPage = getPageObject(page, CartPage);
   const locator = page.locator(SELECTORS.QUOTE_STATUS_LABEL);
   
   // Assert using Playwright expect (auto-retry)
@@ -299,8 +301,10 @@ async getStatus() {
 }
 
 // Cart.js (DSL)
+const { getPageObject } = require('@utils/pageObjectCache');
+
 async expectStatus(page, expectedStatus) {
-  const cartPage = new CartPage(page);
+  const cartPage = getPageObject(page, CartPage);
   const locator = page.locator(SELECTORS.STATUS);
   await expect(locator).toContainText(expectedStatus);
 }

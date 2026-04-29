@@ -2,7 +2,7 @@
 name: e2e-test-pipeline
 description: "End-to-end orchestrator: takes an ADO Work Item ID, generates Gherkin test cases, sets up users/env, validates and implements missing steps, runs and fixes until passing, generates report per issue, creates child bugs in ADO, deploys feature file to Atriis.Test.Automation. Semi-automatic with user checkpoints."
 tools: ["read", "search", "edit", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "agent"]
-agents: ["ado-fetcher", "test-generator-pipeline", "test-runner-pipeline", "test-fixer-pipeline", "test-reporter-pipeline", "todo-pipeline", "domain-flights", "domain-hotels", "domain-shell", "domain-transportation", "code-reviewer", "ado-publish-testcase"]
+agents: ["ado-fetcher", "strict-test-governor", "test-generator-pipeline", "test-runner-pipeline", "test-fixer-pipeline", "test-reporter-pipeline", "todo-pipeline", "domain-flights", "domain-hotels", "domain-shell", "domain-transportation", "code-reviewer", "ado-publish-testcase"]
 ---
 
 # E2E Test Pipeline Orchestrator
@@ -23,14 +23,14 @@ You coordinate sub-agents in sequence, pass state between them, and pause for us
 ## Pipeline Phases
 
 ```
-Phase 1           Phase 2              Phase 3              Phase 4           Phase 5          Phase 6           Phase 7
-+--------------+  +------------------+  +----------------+  +-------------+  +-------------+  +--------------+  +--------------+
-| Test Case    |->| Env & User       |->| Step Validator |->| Run & Fix   |->| Report &    |->| Child Bug    |->| Publish ADO  |->| Feature      |
-| Generator    |  | Setup            |  | & Implementer  |  | Loop (x5)   |  | Summary     |  | Creator      |  | Test Case    |  | Deployer     |
-+--------------+  +------------------+  +----------------+  +-------------+  +-------------+  +--------------+  +--------------+  +--------------+
-     |                  |                     |                   |                |                |                  |                  |
-  CHECKPOINT         CHECKPOINT           CHECKPOINT          CHECKPOINT       CHECKPOINT       CHECKPOINT        CHECKPOINT        CHECKPOINT
-  "Review?"          "Users OK?"          "Steps OK?"         "Auto-fix?"      "Report OK?"     "Create bugs?"    "Publish TC?"     "Deploy?"
+Phase 1            Phase 1.5         Phase 2              Phase 3              Phase 3.5         Phase 4           Phase 5          Phase 6           Phase 7
++---------------+  +---------------+ +------------------+  +----------------+  +---------------+ +-------------+  +-------------+  +--------------+  +--------------+
+| Test Case     |->| Governance    |>| Env & User       |->| Step Validator |->| Governance    |>| Run & Fix   |->| Report &    |->| Child Bug    |->| Publish ADO  |->| Feature      |
+| Generator     |  | Review        | | Setup            |  | & Implementer  |  | Review        | | Loop (x5)   |  | Summary     |  | Creator      |  | Test Case    |  | Deployer     |
++---------------+  +---------------+ +------------------+  +----------------+  +---------------+ +-------------+  +-------------+  +--------------+  +--------------+  +--------------+
+    |                   |                  |                     |                    |                 |                |                |                  |                  |
+  CHECKPOINT          CHECKPOINT         CHECKPOINT           CHECKPOINT           CHECKPOINT        CHECKPOINT       CHECKPOINT       CHECKPOINT        CHECKPOINT        CHECKPOINT
+  "Review?"           "Governor OK?"    "Users OK?"          "Steps OK?"          "Governor OK?"   "Auto-fix?"      "Report OK?"     "Create bugs?"    "Publish TC?"     "Deploy?"
 ```
 
 ## State Object
@@ -56,6 +56,19 @@ The pipeline maintains a single state object passed between all phases:
     "usersAdded": [],
     "envUpdated": false,
     "configUpdated": false
+  },
+  "governance": {
+    "generatedTest": {
+      "result": "PENDING",
+      "issues": [],
+      "requiredFixes": []
+    },
+    "implementedCode": {
+      "result": "PENDING",
+      "issues": [],
+      "requiredFixes": []
+    },
+    "fixReviews": []
   },
   "stepValidation": {
     "totalSteps": 0,
@@ -96,8 +109,7 @@ The pipeline maintains a single state object passed between all phases:
   },
   "deployment": {
     "sourcePath": "",
-    "destinationPath": "",
-    "ciUpdated": false
+    "destinationPath": ""
   }
 }
 ```
@@ -108,27 +120,29 @@ Each sub-agent adds its section to this state without modifying others' sections
 
 ## Execution Protocol
 
-### Phase 0: Git Pre-flight
-**Performed by the orchestrator** before anything else.
 
-Run the following commands in `c:\DEV\Atriis.Test.Automation`:
+### Phase 0: Repository Sync & Branch Setup (Automated)
+**Performed by the agent** — no manual git actions required from the user.
 
-```powershell
-cd c:\DEV\Atriis.Test.Automation
-git checkout main
-git pull
-git status
-```
+When this pipeline starts, the agent will:
 
-Display the output to the user:
-- Current branch
-- Any uncommitted changes or untracked files
-- Confirmation that the repo is up to date
+1. Check for uncommitted changes:
+    - If found, auto-stash them (or auto-commit if configured), and notify the user of the action taken.
+    - If neither is possible, halt and show an error for user intervention.
+2. Navigate to `main` branch and pull the latest changes.
+3. Create and checkout a new feature branch (auto-named from the ADO work item or user-specified).
+    - If the branch already exists, prompt the user to overwrite, use, or abort.
+4. After pipeline completes, auto-add, commit, and push all changes to the remote repository.
+5. If any git command fails, capture the error, show it to the user, and halt further actions.
+6. If network or authentication errors occur during push, prompt for credentials or retry.
+7. All actions are confirmed with the user unless running in fully automated mode.
+8. Optionally supports a "dry run" or "confirm before commit" mode for previewing changes.
+9. All steps and errors are logged for traceability.
 
-If `git status` shows uncommitted changes, **warn the user** before proceeding:
-> "⚠️ There are uncommitted changes in Atriis.Test.Automation. These may be overwritten during the pipeline. Proceed anyway?"
-
-If the user says no, stop the pipeline.
+**Summary:**
+- The agent handles all git operations (status, stash/commit, pull, branch, add, commit, push) automatically.
+- The user is only prompted if an error or decision is required.
+- No manual git actions are required from the user in this phase.
 
 ---
 
@@ -139,7 +153,7 @@ Pass the ADO Work Item ID. The test-generator-pipeline will:
 1. Fetch the ADO work item details (via `@ado-fetcher`)
 2. Load the step catalog from `c:\DEV\Atriis.Test.Automation\tests\steps\*.steps.js`
 3. Generate Gherkin scenarios using ONLY catalog steps
-4. Save to `c:\DEV\Cortex.QA\automation\test-cases\generated\{workItemId}.feature`
+4. Save to `c:\DEV\Atriis.Test.Automation\test-results\generated\{workItemId}.feature`
 
 **Receives**: `state.source` + `state.domain` + `state.generation`
 
@@ -157,6 +171,30 @@ If user says no, stop pipeline with partial artifacts.
 
 ---
 
+### Phase 1.5: Governance Review of Generated Test
+**Invoke**: `@strict-test-governor`
+
+Pass the generated feature file, ADO context, existing coverage from `@ado-fetcher`, and any similar tests discovered in `Atriis.Test.Automation`.
+
+The governor must:
+1. Validate that generated Gherkin reuses existing project steps where possible
+2. Reject guessed mappings that should be represented as `#TODO`
+3. Flag duplicate or unnecessary new behavior before any implementation begins
+4. Return a strict review with PASS/FAIL, issues, and required fixes
+
+**Receives**: `state.governance.generatedTest`
+
+**CHECKPOINT**: Display to user:
+- Governance result: `{PASS/FAIL}`
+- Issues found: {count} (list)
+- Required fixes: {list}
+- **If PASS**: "Generated test approved by governor. Proceed with environment setup?"
+- **If FAIL**: "Generated test rejected by governor. Apply required fixes before continuing."
+
+If FAIL, do not proceed to Phase 2 until the generated test is corrected and re-reviewed.
+
+---
+
 ### Phase 2: Environment & User Setup
 **Performed by the orchestrator** (no separate agent needed).
 
@@ -166,13 +204,11 @@ This phase:
    - `Given I am logged in as {string}` -- single user label
    - `Given I am logged in as {string} booking a new trip` -- label + booking
 3. Resolves each user against:
-   - `c:\DEV\Atriis.Test.Automation\.env` -- local test users (`USER_<LABEL>=email`)
-   - `c:\DEV\Cortex.QA\.envusers` -- QA Hub user registry
-   - `c:\DEV\Atriis.Test.Automation\src\config\config.js` -- auto-discovers users from env vars (no code changes needed)
+  - `c:\DEV\Atriis.Test.Automation\.env` -- local test users (`USER_<LABEL>=email`)
+  - `c:\DEV\Atriis.Test.Automation\src\config\config.js` -- auto-discovers users from env vars (no code changes needed)
 4. For missing users:
-   - Adds `USER_<LABEL>=email` to `.env` in Atriis.Test.Automation
-   - Registers in `.envusers` in Cortex.QA
-   - Note: `config.js` auto-discovers users from env vars -- no manual config key mapping needed
+  - Adds `USER_<LABEL>=email` to `.env` in Atriis.Test.Automation
+  - Note: `config.js` auto-discovers users from env vars -- no manual config key mapping needed
 5. Also checks if `GENERAL_PASSWORD` exists and is valid
 
 **Receives**: `state.environment`
@@ -193,16 +229,22 @@ This agent:
 
 1. **Reads the feature file** and extracts ALL Gherkin steps (Given/When/Then/And/But)
 2. **For each step**, searches `c:\DEV\Atriis.Test.Automation\tests\steps\*.steps.js` for a matching step definition
-3. **Classifies each step**:
+3. **Runs a mandatory duplication-prevention check before creating anything**:
+  - Search the full step catalog for exact phrase matches first
+  - Search for near-matches with the same intent but different wording
+  - Search the relevant DSL and Page Object layers for existing methods that already support the behavior
+  - Record the best candidate matches and why they were rejected for reuse
+  - Only allow new code when no existing option works as-is
+4. **Classifies each step**:
    - **Exists**: Step definition found with matching pattern -- no action needed
-   - **Similar**: A step with similar phrasing/intent exists -- present options (reuse/adapt/create new)
+  - **Similar**: A step with similar phrasing/intent exists -- prefer reuse, but do not change existing step logic. If no exact match already works as-is, create a new step definition with the exact phrasing needed.
    - **Missing**: No match found -- must be implemented
-4. **For missing steps**, implements bottom-up (same order as @todo-pipeline):
+5. **For missing steps**, implements bottom-up (same order as @todo-pipeline):
    - Locators -- check `../Atriis.App/` for `data-testid` attributes
    - Page Object methods -- atomic actions
    - DSL methods -- business workflows
    - Step definitions -- glue code
-5. **Consults domain agents** (`@domain-{domain}`) for domain-specific patterns
+6. **Consults domain agents** (`@domain-{domain}`) for domain-specific patterns
 
 **Receives**: `state.stepValidation`
 
@@ -210,10 +252,35 @@ This agent:
 - Total steps in feature: {count}
 - Already implemented: {count} (list)
 - Similar found: {count} (list with what exists vs. what's needed)
+- Reuse decisions: {list with candidate found -> reused / rejected / created new}
 - Missing -- implemented: {count} (list with files created/modified)
 - **Ask**: "Step validation complete. Proceed with test execution?"
 
 If user wants to adjust, apply changes and re-validate.
+
+---
+
+### Phase 3.5: Governance Review of Implemented Code
+**Invoke**: `@strict-test-governor`
+
+Pass the generated feature plus all step-definition, DSL, and Page Object changes created during Phase 3.
+
+The governor must:
+1. Verify reuse-first behavior was followed
+2. Reject unnecessary new functions, duplicate logic, or pattern violations
+3. Enforce `#TODO` placeholders when reuse/implementation is still unclear
+4. Return a strict review with PASS/FAIL, issues, and required fixes
+
+**Receives**: `state.governance.implementedCode`
+
+**CHECKPOINT**: Display to user:
+- Governance result: `{PASS/FAIL}`
+- Issues found: {count} (list)
+- Required fixes: {list}
+- **If PASS**: "Implementation approved by governor. Proceed with test execution?"
+- **If FAIL**: "Implementation rejected by governor. Apply required fixes before running the test."
+
+If FAIL, do not proceed to Phase 4 until the code is corrected and re-reviewed.
 
 ---
 
@@ -251,6 +318,28 @@ Before attempting any fix, **triage the failure**:
 - **Code/locator/step error** -- proceed with fix.
 
 **CHECKPOINT**: Show fixes applied, ask to re-run.
+
+**Governance Review Before Re-run**:
+**Invoke**: `@strict-test-governor`
+
+Pass the fix diff, current feature file, failing errors, and the updated implementation context.
+
+The governor must:
+1. Verify the fix did not introduce duplicate logic or unnecessary new functions
+2. Enforce reuse of existing steps, DSL methods, page methods, and helpers
+3. Reject quick patches that violate project layering or patterns
+4. Return PASS/FAIL with issues and required fixes
+
+Append each review result to `state.governance.fixReviews` with the current iteration number.
+
+**CHECKPOINT**: Display to user:
+- Fix governance result: `{PASS/FAIL}`
+- Issues found: {count} (list)
+- Required fixes: {list}
+- **If PASS**: "Fix approved by governor. Proceed with re-run?"
+- **If FAIL**: "Fix rejected by governor. Correct the implementation before re-running."
+
+If FAIL, do not re-run until the fix is corrected and re-reviewed.
 
 **Re-run**:
 **Invoke**: `@test-runner-pipeline`
@@ -300,6 +389,11 @@ Generate a comprehensive report:
   |-- New DSL:       {list}
   +-- New page obj:  {list}
 
+  Governance:
+  |-- Generated test: {PASS/FAIL}
+  |-- Implementation: {PASS/FAIL}
+  +-- Fix reviews:    {count} ({passCount} pass / {failCount} fail)
+
   Execution:
   |-- Result:        {PASSED/FAILED}
   |-- Scenarios:     {passed}/{total}
@@ -314,7 +408,7 @@ Generate a comprehensive report:
 ```
 
 Save report to:
-- `c:\DEV\Cortex.QA\docs\findings\{workItemId}-e2e-report.md`
+- `c:\DEV\Atriis.Test.Automation\test-results\{workItemId}-e2e-report.md`
 - `c:\DEV\Atriis.Test.Automation\test-results\` (JSON/XML)
 
 **Receives**: `state.report`
@@ -354,7 +448,7 @@ For each issue or failing scenario found during testing:
 **Invoke**: `@ado-publish-testcase`
 
 Pass to the sub-agent:
-- `featurePath` — the Cortex.QA generated feature file path
+- `featurePath` — the locally generated feature file path in `test-results/generated/`
 - `workItemId` — the original work item / bug ID
 - `areaPath` — area path from `state.source` (same as parent work item)
 - `domain` — from `state.domain`
@@ -381,13 +475,13 @@ The sub-agent will:
 ---
 
 ### Phase 7: Deploy Feature File
-**Performed by the orchestrator** (file copy + CI update).
+**Performed by the orchestrator** (file copy).
 
-Move the feature file from Cortex.QA to the correct location in Atriis.Test.Automation:
+Move the generated feature file from `test-results/generated/` to the correct location in Atriis.Test.Automation:
 
 1. **Determine destination folder** based on domain and test type:
 
-   | Domain | Non-booking (CI job exists) | Booking |
+  | Domain | Non-booking | Booking |
    |--------|------------|--------|
    | Flights | `tests/features/flights/daily_flights/` | `tests/features/flights/daily_flights/` (no separate booking folder) |
    | Hotels | `tests/features/hotels/daily_hotels/` | `tests/features/hotels/hotels_booking/` |
@@ -399,29 +493,26 @@ Move the feature file from Cortex.QA to the correct location in Atriis.Test.Auto
    - Contains booking completion + cancellation steps -> booking folder
    - Search/filter/verify UI only -> daily folder
 
-2. **Copy feature file** from `automation/test-cases/generated/{id}.feature` to destination
-3. **Update CI workflow** (`.github/workflows/test-suite.yml`) -- add any missing `USER_*` env vars to the appropriate CI job
-4. **Verify** the feature file runs from its new location
+2. **Copy feature file** from `test-results/generated/{id}.feature` to destination
+3. **Verify** the feature file runs from its new location
 
 **Receives**: `state.deployment`
 
 **CHECKPOINT**: Display to user:
-- Source: {cortex path}
+- Source: {generated feature path}
 - Destination: {atriis path}
-- CI job updated: {yes/no} (which vars added)
 - **Ask**: "Feature deployed. Commit all changes?"
 
 ---
 
 ### Phase 8: Commit & Pull Request
-If user approves, commit and push **only in Atriis.Test.Automation**. Never commit to Cortex.QA.
+If user approves, commit and push **only in Atriis.Test.Automation**.
 
 **Atriis.Test.Automation only:**
 ```powershell
 cd c:\DEV\Atriis.Test.Automation
 git checkout -b feat/e2e-{workItemId}
 git add {all created/modified files}
-git add .github/workflows/test-suite.yml
 git commit -m "feat(e2e-pipeline): automate ADO #{workItemId} -- {title}
 
 - Feature: {featurePath}
@@ -439,7 +530,7 @@ https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?e
 ```
 
 > ⚠️ **Never push directly to `main`**. The branch must be reviewed and merged via Pull Request.
-> ⚠️ **Never commit to Cortex.QA**. Generated files (reports, feature files) stay as local working artifacts only.
+> ⚠️ **Do not commit temporary artifacts from `test-results/` unless explicitly requested**.
 
 ---
 
@@ -463,9 +554,10 @@ https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?e
 4. **Respect layer boundaries** -- delegate to the right sub-agent for each task
 5. **Domain agents are consultants** -- they provide knowledge, not action
 6. **Never push to main/master** -- always create `feat/e2e-{workItemId}` branch and push there; open a PR for human review and approval
-7. **Never commit to Cortex.QA** -- Cortex.QA files (reports, generated feature files) are local working artifacts only; they are never staged, committed, or pushed
-8. **Feature file generation stays in Cortex.QA** -- only Phase 7 copies to Atriis.Test.Automation
-9. **Never modify existing Atriis.Test.Automation files without explicit need** -- only add new files and update `.env`/`test-suite.yml` where necessary
+7. **Keep temporary artifacts local** -- generated reports and temporary feature files under `test-results/` are working artifacts unless explicitly requested
+8. **Feature file generation starts in `test-results/generated/`** -- only Phase 7 copies to the final `tests/features/` location
+9. **Never modify existing Atriis.Test.Automation files without explicit need** -- only add new files and update `.env` where necessary
 10. **Handle multiple scenarios per work item** -- one ADO item may produce multiple Gherkin scenarios, each tracked separately
 11. **Ask about existing tests** -- if tests already exist for this work item, ask user what to do
 12. **Always end Phase 8 with a PR link** -- display `https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?expand=1` so the user can open the PR immediately
+13. **No new code without search evidence** -- before creating a new step, DSL method, page method, or locator, the agent must show the exact and near-match search results it checked and why reuse was not possible

@@ -89,7 +89,8 @@ Review all pending changes and classify them into one or more categories:
     - **Methods:** camelCase, action-oriented (e.g., `searchFlightOneWay`, `addMeAsTraveler`, `cancelTripStrict`)
     - **Variables:** camelCase (e.g., `searchPage`, `routeKey`, `flightSearchPage`)
     - **Booleans:** `is`/`has`/`was`/`should` prefixes (e.g., `isVisible`, `cancelled`, `clickedModal`)
-    - **SELECTORS:** UPPER_SNAKE_CASE (e.g., `FLIGHT_TAB`, `PROCEED_BUTTON`, `OOP_INFO`)
+    - **SELECTORS:** UPPER_SNAKE_CASE (e.g., `FLIGHT_TAB`, `PROCEED_BUTTON`, `OOP_INFO`) and centralized on top of the file
+    - **Gherkin:** User-centric language, not technical (e.g., "Given I am logged in as a corporate user" not "Given I have a valid session cookie")
   - **Locator strategy:**
     - Prefer: `data-testid`, role selectors, attribute selectors, IDs, then classes
     - Avoid: deep CSS chains, `nth-child`, index-based (use `.nth()` if needed), dynamic text

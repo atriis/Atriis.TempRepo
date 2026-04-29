@@ -32,15 +32,17 @@ DSLs in this project are **object literal modules**. The `page` object is always
 const FlightSearchPage = require('@pages/FlightSearchPage');
 const { SearchPage } = require('@pages/SearchPage');
 const flightRoutes = require('@data/flights.json');
+const { getPageObject } = require('@utils/pageObjectCache');
+const logger = require('@utils/logger').child('FlightSearch-DSL');
 const { resolveRoute } = require('@utils/route.helper');
 
 const FlightSearch = {
   async searchFlightOneWay(page, routeInput = flightRoutes.defaultRoute, options = {}) {
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
-    console.log(`Searching one-way flight: ${from} → ${to}`);
+    logger.info('Searching one-way flight', { from, to });
 
-    const flightSearchPage = new FlightSearchPage(page);
-    const searchPage = new SearchPage(page);
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
 
     await flightSearchPage.clickFlightTab();
     await searchPage.selectOneWayTrip();
@@ -103,7 +105,7 @@ DSL methods represent **complete business actions**, not UI steps:
 ```js
 // ✅ GOOD: Complete business action
 async searchFlightOneWay(page, routeInput, options) {
-  const searchPage = new SearchPage(page);
+  const searchPage = getPageObject(page, SearchPage);
   await searchPage.selectOneWayTrip();
   await searchPage.fillInFromField(from);
   await searchPage.fillInToField(to);
@@ -145,14 +147,16 @@ async acceptTermsAndConditionsAndProceedToCheckout(page) {
 
 ## Page Object Instantiation
 
-Create Page Object instances **inside DSL methods**, not at module level:
+Create Page Object instances **inside DSL methods** using the shared page-object cache, not at module level:
 
 ```js
-// ✅ GOOD: Create inside method
+// ✅ GOOD: Create inside method using the cache
+const { getPageObject } = require('@utils/pageObjectCache');
+
 const FlightSearch = {
   async searchFlightOneWay(page, routeInput) {
-    const flightSearchPage = new FlightSearchPage(page);
-    const searchPage = new SearchPage(page);
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
     // ... use them
   },
 };
@@ -165,19 +169,25 @@ class FlightSearch {
 }
 ```
 
+Always use `getPageObject(page, PageClass)` from `@utils/pageObjectCache`. This caches Page Object instances per page and is the project-standard pattern.
+
 ## Logging Guidelines
 
-Add console logs to explain **business intent**, not UI steps:
+Use the project logger to explain **business intent**, not UI steps:
 
 ```js
+const logger = require('@utils/logger').child('FlightSearch-DSL');
+
 // ✅ GOOD: Business context
-console.log(`Starting ${tripType} flight search (${searchType}): ${from} → ${to}`);
-console.log('Selecting cheapest available flight');
+logger.info(`Starting ${tripType} flight search (${searchType})`, { from, to });
+logger.debug('Selecting cheapest available flight');
 
 // ❌ BAD: Restating code
-console.log('Clicking button');
-console.log('Filling input field');
+logger.info('Clicking button');
+logger.info('Filling input field');
 ```
+
+In DSL files, prefer `logger.info()` and `logger.debug()` over `console.log()` so output stays consistent with the project logger.
 
 ## Error Messages
 
