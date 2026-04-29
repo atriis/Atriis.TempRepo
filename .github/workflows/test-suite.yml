@@ -37,13 +37,16 @@ jobs:
             exit 0
           fi
 
-          scheduled_local_time="$(TZ=Europe/Lisbon date +%H:%M)"
+          scheduled_cron="${{ github.event.schedule }}"
+          lisbon_offset="$(TZ=Europe/Lisbon date +%z)"
 
-          if [ "$scheduled_local_time" = "19:30" ]; then
+          if [ "$scheduled_cron" = "30 18 * * *" ] && [ "$lisbon_offset" = "+0100" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          elif [ "$scheduled_cron" = "30 19 * * *" ] && [ "$lisbon_offset" = "+0000" ]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping scheduled execution because Portugal local time is $scheduled_local_time, not 19:30."
+            echo "Skipping scheduled execution for cron '$scheduled_cron' because Lisbon UTC offset is $lisbon_offset."
           fi
 
   daily-amadeus-non-booking-tests:

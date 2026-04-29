@@ -19,8 +19,12 @@ Feature: 59831 Galileo - Free seats do not send paid seat request
     And flight results should be available
     And I filter results by carrier "DL"
     And I add the first flight to cart
-    # TODO: Adding_free_seat — expand seats section, select free seat, save
-    # Testim: scrollToElement(".flight-seats .card-title") → click → wait for seat map → select free seat → save
+    Then the booking status should be "Pending Booking"
+    And I click seating in extras
+    And I click add seats in extras
+    And I wait for the seat map to load
+    And I select the first available flight seat
+    And I save and close seat map drawer
+    Then the booking status should be "Pending Booking"
     And I accept Terms & Conditions
-    And I click hold flight button
-    Then I successfully cancel the trip
+    And I hold the trip

@@ -49,6 +49,10 @@ const FlightResults = {
         await flightResultsPage.waitForResultsLoaderToFinish(timeout);
       }
 
+      if (await flightResultsPage.isResultsSkeletonVisible()) {
+        await flightResultsPage.waitForResultsSkeletonToFinish(timeout);
+      }
+
       const remainingTimeout = Math.max(1000, timeout - (Date.now() - startTime));
       await flightResultsPage.waitForFlightResults(remainingTimeout);
       return true;
@@ -1652,6 +1656,17 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Verifies the agreement indicator is visible in the first flight result.
+   * @param {import('playwright').Page} page
+   */
+  async verifyAgreementIndicatorVisibleInResults(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const visible = await flightResultsPage.isAgreementIndicatorVisibleInFirstResult();
+    expect(visible, 'Agreement indicator should be visible in the first flight result').toBe(true);
+  },
+
+  /**
    * Verifies the Marine Fare icon (anchor) is visible in flight results.
    * @param {import('playwright').Page} page
    */
@@ -1671,6 +1686,17 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     const visible = await flightResultsPage.isMarineFareIconVisibleInPricingOptions();
     expect(visible, 'Marine Fare icon should be visible in pricing options').toBe(true);
+  },
+
+  /**
+   * Verifies the agreement indicator is visible in the first pricing option.
+   * @param {import('playwright').Page} page
+   */
+  async verifyAgreementIndicatorVisibleInPricingOptions(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const visible = await flightResultsPage.isAgreementIndicatorVisibleInPricingOptions();
+    expect(visible, 'Agreement indicator should be visible in the first pricing option').toBe(true);
   },
 
   /**

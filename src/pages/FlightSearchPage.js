@@ -323,6 +323,29 @@ class FlightSearchPage {
   }
 
   /**
+   * Checks if the hotel search parallel checkbox is checked.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isParallelHotelSearchChecked(timeout = 15000) {
+    const checkbox = this.page.locator(SELECTORS.PARALLEL_HOTEL_CHECKBOX).first();
+    await checkbox.waitFor({ state: 'visible', timeout });
+    return await checkbox.locator('input').isChecked();
+  }
+
+  /**
+   * Disables the "Add hotel to this trip" parallel search checkbox if enabled.
+   */
+  async uncheckParallelHotelSearch() {
+    const checkbox = this.page.locator(SELECTORS.PARALLEL_HOTEL_CHECKBOX).first();
+    await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+    const isChecked = await checkbox.locator('input').isChecked();
+    if (isChecked) {
+      await checkbox.click();
+    }
+  }
+
+  /**
    * Clicks the return date field in advanced search mode to open its calendar.
    */
   async clickAdvancedReturnDateField() {
@@ -357,6 +380,20 @@ class FlightSearchPage {
     await checkbox.waitFor({ state: 'visible', timeout: 10000 });
     const isChecked = await checkbox.locator('.el-checkbox__input').evaluate(el => el.classList.contains('is-checked'));
     if (!isChecked) {
+      await checkbox.click();
+    }
+  }
+
+  /**
+   * Disables the "Add Car" parallel search checkbox if enabled.
+   */
+  async uncheckParallelCarSearch() {
+    const checkbox = this.page.locator(SELECTORS.CAR_SEARCH_CHECKBOX)
+      .filter({ hasText: SELECTORS.CAR_SEARCH_CHECKBOX_TEXT })
+      .first();
+    await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+    const isChecked = await checkbox.locator('.el-checkbox__input').evaluate(el => el.classList.contains('is-checked'));
+    if (isChecked) {
       await checkbox.click();
     }
   }

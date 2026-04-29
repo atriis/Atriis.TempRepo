@@ -15,20 +15,21 @@ Feature: 69669 Galileo - Single PNR when two flights booked separately
   Scenario: Two separately booked flights result in single PNR
     Given I am logged in as "beatrizpamplonacorp" booking a new trip
     And I have added a random guest traveler
-    # First flight
-    When I search for a one way flight from "LON" to "DOH"
+    When I search for a one way flight from "LIS" to "DXB"
     And I add the first flight to cart
+    Then the booking status should be "Pending Booking"
     And I proceed to checkout
     And I complete the booking
-    And I store the first booked flight number
-    # Second flight from cart
+    Then the quote destination should contain "Flight to"
     And I click to add a flight to my trip from cart
-    # TODO: Searching_second_flight — search second flight from within trip (need to search one way from cart)
+    When I edit the flight search from "LHR" to "AUH"
+    And flight results should be available
     And I add the first flight to cart
+    Then the quote destination should contain "Flight to"
     And I proceed to checkout
     And I complete the booking
-    # Verify single PNR
-    And I store the second booked flight number
-    Then all quotes should have PNR codes
-    # TODO: Verifying_single_PNR — verify both quotes share the same PNR code
-    And I successfully cancel the trip
+    Then the quote destination should contain "Flight to"
+    And I store the first quote PNR code
+    And I store the second quote PNR code
+    Then the stored quote PNR codes should match
+  

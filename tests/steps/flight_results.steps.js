@@ -611,19 +611,23 @@ Then('the {string} indicator should be visible in results', async function (indi
   logger.info('Verifying indicator is visible in results', { indicatorName });
   if (indicatorName === 'Separated Tickets') {
     await FlightResults.verifySeparatedTicketsIndicatorVisible(this.page);
+  } else if (indicatorName === 'Agreement') {
+    await FlightResults.verifyAgreementIndicatorVisibleInResults(this.page);
   } else if (indicatorName === 'Marine Fare') {
     await FlightResults.verifyMarineFareIconVisibleInResults(this.page);
   } else {
-    throw new Error(`Unknown indicator: "${indicatorName}". Supported: "Separated Tickets", "Marine Fare"`);
+    throw new Error(`Unknown indicator: "${indicatorName}". Supported: "Agreement", "Separated Tickets", "Marine Fare"`);
   }
 });
 
 Then('the {string} indicator should be visible in pricing options', async function (indicatorName) {
   logger.info('Verifying indicator is visible in pricing options', { indicatorName });
-  if (indicatorName === 'Marine Fare') {
+  if (indicatorName === 'Agreement') {
+    await FlightResults.verifyAgreementIndicatorVisibleInPricingOptions(this.page);
+  } else if (indicatorName === 'Marine Fare') {
     await FlightResults.verifyMarineFareIconVisibleInPricingOptions(this.page);
   } else {
-    throw new Error(`Unknown indicator: "${indicatorName}". Supported: "Marine Fare"`);
+    throw new Error(`Unknown indicator: "${indicatorName}". Supported: "Agreement", "Marine Fare"`);
   }
 });
 

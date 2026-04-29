@@ -18,8 +18,10 @@ Feature: 60578 Galileo - PNR remark sent per ticket NDC with passive segment
     And I have added a random guest traveler
     When I search for a round trip flight from "FRA" to "WAW"
     And flight results should be available
-    # TODO: Search_flights_and_add_to_trip — selects 2nd result (not first), waits for "To pay"
     And I add the first flight to cart
+    Then the booking status should be "Pending Booking"
     And I proceed to checkout
     And I complete the booking
-    # TODO: Validate_Ticket_Numbers — expand "More details", verify ticket numbers start with "220" for both travelers
+    Then the quote destination should contain "Flight to"
+    When I open flight details in cart
+    Then the flight details ticket numbers should start with "220" for both travelers

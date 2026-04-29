@@ -19,10 +19,13 @@ Feature: 67478 Galileo - By schedule price does not change for multi travelers
     And I have added a random guest traveler
     When I search for a flight by schedule from "LON" to "DOH"
     And I select flight segments by schedule
-    And I select the first option from pricing options
-    And I handle conflicting quotes if visible
-    And I extract the price from first pricing option
+    And I wait for "Your Selection" text to be visible
+    And I add "Your Selection" fare to trip
+    Then the booking status should be "Pending booking"
+    When I extract the price at index 0 from "cart"
     And I proceed to checkout
     And I complete the booking
-    Then the cart total price should match the last extracted price
-    And I successfully cancel the trip
+    Then the quote destination should contain "Flight to"
+    When I extract the price at index 0 from "cart"
+    Then the extracted price at index 0 should equal the extracted price at index 1 within tolerance
+

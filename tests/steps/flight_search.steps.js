@@ -177,6 +177,16 @@ When("I click on the flight tab and check Allow nearby airports", async function
   await FlightSearch.clickFlightTabAndCheckNearbyAirports(this.page);
 });
 
+When("I click on the flight tab and check Add hotel to this trip", async function () {
+  logger.info('Clicking on flight tab and checking Add hotel to this trip checkbox');
+  await FlightSearch.clickFlightTabAndCheckParallelHotel(this.page);
+});
+
+When("I click on the flight tab and uncheck Add hotel to this trip and Add car to this trip", async function () {
+  logger.info('Clicking on flight tab and unchecking Add hotel to this trip and Add car to this trip checkboxes');
+  await FlightSearch.clickFlightTabAndUncheckParallelHotelAndCar(this.page);
+});
+
 // ========================================
 // THEN STEPS - FLIGHT SEARCH VERIFICATION
 // ========================================

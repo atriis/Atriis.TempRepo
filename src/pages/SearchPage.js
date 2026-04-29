@@ -120,6 +120,10 @@ class SearchPage {
     this.page = page;
   }
 
+  getEditSearchDrawer() {
+    return this.page.locator(SELECTORS.EDIT_SEARCH_DRAWER).last();
+  }
+
   /**
    * Gets an airport input inside the visible edit-search drawer.
    *
@@ -127,10 +131,13 @@ class SearchPage {
    * @returns {import('@playwright/test').Locator}
    */
   getEditAirportInput(index) {
-    return this.page
-      .locator(SELECTORS.EDIT_SEARCH_DRAWER)
+    return this.getEditSearchDrawer()
       .locator(SELECTORS.EDIT_AIRPORT_AUTOCOMPLETE)
       .nth(index);
+  }
+
+  getEditSearchButton() {
+    return this.getEditSearchDrawer().locator(SELECTORS.SEARCH_BUTTON).first();
   }
 
   /**
@@ -439,6 +446,48 @@ class SearchPage {
     await input.waitFor({ state: 'visible', timeout: 15000 });
   }
 
+  async editAirportField(index, value) {
+    if (!value || typeof value !== 'string') {
+      throw new Error(`value must be a non-empty string, got: ${typeof value}`);
+    }
+
+    const normalizedValue = value.trim().toUpperCase();
+    const input = this.getEditAirportInput(index);
+
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.scrollIntoViewIfNeeded();
+    await input.focus();
+    await input.press('Control+A');
+    await input.press('Backspace');
+    await this.page.waitForTimeout(300);
+    await input.pressSequentially(value, { delay: 100 });
+
+    const firstSuggestion = this.page.locator(SELECTORS.AUTOCOMPLETE_LIST).first();
+    await firstSuggestion.waitFor({ state: 'visible', timeout: 15000 });
+    await firstSuggestion.click();
+
+    await this.page.waitForFunction(
+      ([drawerSelector, inputSelector, inputIndex, expectedValue]) => {
+        const drawers = document.querySelectorAll(drawerSelector);
+        const drawer = drawers[drawers.length - 1];
+
+        if (!drawer) {
+          return false;
+        }
+
+        const input = drawer.querySelectorAll(inputSelector)[inputIndex];
+
+        return !!input
+          && typeof input.value === 'string'
+          && input.value.toUpperCase().includes(expectedValue);
+      },
+      [SELECTORS.EDIT_SEARCH_DRAWER, SELECTORS.EDIT_AIRPORT_AUTOCOMPLETE, index, normalizedValue],
+      { timeout: 10000 },
+    );
+
+    await this.page.waitForTimeout(300);
+  }
+
   /**
    * Edits a pre-filled "From" field.
    *
@@ -451,17 +500,7 @@ class SearchPage {
    * @param {string} from - New origin airport code to type
    */
   async editFromField(from) {
-    const input = this.getEditAirportInput(0);
-    await input.waitFor({ state: 'visible', timeout: 10000 });
-    await input.focus();
-    await this.page.keyboard.press('Control+A');
-    await this.page.keyboard.press('Backspace');
-    await this.page.waitForTimeout(300);
-    await input.pressSequentially(from, { delay: 100 });
-    const firstSuggestion = this.page.locator(SELECTORS.AUTOCOMPLETE_LIST).first();
-    await firstSuggestion.waitFor({ state: 'visible', timeout: 15000 });
-    await firstSuggestion.click();
-    await this.page.waitForTimeout(500);
+    await this.editAirportField(0, from);
   }
 
   /**
@@ -473,17 +512,7 @@ class SearchPage {
    * @param {string} to - New destination airport code to type
    */
   async editToField(to) {
-    const input = this.getEditAirportInput(1);
-    await input.waitFor({ state: 'visible', timeout: 10000 });
-    await input.focus();
-    await this.page.keyboard.press('Control+A');
-    await this.page.keyboard.press('Backspace');
-    await this.page.waitForTimeout(300);
-    await input.pressSequentially(to, { delay: 100 });
-    const firstSuggestion = this.page.locator(SELECTORS.AUTOCOMPLETE_LIST).first();
-    await firstSuggestion.waitFor({ state: 'visible', timeout: 15000 });
-    await firstSuggestion.click();
-    await this.page.waitForTimeout(500);
+    await this.editAirportField(1, to);
   }
 
 /**
@@ -627,6 +656,23 @@ class SearchPage {
     // Small delay to ensure form validation completes
     await this.page.waitForTimeout(500);
     await searchButton.click();
+  }
+
+  /**
+   * Waits for the visible edit-search drawer Search button to be actionable and clicks it.
+   */
+  async waitAndClickEditSearchButton() {
+    const searchButton = this.getEditSearchButton();
+    await searchButton.waitFor({ state: 'visible', timeout: 15000 });
+    await this.page.waitForTimeout(500);
+
+    try {
+      await searchButton.click({ timeout: 10000 });
+    } catch {
+      await searchButton.click({ force: true, timeout: 10000 });
+    }
+
+    await this.getEditSearchDrawer().waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
   }
 
   // Switches to rail search

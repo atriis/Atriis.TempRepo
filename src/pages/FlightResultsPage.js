@@ -52,6 +52,8 @@ function parseDurationRange(rangeText) {
 const SELECTORS = {
   // Flight selection
   PRODUCT_LOADER: '.app-product-loader',
+  RESULTS_CONTAINER_SKELETON: '.results-container-skeleton',
+  FILTER_CONTAINER_SKELETON: '.flight-filter-container-skeleton',
   CHANGE_FLIGHT_BUTTON: '.change-flight-btn-wrapper',
   CHANGE_FLIGHT_TEXT: 'Change flight',
   FLIGHT_STEPPER_PAGE_CONTAINER: '.flight-stepper .page-container',
@@ -162,6 +164,7 @@ const SELECTORS = {
   // Uses text-based selector since the tag is wrapped in el-tooltip which can interfere with CSS-class visibility checks
   SEPARATED_TICKETS_TAG: 'p.separated-tickets-tag',
   SEPARATED_TICKETS_TEXT: 'Separated Tickets',
+  AGREEMENT_ICON: '.agreement-icon',
 
   // Marine Fare icon (flight-preview.vue / flight-by-schedule-pricing-option.vue)
   // Uses anchor material icon + "Marine fare" text — no data-testid available
@@ -480,6 +483,20 @@ class FlightResultsPage {
    */
   async waitForResultsLoaderToFinish(timeout = 120000) {
     await this.page.locator(SELECTORS.PRODUCT_LOADER).first().waitFor({ state: 'hidden', timeout });
+  }
+
+  async isResultsSkeletonVisible(timeout = 3000) {
+    try {
+      await this.page.locator(SELECTORS.RESULTS_CONTAINER_SKELETON).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async waitForResultsSkeletonToFinish(timeout = 120000) {
+    await this.page.locator(SELECTORS.RESULTS_CONTAINER_SKELETON).first().waitFor({ state: 'hidden', timeout });
+    await this.page.locator(SELECTORS.FILTER_CONTAINER_SKELETON).first().waitFor({ state: 'hidden', timeout });
   }
 
   /**
@@ -1650,6 +1667,24 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   }
 
   /**
+   * Checks if the agreement indicator is visible in the first flight result.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isAgreementIndicatorVisibleInFirstResult(timeout = 15000) {
+    try {
+      const firstResult = this.page.locator(SELECTORS.FLIGHT_PREVIEW).first();
+      await firstResult.waitFor({ state: 'visible', timeout });
+
+      const locator = firstResult.locator(SELECTORS.AGREEMENT_ICON).first();
+      await locator.waitFor({ state: 'attached', timeout });
+      return await locator.isVisible();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Checks if the Marine Fare icon (anchor) is visible in flight results.
    * @param {number} timeout - Max wait time in ms (default: 15000)
    * @returns {Promise<boolean>}
@@ -1673,6 +1708,27 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     try {
       const overlay = this.getPricingOptionsOverlay();
       const locator = overlay.locator(SELECTORS.MARINE_FARE_ANCHOR_ICON).first();
+      await locator.waitFor({ state: 'attached', timeout });
+      return await locator.isVisible();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the agreement indicator is visible in the first pricing option.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isAgreementIndicatorVisibleInPricingOptions(timeout = 15000) {
+    try {
+      const overlay = this.getPricingOptionsOverlay();
+      await overlay.waitFor({ state: 'visible', timeout });
+
+      const firstPricingOption = overlay.locator(SELECTORS.PRICING_OPTIONS_ITEM).first();
+      await firstPricingOption.waitFor({ state: 'visible', timeout });
+
+      const locator = firstPricingOption.locator(SELECTORS.AGREEMENT_ICON).first();
       await locator.waitFor({ state: 'attached', timeout });
       return await locator.isVisible();
     } catch {

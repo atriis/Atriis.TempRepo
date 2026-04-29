@@ -71,6 +71,8 @@ const SELECTORS = {
   // Product details selectors
   FLIGHT_DETAILS_BUTTON: ".more-details-btn",
   POST_TICKETING_TABLE_HEADERS: '.flight-post-ticketing-details .post-ticketing-table thead th',
+  POST_TICKETING_TABLE: '.flight-post-ticketing-details .post-ticketing-table',
+  POST_TICKETING_TICKET_NUMBER_TEXT: 'tbody tr td:nth-child(2) .mr-1:visible',
   POST_TICKETING_FIRST_SEAT_BUTTON: '.flight-post-ticketing-details .post-ticketing-table tbody tr:first-child td:nth-child(5) .add-seats-btn',
   MORE_DETAILS_HOTEL_BUTTON: ".more-details",
   MORE_DETAILS_CAR_BUTTON: ".more-details.is-flex",
@@ -121,6 +123,9 @@ const SELECTORS = {
   GREEN_ICON_BAGGAGE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green",  // Green icon next to added baggage
   BAGGAGE_SELECTED_OPTION: '.flight-baggage .el-select__selected-item span', // Selected baggage option text inside the flight-baggage section
   
+  // Flight Seating (flight-seating.vue)
+  SEATING_EDIT_BUTTON: ".flight-seating .extra__btns", // Edit/Add button in the seating extras row (scoped to flight-seating to avoid matching other extras buttons)
+
   // Flight Meals (flight-meals.vue)
   MEAL_EDIT_BUTTON: ".flight-meals .extra__btns", // Edit/Add button in the meal extras row (scoped to flight-meals to avoid matching other extras buttons)
   MEAL_DROPDOWN_CARET: ".flight-meals .el-select__caret",
@@ -214,6 +219,7 @@ const SELECTORS = {
   SHARE_LANGUAGE_DROPDOWN: '.app-share-quotes .app-select .el-select',
   SHARE_LANGUAGE_OPTION: (text) => `.app-select-popper .el-select-dropdown__item:has-text("${text}")`,
   SHARE_DETAILED_RADIO: '.app-share-quotes .radio-btns .el-radio',
+  SHARE_EMAIL_CONTAINER: '.email-content-container',
   // Share email preview iframe
   SHARE_EMAIL_IFRAME: '.email-content-container iframe',
   // Hotel address in share email preview
@@ -1311,6 +1317,15 @@ class CartPage {
   }
 
   /**
+   * Opens the seating extras panel by clicking the Edit/Add button scoped to the flight-seating section.
+   */
+  async clickEditSeatingExtrasButton() {
+    const btn = this.page.locator(SELECTORS.SEATING_EDIT_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout: 10000 });
+    await btn.click();
+  }
+
+  /**
    * Opens the meal extras panel by clicking the Edit/Add button scoped to the flight-meals section.
    */
   async clickEditMealExtrasButton() {
@@ -1732,6 +1747,44 @@ class CartPage {
   }
 
   /**
+   * Gets all visible PNR codes rendered inside flight quote cards in the cart.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string[]>}
+   */
+  async getVisibleFlightQuotePnrCodes({ timeout = 15000 } = {}) {
+    const quoteCards = this.page.locator(SELECTORS.FLIGHT_QUOTE_CARD);
+    await quoteCards.first().waitFor({ state: 'visible', timeout });
+
+    const count = await quoteCards.count();
+    const values = [];
+
+    for (let index = 0; index < count; index += 1) {
+      const quoteCard = quoteCards.nth(index);
+      await quoteCard.scrollIntoViewIfNeeded();
+
+      const pnrCode = quoteCard.locator(SELECTORS.PNR_CODE).first();
+      const isVisible = await pnrCode.isVisible().catch(() => false);
+
+      if (!isVisible) {
+        continue;
+      }
+
+      const value = ((await pnrCode.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+
+      if (value) {
+        values.push(value);
+      }
+    }
+
+    if (!values.length) {
+      throw new Error('Could not extract any PNR codes from flight quotes in the cart');
+    }
+
+    return values;
+  }
+
+  /**
    * Gets the trip title text from the cart info bar (e.g. "Trip to Ashdod").
    * @param {number} [timeout=10000]
    * @returns {Promise<string>}
@@ -2100,6 +2153,14 @@ class CartPage {
     return false;
   }
 
+  normalizeSharePreviewText(text) {
+    return (text ?? '')
+      .replace(/[\u200B-\u200D\uFEFF]/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   /**
    * Gets all text content from the share email preview iframe.
    * @returns {Promise<string>} Full text content of the iframe
@@ -2115,18 +2176,18 @@ class CartPage {
         const bodyCount = await body.count();
         if (bodyCount > 0) {
           const text = await body.textContent();
-          if (text && text.trim().length > 0) return text.trim();
+          const normalizedBodyText = this.normalizeSharePreviewText(text);
+          if (normalizedBodyText.length > 0) return normalizedBodyText;
         }
       }
 
       if (srcDoc && srcDoc.trim().length > 0) {
-        return srcDoc
+        return this.normalizeSharePreviewText(
+          srcDoc
           .replace(/<style[\s\S]*?<\/style>/gi, ' ')
           .replace(/<script[\s\S]*?<\/script>/gi, ' ')
           .replace(/<[^>]+>/g, ' ')
-          .replace(/&nbsp;/gi, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
+        );
       }
     }
     return '';
@@ -2329,9 +2390,33 @@ class CartPage {
     while (Date.now() - startTime < timeout) {
       const content = await this.getSharePreviewTextContent();
       if (content.includes(text)) return true;
+      await this.scrollSharePreviewDown();
       await this.page.waitForTimeout(1000);
     }
     return false;
+  }
+
+  async scrollSharePreviewDown() {
+    const container = this.page.locator(SELECTORS.SHARE_EMAIL_CONTAINER).first();
+    if (await container.count()) {
+      await container.evaluate((element) => {
+        element.scrollBy({ top: 500, behavior: 'instant' });
+      }).catch(() => {});
+    }
+
+    const iframeLocator = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first();
+    if (await iframeLocator.count()) {
+      const frame = iframeLocator.contentFrame();
+      const body = frame.locator('body');
+      if (await body.count().catch(() => 0)) {
+        await body.evaluate((element) => {
+          element.scrollBy?.({ top: 500, behavior: 'instant' });
+          window.scrollBy(0, 500);
+          document.documentElement?.scrollBy?.(0, 500);
+          document.body?.scrollBy?.(0, 500);
+        }).catch(() => {});
+      }
+    }
   }
 
   /**
@@ -2544,6 +2629,21 @@ class CartPage {
     await headers.first().waitFor({ state: 'visible', timeout });
     const values = await headers.allInnerTexts();
     return values.map((value) => value.trim());
+  }
+
+  /**
+   * Gets the visible ticket numbers shown in the post-ticketing table.
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string[]>}
+   */
+  async getPostTicketingTicketNumbers({ timeout = 15000 } = {}) {
+    const firstTable = this.page.locator(SELECTORS.POST_TICKETING_TABLE).first();
+    await firstTable.waitFor({ state: 'visible', timeout });
+
+    const ticketNumbers = firstTable.locator(SELECTORS.POST_TICKETING_TICKET_NUMBER_TEXT);
+    await ticketNumbers.first().waitFor({ state: 'visible', timeout });
+    const values = await ticketNumbers.allInnerTexts();
+    return values.map((value) => value.replace(/\s+/g, ' ').trim()).filter(Boolean);
   }
 
   /**

@@ -156,6 +156,12 @@ When("I click to edit extras at index {int}", async function (index) {
   await cartPage.clickEditExtrasButton(index);
 });
 
+When("I click seating in extras", async function () {
+  logger.info("Clicking seating section in extras");
+  const cartPage = getPageObject(this.page, CartPage);
+  await cartPage.clickEditSeatingExtrasButton();
+});
+
 When("I click to edit the meal extras section", async function () {
   logger.info("Clicking to edit the meal extras section");
   const cartPage = getPageObject(this.page, CartPage);
@@ -561,6 +567,41 @@ When("I store the second booked flight number", async function () {
   });
 });
 
+When("I store the first quote PNR code", async function () {
+  logger.info("Storing the first quote PNR code from cart");
+  const pnrCodes = await Cart.extractVisibleFlightQuotePnrCodes(this.page);
+
+  this.storedFirstQuotePnrCode = pnrCodes[0];
+  logger.info("Stored first quote PNR code", { firstQuotePnrCode: this.storedFirstQuotePnrCode });
+});
+
+When("I store the second quote PNR code", async function () {
+  logger.info("Storing the second quote PNR code from cart");
+  const pnrCodes = await Cart.extractVisibleFlightQuotePnrCodes(this.page);
+
+  this.storedFirstQuotePnrCode ??= pnrCodes[0];
+
+  if (pnrCodes.length === 1) {
+    this.storedSecondQuotePnrCode = pnrCodes[0];
+  } else {
+    this.storedSecondQuotePnrCode = pnrCodes[1];
+  }
+
+  logger.info("Stored quote PNR codes", {
+    firstQuotePnrCode: this.storedFirstQuotePnrCode,
+    secondQuotePnrCode: this.storedSecondQuotePnrCode,
+    visiblePnrCodes: pnrCodes,
+  });
+});
+
+Then("the stored quote PNR codes should match", async function () {
+  logger.info("Verifying stored quote PNR codes match", {
+    firstQuotePnrCode: this.storedFirstQuotePnrCode,
+    secondQuotePnrCode: this.storedSecondQuotePnrCode,
+  });
+  await Cart.verifyQuotePnrCodesMatch(this.page, this.storedFirstQuotePnrCode, this.storedSecondQuotePnrCode);
+});
+
 Then("the trip title should contain {string}", async function (city) {
   logger.info("Verifying trip title contains city", { city });
   await Cart.verifyTripTitle(this.page, city);
@@ -818,6 +859,12 @@ When("I add loyalty number {string} using the first available airline", async fu
   logger.info("Added loyalty number with airline", { airline: this.selectedFqtvAirline });
 });
 
+When("I add loyalty number {string} using airline {string}", async function (loyaltyNumber, airlineText) {
+  logger.info("Adding loyalty number with selected airline", { loyaltyNumber, airlineText });
+  this.selectedFqtvAirline = await Cart.addLoyaltyNumberWithAirline(this.page, loyaltyNumber, airlineText);
+  logger.info("Added loyalty number with airline", { airline: this.selectedFqtvAirline });
+});
+
 When("I add loyalty number {string} using the first available airline for traveler tab {int}", async function (loyaltyNumber, tabNumber) {
   logger.info("Adding loyalty number with first available airline for traveler tab", { loyaltyNumber, tabNumber });
   this.selectedFqtvAirline = await Cart.addLoyaltyNumberWithFirstAvailableAirlineForTravelerTab(
@@ -966,6 +1013,12 @@ Then("the flight details table headers should be visible", async function () {
   logger.info("Verifying post-ticketing flight details table headers");
   const headers = await Cart.verifyFlightDetailsTableHeaders(this.page);
   logger.info("Flight details table headers found", { headers });
+});
+
+Then("the flight details ticket numbers should start with {string} for both travelers", async function (prefix) {
+  logger.info("Verifying flight details ticket numbers prefix for both travelers", { prefix });
+  const ticketNumbers = await Cart.verifyFlightDetailsTicketNumbersStartWith(this.page, prefix, 2);
+  logger.info("Flight details ticket numbers verified", { ticketNumbers, prefix });
 });
 
 Then("seat selection should be available from flight details", async function () {

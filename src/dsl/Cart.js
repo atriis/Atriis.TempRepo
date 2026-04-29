@@ -1424,6 +1424,38 @@ const Cart = {
     return await cartPage.getVisibleFlightNumbers();
   },
 
+  /**
+   * Extracts all visible PNR codes from flight quote cards in the cart.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string[]>}
+   */
+  async extractVisibleFlightQuotePnrCodes(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    return await cartPage.getVisibleFlightQuotePnrCodes();
+  },
+
+  /**
+   * Verifies two stored quote PNR codes match.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} firstPnrCode
+   * @param {string} secondPnrCode
+   */
+  async verifyQuotePnrCodesMatch(page, firstPnrCode, secondPnrCode) {
+    if (!page) throw new Error('page is required');
+    if (!firstPnrCode || typeof firstPnrCode !== 'string') {
+      throw new Error(`firstPnrCode must be a non-empty string, got: ${typeof firstPnrCode}`);
+    }
+    if (!secondPnrCode || typeof secondPnrCode !== 'string') {
+      throw new Error(`secondPnrCode must be a non-empty string, got: ${typeof secondPnrCode}`);
+    }
+
+    expect(firstPnrCode, `Expected both quotes to share the same PNR, got "${firstPnrCode}" and "${secondPnrCode}"`).toBe(secondPnrCode);
+  },
+
   async verifyFirstQuoteDestination(page, city) {
     if (!page) throw new Error('page is required');
     if (!city || typeof city !== 'string') throw new Error(`city must be a non-empty string, got: ${typeof city}`);
@@ -2086,6 +2118,34 @@ const Cart = {
   },
 
   /**
+   * Adds a flight frequent flyer number using a specific airline.
+   * Assumes the frequent flyer extras panel is already open.
+   * @param {import('playwright').Page} page
+   * @param {string} loyaltyNumber - Frequent flyer number to enter
+   * @param {string} airlineText - Airline label to select in the FQTV carrier dropdown
+   * @returns {Promise<string>} The selected airline label text
+   */
+  async addLoyaltyNumberWithAirline(page, loyaltyNumber, airlineText) {
+    if (!page) throw new Error('page is required');
+    if (!loyaltyNumber || typeof loyaltyNumber !== 'string') {
+      throw new Error('loyaltyNumber must be a non-empty string');
+    }
+    if (!airlineText || typeof airlineText !== 'string') {
+      throw new Error('airlineText must be a non-empty string');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForSaveButton();
+    await cartPage.selectNewFqtvRadio();
+    const selectedAirlineText = await cartPage.selectFqtvCarrier(airlineText);
+    await cartPage.fillFqtvNumber(loyaltyNumber);
+    await cartPage.clickSaveButton();
+    await cartPage.getSaveButton().waitFor({ state: 'hidden', timeout: 15000 });
+
+    return selectedAirlineText;
+  },
+
+  /**
    * Adds a flight frequent flyer number for a specific traveler tab using the
    * first available airline.
    * Assumes the frequent flyer extras panel is already open.
@@ -2314,6 +2374,40 @@ const Cart = {
 
     expect(actualHeaders, 'Flight details table headers should match the post-ticketing columns').toEqual(expectedHeaders);
     return actualHeaders;
+  },
+
+  /**
+   * Verifies the visible post-ticketing ticket numbers all start with the given prefix.
+   * @param {import('playwright').Page} page
+   * @param {string} prefix
+   * @param {number} [expectedTravelerCount=2]
+   * @returns {Promise<string[]>}
+   */
+  async verifyFlightDetailsTicketNumbersStartWith(page, prefix, expectedTravelerCount = 2) {
+    if (!page) throw new Error('page is required');
+    if (typeof prefix !== 'string' || !prefix.trim()) {
+      throw new Error('prefix must be a non-empty string, got: ' + typeof prefix);
+    }
+    if (!Number.isInteger(expectedTravelerCount) || expectedTravelerCount < 1) {
+      throw new Error('expectedTravelerCount must be a positive integer, got: ' + expectedTravelerCount);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const ticketNumbers = await cartPage.getPostTicketingTicketNumbers();
+
+    expect(
+      ticketNumbers.length,
+      `Expected ${expectedTravelerCount} visible ticket numbers in flight details, got ${ticketNumbers.length}: ${ticketNumbers.join(', ')}`,
+    ).toBe(expectedTravelerCount);
+
+    for (const ticketNumber of ticketNumbers) {
+      expect(
+        ticketNumber,
+        `Expected ticket number to start with "${prefix}", got: ${ticketNumber}`,
+      ).toMatch(new RegExp(`^${prefix}`));
+    }
+
+    return ticketNumbers;
   },
 
   /**

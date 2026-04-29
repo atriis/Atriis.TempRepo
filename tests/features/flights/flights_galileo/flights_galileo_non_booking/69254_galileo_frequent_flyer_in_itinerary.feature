@@ -20,7 +20,7 @@ Feature: 69254 Galileo - Frequent flyer number displayed in itinerary
     And I filter airline results by "Aegean Airlines" checkbox
     And I add the first flight to cart
     When I click frequent flyer in extras
-    And I add loyalty number "BB10101010" using the first available airline
+    And I add loyalty number "BB10101010" using airline "Aegean Airlines"
     Then I should see a success notification
     And I click the share itinerary button
-    Then "BB10101010" should be displayed in the share email preview
+    Then "***1010" should be displayed in the share email preview

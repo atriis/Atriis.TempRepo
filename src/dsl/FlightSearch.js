@@ -547,7 +547,7 @@ const FlightSearch = {
     await searchPage.editFromField(from);
     await searchPage.editToField(to);
 
-    await searchPage.waitAndClickSearchButton();
+    await searchPage.waitAndClickEditSearchButton();
 
     return { searched: true, from, to };
   },
@@ -879,7 +879,7 @@ const FlightSearch = {
     logger.info('Submitting edit flight search form');
 
     const searchPage = getPageObject(page, SearchPage);
-    await searchPage.waitAndClickSearchButton();
+    await searchPage.waitAndClickEditSearchButton();
 
     return { searched: true };
   },
@@ -949,6 +949,29 @@ const FlightSearch = {
     const flightSearchPage = getPageObject(page, FlightSearchPage);
     await flightSearchPage.clickFlightTab();
     await flightSearchPage.toggleAllowNearbyAirportsCheckbox();
+  },
+
+  /**
+   * Clicks the flight tab and checks the "Add hotel to this trip" checkbox.
+   * @param {import('playwright').Page} page
+   */
+  async clickFlightTabAndCheckParallelHotel(page) {
+    if (!page) throw new Error('page is required');
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    await flightSearchPage.clickFlightTab();
+    await flightSearchPage.checkParallelHotelSearch();
+  },
+
+  /**
+   * Clicks the flight tab and disables parallel hotel and car search checkboxes if enabled.
+   * @param {import('playwright').Page} page
+   */
+  async clickFlightTabAndUncheckParallelHotelAndCar(page) {
+    if (!page) throw new Error('page is required');
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    await flightSearchPage.clickFlightTab();
+    await flightSearchPage.uncheckParallelHotelSearch();
+    await flightSearchPage.uncheckParallelCarSearch();
   },
 };
 
