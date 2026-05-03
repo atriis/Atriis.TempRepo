@@ -1,3 +1,4 @@
+const { expect } = require("@playwright/test");
 const { waitForText } = require("@utils/wait");
 const { parseAmountText } = require("@utils/dom");
 
@@ -114,17 +115,23 @@ const SELECTORS = {
   ADD_SEATS_BUTTON: 'button:has-text("Add Seats")', // Button to open seat selection (text from $t('btn.add') + $t('common.seats'))
   SEAT_MAP_CONTAINER: '.deck-wrapper', // Appears only when seat map data is loaded (v-if="!isLoading && seatsMap.length > 0")
   SEAT_MAP_UNAVAILABLE_STATE: '.flight-deck .no-results',
+  SEAT_MAP_LOADING_MASK: '.flight-deck .el-loading-mask',
   SEAT_ELEMENT: '.seat', // div.seat inside plane-seat.vue component
   SEAT_MAP_PRICE: '.total-sum-wrapper .price', // Price element in the seat map footer (app-price component)
   SEAT_MAP_SAVE_CLOSE_BUTTON: 'button:has-text("Save And Close")', // Save & Close button in seat map drawer
   CART_TOTAL_PRICE: '.price-total .amount', // Grand total in the cart summary sidebar (trip-summary.vue)
   NUMBER_OF_BAGGAGE_DROPDOWN_FIELD: "//span[normalize-space()='Number of baggage']", // XPath used due to complex dropdown structure - TODO: adjust when we have a data-test-id selector.
   DROPDOWN_OPTION: 'li.el-select-dropdown__item', // Dropdown option selector (used with hasText filter for partial matching)
+  BAGGAGE_CLICKABLE: '.flight-baggage .is-clickable',
+  BAGGAGE_SAVE_BUTTON: '.flight-baggage .no-border',
+  BAGGAGE_TRAVELER_TAB: '.flight-baggage .flight-cart-tabs .el-tabs__item:visible',
   GREEN_ICON_BAGGAGE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green",  // Green icon next to added baggage
+  BAGGAGE_SELECTED_TAG: '.flight-baggage .el-tab-pane:visible .el-tag',
   BAGGAGE_SELECTED_OPTION: '.flight-baggage .el-select__selected-item span', // Selected baggage option text inside the flight-baggage section
   
   // Flight Seating (flight-seating.vue)
   SEATING_EDIT_BUTTON: ".flight-seating .extra__btns", // Edit/Add button in the seating extras row (scoped to flight-seating to avoid matching other extras buttons)
+  SEATING_TRAVELER_ROW: '.flight-seating .pax-seat',
 
   // Flight Meals (flight-meals.vue)
   MEAL_EDIT_BUTTON: ".flight-meals .extra__btns", // Edit/Add button in the meal extras row (scoped to flight-meals to avoid matching other extras buttons)
@@ -144,6 +151,7 @@ const SELECTORS = {
 
   // "Provided by" label in cart hotel preview (hotel-provided-by.vue)
   PROVIDER_LABEL: 'section.hotel-preview .provider-label',
+  HOTEL_PREVIEW_NAME: 'section.hotel-preview .quote-names-container h4',
   // Hotel quote price in cart (hotel-quote-card.vue → app-price → h4.amount)
   HOTEL_QUOTE_PRICE: '.quote-payment-card .price-wrapper .amount',
   FLIGHT_QUOTE_DISPLAY_PRICE: '.flight-quote-summary .quote-price',
@@ -176,6 +184,7 @@ const SELECTORS = {
 
   // Seat map segment tabs (flight-deck.vue el-tabs)
   SEAT_MAP_SEGMENT_TAB: '.flights-tabs .el-tabs__item', // Tab items for outbound/inbound segments
+  SEAT_MAP_ACTIVE_SEGMENT_TAB: '.flights-tabs .el-tabs__item.is-active',
   // Next flight button in seat map drawer footer (flight-deck.vue app-btn class="cancel-btn" type="primary")
   NEXT_FLIGHT_BUTTON: 'button:has-text("Next flight")',
   // Seat tooltip red message (plane-seat.vue — .tooltip-item.red for unselectableMessage or cantBuyPaidSeats)
@@ -227,6 +236,10 @@ const SELECTORS = {
 
   // Share email preview — hotel name and image (inside iframe srcdoc)
   SHARE_EMAIL_HOTEL_IMAGE: 'img',
+  SHARE_EMAIL_QUOTE_CANCELLATION_TEXT: (quoteIndex) => ({
+    1: 'body > table > tbody > tr > td > table > tbody > tr:nth-child(2) > td > table > tbody > tr > td.em_side_space > table > tbody:nth-child(2) > tr:nth-child(7)',
+    2: 'body > table > tbody > tr > td > table > tbody > tr:nth-child(2) > td > table > tbody > tr > td.em_side_space > table > tbody:nth-child(2) > tr:nth-child(10)',
+  }[quoteIndex]),
 
   // Expired quote actions (hotel-quote-card.vue)
   CHECK_AVAILABILITY_BUTTON: '.check-price-btn',
@@ -1068,9 +1081,12 @@ class CartPage {
    * @returns {Promise<string>}
    */
   async getSelectedJustificationValueText() {
-    const selectedValue = this.getSelectedJustificationValue();
-    await selectedValue.waitFor({ state: 'visible', timeout: 10000 });
-    return ((await selectedValue.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+    // In Element Plus 2.x, the selected label may render inside a child span of
+    // el-select__selected-item or inside el-select__placeholder — use the full
+    // el-select wrapper with innerText() to reliably capture the visible display text.
+    const wrapper = this.page.locator(SELECTORS.OOP_JUSTIFICATION_SELECT).first();
+    await wrapper.waitFor({ state: 'attached', timeout: 30000 });
+    return ((await wrapper.innerText()) ?? '').replace(/\s+/g, ' ').trim();
   }
 
   /**
@@ -1129,8 +1145,11 @@ class CartPage {
    * Used after clicking the hold button to wait for status to update.
    */
   async waitForOnHoldStatus() {
-    await this.page.locator(SELECTORS.QUOTE_STATUS_LABEL, { hasText: /on hold/i })
-      .waitFor({ state: 'visible', timeout: 30000 });
+    await this.getOnHoldStatusLabel().waitFor({ state: 'visible', timeout: 60000 });
+  }
+
+  getOnHoldStatusLabel() {
+    return this.page.locator(SELECTORS.QUOTE_STATUS_LABEL, { hasText: /on hold/i }).first();
   }
 
   /**
@@ -1336,6 +1355,17 @@ class CartPage {
   }
 
   /**
+   * Opens the baggage extras panel by clicking the Edit/Add button scoped to the flight-baggage section.
+   * @param {number} [timeout=10000] - Timeout for waiting
+   */
+  async clickEditBaggageExtrasButton(timeout = 10000) {
+    const btn = this.page.locator(SELECTORS.BAGGAGE_CLICKABLE).first();
+    await btn.waitFor({ state: 'visible', timeout });
+    await btn.click();
+    await this.waitForBaggageContent(timeout);
+  }
+
+  /**
    * Waits for the Save button to be visible in extras section.
    */
   async waitForSaveButton() {
@@ -1357,6 +1387,25 @@ class CartPage {
   }
 
   /**
+   * Waits for the baggage extras content to be visible after opening it.
+   * Accepts traveler tabs, a baggage dropdown, a selected baggage tag, or a Save button.
+   * @param {number} [timeout=15000] - Timeout for waiting
+   * @returns {Promise<void>}
+   */
+  async waitForBaggageContent(timeout = 15000) {
+    try {
+      await Promise.any([
+        this.page.locator(SELECTORS.BAGGAGE_TRAVELER_TAB).first().waitFor({ state: 'visible', timeout }),
+        this.getNumberOfBaggage().waitFor({ state: 'visible', timeout }),
+        this.page.locator(SELECTORS.BAGGAGE_SELECTED_TAG).first().waitFor({ state: 'visible', timeout }),
+        this.page.locator(SELECTORS.BAGGAGE_SAVE_BUTTON).first().waitFor({ state: 'visible', timeout }),
+      ]);
+    } catch {
+      throw new Error('Baggage extras did not open');
+    }
+  }
+
+  /**
    * Clicks a dropdown option by partial or full text match.
    * Uses hasText filter for flexible matching (e.g., "BAG" matches "CHECKED BAG 2nd - USD80.00").
    *
@@ -1375,6 +1424,39 @@ class CartPage {
   }
 
   /**
+   * Clicks the baggage traveler tab by 1-based index as shown in the UI.
+   * @param {number} tabNumber - 1-based tab position
+   * @param {number} [timeout=15000] - Timeout for waiting
+   * @returns {Promise<void>}
+   */
+  async clickBaggageTravelerTabByIndex(tabNumber, timeout = 15000) {
+    if (!Number.isInteger(tabNumber) || tabNumber < 1) {
+      throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
+    }
+
+    const tab = this.page.locator(SELECTORS.BAGGAGE_TRAVELER_TAB).nth(tabNumber - 1);
+
+    try {
+      await tab.waitFor({ state: 'visible', timeout: 3000 });
+    } catch {
+      await this.clickEditBaggageExtrasButton(timeout);
+    }
+
+    await tab.waitFor({ state: 'visible', timeout });
+    await tab.click();
+  }
+
+  /**
+   * Counts the selected baggage tags visible in the active baggage traveler tab.
+   * @param {number} [timeout=10000] - Timeout for waiting
+   * @returns {Promise<number>} Number of visible selected baggage tags
+   */
+  async getVisibleBaggageSelectedTagCount(timeout = 10000) {
+    await this.page.locator(SELECTORS.BAGGAGE_SAVE_BUTTON).first().waitFor({ state: 'visible', timeout });
+    return this.page.locator(SELECTORS.BAGGAGE_SELECTED_TAG).count();
+  }
+
+  /**
    * Clicks the arrow button to expand or collapse extras section.
    */
   async clickArrowButtonExtras() {
@@ -1385,15 +1467,84 @@ class CartPage {
    * Clicks the 'Add seats' button in the extras section.
    */
   async clickAddSeatsButton() {
-    await this.page.locator(SELECTORS.ADD_SEATS_BUTTON).first().waitFor({ state: 'visible', timeout: 15000 });
-    await this.page.locator(SELECTORS.ADD_SEATS_BUTTON).first().click();
+    const seatingButton = this.page.locator(SELECTORS.SEATING_EDIT_BUTTON).first();
+    const legacyAddSeatsButton = this.page.locator(SELECTORS.ADD_SEATS_BUTTON).first();
+
+    if (await seatingButton.isVisible().catch(() => false)) {
+      await seatingButton.click();
+      return;
+    }
+
+    await legacyAddSeatsButton.waitFor({ state: 'visible', timeout: 15000 });
+    await legacyAddSeatsButton.click();
+  }
+
+  async clickSeatActionButtonForTraveler(travelerIndex) {
+    if (!Number.isInteger(travelerIndex) || travelerIndex < 1) {
+      throw new Error(`travelerIndex must be an integer >= 1, got: ${travelerIndex}`);
+    }
+
+    const travelerRows = this.page.locator(SELECTORS.SEATING_TRAVELER_ROW);
+    await expect.poll(
+      async () => {
+        const totalTravelerRows = await travelerRows.count();
+        let visibleTravelerCount = 0;
+
+        for (let index = 0; index < totalTravelerRows; index += 1) {
+          if (await travelerRows.nth(index).isVisible().catch(() => false)) {
+            visibleTravelerCount += 1;
+          }
+        }
+
+        return visibleTravelerCount;
+      },
+      { timeout: 10000 },
+    ).toBeGreaterThan(0);
+
+    const totalTravelerRows = await travelerRows.count();
+    const visibleTravelerRowIndexes = [];
+
+    for (let index = 0; index < totalTravelerRows; index += 1) {
+      if (await travelerRows.nth(index).isVisible().catch(() => false)) {
+        visibleTravelerRowIndexes.push(index);
+      }
+    }
+
+    const travelerCount = visibleTravelerRowIndexes.length;
+
+    if (travelerIndex > travelerCount) {
+      throw new Error(`travelerIndex ${travelerIndex} is out of range for ${travelerCount} visible seating travelers`);
+    }
+
+    const travelerRow = travelerRows.nth(visibleTravelerRowIndexes[travelerIndex - 1]);
+    await travelerRow.waitFor({ state: 'visible', timeout: 15000 });
+
+    const seatActionButton = travelerRow.getByRole('button', { name: /Add Seats|Change/i }).first();
+    await seatActionButton.waitFor({ state: 'visible', timeout: 15000 });
+    await seatActionButton.click();
   }
 
   /**
    * Waits for the seat map to load and be visible.
    */
   async waitForSeatMapToLoad() {
-    await this.page.locator(SELECTORS.SEAT_MAP_CONTAINER).first().waitFor({ state: 'visible', timeout: 30000 });
+    await expect.poll(
+      async () => await this.page.locator(SELECTORS.SEAT_MAP_LOADING_MASK).evaluateAll((elements) => {
+        const isVisible = (element) => {
+          const style = window.getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        };
+
+        return elements.filter(isVisible).length;
+      }),
+      { timeout: 30000 },
+    ).toBe(0);
+
+    await Promise.any([
+      this.page.locator(SELECTORS.SEAT_MAP_CONTAINER).first().waitFor({ state: 'visible', timeout: 30000 }),
+      this.page.locator(SELECTORS.SEAT_MAP_UNAVAILABLE_STATE).first().waitFor({ state: 'visible', timeout: 30000 }),
+    ]);
   }
 
   /**
@@ -1429,8 +1580,20 @@ class CartPage {
    */
   async clickNextFlightButton() {
     const btn = this.page.locator(SELECTORS.NEXT_FLIGHT_BUTTON).first();
+    const activeTab = this.page.locator(SELECTORS.SEAT_MAP_ACTIVE_SEGMENT_TAB).first();
+    const previousActiveTabLabel = ((await activeTab.innerText().catch(() => '')) || '').trim();
+
     await btn.waitFor({ state: 'visible', timeout: 15000 });
     await btn.click();
+
+    if (previousActiveTabLabel) {
+      await expect.poll(
+        async () => ((await activeTab.innerText().catch(() => '')) || '').trim(),
+        { timeout: 15000 },
+      ).not.toBe(previousActiveTabLabel);
+    }
+
+    await this.waitForSeatMapToLoad();
   }
 
   /**
@@ -1817,6 +1980,12 @@ class CartPage {
     return (await el.innerText()).trim();
   }
 
+  async getHotelPreviewNameText({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.HOTEL_PREVIEW_NAME).first();
+    await el.waitFor({ state: 'visible', timeout });
+    return (await el.innerText()).trim();
+  }
+
   async getFirstQuoteTitleText({ timeout = 10000 } = {}) {
     const el = this.page.locator(SELECTORS.FIRST_QUOTE_TITLE).first();
     await el.waitFor({ state: 'visible', timeout });
@@ -2114,21 +2283,38 @@ class CartPage {
    * @returns {Promise<string|null>} The hotel address text or null
    */
   async getHotelAddressFromSharePreview() {
-    // Try main page first
-    const mainElements = this.page.locator(SELECTORS.SHARE_EMAIL_HOTEL_ADDRESS);
-    const count = await mainElements.count();
-    for (let i = 0; i < count; i++) {
-      const text = (await mainElements.nth(i).textContent()).trim();
-      if (text.length > 5) return text;
+    // Wait for the email container to be visible (content loaded, not skeleton)
+    const container = this.page.locator(SELECTORS.SHARE_EMAIL_CONTAINER);
+    await container.waitFor({ state: 'visible', timeout: 30_000 });
+
+    // Wait for iframe to appear with srcdoc content (up to 30s, polling every 500ms)
+    const iframeLocator = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first();
+    let srcdoc = '';
+    const deadline = Date.now() + 30_000;
+    while (Date.now() < deadline) {
+      const iframeCount = await iframeLocator.count();
+      if (iframeCount > 0) {
+        srcdoc = (await iframeLocator.getAttribute('srcdoc')) ?? '';
+        if (srcdoc.trim().length > 0) break;
+      }
+      await this.page.waitForTimeout(500);
     }
 
-    // Search in iframes (email preview)
-    const frames = this.page.frames();
-    for (const frame of frames) {
-      const frameElements = frame.locator(SELECTORS.SHARE_EMAIL_HOTEL_ADDRESS);
-      const frameCount = await frameElements.count();
+    // Parse srcdoc HTML for [target='_blank'] link text (address link in email template)
+    if (srcdoc.trim().length > 0) {
+      const matches = [...srcdoc.matchAll(/target=['"]_blank['"'][^>]*>([^<]+)</gi)];
+      for (const match of matches) {
+        const text = match[1].trim();
+        if (text.length > 5) return text;
+      }
+    }
+
+    // Fallback: search live iframe DOM
+    const frameElements = iframeLocator.contentFrame().locator(SELECTORS.SHARE_EMAIL_HOTEL_ADDRESS);
+    const frameCount = await frameElements.count().catch(() => 0);
+    if (frameCount > 0) {
       for (let i = 0; i < frameCount; i++) {
-        const text = (await frameElements.nth(i).textContent()).trim();
+        const text = ((await frameElements.nth(i).textContent().catch(() => '')) ?? '').trim();
         if (text.length > 5) return text;
       }
     }
@@ -2141,14 +2327,15 @@ class CartPage {
    * @returns {Promise<boolean>} True if an image with a real src is found
    */
   async hasHotelImageInSharePreview() {
-    const frames = this.page.frames();
-    for (const frame of frames) {
-      const images = frame.locator(SELECTORS.SHARE_EMAIL_HOTEL_IMAGE);
-      const count = await images.count();
-      for (let i = 0; i < count; i++) {
-        const src = await images.nth(i).getAttribute('src');
-        if (src && src.startsWith('http') && !src.includes('logo')) return true;
-      }
+    // Wait for srcdoc to be populated (same polling approach as getHotelAddressFromSharePreview)
+    const srcdoc = await this._waitForShareIframeSrcdoc();
+    if (srcdoc.trim().length === 0) return false;
+
+    // Parse img src values directly from srcdoc HTML (all images present regardless of scroll)
+    const imgMatches = [...srcdoc.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)];
+    for (const match of imgMatches) {
+      const src = match[1];
+      if (src && src.startsWith('http') && !src.includes('logo')) return true;
     }
     return false;
   }
@@ -2166,31 +2353,27 @@ class CartPage {
    * @returns {Promise<string>} Full text content of the iframe
    */
   async getSharePreviewTextContent() {
-    const iframeLocator = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first();
-    const count = await iframeLocator.count();
-    if (count > 0) {
-      const srcDoc = await iframeLocator.getAttribute('srcdoc');
-      const frame = await iframeLocator.contentFrame();
-      if (frame) {
-        const body = frame.locator('body');
-        const bodyCount = await body.count();
-        if (bodyCount > 0) {
-          const text = await body.textContent();
-          const normalizedBodyText = this.normalizeSharePreviewText(text);
-          if (normalizedBodyText.length > 0) return normalizedBodyText;
-        }
-      }
+    // Wait for srcdoc to be populated (same polling approach as getHotelAddressFromSharePreview)
+    const srcdoc = await this._waitForShareIframeSrcdoc();
+    if (srcdoc.trim().length === 0) return '';
 
-      if (srcDoc && srcDoc.trim().length > 0) {
-        return this.normalizeSharePreviewText(
-          srcDoc
-          .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-          .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-          .replace(/<[^>]+>/g, ' ')
-        );
-      }
+    // Try live iframe DOM first (more accurate, respects rendered text)
+    const iframeLocator = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first();
+    const body = iframeLocator.contentFrame().locator('body');
+    const count = await body.count().catch(() => 0);
+    if (count > 0) {
+      const text = await body.textContent({ timeout: 8000 }).catch(() => '');
+      const normalized = this.normalizeSharePreviewText(text);
+      if (normalized.length > 0) return normalized;
     }
-    return '';
+
+    // Fallback: strip HTML tags from srcdoc (contains full email content regardless of scroll)
+    return this.normalizeSharePreviewText(
+      srcdoc
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+    );
   }
 
   /**
@@ -2199,11 +2382,26 @@ class CartPage {
    * @returns {Promise<string>} Raw HTML string from the iframe srcdoc attribute
    */
   async getSharePreviewRawHtml() {
+    return await this._waitForShareIframeSrcdoc();
+  }
+
+  /**
+   * Waits for the share email container to be visible and the iframe srcdoc to have content.
+   * @param {number} [timeout=30000]
+   * @returns {Promise<string>} srcdoc HTML string, or '' if not found
+   */
+  async _waitForShareIframeSrcdoc(timeout = 30_000) {
+    const container = this.page.locator(SELECTORS.SHARE_EMAIL_CONTAINER);
+    await container.waitFor({ state: 'visible', timeout });
     const iframeLocator = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first();
-    const count = await iframeLocator.count();
-    if (count > 0) {
-      const srcDoc = await iframeLocator.getAttribute('srcdoc');
-      if (srcDoc && srcDoc.trim().length > 0) return srcDoc;
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      const count = await iframeLocator.count();
+      if (count > 0) {
+        const srcdoc = (await iframeLocator.getAttribute('srcdoc')) ?? '';
+        if (srcdoc.trim().length > 0) return srcdoc;
+      }
+      await this.page.waitForTimeout(500);
     }
     return '';
   }
@@ -2393,6 +2591,56 @@ class CartPage {
       await this.scrollSharePreviewDown();
       await this.page.waitForTimeout(1000);
     }
+    return false;
+  }
+
+  async getSharePreviewQuoteCancellationText(quoteIndex, { timeout = 15000 } = {}) {
+    if (!Number.isInteger(quoteIndex) || quoteIndex < 1) {
+      throw new Error(`quoteIndex must be a positive integer, got: ${quoteIndex}`);
+    }
+
+    const selector = SELECTORS.SHARE_EMAIL_QUOTE_CANCELLATION_TEXT(quoteIndex);
+    if (!selector) {
+      throw new Error(`Unsupported quote index for share email preview: ${quoteIndex}`);
+    }
+
+    const iframeLocator = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first();
+    await iframeLocator.waitFor({ state: 'visible', timeout });
+
+    const srcDoc = await iframeLocator.getAttribute('srcdoc');
+    if (srcDoc && srcDoc.trim().length > 0) {
+      const text = await iframeLocator.evaluate((iframe, targetSelector) => {
+        const html = iframe.getAttribute('srcdoc') || '';
+        if (!html) return '';
+
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return doc.querySelector(targetSelector)?.textContent ?? '';
+      }, selector);
+
+      return this.normalizeSharePreviewText(text);
+    }
+
+    const frame = await iframeLocator.contentFrame();
+    if (!frame) {
+      return '';
+    }
+
+    const target = frame.locator(selector).first();
+    await target.waitFor({ state: 'visible', timeout });
+    return this.normalizeSharePreviewText(await target.textContent());
+  }
+
+  async sharePreviewQuoteContainsText(quoteIndex, text, { timeout = 15000 } = {}) {
+    if (!text || typeof text !== 'string') throw new Error('text must be a non-empty string');
+
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+      const content = await this.getSharePreviewQuoteCancellationText(quoteIndex, { timeout });
+      if (content.includes(text)) return true;
+      await this.scrollSharePreviewDown();
+      await this.page.waitForTimeout(1000);
+    }
+
     return false;
   }
 

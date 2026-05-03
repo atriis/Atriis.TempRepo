@@ -109,6 +109,14 @@ When("I click the share quote button", async function () {
   await Cart.clickShareQuoteAndWaitForSubjectField(this.page);
 });
 
+When("I extract the hotel name to compare with share quote email preview", async function () {
+  logger.info("Extracting hotel name for share quote preview comparison");
+  this.extractedHotelName = await Cart.extractCurrentCartHotelName(this.page);
+  logger.info("Stored extracted hotel name for share quote preview comparison", {
+    extractedHotelName: this.extractedHotelName,
+  });
+});
+
 When("I click the share itinerary button", async function () {
   logger.info("Clicking share itinerary button");
   await Cart.clickShareItineraryAndWaitForSubjectField(this.page);
@@ -168,6 +176,11 @@ When("I click to edit the meal extras section", async function () {
   await cartPage.clickEditMealExtrasButton();
 });
 
+When("I click to edit the baggage extras section", async function () {
+  logger.info("Clicking to edit the baggage extras section");
+  await Cart.openBaggageExtras(this.page);
+});
+
 When("I wait for the save button", async function () {
   logger.info("Waiting for save button to be visible");
   const cartPage = getPageObject(this.page, CartPage);
@@ -202,6 +215,11 @@ When("I click add seats in extras", async function () {
   logger.info("Clicking 'Add seats' button in extras");
   const cartPage = getPageObject(this.page, CartPage);
   await cartPage.clickAddSeatsButton();
+});
+
+When("I click add seats in extras for traveler {int}", async function (travelerIndex) {
+  logger.info("Clicking seating action button for traveler", { travelerIndex });
+  await Cart.clickSeatActionButtonForTraveler(this.page, travelerIndex);
 });
 
 When("I click frequent flyer in extras", async function () {
@@ -293,8 +311,8 @@ Then("the total price in cart is equal to total price in cart before seats + sea
 });
 
 Then("I successfully cancel the trip", async function () {
-  logger.info("Cancelling the trip successfully");
-  const result = await Cart.cancelTripStrict(this.page);
+  logger.info("Cancelling the trip successfully after a 20-second wait");
+  const result = await Cart.cancelTripStrictWithWait(this.page, 20000);
   expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
 });
 
@@ -475,6 +493,11 @@ Then("the baggage green icon should be visible", async function () {
 Then("the baggage option {string} should be saved", async function (expectedOption) {
   logger.info("Verifying baggage option was saved", { expectedOption });
   await Cart.verifyBaggageOptionSaved(this.page, expectedOption);
+});
+
+Then("the baggage should not be displayed for traveler tab {int}", async function (tabNumber) {
+  logger.info("Verifying baggage is not displayed for traveler tab", { tabNumber });
+  await Cart.verifyNoBaggageDisplayedForTravelerTab(this.page, tabNumber);
 });
 
 Then("the hotel should appear as refundable in cart", async function () {
@@ -722,6 +745,17 @@ Then("the share quote email preview should contain the hotel name {string}", asy
   await Cart.verifyShareEmailContainsHotelName(this.page, expectedHotelName);
 });
 
+Then("the share quote email preview should contain the extracted hotel name", async function () {
+  if (typeof this.extractedHotelName !== 'string' || !this.extractedHotelName.trim()) {
+    throw new Error("No extracted hotel name found. Run 'I extract the hotel name to compare with share quote email preview' before this step.");
+  }
+
+  logger.info("Verifying share email preview contains extracted hotel name", {
+    extractedHotelName: this.extractedHotelName,
+  });
+  await Cart.verifyShareEmailContainsHotelName(this.page, this.extractedHotelName);
+});
+
 Then("the share quote email preview should contain a hotel picture", async function () {
   logger.info("Verifying share email preview contains hotel picture");
   await Cart.verifyShareEmailContainsHotelImage(this.page);
@@ -768,6 +802,11 @@ When("I change the share language to {string}", async function (language) {
 Then("{string} should be displayed in the share email preview", async function (text) {
   logger.info("Verifying share email preview contains text", { text });
   await Cart.verifySharePreviewContainsText(this.page, text);
+});
+
+Then("{string} should be displayed for the {word} quote in the share email preview", async function (text, quoteOrdinal) {
+  logger.info("Verifying share email preview contains text for quote", { text, quoteOrdinal });
+  await Cart.verifySharePreviewQuoteContainsText(this.page, quoteOrdinal, text);
 });
 
 Then("the travel plan email should not include the hotel price", async function () {

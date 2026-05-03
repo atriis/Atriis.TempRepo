@@ -31,6 +31,47 @@ const Cart = {
     }
   },
 
+  async waitForTargetOrHandlePriceChange(page, targetLocator, targetDescription, timeout = 45000) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!targetLocator) {
+      throw new Error('targetLocator is required');
+    }
+
+    if (!targetDescription || typeof targetDescription !== 'string') {
+      throw new Error('targetDescription must be a non-empty string');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const proceedWithChangeButton = cartPage.getProceedWithChangeButton();
+
+    try {
+      await Promise.race([
+        targetLocator.waitFor({ state: 'visible', timeout }),
+        proceedWithChangeButton.waitFor({ state: 'visible', timeout }),
+      ]);
+    } catch (error) {
+      throw new Error(
+        `Neither ${targetDescription} nor the price change modal appeared within ${timeout}ms. Original error: ${error.message}`,
+      );
+    }
+
+    if (await targetLocator.isVisible().catch(() => false)) {
+      return { clickedModal: false };
+    }
+
+    const clickedModal = await cartPage.clickProceedWithChangeIfVisible(1000);
+
+    if (!clickedModal) {
+      throw new Error(`Expected ${targetDescription} or a visible price change modal, but neither became actionable.`);
+    }
+
+    await targetLocator.waitFor({ state: 'visible', timeout: 60000 });
+    return { clickedModal: true };
+  },
+
   /**
    * STRICT cancel flow (returns cancellation status)
    *
@@ -789,30 +830,11 @@ const Cart = {
     await cartPage.waitForProceedToCheckout();
     await cartPage.clickProceedToCheckout();
 
-    // Wait for either checkout heading OR price change modal (whichever appears first)
-    const proceedBtn = cartPage.getProceedWithChangeButton();
-    
-    try {
-      await Promise.race([
-        checkoutHeading.waitFor({ state: "visible", timeout: 45000 }),
-        proceedBtn.waitFor({ state: "visible", timeout: 45000 }),
-      ]);
-    } catch (error) {
-      // If both timeout, provide clear error message
-      throw new Error(
-        `Neither checkout page nor price change modal appeared within 45s. ` +
-        `Either navigation failed or page is stuck. Original error: ${error.message}`
-      );
-    }
-
-    // If the modal appeared, click it and wait for checkout heading
-    let clickedModal = false;
-    if (await proceedBtn.isVisible()) {
-      await proceedBtn.click();
-      clickedModal = true;
-      // Wait for checkout page to load after dismissing modal
-      await checkoutHeading.waitFor({ state: "visible", timeout: 60000 });
-    }
+    const { clickedModal } = await this.waitForTargetOrHandlePriceChange(
+      page,
+      checkoutHeading,
+      'checkout page',
+    );
 
     return { proceeded: true, clickedModal };
   },
@@ -941,10 +963,15 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     await cartPage.waitForHoldButton();
     await cartPage.clickHoldButton();
-    await cartPage.waitForOnHoldStatus();
+
+    const { clickedModal } = await this.waitForTargetOrHandlePriceChange(
+      page,
+      cartPage.getOnHoldStatusLabel(),
+      'on hold status',
+    );
 
     const status = await cartPage.getBookingStatus({ page });
-    return { held: true, status };
+    return { held: true, status, clickedModal };
   },
 
   /**
@@ -1003,6 +1030,19 @@ const Cart = {
     if (!selected) {
       throw new Error('No eligible seats found with a price containing $, €, or £');
     }
+  },
+
+  async clickSeatActionButtonForTraveler(page, travelerIndex) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!Number.isInteger(travelerIndex) || travelerIndex < 1) {
+      throw new Error(`travelerIndex must be an integer >= 1, got: ${travelerIndex}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickSeatActionButtonForTraveler(travelerIndex);
   },
 
   /**
@@ -1763,6 +1803,24 @@ const Cart = {
   },
 
   /**
+   * Extracts the current hotel quote title from the cart.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>}
+   */
+  async extractCurrentCartHotelName(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const hotelName = await cartPage.getHotelPreviewNameText();
+
+    if (typeof hotelName !== 'string' || !hotelName.trim()) {
+      throw new Error('Failed to extract hotel name from cart preview');
+    }
+
+    return hotelName.trim();
+  },
+
+  /**
    * Closes the share dialog (quote or itinerary).
    * @param {import('playwright').Page} page
    */
@@ -1918,6 +1976,36 @@ const Cart = {
     if (!found) {
       const content = await cartPage.getSharePreviewTextContent();
       throw new Error(`Expected share email preview to contain "${text}", but it was not found. Preview content: "${content.slice(0, 500)}"`);
+    }
+  },
+
+  /**
+   * Verifies that the selected shared quote preview contains the specified text.
+   * The share dialog must already be open.
+   * @param {import('playwright').Page} page
+   * @param {string|number} quoteReference
+   * @param {string} text
+   */
+  async verifySharePreviewQuoteContainsText(page, quoteReference, text) {
+    if (!page) throw new Error('page is required');
+    if (!text || typeof text !== 'string') throw new Error(`text must be a non-empty string, got: ${typeof text}`);
+
+    const quoteIndex = typeof quoteReference === 'number'
+      ? quoteReference
+      : {
+          first: 1,
+          second: 2,
+        }[String(quoteReference).toLowerCase()];
+
+    if (!Number.isInteger(quoteIndex) || quoteIndex < 1) {
+      throw new Error(`quoteReference must be "first", "second", or a positive integer, got: ${quoteReference}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const found = await cartPage.sharePreviewQuoteContainsText(quoteIndex, text);
+    if (!found) {
+      const content = await cartPage.getSharePreviewQuoteCancellationText(quoteIndex);
+      throw new Error(`Expected share email preview quote ${quoteIndex} to contain "${text}", but it was not found. Quote content: "${content.slice(0, 500)}"`);
     }
   },
 
@@ -2091,6 +2179,13 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     await cartPage.clickFqtvClickable();
     await cartPage.waitForFqtvContent();
+  },
+
+  async openBaggageExtras(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickEditBaggageExtrasButton();
   },
 
   /**
@@ -2532,6 +2627,29 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     const actualText = await cartPage.getSelectedBaggageOptionText();
     expect(actualText, `Baggage option should contain "${expectedOption}"`).toContain(expectedOption);
+  },
+
+  /**
+   * Verifies no baggage selection is displayed for the specified traveler tab.
+   * @param {import('playwright').Page} page
+   * @param {number} tabNumber - 1-based traveler tab position
+   */
+  async verifyNoBaggageDisplayedForTravelerTab(page, tabNumber) {
+    if (!page) throw new Error('page is required');
+    if (!Number.isInteger(tabNumber) || tabNumber < 1) {
+      throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickBaggageTravelerTabByIndex(tabNumber);
+
+    await expect.poll(
+      async () => cartPage.getVisibleBaggageSelectedTagCount(),
+      {
+        message: `Baggage should not be displayed for traveler tab ${tabNumber}`,
+        timeout: 10000,
+      }
+    ).toBe(0);
   },
 
   /**

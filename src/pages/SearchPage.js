@@ -41,6 +41,8 @@ const SELECTORS = {
   DATE_PICKER_MONTH_TABLE: "table.el-date-table",
   DATE_PICKER_AVAILABLE_DAY_CELL: "td.available .el-date-table-cell__text",
   DATE_PICKER_TODAY_AVAILABLE_DAY_CELL: "td.available.today .el-date-table-cell__text",
+  DATE_RANGE_HEADER_LABEL: ".el-date-range-picker__header div",
+  DATE_PICKER_HEADER_LABEL: ".el-date-picker__header-label",
 
   // Traveler search
   TRAVELER_NAME_FIELD:
@@ -60,6 +62,7 @@ const SELECTORS = {
 
   // Edit Search
   EDIT_SEARCH_DRAWER: '.atrs-edit-search-drawer',
+  EDIT_SEARCH_DRAWER_CLOSE_BTN: '.atrs-edit-search-drawer .close-btn',
   SEARCH_TITLE: '.locations.is-flex.is-align-items-center',
 
   // Multi-city
@@ -122,6 +125,14 @@ class SearchPage {
 
   getEditSearchDrawer() {
     return this.page.locator(SELECTORS.EDIT_SEARCH_DRAWER).last();
+  }
+
+  async waitForEditSearchDrawerVisible(timeout = 10000) {
+    await this.page.locator(SELECTORS.EDIT_SEARCH_DRAWER).waitFor({ state: 'visible', timeout });
+  }
+
+  async closeEditSearchDrawer() {
+    await this.page.locator(SELECTORS.EDIT_SEARCH_DRAWER_CLOSE_BTN).first().click();
   }
 
   /**

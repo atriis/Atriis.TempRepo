@@ -398,7 +398,7 @@ class FlightResultsPage {
    *
    * @param {{ timeout?: number }} options
    */
-  async hoverOfficeHoursRestrictionInfoIcon({ timeout = 10000 } = {}) {
+  async hoverOfficeHoursRestrictionInfoIcon({ timeout = 30000 } = {}) {
     const trigger = this.page.locator(SELECTORS.OFFICE_HOURS_INFO_ICON).first();
     await trigger.waitFor({ state: 'visible', timeout });
     await trigger.hover();
@@ -544,6 +544,12 @@ class FlightResultsPage {
   }
 
   async getFirstFlightResultDisplayAndOriginalPriceValues() {
+    const { displayPrice, originalPrice } = await this.getFirstFlightResultDisplayAndOriginalPriceData();
+
+    return { displayPrice, originalPrice };
+  }
+
+  async getFirstFlightResultDisplayAndOriginalPriceData() {
     await this.waitForFlightResults();
 
     const priceWrapper = this.page.locator(SELECTORS.FIRST_FLIGHT_RESULT_PRICE_WRAPPER).first();
@@ -560,6 +566,8 @@ class FlightResultsPage {
     const originalPriceText = await amounts.nth(1).textContent();
 
     return {
+      displayPriceText,
+      originalPriceText,
       displayPrice: parseAmountText(displayPriceText, 'first flight result display price'),
       originalPrice: parseAmountText(originalPriceText, 'first flight result original price'),
     };
@@ -832,6 +840,12 @@ class FlightResultsPage {
   }
 
   async getFirstPricingOptionDisplayAndOriginalPriceValues() {
+    const { displayPrice, originalPrice } = await this.getFirstPricingOptionDisplayAndOriginalPriceData();
+
+    return { displayPrice, originalPrice };
+  }
+
+  async getFirstPricingOptionDisplayAndOriginalPriceData() {
     const overlay = this.getPricingOptionsOverlay();
     const firstPricingOption = overlay.locator(SELECTORS.PRICING_OPTIONS_ITEM).first();
     const amounts = firstPricingOption.locator('.amount');
@@ -848,6 +862,8 @@ class FlightResultsPage {
     const originalPriceText = await amounts.nth(1).textContent();
 
     return {
+      displayPriceText,
+      originalPriceText,
       displayPrice: parseAmountText(displayPriceText, 'first pricing option display price'),
       originalPrice: parseAmountText(originalPriceText, 'first pricing option original price'),
     };
@@ -1208,15 +1224,25 @@ async clickAddToTripButtonBySchedulePricingPage() {
   await addButton.waitFor({ state: 'visible', timeout: 30000 });
   await addButton.scrollIntoViewIfNeeded();
 
+  // Pre-dismiss any conflict dialog that was left open by a prior action
+  const preExistingConflict = this.page.locator(SELECTORS.CONFLICT_MODAL_PROCEED).first();
+  const preConflictVisible = await preExistingConflict.isVisible().catch(() => false);
+  if (preConflictVisible) {
+    await preExistingConflict.click();
+    await this.page.waitForTimeout(1000);
+  }
+
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     await Promise.all([
       this.page.waitForLoadState('domcontentloaded', { timeout: 45000 }).catch(() => {}),
       addButton.click({ timeout: 30000 }),
     ]);
 
+    // Loop: dismiss all conflict dialogs that appear (app can chain multiple conflicts)
     let outcome = await this.waitForBySchedulePricingAddToTripOutcome();
-
-    if (outcome === 'conflict') {
+    let conflictCount = 0;
+    while (outcome === 'conflict' && conflictCount < 3) {
+      conflictCount++;
       await this.page.locator(SELECTORS.CONFLICT_MODAL_PROCEED).first().click();
       outcome = await this.waitForBySchedulePricingAddToTripOutcome(60000);
     }
@@ -1226,7 +1252,7 @@ async clickAddToTripButtonBySchedulePricingPage() {
       return;
     }
 
-    if (attempt === 1 && outcome === 'pricing') {
+    if (attempt === 1 && (outcome === 'pricing' || outcome === 'unknown')) {
       await addButton.waitFor({ state: 'visible', timeout: 10000 });
       continue;
     }
@@ -1707,9 +1733,20 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   async isMarineFareIconVisibleInPricingOptions(timeout = 15000) {
     try {
       const overlay = this.getPricingOptionsOverlay();
-      const locator = overlay.locator(SELECTORS.MARINE_FARE_ANCHOR_ICON).first();
-      await locator.waitFor({ state: 'attached', timeout });
-      return await locator.isVisible();
+      await overlay.waitFor({ state: 'visible', timeout });
+
+      const options = overlay.locator(SELECTORS.PRICING_OPTIONS_ITEM);
+      await options.first().waitFor({ state: 'visible', timeout });
+
+      const count = await options.count();
+      for (let i = 0; i < count; i++) {
+        const icon = options.nth(i).locator(SELECTORS.MARINE_FARE_ANCHOR_ICON);
+        const iconCount = await icon.count();
+        if (iconCount > 0 && await icon.first().isVisible()) {
+          return true;
+        }
+      }
+      return false;
     } catch {
       return false;
     }

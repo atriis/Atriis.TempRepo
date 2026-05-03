@@ -13,17 +13,17 @@ setDefaultTimeout(120000);
 // Use when no popup appears after clicking Search.
 When("I search for a hotel in {string} for {int} night(s)", async function (location, nights) {
   logger.info("Searching for hotel", { location, nights });
-  await HotelSearch.searchHotelByNights(this.page, { where: location, nights: nights });
+  this.hotelSearch = await HotelSearch.searchHotelByNights(this.page, { where: location, nights: nights });
 });
 
 When("I search for a hotel in {string} for {int} night(s) with {int} rooms", async function (location, nights, rooms) {
   logger.info("Searching for hotel with multiple rooms", { location, nights, rooms });
-  await HotelSearch.searchHotelMultiRoom(this.page, { where: location, nights, rooms });
+  this.hotelSearch = await HotelSearch.searchHotelMultiRoom(this.page, { where: location, nights, rooms });
 });
 
 When("I search for a hotel in {string} for {int} night(s) from the cart drawer", async function (location, nights) {
   logger.info("Searching for hotel from cart drawer", { location, nights });
-  await HotelSearch.searchHotelByNights(this.page, { where: location, nights }, { fromDrawer: true });
+  this.hotelSearch = await HotelSearch.searchHotelByNights(this.page, { where: location, nights }, { fromDrawer: true });
 });
 
 // Fills search form and clicks Search, but does NOT wait for results URL.
@@ -31,22 +31,22 @@ When("I search for a hotel in {string} for {int} night(s) from the cart drawer",
 // handled before results load. Follow with the popup step, then a wait-for-results step.
 When("I initiate a hotel search in {string} for {int} night(s)", async function (location, nights) {
   logger.info("Initiating hotel search (no URL wait)", { location, nights });
-  await HotelSearch.initiateHotelSearch(this.page, { where: location, nights });
+  this.hotelSearch = await HotelSearch.initiateHotelSearch(this.page, { where: location, nights });
 });
 
 When("I search for a hotel in {string} for {int} night(s) {int} months ahead", async function (location, nights, monthsAhead) {
   logger.info("Searching for hotel with custom months ahead", { location, nights, monthsAhead });
-  await HotelSearch.searchHotelByNights(this.page, { where: location, nights }, { monthsAhead });
+  this.hotelSearch = await HotelSearch.searchHotelByNights(this.page, { where: location, nights }, { monthsAhead });
 });
 
 When("I search for a hotel in {string} for {int} night(s) from next visible month", async function (location, nights) {
   logger.info("Searching for hotel from next visible month", { location, nights });
-  await HotelSearch.searchHotelByNightsNextVisibleMonth(this.page, { where: location, nights });
+  this.hotelSearch = await HotelSearch.searchHotelByNightsNextVisibleMonth(this.page, { where: location, nights });
 });
 
 When("I search for a hotel in {string} for {int} night(s) from day {int} of next visible month", async function (location, nights, startDay) {
   logger.info("Searching for hotel from specific day of next visible month", { location, nights, startDay });
-  await HotelSearch.searchHotelByNightsNextVisibleMonth(this.page, { where: location, nights, startDay });
+  this.hotelSearch = await HotelSearch.searchHotelByNightsNextVisibleMonth(this.page, { where: location, nights, startDay });
 });
 
 When("I wait for hotel results to load", async function () {

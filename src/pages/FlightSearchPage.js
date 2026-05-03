@@ -225,11 +225,12 @@ class FlightSearchPage {
       throw new Error('value must be a non-empty string');
     }
 
+    const escapedValue = escapeRegExp(value.trim());
     const preferredCarrierField = this.page.locator(SELECTORS.PREFERRED_CARRIER_FIELD).first();
     const preferredCarrierInput = this.page.locator(SELECTORS.PREFERRED_CARRIER_INPUT).first();
     const preferredCarrierOption = this.page
       .locator(SELECTORS.VISIBLE_DROPDOWN_ITEMS)
-      .filter({ hasText: new RegExp(`^${escapeRegExp(value)}(?:\\s*\\(|$)`, 'i') })
+      .filter({ hasText: new RegExp(`(?:^${escapedValue}(?:\\s*\\(|$)|\\(${escapedValue}\\)\\s*$)`, 'i') })
       .first();
 
     await preferredCarrierField.waitFor({ state: 'visible', timeout: 10000 });

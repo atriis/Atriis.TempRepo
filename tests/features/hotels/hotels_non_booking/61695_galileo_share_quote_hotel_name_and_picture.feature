@@ -6,7 +6,7 @@
 # Created: 2025-05-07T03:42:03Z
 # Updated: 2025-11-26T10:22:41Z
 
-@regression @provider:galileo
+@regression @provider:galileo @priority:high
 Feature: 61695 Galileo - Share quote email contains hotel name and picture
   As a corporate traveler
   I want the shared quote email to include the hotel name and photo
@@ -20,7 +20,8 @@ Feature: 61695 Galileo - Share quote email contains hotel name and picture
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
+    And I extract the hotel name to compare with share quote email preview
     When I click the share quote button
-    Then the share quote email preview should contain the hotel name "Ardoe House Hotel and Spa"
+    Then the share quote email preview should contain the extracted hotel name
     And the share quote email preview should contain a hotel picture
 

@@ -484,18 +484,23 @@ class HotelLevelResultsPage {
     // Target the span with exact label text for precise El-Plus tooltip triggering
     const span = this.page.locator(SELECTORS.AGREEMENT_LABEL_SPAN(labelText)).first();
     await span.waitFor({ state: 'visible', timeout: 10000 });
-    // Use explicit mouse coordinates - more reliable than element.hover() for El-Plus tooltips
-    const box = await span.boundingBox();
-    await this.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    // Wait for El-Plus open-delay (200ms) + render time
-    await this.page.waitForTimeout(1500);
-    // Read tooltip text via DOM evaluate - handles portal elements teleported to body
-    const descText = await this.page.evaluate(() => {
-      const el = document.querySelector('.agreement-tooltip__description');
-      return el ? el.textContent.trim() : null;
-    });
-    if (descText === null) throw new Error(`Agreement tooltip description not found in DOM after hovering over "${labelText}"`);
-    return descText;
+    await span.scrollIntoViewIfNeeded();
+    // Use Playwright's hover() which reliably maintains the pointer-enter event for El-Plus
+    await span.hover();
+    // Wait for El-Plus tooltip portal to render (open-delay 200ms + render)
+    const tooltipDesc = this.page.locator('.agreement-tooltip__description').first();
+    try {
+      await tooltipDesc.waitFor({ state: 'visible', timeout: 5000 });
+    } catch {
+      // Retry: move away and re-hover
+      await this.page.mouse.move(0, 0);
+      await this.page.waitForTimeout(300);
+      await span.hover();
+      await tooltipDesc.waitFor({ state: 'visible', timeout: 5000 });
+    }
+    const descText = await tooltipDesc.textContent();
+    if (!descText) throw new Error(`Agreement tooltip description not found in DOM after hovering over "${labelText}"`);
+    return descText.trim();
   }
 
   /**   * Checks if an active filter badge tag is visible in the hotel-filter summary bar.

@@ -177,9 +177,17 @@ class ResultsPage {
 
   /** Scrolls to the first "Add to trip" button, waiting for it to appear first */
   async scrollToFirstAddToTripButton() {
-    const button = this.getAddToTripButton();
-    await button.waitFor({ state: "visible", timeout: 60000 });
-    await button.scrollIntoViewIfNeeded();
+    // Retry up to 3 times to handle DOM re-renders invalidating the element reference
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const button = this.getAddToTripButton();
+      await button.waitFor({ state: "visible", timeout: 60000 });
+      try {
+        await button.scrollIntoViewIfNeeded({ timeout: 10000 });
+        return;
+      } catch (e) {
+        if (attempt === 2) throw e;
+      }
+    }
   }
 
   /** Clicks the first available "Add to trip" button */
@@ -187,7 +195,20 @@ class ResultsPage {
     const button = this.getAddToTripButton();
     // Wait for button to be enabled (flight data loaded)
     await button.waitFor({ state: "attached", timeout: 45000 });
-    await button.click({ timeout: 60000 });
+
+    // Retry loop to handle a Conflicting Quotes dialog that may appear mid-click
+    // and intercept pointer events, preventing the click from completing.
+    let lastError;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await this.handleConflictQuoteModalIfAppears(2000);
+      try {
+        await button.click({ timeout: 15000 });
+        return;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw lastError;
   }
 
   /** Clicks the first available "Select" button */

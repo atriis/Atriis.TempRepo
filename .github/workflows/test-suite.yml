@@ -6,8 +6,7 @@ on:
   # pull_request:
   #  branches: [ main ]
   schedule:
-    - cron: '30 18 * * *'  # 19:30 in Portugal during DST (WEST, UTC+1)
-    - cron: '30 19 * * *'  # 19:30 in Portugal during standard time (WET, UTC+0)
+    - cron: '30 18 * * *'  # Single daily run at 18:30 UTC
   workflow_dispatch:
 
 # Structured logging configuration for all jobs
@@ -28,26 +27,10 @@ jobs:
     outputs:
       should_run: ${{ steps.schedule-guard.outputs.should_run }}
     steps:
-      - name: Allow manual runs and the daily 19:30 Portugal schedule
+      - name: Allow manual runs and the daily schedule
         id: schedule-guard
         shell: bash
-        run: |
-          if [ "${{ github.event_name }}" != "schedule" ]; then
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          scheduled_cron="${{ github.event.schedule }}"
-          lisbon_offset="$(TZ=Europe/Lisbon date +%z)"
-
-          if [ "$scheduled_cron" = "30 18 * * *" ] && [ "$lisbon_offset" = "+0100" ]; then
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
-          elif [ "$scheduled_cron" = "30 19 * * *" ] && [ "$lisbon_offset" = "+0000" ]; then
-            echo "should_run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_run=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping scheduled execution for cron '$scheduled_cron' because Lisbon UTC offset is $lisbon_offset."
-          fi
+        run: echo "should_run=true" >> "$GITHUB_OUTPUT"
 
   daily-amadeus-non-booking-tests:
     name: Flights Amadeus Non Booking
@@ -168,6 +151,67 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: flights-general-non-booking-screenshots
+          path: test-results/screenshots/
+          if-no-files-found: ignore
+
+  daily-flights-galileo-non-booking-tests:
+    name: Flights Galileo Non Booking
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    needs: schedule-gate
+    if: needs.schedule-gate.outputs.should_run == 'true'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: mkdir -p test-results test-results/screenshots
+
+      - name: Load environment variables
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
+
+      - name: Run Flights Galileo Non Booking Tests
+        id: run-flights-galileo-non-booking
+        timeout-minutes: 60
+        run: npx cucumber-js tests/features/flights/flights_galileo/flights_galileo_non_booking/ --parallel 4
+        env:
+          CI: "true"
+          RETRY_COUNT: "2"
+          RETRY_DELAY: "3000"
+
+      - name: Upload Flights Galileo Non Booking Results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: flights-galileo-non-booking-results
+          path: test-results/cucumber-junit.xml
+
+      - name: Upload Flights Galileo Non Booking Report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: flights-galileo-non-booking-report
+          path: test-results/cucumber-report.json
+
+      - name: Upload Flights Galileo Non Booking Allure Results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: flights-galileo-non-booking-allure-results
+          path: allure-results/
+          if-no-files-found: ignore
+
+      - name: Upload Flights Galileo Non Booking Screenshots
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: flights-galileo-non-booking-screenshots
           path: test-results/screenshots/
           if-no-files-found: ignore
 
@@ -362,6 +406,7 @@ jobs:
       - schedule-gate
       - daily-amadeus-non-booking-tests
       - daily-flights-general-non-booking-tests
+      - daily-flights-galileo-non-booking-tests
       - daily-cars-tests
       - daily-hotels-non-booking-tests
       - daily-rails-tests
@@ -605,6 +650,7 @@ jobs:
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Flights Amadeus Non Booking | \`${{ needs.daily-amadeus-non-booking-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Flights General Non Booking | \`${{ needs.daily-flights-general-non-booking-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Flights Galileo Non Booking | \`${{ needs.daily-flights-galileo-non-booking-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Cars Daily | \`${{ needs.daily-cars-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Hotels Non Booking | \`${{ needs.daily-hotels-non-booking-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Rails Daily | \`${{ needs.daily-rails-tests.result }}\` |" >> $GITHUB_STEP_SUMMARY

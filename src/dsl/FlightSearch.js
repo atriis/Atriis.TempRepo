@@ -2,7 +2,12 @@ const FlightSearchPage = require("@pages/FlightSearchPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { SearchPage } = require("@pages/SearchPage");
 const flightRoutes = require("@data/flights.json");
-const { selectDatesByNthAvailable, selectNthWeekdayFromNextMonth, selectTodayFromVisibleCalendar } = require("@utils/calendar.helper");
+const {
+  selectDatesByInputValues,
+  selectDatesByNthAvailable,
+  selectNthWeekdayFromNextMonth,
+  selectTodayFromVisibleCalendar,
+} = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { generateRandomFlightRoute } = require("@utils/data/generateRandomFlightRoute");
@@ -585,12 +590,21 @@ const FlightSearch = {
    * @param {string} from - New origin airport code
    * @param {string} to - New destination airport code
    */
-  async editFlightSearch(page, from, to) {
+  async editFlightSearch(page, from, to, { departureDate = undefined, returnDate = undefined } = {}) {
     if (!page) throw new Error('page is required');
     if (!from || typeof from !== 'string') throw new Error('from must be a non-empty string, got: ' + from);
     if (!to || typeof to !== 'string') throw new Error('to must be a non-empty string, got: ' + to);
+    if ((departureDate && !returnDate) || (!departureDate && returnDate)) {
+      throw new Error('departureDate and returnDate must either both be provided or both be omitted');
+    }
+    if (departureDate !== undefined && typeof departureDate !== 'string') {
+      throw new Error('departureDate must be a string when provided, got: ' + typeof departureDate);
+    }
+    if (returnDate !== undefined && typeof returnDate !== 'string') {
+      throw new Error('returnDate must be a string when provided, got: ' + typeof returnDate);
+    }
 
-    logger.info('Editing flight search in modal', { from, to });
+    logger.info('Editing flight search in modal', { from, to, departureDate, returnDate });
 
     const searchPage = getPageObject(page, SearchPage);
 
@@ -600,9 +614,17 @@ const FlightSearch = {
     await searchPage.editFromField(from);
     await searchPage.editToField(to);
 
+    if (departureDate && returnDate) {
+      await searchPage.clickDepartureDateField();
+      await selectDatesByInputValues(page, {
+        startDateValue: departureDate,
+        endDateValue: returnDate,
+      });
+    }
+
     await searchPage.waitAndClickEditSearchButton();
 
-    return { searched: true, from, to };
+    return { searched: true, from, to, departureDate, returnDate };
   },
 
   /**

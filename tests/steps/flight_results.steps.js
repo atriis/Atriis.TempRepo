@@ -30,6 +30,22 @@ async function applyResultsSearchFilter(world, filterText) {
   ]);
 }
 
+async function ensureFirstFlightResultPriceData(world) {
+  if (!world.firstFlightResultPriceData) {
+    world.firstFlightResultPriceData = await FlightResults.extractFirstFlightResultDisplayAndOriginalPriceData(world.page);
+  }
+
+  return world.firstFlightResultPriceData;
+}
+
+async function ensureFirstPricingOptionPriceData(world) {
+  if (!world.firstPricingOptionPriceData) {
+    world.firstPricingOptionPriceData = await FlightResults.extractFirstPricingOptionDisplayAndOriginalPriceData(world.page);
+  }
+
+  return world.firstPricingOptionPriceData;
+}
+
 // ========================================
 // WHEN STEPS - FLIGHT SELECTION & CART
 // ========================================
@@ -179,6 +195,91 @@ When("I extract the price from first pricing option", async function () {
 When("I click to open first pricing options", async function () {
   logger.info("Clicking to open first pricing options");
   await FlightResults.clickToOpenPricingOptions(this.page);
+  this.firstPricingOptionPriceData = undefined;
+});
+
+When('I extract the price for the first flight result and store it', async function () {
+  logger.info('Extracting the price for the first flight result and storing it');
+  const priceData = await ensureFirstFlightResultPriceData(this);
+
+  this.firstFlightResultDisplayPrice = {
+    amount: priceData.displayPrice,
+    currencySymbol: priceData.displayCurrencySymbol,
+  };
+
+  logger.info('Stored the first flight result display price', this.firstFlightResultDisplayPrice);
+});
+
+When('I extract the price for the first flight original currency result and store it', async function () {
+  logger.info('Extracting the price for the first flight original currency result and storing it');
+  const priceData = await ensureFirstFlightResultPriceData(this);
+
+  this.firstFlightResultOriginalCurrencyPrice = {
+    amount: priceData.originalPrice,
+    currencySymbol: priceData.originalCurrencySymbol,
+  };
+
+  logger.info('Stored the first flight result original currency price', this.firstFlightResultOriginalCurrencyPrice);
+});
+
+Then('I verify that the extracted price in flight results is correctly converted from {string} to {string}', async function (originalCurrencyCode, displayCurrencyCode) {
+  logger.info('Verifying that the extracted price in flight results is correctly converted', {
+    originalCurrencyCode,
+    displayCurrencyCode,
+  });
+
+  const result = await FlightResults.verifyStoredPriceMatchesCurrencyConversion(
+    this.page,
+    this.firstFlightResultDisplayPrice,
+    this.firstFlightResultOriginalCurrencyPrice,
+    'flight results',
+    originalCurrencyCode,
+    displayCurrencyCode,
+  );
+
+  logger.info('Verified converted price in flight results', result);
+});
+
+When('I extract the price for the first flight pricing option result and store it', async function () {
+  logger.info('Extracting the price for the first flight pricing option result and storing it');
+  const priceData = await ensureFirstPricingOptionPriceData(this);
+
+  this.firstFlightPricingOptionDisplayPrice = {
+    amount: priceData.displayPrice,
+    currencySymbol: priceData.displayCurrencySymbol,
+  };
+
+  logger.info('Stored the first flight pricing option display price', this.firstFlightPricingOptionDisplayPrice);
+});
+
+When('I extract the price for the first flight pricing option original currency and store it', async function () {
+  logger.info('Extracting the price for the first flight pricing option original currency and storing it');
+  const priceData = await ensureFirstPricingOptionPriceData(this);
+
+  this.firstFlightPricingOptionOriginalCurrencyPrice = {
+    amount: priceData.originalPrice,
+    currencySymbol: priceData.originalCurrencySymbol,
+  };
+
+  logger.info('Stored the first flight pricing option original currency price', this.firstFlightPricingOptionOriginalCurrencyPrice);
+});
+
+Then('I verify that the extracted price in flight pricing options is correctly converted from {string} to {string}', async function (originalCurrencyCode, displayCurrencyCode) {
+  logger.info('Verifying that the extracted price in flight pricing options is correctly converted', {
+    originalCurrencyCode,
+    displayCurrencyCode,
+  });
+
+  const result = await FlightResults.verifyStoredPriceMatchesCurrencyConversion(
+    this.page,
+    this.firstFlightPricingOptionDisplayPrice,
+    this.firstFlightPricingOptionOriginalCurrencyPrice,
+    'flight pricing options',
+    originalCurrencyCode,
+    displayCurrencyCode,
+  );
+
+  logger.info('Verified converted price in flight pricing options', result);
 });
 
 When('I select the first option from pricing options', async function () {

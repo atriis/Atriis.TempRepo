@@ -13,6 +13,7 @@ const SELECTORS = {
   AUTOCOMPLETE_FIRST_OPTION: ".el-autocomplete-suggestion__list li[id*='item-0']",
   AUTOCOMPLETE_LIST: ".el-autocomplete-suggestion__list",
   CHECK_IN_INPUT: "[placeholder='Check in']",
+  CHECK_OUT_INPUT: "[placeholder='Check out']",
   ROOMS_DROPDOWN: '.hotel-search-cmp .app-select:has(.select-icon:text("sensor_door"))',
   ROOMS_DROPDOWN_OPTION: '.app-select-popper .el-select-dropdown__item',
   AVAILABLE_PROPERTIES_CHECKBOX: '.el-checkbox',
@@ -83,6 +84,18 @@ class HotelSearchPage {
     await this.page
       .locator(SELECTORS.CHECK_IN_INPUT)
       .click();
+  }
+
+  async getCheckInDateValue({ timeout = 10000 } = {}) {
+    const field = this.page.locator(SELECTORS.CHECK_IN_INPUT);
+    await field.waitFor({ state: 'visible', timeout });
+    return (await field.inputValue()).trim();
+  }
+
+  async getCheckOutDateValue({ timeout = 10000 } = {}) {
+    const field = this.page.locator(SELECTORS.CHECK_OUT_INPUT);
+    await field.waitFor({ state: 'visible', timeout });
+    return (await field.inputValue()).trim();
   }
 
   /**

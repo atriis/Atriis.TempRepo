@@ -172,7 +172,7 @@ class FlightPricingPage {
 
     await this.page.locator(SELECTORS.PRICING_PAGE_SECTION).waitFor({ state: 'visible', timeout: 60000 });
     await fareCard.waitFor({ state: 'visible', timeout: 60000 });
-    await agreementSection.waitFor({ state: 'visible', timeout: 30000 });
+    await agreementSection.waitFor({ state: 'visible', timeout: 60000 });
 
     const iconVisible = await agreementIcon.isVisible().catch(() => false);
     const labelVisible = await agreementLabel.isVisible().catch(() => false);

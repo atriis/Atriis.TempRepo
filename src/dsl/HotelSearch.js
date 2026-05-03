@@ -54,11 +54,13 @@ const HotelSearch = {
     await hotelSearchPage.clickCheckInField();
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, { startIndex: 0, endIndex: nights });
+    const checkInDate = await hotelSearchPage.getCheckInDateValue();
+    const checkOutDate = await hotelSearchPage.getCheckOutDateValue();
     await searchPage.waitAndClickSearchButton();
     await page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
     await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
 
-    return { searched: true, where, nights, rooms };
+    return { searched: true, where, nights, rooms, checkInDate, checkOutDate }; 
   },
 
   /**
@@ -116,6 +118,8 @@ const HotelSearch = {
       startIndex: 0,
       endIndex: nights,
     });
+    const checkInDate = await hotelSearchPage.getCheckInDateValue();
+    const checkOutDate = await hotelSearchPage.getCheckOutDateValue();
 
     await searchPage.waitAndClickSearchButton();
 
@@ -130,7 +134,7 @@ const HotelSearch = {
     await page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
     await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
 
-    return { searched: true, where, nights };
+    return { searched: true, where, nights, checkInDate, checkOutDate };
   },
 
   /**
@@ -184,6 +188,8 @@ const HotelSearch = {
       startIndex,
       endIndex: startIndex + nights,
     });
+    const checkInDate = await hotelSearchPage.getCheckInDateValue();
+    const checkOutDate = await hotelSearchPage.getCheckOutDateValue();
 
     await searchPage.waitAndClickSearchButton();
 
@@ -195,7 +201,7 @@ const HotelSearch = {
     await page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
     await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
 
-    return { searched: true, where, nights };
+    return { searched: true, where, nights, checkInDate, checkOutDate };
   },
 
   /**
@@ -232,9 +238,11 @@ const HotelSearch = {
     await hotelSearchPage.clickCheckInField();
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, { startIndex: 0, endIndex: nights });
+    const checkInDate = await hotelSearchPage.getCheckInDateValue();
+    const checkOutDate = await hotelSearchPage.getCheckOutDateValue();
     await searchPage.waitAndClickSearchButton();
 
-    return { where, nights };
+    return { where, nights, checkInDate, checkOutDate };
   },
 
   /**
@@ -351,11 +359,10 @@ const HotelSearch = {
     const resultsPage = getPageObject(page, ResultsPage);
 
     await resultsPage.clickEditButton();
-    // Wait for the edit-search drawer to be visible
-    await page.locator('.atrs-edit-search-drawer').waitFor({ state: 'visible', timeout: 10000 });
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.waitForEditSearchDrawerVisible();
     await this.verifyAvailablePropertiesChecked(page);
-    // Close the edit drawer
-    await page.locator('.atrs-edit-search-drawer .close-btn').first().click();
+    await searchPage.closeEditSearchDrawer();
   },
 
   /**

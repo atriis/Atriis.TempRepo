@@ -49,6 +49,23 @@ When("I edit the flight search from {string} to {string}", async function (from,
   await FlightSearch.editFlightSearch(this.page, from, to);
 });
 
+When("I edit the flight search from {string} to {string} with the same dates as the hotel search", async function (from, to) {
+  logger.info('Editing flight search in modal with hotel search dates', {
+    from,
+    to,
+    hotelSearch: this.hotelSearch,
+  });
+
+  if (!this.hotelSearch?.checkInDate || !this.hotelSearch?.checkOutDate) {
+    throw new Error('hotelSearch.checkInDate and hotelSearch.checkOutDate must be set before editing flight search with hotel dates');
+  }
+
+  this.editedFlightSearch = await FlightSearch.editFlightSearch(this.page, from, to, {
+    departureDate: this.hotelSearch.checkInDate,
+    returnDate: this.hotelSearch.checkOutDate,
+  });
+});
+
 When('I click edit search and wait for the {string} search mode option', async function (searchMode) {
   logger.info('Opening edit flight search', { searchMode });
   await FlightSearch.clickEditSearchAndWaitForSearchMode(this.page, searchMode);

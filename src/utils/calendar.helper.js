@@ -15,6 +15,196 @@
 
 const { SELECTORS } = require("@pages/SearchPage");
 
+const MONTH_NAME_TO_INDEX = {
+  january: 0,
+  jan: 0,
+  february: 1,
+  feb: 1,
+  march: 2,
+  mar: 2,
+  april: 3,
+  apr: 3,
+  may: 4,
+  june: 5,
+  jun: 5,
+  july: 6,
+  jul: 6,
+  august: 7,
+  aug: 7,
+  september: 8,
+  sep: 8,
+  sept: 8,
+  october: 9,
+  oct: 9,
+  november: 10,
+  nov: 10,
+  december: 11,
+  dec: 11,
+};
+
+function getMonthIndex(monthToken) {
+  const normalizedMonthToken = monthToken.toLowerCase().replace(/\./g, "").trim();
+  const monthIndex = MONTH_NAME_TO_INDEX[normalizedMonthToken];
+
+  if (monthIndex === undefined) {
+    throw new Error(`Unsupported month token: "${monthToken}"`);
+  }
+
+  return monthIndex;
+}
+
+function parseDateValue(dateValue) {
+  if (!dateValue || typeof dateValue !== "string") {
+    throw new Error(`dateValue must be a non-empty string, got: ${typeof dateValue}`);
+  }
+
+  const trimmedDateValue = dateValue.trim();
+
+  const ddMmYyyyMatch = trimmedDateValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (ddMmYyyyMatch) {
+    const [, day, month, year] = ddMmYyyyMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  const yyyyMmDdMatch = trimmedDateValue.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (yyyyMmDdMatch) {
+    const [, year, month, day] = yyyyMmDdMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  const dayMonthYearMatch = trimmedDateValue.match(/^(?:[A-Za-z]{3,9},\s*)?(\d{1,2})\s+([A-Za-z]{3,9})\.?\s*,?\s*(\d{4})?$/);
+  if (dayMonthYearMatch) {
+    const [, day, monthToken, year = String(new Date().getFullYear())] = dayMonthYearMatch;
+    return new Date(Number(year), getMonthIndex(monthToken), Number(day));
+  }
+
+  const monthDayYearMatch = trimmedDateValue.match(/^(?:[A-Za-z]{3,9},\s*)?([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:,\s*|\s+)?(\d{4})?$/);
+  if (monthDayYearMatch) {
+    const [, monthToken, day, year = String(new Date().getFullYear())] = monthDayYearMatch;
+    return new Date(Number(year), getMonthIndex(monthToken), Number(day));
+  }
+
+  const nativeDate = new Date(trimmedDateValue);
+  if (!Number.isNaN(nativeDate.getTime())) {
+    return new Date(nativeDate.getFullYear(), nativeDate.getMonth(), nativeDate.getDate());
+  }
+
+  throw new Error(`Unsupported date value format: "${dateValue}"`);
+}
+
+function parseMonthHeaderLabel(monthHeaderLabel) {
+  const normalizedMonthHeaderLabel = monthHeaderLabel.replace(/,/g, " ").replace(/\s+/g, " ").trim();
+
+  const monthYearMatch = normalizedMonthHeaderLabel.match(/^([A-Za-z]{3,9})\.?\s+(\d{4})$/);
+  if (monthYearMatch) {
+    const [, monthToken, year] = monthYearMatch;
+    return { monthIndex: getMonthIndex(monthToken), year: Number(year) };
+  }
+
+  const yearMonthMatch = normalizedMonthHeaderLabel.match(/^(\d{4})\s+([A-Za-z]{3,9})\.?$/);
+  if (yearMonthMatch) {
+    const [, year, monthToken] = yearMonthMatch;
+    return { monthIndex: getMonthIndex(monthToken), year: Number(year) };
+  }
+
+  throw new Error(`Unsupported month header label: "${monthHeaderLabel}"`);
+}
+
+async function getVisibleMonthHeaderLabels(panel) {
+  const rangeHeaderLabels = panel.locator(SELECTORS.DATE_RANGE_HEADER_LABEL);
+  const rangeHeaderCount = await rangeHeaderLabels.count();
+
+  if (rangeHeaderCount > 0) {
+    const rangeHeaderTexts = (await rangeHeaderLabels.allTextContents())
+      .map((text) => text.trim())
+      .filter((text) => text.length > 0);
+
+    if (rangeHeaderTexts.length > 0) {
+      return rangeHeaderTexts;
+    }
+  }
+
+  const singlePickerHeaderLabels = panel.locator(SELECTORS.DATE_PICKER_HEADER_LABEL);
+  const singlePickerHeaderCount = await singlePickerHeaderLabels.count();
+
+  if (singlePickerHeaderCount > 0) {
+    const singlePickerHeaderTexts = (await singlePickerHeaderLabels.allTextContents())
+      .map((text) => text.trim())
+      .filter((text) => text.length > 0);
+
+    if (singlePickerHeaderTexts.length > 0) {
+      return singlePickerHeaderTexts;
+    }
+  }
+
+  throw new Error("Could not read visible date picker month labels");
+}
+
+async function getVisibleMonthTableIndex(page, targetDate) {
+  const panel = page.locator(SELECTORS.DATE_PICKER_PANEL).last();
+  await panel.waitFor({ state: "visible", timeout: 10000 });
+
+  const visibleMonthHeaderLabels = await getVisibleMonthHeaderLabels(panel);
+  for (let index = 0; index < visibleMonthHeaderLabels.length; index++) {
+    const visibleMonth = parseMonthHeaderLabel(visibleMonthHeaderLabels[index]);
+    if (
+      visibleMonth.year === targetDate.getFullYear()
+      && visibleMonth.monthIndex === targetDate.getMonth()
+    ) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+async function clickNextVisibleMonth(page) {
+  const nextArrow = page.locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW).first();
+  await nextArrow.waitFor({ state: "visible", timeout: 10000 });
+  await nextArrow.scrollIntoViewIfNeeded().catch(() => {});
+
+  try {
+    await nextArrow.click({ timeout: 3000 });
+  } catch (error) {
+    if (!(error instanceof Error) || !/not stable|intercepts pointer events|timeout/i.test(error.message)) {
+      throw error;
+    }
+
+    await nextArrow.click({ force: true, timeout: 3000 });
+  }
+}
+
+async function advanceCalendarUntilMonthVisible(page, targetDate, maxMonthAdvances = 24) {
+  for (let attempt = 0; attempt <= maxMonthAdvances; attempt++) {
+    const visibleMonthTableIndex = await getVisibleMonthTableIndex(page, targetDate);
+    if (visibleMonthTableIndex >= 0) {
+      return visibleMonthTableIndex;
+    }
+
+    if (attempt === maxMonthAdvances) {
+      break;
+    }
+
+    await clickNextVisibleMonth(page);
+  }
+
+  throw new Error(
+    `Target month ${targetDate.getMonth() + 1}/${targetDate.getFullYear()} was not visible after ${maxMonthAdvances} calendar advances.`,
+  );
+}
+
+async function clickDayInVisibleMonth(page, targetDate, monthTableIndex) {
+  const panel = page.locator(SELECTORS.DATE_PICKER_PANEL).last();
+  const monthTable = panel.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).nth(monthTableIndex);
+  const dayNumber = String(targetDate.getDate());
+  const dayCell = monthTable
+    .locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL, { hasText: new RegExp(`^${dayNumber}$`) })
+    .first();
+
+  await dayCell.waitFor({ state: "visible", timeout: 10000 });
+  await dayCell.click();
+}
+
 /**
  * Selects dates using the "nth available day" strategy.
  *
@@ -347,9 +537,31 @@ async function selectTodayFromVisibleCalendar(
   throw new Error("Could not find a visible available date cell for today in the open calendar.");
 }
 
+async function selectDatesByInputValues(
+  page,
+  {
+    startDateValue,
+    endDateValue = undefined,
+  } = {},
+) {
+  const startDate = parseDateValue(startDateValue);
+  const endDate = endDateValue ? parseDateValue(endDateValue) : undefined;
+
+  const startMonthTableIndex = await advanceCalendarUntilMonthVisible(page, startDate);
+  await clickDayInVisibleMonth(page, startDate, startMonthTableIndex);
+
+  if (!endDate) {
+    return;
+  }
+
+  const endMonthTableIndex = await advanceCalendarUntilMonthVisible(page, endDate);
+  await clickDayInVisibleMonth(page, endDate, endMonthTableIndex);
+}
+
 module.exports = {
   selectDatesByNthAvailable,
   selectDatesByNthAvailableFromNextVisibleMonth,
+  selectDatesByInputValues,
   selectTodayFromVisibleCalendar,
   selectNthWeekdayFromNextMonth,
 };

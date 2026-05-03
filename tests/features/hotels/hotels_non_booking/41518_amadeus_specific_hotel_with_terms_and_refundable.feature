@@ -16,7 +16,7 @@ Feature: 41518 Amadeus - "Intercontinental Ljubljana" hotel terms and conditions
   Scenario: "Intercontinental Ljubljana" hotel terms and conditions are available and it is possible to add it to cart
     Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Intercontinental Ljubljana" for 1 night 5 months ahead
+    When I search for a hotel in "Intercontinental Ljubljana" for 1 night 6 months ahead
     And I wait to see view rates text in results page
     And I filter hotel results by hotel name "Intercontinental Ljubljana"
     And I select the first hotel result

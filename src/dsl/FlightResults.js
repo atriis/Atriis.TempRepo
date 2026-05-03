@@ -6,6 +6,14 @@ const Results = require("./Results");
 const { CommonPage } = require("@src/pages/CommonPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
+const {
+  extractCurrencySymbol,
+  getCurrencyCodeFromSymbol,
+  getCurrencySymbolFromCode,
+  getCurrencyConversionTolerance,
+  getExchangeRate,
+  normalizeCurrencyCode,
+} = require("../utils/currencyConversion");
 
 function extractDayToken(dateText) {
   if (!dateText || typeof dateText !== 'string') {
@@ -546,6 +554,21 @@ const FlightResults = {
     return await flightResultsPage.getFirstFlightResultDisplayAndOriginalPriceValues();
   },
 
+  async extractFirstFlightResultDisplayAndOriginalPriceData(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const priceData = await flightResultsPage.getFirstFlightResultDisplayAndOriginalPriceData();
+
+    return {
+      ...priceData,
+      displayCurrencySymbol: extractCurrencySymbol(priceData.displayPriceText, 'first flight result display price'),
+      originalCurrencySymbol: extractCurrencySymbol(priceData.originalPriceText, 'first flight result original price'),
+    };
+  },
+
   async verifyFirstPricingOptionMatchesStoredFlightResultPrices(page, expectedPrices) {
     if (!page) {
       throw new Error('page is required');
@@ -583,6 +606,106 @@ const FlightResults = {
     );
 
     return { expectedPrices, actualPrices };
+  },
+
+  async extractFirstPricingOptionDisplayAndOriginalPriceData(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const priceData = await flightResultsPage.getFirstPricingOptionDisplayAndOriginalPriceData();
+
+    return {
+      ...priceData,
+      displayCurrencySymbol: extractCurrencySymbol(priceData.displayPriceText, 'first pricing option display price'),
+      originalCurrencySymbol: extractCurrencySymbol(priceData.originalPriceText, 'first pricing option original price'),
+    };
+  },
+
+  async verifyStoredPriceMatchesCurrencyConversion(
+    page,
+    displayPriceEntry,
+    originalPriceEntry,
+    locationLabel,
+    expectedOriginalCurrencyCode,
+    expectedDisplayCurrencyCode,
+  ) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!displayPriceEntry || typeof displayPriceEntry !== 'object') {
+      throw new Error('displayPriceEntry must be an object');
+    }
+
+    if (!originalPriceEntry || typeof originalPriceEntry !== 'object') {
+      throw new Error('originalPriceEntry must be an object');
+    }
+
+    if (!locationLabel || typeof locationLabel !== 'string') {
+      throw new Error('locationLabel must be a non-empty string');
+    }
+
+    const { amount: displayAmount, currencySymbol: displayCurrencySymbol } = displayPriceEntry;
+    const { amount: originalAmount, currencySymbol: originalCurrencySymbol } = originalPriceEntry;
+
+    if (typeof displayAmount !== 'number' || Number.isNaN(displayAmount)) {
+      throw new Error(`displayPriceEntry.amount must be a valid number, got: ${displayAmount}`);
+    }
+
+    if (typeof originalAmount !== 'number' || Number.isNaN(originalAmount)) {
+      throw new Error(`originalPriceEntry.amount must be a valid number, got: ${originalAmount}`);
+    }
+
+    const normalizedExpectedOriginalCurrencyCode = normalizeCurrencyCode(
+      expectedOriginalCurrencyCode,
+      'expectedOriginalCurrencyCode',
+    );
+    const normalizedExpectedDisplayCurrencyCode = normalizeCurrencyCode(
+      expectedDisplayCurrencyCode,
+      'expectedDisplayCurrencyCode',
+    );
+
+    const displayCurrencyCode = getCurrencyCodeFromSymbol(displayCurrencySymbol);
+    const originalCurrencyCode = getCurrencyCodeFromSymbol(originalCurrencySymbol);
+
+    expect(
+      originalCurrencyCode,
+      `${locationLabel} original currency should be ${normalizedExpectedOriginalCurrencyCode} (${getCurrencySymbolFromCode(normalizedExpectedOriginalCurrencyCode)}) but extracted ${originalCurrencySymbol}`,
+    ).toBe(normalizedExpectedOriginalCurrencyCode);
+
+    expect(
+      displayCurrencyCode,
+      `${locationLabel} display currency should be ${normalizedExpectedDisplayCurrencyCode} (${getCurrencySymbolFromCode(normalizedExpectedDisplayCurrencyCode)}) but extracted ${displayCurrencySymbol}`,
+    ).toBe(normalizedExpectedDisplayCurrencyCode);
+
+    const exchangeRate = await getExchangeRate(
+      normalizedExpectedOriginalCurrencyCode,
+      normalizedExpectedDisplayCurrencyCode,
+    );
+    const expectedConvertedAmount = Number((originalAmount * exchangeRate).toFixed(2));
+    const tolerance = getCurrencyConversionTolerance(expectedConvertedAmount);
+
+    expectNumbersToBeEqualWithTolerance(
+      displayAmount,
+      expectedConvertedAmount,
+      tolerance,
+      `${locationLabel} converted price ${originalCurrencyCode}->${displayCurrencyCode}`,
+    );
+
+    return {
+      locationLabel,
+      displayAmount,
+      displayCurrencyCode,
+      expectedDisplayCurrencyCode: normalizedExpectedDisplayCurrencyCode,
+      originalAmount,
+      originalCurrencyCode,
+      expectedOriginalCurrencyCode: normalizedExpectedOriginalCurrencyCode,
+      exchangeRate,
+      expectedConvertedAmount,
+      tolerance,
+    };
   },
 
   /**

@@ -469,7 +469,7 @@ class RoomLevelResultsPage {
    * This opens a dialog with the price breakdown.
    */
   async clickPriceDetailsButton() {
-    const btn = this.page.locator(SELECTORS.FIRST_ROOM_PRICE_DETAILS_BUTTON);
+    const btn = this.page.locator(SELECTORS.FIRST_ROOM_PRICE_DETAILS_BUTTON).first();
     await btn.scrollIntoViewIfNeeded();
     await btn.waitFor({ state: "visible", timeout: 10000 });
     await btn.click();
