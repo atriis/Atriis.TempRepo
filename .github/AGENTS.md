@@ -36,7 +36,7 @@ Custom agents for the Playwright + Cucumber BDD automation framework. Use these 
 │                                                                          │
 ├─── STANDALONE AGENTS (independent, not part of pipelines) ───────────────┤
 │                                                                          │
-│  @code-reviewer            Review changes for quality                    │
+│  @code-reviewer            MANDATORY review gate for all pipelines       │
 │  @context-bridge           Connect ADO + Atriis.OBT + Automation         │
 │  @test-case-converter      Manual test cases → Gherkin                   │
 │  @testim-converter         Testim exports → Gherkin                      │
@@ -283,7 +283,7 @@ Orchestrator → Sub-Agent → Sub-Agent → ... → Report
 ## Standalone Agents
 
 ### code-reviewer
-**Purpose**: Review pending code changes for stability, maintainability, and pattern adherence.
+**Purpose**: **MANDATORY** code review gate for all pipelines. Reviews pending code changes for stability, maintainability, and pattern adherence. Must NEVER be skipped by any pipeline agent before committing.
 
 **Scope**: Gherkin, Step Definitions, DSL, Page Objects, Utils
 

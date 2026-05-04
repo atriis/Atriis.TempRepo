@@ -354,6 +354,18 @@ const FlightResults = {
   },
 
   /**
+   * Verifies the stops filter is visible in flight results.
+   * @param {import('playwright').Page} page
+   */
+  async verifyStopsFilterVisible(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const visible = await flightResultsPage.isStopsFilterVisible();
+    expect(visible, 'Stops filter should be visible in flight results').toBe(true);
+    return { visible: true };
+  },
+
+  /**
    * Verifies that the first flight result highlights the expected airport codes.
    *
    * @param {import('playwright').Page} page - Playwright page instance
@@ -1787,6 +1799,22 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     const visible = await flightResultsPage.isAgreementIndicatorVisibleInFirstResult();
     expect(visible, 'Agreement indicator should be visible in the first flight result').toBe(true);
+  },
+
+  /**
+   * Verifies a flight result displays the expected info label (e.g. "NDC direct rate").
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - The expected label text
+   * @param {number} flightIndex - 1-based index of the flight result (default: 1)
+   */
+  async verifyFlightResultInfoLabel(page, expectedText, flightIndex = 1) {
+    if (!page) throw new Error('page is required');
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(`expectedText must be a non-empty string, got: ${typeof expectedText}`);
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const labelText = await flightResultsPage.getFlightResultInfoLabel(flightIndex);
+    expect(labelText, `Flight result ${flightIndex} should display "${expectedText}" label`).toBe(expectedText);
   },
 
   /**

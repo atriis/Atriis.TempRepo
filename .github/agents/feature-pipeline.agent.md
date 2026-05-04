@@ -109,6 +109,23 @@ Report goes to `test-results/` only (no ADO comment since this is manual).
 
 **CHECKPOINT**: Show summary, ask to commit.
 
+### Phase 4.5: Code Review — MANDATORY, CANNOT BE SKIPPED
+**Invoke**: `@code-reviewer` with `strictness=strict` and `scope=` set to all files created or modified during this pipeline run.
+
+This is a **mandatory quality gate** before committing. **This phase must NEVER be skipped, abbreviated, or deferred**, regardless of time pressure, user request, or perceived simplicity of the changes.
+
+The `@code-reviewer` agent will:
+1. Verify layer separation — steps only call DSL, DSL only calls Page Objects
+2. Verify reuse — no new function when existing ones could be reused
+3. Verify patterns — object literal DSL, `page` first param, `getPageObject()`, SELECTORS constant, regular functions in steps
+4. Verify input validation, logging, naming, domain safety, returns, Gherkin quality
+
+**If PASS** → proceed to Phase 5 (commit).
+**If PASS WITH COMMENTS** → display suggestions, proceed to Phase 5.
+**If FAIL (BLOCK)** → auto-fix mechanical blockers (max 3 iterations). If blockers persist, flag for user. Never commit code that fails review.
+
+**CHECKPOINT**: Display review verdict, blockers found/fixed, and ask to proceed.
+
 ### Phase 5: Commit
 ```powershell
 cd c:\DEV\Atriis.Test.Automation
@@ -130,6 +147,7 @@ git commit -m "feat(tests): add {domain} test — {scenario_name}
 ## Rules
 - **Never assume domain** — ask if ambiguous
 - **Never skip checkpoints** — always pause for user review
+- **Code review is MANDATORY** — always run `@code-reviewer` (Phase 4.5) before committing. Never skip, abbreviate, or defer it
 - **Parse intent, not just keywords** — understand what the user wants to test
 - **Suggest, don't impose** — scenario name, tags, domain are suggestions
 - **Default environment is staging** — unless user specifies otherwise

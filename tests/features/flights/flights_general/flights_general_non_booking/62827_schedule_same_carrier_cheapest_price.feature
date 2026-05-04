@@ -14,7 +14,7 @@ Feature: 62827 Amadeus By Schedule - Same carrier cheapest package matches prici
   Scenario: Cheapest package same carrier price matches in pricing page and cart
     Given I am logged in as "coreytaylor" booking a new trip
     And I have added myself as the traveler
-    When I search for a flight by schedule from "DUB" to "PRG"
+    When I search for a flight by schedule from "FRA" to "PRG"
     And I filter results by carrier "Lufthansa"
     And I select one flight segment by schedule
     And I wait for the change flight button to be visible

@@ -510,6 +510,12 @@ Then('the comparison table should be visible in flight results and the toggle sh
   await FlightResults.verifyComparisonTableVisibleWithToggleText(this.page, expectedText);
 });
 
+Then('the stops filter should be visible in flight results', async function () {
+  logger.info('Verifying stops filter is visible in flight results');
+  const result = await FlightResults.verifyStopsFilterVisible(this.page);
+  logger.info('Stops filter verified', result);
+});
+
 Then('the edited flight search results should reflect the updated dates', async function () {
   logger.info('Verifying edited flight results reflect updated dates', { editedFlightSearch: this.editedFlightSearch });
 
@@ -723,8 +729,10 @@ Then('the {string} indicator should be visible in results', async function (indi
     await FlightResults.verifyAgreementIndicatorVisibleInResults(this.page);
   } else if (indicatorName === 'Marine Fare') {
     await FlightResults.verifyMarineFareIconVisibleInResults(this.page);
+  } else if (indicatorName === 'NDC Direct Rate') {
+    await FlightResults.verifyFlightResultInfoLabel(this.page, 'NDC direct rate');
   } else {
-    throw new Error(`Unknown indicator: "${indicatorName}". Supported: "Agreement", "Separated Tickets", "Marine Fare"`);
+    throw new Error(`Unknown indicator: "${indicatorName}". Supported: "Agreement", "Separated Tickets", "Marine Fare", "NDC Direct Rate"`);
   }
 });
 

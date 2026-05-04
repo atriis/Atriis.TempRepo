@@ -64,6 +64,7 @@ const SELECTORS = {
   COMPARISON_ROW: '.ticket-layout-container .el-table__body-wrapper tbody tr',
   COMPARISON_STOP_TYPE: '.stop-type',
   COMPARISON_PRICE_CELL: '.cell-price',
+  STOPS_FILTER_CONTAINER: '.stops-filter .filter-container',
   BY_SCHEDULE_PRICING_PAGE: '.flight-by-schedule-pricing',
   BY_SCHEDULE_ADD_TO_TRIP_BUTTON: '.flight-by-schedule-pricing .add-btn',
   SEARCH_FLIGHT_FILTER: '[placeholder="Search flight"]',
@@ -185,6 +186,9 @@ const SELECTORS = {
   // Flight details — segment top bar with carrier and equipment info
   FLIGHT_DETAILS_TOP_BAR: '.flight-details-top-bar',
   FLIGHT_DETAILS_AIRCRAFT_NAME: '.aircraft-name',
+  // NDC direct rate label in flight info top bar
+  FLIGHT_INFO_TOP_BAR_LABEL: '.flight-info-top-bar .is-align-items-center > :nth-child(2)',
+
   // Element Plus tooltip (rendered outside component tree)
   EL_POPPER_VISIBLE: '.el-popper:visible',
 };
@@ -657,6 +661,21 @@ class FlightResultsPage {
     return await row.locator(SELECTORS.COMPARISON_PRICE_CELL).count();
   }
 
+  /**
+   * Checks if the stops filter container is visible.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isStopsFilterVisible(timeout = 15000) {
+    try {
+      const locator = this.page.locator(SELECTORS.STOPS_FILTER_CONTAINER).first();
+      await locator.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // ===== PRICING OPTIONS MODAL =====
 
   /**
@@ -794,6 +813,8 @@ class FlightResultsPage {
    */
   async getAmountPriceValuePricingOptions(index = 0) {
     const overlay = this.getPricingOptionsOverlay();
+    await overlay.waitFor({ state: 'visible', timeout: 60000 });
+    await overlay.locator(SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE).nth(index).waitFor({ state: 'visible', timeout: 120000 });
     return extractNumber(overlay, SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE, index);
   }
 
@@ -1712,6 +1733,26 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   }
 
   /**
+   * Gets the label text from a flight result's info top bar (e.g. "NDC direct rate").
+   * @param {number} flightIndex - 1-based index of the flight result
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<string|null>} The label text or null if not found
+   */
+  async getFlightResultInfoLabel(flightIndex = 1, timeout = 15000) {
+    if (typeof flightIndex !== 'number' || flightIndex < 1) {
+      throw new Error(`flightIndex must be a positive number, got: ${flightIndex}`);
+    }
+    try {
+      const selector = `.flight-list > :nth-child(${flightIndex}) ${SELECTORS.FLIGHT_INFO_TOP_BAR_LABEL}`;
+      const locator = this.page.locator(selector).first();
+      await locator.waitFor({ state: 'visible', timeout });
+      return (await locator.textContent()).trim();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Checks if the Marine Fare icon (anchor) is visible in flight results.
    * @param {number} timeout - Max wait time in ms (default: 15000)
    * @returns {Promise<boolean>}
@@ -1731,10 +1772,14 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
    * @param {number} timeout - Max wait time in ms (default: 15000)
    * @returns {Promise<boolean>}
    */
-  async isMarineFareIconVisibleInPricingOptions(timeout = 15000) {
+  async isMarineFareIconVisibleInPricingOptions(timeout = 30000) {
     try {
       const overlay = this.getPricingOptionsOverlay();
       await overlay.waitFor({ state: 'visible', timeout });
+
+      // Wait for pricing content to fully load (amount indicates real data, not skeleton)
+      const firstAmount = overlay.locator(SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE).first();
+      await firstAmount.waitFor({ state: 'visible', timeout });
 
       const options = overlay.locator(SELECTORS.PRICING_OPTIONS_ITEM);
       await options.first().waitFor({ state: 'visible', timeout });

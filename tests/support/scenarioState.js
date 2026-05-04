@@ -3,7 +3,8 @@ function getTravelerCount(world) {
     return world.selectedTravelerCount;
   }
 
-  return (world.guestTravelerCount ?? 0) + 1;
+  // Fallback: use guest count only — the booker is not necessarily a traveler
+  return world.guestTravelerCount ?? 1;
 }
 
 function getStoredFlightNumbers(world) {

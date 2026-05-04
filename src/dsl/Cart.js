@@ -2812,9 +2812,12 @@ const Cart = {
     if (!expectedText || typeof expectedText !== 'string') throw new Error('expectedText must be a non-empty string');
 
     const cartPage = getPageObject(page, CartPage);
-    const actualTexts = await cartPage.getAllFqtvSelectedTexts();
-    const hasMatch = actualTexts.some((text) => text.includes(expectedText));
-    expect(hasMatch, `FQTV should show "${expectedText}" but got "${actualTexts.join(', ')}"`).toBe(true);
+
+    await expect(async () => {
+      const actualTexts = await cartPage.getAllFqtvSelectedTexts();
+      const hasMatch = actualTexts.some((text) => text.includes(expectedText));
+      expect(hasMatch, `FQTV should show "${expectedText}" but got "${actualTexts.join(', ')}"`).toBe(true);
+    }).toPass({ timeout: 15000 });
   },
 
   /**

@@ -134,6 +134,23 @@ Generate comprehensive regression report:
 
 **CHECKPOINT**: Show final summary, ask to commit.
 
+### Phase 4.5: Code Review — MANDATORY, CANNOT BE SKIPPED
+**Invoke**: `@code-reviewer` with `strictness=strict` and `scope=` set to all files modified during fix iterations.
+
+This is a **mandatory quality gate** before committing fixes. **This phase must NEVER be skipped, abbreviated, or deferred**, regardless of time pressure, user request, or perceived simplicity of the changes. Even if only a single selector was changed, code review is required.
+
+The `@code-reviewer` agent will:
+1. Verify fixes didn't introduce duplicate logic or layer violations
+2. Verify reuse — no new function when existing ones could be reused
+3. Verify patterns — SELECTORS constant, `getPageObject()`, proper logging
+4. Verify no dead code was left behind from fix iterations
+
+**If PASS** → proceed to Phase 5 (commit).
+**If PASS WITH COMMENTS** → display suggestions, proceed to Phase 5.
+**If FAIL (BLOCK)** → auto-fix mechanical blockers (max 3 iterations). If blockers persist, flag for user. Never commit code that fails review.
+
+**CHECKPOINT**: Display review verdict, blockers found/fixed, and ask to proceed.
+
 ### Phase 5: Commit
 ```powershell
 cd c:\DEV\Atriis.Test.Automation
@@ -153,6 +170,7 @@ git commit -m "fix(regression): resolve {N} test failures in {tags} suite
 - **Re-run only previously failing tests** — never re-run tests that already passed
 - **5 iteration cap** is global across all failure groups
 - **Always report** — even if nothing was fixed, report the current state
+- **Code review is MANDATORY** — always run `@code-reviewer` (Phase 4.5) before committing. Never skip, abbreviate, or defer it
 - **Generate HTML report** — save comprehensive HTML report in GitHub for team visibility
 - **Tags not configured yet** — prefer path-based runs until tagging is established
 - **~700 tests expected** — plan for large suite execution time

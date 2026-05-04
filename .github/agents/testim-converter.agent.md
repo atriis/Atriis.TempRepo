@@ -392,4 +392,4 @@ At the bottom of the output, list:
 After converting a Testim test:
 - Use `@test-runner-pipeline` to execute and verify it passes
 - Use `@todo-pipeline` if TODOs were left in the converted file
-- Use `@code-reviewer` to validate the output follows project patterns
+- **MANDATORY**: Run `@code-reviewer` to validate the output follows project patterns. This must NEVER be skipped, abbreviated, or deferred — no code should be committed without passing code review

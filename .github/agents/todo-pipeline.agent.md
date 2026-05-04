@@ -19,13 +19,13 @@ You are the **TODO resolver orchestrator**. You take existing feature files that
 ## Pipeline Phases
 
 ```
-Phase 1            Phase 2              Phase 3           Phase 4          Phase 4.5          Phase 5          Phase 6
-┌──────────────┐  ┌──────────────────┐  ┌─────────────┐  ┌────────────┐  ┌───────────────┐  ┌─────────────┐  ┌──────────────┐
-│ TODO Scanner │─▶│ TODO Implementer │─▶│ Test Runner  │─▶│ Test Fixer │─▶│ Dedup & Clean │─▶│ Test Runner  │─▶│ Test Reporter │
-│ (find TODOs) │  │ (build missing)  │  │ (first run) │  │ (if fails) │  │ (dead code)   │  │ (re-run)     │  │              │
-└──────────────┘  └──────────────────┘  └─────────────┘  └────────────┘  └───────────────┘  └─────────────┘  └──────────────┘
-     │                  │                   │                │                 │                │                  │
-  CHECKPOINT         CHECKPOINT          CHECKPOINT       CHECKPOINT       CHECKPOINT       CHECKPOINT        CHECKPOINT
+Phase 1            Phase 2              Phase 3           Phase 4          Phase 4.5          Phase 4.6        Phase 5          Phase 6
+┌──────────────┐  ┌──────────────────┐  ┌─────────────┐  ┌────────────┐  ┌───────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐
+│ TODO Scanner │─▶│ TODO Implementer │─▶│ Test Runner  │─▶│ Test Fixer │─▶│ Dedup & Clean │─▶│ Code Review │─▶│ Test Runner  │─▶│ Test Reporter │
+│ (find TODOs) │  │ (build missing)  │  │ (first run) │  │ (if fails) │  │ (dead code)   │  │ (governor)  │  │ (re-run)     │  │              │
+└──────────────┘  └──────────────────┘  └─────────────┘  └────────────┘  └───────────────┘  └─────────────┘  └─────────────┘  └──────────────┘
+     │                  │                   │                │                 │                 │                │                  │
+  CHECKPOINT         CHECKPOINT          CHECKPOINT       CHECKPOINT       CHECKPOINT       CHECKPOINT       CHECKPOINT        CHECKPOINT
 ```
 
 ## State Object
@@ -59,6 +59,14 @@ Phase 1            Phase 2              Phase 3           Phase 4          Phase
     "deadSelectorsRemoved": [],
     "duplicateStepsConsolidated": [],
     "nearDuplicatesFlagged": []
+  },
+  "codeReview": {
+    "verdict": "",
+    "blockers": [],
+    "important": [],
+    "suggestions": [],
+    "fixesApplied": [],
+    "iterationsUsed": 0
   },
   "report": {}
 }
@@ -326,9 +334,75 @@ If Phase 4.5 removed dead code, consolidated duplicates, or modified any file:
 - Duplicate steps consolidated: {list}
 - Near-duplicates flagged: {list}
 - Re-run result after cleanup: {passed/skipped}
-- **If nothing found**: "No duplication or dead code detected. Proceeding to Phase 5."
-- **If changes made and re-run passed**: "Cleaned up {N} dead methods and {M} duplicate definitions. Re-run confirmed nothing broke. Proceed to Phase 5?"
-- **If changes made and re-run failed**: "Cleanup caused a regression — reverted {list}. Proceeding to Phase 5 with original code."
+- **If nothing found**: "No duplication or dead code detected. Proceeding to Phase 4.6 (Code Review)."
+- **If changes made and re-run passed**: "Cleaned up {N} dead methods and {M} duplicate definitions. Re-run confirmed nothing broke. Proceed to Phase 4.6 (Code Review)?"
+- **If changes made and re-run failed**: "Cleanup caused a regression — reverted {list}. Proceeding to Phase 4.6 (Code Review) with original code."
+
+### Phase 4.6: Code Review (Governor Gate) — MANDATORY, CANNOT BE SKIPPED
+After Phase 4.5 cleanup, run the `@code-reviewer` agent in **strict mode** on all files created or modified during this pipeline run. This is a **mandatory quality gate** — code that fails review must be fixed before proceeding. **This phase must NEVER be skipped, abbreviated, or deferred**, regardless of time pressure, user request, or perceived simplicity of the changes.
+
+**Invoke**: `@code-reviewer` with `strictness=strict` and `scope=` set to the list of all created/modified files.
+
+**4.6a. Collect all files touched by this pipeline run**
+Gather the complete list from `state.implementation`:
+- Feature files with resolved TODOs
+- Step definition files created or modified (`tests/steps/*.steps.js`)
+- DSL files created or modified (`src/dsl/*.js`)
+- Page Object files created or modified (`src/pages/*.js`)
+- Helper files created or modified (`src/utils/*.js`)
+- Barrel export (`src/dsl/index.js`) if updated
+
+**4.6b. Run code review**
+The `@code-reviewer` agent will:
+1. **Verify layer separation** — steps only call DSL, DSL only calls Page Objects, Page Objects only use Playwright
+2. **Verify reuse** — no new function was created when an existing one could be reused or parameterized
+3. **Verify patterns** — object literal DSL (not class), `page` first param, `getPageObject()` for instantiation, SELECTORS constant, regular functions in steps (not arrows)
+4. **Verify input validation** — all DSL methods validate `page` and other parameters
+5. **Verify logging** — steps use `logger.info()`, DSL uses `logger.info()`/`logger.debug()`, Page Objects never log
+6. **Verify naming** — files, methods, variables, and SELECTORS follow project conventions
+7. **Verify domain safety** — flights have cancellation, hotels have refundable filter, no hardcoded sleeps without justification
+8. **Verify no duplication** — no duplicate step phrases, no duplicate DSL methods, no duplicate selectors across Page Objects
+9. **Verify returns** — DSL methods return meaningful data objects, not just booleans
+10. **Verify Gherkin quality** — readable as user stories, parameterized, properly tagged
+
+**4.6c. Process review results**
+
+The review produces a verdict: **PASS**, **PASS WITH COMMENTS**, or **FAIL (BLOCK)**.
+
+**If PASS** → proceed to Phase 5.
+
+**If PASS WITH COMMENTS** → display suggestions to user, proceed to Phase 5. Suggestions are logged but do not block.
+
+**If FAIL (BLOCK)** → auto-fix blockers:
+1. For each 🔴 BLOCKER in the review:
+   - If the fix is mechanical (missing validation, wrong import, arrow → function, inline selector → SELECTORS constant) → apply the fix automatically
+   - If the fix requires choosing between reuse candidates → apply the reviewer's recommended fix
+   - If the fix is ambiguous or risky → replace with `#TODO: {reviewer's description}` and flag for user
+2. After applying fixes, re-run the `@code-reviewer` agent on the same files
+3. Maximum **3 review-fix iterations** — if blockers persist after 3 rounds, flag remaining issues in the report and proceed
+4. After each fix iteration, run `node -c "{filePath}"` on every modified file to verify syntax
+
+**4.6d. Re-run test after review fixes**
+If Phase 4.6 modified any code to fix review blockers:
+1. Re-run the feature file(s) to confirm they still pass
+2. If a test that previously passed now fails → **the review fix broke something** → revert that specific fix, keep the original code, and flag for manual review
+3. If no code was modified (review passed clean) → skip re-run
+
+> **Iron rule: Phase 4.6 must not break passing tests. If a test passed before review fixes and fails after, the fix is wrong — revert it immediately. Correctness always trumps code style.**
+
+**CHECKPOINT**: Display to user:
+- Review verdict: {PASS / PASS WITH COMMENTS / FAIL}
+- Blockers found: {count}
+- Blockers auto-fixed: {count}
+- Blockers remaining (flagged): {count}
+- Important issues: {count}
+- Suggestions: {count}
+- Review-fix iterations used: {N}/3
+- Re-run result after fixes: {passed/skipped/reverted}
+- **If PASS**: "Code review passed. All code follows project standards. Proceeding to Phase 5."
+- **If PASS WITH COMMENTS**: "Code review passed with {N} suggestions. Proceeding to Phase 5."
+- **If FAIL fixed**: "Code review found {N} blockers. {M} auto-fixed, {K} flagged as TODO. Re-run confirmed nothing broke. Proceed to Phase 5?"
+- **If FAIL with remaining blockers**: "Code review found {N} blockers. {M} could not be auto-fixed after 3 iterations. Proceed anyway or fix manually?"
 
 ### Phase 5: Leave Placement To User
 After all TODOs are resolved and tests pass for a file:
@@ -373,6 +447,14 @@ Generate TODO resolution report:
   ├── Dead methods removed:    4 (CartPage.js)
   ├── Dead selectors removed:  2 (CartPage.js)
   └── Duplicate steps:         0
+
+  Code Review (Phase 4.6):
+  ├── Verdict:               PASS WITH COMMENTS
+  ├── Blockers found:        2
+  ├── Blockers auto-fixed:   2
+  ├── Important issues:      3
+  ├── Suggestions:           1
+  └── Review iterations:     1/3
 
    Placement:
    └── Final feature-file placement left to the user
@@ -429,6 +511,7 @@ The agent understands these TODO formats:
 - `@regression-pipeline` can invoke `@todo-pipeline` for tests that fail due to undefined steps
 - `@ci-monitor` can flag tests with TODOs as "incomplete" in the daily report
 - `@batch-test-fixer` can delegate TODO resolution to this pipeline
+- `@code-reviewer` is invoked in Phase 4.6 as a strict quality gate — all code must pass review before the final test run
 
 ## Rules
 - **UNDERSTAND → SCAN → CREATE (in that order, always)** — for every TODO: (1) read and understand what it's asking for, (2) search `tests/steps/`, `src/dsl/`, and `src/pages/` for existing steps, methods, and locators that already do what the TODO requires or could be broadened to cover it, (3) only create new code if nothing existing can be reused. Never skip straight to creating.
@@ -449,6 +532,7 @@ The agent understands these TODO formats:
 - **Centralize selectors at the top of page files** — every CSS/XPath/text selector used in a Page Object method MUST be declared in the `SELECTORS` constant at the top of the file, using `UPPER_SNAKE_CASE`. Never inline selector strings like `this.page.locator('.some-class')` inside methods — always reference `SELECTORS.SOME_NAME` instead. This keeps selectors easy to find, update, and reuse.
 - **5 fix iterations max** — per file, not per batch
 - **Duplication & dead code check after fixes** — after Phase 4 completes, always run Phase 4.5 to scan for dead methods from iteration churn, duplicate step definitions, and unused selectors. Fix iterations frequently leave behind orphaned code that was replaced in later iterations. Clean it up before moving files.
+- **Code review before final run (MANDATORY — CANNOT BE SKIPPED)** — after Phase 4.5 cleanup, always run Phase 4.6 (`@code-reviewer` in strict mode) on all created/modified files. This is a mandatory quality gate that catches pattern violations, layer breaches, missing validation, and reuse opportunities that Phase 4.5 doesn't cover. Auto-fix mechanical blockers (max 3 iterations), replace ambiguous ones with `#TODO`, and never let a review fix break a passing test. **Never skip this phase**, even if changes seem trivial.
 - **No search results = STOP** — if a test fails because a product search (hotels, flights, cars, rails) returned zero results, do NOT attempt to fix it. Search results depend on supplier availability, test data, and environment — no code change can solve this. Mark the file as "blocked: no search results" and move on. We need results in order to proceed with creating or validating steps.
 
 ### Hotels — Critical Cost Rules

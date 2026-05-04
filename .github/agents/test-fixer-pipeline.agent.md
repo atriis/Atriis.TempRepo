@@ -175,3 +175,4 @@ After each fix iteration, **pause and present to the user**:
 - **Never create variant methods** — fix the original safely or stop for manual intervention
 - **Do not leave dead code from the current fix behind**
 - **Max 5 iterations** — after that, report the failure as needing manual help
+- **Code review is MANDATORY** — all fixes produced by this agent must pass `@code-reviewer` before being committed. The orchestrating pipeline is responsible for invoking the code review phase, but this agent must produce code that adheres to project patterns so it can pass review

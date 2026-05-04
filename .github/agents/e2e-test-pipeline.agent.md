@@ -23,14 +23,14 @@ You coordinate sub-agents in sequence, pass state between them, and pause for us
 ## Pipeline Phases
 
 ```
-Phase 1            Phase 1.5         Phase 2              Phase 3              Phase 3.5         Phase 4           Phase 5          Phase 6           Phase 7
-+---------------+  +---------------+ +------------------+  +----------------+  +---------------+ +-------------+  +-------------+  +--------------+  +--------------+
-| Test Case     |->| Governance    |>| Env & User       |->| Step Validator |->| Governance    |>| Run & Fix   |->| Report &    |->| Child Bug    |->| Publish ADO  |->| Feature      |
-| Generator     |  | Review        | | Setup            |  | & Implementer  |  | Review        | | Loop (x5)   |  | Summary     |  | Creator      |  | Test Case    |  | Deployer     |
-+---------------+  +---------------+ +------------------+  +----------------+  +---------------+ +-------------+  +-------------+  +--------------+  +--------------+  +--------------+
-    |                   |                  |                     |                    |                 |                |                |                  |                  |
-  CHECKPOINT          CHECKPOINT         CHECKPOINT           CHECKPOINT           CHECKPOINT        CHECKPOINT       CHECKPOINT       CHECKPOINT        CHECKPOINT        CHECKPOINT
-  "Review?"           "Governor OK?"    "Users OK?"          "Steps OK?"          "Governor OK?"   "Auto-fix?"      "Report OK?"     "Create bugs?"    "Publish TC?"     "Deploy?"
+Phase 1            Phase 1.5         Phase 2              Phase 3              Phase 3.5         Phase 4           Phase 5          Phase 6          Phase 6.5         Phase 6.75         Phase 7
++---------------+  +---------------+ +------------------+  +----------------+  +---------------+ +-------------+  +-------------+  +--------------+  +--------------+  +----------------+  +--------------+
+| Test Case     |->| Governance    |>| Env & User       |->| Step Validator |->| Governance    |>| Run & Fix   |->| Report &    |->| Child Bug    |->| Publish ADO  |->| QA Summary   |->| Feature      |
+| Generator     |  | Review        | | Setup            |  | & Implementer  |  | Review        | | Loop (x5)   |  | Summary     |  | Creator      |  | Test Case    |  | + Screenshots |  | Deployer     |
++---------------+  +---------------+ +------------------+  +----------------+  +---------------+ +-------------+  +-------------+  +--------------+  +--------------+  +----------------+  +--------------+
+    |                   |                  |                     |                    |                 |                |                |                  |                  |                  |
+  CHECKPOINT          CHECKPOINT         CHECKPOINT           CHECKPOINT           CHECKPOINT        CHECKPOINT       CHECKPOINT       CHECKPOINT        CHECKPOINT        CHECKPOINT        CHECKPOINT
+  "Review?"           "Governor OK?"    "Users OK?"          "Steps OK?"          "Governor OK?"   "Auto-fix?"      "Report OK?"     "Create bugs?"    "Publish TC?"     "Post to ADO?"    "Deploy?"
 ```
 
 ## State Object
@@ -106,6 +106,14 @@ The pipeline maintains a single state object passed between all phases:
     "testCaseId": null,
     "testCaseUrl": "",
     "linkedToWorkItem": false
+  },
+  "adoQaSummary": {
+    "posted": false,
+    "parentCommentId": null,
+    "childBugCommentsPosted": 0,
+    "screenshotsUploaded": 0,
+    "screenshotUploadFailures": 0,
+    "fallbackToTextOnly": false
   },
   "deployment": {
     "sourcePath": "",
@@ -470,7 +478,113 @@ The sub-agent will:
 - Plan: {planName} / Suite: {suiteName}
 - URL: {adoTcUrl}
 - Linked to: #{workItemId} (Tested By)
-- **Ask**: "ADO Test Case published. Proceed to deploy feature file to Atriis.Test.Automation?"
+- **Ask**: "ADO Test Case published. Proceed to post QA summary to ADO?"
+
+---
+
+### Phase 6.75: Post QA Summary + Screenshots to ADO Work Items
+**Performed by the orchestrator** (via Azure DevOps REST API).
+
+This phase posts a structured QA automation summary with inline screenshots to the parent work item and each child bug. It runs **every time** — even when all tests pass — to provide traceability.
+
+**6.75a. Collect screenshots**
+1. Scan `c:\DEV\Atriis.Test.Automation\test-results\screenshots\` for screenshots captured during test execution
+2. Match each screenshot to its scenario by filename pattern (Cucumber names screenshots after the scenario)
+3. If no screenshots exist (all scenarios passed without failure captures), skip upload but still post the text summary
+
+**6.75b. Upload screenshots to ADO as attachments**
+For each matched screenshot:
+1. Upload via the ADO Attachments REST API:
+   ```
+   POST https://dev.azure.com/{org}/{project}/_apis/wit/attachments?fileName={scenarioName}.png&api-version=7.1
+   Content-Type: application/octet-stream
+   Body: <binary file content>
+   ```
+2. Capture the returned `url` from the response — this is the CDN URL for embedding
+3. Store the mapping: `{ scenarioName, attachmentUrl, fileName }`
+4. If upload fails (network error, 4xx/5xx) → log the error, mark `state.adoQaSummary.screenshotUploadFailures++`, and continue. The comment will fall back to text-only for that screenshot.
+
+**6.75c. Build HTML comment for parent work item**
+Construct a structured HTML comment with the following sections:
+
+```html
+<div>
+  <h3>✅ Tested by QA Automation</h3>
+  <p><strong>Pipeline:</strong> e2e-test-pipeline | <strong>Date:</strong> {date} | <strong>Domain:</strong> {domain}</p>
+
+  <h4>Scenario Results</h4>
+  <table border="1" cellpadding="4" cellspacing="0">
+    <tr><th>Scenario</th><th>Result</th><th>Fix Iterations</th></tr>
+    <tr><td>{scenarioName}</td><td>✅ PASSED / ❌ FAILED</td><td>{count}</td></tr>
+    <!-- one row per scenario -->
+  </table>
+
+  <h4>Automation Details</h4>
+  <ul>
+    <li><strong>Feature file:</strong> {featurePath}</li>
+    <li><strong>Total steps:</strong> {count} ({reused} reused, {created} new)</li>
+    <li><strong>Fix iterations:</strong> {count}</li>
+    <li><strong>ADO Test Case:</strong> <a href="{adoTcUrl}">#{adoTcId}</a></li>
+  </ul>
+
+  <h4>Screenshots</h4>
+  <!-- One image per scenario that has a screenshot -->
+  <p><strong>{scenarioName}:</strong></p>
+  <img src="{attachmentUrl}" alt="{scenarioName}" width="800" />
+  <!-- If screenshot upload failed: -->
+  <p><em>Screenshot upload failed for {scenarioName} — see local file: {localPath}</em></p>
+
+  <h4>Child Bugs Created</h4>
+  <ul>
+    <li><a href="{childBugUrl}">#{childBugId}</a> — {childBugTitle}</li>
+    <!-- one per child bug, or "No child bugs created — all scenarios passed." -->
+  </ul>
+</div>
+```
+
+**6.75d. Post comment to parent work item**
+Post the HTML comment via the ADO Work Item Comments API:
+```
+POST https://dev.azure.com/{org}/{project}/_apis/wit/workItems/{workItemId}/comments?api-version=7.1-preview.4
+Content-Type: application/json
+Body: { "text": "<html comment>" }
+```
+
+Capture the returned comment ID in `state.adoQaSummary.parentCommentId`.
+
+**6.75e. Post per-scenario comments to child bugs**
+For each child bug created in Phase 6:
+1. Build a shorter HTML comment:
+   ```html
+   <div>
+     <h4>🔗 QA Automation Context</h4>
+     <p>This bug was auto-generated by the e2e-test-pipeline for parent work item
+        <a href="{parentUrl}">#{workItemId}</a>.</p>
+     <p><strong>Scenario:</strong> {scenarioName}</p>
+     <p><strong>Result:</strong> ❌ FAILED</p>
+     <p><strong>Error:</strong> {errorMessage}</p>
+     <!-- If screenshot exists for this scenario: -->
+     <img src="{attachmentUrl}" alt="{scenarioName}" width="800" />
+   </div>
+   ```
+2. Post to the child bug work item using the same Comments API
+3. Increment `state.adoQaSummary.childBugCommentsPosted`
+
+**6.75f. Error handling for this phase**
+- Screenshot upload failure → fall back to text-only for that screenshot, log the error, continue
+- ADO comment API 4xx/5xx → log the error, set `state.adoQaSummary.posted = false`, but **do not block the pipeline** — proceed to Phase 7
+- Network timeout → retry once, then log and continue
+- No screenshots at all → post text-only summary (still mandatory)
+
+**Receives**: `state.adoQaSummary`
+
+**CHECKPOINT**: Display to user:
+- QA summary posted to: #{workItemId}
+- Screenshots uploaded: {count} ({failures} failed)
+- Child bug comments posted: {count}
+- **If all succeeded**: "QA summary with screenshots posted to ADO. Proceed to deploy feature file?"
+- **If partial failures**: "QA summary posted (text-only for {N} screenshots that failed upload). Proceed to deploy feature file?"
+- **If comment post failed**: "⚠️ Failed to post QA summary to ADO (logged). Proceed to deploy feature file?"
 
 ---
 
@@ -502,6 +616,26 @@ Move the generated feature file from `test-results/generated/` to the correct lo
 - Source: {generated feature path}
 - Destination: {atriis path}
 - **Ask**: "Feature deployed. Commit all changes?"
+
+---
+
+### Phase 7.5: Code Review — MANDATORY, CANNOT BE SKIPPED
+**Invoke**: `@code-reviewer` with `strictness=strict` and `scope=` set to all files created or modified during this pipeline run.
+
+This is a **mandatory quality gate** before committing. **This phase must NEVER be skipped, abbreviated, or deferred**, regardless of time pressure, user request, or perceived simplicity of the changes.
+
+The `@code-reviewer` agent will:
+1. Verify layer separation — steps only call DSL, DSL only calls Page Objects
+2. Verify reuse — no new function when existing ones could be reused
+3. Verify patterns — object literal DSL, `page` first param, `getPageObject()`, SELECTORS constant, regular functions in steps
+4. Verify input validation, logging, naming, domain safety, returns, Gherkin quality
+5. Verify no duplication — no duplicate step phrases, DSL methods, or selectors
+
+**If PASS** → proceed to Phase 8 (commit).
+**If PASS WITH COMMENTS** → display suggestions, proceed to Phase 8.
+**If FAIL (BLOCK)** → auto-fix mechanical blockers (max 3 iterations). If blockers persist, flag for user. Never commit code that fails review.
+
+**CHECKPOINT**: Display review verdict, blockers found/fixed, and ask to proceed.
 
 ---
 
@@ -544,11 +678,14 @@ https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?e
 | All 5 fix iterations fail | Mark "needs manual intervention", still report |
 | No search results during test | Mark as "blocked: environment/data issue", skip fixes |
 | Duplicate bug found in ADO | Add comment to existing bug instead of creating new |
+| Screenshot upload to ADO fails | Fall back to text-only comment for that screenshot, log error, continue |
+| ADO comment API returns 4xx/5xx | Log error, mark `adoQaSummary.posted = false`, do not block pipeline |
 | Feature file already exists at destination | Ask user: overwrite / rename / skip |
 
 ## Rules
 
 1. **Never skip checkpoints** -- always pause for user review between phases
+2. **Code review is MANDATORY** -- always run `@code-reviewer` (Phase 7.5) before committing. Never skip, abbreviate, or defer it
 2. **Pass state forward** -- each agent gets the full accumulated state
 3. **One orchestrator, many sub-agents** -- no implementation logic in this file
 4. **Respect layer boundaries** -- delegate to the right sub-agent for each task
@@ -561,3 +698,5 @@ https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?e
 11. **Ask about existing tests** -- if tests already exist for this work item, ask user what to do
 12. **Always end Phase 8 with a PR link** -- display `https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?expand=1` so the user can open the PR immediately
 13. **No new code without search evidence** -- before creating a new step, DSL method, page method, or locator, the agent must show the exact and near-match search results it checked and why reuse was not possible
+14. **Phase 6.75 is mandatory** -- always post the QA summary to ADO, even when all tests pass. This provides traceability and a clear audit trail of what was automated, when, and with what results
+15. **Screenshot upload failures never block the pipeline** -- if a screenshot cannot be uploaded to ADO, fall back to a text-only reference with the local file path. ADO comment API errors (4xx/5xx) are logged but the pipeline continues to Phase 7
