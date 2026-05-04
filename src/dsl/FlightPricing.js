@@ -3,6 +3,7 @@ const FlightPricingPage = require("@pages/FlightPricingPage");
 const { CartPage } = require("@pages/CartPage");
 const Results = require("./Results");
 const { expect } = require("@playwright/test");
+const logger = require("@utils/logger").child("FlightPricing-DSL");
 
 /**
  * FlightPricing DSL
@@ -11,6 +12,16 @@ const { expect } = require("@playwright/test");
  * Describes WHAT the user does, not HOW the UI works.
  */
 const FlightPricing = {
+
+  async waitForFareTitle(page, fareTitle) {
+    if (!page) throw new Error('page is required');
+    if (!fareTitle || typeof fareTitle !== 'string') {
+      throw new Error(`fareTitle must be a non-empty string, got: ${typeof fareTitle}`);
+    }
+    logger.info('Waiting for pricing fare title', { fareTitle });
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+    await flightPricingPage.waitForFareTitleText(fareTitle);
+  },
 
   async extractFarePrice(page, fareTitle) {
     if (!page) {
@@ -21,6 +32,7 @@ const FlightPricing = {
       throw new Error('fareTitle must be a non-empty string');
     }
 
+    logger.info('Extracting fare price', { fareTitle });
     const flightPricingPage = getPageObject(page, FlightPricingPage);
     await flightPricingPage.waitForFareTitleText(fareTitle);
     return flightPricingPage.getFarePrice(fareTitle);
@@ -39,6 +51,7 @@ const FlightPricing = {
       throw new Error('fareTitle must be a non-empty string');
     }
 
+    logger.info('Adding fare to cart', { fareTitle });
     const flightPricingPage = getPageObject(page, FlightPricingPage);
     const cartPage = getPageObject(page, CartPage);
 
@@ -52,6 +65,7 @@ const FlightPricing = {
     await Results.clickProceedConflictQuoteModal(page);
     await cartPage.waitForPendingBookingText({ timeout: 90000 });
 
+    logger.info('Fare added to cart', { fareTitle });
     return { added: true, fareTitle };
   },
 
@@ -101,6 +115,20 @@ const FlightPricing = {
     expect(labelVisible, `Agreement label "${agreementName}" should be visible in pricing fare "${fareTitle}"`).toBe(true);
 
     return { fareTitle, agreementName, iconVisible, labelVisible };
+  },
+
+  /**
+   * Verifies the "Separated Tickets" indicator is visible on the pricing page.
+   * @param {import('playwright').Page} page
+   */
+  async verifySeparatedTicketsIndicatorVisible(page) {
+    if (!page) throw new Error('page is required');
+    logger.info('Verifying Separated Tickets indicator on pricing page');
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+    const visible = await flightPricingPage.isSeparatedTicketsIndicatorVisible();
+    expect(visible, '"Separated Tickets" indicator should be visible on the pricing page').toBe(true);
+    logger.info('Separated Tickets indicator verified', { visible });
+    return { separatedTickets: true, context: 'pricing' };
   },
 
   /**

@@ -1153,6 +1153,18 @@ Then('the price breakdown should show subtotal and non-refundable cancellation b
   await Cart.verifyNonRefundableMiniRulesInPriceBreakdown(this.page);
 });
 
+Then('{string} should be visible in price breakdown', async function (label) {
+  logger.info('Verifying row is visible in price breakdown', { label });
+  await Cart.verifyPriceBreakdownRowVisible(this.page, label);
+});
+
+Then('{string} amount should match a currency format', async function (label) {
+  logger.info('Verifying amount matches currency format', { label });
+  const currencyPattern = /^[$€£]\d{1,3}(,\d{3})*\.\d{2}$/;
+  const result = await Cart.verifyPriceBreakdownRowAmountFormat(this.page, label, currencyPattern);
+  logger.info('Amount format verified', result);
+});
+
 Then("the hotel search check-in and check-out dates should be filled", async function () {
   logger.info("Verifying hotel search date fields are filled");
   await Cart.verifyHotelSearchDatesAreFilled(this.page);

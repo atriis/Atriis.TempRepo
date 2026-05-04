@@ -17,9 +17,9 @@ Feature: 66143 Sabre - Flight by schedule booking
     When I search for a flight by schedule from "LAX" to "DFW"
     And flight results should be available
     When I select flight segments by schedule
-    And I add to trip from pricing options
-    And I handle conflicting quotes if visible
+    And I wait for "Your Selection" text to be visible
+    And I add "Your Selection" fare to trip
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
-    Then "Flight details" should be displayed in the checkout page
+    Then the quote destination should contain "Flight to"

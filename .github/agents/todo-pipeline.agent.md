@@ -400,9 +400,9 @@ If Phase 4.6 modified any code to fix review blockers:
 - Review-fix iterations used: {N}/3
 - Re-run result after fixes: {passed/skipped/reverted}
 - **If PASS**: "Code review passed. All code follows project standards. Proceeding to Phase 5."
-- **If PASS WITH COMMENTS**: "Code review passed with {N} suggestions. Proceeding to Phase 5."
-- **If FAIL fixed**: "Code review found {N} blockers. {M} auto-fixed, {K} flagged as TODO. Re-run confirmed nothing broke. Proceed to Phase 5?"
-- **If FAIL with remaining blockers**: "Code review found {N} blockers. {M} could not be auto-fixed after 3 iterations. Proceed anyway or fix manually?"
+- **If PASS WITH COMMENTS (only 🟢 suggestions)**: "Code review passed with {N} suggestions (non-blocking). Proceeding to Phase 5."
+- **If PASS WITH COMMENTS (has 🟡 IMPORTANT)**: The pipeline MUST fix ALL 🟡 findings before proceeding. Apply fixes, verify syntax, then proceed to Phase 5. Do NOT skip or defer 🟡 fixes.
+- **If FAIL (BLOCK)**: The pipeline MUST fix ALL 🔴 and 🟡 findings. Apply fixes (max 3 iterations), re-run tests to confirm nothing broke, then proceed to Phase 5. Do NOT commit with unresolved 🔴 or 🟡 issues.
 
 ### Phase 5: Leave Placement To User
 After all TODOs are resolved and tests pass for a file:

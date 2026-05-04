@@ -23,6 +23,7 @@ const SELECTORS = {
   ADDITIONAL_PRICING_OPTIONS_WRAPPER: '.additional-pricing-options-wrapper',
   ADDITIONAL_PRICING_OPTIONS_FIRST_CARD: '.additional-pricing-options-wrapper .flight-by-schedule-pricing-option',
   ADDITIONAL_PRICING_OPTIONS_FIRST_ADD_TO_TRIP_BUTTON: '.additional-pricing-options-wrapper .flight-by-schedule-pricing-option .add-btn',
+  SEPARATED_TICKETS_TEXT: 'Separated Tickets',
 };
 
 class FlightPricingPage {
@@ -179,6 +180,23 @@ class FlightPricingPage {
 
     return { iconVisible, labelVisible };
   }
+
+  /**
+   * Checks if the "Separated Tickets" indicator is visible on the pricing page.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isSeparatedTicketsIndicatorVisible(timeout = 15000) {
+    try {
+      const section = this.page.locator(SELECTORS.PRICING_PAGE_SECTION);
+      const locator = section.getByText(SELECTORS.SEPARATED_TICKETS_TEXT).first();
+      await locator.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Gets all flight time strings displayed on the "Your Selection" pricing page.
    * Uses DOM text-node walking to find any time-like strings (HH:MM or H:MM, with or without AM/PM)

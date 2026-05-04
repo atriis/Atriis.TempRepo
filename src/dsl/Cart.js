@@ -943,6 +943,31 @@ const Cart = {
     };
   },
 
+  async verifyPriceBreakdownRowVisible(page, label) {
+    if (!page) throw new Error('page is required');
+    if (!label || typeof label !== 'string') throw new Error(`label must be a non-empty string, got: ${typeof label}`);
+    logger.info('Verifying row is visible in price breakdown', { label });
+    const cartPage = getPageObject(page, CartPage);
+    const visible = await cartPage.isPriceBreakdownRowVisible(label);
+    expect(visible, `${label} row should be visible in price breakdown`).toBe(true);
+    logger.info('Row verified visible in price breakdown', { label });
+    return { visible: true, label };
+  },
+
+  async verifyPriceBreakdownRowAmountFormat(page, label, pattern) {
+    if (!page) throw new Error('page is required');
+    if (!label || typeof label !== 'string') throw new Error(`label must be a non-empty string, got: ${typeof label}`);
+    if (!pattern || !(pattern instanceof RegExp)) {
+      throw new Error(`pattern must be a RegExp, got: ${typeof pattern}`);
+    }
+    logger.info('Verifying price breakdown row amount matches expected format', { label });
+    const cartPage = getPageObject(page, CartPage);
+    const amountText = await cartPage.getPriceBreakdownRowAmountText(label);
+    expect(amountText, `${label} amount "${amountText}" should match pattern ${pattern}`).toMatch(pattern);
+    logger.info('Price breakdown row amount format verified', { label, amountText });
+    return { amountText, label, pattern: pattern.toString() };
+  },
+
   /**
    * Puts a trip on hold and returns the new status.
    * 

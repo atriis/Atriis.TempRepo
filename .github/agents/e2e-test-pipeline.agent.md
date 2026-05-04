@@ -632,8 +632,9 @@ The `@code-reviewer` agent will:
 5. Verify no duplication — no duplicate step phrases, DSL methods, or selectors
 
 **If PASS** → proceed to Phase 8 (commit).
-**If PASS WITH COMMENTS** → display suggestions, proceed to Phase 8.
-**If FAIL (BLOCK)** → auto-fix mechanical blockers (max 3 iterations). If blockers persist, flag for user. Never commit code that fails review.
+**If PASS WITH COMMENTS (only 🟢 suggestions)** → display suggestions, proceed to Phase 8.
+**If PASS WITH COMMENTS (has 🟡 IMPORTANT)** → MUST fix ALL 🟡 findings before proceeding to Phase 8. Do NOT skip or defer.
+**If FAIL (BLOCK)** → MUST fix ALL 🔴 and 🟡 findings (max 3 iterations). If blockers persist, flag for user. Never commit code that fails review.
 
 **CHECKPOINT**: Display review verdict, blockers found/fixed, and ask to proceed.
 

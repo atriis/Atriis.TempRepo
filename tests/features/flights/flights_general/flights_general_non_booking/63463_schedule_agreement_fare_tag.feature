@@ -17,4 +17,4 @@ Feature: 63463 Flights - Search by schedule display agreement fare tag in pricin
     When I search for a flight by schedule from "EWR" to "CPH" with preferred carrier "Scandinavian" and stops "No stops"
     And I select flight segments by schedule
     And I wait for "Your Selection" text to be visible
-    Then the agreement indicator should be visible in the pricing page
+    Then the "Agreement" indicator should be visible in the pricing page

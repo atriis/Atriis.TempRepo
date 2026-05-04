@@ -603,12 +603,11 @@ class ResultsPage {
       await waitForText(this.page, SELECTORS.ALERT_TEXT, expectedText, timeout);
     }
 
- async clickViewMoreAirlinesExpanderIfVisible() {
+ async clickViewMoreAirlinesExpanderIfVisible(timeout = 5000) {
     const expander = this.page.locator(SELECTORS.FILTER_VIEW_MORE_AIRLINES_EXPANDER);
-    const isVisible = await expander.isVisible();
-    if (isVisible) {
-      await expander.click();
-    }
+    const isVisible = await expander.waitFor({ state: 'visible', timeout }).then(() => true).catch(() => false);
+    if (!isVisible) return;
+    await expander.click();
  }
 
 } 

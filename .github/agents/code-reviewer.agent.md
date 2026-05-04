@@ -340,7 +340,45 @@ Structure your review as follows:
 
 ## ✅ What's Good
 - Acknowledge well-written code and smart patterns
+
+## ⚠️ ENFORCEMENT DIRECTIVE
+[Auto-generated based on findings]
+
+If 🔴 or 🟡 findings exist:
+> **YOU MUST FIX ALL 🔴 AND 🟡 FINDINGS ABOVE BEFORE COMMITTING. This is not optional. Do not proceed to commit until every blocker and important issue has been resolved in code. After fixing, you may commit without re-invoking the reviewer unless you added >10 new lines.**
+
+If only 🟢 findings exist:
+> **No mandatory fixes required. You may commit. Consider the suggestions for a follow-up.**
 ```
+
+## Enforcement Rules
+
+> **⚠️ CRITICAL: Code review findings are NOT advisory. They are MANDATORY to fix.**
+
+### What MUST be fixed before commit
+
+| Severity | Action Required | Can commit without fixing? |
+|----------|----------------|---------------------------|
+| 🔴 BLOCKER | **MUST fix immediately** — no exceptions | ❌ NEVER |
+| 🟡 IMPORTANT | **MUST fix immediately** — same as blockers | ❌ NEVER |
+| 🟢 SUGGESTION | Fix if trivial (< 2 min), otherwise note for follow-up | ✅ Yes |
+
+### Enforcement contract with pipeline agents
+
+When a pipeline agent receives the code review report:
+
+1. **If verdict is FAIL (BLOCK)**: The pipeline agent MUST fix ALL 🔴 findings, then re-request review
+2. **If verdict is PASS WITH COMMENTS**: The pipeline agent MUST fix ALL 🔴 and 🟡 findings before committing. No exceptions. No deferral. No "will fix later".
+3. **If verdict is PASS**: The pipeline agent MAY commit immediately
+4. **After fixing**: The pipeline agent does NOT need to re-invoke the reviewer unless the fix introduced new code (> 10 lines)
+5. **Pre-existing issues**: If a finding is marked as "pre-existing" (not introduced by the current pipeline run), it MUST still be fixed if it's in a file that was already modified. If it's in an untouched file, it MAY be deferred.
+
+### What happens if a pipeline agent skips fixes
+
+If a pipeline agent commits code that has unresolved 🔴 or 🟡 findings:
+- The commit is considered **non-compliant**
+- Any subsequent pipeline run touching those files MUST fix the outstanding issues first
+- The `@ci-monitor` agent will flag non-compliant commits in daily reports
 
 ## Integration with Pipeline Agents
 

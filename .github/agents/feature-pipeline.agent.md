@@ -121,8 +121,9 @@ The `@code-reviewer` agent will:
 4. Verify input validation, logging, naming, domain safety, returns, Gherkin quality
 
 **If PASS** → proceed to Phase 5 (commit).
-**If PASS WITH COMMENTS** → display suggestions, proceed to Phase 5.
-**If FAIL (BLOCK)** → auto-fix mechanical blockers (max 3 iterations). If blockers persist, flag for user. Never commit code that fails review.
+**If PASS WITH COMMENTS (only 🟢 suggestions)** → display suggestions, proceed to Phase 5.
+**If PASS WITH COMMENTS (has 🟡 IMPORTANT)** → MUST fix ALL 🟡 findings before proceeding to Phase 5. Do NOT skip or defer.
+**If FAIL (BLOCK)** → MUST fix ALL 🔴 and 🟡 findings (max 3 iterations). If blockers persist, flag for user. Never commit code that fails review.
 
 **CHECKPOINT**: Display review verdict, blockers found/fixed, and ask to proceed.
 

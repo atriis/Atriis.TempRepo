@@ -1,8 +1,6 @@
 ﻿require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { FlightPricing } = require("@dsl");
-const FlightPricingPage = require("@pages/FlightPricingPage");
-const { getPageObject } = require("@utils/pageObjectCache");
 const logger = require("@utils/logger").child("FlightPricing");
 
 setDefaultTimeout(120000);
@@ -23,9 +21,7 @@ When('I add the first Additional pricing options fare to trip', async function (
 
 When('I wait for {string} text to be visible', async function (fareTitle) {
   logger.info('Waiting for pricing fare text to be visible', { fareTitle });
-  const flightPricingPage = getPageObject(this.page, FlightPricingPage);
-
-  await flightPricingPage.waitForFareTitleText(fareTitle);
+  await FlightPricing.waitForFareTitle(this.page, fareTitle);
 });
 
 When('I extract the price from {string} fare', async function (fareTitle) {
@@ -39,9 +35,16 @@ When('I extract the price from {string} fare', async function (fareTitle) {
   logger.info('Extracted fare price from by-schedule pricing page', { fareTitle, price });
 });
 
-Then('the agreement indicator should be visible in the pricing page', async function () {
-  logger.info('Verifying agreement indicator is visible in by-schedule pricing page');
-  await FlightPricing.verifyAgreementIndicatorVisible(this.page);
+Then('the {string} indicator should be visible in the pricing page', async function (indicatorName) {
+  logger.info('Verifying indicator is visible in pricing page', { indicatorName });
+  if (indicatorName === 'Separated Tickets') {
+    const result = await FlightPricing.verifySeparatedTicketsIndicatorVisible(this.page);
+    logger.info('Separated Tickets indicator verified', result);
+  } else if (indicatorName === 'Agreement') {
+    await FlightPricing.verifyAgreementIndicatorVisible(this.page);
+  } else {
+    throw new Error(`Unknown indicator: "${indicatorName}". Supported: "Agreement", "Separated Tickets"`);
+  }
 });
 
 Then('flight times on the pricing page should be displayed in 12-hour AM/PM format', async function () {

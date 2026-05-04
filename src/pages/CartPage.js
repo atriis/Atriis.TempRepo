@@ -1318,6 +1318,25 @@ class CartPage {
     return parseAmountText(await amount.textContent(), `${label} amount`);
   }
 
+  async isPriceBreakdownRowVisible(label, timeout = 10000) {
+    const drawer = this.page.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_DRAWER).first();
+    const row = drawer.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_RATE_ROW).filter({ hasText: label }).first();
+    try {
+      await row.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async getPriceBreakdownRowAmountText(label, timeout = 10000) {
+    const drawer = this.page.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_DRAWER).first();
+    const row = drawer.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_RATE_ROW).filter({ hasText: label }).first();
+    await row.waitFor({ state: 'visible', timeout });
+    const amount = row.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_ROW_AMOUNT).last();
+    return (await amount.textContent()).trim();
+  }
+
   async getFlightPriceBreakdownSubtotalForSegment(segment) {
     const subtotal = segment.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_ROW)
       .first()

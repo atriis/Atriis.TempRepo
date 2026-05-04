@@ -5,7 +5,7 @@
 # Created: 2025-08-25T05:38:22Z
 # Updated: 2026-01-19T07:49:43Z
 
-@regression @flights @sabre @full-purchase @fop @credit-card @cancel-by-process
+@regression @flights @sabre @full-purchase @fop @credit-card @cancel-by-process @provider:sabre @priority:high
 Feature: 66007 Sabre - Credit card fee displayed when booking with Airplus as FOP
   As a corporate traveler
   I want to see the credit card fee when booking with Airplus
@@ -21,7 +21,7 @@ Feature: 66007 Sabre - Credit card fee displayed when booking with Airplus as FO
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
-    Then "Flight details" should be displayed in the checkout page
-    # TODO: Step needed: "When I click to open price breakdown in cart"
-    # TODO: Step needed: "Then CC Charge should be visible in price breakdown"
-    # TODO: Step needed: "Then CC Charge amount should match regex pattern"
+    Then the quote destination should contain "Flight to"
+    When I click to open price breakdown in cart
+    Then "CC Charge" should be visible in price breakdown
+    And "CC Charge" amount should match a currency format
