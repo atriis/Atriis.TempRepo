@@ -102,6 +102,63 @@ const FlightPricing = {
 
     return { fareTitle, agreementName, iconVisible, labelVisible };
   },
+
+  /**
+   * Verifies that all flight times on the "Your Selection" pricing page are displayed
+   * in 12-hour AM/PM format, guarding against regression of ADO bug #75337.
+   *
+   * A valid 12-hour time matches: 1:05 PM, 10:30 AM, etc.
+   * An invalid 24-hour time looks like: 14:30, 08:00 (no AM/PM suffix).
+   *
+   * @param {Object} page - Playwright page
+   */
+  async verifyTimesAreIn12HourFormat(page) {
+    if (!page) throw new Error('page is required');
+
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+    const timeTexts = await flightPricingPage.getFlightTimesFromPricingSection();
+
+    expect(timeTexts.length, 'Expected at least one flight time element on the pricing page').toBeGreaterThan(0);
+
+    const amPmPattern = /\b\d{1,2}:\d{2}\s*(AM|PM)\b/i;
+    const pure24HourPattern = /\b([01]\d|2[0-3]):\d{2}\b(?!\s*(AM|PM))/i;
+
+    for (const text of timeTexts) {
+      expect(
+        amPmPattern.test(text),
+        `Expected time "${text}" to contain AM/PM marker (12-hour format) — bug #75337 regression`
+      ).toBe(true);
+      expect(
+        pure24HourPattern.test(text),
+        `Expected time "${text}" NOT to use 24-hour notation without AM/PM — bug #75337 regression`
+      ).toBe(false);
+    }
+
+    return { verified: true, timeCount: timeTexts.length, times: timeTexts };
+  },
+
+  /**
+   * Verifies that results-page times are in AM/PM format and that the pricing page
+   * also displays times in 12-hour format, guarding cross-page consistency.
+   *
+   * @param {Object} page - Playwright page
+   * @param {string[]} resultsPageTimes - Times collected from the results page step
+   */
+  async verifyCrossPageTimeFormatConsistency(page, resultsPageTimes) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(resultsPageTimes) || resultsPageTimes.length === 0) {
+      throw new Error('resultsPageTimes must be a non-empty array — run the results page time format step first');
+    }
+
+    const amPmPattern = /\b\d{1,2}:\d{2}\s*(AM|PM)\b/i;
+
+    for (const t of resultsPageTimes) {
+      expect(amPmPattern.test(t), `Results page time "${t}" should be in AM/PM format`).toBe(true);
+    }
+
+    const pricingResult = await FlightPricing.verifyTimesAreIn12HourFormat(page);
+    return { resultsTimesCount: resultsPageTimes.length, pricingTimesCount: pricingResult.timeCount };
+  },
 };
 
 module.exports = FlightPricing;

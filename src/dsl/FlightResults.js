@@ -1934,6 +1934,38 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     const hasFlightInfo = await cartPage.sharePreviewContainsFlightNumber();
     expect(hasFlightInfo, 'Share email should contain flight number information').toBeTruthy();
   },
+
+  /**
+   * Verifies all flight times on the search results page are in 12-hour AM/PM format.
+   * Returns the collected times so they can be compared later against the pricing page.
+   *
+   * @param {Object} page
+   * @returns {Promise<string[]>} Array of time strings found
+   */
+  async verifyResultsTimesAreIn12HourFormat(page) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const timeTexts = await flightResultsPage.getFlightTimesFromResultsPage();
+
+    expect(timeTexts.length, 'Expected at least one flight time on the results page').toBeGreaterThan(0);
+
+    const amPmPattern = /\b\d{1,2}:\d{2}\s*(AM|PM)\b/i;
+    const pure24HourPattern = /\b([01]\d|2[0-3]):\d{2}\b(?!\s*(AM|PM))/i;
+
+    for (const text of timeTexts) {
+      expect(
+        amPmPattern.test(text),
+        `Results page: expected time "${text}" to be in 12-hour AM/PM format — bug #75337 regression`
+      ).toBe(true);
+      expect(
+        pure24HourPattern.test(text),
+        `Results page: expected time "${text}" NOT to use 24-hour notation — bug #75337 regression`
+      ).toBe(false);
+    }
+
+    return timeTexts;
+  },
 }
 
 module.exports = FlightResults;

@@ -56,6 +56,7 @@ const SELECTORS = {
   FILTER_CONTAINER_SKELETON: '.flight-filter-container-skeleton',
   CHANGE_FLIGHT_BUTTON: '.change-flight-btn-wrapper',
   CHANGE_FLIGHT_TEXT: 'Change flight',
+  FLIGHT_STEPPER: '.flight-stepper',
   FLIGHT_STEPPER_PAGE_CONTAINER: '.flight-stepper .page-container',
   FLIGHT_STEPPER_PAGE_TITLE: '.page-title',
   COMPARISON_TOGGLE: '.comparison-btn span',
@@ -1902,6 +1903,33 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       }
     }
     return icons;
+  }
+
+  /**
+   * Gets all flight time strings from the by-schedule stepper breadcrumb.
+   * After the first segment is selected and confirmed, the stepper shows its
+   * time (e.g. "09:00 AM - 10:08 AM") in the confirmed segment label.
+   * Uses a DOM TreeWalker on the .flight-stepper container.
+   *
+   * @returns {Promise<string[]>} Deduplicated array of time strings
+   */
+  async getFlightTimesFromResultsPage() {
+    // Wait for the stepper to be visible (confirmed segments show times)
+    await this.page.locator(SELECTORS.FLIGHT_STEPPER).first().waitFor({ state: 'visible', timeout: 30000 });
+
+    return this.page.evaluate((selector) => {
+      const stepper = document.querySelector(selector);
+      if (!stepper) return [];
+      const timePattern = /\b\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\b/gi;
+      const walker = document.createTreeWalker(stepper, NodeFilter.SHOW_TEXT);
+      const found = new Set();
+      let node;
+      while ((node = walker.nextNode())) {
+        const matches = (node.textContent || '').match(timePattern);
+        if (matches) matches.forEach((m) => found.add(m.trim()));
+      }
+      return [...found];
+    }, SELECTORS.FLIGHT_STEPPER);
   }
 }
 module.exports = FlightResultsPage;

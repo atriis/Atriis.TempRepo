@@ -472,6 +472,13 @@ Then('all pricing option segments {string} and {string} and {string} should be v
 // THEN STEPS - ASSERTIONS
 // ========================================
 
+Then('flight times on the results page should be displayed in 12-hour AM/PM format', async function () {
+  logger.info('Verifying flight times are in 12-hour AM/PM format on the results page');
+  const times = await FlightResults.verifyResultsTimesAreIn12HourFormat(this.page);
+  this.resultsPageTimes = times;
+  logger.info('Results page times verified', { count: times.length, times });
+});
+
 Then("flight results should be available", async function () {
   logger.info("Verifying flight results are available");
   const isDisplayed = await FlightResults.isResultDisplayed(this.page);

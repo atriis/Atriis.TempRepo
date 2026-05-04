@@ -43,3 +43,16 @@ Then('the agreement indicator should be visible in the pricing page', async func
   logger.info('Verifying agreement indicator is visible in by-schedule pricing page');
   await FlightPricing.verifyAgreementIndicatorVisible(this.page);
 });
+
+Then('flight times on the pricing page should be displayed in 12-hour AM/PM format', async function () {
+  logger.info('Verifying flight times are in 12-hour AM/PM format on the pricing page');
+  await FlightPricing.verifyTimesAreIn12HourFormat(this.page);
+});
+Then('flight times on the pricing page should use the same format as the results page', async function () {
+  logger.info('Verifying flight time format is consistent between results and pricing pages');
+  const result = await FlightPricing.verifyCrossPageTimeFormatConsistency(this.page, this.resultsPageTimes);
+  logger.info('Cross-page time format consistency verified', {
+    resultsTimesCount: result.resultsTimesCount,
+    pricingTimesCount: result.pricingTimesCount,
+  });
+});

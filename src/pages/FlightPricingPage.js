@@ -179,6 +179,35 @@ class FlightPricingPage {
 
     return { iconVisible, labelVisible };
   }
+  /**
+   * Gets all flight time strings displayed on the "Your Selection" pricing page.
+   * Uses DOM text-node walking to find any time-like strings (HH:MM or H:MM, with or without AM/PM)
+   * within the pricing section — works for both mobile and desktop layouts.
+   *
+   * @returns {Promise<string[]>} Deduplicated array of time strings found on the page
+   */
+  async getFlightTimesFromPricingSection() {
+    await this.page.locator(SELECTORS.PRICING_PAGE_SECTION).waitFor({ state: 'visible', timeout: 30000 });
+
+    return this.page.evaluate((sectionSelector) => {
+      const section = document.querySelector(sectionSelector);
+      if (!section) return [];
+
+      const timePattern = /\b\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\b/gi;
+      const walker = document.createTreeWalker(section, NodeFilter.SHOW_TEXT);
+      const found = new Set();
+
+      let node;
+      while ((node = walker.nextNode())) {
+        const text = node.textContent || '';
+        const matches = text.match(timePattern);
+        if (matches) {
+          matches.forEach((m) => found.add(m.trim()));
+        }
+      }
+      return [...found];
+    }, SELECTORS.PRICING_PAGE_SECTION);
+  }
 }
 
 module.exports = FlightPricingPage;
