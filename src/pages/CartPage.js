@@ -1156,21 +1156,21 @@ class CartPage {
    * Waits for the Price Breakdown button to be visible.
    */
   async waitForPriceBreakdownButton() {
-    await this.page.locator(SELECTORS.PRICE_BREAKDOWN_BUTTON).waitFor({ state: "visible", timeout: 10000 });
+    await this.page.locator(SELECTORS.PRICE_BREAKDOWN_BUTTON).first().waitFor({ state: "visible", timeout: 10000 });
   }
 
   /**
    * Clicks the Price Breakdown button.
    */
   async clickPriceBreakdownButton() {
-    await this.page.locator(SELECTORS.PRICE_BREAKDOWN_BUTTON).click();
+    await this.page.locator(SELECTORS.PRICE_BREAKDOWN_BUTTON).first().click();
   }
 
   /**
    * Clicks the X button to close the Price Breakdown modal.
    */
   async clickXToClosePriceBreakdownModal() {
-    await this.page.locator(SELECTORS.PRICE_BREAKDOWN_CLOSE_BUTTON).click();
+    await this.page.locator(SELECTORS.PRICE_BREAKDOWN_CLOSE_BUTTON).first().click();
   }
 
   async getPriceBreakdownMiniRuleDisclaimerText({ timeout = 10000 } = {}) {

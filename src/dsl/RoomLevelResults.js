@@ -74,9 +74,9 @@ const RoomLevelResults = {
   },
 
   /**
-   * Extracts the booking fee displayed at room level (second room card).
-   * Premier Inn shows the booking fee on the second room option; the difference
-   * between the second room price and the hotel-level price should be ~10 GBP.
+   * Extracts the booking fee displayed at room level (first room card).
+   * Premier Inn shows the booking fee on the first room option; the difference
+   * between the first room price and the hotel-level price should be ~10 GBP.
    * @param {import('playwright').Page} page
    * @returns {Promise<number>} The booking fee as a number
    */
@@ -85,7 +85,7 @@ const RoomLevelResults = {
 
     const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
     await roomLevelResultsPage.waitForViewHotelOnMapText();
-    return roomLevelResultsPage.getSecondRoomLevelPrice();
+    return roomLevelResultsPage.getFirstRoomLevelPrice();
   },
 
   /**
@@ -104,8 +104,8 @@ const RoomLevelResults = {
       throw new Error(`roomFee must be a number, got: ${typeof roomFee}`);
     }
 
-    // Premier Inn booking fee (10 GBP): the second room at room level includes the booking fee,
-    // so secondRoomPrice - hotelFee should equal exactly 10, with tolerance of 1 GBP for rounding.
+    // Premier Inn booking fee (10 GBP): the first room at room level includes the booking fee,
+    // so firstRoomPrice - hotelFee should equal exactly 10, with tolerance of 1 GBP for rounding.
     const EXPECTED_BOOKING_FEE = 10;
     const tolerance = 1;
     const actualDifference = Math.abs(Math.round(hotelFee) - Math.round(roomFee));
@@ -113,7 +113,7 @@ const RoomLevelResults = {
 
     if (deviation > tolerance) {
       throw new Error(
-        `Booking fee mismatch: expected absolute difference between hotel and second room price to be ~${EXPECTED_BOOKING_FEE} GBP, ` +
+        `Booking fee mismatch: expected absolute difference between hotel and first room price to be ~${EXPECTED_BOOKING_FEE} GBP, ` +
         `but hotel=${Math.round(hotelFee)}, room=${Math.round(roomFee)} (difference: ${actualDifference}, deviation from expected: ${deviation})`
       );
     }

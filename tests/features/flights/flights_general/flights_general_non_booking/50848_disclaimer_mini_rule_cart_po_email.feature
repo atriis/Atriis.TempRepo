@@ -18,6 +18,7 @@ Feature: 50848 Flights - Disclaimer in mini rule icon cart and PO email
     When I search for a round trip flight from "LON" to "MAD"
     And I filter results by carrier "BA"
     And I add the first flight to cart
+    Then the booking status should be "Pending booking"
     And I click to open price breakdown in cart
     Then the mini rule disclaimer in price breakdown should contain "In case displayed fees differ from the airline's fare rules, the airline's rules will prevail"
     When I close price breakdown modal

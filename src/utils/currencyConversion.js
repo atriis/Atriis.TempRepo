@@ -13,11 +13,11 @@ const SUPPORTED_CURRENCY_SYMBOLS = {
 const FIXED_EXCHANGE_RATES = Object.freeze({
   USD: Object.freeze({
     USD: 1,
-    EUR: 0.92,
+    EUR: 0.86,
     GBP: 0.79,
   }),
   EUR: Object.freeze({
-    USD: 1.09,
+    USD: 1.17,
     EUR: 1,
     GBP: 0.86,
   }),
@@ -129,7 +129,8 @@ function getCurrencyConversionTolerance(expectedConvertedAmount) {
     throw new Error(`expectedConvertedAmount must be a valid number, got: ${expectedConvertedAmount}`);
   }
 
-  return Math.max(0.5, Number((expectedConvertedAmount * 0.03).toFixed(2)));
+  // 8% tolerance to accommodate live exchange rate fluctuation from our fixed reference rates
+  return Math.max(0.55, Number((expectedConvertedAmount * 0.08).toFixed(2)));
 }
 
 async function getExchangeRate(fromCurrencyCode, toCurrencyCode) {

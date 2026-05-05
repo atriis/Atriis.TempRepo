@@ -7,7 +7,7 @@
 # Updated: 2024-02-11T06:58:18Z
 
 @regression @provider:amadeus
-Feature: 34418 34418 "Hotel wasn't found" error message is not displayed (no specific hotel requested)
+Feature: 34418 "Hotel wasn't found" error message is not displayed (no specific hotel requested)
   As a corporate traveler
   I want to search for hotels and see results load
   So that I can select a hotel for my trip

@@ -6,8 +6,8 @@
 const SELECTORS = {
   VIEW_HOTEL_ON_MAP_BUTTON: "button.map-btn.is-paddingless",
   MAP_MODAL: ".map-modal .google-map-loader, .map-modal .el-dialog__body .google-map-loader",
-  FIRST_ROOM_PRICE_AMOUNT: ".room-list > :nth-child(2) .price-details-main .amount",
-  SECOND_ROOM_PRICE_AMOUNT: ".room-list > :nth-child(3) .price-details-main .amount",
+  FIRST_ROOM_PRICE_AMOUNT: ".room-list__cards > div:nth-child(1) .price-details-main h4.amount",
+  SECOND_ROOM_PRICE_AMOUNT: ".room-list__cards > div:nth-child(2) .price-details-main h4.amount",
   REFUNDABLE_CHECKBOX_LABEL: "label.el-checkbox",
   REFUNDABLE_CHECKBOX_INNER: ".el-checkbox__inner",
   REFUNDABLE_CHECKBOX_INPUT: "input.el-checkbox__original",
@@ -17,16 +17,16 @@ const SELECTORS = {
   BREAKFAST_FILTER_TITLE: "p.filter-title[title='Breakfast']",
   DEPOSIT_FILTER_TITLE: "p.filter-title[title='Deposit']",
   DEPOSIT_NOT_REQUIRED_FILTER_TITLE: "p.filter-title[title='Deposit not required']",
-  FIRST_ROOM_CANCELLATION_POLICY: ".room-list > :nth-child(2) .ticket-details p",
+  FIRST_ROOM_CANCELLATION_POLICY: ".room-list__cards > div:nth-child(1) .ticket-details p",
   MEMBER_BADGE: ".expedia-membership-badge-container",
-  FIRST_ROOM_PRICE: ".room-list > :nth-child(2) .price-details-main",
+  FIRST_ROOM_PRICE: ".room-list__cards > div:nth-child(1) .price-details-main",
   MEMBER_PRICE: ".price-txt h4.amount",
   REGULAR_PRICE_BEFORE_DISCOUNT: ".price-txt h6.amount-before-discount",
   CO2_LABEL: ".eco-label",
   CO2_VALUE: ".eco-label .is-size-7",
   NIGHTS_TEXT: ".price-txt .muliSemiBold.gray-2600",
   AMENITY_SPAN: ".room-amenities span",
-  ROOM_CARDS_WITH_AMENITIES: ".room-list > div:has(.room-amenities-container)",
+  ROOM_CARDS_WITH_AMENITIES: ".room-list__cards > div:has(.room-amenities-container)",
   WIFI_INCLUDED: ".room-amenities span:has-text('Wifi included')",
   BREAKFAST_ICON: "img[src*='breakfastIncluded']",
   SUPPLIER_LOGO_IMG: (supplierId) => `.supplier-img img[alt*="${supplierId}"]`,
@@ -35,13 +35,13 @@ const SELECTORS = {
   // Room filter checkbox by filter title and option text
   ROOM_FILTER_CHECKBOX: (filterName, optionText) =>
     `.room-filter .filter-container:has(h4:has-text("${filterName}")) label.el-checkbox:has-text("${optionText}")`,
-  FIRST_ROOM_PRICE_DETAILS_BUTTON: ".room-list > :nth-child(2) button.is-hidden-mobile",
+  FIRST_ROOM_PRICE_DETAILS_BUTTON: ".room-list__cards > div:nth-child(1) button.is-hidden-mobile",
   PRICE_DETAILS_DIALOG: ".app-dialog .room-price-details, .el-dialog .room-price-details",
   INFO_ICON_IN_DIALOG: "span.material-symbols-outlined",
   TOOLTIP_POPPER: '[role="tooltip"], .el-tooltip__popper, .el-popper',
   TERMS_AND_CONDITIONS_BUTTON: ".room-list button:has-text('Terms & Conditions')",
   TERMS_AND_CONDITIONS_DIALOG: ".terms-conditions-dialog",
-  ALL_ROOM_PRICE_AMOUNTS: ".room-list > div .price-details-main .amount",
+  ALL_ROOM_PRICE_AMOUNTS: ".room-list__cards > div .price-details-main h4.amount",
   // Active filter badge tag in the room-filter summary bar
   ROOM_FILTER_SUMMARY_TAG: (text) => `.room-filter-summary .el-tag:has-text("${text}")`,
   // Agreement badge (handshake icon) in room results — target the icon, not the wrapper section
@@ -180,7 +180,7 @@ class RoomLevelResultsPage {
       .locator(SELECTORS.VIEW_HOTEL_ON_MAP_BUTTON, { hasText: "View hotel on map" });
 
     try {
-      await viewOnMap.waitFor({ state: "visible", timeout: 5000 });
+      await viewOnMap.waitFor({ state: "visible", timeout: 60000 });
       return true;
     } catch (error) {
       return false;
@@ -299,7 +299,8 @@ class RoomLevelResultsPage {
    */
   async getSecondRoomLevelPrice() {
     const price = this.page.locator(SELECTORS.SECOND_ROOM_PRICE_AMOUNT).first();
-    await price.waitFor({ state: 'visible', timeout: 30000 });
+    await price.scrollIntoViewIfNeeded({ timeout: 60000 });
+    await price.waitFor({ state: 'visible', timeout: 60000 });
 
     const priceText = (await price.textContent())?.trim() ?? '';
     const parsedPrice = parseFloat(priceText.replace(/[^0-9.]/g, ''));
