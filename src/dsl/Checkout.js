@@ -224,7 +224,9 @@ const Checkout = {
     if (!page) throw new Error('page is required');
     const checkoutPage = getPageObject(page, CheckoutPage);
     const values = await checkoutPage.getBookerNotificationPhoneValues();
-    if (values === null) return; // section not visible for this user/config — skip
+    if (values === null) {
+      throw new Error('Booker notification phone section is not visible or has fewer than 3 input fields on checkout');
+    }
     const { expect } = require("@playwright/test");
     expect(values).toMatch(/\d/);
   },

@@ -11,19 +11,21 @@ Feature: 70438 Sabre NDC (BA) - Multi pax seating mandatory for all
   I want to select seats for all travelers on a Sabre NDC BA flight
   So that seating is mandatory and completed for all passengers
 
-  # TODO: This test has complex seating validation that needs new DSL steps
+  #BLOCKED - second fare from pricing options is not displayed, preventing test from proceeding to booking and seating steps
   Scenario: Seating is mandatory for all travelers on Sabre NDC BA flight
     Given I am logged in as "corpsabrendc_reg" booking a new trip
     And I have added a random guest traveler
-    # TODO: Step needed: "Given I have added a second random guest traveler"
+    And I have added a random guest traveler
     When I search for a round trip flight from "LHR" to "NYC"
     Then flight results should be available
-    # TODO: Step needed: "Then second flight result should display NDC direct rate label"
+    And the "NDC Direct Rate" indicator should be visible in results
     When I filter results by carrier "BA"
     And I click to open first pricing options
-    # TODO: Step needed: "When I select the second fare from pricing options"
+    And I select the second fare from pricing options
+    And I add to trip from pricing options
+    Then the booking status should be "Pending booking"
     When I accept Terms & Conditions
     And I hold the trip
-    # TODO: Step needed: "When I add seats and validate selection mandatory for all travelers"
-    # TODO: Step needed: "Then seats saved to trip should be validated"
+    When I add seats and validate selection mandatory for all travelers
+    Then seats saved to trip should be validated
     Then I successfully cancel the trip

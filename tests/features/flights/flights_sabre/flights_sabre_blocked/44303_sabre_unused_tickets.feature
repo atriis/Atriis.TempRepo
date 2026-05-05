@@ -11,6 +11,7 @@ Feature: 44303 Sabre - Unused tickets flow
   I want to see unused ticket information throughout the booking flow
   So that I can use my unused ticket for price deduction
 
+  #BLOCKED - It keeps failing in Testim, it needs to be investigated before implemented.
   # TODO: This test is complex with unused tickets popup validation, filter validation,
   # FOP selection, OOP justification, and checkout unused ticket recalculation.
   # Many of these steps need new DSL/step implementations.

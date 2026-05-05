@@ -11,15 +11,25 @@ Feature: 72504 Sabre - Unused tickets hide type MCO
   I want MCO type unused tickets to be hidden
   So that only relevant unused tickets are displayed
 
-  # TODO: This test requires step implementations for unused tickets MCO validation
+ # BLOCKED: could not finish checkout part because of booking errors
   Scenario: MCO type unused tickets are hidden in search, results and booking details pages
     Given I am logged in as "unusedtkt" booking a new trip
     And I have added myself as the traveler
-    # TODO: Step needed: "Then MCO unused tickets should be hidden on search page"
+    When I click the airplane icon next to the traveler to view unused tickets
+    Then MCO unused tickets should be hidden
+    When I close the unused tickets modal
     When I search for a one way flight from "AUS" to "ORD"
     And flight results should be available
-    # TODO: Step needed: "Then MCO unused tickets should be hidden on results page"
+    When I click the airplane icon in the results header to view unused tickets
+    Then MCO unused tickets should be hidden
+    When I close the unused tickets modal
+    When I click "View details" on the unused tickets banner
+    Then MCO unused tickets should be hidden
+    When I close the unused tickets modal
     When I add the first flight to cart
+    Then the booking status should be "Pending booking"
     When I proceed to checkout
-    # TODO: Step needed: "Then MCO unused tickets should be hidden on booking details page"
+    When I check the unused ticket checkbox on checkout
+    Then MCO unused tickets should be hidden on checkout
+    Then the quote destination should contain "Flight to"
     Then I successfully cancel the trip

@@ -11,17 +11,21 @@ Feature: 69588 Sabre - Booking with paid baggage
   I want to book a flight with paid baggage
   So that my baggage is included in the booking
 
-  # TODO: This test has complex baggage selection flow that needs new DSL steps
   Scenario: Sabre flight booking with paid baggage is successful
     Given I am logged in as "corpwithbag" booking a new trip
     And I have added a random guest traveler
-    # TODO: The Testim test uses a custom search function - need to verify route/params
-    When I search for a one way flight from "DFW" to "IAH"
+    When I search for a round trip flight from "MEL" to "SYD"
     And flight results should be available
-    # TODO: Step needed: "When I select the fare with baggage" (selects fare with baggage option from pricing)
-    And I add the first flight to cart
+    And I filter results by carrier "Qantas"
+    And I click to open first pricing options
+    And I select the first option from pricing options
+    Then I should see the heading "Flight To Melbourne"
+    And I select the first option from pricing options
+    And I add to trip from pricing options
     Then the booking status should be "Pending booking"
-    # TODO: Step needed: "When I select baggage option in cart" (paid baggage selection)
+    When I select the "Extra 5kg" baggage option for the "outbound" flight
+    And I select the "Extra 10kg" baggage option for the "inbound" flight
+    And I click the save button
     When I proceed to checkout
     And I complete the booking
-    Then I successfully cancel the trip
+    Then the quote destination should contain "Flight to"

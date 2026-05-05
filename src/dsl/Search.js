@@ -91,26 +91,37 @@ const Search = {
   /**
    * Add a new guest traveler using random test data.
    * Returns the generated data and star icon visibility status.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} [phoneType] - Optional visible phone-type label
+   *   (e.g. "Cellular phone"). Required for users whose corporate profile
+   *   does not pre-populate a default phone type, where leaving it blank
+   *   fails form validation and prevents the add-guest dialog from closing.
    */
-  async addRandomGuest(page) {
+  async addRandomGuest(page, phoneType = null) {
     if (!page) {
       throw new Error('page is required');
     }
-    
+    if (phoneType !== null && (typeof phoneType !== 'string' || phoneType.length === 0)) {
+      throw new Error('phoneType, when provided, must be a non-empty string');
+    }
+
     const searchPage = getPageObject(page, SearchPage);
     const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
 
     await searchPage.clickAddTravelerButton();
     await searchPage.clickAddGuestTravelerButton();
     await searchPage.fillInRandomFirstName(firstName);
-    // The SearchPage method name is used exactly as in your project
     await searchPage.fillInRandomLastName(lastName);
     await searchPage.selectGenderMale();
     await searchPage.fillInRandomDateOfBirth(dateOfBirth);
     await searchPage.fillInRandomEmail(email);
     await searchPage.fillInRandomPhone(phone);
+    if (phoneType) {
+      await searchPage.selectPhoneType(phoneType);
+    }
     await searchPage.clickAddGuestButton();
-    
+
     const starIconVisible = await searchPage.isStarIconVisible();
     const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
 
@@ -118,7 +129,7 @@ const Search = {
       added: true,
       starIconVisible,
       selectedTravelerCount,
-      guestData: { firstName, lastName, dateOfBirth, email, phone },
+      guestData: { firstName, lastName, dateOfBirth, email, phone, phoneType },
     };
   },
 

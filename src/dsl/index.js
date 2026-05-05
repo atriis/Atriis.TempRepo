@@ -31,4 +31,5 @@ module.exports = {
   TravelRequest: require("./TravelRequest"),
   Trips: require("./Trips"),
   UKParkingSearch: require("./UKParkingSearch"),
+  UnusedTickets: require("./UnusedTickets"),
 };

@@ -128,10 +128,18 @@ const SELECTORS = {
   GREEN_ICON_BAGGAGE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green",  // Green icon next to added baggage
   BAGGAGE_SELECTED_TAG: '.flight-baggage .el-tab-pane:visible .el-tag',
   BAGGAGE_SELECTED_OPTION: '.flight-baggage .el-select__selected-item span', // Selected baggage option text inside the flight-baggage section
+  BAGGAGE_EXTRAS_CARD: '.flight-baggage .extras-card:visible', // Visible only when the baggage panel is expanded
+  BAGGAGE_SEGMENT_ROW: '.flight-baggage .el-tab-pane:visible .segment', // One row per flight direction (idx 0 = outbound, idx 1 = inbound)
+  BAGGAGE_SEGMENT_SELECT_TRIGGER: '.el-select__wrapper', // Sub-selector — clicked relative to a segment row to open its dropdown
+  BAGGAGE_DROPDOWN_PANEL: '.el-select-dropdown:visible', // Visible Element-Plus popper containing the segment dropdown options
   
   // Flight Seating (flight-seating.vue)
   SEATING_EDIT_BUTTON: ".flight-seating .extra__btns", // Edit/Add button in the seating extras row (scoped to flight-seating to avoid matching other extras buttons)
   SEATING_TRAVELER_ROW: '.flight-seating .pax-seat',
+  // Mandatory seat error in seat map drawer (plane-deck/flight-deck.vue — shown when not all travelers have a seat)
+  MANDATORY_SEAT_ERROR: '.error-text',
+  // Per-traveler seat status text in the seating extras pane (e.g. "Pending confirmation")
+  SEAT_STATUS_TEXT: ".pax-seat-container .seat-info-container span",
 
   // Flight Meals (flight-meals.vue)
   MEAL_EDIT_BUTTON: ".flight-meals .extra__btns", // Edit/Add button in the meal extras row (scoped to flight-meals to avoid matching other extras buttons)
@@ -291,6 +299,14 @@ const SELECTORS = {
 
   // Flight passenger info section (flight-passenger-info.vue)
   PASSENGER_INFO_SECTION: '.flight-passenger-info',
+  PASSENGER_INFO_EXPAND_BUTTON: '.flight-passenger-info .is-clickable',
+  EXTRAS_COLLAPSE_HEADER: '.extras-collapse-container .el-collapse-item__header',
+  EXTRAS_COLLAPSE_ACTIVE: '.extras-collapse-container .el-collapse-item__header.is-active',
+  PASSENGER_INFO_EDIT_NOT_ALLOWED_MSG: '.flight-passenger-info .app-msg-text',
+  PASSENGER_INFO_PASSPORT_LABEL_TEXT: 'Passport number',
+  PASSENGER_INFO_SAVE_BUTTON_NAME: 'Save',
+  PASSENGER_INFO_SAVE_SUCCESS_ICON: '.flight-passenger-info .success-icon',
+  PASSPORT_NUMBER_INPUT: '.flight-passenger-info .field:has(label:text-is("Passport number")) input',
 };
 
 class CartPage {
@@ -473,6 +489,76 @@ class CartPage {
       await textLocator.waitFor({ state: "visible", timeout: 5000 });
       return await textLocator.innerText();
     }
+  }
+
+  /**
+   * Expands the flight passenger-info panel and waits for the form fields to render
+   * (anchored on the "Passport number" label).
+   * @param {number} timeout
+   */
+  async openPassengerInfoPanel(timeout = 15000) {
+    const collapseHeader = this.page.locator(SELECTORS.EXTRAS_COLLAPSE_HEADER).first();
+    if (await collapseHeader.count()) {
+      // Check the active state on THIS header, not page-wide. Other collapse items
+      // (e.g. baggage, seats) being active would otherwise wrongly mark this one as open.
+      const headerClass = (await collapseHeader.getAttribute('class')) || '';
+      const isActive = headerClass.split(/\s+/).includes('is-active');
+      if (!isActive) {
+        await collapseHeader.click();
+      }
+    }
+    const expandButton = this.page.locator(SELECTORS.PASSENGER_INFO_EXPAND_BUTTON).first();
+    await expandButton.waitFor({ state: 'visible', timeout });
+    await expandButton.click();
+    await this.page
+      .locator(SELECTORS.PASSENGER_INFO_SECTION)
+      .getByText(SELECTORS.PASSENGER_INFO_PASSPORT_LABEL_TEXT, { exact: true })
+      .first()
+      .waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Reads the "edit not allowed" warning text shown inside the passenger-info
+   * panel for Sabre quotes (e.g. "These details cannot be edited after order
+   * is created").
+   * @param {number} timeout
+   * @returns {Promise<string>}
+   */
+  async getPassengerInfoEditNotAllowedMessage(timeout = 15000) {
+    const message = this.page.locator(SELECTORS.PASSENGER_INFO_EDIT_NOT_ALLOWED_MSG).first();
+    await message.waitFor({ state: 'visible', timeout });
+    return (await message.innerText()).trim();
+  }
+
+  /**
+   * Returns true when the passport-number input is disabled (post-hold lock state).
+   */
+  async isPassportNumberInputDisabled() {
+    const input = this.page.locator(SELECTORS.PASSPORT_NUMBER_INPUT).first();
+    await input.waitFor({ state: 'attached', timeout: 10000 });
+    return await input.isDisabled();
+  }
+
+  /**
+   * Clicks the Save button inside the passenger-info panel.
+   */
+  async clickSavePassengerInfoButton() {
+    const saveButton = this.page
+      .locator(SELECTORS.PASSENGER_INFO_SECTION)
+      .getByRole('button', { name: SELECTORS.PASSENGER_INFO_SAVE_BUTTON_NAME })
+      .first();
+    await saveButton.waitFor({ state: 'visible', timeout: 10000 });
+    await saveButton.click();
+  }
+
+  /**
+   * Waits for the success icon to appear after saving the passenger-info form.
+   */
+  async waitForPassengerInfoSaveSuccess(timeout = 15000) {
+    await this.page
+      .locator(SELECTORS.PASSENGER_INFO_SAVE_SUCCESS_ICON)
+      .first()
+      .waitFor({ state: 'visible', timeout });
   }
 
   /**
@@ -1385,6 +1471,46 @@ class CartPage {
   }
 
   /**
+   * Returns true if the baggage extras panel is currently expanded.
+   * @returns {Promise<boolean>}
+   */
+  async isBaggageExtrasOpen() {
+    return this.page.locator(SELECTORS.BAGGAGE_EXTRAS_CARD).first().isVisible();
+  }
+
+  /**
+   * Selects a baggage option (e.g. "Extra 5kg") for the given flight segment
+   * inside the currently active passenger tab. Index 0 = outbound, 1 = inbound.
+   *
+   * @param {number} segmentIndex - 0-based segment index
+   * @param {string} optionText - Substring to match against the dropdown option label
+   * @param {number} [timeout=10000] - Per-action timeout
+   */
+  async selectBaggageOptionForSegment(segmentIndex, optionText, timeout = 10000) {
+    if (!Number.isInteger(segmentIndex) || segmentIndex < 0) {
+      throw new Error(`segmentIndex must be a non-negative integer, got: ${segmentIndex}`);
+    }
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error('optionText must be a non-empty string');
+    }
+
+    const segment = this.page.locator(SELECTORS.BAGGAGE_SEGMENT_ROW).nth(segmentIndex);
+    await segment.waitFor({ state: 'visible', timeout });
+
+    const trigger = segment.locator(SELECTORS.BAGGAGE_SEGMENT_SELECT_TRIGGER).first();
+    await trigger.click();
+
+    const panel = this.page.locator(SELECTORS.BAGGAGE_DROPDOWN_PANEL).last();
+    await panel.waitFor({ state: 'visible', timeout });
+
+    const option = panel
+      .locator(SELECTORS.DROPDOWN_OPTION, { hasText: optionText })
+      .first();
+    await option.waitFor({ state: 'visible', timeout });
+    await option.click();
+  }
+
+  /**
    * Waits for the Save button to be visible in extras section.
    */
   async waitForSaveButton() {
@@ -1541,6 +1667,37 @@ class CartPage {
     const seatActionButton = travelerRow.getByRole('button', { name: /Add Seats|Change/i }).first();
     await seatActionButton.waitFor({ state: 'visible', timeout: 15000 });
     await seatActionButton.click();
+  }
+
+  /**
+   * Reads the mandatory-seat error text shown in the seat map drawer when not
+   * all travelers have a seat assigned (e.g. "Airline requires seat reservation
+   * for all passengers").
+   * @param {number} timeout
+   * @returns {Promise<string>} The error text
+   */
+  async getMandatorySeatErrorText(timeout = 15000) {
+    const errorElement = this.page.locator(SELECTORS.MANDATORY_SEAT_ERROR).first();
+    await errorElement.waitFor({ state: 'visible', timeout });
+    return (await errorElement.innerText()).trim();
+  }
+
+  /**
+   * Reads the seat status text for a given traveler (1-based) in the seating
+   * extras panel — used to verify "Pending confirmation" after seat selection.
+   * @param {number} travelerIndex - 1-based traveler index
+   * @param {number} timeout
+   * @returns {Promise<string>}
+   */
+  async getSeatStatusForTraveler(travelerIndex, timeout = 15000) {
+    if (!Number.isInteger(travelerIndex) || travelerIndex < 1) {
+      throw new Error(`travelerIndex must be an integer >= 1, got: ${travelerIndex}`);
+    }
+    const statusElement = this.page
+      .locator(SELECTORS.SEAT_STATUS_TEXT)
+      .nth(travelerIndex - 1);
+    await statusElement.waitFor({ state: 'visible', timeout });
+    return (await statusElement.innerText()).trim();
   }
 
   /**

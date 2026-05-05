@@ -29,6 +29,8 @@ const SELECTORS = {
     "[placeholder='Enter phone number']",
     "[placeholder='[City code]-[3 numbers prefix]-[4 digits]']",
   ],
+  PHONE_TYPE_DROPDOWN: ".contact-info-container [name='phone-type'] .el-select__wrapper",
+  PHONE_TYPE_OPTION: ".el-select-dropdown:visible .el-select-dropdown__item",
   
   // Trip types
   TRIP_TYPE_RADIO_LABELS:
@@ -381,6 +383,23 @@ class SearchPage {
     throw new Error(
       `Phone number input not found. Tried selectors: ${SELECTORS.PHONE_NUMBER_PLACEHOLDERS.join(', ')}`
     );
+  }
+
+  /**
+   * Selects a phone type option (Mobile / Home / Business / etc.) inside the
+   * add-guest dialog's contact-info section.
+   * @param {string} phoneType - Visible option label (e.g. "Cellular phone")
+   */
+  async selectPhoneType(phoneType) {
+    const dropdown = this.page.locator(SELECTORS.PHONE_TYPE_DROPDOWN).first();
+    await dropdown.waitFor({ state: 'visible', timeout: 10000 });
+    await dropdown.click();
+    const option = this.page
+      .locator(SELECTORS.PHONE_TYPE_OPTION)
+      .filter({ hasText: phoneType })
+      .first();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    await option.click();
   }
 
   /**

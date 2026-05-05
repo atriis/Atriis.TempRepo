@@ -17,10 +17,12 @@ Feature: 66004 Sabre - Complete Trip with corporate role Use New Flight Booking 
     And I have added myself as the traveler
     When I search for a round trip flight from "AMS" to "CDG"
     And flight results should be available
-    # Select outbound - triggers pricing options
-    When I click to open first pricing options
+    Then the Select Flight button should be visible in results
+    And the Add to trip and Pricing Options buttons should not be visible in results
+    #Same selector for "Select flight" and "Select", that's why this function was reused here
+    When I select one flight segment by schedule
     And I select the first option from pricing options
-    # Select inbound - triggers pricing options
-    When I click to open first pricing options
+    Then I should see the heading "Flight To Amsterdam"
     And I select the first option from pricing options
     And I add to trip from pricing options
+    Then the booking status should be "Pending booking"

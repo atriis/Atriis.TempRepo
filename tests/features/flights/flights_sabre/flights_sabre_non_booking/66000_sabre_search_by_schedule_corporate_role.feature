@@ -17,14 +17,16 @@ Feature: 66000 Sabre - Search By Schedule with corporate role Use New Flight Boo
     And I have added myself as the traveler
     When I search for a flight by schedule from "AMS" to "CDG"
     And flight results should be available
-    # Outbound: Select Flight button visible, no Add to trip/Pricing Options initially
+    Then the Select Flight button should be visible in results
+    And the Add to trip and Pricing Options buttons should not be visible in results
     When I select one flight segment by schedule
-    When I click to open first pricing options
+    And I select the first option from pricing options
+    And I confirm the pricing option for the current segment
+    Then the Select Flight button should be visible in results
+    And the Add to trip and Pricing Options buttons should not be visible in results
+    When I select one flight segment by schedule
     And I select the first option from pricing options
     And I add to trip from pricing options
-    # Inbound: Same behavior - Select Flight visible
-    And flight results should be available
-    When I select one flight segment by schedule
-    When I click to open first pricing options
-    And I select the first option from pricing options
-    And I add to trip from pricing options
+    And I wait for "Your Selection" text to be visible
+    And I add "Your Selection" fare to trip
+    Then the booking status should be "Pending booking"

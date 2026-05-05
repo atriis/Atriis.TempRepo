@@ -1071,6 +1071,98 @@ const Cart = {
   },
 
   /**
+   * Validates seating mandatory-for-all-travelers behaviour:
+   *   1. Opens the seating extras panel and the seat map drawer for traveler 1
+   *   2. Selects a seat for traveler 1 only on the active leg
+   *   3. Verifies the "Airline requires seat reservation for all passengers"
+   *      error appears (since traveler 2 still has no seat)
+   *   4. Selects a seat for traveler 2 to clear the error
+   *   5. Saves and closes the seat map drawer
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} [expectedMandatoryMessage] - Expected substring of the error
+   * @returns {Promise<{ errorText: string }>}
+   */
+  async addSeatsAndValidateMandatoryForAllTravelers(
+    page,
+    expectedMandatoryMessage = 'Airline requires seat reservation for all passengers',
+  ) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedMandatoryMessage !== 'string' || expectedMandatoryMessage.length === 0) {
+      throw new Error('expectedMandatoryMessage must be a non-empty string');
+    }
+
+    logger.info('Validating seating is mandatory for all travelers', { expectedMandatoryMessage });
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.clickEditSeatingExtrasButton();
+    await cartPage.clickSeatActionButtonForTraveler(1);
+    await cartPage.waitForSeatMapToLoad();
+
+    await this.selectFirstAvailableFlightSeat(page);
+
+    const errorText = await cartPage.getMandatorySeatErrorText();
+    expect(
+      errorText.toLowerCase(),
+      `Expected mandatory-seat error to contain "${expectedMandatoryMessage}", got "${errorText}"`,
+    ).toContain(expectedMandatoryMessage.toLowerCase());
+
+    await this.selectFirstAvailableFlightSeat(page);
+
+    await cartPage.saveAndCloseSeatMapDrawer();
+
+    logger.info('Seating mandatory-for-all-travelers validation passed', { errorText });
+    return { errorText };
+  },
+
+  /**
+   * Verifies seats were saved to the trip after closing the seat map drawer:
+   * opens the seating extras panel, opens the seat map drawer, and asserts
+   * the seat status text for the configured travelers contains the expected
+   * status (default: "Pending confirmation").
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} [options]
+   * @param {number} [options.travelerCount=2] - Number of travelers to validate
+   * @param {string} [options.expectedStatus='Pending confirmation']
+   * @returns {Promise<{ statuses: string[] }>}
+   */
+  async verifySeatsSavedToTrip(page, options = {}) {
+    if (!page) throw new Error('page is required');
+    const { travelerCount = 2, expectedStatus = 'Pending confirmation' } = options;
+    if (!Number.isInteger(travelerCount) || travelerCount < 1) {
+      throw new Error(`travelerCount must be an integer >= 1, got: ${travelerCount}`);
+    }
+    if (typeof expectedStatus !== 'string' || expectedStatus.length === 0) {
+      throw new Error('expectedStatus must be a non-empty string');
+    }
+
+    logger.info('Verifying seats saved to trip', { travelerCount, expectedStatus });
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.clickEditSeatingExtrasButton();
+    await cartPage.clickAddSeatsButton();
+    await cartPage.waitForSeatMapToLoad();
+
+    const statuses = [];
+    for (let i = 1; i <= travelerCount; i += 1) {
+      const status = await cartPage.getSeatStatusForTraveler(i);
+      expect(
+        status.toLowerCase(),
+        `Traveler ${i} seat status should contain "${expectedStatus}", got "${status}"`,
+      ).toContain(expectedStatus.toLowerCase());
+      statuses.push(status);
+    }
+
+    await cartPage.saveAndCloseSeatMapDrawer();
+
+    logger.info('Verified seats saved to trip', { statuses });
+    return { statuses };
+  },
+
+  /**
    * Gets passport details text from the cart extras section.
    * Returns the passport details for validation in step definitions.
    * 
@@ -1089,6 +1181,78 @@ const Cart = {
     
     const cartPage = getPageObject(page, CartPage);
     return await cartPage.getPassportDetailsText(index);
+  },
+
+  /**
+   * Opens the flight passenger-info panel, validates that the "edit not allowed"
+   * warning message is visible, then saves the form. Used pre-booking on Sabre
+   * (NDC) quotes where the warning is shown as an informational notice.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMessage - Substring expected inside the warning text
+   * @returns {Promise<{ messageText: string }>}
+   */
+  async acknowledgePassengerInfoWarning(page, expectedMessage) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedMessage !== 'string' || expectedMessage.length === 0) {
+      throw new Error('expectedMessage must be a non-empty string');
+    }
+
+    logger.info('Opening passenger info panel and validating warning message', { expectedMessage });
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.openPassengerInfoPanel();
+
+    const messageText = await cartPage.getPassengerInfoEditNotAllowedMessage();
+    expect(
+      messageText.toLowerCase(),
+      `Expected passenger-info message to contain "${expectedMessage}", got "${messageText}"`,
+    ).toContain(expectedMessage.toLowerCase());
+
+    await cartPage.clickSavePassengerInfoButton();
+    await cartPage.waitForPassengerInfoSaveSuccess();
+
+    logger.info('Passenger info saved with warning message visible', { messageText });
+    return { messageText };
+  },
+
+  /**
+   * Re-opens the flight passenger-info panel after the trip has been held and
+   * verifies (a) the "edit not allowed" warning is still visible and
+   * (b) the passport-number input is disabled — the post-booking lock state
+   * for Sabre NDC quotes.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMessage
+   * @returns {Promise<{ messageText: string, isPassportInputDisabled: boolean }>}
+   */
+  async verifyPassengerInfoEditingBlockedAfterBooking(page, expectedMessage) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedMessage !== 'string' || expectedMessage.length === 0) {
+      throw new Error('expectedMessage must be a non-empty string');
+    }
+
+    logger.info('Verifying passenger info editing is blocked after booking', { expectedMessage });
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.openPassengerInfoPanel();
+
+    const messageText = await cartPage.getPassengerInfoEditNotAllowedMessage();
+    expect(
+      messageText.toLowerCase(),
+      `Expected post-booking message to contain "${expectedMessage}", got "${messageText}"`,
+    ).toContain(expectedMessage.toLowerCase());
+
+    const isPassportInputDisabled = await cartPage.isPassportNumberInputDisabled();
+    expect(
+      isPassportInputDisabled,
+      'Passport number input should be disabled after the trip is held',
+    ).toBe(true);
+
+    logger.info('Passenger info editing confirmed blocked', { messageText, isPassportInputDisabled });
+    return { messageText, isPassportInputDisabled };
   },
 
   /**
@@ -2211,6 +2375,45 @@ const Cart = {
 
     const cartPage = getPageObject(page, CartPage);
     await cartPage.clickEditBaggageExtrasButton();
+  },
+
+  /**
+   * Selects a baggage option containing the given text for a specific flight
+   * direction ("outbound" or "inbound") inside the cart's flight-baggage panel.
+   * Idempotent: opens the baggage panel only when it is not already expanded,
+   * which lets the same DSL be called once per direction without re-opening.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} optionText - Substring of the option label (e.g. "Extra 5kg")
+   * @param {string} direction - "outbound" or "inbound"
+   * @returns {Promise<{ direction: string, optionText: string, segmentIndex: number }>}
+   */
+  async selectBaggageOptionForFlightDirection(page, optionText, direction) {
+    if (!page) throw new Error('page is required');
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error('optionText must be a non-empty string');
+    }
+    if (!direction || typeof direction !== 'string') {
+      throw new Error('direction must be a non-empty string');
+    }
+
+    const directionMap = { outbound: 0, inbound: 1 };
+    const segmentIndex = directionMap[direction.toLowerCase()];
+    if (segmentIndex === undefined) {
+      throw new Error(`direction must be "outbound" or "inbound", got: "${direction}"`);
+    }
+
+    logger.info('Selecting baggage option for flight direction', { direction, optionText });
+
+    const cartPage = getPageObject(page, CartPage);
+
+    if (!(await cartPage.isBaggageExtrasOpen())) {
+      await cartPage.clickEditBaggageExtrasButton();
+    }
+
+    await cartPage.selectBaggageOptionForSegment(segmentIndex, optionText);
+
+    return { direction, optionText, segmentIndex };
   },
 
   /**

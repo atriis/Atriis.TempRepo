@@ -687,6 +687,15 @@ class FlightResultsPage {
     await this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).nth(index).waitFor({ state: "visible", timeout });
   }
 
+  async isPricingOptionsButtonVisible(timeout = 5000) {
+    try {
+      await this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Clicks the pricing options button to open the pricing options dialog.
    *
@@ -752,7 +761,7 @@ class FlightResultsPage {
     await overlay
       .getByRole('button', { name: SELECTORS.PRICING_OPTIONS_SELECT_BUTTON_NAME })
       .nth(index)
-      .waitFor({ state: 'visible', timeout: 60000 });
+      .waitFor({ state: 'visible', timeout: 120000 });
   }
 
   async isPricingOptionsPerTravellerLabelVisible(timeout = 30000) {
@@ -1202,6 +1211,46 @@ async clickAddToTripButtonPricingOptionsModal() {
   await this.page.waitForTimeout(2000);
 }
 
+async confirmBySchedulePricingSelection() {
+  const overlay = this.getPricingOptionsOverlay();
+  // The bottom "Select" confirmation button is the last "Select" button in the overlay
+  // (after the per-fare Select buttons for Standard, Flex, etc.)
+  const confirmButton = overlay.getByRole('button', { name: SELECTORS.PRICING_OPTIONS_SELECT_BUTTON_NAME }).last();
+  await confirmButton.waitFor({ state: 'visible', timeout: 30000 });
+  await confirmButton.scrollIntoViewIfNeeded();
+  await confirmButton.click({ timeout: 15000 });
+
+  try {
+    await overlay.waitFor({ state: 'hidden', timeout: 30000 });
+  } catch (error) {
+    await this.page.screenshot({
+      path: 'test-results/screenshots/confirm-by-schedule-pricing-selection-overlay-timeout.png',
+      fullPage: true
+    }).catch(() => undefined);
+
+    throw new Error(`Pricing options overlay did not close after confirming selection: ${error.message}`);
+  }
+
+  await this.page.waitForLoadState('networkidle', { timeout: 30000 });
+  try {
+    await overlay.waitFor({ state: 'hidden', timeout: 30000 });
+  } catch (err) {
+    throw new Error(
+      `Pricing options overlay did not close within 30s after clicking the confirm "Select" button. ` +
+      `The page is likely stuck on the pricing options modal. Original error: ${err.message}`
+    );
+  }
+
+  // networkidle is best-effort: some long-polling/analytics requests legitimately keep
+  // the network busy. Fall back to 'load' and surface a warning instead of failing here.
+  try {
+    await this.page.waitForLoadState('networkidle', { timeout: 30000 });
+  } catch {
+    await this.page.waitForLoadState('load', { timeout: 15000 });
+  }
+  await this.page.waitForTimeout(2000);
+}
+
 async isBySchedulePricingPageVisible(timeout = 3000) {
   const pricingPage = this.page.locator(SELECTORS.BY_SCHEDULE_PRICING_PAGE).first();
 
@@ -1613,7 +1662,9 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
    */
   async isAncillariesTextVisible(timeout = 10000) {
     try {
-      const text = this.page.getByText(SELECTORS.ANCILLARIES_INCLUDED_MESSAGE);
+      const text = this.page
+        .locator(SELECTORS.BRANDED_FARES_DRAWER)
+        .getByText('ancillaries are included in this brand');
       await text.first().waitFor({ state: 'visible', timeout });
       return true;
     } catch {

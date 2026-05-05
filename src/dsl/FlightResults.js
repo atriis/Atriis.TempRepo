@@ -901,6 +901,38 @@ const FlightResults = {
     return { selected: true };
   },
 
+  async verifySelectFlightButtonVisible(page) {
+    if (!page) throw new Error('page is required');
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForSelectText();
+    return { visible: true };
+  },
+
+  async verifyAddToTripAndPricingOptionsNotVisible(page) {
+    if (!page) throw new Error('page is required');
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    const addToTripVisible = await resultsPage.getAddToTripButton().isVisible();
+    expect(addToTripVisible, '"Add to trip" button should not be visible').toBe(false);
+
+    const pricingOptionsVisible = await flightResultsPage.isPricingOptionsButtonVisible();
+    expect(pricingOptionsVisible, '"Pricing Options" button should not be visible').toBe(false);
+
+    return { addToTripVisible: false, pricingOptionsVisible: false };
+  },
+
+  async confirmPricingOptionForCurrentSegment(page) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.confirmBySchedulePricingSelection();
+
+    return { confirmed: true };
+  },
+
   /**
    * Selects both segments for a round-trip flight by schedule.
    *
@@ -1154,6 +1186,29 @@ const FlightResults = {
     await flightResultsPage.clickSelectButtonInPricingOptionsModal();
     
     return { selected: true };
+  },
+
+  /**
+   * Selects a pricing option in the open modal at the given zero-based index.
+   * Used by tests that need to pick a specific fare (e.g. the second fare).
+   * @param {import('playwright').Page} page
+   * @param {number} index - Zero-based index of the pricing option
+   * @returns {Promise<{ selected: true, index: number }>}
+   */
+  async selectPricingOptionInModalByIndex(page, index) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(`index must be a non-negative integer, got: ${index}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    await flightResultsPage.waitForSelectButtonInPricingOptionsModal(index);
+    await flightResultsPage.clickSelectButtonInPricingOptionsModal(index);
+
+    return { selected: true, index };
   },
 
   async clickToOpenPricingOptions(page, index = 0) {

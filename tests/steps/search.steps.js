@@ -31,6 +31,14 @@ Given("I have added a random guest traveler", async function () {
   this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
+Given("I have added a random guest traveler with phone type {string}", async function (phoneType) {
+  logger.info("Adding random guest traveler with phone type", { phoneType });
+  const result = await Search.addRandomGuest(this.page, phoneType);
+  expect(result.starIconVisible, "Star icon should be visible after adding guest").toBe(true);
+  this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
+  this.selectedTravelerCount = result.selectedTravelerCount;
+});
+
 // ===== WHEN STEPS =====
 
 // ===== THEN STEPS =====

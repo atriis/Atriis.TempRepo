@@ -287,6 +287,11 @@ When('I select the first option from pricing options', async function () {
   await FlightResults.selectFirstPricingOptionInModal(this.page);
 });
 
+When('I select the second fare from pricing options', async function () {
+  logger.info("Selecting second fare from pricing options");
+  await FlightResults.selectPricingOptionInModalByIndex(this.page, 1);
+});
+
 When('I "Select to share" first option from pricing options', async function () {
   logger.info("Selecting first option from pricing options");
   await FlightResults.selectToShareFirstPricingOption(this.page);
@@ -672,6 +677,25 @@ Then('the "Operated by" text should be visible in the flight results', async fun
 Then('the "Operated by" text should be visible in flight details', async function () {
   logger.info("Verifying 'Operated by' text is visible in flight details drawer");
   await FlightResults.verifyOperatedByInFlightDetails(this.page);
+});
+
+// ========================================
+// BY SCHEDULE - ROLE-BASED BUTTON VISIBILITY
+// ========================================
+
+Then("the Select Flight button should be visible in results", async function () {
+  logger.info("Verifying Select Flight button is visible in results");
+  await FlightResults.verifySelectFlightButtonVisible(this.page);
+});
+
+Then("the Add to trip and Pricing Options buttons should not be visible in results", async function () {
+  logger.info("Verifying Add to trip and Pricing Options buttons are not visible");
+  await FlightResults.verifyAddToTripAndPricingOptionsNotVisible(this.page);
+});
+
+When("I confirm the pricing option for the current segment", async function () {
+  logger.info("Confirming pricing option selection for the current segment");
+  await FlightResults.confirmPricingOptionForCurrentSegment(this.page);
 });
 
 // ========================================

@@ -181,6 +181,11 @@ When("I click to edit the baggage extras section", async function () {
   await Cart.openBaggageExtras(this.page);
 });
 
+When("I select the {string} baggage option for the {string} flight", async function (optionText, direction) {
+  logger.info("Selecting baggage option in cart for flight direction", { optionText, direction });
+  await Cart.selectBaggageOptionForFlightDirection(this.page, optionText, direction);
+});
+
 When("I wait for the save button", async function () {
   logger.info("Waiting for save button to be visible");
   const cartPage = getPageObject(this.page, CartPage);
@@ -264,6 +269,26 @@ When("I save and close seat map drawer", async function () {
 Then("seat selection should be restricted with message {string}", async function (expectedMessage) {
   logger.info("Verifying seat selection is restricted", { expectedMessage });
   await Cart.verifySeatSelectionRestricted(this.page, expectedMessage);
+});
+
+When("I add seats and validate selection mandatory for all travelers", async function () {
+  logger.info("Adding seats and validating mandatory selection for all travelers");
+  await Cart.addSeatsAndValidateMandatoryForAllTravelers(this.page);
+});
+
+Then("seats saved to trip should be validated", async function () {
+  logger.info("Validating seats saved to trip");
+  await Cart.verifySeatsSavedToTrip(this.page);
+});
+
+When("I open passenger info and acknowledge the warning {string}", async function (expectedMessage) {
+  logger.info("Opening passenger info and acknowledging warning", { expectedMessage });
+  await Cart.acknowledgePassengerInfoWarning(this.page, expectedMessage);
+});
+
+Then("passenger info editing should be blocked after booking by message {string}", async function (expectedMessage) {
+  logger.info("Verifying passenger info editing is blocked", { expectedMessage });
+  await Cart.verifyPassengerInfoEditingBlockedAfterBooking(this.page, expectedMessage);
 });
 
 When("I select default delivery method and save", async function () {
