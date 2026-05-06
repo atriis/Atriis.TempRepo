@@ -168,6 +168,19 @@ const App = {
     const commonPage = getPageObject(page, CommonPage);
     return commonPage.isHeadingContainingTextVisible(expectedText, { timeout: 30000 });
   },
+
+  /**
+   * Reloads the current page. Centralized here so retries, post-reload
+   * waits, or instrumentation can be added in one place.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{refreshed: true}>}
+   */
+  async refreshPage(page) {
+    if (!page) throw new Error('page is required');
+    logger.info('Refreshing current page');
+    await page.reload({ waitUntil: 'load' });
+    return { refreshed: true };
+  },
 };
 
 module.exports = App;

@@ -607,6 +607,22 @@ const FlightSearch = {
     logger.info('Editing flight search in modal', { from, to, departureDate, returnDate });
 
     const searchPage = getPageObject(page, SearchPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    // Ensure the edit-search drawer is open. When called from the cart/add-to-trip flow
+    // the drawer is already open; when called from the no-results state we must click
+    // the "Edit search" button on the no-results panel first.
+    const drawerInput = searchPage.getEditAirportInput(0);
+    if (!(await drawerInput.isVisible().catch(() => false))) {
+      const noResultsEditBtn = resultsPage.getNoResultsEditSearchButton();
+      if (await noResultsEditBtn.isVisible().catch(() => false)) {
+        logger.info('Opening edit-search drawer from no-results state');
+        await noResultsEditBtn.click();
+      } else {
+        logger.info('Opening edit-search drawer via results edit button');
+        await resultsPage.clickEditButton();
+      }
+    }
 
     // Wait for search form to be ready — FROM input must be visible and pre-filled
     await searchPage.waitForFromFieldVisible();

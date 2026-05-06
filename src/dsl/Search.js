@@ -212,6 +212,45 @@ const Search = {
       guestData: { firstName, lastName, dateOfBirth, email, phone },
     };
   },
+
+  /**
+   * Adds a random guest traveler and fills the middle-name input with the
+   * provided value. First/last name, DOB, email and phone are auto-generated.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string} middleName - Middle name to fill in the guest form
+   * @returns {Promise<{added: boolean, starIconVisible: boolean, selectedTravelerCount: number, guestData: Object}>}
+   */
+  async addRandomGuestWithMiddleName(page, middleName) {
+    if (!page) throw new Error('page is required');
+    if (!middleName || typeof middleName !== 'string') {
+      throw new Error('middleName must be a non-empty string, got: ' + middleName);
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+    const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
+
+    await searchPage.clickAddTravelerButton();
+    await searchPage.clickAddGuestTravelerButton();
+    await searchPage.fillInRandomFirstName(firstName);
+    await searchPage.fillInGuestMiddleName(middleName);
+    await searchPage.fillInRandomLastName(lastName);
+    await searchPage.selectGenderMale();
+    await searchPage.fillInRandomDateOfBirth(dateOfBirth);
+    await searchPage.fillInRandomEmail(email);
+    await searchPage.fillInRandomPhone(phone);
+    await searchPage.clickAddGuestButton();
+
+    const starIconVisible = await searchPage.isStarIconVisible();
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
+
+    return {
+      added: true,
+      starIconVisible,
+      selectedTravelerCount,
+      guestData: { firstName, middleName, lastName, dateOfBirth, email, phone },
+    };
+  },
 };
 
 module.exports = Search;

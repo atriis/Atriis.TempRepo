@@ -21,6 +21,7 @@ const SELECTORS = {
   // Guest information form
   FIRST_NAME_INPUT: "[placeholder='First Name']",
   LAST_NAME_INPUT: "[placeholder='Last Name']",
+  MIDDLE_NAME_INPUT: ".edit-traveler [placeholder='Middle Name']",
   GENDER_DROPDOWN: "div.el-select__selected-item:has-text('Please select gender')",
   GENDER_OPTION_MALE: "role=option[name='Male']",
   DATE_OF_BIRTH_INPUT: "[placeholder='DD/MM/YYYY']",
@@ -350,6 +351,16 @@ class SearchPage {
 
   async fillInRandomLastName(lastName) {
     await this.page.fill(SELECTORS.LAST_NAME_INPUT, lastName);
+  }
+
+  async fillInGuestMiddleName(middleName) {
+    const input = this.page.locator(SELECTORS.MIDDLE_NAME_INPUT);
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.fill(middleName);
+    const actual = await input.inputValue();
+    if (actual !== middleName) {
+      throw new Error(`Middle name input did not retain value. Expected "${middleName}", got "${actual}"`);
+    }
   }
 
   async selectGenderMale() {

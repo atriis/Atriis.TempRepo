@@ -287,6 +287,11 @@ When('I select the first option from pricing options', async function () {
   await FlightResults.selectFirstPricingOptionInModal(this.page);
 });
 
+Then('the cabin class displayed in pricing options should be {string}', async function (expectedClass) {
+  logger.info('Verifying cabin class in pricing options', { expectedClass });
+  await FlightResults.verifyCabinClassInPricingOptions(this.page, expectedClass);
+});
+
 When('I select the second fare from pricing options', async function () {
   logger.info("Selecting second fare from pricing options");
   await FlightResults.selectPricingOptionInModalByIndex(this.page, 1);
@@ -611,12 +616,12 @@ Then("the seat preview only message should be visible", async function () {
   logger.info("Seat preview only message found", { actualMessage });
 });
 
-When("I should click fare rules for the second flight leg", async function () {
+When("I click fare rules for the second flight leg", async function () {
   logger.info("Clicking fare rules leg tab for the second flight leg");
   await FlightResults.clickFareRulesLegTab(this.page, 1);
 });
 
-When("I should click fare rules for the third flight leg", async function () {
+When("I click fare rules for the third flight leg", async function () {
   logger.info("Clicking fare rules leg tab for the third flight leg");
   await FlightResults.clickFareRulesLegTab(this.page, 2);
 });

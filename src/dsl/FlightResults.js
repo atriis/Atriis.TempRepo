@@ -773,6 +773,43 @@ const FlightResults = {
     return { resultsPerTravelerPrice, pricingOptionsPrice, hasPerTravellerLabel };
   },
 
+  /**
+   * Verifies the cabin class shown on the first pricing option card matches
+   * the expected class name (case-insensitive) and is not rendered as
+   * "undefined". Guards against the brandDesc-missing rendering bug.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} expectedClass - Expected cabin class label, e.g. "Business"
+   * @param {number} index - Zero-based pricing option index (default: 0)
+   * @returns {Promise<{verified: true, cabinClassText: string}>}
+   */
+  async verifyCabinClassInPricingOptions(page, expectedClass, index = 0) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!expectedClass || typeof expectedClass !== 'string') {
+      throw new Error('expectedClass must be a non-empty string, got: ' + expectedClass);
+    }
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error('index must be a non-negative number, got: ' + index);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const cabinClassText = await flightResultsPage.getPricingOptionsCabinClassText(index);
+
+    expect(
+      cabinClassText.toLowerCase(),
+      `Cabin class on pricing option #${index} should not contain "undefined" — got "${cabinClassText}"`,
+    ).not.toContain('undefined');
+
+    expect(
+      cabinClassText.toLowerCase(),
+      `Cabin class on pricing option #${index} should contain "${expectedClass}" — got "${cabinClassText}"`,
+    ).toContain(expectedClass.toLowerCase());
+
+    return { verified: true, cabinClassText };
+  },
+
   async extractTotalPriceFromFlightDetails(page) {
     if (!page) {
       throw new Error('page is required');

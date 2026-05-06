@@ -100,6 +100,7 @@ const SELECTORS = {
   PRICING_OPTIONS_OVERLAY: '.el-overlay:has(.app-drawer.flight-details-drawer)',
   PRICING_OPTIONS_OVERLAY_HEADING_TEXT: 'Pricing Options',
   PRICING_OPTIONS_TAB: '.pricing-options-tabs .el-tabs__item',
+  PRICING_OPTIONS_CABIN_CLASS: '.leg-pricing-option .sub-class',
   PRICING_OPTIONS_BAGGAGE_CLASS: '.leg-details .baggage span',
   PRICING_OPTIONS_FARE_COMPONENT_TEXT: 'text=Fare component',
   GREEN_CIRCLE_ICON_PRICING_OPTIONS: 'span.material-symbols-outlined.green',
@@ -825,6 +826,23 @@ class FlightResultsPage {
     await overlay.waitFor({ state: 'visible', timeout: 60000 });
     await overlay.locator(SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE).nth(index).waitFor({ state: 'visible', timeout: 120000 });
     return extractNumber(overlay, SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE, index);
+  }
+
+  /**
+   * Returns the cabin class text shown on the nth pricing option card,
+   * e.g. "Cabin Business". Used to detect rendering bugs where the brand
+   * description is missing and the value would otherwise be "undefined".
+   *
+   * @param {number} index - Zero-based pricing option index (default: 0)
+   * @returns {Promise<string>} Trimmed cabin class label text
+   */
+  async getPricingOptionsCabinClassText(index = 0) {
+    const overlay = this.getPricingOptionsOverlay();
+    await overlay.waitFor({ state: 'visible', timeout: 60000 });
+    const cabin = overlay.locator(SELECTORS.PRICING_OPTIONS_CABIN_CLASS).nth(index);
+    await cabin.waitFor({ state: 'visible', timeout: 30000 });
+    const text = await cabin.textContent();
+    return (text || '').trim();
   }
 
   /**

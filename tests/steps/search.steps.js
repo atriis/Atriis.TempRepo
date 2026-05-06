@@ -69,6 +69,14 @@ Given("I have added a random guest traveler with name {string} {string}", async 
   this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
+Given("I have added a random guest traveler with middle name {string}", async function (middleName) {
+  logger.info("Adding random guest traveler with middle name", { middleName });
+  const result = await Search.addRandomGuestWithMiddleName(this.page, middleName);
+  expect(result.added, "Guest traveler should be added").toBe(true);
+  this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
+  this.selectedTravelerCount = result.selectedTravelerCount;
+});
+
 When("I open the traveler drawer", async function () {
   throw new Error("TODO: implement 'I open the traveler drawer' — open traveler section from search page");
 });

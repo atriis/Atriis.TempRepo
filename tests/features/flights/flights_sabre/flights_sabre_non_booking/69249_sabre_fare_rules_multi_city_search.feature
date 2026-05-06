@@ -18,57 +18,57 @@ Feature: 69249 Sabre - Fare rules displayed in multi-city search
     And flight results should be available
     And I click to open fare rules
     Then I should see the fare rules note about strictest terms
-    And I should click fare rules for the second flight leg
+    When I click fare rules for the second flight leg
     Then I should see the fare rules note about strictest terms
-    And I should click fare rules for the third flight leg
+    When I click fare rules for the third flight leg
     Then I should see the fare rules note about strictest terms
-    And I close fare rules window
+    When I close fare rules window
     When I click to open flight details
     And I click to open fare rules from modal
     Then I should see the fare rules note about strictest terms
-    And I should click fare rules for the second flight leg
+    When I click fare rules for the second flight leg
     Then I should see the fare rules note about strictest terms
-    And I should click fare rules for the third flight leg
+    When I click fare rules for the third flight leg
     Then I should see the fare rules note about strictest terms
-    And I close fare rules window
+    When I close fare rules window
     And I close flight details window
     When I click to open first pricing options
     And I click to open fare rules from modal
     Then I should see the fare rules note about strictest terms
-    And I close fare rules window
+    When I close fare rules window
     And I select the first option from pricing options
     Then I should see the heading "Flight To Houston"
-    And I click to open fare rules from modal
+    When I click to open fare rules from modal
     Then I should see the fare rules note about strictest terms
-    And I close fare rules window
+    When I close fare rules window
     And I select the first option from pricing options
     Then I should see the heading "Flight To Houston"
-    And I click to open fare rules from modal
+    When I click to open fare rules from modal
     Then I should see the fare rules note about strictest terms
-    And I close fare rules window
+    When I close fare rules window
     Then I close pricing options modal
-    And I add the first flight to cart
+    When I add the first flight to cart
     Then the booking status should be "Pending booking"
-    And I click to open fare rules
+    When I click to open fare rules
     Then I should see the fare rules note about strictest terms
-    And I should click fare rules for the second flight leg
+    When I click fare rules for the second flight leg
     Then I should see the fare rules note about strictest terms
-    And I should click fare rules for the third flight leg
+    When I click fare rules for the third flight leg
     Then I should see the fare rules note about strictest terms
-    And I close fare rules window
+    When I close fare rules window
     When I click to open flight details
     And I click to open fare rules in cart
     Then I should see the fare rules note about strictest terms
-    And I should click fare rules for the second flight leg
+    When I click fare rules for the second flight leg
     Then I should see the fare rules note about strictest terms
-    And I should click fare rules for the third flight leg
+    When I click fare rules for the third flight leg
     Then I should see the fare rules note about strictest terms
-    And I close fare rules window
+    When I close fare rules window
     And I close flight details window
     When I click to open price breakdown in cart
     And I click to open fare rules in cart
     Then I should see the fare rules note about strictest terms
-    And I should click fare rules for the second flight leg
+    When I click fare rules for the second flight leg
     Then I should see the fare rules note about strictest terms
-    And I should click fare rules for the third flight leg
+    When I click fare rules for the third flight leg
     Then I should see the fare rules note about strictest terms

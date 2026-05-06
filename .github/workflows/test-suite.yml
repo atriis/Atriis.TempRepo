@@ -121,7 +121,7 @@ jobs:
           path: test-results/screenshots/
           if-no-files-found: ignore
 
-  summary:
+  report:
     name: Summary
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -337,14 +337,14 @@ jobs:
             node -e "
               const s = JSON.parse(require('fs').readFileSync('cucumber-html-report/summary.json', 'utf8'));
               const passRate = s.totalScenarios > 0 ? ((s.passed / s.totalScenarios) * 100).toFixed(1) : '0.0';
-              const status = s.failed > 0 ? ' SOME TESTS FAILED' : ' ALL TESTS PASSED';
+              const status = s.failed > 0 ? '❌ SOME TESTS FAILED' : '✅ ALL TESTS PASSED';
               console.log('| Metric | Value |');
               console.log('|--------|-------|');
               console.log('| **Status** | ' + status + ' |');
               console.log('| Total Scenarios | ' + s.totalScenarios + ' |');
-              console.log('|  Passed | ' + s.passed + ' |');
-              console.log('|  Failed | ' + s.failed + ' |');
-              console.log('|  Skipped | ' + s.skipped + ' |');
+              console.log('| ✅ Passed | ' + s.passed + ' |');
+              console.log('| ❌ Failed | ' + s.failed + ' |');
+              console.log('| ⏭️ Skipped | ' + s.skipped + ' |');
               console.log('| Pass Rate | **' + passRate + '%** |');
             " >> $GITHUB_STEP_SUMMARY
           else
@@ -416,8 +416,8 @@ jobs:
                 const fPassed = fTests - fFail - fSkip;
                 totalTests += fTests; totalFail += fFail; totalSkipped += fSkip; totalTime += fTime;
                 const label = file.replace('all-results/', '');
-                const passedIcon = fPassed > 0 ? fPassed + '' : '';
-                const failedIcon = fFail > 0 ? fFail + '' : '';
+                const passedIcon = fPassed > 0 ? '✅ ' + fPassed : '';
+                const failedIcon = fFail > 0 ? '❌ ' + fFail : '';
                 fileRows.push('| ' + label + ' | ' + passedIcon + ' | ' + failedIcon + ' | ' + (fSkip || '') + ' | ' + Math.round(fTime) + 's |');
               }
 
@@ -425,12 +425,12 @@ jobs:
               out.push('');
               out.push('###  Test Results');
               out.push('');
-              out.push('**' + totalTests + ' tests**  ' + totalPassed + ' passed, ' + totalFail + ' failed, ' + totalSkipped + ' skipped');
+              out.push('**' + totalTests + ' tests** — ✅ ' + totalPassed + ' passed  ❌ ' + totalFail + ' failed  ⏭️ ' + totalSkipped + ' skipped');
               out.push('');
               out.push('| Report | Passed | Failed | Skipped | Time |');
               out.push('|--------|--------|--------|---------|------|');
               fileRows.forEach(r => out.push(r));
-              out.push('| **Total** | **' + totalPassed + '** | **' + totalFail + '** | **' + totalSkipped + '** | **' + Math.round(totalTime) + 's** |');
+              out.push('| **Total** | **✅ ' + totalPassed + '** | **❌ ' + totalFail + '** | **⏭️ ' + totalSkipped + '** | **' + Math.round(totalTime) + 's** |');
 
               if (allFailures.length > 0) {
                 out.push('');

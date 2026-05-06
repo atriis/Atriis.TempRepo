@@ -254,6 +254,17 @@ When("I select a random preferred seat", async function () {
   await Cart.selectRandomPreferredSeat(this.page);
 });
 
+When("I hover over a green preferred extra legroom seat", async function () {
+  logger.info("Hovering over a green preferred + extra legroom seat in the seat map");
+  await Cart.hoverGreenPreferredExtraLegroomSeat(this.page);
+});
+
+Then("the seat tooltip should contain preferred and extra legroom labels", async function () {
+  logger.info("Verifying seat tooltip contains preferred and extra legroom labels");
+  const result = await Cart.verifyPreferredExtraLegroomTooltipVisible(this.page);
+  logger.info("Seat tooltip verified", { tooltipText: result.tooltipText });
+});
+
 When("I click next flight button", async function () {
   logger.info("Clicking next flight button to advance to the next segment");
   const cartPage = getPageObject(this.page, CartPage);
@@ -533,6 +544,11 @@ Then("the hotel should appear as refundable in cart", async function () {
 Then("the cart should show 2 rooms badge", async function () {
   logger.info("Verifying 2 rooms badge is displayed in cart hotel summary");
   await Cart.verify2RoomsBadge(this.page);
+});
+
+Then("the timed quote badge should be visible in cart", async function () {
+  logger.info("Verifying timed quote badge is visible in cart");
+  await Cart.verifyTimedQuoteBadgeVisible(this.page);
 });
 
 When("I add a special request with text {string}", async function (text) {
@@ -1083,6 +1099,12 @@ Then("the flight details ticket numbers should start with {string} for both trav
   logger.info("Verifying flight details ticket numbers prefix for both travelers", { prefix });
   const ticketNumbers = await Cart.verifyFlightDetailsTicketNumbersStartWith(this.page, prefix, 2);
   logger.info("Flight details ticket numbers verified", { ticketNumbers, prefix });
+});
+
+Then("ticket numbers should be visible in flight details", async function () {
+  logger.info("Verifying ticket numbers are visible in flight details");
+  const { ticketNumbers } = await Cart.verifyTicketNumbersVisibleInFlightDetails(this.page, 2);
+  logger.info("Ticket numbers visible in flight details", { ticketNumbers });
 });
 
 Then("seat selection should be available from flight details", async function () {

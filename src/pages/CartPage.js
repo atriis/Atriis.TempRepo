@@ -167,6 +167,10 @@ const SELECTORS = {
   // Hotel rooms badge in cart trip summary (.dates-and-rooms from hotel-quote-summary.vue)
   ROOMS_BADGE: '.dates-and-rooms, .dates span',
 
+  // Timed quote badge — appears on quotes with a limited time window
+  // (flight-timed-quote.vue / app-timed-quote.vue both render `.timed-quote-badge`)
+  TIMED_QUOTE_BADGE: '.timed-quote-badge',
+
   // Special request (special-requests.vue)
   SPECIAL_REQUEST_CLICKABLE: '.quote-extras--special-requests .is-clickable',
   SPECIAL_REQUEST_TEXTAREA: '.quote-extras--special-requests textarea',
@@ -198,6 +202,10 @@ const SELECTORS = {
   // Seat tooltip red message (plane-seat.vue — .tooltip-item.red for unselectableMessage or cantBuyPaidSeats)
   // The tooltip is rendered by Element Plus as .el-popper.is-light (effect="light" in plane-seat.vue)
   SEAT_TOOLTIP_RED_MESSAGE: '.el-popper.is-light .tooltip-item.red',
+  // Preferred + Extra Legroom seat (plane-seat.vue — both classes applied via seatImageClass computed)
+  PREFERRED_EXTRA_LEGROOM_SEAT: '.deck-wrapper .plane-seat.preferred.extra-leg-room .seat',
+  // Visible seat tooltip container (Element Plus el-popper with light effect, visible state)
+  SEAT_TOOLTIP_VISIBLE: '.el-popper.is-light:not([aria-hidden="true"])',
   // First available seat in the deck (has a seat number visible)
   FIRST_AVAILABLE_SEAT: '.deck-wrapper .seat',
 
@@ -1782,6 +1790,39 @@ class CartPage {
   }
 
   /**
+   * Hovers over a preferred + extra legroom seat that has a price symbol in its inner span.
+   * Uses Playwright's hover to trigger the Element Plus tooltip.
+   * @returns {Promise<boolean>} true if a seat was hovered, false if none found
+   */
+  async hoverPreferredExtraLegroomSeat() {
+    const seats = this.page.locator(SELECTORS.PREFERRED_EXTRA_LEGROOM_SEAT);
+    const count = await seats.count();
+
+    for (let i = 0; i < count; i++) {
+      const seat = seats.nth(i);
+      const spanText = await seat.locator('span').first().textContent().catch(() => '');
+      if (/[$€£]/.test(spanText)) {
+        await seat.scrollIntoViewIfNeeded();
+        await seat.hover();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Gets the text content of the currently visible seat tooltip.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<string>} The full tooltip text
+   */
+  async getVisibleSeatTooltipText({ timeout = 10000 } = {}) {
+    const tooltip = this.page.locator(SELECTORS.SEAT_TOOLTIP_VISIBLE).first();
+    await tooltip.waitFor({ state: 'visible', timeout });
+    return (await tooltip.innerText()).trim();
+  }
+
+  /**
    * Gets the cart grand total price from the trip summary sidebar.
    * Uses the .price-total .amount selector from trip-summary.vue.
    * @returns {Promise<number|null>} The total price as a numeric value
@@ -1810,6 +1851,20 @@ class CartPage {
       .locator(SELECTORS.ROOMS_BADGE)
       .filter({ hasText: new RegExp(count + '\\s+' + label, 'i') });
     await badge.first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Waits for the timed quote badge to be visible in the cart.
+   * The badge appears on quotes with a limited time window (e.g. NDC IB).
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000] - Max wait time in ms
+   */
+  async waitForTimedQuoteBadge({ timeout = 30000 } = {}) {
+    await this.page
+      .locator(SELECTORS.TIMED_QUOTE_BADGE)
+      .first()
+      .waitFor({ state: 'visible', timeout });
   }
 
   /**

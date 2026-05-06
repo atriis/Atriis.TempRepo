@@ -14,6 +14,7 @@ const { extractPriceFromLocation } = require("../../src/utils/priceExtraction");
 const { CommonPage } = require("@pages/CommonPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { expect } = require("@playwright/test");
+const App = require("@dsl/App");
 const logger = require("@utils/logger").child("Common");
 
 setDefaultTimeout(120000);
@@ -40,6 +41,11 @@ Given("I work on tab {int}", async function (tabNumber) {
 
   this.page = pages[targetIndex];
   await this.page.bringToFront();
+});
+
+When("I refresh the page", async function () {
+  logger.info("Refreshing the current page");
+  await App.refreshPage(this.page);
 });
 
 When("I close tab {int}", async function (tabNumber) {

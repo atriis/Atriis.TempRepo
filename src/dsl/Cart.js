@@ -1027,6 +1027,49 @@ const Cart = {
   },
 
   /**
+   * Hovers over a green preferred + extra legroom seat in the seat map to trigger its tooltip.
+   * These seats have both .preferred and .extra-leg-room classes and a price symbol in the span.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async hoverGreenPreferredExtraLegroomSeat(page) {
+    if (!page) throw new Error('page is required');
+    logger.info('Hovering over a green preferred + extra legroom seat');
+
+    const cartPage = getPageObject(page, CartPage);
+    const hovered = await cartPage.hoverPreferredExtraLegroomSeat();
+
+    if (!hovered) {
+      throw new Error('No preferred extra legroom seats with a price found in the seat map');
+    }
+
+    logger.debug('Successfully hovered preferred extra legroom seat');
+    return { hovered: true };
+  },
+
+  /**
+   * Verifies the seat tooltip contains both 'Preferred' and 'Extra legroom' labels.
+   * Expects the tooltip to be visible after a seat has been clicked/hovered.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{tooltipText: string}>}
+   */
+  async verifyPreferredExtraLegroomTooltipVisible(page) {
+    if (!page) throw new Error('page is required');
+    logger.info('Verifying seat tooltip contains preferred + extra legroom labels');
+
+    const cartPage = getPageObject(page, CartPage);
+    const tooltipText = await cartPage.getVisibleSeatTooltipText();
+
+    expect(tooltipText.toLowerCase()).toContain('preferred');
+    expect(tooltipText.toLowerCase()).toContain('extra legroom');
+
+    logger.debug('Tooltip verified', { tooltipText });
+    return { tooltipText };
+  },
+
+  /**
    * Selects the first available seat with a price (containing $, €, or £).
    * Clicks the .is-flex ancestor div which carries the Vue handleSeatSelect click handler.
    *
@@ -1288,6 +1331,20 @@ const Cart = {
     if (!page) throw new Error('page is required');
     const cartPage = getPageObject(page, CartPage);
     await cartPage.waitForRoomsBadge(2);
+  },
+
+  /**
+   * Asserts that the cart shows a timed-quote badge on the active quote.
+   * Used for NDC quotes with a limited time window (e.g. Iberia NDC).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{ visible: true }>}
+   */
+  async verifyTimedQuoteBadgeVisible(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForTimedQuoteBadge();
+    return { visible: true };
   },
 
   /**
@@ -2731,6 +2788,40 @@ const Cart = {
     }
 
     return ticketNumbers;
+  },
+
+  /**
+   * Verifies that ticket numbers are visible (presence only) in the cart
+   * flight-details drawer for the expected number of travelers. Use when the
+   * issuing airline prefix is irrelevant — for example, GDS+NDC mixed flows
+   * where only ticket presence matters.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} [expectedTravelerCount=2]
+   * @returns {Promise<{verified: true, ticketNumbers: string[]}>}
+   */
+  async verifyTicketNumbersVisibleInFlightDetails(page, expectedTravelerCount = 2) {
+    if (!page) throw new Error('page is required');
+    if (!Number.isInteger(expectedTravelerCount) || expectedTravelerCount < 1) {
+      throw new Error('expectedTravelerCount must be a positive integer, got: ' + expectedTravelerCount);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const ticketNumbers = await cartPage.getPostTicketingTicketNumbers();
+
+    expect(
+      ticketNumbers.length,
+      `Expected ${expectedTravelerCount} visible ticket numbers in flight details, got ${ticketNumbers.length}: ${ticketNumbers.join(', ')}`,
+    ).toBe(expectedTravelerCount);
+
+    for (const ticketNumber of ticketNumbers) {
+      expect(
+        (ticketNumber || '').trim().length,
+        `Expected ticket number to be a non-empty string, got: "${ticketNumber}"`,
+      ).toBeGreaterThan(0);
+    }
+
+    return { verified: true, ticketNumbers };
   },
 
   /**
