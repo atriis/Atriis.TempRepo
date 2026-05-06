@@ -7,6 +7,7 @@ const { escapeRegex } = require("@utils/text");
 const SELECTORS = {
   // Search results
   LOCATION_LABEL: '.location-label',
+  CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   // Car model subtitle — visible only for SunnyCars supplier when makeModel is populated
   CAR_MODEL_SUBTITLE: '.car-model-subtitle',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
@@ -56,6 +57,10 @@ class CarResultsPage {
   getLocationLabelByIndex(index) {
     const selector = SELECTORS.LOCATION_LABEL;
     return this.page.locator(selector).nth(index);
+  }
+
+  getCityCenterAddressByIndex(index) {
+    return this.page.locator(SELECTORS.CITY_CENTER_ADDRESS).nth(index);
   }
 
   /**

@@ -1,4 +1,5 @@
 const { waitForText } = require("@utils/wait");
+const { buildFlexibleAddressRegex } = require("@utils/text");
 const { SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
 const { SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 
@@ -9,6 +10,7 @@ const { SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 
 const SELECTORS = {
   RESULTS_BUTTON: ".btn.btn--primary",
+  AGENCY_STATION_ADDRESS: '.station-details p.has-text-weight-bold.is-size-7',
   SHARE_MAIN_BUTTON: 'button.share-btn.mr-4',
   SHARE_QUOTE_RESULTS_BUTTON: '.share-btn.py-2',
   SHARE_QUOTE_EMAIL_BUTTON: '.share-bar button.share-btn.is-hidden-mobile',
@@ -74,6 +76,87 @@ class ResultsPage {
   }
 
   /**
+   * Gets the first agency station address element that contains the given text.
+   * Used to validate labels on the vendor selection page before clicking Select.
+   *
+   * @param {string} text - Text to match inside the station address paragraph
+   * @returns {Locator} Playwright locator for the matching agency station address
+   */
+  getAgencyStationAddressByText(text) {
+    return this.page.locator(SELECTORS.AGENCY_STATION_ADDRESS, { hasText: text }).first();
+  }
+
+  /**
+   * Gets the first agency station card that contains the given label.
+   *
+   * @param {string} stationLabel - Station label text to match
+   * @returns {Locator} Playwright locator for the first matching station card
+   */
+  getAgencyStationCardByLabel(stationLabel) {
+    return this.page
+      .locator('.car-vendor-station-preview')
+      .filter({ hasText: stationLabel })
+      .first();
+  }
+
+  /**
+   * Gets all agency station cards that contain the given label.
+   *
+   * @param {string} stationLabel - Station label text to match
+   * @returns {Locator} Playwright locator for all matching station cards
+   */
+  getAgencyStationCardsByLabel(stationLabel) {
+    return this.page
+      .locator('.car-vendor-station-preview')
+      .filter({ hasText: stationLabel });
+  }
+
+  /**
+   * Gets the first agency station card that contains both label and address.
+   *
+   * @param {string} stationLabel - Station label text to match
+   * @param {string} stationAddress - Station address text to match
+   * @returns {Locator} Playwright locator for the first matching station card
+   */
+  getAgencyStationCardByLabelAndAddress(stationLabel, stationAddress) {
+    const addressRegex = buildFlexibleAddressRegex(stationAddress);
+    const addressLocator = this.page.locator(SELECTORS.AGENCY_STATION_ADDRESS, { hasText: addressRegex });
+
+    return this.page
+      .locator('.car-vendor-station-preview')
+      .filter({ has: addressLocator })
+      .filter({ hasText: stationLabel })
+      .first();
+  }
+
+  /**
+   * Gets the Select button within the agency station card that contains the given label.
+   * Finds the car-vendor-station-preview that has the station address text,
+   * then returns the Select button within that card.
+   *
+   * @param {string} stationLabel - The station address label text to find
+   * @returns {Locator} Playwright locator for the Select button within the matching station card
+   */
+  getSelectButtonByAgencyStationLabel(stationLabel) {
+    return this.getAgencyStationCardByLabel(stationLabel)
+      .getByRole('button', { name: 'Select' })
+      .first();
+  }
+
+  /**
+   * Gets the Select button within the agency station card that matches label and address.
+   *
+   * @param {string} stationLabel - The station label text to find
+   * @param {string} stationAddress - The station address text to find
+   * @returns {Locator} Playwright locator for the Select button within the matching station card
+   */
+  getSelectButtonByAgencyStationLabelAndAddress(stationLabel, stationAddress) {
+    return this.getAgencyStationCardByLabelAndAddress(stationLabel, stationAddress)
+      .getByRole('button', { name: 'Select' })
+      .first();
+  }
+
+  /**
    * Gets the "Share" button locator.
    * @returns {Locator} Playwright locator for the first "Share" button
    */
@@ -116,6 +199,21 @@ class ResultsPage {
    */
   async waitForSelectText() {
     await this.getSelectButton().waitFor({ state: "visible", timeout: 60000 });
+  }
+
+  /**
+   * Returns true if a "Select" button is visible on the page within the given timeout.
+   * Safe to call even when no Select button exists.
+   * @param {number} [timeout=5000]
+   * @returns {Promise<boolean>}
+   */
+  async isSelectButtonVisible(timeout = 5000) {
+    try {
+      await this.getSelectButton().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /** 

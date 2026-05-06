@@ -1580,6 +1580,34 @@ const Cart = {
   },
 
   /**
+   * Verifies that a car location at a specific city-center index contains the expected address text.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} index - Zero-based index of the city-center location element
+   * @param {string} expectedLocation - Expected location text to find in the cart location value
+   * @throws {Error} If page, index, or expectedLocation are invalid
+   * @returns {Promise<void>}
+   */
+  async expectCityCenterLocationOnCartToContain(page, index, expectedLocation) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+
+    if (!expectedLocation || typeof expectedLocation !== 'string') {
+      throw new Error(`expectedLocation must be a non-empty string, got: ${expectedLocation}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    const text = await cartPage.getLocationByIndexOnCart(index, 'cityCenter').innerText();
+    expect(text.toLowerCase()).toContain(expectedLocation.toLowerCase());
+  },
+
+  /**
    * Verifies that a car location label at a specific index contains the expected label text (e.g., "Pick up", "Drop off").
    *
    * @param {import('playwright').Page} page - Playwright page instance
@@ -1606,6 +1634,24 @@ const Cart = {
 
     const text = await cartPage.getLocationLabelOnCartByIndex(index).innerText();
     expect(text.toLowerCase()).toContain(expectedLabel.toLowerCase());
+  },
+
+  async expectCityCenterAddressOnCartToContain(page, index, expectedAddress) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+
+    if (!expectedAddress || typeof expectedAddress !== 'string') {
+      throw new Error(`expectedAddress must be a non-empty string, got: ${expectedAddress}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const text = await cartPage.getCityCenterAddressOnCartByIndex(index).innerText();
+    expect(text.toLowerCase()).toContain(expectedAddress.toLowerCase());
   },
 
   /**

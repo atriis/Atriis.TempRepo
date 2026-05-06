@@ -78,6 +78,7 @@ const SELECTORS = {
   MORE_DETAILS_HOTEL_BUTTON: ".more-details",
   MORE_DETAILS_CAR_BUTTON: ".more-details.is-flex",
   LOCATION_LABEL: '.location-label',
+  CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
   LOCATION_AIRPORT: 'a[href*="maps.google.com"][target="_blank"]',
 
@@ -2093,6 +2094,10 @@ class CartPage {
   getLocationLabelOnCartByIndex(index) {
       const selector = SELECTORS.LOCATION_LABEL;
       return this.page.locator(selector).nth(index);
+  }
+
+  getCityCenterAddressOnCartByIndex(index) {
+    return this.page.locator(SELECTORS.CITY_CENTER_ADDRESS).nth(index);
   }
 
   /**

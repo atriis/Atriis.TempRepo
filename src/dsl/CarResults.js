@@ -3,6 +3,8 @@ const Results = require("./Results");
 const CarResultsPage = require("@pages/CarResultsPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { getPageObject } = require("@utils/pageObjectCache");
+const { normalizeTextStrict, tokenizeAddress } = require("@utils/text");
+
 
 /**
  * CarResults DSL
@@ -32,11 +34,21 @@ const CarResults = {
 
   /**
    * Adds a car to the cart when searching by city center.
-   * This flow includes an extra "Select" step.
+   *
+   * Handles two flows:
+   * 1. Called directly after search (station list visible) → clicks Select then Add to trip
+   * 2. Called after selectFirstCityCenterPickupLocation (already on car list) → clicks Add to trip only
    */
   async addCarCityCenterFromResultsPageToCart(page) {
+    const { ResultsPage } = require('@pages/ResultsPage');
+    const resultsPage = getPageObject(page, ResultsPage);
 
-    await Results.waitAndClickSelectButton(page);
+    // Click Select only when still on the station list (not yet navigated to car cards)
+    const hasSelectButton = await resultsPage.isSelectButtonVisible();
+    if (hasSelectButton) {
+      await Results.waitAndClickSelectButton(page);
+    }
+
     await Results.waitAndClickAddToTripButton(page);
 
     // Handle optional conflict modal
@@ -137,6 +149,27 @@ const CarResults = {
     expect(text.toLowerCase()).toContain(expectedLabel.toLowerCase());
   },
 
+  async expectCityCenterAddressToContain(page, index, expectedAddress) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+
+    if (!expectedAddress || typeof expectedAddress !== 'string') {
+      throw new Error(`expectedAddress must be a non-empty string, got: ${expectedAddress}`);
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForAddToTripText();
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const text = await carResultsPage.getCityCenterAddressByIndex(index).innerText();
+    expect(text.toLowerCase()).toContain(expectedAddress.toLowerCase());
+  },
+
   /**
    * Verifies the payment type label displayed on the car results page at the given index.
    * Expected values: "Pre paid" (when Is Prepaid = true) or "Pay On Departure" (when Is Prepaid = false).
@@ -211,6 +244,156 @@ const CarResults = {
   async selectFirstCityCenterPickupLocation(page) {
     if (!page) throw new Error('page is required');
     await Results.waitAndClickSelectButton(page);
+  },
+
+  /**
+   * Asserts that the agency station is visible on the vendor selection page.
+   * When expectedAddress is provided, this validates both label and address in the same station card.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedLabel - Expected station label text
+   * @param {string} [expectedAddress] - Optional expected station address text
+   * @throws {Error} If inputs are invalid or station is not visible
+   * @returns {Promise<void>}
+   */
+  async expectAgencyStationLabelOnVendorList(page, expectedLabel, expectedAddress) {
+    if (!page) throw new Error('page is required');
+    if (!expectedLabel || typeof expectedLabel !== 'string') {
+      throw new Error(`expectedLabel must be a non-empty string, got: ${expectedLabel}`);
+    }
+    if (expectedAddress != null && (typeof expectedAddress !== 'string' || !expectedAddress.trim())) {
+      throw new Error(`expectedAddress must be a non-empty string when provided, got: ${expectedAddress}`);
+    }
+
+    const normalizedLabel = expectedLabel.trim();
+    const normalizedAddress = typeof expectedAddress === 'string' ? expectedAddress.trim() : expectedAddress;
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForSelectText();
+
+    const stationCard = await this.findAgencyStationCard(page, normalizedLabel, normalizedAddress);
+
+    await expect(stationCard).toBeVisible({ timeout: 15000 });
+  },
+
+  /**
+   * Finds the best matching agency station card by label and optional address.
+   * For duplicate labels, chooses the highest-scoring address match.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} stationLabel - Station label text
+   * @param {string} [stationAddress] - Optional station address text
+   * @returns {Promise<import('playwright').Locator>} Locator for the best matching station card
+   */
+  async findAgencyStationCard(page, stationLabel, stationAddress) {
+    const resultsPage = getPageObject(page, ResultsPage);
+    const cards = resultsPage.getAgencyStationCardsByLabel(stationLabel);
+    const count = await cards.count();
+
+    if (count === 0) {
+      throw new Error(`No station cards found for label: ${stationLabel}`);
+    }
+
+    if (!stationAddress) {
+      return cards.first();
+    }
+
+    const expectedNormalized = normalizeTextStrict(stationAddress);
+    const expectedTokens = tokenizeAddress(stationAddress);
+
+    let bestIndex = -1;
+    let bestScore = -1;
+    let bestExact = false;
+    const candidateAddresses = [];
+
+    for (let i = 0; i < count; i++) {
+      const card = cards.nth(i);
+      const addressText = await card.locator('.station-details').first().innerText();
+      candidateAddresses.push(addressText.trim());
+
+      const actualNormalized = normalizeTextStrict(addressText);
+      const isExact = actualNormalized.includes(expectedNormalized) || expectedNormalized.includes(actualNormalized);
+
+      let tokenScore = 0;
+      for (const token of expectedTokens) {
+        if (actualNormalized.includes(token)) tokenScore++;
+      }
+
+      if (isExact && !bestExact) {
+        bestExact = true;
+        bestScore = tokenScore;
+        bestIndex = i;
+        continue;
+      }
+
+      if (bestExact && !isExact) {
+        continue;
+      }
+
+      if (tokenScore > bestScore) {
+        bestScore = tokenScore;
+        bestIndex = i;
+      }
+    }
+
+    const minimumScore = Math.max(2, Math.floor(expectedTokens.length * 0.6));
+    if (bestIndex === -1 || (!bestExact && bestScore < minimumScore)) {
+      throw new Error(
+        `No station card address matched "${stationAddress}" for label "${stationLabel}". Candidates: ${candidateAddresses.join(' | ')}`
+      );
+    }
+
+    return cards.nth(bestIndex);
+  },
+
+  /**
+   * Selects a city center pickup location by station label.
+   * When stationAddress is provided, selection is constrained to the card containing both fields.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} stationLabel - The station label to search for
+   * @param {string} [stationAddress] - Optional station address to disambiguate duplicate labels
+   * @throws {Error} If inputs are invalid, or if the station is not found
+   * @returns {Promise<void>}
+   */
+  async selectCityCenterPickupLocationByLabel(page, stationLabel, stationAddress) {
+    if (!page) throw new Error('page is required');
+    if (!stationLabel || typeof stationLabel !== 'string') {
+      throw new Error(`stationLabel must be a non-empty string, got: ${stationLabel}`);
+    }
+    if (stationAddress != null && (typeof stationAddress !== 'string' || !stationAddress.trim())) {
+      throw new Error(`stationAddress must be a non-empty string when provided, got: ${stationAddress}`);
+    }
+
+    const normalizedLabel = stationLabel.trim();
+    const normalizedAddress = typeof stationAddress === 'string' ? stationAddress.trim() : stationAddress;
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForSelectText();
+
+    const stationCard = await this.findAgencyStationCard(page, normalizedLabel, normalizedAddress);
+
+    await stationCard.waitFor({ state: 'visible', timeout: 15000 });
+
+    const normalizedCardText = (await stationCard.innerText()).toLowerCase().replace(/\s+/g, ' ').trim();
+    const normalizedLabelCheck = normalizedLabel.toLowerCase().replace(/\s+/g, ' ').trim();
+    const normalizedAddressCheck = normalizedAddress
+      ? normalizedAddress.toLowerCase().replace(/\s+/g, ' ').trim()
+      : null;
+
+    if (!normalizedCardText.includes(normalizedLabelCheck)) {
+      throw new Error(`Matched station card does not contain expected label: ${normalizedLabel}`);
+    }
+
+    if (normalizedAddressCheck && !normalizedCardText.includes(normalizedAddressCheck)) {
+      throw new Error(`Matched station card does not contain expected address: ${normalizedAddress}`);
+    }
+
+    const selectButton = stationCard.locator('.vendor-select-container .add-btn:visible').first();
+
+    await selectButton.waitFor({ state: 'visible', timeout: 15000 });
+    await selectButton.scrollIntoViewIfNeeded();
+    await selectButton.click({ timeout: 15000 });
   },
 
   /**

@@ -592,9 +592,19 @@ Then("the car location at airport index {int} should contain {string} on cart", 
   await Cart.expectAirportLocationOnCartToContain(this.page, index, expectedAirport);
 });
 
+Then("the car location at city center index {int} should contain {string} on cart", async function (index, expectedLocation) {
+  logger.info("Verifying car city center location contains expected location on cart", { index, expectedLocation });
+  await Cart.expectCityCenterLocationOnCartToContain(this.page, index, expectedLocation);
+});
+
 Then("the car location label at index {int} should contain {string} on cart", async function (index, expectedLabel) {
   logger.info("Verifying car location label at index contains expected label on cart", { index, expectedLabel });
   await Cart.expectLocationLabelOnCartToContain(this.page, index, expectedLabel);
+});
+
+Then("the car city center address at index {int} should contain {string} on cart", async function (index, expectedAddress) {
+  logger.info("Verifying car city center address at index contains expected address on cart", { index, expectedAddress });
+  await Cart.expectCityCenterAddressOnCartToContain(this.page, index, expectedAddress);
 });
 
 When("I add Premier Inn Extras Services in cart", async function () {

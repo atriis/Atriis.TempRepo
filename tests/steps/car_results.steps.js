@@ -33,9 +33,46 @@ Then("the car location label at index {int} should contain {string} on results",
   await CarResults.expectLocationLabelToContain(this.page, index, expectedLabel);
 });
 
+Then("the car city center address at index {int} should contain {string} on results", async function (index, expectedAddress) {
+  logger.info("Verifying car city center address at index contains expected address on results", { index, expectedAddress });
+  await CarResults.expectCityCenterAddressToContain(this.page, index, expectedAddress);
+});
+
 When("I select the first city center pickup location", async function () {
   logger.info("Selecting the first city center pickup location");
   await CarResults.selectFirstCityCenterPickupLocation(this.page);
+});
+
+Then("the agency station label should contain {string} on the vendor list", async function (expectedLabel) {
+  if (!expectedLabel) return;
+  logger.info("Verifying agency station label is visible on the vendor list", { expectedLabel });
+  await CarResults.expectAgencyStationLabelOnVendorList(this.page, expectedLabel);
+});
+
+Then("the agency station label should contain {string} and address should contain {string} on the vendor list", async function (expectedLabel, expectedAddress) {
+  if (!expectedLabel || !expectedAddress) return;
+  logger.info("Verifying agency station label and address are visible on the vendor list", { expectedLabel, expectedAddress });
+  await CarResults.expectAgencyStationLabelOnVendorList(this.page, expectedLabel, expectedAddress);
+});
+
+When("I select the city center pickup location by agency station label {string}", async function (stationLabel) {
+  if (!stationLabel) {
+    logger.info("Skipping selection - no station label provided, selecting first city center pickup location instead");
+    await CarResults.selectFirstCityCenterPickupLocation(this.page);
+    return;
+  }
+  logger.info("Selecting city center pickup location by agency station label", { stationLabel });
+  await CarResults.selectCityCenterPickupLocationByLabel(this.page, stationLabel);
+});
+
+When("I select the city center pickup location by agency station label {string} and address {string}", async function (stationLabel, stationAddress) {
+  if (!stationLabel || !stationAddress) {
+    logger.info("Skipping selection by label and address - missing value(s), selecting first city center pickup location instead");
+    await CarResults.selectFirstCityCenterPickupLocation(this.page);
+    return;
+  }
+  logger.info("Selecting city center pickup location by agency station label and address", { stationLabel, stationAddress });
+  await CarResults.selectCityCenterPickupLocationByLabel(this.page, stationLabel, stationAddress);
 });
 
 Then("none of the car result titles should contain the word {string}", async function (word) {
