@@ -13,7 +13,7 @@ Feature: 34382 Amadeus - Results are displayed with Pricing Options on search By
   So that I can compare branded fare options before booking
 
   @priority:high
-  Scenario: Search by schedule displays results with pricing options for both segments
+  Scenario: Search by schedule displays results with pricing options in pricing page
     Given I am logged in as "bruna_nlgov" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "AMS" to "JFK"
@@ -24,4 +24,6 @@ Feature: 34382 Amadeus - Results are displayed with Pricing Options on search By
     And I click to open first pricing options
     And I select the first option from pricing options
     And I add to trip from pricing options
-    Then flight results should be available
+    And I wait for "Your Selection" text to be visible
+    And I add "Your Selection" fare to trip
+    Then the booking status should be "Pending booking"

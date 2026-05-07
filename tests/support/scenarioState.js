@@ -1,10 +1,16 @@
 function getTravelerCount(world) {
+  // Prefer the UI-reported total — it is updated after every "add traveler" step and
+  // already accounts for all travelers (self + guests), making it the ground-truth count.
   if (Number.isInteger(world.selectedTravelerCount) && world.selectedTravelerCount > 0) {
     return world.selectedTravelerCount;
   }
 
-  // Fallback: use guest count only — the booker is not necessarily a traveler
-  return world.guestTravelerCount ?? 1;
+  // Fallback: use the explicitly tracked guest count when no UI count was captured.
+  if (Number.isInteger(world.guestTravelerCount) && world.guestTravelerCount > 0) {
+    return world.guestTravelerCount;
+  }
+
+  return 1;
 }
 
 function getStoredFlightNumbers(world) {

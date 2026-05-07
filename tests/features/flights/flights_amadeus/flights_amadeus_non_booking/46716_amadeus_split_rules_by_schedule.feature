@@ -16,6 +16,7 @@ Feature: 46716 Amadeus - Split rules by schedule quote is split correctly
     Given I am logged in as "ruimendes" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "NYC" to "LON"
+    And flight results should be available
     And I filter results by carrier "DL"
     And I select one flight segment by schedule
     And I wait for the change flight button to be visible
@@ -23,8 +24,7 @@ Feature: 46716 Amadeus - Split rules by schedule quote is split correctly
     And I select one flight segment by schedule
     And I wait for "Your Selection" text to be visible
     Then the "Separated Tickets" indicator should be visible in results
-    And I add to trip from pricing options
-    And I handle conflicting quotes if visible
+    And I add "Your Selection" fare to trip
     Then the booking status should be "Pending booking"
     Then the first quote destination should contain "London"
     And the last quote destination should contain "New York"

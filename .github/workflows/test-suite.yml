@@ -122,7 +122,7 @@ jobs:
           if-no-files-found: ignore
 
   report:
-    name: Summary
+    name: Test Report
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: test
@@ -337,15 +337,15 @@ jobs:
             node -e "
               const s = JSON.parse(require('fs').readFileSync('cucumber-html-report/summary.json', 'utf8'));
               const passRate = s.totalScenarios > 0 ? ((s.passed / s.totalScenarios) * 100).toFixed(1) : '0.0';
-              const status = s.failed > 0 ? ' SOME TESTS FAILED' : ' ALL TESTS PASSED';
+              const status = s.failed > 0 ? '🔴 SOME TESTS FAILED' : '🟢 ALL TESTS PASSED';
               console.log('| Metric | Value |');
               console.log('|--------|-------|');
-              console.log('| **Status** | ' + status + ' |');
-              console.log('| Total Scenarios | ' + s.totalScenarios + ' |');
-              console.log('|  Passed | ' + s.passed + ' |');
-              console.log('|  Failed | ' + s.failed + ' |');
-              console.log('|  Skipped | ' + s.skipped + ' |');
-              console.log('| Pass Rate | **' + passRate + '%** |');
+              console.log('| 🏷️ **Status** | ' + status + ' |');
+              console.log('| 🧪 Total Scenarios | ' + s.totalScenarios + ' |');
+              console.log('| ✅ Passed | ' + s.passed + ' |');
+              console.log('| ❌ Failed | ' + s.failed + ' |');
+              console.log('| ⏭️ Skipped | ' + s.skipped + ' |');
+              console.log('| 📊 Pass Rate | **' + passRate + '%** |');
             " >> $GITHUB_STEP_SUMMARY
           else
             echo " No Cucumber results summary available" >> $GITHUB_STEP_SUMMARY

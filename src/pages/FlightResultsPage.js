@@ -854,14 +854,19 @@ class FlightResultsPage {
     const overlay = this.getPricingOptionsOverlay();
     await overlay.waitFor({ state: 'visible', timeout: 30000 });
 
-    const amountElements = overlay.locator(SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE);
-    await amountElements.first().waitFor({ state: 'visible', timeout: 30000 });
+    const cards = overlay.locator(SELECTORS.PRICING_OPTIONS_ITEM);
+    await cards.first().waitFor({ state: 'visible', timeout: 30000 });
 
-    const count = await amountElements.count();
+    // Wait for the price inside the first card to be visible before iterating,
+    // preventing partial reads when cards render before their prices load.
+    await cards.first().locator('.amount').first().waitFor({ state: 'visible', timeout: 30000 });
+
+    const count = await cards.count();
     const amounts = [];
 
+    // Take only the first .amount per card (display price), ignoring the bracketed original price
     for (let i = 0; i < count; i++) {
-      const text = await amountElements.nth(i).textContent();
+      const text = await cards.nth(i).locator('.amount').first().textContent();
       const value = text ? Number(text.replace(/[^0-9.]/g, '')) : null;
       if (value !== null && !isNaN(value) && value > 0) {
         amounts.push(value);
