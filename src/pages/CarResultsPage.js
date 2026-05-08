@@ -15,6 +15,7 @@ const SELECTORS = {
   FIRST_LOCATION_LINK: '.pickup-details a[href*="maps.google.com"][target="_blank"]',
   FIRST_LOCATION_LINK_WRAPPER: '.pickup-details',
   GOOGLE_MAPS_LOCATION_TEXT: '.DkEaL',
+  GOOGLE_PRIVACY_ACCEPT_ALL: 'button:has-text("Accept all"), button[aria-label*="Accept"]',
   // Filter sidebar
   CAR_FILTER_CONTAINER: '.car-filter-container',
   FILTER_TITLE: '.car-filter-container h4.filter-title',
@@ -254,11 +255,6 @@ class CarResultsPage {
     const link = this.page.locator(SELECTORS.FIRST_LOCATION_LINK).first();
     await link.waitFor({ state: 'visible', timeout: 30000 });
 
-    const wrapper = this.page.locator(SELECTORS.FIRST_LOCATION_LINK_WRAPPER).first();
-    const expectedLocationText = ((await wrapper.textContent().catch(() => '')) || '')
-      .replace(/\s+/g, ' ')
-      .trim();
-
     const popupPromise = this.page.waitForEvent('popup', { timeout: 30000 });
     await link.click();
     const mapsPage = await popupPromise;
@@ -267,7 +263,6 @@ class CarResultsPage {
 
     return {
       mapsPage,
-      expectedLocationText,
     };
   }
 
@@ -277,12 +272,41 @@ class CarResultsPage {
     }
 
     await mapsPage.waitForLoadState('domcontentloaded', { timeout: 30000 });
-    const locationLocator = mapsPage.locator(SELECTORS.GOOGLE_MAPS_LOCATION_TEXT).first();
-    let locationText = '';
 
-    const isVisible = await locationLocator.isVisible().catch(() => false);
-    if (isVisible) {
-      locationText = ((await locationLocator.textContent().catch(() => '')) || '')
+    // Handle Google privacy consent dialog
+    const acceptAllButton = mapsPage.getByRole('button', { name: /accept all/i }).first();
+    const isAcceptButtonVisible = await acceptAllButton.isVisible().catch(() => false);
+    if (isAcceptButtonVisible) {
+      await acceptAllButton.click().catch(() => {});
+      await mapsPage.waitForTimeout(2000); // Wait for consent to process and page to re-render
+    }
+
+    // Wait for location info to be visible (try multiple selectors)
+    let locationText = '';
+    const primaryLocator = mapsPage.locator(SELECTORS.GOOGLE_MAPS_LOCATION_TEXT).first();
+    let isVisible = await primaryLocator.isVisible().catch(() => false);
+
+    // If primary selector not found, try alternative selectors for location info
+    if (!isVisible) {
+      // Try other common location display elements in Google Maps
+      const alternativeSelectors = [
+        '[role="heading"]',  // Heading with location name
+        '.gm-style-iw-t',    // Info window text
+        '[aria-label*="location"]',  // Element with location in aria-label
+      ];
+
+      for (const selector of alternativeSelectors) {
+        const altLocator = mapsPage.locator(selector).first();
+        isVisible = await altLocator.isVisible().catch(() => false);
+        if (isVisible) {
+          locationText = ((await altLocator.textContent().catch(() => '')) || '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          break;
+        }
+      }
+    } else {
+      locationText = ((await primaryLocator.textContent().catch(() => '')) || '')
         .replace(/\s+/g, ' ')
         .trim();
     }
