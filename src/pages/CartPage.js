@@ -3700,6 +3700,65 @@ class CartPage {
       await this.page.press('body', 'Escape');
     }
   }
+
+  /**
+   * Extracts all content from a terms modal section heading until the next h5 (or end of modal).
+   * Finds the h5 with the given heading text, then collects all text from that h5 through the next h5.
+   * 
+   * @param {string} headingText - The h5 heading text to find (e.g., "Rental period")
+   * @returns {Promise<string>} All text content from the section, joined by newlines
+   */
+  async extractTermsModalSectionContent(headingText) {
+    if (!headingText || typeof headingText !== 'string') {
+      throw new Error('headingText must be a non-empty string');
+    }
+
+    // Find the h5 with the matching text
+    const headingLocator = this.page.locator(SELECTORS.RENTAL_PERIOD_TERMS_MODAL).locator('h5').filter({ hasText: new RegExp(headingText, 'i') }).first();
+
+    try {
+      await headingLocator.waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      throw new Error(`Heading "${headingText}" not found in terms modal within 15s`);
+    }
+
+    // Use evaluateHandle to get all text from this h5 until the next h5
+    const content = await this.page.evaluate((heading, sectionHeading) => {
+      // Verify the element exists
+      if (!heading) return '';
+
+      const lines = [];
+      let currentElement = heading;
+      let foundEnd = false;
+
+      // Traverse siblings: collect content until next h5
+      while (currentElement && !foundEnd) {
+        // Add the element's own text if it has any
+        const text = currentElement.textContent?.trim();
+        if (text) {
+          lines.push(text);
+        }
+
+        // Move to next sibling
+        currentElement = currentElement.nextElementSibling;
+
+        // Stop if we hit another h5
+        if (currentElement?.tagName === 'H5') {
+          foundEnd = true;
+          break;
+        }
+
+        // Stop if we hit the end of the modal or a major boundary
+        if (!currentElement || currentElement.classList?.contains('modal') || currentElement.classList?.contains('dialog')) {
+          break;
+        }
+      }
+
+      return lines.join('\n');
+    }, headingLocator.elementHandle(), headingText);
+
+    return content || '';
+  }
 }
 
 // Export CartPage and SELECTORS for use in tests and DSL

@@ -135,22 +135,18 @@ When("I close the terms modal", async function () {
   this.termsModalClosed = true;
 });
 
-Then("the booking should succeed", async function () {
-  logger.info("Verifying booking succeeded");
-  
-  // For cars, we verify booking succeeded by checking we're not on an error page
-  // Try to find error indicators - if found, booking failed
-  try {
-    const errorPresent = await this.page.locator(".error-message, .alert-danger, [role='alert']:has-text('error')").isVisible({ timeout: 2000 }).catch(() => false);
-    if (errorPresent) {
-      throw new Error("Booking failed - error message found on page");
-    }
-  } catch (e) {
-    if (e.message.includes("Booking failed")) throw e;
-    // Timeout is expected if no error is present
-  }
-  
-  logger.info("Booking succeeded - no error page detected");
+Then("I should see the {string} section in the terms modal with content:", async function (sectionHeading, docString) {
+  const { Cart } = require("@dsl");
+  logger.info(`Verifying terms modal section: ${sectionHeading}`);
+  const expectedContent = docString.split('\n').filter(line => line.trim());
+  await Cart.verifyTermsModalSectionContains(this.page, sectionHeading, expectedContent);
+});
+
+Then("the terms modal should display the {string} section", async function (sectionHeading) {
+  const { Cart } = require("@dsl");
+  logger.info(`Extracting and logging terms modal section: ${sectionHeading}`);
+  const result = await Cart.extractAndVerifyTermsModalSection(this.page, sectionHeading);
+  this.termsModalSection = result;
 });
 
 When("I open the first car location link in results", async function () {
@@ -160,3 +156,4 @@ When("I open the first car location link in results", async function () {
 Then("I should see the selected car location in Google Maps", async function () {
   throw new Error("TODO: Implement Google Maps location validation for the newly opened tab/window.");
 });
+
