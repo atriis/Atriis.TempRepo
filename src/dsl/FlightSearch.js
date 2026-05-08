@@ -326,6 +326,7 @@ const FlightSearch = {
     {
       departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
       returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      searchType = 'completeTrip',
     } = {},
   ) {
     if (!page) throw new Error('page is required');
@@ -335,7 +336,7 @@ const FlightSearch = {
     }
 
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
-    logger.info('Starting roundTrip flight search with cabin class', { from, to, cabinClass });
+    logger.info('Starting roundTrip flight search with cabin class', { from, to, cabinClass, searchType });
 
     const flightSearchPage = getPageObject(page, FlightSearchPage);
     const searchPage = getPageObject(page, SearchPage);
@@ -350,10 +351,16 @@ const FlightSearch = {
       endIndex: returnIndex,
     });
     await flightSearchPage.selectFlightClass(cabinClass);
-    await flightSearchPage.selectCompleteTrip();
+
+    if (searchType === 'bySchedule') {
+      await flightSearchPage.selectBySchedule();
+    } else {
+      await flightSearchPage.selectCompleteTrip();
+    }
+
     await searchPage.waitAndClickSearchButton();
 
-    return { searched: true, from, to, tripType: 'roundTrip', searchType: 'completeTrip', cabinClass };
+    return { searched: true, from, to, tripType: 'roundTrip', searchType, cabinClass };
   },
 
   /**
@@ -477,6 +484,13 @@ const FlightSearch = {
       tripType: "roundTrip",
       departureIndex,
       returnIndex,
+    });
+  },
+
+  async searchFlightByScheduleWithCabinClass(page, routeInput, cabinClass, options = {}) {
+    return await this.searchFlightRoundTripWithCabinClass(page, routeInput, cabinClass, {
+      ...options,
+      searchType: 'bySchedule',
     });
   },
 

@@ -31,7 +31,7 @@ const Cart = {
     }
   },
 
-  async waitForTargetOrHandlePriceChange(page, targetLocator, targetDescription, timeout = 45000) {
+  async waitForTargetOrHandlePriceChange(page, targetLocator, targetDescription, timeout = process.env.CI ? 75000 : 45000) {
     if (!page) {
       throw new Error('page is required');
     }

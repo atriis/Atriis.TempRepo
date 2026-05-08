@@ -12,10 +12,11 @@ Feature: 31202 By Schedule - Cheapest combination price not higher than your sel
   So that I know the cheapest option is truly the best deal
 
   Scenario: Cheapest combination price is not higher than your selection
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "coreytaylor" booking a new trip
     And I have added a random guest traveler
     And I have added myself as the traveler
-    When I search for a flight by schedule from "LON" to "FRA"
+    When I search for a flight by schedule from "PRG" to "FRA"
+    And flight results should be available
     And I filter results by carrier "Lufthansa"
     And I select one flight segment by schedule
     And I wait for the change flight button to be visible

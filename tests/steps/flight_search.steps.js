@@ -111,6 +111,11 @@ When("I search for a flight by schedule from {string} to {string}", async functi
   await FlightSearch.searchFlightBySchedule(this.page, { from, to });
 });
 
+When('I search for a {string} class flight by schedule from {string} to {string}', async function (cabinClass, from, to) {
+  logger.info('Searching for flight by schedule with cabin class', { cabinClass, from, to });
+  await FlightSearch.searchFlightByScheduleWithCabinClass(this.page, { from, to }, cabinClass);
+});
+
 When('I search for a flight by schedule from {string} to {string} with preferred carrier {string} in the edit flight search', async function (from, to, carrier) {
   logger.info('Searching from edit flight search by schedule with preferred carrier', { from, to, carrier });
   await FlightSearch.searchFlightByScheduleWithPreferredCarrierInEditSearch(this.page, from, to, carrier);

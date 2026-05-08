@@ -14,7 +14,7 @@ Feature: 34533 Amadeus - Proceeding to checkout for 2nd flight search without er
     # --- First flight search & checkout round-trip ---
     Given I am logged in as "ruimariano" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "LON" to "SEA"
+    When I search for a round trip flight from "LON" to "BKK"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
