@@ -115,31 +115,25 @@ Then("the {string} filter should be visible in car results", async function (fil
 // PAYMENT & TERMS - CARS SPECIFIC
 // ========================================
 
-When("I click on the payment terms link in the trip overview", async function () {
+When("I click on the terms and conditions link in the trip overview", async function () {
   const { Cart } = require("@dsl");
-  logger.info("Clicking payment terms link in trip overview");
+  logger.info("Clicking terms and conditions link in trip overview");
   await Cart.clickPaymentTermsLink(this.page);
-  this.termsModalOpenedAtStep = true;
+  this.termsAndConditionsModalOpenedAtStep = true;
 });
 
-Then("the rental period terms modal should be displayed", async function () {
+When("I close the terms and conditions modal", async function () {
   const { Cart } = require("@dsl");
-  logger.info("Verifying rental period terms modal is displayed");
-  await Cart.verifyTermsModalDisplayed(this.page);
-});
-
-When("I close the terms modal", async function () {
-  const { Cart } = require("@dsl");
-  logger.info("Closing terms modal");
+  logger.info("Closing terms and conditions modal");
   await Cart.closeTermsModal(this.page);
-  this.termsModalClosed = true;
+  this.termsAndConditionsModalClosed = true;
 });
 
-Then("the terms modal should display the {string} section", async function (sectionHeading) {
+Then("The terms and conditions modal should display the {string} section", async function (sectionHeading) {
   const { Cart } = require("@dsl");
-  logger.info(`Extracting terms modal section: ${sectionHeading}`);
+  logger.info(`Extracting terms and conditions modal section: ${sectionHeading}`);
   const result = await Cart.extractAndVerifyTermsModalSection(this.page, sectionHeading);
-  this.termsModalSection = result;
+  this.termsAndConditionsSection = result;
 });
 
 When("I open the first car location link in results", async function () {

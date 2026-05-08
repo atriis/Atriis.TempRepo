@@ -107,12 +107,6 @@ const SELECTORS = {
   OOP_JUSTIFICATION_SECTION: '.oop-justification', // Section containing the OOP justification dropdown/text (oop-justification.vue)
   OOP_JUSTIFICATION_SELECT: '.oop-justification .app-select .el-select', // The el-select wrapper inside the OOP justification section
   OOP_JUSTIFICATION_SELECTED_VALUE: '.oop-justification .el-select__selected-item',
-
-  // Sunny Cars extras
-  SUNNY_FLIGHT_NUMBER_CLICKABLE: '.car-sunnycars-flight .extra__btns .is-clickable',
-  SUNNY_FLIGHT_NUMBER_INPUT: '.car-sunnycars-flight .extras-card input',
-  SUNNY_FLIGHT_NUMBER_SAVE_BUTTON: '.car-sunnycars-flight .extras-card .btns .no-border',
-  SUNNY_FLIGHT_NUMBER_SUCCESS_ICON: '.car-sunnycars-flight .success-icon.green',
   
   // Extras
   EDIT_EXTRAS_BUTTON: ".extra__btns", //All edit buttons in extras section have the same class, so we will use nth(index) to click the right one when needed
@@ -1493,30 +1487,6 @@ class CartPage {
     await btn.waitFor({ state: 'visible', timeout });
     await btn.click();
     await this.waitForBaggageContent(timeout);
-  }
-
-  async openSunnyFlightNumberExtras(timeout = 10000) {
-    const button = this.page.locator(SELECTORS.SUNNY_FLIGHT_NUMBER_CLICKABLE).first();
-    await button.waitFor({ state: 'visible', timeout });
-    await button.click();
-    await this.page.locator(SELECTORS.SUNNY_FLIGHT_NUMBER_INPUT).first().waitFor({ state: 'visible', timeout });
-  }
-
-  async fillSunnyFlightNumber(flightNumber, timeout = 10000) {
-    if (!flightNumber || typeof flightNumber !== 'string') {
-      throw new Error('flightNumber must be a non-empty string');
-    }
-
-    const input = this.page.locator(SELECTORS.SUNNY_FLIGHT_NUMBER_INPUT).first();
-    await input.waitFor({ state: 'visible', timeout });
-    await input.fill(flightNumber);
-  }
-
-  async saveSunnyFlightNumber(timeout = 10000) {
-    const button = this.page.locator(SELECTORS.SUNNY_FLIGHT_NUMBER_SAVE_BUTTON).first();
-    await button.waitFor({ state: 'visible', timeout });
-    await button.click();
-    await this.page.locator(SELECTORS.SUNNY_FLIGHT_NUMBER_SUCCESS_ICON).first().waitFor({ state: 'visible', timeout: 30000 });
   }
 
   /**
