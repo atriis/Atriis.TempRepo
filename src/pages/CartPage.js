@@ -3713,18 +3713,21 @@ class CartPage {
       throw new Error('headingText must be a non-empty string');
     }
 
-    // Find the h5 with the matching text
-    const headingLocator = this.page.locator(SELECTORS.RENTAL_PERIOD_TERMS_MODAL).locator('h5').filter({ hasText: new RegExp(headingText, 'i') }).first();
-
+    // Wait for the target h5 heading to be visible (this ensures modal is open and content is rendered)
+    const headingLocator = this.page.locator('h5').filter({ hasText: new RegExp(headingText, 'i') }).first();
+    
     try {
       await headingLocator.waitFor({ state: 'visible', timeout: 15000 });
     } catch {
       throw new Error(`Heading "${headingText}" not found in terms modal within 15s`);
     }
 
-    // Use evaluateHandle to get all text from this h5 until the next h5
-    const content = await this.page.evaluate((heading, sectionHeading) => {
-      // Verify the element exists
+    // Extract section content from h5 heading until next h5
+    const content = await this.page.evaluate((targetHeading) => {
+      // Find the h5 with matching text (case-insensitive)
+      const headings = Array.from(document.querySelectorAll('h5'));
+      const heading = headings.find(h => h.textContent.toLowerCase().includes(targetHeading.toLowerCase()));
+      
       if (!heading) return '';
 
       const lines = [];
@@ -3755,7 +3758,7 @@ class CartPage {
       }
 
       return lines.join('\n');
-    }, headingLocator.elementHandle(), headingText);
+    }, headingText);
 
     return content || '';
   }
