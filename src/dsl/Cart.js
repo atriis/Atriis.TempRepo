@@ -3514,61 +3514,6 @@ const Cart = {
     return { section: sectionHeading, content };
   },
 
-  /**
-   * Verifies that a terms modal section contains expected content.
-   * Extracts the section, checks for expected text, and logs findings.
-   * 
-   * @param {import('playwright').Page} page
-   * @param {string} sectionHeading - The section heading to validate
-   * @param {string|string[]} expectedContent - Text to find in the section (or array of texts)
-   * @returns {Promise<boolean>} True if all expected content is found
-   */
-  async verifyTermsModalSectionContains(page, sectionHeading, expectedContent) {
-    if (!page) throw new Error('page is required');
-    if (!sectionHeading || typeof sectionHeading !== 'string') {
-      throw new Error('sectionHeading must be a non-empty string');
-    }
-
-    const cartPage = getPageObject(page, CartPage);
-    logger.info(`Verifying terms modal section "${sectionHeading}" contains expected content`);
-
-    const content = await cartPage.extractTermsModalSectionContent(sectionHeading);
-
-    if (!content) {
-      throw new Error(`No content found for section "${sectionHeading}" in terms modal`);
-    }
-
-    // Normalize expected content to array
-    const expectedArray = Array.isArray(expectedContent) ? expectedContent : [expectedContent];
-    const contentUpper = content.toUpperCase();
-
-    const findings = [];
-    let allFound = true;
-
-    for (const expected of expectedArray) {
-      const expectedUpper = expected.toUpperCase();
-      const found = contentUpper.includes(expectedUpper);
-      findings.push({ expected, found });
-      if (!found) allFound = false;
-    }
-
-    logger.info(`Terms modal section verification:`, {
-      section: sectionHeading,
-      fullContent: content,
-      findings,
-    });
-
-    if (!allFound) {
-      const missing = findings.filter(f => !f.found).map(f => f.expected);
-      throw new Error(
-        `Section "${sectionHeading}" missing expected content: ${missing.join(', ')}\n` +
-        `Full section content:\n${content}`
-      );
-    }
-
-    return true;
-  },
-
   async addSunnyFlightNumber(page, flightNumber = 'BA123') {
     if (!page) throw new Error('page is required');
     if (!flightNumber || typeof flightNumber !== 'string') {

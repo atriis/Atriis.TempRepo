@@ -135,16 +135,9 @@ When("I close the terms modal", async function () {
   this.termsModalClosed = true;
 });
 
-Then("I should see the {string} section in the terms modal with content:", async function (sectionHeading, docString) {
-  const { Cart } = require("@dsl");
-  logger.info(`Verifying terms modal section: ${sectionHeading}`);
-  const expectedContent = docString.split('\n').filter(line => line.trim());
-  await Cart.verifyTermsModalSectionContains(this.page, sectionHeading, expectedContent);
-});
-
 Then("the terms modal should display the {string} section", async function (sectionHeading) {
   const { Cart } = require("@dsl");
-  logger.info(`Extracting and logging terms modal section: ${sectionHeading}`);
+  logger.info(`Extracting terms modal section: ${sectionHeading}`);
   const result = await Cart.extractAndVerifyTermsModalSection(this.page, sectionHeading);
   this.termsModalSection = result;
 });
