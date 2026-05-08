@@ -278,7 +278,7 @@ const SELECTORS = {
   // Loyalty number extras (loyalty-number.vue)
   LOYALTY_SECTION: '.quote-extras--loyalty-number',
   LOYALTY_CLICKABLE: '.quote-extras--loyalty-number .is-clickable, .car-driver-loyalty .card-title, .quote-extras--container .is-clickable:has-text("Loyalty ID")',
-  LOYALTY_ADD_BUTTON: '.quote-extras--loyalty-number .add-text, .quote-extras--loyalty-number .add-btn, .quote-extras--container .add-text:has-text("Add")',
+  LOYALTY_ADD_BUTTON: '.car-driver-loyalty .is-clickable, .quote-extras--loyalty-number .add-text, .quote-extras--loyalty-number .add-btn, .quote-extras--container .add-text:has-text("Add")',
   LOYALTY_NEW_RADIO: '.quote-extras--loyalty-number .el-radio-group .el-radio:nth-child(2)',
   LOYALTY_CHAIN_SELECT: '.quote-extras--loyalty-number .select-container .select-element:first-child .el-select',
   LOYALTY_NUMBER_INPUT: '.quote-extras--loyalty-number .select-container .select-element:last-child input, .quote-extras--loyalty-number .el-input__inner, .car-driver-loyalty input[type="text"], .car-driver-loyalty .el-input__inner',
@@ -2973,6 +2973,15 @@ class CartPage {
     const addButton = this.page.locator(SELECTORS.LOYALTY_ADD_BUTTON).first();
     await addButton.waitFor({ state: 'visible', timeout: 15000 });
     await addButton.click();
+  }
+
+  async clickLoyaltyAddButton() {
+    const addButton = this.page.locator(SELECTORS.LOYALTY_ADD_BUTTON).first();
+    await addButton.waitFor({ state: 'visible', timeout: 15000 });
+    await addButton.click();
+    // Wait for the input field to appear after clicking Add
+    const input = this.page.locator(SELECTORS.LOYALTY_NUMBER_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout: 10000 });
   }
 
   /**

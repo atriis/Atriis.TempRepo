@@ -281,34 +281,27 @@ class CarResultsPage {
       await mapsPage.waitForTimeout(2000); // Wait for consent to process and page to re-render
     }
 
-    // Wait for location info to be visible (try multiple selectors)
+    // Wait for location text to become visible — try multiple selectors with explicit waits
+    const locationSelectors = [
+      SELECTORS.GOOGLE_MAPS_LOCATION_TEXT,  // .DkEaL — plus code result item
+      '[role="heading"]',                   // location heading in results panel
+      '.gm-style-iw-c [role="button"]',     // info window on pin click
+      'h1[data-attrid="title"]',            // place title for named locations
+    ];
+
     let locationText = '';
-    const primaryLocator = mapsPage.locator(SELECTORS.GOOGLE_MAPS_LOCATION_TEXT).first();
-    let isVisible = await primaryLocator.isVisible().catch(() => false);
-
-    // If primary selector not found, try alternative selectors for location info
-    if (!isVisible) {
-      // Try other common location display elements in Google Maps
-      const alternativeSelectors = [
-        '[role="heading"]',  // Heading with location name
-        '.gm-style-iw-t',    // Info window text
-        '[aria-label*="location"]',  // Element with location in aria-label
-      ];
-
-      for (const selector of alternativeSelectors) {
-        const altLocator = mapsPage.locator(selector).first();
-        isVisible = await altLocator.isVisible().catch(() => false);
-        if (isVisible) {
-          locationText = ((await altLocator.textContent().catch(() => '')) || '')
-            .replace(/\s+/g, ' ')
-            .trim();
-          break;
-        }
+    for (const selector of locationSelectors) {
+      const locator = mapsPage.locator(selector).first();
+      const visible = await locator
+        .waitFor({ state: 'visible', timeout: 5000 })
+        .then(() => true)
+        .catch(() => false);
+      if (visible) {
+        locationText = ((await locator.textContent().catch(() => '')) || '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (locationText) break;
       }
-    } else {
-      locationText = ((await primaryLocator.textContent().catch(() => '')) || '')
-        .replace(/\s+/g, ' ')
-        .trim();
     }
 
     return {

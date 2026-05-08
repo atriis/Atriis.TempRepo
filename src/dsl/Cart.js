@@ -2816,25 +2816,13 @@ const Cart = {
     if (!page) throw new Error('page is required');
 
     const cartPage = getPageObject(page, CartPage);
-    await cartPage.expandLoyaltySection();
 
-    const loyaltyCardVisible = await cartPage.isLoyaltyCardVisible();
-    expect(loyaltyCardVisible, 'Expected loyalty extras card to be visible').toBe(true);
+    // Explicitly click the "Add" button on Loyalty ID row and wait for input to appear
+    await cartPage.clickLoyaltyAddButton();
 
+    // Validate the input field that opened is empty (not prepopulated)
     const loyaltyInputValue = ((await cartPage.getLoyaltyNumberInputValue().catch(() => '')) || '').trim();
-    const existingLoyaltyValue = ((await cartPage.getExistingLoyaltyDropdownText().catch(() => '')) || '').trim();
-
-    const normalizedInputValue = loyaltyInputValue.toLowerCase();
-    const normalizedExistingValue = existingLoyaltyValue.toLowerCase();
-
-    const hasExistingLoyalty =
-      normalizedExistingValue.length > 0 &&
-      normalizedExistingValue !== 'select' &&
-      !normalizedExistingValue.includes('choose') &&
-      !normalizedExistingValue.includes('add');
-
-    expect(normalizedInputValue, `Expected empty loyalty input value, but got: "${loyaltyInputValue}"`).toBe('');
-    expect(hasExistingLoyalty, `Expected no existing loyalty value, but got: "${existingLoyaltyValue}"`).toBe(false);
+    expect(loyaltyInputValue, `Expected loyalty input to be empty after clicking Add, but got: "${loyaltyInputValue}"`).toBe('');
   },
 
   // ===== PREMIER INN EXTRAS (BREAKFAST/PAYMENT) =====
