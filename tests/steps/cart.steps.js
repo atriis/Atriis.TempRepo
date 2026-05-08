@@ -181,6 +181,16 @@ When("I click to edit the baggage extras section", async function () {
   await Cart.openBaggageExtras(this.page);
 });
 
+Then("the baggage carrier should display {string}", async function (expectedCarrier) {
+  logger.info("Verifying baggage carrier name", { expectedCarrier });
+  await Cart.verifyBaggageCarrierName(this.page, expectedCarrier);
+});
+
+When("I select a baggage option", async function () {
+  logger.info("Selecting first available baggage option");
+  await Cart.selectFirstBaggageOption(this.page);
+});
+
 When("I select the {string} baggage option for the {string} flight", async function (optionText, direction) {
   logger.info("Selecting baggage option in cart for flight direction", { optionText, direction });
   await Cart.selectBaggageOptionForFlightDirection(this.page, optionText, direction);
@@ -995,6 +1005,15 @@ Then("the breakfast type option should not be visible in extras", async function
 });
 
 // ========================================
+// FLIGHT OPTIONAL SERVICES (EXTRAS)
+// ========================================
+
+Then("the Optional Services extras section should be visible", async function () {
+  logger.info("Expanding extras and verifying Optional Services section is visible");
+  await Cart.verifyOptionalServicesSectionVisible(this.page);
+});
+
+// ========================================
 // MORE DETAILS DRAWER â€” PRICE
 // ========================================
 
@@ -1231,3 +1250,18 @@ Then("gender is not selected", async function () {
   logger.info("Verifying gender is not pre-selected in passenger info");
   await Cart.verifyGenderIsNotSelected(this.page);
 });
+
+When("I copy the trip", async function () {
+  logger.info("Copying the trip via the three-dots menu");
+  this.page = await Cart.copyTrip(this.page);
+});
+
+Then("the trip is created successfully with the same flight", async function () {
+  logger.info("Verifying copied trip contains the same flight number", { flightNumber: this.storedFlightNumber });
+  await Cart.verifyTripHasSameFlightNumber(this.page, this.storedFlightNumber);
+});
+
+
+
+
+

@@ -1013,6 +1013,21 @@ class FlightResultsPage {
   }
 
   /**
+   * Waits for then clicks a Fare rules button scoped to the pricing options
+   * overlay, so background buttons blocked by the overlay are excluded.
+   *
+   * @param {number} index - Zero-based index within the overlay (default: 0)
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async waitAndClickFareRulesButtonInPricingOptions(index = 0, timeout = 60000) {
+    const button = this.getPricingOptionsOverlay()
+      .getByRole('button', { name: SELECTORS.FARE_RULES_BUTTON_NAME })
+      .nth(index);
+    await button.waitFor({ state: 'visible', timeout });
+    await button.click();
+  }
+
+  /**
    * Clicks the "Fare rules" button.
    *
    * @param {number} index - Zero-based index of the fare rules button (default: 0)
@@ -1021,7 +1036,7 @@ class FlightResultsPage {
     await this.getFareRulesButton()
       .nth(index)
       .click();
-  } 
+  }
 
   /**
    * Waits for the fare rules note to become visible.

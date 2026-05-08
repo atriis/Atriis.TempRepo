@@ -17,34 +17,30 @@ Feature: 66138 Lufthansa NDC - Complete trip booking and verifying branded fares
     Given I am logged in as "clara" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "FRA" to "MIA"
-    Then flight results should be available
-    When I filter results by carrier "Lufthansa"
-
-    # Verify branded fares from flight details on results page
-    # TODO: Implement step to verify branded fares from flight details on results page (open flight details → click branded fares button → verify ancillaries text → close)
+    And flight results should be available
     When I click to open flight details
-    # TODO: Click branded fares button inside flight details and verify "The following ancillaries are included in this brand." text
+    And I open branded fares from flight details
+    Then the branded fare ancillaries text should be visible
+    And I close branded fares drawer
     And I close flight details window
-
-    # Verify branded fares from pricing options on results page
     When I click to open first pricing options
-    # TODO: Verify branded fares accessible from pricing options (click flight details → branded fares → verify text → close)
+    And I open branded fares from pricing options
+    Then the branded fare ancillaries text should be visible
+    And I close branded fares drawer
     And I close pricing options modal
-
-    # Add first flight to cart
     When I add the first flight to cart
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
-
-    # Verify branded fares from flight details in cart
-    # TODO: Implement step to verify branded fares from flight details in cart page (open flight details → click branded fares → verify ancillaries text → close)
-
-    # Accept T&C and hold
+    When I open flight details in cart
+    And I open branded fares from cart flight details
+    Then the branded fare ancillaries text should be visible
+    And I close branded fares drawer in cart
+    And I close flight details window
     When I accept Terms & Conditions
     And I hold the trip
-
-    # Verify branded fares from flight details after hold
-    # TODO: Implement step to verify branded fares from flight details after hold (same as above)
-
-    # Cancel the trip
+    Then the booking status should be "On hold"
+    When I open flight details in cart
+    And I open branded fares from cart flight details
+    Then the branded fare ancillaries text should be visible
+    And I close branded fares drawer in cart
+    And I close flight details window
     Then I successfully cancel the trip

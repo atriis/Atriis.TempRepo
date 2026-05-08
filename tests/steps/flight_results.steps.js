@@ -287,6 +287,11 @@ When('I select the first option from pricing options', async function () {
   await FlightResults.selectFirstPricingOptionInModal(this.page);
 });
 
+When("I click to open the second fare rules from pricing options modal", async function () {
+  logger.info("Clicking to open the second fare rules from pricing options modal");
+  await FlightResults.clickToOpenSecondFareRulesFromPricingOptions(this.page);
+});
+
 Then('the cabin class displayed in pricing options should be {string}', async function (expectedClass) {
   logger.info('Verifying cabin class in pricing options', { expectedClass });
   await FlightResults.verifyCabinClassInPricingOptions(this.page, expectedClass);
@@ -610,6 +615,7 @@ Then("I should see the fare rules note about strictest terms", async function ()
   expect(noteText).toContain('Fare rules would be applied according to the strictest terms');
 });
 
+
 Then("the seat preview only message should be visible", async function () {
   logger.info("Verifying results seat preview only message");
   const actualMessage = await FlightResults.verifySeatPreviewOnlyMessage(this.page);
@@ -848,4 +854,9 @@ Then('the flight details should show connection advisory with transport change',
 Then('the share email preview should contain equipment for flight segments', async function () {
   logger.info('Verifying share email preview contains equipment information for flight segments');
   await FlightResults.verifyShareEmailContainsEquipment(this.page);
+});
+
+Then("the conflicting quotes dialog should be displayed after clicking add to cart", async function () {
+  logger.info("Adding first flight to cart and verifying conflicting quotes dialog appears");
+  await FlightResults.addFirstFlightToCartAndVerifyConflictingQuotesDialog(this.page);
 });

@@ -1489,11 +1489,12 @@ const FlightResults = {
   },
 
 async clickToOpenFareRulesFromResultsModal(page) {
- if (!page) {
-   throw new Error('page is required');
- }
- 
- await FlightResults.clickToOpenFareRules(page, 10);
+  if (!page) {
+    throw new Error('page is required');
+  }
+  const flightResultsPage = getPageObject(page, FlightResultsPage);
+  await flightResultsPage.waitAndClickFareRulesButtonInPricingOptions(0);
+  await flightResultsPage.waitForFareRulesNote();
 },
 
   /**
@@ -2085,6 +2086,39 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     }
 
     return timeTexts;
+  },
+
+  /**
+   * Opens the second fare rules drawer within the pricing options modal.
+   * Uses a scoped locator (index 1 within the overlay) to avoid targeting
+   * background buttons blocked by the overlay.
+   * @param {import('playwright').Page} page
+   */
+  async clickToOpenSecondFareRulesFromPricingOptions(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitAndClickFareRulesButtonInPricingOptions(1);
+    await flightResultsPage.waitForFareRulesNote();
+  },
+
+  /**
+   * Clicks "Add to trip" and then asserts the conflicting quotes warning dialog is visible.
+   *
+   * Use this when searching for the same flight a second time on an existing trip —
+   * the conflict modal should appear instead of navigating to the cart.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{dialogVisible: boolean}>}
+   */
+  async addFirstFlightToCartAndVerifyConflictingQuotesDialog(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    await Results.waitAndClickAddToTripButton(page);
+    await Results.verifyConflictQuoteModalVisible(page);
+
+    return { dialogVisible: true };
   },
 }
 

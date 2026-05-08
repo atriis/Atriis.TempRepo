@@ -2481,6 +2481,33 @@ const Cart = {
   },
 
   /**
+   * Verifies the carrier name displayed in the first segment of the baggage panel.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedCarrier - Expected carrier name (e.g. 'Lufthansa')
+   */
+  async verifyBaggageCarrierName(page, expectedCarrier) {
+    if (!page) throw new Error('page is required');
+    if (!expectedCarrier || typeof expectedCarrier !== 'string') {
+      throw new Error('expectedCarrier must be a non-empty string');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await expect(cartPage.getBaggageSegmentCarrierNameLocator()).toContainText(expectedCarrier, { timeout: 15000 });
+  },
+
+  /**
+   * Selects the first available option from the first segment dropdown in the baggage panel.
+   * Opens the dropdown and picks the first non-disabled item.
+   * @param {import('playwright').Page} page
+   */
+  async selectFirstBaggageOption(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.selectFirstAvailableBaggageOption();
+  },
+
+  /**
    * Selects a baggage option containing the given text for a specific flight
    * direction ("outbound" or "inbound") inside the cart's flight-baggage panel.
    * Idempotent: opens the baggage panel only when it is not already expanded,
@@ -2538,7 +2565,7 @@ const Cart = {
     const airlineText = await cartPage.selectFirstFqtvCarrier();
     await cartPage.fillFqtvNumber(loyaltyNumber);
     await cartPage.clickSaveButton();
-    await cartPage.getSaveButton().waitFor({ state: 'hidden', timeout: 15000 });
+    await cartPage.waitForFqtvSuccessIcon();
 
     return airlineText;
   },
@@ -2566,7 +2593,7 @@ const Cart = {
     const selectedAirlineText = await cartPage.selectFqtvCarrier(airlineText);
     await cartPage.fillFqtvNumber(loyaltyNumber);
     await cartPage.clickSaveButton();
-    await cartPage.getSaveButton().waitFor({ state: 'hidden', timeout: 15000 });
+    await cartPage.waitForFqtvSuccessIcon();
 
     return selectedAirlineText;
   },
@@ -3251,6 +3278,72 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     const isSelected = await cartPage.isGenderSelected();
     expect(isSelected, 'Expected no gender to be pre-selected in passenger info').toBe(false);
+  },
+
+  /**
+   * Expands the extras collapse and verifies the Optional Services section title is visible.
+   * @param {import('playwright').Page} page
+   */
+  async verifyOptionalServicesSectionVisible(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickArrowButtonExtras();
+    await expect(cartPage.getOptionalServicesTitleLocator()).toContainText('Optional Services', { timeout: 15000 });
+  },
+
+  /**
+   * Copies the trip via the three-dots dropdown menu.
+   * Hovers over the trip actions icon, clicks "Copy trip", waits for the dialog,
+   * then confirms. Handles the new window/tab the app opens for the copied trip.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<import('playwright').Page>} The copied trip page (new tab or same tab).
+   */
+  async copyTrip(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
+    await cartPage.hoverTripActionsDropdownIcon();
+    await cartPage.clickCopyTripOption();
+    await cartPage.waitForCopyTripDialog();
+
+    const context = page.context();
+    const newPagePromise = context.waitForEvent('page', { timeout: 15000 }).catch(() => null);
+    await cartPage.clickConfirmCopyTripButton();
+    const newTripPage = await newPagePromise;
+
+    if (newTripPage) {
+      logger.info('Copied trip opened in a new tab');
+      await newTripPage.waitForLoadState('networkidle', { timeout: 60000 });
+      return newTripPage;
+    }
+
+    logger.info('Copied trip opened in current tab (no new tab detected)');
+    await page.waitForLoadState('networkidle', { timeout: 60000 });
+    return page;
+  },
+
+  /**
+   * Verifies the copied trip page contains the expected flight number.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} storedFlightNumber - Flight number extracted from the original trip.
+   */
+  async verifyTripHasSameFlightNumber(page, storedFlightNumber) {
+    if (!page) throw new Error('page is required');
+    if (!storedFlightNumber || typeof storedFlightNumber !== 'string') {
+      throw new Error(`storedFlightNumber must be a non-empty string, got: ${typeof storedFlightNumber}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const flightNumber = await cartPage.getFirstVisibleFlightNumber();
+    expect(
+      flightNumber,
+      `Expected copied trip to contain flight number "${storedFlightNumber}" but got "${flightNumber}"`,
+    ).toBe(storedFlightNumber);
   },
 };
 

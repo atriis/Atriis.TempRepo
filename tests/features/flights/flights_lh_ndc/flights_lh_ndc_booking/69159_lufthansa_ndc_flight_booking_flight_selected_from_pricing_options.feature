@@ -18,18 +18,12 @@ Feature: 69159 Lufthansa NDC - Booking flight selected from pricing options
     And I have added myself as the traveler
     When I search for a round trip flight from "FRA" to "MUC"
     Then flight results should be available
-
-    # Open pricing options and add flight from there
     When I click to open first pricing options
     And I select the first option from pricing options
+    Then I should see the heading "Flight To Frankfurt"
+    And I select the first option from pricing options
     And I add to trip from pricing options
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
-
-    # Accept T&C and proceed to checkout
     When I proceed to checkout
-
-    # TODO: Implement step "I handle price change prompt if visible" — click accept on price change dialog if it appears (see Price_change_prompt in Testim: clicks on price change accept button)
-
-    # Book and finalize
     When I complete the booking
+    Then the quote destination should contain "Flight to"

@@ -50,10 +50,13 @@ const SELECTORS = {
   FLIGHT_SEGMENT_TIME: '.flight-time',
   FLIGHT_QUOTE_LOCATION_CODE: '.loc-code',
 
-  // Trip cancellation selectors
+  // Trip actions dropdown selectors
   TRIP_ACTIONS_DROPDOWN_ICON: ".dropdowns-container .expand-icon",
   CANCEL_TRIP_OPTION: ".el-dropdown-menu__item span.mr-2",
   CANCEL_TRIP_DROPDOWN_ITEM: ".el-dropdown-menu__item",
+  COPY_TRIP_OPTION: ".el-dropdown-menu__item",
+  COPY_TRIP_DIALOG: ".copy-trip-dialog",
+  COPY_TRIP_CONFIRM_BUTTON: ".copy-trip-dialog .app-footer .btn--primary",
   SHOW_CANCELLED_ITEMS_OPTION: '.el-dropdown-menu__item',
   TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label='Trip cancellation'] .el-dialog__title",
   CONFIRM_CANCEL_BUTTON: "role=button[name='Cancel trip']",
@@ -109,6 +112,7 @@ const SELECTORS = {
   EDIT_EXTRAS_BUTTON: ".extra__btns", //All edit buttons in extras section have the same class, so we will use nth(index) to click the right one when needed
   EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span', // The field that shows selected extra option
   EXTRAS_ARROW_BUTTON: '.px-4.ticket-bottom.py-4 .el-icon.el-collapse-item__arrow', // Arrow button to expand/collapse extras information
+  FLIGHT_OPTIONAL_SERVICES_TITLE: '.flight-optional-services .card-title', // "Optional Services" title in the extras section (flight-optional-services.vue)
   // Premier Inn extras selectors (premier-inn.vue)
   PREMIER_INN_PAYMENT_SELECT: '.quote-extras--premier-inn .extras-card .el-select', // First el-select in Premier Inn extras = payment method
 
@@ -133,6 +137,7 @@ const SELECTORS = {
   BAGGAGE_SEGMENT_ROW: '.flight-baggage .el-tab-pane:visible .segment', // One row per flight direction (idx 0 = outbound, idx 1 = inbound)
   BAGGAGE_SEGMENT_SELECT_TRIGGER: '.el-select__wrapper', // Sub-selector — clicked relative to a segment row to open its dropdown
   BAGGAGE_DROPDOWN_PANEL: '.el-select-dropdown:visible', // Visible Element-Plus popper containing the segment dropdown options
+  BAGGAGE_SEGMENT_CARRIER_NAME: '.flight-baggage .el-tab-pane:visible .form-date-section > :nth-child(1) .carrier-name', // Carrier name in the first baggage segment row (flight-baggage.vue)
   
   // Flight Seating (flight-seating.vue)
   SEATING_EDIT_BUTTON: ".flight-seating .extra__btns", // Edit/Add button in the seating extras row (scoped to flight-seating to avoid matching other extras buttons)
@@ -1520,6 +1525,28 @@ class CartPage {
   }
 
   /**
+   * Clicks the first non-disabled option in the first baggage segment dropdown.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   */
+  async selectFirstAvailableBaggageOption(timeout = 10000) {
+    const segment = this.page.locator(SELECTORS.BAGGAGE_SEGMENT_ROW).first();
+    await segment.waitFor({ state: 'visible', timeout });
+    const trigger = segment.locator(SELECTORS.BAGGAGE_SEGMENT_SELECT_TRIGGER).first();
+    await trigger.click();
+    const firstOption = this.page.locator(`${SELECTORS.BAGGAGE_DROPDOWN_PANEL} .el-select-dropdown__item:not(.is-disabled)`).first();
+    await firstOption.waitFor({ state: 'visible', timeout });
+    await firstOption.click();
+  }
+
+  /**
+   * Returns the carrier name text from the first segment in the baggage panel.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getBaggageSegmentCarrierNameLocator() {
+    return this.page.locator(SELECTORS.BAGGAGE_SEGMENT_CARRIER_NAME).first();
+  }
+
+  /**
    * Waits for the Save button to be visible in extras section.
    */
   async waitForSaveButton() {
@@ -1615,6 +1642,14 @@ class CartPage {
    */
   async clickArrowButtonExtras() {
     await this.page.locator(SELECTORS.EXTRAS_ARROW_BUTTON).click();
+  }
+
+  /**
+   * Returns the Optional Services title locator (flight-optional-services.vue).
+   * @returns {import('@playwright/test').Locator}
+   */
+  getOptionalServicesTitleLocator() {
+    return this.page.locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_TITLE).first();
   }
 
   /**
@@ -3569,6 +3604,22 @@ class CartPage {
 
     const checkedRadios = section.locator('.el-radio.is-checked');
     return (await checkedRadios.count()) > 0;
+  }
+
+  async clickCopyTripOption() {
+    const option = this.page.locator(SELECTORS.COPY_TRIP_OPTION, { hasText: 'Copy trip' }).first();
+    await option.waitFor({ state: 'visible', timeout: 15000 });
+    await option.click();
+  }
+
+  async waitForCopyTripDialog() {
+    await this.page.locator(SELECTORS.COPY_TRIP_DIALOG).waitFor({ state: 'visible', timeout: 20000 });
+  }
+
+  async clickConfirmCopyTripButton() {
+    const button = this.page.locator(SELECTORS.COPY_TRIP_CONFIRM_BUTTON).first();
+    await button.waitFor({ state: 'visible', timeout: 15000 });
+    await button.click();
   }
 }
 

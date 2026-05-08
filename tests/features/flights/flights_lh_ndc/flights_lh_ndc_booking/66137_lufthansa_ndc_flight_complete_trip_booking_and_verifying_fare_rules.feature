@@ -17,79 +17,49 @@ Feature: 66137 Lufthansa NDC - Complete trip booking and verifying fare rules
     Given I am logged in as "clara" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "FRA" to "SEA"
-    Then flight results should be available
-
-    # Verify fare rules on results page
-    When I click to open fare rules
+    And flight results should be available
+    And I click to open fare rules
     Then I should see the fare rules note about strictest terms
     When I close fare rules window
-
-    # Verify fare rules in pricing options
     When I click to open first pricing options
     And I click to open fare rules from modal
     Then I should see the fare rules note about strictest terms
     When I close fare rules window
-    And I close pricing options modal
-
-    # Verify fare rules from flight details on results page
+    Then I close pricing options modal
     When I click to open flight details
     And I click to open fare rules from modal
     Then I should see the fare rules note about strictest terms
     When I close fare rules window
     And I close flight details window
-
-    # Add flight to cart
     When I add the first flight to cart
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
-
-    # Verify fare rules in cart - from fare rules button
     When I click to open fare rules in cart
     Then I should see the fare rules note about strictest terms
     When I close fare rules window
-
-    # Verify fare rules from flight details in cart
     When I click to open flight details
     And I click to open fare rules in cart
     Then I should see the fare rules note about strictest terms
     When I close fare rules window
     And I close flight details window
-
-    # Verify fare rules from price breakdown in cart
     When I click to open price breakdown in cart
     And I click to open fare rules in cart
     Then I should see the fare rules note about strictest terms
     When I close fare rules window
     And I close price breakdown modal
-
-    # Verify fare rules from T&C link in cart
-    # TODO: Implement step "I click the T&C fare rules link in cart" — clicks '.page-view a' to open fare rules from T&C section
-
-    # Accept T&C and hold
     When I accept Terms & Conditions
     And I hold the trip
-
-    # Verify fare rules after hold - from fare rules button
+    Then the booking status should be "On hold"
     When I click to open fare rules in cart
     Then I should see the fare rules note about strictest terms
     When I close fare rules window
-
-    # Verify fare rules from flight details after hold
     When I click to open flight details
     And I click to open fare rules in cart
     Then I should see the fare rules note about strictest terms
     When I close fare rules window
     And I close flight details window
-
-    # Verify fare rules from price breakdown after hold
     When I click to open price breakdown in cart
     And I click to open fare rules in cart
     Then I should see the fare rules note about strictest terms
     When I close fare rules window
     And I close price breakdown modal
-
-    # Verify fare rules from T&C link after hold
-    # TODO: Implement step "I click the T&C fare rules link in cart" — clicks '.page-view a' to open fare rules from T&C section
-
-    # Cancel the trip
     Then I successfully cancel the trip

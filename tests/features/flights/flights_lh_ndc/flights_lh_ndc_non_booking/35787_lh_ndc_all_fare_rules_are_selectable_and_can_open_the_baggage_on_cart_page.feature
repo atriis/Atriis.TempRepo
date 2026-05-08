@@ -19,18 +19,26 @@ Feature: 35787 Lufthansa NDC - All fare rules are selectable and can open baggag
     When I search for a round trip "Business" class flight from "MUC" to "JFK"
     Then flight results should be available
     When I filter results by carrier "LH"
-
-    # Open pricing options
     When I click to open first pricing options
-
-    # Verify all fare rules are selectable and add to cart
-    # TODO: Implement step "all fare rules in pricing options should be selectable" — click fare rules button on option 1, verify 'Please note:' text, close; click fare rules on option 2, verify, close; click fare rules link on option 2, verify, close; then select option 1 and add to trip
+    And I click to open fare rules from modal
+    Then I should see the fare rules note about strictest terms
+    When I close fare rules window
+    When I click to open the second fare rules from pricing options modal
+    Then I should see the fare rules note about strictest terms
+    When I close fare rules window
+    And I select the first option from pricing options
+    And I should see the heading "Flight To Munich"
+    And I click to open fare rules from modal
+    Then I should see the fare rules note about strictest terms
+    When I close fare rules window
+    When I click to open the second fare rules from pricing options modal
+    Then I should see the fare rules note about strictest terms
+    When I close fare rules window
     And I select the first option from pricing options
     And I add to trip from pricing options
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
-
-    # Verify baggage is accessible on cart page
     When I click to edit the baggage extras section
-    # TODO: Implement step "the baggage carrier should display {string}" — verify '.form-date-section > :nth-child(1) > :nth-child(1) .carrier-name' contains 'Lufthansa'
-    # TODO: Implement step "I select a baggage option and save" — click collapse icon, select baggage dropdown option, click save button, verify success toast, verify '.flight-baggage .filled' is visible
+    Then the baggage carrier should display "Lufthansa"
+    When I select a baggage option
+    And I click the save button
+    Then I should see a success notification

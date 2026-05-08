@@ -18,17 +18,9 @@ Feature: 29439 Lufthansa NDC - After booking extras are displayed and quote is n
     And I have added myself as the traveler
     When I search for a one way flight from "MUC" to "FRA"
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
-
-    # Accept T&C and proceed to checkout
     When I proceed to checkout
-
-    # TODO: Implement step "I handle price change prompt if visible" — Testim calls Price_change_prompt() then book_and_finalize()
     When I complete the booking
-
-    # Verify extras are displayed after booking
-    # TODO: Implement step "the Optional Services extras section should be visible" — expand collapse item and verify '.flight-optional-services .card-title' contains 'Optional Services'
-
-    # Verify quote is not duplicated after booking
-    # TODO: Implement step "only 1 confirmed quote should be displayed" — assert exactly 1 element matches '.ticket-layout-container.is-flex.is-flex-direction-column.confirmed'
+    Then the quote destination should contain "Flight to"
+    And the Optional Services extras section should be visible
+    And there should be 1 elements matching css locator ".ticket-layout-container.is-flex.is-flex-direction-column.confirmed"
