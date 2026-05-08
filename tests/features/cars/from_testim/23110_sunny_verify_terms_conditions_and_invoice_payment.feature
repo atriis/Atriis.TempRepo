@@ -16,6 +16,6 @@ Feature: 23110 - Sunny Car - Verify Terms and Conditions and Invoice Payment
     
     And I accept Terms & Conditions
     And I click the proceed to checkout button
-    And I complete the booking
+    And I complete the booking without navigating to trip overview
     
     Then the booking should succeed

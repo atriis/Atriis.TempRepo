@@ -383,6 +383,34 @@ const Checkout = {
 
     return { sentForApproval: true };
   },
+
+  // ========================================
+  // BOOKING STATUS
+  // ========================================
+
+  /**
+   * Gets the booking status from the trip overview.
+   * Returns status text like "Confirmed", "Pending", etc.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The booking status text
+   */
+  async getBookingStatus(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const statusText = await cartPage.waitForPaymentTypeText('Confirmed', { timeout: 30000 }).catch(async () => {
+      // If waiting for "Confirmed" fails, try getting the actual status label
+      try {
+        const status = await page.locator('.app-label--quote').first().textContent({ timeout: 5000 });
+        return status ? status.trim() : null;
+      } catch {
+        return null;
+      }
+    });
+
+    return statusText;
+  },
 };
 
 module.exports = Checkout;

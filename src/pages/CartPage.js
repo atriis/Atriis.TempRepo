@@ -107,6 +107,12 @@ const SELECTORS = {
   OOP_JUSTIFICATION_SECTION: '.oop-justification', // Section containing the OOP justification dropdown/text (oop-justification.vue)
   OOP_JUSTIFICATION_SELECT: '.oop-justification .app-select .el-select', // The el-select wrapper inside the OOP justification section
   OOP_JUSTIFICATION_SELECTED_VALUE: '.oop-justification .el-select__selected-item',
+
+  // Sunny Cars extras
+  SUNNY_FLIGHT_NUMBER_CLICKABLE: '.car-sunnycars-flight .extra__btns .is-clickable',
+  SUNNY_FLIGHT_NUMBER_INPUT: '.car-sunnycars-flight .extras-card input',
+  SUNNY_FLIGHT_NUMBER_SAVE_BUTTON: '.car-sunnycars-flight .extras-card .btns .no-border',
+  SUNNY_FLIGHT_NUMBER_SUCCESS_ICON: '.car-sunnycars-flight .success-icon.green',
   
   // Extras
   EDIT_EXTRAS_BUTTON: ".extra__btns", //All edit buttons in extras section have the same class, so we will use nth(index) to click the right one when needed
@@ -321,6 +327,11 @@ const SELECTORS = {
   PASSENGER_INFO_SAVE_BUTTON_NAME: 'Save',
   PASSENGER_INFO_SAVE_SUCCESS_ICON: '.flight-passenger-info .success-icon',
   PASSPORT_NUMBER_INPUT: '.flight-passenger-info .field:has(label:text-is("Passport number")) input',
+
+  // Payment terms selectors (for car rentals, hotels, etc)
+  PAYMENT_TERMS_LINK: 'a:has-text("terms")',
+  RENTAL_PERIOD_TERMS_MODAL: ':has(> :text("Terms & Conditions")), .app-dialog, .el-dialog, .terms-modal, [role="dialog"]',
+  TERMS_MODAL_CLOSE_BUTTON: '[aria-label="Close this dialog"], .el-dialog__close, .close-btn, button:has-text("Close")',
 };
 
 class CartPage {
@@ -1482,6 +1493,30 @@ class CartPage {
     await btn.waitFor({ state: 'visible', timeout });
     await btn.click();
     await this.waitForBaggageContent(timeout);
+  }
+
+  async openSunnyFlightNumberExtras(timeout = 10000) {
+    const button = this.page.locator(SELECTORS.SUNNY_FLIGHT_NUMBER_CLICKABLE).first();
+    await button.waitFor({ state: 'visible', timeout });
+    await button.click();
+    await this.page.locator(SELECTORS.SUNNY_FLIGHT_NUMBER_INPUT).first().waitFor({ state: 'visible', timeout });
+  }
+
+  async fillSunnyFlightNumber(flightNumber, timeout = 10000) {
+    if (!flightNumber || typeof flightNumber !== 'string') {
+      throw new Error('flightNumber must be a non-empty string');
+    }
+
+    const input = this.page.locator(SELECTORS.SUNNY_FLIGHT_NUMBER_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    await input.fill(flightNumber);
+  }
+
+  async saveSunnyFlightNumber(timeout = 10000) {
+    const button = this.page.locator(SELECTORS.SUNNY_FLIGHT_NUMBER_SAVE_BUTTON).first();
+    await button.waitFor({ state: 'visible', timeout });
+    await button.click();
+    await this.page.locator(SELECTORS.SUNNY_FLIGHT_NUMBER_SUCCESS_ICON).first().waitFor({ state: 'visible', timeout: 30000 });
   }
 
   /**
@@ -3620,6 +3655,50 @@ class CartPage {
     const button = this.page.locator(SELECTORS.COPY_TRIP_CONFIRM_BUTTON).first();
     await button.waitFor({ state: 'visible', timeout: 15000 });
     await button.click();
+  }
+
+  // ========================================
+  // PAYMENT TERMS - CARS & HOTELS
+  // ========================================
+
+  /**
+   * Clicks the payment terms link to open the rental period/terms modal.
+   * @returns {Promise<void>}
+   */
+  async clickPaymentTermsLink() {
+    const link = this.page.locator(SELECTORS.PAYMENT_TERMS_LINK).first();
+    await link.waitFor({ state: 'attached', timeout: 15000 });
+    await link.click();
+  }
+
+  /**
+   * Checks if the rental period terms modal is visible.
+   * @returns {Promise<boolean>}
+   */
+  async isTermsModalVisible() {
+    const modal = this.page.locator(SELECTORS.RENTAL_PERIOD_TERMS_MODAL).first();
+    try {
+      await modal.waitFor({ state: 'visible', timeout: 15000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Closes the rental period terms modal by clicking the close button.
+   * @returns {Promise<void>}
+   */
+  async closeTermsModal() {
+    const closeButton = this.page.locator(SELECTORS.TERMS_MODAL_CLOSE_BUTTON).first();
+    try {
+      await closeButton.waitFor({ state: 'visible', timeout: 10000 });
+      await closeButton.click();
+      await this.page.waitForTimeout(300);
+    } catch {
+      // If close button not found, try pressing Escape
+      await this.page.press('body', 'Escape');
+    }
   }
 }
 

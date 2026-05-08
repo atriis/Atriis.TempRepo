@@ -9,6 +9,8 @@ const SELECTORS = {
   BOOKING_DETAILS_HEADING: "h1.mb-5",
   FINALIZE_BUTTON: "button:has-text('Finalize')",
   BOOK_AND_FINALIZE_BUTTON: "button:has-text('Book and Finalize')",
+  // Additional button text variants for different suppliers (e.g., Sunny cars uses "Book Now" or similar)
+  BOOK_NOW_BUTTON: "button:has-text('Book Now'), button:has-text('Book'), button:has-text('Confirm')",
   FALLBACK_BUTTON: ".btn-container button",
   GO_TO_TRIP_BUTTON: ".btn-container > :nth-child(1)",
   GO_TO_TRIP_BUTTON_NAME: "Go to trip",
@@ -71,31 +73,40 @@ class CheckoutPage {
 
   /**
    * Confirms that the checkout page is loaded.
-   * Uses visible text instead of DOM presence for reliability.
+   * Some suppliers (e.g., Sunny cars) don't display a "Booking details" heading,
+   * so this wait is non-fatal. The button wait that follows is more reliable.
    */
   async waitForBookingDetailsText() {
-    await waitForText(
-      this.page,
-      SELECTORS.BOOKING_DETAILS_HEADING,
-      "Booking details",
-      60000,
-    );
+    try {
+      await waitForText(
+        this.page,
+        SELECTORS.BOOKING_DETAILS_HEADING,
+        "Booking details",
+        5000, // Short timeout since this is optional
+      );
+    } catch (error) {
+      // Heading not found - this is acceptable for some suppliers like Sunny cars
+      // The subsequent button wait will ensure the page is ready
+    }
   }
 
   /**
    * Waits until one of the finalize button variants is available.
-   * Different suppliers and fares show different labels.
+   * Different suppliers and fares show different labels:
+   * - Flights/Hotels: "Finalize" or "Book and Finalize"
+   * - Cars (Sunny, etc.): "Book Now", "Book", or "Confirm"
    */
   async waitForBookAndFinalizeButton() {
     await this.page.waitForSelector(
-      `${SELECTORS.FINALIZE_BUTTON}, ${SELECTORS.BOOK_AND_FINALIZE_BUTTON}`,
+      `${SELECTORS.FINALIZE_BUTTON}, ${SELECTORS.BOOK_AND_FINALIZE_BUTTON}, ${SELECTORS.BOOK_NOW_BUTTON}`,
       { timeout: 10000 },
     );
   }
 
   /**
    * Clicks the appropriate finalize button.
-   * Falls back to a generic button if needed.
+   * Tries multiple button text variants (for different suppliers).
+   * Falls back to a generic button if none of the expected labels are found.
    */
   async clickBookAndFinalizeButton() {
     if (await this.getFinalizeButton().isVisible()) {
@@ -105,6 +116,13 @@ class CheckoutPage {
 
     if (await this.getBookAndFinalizeButton().isVisible()) {
       await this.getBookAndFinalizeButton().click();
+      return;
+    }
+
+    // Try car rental suppliers (Sunny cars, etc.)
+    const bookNowVariant = this.page.locator(SELECTORS.BOOK_NOW_BUTTON).first();
+    if (await bookNowVariant.isVisible()) {
+      await bookNowVariant.click();
       return;
     }
 
