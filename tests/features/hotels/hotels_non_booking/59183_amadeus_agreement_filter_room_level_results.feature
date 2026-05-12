@@ -11,7 +11,8 @@ Feature: 59183 Amadeus - Hotel - Room level results are displayed when agreement
   As a corporate traveler
   I want to filter by agreement hotels and see room level results displayed properly
   So that I can book from the company's negotiated hotel agreements
-
+ 
+ #Add validation to check that handshake badge is for corporate agreement
   @priority:medium
   Scenario: Room level results are displayed when agreement is configured with "Separate from other agreement" checked
     Given I am logged in as "suzanavond" booking a new trip
