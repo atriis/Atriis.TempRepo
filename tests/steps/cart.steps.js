@@ -3,7 +3,9 @@
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const Cart = require("@dsl/Cart");
+const Checkout = require("@dsl/Checkout");
 const { CartPage } = require("@pages/CartPage");
+const { CheckoutPage } = require("@pages/CheckoutPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const tripStatus = require("@data/tripStatus.json");
 const { getTravelerCount } = require("../support/scenarioState");
@@ -370,7 +372,47 @@ Then("I successfully cancel the trip with 60 seconds wait", async function () {
 
 Then("the booking status should be {string}", async function (status) {
   logger.info("Verifying booking status", { status });
-  await Cart.expectBookingStatusToBe(status, { page: this.page });
+
+  const scenarioTags = Array.isArray(this.scenarioTags) ? this.scenarioTags : [];
+  const bookingContext = {
+    product: scenarioTags.includes('@transportation') ? 'transportation' : scenarioTags.includes('@hotels') ? 'hotels' : scenarioTags.includes('@flights') ? 'flights' : null,
+    subProduct: scenarioTags.includes('@cars')
+      ? 'cars'
+      : scenarioTags.includes('@rails')
+        ? 'rails'
+        : scenarioTags.includes('@parking')
+          ? 'parking'
+          : scenarioTags.includes('@groundtransport')
+            ? 'groundTransport'
+            : null,
+  };
+
+  const result = await Cart.expectBookingStatusToBe(status, {
+    page: this.page,
+    bookingContext,
+  });
+
+  if (result?.knownBookingError && result.shouldSkip) {
+    logger.warn('Known booking error matched configured supplier issue', {
+      supplier: result.supplier,
+      bookingErrorText: result.bookingErrorText,
+      status,
+      bookingContext,
+    });
+
+    await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
+
+    const checkoutPage = getPageObject(this.page, CheckoutPage);
+    await checkoutPage.clickBackToTripButton();
+    return 'pending';
+  }
+
+  if (result?.bookingErrorDetected && !result.knownBookingError) {
+    const errorSummary = result.supplier
+      ? `supplier: ${result.supplier}`
+      : `message: ${result.bookingErrorText || 'unknown booking error'}`;
+    throw new Error(`Unexpected booking error detected (${errorSummary})`);
+  }
 });
 
 Then("the stored flight details should match the displayed flight details", async function () {

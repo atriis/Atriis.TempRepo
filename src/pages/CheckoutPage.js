@@ -66,7 +66,7 @@ class CheckoutPage {
    * @returns {import('@playwright/test').Locator}
    */
   getGoToTripButton() {
-    return this.page.locator(SELECTORS.GO_TO_TRIP_BUTTON);
+    return this.page.getByRole('button', { name: SELECTORS.GO_TO_TRIP_BUTTON_NAME }).first();
   }
 
   /**
@@ -173,17 +173,42 @@ class CheckoutPage {
   }
 
   /**
+   * Extracts the supplier name from the booking error dialog.
+   * Supports values rendered as plain text or wrapped in asterisks.
+   *
+   * @returns {Promise<string|null>}
+   */
+  async getBookingErrorSupplierName() {
+    const errorDialog = this.page.locator(SELECTORS.BOOKING_ERROR_DIALOG).first();
+    const errorText = await errorDialog.innerText();
+
+    let match = errorText.match(/supplier:\s*\*{1,2}([^*\n]+?)\*{1,2}/i);
+
+    if (!match) {
+      match = errorText.match(/supplier:\s*([^\n]+)/i);
+    }
+
+    return match ? match[1].trim() : null;
+  }
+
+  /**
+   * Gets the full booking error dialog text for resilient known-error matching.
+   *
+   * @returns {Promise<string>}
+   */
+  async getBookingErrorDialogText() {
+    const errorDialog = this.page.locator(SELECTORS.BOOKING_ERROR_DIALOG).first();
+    const errorText = await errorDialog.innerText();
+    return typeof errorText === 'string' ? errorText.trim() : '';
+  }
+
+  /**
    * Navigates to the Trip Overview after booking completion.
    */
   async clickGoToTrip() {
-    await waitForText(
-      this.page,
-      SELECTORS.GO_TO_TRIP_BUTTON,
-      "Go to trip",
-      60000,
-    );
-
-    await this.getGoToTripButton().click();
+    const goToTripButton = this.getGoToTripButton();
+    await goToTripButton.waitFor({ state: 'visible', timeout: 60000 });
+    await goToTripButton.click();
   }
 
   /**
@@ -358,6 +383,7 @@ class CheckoutPage {
       }
     }
   }
+
 }
 
 // Export CheckoutPage and SELECTORS for use in tests and DSL

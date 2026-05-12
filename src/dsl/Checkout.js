@@ -3,6 +3,8 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const { CheckoutPage } = require("@pages/CheckoutPage");
 const { CartPage } = require("@pages/CartPage");
 const { CommonPage } = require("@pages/CommonPage");
+const BookingErrorHandler = require("@utils/BookingErrorHandler");
+
 
 /**
  * Checkout DSL
@@ -43,8 +45,10 @@ const Checkout = {
    * - waits for checkout details
    * - finalizes the booking
    * - navigates to the trip overview page
+   * 
+   * Note: If a booking error modal appears, the status assertion step will detect and handle it.
    */
-  async bookAndFinalize(page) {
+  async bookAndFinalize(page, bookingContext = {}) {
     if (!page) throw new Error('page is required');
 
     const checkoutPage = getPageObject(page, CheckoutPage);
@@ -52,17 +56,57 @@ const Checkout = {
 
     await Checkout.bookTripWithoutNavigatingToTripOverview(page);
 
-    // Navigate to trip overview
-    await checkoutPage.clickGoToTrip();
+    const goToTripButton = checkoutPage.getGoToTripButton();
+    const bookingErrorDialog = page.locator('.booking-error-dialog').first();
 
-    // Confirm trip overview is displayed
+    const bookingOutcome = await Promise.race([
+      goToTripButton.waitFor({ state: 'visible', timeout: 60000 }).then(() => 'success').catch(() => null),
+      bookingErrorDialog.waitFor({ state: 'visible', timeout: 60000 }).then(() => 'booking-error').catch(() => null),
+    ]);
+
+    // If booking error appeared, classify it here so later steps do not fail first.
+    if (bookingOutcome === 'booking-error') {
+      const supplier = await checkoutPage.getBookingErrorSupplierName();
+      const bookingErrorText = await checkoutPage.getBookingErrorDialogText();
+      const knownBySupplier = supplier
+        ? BookingErrorHandler.isKnownBookingError(bookingContext.product, bookingContext.subProduct, supplier)
+        : false;
+      const knownByMessage = bookingErrorText
+        ? BookingErrorHandler.isKnownBookingError(bookingContext.product, bookingContext.subProduct, bookingErrorText)
+        : false;
+      const knownBookingError = knownBySupplier || knownByMessage;
+      const shouldSkip = knownBookingError
+        ? BookingErrorHandler.getSkipOnErrorConfig(bookingContext.product, bookingContext.subProduct)
+        : false;
+
+      BookingErrorHandler.handleBookingError(
+        bookingContext.product,
+        supplier || bookingErrorText || 'UNKNOWN',
+        bookingContext.subProduct,
+      );
+
+      return {
+        finalized: false,
+        bookingError: true,
+        knownBookingError,
+        shouldSkip,
+        supplier: supplier || null,
+        bookingErrorText: bookingErrorText || null,
+      };
+    }
+
+    if (bookingOutcome !== 'success') {
+      throw new Error('Neither Go to trip nor booking error dialog appeared after finalizing booking');
+    }
+
+    await checkoutPage.clickGoToTrip();
     await cartPage.waitForTripOverviewTitle();
 
-    return { finalized: true };
+    return { finalized: true, bookingError: false };
   },
 
   /**
-   * Finalizes the booking for Fusion low-cost flights that require a card verification step,
+   * Finalizes Fusion low-cost flight booking with card verification,
    * then navigates to the trip overview page.
    *
    * @param {import('playwright').Page} page
@@ -88,12 +132,28 @@ const Checkout = {
    * This flow:
    * - waits for the booking error dialog to appear
    */
-  async verifyBookingErrorMessage(page) {
+  async verifyBookingErrorMessage(page, expectedErrorText = null) {
     if (!page) throw new Error('page is required');
+
+    if (expectedErrorText !== null && typeof expectedErrorText !== 'string') {
+      throw new Error(`expectedErrorText must be a string when provided, got: ${typeof expectedErrorText}`);
+    }
 
     const checkoutPage = getPageObject(page, CheckoutPage);
 
     await checkoutPage.waitForBookingErrorDialog();
+
+    const dialogText = await checkoutPage.getBookingErrorDialogText();
+    const normalizedDialogText = String(dialogText || '').replace(/\s+/g, ' ').trim();
+
+    expect(normalizedDialogText).toMatch(/Booking error/i);
+    expect(normalizedDialogText).toMatch(/Something went wrong/i);
+    expect(normalizedDialogText).toMatch(/Error details as received from the supplier/i);
+
+    if (expectedErrorText && expectedErrorText.trim().length > 0) {
+      const normalizedExpectedErrorText = expectedErrorText.replace(/\s+/g, ' ').trim();
+      expect(normalizedDialogText.toUpperCase()).toContain(normalizedExpectedErrorText.toUpperCase());
+    }
   },
 
   /**

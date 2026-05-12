@@ -65,6 +65,8 @@ function isLoginOnly(pickle) {
  * Before each scenario
  */
 Before(async function (testCase) {
+  this.scenarioTags = (testCase.pickle?.tags || []).map((tag) => tag.name);
+
   // Skip automatic setup if scenario uses parameterized login step
   const hasParameterizedLogin = testCase.pickle.steps.some(step => 
     step.text.includes('I am logged in as "')

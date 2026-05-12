@@ -1,0 +1,33 @@
+{
+  "transportation": {
+    "cars": {
+      "knownErrors": [
+        "HERTZ"
+      ],
+      "skipOnError": true,
+      "description": "Known supplier booking issues that should not cause test failure"
+    },
+    "rails": {
+      "knownErrors": [],
+      "skipOnError": false
+    },
+    "groundTransport": {
+      "knownErrors": [],
+      "skipOnError": false
+    },
+    "parking": {
+      "knownErrors": [],
+      "skipOnError": false
+    }
+  },
+  "flights": {
+    "knownErrors": [],
+    "skipOnError": false,
+    "description": "Known flight booking errors"
+  },
+  "hotels": {
+    "knownErrors": [],
+    "skipOnError": false,
+    "description": "Known hotel booking errors"
+  }
+}

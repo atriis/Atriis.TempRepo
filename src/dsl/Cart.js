@@ -1,6 +1,7 @@
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { CartPage, SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
+const { CheckoutPage } = require("@pages/CheckoutPage");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const { ResultsPage } = require("@pages/ResultsPage");
@@ -8,6 +9,7 @@ const FlightResultsPage = require("@pages/FlightResultsPage");
 const FlightResults = require("./FlightResults");
 const tripStatus = require("@data/tripStatus.json");
 const config = require("@config/config");
+const BookingErrorHandler = require("@utils/BookingErrorHandler");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const logger = require("@utils/logger").child("Cart-DSL");
 
@@ -336,7 +338,7 @@ const Cart = {
    * @param {import('playwright').Page} options.page - Playwright page instance
    * @returns {Promise<void>}
    */
-  async expectBookingStatusToBe(expectedStatus, { timeout = 60000, page } = {}) {
+  async expectBookingStatusToBe(expectedStatus, { timeout = 60000, page, bookingContext = {} } = {}) {
     if (!page) {
       throw new Error('page is required');
     }
@@ -352,6 +354,80 @@ const Cart = {
     const mappedStatus = tripStatus?.label?.[expectedStatus]?.status;
     const expectedText = mappedStatus || expectedStatus;
     const cartPage = getPageObject(page, CartPage);
+    const checkoutPage = getPageObject(page, CheckoutPage);
+
+    const resolveBookingErrorResult = async () => {
+      const supplier = await checkoutPage.getBookingErrorSupplierName();
+      const bookingErrorText = await checkoutPage.getBookingErrorDialogText();
+      const knownBySupplier = supplier
+        ? BookingErrorHandler.isKnownBookingError(bookingContext.product, bookingContext.subProduct, supplier)
+        : false;
+      const knownByMessage = bookingErrorText
+        ? BookingErrorHandler.isKnownBookingError(bookingContext.product, bookingContext.subProduct, bookingErrorText)
+        : false;
+      const isKnownError = knownBySupplier || knownByMessage;
+      const shouldSkip = isKnownError
+        ? BookingErrorHandler.getSkipOnErrorConfig(bookingContext.product, bookingContext.subProduct)
+        : false;
+
+      const errorLogValue = supplier || bookingErrorText || 'UNKNOWN';
+      BookingErrorHandler.handleBookingError(bookingContext.product, errorLogValue, bookingContext.subProduct);
+
+      return {
+        bookingErrorDetected: true,
+        knownBookingError: isKnownError,
+        shouldSkip,
+        supplier: supplier || null,
+        bookingErrorText: bookingErrorText || null,
+      };
+    };
+
+    if (expectedText.toLowerCase() === 'confirmed') {
+      // Wait for page to settle after booking finalization
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+
+      await Cart.ensureCartReadyForStatusCheck(page);
+
+      const bookingErrorDialog = page.locator(CheckoutSelectors.BOOKING_ERROR_DIALOG).first();
+
+      const deadline = Date.now() + timeout;
+      while (Date.now() < deadline) {
+        const bookingErrorVisible = await bookingErrorDialog.isVisible().catch(() => false);
+        if (bookingErrorVisible) {
+          return resolveBookingErrorResult();
+        }
+
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) {
+          break;
+        }
+
+        const chunkTimeout = Math.min(5000, remaining);
+        try {
+          const actualStatus = await cartPage.getBookingStatus({ timeout: chunkTimeout, page });
+          if (actualStatus.toLowerCase().includes(expectedText.toLowerCase())) {
+            return {
+              bookingErrorDetected: false,
+              knownBookingError: false,
+              shouldSkip: false,
+              supplier: null,
+              bookingErrorText: null,
+            };
+          }
+        } catch {
+          // Continue polling until timeout to catch delayed status/error transitions.
+        }
+
+        await page.waitForTimeout(500);
+      }
+
+      const bookingErrorVisible = await bookingErrorDialog.isVisible().catch(() => false);
+      if (bookingErrorVisible) {
+        return resolveBookingErrorResult();
+      }
+
+      throw new Error(`Booking did not reach status "${expectedText}" within ${timeout}ms and no booking error modal was handled.`);
+    }
 
     await Cart.ensureCartReadyForStatusCheck(page);
 
@@ -360,6 +436,13 @@ const Cart = {
       : await cartPage.getBookingStatus({ timeout, page });
 
     expect(actualStatus.toLowerCase()).toContain(expectedText.toLowerCase());
+    return {
+      bookingErrorDetected: false,
+      knownBookingError: false,
+      shouldSkip: false,
+      supplier: null,
+      bookingErrorText: null,
+    };
   },
 
   /**

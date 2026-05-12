@@ -6,15 +6,52 @@ const logger = require("@utils/logger").child("Checkout");
 
 setDefaultTimeout(120000);
 
+
 // ===== WHEN STEPS =====
 
 When("I complete the booking", async function () {
   logger.info("Completing booking");
-  await Checkout.bookAndFinalize(this.page);
+
+  const scenarioTags = Array.isArray(this.scenarioTags) ? this.scenarioTags : [];
+  const bookingContext = {
+    product: scenarioTags.includes('@transportation') ? 'transportation' : scenarioTags.includes('@hotels') ? 'hotels' : scenarioTags.includes('@flights') ? 'flights' : null,
+    subProduct: scenarioTags.includes('@cars')
+      ? 'cars'
+      : scenarioTags.includes('@rails')
+        ? 'rails'
+        : scenarioTags.includes('@parking')
+          ? 'parking'
+          : scenarioTags.includes('@groundtransport')
+            ? 'groundTransport'
+            : null,
+  };
+
+  const result = await Checkout.bookAndFinalize(this.page, bookingContext);
+  this.bookingOutcome = result;
+
+  if (result?.knownBookingError && result.shouldSkip) {
+    logger.warn('Known booking error detected during booking finalization', {
+      supplier: result.supplier,
+      bookingErrorText: result.bookingErrorText,
+      bookingContext,
+    });
+
+    await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
+    await Checkout.clickBackToTripButton(this.page);
+    return 'pending';
+  }
+
+  if (result?.bookingError && !result.knownBookingError) {
+    const errorSummary = result.supplier
+      ? `supplier: ${result.supplier}`
+      : `message: ${result.bookingErrorText || 'unknown booking error'}`;
+    throw new Error(`Unexpected booking error detected during booking finalization (${errorSummary})`);
+  }
 });
 
-When("I complete the Fusion credit card verification booking", async function () {
-  logger.info("Completing booking with Fusion card verification");
+
+When("I proceed to checkout and handle Fusion verification", async function () {
+  logger.info("Completing Fusion booking with card verification");
   await Checkout.bookAndFinalizeWithFusionCardVerification(this.page);
 });
 
