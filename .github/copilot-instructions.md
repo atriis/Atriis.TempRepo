@@ -5,6 +5,8 @@ description: Cucumber BDD test automation framework with Playwright. Rules for l
 
 # GitHub Copilot Instructions – Playwright + Cucumber BDD Automation Framework
 
+- **Committing changes**: Always delegate to the `commit` custom agent (`.github/agents/commit.agent.md`) when committing changes. Do not commit directly.
+
 ## Project Overview
 
 Playwright + Cucumber BDD test automation framework for a corporate travel booking platform (Atriis). 
