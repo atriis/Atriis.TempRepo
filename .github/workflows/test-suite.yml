@@ -91,6 +91,23 @@ jobs:
           RETRY_COUNT: "2"
           RETRY_DELAY: "3000"
 
+      - name: Rerun failed ${{ matrix.suite_name }} Tests
+        if: failure()
+        timeout-minutes: 30
+        shell: bash
+        run: |
+          if [ -s test-results/rerun.txt ]; then
+            count=$(wc -l < test-results/rerun.txt)
+            echo "Rerunning $count failed scenario(s)..."
+            npx cucumber-js @test-results/rerun.txt --parallel 2
+          else
+            echo "No failures recorded in rerun.txt — skipping rerun."
+          fi
+        env:
+          CI: "true"
+          RETRY_COUNT: "1"
+          RETRY_DELAY: "3000"
+
       - name: Upload ${{ matrix.suite_name }} JUnit Results
         if: always()
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5

@@ -17,6 +17,8 @@
     "test:ndc": "playwright test --grep='@supplier:ndc' --project='*:ndc:*'",
     "test:comprehensive": "playwright test --grep='@supplier:all|@priority:critical'",
     "bdd": "cucumber-js",
+    "bdd:rerun": "npx cucumber-js @test-results/rerun.txt --config cucumber.js",
+    "bdd:rerun:headed": "cross-env HEADLESS=false npx cucumber-js @test-results/rerun.txt --config cucumber.js",
     "bdd:smoke": "set PROVIDER=amadeus && npx cucumber-js tests/features/smoke/",
     "bdd:flights:general": "set PROVIDER=amadeus && npx cucumber-js tests/features/flights/",
     "bdd:flights:lufthansa": "set PROVIDER=lufthansa && npx cucumber-js tests/features/flights/lufthansa/",

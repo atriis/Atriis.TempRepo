@@ -13,7 +13,8 @@ module.exports = {
       '@cucumber/pretty-formatter',
       'json:test-results/cucumber-report.json',
       'junit:test-results/cucumber-junit.xml',
-      'allure-cucumberjs/reporter'
+      'allure-cucumberjs/reporter',
+      'rerun:test-results/rerun.txt'
     ],
     retry: process.env.CI ? 1 : 0,
   }
