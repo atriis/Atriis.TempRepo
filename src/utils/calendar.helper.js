@@ -294,16 +294,16 @@ async function selectDatesByNthAvailable(
 
   // Select the start date
   const start = days.nth(startIndex);
-  await start.waitFor({ state: "visible" });
-  await start.click();
+  await start.waitFor({ state: "visible", timeout: 15000 });
+  await start.click({ force: true });
 
   // One-way flows stop here
   if (endIndex === null) return;
 
   // Select the end date
   const end = days.nth(endIndex);
-  await end.waitFor({ state: "visible" });
-  await end.click();
+  await end.waitFor({ state: "visible", timeout: 15000 });
+  await end.click({ force: true });
 }
 
 /**

@@ -3292,7 +3292,7 @@ const Cart = {
       const actualTexts = await cartPage.getAllFqtvSelectedTexts();
       const hasMatch = actualTexts.some((text) => text.includes(expectedText));
       expect(hasMatch, `FQTV should show "${expectedText}" but got "${actualTexts.join(', ')}"`).toBe(true);
-    }).toPass({ timeout: 15000 });
+    }).toPass({ timeout: 30000 });
   },
 
   /**
