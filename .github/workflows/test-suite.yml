@@ -6,7 +6,7 @@ on:
   # pull_request:
   #  branches: [ main ]
   schedule:
-    - cron: '30 18 * * *'  # Single daily run at 18:30 UTC
+    - cron: '30 18 */2 * *'  # Run every other day at 18:30 UTC
   workflow_dispatch:
 
 # Structured logging configuration for all jobs
@@ -25,14 +25,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
-    name: ${{ matrix.suite_name }}
+  test-non-booking:
+    name: '[Non-Booking] ${{ matrix.suite_name }}'
     runs-on: ubuntu-latest
     timeout-minutes: 65
     strategy:
       fail-fast: false
       matrix:
         include:
+          # GDS Flights - Non Booking
           - suite_id: flights-amadeus-non-booking
             suite_name: Flights Amadeus Non Booking
             test_path: tests/features/flights/flights_amadeus/flights_amadeus_non_booking/
@@ -45,12 +46,33 @@ jobs:
           - suite_id: flights-sabre-non-booking
             suite_name: Flights Sabre Non Booking
             test_path: tests/features/flights/flights_sabre/flights_sabre_non_booking/
-          - suite_id: cars-daily
-            suite_name: Cars Daily
-            test_path: tests/features/cars/daily_cars/
+          # NDC Flights - Non Booking
+          - suite_id: flights-aa-ndc-non-booking
+            suite_name: Flights AA NDC Non Booking
+            test_path: tests/features/flights/flights_aa_ndc/flights_aa_ndc_non_booking/
+          - suite_id: flights-afkl-ndc-non-booking
+            suite_name: Flights AFKL NDC Non Booking
+            test_path: tests/features/flights/flights_afkl_ndc/flights_afkl_ndc_non_booking/
+          - suite_id: flights-ba-ndc-non-booking
+            suite_name: Flights BA NDC Non Booking
+            test_path: tests/features/flights/flights_ba_ndc/flights_ba_ndc_non_booking/
+          - suite_id: flights-ib-ndc-non-booking
+            suite_name: Flights IB NDC Non Booking
+            test_path: tests/features/flights/flights_ib_ndc/flights_ib_ndc_non_booking/
+          - suite_id: flights-lh-ndc-non-booking
+            suite_name: Flights LH NDC Non Booking
+            test_path: tests/features/flights/flights_lh_ndc/flights_lh_ndc_non_booking/
+          - suite_id: flights-ua-ndc-non-booking
+            suite_name: Flights UA NDC Non Booking
+            test_path: tests/features/flights/flights_ua_ndc/flights_ua_ndc_non_booking/
+          # Hotels - Non Booking
           - suite_id: hotels-non-booking
             suite_name: Hotels Non Booking
             test_path: tests/features/hotels/hotels_non_booking/
+          # Other
+          - suite_id: cars-daily
+            suite_name: Cars Daily
+            test_path: tests/features/cars/daily_cars/
           - suite_id: rails-daily
             suite_name: Rails Daily
             test_path: tests/features/rails/daily_rails/
@@ -140,11 +162,138 @@ jobs:
           path: test-results/screenshots/
           if-no-files-found: ignore
 
+  test-booking:
+    name: '[Booking] ${{ matrix.suite_name }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # GDS Flights - Booking
+          - suite_id: flights-amadeus-booking
+            suite_name: Flights Amadeus Booking
+            test_path: tests/features/flights/flights_amadeus/flights_amadeus_booking/
+          - suite_id: flights-general-booking
+            suite_name: Flights General Booking
+            test_path: tests/features/flights/flights_general/flights_general_booking/
+          - suite_id: flights-galileo-booking
+            suite_name: Flights Galileo Booking
+            test_path: tests/features/flights/flights_galileo/flights_galileo_booking/
+          - suite_id: flights-sabre-booking
+            suite_name: Flights Sabre Booking
+            test_path: tests/features/flights/flights_sabre/flights_sabre_booking/
+          # NDC Flights - Booking
+          - suite_id: flights-afkl-ndc-booking
+            suite_name: Flights AFKL NDC Booking
+            test_path: tests/features/flights/flights_afkl_ndc/flights_afkl_ndc_booking/
+          - suite_id: flights-ba-ndc-booking
+            suite_name: Flights BA NDC Booking
+            test_path: tests/features/flights/flights_ba_ndc/flights_ba_ndc_booking/
+          - suite_id: flights-ib-ndc-booking
+            suite_name: Flights IB NDC Booking
+            test_path: tests/features/flights/flights_ib_ndc/flights_ib_ndc_booking/
+          - suite_id: flights-lh-ndc-booking
+            suite_name: Flights LH NDC Booking
+            test_path: tests/features/flights/flights_lh_ndc/flights_lh_ndc_booking/
+          - suite_id: flights-ua-ndc-booking
+            suite_name: Flights UA NDC Booking
+            test_path: tests/features/flights/flights_ua_ndc/flights_ua_ndc_booking/
+          # Hotels - Booking
+          - suite_id: hotels-booking
+            suite_name: Hotels Booking
+            test_path: tests/features/hotels/hotels_booking/
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: mkdir -p test-results test-results/screenshots
+
+      - name: Load environment variables
+        # ENV secret contains only app config: AUTOMATION_APP_BASEURL, GENERAL_PASSWORD, AUTOMATION_* vars.
+        # User emails are written directly in feature files — no USER_* entries needed.
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
+
+      - name: Run ${{ matrix.suite_name }} Tests
+        timeout-minutes: 80
+        run: npx cucumber-js ${{ matrix.test_path }} --parallel 2
+        env:
+          CI: "true"
+          RETRY_COUNT: "2"
+          RETRY_DELAY: "3000"
+
+      - name: Rerun failed ${{ matrix.suite_name }} Tests
+        if: failure()
+        timeout-minutes: 40
+        shell: bash
+        run: |
+          if [ -s test-results/rerun.txt ]; then
+            count=$(wc -l < test-results/rerun.txt)
+            echo "Rerunning $count failed scenario(s)..."
+            npx cucumber-js @test-results/rerun.txt --parallel 1
+          else
+            echo "No failures recorded in rerun.txt — skipping rerun."
+          fi
+        env:
+          CI: "true"
+          RETRY_COUNT: "1"
+          RETRY_DELAY: "3000"
+
+      - name: Upload ${{ matrix.suite_name }} JUnit Results
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: ${{ matrix.suite_id }}-results
+          path: test-results/cucumber-junit.xml
+          if-no-files-found: ignore
+
+      - name: Upload ${{ matrix.suite_name }} Cucumber Report
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: ${{ matrix.suite_id }}-report
+          path: test-results/cucumber-report.json
+          if-no-files-found: ignore
+
+      - name: Upload ${{ matrix.suite_name }} Allure Results
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: ${{ matrix.suite_id }}-allure-results
+          path: allure-results/
+          if-no-files-found: ignore
+
+      - name: Upload ${{ matrix.suite_name }} Screenshots
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: ${{ matrix.suite_id }}-screenshots
+          path: test-results/screenshots/
+          if-no-files-found: ignore
+
   report:
     name: Test Report
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: test
+    needs: [test-non-booking, test-booking]
     if: always()
 
     permissions:
@@ -383,7 +532,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Test Matrix | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| All Test Suites (matrix) | \`${{ needs.test.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Non-Booking Suites | \`${{ needs.test-non-booking.result }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Booking Suites | \`${{ needs.test-booking.result }}\` |" >> $GITHUB_STEP_SUMMARY
 
       - name: Parse JUnit Results into Summary
         if: always()
