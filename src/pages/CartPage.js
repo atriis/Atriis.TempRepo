@@ -285,7 +285,7 @@ const SELECTORS = {
   LOYALTY_SECTION: '.quote-extras--loyalty-number',
   LOYALTY_CLICKABLE: '.quote-extras--loyalty-number .is-clickable, .car-driver-loyalty .card-title, .quote-extras--container .is-clickable:has-text("Loyalty ID")',
   LOYALTY_ADD_BUTTON: '.car-driver-loyalty .is-clickable, .quote-extras--loyalty-number .add-text, .quote-extras--loyalty-number .add-btn, .quote-extras--container .add-text:has-text("Add")',
-  LOYALTY_NEW_RADIO: '.quote-extras--loyalty-number .el-radio-group .el-radio:nth-child(2)',
+  LOYALTY_NEW_RADIO: '.quote-extras--loyalty-number .el-radio-group .el-radio:nth-child(2)',"
   LOYALTY_CHAIN_SELECT: '.quote-extras--loyalty-number .select-container .select-element:first-child .el-select',
   LOYALTY_NUMBER_INPUT: '.quote-extras--loyalty-number .select-container .select-element:last-child input, .quote-extras--loyalty-number .el-input__inner, .car-driver-loyalty input[type="text"], .car-driver-loyalty .el-input__inner',
   LOYALTY_SAVE_BUTTON: '.quote-extras--loyalty-number .btns .no-border',

@@ -199,6 +199,7 @@ Then("I should see the selected car location in Google Maps", async function () 
   await CarResults.verifySelectedCarLocationInGoogleMaps(
     this.page,
     locationContext.mapsPage,
+    locationContext.expectedLocationText,
   );
 });
 

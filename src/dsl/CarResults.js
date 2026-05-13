@@ -482,6 +482,9 @@ const CarResults = {
     if (mapsPage && typeof mapsPage.url !== 'function') {
       throw new Error('mapsPage must be a Playwright page when provided, got: ' + typeof mapsPage);
     }
+    if (expectedLocationText != null && typeof expectedLocationText !== 'string') {
+      throw new Error('expectedLocationText must be a string when provided, got: ' + typeof expectedLocationText);
+    }
 
     const carResultsPage = getPageObject(page, CarResultsPage);
     const mapsContext = await carResultsPage.readGoogleMapsContext(mapsPage);
@@ -503,6 +506,16 @@ const CarResults = {
       mapsContext.locationText,
       `Google Maps location text should not be empty. Received: "${mapsContext.locationText}"`,
     ).toBeTruthy();
+
+    // If expected location text was passed in, validate it matches
+    if (expectedLocationText && mapsContext.locationText) {
+      const normalizedExpected = expectedLocationText.toLowerCase().replace(/\s+/g, ' ').trim();
+      const normalizedActual = mapsContext.locationText.toLowerCase().replace(/\s+/g, ' ').trim();
+      expect(
+        normalizedActual,
+        `Google Maps location text does not contain expected location. Expected to contain: "${normalizedExpected}". Actual: "${normalizedActual}"`,
+      ).toContain(normalizedExpected);
+    }
 
   },
 };

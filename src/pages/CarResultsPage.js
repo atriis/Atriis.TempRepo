@@ -255,6 +255,11 @@ class CarResultsPage {
     const link = this.page.locator(SELECTORS.FIRST_LOCATION_LINK).first();
     await link.waitFor({ state: 'visible', timeout: 30000 });
 
+    const wrapper = this.page.locator(SELECTORS.FIRST_LOCATION_LINK_WRAPPER).first();
+    const expectedLocationText = ((await wrapper.textContent().catch(() => '')) || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
     const popupPromise = this.page.waitForEvent('popup', { timeout: 30000 });
     await link.click();
     const mapsPage = await popupPromise;
@@ -263,6 +268,7 @@ class CarResultsPage {
 
     return {
       mapsPage,
+      expectedLocationText,
     };
   }
 
@@ -302,6 +308,7 @@ class CarResultsPage {
           .trim();
         if (locationText) break;
       }
+    }
     }
 
     return {
