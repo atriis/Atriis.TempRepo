@@ -19,7 +19,14 @@ Feature: 68498 BA NDC - APIS destination address for US flights is no longer man
     When I search for a round trip flight from "LON" to "NYC"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
+    # TODO: implement step — 'I click to open passenger info to edit APIS'
+    #   Click the edit/expand button on the APIS extras section (reuse step from 44471/47291)
     When I click to open passenger info to edit APIS
+    # TODO: implement step — 'the APIS form should show {int} editable fields'
+    #   Count the visible input fields inside the APIS form and assert the count matches (expected: 11)
+    #   Confirms destination address is no longer a mandatory field in the form
     Then the APIS form should show 11 editable fields
+    # TODO: implement step — 'I save the APIS form' (reuse step from 44471)
     When I save the APIS form
+    # TODO: implement step — 'the APIS section should show a success notification' (reuse step from 44471)
     Then the APIS section should show a success notification

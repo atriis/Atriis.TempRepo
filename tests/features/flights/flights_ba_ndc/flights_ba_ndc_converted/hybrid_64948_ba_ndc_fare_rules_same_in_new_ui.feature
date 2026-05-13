@@ -20,5 +20,9 @@ Feature: hybrid_64948 BA NDC - Fare rules are the same in new UI (new UI portion
     Then flight results should be available
     When I click to open fare rules
     Then I should see the fare rules note about strictest terms
+    # TODO: implement step — 'I click the fare basis tab in fare rules'
+    #   In the open fare rules modal/drawer, click the "Fare Basis" tab to switch to that section
     When I click the fare basis tab in fare rules
+    # TODO: implement step — 'the fare basis section should be visible in fare rules'
+    #   Assert that the Fare Basis content section is visible after clicking its tab in the fare rules modal
     Then the fare basis section should be visible in fare rules

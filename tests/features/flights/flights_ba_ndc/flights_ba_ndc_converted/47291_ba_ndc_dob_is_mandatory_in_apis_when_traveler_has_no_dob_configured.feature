@@ -19,9 +19,18 @@ Feature: 47291 BA NDC - DOB is mandatory in APIS when traveler has no DOB config
     When I search for a round trip flight from "LON" to "NYC"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
+    # TODO: implement step — 'the passenger info section should be marked as required'
+    #   Assert the APIS extras section has a required indicator (reuse step from 44471)
     Then the passenger info section should be marked as required
+    # TODO: implement step — 'I click to open passenger info to edit APIS'
+    #   Click the edit/expand button on the APIS extras section (reuse step from 44471)
     When I click to open passenger info to edit APIS
+    # TODO: implement step — 'the date of birth field should be required in the APIS section'
+    #   Assert the DOB field is visible and marked as required (e.g. red asterisk) in the APIS form
     Then the date of birth field should be required in the APIS section
+    # TODO: implement step — 'I fill in the APIS date of birth using the date picker'
+    #   Open the date-of-birth date picker in the APIS form and select a valid date
     When I fill in the APIS date of birth using the date picker
+    # TODO: implement step — 'I try to save the APIS form' (reuse step from 44471)
     And I try to save the APIS form
     # TODO: css-prop-validation — verify the save button is disabled or field is highlighted after partial fill

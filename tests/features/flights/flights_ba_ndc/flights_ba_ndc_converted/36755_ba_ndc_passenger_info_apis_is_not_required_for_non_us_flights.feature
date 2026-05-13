@@ -19,7 +19,14 @@ Feature: 36755 BA NDC - Passenger Info (APIS) is not required for non-US flights
     When I search for a round trip flight from "LHR" to "ARN"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
+    # TODO: implement step — 'the APIS section should not be visible in the extras'
+    #   Assert that no APIS/passenger info extras section is rendered in the cart extras panel
     Then the APIS section should not be visible in the extras
+    # TODO: implement step — 'the {string} section should be visible in the extras'
+    #   Assert that the named extras section (e.g. Frequent Flyer, Seating) is visible in the cart extras panel
     Then the "Frequent Flyer" section should be visible in the extras
+    # TODO: implement step — 'the {string} section should be visible in the extras' (reuse same step definition)
     Then the "Seating" section should be visible in the extras
+    # TODO: implement step — 'there should be {int} extras sections visible'
+    #   Count the number of visible extras sections in the cart and assert it matches the expected count
     Then there should be 2 extras sections visible

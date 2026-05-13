@@ -22,7 +22,7 @@ Feature: hybrid_69676 BA NDC - Update FQTV for traveler with middle name
     Then the booking status should be "Pending booking"
     When I accept Terms & Conditions
     And I hold the trip
-    Then the booking status should be "On hold"
     When I click frequent flyer in extras
     And I add loyalty number "1771177117" using airline "Alaska"
+    Then the booking status should be "On hold"
     Then I successfully cancel the trip
