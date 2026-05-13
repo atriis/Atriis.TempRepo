@@ -14,7 +14,7 @@ Feature: 61677 Travelodge - Title field required before proceeding to checkout
 
   @priority:high
   Scenario: Title field shows red border when empty and allows proceeding when filled
-    Given I am logged in as "tlgg" booking a new trip
+    Given I am logged in as "tl@gg.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result

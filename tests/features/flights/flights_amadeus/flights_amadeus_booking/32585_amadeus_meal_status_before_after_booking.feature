@@ -13,7 +13,7 @@ Feature: 32585 Amadeus - Meal status displayed in cart before and after booking
   So that I know my meal preferences are correctly applied
 
   Scenario: Meal status is visible before and after booking
-    Given I am logged in as "testim_meal" booking a new trip
+    Given I am logged in as "testim@meal.stt" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "NYC"
     And I add the first flight to cart

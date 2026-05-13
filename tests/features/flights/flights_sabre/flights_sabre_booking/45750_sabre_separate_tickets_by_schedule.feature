@@ -12,7 +12,7 @@ Feature: 45750 Sabre - Separate tickets by schedule booking
   So that the booking processes correctly without duplicate segment selection
 
   Scenario: Separate tickets are created correctly when booking by schedule with different carriers
-    Given I am logged in as "brunasantossabre" booking a new trip
+    Given I am logged in as "brunasantossabre@sabre.com" booking a new trip
     And I have added a random guest traveler
     When I search for a flight by schedule from "AMS" to "FRA"
     And flight results should be available

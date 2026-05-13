@@ -14,7 +14,7 @@ Feature: hybrid_54900 BA NDC - TSA redress sent correctly in booking request
   So that I can verify TSA/redress information is correctly sent in the booking request
 
   Scenario: TSA redress is sent correctly when booking a BA NDC US flight
-    Given I am logged in as "tsa" booking a new trip
+    Given I am logged in as "tsa@testim.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LHR" to "PHL"
     And I add the first flight to cart

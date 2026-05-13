@@ -13,7 +13,7 @@ Feature: 69184 Galileo - Complete trip booking verifying fare rules
   So that I can review cancellation and change policies
 
   Scenario: Fare rules displayed in results, pricing options, flight details, cart and after hold
-    Given I am logged in as "bsgalileoflight" booking a new trip
+    Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "LON" to "DOH"
     And I filter results by carrier "Qatar Airways"

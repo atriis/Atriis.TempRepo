@@ -12,7 +12,7 @@ Feature: 69769 Sabre NDC - Correctly sending traveler info in OrderCreate RQ
   So that the traveler information is correctly sent in the order creation
 
   Scenario: Sabre NDC flight hold with multiple travelers sends correct info
-    Given I am logged in as "corpsabrendc_frosch" booking a new trip
+    Given I am logged in as "corp@sabreNdc.frosch" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "Lauren"
     When I search for a round trip flight from "LAX" to "NYC"

@@ -13,7 +13,7 @@ Feature: 67281 DB - Continue from overview and validate not completed order erro
   So that I can see the correct error when the external order is not completed
 
   Scenario: DB continue flow shows not completed order error message
-    Given I am logged in as "jskrl"
+    Given I am logged in as "jskrl@jskr.com"
     # TODO: create step "When I open the first trip from the trip list" in db.steps.js or trips.steps.js
     # covers: page.click(".top-container > :nth-child(5) .icon-container > :nth-child(2)") + page.click(".trip-list > :nth-child(1) .passengers")
     When I open the first trip from the trip list

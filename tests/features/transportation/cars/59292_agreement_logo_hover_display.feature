@@ -12,7 +12,7 @@ Feature: 59292 Agreement logo displays on hover
   So that I can identify which rental company the agreement is with
 
   Background:
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

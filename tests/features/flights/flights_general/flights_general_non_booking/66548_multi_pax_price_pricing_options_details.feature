@@ -12,7 +12,7 @@ Feature: 66548 Multi Pax - Correct price in pricing options and flight details
   So that I can verify the pricing is accurate
 
   Scenario: Multi pax pricing is correct in pricing options and flight details
-    Given I am logged in as "sabre_testim" booking a new trip
+    Given I am logged in as "sabre@testim.com" booking a new trip
     And I have added a random guest traveler
     And I have added a random guest traveler
     And I have added a random guest traveler

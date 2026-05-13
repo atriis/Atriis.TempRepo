@@ -166,7 +166,7 @@ Canonical orchestration identifiers:
 - `SUNHOTELS`
 - `GOGLOBAL`
 
-> **Note**: Each supplier has **specific test users** configured in `.env`. Use the correct user for the target supplier.
+> **Note**: Each supplier has specific test users. Write the email address directly in the Gherkin step (`Given I am logged in as "email@domain.com"`). Search existing hotel feature files in `tests/features/hotels/` to find the right email for the target supplier.
 
 ## Key Files to Reference
 

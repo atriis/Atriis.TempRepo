@@ -12,7 +12,7 @@ Feature: 23004 Benerail - Approval flow for duration and origin with linked refe
   So that linked reference questions appear and traveler name is validated in cart
 
   Scenario: Benerail booking with approval flow for duration/origin and linked reference fields
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "bina"
     When I search for a one way Benerail train from "nlbanToAmsterdamCe"
     # TODO: create step "Then the linked reference questions should be visible in the Benerail search form" in benerail_search.steps.js

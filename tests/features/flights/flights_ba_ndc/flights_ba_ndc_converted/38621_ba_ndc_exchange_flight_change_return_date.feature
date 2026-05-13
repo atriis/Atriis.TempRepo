@@ -14,7 +14,7 @@ Feature: 38621 BA NDC - Exchange flight (return date change)
   So that I can verify the exchange/reissue flow works with correct price validation
 
   Scenario: Exchange BA NDC flight by changing the return date
-    Given I am logged in as "brit" booking a new trip
+    Given I am logged in as "brit@indecy.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LHR" to "MAD"
     And I add the first flight to cart

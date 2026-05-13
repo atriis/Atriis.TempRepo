@@ -173,17 +173,17 @@ When working with Copilot, follow these rules strictly:
 
 ## Environment & Configuration
 
-### User Discovery
+### User Login
 
-Users are auto-discovered from environment variables. No code changes needed:
-- Preferred env var: `USER_RUIMARIANO=user@example.com`
-- Preferred Gherkin usage: `Given I am logged in as "ruimariano"`
-- Only single-label login steps are supported: `Given I am logged in as {string}`
+Emails are written **directly in feature files** — no `USER_*` env vars, no label registry:
+- Gherkin usage: `Given I am logged in as "ruimariano@amadeus.com"`
+- Only `GENERAL_PASSWORD` is read from `.env` (shared password for all test accounts)
+- Only single-email login steps are supported: `Given I am logged in as {string}`
 
 ### CI/CD Features
 
-- **CI Workflow**: `.github/workflows/test-suite.yml` with 6 test jobs (smoke, daily-cars, daily-flights, daily-shell, daily-hotels, daily-rails) + summary
-- **Schedule**: Daily at 21:00 UTC, also on push and PR
+- **CI Workflow**: `.github/workflows/test-suite.yml` with 7 matrix jobs (flights-amadeus, flights-general, flights-galileo, flights-sabre, cars, hotels, rails) + report job
+- **Schedule**: Daily at 18:30 UTC, also on `workflow_dispatch`
 - **Retry Logic**: Enabled only in CI (`CI=true`), configured via `RETRY_COUNT` and `RETRY_DELAY`
 - **Screenshot Capture**: Automatic on failure, saved to `test-results/screenshots/`
 - **Playwright Traces**: Captured on failure alongside screenshots

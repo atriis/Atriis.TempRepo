@@ -12,7 +12,7 @@ Feature: 67751 Amtrak - Destination title and icon displayed in trip overview
   So that I can confirm the booking summary is correctly rendered
 
   Scenario: Amtrak destination title and icon visible after adding to cart
-    Given I am logged in as "bar" booking a new trip
+    Given I am logged in as "bar@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Amtrak train from "wasToBos"
     When I add the first result to trip

@@ -14,7 +14,7 @@ Feature: 56125 Premier Inn - Corporate booking outside UK does not use ATOS card
 
   @priority:high
   Scenario: ATOS card not available and Paid by Corporate shown for non-UK Premier Inn
-    Given I am logged in as "premier" booking a new trip
+    Given I am logged in as "premier@inn.card" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "FRA" for 1 night
     And I select the first hotel result

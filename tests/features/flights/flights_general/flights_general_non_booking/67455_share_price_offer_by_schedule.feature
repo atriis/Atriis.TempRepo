@@ -12,7 +12,7 @@ Feature: 67455 Flights - Share price offer from search by schedule results
   So that I can send flight options to travelers for selection
 
   Scenario: Share price offer from search by schedule results
-    Given I am logged in as "ryanair_ams" booking a new trip
+    Given I am logged in as "ryanAir@amadeus.ams" booking a new trip
     And I have added a random guest traveler
     When I search for a flight by schedule from "DUB" to "LON"
     And I wait for select text to be visible  

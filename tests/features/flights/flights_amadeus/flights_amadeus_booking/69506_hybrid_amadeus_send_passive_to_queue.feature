@@ -14,7 +14,7 @@ Feature: 69506 Amadeus - Send passive to queue
   # requires backend/API validation that is not covered by this UI scenario.
 
   Scenario: Booking a round trip flight that sends passive to queue
-    Given I am logged in as "sendtoqcorp" booking a new trip
+    Given I am logged in as "sendToQCorp@club.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "LON" to "PAR"
     And flight results should be available

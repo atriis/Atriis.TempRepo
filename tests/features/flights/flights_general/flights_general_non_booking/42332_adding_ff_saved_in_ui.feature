@@ -12,7 +12,7 @@ Feature: 42332 Flights - Adding FF is successfully saved in the UI
   So that my loyalty points are applied to the booking
 
   Scenario: Adding frequent flyer number is saved successfully
-    Given I am logged in as "christree" booking a new trip
+    Given I am logged in as "tree@tree.com" booking a new trip
     And I have added myself as the traveler
     # Guest traveler removed: the guest loading takes too long in CI, causing the search
     # form to remain in a loading state when Search is clicked (navigation never triggers).

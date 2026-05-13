@@ -12,7 +12,7 @@ Feature: 73542 Sabre car fare rules popup across booking flow
   So that I understand all pricing and vendor terms
 
   Background:
-    Given I am logged in as "testim" booking a new trip
+    Given I am logged in as "testim@car.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

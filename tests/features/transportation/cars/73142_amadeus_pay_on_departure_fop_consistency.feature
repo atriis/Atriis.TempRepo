@@ -12,7 +12,7 @@ Feature: 73142 Amadeus car pay on departure FOP consistency
   So that I understand the payment is due at rental location
 
   Background:
-    Given I am logged in as "testim" booking a new trip
+    Given I am logged in as "testim@car.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

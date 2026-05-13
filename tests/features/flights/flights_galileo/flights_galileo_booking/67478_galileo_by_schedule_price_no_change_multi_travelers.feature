@@ -13,7 +13,7 @@ Feature: 67478 Galileo - By schedule price does not change for multi travelers
   So that multi-pax pricing is consistent
 
   Scenario: By schedule flight price matches before and after booking for 3 travelers
-    Given I am logged in as "beatrizpamplonacorp" booking a new trip
+    Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added a random guest traveler
     And I have added a random guest traveler
     And I have added a random guest traveler

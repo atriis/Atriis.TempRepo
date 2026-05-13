@@ -13,7 +13,7 @@ Feature: 59255 Galileo - Baggage not displayed for other traveler after saving f
   So that baggage selections are correctly scoped per passenger
 
   Scenario: Baggage saved for one traveler is not displayed for the other
-    Given I am logged in as "beatrizpamplonacorp" booking a new trip
+    Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added a random guest traveler
     And I have added a random guest traveler
     When I search for a one way flight from "BRU" to "OTP"

@@ -12,7 +12,7 @@ Feature: hybrid_for_62913 Benerail Moove - Full name is correctly sent when pass
   So that I can confirm the full name is correctly truncated or sent in the request without errors
 
   Scenario: Benerail search accepts guest with a full name longer than 15 characters
-    Given I am logged in as "bruolisan" booking a new trip
+    Given I am logged in as "bruolisan@benerailmoovecorp.com" booking a new trip
     # TODO: create step "And I have added a random guest traveler with a name longer than 15 characters" in search.steps.js or common.steps.js
     # covers: Add_random_guest_16_characters() — adds a random guest traveler whose full name is exactly 16 characters
     And I have added a random guest traveler with a name longer than 15 characters

@@ -429,23 +429,23 @@ const TRANSPORT_FLOWS = {
 // All labels must exist in .env as USER_<LABEL>=email@domain.com
 const SUPPLIER_USER_MAPPING = {
   // Cars — GDS
-  AMADEUS: ['ruimariano', 'ruimendes', 'brunasantosnl'],
-  UAPIGALILEO: ['gal', 'vinicius', 'beatrizpamplonacorp', 'renato', 'galileo', 'bsgalileoflight', 'Rafael'],
-  SABRE: ['robsoncruz', 'penelopecruz', 'brunajuliana', 'Berry', 'victor', 'tree'],
-  SUNNYCARS: ['brunaalice', 'kaylesun'],
+  AMADEUS: ['ruimariano@amadeus.com', 'ruimendes@amadeus.com', 'brunasantosnl@testim.com'],
+  UAPIGALILEO: ['gal@leo.com', 'vinicius@galileo.car', 'beatrizpamplonacorp@galileo.corp', 'renato@galileo.car', 'bsgalileoflight@galileo.com', 'rafael@galileo.car'],
+  SABRE: ['robsoncruz@sabre.car', 'penelopecruz@sabre.car', 'brunajuliana@sabre.car', 'berry@sabre.car', 'victor@sabre.car', 'tree@tree.com'],
+  SUNNYCARS: ['brunaalice@sunnycar.tlc', 'kaylesun@sunnycar.tlc'],
 
   // Rails
-  EVOLVI: ['corp_evolvi', 'corp_evolvi32', 'thiagosantos', 'vinijus', 'eve', 'we111'],
-  BENERAILMOOVE: ['beny', 'pini', 'shani_nl', 'bruolisan', 'testim_bene', 'beny_nl', 'bene_sncb', 'pmac_bene', 'pmac_sncb', 'beny_agriman', 'justinbieber', 'bruninabenerail', 'alvaresazevedo'],
-  DEUTSCHEBAHN: ['beny'],
-  AMTRAK: ['bar', 'marcoluis'],
+  EVOLVI: ['corp@evolvi.com', 'corp32@evolvi.com', 'thiagosantos@evolvi.com', 'vinijus@evolvi.com', 'eve@evolvi.com', 'we111@evolvi.com'],
+  BENERAILMOOVE: ['beny@benerail.com', 'pini@benerail.com', 'shani@testimcorpnl.com', 'bruolisan@benerail.com', 'testim@benerail.com', 'beny@benerailnl.com', 'sncb@benerail.com', 'pmac@benerail.com', 'pmac@sncb.com', 'beny@agriman.com', 'justinbieber@benerail.com', 'brunina@benerail.com', 'alvaresazevedo@benerail.com'],
+  DEUTSCHEBAHN: ['beny@benerail.com'],
+  AMTRAK: ['bar@benerail.com', 'marcoluis@amtrak.com'],
 
   // Ground transport
-  TRANSFERZ: ['beto', 'transferz_testim', 'ran_ferz', 'alana_transferz'],
-  GROUNDSCOPE: ['elisabete', 'groundscoupe_testim'],
+  TRANSFERZ: ['beto@transferz.com', 'testim@transferz.com', 'ran@transferz.com', 'alana@transferz.com'],
+  GROUNDSCOPE: ['elisabete@groundscope.com', 'testim@groundscope.com'],
 
   // Parking
-  HOLIDAYEXTRASPARKING: ['priscila', 'rafaelrocha', 'anamaria', 'parking'],
+  HOLIDAYEXTRASPARKING: ['priscila@ukparking.com', 'rafaelrocha@ukparking.com', 'anamaria@ukparking.com', 'parking@ukparking.com'],
 };
 
 

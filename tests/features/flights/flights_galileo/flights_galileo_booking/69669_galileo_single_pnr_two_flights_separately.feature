@@ -13,7 +13,7 @@ Feature: 69669 Galileo - Single PNR when two flights booked separately
   So that my itinerary is consolidated
 
   Scenario: Two separately booked flights result in single PNR
-    Given I am logged in as "beatrizpamplonacorp" booking a new trip
+    Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "LIS" to "DXB"
     And I add the first flight to cart

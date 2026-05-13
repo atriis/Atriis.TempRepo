@@ -15,7 +15,7 @@ Feature: 62109 Flights - Search by schedule filters updated per displayed leg
   # Add to .env: USER_FILTER="filter@test.com"
 
   Scenario: Filters update per leg in by-schedule search and multi-city
-    Given I am logged in as "filter" booking a new trip
+    Given I am logged in as "filter@amadeus.com" booking a new trip
     And I have added myself as the traveler
     # TODO: Step needed for "Search flights by schedule"
     # TODO: Step needed for "Validate filters are updated according to displayed leg"

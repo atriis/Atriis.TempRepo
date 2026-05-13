@@ -11,7 +11,7 @@ Feature: 59787 Amadeus - Round trip pricing options are not duplicated
   So that I can confirm each segment shows distinct pricing options
 
   Scenario: Pricing options are not duplicated for round trip flight
-    Given I am logged in as "taylor" booking a new trip
+    Given I am logged in as "taylor@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LHR" to "MNL"
     And I click proceed on the reference fields popup

@@ -13,7 +13,7 @@ Feature: 40230 Sabre car payment type matches between results and cart
 
   @priority:high
   Scenario: Capture the payment type on results and verify it stays the same in cart
-    Given I am logged in as "robsoncruz" booking a new trip
+    Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "LHR"
     And I capture the current car FOP on results

@@ -13,7 +13,7 @@ Feature: 75523 - Travel requested items visible for travel request role
 
   @smoke @priority:critical
   Scenario: Travel requested flight is visible in trip for user with only travel request role
-    Given I am logged in as "pinigov"
+    Given I am logged in as "jskrl@jskr.com"
     When I book a new trip
     And I have added myself as the traveler
     And I send a flight travel request from "LON" to "MAD"

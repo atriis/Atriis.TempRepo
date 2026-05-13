@@ -13,7 +13,7 @@ Feature: 28647 Amadeus - Multi-pax booking with rail banner
   So that I can consider greener transport options and book for multiple travelers
 
   Scenario: Book round trip for 2 ADTs and verify rail banner is displayed
-    Given I am logged in as "amos" booking a new trip
+    Given I am logged in as "amos@one.com" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "pit rip"
     When I search for a round trip flight from "AMS" to "BRU"

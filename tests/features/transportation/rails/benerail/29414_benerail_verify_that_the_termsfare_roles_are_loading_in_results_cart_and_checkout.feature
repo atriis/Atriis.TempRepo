@@ -12,7 +12,7 @@ Feature: 29414 Benerail - Fare rules loading in results, cart and checkout
   So that I can verify terms are accessible at every stage of the booking
 
   Scenario: Benerail fare rules are accessible in results, cart and after booking
-    Given I am logged in as "beny" booking a new trip
+    Given I am logged in as "beny@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToNlasc"
     And I click proceed on the reference fields popup

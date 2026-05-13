@@ -15,7 +15,7 @@ Feature: 38619 Iberia - Exchange flight with new return date and validate prices
   # NOTE: This scenario is BLOCKED by bug 66546. It is converted with placeholders for assertions
   # that the original Testim test marked with TODO comments (price extractions and number sums).
   Scenario: Exchange a booked Iberia flight with a new return date and verify prices
-    Given I am logged in as "ivri" booking a new trip
+    Given I am logged in as "Ivri@Andecy.com" booking a new trip
     And I have added myself as the traveler
     # Original booking - LHR/MAD round trip, complete purchase
     When I search for a round trip flight from "LHR" to "MAD"

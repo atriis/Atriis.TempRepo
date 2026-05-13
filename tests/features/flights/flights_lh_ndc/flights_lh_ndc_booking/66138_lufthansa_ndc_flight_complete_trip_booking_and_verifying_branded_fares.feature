@@ -14,7 +14,7 @@ Feature: 66138 Lufthansa NDC - Complete trip booking and verifying branded fares
   So that I can confirm branded fares are displayed correctly throughout the flow
 
   Scenario: Book a Lufthansa NDC round trip flight and verify branded fares
-    Given I am logged in as "clara" booking a new trip
+    Given I am logged in as "claraaguiar@ndclhclara.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "FRA" to "MIA"
     And flight results should be available

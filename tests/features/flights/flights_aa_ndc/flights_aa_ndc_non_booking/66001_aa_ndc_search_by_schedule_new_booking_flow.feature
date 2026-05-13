@@ -16,7 +16,7 @@ Feature: 66001 AA NDC - Search By Schedule - Corporate Role 'Use New Flight Book
   So that pricing options are shown when I click 'Select flight' instead of adding directly to my trip
 
   Scenario: Results show 'Select flight' button and open pricing options on click
-    Given I am logged in as "aandcuser" booking a new trip
+    Given I am logged in as "aandcuser@aa.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "ORD" to "LGA"
     And flight results should be available

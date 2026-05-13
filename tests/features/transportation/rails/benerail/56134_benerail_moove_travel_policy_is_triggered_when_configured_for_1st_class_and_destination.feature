@@ -12,7 +12,7 @@ Feature: 56134 Benerail - Travel policy triggered when configured for 1st class 
   So that the travel policy is enforced correctly for Benerail bookings
 
   Scenario: OOP indicator appears when booking a Benerail route with 1st class and destination policy
-    Given I am logged in as "justinbieber" booking a new trip
+    Given I am logged in as "justinbieber@benerail.com" booking a new trip
     And I have added myself as the traveler
     # TODO: note Search_benerail_by_place_one_way__direct_only_ uses direct-only filter
     # The existing step does not support direct-only — add TODO on BenerailSearch DSL to add directOnly option

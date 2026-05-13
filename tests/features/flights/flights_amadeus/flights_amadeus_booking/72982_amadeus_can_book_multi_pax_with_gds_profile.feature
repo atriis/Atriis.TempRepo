@@ -6,7 +6,7 @@ Feature: 72982 Amadeus - Can book for multi pax with GDS profile
 
   @priority:critical
   Scenario: Can book for multi pax with GDS profile
-    Given I am logged in as "amadeus_gds" booking a new trip
+    Given I am logged in as "amadeus@profile.corp" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
     When I search for a one way flight from "MAD" to "LIS"

@@ -14,7 +14,7 @@ Feature: 68809 Amadeus - CO2 emissions displayed in hotel level, room level, and
 
   @priority:high
   Scenario: CO2 data is visible throughout the Amadeus hotel booking flow
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Amsterdam" for 1 night
     Then the CO2 emissions should be displayed in hotel level results

@@ -16,7 +16,7 @@ Feature: 47716 Iberia - Validate random CVV for IB/BA and invoice
 
   #BLOCKED - no results, could not test the entire scenario 
   Scenario: CVV requirement varies by FOP type for IB NDC booking
-    Given I am logged in as "cvv_ib" booking a new trip
+    Given I am logged in as "cvv@ib.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "MAD" to "LON"
     And I add the first flight to cart

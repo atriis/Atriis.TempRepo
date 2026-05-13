@@ -14,7 +14,7 @@ Feature: HYBRID for 73878 Email adress is sent according to the web confirmation
 
   @priority:high
   Scenario: Confirmation email is sent to the specific configured email address after hotel booking
-    Given I am logged in as "rebecca" booking a new trip
+    Given I am logged in as "rebecca@kom.com" booking a new trip
     And I have added traveler by name "Yosef Edi"
     When I search for a hotel in "LON" for 1 night
     And I wait to see view rates text in results page

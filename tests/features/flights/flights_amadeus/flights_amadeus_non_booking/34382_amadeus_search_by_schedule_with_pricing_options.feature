@@ -14,7 +14,7 @@ Feature: 34382 Amadeus - Results are displayed with Pricing Options on search By
 
   @priority:high
   Scenario: Search by schedule displays results with pricing options in pricing page
-    Given I am logged in as "bruna_nlgov" booking a new trip
+    Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "AMS" to "JFK"
     And I click to open first pricing options

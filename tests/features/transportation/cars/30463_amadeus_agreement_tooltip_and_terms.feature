@@ -13,7 +13,7 @@ Feature: 30463 Amadeus agreement tooltip and terms validation
 
   @priority:critical
   Scenario: Validate agreement tooltip and terms across results, cart, and checkout
-    Given I am logged in as "ruimendes" booking a new trip
+    Given I am logged in as "ruimendes@amadeus.com" booking a new trip
     And I have added a random guest traveler
     When I select rental agency "Enterprise"
     And I search for a car at "LHR"

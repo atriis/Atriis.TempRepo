@@ -14,7 +14,7 @@ Feature: 66141 BA NDC - Complete trip booking and verifying fare rules
   So that I can confirm fare rules are accessible throughout the booking flow
 
   Scenario: Complete trip booking with fare rules verification at each stage
-    Given I am logged in as "ian" booking a new trip
+    Given I am logged in as "iancurtis@ndcba.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "AMS"
     Then flight results should be available

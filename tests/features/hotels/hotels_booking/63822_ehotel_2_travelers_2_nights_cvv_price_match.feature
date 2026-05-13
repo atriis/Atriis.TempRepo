@@ -14,7 +14,7 @@ Feature: 63822 eHotel - Book hotel for 2 travelers 2 nights with CVV and price m
 
   @priority:critical
   Scenario: 2 travelers booked for 2 nights in eHotel with CVV and price match verified
-    Given I am logged in as "eli" booking a new trip
+    Given I am logged in as "eli@tel.com" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
     When I search for a hotel in "Amsterdam" for 2 nights

@@ -12,7 +12,7 @@ Feature: 31205 By Schedule - Search and add to cart works as expected
   So that I can book flights selected individually per segment
 
   Scenario: Search by schedule and add to cart
-    Given I am logged in as "testim_amadeus" booking a new trip
+    Given I am logged in as "testim@amadeus.com" booking a new trip
     And I have added a random guest traveler
     When I search for a flight by schedule from "SFO" to "DUB"
     And I select flight segments by schedule

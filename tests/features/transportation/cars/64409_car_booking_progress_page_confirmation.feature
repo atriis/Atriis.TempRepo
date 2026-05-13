@@ -12,7 +12,7 @@ Feature: 64409 Car booking progress page confirmation flow
   So that I understand my booking status
 
   Background:
-    Given I am logged in as "testim" booking a new trip
+    Given I am logged in as "testim@car.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

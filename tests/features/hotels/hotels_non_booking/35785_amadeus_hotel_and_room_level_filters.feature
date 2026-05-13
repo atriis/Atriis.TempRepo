@@ -14,7 +14,7 @@ Feature: 35785 MERGED: Hotel - Filters are displayed on availability page (room 
 
   @priority:high
   Scenario: Filters are displayed on availability page (room level)
-    Given I am logged in as "helenatereza" booking a new trip
+    Given I am logged in as "helenatereza@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "New York City" for 1 night
     And I wait to see view rates text in results page

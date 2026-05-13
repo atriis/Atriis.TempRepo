@@ -14,7 +14,7 @@ Feature: 65011 Expedia - OwnerType is saved correctly when adding FOP in cart
 
   @priority:high
   Scenario: OwnerType is correctly saved when adding a credit card FOP for Expedia hotel
-    Given I am logged in as "robbysilva" booking a new trip
+    Given I am logged in as "robbysilva@expediawofop.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Budapest" for 1 night
     And I select the first hotel result

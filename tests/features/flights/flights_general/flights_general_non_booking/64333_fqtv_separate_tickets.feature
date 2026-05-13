@@ -12,7 +12,7 @@ Feature: 64333 Flights - Add FQTV to single quote with separate tickets
   So that frequent flyer points are assigned correctly to each carrier
 
   Scenario: FQTV is saved for single quote with separate tickets
-    Given I am logged in as "multifqtv" booking a new trip
+    Given I am logged in as "multifqtv@corp.club" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "ATL" to "EWR"
     And I filter results by carrier "DL"

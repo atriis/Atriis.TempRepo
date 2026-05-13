@@ -12,7 +12,7 @@ Feature: hybrid_for_61642 Benerail Moove - Corporate program is being correctly 
   So that I can confirm the corporate program identifier is correctly sent in the booking request
 
   Scenario: Corporate program is correctly sent during Benerail one way booking
-    Given I am logged in as "bruolisan" booking a new trip
+    Given I am logged in as "bruolisan@benerailmoovecorp.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToNlasc"
     When I add a Benerail one way to the trip

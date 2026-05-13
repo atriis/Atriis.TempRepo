@@ -13,7 +13,7 @@ Feature: 34878 Amadeus - Branded fares info in results, pricing options, and car
   So that I know what ancillaries are included in my fare
 
   Scenario: Branded fare ancillaries are displayed in results, pricing options, and cart
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "JFK" to "CDG"
     And flight results should be available

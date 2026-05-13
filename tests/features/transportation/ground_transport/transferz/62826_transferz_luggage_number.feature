@@ -14,7 +14,7 @@ Feature: 62826 Transferz - Luggage number is sent correctly
   So that the returned transfer options match the requested capacity
 
   Scenario: Transferz search includes the selected luggage number
-    Given I am logged in as "beto" booking a new trip
+    Given I am logged in as "betoribeiro@transferz.com" booking a new trip
     And I have added myself as the traveler
     When I set the Transferz luggage selection
     And I search for ground transport from airport "BUD" to specific address "Budapest, Park Plaza Budapest, Bem Rakpart, Hungary"

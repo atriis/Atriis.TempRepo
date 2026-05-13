@@ -12,7 +12,7 @@ Feature: 64917 GDS - Booking successful with mandatory reference field
   So that my booking is processed correctly
 
   Scenario: GDS booking succeeds when mandatory reference field is filled
-    Given I am logged in as "lolalohan" booking a new trip
+    Given I am logged in as "lolalohan@gdsmandatoryref.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LIS" to "GRU"
     And I add the first flight to cart

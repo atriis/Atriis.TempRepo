@@ -13,7 +13,7 @@ Feature: 58659 Amadeus - Multicarrier pricing options with baggage
   So that I can compare options even when carriers differ in branded fares
 
   Scenario: Pricing options load for multicarrier flight with checked baggage fees filter
-    Given I am logged in as "taylor" booking a new trip
+    Given I am logged in as "taylor@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "AUH" to "KCH"
     And I click proceed on the reference fields popup

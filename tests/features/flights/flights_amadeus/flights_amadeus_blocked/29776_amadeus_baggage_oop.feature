@@ -13,7 +13,7 @@ Feature: 29776 Amadeus - Baggage amount OOP with 1 baggage included
   So that the travel policy for baggage is correctly enforced
 
   Scenario: Adding extra baggage triggers OOP and requires justification
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "lary bagto"
     # TODO: Search round trip with far future dates (2 months ahead)
     # Testim: Copy_of_Search_flights_round_trip___for_far_dates('TLV', 'BUD')

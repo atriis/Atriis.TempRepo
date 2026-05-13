@@ -12,7 +12,7 @@ Feature: 56159 Flights - Rail Bus advisory for mixed transportation itinerary
   So that I am aware of non-flight segments in my journey
 
   Scenario: Rail bus advisory is displayed in results and offer email for mixed itinerary
-    Given I am logged in as "copytrip" booking a new trip
+    Given I am logged in as "copytrip@corp.com" booking a new trip
     And I have added a random guest traveler
     When I click on the flight tab and check Allow nearby airports
     And I search for a round trip flight from "BUD" to "QKL"

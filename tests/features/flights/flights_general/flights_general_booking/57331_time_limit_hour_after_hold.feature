@@ -12,7 +12,7 @@ Feature: 57331 Flights - Time limit hour displayed in flight details after hold
   So that I know when the hold expires
 
   Scenario: Time limit hour is displayed after holding a flight
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LIS" to "RAK"
     And I add the first flight to cart

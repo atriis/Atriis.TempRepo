@@ -13,7 +13,7 @@ Feature: 47723 Galileo filters by car class and books a pickup vehicle
 
   @priority:critical
   Scenario: Filter by SUV, van, and pickup before completing a booking
-    Given I am logged in as "galileo" booking a new trip
+    Given I am logged in as "gal@leo.com" booking a new trip
     And I have added a random guest traveler
     When I search for a car at "LAX"
     # TODO: Map Testim steps Filter_by_SUV(), Filter_by_SUV_1(), Filter_by_Van(), and Filter_by_any_option_in_results_page('Pickup').

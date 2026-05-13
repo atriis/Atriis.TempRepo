@@ -12,7 +12,7 @@ Feature: 43843 Flights - Prevent bookings outside of TMC time limit
   So that flights are not booked when support is unavailable
 
   Scenario: Booking restricted message is displayed outside TMC time limit
-    Given I am logged in as "john_tlmt" booking a new trip
+    Given I am logged in as "John@testim.tlmt" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "LON" to "CAI"
     And flight results should be available

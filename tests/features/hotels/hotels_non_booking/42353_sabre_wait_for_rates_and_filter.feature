@@ -14,7 +14,7 @@ Feature: 42353 Sabre - Wait for hotel rates and filter results
 
   @priority:medium
   Scenario: Hotel rates load and results can be filtered in Sabre
-    Given I am logged in as "sabrin" booking a new trip
+    Given I am logged in as "sabrin@orly.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Holiday Inn London - Sutton by IHG, Gibson Road, London, UK" for 1 night
     And I wait to see view rates text in results page

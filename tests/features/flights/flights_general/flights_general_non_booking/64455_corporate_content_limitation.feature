@@ -12,7 +12,7 @@ Feature: 64455 Flights - Corporate content limitation Only Search With is applie
   So that only approved airlines appear in search results
 
   Scenario: Only configured airline results are displayed when content limitation is applied
-    Given I am logged in as "brunatls" booking a new trip
+    Given I am logged in as "brunasantos@corptlcsabre.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "NYC"
     And I wait for add to trip text to be visible

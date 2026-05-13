@@ -12,7 +12,7 @@ Feature: 66047 Amadeus all-inclusive rate link not displayed
   So that only standard rates are visible
 
   Background:
-    Given I am logged in as "brunasantosnl" booking a new trip
+    Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added myself as the traveler
     And I have selected Budget as the rental agency
 

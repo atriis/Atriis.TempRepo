@@ -14,7 +14,7 @@ Feature: 61646 BA NDC - Optional services unavailable message is displayed befor
   So that I can verify the "available after booking" message is displayed
 
   Scenario: Optional services shows pending message when expanded before booking
-    Given I am logged in as "jadeclub" booking a new trip
+    Given I am logged in as "jadeclub@optionalservicespri.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LHR" to "DUB"
     And I add the first flight to cart

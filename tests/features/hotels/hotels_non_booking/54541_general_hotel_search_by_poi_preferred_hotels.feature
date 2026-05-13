@@ -14,7 +14,7 @@ Feature: 54541 General - Hotel search by Point of Interest shows preferred hotel
 
   @priority:medium
   Scenario: Hotel search by POI returns preferred hotels
-    Given I am logged in as "poicorp" booking a new trip
+    Given I am logged in as "poicorp@club.com" booking a new trip
     When I search for a hotel by point of interest
     And I wait to see view rates text in results page
     Then preferred hotels should be displayed in results

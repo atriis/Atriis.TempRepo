@@ -14,7 +14,7 @@ Feature: 22522 Booking.com - Add credit card for guest traveler
 
   @priority:high
   Scenario: Add credit card for guest traveler booking via Booking.com
-    Given I am logged in as "alexandre" booking a new trip
+    Given I am logged in as "alexandremarg@bookingcomcaneditfop.com" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "EZE" for 1 night
     And I select the first hotel result

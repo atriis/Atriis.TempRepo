@@ -13,7 +13,7 @@ Feature: 46039 Galileo terms, special request length, and booking flow
 
   @priority:critical
   Scenario: Validate terms visibility, special request limit, and successful booking
-    Given I am logged in as "beatrizpamplonacorp" booking a new trip
+    Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "LHR" with rental agency "AVIS"
     # TODO: Map Testim step Car___Results___Click__Terms_and_Conditions__and_check_if_it_is_displayed__AVIS_().

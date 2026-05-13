@@ -14,7 +14,7 @@ Feature: 37263 Amadeus - Amadeus Plus hotel (Teldar) logo is displayed
 
   @priority:medium
   Scenario: Amadeus Plus supplier logo is visible in hotel level results
-    Given I am logged in as "bruna_teldar" booking a new trip
+    Given I am logged in as "brunasantos@yourtravel.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Madrid Reina Victoria, Plaza de Santa Ana, Madrid, Spain" for 1 night
     And I wait to see view rates text in results page

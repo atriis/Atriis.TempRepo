@@ -6,7 +6,7 @@ Feature: 61133 Amadeus Light Ticketing - Ryanair - Total price in cart is correc
 
   @priority:critical
   Scenario: Total cart price is the sum of flight price and seat price after adding a seat
-    Given I am logged in as "lucas" booking a new trip
+    Given I am logged in as "lucasmoreira@amadeuslowcost.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "STN" to "BUD"
     And flight results should be available

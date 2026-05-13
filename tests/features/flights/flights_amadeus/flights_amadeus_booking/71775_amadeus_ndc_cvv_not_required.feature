@@ -13,7 +13,7 @@ Feature: 71775 Amadeus NDC - CVV not required for non-BA/IB carriers
   So that payment is seamless for carriers that don't need CVV
 
   Scenario: CVV not required for AA NDC booking with credit card
-   Given I am logged in as "cvvndc" booking a new trip
+   Given I am logged in as "cvvndc@corp.ams" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LGA" to "CLT"
     And I filter results by carrier "AA"

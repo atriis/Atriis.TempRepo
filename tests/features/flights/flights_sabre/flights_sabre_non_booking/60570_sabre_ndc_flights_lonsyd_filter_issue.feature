@@ -12,7 +12,7 @@ Feature: 60570 Sabre NDC - Flights LON-SYD filter issue resolved
   So that I can book without filter-related issues
 
   Scenario: Filter works correctly for SYD-LON route and flight can be added to cart
-    Given I am logged in as "marianecampos" booking a new trip
+    Given I am logged in as "marianecampos@gdgtravelpolicytest.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "SYD" to "LON"
     And flight results should be available

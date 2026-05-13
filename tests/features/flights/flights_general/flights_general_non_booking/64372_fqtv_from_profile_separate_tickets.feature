@@ -12,7 +12,7 @@ Feature: 64372 Flights - Save correct FQTV from traveler profile with separate t
   So that frequent flyer points are correctly applied per carrier
 
   Scenario: Correct FQTV from profile is saved for separate tickets
-    Given I am logged in as "multifqtv" booking a new trip
+    Given I am logged in as "multifqtv@corp.club" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "ATL" to "EWR"
     And I filter results by carrier "DL"

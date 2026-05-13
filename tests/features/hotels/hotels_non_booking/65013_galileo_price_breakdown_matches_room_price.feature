@@ -14,7 +14,7 @@ Feature: 65013 Galileo - Price breakdown total matches displayed room price
 
   @priority:high
   Scenario: Total in price breakdown matches displayed room price in Galileo results
-    Given I am logged in as "galileogaliei" booking a new trip
+    Given I am logged in as "galileogaliei@gdggalileo.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result

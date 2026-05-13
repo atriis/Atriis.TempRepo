@@ -16,7 +16,7 @@ Feature: 66005 AA NDC - Complete Trip - Corporate Role 'Use New Flight Booking F
   So that I must go through pricing options to complete the booking for both outbound and inbound legs
 
   Scenario: Complete a round trip booking via pricing options with the 'Use New Flight Booking Flow' role
-    Given I am logged in as "aandcuser" booking a new trip
+    Given I am logged in as "aandcuser@aa.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "ORD" to "LGA"
     And flight results should be available

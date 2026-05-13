@@ -12,7 +12,7 @@ Feature: 60544 Amtrak - Cart page share and validations
   So that I can confirm the cart contains correct content and sharing works
 
   Scenario: Amtrak cart validations including share, extras and fare rules
-    Given I am logged in as "bar" booking a new trip
+    Given I am logged in as "bar@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip Amtrak train from "nypToWas"
     And I click proceed on the reference fields popup

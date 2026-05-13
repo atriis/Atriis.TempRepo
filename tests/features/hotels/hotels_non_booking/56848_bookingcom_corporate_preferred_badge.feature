@@ -14,7 +14,7 @@ Feature: 56848 Booking.com - Hotel is marked as 'Corporate Preferred' according 
 
   @priority:medium
   Scenario: Hotel is marked as 'Corporate Preferred' according to the admin configuration
-    Given I am logged in as "cintia" booking a new trip
+    Given I am logged in as "cintiaoliveira@booking.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Springhill Suites Pittsburgh Mt. Lebanon" for 1 night
     And I wait to see view rates text in results page

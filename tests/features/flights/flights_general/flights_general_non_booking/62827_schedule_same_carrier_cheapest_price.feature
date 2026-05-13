@@ -12,7 +12,7 @@ Feature: 62827 Amadeus By Schedule - Same carrier cheapest package matches prici
   So that I can trust the price when booking
 
   Scenario: Cheapest package same carrier price matches in pricing page and cart
-    Given I am logged in as "coreytaylor" booking a new trip
+    Given I am logged in as "coreytaylor@amadeusclubdubu.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "FRA" to "PRG"
     And I filter results by carrier "Lufthansa"

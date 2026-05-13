@@ -13,7 +13,7 @@ Feature: 54569 Corporate-user travel policy restricts airport car results
 
   @priority:high
   Scenario: Search an airport car and verify the corporate-user policy tooltip
-    Given I am logged in as "bruno" booking a new trip
+    Given I am logged in as "bruno@car.com" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "LHR"
     Then the out of policy indicator should be visible in results

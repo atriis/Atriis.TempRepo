@@ -14,7 +14,7 @@ Feature: 57403 Premier Inn - Extras panel shows payment method but not breakfast
 
   @priority:medium
   Scenario: Premier Inn extras panel shows payment method visible but no breakfast option
-    Given I am logged in as "julianapremier" booking a new trip
+    Given I am logged in as "juliana@nlgovpremierinncorp.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     And I select the first hotel result

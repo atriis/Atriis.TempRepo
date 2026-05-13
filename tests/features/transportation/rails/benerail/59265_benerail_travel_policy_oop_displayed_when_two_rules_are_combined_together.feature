@@ -12,7 +12,7 @@ Feature: 59265 Benerail - OOP indicator displayed when two travel policy rules a
   So that combined policy enforcement is correctly reflected in Benerail results
 
   Scenario: OOP indicator is visible in results when two policy rules are combined
-    Given I am logged in as "bruninabenerail" booking a new trip
+    Given I am logged in as "bruolisan@benerailmoovecorp.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "berlinhbfToBebmi"
     And I click proceed on the reference fields popup

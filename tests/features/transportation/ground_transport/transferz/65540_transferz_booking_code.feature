@@ -15,7 +15,7 @@ Feature: 65540 Transferz - Booking code is displayed across trip and share flows
   So that transfer confirmation data remains traceable after booking
 
   Scenario: Transferz booking code is shown on trip, share quote, and share itinerary
-    Given I am logged in as "transferz_testim" booking a new trip
+    Given I am logged in as "testim@transferz.com" booking a new trip
     And I have added myself as the traveler
     When I search for ground transport from airport "LHR" to specific address "Emirates"
     And I wait for add to trip text to be visible

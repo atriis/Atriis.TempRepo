@@ -12,7 +12,7 @@ Feature: 35111 Benerail - Send price offer mail and share quote and itinerary fr
   So that I can distribute the Benerail booking details to stakeholders
 
   Scenario: Benerail price offer from results and share quote and itinerary from cart
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToNlabk"
     When I fill in NL reference fields education and courses

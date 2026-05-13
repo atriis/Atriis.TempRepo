@@ -14,7 +14,7 @@ Feature: 29416 GroundScope - Price, pickup time and terms remain consistent thro
   So that I can book with confidence that the offer does not change unexpectedly
 
   Scenario: GroundScope price, pickup time, and terms remain stable from results to booking
-    Given I am logged in as "elisabete" booking a new trip
+    Given I am logged in as "elisabeteferreira@groundscope.com" booking a new trip
     And I have added myself as the traveler
     When I search for ground transport from airport "lhr" to specific address "emirates"
     And I handle conflicting quotes if visible

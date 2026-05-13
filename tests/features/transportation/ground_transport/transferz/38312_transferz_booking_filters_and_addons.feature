@@ -15,7 +15,7 @@ Feature: 38312 Transferz - Booking, filters, and add-ons
   So that the selected vehicle and pricing remain consistent through checkout
 
   Scenario: Transferz booking supports vehicle filters, extras, and trip overview terms
-    Given I am logged in as "ran_ferz" booking a new trip
+    Given I am logged in as "ran@transferz.com" booking a new trip
     And I have added myself as the traveler
     When I search for ground transport from airport "Brussels, Belgium - National (BRU)" to specific address "Rue de la Violette, Brussels, Belgium"
     And I handle conflicting quotes if visible

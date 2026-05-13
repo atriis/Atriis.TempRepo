@@ -14,7 +14,7 @@ Feature: 62140 Travelodge - Correct number of nights displayed in room level
 
   @priority:medium
   Scenario: Room level results show the correct number of nights for a 3-night search
-    Given I am logged in as "pluto" booking a new trip
+    Given I am logged in as "pluto@travelodgecorp.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London Borough of Camden" for 3 nights
     And I select the first hotel result

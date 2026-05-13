@@ -14,7 +14,7 @@ Feature: 61577 Booking.com - Supplier filters reflect primary traveler user grou
 
   @priority:high
   Scenario: Supplier filters displayed are based on primary traveler's user group
-    Given I am logged in as "amos" booking a new trip
+    Given I am logged in as "amos@one.com" booking a new trip
     And I have added myself as the traveler
     And I have added "becky leshin" as primary traveler
     When I search for a hotel in "LON" for 1 night

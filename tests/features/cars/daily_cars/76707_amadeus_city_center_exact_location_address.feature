@@ -7,7 +7,7 @@ Feature: 76707 Amadeus city center exact location address display
   So that I can confirm the exact pickup location before completing the trip
 
   Scenario Outline: Amadeus city center location and address second line are consistent across booking flow
-    Given I am logged in as "ampmaccars" booking a new trip
+    Given I am logged in as "testim@amadeus.am" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "<pickupLocation>" with rental agency "<agency>"
     And the agency station label should contain "<expectedAgencyStationLabel>" and address should contain "<expectedAgencyStationAddress>" on the vendor list

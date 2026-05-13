@@ -13,7 +13,7 @@ Feature: 57415 Galileo - APIS sent when booking for guest traveller
   So that passport information is transmitted correctly
 
   Scenario: Guest traveller booking sends APIS data
-    Given I am logged in as "beatrizpamplonacorp" booking a new trip
+    Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "LHR" to "NYC"
     And I add the first flight to cart

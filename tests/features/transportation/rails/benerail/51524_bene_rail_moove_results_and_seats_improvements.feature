@@ -12,7 +12,7 @@ Feature: 51524 Benerail - Results page earlier/later navigation and seat improve
   So that I can confirm results pagination and seating UI work correctly
 
   Scenario: Benerail results page earlier and later navigation with seat improvements
-    Given I am logged in as "beny" booking a new trip
+    Given I am logged in as "beny@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "defraToBebmi"
     And I click proceed on the reference fields popup

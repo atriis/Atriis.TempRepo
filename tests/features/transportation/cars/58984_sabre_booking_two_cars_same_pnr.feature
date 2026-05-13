@@ -12,7 +12,7 @@ Feature: 58984 Sabre booking two cars with same PNR
   So that car rentals are linked in the same trip
 
   Background:
-    Given I am logged in as "robsoncruz" booking a new trip
+    Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

@@ -14,7 +14,7 @@ Feature: 46711 Expedia - Sustainability filter is not greyed out
 
   @priority:medium
   Scenario: Sustainability filter is active and not greyed out in hotel results
-    Given I am logged in as "natalia" booking a new trip
+    Given I am logged in as "natalia@expediacorpamsalem.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I wait to see view rates text in results page

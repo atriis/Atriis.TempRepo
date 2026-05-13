@@ -14,7 +14,7 @@ Feature: 29751 Amadeus - Hotel booking with financial reference and approval
 
   @priority:critical
   Scenario: Hotel booking with FOP CVV, financial reference, and approval flow
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LAX" for 1 night
     And I select the first hotel result

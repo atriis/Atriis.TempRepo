@@ -207,43 +207,34 @@ For each Testim function/action, search the project in this order:
 
 #### Login user mapping
 
-Testim tests use **email addresses** for login. You must map them to **user labels** used in the project.
+Testim tests use **email addresses** for login. Write the email address **directly in the Gherkin step** — no labels, no `.env` user entries.
 
 **How the user system works:**
-1. Users are defined in `.env` as `USER_<LABEL>=email@domain.com`
-2. `config.js` auto-discovers all `USER_*` env vars via `createLabelUsers()`
-3. `config.resolveUser(label)` finds the user across all providers by label (case-insensitive)
-4. In Gherkin, the label is used directly: `Given I am logged in as "{label}"`
+1. Emails are written directly in feature files: `Given I am logged in as "email@domain.com"`
+2. `config.js` provides only `GENERAL_PASSWORD` from `.env` — no `USER_*` env vars exist
+3. No label-to-email mapping is needed
 
-**When converting a Testim test with a new email:**
-1. Determine a short, descriptive label from the email (e.g. `ruimariano@amadeus.com` → `ruimariano`)
-2. **Add the user to `.env`** if it does not already exist:
-   ```bash
-   USER_RUIMARIANO=ruimariano@amadeus.com
-   ```
-3. **Add the user to `.env.example`** as documentation (without the real email):
-   ```bash
-   USER_RUIMARIANO=<email>
-   ```
-4. Use the label in Gherkin:
+**When converting a Testim test with an email:**
+1. Use the email address exactly as it appears in the Testim test
+2. Write it directly in Gherkin — no `.env` changes needed:
    ```gherkin
-   Given I am logged in as "ruimariano" booking a new trip
+   Given I am logged in as "ruimariano@amadeus.com" booking a new trip
    ```
 
-**Common mappings (already in `.env`):**
-- `ruimariano@amadeus.com` → `"ruimariano"` (`USER_RUIMARIANO`)
-- `shani@testimcorpnl.com` → `"shani_nl"` (`USER_SHANI_NL`)
-- `eli@tel.com` → `"eli"` (`USER_ELI`)
+**Common emails already used in feature files:**
+- `ruimariano@amadeus.com`
+- `shani@testimcorpnl.com`
+- `eli@tel.com`
 
-**Important:** Always search `.env` and `.env.example` first to check if the user already exists before adding a new one. If you are unsure about the label, add a TODO.
+**Important:** Search existing feature files for similar tests to find the right email for the supplier/scenario context. If unsure, add a TODO comment.
 
 **Login step patterns** (in order of preference):
 ```gherkin
 # If Login() is immediately followed by book_a_new_trip():
-Given I am logged in as "{userLabel}" booking a new trip
+Given I am logged in as "email@domain.com" booking a new trip
 
 # If Login() alone (no booking):
-Given I am logged in as "{userLabel}"
+Given I am logged in as "email@domain.com"
 ```
 
 ### D) Produce output

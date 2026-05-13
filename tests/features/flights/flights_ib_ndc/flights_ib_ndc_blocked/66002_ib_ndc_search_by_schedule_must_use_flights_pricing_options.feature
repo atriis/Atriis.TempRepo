@@ -14,7 +14,7 @@ Feature: 66002 IB NDC - Search By Schedule with 'Must Use Flights Pricing Option
   
   #BLOCKED - no results, could not test the entire scenario 
   Scenario: Round trip by schedule shows pricing options on Select Flight for outbound and inbound
-    Given I am logged in as "ibndc_soniatest" booking a new trip
+    Given I am logged in as "ibndcuser@soniatest.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "MAD" to "BCN"
     And flight results should be available

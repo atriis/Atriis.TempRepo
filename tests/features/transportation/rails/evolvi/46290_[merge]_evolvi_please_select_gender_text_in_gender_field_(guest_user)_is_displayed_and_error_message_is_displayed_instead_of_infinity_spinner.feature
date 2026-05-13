@@ -12,7 +12,7 @@ Feature: 46290 Evolvi - Guest gender prompt and no results error display
   So that gender prompt appears and the flow returns a user-friendly no-results message
 
   Scenario: Guest traveler shows gender prompt and no-results messaging
-    Given I am logged in as "corp_evolvi" booking a new trip
+    Given I am logged in as "corp@evolvi.com" booking a new trip
     # TODO: create step "When I select UK Rail in the search form" in evolvi_search.steps.js
     When I select UK Rail in the search form
     # TODO: create step "When I open the traveler drawer" in search.steps.js

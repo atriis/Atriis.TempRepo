@@ -14,7 +14,7 @@ Feature: 34418 "Hotel wasn't found" error message is not displayed (no specific 
 
   @priority:medium
   Scenario: "Hotel wasn't found" error message is not displayed (no specific hotel requested)
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Mönchengladbach" for 1 night
     And I wait to see view rates text in results page 

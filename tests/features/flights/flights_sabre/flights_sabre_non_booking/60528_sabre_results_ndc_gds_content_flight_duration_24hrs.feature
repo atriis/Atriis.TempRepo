@@ -12,7 +12,7 @@ Feature: 60528 Sabre - Results displayed when NDC and GDS content and flight dur
   So that I can book flights even when duration exceeds 24 hours
 
   Scenario: Flight results are displayed for SYD-LHR with NDC and GDS content
-    Given I am logged in as "displayresults" booking a new trip
+    Given I am logged in as "display@results.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "SYD" to "LHR"
     Then flight results should be available

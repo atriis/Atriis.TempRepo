@@ -12,7 +12,7 @@ Feature: 59285 Optional car payment alert validation
   So that I understand I can proceed without selecting a payment method
 
   Background:
-    Given I am logged in as "coreytaylor" booking a new trip
+    Given I am logged in as "coreytaylor@amadeusclubdubu.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

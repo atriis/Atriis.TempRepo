@@ -15,7 +15,7 @@ Feature: 46189 Amadeus Value Hotel - Markup validation in room list and refundab
 
   @priority:critical
   Scenario: Markup is displayed in room list and refundable room can be booked
-    Given I am logged in as "joao" booking a new trip
+    Given I am logged in as "joao@amadeusvaluehotel.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result

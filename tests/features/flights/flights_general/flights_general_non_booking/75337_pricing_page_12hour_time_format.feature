@@ -13,7 +13,7 @@ Feature: 75337 OBT - Flight times should display in 12-hour format on the pricin
 
   @priority:high @tcid:77129
   Scenario: Flight times on the "Your Selection" page are displayed in 12-hour AM/PM format
-    Given I am logged in as "ampm" booking a new trip
+    Given I am logged in as "ampm@format.ams" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "LAX" to "SAN"
     And I select one flight segment by schedule

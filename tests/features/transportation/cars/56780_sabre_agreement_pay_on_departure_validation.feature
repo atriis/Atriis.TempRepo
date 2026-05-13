@@ -12,7 +12,7 @@ Feature: 56780 Sabre agreement with customer ID displays pay on departure
   So that I understand the payment method for the rental
 
   Background:
-    Given I am logged in as "robsoncruz" booking a new trip
+    Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

@@ -12,7 +12,7 @@ Feature: 33042 By Schedule - Price for selected flights does not change after ad
   So that I can trust the price displayed before checkout
 
   Scenario: Price does not change after adding by-schedule selection to cart
-    Given I am logged in as "testim_amadeus" booking a new trip
+    Given I am logged in as "testim@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "FRA" to "YUL"
     And I select flight segments by schedule

@@ -11,7 +11,7 @@ Feature: 65440 Amadeus - Booking successful with preferred seats
   So that the booking completes successfully with my preferred seating
 
   Scenario: Booking a round trip flight with preferred seats selected
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "SEA" to "SBA"
     And I wait for add to trip text to be visible

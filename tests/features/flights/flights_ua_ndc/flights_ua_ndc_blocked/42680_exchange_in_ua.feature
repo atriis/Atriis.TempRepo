@@ -14,7 +14,7 @@ Feature: 42680 United NDC - Exchange flight
   So that I can verify the exchange flow works correctly including price validation
 
   Scenario: Book a United NDC round trip flight and perform an exchange
-    Given I am logged in as "united" booking a new trip
+    Given I am logged in as "bsua@bsua.com" booking a new trip
     And I have added myself as the traveler
 
     # Book the initial LH NDC flight (LAS-LAX round trip)

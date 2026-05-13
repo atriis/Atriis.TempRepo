@@ -14,7 +14,7 @@ Feature: 54869 BA NDC - Conflicting quote warning is shown for duplicated bookin
   So that I can verify a conflicting quotes warning is shown
 
   Scenario: Conflicting quote warning appears when adding a duplicate BA NDC flight
-    Given I am logged in as "ian" booking a new trip
+    Given I am logged in as "iancurtis@ndcba.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "DUB"
     And I add the first flight to cart

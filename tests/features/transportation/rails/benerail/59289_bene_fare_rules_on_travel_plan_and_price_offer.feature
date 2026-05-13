@@ -12,7 +12,7 @@ Feature: 59289 Benerail - Fare rules visible in travel plan and price offer emai
   So that recipients can see the terms before the booking is confirmed
 
   Scenario: Benerail fare rules appear in shared travel plan and price offer emails
-    Given I am logged in as "pini" booking a new trip
+    Given I am logged in as "pini@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToNlasc"
     When I add a Benerail round trip to the trip

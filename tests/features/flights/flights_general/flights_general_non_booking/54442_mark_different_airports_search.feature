@@ -12,7 +12,7 @@ Feature: 54442 Flights - Mark different airports in search
   So that I can identify airport changes between segments
 
   Scenario: Different airports are marked in multi-city search results
-    Given I am logged in as "joana" booking a new trip
+    Given I am logged in as "joana@amadeusandafklm.com" booking a new trip
     And I have added myself as the traveler
     When I search for a multi-city flight with legs "LHR-MXP" and "LIN-LCY"
     Then airport codes "MXP" and "LIN" should be marked in the first flight result

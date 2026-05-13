@@ -13,7 +13,7 @@ Feature: 50848 Flights - Disclaimer in mini rule icon cart and PO email
   So that I am aware that airline rules prevail
 
   Scenario: Disclaimer is displayed in price breakdown and price offer email
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "MAD"
     And I filter results by carrier "BA"

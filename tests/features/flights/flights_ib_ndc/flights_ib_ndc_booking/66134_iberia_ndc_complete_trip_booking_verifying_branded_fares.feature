@@ -13,7 +13,7 @@ Feature: 66134 Iberia NDC - Complete trip booking with branded fares verificatio
   So that I can confirm the brand is consistent before and after holding the Iberia NDC trip
 
   Scenario: Verify branded fares in every entry point and hold the Iberia NDC trip
-    Given I am logged in as "iberia" booking a new trip
+    Given I am logged in as "bsiberia@bsiberia.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "MEX" to "BRU"
     And flight results should be available

@@ -12,7 +12,7 @@ Feature: 53913 Flights - Hold should act like the Checkout button
   So that payment is set before holding a flight
 
   Scenario: Hold button requires payment method like checkout
-    Given I am logged in as "airplus" booking a new trip
+    Given I am logged in as "airplus@testim.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "MEX" to "MAD"
     And I add the first flight to cart

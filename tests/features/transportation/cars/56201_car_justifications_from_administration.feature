@@ -12,7 +12,7 @@ Feature: 56201 Car justifications from administration
   So that I can understand why the car is flagged as restricted
 
   Background:
-    Given I am logged in as "Kerry" booking a new trip
+    Given I am logged in as "kerry@car.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

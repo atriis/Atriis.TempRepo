@@ -14,7 +14,7 @@ Feature: 61652 HYBRID Expedia - Send the traveler's phone in case valid, and the
 
   @priority:medium
   Scenario: Trip 1 - Traveler with invalid phone - We send the user group's phone
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "inbal idfon"
     When I search for a hotel in "LON" for 1 night
     And I wait to see view rates text in results page
@@ -29,7 +29,7 @@ Feature: 61652 HYBRID Expedia - Send the traveler's phone in case valid, and the
 
   @priority:medium
   Scenario: Trip 2 - Traveler with valid phone - We send the traveler's phone
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "valeria fone"
     When I search for a hotel in "LON" for 1 night
     And I wait to see view rates text in results page

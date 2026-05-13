@@ -10,7 +10,7 @@ Feature: 47739 AFKL - Cabin class is correctly displayed in pricing options
   So that the class is never displayed as undefined
 
   Scenario: Business class is displayed in pricing options for an AFKL round trip
-    Given I am logged in as "afkl" booking a new trip
+    Given I am logged in as "bsafkl@bsafkl.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip "Business" class flight from "AMS" to "HKG"
     And flight results should be available

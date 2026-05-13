@@ -13,7 +13,7 @@ Feature: 55439 Car day rate is displayed consistently
 
   @priority:high
   Scenario: Validate day rate across results, cart, new search, and more details
-    Given I am logged in as "carcorp" booking a new trip
+    Given I am logged in as "carCorp@gdg.com" booking a new trip
     And I have added myself as the traveler
     # TODO: Map Testim step Search_car() to the exact search parameters used by this test.
     # TODO: Map Testim step Validate_daily_rate_in_results().

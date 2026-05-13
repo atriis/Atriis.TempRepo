@@ -14,7 +14,7 @@ Feature: 45020 Parking - Airport parking search is pre-populated with flight dep
   So that I do not need to re-enter airport details when adding parking to my trip
 
   Scenario: Parking search is pre-populated with Heathrow after booking a LHR departing flight
-    Given I am logged in as "anamaria" booking a new trip
+    Given I am logged in as "anamaria@ukparking.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LHR" to "MAD"
     And I add the first flight to cart

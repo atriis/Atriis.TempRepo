@@ -13,7 +13,7 @@ Feature: 72504 Sabre - Unused tickets hide type MCO
 
  # BLOCKED: could not finish checkout part because of booking errors
   Scenario: MCO type unused tickets are hidden in search, results and booking details pages
-    Given I am logged in as "unusedtkt" booking a new trip
+    Given I am logged in as "unusedTkt@corp.frosch" booking a new trip
     And I have added myself as the traveler
     When I click the airplane icon next to the traveler to view unused tickets
     Then MCO unused tickets should be hidden

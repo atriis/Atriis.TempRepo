@@ -12,7 +12,7 @@ Feature: 33168 Flights - After selecting hide comparison can reopen comparison t
   So that I can manage my view of flight comparisons
 
   Scenario: Hide and reopen comparison table in flight results
-    Given I am logged in as "testim_prof" booking a new trip
+    Given I am logged in as "testim@prof.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LIS" to "TLV"
     And I hide the comparison table in flight results

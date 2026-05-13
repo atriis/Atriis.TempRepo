@@ -12,7 +12,7 @@ Feature: 61591 Flights - No default gender when no title selection mandatory
   So that travelers must explicitly select their gender
 
   Scenario: No default gender is set and user can add and save passenger info
-    Given I am logged in as "defaulttitle" booking a new trip
+    Given I am logged in as "defaultTitle@gdg.com" booking a new trip
     And I have added traveler by name "Adam"
     And I search for a round trip flight from "LHR" to "JFK"
     And I add the first flight to cart

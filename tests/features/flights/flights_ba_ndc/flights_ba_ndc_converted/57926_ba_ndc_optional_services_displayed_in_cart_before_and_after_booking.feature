@@ -14,7 +14,7 @@ Feature: 57926 BA NDC - Optional services is displayed in cart before and after 
   So that I can verify optional services are displayed both before and after booking
 
   Scenario: Optional services section is visible in cart before and after booking
-    Given I am logged in as "jadeclub" booking a new trip
+    Given I am logged in as "jadeclub@optionalservicespri.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "DOH"
     And I add the first flight to cart

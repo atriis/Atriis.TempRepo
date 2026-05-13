@@ -12,7 +12,7 @@ Feature: 40594 Sabre - OOP is not restricting Premium Economy as per admin confi
   So that I can add them to my trip without policy blocking
 
   Scenario: Premium Economy flight is not restricted by OOP and can be added to cart
-    Given I am logged in as "carinabarbara" booking a new trip
+    Given I am logged in as "carinabarbara@sabreoop.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "QQS" to "XPG"
     And flight results should be available

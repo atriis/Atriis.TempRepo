@@ -12,7 +12,7 @@ Feature: 34533 Amadeus - Proceeding to checkout for 2nd flight search without er
 
   Scenario: Proceeding to checkout for the 2nd flight search without error
     # --- First flight search & checkout round-trip ---
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "BKK"
     And I add the first flight to cart

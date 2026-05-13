@@ -13,7 +13,7 @@ Feature: 59206 Amadeus - Multi-pax booking with contact info per pax
   So that each traveler gets the correct contact details
 
   Scenario: Book flight for 3 guests and verify contact info in checkout
-    Given I am logged in as "multipax" booking a new trip
+    Given I am logged in as "multipax@ama.club" booking a new trip
     And I have added a random guest traveler
     And I have added a random guest traveler
     And I have added a random guest traveler

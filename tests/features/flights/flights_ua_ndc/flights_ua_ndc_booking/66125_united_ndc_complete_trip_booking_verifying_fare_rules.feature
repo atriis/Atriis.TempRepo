@@ -14,7 +14,7 @@ Feature: 66125 United NDC - Complete Trip booking and verifying Fare Rules
   So that I can review the fare terms at every stage of the booking process
 
   Scenario: Complete trip booking with fare rules verification at each stage
-    Given I am logged in as "united" booking a new trip
+    Given I am logged in as "bsua@bsua.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "IAH" to "ORD"
     And flight results should be available

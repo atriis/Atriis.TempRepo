@@ -12,7 +12,7 @@ Feature: 23110 SunnyCars terms invoice payment and voucher validation
 
   @priority:high
   Scenario: Verify SunnyCars terms, invoice FOP, and voucher after booking
-    Given I am logged in as "brunaalice" booking a new trip
+    Given I am logged in as "brunaalice@sunnycar.tlc" booking a new trip
     And I have added a random guest traveler
     When I search for a car at "LHR"
     # TODO: Create step "When I check terms and conditions in car results" that calls CarResults.checkTermsAndConditionsInResults(page).

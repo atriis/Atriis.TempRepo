@@ -12,7 +12,7 @@ Feature: 21020 Benerail - Travel policy with OOP justification and dynamic field
   So that policy compliance is enforced and recorded
 
   Scenario: OOP justification dropdown appears with dynamic fields even without reference fields
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "beny"
     # TODO: create step "When I search for a Benerail round trip from {string}" or use one-way step;
     # Source uses Search_benerail_by_place('BEABT', 'nlasc') — add beabtToNlasc to benerail.json

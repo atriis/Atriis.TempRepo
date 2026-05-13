@@ -12,7 +12,7 @@ Feature: 69115 Flights - Both quotes confirmed when booking EDIFACT and NDC in s
   So that mixed-supplier bookings work correctly
 
   Scenario: EDIFACT and NDC booking in same trip are both confirmed
-    Given I am logged in as "69059" booking a new trip
+    Given I am logged in as "69059@regression.gdg" booking a new trip
     And I have added a random guest traveler
     When I search for a flight by schedule from "SYD" to "MEL"
     And I filter results by carrier "VA"

@@ -14,7 +14,7 @@ Feature: 66127 United NDC - By Schedule booking from Pricing Options
   So that I can choose specific flight segments for my round trip
 
   Scenario: Book a round trip by schedule selecting segments from pricing options
-    Given I am logged in as "united" booking a new trip
+    Given I am logged in as "bsua@bsua.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "LAX" to "EWR"
     And I click to open first pricing options

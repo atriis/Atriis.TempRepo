@@ -12,7 +12,7 @@ Feature: 46315 Benerail - Can share price offer after selecting 2 ways in result
   So that stakeholders can review both legs before booking
 
   Scenario: Benerail price offer shared after selecting both journey legs from results
-    Given I am logged in as "beny" booking a new trip
+    Given I am logged in as "beny@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToSchiphol"
     And I click proceed on the reference fields popup

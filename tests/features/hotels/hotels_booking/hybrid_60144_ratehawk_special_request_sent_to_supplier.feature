@@ -14,7 +14,7 @@ Feature: 60144 Ratehawk - Special request information is sent to supplier
 
   @priority:medium
   Scenario: Special request text is included in the booking request sent to Ratehawk
-    Given I am logged in as "lidi" booking a new trip
+    Given I am logged in as "lidi@ratehawk.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I wait to see view rates text in results page

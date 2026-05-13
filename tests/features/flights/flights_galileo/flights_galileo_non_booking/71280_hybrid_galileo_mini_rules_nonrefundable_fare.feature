@@ -13,7 +13,7 @@ Feature: 71280 Galileo - Mini rules correctly parse non-refundable fare rules
   So that I can see accurate cancellation policies in the price breakdown
 
   Scenario: Non-refundable fare shows correct mini rules in price breakdown
-    Given I am logged in as "carcorp" booking a new trip
+    Given I am logged in as "carCorp@gdg.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "YYZ" to "NYC"
     And flight results should be available

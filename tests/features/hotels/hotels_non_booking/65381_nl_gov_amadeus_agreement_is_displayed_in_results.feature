@@ -14,7 +14,7 @@ Feature: 65381 NL Gov - Amadeus - Agreement is displayed in results
 
   @priority:high
   Scenario: Agreement is displayed in results
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "BRU" for 1 night
     And I wait to see view rates text in results page

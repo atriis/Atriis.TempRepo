@@ -7,7 +7,7 @@ Feature: Amtrak - Travel Policy is displayed in results page
 
   Background:
   Scenario: Display travel policy details in Amtrak one-way search results
-    Given I am logged in as "marcoluis" booking a new trip
+    Given I am logged in as "marcoluis@oopamtrak.com" booking a new trip
     Given I have added myself as the traveler
     When I search for a one way Amtrak train from "bosToWas"
     When I wait for select text to be visible

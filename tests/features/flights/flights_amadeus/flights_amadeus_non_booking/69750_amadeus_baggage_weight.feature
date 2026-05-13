@@ -13,7 +13,7 @@ Feature: 69750 Amadeus - Baggage weight sent in AddMultiElement
   So that my baggage preferences are properly recorded
 
   Scenario: Add baggage and hold Ryanair low-cost flight
-    Given I am logged in as "lucas" booking a new trip
+    Given I am logged in as "lucasmoreira@amadeuslowcost.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "STN" to "RAK"
     And flight results should be available

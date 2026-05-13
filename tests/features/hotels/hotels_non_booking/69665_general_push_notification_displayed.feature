@@ -14,7 +14,7 @@ Feature: 69665 Hotels - Push Notification  'Hotel Content Source' and 'Country' 
 
   @priority:medium
   Scenario: Push Notification  'Hotel Content Source' and 'Country' filters are being correctly applied
-    Given I am logged in as "sammau" booking a new trip
+    Given I am logged in as "sammau@pushnotifications.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result

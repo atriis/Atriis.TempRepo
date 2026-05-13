@@ -14,7 +14,7 @@ Feature: 56841 Galileo - Hotel - Booking specific hotel
 
   @priority:high
   Scenario: Booking a specific hotel
-    Given I am logged in as "galileogaliei" booking a new trip
+    Given I am logged in as "galileogaliei@gdggalileo.com" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "The Ritz-Carlton, Dubai International Financial Centre" for 1 night
     And I wait to see view rates text in results page

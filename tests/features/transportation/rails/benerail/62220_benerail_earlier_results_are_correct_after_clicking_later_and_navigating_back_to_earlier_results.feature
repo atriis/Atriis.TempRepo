@@ -12,7 +12,7 @@ Feature: 62220 Benerail - Earlier results are correct after clicking Later then 
   So that I can navigate backward through Benerail results without stale data
 
   Scenario: Benerail earlier results are correctly displayed after clicking Later then Earlier
-    Given I am logged in as "justinbieber" booking a new trip
+    Given I am logged in as "justinbieber@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToSchiphol"
     And I click proceed on the reference fields popup

@@ -12,7 +12,7 @@ Feature: 28870 Amtrak - Booking with fare rules validation, copy trip disabled a
   So that I can validate the full Amtrak booking lifecycle
 
   Scenario: Amtrak round trip booking with fare rules, copy trip restriction and cancellation
-    Given I am logged in as "bar" booking a new trip
+    Given I am logged in as "bar@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip Amtrak train from "nypToWas"
     And I click proceed on the reference fields popup

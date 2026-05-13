@@ -14,7 +14,7 @@ Feature: 33066 UK Parking - Edit search, cart deduplication and deletion
   So that parking is not duplicated in the cart and I can delete it
 
   Scenario: Edit parking search from results, verify one item in cart, view more details, navigate back from checkout
-    Given I am logged in as "rafaelrocha" booking a new trip
+    Given I am logged in as "rafaelrocha@ukparking.com" booking a new trip
     And I have added myself as the traveler
     When I search for UK parking at "LHR"
     And I wait for add to trip text to be visible

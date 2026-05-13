@@ -12,7 +12,7 @@ Feature: 59769 Flights - Multi City Frosch TMC original currency displayed
   So that costs are displayed in my home currency
 
   Scenario: Original currency is displayed in multi-city results and pricing options
-    Given I am logged in as "tomblink182" booking a new trip
+    Given I am logged in as "tomblink182@froschtestimcorp.com" booking a new trip
     And I have added myself as the traveler
     When I search for a multi-city flight with legs "MIA-BOS" and "DFW-MIA"
     And flight results should be available

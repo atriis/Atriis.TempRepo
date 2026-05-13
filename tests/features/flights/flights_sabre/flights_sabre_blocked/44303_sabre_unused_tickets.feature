@@ -16,7 +16,7 @@ Feature: 44303 Sabre - Unused tickets flow
   # FOP selection, OOP justification, and checkout unused ticket recalculation.
   # Many of these steps need new DSL/step implementations.
   Scenario: Unused tickets are visible and functional throughout booking flow
-    Given I am logged in as "olusola" booking a new trip
+    Given I am logged in as "Olusola.Abidoye@atriis.com" booking a new trip
     And I have added traveler by name "chris tree"
     # TODO: Step needed: "When I verify the unused tickets icon is visible on search page"
     # TODO: Step needed: "When I open unused tickets popup and verify contents"

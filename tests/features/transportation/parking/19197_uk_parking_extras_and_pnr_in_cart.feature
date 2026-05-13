@@ -14,7 +14,7 @@ Feature: 19197 UK Parking - Extras and PNR in cart and trip overview
   So that the parking PNR ID is displayed in the trip overview details after booking
 
   Scenario: Parking extras are displayed in cart and PNR ID is shown in trip overview after booking
-    Given I am logged in as "priscila" booking a new trip
+    Given I am logged in as "priscilamadalena@ukparkingpris.com" booking a new trip
     And I have added myself as the traveler
     When I search for UK parking at "LHR"
     And I wait for add to trip text to be visible

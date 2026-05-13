@@ -14,7 +14,7 @@ Feature: 47159 Sabre - Reference fields required and loyalty number saved after 
 
   @priority:high
   Scenario: Reference fields are filled and loyalty number is saved to profile
-    Given I am logged in as "christree" booking a new trip
+    Given I am logged in as "tree@tree.com" booking a new trip
     And I have added myself as the traveler
     When I initiate a hotel search in "MCO" for 1 night
     And I select the trip purpose as "BILLABLE" and proceed

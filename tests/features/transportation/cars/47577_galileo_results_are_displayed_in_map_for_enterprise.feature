@@ -13,7 +13,7 @@ Feature: 47577 Galileo Enterprise car results are displayed in the map
 
   @priority:high
   Scenario: Search Enterprise cars and verify the map displays results
-    Given I am logged in as "renato" booking a new trip
+    Given I am logged in as "renato@galileo.car" booking a new trip
     And I have added myself as the traveler
     When I select rental agency "Enterprise"
     And I search for a car at "Skipton, UK"

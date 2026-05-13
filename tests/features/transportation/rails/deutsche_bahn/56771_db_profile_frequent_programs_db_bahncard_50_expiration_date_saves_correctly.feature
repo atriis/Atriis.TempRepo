@@ -12,7 +12,7 @@ Feature: 56771 DB - BahnCard 50 expiration date saves correctly
   So that the BahnCard expiration date is saved and persisted correctly
 
   Scenario: Save and remove DB BahnCard 50 with expiration date in profile
-    Given I am logged in as "brunorodolfo" booking a new trip
+    Given I am logged in as "brunorodolfo@benerail.com" booking a new trip
     And I have added myself as the traveler
     # TODO: create step "When I open the traveler profile frequent programs tab" in a new db.steps.js or common/profile steps file
     # covers: Navigating_to_profile_after_adding_traveler()

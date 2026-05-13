@@ -12,7 +12,7 @@ Feature: 55675 Flights - Show travelers FF for user with privilege
   So that authorized bookers can see traveler FF info
 
   Scenario: FF is shown for travelers when booker has privilege
-    Given I am logged in as "admin_cansee" booking a new trip
+    Given I am logged in as "admin@cansee.com" booking a new trip
     And I have added traveler by name "Annie Massk"
     And I have added traveler by name "Molly Massk"
     When I search for a round trip flight from "CLT" to "LGA"

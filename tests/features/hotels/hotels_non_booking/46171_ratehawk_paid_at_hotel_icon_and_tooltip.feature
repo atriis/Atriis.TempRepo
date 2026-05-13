@@ -14,7 +14,7 @@ Feature: 46171 Ratehawk - "Paid at hotel" icon and tooltip visible
 
   @priority:medium
   Scenario: "Paid at hotel" icon is visible with correct tooltip in room level
-    Given I am logged in as "lidi" booking a new trip
+    Given I am logged in as "lidi@ratehawk.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Porto, Portugal" for 1 night
     And I select the first hotel result

@@ -12,7 +12,7 @@ Feature: 60542 Amtrak - Results page form validations
   So that I can confirm fare rules, share, result details and add-to-trip flows work correctly
 
   Scenario: Amtrak results page - fare rules, share, details and add to trip
-    Given I am logged in as "bar" booking a new trip
+    Given I am logged in as "bar@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip Amtrak train from "nypToWas"
     And I click proceed on the reference fields popup

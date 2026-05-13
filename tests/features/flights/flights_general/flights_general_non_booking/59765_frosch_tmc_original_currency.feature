@@ -12,7 +12,7 @@ Feature: 59765 Flights - Frosch TMC original currency displayed across the syste
   So that I can accurately track costs in my home currency
 
   Scenario: Original currency is displayed in results, pricing options, share quote, and cart
-    Given I am logged in as "tomblink182" booking a new trip
+    Given I am logged in as "tomblink182@froschtestimcorp.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "MIA" to "BOS"
     And flight results should be available

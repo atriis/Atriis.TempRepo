@@ -5,7 +5,7 @@ Feature: 40954 Sabre Car Booking Flow
 
   @priority:critical
   Scenario: Add car and complete booking
-    Given I am logged in as "robsoncruz" booking a new trip
+    Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
     And I have added a random guest traveler
     When I search for a car at "LHR" with 1 months ahead
     And I add the first car to cart

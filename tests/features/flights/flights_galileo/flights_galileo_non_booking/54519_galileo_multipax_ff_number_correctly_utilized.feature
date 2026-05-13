@@ -13,7 +13,7 @@ Feature: 54519 Galileo - FF number correctly utilized for multiple pax
   So that loyalty benefits are applied to each traveler
 
   Scenario: Frequent flyer numbers are displayed for each traveler in cart
-    Given I am logged in as "jamesroot" booking a new trip
+    Given I am logged in as "jamesroot@galileocorp.com" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "Shawn Craig"
     When I search for a one way flight from "ORD" to "LAS"

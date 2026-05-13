@@ -13,7 +13,7 @@ Feature: 32693 Amadeus - Separate tickets trigger hotel autocomplete
   So that I can quickly add a hotel when booking separate ticket flights
 
   Scenario: Two separate one-way flights trigger hotel autocomplete for destination
-    Given I am logged in as "brunaoliveira" booking a new trip
+    Given I am logged in as "brunaoliveiraamad@amad.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "BUD" to "LON"
     And I add the first flight to cart

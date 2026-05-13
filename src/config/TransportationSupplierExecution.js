@@ -25,7 +25,7 @@ class TransportationSupplierExecution {
     this.supplierContext = options.supplierContext;
     this.outputDir = options.outputDir || "test-results/transportation-orchestration";
     this.supplier = this.supplierContext.supplier;
-    this.userLabel = this.supplierContext.user ? this.supplierContext.user.label : null;
+    this.userEmail = this.supplierContext.user ? this.supplierContext.user.email : null;
     this.startTime = null;
     this.endTime = null;
   }
@@ -64,7 +64,6 @@ class TransportationSupplierExecution {
           env: {
             ...process.env,
             PROVIDER: this.supplier.providerTag,
-            USER_KEY: this.userLabel,
           },
         });
       } catch (err) {

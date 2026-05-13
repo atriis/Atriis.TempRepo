@@ -14,7 +14,7 @@ Feature: 62919 Hotels - 'Woking' location appears as a suggested location
 
   @priority:low
   Scenario: 'Woking' location appears as a suggested location
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I type "Woking" in the hotel search location field
     Then "Woking" should appear as a location suggestion in the dropdown

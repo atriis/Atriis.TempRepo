@@ -14,7 +14,7 @@ Feature: 69159 Lufthansa NDC - Booking flight selected from pricing options
   So that I can complete a booking using the pricing options flow
 
   Scenario: Book a Lufthansa NDC round trip flight from pricing options
-    Given I am logged in as "clara" booking a new trip
+    Given I am logged in as "claraaguiar@ndclhclara.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "FRA" to "MUC"
     Then flight results should be available

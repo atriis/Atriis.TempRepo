@@ -14,7 +14,7 @@ Feature: 47169 Amadeus - Filter hotel room results by breakfast
 
   @priority:medium
   Scenario: Breakfast filter shows only rooms with breakfast in room level
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "HILTON GARDEN INN LONDON HEATHROW" for 1 night
     And I select the first hotel result

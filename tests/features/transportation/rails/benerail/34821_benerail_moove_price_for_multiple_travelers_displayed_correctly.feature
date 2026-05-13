@@ -12,7 +12,7 @@ Feature: 34821 Benerail - Price for multiple travelers displayed correctly
   So that the displayed price is accurate before proceeding to checkout
 
   Scenario: Benerail price for two travelers is calculated and displayed correctly
-    Given I am logged in as "beny" booking a new trip
+    Given I am logged in as "beny@benerail.com" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
     When I search for a round trip Benerail train from "bebmiToNlban"

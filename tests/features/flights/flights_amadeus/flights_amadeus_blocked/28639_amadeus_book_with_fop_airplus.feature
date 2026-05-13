@@ -11,7 +11,7 @@ Feature: 28639 Amadeus - Book flight with FOP AirPlus
   So that the booking completes with the correct form of payment
 
   Scenario: Booking a round trip flight with AirPlus FOP
-    Given I am logged in as "airplus" booking a new trip
+    Given I am logged in as "airplus@testim.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "EWR" to "LAX"
     And I add the first flight to cart

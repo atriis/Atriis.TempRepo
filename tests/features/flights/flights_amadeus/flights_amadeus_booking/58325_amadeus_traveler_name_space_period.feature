@@ -13,7 +13,7 @@ Feature: 58325 Amadeus - Booking succeeds with traveler name containing space or
   So that special characters in names don't prevent booking
 
   Scenario: Book and hold flight with traveler name containing space
-    Given I am logged in as "bruna_nlgov" booking a new trip
+    Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added a random guest traveler with name "Mary Jane" "De La Cruz"
     When I search for a one way flight from "PAR" to "DOH" 
     And I add the first flight to cart

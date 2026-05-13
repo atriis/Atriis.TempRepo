@@ -12,7 +12,7 @@ Feature: 67510 Benerail - Journey summary shows Direct or number of Changes corr
   So that I can make an informed choice based on journey complexity
 
   Scenario: Benerail journey summary correctly shows number of changes for indirect journeys
-    Given I am logged in as "testim_bene" booking a new trip
+    Given I am logged in as "testim@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToAmsterdamCe"
     When I select the first Benerail option

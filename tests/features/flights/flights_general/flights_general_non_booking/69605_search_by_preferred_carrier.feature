@@ -12,7 +12,7 @@ Feature: 69605 Flights - Search by preferred carrier
   So that results are pre-filtered by my preferred airline
 
   Scenario: Search flights with preferred carrier filter
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "SYD" to "MEL" with preferred carrier "Qantas"
     Then flight results should be available

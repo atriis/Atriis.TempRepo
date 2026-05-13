@@ -13,7 +13,7 @@ Feature: 68132 Galileo - Change fee and cancellation fee correct in shared quote
   So that shared quotes contain accurate fare rule information
 
   Scenario: Shared quote from results page shows correct change and cancellation fees
-    Given I am logged in as "bsgalileoflight" booking a new trip
+    Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "MME" to "AMS"
     And flight results should be available

@@ -14,7 +14,7 @@ Feature: 47291 BA NDC - DOB is mandatory in APIS when traveler has no DOB config
   So that I can verify DOB is mandatory in the APIS section
 
   Scenario: DOB is required in APIS for traveler without configured DOB
-    Given I am logged in as "chris_ndcba" booking a new trip
+    Given I am logged in as "chris@ndcba.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "NYC"
     And I add the first flight to cart

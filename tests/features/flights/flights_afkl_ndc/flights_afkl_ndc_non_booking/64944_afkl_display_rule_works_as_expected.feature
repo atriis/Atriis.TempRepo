@@ -10,7 +10,7 @@ Feature: 64944 AFKL - Display rule restricts results outside Europe and allows r
   So that only allowed regions return results
 
   Scenario: Non-Europe destination returns no results, Europe destination returns results
-    Given I am logged in as "patricia_afkl_displayrule" booking a new trip
+    Given I am logged in as "patricia@afkldisplayrulecorp.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "PAR" to "NYC"
     Then the no results found message should be displayed

@@ -14,7 +14,7 @@ Feature: 42818 Hotels - All cards that were configured are displayed in payment 
 
   @priority:high
   Scenario: Three payment cards are visible in the FOP panel
-    Given I am logged in as "shani" booking a new trip
+    Given I am logged in as "shani@bill.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "The Mandrake" for 1 night
     And I select the first hotel result

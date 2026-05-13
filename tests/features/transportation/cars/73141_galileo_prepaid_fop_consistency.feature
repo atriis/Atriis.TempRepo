@@ -12,7 +12,7 @@ Feature: 73141 Galileo car prepaid FOP consistency
   So that I understand the payment method for my booking
 
   Background:
-    Given I am logged in as "testim" booking a new trip
+    Given I am logged in as "testim@car.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

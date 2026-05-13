@@ -14,7 +14,7 @@ Feature: 47192 General - Hotel paid by TMC
 
   @priority:high
   Scenario: Hotel booking shows "Paid by TMC" payment type
-    Given I am logged in as "zac" booking a new trip
+    Given I am logged in as "zac@paidbytmc.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     And I select the first hotel result

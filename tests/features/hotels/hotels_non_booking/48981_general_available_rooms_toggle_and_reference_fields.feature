@@ -14,7 +14,7 @@ Feature: 48981 Search for available rooms only
 
   @priority:high
   Scenario: Available rooms only toggle works and reference fields are validated
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added myself as the traveler
     When I open the hotel search and verify available properties only is checked
     And I initiate a hotel search in "LON" for 1 night

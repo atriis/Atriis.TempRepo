@@ -12,7 +12,7 @@ Feature: 67408 Sabre - Booking succeeds when passenger name contains a dash
   So that the booking is successful regardless of special characters in the name
 
   Scenario: Sabre flight booking succeeds for passenger with dash in name
-    Given I am logged in as "robsoncruz" booking a new trip
+    Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
     And I have added traveler by name "Ana Antonoli-Carto"
     When I search for a one way flight from "LAX" to "IAH"
     And I add the first flight to cart

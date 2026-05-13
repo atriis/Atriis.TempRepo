@@ -14,7 +14,7 @@ Feature: 40953 Galileo - Book hotel with terms and conditions and price verifica
 
   @priority:critical
   Scenario: Terms and conditions are accessible in room level and cart, and price matches after booking
-    Given I am logged in as "galileo" booking a new trip
+    Given I am logged in as "gal@leo.com" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "London, UK" for 1 night
     And I wait to see view rates text in results page

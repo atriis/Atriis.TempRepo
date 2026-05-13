@@ -12,7 +12,7 @@ Feature: 62825 Benerail - Correct results displayed on second click of Later but
   So that pagination is accurate and does not show stale results
 
   Scenario: Benerail results are correctly advanced on the second click of the Later button
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToGbspx"
     # TODO: create step "And I fill in the reference field if required" in benerail_search.steps.js

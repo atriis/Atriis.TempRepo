@@ -10,7 +10,7 @@ Feature: 46273 AFKL - AirPlus card does not ask for CVV when random CVV is confi
   So that the random CVV admin configuration is honored
 
   Scenario: AirPlus card paid by TMC does not prompt for CVV on a one way AFKL flight
-    Given I am logged in as "afkl_randomcvv" booking a new trip
+    Given I am logged in as "afkl@randomcvv.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "PAR" to "AMS"
     And flight results should be available

@@ -13,7 +13,7 @@ Feature: 56122 Amadeus - Multi-pax OOP triggered correctly
   So that the travel policy applies to all travelers in the trip
 
   Scenario: OOP is triggered for multi-pax flight search
-    Given I am logged in as "bruninaita" booking a new trip
+    Given I am logged in as "bruninaita@ooptest.com" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "Bruna Samara"
     And I have added traveler by name "Brunao Oliveira"

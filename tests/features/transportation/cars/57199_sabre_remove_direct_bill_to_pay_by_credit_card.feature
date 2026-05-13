@@ -12,7 +12,7 @@ Feature: 57199 Sabre billback removal and credit card payment
   So that I have payment flexibility
 
   Background:
-    Given I am logged in as "victor" booking a new trip
+    Given I am logged in as "victor@sabre.car" booking a new trip
     And I have added traveler by name "Pedro Carneiro"
 
   @priority:high

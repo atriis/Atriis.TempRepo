@@ -26,25 +26,21 @@ const logger = require("@utils/logger").child("App");
  * - Submits
  * - Waits until the menu shows the logout icon (meaning login worked)
  */
-async function performLogin(page, { email, password }) {
+async function performLogin(page, email) {
   if (!page) {
     throw new Error('page is required');
   }
-  
+
   if (!email || typeof email !== 'string') {
-    throw new Error('email must be a non-empty string');
+    throw new Error('email must be a non-empty string, got: ' + typeof email);
   }
-  
-  if (!password || typeof password !== 'string') {
-    throw new Error('password must be a non-empty string');
-  }
-  
+
   const loginPage = getPageObject(page, LoginPage);
   const menuPage = getPageObject(page, MenuPage);
 
   await loginPage.waitForLoginPage();
   await loginPage.fillEmail(email);
-  await loginPage.fillPassword(password);
+  await loginPage.fillPassword(config.password);
   await loginPage.clickLoginButton();
 
   // Keep as-is: app needs time to finish authentication and loading
@@ -53,7 +49,7 @@ async function performLogin(page, { email, password }) {
   await menuPage.waitForLogoutIcon();
 }
 
-async function createSession(userConfig) {
+async function createSession(email) {
   const browser = await launchBrowser();
   const context = await browser.newContext({
     viewport: config.viewport,
@@ -63,32 +59,30 @@ async function createSession(userConfig) {
   const page = await context.newPage();
 
   await page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
-  await performLogin(page, userConfig);
+  await performLogin(page, email);
 
   return { browser, context, page };
 }
 
 const App = {
   /**
-   * Logs in with a supported label-based user key.
+   * Logs in using an email address directly.
    *
-   * @param {string} userKey - e.g. 'eli'
+   * @param {string} email - e.g. 'ruimariano@amadeus.com'
    */
-  async loginAsUser(userKey) {
-    const { userConfig } = config.resolveUser(userKey);
-    logger.info(`Resolved user label "${userKey}"`);
-    return createSession(userConfig);
+  async loginAsUser(email) {
+    logger.info(`Logging in as "${email}"`);
+    return createSession(email);
   },
 
   /**
-   * Logs in with a supported label-based user key, then starts a new trip.
+   * Logs in using an email address, then starts a new trip.
    *
-   * @param {string} userKey - e.g. 'eli'
+   * @param {string} email - e.g. 'ruimariano@amadeus.com'
    */
-  async loginAsUserAndBookANewTrip(userKey) {
-    const { userConfig } = config.resolveUser(userKey);
-    logger.info(`Resolved user label "${userKey}"`);
-    const session = await createSession(userConfig);
+  async loginAsUserAndBookANewTrip(email) {
+    logger.info(`Logging in as "${email}"`);
+    const session = await createSession(email);
     const newTripPage = await App.bookANewTrip(session.page);
     return { ...session, page: newTripPage };
   },

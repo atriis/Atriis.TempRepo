@@ -12,7 +12,7 @@ Feature: 69635 Amtrak - Travel policy indicator displayed in results page
   So that I can be warned when a result is outside my company travel policy
 
   Scenario: Out-of-policy shield icon is visible in Amtrak results and cart
-    Given I am logged in as "marcoluis" booking a new trip
+    Given I am logged in as "marcoluis@oopamtrak.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Amtrak train from "wasToBos"
     # TODO: create step "When I verify the out of policy indicator in the first Amtrak result details" in amtrak_results.steps.js

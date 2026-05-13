@@ -12,7 +12,7 @@ Feature: 65396 Amadeus - Validate both segments included with different non-low-
   So that the booking includes the correct carriers for each leg
 
   Scenario: Both segments are present when using different non-low-cost carriers (LH, LX)
-    Given I am logged in as "corporate_amadeus_lcc" booking a new trip
+    Given I am logged in as "corporate.amadeus.lcc@soniatest.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "LON" to "MAD"
     And I filter results by carrier "IB"

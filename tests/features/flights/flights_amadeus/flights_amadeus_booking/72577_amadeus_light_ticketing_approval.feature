@@ -13,7 +13,7 @@ Feature: 72577 Amadeus Light Ticketing - Booking ticketed on approval
   So that the booking is automatically ticketed after approval flow
 
   Scenario: Ryanair booking is ticketed when sent for approval
-    Given I am logged in as "ryanair_ams" booking a new trip
+    Given I am logged in as "ryanAir@amadeus.ams" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "DUB" to "CPH"
     And I filter results by carrier "FR"

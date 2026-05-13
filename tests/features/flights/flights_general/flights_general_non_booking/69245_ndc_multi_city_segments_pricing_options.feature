@@ -12,7 +12,7 @@ Feature: 69245 NDC Flights - Multi city all segments displayed in pricing option
   So that I can review fares for each NDC segment
 
   Scenario: All NDC multi-city segments are visible in pricing options
-    Given I am logged in as "clara" booking a new trip
+    Given I am logged in as "claraaguiar@ndclhclara.com" booking a new trip
     And I have added myself as the traveler
     When I search for a multi-city flight with legs "FRA-BER" and "BER-MUC" and "MUC-ZRH"
     And flight results should be available

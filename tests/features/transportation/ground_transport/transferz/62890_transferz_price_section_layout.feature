@@ -14,7 +14,7 @@ Feature: 62890 Transferz - Price section elements are displayed in the expected 
   So that pricing information is easy to understand on the results page
 
   Scenario: Transferz price section content is displayed in the expected position
-    Given I am logged in as "beto" booking a new trip
+    Given I am logged in as "betoribeiro@transferz.com" booking a new trip
     And I have added myself as the traveler
     When I search for ground transport from airport "LHR" to specific address "Emirates Stadium, Hornsey Road, London, UK" changing the pickup time
     Then ground transport results should be displayed

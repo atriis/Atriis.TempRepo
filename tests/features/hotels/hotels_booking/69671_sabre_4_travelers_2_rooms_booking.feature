@@ -14,7 +14,7 @@ Feature: 69671 Sabre - Book hotel for 4 travelers in 2 rooms with price match
 
   @priority:critical
   Scenario: 4 travelers booked in 2 Sabre hotel rooms with confirmed status
-    Given I am logged in as "sabrin" booking a new trip
+    Given I am logged in as "sabrin@orly.com" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "Maria Fernanda"
     And I have added traveler by name "James Douglas"

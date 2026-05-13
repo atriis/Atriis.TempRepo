@@ -13,7 +13,7 @@ Feature: 46716 Amadeus - Split rules by schedule quote is split correctly
   So that the system splits the quote into separated tickets correctly
 
   Scenario: Search by schedule with different carriers produces separated tickets
-    Given I am logged in as "ruimendes" booking a new trip
+    Given I am logged in as "ruimendes@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "NYC" to "LON"
     And flight results should be available

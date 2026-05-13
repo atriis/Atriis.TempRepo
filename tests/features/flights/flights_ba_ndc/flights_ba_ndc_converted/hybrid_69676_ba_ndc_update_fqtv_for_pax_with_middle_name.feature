@@ -14,7 +14,7 @@ Feature: hybrid_69676 BA NDC - Update FQTV for traveler with middle name
   So that I can verify FQTV is updated correctly for a pax with a middle name
 
   Scenario: FQTV loyalty number is added successfully for traveler with middle name
-    Given I am logged in as "bafqtv" booking a new trip
+    Given I am logged in as "baFqtv@update.ams" booking a new trip
     And I have added traveler by name "Elisabeth"
     When I search for a round trip flight from "LHR" to "LAX"
     Then flight results should be available

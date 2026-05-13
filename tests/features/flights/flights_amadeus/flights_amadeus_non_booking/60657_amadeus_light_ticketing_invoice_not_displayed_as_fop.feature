@@ -11,7 +11,7 @@ Feature: 60657 Amadeus Light Ticketing - Invoice is not displayed as FOP
   So that the correct payment method is shown (credit card, not invoice)
 
   Scenario: Invoice is not displayed as FOP for light ticketing flights
-    Given I am logged in as "lucas" booking a new trip
+    Given I am logged in as "lucasmoreira@amadeuslowcost.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "STN" to "MAD"
     And flight results should be available

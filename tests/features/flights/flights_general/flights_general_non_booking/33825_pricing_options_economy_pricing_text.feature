@@ -12,7 +12,7 @@ Feature: 33825 AFKL - Pricing Options economy pricing text is displayed
   So that I know the fare class I am viewing
 
   Scenario: Economy pricing text is displayed in pricing options
-    Given I am logged in as "afkl" booking a new trip
+    Given I am logged in as "bsafkl@bsafkl.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "PAR" to "BKK"
     And I click to open first pricing options

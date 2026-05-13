@@ -14,7 +14,7 @@ Feature: 69255 Amadeus - Loyalty number added and visible in share itinerary
 
   @priority:medium
   Scenario: Loyalty number added to booking is visible in shared itinerary email
-    Given I am logged in as "bruna_nlgov" booking a new trip
+    Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I click proceed button if visible

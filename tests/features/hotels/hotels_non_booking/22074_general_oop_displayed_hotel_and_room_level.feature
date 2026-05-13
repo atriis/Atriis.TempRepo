@@ -14,7 +14,7 @@ Feature: 22074 General - OOP policy displayed in hotel and room level results fo
 
   @priority:high
   Scenario: OOP policy is displayed in hotel and room level for multiple travelers
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "olga cohen"
     And I have added "gadi cohen" as primary traveler
     When I initiate a hotel search in "London" for 1 night

@@ -14,7 +14,7 @@ Feature: 57338 Galileo - Agreement badge visible in hotel and room level
 
   @priority:high
   Scenario: Agreement badge is visible in hotel level and room level for Galileo
-    Given I am logged in as "canisso" booking a new trip
+    Given I am logged in as "canisso@checkednonagreementgds.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I wait to see view rates text in results page

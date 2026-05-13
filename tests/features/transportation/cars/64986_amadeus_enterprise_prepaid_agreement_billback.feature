@@ -12,7 +12,7 @@ Feature: 64986 Amadeus enterprise prepaid agreement fares with billback
   So that I understand the payment is pre-paid and billback is enabled
 
   Background:
-    Given I am logged in as "danielalmeida" booking a new trip
+    Given I am logged in as "danielalmeida@amadeus.car" booking a new trip
     And I have added myself as the traveler
     And I have selected Enterprise rental agency
 

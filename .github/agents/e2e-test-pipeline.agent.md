@@ -208,25 +208,18 @@ If FAIL, do not proceed to Phase 2 until the generated test is corrected and re-
 
 This phase:
 1. Reads the generated feature file
-2. Extracts user references from login steps:
-   - `Given I am logged in as {string}` -- single user label
-   - `Given I am logged in as {string} booking a new trip` -- label + booking
-3. Resolves each user against:
-  - `c:\DEV\Atriis.Test.Automation\.env` -- local test users (`USER_<LABEL>=email`)
-  - `c:\DEV\Atriis.Test.Automation\src\config\config.js` -- auto-discovers users from env vars (no code changes needed)
-4. For missing users:
-  - Adds `USER_<LABEL>=email` to `.env` in Atriis.Test.Automation
-  - Note: `config.js` auto-discovers users from env vars -- no manual config key mapping needed
-5. Also checks if `GENERAL_PASSWORD` exists and is valid
+2. Extracts email addresses from login steps:
+   - `Given I am logged in as "email@domain.com"` — single user
+   - `Given I am logged in as "email@domain.com" booking a new trip` — user + booking
+3. Verifies the `.env` contains `GENERAL_PASSWORD` (the shared password for all test accounts)
+4. No user registry or `USER_*` env vars are needed — emails are written directly in feature files
 
 **Receives**: `state.environment`
 
 **CHECKPOINT**: Display to user:
-- Users found in feature: {list}
-- Users already configured: {list}
-- Users added: {list with details}
-- Files modified: {list}
-- **Ask**: "User environment configured. Proceed with step validation?"
+- Emails found in feature: {list}
+- `GENERAL_PASSWORD` present: yes/no
+- **Ask**: "Environment validated. Proceed with step validation?"
 
 ---
 
@@ -675,7 +668,7 @@ https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?e
 |----------|--------|
 | ADO unreachable | Suggest `az login`, stop pipeline |
 | Test case generator produces no Gherkin | Stop with explanation |
-| User not found in any registry | Ask user to provide email/password |
+| Email in login step looks invalid | Ask user to confirm the correct email address |
 | All 5 fix iterations fail | Mark "needs manual intervention", still report |
 | No search results during test | Mark as "blocked: environment/data issue", skip fixes |
 | Duplicate bug found in ADO | Add comment to existing bug instead of creating new |

@@ -12,7 +12,7 @@ Feature: 35620 Sabre - Branded fare info in results, pricing options and cart
   So that I can understand what is included in each fare brand
 
   Scenario: Branded fare info is displayed in flight details, pricing options and cart
-    Given I am logged in as "brunaovidio" booking a new trip
+    Given I am logged in as "brunaovidio@bovidio.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "MIA" to "BOS"
     And flight results should be available

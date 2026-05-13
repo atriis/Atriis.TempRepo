@@ -10,7 +10,7 @@ Feature: 66960 AFKL - Seats are saved successfully on an AFKL one way flight
   So that the seat is saved and the booking remains in pending state
 
   Scenario: Select and save a seat on an AFKL one way flight
-    Given I am logged in as "afkl" booking a new trip
+    Given I am logged in as "bsafkl@bsafkl.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "AMS" to "CDG"
     And flight results should be available

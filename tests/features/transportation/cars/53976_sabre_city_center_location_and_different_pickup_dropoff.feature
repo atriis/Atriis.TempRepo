@@ -13,7 +13,7 @@ Feature: 53976 Sabre city-center station details and different pickup and drop-o
 
   @priority:high
   Scenario: Search different pickup and drop-off locations and validate city-center station details
-    Given I am logged in as "penelopecruz" booking a new trip
+    Given I am logged in as "penelopecruz@sabre.car" booking a new trip
     And I have added myself as the traveler
     When I search for a car from "London,United Kingdom,(LON)" to "Oxford, UK"
     # TODO: Map Testim precondition Car___Results___Wait_for__Select__text() to an existing city-center wait step if required.

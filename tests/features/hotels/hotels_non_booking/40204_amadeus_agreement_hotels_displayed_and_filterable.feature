@@ -14,7 +14,7 @@ Feature: 40204 Amadeus - Agreement hotels displayed and filterable
 
   @priority:high
   Scenario: Agreement hotels are displayed and agreement filter works in room level
-    Given I am logged in as "brunafilternonagreement" booking a new trip
+    Given I am logged in as "brunasantos@filternonagreement.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     And I wait to see view rates text in results page

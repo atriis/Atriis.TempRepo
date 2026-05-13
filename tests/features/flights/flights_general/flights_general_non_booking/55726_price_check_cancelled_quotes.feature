@@ -12,7 +12,7 @@ Feature: 55726 Flights - Price check for cancelled flights quotes
   So that I can rebook at the current price
 
   Scenario: Price check on cancelled flight quote returns pending booking
-    Given I am logged in as "caroldynamics" booking a new trip
+    Given I am logged in as "caroldynamics@club.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LIS" to "GRU"
     And I add the first result to trip

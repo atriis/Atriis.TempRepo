@@ -14,7 +14,7 @@ Feature: 35787 Lufthansa NDC - All fare rules are selectable and can open baggag
   So that I can confirm fare rule information and baggage options work correctly
 
   Scenario: Verify fare rules in pricing options and baggage on cart page for LH NDC business class
-    Given I am logged in as "clara" booking a new trip
+    Given I am logged in as "claraaguiar@ndclhclara.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip "Business" class flight from "MUC" to "JFK"
     Then flight results should be available

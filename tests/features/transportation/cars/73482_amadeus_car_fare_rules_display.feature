@@ -12,7 +12,7 @@ Feature: 73482 Amadeus car fare rules display across booking flow
   So that I understand the full pricing terms before committing
 
   Background:
-    Given I am logged in as "testim" booking a new trip
+    Given I am logged in as "testim@car.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

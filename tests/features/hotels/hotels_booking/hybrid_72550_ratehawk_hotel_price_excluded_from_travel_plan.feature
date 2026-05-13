@@ -14,7 +14,7 @@ Feature: 72550 Ratehawk - Hotel price is excluded from the travel plan email
 
   @priority:medium
   Scenario: Hotel price is not included when sharing the travel plan itinerary
-    Given I am logged in as "tal" booking a new trip
+    Given I am logged in as "tal@nopris.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I wait to see view rates text in results page

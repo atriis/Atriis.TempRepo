@@ -14,7 +14,7 @@ Feature: 66140 AFKL NDC - Complete trip booking and verifying branded fares
   So that I can confirm branded fares are displayed correctly throughout the flow
 
   Scenario: Book an AFKL NDC round trip flight and verify branded fares
-    Given I am logged in as "afkl" booking a new trip
+    Given I am logged in as "bsafkl@bsafkl.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "AMS" to "HKG"
     And flight results should be available

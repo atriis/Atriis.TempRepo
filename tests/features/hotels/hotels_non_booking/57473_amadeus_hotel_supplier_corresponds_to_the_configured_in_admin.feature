@@ -14,7 +14,7 @@ Feature: 57473 Amadeus - Hotel - Supplier corresponds to the one that is configu
 
   @priority:medium
   Scenario: Verify supplier in room level results
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Graduate by Hilton Cambridge, Granta Place, Mill Lane, Cambridge, UK" for 1 night
     And I wait to see view rates text in results page

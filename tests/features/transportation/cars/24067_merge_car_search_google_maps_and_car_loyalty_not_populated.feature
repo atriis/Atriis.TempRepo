@@ -13,7 +13,7 @@ Feature: 24067 Amadeus - Car search Google Maps and loyalty not populated
   So that I can confirm cart data is consistent
 
   Scenario: Search car, validate Google Maps link, and verify loyalty is not prepopulated
-    Given I am logged in as "ampmaccars" booking a new trip
+    Given I am logged in as "testim@amadeus.am" booking a new trip
     And I have added a random guest traveler
     When I search for a car at "London, UK"
     And I select the first city center pickup location

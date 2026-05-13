@@ -12,7 +12,7 @@ Feature: 72539 Benerail - Ticket information in GetTrip API response
   So that I can confirm ticket fields are correctly included in the trip object
 
   Scenario: Benerail ticket information is present in the GetTrip API response after booking
-    Given I am logged in as "pini" booking a new trip
+    Given I am logged in as "pini@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToNlasc"
     When I add a Benerail round trip to the trip

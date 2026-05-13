@@ -12,7 +12,7 @@ Feature: 62867 Benerail - Traveler should drive content in all booking cases
   So that the booking flow gracefully handles unavailable routes
 
   Scenario: No trains found message displayed when traveler drives content with no available results
-    Given I am logged in as "pini" booking a new trip
+    Given I am logged in as "pini@benerail.com" booking a new trip
     And I have added traveler by name "bene-wo-content"
     When I search for a one way Benerail train from "bebmiToFrpno"
     # TODO: create step "Then the no trains found message should be displayed in Benerail results" in benerail_results.steps.js

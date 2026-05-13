@@ -13,7 +13,7 @@ Feature: 40952 Galileo car booking with travel policy and eco validations
 
   @priority:critical
   Scenario: Validate OOP state, eco options, justification flow, and successful booking
-    Given I am logged in as "gal" booking a new trip
+    Given I am logged in as "gal@leo.com" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "lhr"
     Then the out of policy indicator should be visible in results

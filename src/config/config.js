@@ -15,38 +15,6 @@ function getEnv(name) {
 }
 
 /**
- * Helper to define a single test user with lazy evaluation.
- * Credentials are only validated when actually accessed,
- * allowing partial test runs with subset of environment variables.
- */
-function createUser(emailEnvVar) {
-  return {
-    get email() {
-      return getEnv(emailEnvVar);
-    },
-    get password() {
-      return getEnv("GENERAL_PASSWORD");
-    },
-  };
-}
-
-/**
- * Creates users from simple USER_<label>=email format.
- * Example: USER_ELI=eli@atriis.com → accessible as config.users.labels.eli
- * Usage in Gherkin: Given I am logged in as "eli"
- * No provider prefix needed — labels work across all test scenarios.
- */
-function createLabelUsers() {
-  const users = {};
-  Object.keys(process.env).forEach(envKey => {
-    if (!envKey.startsWith('USER_')) return;
-    const label = envKey.replace(/^USER_/, '').toLowerCase();
-    if (label) users[label] = createUser(envKey);
-  });
-  return users;
-}
-
-/**
  * Viewport presets for flexibility.
  * Can be changed via VIEWPORT env variable.
  * Default = desktopFullHD (1920x1080)
@@ -66,51 +34,22 @@ const ACTIVE_VIEWPORT =
  * Central test configuration.
  * This file defines:
  * - application URL
+ * - shared password (from .env)
  * - viewport settings
- * - test users by label
  *
  * No test should ever read process.env directly.
- *
- * Note: User credentials use lazy evaluation (getters) so env vars
- * are only validated when accessed, not at config load time.
+ * User emails are written directly in Gherkin feature files.
  */
 const config = {
   get baseUrl() {
     return getEnv("AUTOMATION_APP_BASEURL");
   },
 
-  viewport: ACTIVE_VIEWPORT,
-
-  /**
-   * User credentials organized by label.
-   * Users are automatically discovered from USER_* environment variables.
-   */
-  users: {
-    /**
-     * Simple label users — defined as USER_<label>=email in .env.
-     * This is the only supported user format in the project.
-     */
-    labels: createLabelUsers(),
+  get password() {
+    return getEnv("GENERAL_PASSWORD");
   },
-};
 
-/**
- * Finds a label-based user by userKey.
- * Returns { userKey, userConfig } or throws if not found.
- *
- * @param {string} userKey - e.g. 'eli'
- * @returns {{ userKey: string, userConfig: object }}
- */
-config.resolveUser = function (userKey) {
-  if (!userKey || typeof userKey !== 'string') {
-    throw new Error('userKey must be a non-empty string, got: ' + typeof userKey);
-  }
-  const key = userKey.toLowerCase();
-  const userConfig = config.users.labels?.[key];
-  if (userConfig) {
-    return { userKey: key, userConfig };
-  }
-  throw new Error(`User not found in labels config: ${userKey}`);
+  viewport: ACTIVE_VIEWPORT,
 };
 
 module.exports = config;

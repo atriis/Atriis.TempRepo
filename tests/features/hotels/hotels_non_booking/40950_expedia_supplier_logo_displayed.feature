@@ -14,7 +14,7 @@ Feature: 40950 Expedia - Expedia supplier logo is displayed in hotel results
 
   @priority:medium
   Scenario: Expedia logo is visible in hotel level results
-    Given I am logged in as "edi" booking a new trip
+    Given I am logged in as "edi@yahot.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Budapest" for 1 night
     And I wait to see view rates text in results page

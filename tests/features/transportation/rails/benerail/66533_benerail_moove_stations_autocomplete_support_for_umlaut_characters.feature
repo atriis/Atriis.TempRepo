@@ -12,7 +12,7 @@ Feature: 66533 Benerail - Stations autocomplete supports umlaut characters
   So that stations like München and Zürich are found when typed with umlauts
 
   Scenario: Benerail station autocomplete finds stations with umlaut characters
-    Given I am logged in as "justinbieber" booking a new trip
+    Given I am logged in as "justinbieber@benerail.com" booking a new trip
     And I have added myself as the traveler
     # NOTE: Search uses umlaut characters: München and Zürich
     # These are stored in benerail.json as "munichToZurich" route

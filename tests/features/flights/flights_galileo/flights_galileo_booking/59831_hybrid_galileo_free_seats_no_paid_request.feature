@@ -13,7 +13,7 @@ Feature: 59831 Galileo - Free seats do not send paid seat request
   So that I am not charged for complimentary seats
 
   Scenario: Free seat added in Business class does not trigger paid seat request
-    Given I am logged in as "bsgalileoflight" booking a new trip
+    Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip "Business" class flight from "LON" to "LAX"
     And flight results should be available

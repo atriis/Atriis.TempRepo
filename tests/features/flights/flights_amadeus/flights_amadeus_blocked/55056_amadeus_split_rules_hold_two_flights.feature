@@ -14,7 +14,7 @@ Feature: 55056 Amadeus - Split rules applied correctly when holding 2 round trip
 
   Scenario: Two round trip flights held with correct split rules and PNR codes
   #Edit is not working
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "LON" to "DOH"
     And I filter results by carrier "Qatar Airways"

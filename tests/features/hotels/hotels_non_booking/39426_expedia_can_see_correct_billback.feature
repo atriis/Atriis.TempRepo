@@ -14,7 +14,7 @@ Feature: 39426 Expedia - Can see correct billback
 
   @priority:high
   Scenario: Can see correct billback in cart
-    Given I am logged in as "shani" booking a new trip
+    Given I am logged in as "shani@bill.com" booking a new trip
     And I have added traveler by name "Bill Bakerman"
     When I search for a hotel in "Leuven" for 1 night
     And I select the first hotel result

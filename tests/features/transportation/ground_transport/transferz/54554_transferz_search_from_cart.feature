@@ -15,7 +15,7 @@ Feature: 54554 Transferz - Search from cart returns results with airport pickup
   So that I can find transfer results directly from the cart
 
   Scenario: Transferz search from cart returns results after adding a round trip flight
-    Given I am logged in as "alana_transferz" booking a new trip
+    Given I am logged in as "alana@transferz.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "BRU" to "BUH"
     And I add the first flight to cart

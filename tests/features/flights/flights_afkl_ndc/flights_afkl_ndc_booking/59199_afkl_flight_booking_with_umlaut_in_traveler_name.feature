@@ -10,7 +10,7 @@ Feature: 59199 AFKL NDC - Flight booking with umlaut in traveler name and middle
   So that the ticket is issued correctly with the full traveler details
 
   Scenario: Book an AFKL round trip with umlaut traveler and a guest traveler with middle name
-    Given I am logged in as "ndc_testim" booking a new trip
+    Given I am logged in as "ndc@testim.com" booking a new trip
     And I have added traveler by name "Sönja Götz"
     And I have added a random guest traveler with middle name "Jonas"
     When I search for a round trip flight from "DUS" to "CDG"

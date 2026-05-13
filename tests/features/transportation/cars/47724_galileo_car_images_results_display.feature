@@ -12,7 +12,7 @@ Feature: 47724 Galileo car images display in results
   So that I can visually identify the rental car options
 
   Background:
-    Given I am logged in as "beatrizpamplonacorp" booking a new trip
+    Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

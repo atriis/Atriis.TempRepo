@@ -14,7 +14,7 @@ Feature: 29441 BA NDC - User is able to copy trip
   So that I can verify the copy trip functionality works correctly
 
   Scenario: Book a BA NDC flight and successfully copy the trip
-    Given I am logged in as "ian" booking a new trip
+    Given I am logged in as "iancurtis@ndcba.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "MAD"
     And I add the first flight to cart

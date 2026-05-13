@@ -13,7 +13,7 @@ Feature: 69254 Galileo - Frequent flyer number displayed in itinerary
   So that loyalty information is included when sharing
 
   Scenario: Frequent flyer number is visible in shared itinerary
-    Given I am logged in as "bsgalileoflight" booking a new trip
+    Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "LIS" to "ATH"
     And flight results should be available

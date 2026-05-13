@@ -12,7 +12,7 @@ Feature: 62086 Galileo cancel booked trip with two cars
   So that I can cancel my complete travel arrangements
 
   Background:
-    Given I am logged in as "beatrizpamplonacorp" booking a new trip
+    Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added a random guest traveler
 
   @priority:high

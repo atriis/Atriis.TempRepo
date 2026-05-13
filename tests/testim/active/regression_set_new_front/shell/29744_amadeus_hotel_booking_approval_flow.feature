@@ -14,7 +14,7 @@ Feature: 29744 Amadeus - Hotel booking with approval flow
 
   @priority:critical
   Scenario: Hotel booking triggers approval flow with multiple approvers
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "Shani Corp"
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result

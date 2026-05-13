@@ -12,7 +12,7 @@ Feature: 52934 Benerail - No paid seats and 1st class booking validation
   So that the seating selector shows only the close button and does not behave like paid seats
 
   Scenario: Benerail 1st class booking with no-paid-seats seating validation
-    Given I am logged in as "beny" booking a new trip
+    Given I am logged in as "beny@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToDefra"
     And I click proceed on the reference fields popup

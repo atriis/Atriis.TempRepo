@@ -13,7 +13,7 @@ Feature: 60578 Galileo - PNR remark sent per ticket NDC with passive segment
   So that each ticket has the correct remark attached
 
   Scenario: NDC booking with 2 travelers generates ticket numbers per PNR remark
-    Given I am logged in as "ndc_passive" booking a new trip
+    Given I am logged in as "ndc@passive.gdg" booking a new trip
     And I have added a random guest traveler
     And I have added a random guest traveler
     When I search for a round trip flight from "FRA" to "WAW"

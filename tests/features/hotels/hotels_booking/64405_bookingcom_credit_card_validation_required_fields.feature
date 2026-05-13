@@ -14,7 +14,7 @@ Feature: 64405 Booking.com - Credit card validation without cardholder name and 
 
   @priority:medium
   Scenario: Credit card cannot be saved without cardholder name and country
-    Given I am logged in as "rebeccacardin" booking a new trip
+    Given I am logged in as "rebecca@cardin.com" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "Amsterdam" for 1 night
     And I wait to see view rates text in results page

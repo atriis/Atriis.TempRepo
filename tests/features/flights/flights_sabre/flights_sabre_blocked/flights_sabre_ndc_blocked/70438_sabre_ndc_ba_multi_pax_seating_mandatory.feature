@@ -13,7 +13,7 @@ Feature: 70438 Sabre NDC (BA) - Multi pax seating mandatory for all
 
   #BLOCKED - second fare from pricing options is not displayed, preventing test from proceeding to booking and seating steps
   Scenario: Seating is mandatory for all travelers on Sabre NDC BA flight
-    Given I am logged in as "corpsabrendc_reg" booking a new trip
+    Given I am logged in as "corpSabreNdc@reg.ams" booking a new trip
     And I have added a random guest traveler
     And I have added a random guest traveler
     When I search for a round trip flight from "LHR" to "NYC"

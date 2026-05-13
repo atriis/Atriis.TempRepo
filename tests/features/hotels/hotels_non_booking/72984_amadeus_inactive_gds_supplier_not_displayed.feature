@@ -14,7 +14,7 @@ Feature: 72984 Amadeus Value Hotel - Inactive supplier logo not displayed and fi
 
   @priority:medium
   Scenario: Inactive Amadeus Value Hotel supplier logo is not visible in hotel results
-    Given I am logged in as "papatinho" booking a new trip
+    Given I am logged in as "papatinhosantos@amadeusvalue.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Swidnik, Poland" for 1 night
     And I wait to see view rates text in results page

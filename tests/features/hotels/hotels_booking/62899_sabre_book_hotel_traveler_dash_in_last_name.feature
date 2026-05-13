@@ -14,7 +14,7 @@ Feature: 62899 Sabre - Book hotel for traveler with dash in last name
 
   @priority:medium
   Scenario: Hotel booking succeeds for traveler with hyphenated last name
-    Given I am logged in as "robsoncruz" booking a new trip
+    Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
     And I have added traveler by name "Ana Antonoli-Carto"
     When I search for a hotel in "Denver" for 1 night
     And I wait to see view rates text in results page

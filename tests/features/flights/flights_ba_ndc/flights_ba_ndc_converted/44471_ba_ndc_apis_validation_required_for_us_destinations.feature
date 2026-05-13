@@ -14,7 +14,7 @@ Feature: 44471 BA NDC - APIS validation required for US destinations
   So that I can verify APIS passenger info is required and mandatory fields are highlighted when empty
 
   Scenario: APIS is required for US destination and mandatory fields are highlighted
-    Given I am logged in as "ian" booking a new trip
+    Given I am logged in as "iancurtis@ndcba.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "LON" to "NYC"
     And I add the first flight to cart

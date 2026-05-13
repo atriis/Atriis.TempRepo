@@ -13,7 +13,7 @@ Feature: 28643 Amadeus - Paid seats price calculation and booking
   So that the total cost is correct after adding seat charges
 
   Scenario: Select paid seats, validate price, and book flight
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "LON" to "AMS"
     And flight results should be available

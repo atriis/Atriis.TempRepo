@@ -12,7 +12,7 @@ Feature: 64445 Galileo on-request booking sampling process
   So that I can confirm the booking flow is working correctly
 
   Background:
-    Given I am logged in as "testim" booking a new trip
+    Given I am logged in as "testim@car.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

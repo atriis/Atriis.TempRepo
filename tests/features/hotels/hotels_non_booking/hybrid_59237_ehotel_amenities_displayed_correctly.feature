@@ -14,7 +14,7 @@ Feature: 59237 eHotel - Hotel amenities displayed correctly according to supplie
 
   @priority:medium
   Scenario: Amenities are shown correctly - with gym and without gym
-    Given I am logged in as "eli" booking a new trip
+    Given I am logged in as "eli@tel.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     Then hotel 1 should display the "Gym" amenity

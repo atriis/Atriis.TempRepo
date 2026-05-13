@@ -12,7 +12,7 @@ Feature: 68017 Car PNR remark carDisplayCurrency validation
   So that the booking reflects the correct currency display
 
   Background:
-    Given I am logged in as "cars" booking a new trip
+    Given I am logged in as "cars@galileo.car" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

@@ -6,7 +6,7 @@ Feature: Amadeus Value Hotel E2E Booking
 
   @priority:critical
   Scenario Outline: Booking Amadeus Value Hotel
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "amos one"
     When I search for a hotel in "hyatt place denver downtown" for 1 night
     And I select the first hotel result

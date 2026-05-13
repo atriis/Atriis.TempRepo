@@ -13,7 +13,7 @@ Feature: 67979 Amadeus Ryanair - Seat price calculation outbound and inbound
   So that outbound and inbound seat prices are properly reflected
 
   Scenario: Cart total updates after adding outbound and inbound seats
-    Given I am logged in as "lucas" booking a new trip
+    Given I am logged in as "lucasmoreira@amadeuslowcost.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "STN" to "BUD"
     And I wait for add to trip text to be visible

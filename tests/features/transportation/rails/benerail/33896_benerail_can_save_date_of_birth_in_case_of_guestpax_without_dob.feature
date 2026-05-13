@@ -12,7 +12,7 @@ Feature: 33896 Benerail - Can save date of birth for guest passenger without DOB
   So that the booking can proceed with the required passenger information
 
   Scenario: Benerail cart allows saving date of birth for guest without pre-configured DOB
-    Given I am logged in as "beny_nl" booking a new trip
+    Given I am logged in as "beny@benerailnl.com" booking a new trip
     # TODO: create step "And I have added a guest passenger without date of birth named Israel Israeli" in search.steps.js
     # covers: add_guest_Israel_Israeli_without_date_of_birth() — adds guest with name but no DOB
     And I have added a guest passenger without date of birth named "Israel" "Israeli"

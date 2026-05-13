@@ -12,7 +12,7 @@ Feature: 46237 Flights - Edit complete search to by-schedule displays schedule r
   So that I can switch search modes without starting over
 
   Scenario: Changing complete search to by-schedule shows schedule results
-    Given I am logged in as "ruimendes" booking a new trip
+    Given I am logged in as "ruimendes@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "TLV" to "AMS"
     And flight results should be available

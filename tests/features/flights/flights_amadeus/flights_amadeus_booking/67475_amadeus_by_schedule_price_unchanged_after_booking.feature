@@ -11,7 +11,7 @@ Feature: 67475 Amadeus - By schedule price does not change after booking
   So that the price in the trip overview matches the price before booking
 
   Scenario: Price does not change after booking a by-schedule flight
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added a random guest traveler
     When I search for a flight by schedule from "MAN" to "PAR"
     And I select flight segments by schedule

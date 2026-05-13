@@ -14,7 +14,7 @@ Feature: 64395 Ratehawk - Wi-Fi amenity filter works in room level results
 
   @priority:medium
   Scenario: Wi-Fi amenity filter shows only Wi-Fi rooms in Ratehawk room level results
-    Given I am logged in as "ruth" booking a new trip
+    Given I am logged in as "ruth@produ.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I wait to see view rates text in results page

@@ -11,7 +11,7 @@ Feature: 59788 Amadeus - One way pricing options are not duplicated
   So that I can confirm that reopening pricing options shows consistent data
 
   Scenario: Pricing options are not duplicated for one way flight
-    Given I am logged in as "taylor" booking a new trip
+    Given I am logged in as "taylor@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LHR" to "MNL"
     And I click proceed on the reference fields popup

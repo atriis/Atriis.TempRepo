@@ -14,7 +14,7 @@ Feature: hybrid_64948 BA NDC - Fare rules are the same in new UI (new UI portion
   So that I can verify they match the GTP fare rules
 
   Scenario: Fare rules are accessible and show Fare Basis content in new UI
-    Given I am logged in as "ian" booking a new trip
+    Given I am logged in as "iancurtis@ndcba.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LHR" to "DUB"
     Then flight results should be available

@@ -14,7 +14,7 @@ Feature: 66399 SQUAKE - Hotel CO2 calculation uses Greenview methodology
 
   @priority:medium
   Scenario: Hotel search loads with CO2 data using Greenview calculation method
-    Given I am logged in as "tel" booking a new trip
+    Given I am logged in as "tel@hotel.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I wait to see view rates text in results page

@@ -14,7 +14,7 @@ Feature: 66604 Amadeus - Wi-Fi amenity filter works in room level after hotel na
 
   @priority:medium
   Scenario: Wi-Fi filter in room level works after filtering hotels by name
-    Given I am logged in as "amy" booking a new trip
+    Given I am logged in as "amy@gadasy.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I wait to see view rates text in results page

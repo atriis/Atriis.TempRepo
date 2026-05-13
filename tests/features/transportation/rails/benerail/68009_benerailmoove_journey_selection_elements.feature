@@ -12,7 +12,7 @@ Feature: 68009 Benerail - Journey selection stepper elements are displayed corre
   So that I can visually track my progress through the journey selection flow
 
   Scenario: Journey selection stepper element is displayed for both outbound and return legs
-    Given I am logged in as "beny" booking a new trip
+    Given I am logged in as "beny@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip Benerail train from "deduiToNlasc"
     And I click proceed on the reference fields popup

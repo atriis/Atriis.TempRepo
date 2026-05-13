@@ -12,7 +12,7 @@ Feature: 55133 Galileo dynamic field remark with traveler connection
   So that rental details are connected to the correct traveler
 
   Background:
-    Given I am logged in as "Rafael" booking a new trip
+    Given I am logged in as "rafael@galileo.car" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "rafi din"
 

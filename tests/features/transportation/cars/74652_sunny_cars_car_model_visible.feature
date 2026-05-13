@@ -9,7 +9,7 @@ Feature: 74652 Sunny Cars - Car Model Visibility in Search Results
 
   @priority:critical
   Scenario: Car model name is visible in Sunny Cars search results at LHR
-    Given I am logged in as "sunnycar" booking a new trip
+    Given I am logged in as "automation@sunnycar.tlc" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "LHR" with rental agency "Sunny Cars" and 1 months ahead
     Then the car model should be visible in the results

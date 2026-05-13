@@ -12,7 +12,7 @@ Feature: 65439 LCC - Booking successful with mandatory reference field
   So that my booking is processed correctly
 
   Scenario: LCC booking succeeds when mandatory reference field is filled
-    Given I am logged in as "shawg" booking a new trip
+    Given I am logged in as "shawg@fusionmandatoryref.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LIS" to "NCE"
     And I add the first flight to cart

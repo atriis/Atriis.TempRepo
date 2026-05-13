@@ -14,7 +14,7 @@ Feature: 52621 Galileo - Deposit filter shows hotels with instant purchase toolt
 
   @priority:medium
   Scenario: Deposit filter is applied and instant purchase tooltip is visible
-    Given I am logged in as "inessa" booking a new trip
+    Given I am logged in as "inessa@depo.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Blue Mansion" for 1 night
     And I select the first hotel result

@@ -12,7 +12,7 @@ Feature: 32980 By Schedule - Edit search from pricing page works as expected
   So that I can adjust my search without starting over
 
   Scenario: Edit search from by-schedule pricing page
-    Given I am logged in as "testim_amadeus" booking a new trip
+    Given I am logged in as "testim@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "JFK" to "ATL"
     And I select flight segments by schedule

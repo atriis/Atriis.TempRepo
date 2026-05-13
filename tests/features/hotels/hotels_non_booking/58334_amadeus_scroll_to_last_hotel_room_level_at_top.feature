@@ -14,7 +14,7 @@ Feature: 58334 Amadeus - Scroll to last hotel and redirect to room level at top
 
   @priority:low
   Scenario: Scrolling to last hotel and clicking redirects to room level at page top
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I wait to see view rates text in results page

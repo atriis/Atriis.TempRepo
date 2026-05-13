@@ -12,7 +12,7 @@ Feature: 57185 Avis arrival flight info mandatory for specific locations
   So that the rental company can coordinate pick-up with my flight
 
   Background:
-    Given I am logged in as "carCorp" booking a new trip
+    Given I am logged in as "carCorp@gdg.com" booking a new trip
 
   @priority:high
   Scenario: Verify Avis arrival flight info required for specific locations

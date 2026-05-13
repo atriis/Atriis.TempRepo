@@ -14,7 +14,7 @@ Feature: 36755 BA NDC - Passenger Info (APIS) is not required for non-US flights
   So that I can verify APIS passenger info is not required for non-US routes
 
   Scenario: APIS section is not shown in cart for non-US BA NDC flight
-    Given I am logged in as "ian" booking a new trip
+    Given I am logged in as "iancurtis@ndcba.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "LHR" to "ARN"
     And I add the first flight to cart

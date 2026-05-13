@@ -291,19 +291,10 @@ AUTOMATION_APP_BASEURL=https://atriis-stg.app
 AUTOMATION_HEADLESS=false         # true for CI, false for local debugging
 AUTOMATION_TIMEOUT_MS=30000       # default operation timeout in ms
 
-########################################
-# User Authentication — Simple Label Format (Recommended)
-# Format:  USER_<LABEL>=email@domain.com
-# Gherkin: Given I am logged in as "eli"
-########################################
-USER_ELI=eli@company.com
-USER_JOAO=joao@company.com
-# ... add more as needed
-
 GENERAL_PASSWORD=your_shared_password
 ```
 
-See `.env.example` for the complete list including GDS/NDC supplier-specific users.
+User emails are written **directly in feature files** — no `USER_*` env vars needed.
 
 ### Verify the setup
 
@@ -316,46 +307,18 @@ npx cucumber-js --dry-run
 
 ### User System
 
-#### Simple Label Users (Recommended)
-
-Add `USER_<LABEL>=email@company.com` to `.env`:
-
-```bash
-USER_ELI=eli@atriis.com
-USER_JOAO=joao@atriis.com
-```
-
-Reference in Gherkin with a single string:
+Emails are written **directly in Gherkin steps** — no label registry or `.env` user entries:
 
 ```gherkin
-Given I am logged in as "eli" booking a new trip
-Given I am logged in as "joao" booking a new trip
+Given I am logged in as "ruimariano@amadeus.com" booking a new trip
+Given I am logged in as "eli@tel.com" booking a new trip
 ```
 
-The framework resolves the email from the environment variable automatically — no changes to `config.js` needed.
+`GENERAL_PASSWORD` (from `.env`) is the shared password used for all test accounts.
 
-#### Adding a User to CI (GitHub Secrets)
+#### Adding a User to CI
 
-1. Add a secret in **GitHub → Settings → Secrets → Actions**:
-   - Name: `USER_ELI`, Value: `eli@company.com`
-2. Reference it in `.github/workflows/test-suite.yml` under the job's `env:` block:
-   ```yaml
-   env:
-     USER_ELI: ${{ secrets.USER_ELI }}
-     GENERAL_PASSWORD: ${{ secrets.GENERAL_PASSWORD }}
-   ```
-
-Only the label-based format is supported in this project.
-
-```bash
-USER_RUIMARIANO=ruimariano@company.com
-USER_GO_GLOBAL=go-global@company.com
-```
-
-```gherkin
-Given I am logged in as "ruimariano"
-Given I am logged in as "go_global" booking a new trip
-```
+No changes needed in GitHub Secrets or the workflow file for new users — just write the email in the feature file. Only `GENERAL_PASSWORD` and the `AUTOMATION_*` vars need to be in the `ENV` secret.
 
 ---
 
@@ -643,11 +606,10 @@ This project includes **20 custom AI agents** that automate the test lifecycle. 
 
 2. **DSL composes Page methods into workflows**
    ```javascript
-   async loginAs(page, label) {
+   async loginAsUser(email) {
      const loginPage = getPageObject(page, LoginPage);
-     const user = resolveUser(label);
-     await loginPage.fillEmail(user.email);
-     await loginPage.fillPassword(user.password);
+     await loginPage.fillEmail(email);
+     await loginPage.fillPassword(config.password);
      await loginPage.clickLogin();
    }
    ```

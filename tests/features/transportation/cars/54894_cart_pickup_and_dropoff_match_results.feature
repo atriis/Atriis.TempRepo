@@ -13,7 +13,7 @@ Feature: 54894 Cart pickup and drop-off locations match the results page
 
   @priority:high
   Scenario: Select a city result and compare pickup and drop-off locations between results and cart
-    Given I am logged in as "brunajuliana" booking a new trip
+    Given I am logged in as "brunajuliana@sabretlcfaketest.com" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "Wembley Stadium, Wembley, UK"
     # TODO: Map Testim step answer_ref_fields_chris_tree_and_proceed() to the repo's reference-fields workflow.

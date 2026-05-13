@@ -14,7 +14,7 @@ Feature: HYBRID for 73877 Email adress is sent according to the web confirmation
 
   @priority:high
   Scenario: Confirmation email is sent using the traveler exception rule after hotel booking
-    Given I am logged in as "rebecca" booking a new trip
+    Given I am logged in as "rebecca@kom.com" booking a new trip
     And I have added traveler by name "Eliyahu Tel"
     When I search for a hotel in "LON" for 1 night
     And I wait to see view rates text in results page

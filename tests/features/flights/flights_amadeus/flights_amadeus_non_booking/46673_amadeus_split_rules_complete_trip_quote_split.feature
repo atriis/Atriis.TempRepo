@@ -11,7 +11,7 @@ Feature: 46673 Amadeus - Split rules complete trip quote is split correctly
   So that the system splits the quote correctly per the split rules configuration
 
   Scenario: Complete trip flight with split rules produces two separate quotes
-    Given I am logged in as "ruimendes" booking a new trip
+    Given I am logged in as "ruimendes@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "BOS" to "DFW"
     And flight results should be available

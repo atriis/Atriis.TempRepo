@@ -13,7 +13,7 @@ Feature: 42070 Galileo - Flights are displayed in correct order
   So that I can verify booking details are consistent
 
   Scenario: Flight details are displayed in correct order before and after booking
-    Given I am logged in as "bsgalileoflight" booking a new trip
+    Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added a random guest traveler
     When I search for a random round trip flight
     And flight results should be available

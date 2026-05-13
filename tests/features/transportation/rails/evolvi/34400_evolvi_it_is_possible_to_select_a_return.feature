@@ -12,7 +12,7 @@ Feature: 34400 Evolvi - It is possible to select a return
   So that the inbound selection reflects the expected return leg information
 
   Scenario: Select outbound fare and validate inbound selection information
-    Given I am logged in as "eve" booking a new trip
+    Given I am logged in as "eve@evolvi.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip Evolvi train from "oxfToWin"
     # TODO: create step "When I close mandatory notifications if displayed" in evolvi_results.steps.js

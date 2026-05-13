@@ -12,6 +12,6 @@ Feature: 34941 Flights - Car search checkbox is selected by default when configu
   So that I don't have to manually enable it each time
 
   Scenario: Car search checkbox is selected by default in flight search
-    Given I am logged in as "carolinaferreira" booking a new trip
+    Given I am logged in as "carolinaferreira@joysettings.com" booking a new trip
     When I click on the flight tab
     Then the car search checkbox should be checked by default

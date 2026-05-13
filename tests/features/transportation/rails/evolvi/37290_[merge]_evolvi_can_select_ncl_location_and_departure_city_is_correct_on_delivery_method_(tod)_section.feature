@@ -12,7 +12,7 @@ Feature: 37290 Evolvi - Select NCL location and validate departure city in TOD s
   So that departure city appears correctly in the delivery method section
 
   Scenario: NCL search and TOD departure city validation
-    Given I am logged in as "thiagosantos" booking a new trip
+    Given I am logged in as "thiagosantos@evolvi.com" booking a new trip
     And I have added myself as the traveler
     # TODO: create step "When I search Evolvi with NCL location" in evolvi_search.steps.js
     # covers: Evolvi___Can_select__NCL__location_and_search()

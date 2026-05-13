@@ -14,7 +14,7 @@ Feature: 48977 Galileo - PNR remark sent to GetTrip when user sends booking for 
 
   @priority:critical
   Scenario: PNR remark is sent to GetTrip when hotel booking is submitted for approval and car is added
-    Given I am logged in as "beatriz" booking a new trip
+    Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Denver" for 1 night
     And I select the first hotel result

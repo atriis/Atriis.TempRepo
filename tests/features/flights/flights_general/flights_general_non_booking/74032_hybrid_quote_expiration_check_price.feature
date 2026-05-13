@@ -12,7 +12,7 @@ Feature: 74032 Flights - Quote expiration new search matches original dates
   So that I can rebook the same itinerary
 
   Scenario: New search on check price uses original search dates
-    Given I am logged in as "quote_expire" booking a new trip
+    Given I am logged in as "quote@expire.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "AMS" to "SFO"
     And flight results should be available

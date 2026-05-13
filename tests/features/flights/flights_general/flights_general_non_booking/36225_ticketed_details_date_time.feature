@@ -12,7 +12,7 @@ Feature: 36225 Flights - Ticketed details date and time are shown
   So that I know when the booking was made
 
   Scenario: Ticketed details with date and time are shown in price breakdown
-    Given I am logged in as "carolina" booking a new trip
+    Given I am logged in as "carolina@adma.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "JFK"
     And I add the first flight to cart

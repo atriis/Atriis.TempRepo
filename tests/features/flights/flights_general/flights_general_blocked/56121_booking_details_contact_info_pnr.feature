@@ -12,7 +12,7 @@ Feature: 56121 Flights - Booking details booker and traveler contact info with P
   So that all contact information is correctly captured with PNR remarks
 
   Scenario: Contact info and PNR remark are displayed in booking details
-    Given I am logged in as "booker_mobile" booking a new trip
+    Given I am logged in as "booker@mobile.uni" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "Karoline Paxton"
     When I search for a round trip flight from "OSL" to "ZRH"

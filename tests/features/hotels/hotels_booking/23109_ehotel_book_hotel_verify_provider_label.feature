@@ -14,7 +14,7 @@ Feature: 23109 eHotel - Book hotel and verify provider label
 
   @priority:high
   Scenario: eHotel label is displayed and booking completes successfully
-    Given I am logged in as "eli" booking a new trip
+    Given I am logged in as "eli@tel.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I wait to see view rates text in results page

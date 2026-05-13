@@ -14,7 +14,7 @@ Feature: 66137 Lufthansa NDC - Complete trip booking and verifying fare rules
   So that I can confirm fare rules are accessible throughout the booking flow
 
   Scenario: Complete trip booking with fare rules verification at each stage
-    Given I am logged in as "clara" booking a new trip
+    Given I am logged in as "claraaguiar@ndclhclara.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "FRA" to "SEA"
     And flight results should be available

@@ -12,7 +12,7 @@ Feature: 63920 Benerail - Loyalty card can be saved as new and used as existing 
   So that my loyalty benefits are applied to the Benerail booking
 
   Scenario: Benerail loyalty card saved as new and used as existing in trip overview
-    Given I am logged in as "pini" booking a new trip
+    Given I am logged in as "pini@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToAmsterdamCe"
     When I add a Benerail one way to the trip

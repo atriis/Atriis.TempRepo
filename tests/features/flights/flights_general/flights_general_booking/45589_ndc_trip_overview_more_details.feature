@@ -12,7 +12,7 @@ Feature: 45589 NDC Iberia - Trip overview more details
   So that I can verify traveler, ticket, FF, meal, and seat information
 
   Scenario: Trip overview shows detailed flight information after booking
-    Given I am logged in as "iberia" booking a new trip
+    Given I am logged in as "bsiberia@bsiberia.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "MAD" to "LON"
     And I add the first flight to cart

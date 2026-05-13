@@ -13,7 +13,7 @@ Feature: 66081 Galileo - Correct pricing for Ryanair with multiple passengers
   So that currency conversion and per-passenger pricing are accurate
 
   Scenario: Ryanair pricing is correct for 3 passengers in results and pricing options
-    Given I am logged in as "galileoonly_gray" booking a new trip
+    Given I am logged in as "galileoonly.gray@testimtest.com" booking a new trip
     And I have added a random guest traveler
     And I have added a random guest traveler
     And I have added a random guest traveler

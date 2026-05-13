@@ -13,7 +13,7 @@ Feature: 58677 Galileo - Contact details not shared when checkbox checked
   So that my privacy preference is respected
 
   Scenario: Booking with contact details sharing disabled
-    Given I am logged in as "beatrizpamplonacorp" booking a new trip
+    Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "BSL" to "AMS"
     And flight results should be available

@@ -14,7 +14,7 @@ Feature: 37211 General - Edit hotel search parameters
 
   @priority:medium
   Scenario: Edit hotel search and verify new results are displayed
-    Given I am logged in as "natalia" booking a new trip
+    Given I am logged in as "natalia@expediacorpamsalem.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     When I edit the hotel search location to "BCN"

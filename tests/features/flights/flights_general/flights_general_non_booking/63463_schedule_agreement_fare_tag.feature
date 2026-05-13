@@ -12,7 +12,7 @@ Feature: 63463 Flights - Search by schedule display agreement fare tag in pricin
   So that I can identify negotiated fares
 
   Scenario: Agreement fare tag is displayed in pricing page for by-schedule search
-    Given I am logged in as "agreement" booking a new trip
+    Given I am logged in as "agreement@fare.uni" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "EWR" to "CPH" with preferred carrier "Scandinavian" and stops "No stops"
     And I select flight segments by schedule

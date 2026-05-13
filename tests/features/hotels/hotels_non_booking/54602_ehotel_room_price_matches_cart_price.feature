@@ -14,7 +14,7 @@ Feature: 54602 eHotel - Price from room level matches price after adding to cart
 
   @priority:high
   Scenario: Room price consistent between room level results and cart, add CC from profile
-    Given I am logged in as "luciana" booking a new trip
+    Given I am logged in as "lucianagristo@ehotelclub.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I wait to see view rates text in results page

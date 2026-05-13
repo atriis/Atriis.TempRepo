@@ -14,7 +14,7 @@ Feature: 73594 Amadeus - Special request 120 character limit for Amadeus hotels
 
   @priority:medium
   Scenario: Special request field accepts up to 120 characters for Amadeus hotels
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I select the first hotel result

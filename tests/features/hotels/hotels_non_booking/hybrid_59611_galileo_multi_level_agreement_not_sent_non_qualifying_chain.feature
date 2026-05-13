@@ -14,7 +14,7 @@ Feature: 59611 Galileo - Multi-level agreement not sent in room level for non-qu
 
   @priority:high
   Scenario: Multi-level agreement not sent for hotel chain outside configured list
-    Given I am logged in as "shmul" booking a new trip
+    Given I am logged in as "shmul@tiagreem.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "SFO" for 1 night from day 12 of next visible month
     And I wait to see view rates text in results page

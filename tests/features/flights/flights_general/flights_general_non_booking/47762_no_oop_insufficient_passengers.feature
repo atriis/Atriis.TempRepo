@@ -12,7 +12,7 @@ Feature: 47762 Flights - No OOP for insufficient passengers with dynamic field
   So that false OOP alerts are avoided
 
   Scenario: OOP indicator is not visible when not enough passengers have the dynamic field
-    Given I am logged in as "poly" booking a new trip
+    Given I am logged in as "poly@cinam.com" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
     And I have added a random guest traveler

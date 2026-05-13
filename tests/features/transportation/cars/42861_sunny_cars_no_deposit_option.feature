@@ -13,7 +13,7 @@ Feature: 42861 Sunny Cars no deposit option is displayed in results
 
   @priority:high
   Scenario: Search Sunny Cars and validate the no deposit option
-    Given I am logged in as "kaylesun" booking a new trip
+    Given I am logged in as "kaylesun@tlcfaketestsunnycar.com" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "Barcelona Intl. (BCN),Barcelona, Spain"
     # TODO: Map Testim step answer_ref_fields_chris_tree_and_proceed() to the repo's reference-fields workflow.

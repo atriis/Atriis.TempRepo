@@ -12,7 +12,7 @@ Feature: 64914 NDC - Booking successful with mandatory reference field
   So that my booking is processed correctly
 
   Scenario: NDC booking succeeds when mandatory reference field is filled
-    Given I am logged in as "marianagabi" booking a new trip
+    Given I am logged in as "marianagabi@reffieldmand.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "AMS" to "PAR"
     And I add the first flight to cart

@@ -12,7 +12,7 @@ Feature: 59287 Mandatory car payment no alert displayed
   So that I understand payment is required to complete booking
 
   Background:
-    Given I am logged in as "sunny" booking a new trip
+    Given I am logged in as "automation@sunnycar.tlc" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

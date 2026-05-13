@@ -12,7 +12,7 @@ Feature: 55673 Flights - Mask travelers FF for user without privilege
   So that traveler privacy is maintained
 
   Scenario: FF is masked for traveler when booker lacks privilege
-    Given I am logged in as "booker_cantsee" booking a new trip
+    Given I am logged in as "booker@cantsee.com" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
     And I have added traveler by name "Annie Massk"

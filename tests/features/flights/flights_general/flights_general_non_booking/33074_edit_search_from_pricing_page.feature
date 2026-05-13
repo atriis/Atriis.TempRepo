@@ -12,7 +12,7 @@ Feature: 33074 Flights - Edit search from pricing page needs to return new resul
   So that I can get updated results without starting over
 
   Scenario: Edit search from pricing page returns new results
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "LIS" to "BER"
     And I select flight segments by schedule

@@ -6,7 +6,7 @@ Feature: 53410 Amadeus - Flight - Search by schedule - Multipax - "My Selection"
 
   @priority:critical
   Scenario: Add flight by schedule to cart
-    Given I am logged in as "ruimendes" booking a new trip
+    Given I am logged in as "ruimendes@amadeus.com" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "Rui Marista"
     When I search for a flight by schedule from "LIS" to "MAD"

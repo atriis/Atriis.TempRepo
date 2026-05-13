@@ -11,7 +11,7 @@ Feature: 44962 Amadeus - Flight booking with virtual card
   So that the booking is completed with the correct form of payment
 
   Scenario: Booking a one-way flight with virtual card FOP
-    Given I am logged in as "brunalee" booking a new trip
+    Given I am logged in as "brunalee@virtualcard.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "BKK"
     And I add the first flight to cart

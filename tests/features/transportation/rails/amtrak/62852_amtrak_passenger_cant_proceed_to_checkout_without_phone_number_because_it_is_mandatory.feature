@@ -12,7 +12,7 @@ Feature: 62852 Amtrak - Mandatory phone number prevents checkout
   So that mandatory contact information is enforced before booking
 
   Scenario: Amtrak checkout blocked when phone number is not configured
-    Given I am logged in as "bar" booking a new trip
+    Given I am logged in as "bar@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Amtrak train from "wasToBos"
     And I click proceed on the reference fields popup

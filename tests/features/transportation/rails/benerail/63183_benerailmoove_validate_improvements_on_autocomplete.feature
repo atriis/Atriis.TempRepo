@@ -12,7 +12,7 @@ Feature: 63183 Benerail - Autocomplete improvements validation
   So that finding stations is faster and more intuitive
 
   Scenario: Benerail autocomplete improvements are working correctly
-    Given I am logged in as "testim_bene" booking a new trip
+    Given I am logged in as "testim@benerail.com" booking a new trip
     # NOTE: This test clicks the nested rail tab directly (no traveler added before search)
     # TODO: create step "When I navigate to the Benerail rail search tab" in benerail_search.steps.js or app.steps.js
     # covers: page.click(".nested-tabs-select span") + page.click("#el-id-2070-26 > span") to switch to rail sub-tab

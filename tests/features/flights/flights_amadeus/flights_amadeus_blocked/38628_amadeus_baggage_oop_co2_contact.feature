@@ -13,7 +13,7 @@ Feature: 38628 Amadeus - Baggage OOP + CO2 emissions + contact info
   So that all travel policy and environmental data is displayed correctly
 
   Scenario: Baggage OOP triggered, CO2 displayed, contact info visible for corporate user
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "lary bagto"
     # TODO: Search round trip with dates 2 months ahead
     When I search for a round trip flight from "TLV" to "BUD"

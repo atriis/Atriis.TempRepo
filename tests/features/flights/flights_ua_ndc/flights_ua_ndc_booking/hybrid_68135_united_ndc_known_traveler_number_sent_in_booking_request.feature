@@ -14,7 +14,7 @@ Feature: HYBRID 68135 United NDC - Known Traveler Number is being sent in the bo
   So that the number is sent in the booking request to the airline
 
   Scenario: Complete booking with known traveler number and cancel trip
-    Given I am logged in as "united" booking a new trip
+    Given I am logged in as "bsua@bsua.com" booking a new trip
     And I have added traveler by name "Cristiano Ronaldo"
     When I search for a one way flight from "IAH" to "SEA"
     And I add the first flight to cart

@@ -14,7 +14,7 @@ Feature: 32663 When searching for cities with multiple airports, the hotel searc
 
   @priority:high
   Scenario: Hotel search location is pre-populated from flight destination in cart
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "MAD" to "NYC"
     And I add the first flight to cart

@@ -6,7 +6,7 @@ Feature: 34527 Amadeus Value Hotels - Cancellation policy does not change when a
 
   @priority:critical
   Scenario: Cancellation policy does not change when adding hotel to cart
-    Given I am logged in as "papatinho" booking a new trip
+    Given I am logged in as "papatinhosantos@amadeusvalue.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Design Hotel Artemins" for 1 night
     And I select the first hotel result

@@ -12,7 +12,7 @@ Feature: 44941 Benerail - Journey details time matches results page and passenge
   So that I can trust the time information and confirm my passenger remains in cart after adding
 
   Scenario: Journey details times match results page and passenger is visible in cart after adding
-    Given I am logged in as "beny" booking a new trip
+    Given I am logged in as "beny@benerail.com" booking a new trip
     And I have added myself as the traveler
     # TODO: note Search_benerail_by_place_one_way__direct_only_ uses direct-only filter
     # The existing step does not support direct-only — add TODO on DSL to add directOnly option

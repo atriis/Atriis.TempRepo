@@ -12,7 +12,7 @@ Feature: 62007 Amadeus car results with airport pickup and city dropoff
   So that I can book a car with mixed location types
 
   Background:
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     And I have selected Enterprise as the rental agency
 

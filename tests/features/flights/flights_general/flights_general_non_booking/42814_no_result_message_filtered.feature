@@ -12,7 +12,7 @@ Feature: 42814 Flights - No result message for filtered flights
   So that I know to reset filters or edit my search
 
   Scenario: No results message and reset filters button are displayed
-    Given I am logged in as "testim_amadeus" booking a new trip
+    Given I am logged in as "testim@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "MAD"
     And I filter results by carrier "hjklp"

@@ -10,7 +10,7 @@ Feature: 69253 AFKL - Fare rules displayed in multi-city search
   So that I can review terms before booking each leg
 
   Scenario: Fare rules are accessible in results, pricing options, flight details, cart and price breakdown for multi-city
-    Given I am logged in as "afkl" booking a new trip
+    Given I am logged in as "bsafkl@bsafkl.com" booking a new trip
     And I have added myself as the traveler
     When I search for a multi-city flight with legs "CDG-WAW" and "BER-CDG"
     And flight results should be available

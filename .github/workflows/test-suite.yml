@@ -77,6 +77,8 @@ jobs:
       - run: mkdir -p test-results test-results/screenshots
 
       - name: Load environment variables
+        # ENV secret contains only app config: AUTOMATION_APP_BASEURL, GENERAL_PASSWORD, AUTOMATION_* vars.
+        # User emails are written directly in feature files — no USER_* entries needed.
         uses: ./.github/actions/load-env-from-secret
         with:
           env-file-content: ${{ secrets.ENV }}

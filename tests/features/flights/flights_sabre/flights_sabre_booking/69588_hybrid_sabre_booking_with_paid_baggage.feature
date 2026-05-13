@@ -12,7 +12,7 @@ Feature: 69588 Sabre - Booking with paid baggage
   So that my baggage is included in the booking
 
   Scenario: Sabre flight booking with paid baggage is successful
-    Given I am logged in as "corpwithbag" booking a new trip
+    Given I am logged in as "corpwith@bag.gdg" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "MEL" to "SYD"
     And flight results should be available

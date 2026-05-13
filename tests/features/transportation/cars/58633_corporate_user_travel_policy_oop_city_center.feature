@@ -12,7 +12,7 @@ Feature: 58633 Corporate user travel policy OOP restriction city center
   So that I understand when cars don't meet corporate policy
 
   Background:
-    Given I am logged in as "michaelburt" booking a new trip
+    Given I am logged in as "michaelburt@sabre.car" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

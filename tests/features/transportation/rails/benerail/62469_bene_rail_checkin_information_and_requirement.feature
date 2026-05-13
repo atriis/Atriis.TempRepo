@@ -15,7 +15,7 @@ Feature: 62469 Benerail - Rail check-in information and requirement message in c
   Scenario: Check-in required message and button appear for a Benerail trip with check-in segments
     # NOTE: This test navigates directly to a specific existing trip (3492126) after login.
     # The trip was pre-booked as new trips with check-in info are uncommon in test environments.
-    Given I am logged in as "bene_sncb"
+    Given I am logged in as "bene@sncb.com"
     # TODO: create step "When I navigate to the cart of trip {int}" in trips.steps.js or app.steps.js
     # covers: page.goto('https://ui.gtp-staging.com/trips/3492126/cart') — direct navigation to known trip
     When I navigate to the cart of trip 3492126

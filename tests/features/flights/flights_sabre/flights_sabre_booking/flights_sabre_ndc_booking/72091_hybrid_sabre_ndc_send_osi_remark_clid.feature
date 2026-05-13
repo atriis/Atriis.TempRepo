@@ -12,7 +12,7 @@ Feature: 72091 Sabre NDC - Send OSI remark for CLID
   So that the OSI remark for CLID is correctly sent in the booking
 
   Scenario: Sabre NDC flight hold sends OSI remark for CLID
-    Given I am logged in as "corpsabrendc_reg" booking a new trip
+    Given I am logged in as "corpSabreNdc@reg.ams" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "LHR" to "MAD"
     And flight results should be available

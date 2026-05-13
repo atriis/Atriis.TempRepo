@@ -12,7 +12,7 @@ Feature: 56625 Car billback checkbox and FOP validation
   So that payment methods are properly managed
 
   Background:
-    Given I am logged in as "oop" booking a new trip
+    Given I am logged in as "oop@car.com" booking a new trip
     And I have added myself as the traveler
     And I have selected Sixt as the rental agency
 

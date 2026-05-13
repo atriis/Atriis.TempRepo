@@ -13,7 +13,7 @@ Feature: 57320 Amadeus Ryanair - Price correct after adding baggage
   So that I am not overcharged for baggage
 
   Scenario: Cart price updates correctly after adding baggage to Ryanair flight
-    Given I am logged in as "bruna_nlgov" booking a new trip
+    Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "BUD" to "DUB" on the 2 "thursday" of next month
     And flight results should be available

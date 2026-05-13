@@ -14,7 +14,7 @@ Feature: 61651 Sabre - Hotel address not shortened in More Details, Itinerary, a
 
   @priority:medium
   Scenario: Full hotel address displayed in More Details, Itinerary, and Price Offer
-    Given I am logged in as "robsoncruz" booking a new trip
+    Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Comfort Suites Monroeville" for 1 night
     And I select the first hotel result

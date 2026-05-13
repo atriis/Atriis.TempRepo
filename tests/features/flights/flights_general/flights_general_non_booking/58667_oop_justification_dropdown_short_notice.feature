@@ -12,7 +12,7 @@ Feature: 58667 Flights - OOP justification dropdown for flights less than two we
   So that I can explain why I'm booking on short notice
 
   Scenario: Saving justification dropdown works for short-notice flight
-    Given I am logged in as "lexasofia" booking a new trip
+    Given I am logged in as "lexasofia@travelpolicytest.com" booking a new trip
     And I have added myself as the traveler
     When I search for a same day one way flight from "LON" to "MAD"
     And I add the first flight to cart

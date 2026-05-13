@@ -12,7 +12,7 @@ Feature: 68492 Sabre - Booking is successful when using Invoice as FOP
   So that the booking completes successfully with TMC billing
 
   Scenario: Sabre flight booking succeeds with Invoice as FOP
-    Given I am logged in as "timmorris" booking a new trip
+    Given I am logged in as "timmorris@sabreinvoice.com" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "SYD" to "MEL"
     And flight results should be available

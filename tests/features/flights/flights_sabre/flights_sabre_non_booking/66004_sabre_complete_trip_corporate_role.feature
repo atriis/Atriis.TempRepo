@@ -13,7 +13,7 @@ Feature: 66004 Sabre - Complete Trip with corporate role Use New Flight Booking 
   So that I can select the appropriate fare before adding to trip
 
   Scenario: Complete trip flow shows pricing options for outbound and inbound
-    Given I am logged in as "sabreuser_soniatest" booking a new trip
+    Given I am logged in as "sabreuser@soniatest.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "AMS" to "CDG"
     And flight results should be available

@@ -14,7 +14,7 @@ Feature: 73884 Lufthansa NDC - Multi pax correct baggage display in travel plan 
   So that I can verify the baggage is correctly displayed in the travel plan email
 
   Scenario: Book a multi-pax LH NDC flight with paid baggage and verify email baggage display
-    Given I am logged in as "lh_ndc_pax" booking a new trip
+    Given I am logged in as "lhNdcpax@corp.ams" booking a new trip
     And I have added a random guest traveler
     And I have added a random guest traveler
     And I have added a random guest traveler

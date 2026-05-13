@@ -14,7 +14,7 @@ Feature: 21161 General - Move locations via map view and verify new hotels load
 
   @priority:medium
   Scenario: Hotels update when changing location after opening map view
-    Given I am logged in as "christree" booking a new trip
+    Given I am logged in as "tree@tree.com" booking a new trip
     And I have added myself as the traveler
     When I initiate a hotel search in "London" for 1 night
     And I select the trip purpose as "BILLABLE" and proceed

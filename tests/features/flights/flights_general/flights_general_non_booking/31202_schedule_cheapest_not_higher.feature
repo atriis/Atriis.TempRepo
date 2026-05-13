@@ -12,7 +12,7 @@ Feature: 31202 By Schedule - Cheapest combination price not higher than your sel
   So that I know the cheapest option is truly the best deal
 
   Scenario: Cheapest combination price is not higher than your selection
-    Given I am logged in as "coreytaylor" booking a new trip
+    Given I am logged in as "coreytaylor@amadeusclubdubu.com" booking a new trip
     And I have added a random guest traveler
     And I have added myself as the traveler
     When I search for a flight by schedule from "PRG" to "FRA"

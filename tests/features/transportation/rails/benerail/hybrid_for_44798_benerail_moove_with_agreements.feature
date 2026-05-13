@@ -12,7 +12,7 @@ Feature: hybrid_for_44798 Benerail Moove - With agreements
   So that I can verify the search tab is still accessible after searching with agreements
 
   Scenario: Search tab remains visible after Benerail search with agreements account
-    Given I am logged in as "beny_agriman" booking a new trip
+    Given I am logged in as "beny@agriman.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToNlaho"
     # TODO: create step "Then the Benerail search tab should still be visible" in benerail_results.steps.js

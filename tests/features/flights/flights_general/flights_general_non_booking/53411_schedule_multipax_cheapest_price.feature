@@ -12,7 +12,7 @@ Feature: 53411 By Schedule - Multipax cheapest package has correct price
   So that the total cost is accurate for multi-pax bookings
 
   Scenario: Cheapest package price is correct in pricing page and cart for multi-pax
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
     When I search for a flight by schedule from "LON" to "FRA"

@@ -12,7 +12,7 @@ Feature: 30426 Flights - Correct destination in welcome screen
   So that I know my booking details are accurate
 
   Scenario: Correct destination is shown after booking a flight with connection
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "BUD" to "DUB"
     And flight results should be available

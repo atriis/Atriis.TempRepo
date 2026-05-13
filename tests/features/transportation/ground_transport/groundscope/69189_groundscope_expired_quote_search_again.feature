@@ -14,7 +14,7 @@ Feature: 69189 GroundScope - Expired quote can be searched again
   So that I can recheck availability when the countdown reaches zero
 
   Scenario: Expired GroundScope quote exposes check availability actions
-    Given I am logged in as "elisabete" booking a new trip
+    Given I am logged in as "elisabeteferreira@groundscope.com" booking a new trip
     And I have added myself as the traveler
     When I search for ground transport from airport "LHR" to specific address "London Emirates Stadium, Hornsey Road, United Kingdom"
     And I wait for add to trip text to be visible

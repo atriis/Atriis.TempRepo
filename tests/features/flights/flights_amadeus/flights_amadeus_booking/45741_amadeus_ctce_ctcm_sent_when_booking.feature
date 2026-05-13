@@ -14,7 +14,7 @@ Feature: 45741 Amadeus - CTCE and CTCM sent when booking
   # requires backend/API validation that is not covered by this UI scenario.
 
   Scenario: Booking a round trip flight with CTCE and CTCM
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "LIS" to "NYC"
     And I add the first flight to cart

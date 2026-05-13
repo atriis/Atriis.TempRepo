@@ -14,7 +14,7 @@ Feature: 37135 Premier Inn - Book hotel with CVV and Extras
 
   @priority:critical
   Scenario: Premier Inn hotel booked with CVV and extras, then cancelled
-    Given I am logged in as "perry" booking a new trip
+    Given I am logged in as "perry@mien.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I wait to see view rates text in results page

@@ -14,7 +14,7 @@ Feature: HYBRID 55075 United NDC - Loyalty number is being sent on seat request
   So that my frequent flyer benefits are applied to the seat selection
 
   Scenario: Loyalty number traveler can open seat map after adding flight to cart
-    Given I am logged in as "united" booking a new trip
+    Given I am logged in as "bsua@bsua.com" booking a new trip
     And I have added traveler by name "Rihanna Smith"
     When I search for a one way flight from "IAH" to "LAX"
     And I add the first flight to cart

@@ -12,7 +12,7 @@ Feature: 63473 Flights - Parallel search redirect to car results after pricing o
   So that I can complete both bookings efficiently
 
   Scenario: User redirected to car results after selecting from flight pricing options
-    Given I am logged in as "carcorp" booking a new trip
+    Given I am logged in as "carCorp@gdg.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "PAR" with parallel car search
     And flight results should be available

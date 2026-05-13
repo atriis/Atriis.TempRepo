@@ -12,7 +12,7 @@ Feature: 64721 Flights - Correct policy calculation for long connection
   So that OOP indicators accurately reflect policy rules
 
   Scenario: Travel policy is correctly calculated for long connection flight
-    Given I am logged in as "region" booking a new trip
+    Given I am logged in as "region@policy.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "EDI" to "HKG"
     And flight results should be available

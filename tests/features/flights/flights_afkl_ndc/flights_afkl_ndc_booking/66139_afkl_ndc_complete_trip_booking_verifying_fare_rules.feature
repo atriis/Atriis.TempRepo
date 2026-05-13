@@ -10,7 +10,7 @@ Feature: 66139 AFKL NDC - Complete trip booking with fare rules verification
   So that the strictest terms note is consistently displayed before and after holding the trip
 
   Scenario: Verify fare rules in every entry point and hold the AFKL NDC trip
-    Given I am logged in as "bruna_tmcclub" booking a new trip
+    Given I am logged in as "brunafranclub@tmcclubcorp.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "PAR" to "AMS"
     And flight results should be available

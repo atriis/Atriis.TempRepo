@@ -13,7 +13,7 @@ Feature: 66000 Sabre - Search By Schedule with corporate role Use New Flight Boo
   So that I can select fares from pricing options before adding to trip
 
   Scenario: Search by schedule shows Select Flight button and pricing options after selection
-    Given I am logged in as "sabreuser_soniatest" booking a new trip
+    Given I am logged in as "sabreuser@soniatest.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "AMS" to "CDG"
     And flight results should be available

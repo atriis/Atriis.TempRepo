@@ -12,7 +12,7 @@ Feature: 66119 SunnyCars expired quote not in checkout
   So that only valid quotes are processed
 
   Background:
-    Given I am logged in as "kaylesun" booking a new trip
+    Given I am logged in as "kaylesun@tlcfaketestsunnycar.com" booking a new trip
 
   @priority:high
   Scenario: Verify expired SunnyCars quote hidden in checkout

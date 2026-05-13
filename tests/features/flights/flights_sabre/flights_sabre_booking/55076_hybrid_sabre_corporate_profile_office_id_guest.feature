@@ -12,7 +12,7 @@ Feature: 55076 Sabre - Correct corporate profile office ID sent when booking for
   So that the correct corporate profile office ID is used in the booking
 
   Scenario: Sabre flight booking for guest uses correct corporate profile office ID
-    Given I am logged in as "ericaprado" booking a new trip
+    Given I am logged in as "ericapradomeoessentialtravel@corpistestcorp.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "LIS" to "MIA"
     And I add the first flight to cart

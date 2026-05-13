@@ -13,7 +13,7 @@ Feature: 54024 Galileo - Display rules hiding carrier results works
   So that company display rules are enforced
 
   Scenario: Restricted carriers show disabled selection and allowed carrier can be added to cart
-    Given I am logged in as "beatrizpamplonacorp" booking a new trip
+    Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "DUB" to "MAD"
     And I filter results by carrier "FR"

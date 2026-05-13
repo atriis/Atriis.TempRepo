@@ -14,7 +14,7 @@ Feature: 68498 BA NDC - APIS destination address for US flights is no longer man
   So that I can verify destination address is no longer a mandatory field
 
   Scenario: APIS section opens for US flight and all fields are editable without destination address being mandatory
-    Given I am logged in as "ian" booking a new trip
+    Given I am logged in as "iancurtis@ndcba.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "NYC"
     And I add the first flight to cart

@@ -13,7 +13,7 @@ Feature: 68551 Galileo - Only Business class in pricing options when selected
   So that results match my cabin class preference
 
   Scenario: Business class search shows only Business in pricing options
-    Given I am logged in as "bsgalileoflight" booking a new trip
+    Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip "Business" class flight from "AMS" to "LCY"
     And flight results should be available

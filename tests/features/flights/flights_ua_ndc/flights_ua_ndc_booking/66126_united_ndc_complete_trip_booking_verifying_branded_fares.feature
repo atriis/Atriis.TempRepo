@@ -14,7 +14,7 @@ Feature: 66126 United NDC - Complete Trip booking and verifying Branded Fares
   So that I can review the ancillary information included in my fare
 
   Scenario: Complete trip booking with branded fares verification at each stage
-    Given I am logged in as "united" booking a new trip
+    Given I am logged in as "bsua@bsua.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "IAH" to "MIA"
     And flight results should be available

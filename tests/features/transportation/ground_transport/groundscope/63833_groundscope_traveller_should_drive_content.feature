@@ -15,7 +15,7 @@ Feature: 63833 GroundTransport - Traveler entitlement should drive GroundScope c
   So that only eligible content is shown for each consultant case
 
   Scenario: Consultant search content changes based on the selected traveler
-    Given I am logged in as "groundscoupe_testim" booking a new trip
+    Given I am logged in as "testim@groundscope.com" booking a new trip
     And I have added myself as the traveler
     When I search for ground transport from specific address "LHR" to specific address "Emirates Stadium, Hornsey Road, London, UK"
     Then ground transport results should be displayed

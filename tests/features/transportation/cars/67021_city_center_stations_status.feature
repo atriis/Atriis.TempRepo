@@ -12,7 +12,7 @@ Feature: 67021 City center stations status validation
   So that I can understand which stations are operational
 
   Background:
-    Given I am logged in as "kaylesun" booking a new trip
+    Given I am logged in as "kaylesun@tlcfaketestsunnycar.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

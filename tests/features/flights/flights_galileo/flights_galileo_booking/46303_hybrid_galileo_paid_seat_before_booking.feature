@@ -13,7 +13,7 @@ Feature: 46303 Galileo - Can reserve paid seat before booking
   So that I can secure my preferred seat
 
   Scenario: Paid seat reservation before booking for multi-pax
-    Given I am logged in as "sharequote_btp" booking a new trip
+    Given I am logged in as "shareQuote@btp.com" booking a new trip
     And I have added a random guest traveler
     And I have added a random guest traveler
     When I search for a round trip flight from "LHR" to "ATH" with preferred carrier "A3"

@@ -14,7 +14,7 @@ Feature: 68134 United NDC - Display rules Origin and Destination are applied cor
   So that I only see flights available for my configured origin and destination rules
 
   Scenario: No results found when display rules restrict the route
-    Given I am logged in as "united" booking a new trip
+    Given I am logged in as "bsua@bsua.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "ORD" to "PIT"
     Then the no results found message should be displayed

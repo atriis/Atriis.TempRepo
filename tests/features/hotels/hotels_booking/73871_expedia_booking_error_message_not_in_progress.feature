@@ -14,7 +14,7 @@ Feature: 73871 Expedia - In case of booking error we show the error and the stat
 
   @priority:critical
   Scenario: In case of booking error we show the error and the status is not in progress
-    Given I am logged in as "vered" booking a new trip
+    Given I am logged in as "vered@cardin.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result

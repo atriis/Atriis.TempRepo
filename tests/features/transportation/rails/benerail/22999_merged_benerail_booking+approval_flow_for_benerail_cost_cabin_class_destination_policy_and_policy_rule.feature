@@ -13,7 +13,7 @@ Feature: 22999 Benerail - Booking and approval flow for cost, cabin class, desti
   So that the trip goes to the correct approvers and mobile barcode is validated
 
   Scenario: Benerail full booking with approval flow and mobile barcode validation
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "beny cohen"
     When I search for a round trip Benerail train from "bebmiToNlasc"
     And I click proceed on the reference fields popup

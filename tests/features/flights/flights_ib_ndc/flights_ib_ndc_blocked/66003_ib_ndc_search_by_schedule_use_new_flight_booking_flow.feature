@@ -15,7 +15,7 @@ Feature: 66003 IB NDC - Round trip with 'Use New Flight Booking Flow' role
 
   #BLOCKED - no results, could not test the entire scenario 
   Scenario: Round trip search shows Select Flight on outbound and pricing options on inbound
-    Given I am logged in as "ibndc_soniatest" booking a new trip
+    Given I am logged in as "ibndcuser@soniatest.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "MAD" to "BCN"
     And flight results should be available

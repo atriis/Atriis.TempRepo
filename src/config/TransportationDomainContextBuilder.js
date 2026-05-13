@@ -3,13 +3,13 @@
 /**
  * Transportation Domain Context Builder
  *
- * Validates .env users per supplier, builds domain context, and generates
+ * Validates users per supplier, builds domain context, and generates
  * individual supplier execution contexts. Unlike the Flights domain which
  * uses a single domain user, Transportation maps each supplier to its own
- * users from .env via SUPPLIER_USER_MAPPING.
+ * users from the static users registry (src/config/users.js).
  *
  * Workflow:
- *   1. Validate per-supplier users from .env
+ *   1. Validate per-supplier users from the registry
  *   2. Build shared domain context (rules, data, flows)
  *   3. Generate supplier execution contexts with user + compatibility status
  *   4. Log initialization summary
@@ -47,7 +47,7 @@ class TransportationDomainContextBuilder {
       const enabled = this.supplierContexts.filter(s => s.status === "ENABLED").length;
 
       if (enabled === 0) {
-        const msg = "Transportation domain skipped – no valid domain user in .env for any supplier";
+        const msg = "Transportation domain skipped – no valid user mapping for any supplier";
         logger.error(msg);
         this.errors.push(msg);
         return { success: false, error: msg, errors: this.errors, warnings: this.warnings };
@@ -100,24 +100,9 @@ class TransportationDomainContextBuilder {
         return;
       }
 
-      // First user whose USER_<LABEL> is set in .env wins
-      let resolvedUser = null;
-      for (const label of users) {
-        const envVar = `USER_${label.toUpperCase()}`;
-        const email = process.env[envVar];
-        if (email && email.trim() !== "") {
-          resolvedUser = { label, envVar };
-          break;
-        }
-      }
-
-      if (!resolvedUser) {
-        this.userResolution[name] = { status: "SKIPPED", reason: "USER_NOT_IN_ENV", user: null };
-        this.warnings.push(`${name}: none of [${users.join(", ")}] found in .env`);
-        return;
-      }
-
-      this.userResolution[name] = { status: "ENABLED", reason: null, user: resolvedUser };
+      // Use the first email from the supplier mapping directly
+      const email = users[0];
+      this.userResolution[name] = { status: "ENABLED", reason: null, user: { email } };
     });
   }
 
@@ -164,7 +149,7 @@ class TransportationDomainContextBuilder {
           retryPolicy: supplier.retryPolicy,
           timeoutMs: supplier.timeoutMs,
         },
-        user: status === "ENABLED" ? { label: resolution.user.label } : null,
+        user: status === "ENABLED" ? { email: resolution.user.email } : null,
         status,
         skipReason: status === "SKIPPED" ? skipReason : null,
         flows: this.domainContext.flows.filter(f =>
@@ -199,7 +184,7 @@ class TransportationDomainContextBuilder {
     logger.info(`Skipped:           ${skipped.length}`);
 
     enabled.forEach(s => {
-      logger.info(`  ✓ ${s.supplier.name} [${s.supplier.category}] — user: ${s.user.label}`);
+      logger.info(`  ✓ ${s.supplier.name} [${s.supplier.category}] — user: ${s.user.email}`);
     });
 
     skipped.forEach(s => {

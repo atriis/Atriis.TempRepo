@@ -12,7 +12,7 @@ Feature: 47761 Flights - Can see OOP for number of passengers
   So that I am aware of policy violations
 
   Scenario: OOP indicator is visible for number of passengers
-    Given I am logged in as "poly" booking a new trip
+    Given I am logged in as "poly@cinam.com" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "Amber Ofpas"
     And I search for a round trip flight from "LHR" to "MUC"

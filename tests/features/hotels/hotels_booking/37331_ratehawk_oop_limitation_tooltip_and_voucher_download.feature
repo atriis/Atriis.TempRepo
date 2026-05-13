@@ -14,7 +14,7 @@ Feature: 37331 Ratehawk - OOP limitation tooltip and voucher download
 
   @priority:high
   Scenario: OOP limitation tooltip is displayed and voucher can be downloaded after booking
-    Given I am logged in as "lidi" booking a new trip
+    Given I am logged in as "lidi@ratehawk.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "123 Champs-Élysées" for 1 night
     And I wait to see view rates text in results page

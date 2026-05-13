@@ -12,7 +12,7 @@ Feature: 62215 Benerail - Train details are shown on Journey Details panel
   So that I can confirm the correct train is displayed before booking
 
   Scenario: Train details are visible in Benerail journey details panel
-    Given I am logged in as "beny" booking a new trip
+    Given I am logged in as "beny@benerail.com" booking a new trip
     And I have added myself as the traveler
     # TODO: note Search_benerail_by_place_one_way__direct_only_ uses direct-only filter
     # The existing step does not support direct-only — add TODO on BenerailSearch DSL to add directOnly option

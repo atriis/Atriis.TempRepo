@@ -13,7 +13,7 @@ Feature: 61069 Galileo - Flight booking after hotel booked with single PNR
   So that both products share a single PNR
 
   Scenario: Flight added after hotel booking creates single PNR
-    Given I am logged in as "carcorp" booking a new trip
+    Given I am logged in as "carCorp@gdg.com" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "VIE" for 1 night
     And I select the first hotel result

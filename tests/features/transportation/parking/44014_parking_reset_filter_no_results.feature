@@ -14,7 +14,7 @@ Feature: 44014 Parking - Reset filter button appears when filters yield no resul
   So that I can clear filters and search again with different criteria
 
   Scenario: Reset filter button is visible after applying filters that return no results
-    Given I am logged in as "rafaelrocha" booking a new trip
+    Given I am logged in as "rafaelrocha@ukparking.com" booking a new trip
     And I have added myself as the traveler
     When I search for UK parking at "LHR"
     And I wait for add to trip text to be visible

@@ -12,7 +12,7 @@ Feature: 35096 NDC Flights - Contact details are displayed in checkout page
   So that I can verify my contact information before booking
 
   Scenario: Contact details are displayed in checkout page for NDC flight
-    Given I am logged in as "clara" booking a new trip
+    Given I am logged in as "claraaguiar@ndclhclara.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "FRA"
     And I add the first flight to cart

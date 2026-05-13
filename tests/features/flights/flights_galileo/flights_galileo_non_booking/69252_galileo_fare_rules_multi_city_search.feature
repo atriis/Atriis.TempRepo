@@ -13,7 +13,7 @@ Feature: 69252 Galileo - Fare rules displayed in multi-city search
   So that I can review policies per segment
 
   Scenario: Fare rules visible in results, pricing options, flight details and cart for multi-city
-    Given I am logged in as "bsgalileoflight" booking a new trip
+    Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added myself as the traveler
     When I search for a multi-city flight with legs "IAH-DFW" and "MIA-IAH" and "ORD-IAH"
     And flight results should be available

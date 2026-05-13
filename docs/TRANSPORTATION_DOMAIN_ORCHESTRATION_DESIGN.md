@@ -43,7 +43,7 @@ each supplier resolves its own user from `.env`.
 
 ┌────────────────────────────────────────────────────────────┐
 │ 2. src/config/TransportationDomainContextBuilder.js        │
-│    - Resolves per-supplier users from .env                 │
+│    - Resolves per-supplier email from SUPPLIER_USER_MAPPING  │
 │    - Builds domain context (rules, data, flows)            │
 │    - Generates supplier execution contexts                 │
 │    - Marks suppliers ENABLED or SKIPPED with reason        │
@@ -75,32 +75,29 @@ each supplier resolves its own user from `.env`.
 
 ## Per-Supplier User Mapping
 
-Each supplier in `SUPPLIER_USER_MAPPING` lists one or more `.env` user
-labels. The context builder tries each label in order and uses the first
-one found in `.env`:
+Each supplier in `SUPPLIER_USER_MAPPING` lists one or more email addresses. The context builder uses the first email as the primary user for that supplier:
 
 ```javascript
 SUPPLIER_USER_MAPPING = {
-  AMADEUS:             ['ruimariano', 'ruimendes', ...],
-  UAPIGALILEO:         ['gal', 'vinicius', ...],
-  SABRE:               ['robsoncruz', ...],
-  SUNNYCARS:           ['brunaalice', 'kaylesun'],
-  EVOLVI:              ['corp_evolvi', 'corp_evolvi32', ...],
-  BENERAILMOOVE:       ['beny', 'pini', 'shani_nl', ...],
-  DEUTSCHEBAHN:        ['beny'],
-  AMTRAK:              ['bar', 'marcoluis'],
-  TRANSFERZ:           ['beto', 'transferz_testim', ...],
-  GROUNDSCOPE:         ['elisabete', 'groundscoupe_testim'],
-  HOLIDAYEXTRASPARKING:['priscila', 'rafaelrocha', ...],
+  AMADEUS:             ['ruimariano@amadeus.com', 'ruimendes@amadeus.com', ...],
+  UAPIGALILEO:         ['gal@leo.com', 'vinicius@galileo.car', ...],
+  SABRE:               ['robsoncruz@sabre.car', ...],
+  SUNNYCARS:           ['brunaalice@sunnycar.tlc', 'kaylesun@sunnycar.tlc'],
+  EVOLVI:              ['corp@evolvi.com', 'corp32@evolvi.com', ...],
+  BENERAILMOOVE:       ['beny@benerail.com', 'pini@benerail.com', ...],
+  DEUTSCHEBAHN:        ['beny@benerail.com'],
+  AMTRAK:              ['bar@benerail.com', 'marcoluis@amtrak.com'],
+  TRANSFERZ:           ['beto@transferz.com', 'testim@transferz.com', ...],
+  GROUNDSCOPE:         ['elisabete@groundscope.com', 'testim@groundscope.com'],
+  HOLIDAYEXTRASPARKING:['priscila@ukparking.com', 'rafaelrocha@ukparking.com', ...],
 };
 ```
 
 **Resolution rules:**
 
-1. For each supplier, iterate the user list
-2. Check `USER_<LABEL>` exists in `.env` and is non-empty
-3. First match wins → supplier is ENABLED with that user
-4. No match → supplier is SKIPPED with reason `USER_NOT_IN_ENV`
+1. For each supplier, use the first email in the list
+2. Supplier is marked ENABLED with that email
+3. No entries → supplier is SKIPPED with reason `NO_USER_MAPPING`
 
 ## Tag Strategy
 
@@ -140,23 +137,21 @@ node scripts/transportation-orchestration.js --output test-results/my-run
   - `MANUALLY_SKIPPED` — user passed `--skip`
   - `NOT_IN_FILTER` — not in `--suppliers` filter
   - `NO_USER_MAPPING` — supplier has no entry in `SUPPLIER_USER_MAPPING`
-  - `USER_NOT_IN_ENV` — none of the mapped users found in `.env`
 
 ## Security
 
-- Credentials read from `process.env` at runtime
-- Email addresses never stored in supplier context objects
+- Credentials (GENERAL_PASSWORD) read from `process.env` at runtime
+- Email addresses stored in supplier context only as needed for logging
 - `logSensitiveDataMasking: true` in execution policy
 - No cross-supplier credential sharing (enforced by per-supplier mapping)
-- User labels (not emails) used in logs and reports
 
 ## Extensibility
 
 **Add a supplier:**
 
 1. Append to `SUPPLIERS` in the config
-2. Add user mapping to `SUPPLIER_USER_MAPPING`
-3. Add `USER_<LABEL>=email` to `.env`
+2. Add email mapping to `SUPPLIER_USER_MAPPING`
+3. No `.env` changes needed — emails are in the mapping directly
 4. No orchestration code changes needed
 
 **Remove/deactivate a supplier:**
@@ -166,8 +161,7 @@ node scripts/transportation-orchestration.js --output test-results/my-run
 
 **Add a user for existing supplier:**
 
-1. Add `USER_<LABEL>=email` to `.env`
-2. Add label to the supplier's array in `SUPPLIER_USER_MAPPING`
+1. Add the email to the supplier's array in `SUPPLIER_USER_MAPPING`
 
 ## Failure Categories
 

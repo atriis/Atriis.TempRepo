@@ -137,27 +137,16 @@ Runs **before every scenario** to set up browser, context, and login.
 
 #### Setup Flow
 
-1. **Detect provider & user from environment/tags**
+1. **Read email from the Gherkin step**
    ```bash
-   # Environment variables (highest priority)
-   PROVIDER=galileo USER_KEY=user_two npx cucumber-js
-   
-   # Feature tags (medium priority)
-   @provider:lufthansa @user:user_three
-   Scenario: ...
-   
-   # Defaults (lowest priority)
-   provider: "amadeus"
-   userKey: "user_one"
+   # Email is written directly in the feature file
+   Given I am logged in as "ruimariano@amadeus.com" booking a new trip
+
+   # GENERAL_PASSWORD comes from .env
+   GENERAL_PASSWORD="..."
    ```
 
-2. **Validate user exists in config**
-   ```javascript
-   const user = config.users?.[provider]?.[userKey];
-   if (!user) throw new Error(`User not found...`);
-   ```
-
-3. **Launch browser & create context**
+2. **Launch browser & create context**
    ```javascript
    this.browser = await launchBrowser();
    this.context = await this.browser.newContext({
@@ -602,35 +591,22 @@ Located in `src/config/config.js`:
 const config = {
   baseUrl: process.env.AUTOMATION_APP_BASEURL,
   viewport: { width: 1920, height: 1080 },
-
-  users: {
-    labels: {
-      ruimariano: { email: process.env.USER_RUIMARIANO, password: process.env.GENERAL_PASSWORD },
-      eli: { email: process.env.USER_ELI, password: process.env.GENERAL_PASSWORD },
-      go_global: { email: process.env.USER_GO_GLOBAL, password: process.env.GENERAL_PASSWORD },
-    },
-    // ... additional labels auto-discovered from USER_* env vars
-  }
+  // password shared by all test accounts
+  password: process.env.GENERAL_PASSWORD,
 };
 ```
 
-### Environment Variable Discovery
+### Environment Variables
 
-Users are auto-discovered from environment variables:
+Only app-level config lives in `.env`. User emails are written directly in feature files:
 
 ```bash
-# Recommended label format
-USER_RUIMARIANO="ruimariano@amadeus.com"
-USER_ELI="eli@tel.com"
-
-# Auto-discovered as:
-config.users.labels.ruimariano = { email: "ruimariano@amadeus.com", ... }
-config.users.labels.eli = { email: "eli@tel.com", ... }
+# .env — app config only, no USER_* entries
+AUTOMATION_APP_BASEURL="https://atriis-stg.app"
+GENERAL_PASSWORD="..."
+AUTOMATION_HEADLESS="true"
+AUTOMATION_BROWSER_TYPE="chromium"
 ```
-
-**Config loads in this order:**
-1. Environment variables (highest priority)
-2. Label discovery from `USER_*`
 
 ---
 
@@ -754,13 +730,10 @@ Scenario: Different users see different pricing
 **Step definition:**
 
 ```javascript
-Given('I am logged in as {string}', 
-  async function (userKey) {
-    const { provider, userConfig } = config.resolveUser(userKey);
-    if (!userConfig) throw new Error(`User not found`);
-    
+Given('I am logged in as {string}',
+  async function (email) {
     await this.page.goto(config.baseUrl);
-    await App.loginAs(this.page, userConfig);
+    await App.loginAsUser(email);
   }
 );
 ```

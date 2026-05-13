@@ -6,7 +6,7 @@ Feature: 69694 Amadeus - Verify baggage is displayed after booking
 
   @priority:high
   Scenario: Verify baggage is displayed in Extras after completing booking
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "LIS" to "TLV"
     And I filter results by carrier "TAP"

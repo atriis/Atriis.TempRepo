@@ -14,7 +14,7 @@ Feature: 66142 BA NDC - Complete trip booking and verifying branded fares
   So that I can confirm branded fares are displayed correctly throughout the flow
 
   Scenario: Book a BA NDC one way flight and verify branded fares
-    Given I am logged in as "ian" booking a new trip
+    Given I am logged in as "iancurtis@ndcba.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "SIN"
     Then flight results should be available

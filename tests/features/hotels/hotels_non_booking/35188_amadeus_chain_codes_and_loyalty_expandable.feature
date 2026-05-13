@@ -14,7 +14,7 @@ Feature: 35188 Amadeus - Hotel chain codes and loyalty program are expandable in
 
   @priority:medium
   Scenario: Chain codes are visible and loyalty section is expandable in cart
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result

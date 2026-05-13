@@ -12,7 +12,7 @@ Feature: 35710 Flights - Existing FQTV is displayed when configured
   So that I know it will be applied to my booking
 
   Scenario: Existing FQTV is displayed in cart when configured
-    Given I am logged in as "marinasimoes" booking a new trip
+    Given I am logged in as "marinasimoes@fqtv.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "MUC" to "LHR"
     And I filter results by carrier "LH"

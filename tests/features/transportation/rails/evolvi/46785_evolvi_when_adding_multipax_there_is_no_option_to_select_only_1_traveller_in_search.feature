@@ -12,7 +12,7 @@ Feature: 46785 Evolvi - Multi traveler search should not show single traveler-on
   So that traveler selection options match multipax behavior
 
   Scenario: Multipax traveler selection validations in Evolvi search
-    Given I am logged in as "corp_evolvi" booking a new trip
+    Given I am logged in as "corp@evolvi.com" booking a new trip
     # TODO: create step "When I select Evolvi in the search product selector" in evolvi_search.steps.js
     # covers: Selecting_Evolvi_option_in_search()
     When I select Evolvi in the search product selector

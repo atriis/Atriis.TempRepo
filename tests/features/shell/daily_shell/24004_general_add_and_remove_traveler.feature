@@ -14,7 +14,7 @@ Feature: 24004 Amadeus - Add and remove traveler from trip
 
   @priority:medium
   Scenario: Add myself as traveler, remove, then add again
-    Given I am logged in as "ruimariano"
+    Given I am logged in as "ruimariano@amadeus.com"
     When I book a new trip
     And I have added myself as the traveler
     Then I remove myself as the traveler

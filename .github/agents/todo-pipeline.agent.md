@@ -474,7 +474,6 @@ git commit -m "feat(todo-resolver): implement {N} TODOs across {M} feature files
 - Steps created: {count}
 - DSL methods: {count}
 - Page objects modified: {count}
-- .env users added: {list}
 - All tests passing: {yes/no}"
 ```
 
@@ -524,8 +523,7 @@ The agent understands these TODO formats:
 - **Remove TODO comments cleanly** — no replacement comment, no empty lines left behind
 - **Never remove future-note TODOs** — only remove TODOs that you fully implemented
 - **Do not move resolved files automatically** — leave final folder placement to the user unless they explicitly ask for it in a separate follow-up task
-- **Do not update CI automatically** — this pipeline only updates local `.env` users when needed
-- **Group users by supplier in `.env`** — when adding a new user to `.env`, place it near other users of the same supplier (e.g., sabre users next to sabre users). If no supplier can be inferred, add to a general section
+- **Do not update CI automatically** — this pipeline does not modify `.env` for user credentials; emails are written directly in feature files
 - **One file at a time** — complete one feature before moving to the next
 - **Respect layer boundaries** — page objects don't get business logic, steps don't get Playwright
 - **Source selectors from Atriis.App** — always check the Vue source for real selectors

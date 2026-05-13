@@ -13,7 +13,7 @@ Feature: 28648 Amadeus - Book flight with fare rules check and guest contact inf
   So that I can ensure fare information is consistent and guest contact info is collected
 
   Scenario: Fare rules displayed in results, cart, and trip overview with guest contact info
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "LON" to "DOH"
     And I filter results by carrier "Qatar Airways"

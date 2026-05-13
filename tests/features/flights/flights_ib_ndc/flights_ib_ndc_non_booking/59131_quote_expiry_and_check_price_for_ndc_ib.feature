@@ -13,7 +13,7 @@ Feature: 59131 Iberia NDC - Quote expiry and check price
   So that I know the quote is time-limited and check price will be required
 
   Scenario: Timed quote badge is displayed for an NDC IB flight added to cart
-    Given I am logged in as "cvv_ib" booking a new trip
+    Given I am logged in as "cvv@ib.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "MAD" to "LON"
     And I add the first flight to cart

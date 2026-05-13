@@ -14,7 +14,7 @@ Feature: 49893 Ratehawk - Travel plan email contains Ratehawk voucher, not Atrii
 
   @priority:high
   Scenario: Ratehawk voucher is included in the travel plan itinerary email
-    Given I am logged in as "lidi" booking a new trip
+    Given I am logged in as "lidi@ratehawk.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
     And I wait to see view rates text in results page

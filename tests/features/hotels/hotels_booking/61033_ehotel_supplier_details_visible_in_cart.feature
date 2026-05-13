@@ -7,7 +7,7 @@ Feature: 61033 eHotel — Supplier details (PIN code, Confirmation Number, Conta
 
   @priority:high
   Scenario: eHotel PIN code is visible in cart after booking
-    Given I am logged in as "eli" booking a new trip
+    Given I am logged in as "eli@tel.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result

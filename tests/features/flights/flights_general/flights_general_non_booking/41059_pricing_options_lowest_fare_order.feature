@@ -12,7 +12,7 @@ Feature: 41059 Flights - Amadeus AFKL pricing options displayed according to low
   So that I can easily compare fares
 
   Scenario: Pricing options are displayed in increasing price order for KLM
-    Given I am logged in as "joana" booking a new trip
+    Given I am logged in as "joana@amadeusandafklm.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "AMS" to "BHX"
     And I filter results by carrier "KLM"

@@ -293,4 +293,4 @@ To deactivate a supplier for a run:
 - DSL: `src/dsl/`
 - Page objects: `src/pages/`
 - Test results: `test-results/`
-- Users and credentials: `.env` (discovered automatically by label)
+- Users and credentials: emails written directly in feature files; only `GENERAL_PASSWORD` comes from `.env`

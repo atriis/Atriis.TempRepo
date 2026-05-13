@@ -12,7 +12,7 @@ Feature: 58671 Flights - Multicity Portuguese results are displayed
   So that I can use the application in my preferred language
 
   Scenario: Multi-city results are displayed in Portuguese
-    Given I am logged in as "aiva" booking a new trip
+    Given I am logged in as "aiva@amadeusportuguese.com" booking a new trip
     And the welcome heading should contain "Bem-vindo"
     And I have added myself as the traveler
     When I search for a multi-city flight with legs "LON-MAD" and "MAD-ROM" and "ROM-LON"

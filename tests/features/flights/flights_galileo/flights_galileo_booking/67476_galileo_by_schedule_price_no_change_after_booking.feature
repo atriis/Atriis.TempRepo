@@ -13,7 +13,7 @@ Feature: 67476 Galileo - By schedule price does not change after booking
   So that there are no unexpected price changes
 
   Scenario: By schedule flight price matches before and after booking
-    Given I am logged in as "bsgalileoflight" booking a new trip
+    Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "PAR" to "MEL"
     And I select flight segments by schedule

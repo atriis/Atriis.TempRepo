@@ -12,7 +12,7 @@ Feature: 47148 Benerail - Air-Rail mixed message loads quickly and Rail Options 
   So that I can click Rail Options and see Benerail results without the page getting stuck
 
   Scenario: Air-Rail available message appears and Rail Options can be clicked without page freeze
-    Given I am logged in as "alvaresazevedo" booking a new trip
+    Given I am logged in as "alvaresazevedo@benerail.com" booking a new trip
     And I have added myself as the traveler
     # TODO: This test searches for FLIGHTS (round trip VIE-MUC), not Benerail directly.
     # It then verifies the "Rail is available for this route" banner and clicks Rail Options.

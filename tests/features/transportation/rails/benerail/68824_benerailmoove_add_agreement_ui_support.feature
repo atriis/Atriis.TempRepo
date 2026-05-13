@@ -12,7 +12,7 @@ Feature: 68824 Benerail - Agreement UI support in results
   So that I can select journeys under my corporate agreement rate
 
   Scenario: Benerail agreement information is shown in results when configured
-    Given I am logged in as "pmac_sncb" booking a new trip
+    Given I am logged in as "pmac@sncb.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToGbspx"
     When I select the first Benerail option

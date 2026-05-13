@@ -12,7 +12,7 @@ Feature: 65020 Benerail - Validate expired trip behaviour when expiry counter re
   So that I know I need to search again for a new quote
 
   Scenario: Benerail trip is marked as Expired and search-again button appears after counter expires
-    Given I am logged in as "pmac_bene" booking a new trip
+    Given I am logged in as "pmac@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToNlabk"
     When I add a Benerail one way to the trip

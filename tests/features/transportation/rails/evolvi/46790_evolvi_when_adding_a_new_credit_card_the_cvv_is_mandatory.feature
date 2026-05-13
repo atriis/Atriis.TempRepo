@@ -12,7 +12,7 @@ Feature: 46790 Evolvi - CVV is mandatory when adding a new credit card
   So that I am required to enter CVV before continuing
 
   Scenario: New credit card CVV mandatory validation
-    Given I am logged in as "thiagosantos" booking a new trip
+    Given I am logged in as "thiagosantos@evolvi.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Evolvi train from "licToMcr"
     When I close mandatory notifications if displayed

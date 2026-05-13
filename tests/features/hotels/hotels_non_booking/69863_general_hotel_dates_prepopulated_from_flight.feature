@@ -14,7 +14,7 @@ Feature: 69863 General - Hotel search dates pre-filled from flight search
 
   @priority:high
   Scenario: Hotel search dates are pre-populated from an existing flight search
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added myself as the traveler
     And I search for a round trip flight from "BKK" to "NYC" with advanced search as return date type "Arrival" with parallel hotel
     And I fill in NL reference fields education and courses

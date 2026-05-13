@@ -14,7 +14,7 @@ Feature: 28676 General - OOP hotel booking with justification and cancel
 
   @priority:critical
   Scenario: OOP hotel requires justification in hotel, room, and cart levels
-    Given I am logged in as "shani_nl" booking a new trip
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "justin ruly"
     When I initiate a hotel search in "denver" for 1 night
     And I select the "Type of Trip" reference field as "Medical leave" and proceed

@@ -12,7 +12,7 @@ Feature: 62001 Benerail - Passenger details validation for multiple travelers
   So that I can confirm each traveler's information before adding to cart
 
   Scenario: Benerail passenger details are correctly displayed for three travelers
-    Given I am logged in as "testim_bene" booking a new trip
+    Given I am logged in as "testim@benerail.com" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "Secbene Moove"
     And I have added a random guest traveler

@@ -12,7 +12,7 @@ Feature: 33157 Restricted car rental agency not shown in results
 
   @priority:high
   Scenario: Verify restricted rental agency does not appear in car results
-    Given I am logged in as "shani" booking a new trip
+    Given I am logged in as "shani@bill.com" booking a new trip
     And I have added myself as the traveler
     # TODO: Create step "When I configure car rental agency filter with restriction value \"zt\"" that calls CarSearch.applyRestrictedAgencyFilter(page, "zt").
     When I search for a car at "Hato Intl. (CUR), Willemstad, Netherlands Antilles"

@@ -12,7 +12,7 @@ Feature: 65398 Amadeus - Validate both segments included with same low-cost carr
   So that the booking includes both legs when using the same low-cost carrier
 
   Scenario: Both segments are present when using same low-cost carrier (EasyJet)
-    Given I am logged in as "corporate_amadeus_lcc" booking a new trip
+    Given I am logged in as "corporate.amadeus.lcc@soniatest.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "AMS" to "LON"
     And I filter results by carrier "EasyJet"

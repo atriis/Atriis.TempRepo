@@ -14,7 +14,7 @@ Feature: 33939 Booking.com - Payment method selection (pay on departure vs pre-p
 
   @priority:high
   Scenario: Payment method options are displayed and selectable for Booking.com hotel
-    Given I am logged in as "striction" booking a new trip
+    Given I am logged in as "striction@Payemnt.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result

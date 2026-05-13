@@ -13,7 +13,7 @@ Feature: 66133 Iberia NDC - Complete trip booking with fare rules verification
   So that the strictest terms note is consistently displayed before and after holding the Iberia NDC trip
 
   Scenario: Verify fare rules in every entry point and hold the Iberia NDC trip
-    Given I am logged in as "iberia" booking a new trip
+    Given I am logged in as "bsiberia@bsiberia.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "MAD"
     And flight results should be available

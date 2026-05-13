@@ -15,7 +15,7 @@ Feature: 52657 Go Global - FOP validation and credit card booking for guest
 
   @priority:high
   Scenario: Go Global FOP validation and book with credit card for guest traveler
-    Given I am logged in as "go_global" booking a new trip
+    Given I am logged in as "go@global.com" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "London" for 1 night
     And I select the first hotel result

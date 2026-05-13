@@ -12,7 +12,7 @@ Feature: 53357 Sabre car agreement customer ID booking
   So that my rental is booked with the agreed rate
 
   Background:
-    Given I am logged in as "tree" booking a new trip
+    Given I am logged in as "tree@tree.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

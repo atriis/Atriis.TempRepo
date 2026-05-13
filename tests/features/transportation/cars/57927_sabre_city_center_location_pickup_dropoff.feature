@@ -12,7 +12,7 @@ Feature: 57927 Sabre city-center location validates pickup and dropoff
   So that I get the correct rental location details
 
   Background:
-    Given I am logged in as "penelopecruz" booking a new trip
+    Given I am logged in as "penelopecruz@sabre.car" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

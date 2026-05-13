@@ -12,7 +12,7 @@ Feature: 62008 Benerail - Ticket is refundable in itinerary after booking
   So that I know I can cancel and receive a refund
 
   Scenario: Benerail refundable ticket status is shown in itinerary after booking
-    Given I am logged in as "beny" booking a new trip
+    Given I am logged in as "beny@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "debhfToBebmi"
     And I click proceed on the reference fields popup

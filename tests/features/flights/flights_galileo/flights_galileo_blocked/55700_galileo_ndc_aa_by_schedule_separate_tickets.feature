@@ -14,7 +14,7 @@ Feature: 55700 Galileo NDC - AA search by schedule booked as separate tickets
 
   #It keeps failing in Testim, need to talk to someone from the flight domain to understand what's happening
   Scenario: AA NDC by schedule search with fare rules, branded fares and separate tickets
-    Given I am logged in as "corpndc" booking a new trip
+    Given I am logged in as "corpNDC@gdg.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "LAX" to "DFW"
     And I filter results by carrier "AA"

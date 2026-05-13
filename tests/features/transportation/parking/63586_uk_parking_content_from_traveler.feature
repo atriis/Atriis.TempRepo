@@ -14,7 +14,7 @@ Feature: 63586 UK Parking - Parking results are filtered based on the primary tr
   So that only eligible parking options are shown for the traveler
 
   Scenario: No parking results found when a non-entitled guest is set as primary traveler
-    Given I am logged in as "parking" booking a new trip
+    Given I am logged in as "parking@ukparking.com" booking a new trip
     And I have added myself as the traveler
     When I search for UK parking at "LHR"
     And I wait for add to trip text to be visible

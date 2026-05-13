@@ -13,7 +13,7 @@ Feature: 31334 Galileo specific car search without errors
 
   @priority:high
   Scenario: Search for a specific Galileo car route without errors
-    Given I am logged in as "vinicius" booking a new trip
+    Given I am logged in as "vinicius@galileo.car" booking a new trip
     And I have added myself as the traveler
     When I search for a car from "Walsall, UK" to "The Turf Hotel, Mold Road, Wrexham, UK"
     # TODO: Map Testim assertions that the first station shows 'Select' and 'See details'.

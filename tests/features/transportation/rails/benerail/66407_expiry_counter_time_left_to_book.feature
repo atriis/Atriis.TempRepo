@@ -12,7 +12,7 @@ Feature: 66407 Benerail - Expiry counter shows time left to book in checkout
   So that I know how long I have before the Benerail quote expires
 
   Scenario: Time left to book counter is visible in Benerail checkout
-    Given I am logged in as "beny" booking a new trip
+    Given I am logged in as "beny@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToSchiphol"
     And I click proceed on the reference fields popup

@@ -12,7 +12,7 @@ Feature: 72058 Flights - Disable cancel when quote status is Finalizing
   So that bookings in progress are not accidentally cancelled
 
   Scenario: Cancel button is disabled when quote status is Finalizing
-    Given I am logged in as "nocancel" booking a new trip
+    Given I am logged in as "noCancel@corp.ams" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "GRU" to "DFW"
     And I add the first result to trip

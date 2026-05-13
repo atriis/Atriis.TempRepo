@@ -12,7 +12,7 @@ Feature: 35773 Flights - Search by schedule redirects to cart from pricing optio
   So that my booking flow is seamless
 
   Scenario: By-schedule pricing options redirect to cart
-    Given I am logged in as "henry" booking a new trip
+    Given I am logged in as "henry@uni.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "SYD" to "TYO"
     And I select flight segments by schedule

@@ -14,7 +14,7 @@ Feature: 20078 GroundScope - Pickup time is pre-populated and edit search works 
   So that I can add the correct transfer from cart without losing search context
 
   Scenario: Flight pickup time is pre-populated for GroundScope and the edited search can still be added to cart
-    Given I am logged in as "elisabete" booking a new trip
+    Given I am logged in as "elisabeteferreira@groundscope.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LHR" to "MAD"
     And I handle conflicting quotes if visible

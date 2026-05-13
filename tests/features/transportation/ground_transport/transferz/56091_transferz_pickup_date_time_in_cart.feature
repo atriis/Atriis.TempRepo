@@ -14,7 +14,7 @@ Feature: 56091 Transferz - Pickup date and time are displayed in cart
   So that I can confirm the booked transfer details before checkout
 
   Scenario: Transferz pickup date and time are displayed correctly in cart
-    Given I am logged in as "beto" booking a new trip
+    Given I am logged in as "betoribeiro@transferz.com" booking a new trip
     And I have added myself as the traveler
     When I search for ground transport from airport "lhr" to airport "stn" changing the pickup time
     And I wait for add to trip text to be visible

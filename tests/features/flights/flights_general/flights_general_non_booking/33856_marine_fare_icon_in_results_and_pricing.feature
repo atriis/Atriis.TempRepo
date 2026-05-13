@@ -12,7 +12,7 @@ Feature: 33856 Flights - Marine Fare icon is displayed in results and pricing op
   So that I can identify marine fare flights
 
   Scenario: Marine Fare icon is displayed in results and pricing options
-    Given I am logged in as "brunamarinefares" booking a new trip
+    Given I am logged in as "brunamarinefares@uniglobecorp.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "NYC"
     And flight results should be available

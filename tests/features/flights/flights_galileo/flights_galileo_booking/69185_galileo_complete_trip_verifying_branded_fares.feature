@@ -13,7 +13,7 @@ Feature: 69185 Galileo - Complete trip booking verifying branded fares
   So that I can review ancillary inclusions
 
   Scenario: Branded fares displayed in results, pricing options, cart and after hold
-    Given I am logged in as "bsgalileoflight" booking a new trip
+    Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "AMS" to "DOH"
     And flight results should be available

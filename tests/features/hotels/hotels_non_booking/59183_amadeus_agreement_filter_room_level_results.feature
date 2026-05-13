@@ -15,7 +15,7 @@ Feature: 59183 Amadeus - Hotel - Room level results are displayed when agreement
  #Add validation to check that handshake badge is for corporate agreement
   @priority:medium
   Scenario: Room level results are displayed when agreement is configured with "Separate from other agreement" checked
-    Given I am logged in as "suzanavond" booking a new trip
+    Given I am logged in as "suzanavond@amadeusdub.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I wait to see view rates text in results page

@@ -13,7 +13,7 @@ Feature: 56179 Amadeus car vendor message is displayed in emails
 
   @priority:high
   Scenario: Complete a car booking and verify vendor messaging in share quote and itinerary emails
-    Given I am logged in as "brunasantosnl" booking a new trip
+    Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added myself as the traveler
     When I select rental agency "Budget"
     And I search for a car at "LHR"

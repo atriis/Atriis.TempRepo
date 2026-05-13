@@ -12,7 +12,7 @@ Feature: 55167 Sabre car edit loyalty number after checkout
   So that my loyalty account is associated with the booking
 
   Background:
-    Given I am logged in as "Berry" booking a new trip
+    Given I am logged in as "berry@sabre.car" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

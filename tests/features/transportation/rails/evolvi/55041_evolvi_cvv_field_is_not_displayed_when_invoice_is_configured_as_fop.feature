@@ -12,7 +12,7 @@ Feature: 55041 Evolvi - CVV field hidden for invoice FOP
   So that CVV is not requested in the cart payment section
 
   Scenario: CVV input is not displayed when Paid by TMC invoice FOP is configured
-    Given I am logged in as "vinijus" booking a new trip
+    Given I am logged in as "vinijus@evolvi.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Evolvi train from "licToMcr"
     When I close mandatory notifications if displayed

@@ -14,7 +14,7 @@ Feature: 66131 Galileo - Original currency per passenger with LCC complete trip
   So that pricing is transparent across multiple passengers
 
   Scenario: EasyJet original currency pricing per passenger and complete trip
-    Given I am logged in as "galileoonly_gray" booking a new trip
+    Given I am logged in as "galileoonly.gray@testimtest.com" booking a new trip
     And I have added a random guest traveler
     And I have added a random guest traveler
     And I have added a random guest traveler

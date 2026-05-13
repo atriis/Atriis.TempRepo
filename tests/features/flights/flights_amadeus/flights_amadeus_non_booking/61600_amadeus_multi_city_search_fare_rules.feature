@@ -8,7 +8,7 @@ Feature: 61600 Amadeus - Multi city search, fare rules displayed
 
   @priority:high
   Scenario: Multi-city search BRU-FRA-DFW-BRU with fare rules visible in results
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a multi-city flight with legs "BRU-FRA" and "FRA-DFW" and "DFW-BRU"
     And flight results should be available

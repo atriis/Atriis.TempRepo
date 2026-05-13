@@ -12,7 +12,7 @@ Feature: 62896 Car class type and vendor policies combined
   So that I understand which cars meet all policy requirements
 
   Background:
-    Given I am logged in as "stefanyrita" booking a new trip
+    Given I am logged in as "stefanyrita@car.com" booking a new trip
     And I have added myself as the traveler
     And I have selected Europcar as the rental agency
 

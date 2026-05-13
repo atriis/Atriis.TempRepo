@@ -12,7 +12,7 @@ Feature: 27809 Flights - Contact details unchecking checkbox refused by default
   So that I can control whether my contact details are shared
 
   Scenario: Contact details checkbox is unchecked by default and booking succeeds
-    Given I am logged in as "coreytaylor" booking a new trip
+    Given I am logged in as "coreytaylor@amadeusclubdubu.com" booking a new trip
     And I have added myself as the traveler
     When I search and add a flight manual quote
     Then the booking status should be "On hold"

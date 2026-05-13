@@ -12,7 +12,7 @@ Feature: 62892 SunnyCars add location with different pickup and dropoff
   So that I can complete my car booking
 
   Background:
-    Given I am logged in as "brunaalice" booking a new trip
+    Given I am logged in as "brunaalice@sunnycar.tlc" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

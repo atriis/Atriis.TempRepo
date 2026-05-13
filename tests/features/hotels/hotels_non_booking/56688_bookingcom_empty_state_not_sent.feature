@@ -14,7 +14,7 @@ Feature: 56688 Booking.com - Empty state is not sent when passenger location has
 
   @priority:medium
   Scenario: Booking.com hotel search succeeds without empty state field in passenger location
-    Given I am logged in as "brunanina" booking a new trip
+    Given I am logged in as "brunanina@bookingcomspecifictest.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
     And I wait to see view rates text in results page

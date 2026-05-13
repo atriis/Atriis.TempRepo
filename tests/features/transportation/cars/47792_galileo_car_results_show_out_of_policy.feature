@@ -13,7 +13,7 @@ Feature: 47792 Galileo car search shows out-of-policy results when policy is tri
 
   @priority:high
   Scenario: Search Hertz cars at CDG and verify out-of-policy results on later pages
-    Given I am logged in as "bsgalileoflight" booking a new trip
+    Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added myself as the traveler
     # TODO: Map Testim inline agency filter actions before the search to a reusable search/filter step for Hertz.
     When I search for a car at "CDG"

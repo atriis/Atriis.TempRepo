@@ -13,7 +13,7 @@ Feature: 61170 Galileo and NDC passive booked in single PNR with TMC permission
   So that the itinerary is consolidated when TMC permission is enabled
 
   Scenario: Hotel booked then flight held creates single PNR
-    Given I am logged in as "corpsingle_pnr" booking a new trip
+    Given I am logged in as "corpSingle@pnr.gdg" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "Amsterdam" for 1 night
     And I select the first hotel result

@@ -9,7 +9,7 @@ Feature: 75326 Car Search Results - Quote Title Should Not Contain Unexpected "C
 
   @priority:high
   Scenario: Car result titles do not contain the word "car" as standalone text
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "LON" with 3 months ahead
     And I select the first city center pickup location

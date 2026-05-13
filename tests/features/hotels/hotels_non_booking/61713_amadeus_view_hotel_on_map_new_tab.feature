@@ -14,7 +14,7 @@ Feature: 61713 Amadeus - View hotel on map opens correctly
 
   @priority:medium
   Scenario: Clicking view on map opens hotel location on the map
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
     And I select the first hotel result

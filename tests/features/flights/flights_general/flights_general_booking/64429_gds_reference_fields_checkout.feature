@@ -12,7 +12,7 @@ Feature: 64429 GDS Flights - Only GDS reference fields displayed in checkout
   So that I fill in the correct fields for EDIFACT bookings
 
   Scenario: Only GDS reference fields are displayed in checkout
-    Given I am logged in as "georgebush" booking a new trip
+    Given I am logged in as "georgebush@reffieldsgds.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "PAR" to "GRU"
     And I add the first flight to cart

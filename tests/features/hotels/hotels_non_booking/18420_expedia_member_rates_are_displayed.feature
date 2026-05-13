@@ -14,7 +14,7 @@ Feature: 18420 Expedia - Member rates are displayed
 
   @priority:high
   Scenario: Member rates are visible in hotel and room level results
-    Given I am logged in as "expedia" booking a new trip
+    Given I am logged in as "expedia@only.corp" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Verona,Italy,(VRN)" for 1 night
     And I wait to see view rates text in results page

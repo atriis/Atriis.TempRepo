@@ -119,14 +119,10 @@ AUTOMATION_APP_BASEURL="https://atriis-stg.app"
 
 # Shared password for all test users
 GENERAL_PASSWORD="your_password_here"
-
-# Test users — add as many as needed
-USER_ANA=ana@company.com
-USER_JOAO=joao@company.com
-USER_AMADEUS_GDS=amadeus_test@company.com
 ```
 
 > **Important:** Never commit the `.env` file. It is already in `.gitignore`.
+> User emails are written directly in feature files — no `USER_*` entries needed.
 
 ---
 
@@ -241,7 +237,7 @@ Feature: <ADO ID> <Short description of what you're testing>
   So that <business reason>
 
   Scenario: <Title of this specific scenario>
-    Given I am logged in as "your_user_label" booking a new trip
+    Given I am logged in as "ana@company.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "MIA" to "BOS"
     And flight results should be available
@@ -725,29 +721,13 @@ Feature: 59765 Currency displayed in Frosch TMC
 
 ## 9. Adding a new user
 
-No code changes needed. Add a line to `.env`:
-
-```
-USER_YOURNAME=yourname@company.com
-```
-
-Then use it in a feature file:
+No `.env` changes needed. Write the email address directly in the Gherkin step:
 
 ```gherkin
-Given I am logged in as "yourname" booking a new trip
+Given I am logged in as "yourname@company.com" booking a new trip
 ```
 
-The framework automatically converts `USER_YOURNAME` → `"yourname"`. The label is always **lowercase** and matches the part after `USER_`.
-
-**Examples:**
-
-| `.env` key | Gherkin label |
-|-----------|--------------|
-| `USER_RUIMARIANO` | `"ruimariano"` |
-| `USER_AMADEUS_GDS` | `"amadeus_gds"` |
-| `USER_BRUNA_NLGOV` | `"bruna_nlgov"` |
-
-All users share the `GENERAL_PASSWORD` defined in `.env`.
+`GENERAL_PASSWORD` from `.env` is the shared password used for all test accounts.
 
 ---
 

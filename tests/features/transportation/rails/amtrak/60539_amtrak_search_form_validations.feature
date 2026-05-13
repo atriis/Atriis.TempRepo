@@ -12,7 +12,7 @@ Feature: 60539 Amtrak - Search form validations
   So that I can confirm search form fields and validations work correctly
 
   Scenario: Amtrak search form fields and passenger validations
-    Given I am logged in as "bar" booking a new trip
+    Given I am logged in as "bar@benerail.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip Amtrak train from "nypToWas"
     # TODO: create step "And I validate the departure time selector in Amtrak search" in amtrak.steps.js

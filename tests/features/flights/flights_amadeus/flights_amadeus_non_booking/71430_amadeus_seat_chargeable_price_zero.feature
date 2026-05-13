@@ -13,7 +13,7 @@ Feature: 71430 Amadeus - Seat chargeable with price 0 prevents seat selection
   So that I am not charged unexpected amounts
 
   Scenario: Chargeable seat with price 0 shows restriction tooltip
-    Given I am logged in as "seat_zero" booking a new trip
+    Given I am logged in as "seatzero@corp.atpi" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "DFW" to "EWR"
     And flight results should be available

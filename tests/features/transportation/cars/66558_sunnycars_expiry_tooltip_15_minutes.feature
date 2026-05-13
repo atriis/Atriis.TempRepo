@@ -12,7 +12,7 @@ Feature: 66558 SunnyCars expiry tooltip minutes validation
   So that I know when my quote will expire
 
   Background:
-    Given I am logged in as "kaylesun" booking a new trip
+    Given I am logged in as "kaylesun@tlcfaketestsunnycar.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high

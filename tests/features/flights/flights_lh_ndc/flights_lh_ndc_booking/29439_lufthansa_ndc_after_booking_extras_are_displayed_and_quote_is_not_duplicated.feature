@@ -14,7 +14,7 @@ Feature: 29439 Lufthansa NDC - After booking extras are displayed and quote is n
   So that I can confirm the booking shows extras and no duplicate quotes
 
   Scenario: Book a Lufthansa NDC one way flight and verify extras and no duplicate quotes
-    Given I am logged in as "clara" booking a new trip
+    Given I am logged in as "claraaguiar@ndclhclara.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "MUC" to "FRA"
     And I add the first flight to cart

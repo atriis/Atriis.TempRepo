@@ -12,7 +12,7 @@ Feature: 35108 Flights - Business class pricing options display Business brands
   So that I can choose the appropriate business class fare
 
   Scenario: Business class pricing options display Business brands BSFLXPLUS
-    Given I am logged in as "sabre_testim" booking a new trip
+    Given I am logged in as "sabre@testim.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip "Business" class flight from "LHR" to "KUL"
     And flight results should be available

@@ -12,7 +12,7 @@ Feature: 69160 Flights - Free text not allowed in Stops dropdown field
   So that only valid stop options can be selected
 
   Scenario: Free text is not allowed in Stops dropdown field
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I click advanced search in the flight search form
     Then free text "aaaaa" should not be accepted in the flight search stops dropdown

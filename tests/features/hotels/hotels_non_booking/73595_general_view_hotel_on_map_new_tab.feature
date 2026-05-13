@@ -14,7 +14,7 @@ Feature: 73595 General - View hotel on map opens in new browser tab
 
   @priority:medium
   Scenario: Clicking view on map opens hotel location in a new browser tab
-    Given I am logged in as "ruimariano" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I wait for the hotel results page to load

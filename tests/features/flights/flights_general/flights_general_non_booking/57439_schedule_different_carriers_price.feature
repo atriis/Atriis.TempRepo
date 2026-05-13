@@ -12,7 +12,7 @@ Feature: 57439 Amadeus By Schedule - Different carriers My Selection correct pri
   So that mixed-carrier pricing is accurately displayed
 
   Scenario: My Selection price matches from pricing page to cart with different carriers
-    Given I am logged in as "ruimendes" booking a new trip
+    Given I am logged in as "ruimendes@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "DUB" to "PAR"
     And I select flight segments by schedule

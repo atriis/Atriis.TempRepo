@@ -12,7 +12,7 @@ Feature: 44341 Evolvi - Split ticket info before and after booking and in itiner
   So that split ticket details remain consistent in cart, booking, and itinerary email
 
   Scenario: Validate split ticket information across search, cart, and itinerary email
-    Given I am logged in as "corp_evolvi32" booking a new trip
+    Given I am logged in as "corp32@evolvi.com" booking a new trip
     And I have added myself as the traveler
     # TODO: create step "When I select UK Rail in the search form" in evolvi_search.steps.js
     # covers: Select_UK_Rail()
