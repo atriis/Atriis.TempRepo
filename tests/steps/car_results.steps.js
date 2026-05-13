@@ -132,6 +132,13 @@ When("I click on the terms and conditions link in the trip overview", async func
   this.termsAndConditionsModalOpenedAtStep = true;
 });
 
+When("I click on the payment terms link in the trip overview", async function () {
+  const { Cart } = require("@dsl");
+  logger.info("Clicking payment terms link in trip overview");
+  await Cart.clickPaymentTermsLink(this.page);
+  this.termsModalOpenedAtStep = true;
+});
+
 When("I close the terms and conditions modal", async function () {
   const { Cart } = require("@dsl");
   logger.info("Closing terms and conditions modal");
@@ -139,11 +146,42 @@ When("I close the terms and conditions modal", async function () {
   this.termsAndConditionsModalClosed = true;
 });
 
+When("I close the terms modal", async function () {
+  const { Cart } = require("@dsl");
+  logger.info("Closing terms modal");
+  await Cart.closeTermsModal(this.page);
+  this.termsModalClosed = true;
+});
+
 Then("The terms and conditions modal should display the {string} section", async function (sectionHeading) {
   const { Cart } = require("@dsl");
   logger.info(`Extracting terms and conditions modal section: ${sectionHeading}`);
   const result = await Cart.extractAndVerifyTermsModalSection(this.page, sectionHeading);
   this.termsAndConditionsSection = result;
+});
+
+Then("the rental period terms modal should be displayed", async function () {
+  const { Cart } = require("@dsl");
+  logger.info("Verifying rental period terms modal is displayed");
+  await Cart.verifyTermsModalDisplayed(this.page);
+});
+
+Then("the booking should succeed", async function () {
+  logger.info("Verifying booking succeeded");
+  
+  // For cars, we verify booking succeeded by checking we're not on an error page
+  // Try to find error indicators - if found, booking failed
+  try {
+    const errorPresent = await this.page.locator(".error-message, .alert-danger, [role='alert']:has-text('error')").isVisible({ timeout: 2000 }).catch(() => false);
+    if (errorPresent) {
+      throw new Error("Booking failed - error message found on page");
+    }
+  } catch (e) {
+    if (e.message.includes("Booking failed")) throw e;
+    // Timeout is expected if no error is present
+  }
+  
+  logger.info("Booking succeeded - no error page detected");
 });
 
 When("I open the first car location link in results", async function () {

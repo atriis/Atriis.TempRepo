@@ -1,9 +1,8 @@
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { CartPage, SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
-const { CheckoutPage } = require("@pages/CheckoutPage");
+const { CheckoutPage, SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
-const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
 const FlightResults = require("./FlightResults");
@@ -908,18 +907,46 @@ const Cart = {
     }
     
     const cartPage = getPageObject(page, CartPage);
+    const checkoutPage = getPageObject(page, CheckoutPage);
     const checkoutHeading = page.locator(CheckoutSelectors.BOOKING_DETAILS_HEADING);
     await cartPage.acceptTermsAndConditions();
     await cartPage.waitForProceedToCheckout();
     await cartPage.clickProceedToCheckout();
 
-    const { clickedModal } = await this.waitForTargetOrHandlePriceChange(
-      page,
+    const proceedWithChangeButton = cartPage.getProceedWithChangeButton();
+    const checkoutReadyIndicators = [
       checkoutHeading,
-      'checkout page',
-    );
+      checkoutPage.getFinalizeButton(),
+      checkoutPage.getBookAndFinalizeButton(),
+    ];
 
-    return { proceeded: true, clickedModal };
+    try {
+      await Promise.race([
+        Promise.any(
+          checkoutReadyIndicators.map((indicator) => indicator.waitFor({ state: 'visible', timeout: process.env.CI ? 75000 : 45000 })),
+        ),
+        proceedWithChangeButton.waitFor({ state: 'visible', timeout: process.env.CI ? 75000 : 45000 }),
+      ]);
+    } catch (error) {
+      throw new Error(
+        `Neither checkout page nor the price change modal appeared within ${process.env.CI ? 75000 : 45000}ms. Original error: ${error.message}`,
+      );
+    }
+
+    if (await proceedWithChangeButton.isVisible().catch(() => false)) {
+      const clickedModal = await cartPage.clickProceedWithChangeIfVisible(1000);
+
+      if (!clickedModal) {
+        throw new Error('Expected a visible price change modal, but it did not become actionable.');
+      }
+
+      await Promise.any(
+        checkoutReadyIndicators.map((indicator) => indicator.waitFor({ state: 'visible', timeout: 60000 })),
+      );
+      return { proceeded: true, clickedModal };
+    }
+
+    return { proceeded: true, clickedModal: false };
   },
 
   /**
