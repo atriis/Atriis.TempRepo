@@ -95,6 +95,30 @@ class DynamicAndReferenceFieldsPage {
   }
 
   /**
+   * Expands all collapsed per-traveler sections within the Travellers Reference Questions.
+   * This is needed when there are multiple travelers — by default only the first is expanded.
+   */
+  async expandAllCollapsedTravelerSections() {
+    const collapsedHeaders = this.page.locator('.traveler-section .el-collapse-item__header:not(.is-active)');
+    const count = await collapsedHeaders.count();
+    for (let i = 0; i < count; i++) {
+      await collapsedHeaders.nth(i).click();
+      await this.page.waitForTimeout(300);
+    }
+  }
+
+  /**
+   * Returns a locator for all dropdown fields matching the given name attribute.
+   * Includes hidden elements (e.g. inside collapsed traveler sections).
+   *
+   * @param {string} fieldName - The name attribute of the fields.
+   * @returns {Locator}
+   */
+  getAllDropdownFields(fieldName) {
+    return this.page.locator(`[name='${fieldName}']`);
+  }
+
+  /**
    * Fills in a text field by index with the provided text.
    *
    * @param {string} text - The text to enter in the field.

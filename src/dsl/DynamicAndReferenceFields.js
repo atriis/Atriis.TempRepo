@@ -55,9 +55,25 @@ const DynamicAndReferenceFields = {
     const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
     const commonPage = getPageObject(page, CommonPage);
 
-    await dynamicFieldsPage.clickToOpenDropdown("TRIP PURPOSE");
-    await dynamicFieldsPage.waitForDropdownOption(option);
-    await dynamicFieldsPage.selectDropdownOption(option);
+    // Wait up to 60s for the Trip Purpose field — the reference-fields API can be
+    // slow after a search, especially in CI, causing the default 30s to expire.
+    await dynamicFieldsPage.getDropdownField("TRIP PURPOSE").waitFor({ state: "visible", timeout: 90000 });
+
+    // Expand any collapsed traveler sections (e.g. guest travelers) so their
+    // mandatory TRIP PURPOSE fields are also visible and fillable.
+    await dynamicFieldsPage.expandAllCollapsedTravelerSections();
+
+    // Fill TRIP PURPOSE for every visible traveler (first expanded, then newly expanded)
+    const allFields = dynamicFieldsPage.getAllDropdownFields("TRIP PURPOSE");
+    const fieldCount = await allFields.count();
+    for (let i = 0; i < fieldCount; i++) {
+      const field = allFields.nth(i);
+      if (await field.isVisible()) {
+        await field.click();
+        await dynamicFieldsPage.waitForDropdownOption(option);
+        await dynamicFieldsPage.selectDropdownOption(option);
+      }
+    }
 
     await commonPage.getProceedButton().waitFor({ state: "visible" });
     await commonPage.clickProceedButton();
