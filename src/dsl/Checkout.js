@@ -112,7 +112,14 @@ const Checkout = {
       logger.debug("Trip overview not available after booking (expected for cars)", { error: err.message });
     }
 
-    return { finalized: true };
+    if (bookingOutcome !== 'success') {
+      throw new Error('Neither Go to trip nor booking error dialog appeared after finalizing booking');
+    }
+
+    await checkoutPage.clickGoToTrip();
+    await cartPage.waitForTripOverviewTitle();
+
+    return { finalized: true, bookingError: false };
   },
 
   /**
