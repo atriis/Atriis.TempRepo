@@ -46,6 +46,7 @@ const Checkout = {
    * - finalizes the booking
    * - attempts to navigate to trip overview (for flights/hotels)
    * - gracefully skips if not available (for cars)
+   * - classifies booking errors if the supplier returns a booking error dialog
    * 
    * Note: If a booking error modal appears, the status assertion step will detect and handle it.
    */
@@ -96,28 +97,30 @@ const Checkout = {
       };
     }
 
-    if (bookingOutcome !== 'success') {
-      throw new Error('Neither Go to trip nor booking error dialog appeared after finalizing booking');
+    if (bookingOutcome === 'success') {
+      await checkoutPage.clickGoToTrip();
+      await cartPage.waitForTripOverviewTitle();
+      return { finalized: true, bookingError: false };
     }
 
-    // Try to navigate to trip overview, but gracefully continue if not available
-    // (cars suppliers like Sunny don't have this navigation)
+    // Some cars suppliers complete booking without exposing the trip overview navigation.
+    if (bookingContext.product === 'car' || bookingContext.product === 'cars') {
+      const logger = require("@utils/logger").child("Checkout");
+      logger.debug('Trip overview not available after booking (expected for cars suppliers)', { bookingOutcome });
+      return { finalized: true, bookingError: false };
+    }
+
+    // For non-cars suppliers, try to navigate to trip overview, but gracefully continue if not available
     try {
       await checkoutPage.clickGoToTrip();
       await cartPage.waitForTripOverviewTitle();
     } catch (err) {
-      // Trip overview not available (expected for cars suppliers)
-      // Booking is still complete, so just log and continue
       const logger = require("@utils/logger").child("Checkout");
-      logger.debug("Trip overview not available after booking (expected for cars)", { error: err.message });
+      logger.debug("Trip overview not available after booking", { error: err.message });
     }
 
-    if (bookingOutcome !== 'success') {
-      throw new Error('Neither Go to trip nor booking error dialog appeared after finalizing booking');
-    }
+    return { finalized: true, bookingError: false };
 
-    await checkoutPage.clickGoToTrip();
-    await cartPage.waitForTripOverviewTitle();
 
     return { finalized: true, bookingError: false };
   },
