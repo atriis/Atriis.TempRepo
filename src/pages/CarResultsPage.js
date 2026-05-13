@@ -12,6 +12,9 @@ const SELECTORS = {
   CAR_MODEL_SUBTITLE: '.car-model-subtitle',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
   LOCATION_AIRPORT: 'a[href*="maps.google.com"][target="_blank"]',
+  FIRST_LOCATION_LINK: '.pickup-details a[href*="maps.google.com"][target="_blank"]',
+  FIRST_LOCATION_LINK_WRAPPER: '.pickup-details',
+  GOOGLE_MAPS_LOCATION_TEXT: '.DkEaL',
   // Filter sidebar
   CAR_FILTER_CONTAINER: '.car-filter-container',
   FILTER_TITLE: '.car-filter-container h4.filter-title',
@@ -245,6 +248,50 @@ class CarResultsPage {
     } catch {
       return false;
     }
+  }
+
+  async openFirstLocationLinkInResults() {
+    const link = this.page.locator(SELECTORS.FIRST_LOCATION_LINK).first();
+    await link.waitFor({ state: 'visible', timeout: 30000 });
+
+    const wrapper = this.page.locator(SELECTORS.FIRST_LOCATION_LINK_WRAPPER).first();
+    const expectedLocationText = ((await wrapper.textContent().catch(() => '')) || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const popupPromise = this.page.waitForEvent('popup', { timeout: 30000 });
+    await link.click();
+    const mapsPage = await popupPromise;
+
+    await mapsPage.waitForLoadState('domcontentloaded', { timeout: 30000 });
+
+    return {
+      mapsPage,
+      expectedLocationText,
+    };
+  }
+
+  async readGoogleMapsContext(mapsPage) {
+    if (!mapsPage) {
+      throw new Error('mapsPage is required, got: ' + typeof mapsPage);
+    }
+
+    await mapsPage.waitForLoadState('domcontentloaded', { timeout: 30000 });
+    const locationLocator = mapsPage.locator(SELECTORS.GOOGLE_MAPS_LOCATION_TEXT).first();
+    let locationText = '';
+
+    const isVisible = await locationLocator.isVisible().catch(() => false);
+    if (isVisible) {
+      locationText = ((await locationLocator.textContent().catch(() => '')) || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    return {
+      mapsPage,
+      url: mapsPage.url(),
+      locationText,
+    };
   }
 }
 

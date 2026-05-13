@@ -277,13 +277,14 @@ const SELECTORS = {
 
   // Loyalty number extras (loyalty-number.vue)
   LOYALTY_SECTION: '.quote-extras--loyalty-number',
-  LOYALTY_CLICKABLE: '.quote-extras--loyalty-number .is-clickable',
+  LOYALTY_CLICKABLE: '.quote-extras--loyalty-number .is-clickable, .car-driver-loyalty .card-title, .quote-extras--container .is-clickable:has-text("Loyalty ID")',
+  LOYALTY_ADD_BUTTON: '.quote-extras--loyalty-number .add-text, .quote-extras--loyalty-number .add-btn, .quote-extras--container .add-text:has-text("Add")',
   LOYALTY_NEW_RADIO: '.quote-extras--loyalty-number .el-radio-group .el-radio:nth-child(2)',
   LOYALTY_CHAIN_SELECT: '.quote-extras--loyalty-number .select-container .select-element:first-child .el-select',
-  LOYALTY_NUMBER_INPUT: '.quote-extras--loyalty-number .select-container .select-element:last-child input',
+  LOYALTY_NUMBER_INPUT: '.quote-extras--loyalty-number .select-container .select-element:last-child input, .quote-extras--loyalty-number .el-input__inner, .car-driver-loyalty input[type="text"], .car-driver-loyalty .el-input__inner',
   LOYALTY_SAVE_BUTTON: '.quote-extras--loyalty-number .btns .no-border',
   LOYALTY_SUCCESS_ICON: '.quote-extras--loyalty-number .success-icon.green',
-  LOYALTY_CARD: '.quote-extras--loyalty-number .extras-card',
+  LOYALTY_CARD: '.quote-extras--loyalty-number .extras-card, .car-driver-loyalty, .quote-extras--container .extras-card:has-text("Loyalty ID")',
   LOYALTY_CHAIN_SELECTED_TEXT: '.quote-extras--loyalty-number .select-container .select-element:first-child .el-select .el-select__placeholder',
 
   // Premier Inn extras - breakfast visibility (premier-inn.vue)
@@ -291,7 +292,7 @@ const SELECTORS = {
   PREMIER_INN_BREAKFAST_LABEL: '.quote-extras--premier-inn .extras-card label.label:has-text("Breakfast")',
 
   // Existing loyalty dropdown (selected value text after saving a loyalty number)
-  LOYALTY_EXISTING_DROPDOWN_TEXT: '.quote-extras--loyalty-number .extras-card .el-select .el-select__placeholder',
+  LOYALTY_EXISTING_DROPDOWN_TEXT: '.quote-extras--loyalty-number .extras-card .el-select .el-select__placeholder, .car-driver-loyalty .el-select .el-select__placeholder',
 
   // Flight Frequent Flyer (FQTV) extras (flight-frequent-flyer.vue)
   FQTV_SECTION: '.flight-frequent-flyer',
@@ -2963,8 +2964,15 @@ class CartPage {
    */
   async expandLoyaltySection() {
     const clickable = this.page.locator(SELECTORS.LOYALTY_CLICKABLE);
-    await clickable.waitFor({ state: 'visible', timeout: 15000 });
-    await clickable.click();
+    const clickableVisible = await clickable.first().isVisible().catch(() => false);
+    if (clickableVisible) {
+      await clickable.first().click();
+      return;
+    }
+
+    const addButton = this.page.locator(SELECTORS.LOYALTY_ADD_BUTTON).first();
+    await addButton.waitFor({ state: 'visible', timeout: 15000 });
+    await addButton.click();
   }
 
   /**
