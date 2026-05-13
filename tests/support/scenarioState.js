@@ -1,13 +1,16 @@
 function getTravelerCount(world) {
-  // Prefer the UI-reported total — it is updated after every "add traveler" step and
-  // already accounts for all travelers (self + guests), making it the ground-truth count.
-  if (Number.isInteger(world.selectedTravelerCount) && world.selectedTravelerCount > 0) {
-    return world.selectedTravelerCount;
+  const uiCount = Number.isInteger(world.selectedTravelerCount) ? world.selectedTravelerCount : 0;
+  const guestCount = Number.isInteger(world.guestTravelerCount) ? world.guestTravelerCount : 0;
+
+  // The UI-reported count is the ground truth (self + guests), but it is read immediately
+  // after clicking "Add Guest" and may be stale if the tag hasn't rendered yet in CI.
+  // When the UI count is lower than the tracked guest count, it is stale — use guest count.
+  if (uiCount >= guestCount && uiCount > 0) {
+    return uiCount;
   }
 
-  // Fallback: use the explicitly tracked guest count when no UI count was captured.
-  if (Number.isInteger(world.guestTravelerCount) && world.guestTravelerCount > 0) {
-    return world.guestTravelerCount;
+  if (guestCount > 0) {
+    return guestCount;
   }
 
   return 1;

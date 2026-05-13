@@ -28,4 +28,4 @@ Feature: 76707 Amadeus city center exact location address display
     Examples:
       | pickupLocation | agency     | expectedAgencyStationLabel  | expectedAgencyStationAddress           | expectedLabelOnResults         | expectedAddressOnResults                     | expectedLabelOnCart             | expectedAddressOnCart                        |
       | MAD            | Europcar   | Madrid (Railway Station)    |  Madrid Atocha Rrs, Madrid, 28012, ES  | Madrid 28012 (Railway Station) | Puerta Atocha Llegadas Ave, Madrid 28012, ES | Madrid 28012 (Railway Station)  | Puerta Atocha Llegadas Ave, Madrid 28012, ES |
-      | MAD            | Hertz      | Madrid (City Center)        | Calle Princesa, Madrid, 28008, ES      | Madrid 28008 (City Center)     | Calle Princesa 14, Madrid 28008, ES          | Madrid 28008 (City Center)      | Calle Princesa 14, Madrid 28008, ES          |
+      | MAD            | Hertz      | Madrid (City Center)        | Princesa, Madrid, 28008, ES            | Madrid 28008 (City Center)     | C/Princesa 9, Madrid 28008, ES               | Madrid 28008 (City Center)      | C/Princesa 9, Madrid 28008, ES               |

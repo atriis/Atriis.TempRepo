@@ -182,6 +182,32 @@ class FlightPricingPage {
   }
 
   /**
+   * Checks whether an agreement indicator (icon + label) is visible anywhere in the pricing section,
+   * regardless of which fare card it belongs to.
+   *
+   * @param {string} agreementName - Expected agreement label text (e.g. 'Agency')
+   * @returns {Promise<{iconVisible: boolean, labelVisible: boolean}>}
+   */
+  async getAgreementIndicatorStateAnywhere(agreementName) {
+    if (!agreementName || typeof agreementName !== 'string') {
+      throw new Error('agreementName must be a non-empty string');
+    }
+
+    const section = this.page.locator(SELECTORS.PRICING_PAGE_SECTION);
+    const agreementSection = section.locator(SELECTORS.PRICING_FARE_AGREEMENT_SECTION).first();
+    const agreementIcon = agreementSection.locator(SELECTORS.PRICING_FARE_AGREEMENT_ICON).first();
+    const agreementLabel = section.getByText(agreementName, { exact: true }).first();
+
+    await section.waitFor({ state: 'visible', timeout: 60000 });
+    await agreementSection.waitFor({ state: 'visible', timeout: 60000 });
+
+    const iconVisible = await agreementIcon.isVisible().catch(() => false);
+    const labelVisible = await agreementLabel.isVisible().catch(() => false);
+
+    return { iconVisible, labelVisible };
+  }
+
+  /**
    * Checks if the "Separated Tickets" indicator is visible on the pricing page.
    * @param {number} timeout - Max wait time in ms (default: 15000)
    * @returns {Promise<boolean>}

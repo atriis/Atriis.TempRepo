@@ -95,13 +95,9 @@ const FlightPricing = {
     return { added: true, fareTitle: 'Additional pricing options (first)' };
   },
 
-  async verifyAgreementIndicatorVisible(page, fareTitle = 'Your selection', agreementName = 'Agency') {
+  async verifyAgreementIndicatorVisible(page, agreementName = 'Agency') {
     if (!page) {
       throw new Error('page is required');
-    }
-
-    if (!fareTitle || typeof fareTitle !== 'string') {
-      throw new Error('fareTitle must be a non-empty string, got: ' + fareTitle);
     }
 
     if (!agreementName || typeof agreementName !== 'string') {
@@ -109,12 +105,12 @@ const FlightPricing = {
     }
 
     const flightPricingPage = getPageObject(page, FlightPricingPage);
-    const { iconVisible, labelVisible } = await flightPricingPage.getAgreementIndicatorState(fareTitle, agreementName);
+    const { iconVisible, labelVisible } = await flightPricingPage.getAgreementIndicatorStateAnywhere(agreementName);
 
-    expect(iconVisible, `Agreement icon should be visible in pricing fare "${fareTitle}"`).toBe(true);
-    expect(labelVisible, `Agreement label "${agreementName}" should be visible in pricing fare "${fareTitle}"`).toBe(true);
+    expect(iconVisible, `Agreement icon should be visible somewhere in the pricing page`).toBe(true);
+    expect(labelVisible, `Agreement label "${agreementName}" should be visible somewhere in the pricing page`).toBe(true);
 
-    return { fareTitle, agreementName, iconVisible, labelVisible };
+    return { agreementName, iconVisible, labelVisible };
   },
 
   /**

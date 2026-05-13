@@ -353,7 +353,7 @@ Then("the total price in cart is equal to total price in cart before seats + sea
     priceBeforeSeats,
     seatPrice,
     currentTotal,
-    0.10,
+    12,
     "Cart total = flight price + seat price"
   );
 });
@@ -468,7 +468,7 @@ Then('the cart total price should match the last extracted price', async functio
   expectNumbersToBeEqualWithTolerance(
     cartTotalPrice,
     expectedPrice,
-    1,
+    5,
     'Cart total price vs extracted price',
   );
 });

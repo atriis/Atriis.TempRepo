@@ -2221,7 +2221,7 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     const previewText = await cartPage.getSharePreviewTextContent();
     expect(previewText, 'Share email preview text should not be empty').toBeTruthy();
-    expect(previewText).toContain(expectedHotelName);
+    expect(previewText.toLowerCase()).toContain(expectedHotelName.toLowerCase());
   },
 
   /**

@@ -1698,12 +1698,27 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
    * @param {number} timeout - Max wait time in ms (default: 10000)
    * @returns {Promise<boolean>}
    */
-  async isAncillariesTextVisible(timeout = 10000) {
+  async isAncillariesTextVisible(timeout = 90000) {
     try {
-      const text = this.page
-        .locator(SELECTORS.BRANDED_FARES_DRAWER)
-        .getByText('ancillaries are included in this brand');
-      await text.first().waitFor({ state: 'visible', timeout });
+      // Sabre branded fares: each tab pane contains this text, but only the ACTIVE pane is visible.
+      // getByText().first() would match the first (hidden) tab pane — so use waitForFunction
+      // to poll the DOM directly and verify the text is inside a visible element.
+      await this.page.waitForFunction(
+        () => {
+          const drawer = document.querySelector('[aria-label="Branded fares"]');
+          if (!drawer) return false;
+          return [...drawer.querySelectorAll('*')].some(
+            (el) =>
+              el.childNodes.length <= 3 &&
+              (el.textContent || '').includes('ancillaries are included in this brand') &&
+              el.offsetWidth > 0 &&
+              el.offsetHeight > 0 &&
+              !el.closest('[aria-hidden="true"]') &&
+              !el.closest('[style*="display: none"]')
+          );
+        },
+        { timeout }
+      );
       return true;
     } catch {
       return false;
@@ -1717,6 +1732,8 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     const closeBtn = this.page.locator(SELECTORS.BRANDED_FARES_DRAWER_CLOSE).first();
     await closeBtn.waitFor({ state: 'visible', timeout: 10000 });
     await closeBtn.click();
+    // Wait for drawer to fully close so the next open gets fresh content, not stale state
+    await this.page.locator(SELECTORS.BRANDED_FARES_DRAWER).waitFor({ state: 'hidden', timeout: 5000 });
   }
 
   /**

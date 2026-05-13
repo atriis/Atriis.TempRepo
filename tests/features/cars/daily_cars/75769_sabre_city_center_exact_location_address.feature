@@ -27,5 +27,5 @@ Feature: 75769 Sabre city center exact location address display
 
     Examples:
       | pickupLocation | agency   | expectedAgencyStationLabel                   | expectedLabelOnResults                       | expectedAddressOnResults                                   | expectedLabelOnCart                          | expectedAddressOnCart                                      |
-      | MAD            | Europcar | Madc002 Madrid Plaza Espana (City Center)    | Madc002 Madrid Plaza Espana (City Center)    | San Leonardo 8, Madrid, 28015, ES                          | Madc002 Madrid Plaza Espana (City Center)    | San Leonardo 8, Madrid, 28015, ES                          |
-      | MAD            | Hertz    | Madx97 Estacion De Atocha (Railway Station)  | Madx97 Estacion De Atocha (Railway Station)  | Glorieta Emperador Carlos V P3 Planta 0, Madrid, 28045, ES | Madx97 Estacion De Atocha (Railway Station)  | Glorieta Emperador Carlos V P3 Planta 0, Madrid, 28045, ES |
+      | MAD            | Europcar | Madrid Plaza Espana (City Center)            | Madrid Plaza Espana (City Center)            | San Leonardo 8, Madrid, 28015, ES                          | Madrid Plaza Espana (City Center)            | San Leonardo 8, Madrid, 28015, ES                          |
+      | MAD            | Hertz    | Estacion De Atocha (Railway Station)         | Estacion De Atocha (Railway Station)         | Glorieta Emperador Carlos V P3 Planta 0, Madrid, 28045, ES | Estacion De Atocha (Railway Station)         | Glorieta Emperador Carlos V P3 Planta 0, Madrid, 28045, ES |
