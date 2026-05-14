@@ -57,9 +57,9 @@ Feature: Book hotel for 2 travelers 2 nights - Expedia, Amadeus Value, Booking.c
     Then I successfully cancel the trip
 
     Examples:
-      | label         |
-      | expedia       |
-      | papatinho     |
-      | rebecca       |
-      | bruna_premier | 
-      | lidi          | 
+      | label                            |
+      | expedia@only.corp                |
+      | papatinhosantos@amadeusvalue.com  |
+      | rebecca@cardin.com               |
+      | brunasantosnl@premierinn.com     |
+      | lidi@ratehawk.com                | 

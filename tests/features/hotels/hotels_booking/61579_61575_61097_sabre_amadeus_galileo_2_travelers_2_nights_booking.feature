@@ -57,7 +57,7 @@ Feature: Book hotel for 2 travelers 2 nights - Sabre, Amadeus & Galileo
     Then I successfully cancel the trip with 60 seconds wait
 
     Examples:
-      | label        |
-      | sabrin       |
-      | ruimariano   |
-      | galileo      |
+      | label                    |
+      | sabrin@orly.com          |
+      | ruimariano@amadeus.com   |
+      | gal@leo.com              |
