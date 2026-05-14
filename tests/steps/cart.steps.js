@@ -1215,7 +1215,13 @@ Then("the selected meal should have status {string}", async function (expectedSt
 });
 
 Then("the car loyalty should not be prepopulated", async function () {
-  throw new Error("TODO: Implement verification that car loyalty section is empty/not prepopulated in cart.");
+  logger.info("Verifying car loyalty is not prepopulated");
+  await Cart.verifyCarLoyaltyNotPrepopulated(this.page);
+});
+
+Then("the car loyalty field should not be populated in the cart", async function () {
+  logger.info("Verifying car loyalty field is not populated in cart - clicking Add on Loyalty ID and validating empty");
+  await Cart.verifyCarLoyaltyNotPrepopulated(this.page);
 });
 
 Then("the selected meal should have status matching {string}", async function (statusPattern) {

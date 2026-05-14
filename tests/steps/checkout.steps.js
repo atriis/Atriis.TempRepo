@@ -60,10 +60,7 @@ When('I click "Don\'t share the contact details with airlines" checkbox in check
   await Checkout.clickContactDetailsCheckbox(this.page);
 });
 
-When("I complete the booking without navigating to trip overview", async function () {
-  logger.info("Completing booking without navigating to trip overview");
-  await Checkout.bookTripWithoutNavigatingToTripOverview(this.page);
-});
+
 
 When("I send booking for approval", async function () {
   logger.info("Sending booking for approval");

@@ -12,6 +12,10 @@ const SELECTORS = {
   CAR_MODEL_SUBTITLE: '.car-model-subtitle',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
   LOCATION_AIRPORT: 'a[href*="maps.google.com"][target="_blank"]',
+  FIRST_LOCATION_LINK: '.pickup-details a[href*="maps.google.com"][target="_blank"]',
+  FIRST_LOCATION_LINK_WRAPPER: '.pickup-details',
+  GOOGLE_MAPS_LOCATION_TEXT: '.DkEaL',
+  GOOGLE_PRIVACY_ACCEPT_ALL: 'button:has-text("Accept all"), button[aria-label*="Accept"]',
   // Filter sidebar
   CAR_FILTER_CONTAINER: '.car-filter-container',
   FILTER_TITLE: '.car-filter-container h4.filter-title',
@@ -245,6 +249,66 @@ class CarResultsPage {
     } catch {
       return false;
     }
+  }
+
+  async openFirstLocationLinkInResults() {
+    const link = this.page.locator(SELECTORS.FIRST_LOCATION_LINK).first();
+    await link.waitFor({ state: 'visible', timeout: 30000 });
+
+    const popupPromise = this.page.waitForEvent('popup', { timeout: 30000 });
+    await link.click();
+    const mapsPage = await popupPromise;
+
+    await mapsPage.waitForLoadState('domcontentloaded', { timeout: 30000 });
+
+    return {
+      mapsPage,
+    };
+  }
+
+  async readGoogleMapsContext(mapsPage) {
+    if (!mapsPage) {
+      throw new Error('mapsPage is required, got: ' + typeof mapsPage);
+    }
+
+    await mapsPage.waitForLoadState('domcontentloaded', { timeout: 30000 });
+
+    // Handle Google privacy consent dialog
+    const acceptAllButton = mapsPage.getByRole('button', { name: /accept all/i }).first();
+    const isAcceptButtonVisible = await acceptAllButton.isVisible().catch(() => false);
+    if (isAcceptButtonVisible) {
+      await acceptAllButton.click().catch(() => {});
+      await mapsPage.waitForTimeout(2000); // Wait for consent to process and page to re-render
+    }
+
+    // Wait for location text to become visible — try multiple selectors with explicit waits
+    const locationSelectors = [
+      SELECTORS.GOOGLE_MAPS_LOCATION_TEXT,  // .DkEaL — plus code result item
+      '[role="heading"]',                   // location heading in results panel
+      '.gm-style-iw-c [role="button"]',     // info window on pin click
+      'h1[data-attrid="title"]',            // place title for named locations
+    ];
+
+    let locationText = '';
+    for (const selector of locationSelectors) {
+      const locator = mapsPage.locator(selector).first();
+      const visible = await locator
+        .waitFor({ state: 'visible', timeout: 5000 })
+        .then(() => true)
+        .catch(() => false);
+      if (visible) {
+        locationText = ((await locator.textContent().catch(() => '')) || '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (locationText) break;
+      }
+    }
+
+    return {
+      mapsPage,
+      url: mapsPage.url(),
+      locationText,
+    };
   }
 }
 

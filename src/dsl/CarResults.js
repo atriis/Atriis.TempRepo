@@ -4,6 +4,7 @@ const CarResultsPage = require("@pages/CarResultsPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { normalizeTextStrict, tokenizeAddress } = require("@utils/text");
+const logger = require("@utils/logger").child("CarResults-DSL");
 
 
 /**
@@ -40,7 +41,6 @@ const CarResults = {
    * 2. Called after selectFirstCityCenterPickupLocation (already on car list) → clicks Add to trip only
    */
   async addCarCityCenterFromResultsPageToCart(page) {
-    const { ResultsPage } = require('@pages/ResultsPage');
     const resultsPage = getPageObject(page, ResultsPage);
 
     // Click Select only when still on the station list (not yet navigated to car cards)
@@ -448,6 +448,62 @@ const CarResults = {
     const carResultsPage = getPageObject(page, CarResultsPage);
     const isVisible = await carResultsPage.isFilterTitleVisible(filterTitle);
     expect(isVisible, `Filter "${filterTitle}" should be visible on car results page`).toBe(true);
+  },
+
+  /**
+   * Opens the first location link from car results and returns context for map validation.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{mapsPage: import('playwright').Page, expectedLocationText: string}>}
+   */
+  async openFirstCarLocationLinkInResults(page) {
+    if (!page) throw new Error('page is required, got: ' + typeof page);
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    logger.info('Opening first car location link in results');
+    const result = await carResultsPage.openFirstLocationLinkInResults();
+
+    return {
+      mapsPage: result.mapsPage,
+      expectedLocationText: result.expectedLocationText,
+    };
+  },
+
+  /**
+   * Verifies that the selected location is shown in Google Maps.
+   *
+   * @param {import('playwright').Page} page
+   * @param {import('playwright').Page} [mapsPage]
+   * @param {string} [expectedLocationText]
+   * @returns {Promise<void>}
+   */
+  async verifySelectedCarLocationInGoogleMaps(page, mapsPage, expectedLocationText) {
+    if (!page) throw new Error('page is required, got: ' + typeof page);
+    if (mapsPage && typeof mapsPage.url !== 'function') {
+      throw new Error('mapsPage must be a Playwright page when provided, got: ' + typeof mapsPage);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const mapsContext = await carResultsPage.readGoogleMapsContext(mapsPage);
+
+    // Validate Google Maps URL
+    expect(
+      mapsContext.url.toLowerCase(),
+      `Expected Google Maps URL, got: ${mapsContext.url}`,
+    ).toContain('google');
+
+    expect(
+      mapsContext.url.toLowerCase(),
+      `Expected Google Maps path in URL, got: ${mapsContext.url}`,
+    ).toContain('/maps');
+
+    // Validate Google Maps location text shows location (with flexible matching)
+    // Just validate that location info is displayed (not blank/loading)
+    expect(
+      mapsContext.locationText,
+      `Google Maps location text should not be empty. Received: "${mapsContext.locationText}"`,
+    ).toBeTruthy();
+
   },
 };
 

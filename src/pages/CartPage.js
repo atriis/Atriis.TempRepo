@@ -277,13 +277,14 @@ const SELECTORS = {
 
   // Loyalty number extras (loyalty-number.vue)
   LOYALTY_SECTION: '.quote-extras--loyalty-number',
-  LOYALTY_CLICKABLE: '.quote-extras--loyalty-number .is-clickable',
+  LOYALTY_CLICKABLE: '.quote-extras--loyalty-number .is-clickable, .car-driver-loyalty .card-title, .quote-extras--container .is-clickable:has-text("Loyalty ID")',
+  LOYALTY_ADD_BUTTON: '.car-driver-loyalty .is-clickable, .quote-extras--loyalty-number .add-text, .quote-extras--loyalty-number .add-btn, .quote-extras--container .add-text:has-text("Add")',
   LOYALTY_NEW_RADIO: '.quote-extras--loyalty-number .el-radio-group .el-radio:nth-child(2)',
   LOYALTY_CHAIN_SELECT: '.quote-extras--loyalty-number .select-container .select-element:first-child .el-select',
-  LOYALTY_NUMBER_INPUT: '.quote-extras--loyalty-number .select-container .select-element:last-child input',
+  LOYALTY_NUMBER_INPUT: '.quote-extras--loyalty-number .select-container .select-element:last-child input, .quote-extras--loyalty-number .el-input__inner, .car-driver-loyalty input[type="text"], .car-driver-loyalty .el-input__inner',
   LOYALTY_SAVE_BUTTON: '.quote-extras--loyalty-number .btns .no-border',
   LOYALTY_SUCCESS_ICON: '.quote-extras--loyalty-number .success-icon.green',
-  LOYALTY_CARD: '.quote-extras--loyalty-number .extras-card',
+  LOYALTY_CARD: '.quote-extras--loyalty-number .extras-card, .car-driver-loyalty, .quote-extras--container .extras-card:has-text("Loyalty ID")',
   LOYALTY_CHAIN_SELECTED_TEXT: '.quote-extras--loyalty-number .select-container .select-element:first-child .el-select .el-select__placeholder',
 
   // Premier Inn extras - breakfast visibility (premier-inn.vue)
@@ -291,7 +292,7 @@ const SELECTORS = {
   PREMIER_INN_BREAKFAST_LABEL: '.quote-extras--premier-inn .extras-card label.label:has-text("Breakfast")',
 
   // Existing loyalty dropdown (selected value text after saving a loyalty number)
-  LOYALTY_EXISTING_DROPDOWN_TEXT: '.quote-extras--loyalty-number .extras-card .el-select .el-select__placeholder',
+  LOYALTY_EXISTING_DROPDOWN_TEXT: '.quote-extras--loyalty-number .extras-card .el-select .el-select__placeholder, .car-driver-loyalty .el-select .el-select__placeholder',
 
   // Flight Frequent Flyer (FQTV) extras (flight-frequent-flyer.vue)
   FQTV_SECTION: '.flight-frequent-flyer',
@@ -321,6 +322,11 @@ const SELECTORS = {
   PASSENGER_INFO_SAVE_BUTTON_NAME: 'Save',
   PASSENGER_INFO_SAVE_SUCCESS_ICON: '.flight-passenger-info .success-icon',
   PASSPORT_NUMBER_INPUT: '.flight-passenger-info .field:has(label:text-is("Passport number")) input',
+
+  // Payment terms selectors (for car rentals, hotels, etc)
+  PAYMENT_TERMS_LINK: 'a:has-text("terms")',
+  RENTAL_PERIOD_TERMS_MODAL: ':has(> :text("Terms & Conditions")), .app-dialog, .el-dialog, .terms-modal, [role="dialog"]',
+  TERMS_MODAL_CLOSE_BUTTON: '[aria-label="Close this dialog"], .el-dialog__close, .close-btn, button:has-text("Close")',
 };
 
 class CartPage {
@@ -2958,8 +2964,24 @@ class CartPage {
    */
   async expandLoyaltySection() {
     const clickable = this.page.locator(SELECTORS.LOYALTY_CLICKABLE);
-    await clickable.waitFor({ state: 'visible', timeout: 15000 });
-    await clickable.click();
+    const clickableVisible = await clickable.first().isVisible().catch(() => false);
+    if (clickableVisible) {
+      await clickable.first().click();
+      return;
+    }
+
+    const addButton = this.page.locator(SELECTORS.LOYALTY_ADD_BUTTON).first();
+    await addButton.waitFor({ state: 'visible', timeout: 15000 });
+    await addButton.click();
+  }
+
+  async clickLoyaltyAddButton() {
+    const addButton = this.page.locator(SELECTORS.LOYALTY_ADD_BUTTON).first();
+    await addButton.waitFor({ state: 'visible', timeout: 15000 });
+    await addButton.click();
+    // Wait for the input field to appear after clicking Add
+    const input = this.page.locator(SELECTORS.LOYALTY_NUMBER_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout: 10000 });
   }
 
   /**
@@ -3620,6 +3642,112 @@ class CartPage {
     const button = this.page.locator(SELECTORS.COPY_TRIP_CONFIRM_BUTTON).first();
     await button.waitFor({ state: 'visible', timeout: 15000 });
     await button.click();
+  }
+
+  // ========================================
+  // PAYMENT TERMS - CARS & HOTELS
+  // ========================================
+
+  /**
+   * Clicks the payment terms link to open the rental period/terms modal.
+   * @returns {Promise<void>}
+   */
+  async clickPaymentTermsLink() {
+    const link = this.page.locator(SELECTORS.PAYMENT_TERMS_LINK).first();
+    await link.waitFor({ state: 'attached', timeout: 15000 });
+    await link.click();
+  }
+
+  /**
+   * Checks if the rental period terms modal is visible.
+   * @returns {Promise<boolean>}
+   */
+  async isTermsModalVisible() {
+    const modal = this.page.locator(SELECTORS.RENTAL_PERIOD_TERMS_MODAL).first();
+    try {
+      await modal.waitFor({ state: 'visible', timeout: 15000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Closes the rental period terms modal by clicking the close button.
+   * @returns {Promise<void>}
+   */
+  async closeTermsModal() {
+    const closeButton = this.page.locator(SELECTORS.TERMS_MODAL_CLOSE_BUTTON).first();
+    try {
+      await closeButton.waitFor({ state: 'visible', timeout: 10000 });
+      await closeButton.click();
+      await this.page.waitForTimeout(300);
+    } catch {
+      // If close button not found, try pressing Escape
+      await this.page.press('body', 'Escape');
+    }
+  }
+
+  /**
+   * Extracts all content from a terms modal section heading until the next h5 (or end of modal).
+   * Finds the h5 with the given heading text, then collects all text from that h5 through the next h5.
+   * 
+   * @param {string} headingText - The h5 heading text to find (e.g., "Rental period")
+   * @returns {Promise<string>} All text content from the section, joined by newlines
+   */
+  async extractTermsModalSectionContent(headingText) {
+    if (!headingText || typeof headingText !== 'string') {
+      throw new Error('headingText must be a non-empty string');
+    }
+
+    // Wait for the target h5 heading to be visible (this ensures modal is open and content is rendered)
+    const headingLocator = this.page.locator('h5').filter({ hasText: new RegExp(headingText, 'i') }).first();
+    
+    try {
+      await headingLocator.waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      throw new Error(`Heading "${headingText}" not found in terms modal within 15s`);
+    }
+
+    // Extract section content from h5 heading until next h5
+    const content = await this.page.evaluate((targetHeading) => {
+      // Find the h5 with matching text (case-insensitive)
+      const headings = Array.from(document.querySelectorAll('h5'));
+      const heading = headings.find(h => h.textContent.toLowerCase().includes(targetHeading.toLowerCase()));
+      
+      if (!heading) return '';
+
+      const lines = [];
+      let currentElement = heading;
+      let foundEnd = false;
+
+      // Traverse siblings: collect content until next h5
+      while (currentElement && !foundEnd) {
+        // Add the element's own text if it has any
+        const text = currentElement.textContent?.trim();
+        if (text) {
+          lines.push(text);
+        }
+
+        // Move to next sibling
+        currentElement = currentElement.nextElementSibling;
+
+        // Stop if we hit another h5
+        if (currentElement?.tagName === 'H5') {
+          foundEnd = true;
+          break;
+        }
+
+        // Stop if we hit the end of the modal or a major boundary
+        if (!currentElement || currentElement.classList?.contains('modal') || currentElement.classList?.contains('dialog')) {
+          break;
+        }
+      }
+
+      return lines.join('\n');
+    }, headingText);
+
+    return content || '';
   }
 }
 

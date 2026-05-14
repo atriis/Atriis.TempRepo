@@ -44,13 +44,23 @@ When("I select the first city center pickup location", async function () {
 });
 
 Then("the agency station label should contain {string} on the vendor list", async function (expectedLabel) {
-  if (!expectedLabel) return;
+  if (!expectedLabel || typeof expectedLabel !== 'string') {
+    throw new Error('expectedLabel must be a non-empty string');
+  }
+
   logger.info("Verifying agency station label is visible on the vendor list", { expectedLabel });
   await CarResults.expectAgencyStationLabelOnVendorList(this.page, expectedLabel);
 });
 
 Then("the agency station label should contain {string} and address should contain {string} on the vendor list", async function (expectedLabel, expectedAddress) {
-  if (!expectedLabel || !expectedAddress) return;
+  if (!expectedLabel || typeof expectedLabel !== 'string') {
+    throw new Error('expectedLabel must be a non-empty string');
+  }
+
+  if (!expectedAddress || typeof expectedAddress !== 'string') {
+    throw new Error('expectedAddress must be a non-empty string');
+  }
+
   logger.info("Verifying agency station label and address are visible on the vendor list", { expectedLabel, expectedAddress });
   await CarResults.expectAgencyStationLabelOnVendorList(this.page, expectedLabel, expectedAddress);
 });
@@ -111,10 +121,46 @@ Then("the {string} filter should be visible in car results", async function (fil
   await CarResults.verifyFilterVisibleOnResults(this.page, filterTitle);
 });
 
+// ========================================
+// PAYMENT & TERMS - CARS SPECIFIC
+// ========================================
+
+When("I click on the terms and conditions link in the trip overview", async function () {
+  const { Cart } = require("@dsl");
+  logger.info("Clicking terms and conditions link in trip overview");
+  await Cart.clickPaymentTermsLink(this.page);
+  this.termsAndConditionsModalOpenedAtStep = true;
+});
+
+When("I close the terms and conditions modal", async function () {
+  const { Cart } = require("@dsl");
+  logger.info("Closing terms and conditions modal");
+  await Cart.closeTermsModal(this.page);
+  this.termsAndConditionsModalClosed = true;
+});
+
+Then("The terms and conditions modal should display the {string} section", async function (sectionHeading) {
+  const { Cart } = require("@dsl");
+  logger.info(`Extracting terms and conditions modal section: ${sectionHeading}`);
+  const result = await Cart.extractAndVerifyTermsModalSection(this.page, sectionHeading);
+  this.termsAndConditionsSection = result;
+});
+
 When("I open the first car location link in results", async function () {
-  throw new Error("TODO: Implement opening first car location link in results using CarResults DSL/Page methods.");
+  logger.info("Opening first car location link in results");
+  this.carLocationContext = await CarResults.openFirstCarLocationLinkInResults(this.page);
 });
 
 Then("I should see the selected car location in Google Maps", async function () {
-  throw new Error("TODO: Implement Google Maps location validation for the newly opened tab/window.");
+  logger.info("Verifying selected car location in Google Maps");
+  const locationContext = this.carLocationContext || {};
+  if (!locationContext.mapsPage) {
+    throw new Error('Missing Google Maps context. Ensure step "When I open the first car location link in results" ran successfully before this assertion.');
+  }
+
+  await CarResults.verifySelectedCarLocationInGoogleMaps(
+    this.page,
+    locationContext.mapsPage,
+  );
 });
+

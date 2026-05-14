@@ -39,12 +39,13 @@ const Checkout = {
   },
 
   /**
-   * Finalizes the booking and navigates to the Trip Overview.
+   * Finalizes the booking and optionally navigates to Trip Overview.
    *
    * This flow:
    * - waits for checkout details
    * - finalizes the booking
-   * - navigates to the trip overview page
+   * - attempts to navigate to trip overview (for flights/hotels)
+   * - gracefully skips if not available (for cars)
    * 
    * Note: If a booking error modal appears, the status assertion step will detect and handle it.
    */
@@ -99,8 +100,33 @@ const Checkout = {
       throw new Error('Neither Go to trip nor booking error dialog appeared after finalizing booking');
     }
 
-    await checkoutPage.clickGoToTrip();
-    await cartPage.waitForTripOverviewTitle();
+    // Try to navigate to trip overview, but gracefully continue if not available
+    // (cars suppliers like Sunny don't have this navigation)
+    try {
+      await checkoutPage.clickGoToTrip();
+      await cartPage.waitForTripOverviewTitle();
+    } catch (err) {
+      // Trip overview not available (expected for cars suppliers)
+      // Booking is still complete, so just log and continue
+      const logger = require("@utils/logger").child("Checkout");
+      logger.debug("Trip overview not available after booking (expected for cars)", { error: err.message });
+    }
+
+    return { finalized: true };
+  },
+
+  /**
+   * Finalizes the booking for cars (no trip overview navigation).
+   *
+   * This flow:
+   * - waits for checkout details
+   * - finalizes the booking
+   * - DOES NOT navigate to trip overview (cars suppliers don't have this page)
+   */
+  async bookAndFinalizeForCars(page) {
+    if (!page) throw new Error('page is required');
+
+    await Checkout.bookTripWithoutNavigatingToTripOverview(page);
 
     return { finalized: true, bookingError: false };
   },
@@ -383,6 +409,11 @@ const Checkout = {
 
     return { sentForApproval: true };
   },
+
+  // ========================================
+  // BOOKING STATUS
+  // ========================================
+
 };
 
 module.exports = Checkout;

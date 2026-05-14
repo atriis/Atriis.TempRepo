@@ -1,9 +1,8 @@
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { CartPage, SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
-const { CheckoutPage } = require("@pages/CheckoutPage");
+const { CheckoutPage, SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
-const { SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
 const FlightResults = require("./FlightResults");
@@ -2807,6 +2806,25 @@ const Cart = {
     expect(existingText).toContain(expectedNumber);
   },
 
+  /**
+   * Verifies that car loyalty extras are not prepopulated.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyCarLoyaltyNotPrepopulated(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // Explicitly click the "Add" button on Loyalty ID row and wait for input to appear
+    await cartPage.clickLoyaltyAddButton();
+
+    // Validate the input field that opened is empty (not prepopulated)
+    const loyaltyInputValue = ((await cartPage.getLoyaltyNumberInputValue().catch(() => '')) || '').trim();
+    expect(loyaltyInputValue, `Expected loyalty input to be empty after clicking Add, but got: "${loyaltyInputValue}"`).toBe('');
+  },
+
   // ===== PREMIER INN EXTRAS (BREAKFAST/PAYMENT) =====
 
   /**
@@ -3427,6 +3445,77 @@ const Cart = {
       flightNumber,
       `Expected copied trip to contain flight number "${storedFlightNumber}" but got "${flightNumber}"`,
     ).toBe(storedFlightNumber);
+  },
+
+  // ========================================
+  // PAYMENT & TERMS - CARS SPECIFIC
+  // ========================================
+
+  async clickPaymentTermsLink(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info("Clicking payment terms link in trip overview");
+    await cartPage.clickPaymentTermsLink();
+    await page.waitForTimeout(500); // Brief pause for modal to appear
+  },
+
+  async verifyTermsModalDisplayed(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info("Verifying rental period terms modal is displayed");
+    const isVisible = await cartPage.isTermsModalVisible();
+    expect(isVisible, 'Expected rental period terms modal to be visible').toBe(true);
+  },
+
+  async closeTermsModal(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info("Closing terms modal");
+    await cartPage.closeTermsModal();
+    await page.waitForTimeout(300); // Brief pause after closing
+  },
+
+  /**
+   * Extracts and logs all content from a specific section in the terms modal.
+   * Validates that a section heading exists and logs all text until the next heading.
+   * 
+   * @param {import('playwright').Page} page
+   * @param {string} sectionHeading - The section heading to find (e.g., "Rental period", "Drop Off location")
+   * @returns {Promise<{section: string, content: string}>} The section heading and extracted content
+   */
+  async extractAndVerifyTermsModalSection(page, sectionHeading) {
+    if (!page) throw new Error('page is required');
+    if (!sectionHeading || typeof sectionHeading !== 'string') {
+      throw new Error('sectionHeading must be a non-empty string');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info(`Extracting terms modal section: ${sectionHeading}`);
+
+    const content = await cartPage.extractTermsModalSectionContent(sectionHeading);
+
+    if (!content) {
+      throw new Error(`No content found for section "${sectionHeading}" in terms modal`);
+    }
+
+    logger.info(`✓ Terms modal section "${sectionHeading}" content:`, { content });
+    return { section: sectionHeading, content };
+  },
+
+  async addSunnyFlightNumber(page, flightNumber = 'BA123') {
+    if (!page) throw new Error('page is required');
+    if (!flightNumber || typeof flightNumber !== 'string') {
+      throw new Error('flightNumber must be a non-empty string');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info('Adding Sunny Cars flight number in cart', { flightNumber });
+    await cartPage.openSunnyFlightNumberExtras();
+    await cartPage.fillSunnyFlightNumber(flightNumber);
+    await cartPage.saveSunnyFlightNumber();
   },
 };
 
