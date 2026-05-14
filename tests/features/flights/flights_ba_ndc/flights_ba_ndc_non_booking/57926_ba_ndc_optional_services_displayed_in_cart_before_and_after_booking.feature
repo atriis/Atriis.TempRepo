@@ -19,16 +19,10 @@ Feature: 57926 BA NDC - Optional services is displayed in cart before and after 
     When I search for a one way flight from "LON" to "DOH"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    Then the Optional Services extras section should be visible
-    # TODO: implement step — 'I handle the OOP justification if needed'
-    #   If an Out-Of-Policy justification modal/banner is visible, fill it in and dismiss; otherwise continue
-    When I handle the OOP justification if needed
+    Then the optional services extras section should be visible
+    When I fill in the OOP justification text "abc"
     And I proceed to checkout
-    # TODO: implement step — 'I handle the price change prompt if visible'
-    #   If a price-change confirmation dialog appears, accept/proceed; otherwise continue
-    And I handle the price change prompt if visible
     And I complete the booking
-    # TODO: implement step — 'the Optional Services extras section should be visible after booking'
-    #   After booking, assert the Optional Services extras section is still rendered in the trip overview
-    Then the Optional Services extras section should be visible after booking
+    Then the quote destination should contain "Flight to"
+    Then the optional services extras section should be visible
     Then I successfully cancel the trip
