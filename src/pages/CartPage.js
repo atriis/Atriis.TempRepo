@@ -323,6 +323,10 @@ const SELECTORS = {
   PASSENGER_INFO_SAVE_SUCCESS_ICON: '.flight-passenger-info .success-icon',
   PASSPORT_NUMBER_INPUT: '.flight-passenger-info .field:has(label:text-is("Passport number")) input',
 
+  // Extras sections visibility (generic — used to verify which sections are rendered)
+  EXTRAS_SECTION_CARD_TITLE: '.extras-collapse-container .card-title',
+  EXTRAS_SECTION_ITEM: '.extras-collapse-container .extras-layout',
+
   // Payment terms selectors (for car rentals, hotels, etc)
   PAYMENT_TERMS_LINK: 'a:has-text("terms")',
   RENTAL_PERIOD_TERMS_MODAL: ':has(> :text("Terms & Conditions")), .app-dialog, .el-dialog, .terms-modal, [role="dialog"]',
@@ -1648,6 +1652,38 @@ class CartPage {
    */
   async clickArrowButtonExtras() {
     await this.page.locator(SELECTORS.EXTRAS_ARROW_BUTTON).click();
+  }
+
+  /**
+   * Checks whether the passenger info section is visible in the extras panel.
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isPassengerInfoSectionVisible(timeout = 5000) {
+    return this.page.locator(SELECTORS.PASSENGER_INFO_SECTION)
+      .first()
+      .isVisible({ timeout })
+      .catch(() => false);
+  }
+
+  /**
+   * Checks whether an extras section with the given card-title text is visible.
+   * @param {string} sectionName - Display text of the section title (e.g. "Frequent Flyer", "Seating")
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isExtrasSectionVisibleByName(sectionName, timeout = 10000) {
+    if (!sectionName) throw new Error('sectionName is required');
+    const locator = this.page.locator(SELECTORS.EXTRAS_SECTION_CARD_TITLE, { hasText: sectionName }).first();
+    return locator.isVisible({ timeout }).catch(() => false);
+  }
+
+  /**
+   * Returns the count of visible extras-layout sections in the extras panel.
+   * @returns {Promise<number>}
+   */
+  async getVisibleExtrasSectionsCount() {
+    return this.page.locator(SELECTORS.EXTRAS_SECTION_ITEM).count();
   }
 
   /**

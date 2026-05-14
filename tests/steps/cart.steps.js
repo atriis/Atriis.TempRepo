@@ -1055,6 +1055,21 @@ Then("the Optional Services extras section should be visible", async function ()
   await Cart.verifyOptionalServicesSectionVisible(this.page);
 });
 
+Then("the passenger info section should not be visible in the extras", async function () {
+  logger.info("Verifying passenger info (APIS) section is not visible in extras");
+  await Cart.verifyPassengerInfoNotVisibleInExtras(this.page);
+});
+
+Then("the {string} section should be visible in the extras", async function (sectionName) {
+  logger.info("Verifying extras section is visible", { sectionName });
+  await Cart.verifyExtrasSectionVisibleByName(this.page, sectionName);
+});
+
+Then("there should be {int} extras sections visible", async function (expectedCount) {
+  logger.info("Verifying extras sections count", { expectedCount });
+  await Cart.verifyExtrasSectionsCount(this.page, expectedCount);
+});
+
 // ========================================
 // MORE DETAILS DRAWER â€” PRICE
 // ========================================

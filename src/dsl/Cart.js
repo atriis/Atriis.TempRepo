@@ -3394,6 +3394,51 @@ const Cart = {
   },
 
   /**
+   * Expands the extras collapse and verifies the passenger info section is NOT visible.
+   * Used for non-US flights where APIS is not required.
+   * @param {import('playwright').Page} page
+   */
+  async verifyPassengerInfoNotVisibleInExtras(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickArrowButtonExtras();
+    const isVisible = await cartPage.isPassengerInfoSectionVisible();
+    expect(isVisible, 'Expected passenger info section to NOT be visible in extras').toBe(false);
+    logger.info('Passenger info section is not visible in extras (APIS not required)');
+  },
+
+  /**
+   * Expands the extras collapse and verifies that a section with the given name is visible.
+   * @param {import('playwright').Page} page
+   * @param {string} sectionName - Display text of the section title (e.g. "Frequent Flyer", "Seating")
+   */
+  async verifyExtrasSectionVisibleByName(page, sectionName) {
+    if (!page) throw new Error('page is required');
+    if (!sectionName || typeof sectionName !== 'string') throw new Error('sectionName must be a non-empty string, got: ' + sectionName);
+
+    const cartPage = getPageObject(page, CartPage);
+    const isVisible = await cartPage.isExtrasSectionVisibleByName(sectionName);
+    expect(isVisible, `Expected extras section "${sectionName}" to be visible`).toBe(true);
+    logger.info('Extras section is visible', { sectionName });
+  },
+
+  /**
+   * Verifies the count of visible extras sections in the cart extras panel.
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount
+   */
+  async verifyExtrasSectionsCount(page, expectedCount) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedCount !== 'number' || expectedCount < 0) throw new Error('expectedCount must be a non-negative number, got: ' + expectedCount);
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualCount = await cartPage.getVisibleExtrasSectionsCount();
+    expect(actualCount, `Expected ${expectedCount} extras sections visible, got ${actualCount}`).toBe(expectedCount);
+    logger.info('Extras sections count matches expected', { expectedCount, actualCount });
+  },
+
+  /**
    * Copies the trip via the three-dots dropdown menu.
    * Hovers over the trip actions icon, clicks "Copy trip", waits for the dialog,
    * then confirms. Handles the new window/tab the app opens for the copied trip.
