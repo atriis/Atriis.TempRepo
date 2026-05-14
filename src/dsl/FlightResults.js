@@ -1493,7 +1493,16 @@ async clickToOpenFareRulesFromResultsModal(page) {
     throw new Error('page is required');
   }
   const flightResultsPage = getPageObject(page, FlightResultsPage);
-  await flightResultsPage.waitAndClickFareRulesButtonInPricingOptions(0);
+
+  // Try flight details drawer first, then pricing options overlay
+  const flightDetailsDrawer = page.locator("[aria-label='Flight details']");
+  const isFlightDetailsOpen = await flightDetailsDrawer.isVisible().catch(() => false);
+
+  if (isFlightDetailsOpen) {
+    await flightResultsPage.waitAndClickFareRulesButtonInFlightDetails();
+  } else {
+    await flightResultsPage.waitAndClickFareRulesButtonInPricingOptions(0);
+  }
   await flightResultsPage.waitForFareRulesNote();
 },
 

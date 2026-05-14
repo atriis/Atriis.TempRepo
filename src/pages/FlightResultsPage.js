@@ -1028,6 +1028,21 @@ class FlightResultsPage {
   }
 
   /**
+   * Clicks the "Fare rules" button inside the flight details drawer.
+   * Uses the flight details drawer aria-label instead of the pricing options overlay.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async waitAndClickFareRulesButtonInFlightDetails(timeout = 60000) {
+    const drawer = this.page.locator(SELECTORS.FLIGHT_DETAILS_DRAWER);
+    const button = drawer
+      .getByRole('button', { name: SELECTORS.FARE_RULES_BUTTON_NAME })
+      .first();
+    await button.waitFor({ state: 'visible', timeout });
+    await button.click();
+  }
+
+  /**
    * Clicks the "Fare rules" button.
    *
    * @param {number} index - Zero-based index of the fare rules button (default: 0)
