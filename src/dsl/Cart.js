@@ -3511,6 +3511,23 @@ const Cart = {
   },
 
   /**
+   * Verifies the passenger info form shows the expected number of editable fields.
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount
+   */
+  async verifyPassengerInfoEditableFieldsCount(page, expectedCount) {
+    if (!page) throw new Error('page is required');
+    if (!Number.isInteger(expectedCount) || expectedCount < 0) {
+      throw new Error(`expectedCount must be a non-negative integer, got: ${expectedCount}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualCount = await cartPage.getEditableFieldsCountInPassengerInfo();
+    expect(actualCount, `Expected ${expectedCount} editable fields in passenger info, got ${actualCount}`).toBe(expectedCount);
+    logger.info('Passenger info editable fields count verified', { expectedCount, actualCount });
+  },
+
+  /**
    * Fills a valid date in the passenger info Date of Birth field.
    * @param {import('playwright').Page} page
    * @param {string} [dateValue='15 Jan 1990'] - Date in "DD MMM YYYY" format

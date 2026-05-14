@@ -333,6 +333,7 @@ const SELECTORS = {
   PASSENGER_INFO_APPLICABLE_COUNTRY_INPUT: '.flight-passenger-info .field:has(label:text-is("Applicable country")) input.el-select__input',
   PASSENGER_INFO_NATIONALITY_SELECT: '.flight-passenger-info .field:has(label:text-is("Nationality")) .el-select',
   PASSENGER_INFO_NATIONALITY_INPUT: '.flight-passenger-info .field:has(label:text-is("Nationality")) input.el-select__input',
+  PASSENGER_INFO_EDITABLE_FIELD: '.flight-passenger-info .extras-card .field', // Each form field wrapper in the passenger info panel (flight-passenger-info.vue)
 
   // Extras sections visibility (generic — used to verify which sections are rendered)
   EXTRAS_SECTION_CARD_TITLE: '.extras-collapse-container .card-title',
@@ -1740,6 +1741,14 @@ class CartPage {
    */
   async getHighlightedFieldsCountInPassengerInfo() {
     return this.page.locator(`${SELECTORS.PASSENGER_INFO_SECTION} .is-danger`).count();
+  }
+
+  /**
+   * Counts the number of visible form fields in the passenger info panel.
+   * @returns {Promise<number>}
+   */
+  async getEditableFieldsCountInPassengerInfo() {
+    return this.page.locator(SELECTORS.PASSENGER_INFO_EDITABLE_FIELD).count();
   }
 
   /**

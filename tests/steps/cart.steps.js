@@ -1130,6 +1130,11 @@ When("I fill in the passport expiry date in passenger info section", async funct
   await Cart.fillPassportExpiryDateInPassengerInfo(this.page);
 });
 
+Then("the passenger info form should show {int} editable fields", async function (expectedCount) {
+  logger.info("Verifying passenger info editable fields count", { expectedCount });
+  await Cart.verifyPassengerInfoEditableFieldsCount(this.page, expectedCount);
+});
+
 Then("the passenger info section should show a green circle checkmark indicating success", async function () {
   logger.info("Verifying passenger info section shows success checkmark");
   await Cart.verifyPassengerInfoSaveSuccess(this.page);
