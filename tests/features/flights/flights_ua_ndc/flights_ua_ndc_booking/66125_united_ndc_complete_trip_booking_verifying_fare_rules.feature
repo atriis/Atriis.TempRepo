@@ -18,7 +18,7 @@ Feature: 66125 United NDC - Complete Trip booking and verifying Fare Rules
     And I have added myself as the traveler
     When I search for a one way flight from "IAH" to "ORD"
     And flight results should be available
-    nd I filter results by carrier "United"
+    And I filter results by carrier "United"
     And I click to open fare rules
     Then I should see the fare rules note about strictest terms
     When I close fare rules window
