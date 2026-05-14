@@ -3505,6 +3505,97 @@ const Cart = {
   },
 
   /**
+   * Verifies the exact count of mandatory fields highlighted (is-danger) in the passenger info section.
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount - Expected number of highlighted fields
+   */
+  async verifyMandatoryFieldsCountInPassengerInfo(page, expectedCount) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedCount !== 'number' || expectedCount < 0) {
+      throw new Error('expectedCount must be a non-negative number, got: ' + expectedCount);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const count = await cartPage.getHighlightedFieldsCountInPassengerInfo();
+    expect(count, `Expected ${expectedCount} mandatory fields highlighted, got ${count}`).toBe(expectedCount);
+    logger.info('Verified mandatory fields highlighted count in passenger info', { expectedCount, actual: count });
+  },
+
+  /**
+   * Fills the passport number field inside the passenger info APIS form.
+   * @param {import('playwright').Page} page
+   * @param {string} passportNumber - The passport number to enter
+   */
+  async fillPassportNumberInPassengerInfo(page, passportNumber) {
+    if (!page) throw new Error('page is required');
+    if (typeof passportNumber !== 'string' || !passportNumber.trim()) {
+      throw new Error('passportNumber must be a non-empty string, got: ' + typeof passportNumber);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.fillPassportNumber(passportNumber);
+    logger.info('Filled passport number in passenger info', { passportNumber });
+  },
+
+  /**
+   * Selects the applicable country in the passenger info APIS form.
+   * @param {import('playwright').Page} page
+   * @param {string} country - Country name to search and select
+   */
+  async fillApplicableCountryInPassengerInfo(page, country) {
+    if (!page) throw new Error('page is required');
+    if (typeof country !== 'string' || !country.trim()) {
+      throw new Error('country must be a non-empty string, got: ' + typeof country);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.fillApplicableCountry(country);
+    logger.info('Filled applicable country in passenger info', { country });
+  },
+
+  /**
+   * Selects the nationality in the passenger info APIS form.
+   * Also auto-fills "Issued at" via the form's built-in handler.
+   * @param {import('playwright').Page} page
+   * @param {string} nationality - Nationality name to search and select
+   */
+  async fillNationalityInPassengerInfo(page, nationality) {
+    if (!page) throw new Error('page is required');
+    if (typeof nationality !== 'string' || !nationality.trim()) {
+      throw new Error('nationality must be a non-empty string, got: ' + typeof nationality);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.fillNationality(nationality);
+    logger.info('Filled nationality in passenger info', { nationality });
+  },
+
+  /**
+   * Fills the passport expiry date in the passenger info APIS form with a future date.
+   * @param {import('playwright').Page} page
+   * @param {string} [dateValue='15 Jan 2030'] - Date in "DD MMM YYYY" format
+   */
+  async fillPassportExpiryDateInPassengerInfo(page, dateValue = '15 Jan 2030') {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.fillPassportExpiryDate(dateValue);
+    logger.info('Filled passport expiry date in passenger info', { dateValue });
+  },
+
+  /**
+   * Verifies the passenger info section shows the green success checkmark icon after saving.
+   * @param {import('playwright').Page} page
+   */
+  async verifyPassengerInfoSaveSuccess(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForPassengerInfoSaveSuccess();
+    logger.info('Passenger info section shows green success checkmark');
+  },
+
+  /**
    * Copies the trip via the three-dots dropdown menu.
    * Hovers over the trip actions icon, clicks "Copy trip", waits for the dialog,
    * then confirms. Handles the new window/tab the app opens for the copied trip.

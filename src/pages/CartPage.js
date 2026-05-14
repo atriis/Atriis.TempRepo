@@ -326,6 +326,11 @@ const SELECTORS = {
   PASSENGER_INFO_SAVE_BUTTON_NAME: 'Save',
   PASSENGER_INFO_SAVE_SUCCESS_ICON: '.flight-passenger-info .success-icon',
   PASSPORT_NUMBER_INPUT: '.flight-passenger-info .field:has(label:text-is("Passport number")) input',
+  PASSENGER_INFO_EXPIRY_DATE_INPUT: '.flight-passenger-info .field:has(label:text-is("Expiry date")) input',
+  PASSENGER_INFO_APPLICABLE_COUNTRY_SELECT: '.flight-passenger-info .field:has(label:text-is("Applicable country")) .el-select',
+  PASSENGER_INFO_APPLICABLE_COUNTRY_INPUT: '.flight-passenger-info .field:has(label:text-is("Applicable country")) input.el-select__input',
+  PASSENGER_INFO_NATIONALITY_SELECT: '.flight-passenger-info .field:has(label:text-is("Nationality")) .el-select',
+  PASSENGER_INFO_NATIONALITY_INPUT: '.flight-passenger-info .field:has(label:text-is("Nationality")) input.el-select__input',
 
   // Extras sections visibility (generic — used to verify which sections are rendered)
   EXTRAS_SECTION_CARD_TITLE: '.extras-collapse-container .card-title',
@@ -1733,6 +1738,83 @@ class CartPage {
    */
   async getHighlightedFieldsCountInPassengerInfo() {
     return this.page.locator(`${SELECTORS.PASSENGER_INFO_SECTION} .is-danger`).count();
+  }
+
+  /**
+   * Fills the passport number field in the passenger info section.
+   * @param {string} value - The passport number to enter
+   * @param {number} timeout
+   */
+  async fillPassportNumber(value, timeout = 10000) {
+    if (!value || typeof value !== 'string') throw new Error('value must be a non-empty string');
+    const input = this.page.locator(SELECTORS.PASSPORT_NUMBER_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    await input.click();
+    await input.fill(value);
+  }
+
+  /**
+   * Selects a country in the applicable country dropdown inside the passenger info section.
+   * Uses the filterable app-select pattern: click to open, type to filter, select option.
+   * @param {string} country - Country name to search and select
+   * @param {number} timeout
+   */
+  async fillApplicableCountry(country, timeout = 10000) {
+    if (!country || typeof country !== 'string') throw new Error('country must be a non-empty string');
+    const select = this.page.locator(SELECTORS.PASSENGER_INFO_APPLICABLE_COUNTRY_SELECT).first();
+    await select.waitFor({ state: 'visible', timeout });
+    await select.click();
+
+    const input = this.page.locator(SELECTORS.PASSENGER_INFO_APPLICABLE_COUNTRY_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    await input.fill(country);
+
+    const option = this.page.locator('.el-select-dropdown__item:visible').filter({ hasText: new RegExp(country, 'i') }).first();
+    try {
+      await option.waitFor({ state: 'visible', timeout: 5000 });
+      await option.click();
+    } catch {
+      await input.press('ArrowDown');
+      await input.press('Enter');
+    }
+  }
+
+  /**
+   * Selects a nationality in the nationality dropdown inside the passenger info section.
+   * @param {string} nationality - Nationality name to search and select
+   * @param {number} timeout
+   */
+  async fillNationality(nationality, timeout = 10000) {
+    if (!nationality || typeof nationality !== 'string') throw new Error('nationality must be a non-empty string');
+    const select = this.page.locator(SELECTORS.PASSENGER_INFO_NATIONALITY_SELECT).first();
+    await select.waitFor({ state: 'visible', timeout });
+    await select.click();
+
+    const input = this.page.locator(SELECTORS.PASSENGER_INFO_NATIONALITY_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    await input.fill(nationality);
+
+    const option = this.page.locator('.el-select-dropdown__item:visible').filter({ hasText: new RegExp(nationality, 'i') }).first();
+    try {
+      await option.waitFor({ state: 'visible', timeout: 5000 });
+      await option.click();
+    } catch {
+      await input.press('ArrowDown');
+      await input.press('Enter');
+    }
+  }
+
+  /**
+   * Fills a future date in the passport expiry date field inside the passenger info section.
+   * @param {string} dateValue - Date in "DD MMM YYYY" format. Defaults to a future date.
+   * @param {number} timeout
+   */
+  async fillPassportExpiryDate(dateValue = '15 Jan 2030', timeout = 10000) {
+    const input = this.page.locator(SELECTORS.PASSENGER_INFO_EXPIRY_DATE_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    await input.click();
+    await input.fill(dateValue);
+    await input.press('Enter');
   }
 
   /**

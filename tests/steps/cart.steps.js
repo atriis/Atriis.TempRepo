@@ -1095,6 +1095,35 @@ Then("mandatory fields should be highlighted in the passenger info section", asy
   await Cart.verifyMandatoryFieldsHighlightedInPassengerInfo(this.page);
 });
 
+Then("{int} mandatory fields should be highlighted in the passenger info section", async function (expectedCount) {
+  logger.info("Verifying exact count of mandatory fields highlighted", { expectedCount });
+  await Cart.verifyMandatoryFieldsCountInPassengerInfo(this.page, expectedCount);
+});
+
+When("I fill in the passport number {string} in passenger info section", async function (passportNumber) {
+  logger.info("Filling passport number in passenger info", { passportNumber });
+  await Cart.fillPassportNumberInPassengerInfo(this.page, passportNumber);
+});
+
+When("I fill in the applicable country in passenger info section with {string}", async function (country) {
+  logger.info("Filling applicable country in passenger info", { country });
+  await Cart.fillApplicableCountryInPassengerInfo(this.page, country);
+});
+
+When("I fill in the nationality in passenger info section with {string}", async function (nationality) {
+  logger.info("Filling nationality in passenger info", { nationality });
+  await Cart.fillNationalityInPassengerInfo(this.page, nationality);
+});
+
+When("I fill in the passport expiry date in passenger info section", async function () {
+  logger.info("Filling passport expiry date in passenger info");
+  await Cart.fillPassportExpiryDateInPassengerInfo(this.page);
+});
+
+Then("the passenger info section should show a green circle checkmark indicating success", async function () {
+  logger.info("Verifying passenger info section shows success checkmark");
+  await Cart.verifyPassengerInfoSaveSuccess(this.page);
+});
 // ========================================
 // MORE DETAILS DRAWER â€” PRICE
 // ========================================
