@@ -19,10 +19,5 @@ Feature: 61646 BA NDC - Optional services unavailable message is displayed befor
     When I search for a one way flight from "LHR" to "DUB"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    Then the Optional Services extras section should be visible
-    # TODO: implement step — 'I click to expand the Optional Services section'
-    #   Click the expand/chevron button on the Optional Services extras section to open its content
-    When I click to expand the Optional Services section
-    # TODO: implement step — 'the optional services unavailable message should be visible'
-    #   Assert the "optional services will be available after booking is complete" message is visible inside the section
+    When I click optional services in extras
     Then the optional services unavailable message should be visible

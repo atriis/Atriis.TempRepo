@@ -3394,6 +3394,39 @@ const Cart = {
   },
 
   /**
+   * Clicks the optional services Edit/Add button in the extras section to expand it.
+   * Ensures the extras collapse is expanded first.
+   * @param {import('playwright').Page} page
+   */
+  async clickOptionalServicesInExtras(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // Ensure extras collapse is expanded — if the optional services title not visible, expand first
+    const titleVisible = await cartPage.getOptionalServicesTitleLocator().isVisible().catch(() => false);
+    if (!titleVisible) {
+      await cartPage.clickArrowButtonExtras();
+    }
+
+    await cartPage.clickEditOptionalServicesButton();
+    logger.info('Clicked optional services in extras');
+  },
+
+  /**
+   * Verifies the "optional services will be available after booking is complete" message is visible.
+   * @param {import('playwright').Page} page
+   */
+  async verifyOptionalServicesUnavailableMessage(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const messageLocator = cartPage.getOptionalServicesMessageLocator();
+    await expect(messageLocator).toContainText('Optional services will be available after booking is complete', { timeout: 15000 });
+    logger.info('Optional services unavailable message is visible');
+  },
+
+  /**
    * Expands the extras collapse and verifies the passenger info section is NOT visible.
    * Used for non-US flights where APIS is not required.
    * @param {import('playwright').Page} page

@@ -113,6 +113,8 @@ const SELECTORS = {
   EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span', // The field that shows selected extra option
   EXTRAS_ARROW_BUTTON: '.px-4.ticket-bottom.py-4 .el-icon.el-collapse-item__arrow', // Arrow button to expand/collapse extras information
   FLIGHT_OPTIONAL_SERVICES_TITLE: '.flight-optional-services .card-title', // "Optional Services" title in the extras section (flight-optional-services.vue)
+  FLIGHT_OPTIONAL_SERVICES_EDIT_BUTTON: '.flight-optional-services .extra__btns', // Edit/Add button in the optional services extras row (flight-optional-services.vue)
+  FLIGHT_OPTIONAL_SERVICES_MESSAGE: '.flight-optional-services .el-tab-pane span', // Message text inside the optional services tab content (flight-optional-services.vue)
   // Premier Inn extras selectors (premier-inn.vue)
   PREMIER_INN_PAYMENT_SELECT: '.quote-extras--premier-inn .extras-card .el-select', // First el-select in Premier Inn extras = payment method
 
@@ -1823,6 +1825,23 @@ class CartPage {
    */
   getOptionalServicesTitleLocator() {
     return this.page.locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_TITLE).first();
+  }
+
+  /**
+   * Opens the optional services extras panel by clicking the Edit/Add button scoped to the flight-optional-services section.
+   */
+  async clickEditOptionalServicesButton() {
+    const btn = this.page.locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_EDIT_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout: 15000 });
+    await btn.click();
+  }
+
+  /**
+   * Returns the locator for the message text inside the expanded optional services content.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getOptionalServicesMessageLocator() {
+    return this.page.locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_MESSAGE).first();
   }
 
   /**

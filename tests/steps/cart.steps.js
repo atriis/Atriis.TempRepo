@@ -1050,9 +1050,19 @@ Then("the breakfast type option should not be visible in extras", async function
 // FLIGHT OPTIONAL SERVICES (EXTRAS)
 // ========================================
 
-Then("the Optional Services extras section should be visible", async function () {
+Then("the optional services extras section should be visible", async function () {
   logger.info("Expanding extras and verifying Optional Services section is visible");
   await Cart.verifyOptionalServicesSectionVisible(this.page);
+});
+
+When("I click optional services in extras", async function () {
+  logger.info("Clicking optional services section in extras");
+  await Cart.clickOptionalServicesInExtras(this.page);
+});
+
+Then("the optional services unavailable message should be visible", async function () {
+  logger.info("Verifying optional services unavailable message is displayed");
+  await Cart.verifyOptionalServicesUnavailableMessage(this.page);
 });
 
 Then("the passenger info section should not be visible in the extras", async function () {
