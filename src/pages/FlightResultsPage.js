@@ -1235,7 +1235,7 @@ async clickAddToTripButtonPricingOptionsModal() {
   const result = await Promise.race([overlayHidden, conflictDialog]);
 
   if (result === 'conflict') {
-    await this.page.locator(SELECTORS.CONFLICT_MODAL_PROCEED).first().click();
+    await this.page.locator(SELECTORS.CONFLICT_MODAL_PROCEED).first().click({ force: true });
     // After clicking Proceed, wait for overlay to close
     await this.getPricingOptionsOverlay().waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {});
   }
@@ -1337,7 +1337,7 @@ async clickAddToTripButtonBySchedulePricingPage() {
   const preExistingConflict = this.page.locator(SELECTORS.CONFLICT_MODAL_PROCEED).first();
   const preConflictVisible = await preExistingConflict.isVisible().catch(() => false);
   if (preConflictVisible) {
-    await preExistingConflict.click();
+    await preExistingConflict.click({ force: true });
     await this.page.waitForTimeout(1000);
   }
 
@@ -1352,7 +1352,7 @@ async clickAddToTripButtonBySchedulePricingPage() {
     let conflictCount = 0;
     while (outcome === 'conflict' && conflictCount < 3) {
       conflictCount++;
-      await this.page.locator(SELECTORS.CONFLICT_MODAL_PROCEED).first().click();
+      await this.page.locator(SELECTORS.CONFLICT_MODAL_PROCEED).first().click({ force: true });
       outcome = await this.waitForBySchedulePricingAddToTripOutcome(60000);
     }
 

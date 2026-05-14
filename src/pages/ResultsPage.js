@@ -400,7 +400,7 @@ class ResultsPage {
       }
     }
 
-    await proceedButton.click();
+    await proceedButton.click({ force: true });
 
     try {
       await proceedButton.waitFor({ state: "hidden", timeout: 10000 });
