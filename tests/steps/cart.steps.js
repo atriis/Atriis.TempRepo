@@ -1070,6 +1070,31 @@ Then("there should be {int} extras sections visible", async function (expectedCo
   await Cart.verifyExtrasSectionsCount(this.page, expectedCount);
 });
 
+Then("the passenger info section should be marked as required with an asterisk", async function () {
+  logger.info("Verifying passenger info section shows required asterisk");
+  await Cart.verifyPassengerInfoMarkedAsRequired(this.page);
+});
+
+When("I click passenger info in extras", async function () {
+  logger.info("Clicking passenger info expand button in extras");
+  await Cart.clickPassengerInfoInExtras(this.page);
+});
+
+Then("the date of birth field should be required in the passenger info section", async function () {
+  logger.info("Verifying date of birth field is marked as required");
+  await Cart.verifyDateOfBirthFieldRequired(this.page);
+});
+
+When("I fill in the passenger info date of birth", async function () {
+  logger.info("Filling in passenger info date of birth");
+  await Cart.fillPassengerInfoDateOfBirth(this.page);
+});
+
+Then("mandatory fields should be highlighted in the passenger info section", async function () {
+  logger.info("Verifying mandatory fields are highlighted after save attempt");
+  await Cart.verifyMandatoryFieldsHighlightedInPassengerInfo(this.page);
+});
+
 // ========================================
 // MORE DETAILS DRAWER â€” PRICE
 // ========================================

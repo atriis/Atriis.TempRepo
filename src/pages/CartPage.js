@@ -315,6 +315,10 @@ const SELECTORS = {
   // Flight passenger info section (flight-passenger-info.vue)
   PASSENGER_INFO_SECTION: '.flight-passenger-info',
   PASSENGER_INFO_EXPAND_BUTTON: '.flight-passenger-info .is-clickable',
+  PASSENGER_INFO_REQUIRED_ASTERISK: '.flight-passenger-info .card-title .has-text-danger',
+  PASSENGER_INFO_DOB_FIELD: '.flight-passenger-info .field:has(label:text-is("Date of birth"))',
+  PASSENGER_INFO_DOB_DATEPICKER: '.flight-passenger-info .field:has(label:text-is("Date of birth")) .app-datepicker',
+  PASSENGER_INFO_DOB_INPUT: '.flight-passenger-info .field:has(label:text-is("Date of birth")) input',
   EXTRAS_COLLAPSE_HEADER: '.extras-collapse-container .el-collapse-item__header',
   EXTRAS_COLLAPSE_ACTIVE: '.extras-collapse-container .el-collapse-item__header.is-active',
   PASSENGER_INFO_EDIT_NOT_ALLOWED_MSG: '.flight-passenger-info .app-msg-text',
@@ -1684,6 +1688,51 @@ class CartPage {
    */
   async getVisibleExtrasSectionsCount() {
     return this.page.locator(SELECTORS.EXTRAS_SECTION_ITEM).count();
+  }
+
+  /**
+   * Checks whether the passenger info section has the required asterisk indicator.
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isPassengerInfoMarkedAsRequired(timeout = 10000) {
+    const asterisk = this.page.locator(SELECTORS.PASSENGER_INFO_REQUIRED_ASTERISK).first();
+    return asterisk.isVisible({ timeout }).catch(() => false);
+  }
+
+  /**
+   * Checks whether the Date of Birth field is highlighted as required (has is-danger class).
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isDateOfBirthFieldRequired(timeout = 10000) {
+    const dobField = this.page.locator(SELECTORS.PASSENGER_INFO_DOB_FIELD).first();
+    await dobField.waitFor({ state: 'visible', timeout });
+    const datepicker = this.page.locator(SELECTORS.PASSENGER_INFO_DOB_DATEPICKER).first();
+    const classes = await datepicker.getAttribute('class');
+    return (classes || '').split(/\s+/).includes('is-danger');
+  }
+
+  /**
+   * Fills a valid date in the passenger info Date of Birth field.
+   * Uses the input directly with a formatted date string.
+   * @param {string} dateValue - Date in "DD MMM YYYY" format (e.g. "15 Jan 1990"). Defaults to "15 Jan 1990".
+   * @param {number} timeout
+   */
+  async fillPassengerInfoDateOfBirth(dateValue = '15 Jan 1990', timeout = 10000) {
+    const dobInput = this.page.locator(SELECTORS.PASSENGER_INFO_DOB_INPUT).first();
+    await dobInput.waitFor({ state: 'visible', timeout });
+    await dobInput.click();
+    await dobInput.fill(dateValue);
+    await dobInput.press('Enter');
+  }
+
+  /**
+   * Counts the number of fields highlighted with is-danger inside the passenger info section.
+   * @returns {Promise<number>}
+   */
+  async getHighlightedFieldsCountInPassengerInfo() {
+    return this.page.locator(`${SELECTORS.PASSENGER_INFO_SECTION} .is-danger`).count();
   }
 
   /**

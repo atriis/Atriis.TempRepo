@@ -3439,6 +3439,72 @@ const Cart = {
   },
 
   /**
+   * Verifies the passenger info section is marked as required (red asterisk visible).
+   * @param {import('playwright').Page} page
+   */
+  async verifyPassengerInfoMarkedAsRequired(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickArrowButtonExtras();
+    const isRequired = await cartPage.isPassengerInfoMarkedAsRequired();
+    expect(isRequired, 'Expected passenger info section to show required asterisk').toBe(true);
+    logger.info('Passenger info section is marked as required (asterisk visible)');
+  },
+
+  /**
+   * Opens the passenger info panel in extras (expanding collapse if needed).
+   * @param {import('playwright').Page} page
+   */
+  async clickPassengerInfoInExtras(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.openPassengerInfoPanel();
+    logger.info('Opened passenger info panel in extras');
+  },
+
+  /**
+   * Verifies the Date of Birth field is highlighted as required (is-danger) in the passenger info form.
+   * @param {import('playwright').Page} page
+   */
+  async verifyDateOfBirthFieldRequired(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const isRequired = await cartPage.isDateOfBirthFieldRequired();
+    expect(isRequired, 'Expected Date of Birth field to be marked as required (is-danger)').toBe(true);
+    logger.info('Date of Birth field is marked as required in passenger info');
+  },
+
+  /**
+   * Fills a valid date in the passenger info Date of Birth field.
+   * @param {import('playwright').Page} page
+   * @param {string} [dateValue='15 Jan 1990'] - Date in "DD MMM YYYY" format
+   */
+  async fillPassengerInfoDateOfBirth(page, dateValue = '15 Jan 1990') {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.fillPassengerInfoDateOfBirth(dateValue);
+    logger.info('Filled passenger info date of birth', { dateValue });
+  },
+
+  /**
+   * Verifies that mandatory fields are highlighted (is-danger) in the passenger info section
+   * after an unsuccessful save attempt.
+   * @param {import('playwright').Page} page
+   */
+  async verifyMandatoryFieldsHighlightedInPassengerInfo(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const count = await cartPage.getHighlightedFieldsCountInPassengerInfo();
+    expect(count, 'Expected at least one mandatory field to be highlighted in passenger info').toBeGreaterThan(0);
+    logger.info('Mandatory fields highlighted in passenger info', { count });
+  },
+
+  /**
    * Copies the trip via the three-dots dropdown menu.
    * Hovers over the trip actions icon, clicks "Copy trip", waits for the dialog,
    * then confirms. Handles the new window/tab the app opens for the copied trip.
