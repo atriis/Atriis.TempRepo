@@ -72,7 +72,7 @@ jobs:
           # Other
           - suite_id: cars-daily
             suite_name: Cars Daily
-            test_path: tests/features/cars/daily_cars/
+            test_path: tests/features/cars/
           - suite_id: rails-daily
             suite_name: Rails Daily
             test_path: tests/features/rails/daily_rails/
@@ -121,7 +121,11 @@ jobs:
           if [ -s test-results/rerun.txt ]; then
             count=$(wc -l < test-results/rerun.txt)
             echo "Rerunning $count failed scenario(s)..."
+            cp test-results/cucumber-report.json test-results/cucumber-report-initial.json 2>/dev/null || true
+            cp test-results/cucumber-junit.xml test-results/cucumber-junit-initial.xml 2>/dev/null || true
             npx cucumber-js @test-results/rerun.txt --parallel 2
+            mv test-results/cucumber-report-initial.json test-results/cucumber-report.json 2>/dev/null || true
+            mv test-results/cucumber-junit-initial.xml test-results/cucumber-junit.xml 2>/dev/null || true
           else
             echo "No failures recorded in rerun.txt — skipping rerun."
           fi
@@ -248,7 +252,11 @@ jobs:
           if [ -s test-results/rerun.txt ]; then
             count=$(wc -l < test-results/rerun.txt)
             echo "Rerunning $count failed scenario(s)..."
+            cp test-results/cucumber-report.json test-results/cucumber-report-initial.json 2>/dev/null || true
+            cp test-results/cucumber-junit.xml test-results/cucumber-junit-initial.xml 2>/dev/null || true
             npx cucumber-js @test-results/rerun.txt --parallel 1
+            mv test-results/cucumber-report-initial.json test-results/cucumber-report.json 2>/dev/null || true
+            mv test-results/cucumber-junit-initial.xml test-results/cucumber-junit.xml 2>/dev/null || true
           else
             echo "No failures recorded in rerun.txt — skipping rerun."
           fi
