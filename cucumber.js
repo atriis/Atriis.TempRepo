@@ -16,6 +16,6 @@ module.exports = {
       'allure-cucumberjs/reporter',
       'rerun:test-results/rerun.txt'
     ],
-    retry: process.env.CI ? 1 : 0,
+    retry: process.env.CI ? parseInt(process.env.RETRY_COUNT || '1', 10) : 0,
   }
 };

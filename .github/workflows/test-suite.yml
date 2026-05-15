@@ -121,9 +121,12 @@ jobs:
         timeout-minutes: 30
         shell: bash
         run: |
-          if [ -s test-results/rerun.txt ]; then
-            count=$(wc -l < test-results/rerun.txt)
+          if grep -qP '\S' test-results/rerun.txt 2>/dev/null; then
+            count=$(grep -cP '\S' test-results/rerun.txt)
             echo "Rerunning $count failed scenario(s)..."
+            echo "--- rerun.txt content ---"
+            cat test-results/rerun.txt
+            echo "--- end ---"
             cp test-results/cucumber-report.json test-results/cucumber-report-initial.json 2>/dev/null || true
             cp test-results/cucumber-junit.xml test-results/cucumber-junit-initial.xml 2>/dev/null || true
             npx cucumber-js @test-results/rerun.txt --parallel 2
@@ -252,9 +255,12 @@ jobs:
         timeout-minutes: 40
         shell: bash
         run: |
-          if [ -s test-results/rerun.txt ]; then
-            count=$(wc -l < test-results/rerun.txt)
+          if grep -qP '\S' test-results/rerun.txt 2>/dev/null; then
+            count=$(grep -cP '\S' test-results/rerun.txt)
             echo "Rerunning $count failed scenario(s)..."
+            echo "--- rerun.txt content ---"
+            cat test-results/rerun.txt
+            echo "--- end ---"
             cp test-results/cucumber-report.json test-results/cucumber-report-initial.json 2>/dev/null || true
             cp test-results/cucumber-junit.xml test-results/cucumber-junit-initial.xml 2>/dev/null || true
             npx cucumber-js @test-results/rerun.txt --parallel 1
