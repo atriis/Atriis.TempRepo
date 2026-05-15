@@ -70,9 +70,12 @@ jobs:
             suite_name: Hotels Non Booking
             test_path: tests/features/hotels/hotels_non_booking/
           # Other
+          - suite_id: cars-booking
+            suite_name: Cars Booking
+            test_path: tests/features/cars/cars_booking/
           - suite_id: cars-daily
             suite_name: Cars Daily
-            test_path: tests/features/cars/
+            test_path: tests/features/cars/daily_cars/
           - suite_id: rails-daily
             suite_name: Rails Daily
             test_path: tests/features/rails/daily_rails/
