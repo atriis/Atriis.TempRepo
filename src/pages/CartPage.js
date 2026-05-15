@@ -115,6 +115,13 @@ const SELECTORS = {
   FLIGHT_OPTIONAL_SERVICES_TITLE: '.flight-optional-services .card-title', // "Optional Services" title in the extras section (flight-optional-services.vue)
   FLIGHT_OPTIONAL_SERVICES_EDIT_BUTTON: '.flight-optional-services .extra__btns', // Edit/Add button in the optional services extras row (flight-optional-services.vue)
   FLIGHT_OPTIONAL_SERVICES_MESSAGE: '.flight-optional-services .el-tab-pane span', // Message text inside the optional services tab content (flight-optional-services.vue)
+  // Flight Ancillary Services (flight-ancillary-services.vue)
+  FLIGHT_ANCILLARY_SERVICES_EDIT_BUTTON: '.flight-ancillary-services .extra__btns', // Edit/Add button in the ancillary services extras row
+  FLIGHT_ANCILLARY_SERVICES_CARRIER_NAME: '.flight-ancillary-services .carrier-name', // Carrier name in ancillary services segment
+  FLIGHT_ANCILLARY_SERVICES_SELECT_TRIGGER: '.flight-ancillary-services .app-select .el-select__wrapper', // Click to open the ancillary service dropdown
+  FLIGHT_ANCILLARY_SERVICES_DROPDOWN_PANEL: '.el-select-dropdown:visible', // Visible Element-Plus dropdown panel (rendered at body level)
+  FLIGHT_ANCILLARY_SERVICES_DROPDOWN_OPTION: '.el-select-dropdown:visible .el-select-dropdown__item', // Dropdown option in the visible panel
+  FLIGHT_ANCILLARY_SERVICES_SUCCESS_ICON: '.flight-ancillary-services .material-symbols-outlined.filled.success-icon.green', // Green checkmark after successful save
   // Premier Inn extras selectors (premier-inn.vue)
   PREMIER_INN_PAYMENT_SELECT: '.quote-extras--premier-inn .extras-card .el-select', // First el-select in Premier Inn extras = payment method
 
@@ -1851,6 +1858,46 @@ class CartPage {
    */
   getOptionalServicesMessageLocator() {
     return this.page.locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_MESSAGE).first();
+  }
+
+  // --- Ancillary Services (flight-ancillary-services.vue) ---
+
+  getAncillaryServicesEditButtonLocator() {
+    return this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_EDIT_BUTTON).first();
+  }
+
+  async clickEditAncillaryServicesButton(timeout = 15000) {
+    const btn = this.getAncillaryServicesEditButtonLocator();
+    await btn.waitFor({ state: 'visible', timeout });
+    await btn.click();
+  }
+
+  getAncillaryServicesCarrierNameLocator() {
+    return this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_CARRIER_NAME).first();
+  }
+
+  async openAncillaryServicesDropdown(timeout = 15000) {
+    const trigger = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_SELECT_TRIGGER).first();
+    await trigger.waitFor({ state: 'visible', timeout });
+    await trigger.click();
+    const panel = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_DROPDOWN_PANEL).last();
+    await panel.waitFor({ state: 'visible', timeout });
+  }
+
+  async getAncillaryServiceOptionTexts(timeout = 10000) {
+    const options = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_DROPDOWN_OPTION);
+    await options.first().waitFor({ state: 'visible', timeout });
+    return options.allTextContents();
+  }
+
+  async selectAncillaryServiceOptionByText(text, timeout = 10000) {
+    const option = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_DROPDOWN_OPTION, { hasText: text }).first();
+    await option.waitFor({ state: 'visible', timeout });
+    await option.click();
+  }
+
+  getAncillaryServicesSuccessIcon() {
+    return this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_SUCCESS_ICON).first();
   }
 
   /**

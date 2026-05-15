@@ -3426,6 +3426,64 @@ const Cart = {
     logger.info('Optional services unavailable message is visible');
   },
 
+  async clickEditAncillaryServices(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // Ensure extras collapse is expanded — if the ancillary services edit button is not visible, expand first
+    const btnVisible = await cartPage.getAncillaryServicesEditButtonLocator().isVisible().catch(() => false);
+    if (!btnVisible) {
+      await cartPage.clickArrowButtonExtras();
+    }
+
+    await cartPage.clickEditAncillaryServicesButton();
+    logger.info('Clicked edit ancillary services button');
+  },
+
+  async verifyAncillaryServicesCarrierName(page, expectedCarrier) {
+    if (!page) throw new Error('page is required');
+    if (!expectedCarrier || typeof expectedCarrier !== 'string') {
+      throw new Error('expectedCarrier must be a non-empty string');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await expect(cartPage.getAncillaryServicesCarrierNameLocator()).toContainText(expectedCarrier, { timeout: 15000 });
+    logger.info('Ancillary services carrier name verified', { expectedCarrier });
+  },
+
+  async selectFirstAncillaryServiceAndVerifyHoldBagPattern(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.openAncillaryServicesDropdown();
+    const optionTexts = await cartPage.getAncillaryServiceOptionTexts();
+
+    // Find the first option that matches hold bag with a price (skip "0 x hold bag")
+    const holdBagPattern = /\d+\s*x\s*hold\s*bag.*\d+.*kg.*\d+[\.,]\d{2}\s*GBP/i;
+    const matchingOption = optionTexts.find(text => holdBagPattern.test(text));
+
+    if (!matchingOption) {
+      throw new Error(`No ancillary service option matches hold bag pattern with GBP price. Available options: ${JSON.stringify(optionTexts)}`);
+    }
+
+    logger.info('Found matching ancillary service option', { matchingOption });
+
+    await cartPage.selectAncillaryServiceOptionByText(matchingOption);
+    logger.info('Selected ancillary service option from dropdown');
+
+    return { optionText: matchingOption };
+  },
+
+  async verifyAncillaryServicesSuccessIcon(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await expect(cartPage.getAncillaryServicesSuccessIcon()).toBeVisible({ timeout: 30000 });
+    logger.info('Ancillary services success icon (green checkmark) is visible');
+  },
+
   /**
    * Expands the extras collapse and verifies the passenger info section is NOT visible.
    * Used for non-US flights where APIS is not required.

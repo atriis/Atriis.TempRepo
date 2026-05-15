@@ -1079,6 +1079,28 @@ Then("the optional services unavailable message should be visible", async functi
   await Cart.verifyOptionalServicesUnavailableMessage(this.page);
 });
 
+// --- Ancillary Services steps ---
+
+When("I click to edit the ancillary services section", async function () {
+  logger.info("Clicking edit button on ancillary services extras section");
+  await Cart.clickEditAncillaryServices(this.page);
+});
+
+Then("the ancillary services carrier should display {string}", async function (expectedCarrier) {
+  logger.info("Verifying ancillary services carrier name", { expectedCarrier });
+  await Cart.verifyAncillaryServicesCarrierName(this.page, expectedCarrier);
+});
+
+When("I select the first ancillary service option and verify hold bag pattern", async function () {
+  logger.info("Opening ancillary services dropdown and selecting first hold bag option");
+  await Cart.selectFirstAncillaryServiceAndVerifyHoldBagPattern(this.page);
+});
+
+Then("the ancillary services green checkmark should be visible", async function () {
+  logger.info("Verifying ancillary services success icon (green checkmark) is visible");
+  await Cart.verifyAncillaryServicesSuccessIcon(this.page);
+});
+
 Then("the passenger info section should not be visible in the extras", async function () {
   logger.info("Verifying passenger info (APIS) section is not visible in extras");
   await Cart.verifyPassengerInfoNotVisibleInExtras(this.page);
