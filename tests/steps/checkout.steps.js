@@ -55,6 +55,11 @@ When("I proceed to checkout and handle Fusion verification", async function () {
   await Checkout.bookAndFinalizeWithFusionCardVerification(this.page);
 });
 
+When("I complete the booking with Ypsilon credit card verification", async function () {
+  logger.info("Completing Ypsilon booking with credit card verification");
+  await Checkout.bookAndFinalizeWithYpsilon3dsVerification(this.page);
+});
+
 When('I click "Don\'t share the contact details with airlines" checkbox in checkout', async function () {
   logger.info('Clicking contact details sharing checkbox in checkout');
   await Checkout.clickContactDetailsCheckbox(this.page);

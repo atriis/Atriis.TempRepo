@@ -942,10 +942,10 @@ const Cart = {
   /**
    *
    * @param {import('playwright').Page} page - Playwright page instance
-   * @param {number} index - Zero-based index of the fare rules button (default: 1)
+   * @param {number} index - Zero-based index of the fare rules button (default: 0)
    * @returns {Promise<void>}
    */
-  async clickToOpenFareRulesInCart(page, index = 1) {
+  async clickToOpenFareRulesInCart(page, index = 0) {
     if (!page) {
       throw new Error('page is required');
     }

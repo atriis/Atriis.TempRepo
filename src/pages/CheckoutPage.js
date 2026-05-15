@@ -19,6 +19,9 @@ const SELECTORS = {
   FUSION_3DS_DIALOG_TITLE: ".app-dialog .el-dialog__title",
   FUSION_3DS_DIALOG_CONTAINER: ".app-dialog",
   FUSION_3DS_DIALOG_HEADER: ".el-dialog__header",
+  // Ypsilon 3DS verification (ypsilon-3ds.vue — iframe-based SCA challenge)
+  YPSILON_3DS_CONTAINER: "#yps_sca_frame",
+  YPSILON_3DS_DIALOG: ".app-dialog .card-verification",
   SEND_FOR_APPROVAL_BUTTON: "button:has-text('Send for approval')",
   APPROVAL_SUCCESS_TITLE: "text=Trip Submitted for Approval",
   APPROVAL_SUCCESS_MESSAGE: "text=/Your order has been booked and sent to your approver for approval/i",
@@ -381,6 +384,48 @@ class CheckoutPage {
     const normalized = text.replace(/[^0-9.,]/g, '').replace(/,/g, '.');
     const value = Number.parseFloat(normalized);
     return Number.isNaN(value) ? null : value;
+  }
+
+  /**
+   * Completes the Ypsilon 3DS SCA challenge. The Atriis page auto-opens the
+   * Card verification dialog on checkout mount and an external SCA script
+   * injects an iframe (Poseidon Bank / Verified by Visa) into #yps_sca_frame.
+   * Waits for the dialog and iframe, fills the test code, and submits.
+   *
+   * @param {string} verificationCode - The 3DS test code (e.g. '555')
+   * @param {number} timeout - Max wait time for the dialog/iframe to appear
+   */
+  async completeYpsilon3dsVerification(verificationCode = '555', timeout = 90000) {
+    if (!verificationCode || typeof verificationCode !== 'string') {
+      throw new Error(`verificationCode must be a non-empty string, got: ${typeof verificationCode}`);
+    }
+
+    // Wait for the 3DS verification dialog to appear
+    const dialog = this.page.locator(SELECTORS.YPSILON_3DS_DIALOG);
+    await dialog.waitFor({ state: 'visible', timeout });
+
+    // The SCA script injects an iframe into #yps_sca_frame (Poseidon Bank / Verified by Visa).
+    // Wait for the iframe element to exist, then interact with the input/button inside.
+    const iframeElement = this.page.locator(`${SELECTORS.YPSILON_3DS_CONTAINER} iframe`);
+    await iframeElement.waitFor({ state: 'attached', timeout: 30000 });
+
+    const frame = this.page.frameLocator(`${SELECTORS.YPSILON_3DS_CONTAINER} iframe`);
+    const challengeInput = frame.getByPlaceholder('Enter Code here');
+    await challengeInput.waitFor({ state: 'visible', timeout: 30000 });
+    await challengeInput.fill(verificationCode);
+
+    const submitButton = frame.getByRole('button', { name: 'Submit', exact: true });
+    await submitButton.waitFor({ state: 'visible', timeout: 10000 });
+    await submitButton.click();
+  }
+
+  /**
+   * Waits for the Ypsilon 3DS dialog to close after successful verification.
+   * @param {number} timeout - Max wait time
+   */
+  async waitForYpsilon3dsDialogToClose(timeout = 60000) {
+    const dialog = this.page.locator(SELECTORS.YPSILON_3DS_DIALOG);
+    await dialog.waitFor({ state: 'hidden', timeout });
   }
 
   /**

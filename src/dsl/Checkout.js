@@ -153,6 +153,32 @@ const Checkout = {
   },
 
   /**
+   * Finalizes Ypsilon flight booking with 3DS SCA verification,
+   * then navigates to the trip overview page.
+   * The 3DS challenge is rendered in an iframe where the test code is entered.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} verificationCode - 3DS test code (default: '555')
+   * @returns {Promise<{finalized: boolean}>}
+   */
+  async bookAndFinalizeWithYpsilon3dsVerification(page, verificationCode = '555') {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const cartPage = getPageObject(page, CartPage);
+
+    // The Ypsilon 3DS modal auto-opens when the checkout page mounts (no Finalize click needed first).
+    // Complete the SCA challenge, wait for the modal to close, THEN click Book and Finalize.
+    await checkoutPage.completeYpsilon3dsVerification(verificationCode);
+    await checkoutPage.waitForYpsilon3dsDialogToClose();
+    await Checkout.bookTripWithoutNavigatingToTripOverview(page);
+    await checkoutPage.clickGoToTrip();
+    await cartPage.waitForTripOverviewTitle();
+
+    return { finalized: true };
+  },
+
+  /**
    * Verifies that a booking error dialog is displayed after a failed booking attempt.
    *
    * This flow:

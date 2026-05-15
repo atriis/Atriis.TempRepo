@@ -16,20 +16,19 @@ Feature: 29424 Ypsilon - Checkout with 3DS and verify fare rules loading in resu
     Given I am logged in as "ypsilonReg@corp.club" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "MIL"
-    # Validate fare rules in results page
+    And flight results should be available
     And I click to open fare rules
-    # TODO: Verify fare rules tab and "Rules Link" headline are visible in the fare rules drawer
-    And I close fare rules window
-    # TODO: Validate fare rules from pricing options (conditional - only if pricing options button is visible)
+    Then I should see the fare rules note about strictest terms
+    When I close fare rules window
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # Validate fare rules in cart
     When I click to open fare rules in cart
-    # TODO: Verify fare rules tab and "Rules Link" headline are visible in the cart fare rules drawer, then close it
+    Then I should see the fare rules note about strictest terms
+    When I close fare rules window
     And I fill credit card cvv if needed
     And I proceed to checkout
-    # TODO: Implement Ypsilon 3DS card verification step (Card verification dialog → type '555' → submit → wait → click Go to trip)
+    When I complete the booking with Ypsilon credit card verification
     Then the booking status should be "Ticketing Complete"
-    # Validate fare rules after booking completed
     When I click to open fare rules in cart
-    # TODO: Verify fare rules tab and "Rules Link" headline are visible in the trip overview fare rules drawer
+    Then I should see the fare rules note about strictest terms
+    When I close fare rules window
