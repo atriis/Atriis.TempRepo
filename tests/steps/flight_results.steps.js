@@ -302,6 +302,11 @@ When('I select the second fare from pricing options', async function () {
   await FlightResults.selectPricingOptionInModalByIndex(this.page, 1);
 });
 
+When('I select {string} fare from pricing options top section', async function (cabinName) {
+  logger.info('Selecting cabin class from pricing options top section', { cabinName });
+  await FlightResults.selectCabinClassFromPricingOptionsTop(this.page, cabinName);
+});
+
 When('I "Select to share" first option from pricing options', async function () {
   logger.info("Selecting first option from pricing options");
   await FlightResults.selectToShareFirstPricingOption(this.page);

@@ -74,6 +74,8 @@ const SELECTORS = {
 
   // Product details selectors
   FLIGHT_DETAILS_BUTTON: ".more-details-btn",
+  FLIGHT_DETAILS_DRAWER_BODY: '.app-drawer.flight-details-drawer .el-drawer__body',
+  FLIGHT_DETAILS_DRAWER_CABIN_TEXT: (text) => `.app-drawer.flight-details-drawer .el-drawer__body :text("${text}")`,
   POST_TICKETING_TABLE_HEADERS: '.flight-post-ticketing-details .post-ticketing-table thead th',
   POST_TICKETING_TABLE: '.flight-post-ticketing-details .post-ticketing-table',
   POST_TICKETING_TICKET_NUMBER_TEXT: 'tbody tr td:nth-child(2) .mr-1:visible',
@@ -3435,6 +3437,35 @@ class CartPage {
     const btn = this.page.locator(SELECTORS.FLIGHT_DETAILS_BUTTON).first();
     await btn.waitFor({ state: 'visible', timeout: 15000 });
     await btn.click();
+  }
+
+  /**
+   * Scrolls the flight details drawer body to the bottom so the return-leg
+   * section is brought into view.
+   * @param {{ timeout?: number }} options
+   */
+  async scrollFlightDetailsDrawerToBottom({ timeout = 15000 } = {}) {
+    const body = this.page.locator(SELECTORS.FLIGHT_DETAILS_DRAWER_BODY).first();
+    await body.waitFor({ state: 'visible', timeout });
+    await body.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  }
+
+  /**
+   * Waits for a cabin/brand text to be visible inside the open flight details
+   * drawer, at the given zero-based occurrence (0 = outbound leg, 1 = return leg).
+   * @param {string} expectedText - e.g. "Premium Economy (P)"
+   * @param {number} occurrenceIndex - Zero-based index of the occurrence
+   * @param {{ timeout?: number }} options
+   */
+  async waitForCabinTextInFlightDetailsDrawer(expectedText, occurrenceIndex = 0, { timeout = 15000 } = {}) {
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string, got: ' + expectedText);
+    }
+    if (!Number.isInteger(occurrenceIndex) || occurrenceIndex < 0) {
+      throw new Error(`occurrenceIndex must be a non-negative integer, got: ${occurrenceIndex}`);
+    }
+    const target = this.page.locator(SELECTORS.FLIGHT_DETAILS_DRAWER_CABIN_TEXT(expectedText)).nth(occurrenceIndex);
+    await target.waitFor({ state: 'visible', timeout });
   }
 
   /**

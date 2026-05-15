@@ -2929,6 +2929,41 @@ const Cart = {
   },
 
   /**
+   * Scrolls the open flight details drawer to the bottom so the return-leg
+   * section becomes visible.
+   * @param {import('playwright').Page} page
+   */
+  async scrollFlightDetailsDrawerInCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.scrollFlightDetailsDrawerToBottom();
+    return { scrolled: true };
+  },
+
+  /**
+   * Verifies the cabin/brand text (e.g. "Premium Economy (P)") is visible
+   * inside the open flight details drawer for the given leg position.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} legPosition - "outbound" or "return"
+   * @param {string} cabinText - Cabin/brand text (e.g. "Premium Economy (P)")
+   */
+  async verifyCabinInFlightDetailsDrawer(page, legPosition, cabinText) {
+    if (!page) throw new Error('page is required');
+    if (typeof legPosition !== 'string' || (legPosition !== 'outbound' && legPosition !== 'return')) {
+      throw new Error('legPosition must be "outbound" or "return", got: ' + legPosition);
+    }
+    if (!cabinText || typeof cabinText !== 'string') {
+      throw new Error('cabinText must be a non-empty string, got: ' + cabinText);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const occurrenceIndex = legPosition === 'outbound' ? 0 : 1;
+    await cartPage.waitForCabinTextInFlightDetailsDrawer(cabinText, occurrenceIndex);
+    return { verified: true, legPosition, cabinText };
+  },
+
+  /**
    * Verifies the carrier name in the cart more details drawer.
    * @param {import('playwright').Page} page
    * @param {string} expectedName

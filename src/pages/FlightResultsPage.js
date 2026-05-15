@@ -100,6 +100,7 @@ const SELECTORS = {
   PRICING_OPTIONS_OVERLAY: '.el-overlay:has(.app-drawer.flight-details-drawer)',
   PRICING_OPTIONS_OVERLAY_HEADING_TEXT: 'Pricing Options',
   PRICING_OPTIONS_TAB: '.pricing-options-tabs .el-tabs__item',
+  PRICING_OPTIONS_CABIN_CLASS_TABS: '.cabin-class-tabs .el-tabs__item',
   PRICING_OPTIONS_CABIN_CLASS: '.leg-pricing-option .sub-class',
   PRICING_OPTIONS_BAGGAGE_CLASS: '.leg-details .baggage span',
   PRICING_OPTIONS_FARE_COMPONENT_TEXT: 'text=Fare component',
@@ -986,6 +987,24 @@ class FlightResultsPage {
     }
     const tab = this.getPricingOptionsTab(index);
     await expect(tab).toContainText('check_circle', { timeout });
+  }
+
+  /**
+   * Clicks a cabin-class tab (Economy / Premium Eco / Business / First) at the
+   * top of the pricing options modal. Matches the tab label by substring, so
+   * passing "Premium" matches "Premium Eco" or "Premium Economy".
+   *
+   * @param {string} cabinName - Cabin name or substring (e.g. "Premium")
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async clickPricingOptionsCabinClassTabByName(cabinName, timeout = 30000) {
+    if (!cabinName || typeof cabinName !== 'string') {
+      throw new Error('cabinName must be a non-empty string, got: ' + cabinName);
+    }
+    const overlay = this.getPricingOptionsOverlay();
+    const tab = overlay.locator(SELECTORS.PRICING_OPTIONS_CABIN_CLASS_TABS).filter({ hasText: cabinName }).first();
+    await tab.waitFor({ state: 'visible', timeout });
+    await tab.click();
   }
 
   /**

@@ -17,18 +17,19 @@ Feature: 61699 Ypsilon - Correct cabin displayed after booking and correct cabin
     And I have added a random guest traveler
     When I search for a round trip flight from "DUB" to "PAR" with preferred carrier "Aer Lingus"
     Then flight results should be available
-    # Select Premium Economy from pricing options
     When I click to open first pricing options
-    Then the cabin class displayed in pricing options should be "Premium"
-    When I select the second fare from pricing options
+    When I select "Premium" fare from pricing options top section
+    Then I should see the heading "Flight To"
+    And I select the first option from pricing options
+    When I select "Premium" fare from pricing options top section
+    And I select the first option from pricing options
     And I add to trip from pricing options
     Then the booking status should be "Pending booking"
     When I fill credit card cvv if needed
     And I proceed to checkout
-    # TODO: Implement Ypsilon 3DS card verification step (Card verification dialog → type '555' → submit → wait → click Go to trip)
-    # Validate cabin after booking
-    # TODO: Click "Go to trip" button and verify booking status
+    When I complete the booking with Ypsilon credit card verification
+    Then the booking status should be "Ticketing Complete"
     When I open flight details in cart
-    # TODO: Verify "Premium Economy (P)" is displayed for the outbound flight leg in flight details
-    # TODO: Scroll down in the flight details drawer
-    # TODO: Verify "Premium Economy (P)" is displayed for the return flight leg in flight details
+    Then "Premium Economy (P)" should be displayed for the "outbound" flight leg in flight details
+    When I scroll down in the flight details drawer
+    Then "Premium Economy (P)" should be displayed for the "return" flight leg in flight details

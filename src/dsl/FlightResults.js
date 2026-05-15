@@ -1248,6 +1248,29 @@ const FlightResults = {
     return { selected: true, index };
   },
 
+  /**
+   * Selects a cabin-class tab in the top section of the pricing options modal.
+   * The tab labels are the cabin class names (Economy / Premium Eco / Business / First),
+   * and matching is done by substring so passing "Premium" selects "Premium Eco".
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} cabinName - Cabin name or substring (e.g. "Premium")
+   * @returns {Promise<{ selected: true, cabinName: string }>}
+   */
+  async selectCabinClassFromPricingOptionsTop(page, cabinName) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!cabinName || typeof cabinName !== 'string') {
+      throw new Error('cabinName must be a non-empty string, got: ' + cabinName);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickPricingOptionsCabinClassTabByName(cabinName);
+
+    return { selected: true, cabinName };
+  },
+
   async clickToOpenPricingOptions(page, index = 0) {
     if (!page) {
       throw new Error('page is required');

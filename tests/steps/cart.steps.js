@@ -1298,6 +1298,16 @@ When("I open flight details in cart", async function () {
   await Cart.openFlightDetailsInCart(this.page);
 });
 
+When("I scroll down in the flight details drawer", async function () {
+  logger.info("Scrolling down in the flight details drawer");
+  await Cart.scrollFlightDetailsDrawerInCart(this.page);
+});
+
+Then("{string} should be displayed for the {string} flight leg in flight details", async function (cabinText, legPosition) {
+  logger.info('Verifying cabin text in flight details drawer', { cabinText, legPosition });
+  await Cart.verifyCabinInFlightDetailsDrawer(this.page, legPosition, cabinText);
+});
+
 Then("the flight details table headers should be visible", async function () {
   logger.info("Verifying post-ticketing flight details table headers");
   const headers = await Cart.verifyFlightDetailsTableHeaders(this.page);
