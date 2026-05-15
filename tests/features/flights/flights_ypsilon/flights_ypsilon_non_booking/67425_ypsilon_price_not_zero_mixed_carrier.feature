@@ -18,5 +18,4 @@ Feature: 67425 Ypsilon - Price is not zero for mixed carrier quotes
     When I search for a round trip flight from "DUB" to "MIL"
     Then flight results should be available
     When I filter airline results by "Multi carrier" checkbox
-    Then flight results should be available
-    # TODO: Verify the first flight result price (.flight-list > :nth-child(1) .amount) is not zero (matches regex ^(?!0+(?:\.0+)?$).+)
+    Then the first flight result price should not be zero

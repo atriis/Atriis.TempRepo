@@ -882,3 +882,8 @@ Then("the conflicting quotes dialog should be displayed after clicking add to ca
   logger.info("Adding first flight to cart and verifying conflicting quotes dialog appears");
   await FlightResults.addFirstFlightToCartAndVerifyConflictingQuotesDialog(this.page);
 });
+
+Then('the first flight result price should not be zero', async function () {
+  logger.info('Verifying the first flight result price is not zero');
+  await FlightResults.verifyFirstFlightResultPriceIsNotZero(this.page);
+});

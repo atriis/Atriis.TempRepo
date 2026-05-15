@@ -2169,6 +2169,20 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     return { actualText };
   },
+
+  async verifyFirstFlightResultPriceIsNotZero(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const priceValue = await flightResultsPage.getFirstFlightResultPriceValue();
+
+    expect(priceValue, 'First flight result price should not be null').not.toBeNull();
+    expect(priceValue, 'First flight result price should be greater than zero').toBeGreaterThan(0);
+
+    return { priceValue };
+  },
 }
 
 module.exports = FlightResults;
