@@ -177,6 +177,10 @@ const SELECTORS = {
   // Orange material icons for train/bus transportation advisories
   ADVISORY_ICON_ORANGE: '.flight-info-container span.material-symbols-outlined.orange',
 
+  // Stopover indicator icon (EDIFACT/GDS flights marketed as non-stop that have hidden stops)
+  // Tooltip-trigger material icons — hover each to find "Stop over" tooltip
+  STOPOVER_TOOLTIP_TRIGGER_ICON: '.el-tooltip__trigger .material-symbols-outlined, .el-tooltip__trigger.material-symbols-outlined',
+
   // Flight details drawer — connection advisory message (flight-details.vue)
   // Works in both results drawer ([aria-label='Flight details']) and cart drawer ([aria-label='More details'])
   FLIGHT_DETAILS_CONNECTION_MSG: '.connection-msg',
@@ -1984,6 +1988,102 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  // ===== STOPOVER INDICATOR =====
+
+  /**
+   * Checks whether the flight preview card for a given flight number contains a stopover indicator.
+   * @param {string} flightNumber
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isStopoverIndicatorVisibleForFlight(flightNumber, timeout = 15000) {
+    if (!flightNumber || typeof flightNumber !== 'string') {
+      throw new Error('flightNumber must be a non-empty string, got: ' + typeof flightNumber);
+    }
+    try {
+      const preview = this.page
+        .locator(SELECTORS.FLIGHT_PREVIEW)
+        .filter({ hasText: flightNumber })
+        .first();
+      await preview.waitFor({ state: 'visible', timeout });
+      const icons = preview.locator(SELECTORS.STOPOVER_TOOLTIP_TRIGGER_ICON);
+      const count = await icons.count();
+      const perIconTimeout = Math.max(2000, Math.floor(timeout / Math.max(count, 1)));
+      for (let i = 0; i < count; i++) {
+        const icon = icons.nth(i);
+        await icon.hover();
+        const stopoverTooltip = this.page.locator(SELECTORS.EL_POPPER_VISIBLE).filter({ hasText: /stop over/i });
+        try {
+          await stopoverTooltip.first().waitFor({ state: 'visible', timeout: perIconTimeout });
+          return true;
+        } catch {
+          // Tooltip didn't match, try next icon
+        }
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks whether the visible flight details drawer contains a stopover indicator icon.
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isStopoverIndicatorVisibleInDetails(timeout = 15000) {
+    try {
+      const drawer = this.page.locator(SELECTORS.FLIGHT_DETAILS_VISIBLE_DRAWER).first();
+      await drawer.waitFor({ state: 'visible', timeout });
+
+      // Check for visible "Stop over" text in the drawer
+      const stopoverText = drawer.locator('*').filter({ hasText: /stop over/i }).first();
+      if (await stopoverText.isVisible().catch(() => false)) {
+        return true;
+      }
+
+      // Fallback: check tooltip-trigger icons for "Stop over" tooltip
+      const icons = drawer.locator(SELECTORS.STOPOVER_TOOLTIP_TRIGGER_ICON);
+      const count = await icons.count();
+      const perIconTimeout = Math.max(2000, Math.floor(timeout / Math.max(count, 1)));
+      for (let i = 0; i < count; i++) {
+        const icon = icons.nth(i);
+        await icon.hover();
+        const stopoverTooltip = this.page.locator(SELECTORS.EL_POPPER_VISIBLE).filter({ hasText: /stop over/i });
+        try {
+          await stopoverTooltip.first().waitFor({ state: 'visible', timeout: perIconTimeout });
+          return true;
+        } catch {
+          // Tooltip didn't match, try next icon
+        }
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks whether stopover location text is visible in the flight details drawer.
+   * Looks for any element containing "Stop over" as displayed content.
+   */
+  async getStopoverLocationTextInDetails(timeout = 15000) {
+    const drawer = this.page.locator(SELECTORS.FLIGHT_DETAILS_VISIBLE_DRAWER).first();
+    await drawer.waitFor({ state: 'visible', timeout });
+    const stopoverEl = drawer.locator(SELECTORS.FLIGHT_DETAILS_CONNECTION_MSG).filter({ hasText: /stop over/i }).first();
+    try {
+      await stopoverEl.waitFor({ state: 'visible', timeout });
+      const text = await stopoverEl.textContent() || '';
+      return text.trim().replace(/\s+/g, ' ');
+    } catch {
+      // Fallback: find the closest meaningful container holding "Stop over" text
+      const fallback = drawer.locator('.connection-msg, .flight-stop-info, .segment-info, [class*="stop"]').filter({ hasText: /stop over/i }).first();
+      await fallback.waitFor({ state: 'visible', timeout });
+      const text = await fallback.textContent() || '';
+      return text.trim().replace(/\s+/g, ' ');
     }
   }
 

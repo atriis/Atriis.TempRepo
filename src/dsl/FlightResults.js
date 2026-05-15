@@ -2129,6 +2129,46 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     return { dialogVisible: true };
   },
+
+  async verifyStopoverIndicatorInResultsForFlight(page, flightNumber) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!flightNumber || typeof flightNumber !== 'string') {
+      throw new Error('flightNumber must be a non-empty string, got: ' + typeof flightNumber);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const visible = await flightResultsPage.isStopoverIndicatorVisibleForFlight(flightNumber);
+    expect(visible, `Stopover indicator icon with "Stop over" tooltip should be visible for flight ${flightNumber}`).toBe(true);
+
+    return { visible, flightNumber };
+  },
+
+  async verifyStopoverIndicatorInFlightDetails(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const visible = await flightResultsPage.isStopoverIndicatorVisibleInDetails();
+    expect(visible, 'Stopover indicator should be visible in flight details').toBe(true);
+
+    return { visible };
+  },
+
+  async verifyStopoverLocationInFlightDetails(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const actualText = await flightResultsPage.getStopoverLocationTextInDetails();
+    expect(actualText, 'Stopover location should contain "Stop over in"').toContain('Stop over in');
+    expect(actualText, 'Stopover location should contain "no plane change"').toContain('no plane change');
+
+    return { actualText };
+  },
 }
 
 module.exports = FlightResults;

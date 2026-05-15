@@ -838,6 +838,28 @@ When('I exit share mode', async function () {
 });
 
 // ========================================
+// STOPOVER INDICATOR
+// ========================================
+
+Then('the filtered flight result should display a stopover indicator for flight {string}', async function (flightNumber) {
+  logger.info('Verifying stopover indicator is visible for flight in results', { flightNumber });
+  const result = await FlightResults.verifyStopoverIndicatorInResultsForFlight(this.page, flightNumber);
+  logger.info('Stopover indicator verified in results', result);
+});
+
+Then('the stopover indicator should be displayed in flight details', async function () {
+  logger.info('Verifying stopover indicator is displayed in flight details');
+  const result = await FlightResults.verifyStopoverIndicatorInFlightDetails(this.page);
+  logger.info('Stopover indicator verified in flight details', result);
+});
+
+Then('the stopover location should be displayed in flight details', async function () {
+  logger.info('Verifying stopover location is displayed in flight details');
+  const result = await FlightResults.verifyStopoverLocationInFlightDetails(this.page);
+  logger.info('Stopover location verified in flight details', result);
+});
+
+// ========================================
 // ADVISORY VERIFICATION
 // ========================================
 
