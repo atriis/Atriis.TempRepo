@@ -450,6 +450,28 @@ const CarResults = {
     expect(isVisible, `Filter "${filterTitle}" should be visible on car results page`).toBe(true);
   },
 
+  async verifyAgreementTextDisplayedInCarResultsTooltip(page) {
+    if (!page) throw new Error('page is required');
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.hoverAgreementIconInFirstCarResult();
+    const tooltipText = await carResultsPage.getAgreementTooltipText();
+
+    expect(
+      tooltipText.length > 0,
+      'Expected agreement tooltip to contain text in car results',
+    ).toBe(true);
+
+    return { tooltipText };
+  },
+
+  async clickTermsAndConditionsLinkInCarResultsTooltip(page) {
+    if (!page) throw new Error('page is required');
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.clickTermsAndConditionsInFirstCarResult();
+  },
+
   /**
    * Opens the first location link from car results and returns context for map validation.
    *

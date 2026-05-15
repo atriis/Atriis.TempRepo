@@ -40,6 +40,20 @@ When("I proceed to checkout", async function () {
   await Cart.acceptTermsAndConditionsAndProceedToCheckout(this.page);
 });
 
+async function clickTermsAndConditionsLinkFromCartStep(contextLabel) {
+  logger.info(`Clicking terms and conditions link ${contextLabel}`);
+  await Cart.clickPaymentTermsLink(this.page);
+  this.termsAndConditionsModalOpenedAtStep = true;
+}
+
+When("I click on the terms and conditions link in the trip overview", async function () {
+  await clickTermsAndConditionsLinkFromCartStep.call(this, 'in trip overview');
+});
+
+When("I click on the terms and conditions link after booking", async function () {
+  await clickTermsAndConditionsLinkFromCartStep.call(this, 'after booking');
+});
+
 When("I click the proceed to checkout button", async function () {
   logger.info("Clicking proceed to checkout button");
   const cartPage = getPageObject(this.page, CartPage);

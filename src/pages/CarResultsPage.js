@@ -8,6 +8,10 @@ const SELECTORS = {
   // Search results
   LOCATION_LABEL: '.location-label',
   CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
+  FIRST_CAR_PREVIEW: '.car-preview',
+  AGREEMENT_ICON_IN_CARD: '.agreements .agreement-img',
+  AGREEMENT_TOOLTIP_DESCRIPTION: '.agreement-tooltip-list .agreement-tooltip__description',
+  TERMS_BUTTON_IN_CARD: '.more-details-btn',
   // Car model subtitle — visible only for SunnyCars supplier when makeModel is populated
   CAR_MODEL_SUBTITLE: '.car-model-subtitle',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
@@ -231,6 +235,44 @@ class CarResultsPage {
 
   async waitForCarModelVisible({ timeout = 60000 } = {}) {
     await this.page.locator(SELECTORS.CAR_MODEL_SUBTITLE).first().waitFor({ state: 'visible', timeout });
+  }
+
+  getFirstCarPreview() {
+    return this.page.locator(SELECTORS.FIRST_CAR_PREVIEW).first();
+  }
+
+  async hoverAgreementIconInFirstCarResult({ timeout = 15000 } = {}) {
+    const card = this.getFirstCarPreview();
+    await card.waitFor({ state: 'visible', timeout });
+
+    const agreementIcon = card.locator(SELECTORS.AGREEMENT_ICON_IN_CARD).first();
+    await agreementIcon.waitFor({ state: 'visible', timeout });
+    await agreementIcon.hover();
+  }
+
+  async getAgreementTooltipText({ timeout = 10000 } = {}) {
+    const tooltipDescriptions = this.page.locator(SELECTORS.AGREEMENT_TOOLTIP_DESCRIPTION);
+    await tooltipDescriptions.first().waitFor({ state: 'visible', timeout });
+
+    const count = await tooltipDescriptions.count();
+    const lines = [];
+    for (let i = 0; i < count; i++) {
+      const text = ((await tooltipDescriptions.nth(i).textContent()) || '').replace(/\s+/g, ' ').trim();
+      if (text) {
+        lines.push(text);
+      }
+    }
+
+    return lines.join(' | ');
+  }
+
+  async clickTermsAndConditionsInFirstCarResult({ timeout = 15000 } = {}) {
+    const card = this.getFirstCarPreview();
+    await card.waitFor({ state: 'visible', timeout });
+
+    const termsButton = card.locator(SELECTORS.TERMS_BUTTON_IN_CARD).filter({ hasText: /terms/i }).first();
+    await termsButton.waitFor({ state: 'visible', timeout });
+    await termsButton.click();
   }
 
   /**

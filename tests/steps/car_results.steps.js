@@ -121,15 +121,25 @@ Then("the {string} filter should be visible in car results", async function (fil
   await CarResults.verifyFilterVisibleOnResults(this.page, filterTitle);
 });
 
+Then("the agreement text should be displayed in the car results tooltip", async function () {
+  logger.info("Verifying agreement text is displayed in the car results tooltip");
+  const result = await CarResults.verifyAgreementTextDisplayedInCarResultsTooltip(this.page);
+  logger.info("Agreement text tooltip validated", { tooltipText: result.tooltipText });
+});
+
 // ========================================
 // PAYMENT & TERMS - CARS SPECIFIC
 // ========================================
 
-When("I click on the terms and conditions link in the trip overview", async function () {
+async function clickTermsAndConditionsLinkStep(contextLabel) {
   const { Cart } = require("@dsl");
-  logger.info("Clicking terms and conditions link in trip overview");
+  logger.info(`Clicking terms and conditions link ${contextLabel}`);
   await Cart.clickPaymentTermsLink(this.page);
   this.termsAndConditionsModalOpenedAtStep = true;
+}
+
+When("I click on the terms and conditions link in the car results tooltip", async function () {
+  await clickTermsAndConditionsLinkStep.call(this, 'in car results tooltip');
 });
 
 When("I close the terms and conditions modal", async function () {

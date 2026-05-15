@@ -340,7 +340,7 @@ const SELECTORS = {
   EXTRAS_SECTION_ITEM: '.extras-collapse-container .extras-layout',
 
   // Payment terms selectors (for car rentals, hotels, etc)
-  PAYMENT_TERMS_LINK: 'a:has-text("terms")',
+  PAYMENT_TERMS_LINK: 'a:has-text("terms"), button:has-text("terms"), .more-details-btn:has-text("terms"), [role="button"]:has-text("terms")',
   RENTAL_PERIOD_TERMS_MODAL: ':has(> :text("Terms & Conditions")), .app-dialog, .el-dialog, .terms-modal, [role="dialog"]',
   TERMS_MODAL_CLOSE_BUTTON: '[aria-label="Close this dialog"], .el-dialog__close, .close-btn, button:has-text("Close")',
 };
@@ -3848,9 +3848,19 @@ class CartPage {
    * @returns {Promise<void>}
    */
   async clickPaymentTermsLink() {
-    const link = this.page.locator(SELECTORS.PAYMENT_TERMS_LINK).first();
-    await link.waitFor({ state: 'attached', timeout: 15000 });
-    await link.click();
+    const candidates = this.page.locator(SELECTORS.PAYMENT_TERMS_LINK);
+    await candidates.first().waitFor({ state: 'attached', timeout: 15000 });
+
+    const count = await candidates.count();
+    for (let i = 0; i < count; i++) {
+      const candidate = candidates.nth(i);
+      if (await candidate.isVisible().catch(() => false)) {
+        await candidate.click();
+        return;
+      }
+    }
+
+    throw new Error('Unable to find a visible Terms & Conditions trigger to click.');
   }
 
   /**
