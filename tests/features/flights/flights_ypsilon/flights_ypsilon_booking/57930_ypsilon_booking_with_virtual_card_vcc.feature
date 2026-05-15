@@ -18,9 +18,8 @@ Feature: 57930 Ypsilon - Booking with virtual card (VCC)
     When I search for a one way flight from "LHR" to "DUB"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # TODO: Implement step to add virtual card - click ticket-top-section .is-clickable, verify "virtual card testim ypsilon (set a default)" visible, verify checkbox is checked, close dialog
-    # TODO: Implement step to fill free text OOP justification if needed (scroll to .oop-title, check if "Out of policy", fill justification, save)
-    When I proceed to checkout
-    # TODO: Implement Ypsilon 3DS card verification step (Card verification dialog → type '555' → submit → wait → click Go to trip)
-    # TODO: Implement book and finalize with warning and continue step (click Book button → click Go to trip → wait for Trip overview)
+    Then the payment type should be "Paid by TMC"
+    And I fill in the OOP justification text "Out of policy justification"
+    And I proceed to checkout
+    When I complete the booking with Ypsilon credit card verification
     Then the booking status should be "Ticketing Complete"
