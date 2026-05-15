@@ -118,7 +118,9 @@ const SELECTORS = {
   // Flight Ancillary Services (flight-ancillary-services.vue)
   FLIGHT_ANCILLARY_SERVICES_EDIT_BUTTON: '.flight-ancillary-services .extra__btns', // Edit/Add button in the ancillary services extras row
   FLIGHT_ANCILLARY_SERVICES_CARRIER_NAME: '.flight-ancillary-services .carrier-name', // Carrier name in ancillary services segment
+  FLIGHT_ANCILLARY_SERVICES_SEGMENT: '.flight-ancillary-services .segment', // Each segment row (one per flight leg)
   FLIGHT_ANCILLARY_SERVICES_SELECT_TRIGGER: '.flight-ancillary-services .app-select .el-select__wrapper', // Click to open the ancillary service dropdown
+  FLIGHT_ANCILLARY_SERVICES_SEGMENT_SELECT_TRIGGER: '.app-select .el-select__wrapper', // Sub-selector — clicked relative to a segment to open its dropdown
   FLIGHT_ANCILLARY_SERVICES_DROPDOWN_PANEL: '.el-select-dropdown:visible', // Visible Element-Plus dropdown panel (rendered at body level)
   FLIGHT_ANCILLARY_SERVICES_DROPDOWN_OPTION: '.el-select-dropdown:visible .el-select-dropdown__item', // Dropdown option in the visible panel
   FLIGHT_ANCILLARY_SERVICES_SUCCESS_ICON: '.flight-ancillary-services .material-symbols-outlined.filled.success-icon.green', // Green checkmark after successful save
@@ -1894,6 +1896,36 @@ class CartPage {
     const option = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_DROPDOWN_OPTION, { hasText: text }).first();
     await option.waitFor({ state: 'visible', timeout });
     await option.click();
+  }
+
+  async openAncillaryServicesDropdownBySegment(segmentIndex, timeout = 15000) {
+    if (typeof segmentIndex !== 'number' || segmentIndex < 0) {
+      throw new Error(`segmentIndex must be a non-negative number, got: ${segmentIndex}`);
+    }
+    // Ensure any previously open dropdown is closed before opening a new one
+    const existingPanel = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_DROPDOWN_PANEL);
+    const panelVisible = await existingPanel.last().isVisible().catch(() => false);
+    if (panelVisible) {
+      await this.page.keyboard.press('Escape');
+      await existingPanel.last().waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+    }
+    const segment = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_SEGMENT).nth(segmentIndex);
+    await segment.waitFor({ state: 'visible', timeout });
+    const trigger = segment.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_SEGMENT_SELECT_TRIGGER).first();
+    await trigger.click();
+    const panel = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_DROPDOWN_PANEL).last();
+    await panel.waitFor({ state: 'visible', timeout });
+  }
+
+  async getAncillaryServicesSelectedTextBySegment(segmentIndex, timeout = 10000) {
+    if (typeof segmentIndex !== 'number' || segmentIndex < 0) {
+      throw new Error(`segmentIndex must be a non-negative number, got: ${segmentIndex}`);
+    }
+    const segment = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_SEGMENT).nth(segmentIndex);
+    await segment.waitFor({ state: 'visible', timeout });
+    const wrapper = segment.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_SEGMENT_SELECT_TRIGGER).first();
+    const text = await wrapper.innerText().catch(() => '');
+    return text.trim();
   }
 
   getAncillaryServicesSuccessIcon() {

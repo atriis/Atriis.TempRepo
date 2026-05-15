@@ -1101,6 +1101,19 @@ Then("the ancillary services green checkmark should be visible", async function 
   await Cart.verifyAncillaryServicesSuccessIcon(this.page);
 });
 
+When("I select the first ancillary service option with price for flight {int} and store its value", async function (flightNumber) {
+  const segmentIndex = flightNumber - 1;
+  logger.info("Selecting priced ancillary service option for segment", { flightNumber, segmentIndex });
+  const result = await Cart.selectAncillaryServiceWithPriceBySegment(this.page, segmentIndex);
+  if (!this.ancillarySelections) this.ancillarySelections = [];
+  this.ancillarySelections.push(result);
+});
+
+Then("the saved ancillary services selections should be retained", async function () {
+  logger.info("Verifying ancillary services selections are retained after reopening");
+  await Cart.verifyAncillaryServicesSelectionsRetained(this.page, this.ancillarySelections);
+});
+
 Then("the passenger info section should not be visible in the extras", async function () {
   logger.info("Verifying passenger info (APIS) section is not visible in extras");
   await Cart.verifyPassengerInfoNotVisibleInExtras(this.page);

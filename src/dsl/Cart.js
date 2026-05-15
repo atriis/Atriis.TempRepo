@@ -3484,6 +3484,51 @@ const Cart = {
     logger.info('Ancillary services success icon (green checkmark) is visible');
   },
 
+  async selectAncillaryServiceWithPriceBySegment(page, segmentIndex) {
+    if (!page) throw new Error('page is required');
+    if (typeof segmentIndex !== 'number' || segmentIndex < 0) {
+      throw new Error(`segmentIndex must be a non-negative number, got: ${segmentIndex}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.openAncillaryServicesDropdownBySegment(segmentIndex);
+    const optionTexts = await cartPage.getAncillaryServiceOptionTexts();
+
+    // Find the first option that has a price (e.g. "22GBP", "24.49GBP", "60EUR")
+    const pricedOptionPattern = /\d+(?:[\.,]\d{1,2})?\s*[A-Z]{3}/;
+    const matchingOption = optionTexts.find(text => pricedOptionPattern.test(text));
+
+    if (!matchingOption) {
+      throw new Error(`No ancillary service option with price found for segment ${segmentIndex}. Available options: ${JSON.stringify(optionTexts)}`);
+    }
+
+    logger.info('Found priced ancillary service option', { segmentIndex, matchingOption });
+
+    await cartPage.selectAncillaryServiceOptionByText(matchingOption);
+    logger.info('Selected ancillary service option for segment', { segmentIndex });
+
+    return { segmentIndex, selectedOption: matchingOption };
+  },
+
+  async verifyAncillaryServicesSelectionsRetained(page, expectedSelections) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(expectedSelections)) {
+      throw new Error(`expectedSelections must be an array, got: ${typeof expectedSelections}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    for (const { segmentIndex, selectedOption } of expectedSelections) {
+      const currentText = await cartPage.getAncillaryServicesSelectedTextBySegment(segmentIndex);
+      expect(currentText, `Segment ${segmentIndex} should retain selection "${selectedOption}", got: "${currentText}"`)
+        .toContain(selectedOption.split(' - ')[0].trim());
+      logger.info('Ancillary service selection retained for segment', { segmentIndex, currentText });
+    }
+
+    return { verified: true, selectionsCount: expectedSelections.length };
+  },
+
   /**
    * Expands the extras collapse and verifies the passenger info section is NOT visible.
    * Used for non-US flights where APIS is not required.
