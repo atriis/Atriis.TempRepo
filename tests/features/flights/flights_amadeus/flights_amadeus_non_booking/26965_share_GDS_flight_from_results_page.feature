@@ -18,5 +18,5 @@ Feature: Share flight price offer
 
     Examples:
       | label        |
-      | ruimariano   |
-      | beatriz      |
+      | ruimariano@amadeus.com   |
+      | beatrizpamplonacorp@galileo.com   |

@@ -27,5 +27,5 @@ Feature: Share flight from pricing options
 
     Examples:
       | label        |
-      | ruimariano   |
-      | beatriz      |
+      | ruimariano@amadeus.com   |
+      | beatrizpamplonacorp@galileo.com   |
