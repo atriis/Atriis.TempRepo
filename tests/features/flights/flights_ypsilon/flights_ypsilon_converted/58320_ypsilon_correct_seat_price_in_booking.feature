@@ -19,16 +19,14 @@ Feature: 58320 Ypsilon - Correct seat price is passed in booking request
     And I filter results by carrier "EI"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    When I add a credit card as payment method
-    # Add seats
+    When I click add payment method button
+    And I select card 1 and save
     When I click seating in extras
     And I click add seats in extras
     And I wait for the seat map to load
     And I select the first available flight seat
     And I save and close seat map drawer
-    # TODO: Verify yellow seat indicator is visible after saving seats
-    # Proceed to checkout and book
+    Then the yellow seat indicator should be visible after saving seats
     When I proceed to checkout
-    # TODO: Implement Ypsilon 3DS card verification step (Card verification dialog → type '555' → submit → wait → click Go to trip)
-    # TODO: Implement book and finalize with warning and continue step (click Book button → click Go to trip → wait for Trip overview)
+    When I complete the booking with Ypsilon credit card verification
     Then the booking status should be "Ticketing Complete"

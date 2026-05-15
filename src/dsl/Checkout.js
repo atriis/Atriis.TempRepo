@@ -4,6 +4,7 @@ const { CheckoutPage } = require("@pages/CheckoutPage");
 const { CartPage } = require("@pages/CartPage");
 const { CommonPage } = require("@pages/CommonPage");
 const BookingErrorHandler = require("@utils/BookingErrorHandler");
+const logger = require("@utils/logger").child("Checkout-DSL");
 
 
 /**
@@ -167,15 +168,32 @@ const Checkout = {
     const checkoutPage = getPageObject(page, CheckoutPage);
     const cartPage = getPageObject(page, CartPage);
 
-    // The Ypsilon 3DS modal auto-opens when the checkout page mounts (no Finalize click needed first).
-    // Complete the SCA challenge, wait for the modal to close, THEN click Book and Finalize.
-    await checkoutPage.completeYpsilon3dsVerification(verificationCode);
-    await checkoutPage.waitForYpsilon3dsDialogToClose();
-    await Checkout.bookTripWithoutNavigatingToTripOverview(page);
+    // Two known Ypsilon flows trigger the Card verification dialog at different times:
+    //   - Auto-open on checkout mount (e.g. test 29424) → complete SCA first, then Book and Finalize.
+    //   - Open after Book and Finalize click (e.g. test 58320) → click Book and Finalize first, then SCA.
+    // 30s probe: the auto-open variant can take up to ~25s to render the SCA dialog after
+    // checkout mount; the post-click variant pays this as fixed latency. Trade-off is accepted
+    // because reliability of the 29424 flow outweighs ~30s saved on 58320.
+    // The dialog itself has three render outcomes (iframe SCA challenge, simple accept button,
+    // or silent auto-close) — all handled inside completeYpsilon3dsVerification.
+    const dialogAlreadyOpen = await checkoutPage.isYpsilon3dsDialogVisible(30000);
+
+    if (dialogAlreadyOpen) {
+      logger.info('Ypsilon 3DS dialog auto-opened on checkout mount — completing SCA before Book and Finalize');
+      await checkoutPage.completeYpsilon3dsVerification(verificationCode);
+      await checkoutPage.waitForYpsilon3dsDialogToClose();
+      await Checkout.bookTripWithoutNavigatingToTripOverview(page);
+    } else {
+      logger.info('Ypsilon 3DS dialog not auto-opened — clicking Book and Finalize first, then completing SCA');
+      await Checkout.bookTripWithoutNavigatingToTripOverview(page);
+      await checkoutPage.completeYpsilon3dsVerification(verificationCode);
+      await checkoutPage.waitForYpsilon3dsDialogToClose();
+    }
+
     await checkoutPage.clickGoToTrip();
     await cartPage.waitForTripOverviewTitle();
 
-    return { finalized: true };
+    return { finalized: true, flowVariant: dialogAlreadyOpen ? 'auto-open' : 'post-click' };
   },
 
   /**

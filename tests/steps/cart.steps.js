@@ -318,6 +318,11 @@ Then("seats saved to trip should be validated", async function () {
   await Cart.verifySeatsSavedToTrip(this.page);
 });
 
+Then("the yellow seat indicator should be visible after saving seats", async function () {
+  logger.info("Verifying yellow seat indicator is visible after saving seats");
+  await Cart.verifyYellowSeatIndicatorVisible(this.page);
+});
+
 When("I open passenger info and acknowledge the warning {string}", async function (expectedMessage) {
   logger.info("Opening passenger info and acknowledging warning", { expectedMessage });
   await Cart.acknowledgePassengerInfoWarning(this.page, expectedMessage);

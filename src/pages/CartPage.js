@@ -228,6 +228,9 @@ const SELECTORS = {
 
   // Seating icon in extras section (flight-seating.vue — .yellow class = PendingApproval/PendingPayment)
   SEAT_ICON_IN_EXTRAS: '.flight-seating .material-symbols-outlined.seats',
+  // Yellow status indicator inside the flight seating extras section
+  // (extras-layout.vue — .success-icon.yellow rendered when isWaitingApproval or isWarning is true)
+  SEATING_YELLOW_INDICATOR: '.flight-seating .success-icon.yellow',
 
   // Traveler initials (trip-traveler-tag.vue)
   TRAVELER_INITIALS: '.avatar-initials',
@@ -3548,6 +3551,20 @@ class CartPage {
   async isSeatIconVisibleInExtras(timeout = 10000) {
     try {
       await this.page.locator(SELECTORS.SEAT_ICON_IN_EXTRAS).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the yellow seat status indicator is visible in the seating extras section.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<boolean>}
+   */
+  async isSeatingYellowIndicatorVisible(timeout = 10000) {
+    try {
+      await this.page.locator(SELECTORS.SEATING_YELLOW_INDICATOR).first().waitFor({ state: 'visible', timeout });
       return true;
     } catch {
       return false;

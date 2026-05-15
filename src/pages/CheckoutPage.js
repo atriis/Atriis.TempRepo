@@ -21,7 +21,12 @@ const SELECTORS = {
   FUSION_3DS_DIALOG_HEADER: ".el-dialog__header",
   // Ypsilon 3DS verification (ypsilon-3ds.vue — iframe-based SCA challenge)
   YPSILON_3DS_CONTAINER: "#yps_sca_frame",
-  YPSILON_3DS_DIALOG: ".app-dialog .card-verification",
+  // Element-plus dialog title with the exact 'Card verification' text — the most
+  // reliable indicator that the Ypsilon SCA dialog is actually shown to the user.
+  YPSILON_3DS_DIALOG_TITLE: ".el-dialog__title:has-text('Card verification')",
+  // Some Ypsilon 3DS dialogs are a simple accept screen with no challenge form;
+  // clicking the in-dialog accept button completes verification without iframe interaction.
+  YPSILON_3DS_ACCEPT_BUTTON: "#submit_accept",
   SEND_FOR_APPROVAL_BUTTON: "button:has-text('Send for approval')",
   APPROVAL_SUCCESS_TITLE: "text=Trip Submitted for Approval",
   APPROVAL_SUCCESS_MESSAGE: "text=/Your order has been booked and sent to your approver for approval/i",
@@ -393,22 +398,52 @@ class CheckoutPage {
    * Waits for the dialog and iframe, fills the test code, and submits.
    *
    * @param {string} verificationCode - The 3DS test code (e.g. '555')
-   * @param {number} timeout - Max wait time for the dialog/iframe to appear
+   * @param {number} timeout - Max wait time for the dialog title to appear
+   * @param {number} variantTimeout - Max wait time for the variant (accept button / iframe / auto-close) to resolve
    */
-  async completeYpsilon3dsVerification(verificationCode = '555', timeout = 90000) {
+  async completeYpsilon3dsVerification(verificationCode = '555', timeout = 90000, variantTimeout = 60000) {
     if (!verificationCode || typeof verificationCode !== 'string') {
       throw new Error(`verificationCode must be a non-empty string, got: ${typeof verificationCode}`);
     }
+    if (typeof variantTimeout !== 'number' || variantTimeout < 0) {
+      throw new Error(`variantTimeout must be a non-negative number, got: ${variantTimeout}`);
+    }
 
-    // Wait for the 3DS verification dialog to appear
-    const dialog = this.page.locator(SELECTORS.YPSILON_3DS_DIALOG);
-    await dialog.waitFor({ state: 'visible', timeout });
+    // Wait for the 3DS verification dialog title to appear.
+    // We key off `.el-dialog__title` with the exact 'Card verification' text —
+    // generic `.app-dialog` selectors can match unrelated hidden popups.
+    const dialogTitle = this.page.locator(SELECTORS.YPSILON_3DS_DIALOG_TITLE);
+    await dialogTitle.waitFor({ state: 'visible', timeout });
 
-    // The SCA script injects an iframe into #yps_sca_frame (Poseidon Bank / Verified by Visa).
-    // Wait for the iframe element to exist, then interact with the input/button inside.
+    // The Ypsilon dialog renders in one of three possible flows and we don't know which
+    // upfront. Race all three — whichever resolves first determines the outcome:
+    //   - Variant A (e.g. test 58320): a simple in-dialog accept button to click.
+    //   - Variant B (e.g. test 29424): an iframe SCA challenge inside #yps_sca_frame.
+    //   - Variant C: the dialog auto-closes on its own (silent SCA verification by the supplier).
+    const acceptButton = this.page.locator(SELECTORS.YPSILON_3DS_ACCEPT_BUTTON);
     const iframeElement = this.page.locator(`${SELECTORS.YPSILON_3DS_CONTAINER} iframe`);
-    await iframeElement.waitFor({ state: 'attached', timeout: 30000 });
 
+    const variant = await Promise.race([
+      acceptButton.waitFor({ state: 'visible', timeout: variantTimeout }).then(() => 'accept').catch(() => null),
+      iframeElement.waitFor({ state: 'attached', timeout: variantTimeout }).then(() => 'iframe').catch(() => null),
+      dialogTitle.waitFor({ state: 'hidden', timeout: variantTimeout }).then(() => 'auto-closed').catch(() => null),
+    ]);
+
+    if (variant === 'accept') {
+      await acceptButton.click();
+      return variant;
+    }
+
+    if (variant === 'auto-closed') {
+      // Supplier completed SCA silently — nothing further to do.
+      return variant;
+    }
+
+    if (variant !== 'iframe') {
+      throw new Error('Ypsilon 3DS dialog appeared but neither the accept button, the SCA iframe, nor a silent auto-close was observed within the timeout.');
+    }
+
+    // Variant B — iframe SCA challenge.
     const frame = this.page.frameLocator(`${SELECTORS.YPSILON_3DS_CONTAINER} iframe`);
     const challengeInput = frame.getByPlaceholder('Enter Code here');
     await challengeInput.waitFor({ state: 'visible', timeout: 30000 });
@@ -417,6 +452,7 @@ class CheckoutPage {
     const submitButton = frame.getByRole('button', { name: 'Submit', exact: true });
     await submitButton.waitFor({ state: 'visible', timeout: 10000 });
     await submitButton.click();
+    return variant;
   }
 
   /**
@@ -424,8 +460,26 @@ class CheckoutPage {
    * @param {number} timeout - Max wait time
    */
   async waitForYpsilon3dsDialogToClose(timeout = 60000) {
-    const dialog = this.page.locator(SELECTORS.YPSILON_3DS_DIALOG);
-    await dialog.waitFor({ state: 'hidden', timeout });
+    const dialogTitle = this.page.locator(SELECTORS.YPSILON_3DS_DIALOG_TITLE);
+    await dialogTitle.waitFor({ state: 'hidden', timeout });
+  }
+
+  /**
+   * Probes whether the Ypsilon 3DS Card verification dialog is currently shown.
+   * Used to decide between two booking flows: dialogs that auto-open on
+   * checkout mount (SCA before Book and Finalize) vs. dialogs that only open
+   * after Book and Finalize is clicked.
+   *
+   * @param {number} timeout - Max wait time (default: 5000)
+   * @returns {Promise<boolean>}
+   */
+  async isYpsilon3dsDialogVisible(timeout = 5000) {
+    try {
+      await this.page.locator(SELECTORS.YPSILON_3DS_DIALOG_TITLE).waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**

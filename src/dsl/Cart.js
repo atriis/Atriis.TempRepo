@@ -1288,6 +1288,33 @@ const Cart = {
   },
 
   /**
+   * Verifies the yellow status indicator is visible in the seating extras section
+   * after saving seats. The indicator (extras-layout.vue → .success-icon.yellow)
+   * appears when the seat selection is awaiting approval / pending payment.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<{ visible: boolean }>}
+   */
+  async verifyYellowSeatIndicatorVisible(page, { timeout = 15000 } = {}) {
+    if (!page) throw new Error('page is required');
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be >= 0, got ${timeout}`);
+    }
+
+    logger.info('Verifying yellow seat indicator is visible after saving seats', { timeout });
+
+    const cartPage = getPageObject(page, CartPage);
+    const visible = await cartPage.isSeatingYellowIndicatorVisible(timeout);
+
+    expect(visible, 'Expected yellow seat indicator to be visible after saving seats').toBe(true);
+
+    logger.info('Yellow seat indicator is visible');
+    return { visible };
+  },
+
+  /**
    * Gets passport details text from the cart extras section.
    * Returns the passport details for validation in step definitions.
    * 
