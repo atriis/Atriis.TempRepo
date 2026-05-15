@@ -18,6 +18,4 @@ Feature: 56842 Ypsilon - Paid by TMC is displayed when TMC FOP is set as default
     When I search for a round trip flight from "BRS" to "BFS"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # TODO: Verify "Paid by  TMC" text is visible in the .fop-owner element
-    # TODO: Verify the payment status icon (.payment-status-icon) is visible
-    Then I successfully cancel the trip
+    Then the payment type should be "Paid by TMC"
