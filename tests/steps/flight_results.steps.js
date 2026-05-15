@@ -733,6 +733,11 @@ Then("the branded fare ancillaries text should be visible", async function () {
   await FlightResults.verifyAncillariesTextVisible(this.page);
 });
 
+Then("the brand information unavailable message should be displayed", async function () {
+  logger.info("Verifying brand information unavailable message is displayed");
+  await FlightResults.verifyBrandInformationUnavailable(this.page);
+});
+
 Then("the carrier name in more details should be {string}", async function (expectedName) {
   logger.info("Verifying carrier name in more details", { expectedName });
   await FlightResults.verifyCarrierNameInDetails(this.page, expectedName);

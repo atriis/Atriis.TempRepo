@@ -154,6 +154,10 @@ const SELECTORS = {
   ANCILLARIES_INCLUDED_MESSAGE: 'The following ancillaries are included in this brand.',
   BRAND_NAME_BUTTON_IN_DETAILS: '.flight-details-bottom-bar .text-background button',
   BRAND_NAME_IN_PRICING_OPTIONS: '.leg-pricing-option .brand-name',
+  // Branded fares unavailable message — rendered as <h6> inside the drawer when
+  // both noBrandResults and noBrandFeatures are true (branded-fares.vue line 23,
+  // i18n key flight.brandedFaresUnavailable)
+  BRANDED_FARES_UNAVAILABLE_MESSAGE: "[aria-label='Branded fares'] h6:has-text('Brand information is currently unavailable')",
 
   // Carrier name in flight details drawer
   CARRIER_NAME_IN_DETAILS: '.flight-details-top-bar .carrier-name',
@@ -1738,6 +1742,23 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
         },
         { timeout }
       );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the "Brand information is currently unavailable." message is
+   * visible inside the branded fares drawer.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isBrandInformationUnavailableVisible(timeout = 15000) {
+    try {
+      await this.page
+        .locator(SELECTORS.BRANDED_FARES_UNAVAILABLE_MESSAGE)
+        .waitFor({ state: 'visible', timeout });
       return true;
     } catch {
       return false;

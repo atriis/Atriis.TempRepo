@@ -1288,6 +1288,34 @@ const FlightResults = {
   },
 
   /**
+   * Verifies the "Brand information is currently unavailable." message is
+   * displayed inside the currently open branded fares drawer. The same drawer
+   * component renders in three contexts (results flight-details, pricing
+   * options, and cart flight-details), so a single verification works for all.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<{ visible: boolean }>}
+   */
+  async verifyBrandInformationUnavailable(page, { timeout = 15000 } = {}) {
+    if (!page) throw new Error('page is required');
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be >= 0, got ${timeout}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const visible = await flightResultsPage.isBrandInformationUnavailableVisible(timeout);
+
+    expect(
+      visible,
+      'Expected "Brand information is currently unavailable." message to be visible in branded fares drawer',
+    ).toBe(true);
+
+    return { visible };
+  },
+
+  /**
    * Verifies that a specific brand name is visible in pricing options.
    *
    * @param {import('playwright').Page} page - Playwright page instance

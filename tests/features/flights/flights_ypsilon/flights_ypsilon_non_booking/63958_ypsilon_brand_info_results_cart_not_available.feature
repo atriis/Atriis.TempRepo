@@ -17,23 +17,19 @@ Feature: 63958 Ypsilon - Brand info displayed in results and cart, brands not av
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "AMS"
     Then flight results should be available
-    # Validate brand info in results page - flight details drawer
     When I click to open flight details
     And I open branded fares from cart flight details
-    # TODO: Verify "Brand information is currently unavailable." message is displayed in branded fares drawer
+    Then the brand information unavailable message should be displayed
     And I close branded fares drawer in cart
     And I close flight details window
-    # Validate brand info in results page - pricing options
     When I click to open first pricing options
-    # TODO: Click on the brand name in pricing options section to open branded fares
-    # TODO: Verify "Brand information is currently unavailable." message is displayed
-    # TODO: Close branded fares drawer
+    And I open branded fares from pricing options
+    Then the brand information unavailable message should be displayed
+    And I close branded fares drawer
     And I close pricing options modal
-    # Add flight to cart and validate brand info in cart
     When I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I open flight details in cart
     And I open branded fares from cart flight details
-    # TODO: Verify "Brand information is currently unavailable." message is displayed in cart branded fares
+    Then the brand information unavailable message should be displayed
     And I close branded fares drawer in cart
-    Then I successfully cancel the trip
