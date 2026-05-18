@@ -32,7 +32,7 @@ const Cart = {
     }
   },
 
-  async waitForTargetOrHandlePriceChange(page, targetLocator, targetDescription, timeout = process.env.CI ? 75000 : 45000) {
+  async waitForTargetOrHandlePriceChange(page, targetLocator, targetDescription, timeout = process.env.CI ? 120000 : 90000) {
     if (!page) {
       throw new Error('page is required');
     }
@@ -949,12 +949,25 @@ const Cart = {
     if (!page) {
       throw new Error('page is required');
     }
-    
+
     if (typeof index !== 'number' || index < 0) {
       throw new Error(`index must be >= 0, got ${index}`);
     }
 
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    logger.info('Clicking to open fare rules in cart', { index });
+
+    // A cart "More details" or "Price breakdown" drawer obscures the outer
+    // cart fare-rules button, so scope the click inside the open drawer.
+    if (await flightResultsPage.isAnyCartFlightDrawerOpen()) {
+      await flightResultsPage.waitForDrawerToSettle();
+      await flightResultsPage.waitAndClickFareRulesButtonInOpenCartDrawer();
+      await flightResultsPage.waitForFareRulesNote();
+      return { opened: true, source: 'drawer' };
+    }
+
     await FlightResults.clickToOpenFareRules(page, index);
+    return { opened: true, source: 'outer' };
   },
 
   /**

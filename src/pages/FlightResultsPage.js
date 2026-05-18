@@ -72,7 +72,14 @@ const SELECTORS = {
   RESULTS_ADD_TO_TRIP_BUTTON: '.btn.btn--primary:has-text("Add to trip")',
   RESULTS_SELECT_BUTTON: '.btn.btn--primary:has-text("Select")',
   RESULTS_SHARE_BUTTON: '.btn.btn--primary:has-text("Share")',
+  // Class selector preferred over getByRole because <app-btn isLinkStyle> may render as <a>, not <button>.
+  FARE_RULES_BUTTON: '.fare-rules-btn',
   FARE_RULES_BUTTON_NAME: 'Fare rules',
+  // Element Plus drawer transition classes are present only while animating.
+  DRAWER_TRANSITION: '.el-overlay .el-drawer-fade-enter-active, .el-overlay .el-drawer-fade-leave-active',
+  FLIGHT_DETAILS_SKELETON: '.flight-details-skeleton',
+  // Visible cart flight drawers (More details / Price breakdown) over the cart page.
+  OPEN_CART_FLIGHT_DRAWER: '.el-overlay:visible .app-drawer.flight-details-drawer, .el-overlay:visible .app-drawer.flight-price-breakdown-drawer',
   SEATS_BUTTON_NAME: 'Seats',
   FLIGHT_DETAILS_BUTTON_NAME: 'Flight details',
   FLIGHT_DETAILS_HEADLINE_PATTERN: / - /,
@@ -224,7 +231,7 @@ class FlightResultsPage {
    * @returns {import('@playwright/test').Locator}
    */
   getFareRulesButton() {
-    return this.page.getByRole('button', { name: SELECTORS.FARE_RULES_BUTTON_NAME });
+    return this.page.locator(SELECTORS.FARE_RULES_BUTTON);
   }
 
   /**
@@ -1040,6 +1047,64 @@ class FlightResultsPage {
   }
 
   /**
+   * Waits for any open drawer to finish its open/close transition and for
+   * inner loading skeletons to disappear. Without this, clicks inside the
+   * drawer (e.g. Fare rules) can be intercepted by `.el-drawer__body` or
+   * `.flight-details-skeleton` mid-animation.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   */
+  async waitForDrawerToSettle(timeout = 15000) {
+    await this.page
+      .locator(SELECTORS.DRAWER_TRANSITION)
+      .first()
+      .waitFor({ state: 'detached', timeout })
+      .catch(() => {});
+
+    await this.page
+      .locator(SELECTORS.FLIGHT_DETAILS_SKELETON)
+      .first()
+      .waitFor({ state: 'hidden', timeout })
+      .catch(() => {});
+  }
+
+  /**
+   * Returns a locator for any visible cart flight drawer (More details or
+   * Price breakdown). When present, the outer cart fare-rules button is
+   * obscured and clicks must be scoped inside this overlay.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getOpenCartFlightDrawer() {
+    return this.page.locator(SELECTORS.OPEN_CART_FLIGHT_DRAWER);
+  }
+
+  /**
+   * Returns true if a cart flight drawer (More details or Price breakdown)
+   * is currently open over the cart.
+   *
+   * @returns {Promise<boolean>}
+   */
+  async isAnyCartFlightDrawerOpen() {
+    return (await this.getOpenCartFlightDrawer().count()) > 0;
+  }
+
+  /**
+   * Clicks the "Fare rules" button inside the currently open cart flight
+   * drawer (More details or Price breakdown).
+   *
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async waitAndClickFareRulesButtonInOpenCartDrawer(timeout = 60000) {
+    const button = this.getOpenCartFlightDrawer()
+      .locator(SELECTORS.FARE_RULES_BUTTON)
+      .first();
+    await button.waitFor({ state: 'visible', timeout });
+    await button.scrollIntoViewIfNeeded().catch(() => {});
+    await button.click();
+  }
+
+  /**
    * Waits for then clicks a Fare rules button scoped to the pricing options
    * overlay, so background buttons blocked by the overlay are excluded.
    *
@@ -1048,9 +1113,10 @@ class FlightResultsPage {
    */
   async waitAndClickFareRulesButtonInPricingOptions(index = 0, timeout = 60000) {
     const button = this.getPricingOptionsOverlay()
-      .getByRole('button', { name: SELECTORS.FARE_RULES_BUTTON_NAME })
+      .locator(SELECTORS.FARE_RULES_BUTTON)
       .nth(index);
     await button.waitFor({ state: 'visible', timeout });
+    await this.waitForDrawerToSettle();
     await button.click();
   }
 
@@ -1063,9 +1129,10 @@ class FlightResultsPage {
   async waitAndClickFareRulesButtonInFlightDetails(timeout = 60000) {
     const drawer = this.page.locator(SELECTORS.FLIGHT_DETAILS_DRAWER);
     const button = drawer
-      .getByRole('button', { name: SELECTORS.FARE_RULES_BUTTON_NAME })
+      .locator(SELECTORS.FARE_RULES_BUTTON)
       .first();
     await button.waitFor({ state: 'visible', timeout });
+    await this.waitForDrawerToSettle();
     await button.click();
   }
 
