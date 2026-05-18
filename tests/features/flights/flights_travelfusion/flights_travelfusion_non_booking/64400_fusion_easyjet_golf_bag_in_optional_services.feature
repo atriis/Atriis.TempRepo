@@ -19,4 +19,5 @@ Feature: 64400 Fusion EasyJet - Golf Bag option displayed in Optional Services f
     When I filter results by carrier "U2"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # TODO: implement 'the Golf Bag option should be displayed in Optional Services for this route' — see Golf_Bag_is_displayed_as_an_option_in__Optional_Services__in_a_specific_route() in Testim source (test 64400)
+    When I click optional services in extras
+    Then the "Golf Bag" option should be displayed in optional services

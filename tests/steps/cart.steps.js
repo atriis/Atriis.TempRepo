@@ -1162,6 +1162,11 @@ Then("the optional services unavailable message should be visible", async functi
   await Cart.verifyOptionalServicesUnavailableMessage(this.page);
 });
 
+Then("the {string} option should be displayed in optional services", async function (optionText) {
+  logger.info("Verifying optional service option is displayed", { optionText });
+  await Cart.verifyOptionalServiceOptionDisplayed(this.page, optionText);
+});
+
 // --- Ancillary Services steps ---
 
 When("I click to edit the ancillary services section", async function () {

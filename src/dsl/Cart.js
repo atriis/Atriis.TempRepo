@@ -3644,6 +3644,27 @@ const Cart = {
     logger.info('Optional services unavailable message is visible');
   },
 
+  /**
+   * Verifies that an optional service option with the given description is displayed in the expanded
+   * optional services panel.
+   * @param {import('playwright').Page} page
+   * @param {string} optionText - The option description to look for (e.g. "Golf Bag")
+   */
+  async verifyOptionalServiceOptionDisplayed(page, optionText) {
+    if (!page) throw new Error('page is required');
+    if (typeof optionText !== 'string' || !optionText.trim()) {
+      throw new Error(`optionText must be a non-empty string, got: ${typeof optionText}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const option = cartPage.getOptionalServicesOptionByText(optionText);
+    await expect(
+      option,
+      `Expected optional service "${optionText}" to be displayed in the Optional Services panel`
+    ).toBeVisible({ timeout: 20000 });
+    logger.info('Optional service option is displayed', { optionText });
+  },
+
   async clickEditAncillaryServices(page) {
     if (!page) throw new Error('page is required');
 

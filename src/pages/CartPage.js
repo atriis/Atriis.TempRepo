@@ -119,6 +119,7 @@ const SELECTORS = {
   FLIGHT_OPTIONAL_SERVICES_TITLE: '.flight-optional-services .card-title', // "Optional Services" title in the extras section (flight-optional-services.vue)
   FLIGHT_OPTIONAL_SERVICES_EDIT_BUTTON: '.flight-optional-services .extra__btns', // Edit/Add button in the optional services extras row (flight-optional-services.vue)
   FLIGHT_OPTIONAL_SERVICES_MESSAGE: '.flight-optional-services .el-tab-pane span', // Message text inside the optional services tab content (flight-optional-services.vue)
+  FLIGHT_OPTIONAL_SERVICES_OPTION_TITLE: '.flight-optional-services .service-option .option-title', // Each available service option title inside the expanded optional services panel
   // Flight Ancillary Services (flight-ancillary-services.vue)
   FLIGHT_ANCILLARY_SERVICES_EDIT_BUTTON: '.flight-ancillary-services .extra__btns', // Edit/Add button in the ancillary services extras row
   FLIGHT_ANCILLARY_SERVICES_CARRIER_NAME: '.flight-ancillary-services .carrier-name', // Carrier name in ancillary services segment
@@ -1878,6 +1879,18 @@ class CartPage {
    */
   getOptionalServicesMessageLocator() {
     return this.page.locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_MESSAGE).first();
+  }
+
+  /**
+   * Returns the locator for an optional service option whose title contains the given text.
+   * @param {string} optionText - Substring to match within the option title (e.g. "Golf Bag")
+   * @returns {import('@playwright/test').Locator}
+   */
+  getOptionalServicesOptionByText(optionText) {
+    return this.page
+      .locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_OPTION_TITLE)
+      .filter({ hasText: optionText })
+      .first();
   }
 
   // --- Ancillary Services (flight-ancillary-services.vue) ---
