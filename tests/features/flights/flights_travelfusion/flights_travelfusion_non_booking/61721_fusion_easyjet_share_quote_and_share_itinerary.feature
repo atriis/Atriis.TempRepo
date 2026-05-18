@@ -20,7 +20,8 @@ Feature: 61721 Fusion EasyJet - Share quote and share itinerary work as expected
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I click the share itinerary button
-    # TODO: implement 'the share itinerary dialog opens correctly and can be closed' — see click_on_share_itinerary_from_cart() in Testim source (test 61721)
+    Then I wait to see "Subject" field in share dialog
     When I close the share dialog
     When I click the share quote button
-    # TODO: implement 'the share quote dialog opens correctly from the cart' — see click_on_share_quote_from_the_cart() in Testim source (test 61721)
+    Then I wait to see "Subject" field in share dialog
+    And I close the share dialog
