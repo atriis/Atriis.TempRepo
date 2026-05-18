@@ -19,6 +19,5 @@ Feature: 46199 Fusion Flight Safari Airline - Add baggage on round trip flight
     When I filter results by carrier "FA"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # TODO: implement 'I add baggage for outbound and return Flight Safari segments' — see steps clicking '.flight-baggage .is-clickable', selecting outbound/return baggage and saving (test 46199)
-    # TODO: implement 'the baggage filled indicator should be visible after saving' — isVisible('.flight-baggage .filled') in Testim source (test 46199)
-    Then I successfully cancel the trip
+    When I add baggage for outbound and return segments
+    Then the baggage green icon should be visible

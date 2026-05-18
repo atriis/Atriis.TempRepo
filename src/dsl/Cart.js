@@ -2720,6 +2720,32 @@ const Cart = {
   },
 
   /**
+   * Opens the baggage panel, selects first available option for both outbound and
+   * return segments, then saves. Used for round trip flights where baggage must
+   * be selected per segment.
+   * @param {import('playwright').Page} page
+   */
+  async addBaggageForAllSegments(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    if (!(await cartPage.isBaggageExtrasOpen())) {
+      await cartPage.clickEditBaggageExtrasButton();
+    }
+
+    logger.info('Selecting baggage for outbound segment (index 0)');
+    await cartPage.selectFirstAvailableBaggageOptionForSegment(0);
+
+    logger.info('Selecting baggage for return segment (index 1)');
+    await cartPage.selectFirstAvailableBaggageOptionForSegment(1);
+
+    await cartPage.clickSaveButton();
+
+    return { added: true, segmentCount: 2 };
+  },
+
+  /**
    * Selects a baggage option containing the given text for a specific flight
    * direction ("outbound" or "inbound") inside the cart's flight-baggage panel.
    * Idempotent: opens the baggage panel only when it is not already expanded,

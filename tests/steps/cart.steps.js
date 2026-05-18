@@ -207,6 +207,11 @@ When("I select a baggage option", async function () {
   await Cart.selectFirstBaggageOption(this.page);
 });
 
+When("I add baggage for outbound and return segments", async function () {
+  logger.info("Adding baggage for outbound and return segments");
+  await Cart.addBaggageForAllSegments(this.page);
+});
+
 When("I select the {string} baggage option for the {string} flight", async function (optionText, direction) {
   logger.info("Selecting baggage option in cart for flight direction", { optionText, direction });
   await Cart.selectBaggageOptionForFlightDirection(this.page, optionText, direction);

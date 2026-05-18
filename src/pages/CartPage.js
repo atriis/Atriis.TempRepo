@@ -160,6 +160,7 @@ const SELECTORS = {
   BAGGAGE_SEGMENT_ROW: '.flight-baggage .el-tab-pane:visible .segment', // One row per flight direction (idx 0 = outbound, idx 1 = inbound)
   BAGGAGE_SEGMENT_SELECT_TRIGGER: '.el-select__wrapper', // Sub-selector — clicked relative to a segment row to open its dropdown
   BAGGAGE_DROPDOWN_PANEL: '.el-select-dropdown:visible', // Visible Element-Plus popper containing the segment dropdown options
+  BAGGAGE_DROPDOWN_ENABLED_OPTION: '.el-select-dropdown__item:not(.is-disabled)', // Enabled (selectable) option inside a baggage dropdown panel
   BAGGAGE_SEGMENT_CARRIER_NAME: '.flight-baggage .el-tab-pane:visible .form-date-section > :nth-child(1) .carrier-name', // Carrier name in the first baggage segment row (flight-baggage.vue)
   
   // Flight Seating (flight-seating.vue)
@@ -1588,9 +1589,35 @@ class CartPage {
     await segment.waitFor({ state: 'visible', timeout });
     const trigger = segment.locator(SELECTORS.BAGGAGE_SEGMENT_SELECT_TRIGGER).first();
     await trigger.click();
-    const firstOption = this.page.locator(`${SELECTORS.BAGGAGE_DROPDOWN_PANEL} .el-select-dropdown__item:not(.is-disabled)`).first();
+    const firstOption = this.page.locator(`${SELECTORS.BAGGAGE_DROPDOWN_PANEL} ${SELECTORS.BAGGAGE_DROPDOWN_ENABLED_OPTION}`).first();
     await firstOption.waitFor({ state: 'visible', timeout });
     await firstOption.click();
+  }
+
+  /**
+   * Selects the first paid baggage option for a given segment index.
+   * Paid options are identified by containing " - " in their label (price separator).
+   * Free options like "0 x hold bag" do not have this separator.
+   * Waits for the dropdown to fully close after selection to avoid race conditions
+   * when called multiple times in sequence (e.g. outbound then return).
+   * @param {number} segmentIndex - 0-based segment index (0 = outbound, 1 = inbound)
+   * @param {number} [timeout=10000] - Max wait time in ms
+   */
+  async selectFirstAvailableBaggageOptionForSegment(segmentIndex, timeout = 10000) {
+    if (!Number.isInteger(segmentIndex) || segmentIndex < 0) {
+      throw new Error(`segmentIndex must be a non-negative integer, got: ${segmentIndex}`);
+    }
+    const segment = this.page.locator(SELECTORS.BAGGAGE_SEGMENT_ROW).nth(segmentIndex);
+    await segment.waitFor({ state: 'visible', timeout });
+    const trigger = segment.locator(SELECTORS.BAGGAGE_SEGMENT_SELECT_TRIGGER).first();
+    await trigger.click();
+    const panel = this.page.locator(SELECTORS.BAGGAGE_DROPDOWN_PANEL).last();
+    await panel.waitFor({ state: 'visible', timeout });
+    // Select only PAID options — they contain " - " (price separator, e.g. "1 x hold bag (15kg) - 67.98EUR")
+    const paidOption = panel.locator(SELECTORS.BAGGAGE_DROPDOWN_ENABLED_OPTION).filter({ hasText: / - / }).first();
+    await paidOption.waitFor({ state: 'visible', timeout });
+    await paidOption.click();
+    await this.page.locator(SELECTORS.BAGGAGE_DROPDOWN_PANEL).waitFor({ state: 'hidden', timeout });
   }
 
   /**
