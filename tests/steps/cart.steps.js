@@ -258,6 +258,16 @@ When("I click frequent flyer in extras", async function () {
   await Cart.openFrequentFlyerExtras(this.page);
 });
 
+When("I attempt to save the FQTV section without entering a value", async function () {
+  logger.info("Attempting to save FQTV section without entering a value");
+  await Cart.saveFqtvWithoutEntering(this.page);
+});
+
+Then("the FQTV section should display {string} error", async function (expectedMessage) {
+  logger.info("Verifying FQTV section displays required-field error", { expectedMessage });
+  await Cart.verifyFqtvRequiredError(this.page);
+});
+
 When("I wait for the seat map to load", async function () {
   logger.info("Waiting for seat map to load");
   const cartPage = getPageObject(this.page, CartPage);

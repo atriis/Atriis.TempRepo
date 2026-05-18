@@ -17,6 +17,5 @@ Feature: 46763 Fusion - Empty FQTV cannot be added to a Fusion flight
     When I search for a round trip flight from "GLA" to "BRS"
     And I add the first flight to cart
     When I click frequent flyer in extras
-    # TODO: implement 'I attempt to save the FQTV section without entering a value' — clicks save without filling (test 46763)
-    # TODO: implement 'the FQTV section should display "This field is required" error' — waitForText('.help', 'This field is required') and isVisible('.error') (test 46763)
-    Then I successfully cancel the trip
+    And I attempt to save the FQTV section without entering a value
+    Then the FQTV section should display "This field is required" error

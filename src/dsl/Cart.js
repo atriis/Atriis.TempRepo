@@ -2615,6 +2615,33 @@ const Cart = {
     await cartPage.waitForFqtvContent();
   },
 
+  /**
+   * Clicks the Save button inside the flight frequent flyer panel without filling in
+   * the frequent flyer number. Used to trigger client-side required-field validation.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async saveFqtvWithoutEntering(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickFqtvSaveButton();
+  },
+
+  /**
+   * Verifies that the flight frequent flyer panel displays the "This field is required"
+   * validation message after attempting to save an empty FQTV.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async verifyFqtvRequiredError(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const helpText = cartPage.getFqtvHelpTextLocator();
+    await expect(helpText, 'FQTV required-field error message should be visible after saving empty value').toHaveText('This field is required', { timeout: 10000 });
+  },
+
   async openBaggageExtras(page) {
     if (!page) throw new Error('page is required');
 

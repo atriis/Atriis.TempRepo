@@ -326,6 +326,8 @@ const SELECTORS = {
   FQTV_CARRIER_OPTION_TEXT: '.el-select-dropdown__item span',
   FQTV_NUMBER_INPUT: '.flight-frequent-flyer .el-tab-pane:visible .ff-inputs > .app-column:first-child input',
   FQTV_SUCCESS_ICON: '.flight-frequent-flyer .success-icon.green',
+  FQTV_SAVE_BUTTON: '.flight-frequent-flyer .btns .no-border',
+  FQTV_HELP_TEXT: '.flight-frequent-flyer .help',
 
   // eHotel supplier details in cart (hotel-quote-card.vue → booking-confirm section)
   EHOTEL_PIN_CODE: '.booking-confirm p:has-text("Pincode:")',
@@ -4022,6 +4024,27 @@ class CartPage {
    */
   async hasFqtvSuccessIcon() {
     return this.page.locator(SELECTORS.FQTV_SUCCESS_ICON).isVisible();
+  }
+
+  /**
+   * Clicks the Save button inside the flight frequent flyer extras panel.
+   * Assumes the FQTV panel is already open.
+   * @param {number} [timeout=10000] - Timeout for waiting for the button to be visible
+   * @returns {Promise<void>}
+   */
+  async clickFqtvSaveButton(timeout = 10000) {
+    const saveButton = this.page.locator(SELECTORS.FQTV_SAVE_BUTTON).first();
+    await saveButton.waitFor({ state: 'visible', timeout });
+    await saveButton.click();
+  }
+
+  /**
+   * Returns the help/validation message locator inside the flight frequent flyer panel.
+   * Used to assert required-field validation errors.
+   * @returns {import('playwright').Locator}
+   */
+  getFqtvHelpTextLocator() {
+    return this.page.locator(SELECTORS.FQTV_HELP_TEXT).first();
   }
 
   /**
