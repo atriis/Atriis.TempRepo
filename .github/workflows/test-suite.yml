@@ -46,6 +46,10 @@ jobs:
           - suite_id: flights-sabre-non-booking
             suite_name: Flights Sabre Non Booking
             test_path: tests/features/flights/flights_sabre/flights_sabre_non_booking/
+          # LCC Flights - Non Booking
+          - suite_id: flights-ypsilon-non-booking
+            suite_name: Flights Ypsilon Non Booking
+            test_path: tests/features/flights/flights_ypsilon/flights_ypsilon_non_booking/
           # NDC Flights - Non Booking
           - suite_id: flights-aa-ndc-non-booking
             suite_name: Flights AA NDC Non Booking
@@ -193,6 +197,10 @@ jobs:
           - suite_id: flights-sabre-booking
             suite_name: Flights Sabre Booking
             test_path: tests/features/flights/flights_sabre/flights_sabre_booking/
+          # LCC Flights - Booking
+          - suite_id: flights-ypsilon-booking
+            suite_name: Flights Ypsilon Booking
+            test_path: tests/features/flights/flights_ypsilon/flights_ypsilon_booking/
           # NDC Flights - Booking
           - suite_id: flights-afkl-ndc-booking
             suite_name: Flights AFKL NDC Booking
