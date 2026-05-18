@@ -1172,6 +1172,29 @@ Then("the saved ancillary services selections should be retained", async functio
   await Cart.verifyAncillaryServicesSelectionsRetained(this.page, this.ancillarySelections);
 });
 
+When("I switch to ancillary services traveler tab {int}", async function (tabNumber) {
+  logger.info("Switching to ancillary services traveler tab", { tabNumber });
+  await Cart.switchAncillaryServicesToTravelerTab(this.page, tabNumber);
+});
+
+When("I select the first ancillary service option with price for flight {int} and store its value for traveler tab {int}", async function (flightNumber, tabNumber) {
+  const segmentIndex = flightNumber - 1;
+  logger.info("Selecting priced ancillary service option for traveler segment", { flightNumber, segmentIndex, tabNumber });
+  const result = await Cart.selectAncillaryServiceWithPriceBySegmentForTraveler(this.page, segmentIndex, tabNumber);
+  if (!this.ancillarySelectionsByTraveler) this.ancillarySelectionsByTraveler = {};
+  if (!this.ancillarySelectionsByTraveler[tabNumber]) this.ancillarySelectionsByTraveler[tabNumber] = [];
+  this.ancillarySelectionsByTraveler[tabNumber].push(result);
+});
+
+Then("the saved ancillary services selections for traveler tab {int} should be retained", async function (tabNumber) {
+  logger.info("Verifying ancillary services selections are retained for traveler tab", { tabNumber });
+  const expected = (this.ancillarySelectionsByTraveler && this.ancillarySelectionsByTraveler[tabNumber]) || [];
+  if (expected.length === 0) {
+    throw new Error(`No stored ancillary services selections found for traveler tab ${tabNumber}. Did the scenario select options for this traveler?`);
+  }
+  await Cart.verifyAncillaryServicesSelectionsRetainedForTraveler(this.page, expected, tabNumber);
+});
+
 Then("the passenger info section should not be visible in the extras", async function () {
   logger.info("Verifying passenger info (APIS) section is not visible in extras");
   await Cart.verifyPassengerInfoNotVisibleInExtras(this.page);

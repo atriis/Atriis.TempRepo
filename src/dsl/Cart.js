@@ -3663,6 +3663,92 @@ const Cart = {
   },
 
   /**
+   * Switches to the given traveler tab inside the ancillary services panel.
+   * Tab numbering is 1-based and matches the order shown to the user.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} tabNumber - 1-based tab position
+   */
+  async switchAncillaryServicesToTravelerTab(page, tabNumber) {
+    if (!page) throw new Error('page is required');
+    if (!Number.isInteger(tabNumber) || tabNumber < 1) {
+      throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickAncillaryServicesTravelerTabByIndex(tabNumber);
+    logger.info('Switched to ancillary services traveler tab', { tabNumber });
+  },
+
+  /**
+   * Selects the first priced ancillary service option for the given segment of
+   * the currently active traveler tab. Returns the selection so the caller can
+   * store it per traveler for later verification.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} segmentIndex - 0-based segment index (0 = outbound)
+   * @param {number} tabNumber - 1-based traveler tab number (used for logging/return)
+   * @returns {Promise<{ travelerTab: number, segmentIndex: number, selectedOption: string }>}
+   */
+  async selectAncillaryServiceWithPriceBySegmentForTraveler(page, segmentIndex, tabNumber) {
+    if (!page) throw new Error('page is required');
+    if (typeof segmentIndex !== 'number' || segmentIndex < 0) {
+      throw new Error(`segmentIndex must be a non-negative number, got: ${segmentIndex}`);
+    }
+    if (!Number.isInteger(tabNumber) || tabNumber < 1) {
+      throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.openAncillaryServicesDropdownBySegmentForActiveTraveler(segmentIndex);
+    const optionTexts = await cartPage.getAncillaryServiceOptionTexts();
+
+    const pricedOptionPattern = /\d+(?:[\.,]\d{1,2})?\s*[A-Z]{3}/;
+    const matchingOption = optionTexts.find(text => pricedOptionPattern.test(text));
+
+    if (!matchingOption) {
+      throw new Error(`No ancillary service option with price found for traveler ${tabNumber}, segment ${segmentIndex}. Available options: ${JSON.stringify(optionTexts)}`);
+    }
+
+    logger.info('Found priced ancillary service option', { tabNumber, segmentIndex, matchingOption });
+
+    await cartPage.selectAncillaryServiceOptionByText(matchingOption);
+    logger.info('Selected ancillary service option for traveler segment', { tabNumber, segmentIndex });
+
+    return { travelerTab: tabNumber, segmentIndex, selectedOption: matchingOption };
+  },
+
+  /**
+   * Verifies the ancillary-service selections for a specific traveler tab are
+   * still in place. Assumes the caller has already switched to that tab.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Array<{ segmentIndex: number, selectedOption: string }>} expectedSelections
+   * @param {number} tabNumber - 1-based traveler tab number (used for error context)
+   */
+  async verifyAncillaryServicesSelectionsRetainedForTraveler(page, expectedSelections, tabNumber) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(expectedSelections)) {
+      throw new Error(`expectedSelections must be an array, got: ${typeof expectedSelections}`);
+    }
+    if (!Number.isInteger(tabNumber) || tabNumber < 1) {
+      throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    for (const { segmentIndex, selectedOption } of expectedSelections) {
+      const currentText = await cartPage.getAncillaryServicesSelectedTextBySegmentForActiveTraveler(segmentIndex);
+      expect(currentText, `Traveler ${tabNumber}, segment ${segmentIndex} should retain selection "${selectedOption}", got: "${currentText}"`)
+        .toContain(selectedOption.split(' - ')[0].trim());
+      logger.info('Ancillary service selection retained for traveler segment', { tabNumber, segmentIndex, currentText });
+    }
+
+    return { verified: true, travelerTab: tabNumber, selectionsCount: expectedSelections.length };
+  },
+
+  /**
    * Expands the extras collapse and verifies the passenger info section is NOT visible.
    * Used for non-US flights where APIS is not required.
    * @param {import('playwright').Page} page

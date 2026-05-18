@@ -128,6 +128,8 @@ const SELECTORS = {
   FLIGHT_ANCILLARY_SERVICES_DROPDOWN_PANEL: '.el-select-dropdown:visible', // Visible Element-Plus dropdown panel (rendered at body level)
   FLIGHT_ANCILLARY_SERVICES_DROPDOWN_OPTION: '.el-select-dropdown:visible .el-select-dropdown__item', // Dropdown option in the visible panel
   FLIGHT_ANCILLARY_SERVICES_SUCCESS_ICON: '.flight-ancillary-services .material-symbols-outlined.filled.success-icon.green', // Green checkmark after successful save
+  FLIGHT_ANCILLARY_SERVICES_TRAVELER_TAB: '.flight-ancillary-services .flight-cart-tabs .el-tabs__item:visible', // Per-traveler tab inside the ancillary services panel
+  FLIGHT_ANCILLARY_SERVICES_VISIBLE_SEGMENT: '.flight-ancillary-services .el-tab-pane:visible .segment', // Segment row scoped to the active traveler tab (multi-pax)
   // Premier Inn extras selectors (premier-inn.vue)
   PREMIER_INN_PAYMENT_SELECT: '.quote-extras--premier-inn .extras-card .el-select', // First el-select in Premier Inn extras = payment method
 
@@ -1937,6 +1939,67 @@ class CartPage {
 
   getAncillaryServicesSuccessIcon() {
     return this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_SUCCESS_ICON).first();
+  }
+
+  /**
+   * Clicks an ancillary-services traveler tab by 1-based index as shown in the UI.
+   * Used for multi-pax bookings where each traveler has their own tab.
+   *
+   * @param {number} tabNumber - 1-based tab position
+   * @param {number} [timeout=15000] - Per-action timeout in ms
+   */
+  async clickAncillaryServicesTravelerTabByIndex(tabNumber, timeout = 15000) {
+    if (!Number.isInteger(tabNumber) || tabNumber < 1) {
+      throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
+    }
+
+    const tab = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_TRAVELER_TAB).nth(tabNumber - 1);
+    await tab.waitFor({ state: 'visible', timeout });
+    await tab.click();
+  }
+
+  /**
+   * Opens the ancillary-services dropdown for the given segment inside the
+   * currently active traveler tab. Index 0 = outbound, 1 = inbound.
+   *
+   * @param {number} segmentIndex - 0-based segment index
+   * @param {number} [timeout=15000] - Per-action timeout in ms
+   */
+  async openAncillaryServicesDropdownBySegmentForActiveTraveler(segmentIndex, timeout = 15000) {
+    if (typeof segmentIndex !== 'number' || segmentIndex < 0) {
+      throw new Error(`segmentIndex must be a non-negative number, got: ${segmentIndex}`);
+    }
+    const existingPanel = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_DROPDOWN_PANEL);
+    const panelVisible = await existingPanel.last().isVisible().catch(() => false);
+    if (panelVisible) {
+      await this.page.keyboard.press('Escape');
+      await existingPanel.last().waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+    }
+    const segment = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_VISIBLE_SEGMENT).nth(segmentIndex);
+    await segment.waitFor({ state: 'visible', timeout });
+    const trigger = segment.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_SEGMENT_SELECT_TRIGGER).first();
+    await trigger.click();
+    const panel = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_DROPDOWN_PANEL).last();
+    await panel.waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Returns the currently selected ancillary-service option text for the given
+   * segment inside the active traveler tab.
+   *
+   * @param {number} segmentIndex - 0-based segment index
+   * @param {number} [timeout=10000] - Per-action timeout in ms
+   * @returns {Promise<string>}
+   */
+  async getAncillaryServicesSelectedTextBySegmentForActiveTraveler(segmentIndex, timeout = 10000) {
+    if (typeof segmentIndex !== 'number' || segmentIndex < 0) {
+      throw new Error(`segmentIndex must be a non-negative number, got: ${segmentIndex}`);
+    }
+    const segment = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_VISIBLE_SEGMENT).nth(segmentIndex);
+    await segment.waitFor({ state: 'visible', timeout });
+    const wrapper = segment.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_SEGMENT_SELECT_TRIGGER).first();
+    const text = await wrapper.innerText().catch(() => '');
+    return text.trim();
   }
 
   /**
