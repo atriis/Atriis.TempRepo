@@ -258,6 +258,21 @@ When("I click frequent flyer in extras", async function () {
   await Cart.openFrequentFlyerExtras(this.page);
 });
 
+When("I click hand luggage in extras", async function () {
+  logger.info("Clicking hand luggage in extras");
+  await Cart.openHandLuggageExtras(this.page);
+});
+
+When("I select the first paid hand luggage option", async function () {
+  logger.info("Selecting first paid hand luggage option");
+  await Cart.selectFirstPaidHandLuggageOption(this.page);
+});
+
+Then("the hand luggage green checkmark should be visible", async function () {
+  logger.info("Verifying hand luggage success icon (green checkmark) is visible");
+  await Cart.verifyHandLuggageHasSuccessIcon(this.page);
+});
+
 When("I attempt to save the FQTV section without entering a value", async function () {
   logger.info("Attempting to save FQTV section without entering a value");
   await Cart.saveFqtvWithoutEntering(this.page);

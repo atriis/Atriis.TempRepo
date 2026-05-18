@@ -19,4 +19,8 @@ Feature: 55148 Fusion Vueling - Hand luggage options are displayed
     When I filter results by carrier "VY"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # TODO: implement 'I select a hand luggage option' — see Select_hand_luggage_option() in Testim source (test 55148)
+    And I click hand luggage in extras
+    And I select the first paid hand luggage option
+    And I click the save button
+    Then the booking status should be "Pending booking"
+    Then the hand luggage green checkmark should be visible

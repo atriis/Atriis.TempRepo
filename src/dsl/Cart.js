@@ -2634,6 +2634,49 @@ const Cart = {
    * @param {import('playwright').Page} page - Playwright page instance
    * @returns {Promise<void>}
    */
+  /**
+   * Opens the flight hand luggage extras section in the cart.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async openHandLuggageExtras(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickHandLuggageClickable();
+    await cartPage.waitForHandLuggageContent();
+  },
+
+  /**
+   * Selects the first paid hand luggage option from the hand luggage dropdown.
+   * Free options are skipped; the first option whose label contains a price is chosen.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} Text of the selected option
+   */
+  async selectFirstPaidHandLuggageOption(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const selectedText = await cartPage.selectFirstPaidHandLuggageOption();
+    logger.debug('Selected first paid hand luggage option', { selectedText });
+    return selectedText;
+  },
+
+  /**
+   * Verifies the flight hand luggage section shows the green success icon.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyHandLuggageHasSuccessIcon(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await expect(
+      cartPage.getHandLuggageSuccessIconLocator(),
+      'Expected hand luggage section to display the green success icon'
+    ).toBeVisible({ timeout: 30000 });
+  },
+
   async verifyFqtvRequiredError(page) {
     if (!page) throw new Error('page is required');
 

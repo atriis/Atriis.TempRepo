@@ -329,6 +329,13 @@ const SELECTORS = {
   FQTV_SAVE_BUTTON: '.flight-frequent-flyer .btns .no-border',
   FQTV_HELP_TEXT: '.flight-frequent-flyer .help',
 
+  // Flight Hand Luggage extras (flight-hand-luggage.vue)
+  HAND_LUGGAGE_CLICKABLE: '.flight-hand-luggage .is-clickable',
+  HAND_LUGGAGE_CARD_TITLE: '.flight-hand-luggage .card-title',
+  HAND_LUGGAGE_SUCCESS_ICON: '.flight-hand-luggage .success-icon.green',
+  HAND_LUGGAGE_SELECT_WRAPPER: '.flight-hand-luggage .el-select__wrapper',
+  EL_SELECT_VISIBLE_DROPDOWN_ITEM: '.el-select-dropdown:visible .el-select-dropdown__item',
+
   // eHotel supplier details in cart (hotel-quote-card.vue → booking-confirm section)
   EHOTEL_PIN_CODE: '.booking-confirm p:has-text("Pincode:")',
   EHOTEL_CONFIRMATION_NUMBER: '.booking-confirm p:has-text("Confirmation Number:")',
@@ -4045,6 +4052,55 @@ class CartPage {
    */
   getFqtvHelpTextLocator() {
     return this.page.locator(SELECTORS.FQTV_HELP_TEXT).first();
+  }
+
+  /**
+   * Clicks the Hand Luggage row action to open the hand luggage extras panel.
+   * @param {number} [timeout=15000] - Timeout for waiting
+   * @returns {Promise<void>}
+   */
+  async clickHandLuggageClickable(timeout = 15000) {
+    const clickable = this.page.locator(SELECTORS.HAND_LUGGAGE_CLICKABLE).first();
+    await clickable.waitFor({ state: 'visible', timeout });
+    await clickable.click();
+  }
+
+  /**
+   * Waits for the hand luggage extras panel to render its card title after opening.
+   * @param {number} [timeout=15000] - Timeout for waiting
+   * @returns {Promise<void>}
+   */
+  async waitForHandLuggageContent(timeout = 15000) {
+    await this.page.locator(SELECTORS.HAND_LUGGAGE_CARD_TITLE).first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Returns the hand luggage green success icon locator.
+   * @returns {import('playwright').Locator}
+   */
+  getHandLuggageSuccessIconLocator() {
+    return this.page.locator(SELECTORS.HAND_LUGGAGE_SUCCESS_ICON).first();
+  }
+
+  /**
+   * Opens the hand luggage el-select dropdown and clicks the first option whose label contains a price
+   * (i.e., the first paid option). Free or zero-price options are skipped.
+   * @param {number} [timeout=15000] - Timeout for waiting on the dropdown to open
+   * @returns {Promise<string>} The text of the selected option
+   */
+  async selectFirstPaidHandLuggageOption(timeout = 15000) {
+    const selectWrapper = this.page.locator(SELECTORS.HAND_LUGGAGE_SELECT_WRAPPER).first();
+    await selectWrapper.waitFor({ state: 'visible', timeout });
+    await selectWrapper.click();
+
+    const dropdownItems = this.page.locator(SELECTORS.EL_SELECT_VISIBLE_DROPDOWN_ITEM);
+    await dropdownItems.first().waitFor({ state: 'visible', timeout });
+
+    const paidOption = dropdownItems.filter({ hasText: /[1-9]\d*([.,]\d+)?\s*(€|\$|£|USD|EUR|GBP)|(€|\$|£|USD|EUR|GBP)\s*[1-9]\d*/i }).first();
+    await paidOption.waitFor({ state: 'visible', timeout });
+    const optionText = (await paidOption.innerText()).trim();
+    await paidOption.click();
+    return optionText;
   }
 
   /**
