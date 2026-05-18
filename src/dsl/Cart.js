@@ -3723,6 +3723,42 @@ const Cart = {
     logger.info('Ancillary services success icon (green checkmark) is visible');
   },
 
+  async clickEditAncillaryOptions(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // Check collapse state via the arrow's is-active class (not section content) to avoid the
+    // race condition where extras is already open but the async component hasn't mounted yet.
+    const extrasOpen = await cartPage.isExtrasExpanded();
+    if (!extrasOpen) {
+      await cartPage.clickArrowButtonExtras();
+    }
+
+    // Wait for the card title to confirm the ancillary options section is mounted.
+    await expect(cartPage.getAncillaryOptionsCardTitleLocator()).toContainText('Ancillary Options', { timeout: 30000 });
+
+    await cartPage.clickEditAncillaryOptionsButton();
+    logger.info('Clicked edit ancillary options button');
+  },
+
+  async selectFirstAncillaryOption(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.openAncillaryOptionsDropdown();
+    await cartPage.selectFirstAncillaryOption();
+    logger.info('Selected the first ancillary option from dropdown');
+  },
+
+  async verifyAncillaryOptionsFilledIndicator(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await expect(cartPage.getAncillaryOptionsFilledIndicator()).toBeVisible({ timeout: 30000 });
+    logger.info('Ancillary options filled indicator is visible');
+  },
+
   async selectAncillaryServiceWithPriceBySegment(page, segmentIndex) {
     if (!page) throw new Error('page is required');
     if (typeof segmentIndex !== 'number' || segmentIndex < 0) {

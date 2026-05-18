@@ -1189,6 +1189,21 @@ Then("the ancillary services green checkmark should be visible", async function 
   await Cart.verifyAncillaryServicesSuccessIcon(this.page);
 });
 
+When("I click to edit the ancillary options section", async function () {
+  logger.info("Clicking to edit the ancillary options section");
+  await Cart.clickEditAncillaryOptions(this.page);
+});
+
+When("I select the first ancillary option", async function () {
+  logger.info("Selecting the first ancillary option");
+  await Cart.selectFirstAncillaryOption(this.page);
+});
+
+Then("the ancillary options filled indicator should be visible", async function () {
+  logger.info("Verifying ancillary options filled indicator is visible");
+  await Cart.verifyAncillaryOptionsFilledIndicator(this.page);
+});
+
 When("I select the first ancillary service option with price for flight {int} and store its value", async function (flightNumber) {
   const segmentIndex = flightNumber - 1;
   logger.info("Selecting priced ancillary service option for segment", { flightNumber, segmentIndex });

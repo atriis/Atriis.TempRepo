@@ -18,8 +18,8 @@ Feature: 58621 Fusion - Ancillary options load as expected
     And I filter results by carrier "QZ"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    Then the optional services extras section should be visible
-    When I click to edit the ancillary services section
-    # TODO: implement 'I select an ancillary option for the traveler and save' — clicks ancillary collapse, picks option, clicks save (test 58621)
+    When I click to edit the ancillary options section
+    And I select the first ancillary option
+    And I click the save button
     Then the booking status should be "Pending booking"
-    # TODO: implement 'the ancillary services filled indicator should be visible after saving' — isVisible('.flight-ancillary-options .filled') in Testim source (test 58621)
+    Then the ancillary options filled indicator should be visible

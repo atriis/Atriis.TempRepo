@@ -131,6 +131,11 @@ const SELECTORS = {
   FLIGHT_ANCILLARY_SERVICES_SUCCESS_ICON: '.flight-ancillary-services .material-symbols-outlined.filled.success-icon.green', // Green checkmark after successful save
   FLIGHT_ANCILLARY_SERVICES_TRAVELER_TAB: '.flight-ancillary-services .flight-cart-tabs .el-tabs__item:visible', // Per-traveler tab inside the ancillary services panel
   FLIGHT_ANCILLARY_SERVICES_VISIBLE_SEGMENT: '.flight-ancillary-services .el-tab-pane:visible .segment', // Segment row scoped to the active traveler tab (multi-pax)
+  // Flight Ancillary Options (flight-ancillary-options.vue) — passenger-based single dropdown
+  FLIGHT_ANCILLARY_OPTIONS_EDIT_BUTTON: '.flight-ancillary-options .extra__btns', // Edit/Add button in the ancillary options extras row
+  FLIGHT_ANCILLARY_OPTIONS_CARD_TITLE: '.flight-ancillary-options .card-title', // "Ancillary Options" card title rendered by extras-layout slot (visible whenever the section exists and extras is open)
+  FLIGHT_ANCILLARY_OPTIONS_SELECT_TRIGGER: '.flight-ancillary-options .app-select .el-select__wrapper', // Click to open the ancillary options dropdown
+  FLIGHT_ANCILLARY_OPTIONS_FILLED_INDICATOR: '.flight-ancillary-options .material-symbols-outlined.filled.success-icon.green', // Green filled indicator after successful save
   // Premier Inn extras selectors (premier-inn.vue)
   PREMIER_INN_PAYMENT_SELECT: '.quote-extras--premier-inn .extras-card .el-select', // First el-select in Premier Inn extras = payment method
 
@@ -1695,6 +1700,17 @@ class CartPage {
   }
 
   /**
+   * Returns true when the extras collapse is currently expanded.
+   * Element Plus adds `is-active` class to the arrow icon when the collapse-item is open.
+   * @returns {Promise<boolean>}
+   */
+  async isExtrasExpanded() {
+    const arrow = this.page.locator(SELECTORS.EXTRAS_ARROW_BUTTON).first();
+    const classAttr = await arrow.getAttribute('class').catch(() => '');
+    return classAttr.includes('is-active');
+  }
+
+  /**
    * Checks whether the passenger info section is visible in the extras panel.
    * @param {number} timeout
    * @returns {Promise<boolean>}
@@ -1961,6 +1977,60 @@ class CartPage {
 
   getAncillaryServicesSuccessIcon() {
     return this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_SUCCESS_ICON).first();
+  }
+
+  /**
+   * Returns the locator for the ancillary options edit/add button (visibility test before expand).
+   */
+  getAncillaryOptionsEditButtonLocator() {
+    return this.page.locator(SELECTORS.FLIGHT_ANCILLARY_OPTIONS_EDIT_BUTTON).first();
+  }
+
+  /**
+   * Returns the locator for the "Ancillary Options" card title. Visible whenever the
+   * flight-ancillary-options section is present in the DOM AND the parent extras collapse is open.
+   */
+  getAncillaryOptionsCardTitleLocator() {
+    return this.page.locator(SELECTORS.FLIGHT_ANCILLARY_OPTIONS_CARD_TITLE).first();
+  }
+
+  /**
+   * Clicks the edit/add button for the ancillary options section to expand it.
+   * @param {number} [timeout=15000] - Per-action timeout in ms
+   */
+  async clickEditAncillaryOptionsButton(timeout = 15000) {
+    const btn = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_OPTIONS_EDIT_BUTTON).first();
+    await btn.waitFor({ state: 'visible', timeout });
+    await btn.click();
+  }
+
+  /**
+   * Opens the ancillary options dropdown by clicking its select trigger and waits for the panel.
+   * @param {number} [timeout=15000] - Per-action timeout in ms
+   */
+  async openAncillaryOptionsDropdown(timeout = 15000) {
+    const trigger = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_OPTIONS_SELECT_TRIGGER).first();
+    await trigger.waitFor({ state: 'visible', timeout });
+    await trigger.click();
+    await this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_DROPDOWN_PANEL).first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Selects the first option in the currently visible Element-Plus dropdown panel.
+   * Assumes the dropdown is already open.
+   * @param {number} [timeout=10000] - Per-action timeout in ms
+   */
+  async selectFirstAncillaryOption(timeout = 10000) {
+    const firstOption = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_DROPDOWN_OPTION).first();
+    await firstOption.waitFor({ state: 'visible', timeout });
+    await firstOption.click();
+  }
+
+  /**
+   * Returns the locator for the ancillary options green filled indicator (post-save).
+   */
+  getAncillaryOptionsFilledIndicator() {
+    return this.page.locator(SELECTORS.FLIGHT_ANCILLARY_OPTIONS_FILLED_INDICATOR).first();
   }
 
   /**
