@@ -24,6 +24,7 @@ const SELECTORS = {
   ADDITIONAL_PRICING_OPTIONS_FIRST_CARD: '.additional-pricing-options-wrapper .flight-by-schedule-pricing-option',
   ADDITIONAL_PRICING_OPTIONS_FIRST_ADD_TO_TRIP_BUTTON: '.additional-pricing-options-wrapper .flight-by-schedule-pricing-option .add-btn',
   SEPARATED_TICKETS_TEXT: 'Separated Tickets',
+  FLIGHT_PRICING_API_URL_PATTERN: '/api/v3/flightPricing',
 };
 
 class FlightPricingPage {
@@ -251,6 +252,33 @@ class FlightPricingPage {
       }
       return [...found];
     }, SELECTORS.PRICING_PAGE_SECTION);
+  }
+
+  /**
+   * Sets up a listener for the next flightPricing API response.
+   * Must be called BEFORE the action that triggers the API call.
+   * Returns an unresolved Promise that resolves when the response arrives.
+   *
+   * @returns {Promise<import('@playwright/test').Response>}
+   */
+  capturePricingApiResponse() {
+    return this.page.waitForResponse(
+      response =>
+        response.url().includes(SELECTORS.FLIGHT_PRICING_API_URL_PATTERN) &&
+        response.request().method() === 'POST',
+      { timeout: 120000 }
+    );
+  }
+
+  /**
+   * Awaits a captured pricing response and returns its parsed JSON body.
+   *
+   * @param {Promise<import('@playwright/test').Response>} responsePromise
+   * @returns {Promise<Object>}
+   */
+  async readPricingApiResponseBody(responsePromise) {
+    const response = await responsePromise;
+    return response.json();
   }
 }
 

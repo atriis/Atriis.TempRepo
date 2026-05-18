@@ -276,7 +276,16 @@ class SearchPage {
     const selectedTravelerNames = this.page.locator(SELECTORS.SELECTED_TRAVELER_NAME);
     await selectedTravelerNames.first().waitFor({ state: 'visible', timeout: 10000 });
 
-    return await selectedTravelerNames.count();
+    // Poll until count stabilizes — after a guest modal closes, the new chip may not be rendered yet.
+    let previous = -1;
+    let current = await selectedTravelerNames.count();
+    const deadline = Date.now() + 3000;
+    while (previous !== current && Date.now() < deadline) {
+      await this.page.waitForTimeout(200);
+      previous = current;
+      current = await selectedTravelerNames.count();
+    }
+    return current;
   }
 
   // Searches and selects an existing traveler

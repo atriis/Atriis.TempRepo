@@ -47,6 +47,15 @@ Then('the {string} indicator should be visible in the pricing page', async funct
   }
 });
 
+Then('the {string} indicator should not be visible in the pricing page', async function (indicatorName) {
+  logger.info('Verifying indicator is NOT visible in pricing page', { indicatorName });
+  if (indicatorName === 'Separated Tickets') {
+    await FlightPricing.verifySeparatedTicketsIndicatorNotVisible(this.page);
+  } else {
+    throw new Error(`Unknown indicator: "${indicatorName}". Supported (negation): "Separated Tickets"`);
+  }
+});
+
 Then('flight times on the pricing page should be displayed in 12-hour AM/PM format', async function () {
   logger.info('Verifying flight times are in 12-hour AM/PM format on the pricing page');
   await FlightPricing.verifyTimesAreIn12HourFormat(this.page);
@@ -58,4 +67,37 @@ Then('flight times on the pricing page should use the same format as the results
     resultsTimesCount: result.resultsTimesCount,
     pricingTimesCount: result.pricingTimesCount,
   });
+});
+
+// ========================================
+// NETWORK INTERCEPTION - MARKUP VALIDATION
+// ========================================
+
+When('I start intercepting the flight pricing response', function () {
+  logger.info('Starting flightPricing API response capture');
+  this.flightPricingResponsePromise = FlightPricing.startCapturingPricingResponse(this.page);
+});
+
+Then('the markup in the flight pricing response should be {string} per pax configured in {string}', async function (expectedMarkup, configuredCurrency) {
+  logger.info('Validating markup in flightPricing response against configured currency', { expectedMarkup, configuredCurrency });
+  const result = await FlightPricing.validatePricingResponseMarkup(
+    this.page, this.flightPricingResponsePromise, expectedMarkup, configuredCurrency
+  );
+  logger.info('Markup validation complete', result);
+});
+
+Then('the markup in the flight pricing response for carrier {string} should be {string} per pax configured in {string}', async function (carrierCode, expectedMarkup, configuredCurrency) {
+  logger.info('Validating markup in flightPricing response for specific carrier', { carrierCode, expectedMarkup, configuredCurrency });
+  const result = await FlightPricing.validatePricingResponseMarkup(
+    this.page, this.flightPricingResponsePromise, expectedMarkup, configuredCurrency, carrierCode
+  );
+  logger.info('Markup validation complete', result);
+});
+
+Then('the markup in the flight pricing response should be {string}', async function (expectedMarkup) {
+  logger.info('Validating markup value in flightPricing response (no currency check)', { expectedMarkup });
+  const result = await FlightPricing.validatePricingResponseMarkup(
+    this.page, this.flightPricingResponsePromise, expectedMarkup, null
+  );
+  logger.info('Markup validation complete', result);
 });

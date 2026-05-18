@@ -681,6 +681,25 @@ const FlightSearch = {
   },
 
   /**
+   * Opens the edit-search form from flight results and waits for the form to be ready for input.
+   *
+   * @param {Object} page - Playwright page object
+   */
+  async clickEditSearch(page) {
+    if (!page) throw new Error('page is required');
+
+    logger.info('Opening edit search from results');
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await resultsPage.clickEditButton();
+    await searchPage.waitForFromFieldVisible();
+
+    return { opened: true };
+  },
+
+  /**
    * Changes the search mode in the edit-flight-search form.
    *
    * @param {Object} page - Playwright page object

@@ -76,6 +76,8 @@ const SELECTORS = {
   FLIGHT_DETAILS_BUTTON: ".more-details-btn",
   FLIGHT_DETAILS_DRAWER_BODY: '.app-drawer.flight-details-drawer .el-drawer__body',
   FLIGHT_DETAILS_DRAWER_CABIN_TEXT: (text) => `.app-drawer.flight-details-drawer .el-drawer__body :text("${text}")`,
+  FLIGHT_CART_MORE_DETAILS_DRAWER: "[aria-label='More details']",
+  FLIGHT_CART_MORE_DETAILS_PRICE_TEXT: /\$\s*\d[\d,]*(?:\.\d+)?/,
   POST_TICKETING_TABLE_HEADERS: '.flight-post-ticketing-details .post-ticketing-table thead th',
   POST_TICKETING_TABLE: '.flight-post-ticketing-details .post-ticketing-table',
   POST_TICKETING_TICKET_NUMBER_TEXT: 'tbody tr td:nth-child(2) .mr-1:visible',
@@ -258,8 +260,8 @@ const SELECTORS = {
   HOTEL_ADDRESS: '.hotel-address',
   MORE_DETAILS_DRAWER_CLOSE: "[aria-label='More details'] [fill='currentColor'], [aria-label='More details'] .el-dialog__close",
   TIME_LIMIT_CONTAINER: '.time-limit-container',
-  // More Details drawer — total price in footer (hotel-quote-more-details.vue → app-footer → app-price → h4.amount)
-  MORE_DETAILS_TOTAL_PRICE: '.cart-more-details-drawer .app-footer .total-price .amount',
+  // More Details drawer — hotel quote total price in footer (hotel-quote-more-details.vue → app-footer → app-price → h4.amount)
+  MORE_DETAILS_TOTAL_PRICE: ".cart-more-details-drawer .app-footer .total-price .amount",
   // Share dialog close button
   SHARE_DIALOG_CLOSE: '.el-dialog__header [fill="currentColor"], .el-dialog__headerbtn',
   // Share dialog language dropdown
@@ -2813,6 +2815,27 @@ class CartPage {
     const text = await el.innerText();
     const match = text.replace(/[^0-9.,]/g, '').replace(',', '.');
     return parseFloat(match) || null;
+  }
+
+  /**
+   * Reads the total price displayed in the flight cart "More details" drawer.
+   * Uses text-anchored matching (drawer DOM has no .app-footer wrapper).
+   * The drawer must already be open (via clickFlightDetailsButton).
+   * @param {object} options
+   * @param {number} options.timeout - Maximum wait time (default: 15000ms)
+   * @returns {Promise<number>} The total price as a numeric value
+   */
+  async getFlightCartMoreDetailsTotalPrice({ timeout = 15000 } = {}) {
+    const drawer = this.page.locator(SELECTORS.FLIGHT_CART_MORE_DETAILS_DRAWER).first();
+    await drawer.waitFor({ state: 'visible', timeout });
+    const priceEl = drawer.getByText(SELECTORS.FLIGHT_CART_MORE_DETAILS_PRICE_TEXT).last();
+    await priceEl.waitFor({ state: 'visible', timeout });
+    const text = await priceEl.innerText();
+    // FLIGHT_CART_MORE_DETAILS_PRICE_TEXT matches $-prefixed USD values, where commas are
+    // thousands separators (e.g. "$1,234.56"). Strip them; keep the dot as decimal.
+    const cleaned = text.replace(/[^0-9.]/g, '');
+    const parsed = parseFloat(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
   }
 
   /**

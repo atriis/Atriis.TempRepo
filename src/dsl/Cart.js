@@ -1563,12 +1563,17 @@ const Cart = {
   },
 
   /**
-   * Verifies the flight price breakdown matches the expected traveler count and saved cart total.
+   * Verifies the flight price breakdown matches the expected traveler count and cart total.
+   * Validates the total in TWO places inside the drawer:
+   *   1. The aggregated Subtotal (Price Summary section) — sum of segment subtotals
+   *   2. The Total price footer
+   * Both are compared against the cart total. If expectedCartTotal is omitted, it is
+   * fetched live from the cart sidebar at verification time.
    *
    * @param {import('playwright').Page} page
    * @param {number} travelerCount
-   * @param {number} expectedCartTotal
-   * @returns {Promise<{travelerCount: number, breakdownTotal: number, calculatedTotal: number}>}
+   * @param {number} [expectedCartTotal] - Optional. When omitted, the cart total is fetched live.
+   * @returns {Promise<{travelerCount: number, breakdownTotal: number, calculatedTotal: number, cartTotal: number}>}
    */
   async verifyFlightPriceBreakdownForTravelerCount(page, travelerCount, expectedCartTotal) {
     if (!page) {
@@ -1579,8 +1584,12 @@ const Cart = {
       throw new Error(`travelerCount must be a positive integer, got: ${travelerCount}`);
     }
 
-    if (typeof expectedCartTotal !== 'number' || Number.isNaN(expectedCartTotal)) {
-      throw new Error(`expectedCartTotal must be a valid number, got: ${expectedCartTotal}`);
+    let cartTotal = expectedCartTotal;
+    if (cartTotal === undefined || cartTotal === null) {
+      cartTotal = await this.extractCartTotalPrice(page);
+    }
+    if (typeof cartTotal !== 'number' || Number.isNaN(cartTotal)) {
+      throw new Error(`cart total must be a valid number, got: ${cartTotal}`);
     }
 
     const cartPage = getPageObject(page, CartPage);
@@ -1614,11 +1623,22 @@ const Cart = {
       calculatedTotal += segment.subtotal;
     }
 
-    const breakdownTotal = await cartPage.getFlightPriceBreakdownTotal();
-    expect(Math.abs(breakdownTotal - calculatedTotal)).toBeLessThanOrEqual(1);
-    expect(Math.abs(breakdownTotal - expectedCartTotal)).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(calculatedTotal - cartTotal),
+      `Aggregated breakdown subtotal (${calculatedTotal}) should match cart total (${cartTotal})`,
+    ).toBeLessThanOrEqual(1);
 
-    return { travelerCount: passengerCount, breakdownTotal, calculatedTotal };
+    const breakdownTotal = await cartPage.getFlightPriceBreakdownTotal();
+    expect(
+      Math.abs(breakdownTotal - calculatedTotal),
+      `Breakdown footer total (${breakdownTotal}) should match aggregated subtotal (${calculatedTotal})`,
+    ).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(breakdownTotal - cartTotal),
+      `Breakdown footer total (${breakdownTotal}) should match cart total (${cartTotal})`,
+    ).toBeLessThanOrEqual(1);
+
+    return { travelerCount: passengerCount, breakdownTotal, calculatedTotal, cartTotal };
   },
 
   /**
@@ -2939,6 +2959,44 @@ const Cart = {
     if (!page) throw new Error('page is required');
     const cartPage = getPageObject(page, CartPage);
     await cartPage.clickFlightDetailsButton();
+  },
+
+  /**
+   * Verifies that the total price in the open flight details drawer matches the
+   * cart total price displayed on the trip overview.
+   * The drawer must already be open.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} options
+   * @param {number} options.tolerance - Allowed absolute difference (default: 1)
+   * @returns {Promise<{ drawerTotal: number, cartTotal: number }>}
+   */
+  async verifyFlightDetailsDrawerTotalMatchesCart(page, { tolerance = 1 } = {}) {
+    if (!page) throw new Error('page is required');
+    if (typeof tolerance !== 'number' || tolerance < 0) {
+      throw new Error(`tolerance must be a non-negative number, got: ${tolerance}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const drawerTotal = await cartPage.getFlightCartMoreDetailsTotalPrice();
+    const cartTotal = await this.extractCartTotalPrice(page);
+
+    logger.info('Verifying flight details drawer total matches cart total', {
+      drawerTotal,
+      cartTotal,
+      tolerance,
+    });
+
+    if (drawerTotal === null || !Number.isFinite(drawerTotal)) {
+      throw new Error(`Flight details drawer total could not be parsed, got: ${drawerTotal}`);
+    }
+
+    expect(
+      Math.abs(drawerTotal - cartTotal),
+      `Flight details drawer total (${drawerTotal}) should match cart total (${cartTotal})`,
+    ).toBeLessThanOrEqual(tolerance);
+
+    return { drawerTotal, cartTotal };
   },
 
   /**

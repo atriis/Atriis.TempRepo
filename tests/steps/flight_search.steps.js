@@ -71,6 +71,11 @@ When('I click edit search and wait for the {string} search mode option', async f
   await FlightSearch.clickEditSearchAndWaitForSearchMode(this.page, searchMode);
 });
 
+When('I click edit search', async function () {
+  logger.info('Opening edit flight search');
+  await FlightSearch.clickEditSearch(this.page);
+});
+
 When('I change the search type to {string} in the edit flight search', async function (searchMode) {
   logger.info('Changing edit flight search mode', { searchMode });
   await FlightSearch.changeSearchTypeInEditFlightSearch(this.page, searchMode);

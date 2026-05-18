@@ -520,6 +520,37 @@ Then('the cart total price should be the last extracted price multiplied by the 
   );
 });
 
+Then('the cart total price should be the last extracted price multiplied by the number of selected travelers', async function () {
+  if (!Array.isArray(this.extractedPrices) || this.extractedPrices.length === 0) {
+    throw new Error('No extracted price stored. Run a price-extraction step before comparing with cart total price.');
+  }
+
+  const travelerCount = this.selectedTravelerCount;
+  if (!Number.isInteger(travelerCount) || travelerCount < 1) {
+    throw new Error(
+      `selectedTravelerCount must be a positive integer — make sure traveler-adding steps ran first. Got: ${travelerCount}`,
+    );
+  }
+
+  const extractedPrice = this.extractedPrices[this.extractedPrices.length - 1];
+  const expectedPrice = extractedPrice * travelerCount;
+  const cartTotalPrice = await Cart.extractCartTotalPrice(this.page);
+
+  logger.info('Comparing cart total price with extracted price multiplied by selected traveler count', {
+    extractedPrice,
+    travelerCount,
+    expectedPrice,
+    cartTotalPrice,
+  });
+
+  expectNumbersToBeEqualWithTolerance(
+    cartTotalPrice,
+    expectedPrice,
+    1,
+    `Cart total price vs extracted price x ${travelerCount} (selected travelers)`,
+  );
+});
+
 Then("the payment type should be {string}", async function (expectedType) {
   logger.info("Verifying payment type", { expectedType });
   await Cart.verifyPaymentType(this.page, expectedType);
@@ -571,6 +602,28 @@ Then('the flight price breakdown should match the totals for {int} travelers', a
   }
 
   logger.info('Verifying flight price breakdown totals', {
+    travelerCount,
+    flightCartTotalForCheckout: this.flightCartTotalForCheckout,
+  });
+
+  const result = await Cart.verifyFlightPriceBreakdownForTravelerCount(
+    this.page,
+    travelerCount,
+    this.flightCartTotalForCheckout,
+  );
+
+  logger.info('Flight price breakdown totals verified', result);
+});
+
+Then('the flight price breakdown should match the totals for the selected travelers', async function () {
+  const travelerCount = this.selectedTravelerCount;
+  if (!Number.isInteger(travelerCount) || travelerCount < 1) {
+    throw new Error(
+      `selectedTravelerCount must be a positive integer — make sure traveler-adding steps ran first. Got: ${travelerCount}`,
+    );
+  }
+
+  logger.info('Verifying flight price breakdown totals for selected travelers', {
     travelerCount,
     flightCartTotalForCheckout: this.flightCartTotalForCheckout,
   });
@@ -1296,6 +1349,12 @@ Then("the hotel booking should display a contact phone number", async function (
 When("I open flight details in cart", async function () {
   logger.info("Opening flight details drawer in cart");
   await Cart.openFlightDetailsInCart(this.page);
+});
+
+Then("the flight details drawer total price should match the cart total", async function () {
+  logger.info("Verifying flight details drawer total matches cart total");
+  const result = await Cart.verifyFlightDetailsDrawerTotalMatchesCart(this.page);
+  logger.info("Flight details drawer total verified", result);
 });
 
 When("I scroll down in the flight details drawer", async function () {
