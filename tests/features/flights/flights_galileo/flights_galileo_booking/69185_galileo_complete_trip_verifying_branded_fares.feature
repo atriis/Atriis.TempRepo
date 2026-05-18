@@ -22,6 +22,7 @@ Feature: 69185 Galileo - Complete trip booking verifying branded fares
     Then the branded fare ancillaries text should be visible
     When I close branded fares drawer
     And I close flight details window
+    And I click to open first pricing options
     And I open branded fares from pricing options
     Then the branded fare ancillaries text should be visible
     When I close branded fares drawer

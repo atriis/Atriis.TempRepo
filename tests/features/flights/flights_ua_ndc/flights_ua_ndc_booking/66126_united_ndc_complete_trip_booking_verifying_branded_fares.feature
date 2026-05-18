@@ -24,6 +24,7 @@ Feature: 66126 United NDC - Complete Trip booking and verifying Branded Fares
     Then the branded fare ancillaries text should be visible
     When I close branded fares drawer
     And I close flight details window
+    And I click to open first pricing options
     And I open branded fares from pricing options
     Then the branded fare ancillaries text should be visible
     When I close branded fares drawer

@@ -23,6 +23,7 @@ Feature: 66140 AFKL NDC - Complete trip booking and verifying branded fares
     Then the branded fare ancillaries text should be visible
     When I close branded fares drawer
     And I close flight details window
+    And I click to open first pricing options
     And I open branded fares from pricing options
     Then the branded fare ancillaries text should be visible
     When I close branded fares drawer
