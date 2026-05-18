@@ -2234,6 +2234,23 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     return { priceValue };
   },
+
+  /**
+   * Navigates back from the flight results page to the trip search page by
+   * clicking the "Search" link in the results breadcrumb.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   */
+  async navigateBackToSearchViaBreadcrumb(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickBreadcrumbSearchLink();
+
+    return { navigated: true };
+  },
 }
 
 module.exports = FlightResults;

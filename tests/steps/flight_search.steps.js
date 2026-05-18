@@ -34,6 +34,16 @@ When("I search for a round trip flight from {string} to {string}", async functio
   await FlightSearch.searchFlightRoundTrip(this.page, { from, to });
 });
 
+When("I search for a round trip flight from {string} to {string} with outbound on a {string} and inbound the next day", async function (from, to, dayOfWeek) {
+  logger.info('Searching for round trip flight on Nth weekday with next-day return', { from, to, dayOfWeek });
+  await FlightSearch.searchRoundTripOnNthWeekday(this.page, from, to, dayOfWeek, 1);
+});
+
+When("I click the search button", async function () {
+  logger.info('Clicking the trip search button');
+  await FlightSearch.clickSearchButton(this.page);
+});
+
 When('I search for a round trip flight from {string} to {string} with preferred carrier {string}', async function (from, to, carrier) {
   logger.info('Searching for round trip flight with preferred carrier', { from, to, carrier });
   await FlightSearch.searchFlightRoundTripWithPreferredCarrier(this.page, { from, to }, carrier);

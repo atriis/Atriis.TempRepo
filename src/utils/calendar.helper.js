@@ -558,10 +558,71 @@ async function selectDatesByInputValues(
   await clickDayInVisibleMonth(page, endDate, endMonthTableIndex);
 }
 
+/**
+ * Selects a round-trip date pair from next month: the Nth occurrence of a specific
+ * weekday as the outbound date and the next calendar day as the inbound date.
+ *
+ * Navigates to next month with the forward arrow, then clicks both dates in order.
+ *
+ * @param {Object} page - Playwright page instance
+ * @param {Object} opts
+ * @param {string} opts.dayOfWeek - Day name: "monday","tuesday","wednesday","thursday","friday","saturday","sunday"
+ * @param {number} [opts.nth=1] - Which occurrence to select as outbound (1 = first, 2 = second, etc.)
+ */
+async function selectRoundTripDatesOnNthWeekday(page, { dayOfWeek, nth = 1 } = {}) {
+  if (!dayOfWeek || typeof dayOfWeek !== 'string') {
+    throw new Error('dayOfWeek must be a non-empty string');
+  }
+  if (!Number.isInteger(nth) || nth < 1) {
+    throw new Error(`nth must be a positive integer, got: ${nth}`);
+  }
+
+  const dayMap = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+  const targetDay = dayMap[dayOfWeek.toLowerCase()];
+  if (targetDay === undefined) {
+    throw new Error(`Invalid dayOfWeek "${dayOfWeek}". Use: ${Object.keys(dayMap).join(', ')}`);
+  }
+
+  const now = new Date();
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  let count = 0;
+  let outboundDayNumber = null;
+  for (let d = 1; d <= 31; d++) {
+    const candidate = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), d);
+    if (candidate.getMonth() !== nextMonth.getMonth()) break;
+    if (candidate.getDay() === targetDay) {
+      count++;
+      if (count === nth) {
+        outboundDayNumber = d;
+        break;
+      }
+    }
+  }
+  if (outboundDayNumber === null) {
+    throw new Error(`Could not find ${nth} ${dayOfWeek} in next month`);
+  }
+
+  // Confirm next day still falls within the same month so both cells exist in the same picker view
+  const inboundCandidate = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), outboundDayNumber + 1);
+  if (inboundCandidate.getMonth() !== nextMonth.getMonth()) {
+    throw new Error(`Outbound ${dayOfWeek} (${outboundDayNumber}) is the last day of next month; next day would spill into following month`);
+  }
+
+  const nextArrow = page.locator(SELECTORS.DATE_PICKER_CALENDAR_NEXT_ARROW).first();
+  await nextArrow.waitFor({ state: 'visible', timeout: 10000 });
+  await nextArrow.click();
+
+  await selectDatesByNthAvailable(page, {
+    startIndex: outboundDayNumber - 1,
+    endIndex: outboundDayNumber,
+  });
+}
+
 module.exports = {
   selectDatesByNthAvailable,
   selectDatesByNthAvailableFromNextVisibleMonth,
   selectDatesByInputValues,
   selectTodayFromVisibleCalendar,
   selectNthWeekdayFromNextMonth,
+  selectRoundTripDatesOnNthWeekday,
 };

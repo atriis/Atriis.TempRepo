@@ -168,6 +168,17 @@ Then('the CO2 Squake tooltip should be visible in flight results', async functio
 // WHEN STEPS - PRICING OPTIONS
 // ========================================
 
+When("I extract the price from first flight result", async function () {
+  logger.info("Extracting price from first flight result card");
+  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
+  const price = await flightResultsPage.getFirstFlightResultPriceValue();
+
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(price);
+
+  logger.info("Extracted first flight result price", { price });
+});
+
 When("I extract the price from first pricing option", async function () {
   logger.info("Extracting price from first pricing option");
   const flightResultsPage = getPageObject(this.page, FlightResultsPage);
@@ -336,6 +347,11 @@ When("I close fare rules window", async function () {
   const flightResultsPage = getPageObject(this.page, FlightResultsPage);
   
   await flightResultsPage.clickXToClosePricingOptionsModal(1);
+});
+
+When("I navigate back to flight search via breadcrumb", async function () {
+  logger.info("Navigating back to flight search via breadcrumb");
+  await FlightResults.navigateBackToSearchViaBreadcrumb(this.page);
 });
 
 When("I close flight details window", async function () {

@@ -208,6 +208,9 @@ const SELECTORS = {
 
   // Element Plus tooltip (rendered outside component tree)
   EL_POPPER_VISIBLE: '.el-popper:visible',
+
+  // Results page breadcrumb — first item links back to the trip search page
+  RESULTS_BREADCRUMB_SEARCH_LINK: '.results-breadscrumbs li:first-child a',
 };
 
 class FlightResultsPage {
@@ -2303,6 +2306,16 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       }
       return [...found];
     }, SELECTORS.FLIGHT_STEPPER);
+  }
+
+  /**
+   * Clicks the "Search" link in the flight results breadcrumb to navigate back
+   * to the trip search page.
+   */
+  async clickBreadcrumbSearchLink() {
+    const link = this.page.locator(SELECTORS.RESULTS_BREADCRUMB_SEARCH_LINK).first();
+    await link.waitFor({ state: 'visible', timeout: 30000 });
+    await link.click();
   }
 }
 module.exports = FlightResultsPage;

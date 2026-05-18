@@ -6,6 +6,7 @@ const {
   selectDatesByInputValues,
   selectDatesByNthAvailable,
   selectNthWeekdayFromNextMonth,
+  selectRoundTripDatesOnNthWeekday,
   selectTodayFromVisibleCalendar,
 } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
@@ -123,6 +124,60 @@ const FlightSearch = {
     await searchPage.waitAndClickSearchButton();
 
     return { searched: true, from, to, tripType: 'oneWay', dayOfWeek, nth };
+  },
+
+  /**
+   * Search a round-trip flight selecting the Nth occurrence of a specific weekday
+   * from the next visible month as the outbound date, and the next calendar day
+   * as the inbound date.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} from - Origin airport code
+   * @param {string} to - Destination airport code
+   * @param {string} dayOfWeek - "monday","tuesday",...,"sunday"
+   * @param {number} [nth=1] - Which occurrence of the weekday to pick as outbound (default: 1 = first)
+   */
+  async searchRoundTripOnNthWeekday(page, from, to, dayOfWeek, nth = 1) {
+    if (!page) throw new Error('page is required');
+    if (!from || typeof from !== 'string') throw new Error('from must be a non-empty string');
+    if (!to || typeof to !== 'string') throw new Error('to must be a non-empty string');
+    if (!dayOfWeek || typeof dayOfWeek !== 'string') throw new Error('dayOfWeek must be a non-empty string');
+    if (!Number.isInteger(nth) || nth < 1) throw new Error(`nth must be a positive integer, got: ${nth}`);
+
+    logger.info('Starting roundTrip flight search on Nth weekday of next month with next-day return', { from, to, dayOfWeek, nth });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectRoundTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+
+    await searchPage.clickDepartureDateField();
+    await selectRoundTripDatesOnNthWeekday(page, { dayOfWeek, nth });
+
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'roundTrip', dayOfWeek, nth };
+  },
+
+  /**
+   * Clicks the main search button on the trip search page to trigger a new search.
+   * Used after modifying the search form (e.g. adding travelers) without going
+   * through the edit-search modal.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   */
+  async clickSearchButton(page) {
+    if (!page) throw new Error('page is required');
+
+    logger.info('Clicking the trip search button');
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true };
   },
 
   /**
