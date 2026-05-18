@@ -979,6 +979,63 @@ const FlightSearch = {
   },
 
   /**
+   * Searches for a by-schedule round-trip flight with an advanced-search preferred-carrier filter.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} from - Origin airport code
+   * @param {string} to - Destination airport code
+   * @param {string} carrier - Preferred carrier label or code, e.g. "Lufthansa" or "LH"
+   * @param {Object} options - Date-selection options
+   */
+  async searchFlightByScheduleWithPreferredCarrier(
+    page,
+    from,
+    to,
+    carrier,
+    {
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    } = {},
+  ) {
+    if (!page) throw new Error('page is required');
+    if (!from || typeof from !== 'string') throw new Error('from must be a non-empty string, got: ' + from);
+    if (!to || typeof to !== 'string') throw new Error('to must be a non-empty string, got: ' + to);
+    if (!carrier || typeof carrier !== 'string') {
+      throw new Error('carrier must be a non-empty string, got: ' + carrier);
+    }
+
+    logger.info('Searching for by-schedule flight with preferred carrier', { from, to, carrier });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectRoundTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      startIndex: departureIndex,
+      endIndex: returnIndex,
+    });
+
+    await flightSearchPage.selectBySchedule();
+    await this.openAdvancedSearch(page);
+    await flightSearchPage.clearPreferredCarriers();
+    await flightSearchPage.selectPreferredCarrier(carrier);
+    await searchPage.waitAndClickSearchButton();
+
+    return {
+      searched: true,
+      from,
+      to,
+      tripType: 'roundTrip',
+      searchType: 'bySchedule',
+      carrier,
+    };
+  },
+
+  /**
    * Searches for a by-schedule round-trip flight with advanced-search preferred-carrier and stops filters.
    *
    * @param {Object} page - Playwright page object

@@ -136,6 +136,11 @@ When('I search for a flight by schedule from {string} to {string} with preferred
   await FlightSearch.searchFlightByScheduleWithPreferredCarrierInEditSearch(this.page, from, to, carrier);
 });
 
+When('I search for a flight by schedule from {string} to {string} with preferred carrier {string}', async function (from, to, carrier) {
+  logger.info('Searching for by-schedule flight with preferred carrier', { from, to, carrier });
+  await FlightSearch.searchFlightByScheduleWithPreferredCarrier(this.page, from, to, carrier);
+});
+
 When('I search for a flight by schedule from {string} to {string} with preferred carrier {string} and stops {string}', async function (from, to, carrier, stopsOption) {
   logger.info('Searching for by-schedule flight with preferred carrier and stops filter', { from, to, carrier, stopsOption });
   await FlightSearch.searchFlightByScheduleWithPreferredCarrierAndStops(this.page, from, to, carrier, stopsOption);
