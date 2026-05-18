@@ -19,4 +19,9 @@ Feature: 13030 Ypsilon Transavia France - Seat map displayed and seat successful
     When I filter results by carrier "TO"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # TODO: implement 'I add an available seat from the seat map' — see Adding_available_seat() in Testim source (test 13030)
+    When I click seating in extras
+    And I click add seats in extras
+    And I wait for the seat map to load
+    And I select the first available flight seat
+    And I save and close seat map drawer
+    Then I should see a success notification
