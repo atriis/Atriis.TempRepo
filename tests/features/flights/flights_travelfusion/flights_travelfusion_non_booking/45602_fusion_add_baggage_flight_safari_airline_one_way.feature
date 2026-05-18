@@ -18,4 +18,8 @@ Feature: 45602 Fusion Flight Safari Airline - Add baggage on one way flight
     Then flight results should be available
     When I filter results by carrier "FA"
     And I add the first flight to cart
-    # TODO: implement 'I add baggage to the cart for Flight Safari one way' — see steps clicking '.flight-baggage .is-clickable', selecting option from dropdown, saving and verifying '.flight-baggage .filled' (test 45602)
+    Then the booking status should be "Pending booking"
+    When I click to edit the baggage extras section
+    And I select a baggage option
+    And I click the save button
+    Then the baggage green icon should be visible

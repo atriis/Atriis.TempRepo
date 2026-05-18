@@ -16,5 +16,8 @@ Feature: 41170 Fusion EasyJet - Extra baggage options are displayed
     And I have added myself as the traveler
     When I search for a round trip flight from "GLA" to "BRS"
     And I add the first flight to cart
-    # TODO: implement 'the extra baggage options should be displayed in cart' — see Extra_baggage_options_are_displayed() in Testim source (test 41170)
-    Then I successfully cancel the trip
+    Then the booking status should be "Pending booking"
+    When I click to edit the baggage extras section
+    And I select a baggage option
+    And I click the save button
+    Then the baggage green icon should be visible
