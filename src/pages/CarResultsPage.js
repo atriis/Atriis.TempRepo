@@ -6,6 +6,7 @@ const { escapeRegex } = require("@utils/text");
 
 const SELECTORS = {
   // Search results
+  STATION_PREVIEW: '.car-vendor-station-list > .preview-container',
   LOCATION_LABEL: '.location-label',
   CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   FIRST_CAR_PREVIEW: '.car-preview',
@@ -39,6 +40,20 @@ const KNOWN_PAYMENT_TYPES = [
 class CarResultsPage {
   constructor(page) {
     this.page = page;
+  }
+
+  getStationPreviewByIndex(index) {
+    return this.page.locator(SELECTORS.STATION_PREVIEW).nth(index);
+  }
+
+  getStationButtonByIndex(index, buttonName) {
+    return this.getStationPreviewByIndex(index)
+      .getByRole('button', { name: buttonName })
+      .first();
+  }
+
+  async waitForStationButtonVisible(index, buttonName, { timeout = 30000 } = {}) {
+    await this.getStationButtonByIndex(index, buttonName).waitFor({ state: 'visible', timeout });
   }
 
   /**

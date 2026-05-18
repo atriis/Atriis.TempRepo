@@ -247,6 +247,16 @@ const CarResults = {
   },
 
   /**
+   * Selects the first city center dropoff location from the station selection page.
+   * After the pickup station is selected, the UI stays on the same station list and
+   * switches the internal selection mode to dropoff, so the same Select action applies.
+   */
+  async selectFirstCityCenterDropoffLocation(page) {
+    if (!page) throw new Error('page is required');
+    await Results.waitAndClickSelectButton(page);
+  },
+
+  /**
    * Asserts that the agency station is visible on the vendor selection page.
    * When expectedAddress is provided, this validates both label and address in the same station card.
    *
@@ -274,6 +284,28 @@ const CarResults = {
     const stationCard = await this.findAgencyStationCard(page, normalizedLabel, normalizedAddress);
 
     await expect(stationCard).toBeVisible({ timeout: 15000 });
+  },
+
+  async expectStationButtonVisible(page, index, buttonName) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+
+    if (!buttonName || typeof buttonName !== 'string') {
+      throw new Error(`buttonName must be a non-empty string, got: ${buttonName}`);
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForSelectText();
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.waitForStationButtonVisible(index, buttonName, { timeout: 15000 });
+
+    await expect(carResultsPage.getStationButtonByIndex(index, buttonName)).toBeVisible({ timeout: 15000 });
   },
 
   /**

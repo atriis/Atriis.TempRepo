@@ -43,6 +43,11 @@ When("I select the first city center pickup location", async function () {
   await CarResults.selectFirstCityCenterPickupLocation(this.page);
 });
 
+When("I select the first city center dropoff location", async function () {
+  logger.info("Selecting the first city center dropoff location");
+  await CarResults.selectFirstCityCenterDropoffLocation(this.page);
+});
+
 Then("the agency station label should contain {string} on the vendor list", async function (expectedLabel) {
   if (!expectedLabel || typeof expectedLabel !== 'string') {
     throw new Error('expectedLabel must be a non-empty string');
@@ -125,6 +130,15 @@ Then("the agreement text should be displayed in the car results tooltip", async 
   logger.info("Verifying agreement text is displayed in the car results tooltip");
   const result = await CarResults.verifyAgreementTextDisplayedInCarResultsTooltip(this.page);
   logger.info("Agreement text tooltip validated", { tooltipText: result.tooltipText });
+});
+
+Then("the first station should have a {string} button", async function (buttonName) {
+  if (!buttonName || typeof buttonName !== 'string') {
+    throw new Error(`buttonName must be a non-empty string, got: ${buttonName}`);
+  }
+
+  logger.info("Verifying first station button is visible", { buttonName });
+  await CarResults.expectStationButtonVisible(this.page, 0, buttonName);
 });
 
 // ========================================
