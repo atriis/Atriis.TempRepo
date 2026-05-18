@@ -3506,6 +3506,21 @@ const Cart = {
     expect(hasIcon, 'Expected frequent flyer to have green check icon').toBe(true);
   },
 
+  /**
+   * Verifies that the flight Frequent Flyer (FQTV) section has no details filled in.
+   * Expected when the traveler has no FQTV configured (e.g. Fusion pax without saved FQTVs)
+   * — the green success icon is absent because no valid FQTV entry has been submitted.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async verifyFqtvNotFilledIn(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const hasIcon = await cartPage.hasFqtvSuccessIcon();
+    expect(hasIcon, 'FQTV section should not have frequent flyer details filled in (no green success icon expected)').toBe(false);
+  },
+
   async verifyGenderIsNotSelected(page) {
     if (!page) throw new Error('page is required');
 

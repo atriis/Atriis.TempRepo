@@ -1350,6 +1350,11 @@ Then("the frequent flyer should have a green success icon", async function () {
   await Cart.verifyFqtvHasSuccessIcon(this.page);
 });
 
+Then("the FQTV section should not have frequent flyer details filled in", async function () {
+  logger.info("Verifying FQTV section has no frequent flyer details filled in");
+  await Cart.verifyFqtvNotFilledIn(this.page);
+});
+
 // ===== EHOTEL SUPPLIER DETAILS =====
 
 Then("the hotel booking should display a pin code", async function () {

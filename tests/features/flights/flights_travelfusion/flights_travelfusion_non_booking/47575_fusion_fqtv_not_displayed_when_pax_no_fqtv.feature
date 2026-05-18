@@ -19,4 +19,4 @@ Feature: 47575 Fusion - FQTV is hidden when traveler has no FQTV configured
     When I filter results by carrier "EW"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # TODO: implement 'the FQTV section should not be displayed when pax has no FQTV configured' — see FQTV_is_not_displayed_when_pax_does_not_have_one_configured() in Testim source (test 47575)
+    And the FQTV section should not have frequent flyer details filled in
