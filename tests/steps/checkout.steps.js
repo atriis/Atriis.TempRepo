@@ -77,6 +77,11 @@ Then("a booking error message should be displayed", async function () {
   await Checkout.verifyBookingErrorMessage(this.page);
 });
 
+Then('I should see "Book and Finalize" button enabled', async function () {
+  logger.info('Verifying "Book and Finalize" button is visible and enabled');
+  await Checkout.verifyBookAndFinalizeButtonEnabledAndVisible(this.page);
+});
+
 When("I click back to trip", async function () {
   logger.info("Clicking back to trip button");
   await Checkout.clickBackToTripButton(this.page);

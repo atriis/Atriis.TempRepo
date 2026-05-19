@@ -214,6 +214,22 @@ const Search = {
   },
 
   /**
+   * Adds a random guest traveler whose first name is padded with leading and
+   * trailing spaces. Used to verify that the booking flow trims whitespace
+   * from names before sending them to the supplier (e.g. Fusion ProcessTerms).
+   *
+   * @param {Object} page - Playwright page instance
+   * @returns {Promise<{added: boolean, starIconVisible: boolean, selectedTravelerCount: number, guestData: Object}>}
+   */
+  async addRandomGuestWithSpacesInFirstName(page) {
+    if (!page) throw new Error('page is required');
+
+    const { firstName, lastName } = generateRandomGuestData();
+    const paddedFirstName = ` ${firstName} `;
+    return Search.addRandomGuestWithName(page, paddedFirstName, lastName);
+  },
+
+  /**
    * Adds a random guest traveler and fills the middle-name input with the
    * provided value. First/last name, DOB, email and phone are auto-generated.
    *

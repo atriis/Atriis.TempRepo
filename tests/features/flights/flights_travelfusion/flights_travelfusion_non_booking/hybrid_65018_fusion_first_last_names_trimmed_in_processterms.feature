@@ -13,10 +13,10 @@ Feature: 65018 Fusion - First and last names are trimmed in the ProcessTerms req
 
   Scenario: Proceed to checkout succeeds without booking error when guest first name has extra spaces
     Given I am logged in as "mikeshinoda@travelfusion.com" booking a new trip
-    # TODO: implement 'I have added a random guest traveler with spaces in the first name' — see Add_traveler___Random_guest_with_spaces_in_the_first_name() in Testim source (test 65018 hybrid)
+    And I have added a random guest traveler with spaces in the first name
     When I search for a one way flight from "LON" to "GVA"
     Then flight results should be available
     When I add the first flight to cart
     And I fill credit card cvv if needed
     And I proceed to checkout
-    # TODO: implement 'no booking error should be displayed after clicking Proceed to Checkout' — see No_booking_error_after_clicking__Proceed_to_checkout_() in Testim source (test 65018 hybrid)
+    Then I should see "Book and Finalize" button enabled

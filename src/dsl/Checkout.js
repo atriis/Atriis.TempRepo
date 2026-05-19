@@ -458,6 +458,25 @@ const Checkout = {
   // BOOKING STATUS
   // ========================================
 
+  /**
+   * Verifies that the "Book and Finalize" button is both visible and enabled
+   * on the checkout page. Used to confirm that checkout loaded without a
+   * blocking error (e.g. supplier rejecting the request).
+   */
+  async verifyBookAndFinalizeButtonEnabledAndVisible(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    await checkoutPage.waitForBookAndFinalizeButton();
+
+    const button = checkoutPage.getBookAndFinalizeButton();
+    await expect(button, '"Book and Finalize" button should be visible').toBeVisible();
+    await expect(button, '"Book and Finalize" button should be enabled').toBeEnabled();
+
+    logger.info('"Book and Finalize" button is visible and enabled');
+    return { visible: true, enabled: true };
+  },
+
 };
 
 module.exports = Checkout;
