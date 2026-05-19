@@ -988,7 +988,7 @@ const FlightSearch = {
    * @param {Object} [options] - Date-selection options
    */
   async searchFlightByScheduleWithPreferredCarrier(page, from, to, carrier, options) {
-    return this.searchFlightByScheduleWithPreferredCarrierAndStops(page, from, to, carrier, null, options ?? {});
+    return this.searchFlightByScheduleWithPreferredCarrierAndStops(page, from, to, carrier, null, options);
   },
 
   /**
@@ -997,7 +997,7 @@ const FlightSearch = {
    * @param {Object} page - Playwright page object
    * @param {string} from - Origin airport code
    * @param {string} to - Destination airport code
-  * @param {string} carrier - Preferred carrier label or code, e.g. "Scandinavian" or "SK"
+   * @param {string} carrier - Preferred carrier label or code, e.g. "Scandinavian" or "SK"
    * @param {string|null} stopsOption - Stops option label, e.g. "No stops". Pass null/undefined to skip the stops filter.
    * @param {Object} [options] - Date-selection options
    */
@@ -1007,10 +1007,7 @@ const FlightSearch = {
     to,
     carrier,
     stopsOption,
-    {
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
-    } = {},
+    options,
   ) {
     if (!page) throw new Error('page is required');
     if (!from || typeof from !== 'string') throw new Error('from must be a non-empty string, got: ' + from);
@@ -1024,6 +1021,13 @@ const FlightSearch = {
     if (typeof stopsOption === 'string' && stopsOption.length === 0) {
       throw new Error('stopsOption must be a non-empty string when provided');
     }
+    if (options !== undefined && (options === null || typeof options !== 'object' || Array.isArray(options))) {
+      throw new Error('options must be a plain object when provided, got: ' + (options === null ? 'null' : typeof options));
+    }
+    const {
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    } = options ?? {};
 
     const logMessage = stopsOption
       ? 'Searching for by-schedule flight with preferred carrier and stops filter'
