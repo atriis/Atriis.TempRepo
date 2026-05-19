@@ -987,7 +987,7 @@ const FlightSearch = {
    * @param {string} carrier - Preferred carrier label or code, e.g. "Lufthansa" or "LH"
    * @param {Object} [options] - Date-selection options
    */
-  async searchFlightByScheduleWithPreferredCarrier(page, from, to, carrier, options = {}) {
+  async searchFlightByScheduleWithPreferredCarrier(page, from, to, carrier, options) {
     return this.searchFlightByScheduleWithPreferredCarrierAndStops(page, from, to, carrier, null, options ?? {});
   },
 
@@ -997,7 +997,7 @@ const FlightSearch = {
    * @param {Object} page - Playwright page object
    * @param {string} from - Origin airport code
    * @param {string} to - Destination airport code
-   * @param {string} carrier - Preferred carrier label, e.g. "Scandinavian"
+  * @param {string} carrier - Preferred carrier label or code, e.g. "Scandinavian" or "SK"
    * @param {string|null} stopsOption - Stops option label, e.g. "No stops". Pass null/undefined to skip the stops filter.
    * @param {Object} [options] - Date-selection options
    */
