@@ -985,65 +985,21 @@ const FlightSearch = {
    * @param {string} from - Origin airport code
    * @param {string} to - Destination airport code
    * @param {string} carrier - Preferred carrier label or code, e.g. "Lufthansa" or "LH"
-   * @param {Object} options - Date-selection options
+   * @param {Object} [options] - Date-selection options
    */
-  async searchFlightByScheduleWithPreferredCarrier(
-    page,
-    from,
-    to,
-    carrier,
-    {
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
-    } = {},
-  ) {
-    if (!page) throw new Error('page is required');
-    if (!from || typeof from !== 'string') throw new Error('from must be a non-empty string, got: ' + from);
-    if (!to || typeof to !== 'string') throw new Error('to must be a non-empty string, got: ' + to);
-    if (!carrier || typeof carrier !== 'string') {
-      throw new Error('carrier must be a non-empty string, got: ' + carrier);
-    }
-
-    logger.info('Searching for by-schedule flight with preferred carrier', { from, to, carrier });
-
-    const flightSearchPage = getPageObject(page, FlightSearchPage);
-    const searchPage = getPageObject(page, SearchPage);
-
-    await flightSearchPage.clickFlightTab();
-    await searchPage.selectRoundTrip();
-    await searchPage.fillInFromField(from);
-    await searchPage.fillInToField(to);
-    await searchPage.clickCalendarNextArrow();
-    await selectDatesByNthAvailable(page, {
-      startIndex: departureIndex,
-      endIndex: returnIndex,
-    });
-
-    await flightSearchPage.selectBySchedule();
-    await this.openAdvancedSearch(page);
-    await flightSearchPage.clearPreferredCarriers();
-    await flightSearchPage.selectPreferredCarrier(carrier);
-    await searchPage.waitAndClickSearchButton();
-
-    return {
-      searched: true,
-      from,
-      to,
-      tripType: 'roundTrip',
-      searchType: 'bySchedule',
-      carrier,
-    };
+  async searchFlightByScheduleWithPreferredCarrier(page, from, to, carrier, options = {}) {
+    return this.searchFlightByScheduleWithPreferredCarrierAndStops(page, from, to, carrier, null, options);
   },
 
   /**
-   * Searches for a by-schedule round-trip flight with advanced-search preferred-carrier and stops filters.
+   * Searches for a by-schedule round-trip flight with advanced-search preferred-carrier and (optional) stops filters.
    *
    * @param {Object} page - Playwright page object
    * @param {string} from - Origin airport code
    * @param {string} to - Destination airport code
    * @param {string} carrier - Preferred carrier label, e.g. "Scandinavian"
-   * @param {string} stopsOption - Stops option label, e.g. "No stops"
-   * @param {Object} options - Date-selection options
+   * @param {string|null} stopsOption - Stops option label, e.g. "No stops". Pass null/undefined to skip the stops filter.
+   * @param {Object} [options] - Date-selection options
    */
   async searchFlightByScheduleWithPreferredCarrierAndStops(
     page,
@@ -1062,15 +1018,18 @@ const FlightSearch = {
     if (!carrier || typeof carrier !== 'string') {
       throw new Error('carrier must be a non-empty string, got: ' + carrier);
     }
-    if (!stopsOption || typeof stopsOption !== 'string') {
-      throw new Error('stopsOption must be a non-empty string, got: ' + stopsOption);
+    if (stopsOption !== null && stopsOption !== undefined && typeof stopsOption !== 'string') {
+      throw new Error('stopsOption must be a string, null, or undefined, got: ' + typeof stopsOption);
+    }
+    if (typeof stopsOption === 'string' && stopsOption.length === 0) {
+      throw new Error('stopsOption must be a non-empty string when provided');
     }
 
-    logger.info('Searching for by-schedule flight with preferred carrier and stops filter', {
+    logger.info('Searching for by-schedule flight with preferred carrier', {
       from,
       to,
       carrier,
-      stopsOption,
+      stopsOption: stopsOption || null,
     });
 
     const flightSearchPage = getPageObject(page, FlightSearchPage);
@@ -1090,7 +1049,9 @@ const FlightSearch = {
     await this.openAdvancedSearch(page);
     await flightSearchPage.clearPreferredCarriers();
     await flightSearchPage.selectPreferredCarrier(carrier);
-    await flightSearchPage.selectStopsOption(stopsOption);
+    if (stopsOption) {
+      await flightSearchPage.selectStopsOption(stopsOption);
+    }
     await searchPage.waitAndClickSearchButton();
 
     return {
@@ -1100,7 +1061,7 @@ const FlightSearch = {
       tripType: 'roundTrip',
       searchType: 'bySchedule',
       carrier,
-      stopsOption,
+      ...(stopsOption ? { stopsOption } : {}),
     };
   },
 
