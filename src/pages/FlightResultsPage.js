@@ -1319,13 +1319,13 @@ async clickAddToTripButtonPricingOptionsModal() {
   }
 
   const addButton = this.page.locator(SELECTORS.PRICING_OPTIONS_ADD_TO_TRIP_BUTTON);
-
+  
   // Wait for button to be enabled (not disabled)
   await addButton.waitFor({ state: 'attached', timeout: 30000 });
-
+  
   // Additional wait for the disabled attribute to be removed
   await this.page.waitForTimeout(1500);
-
+  
   // Click the button and wait for navigation if it occurs
   await Promise.all([
     this.page.waitForLoadState('domcontentloaded', { timeout: 45000 }).catch(() => {}),
