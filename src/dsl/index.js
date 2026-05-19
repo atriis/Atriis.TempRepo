@@ -32,4 +32,5 @@ module.exports = {
   Trips: require("./Trips"),
   UKParkingSearch: require("./UKParkingSearch"),
   UnusedTickets: require("./UnusedTickets"),
+  PayloadValidation: require("./PayloadValidation"),
 };

@@ -14,6 +14,14 @@ function getEnv(name) {
   return value;
 }
 
+function getOptionalEnv(name, defaultValue = "") {
+  const value = process.env[name];
+  if (value === undefined || String(value).trim() === "") {
+    return defaultValue;
+  }
+  return value;
+}
+
 /**
  * Viewport presets for flexibility.
  * Can be changed via VIEWPORT env variable.
@@ -50,6 +58,18 @@ const config = {
   },
 
   viewport: ACTIVE_VIEWPORT,
+
+  azureStorage: {
+    get connectionString() {
+      return getOptionalEnv("AZURE_STORAGE_CONNECTION_STRING", "");
+    },
+    get lookbackMinutes() {
+      return Number(getOptionalEnv("AZURE_STORAGE_LOOKBACK_MINUTES", "60"));
+    },
+    get timeoutMs() {
+      return Number(getOptionalEnv("AZURE_STORAGE_TIMEOUT_MS", "30000"));
+    },
+  },
 };
 
 module.exports = config;

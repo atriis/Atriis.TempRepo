@@ -7,6 +7,22 @@ const { expect } = require("@playwright/test");
 
 setDefaultTimeout(120000);
 
+async function captureTripIdFromCurrentPage(page, { timeoutMs = 20000 } = {}) {
+  if (!page) {
+    return null;
+  }
+
+  try {
+    await page.waitForURL(/\/trips\/(\d+)/i, { timeout: timeoutMs });
+  } catch {
+    // Best-effort wait: some flows may not navigate to /trips/<id> immediately.
+  }
+
+  const url = page.url();
+  const match = url.match(/\/trips\/(\d+)(?:[/?#]|$)/i);
+  return match ? match[1] : null;
+}
+
 // ===== GIVEN STEPS =====
 
 /**
@@ -29,6 +45,17 @@ Given("I am logged in as {string} booking a new trip", async function (user) {
   this.browser = session.browser;
   this.context = session.context;
   this.page = session.page;
+
+  const tripId = await captureTripIdFromCurrentPage(this.page);
+  if (tripId) {
+    this.tripId = tripId;
+    this.currentTripId = tripId;
+    this.createdTripId = tripId;
+    logger.info("Trip id captured from booking flow", { tripId });
+  } else {
+    logger.warn("Trip id was not available immediately after opening a new trip");
+  }
+  
   logger.info("Setup complete");
 });
 
