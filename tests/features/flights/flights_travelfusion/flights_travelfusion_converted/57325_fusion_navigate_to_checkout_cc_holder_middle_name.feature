@@ -21,5 +21,5 @@ Feature: 57325 Fusion - Navigate to checkout when CC holder name has a middle na
     # TODO: implement 'the CC holder name field accepts and saves a middle name successfully' — see CC_holder_name_field_has_middle_name_successfully() in Testim source (test 57325)
     When I fill credit card cvv if needed
     And I proceed to checkout
-    When I proceed to checkout and handle Fusion verification
+    When I complete the booking with Fusion credit card verification
     Then I successfully cancel the trip

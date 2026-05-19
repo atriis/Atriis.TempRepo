@@ -21,5 +21,5 @@ Feature: 26800 Fusion - Booking for 2 adults with FOP AirPlus and fare rules dis
     # TODO: implement 'I open and verify fare rules in cart' — see Fare_rules_in_cart() in Testim source (test 26800)
     And I fill credit card cvv if needed
     And I proceed to checkout
-    When I proceed to checkout and handle Fusion verification
+    When I complete the booking with Fusion credit card verification
     # TODO: implement 'I open and verify fare rules in cart after booking is completed' — see Fare_rules_in_cart__after_booking_completed() in Testim source (test 26800)

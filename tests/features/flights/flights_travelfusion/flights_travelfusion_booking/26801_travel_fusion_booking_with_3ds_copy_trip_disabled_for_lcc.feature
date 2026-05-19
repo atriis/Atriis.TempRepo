@@ -16,8 +16,10 @@ Feature: 26801 Travel Fusion - Booking with 3DS and Copy Trip disabled for low-c
     And I have added a random guest traveler
     When I search for a round trip flight from "LGW" to "MXP"
     And I add the first flight to cart
+    Then the booking status should be "Pending booking"
     And I fill credit card cvv if needed
-    And I proceed to checkout
-    When I proceed to checkout and handle Fusion verification
-    # TODO: implement 'the ticket details should be visible after booking' — isVisible('.ticket-details') in Testim source (test 26801)
-    # TODO: implement 'low cost flights should not be eligible for copy trip' — see Low_cost_flights_are_not_eligible_for_copy_trip() in Testim source (test 26801)
+    When I proceed to checkout
+    And I complete the booking with Fusion credit card verification
+    Then the quote destination should contain "Flight to"
+    And the ticket details should be visible after booking
+    And the trip should not be eligible for copy trip

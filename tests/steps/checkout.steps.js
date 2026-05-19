@@ -49,8 +49,7 @@ When("I complete the booking", async function () {
   }
 });
 
-
-When("I proceed to checkout and handle Fusion verification", async function () {
+When("I complete the booking with Fusion credit card verification", async function () {
   logger.info("Completing Fusion booking with card verification");
   await Checkout.bookAndFinalizeWithFusionCardVerification(this.page);
 });

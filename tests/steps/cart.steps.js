@@ -1489,6 +1489,11 @@ When("I add meal {string} to the flight", async function (mealName) {
   await Cart.addMealToFlight(this.page, mealName);
 });
 
+When("I add a meal to the flight for both travelers", async function () {
+  logger.info("Adding meal for all travelers");
+  await Cart.addMealForAllTravelers(this.page);
+});
+
 Then("the selected meal should have status {string}", async function (expectedStatus) {
   if (typeof this.selectedMealName !== 'string' || !this.selectedMealName.trim()) {
     throw new Error('selectedMealName is not set. Add a meal before verifying its status.');
@@ -1592,6 +1597,16 @@ When("I copy the trip", async function () {
 Then("the trip is created successfully with the same flight", async function () {
   logger.info("Verifying copied trip contains the same flight number", { flightNumber: this.storedFlightNumber });
   await Cart.verifyTripHasSameFlightNumber(this.page, this.storedFlightNumber);
+});
+
+Then("the ticket details should be visible after booking", async function () {
+  logger.info("Verifying ticket details section is visible after booking");
+  await Cart.verifyTicketDetailsVisibleAfterBooking(this.page);
+});
+
+Then("the trip should not be eligible for copy trip", async function () {
+  logger.info("Verifying trip is not eligible for copy trip");
+  await Cart.verifyTripCannotBeCopied(this.page);
 });
 
 

@@ -16,9 +16,8 @@ const SELECTORS = {
   GO_TO_TRIP_BUTTON_NAME: "Go to trip",
   FUSION_VERIFICATION_TITLE: ".booking-success .success-message__title",
   FUSION_VERIFY_NOW_BUTTON: ".success-message__email span",
-  FUSION_3DS_DIALOG_TITLE: ".app-dialog .el-dialog__title",
   FUSION_3DS_DIALOG_CONTAINER: ".app-dialog",
-  FUSION_3DS_DIALOG_HEADER: ".el-dialog__header",
+  FUSION_3DS_DIALOG_CLOSE_BUTTON: ".app-dialog .el-dialog__headerbtn",
   // Ypsilon 3DS verification (ypsilon-3ds.vue — iframe-based SCA challenge)
   YPSILON_3DS_CONTAINER: "#yps_sca_frame",
   // Element-plus dialog title with the exact 'Card verification' text — the most
@@ -239,11 +238,20 @@ class CheckoutPage {
 
   /**
    * Completes the Fusion 3DS verification screen shown after booking low-cost flights.
-   * Mirrors the legacy Testim flow for this provider-specific confirmation path:
-   * wait for the verification screen, click Verify now, wait for the provider flow,
-   * click the dialog header, then wait for Go to trip.
    *
-   * @param {number} timeout
+   * Flow:
+   *  - waits for the "Card verification needed!" success message
+   *  - extracts the trip ID from the current URL
+   *  - waits 18 seconds for the verification modal to auto-appear
+   *  - if the modal did not open, clicks "Verify now" to open it
+   *  - closes the modal
+   *
+   * The simulated 3DS iframe (gtp-staging.com) is unreliable in staging, so we
+   * skip interacting with it entirely and rely on direct trip URL navigation
+   * afterwards (handled by the DSL layer).
+   *
+   * @param {number} timeout - Max wait for the verification title.
+   * @returns {Promise<string>} The trip ID extracted from the URL.
    */
   async completeFusionCardVerification(timeout = 90000) {
     await waitForText(
@@ -253,18 +261,32 @@ class CheckoutPage {
       timeout,
     );
 
-    const verifyNowButton = this.page.locator(SELECTORS.FUSION_VERIFY_NOW_BUTTON).first();
-    await verifyNowButton.waitFor({ state: 'visible', timeout: 30000 });
-    await verifyNowButton.click();
+    const tripIdMatch = new URL(this.page.url()).pathname.match(/\/trips\/(\d+)/);
+    if (!tripIdMatch) {
+      throw new Error('completeFusionCardVerification: could not extract trip ID from URL: ' + this.page.url());
+    }
+    const tripId = tripIdMatch[1];
 
-    await this.page.waitForTimeout(18000);
+    // Fusion auto-opens the 3DS modal up to ~18s after booking succeeds.
+    // Probe up to that bound; if it doesn't auto-open we trigger it via "Verify now".
+    const dialogContainer = this.page.locator(SELECTORS.FUSION_3DS_DIALOG_CONTAINER).first();
+    const dialogVisible = await dialogContainer
+      .waitFor({ state: 'visible', timeout: 18000 })
+      .then(() => true)
+      .catch(() => false);
 
-    const dialogHeader = this.page.locator(SELECTORS.FUSION_3DS_DIALOG_HEADER).first();
-    if (await dialogHeader.isVisible().catch(() => false)) {
-      await dialogHeader.click().catch(() => {});
+    if (!dialogVisible) {
+      const verifyNowButton = this.page.locator(SELECTORS.FUSION_VERIFY_NOW_BUTTON).first();
+      await verifyNowButton.waitFor({ state: 'visible', timeout: 30000 });
+      await verifyNowButton.click();
+      await dialogContainer.waitFor({ state: 'visible', timeout: 30000 });
     }
 
-    await this.getGoToTripButton().waitFor({ state: 'visible', timeout });
+    const closeButton = this.page.locator(SELECTORS.FUSION_3DS_DIALOG_CLOSE_BUTTON).first();
+    await closeButton.waitFor({ state: 'visible', timeout: 30000 });
+    await closeButton.click();
+
+    return tripId;
   }
 
   /**

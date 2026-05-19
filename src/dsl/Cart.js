@@ -3294,6 +3294,52 @@ const Cart = {
   },
 
   /**
+   * Selects the first available meal for each traveler tab in the meal panel,
+   * then saves. Assumes the meal extras panel is already open.
+   * @param {import('playwright').Page} page
+   */
+  async addMealForAllTravelers(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    const tabCount = await cartPage.getMealTravelerTabCount();
+    const travelerCount = tabCount > 0 ? tabCount : 1;
+
+    logger.info('Adding meal for all travelers', { travelerCount });
+
+    for (let i = 1; i <= travelerCount; i++) {
+      if (travelerCount > 1) {
+        await cartPage.clickMealTravelerTabByIndex(i);
+        await page.waitForTimeout(500);
+      }
+
+      // Click the first available dropdown caret in the active tab
+      const caret = page.locator('.flight-meals .el-tab-pane:not([style*="display: none"]) .el-select__caret').first();
+      await caret.waitFor({ state: 'visible', timeout: 10000 });
+      await caret.click();
+
+      // Wait for the visible dropdown panel and pick the first option
+      const option = page.locator('.el-select-dropdown:visible .el-select-dropdown__item').first();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click();
+
+      // Wait for the dropdown to close before switching tabs
+      await page.locator('.el-select-dropdown:visible').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+
+      logger.info(`Meal selected for traveler ${i}`);
+    }
+
+    await cartPage.clickMealSaveButton();
+
+    await page.locator('.el-notification__title').filter({ hasText: 'Success' }).waitFor({ state: 'visible', timeout: 30000 });
+    await page.waitForLoadState('networkidle');
+
+    logger.info('Meal added and saved for all travelers');
+    return { added: true, travelerCount };
+  },
+
+  /**
    * Verifies the selected meal text and status message in the meal panel.
    * Assumes the meal panel is already open (caller used "I click to edit extras at index").
    *
@@ -4167,6 +4213,49 @@ const Cart = {
     logger.info('Copied trip opened in current tab (no new tab detected)');
     await page.waitForLoadState('networkidle', { timeout: 60000 });
     return page;
+  },
+
+  /**
+   * Verifies the ticket details section is rendered on the cart/booking-success page.
+   * Used as a post-booking sanity check that the flight quote card is fully populated.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{visible: true}>}
+   */
+  async verifyTicketDetailsVisibleAfterBooking(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const ticketDetails = cartPage.getFirstTicketDetailsSection();
+    await ticketDetails.waitFor({ state: 'visible', timeout: 30000 });
+    logger.info('Ticket details section is visible after booking');
+    return { visible: true };
+  },
+
+  /**
+   * Opens the Copy Trip dialog and verifies the trip cannot be copied
+   * (e.g., low-cost flights are ineligible for copy trip).
+   * Asserts the "This item can not be copied" indicator is shown, then closes the dialog.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{cannotBeCopied: true}>}
+   */
+  async verifyTripCannotBeCopied(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
+    await cartPage.hoverTripActionsDropdownIcon();
+    await cartPage.clickCopyTripOption();
+    await cartPage.waitForCopyTripDialog();
+
+    const indicator = cartPage.getCopyTripCannotCopyIndicator();
+    await indicator.waitFor({ state: 'visible', timeout: 15000 });
+    logger.info('Copy Trip dialog shows "cannot be copied" indicator');
+
+    await cartPage.clickCopyTripCancelButton();
+    return { cannotBeCopied: true };
   },
 
   /**

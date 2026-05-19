@@ -57,6 +57,9 @@ const SELECTORS = {
   COPY_TRIP_OPTION: ".el-dropdown-menu__item",
   COPY_TRIP_DIALOG: ".copy-trip-dialog",
   COPY_TRIP_CONFIRM_BUTTON: ".copy-trip-dialog .app-footer .btn--primary",
+  COPY_TRIP_CANNOT_COPY_INDICATOR: ".copy-trip-dialog .can-not-copy",
+  COPY_TRIP_CANCEL_BUTTON: ".copy-trip-dialog .app-footer .cancel-btn",
+  TICKET_DETAILS_SECTION: ".ticket-details",
   SHOW_CANCELLED_ITEMS_OPTION: '.el-dropdown-menu__item',
   TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label='Trip cancellation'] .el-dialog__title",
   CONFIRM_CANCEL_BUTTON: "role=button[name='Cancel trip']",
@@ -179,6 +182,7 @@ const SELECTORS = {
   MEAL_CANCEL_BUTTON: ".flight-meals .clear-btn",
   MEAL_SELECTED_TEXT: ".flight-meals .el-select__placeholder span",
   MEAL_STATUS_HELP_TEXT: ".flight-meals .help",
+  MEAL_TRAVELER_TAB: ".flight-meals .flight-cart-tabs .el-tabs__item:visible",
   
   // Delivery Method (UK Rail) selectors
   DELIVERY_METHOD_SECTION: ".uk-rail-delivery-method",
@@ -1527,6 +1531,28 @@ class CartPage {
     await btn.waitFor({ state: 'visible', timeout: 10000 });
     await btn.click();
     await this.page.locator(SELECTORS.MEAL_DROPDOWN_CARET).first().waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  /**
+   * Returns the number of traveler tabs in the meal extras panel.
+   * @returns {Promise<number>}
+   */
+  async getMealTravelerTabCount() {
+    return this.page.locator(SELECTORS.MEAL_TRAVELER_TAB).count();
+  }
+
+  /**
+   * Clicks a meal traveler tab by 1-based index.
+   * @param {number} tabNumber - 1-based tab index
+   * @param {number} [timeout=10000]
+   */
+  async clickMealTravelerTabByIndex(tabNumber, timeout = 10000) {
+    if (!Number.isInteger(tabNumber) || tabNumber < 1) {
+      throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
+    }
+    const tab = this.page.locator(SELECTORS.MEAL_TRAVELER_TAB).nth(tabNumber - 1);
+    await tab.waitFor({ state: 'visible', timeout });
+    await tab.click();
   }
 
   /**
@@ -4239,6 +4265,20 @@ class CartPage {
     const button = this.page.locator(SELECTORS.COPY_TRIP_CONFIRM_BUTTON).first();
     await button.waitFor({ state: 'visible', timeout: 15000 });
     await button.click();
+  }
+
+  getCopyTripCannotCopyIndicator() {
+    return this.page.locator(SELECTORS.COPY_TRIP_CANNOT_COPY_INDICATOR).first();
+  }
+
+  async clickCopyTripCancelButton() {
+    const button = this.page.locator(SELECTORS.COPY_TRIP_CANCEL_BUTTON).first();
+    await button.waitFor({ state: 'visible', timeout: 15000 });
+    await button.click();
+  }
+
+  getFirstTicketDetailsSection() {
+    return this.page.locator(SELECTORS.TICKET_DETAILS_SECTION).first();
   }
 
   // ========================================

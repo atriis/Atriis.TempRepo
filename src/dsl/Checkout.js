@@ -134,10 +134,11 @@ const Checkout = {
 
   /**
    * Finalizes Fusion low-cost flight booking with card verification,
-   * then navigates to the trip overview page.
+   * then navigates directly to the trip overview page by trip ID extracted
+   * from the booking-success URL.
    *
    * @param {import('playwright').Page} page
-   * @returns {Promise<{finalized: boolean}>}
+   * @returns {Promise<{finalized: boolean, tripId: string}>}
    */
   async bookAndFinalizeWithFusionCardVerification(page) {
     if (!page) throw new Error('page is required');
@@ -146,11 +147,14 @@ const Checkout = {
     const cartPage = getPageObject(page, CartPage);
 
     await Checkout.bookTripWithoutNavigatingToTripOverview(page);
-    await checkoutPage.completeFusionCardVerification();
-    await checkoutPage.clickGoToTrip();
+    const tripId = await checkoutPage.completeFusionCardVerification();
+
+    const tripUrl = new URL(page.url());
+    tripUrl.pathname = `/trips/${tripId}/cart`;
+    await page.goto(tripUrl.href, { waitUntil: 'domcontentloaded' });
     await cartPage.waitForTripOverviewTitle();
 
-    return { finalized: true };
+    return { finalized: true, tripId };
   },
 
   /**

@@ -23,5 +23,5 @@ Feature: 22939 Fusion - Travel policy for baggage with OOP justification from fl
     When I fill credit card cvv if needed
     And I proceed to checkout
     # TODO: implement 'I handle the price change prompt if visible' — see Price_change_prompt() in Testim source (test 22939)
-    When I proceed to checkout and handle Fusion verification
+    When I complete the booking with Fusion credit card verification
     Then the out of policy indicator should be visible in cart

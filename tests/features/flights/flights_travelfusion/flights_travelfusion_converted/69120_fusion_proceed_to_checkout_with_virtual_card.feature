@@ -16,8 +16,8 @@ Feature: 69120 Fusion - Proceed to checkout with Virtual Card FOP
     And I have added myself as the traveler
     When I search for a one way flight from "GLA" to "BRS"
     And I add the first flight to cart
-    Then the booking status should be "Pending booking"
-    # TODO: implement 'the Virtual Card should be selected as form of payment in cart' — see Marking_sure_virtual_card_is_selected() in Testim source (test 69120)
-    When I accept Terms & Conditions
-    And I click the proceed to checkout button
-    # TODO: implement 'the checkout page should be loaded' — see Making_sure_checkout_page_is_loaded() in Testim source (test 69120)
+    And the booking status should be "Pending booking"
+    Then the payment type should be "Paid by TMC"
+    And I proceed to checkout
+    Then I should see "Book and Finalize" button enabled
+

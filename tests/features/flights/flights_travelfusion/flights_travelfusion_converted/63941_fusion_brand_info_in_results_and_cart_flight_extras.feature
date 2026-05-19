@@ -24,6 +24,6 @@ Feature: 63941 Fusion - Brand info displayed in results and cart, flight extras 
     When I fill credit card cvv if needed
     And I accept Terms & Conditions
     And I click the proceed to checkout button
-    When I proceed to checkout and handle Fusion verification
+    When I complete the booking with Fusion credit card verification
     # TODO: implement 'the trip overview should display flight details' — see Flights___Trip_Overview___Wait_for__Flight_details__text_display() in Testim source (test 63941)
     # TODO: implement 'the branded fares should still be displayed in flight details on the cart page after booking' — see Flight___Branded_Fares____Flight_details__cart_page() in Testim source (test 63941)
