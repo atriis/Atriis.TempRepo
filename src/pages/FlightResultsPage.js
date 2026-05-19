@@ -588,6 +588,21 @@ class FlightResultsPage {
     return { displayPrice, originalPrice };
   }
 
+  async getFirstFlightResultDisplayPriceData() {
+    await this.waitForFlightResults();
+
+    const displayAmount = this.page.locator(SELECTORS.FIRST_FLIGHT_RESULT_AMOUNT).first();
+
+    await displayAmount.waitFor({ state: 'visible', timeout: 30000 });
+
+    const displayPriceText = await displayAmount.textContent();
+
+    return {
+      displayPriceText,
+      displayPrice: parseAmountText(displayPriceText, 'first flight result display price'),
+    };
+  }
+
   async getFirstFlightResultDisplayAndOriginalPriceData() {
     await this.waitForFlightResults();
 

@@ -38,6 +38,14 @@ async function ensureFirstFlightResultPriceData(world) {
   return world.firstFlightResultPriceData;
 }
 
+async function ensureFirstFlightResultDisplayPriceData(world) {
+  if (!world.firstFlightResultDisplayPriceData) {
+    world.firstFlightResultDisplayPriceData = await FlightResults.extractFirstFlightResultDisplayPriceData(world.page);
+  }
+
+  return world.firstFlightResultDisplayPriceData;
+}
+
 async function ensureFirstPricingOptionPriceData(world) {
   if (!world.firstPricingOptionPriceData) {
     world.firstPricingOptionPriceData = await FlightResults.extractFirstPricingOptionDisplayAndOriginalPriceData(world.page);
@@ -211,7 +219,7 @@ When("I click to open first pricing options", async function () {
 
 When('I extract the price for the first flight result and store it', async function () {
   logger.info('Extracting the price for the first flight result and storing it');
-  const priceData = await ensureFirstFlightResultPriceData(this);
+  const priceData = await ensureFirstFlightResultDisplayPriceData(this);
 
   this.firstFlightResultDisplayPrice = {
     amount: priceData.displayPrice,
@@ -851,6 +859,21 @@ Then('the first pricing option display and original prices should match the stor
     this.firstFlightResultPrices,
   );
   await FlightResults.verifyFirstPricingOptionMatchesStoredFlightResultPrices(this.page, this.firstFlightResultPrices);
+});
+
+Then('the first pricing option price should match the stored first flight result price', async function () {
+  if (!this.firstFlightResultDisplayPrice || typeof this.firstFlightResultDisplayPrice.amount !== 'number') {
+    throw new Error('No stored first flight result display price found. Run "I extract the price for the first flight result and store it" before this assertion.');
+  }
+
+  logger.info(
+    'Verifying first pricing option display price against stored first flight result price',
+    this.firstFlightResultDisplayPrice,
+  );
+  await FlightResults.verifyFirstPricingOptionDisplayPriceMatchesStored(
+    this.page,
+    this.firstFlightResultDisplayPrice.amount,
+  );
 });
 
 Then('pricing options should be displayed in increasing price order', async function () {

@@ -16,8 +16,8 @@ Feature: 47770 Fusion - Pricing options price is correct for 2 travelers
     And I have added myself as the traveler
     And I have added traveler by name "shani cohen"
     When I search for a round trip flight from "DUS" to "VIE"
-    # TODO: implement 'I click proceed after the search modal' — see click_on_proceed_after_search() in Testim source (covers post-search dialog/proceed flow)
+    And I click proceed button if visible
     Then flight results should be available
     When I extract the price for the first flight result and store it
     And I click to open first pricing options
-    # TODO: implement 'the first pricing option price should match the stored first flight result price' — waitForText('.flicking-camera > :nth-child(1) .amount', stored price) (test 47770)
+    Then the first pricing option price should match the stored first flight result price

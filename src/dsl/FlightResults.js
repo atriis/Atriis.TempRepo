@@ -581,6 +581,20 @@ const FlightResults = {
     };
   },
 
+  async extractFirstFlightResultDisplayPriceData(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const priceData = await flightResultsPage.getFirstFlightResultDisplayPriceData();
+
+    return {
+      ...priceData,
+      displayCurrencySymbol: extractCurrencySymbol(priceData.displayPriceText, 'first flight result display price'),
+    };
+  },
+
   async verifyFirstPricingOptionMatchesStoredFlightResultPrices(page, expectedPrices) {
     if (!page) {
       throw new Error('page is required');
@@ -618,6 +632,32 @@ const FlightResults = {
     );
 
     return { expectedPrices, actualPrices };
+  },
+
+  async verifyFirstPricingOptionDisplayPriceMatchesStored(page, expectedDisplayPrice) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (typeof expectedDisplayPrice !== 'number' || Number.isNaN(expectedDisplayPrice)) {
+      throw new Error(`expectedDisplayPrice must be a valid number, got: ${expectedDisplayPrice}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const actualDisplayPrice = await flightResultsPage.getAmountPriceValuePricingOptions(0);
+
+    if (typeof actualDisplayPrice !== 'number' || Number.isNaN(actualDisplayPrice)) {
+      throw new Error(`Could not read first pricing option display price, got: ${actualDisplayPrice}`);
+    }
+
+    expectNumbersToBeEqualWithTolerance(
+      actualDisplayPrice,
+      expectedDisplayPrice,
+      0.02,
+      'First pricing option display price vs stored flight result display price',
+    );
+
+    return { expectedDisplayPrice, actualDisplayPrice };
   },
 
   async extractFirstPricingOptionDisplayAndOriginalPriceData(page) {
