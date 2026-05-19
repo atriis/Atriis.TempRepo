@@ -3374,6 +3374,31 @@ const Cart = {
   },
 
   /**
+   * Verifies the saved meal text shown in the meal extras dropdown placeholder.
+   * Use after re-opening the meal panel to confirm the previous selection persisted.
+   * Closes the panel after verification.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMeal - Expected meal text (e.g. "Roasted Beef Panini - 20.00AED")
+   * @returns {Promise<{ meal: string }>}
+   */
+  async verifySavedMealTextAndClosePanel(page, expectedMeal) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedMeal !== 'string' || !expectedMeal.trim()) {
+      throw new Error('expectedMeal must be a non-empty string, got: ' + typeof expectedMeal);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    const mealText = await cartPage.getMealSelectedText();
+    expect(mealText, `Saved meal should display "${expectedMeal}"`).toContain(expectedMeal);
+
+    await cartPage.clickMealCancelButton();
+
+    return { meal: mealText };
+  },
+
+  /**
    * Verifies the seat icon is visible in the trip overview extras section.
    * @param {import('playwright').Page} page
    */

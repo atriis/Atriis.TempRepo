@@ -15,16 +15,17 @@ Feature: 26814 Fusion - Meal selection on Air Arabia flight (hybrid / API valida
     Given I am logged in as "uzi@yonon.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "NBO" to "SHJ"
-    # TODO: implement 'I click proceed after the search modal' — see click_on_proceed_after_search() in Testim source (test 26814 hybrid)
+    And I click proceed button if visible
     Then flight results should be available
-    # TODO: implement 'I filter results by Air Arabia carrier' — see filter_on_air_arabia() in Testim source (test 26814 hybrid)
-    When I add the first flight to cart
+    When I filter results by carrier "Air Arabia"
+    And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I click to edit the meal extras section
-    # TODO: implement 'I select the meal option containing "roasted"' — type 'roasted' in meal search input and select first matching option (test 26814 hybrid)
-    And I click the save button
-    # TODO: implement 'the meal success toast should be displayed' — see Success_toast_alert() in Testim source (test 26814 hybrid)
-    # TODO: implement 'the saved meal should display "Roasted Beef Panini - 20.00AED"' — waitForText('.inputs > :nth-child(1) .el-select__placeholder span', 'Roasted Beef Panini - 20.00AED') (test 26814 hybrid)
+    And I add meal "Roasted Beef Panini - 20.00AED" to the flight
+    And I should see a success notification
+    And I click to edit the meal extras section
+    Then the saved meal should display "Roasted Beef Panini - 20.00AED"
     When I fill credit card cvv if needed
-    And I proceed to checkout
-    When I complete the booking
+    When I proceed to checkout
+    And I complete the booking with Fusion credit card verification
+    Then the quote destination should contain "Flight to"

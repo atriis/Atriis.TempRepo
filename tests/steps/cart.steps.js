@@ -1524,6 +1524,12 @@ Then("the selected meal should have status matching {string}", async function (s
   logger.info("Meal verification result", result);
 });
 
+Then("the saved meal should display {string}", async function (expectedMeal) {
+  logger.info("Verifying saved meal text in dropdown", { expectedMeal });
+  const result = await Cart.verifySavedMealTextAndClosePanel(this.page, expectedMeal);
+  logger.info("Saved meal verification result", result);
+});
+
 // ========================================
 // SEATING ICON
 // ========================================
