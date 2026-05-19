@@ -1062,6 +1062,39 @@ const FlightResults = {
   },
 
   /**
+   * Verifies that the currently active by-schedule leg matches the expected
+   * route and that flight results are visible for it.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} leg - Leg code in "FROM-TO" format (e.g. "GLA-AMS")
+   * @returns {Promise<{leg: string, activeTitle: string}>}
+   */
+  async verifyByScheduleLegHasResults(page, leg) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (typeof leg !== 'string' || !/^[A-Za-z]{3}-[A-Za-z]{3}$/.test(leg)) {
+      throw new Error(`leg must be a "FROM-TO" code (e.g. "GLA-AMS"), got: ${leg}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const activeTitle = await flightResultsPage.getActiveByScheduleLegTitle();
+    const [from, to] = leg.toUpperCase().split('-');
+    const expected = `${from} to ${to}`;
+    const normalized = activeTitle.toUpperCase();
+
+    if (normalized !== expected.toUpperCase() && !(normalized.includes(from) && normalized.includes(to))) {
+      throw new Error(
+        `Expected active by-schedule leg to be "${expected}", but stepper shows "${activeTitle}"`
+      );
+    }
+
+    await flightResultsPage.waitForFlightResults(60000);
+
+    return { leg, activeTitle };
+  },
+
+  /**
    * Waits for a field label to be visible in the share dialog.
    *
    * @param {import('playwright').Page} page

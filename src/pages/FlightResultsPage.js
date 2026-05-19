@@ -59,6 +59,7 @@ const SELECTORS = {
   FLIGHT_STEPPER: '.flight-stepper',
   FLIGHT_STEPPER_PAGE_CONTAINER: '.flight-stepper .page-container',
   FLIGHT_STEPPER_PAGE_TITLE: '.page-title',
+  FLIGHT_STEPPER_ACTIVE_CONTAINER: '.flight-stepper .page-container:has(.page-number.isActive)',
   COMPARISON_TOGGLE: '.comparison-btn span',
   COMPARISON_TABLE: '.ticket-layout-container .el-table__body-wrapper',
   COMPARISON_ROW: '.ticket-layout-container .el-table__body-wrapper tbody tr',
@@ -366,6 +367,19 @@ class FlightResultsPage {
 
     await segment.waitFor({ state: 'visible', timeout: 15000 });
     await segment.locator(SELECTORS.FLIGHT_STEPPER_PAGE_TITLE).first().click({ timeout: 10000 });
+  }
+
+  /**
+   * Returns the route title of the currently active leg in the by-schedule
+   * flight stepper (e.g. "GLA to AMS").
+   *
+   * @returns {Promise<string>} Trimmed title text of the active leg
+   */
+  async getActiveByScheduleLegTitle() {
+    const active = this.page.locator(SELECTORS.FLIGHT_STEPPER_ACTIVE_CONTAINER).first();
+    await active.waitFor({ state: 'visible', timeout: 30000 });
+    const title = await active.locator(SELECTORS.FLIGHT_STEPPER_PAGE_TITLE).first().textContent({ timeout: 10000 });
+    return (title ?? '').replace(/\s+/g, ' ').trim();
   }
 
   /**

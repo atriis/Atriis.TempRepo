@@ -14,5 +14,10 @@ Feature: 61149 Fusion - Multi-city by-schedule search returns results
   Scenario: Multi-city by-schedule Fusion search returns results for all legs
     Given I am logged in as "mikeshinoda@travelfusion.com" booking a new trip
     And I have added myself as the traveler
-    # TODO: implement 'I search for a multi-city by-schedule flight with legs "BRS-Glasgow" and "Glasgow-AMS" and "AMS-BRS"' — see Search_multi_city_flight_by_schedule('BRS', 'Glasgow', 'Glasgow', 'AMS', 'BRS') in Testim source (test 61149)
-    # TODO: implement 'multi-city by-schedule flight results should be displayed for all legs' — see Validating_results_are_displayed() in Testim source (test 61149)
+    When I search for a multi-city by-schedule flight with legs "BRS-GLA" and "GLA-AMS" and "AMS-BRS"
+    And flight results should be available
+    When I select one flight segment by schedule
+    And I wait for the change flight button to be visible
+    Then "GLA-AMS" leg should have results available
+    When I select one flight segment by schedule
+    Then "AMS-BRS" leg should have results available

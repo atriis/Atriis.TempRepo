@@ -425,17 +425,21 @@ const FlightSearch = {
    * @param {Array<{from: string, to: string}>} legs - Array of at least 2 leg objects
    * @param {Object} options
    * @param {number} options.departureIndex - Starting available-day index for first leg (default: SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX)
+   * @param {string} options.searchType - 'completeTrip' (default) or 'bySchedule'
    */
   async searchFlightMultiCity(
     page,
     legs,
-    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX } = {},
+    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX, searchType = 'completeTrip' } = {},
   ) {
     if (!Array.isArray(legs) || legs.length < 2) {
       throw new Error('legs must be an array of at least 2 {from, to} objects, got: ' + JSON.stringify(legs));
     }
+    if (searchType !== 'completeTrip' && searchType !== 'bySchedule') {
+      throw new Error(`searchType must be 'completeTrip' or 'bySchedule', got: ${searchType}`);
+    }
 
-    logger.info('Starting multi-city flight search', { legs });
+    logger.info('Starting multi-city flight search', { legs, searchType });
 
     const flightSearchPage = getPageObject(page, FlightSearchPage);
     const searchPage = getPageObject(page, SearchPage);
@@ -464,10 +468,14 @@ const FlightSearch = {
       });
     }
 
-    await flightSearchPage.selectCompleteTrip();
+    if (searchType === 'bySchedule') {
+      await flightSearchPage.selectBySchedule();
+    } else {
+      await flightSearchPage.selectCompleteTrip();
+    }
     await searchPage.waitAndClickSearchButton();
 
-    return { searched: true, legs, tripType: 'multiCity' };
+    return { searched: true, legs, tripType: 'multiCity', searchType };
   },
 
   /**

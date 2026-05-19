@@ -380,6 +380,11 @@ When('I click on the {int} flight in by schedule stepper', async function (segme
   await FlightResults.clickByScheduleFlightSegment(this.page, segmentNumber);
 });
 
+Then('{string} leg should have results available', async function (leg) {
+  logger.info('Verifying by-schedule leg has results available', { leg });
+  await FlightResults.verifyByScheduleLegHasResults(this.page, leg);
+});
+
 When("I select 2 options from carriers {string} and {string}", async function (carrier1, carrier2) {
   logger.info("Selecting 2 options from carriers", { carrier1, carrier2 });
   
