@@ -15,5 +15,11 @@ Feature: 62735 Fusion - Title is mandatory before checkout when traveler title i
     Given I am logged in as "title@fusion.gdg" booking a new trip
     And I have added traveler by name "Finn Brodie"
     When I search for a round trip flight from "EDI" to "AMS"
-    # TODO: implement 'I add the quote to the trip' — see Add_quote_to_trip() in Testim source (test 62735); may map to 'I add the first flight to cart'
-    # TODO: implement 'the passenger title should be enforced as mandatory before checkout' — see Validate_title_mandatory() in Testim source (test 62735)
+    And I add the first flight to cart
+    And the booking status should be "Pending booking"
+    Then the passenger title status should show "Title0/1"
+    When I accept Terms & Conditions
+    And I fill credit card cvv if needed
+    And I click the proceed to checkout button
+    Then the cart should show the in order to proceed warning
+    Then the passenger title should have a red error border
