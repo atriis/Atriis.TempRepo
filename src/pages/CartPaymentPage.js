@@ -812,6 +812,18 @@ class CartPaymentPage {
     }
     return names;
   }
+
+  /**
+   * Gets the trimmed text content of the last-four-digit element in the FOP section.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>}
+   */
+  async getLastFourDigitText({ timeout = 15000 } = {}) {
+    const el = this.page.locator(SELECTORS.LAST_FOUR_DIGIT).first();
+    await el.waitFor({ state: 'visible', timeout });
+    return (await el.textContent()).trim();
+  }
 }
 
 // Export CartPaymentPage

@@ -83,6 +83,14 @@ Then("the saved card mask should be visible as {string}", async function (masked
   throw new Error(`TODO: implement 'the saved card mask should be visible as {string}' — assert saved card mask ${maskedCard} is visible in FOP area`);
 });
 
+Then("the last {int} digits of the credit card {string} should be displayed in the FOP section", async function (count, last4) {
+  logger.info("Verifying last digits of credit card in FOP section", { count, last4 });
+  if (count !== 4) {
+    throw new Error(`Only 4 digits are supported, got: ${count}`);
+  }
+  await CartPayment.verifyLastFourDigitsOfCreditCard(this.page, last4);
+});
+
 When("I fill CVV with {string}", async function (cvv) {
   throw new Error(`TODO: implement 'I fill CVV with {string}' — type CVV value ${cvv} in CVV input`);
 });

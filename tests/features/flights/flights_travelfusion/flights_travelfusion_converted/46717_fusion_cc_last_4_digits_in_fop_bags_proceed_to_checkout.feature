@@ -16,9 +16,15 @@ Feature: 46717 Fusion - CC last 4 digits in FOP, bags added to cart, Proceed to 
     And I have added myself as the traveler
     When I search for a round trip flight from "GLA" to "BRS"
     And I add the first flight to cart
-    # TODO: implement 'the last 4 digits of the credit card "4580" should be displayed in the FOP section' — waitForText('.last-four-digit', '****4580') in Testim source (test 46717)
-    # TODO: implement 'I add a baggage option from the cart baggage dropdown' — clicks '.flight-baggage .is-clickable' and selects option 4 (test 46717)
-    Then the booking status should be "Pending booking"
-    # TODO: implement 'the baggage filled indicator should be visible' — isVisible('.filled') in Testim source (test 46717)
+    And the booking status should be "Pending booking"
+    Then the last 4 digits of the credit card "4580" should be displayed in the FOP section
+    When I click to edit the baggage extras section
+    And I click number of baggage
+    And I click dropdown option "2 bags"
+    And I click the save button
+    Then I should see a success notification
+    And the booking status should be "Pending booking"
+    And the baggage green icon should be visible
     And I click the proceed to checkout button
-    Then I successfully cancel the trip
+    Then the cart should show the in order to proceed warning
+    

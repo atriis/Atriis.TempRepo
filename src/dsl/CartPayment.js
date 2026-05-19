@@ -368,6 +368,26 @@ class CartPayment {
   }
 
   /**
+   * Verifies the last 4 digits of the credit card are displayed in the FOP section
+   * as masked text ("****{last4}").
+   * @param {import('@playwright/test').Page} page
+   * @param {string} last4 - The last 4 digits expected (e.g., "4580")
+   */
+  static async verifyLastFourDigitsOfCreditCard(page, last4) {
+    if (!page) throw new Error("page is required");
+    if (!last4 || typeof last4 !== 'string') {
+      throw new Error(`last4 must be a non-empty string, got: ${last4}`);
+    }
+    if (!/^\d{4}$/.test(last4)) {
+      throw new Error(`last4 must be exactly 4 digits, got: "${last4}"`);
+    }
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const expected = `****${last4}`;
+    const actual = await paymentPage.getLastFourDigitText();
+    expect(actual, `Expected FOP last-four-digit to be "${expected}"`).toBe(expected);
+  }
+
+  /**
    * Verifies the "In order to proceed" warning is NOT visible (dismissed).
    * @param {import('@playwright/test').Page} page
    */
