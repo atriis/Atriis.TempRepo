@@ -17,5 +17,5 @@ Feature: 60529 Fusion - Display push notification on redirect to cart
     When I search for a one way flight from "LON" to "MIL"
     Then flight results should be available
     When I filter results by carrier "U2"
-    # TODO: implement 'I add the first flight to cart and verify push notification on redirect' — see Display_push_notification_on_redirect_to_cart() in Testim source (test 60529)
+    And I add the first flight to cart
     Then a push notification should be displayed
