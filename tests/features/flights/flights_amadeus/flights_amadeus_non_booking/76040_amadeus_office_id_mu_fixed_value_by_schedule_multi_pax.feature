@@ -14,7 +14,7 @@ Feature: 76040 Amadeus - Office ID MU fixed value applied on by schedule round t
     And I have added a random guest traveler
 
     # First search: LON-FRA route with office ID FLXtest — expects no markup
-    When I search for a flight by schedule from "LON" to "FRA"
+    When I search for a flight by schedule from "LON" to "FRA" with preferred carrier "LH"
     And I click to open first pricing options
     And I start intercepting the flight pricing response
     Then the markup in the flight pricing response should be "0"
