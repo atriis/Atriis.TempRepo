@@ -18,8 +18,9 @@ Feature: 57325 Fusion - Navigate to checkout when CC holder name has a middle na
     And I filter results by carrier "U2"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # TODO: implement 'the CC holder name field accepts and saves a middle name successfully' — see CC_holder_name_field_has_middle_name_successfully() in Testim source (test 57325)
+    And the credit card holder name field should contain "bruna space middlename"
     When I fill credit card cvv if needed
-    And I proceed to checkout
-    When I complete the booking with Fusion credit card verification
-    Then I successfully cancel the trip
+    When I proceed to checkout
+    And I complete the booking with Fusion credit card verification
+    Then the quote destination should contain "Flight to"
+    

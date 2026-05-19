@@ -62,6 +62,8 @@ const SELECTORS = {
   MISSING_CARD_DETAILS_COUNTRY_OPTION: '.el-select-dropdown__item',
   // Card holder name input inside the missing-card-details el-input (no placeholder)
   MISSING_CARD_HOLDER_NAME_INPUT: '.missing-card-details .el-input input',
+  // Displayed card holder name shown on the cart form-of-payment row (next to CVV / last 4 digits)
+  DISPLAYED_CARD_HOLDER_NAME: '.credit-card .card-name',
   EDIT_CARD_LINK: '.edit-payment-btn .is-clickable',
   LAST_FOUR_DIGIT: '.last-four-digit',
   NO_COUNTRY_CARD_CHECKBOX: '.select-credit-card > :nth-child(1) > :nth-child(2) > :nth-child(2) [type="checkbox"]',
@@ -202,6 +204,19 @@ class CartPaymentPage {
       throw new Error('name must be a non-empty string');
     }
     await this.page.fill(SELECTORS.CARD_HOLDER_NAME_INPUT, name);
+  }
+
+  /**
+   * Reads the displayed card holder name shown on the cart form-of-payment
+   * row (rendered next to the CVV input and last-four-digits in "Pending
+   * booking" state). This is a text span, not an input.
+   * @returns {Promise<string>} The trimmed text of the displayed card holder name
+   */
+  async getDisplayedCardHolderName() {
+    const nameNode = this.page.locator(SELECTORS.DISPLAYED_CARD_HOLDER_NAME).first();
+    await nameNode.waitFor({ state: "visible", timeout: 30000 });
+    const text = await nameNode.textContent();
+    return (text || "").trim();
   }
 
   /**

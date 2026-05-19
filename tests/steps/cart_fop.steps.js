@@ -221,6 +221,12 @@ When("I fill in the card holder name as {string}", async function (name) {
   await CartPayment.fillMissingCardHolderName(this.page, name);
 });
 
+Then("the credit card holder name field should contain {string}", async function (expectedSubstring) {
+  logger.info("Verifying credit card holder name field contains substring", { expectedSubstring });
+  const result = await CartPayment.verifyCardHolderNameContains(this.page, expectedSubstring);
+  logger.info("Credit card holder name field verified", { actual: result.cardHolderName, expectedSubstring });
+});
+
 When("I save the missing card details", async function () {
   logger.info("Saving missing card details");
   await CartPayment.saveMissingCardDetails(this.page);

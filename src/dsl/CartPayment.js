@@ -449,6 +449,26 @@ class CartPayment {
   }
 
   /**
+   * Verifies the card holder name input in the cart contains the expected substring.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expectedSubstring - Substring expected within the card holder name field value
+   * @returns {Promise<{cardHolderName: string}>} The actual card holder name value read from the input
+   */
+  static async verifyCardHolderNameContains(page, expectedSubstring) {
+    if (!page) throw new Error("page is required");
+    if (!expectedSubstring || typeof expectedSubstring !== 'string') {
+      throw new Error("expectedSubstring must be a non-empty string, got: " + typeof expectedSubstring);
+    }
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const cardHolderName = await paymentPage.getDisplayedCardHolderName();
+    expect(
+      cardHolderName,
+      `Card holder name field should contain "${expectedSubstring}" but was "${cardHolderName}"`
+    ).toContain(expectedSubstring);
+    return { cardHolderName };
+  }
+
+  /**
    * Saves the missing card details form (clicks Save button).
    * @param {import('@playwright/test').Page} page
    */
