@@ -988,7 +988,7 @@ const FlightSearch = {
    * @param {Object} [options] - Date-selection options
    */
   async searchFlightByScheduleWithPreferredCarrier(page, from, to, carrier, options = {}) {
-    return this.searchFlightByScheduleWithPreferredCarrierAndStops(page, from, to, carrier, null, options);
+    return this.searchFlightByScheduleWithPreferredCarrierAndStops(page, from, to, carrier, null, options ?? {});
   },
 
   /**
@@ -1025,7 +1025,10 @@ const FlightSearch = {
       throw new Error('stopsOption must be a non-empty string when provided');
     }
 
-    logger.info('Searching for by-schedule flight with preferred carrier', {
+    const logMessage = stopsOption
+      ? 'Searching for by-schedule flight with preferred carrier and stops filter'
+      : 'Searching for by-schedule flight with preferred carrier';
+    logger.info(logMessage, {
       from,
       to,
       carrier,
