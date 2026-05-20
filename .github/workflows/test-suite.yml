@@ -133,9 +133,16 @@ jobs:
             echo "--- end ---"
             cp test-results/cucumber-report.json test-results/cucumber-report-initial.json 2>/dev/null || true
             cp test-results/cucumber-junit.xml test-results/cucumber-junit-initial.xml 2>/dev/null || true
-            npx cucumber-js @test-results/rerun.txt --parallel 2
-            mv test-results/cucumber-report-initial.json test-results/cucumber-report.json 2>/dev/null || true
-            mv test-results/cucumber-junit-initial.xml test-results/cucumber-junit.xml 2>/dev/null || true
+            npx cucumber-js @test-results/rerun.txt --parallel 2 || true
+            cp test-results/cucumber-report.json test-results/cucumber-report-rerun.json 2>/dev/null || true
+            cp test-results/cucumber-junit.xml test-results/cucumber-junit-rerun.xml 2>/dev/null || true
+            node scripts/merge-rerun-results.js \
+              --initial-json test-results/cucumber-report-initial.json \
+              --rerun-json   test-results/cucumber-report-rerun.json \
+              --out-json     test-results/cucumber-report.json \
+              --initial-xml  test-results/cucumber-junit-initial.xml \
+              --rerun-xml    test-results/cucumber-junit-rerun.xml \
+              --out-xml      test-results/cucumber-junit.xml
           else
             echo "No failures recorded in rerun.txt — skipping rerun."
           fi
@@ -271,9 +278,16 @@ jobs:
             echo "--- end ---"
             cp test-results/cucumber-report.json test-results/cucumber-report-initial.json 2>/dev/null || true
             cp test-results/cucumber-junit.xml test-results/cucumber-junit-initial.xml 2>/dev/null || true
-            npx cucumber-js @test-results/rerun.txt --parallel 1
-            mv test-results/cucumber-report-initial.json test-results/cucumber-report.json 2>/dev/null || true
-            mv test-results/cucumber-junit-initial.xml test-results/cucumber-junit.xml 2>/dev/null || true
+            npx cucumber-js @test-results/rerun.txt --parallel 1 || true
+            cp test-results/cucumber-report.json test-results/cucumber-report-rerun.json 2>/dev/null || true
+            cp test-results/cucumber-junit.xml test-results/cucumber-junit-rerun.xml 2>/dev/null || true
+            node scripts/merge-rerun-results.js \
+              --initial-json test-results/cucumber-report-initial.json \
+              --rerun-json   test-results/cucumber-report-rerun.json \
+              --out-json     test-results/cucumber-report.json \
+              --initial-xml  test-results/cucumber-junit-initial.xml \
+              --rerun-xml    test-results/cucumber-junit-rerun.xml \
+              --out-xml      test-results/cucumber-junit.xml
           else
             echo "No failures recorded in rerun.txt — skipping rerun."
           fi
