@@ -112,6 +112,7 @@ const SELECTORS = {
   PRICING_OPTIONS_CABIN_CLASS: '.leg-pricing-option .sub-class',
   PRICING_OPTIONS_BAGGAGE_CLASS: '.leg-details .baggage span',
   PRICING_OPTIONS_FARE_COMPONENT_TEXT: 'text=Fare component',
+  OOP_INDICATOR_IN_PRICING_OPTION: '.app-out-of-policy',
   GREEN_CIRCLE_ICON_PRICING_OPTIONS: 'span.material-symbols-outlined.green',
   CONFLICT_MODAL_PROCEED: '.conflicting-quotes-dialog .btn:has-text("Proceed")',
   TRIP_OVERVIEW_TITLE: '.payments-title',
@@ -783,6 +784,51 @@ class FlightResultsPage {
    */
   async clickPricingOptionsSelectButton(index = 0) {
     await this.page.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON).nth(index).click();
+  }
+
+  /**
+   * Returns the first pricing-option card inside the pricing-options modal whose
+   * visible text contains the given substring. Used to locate a fare row by its
+   * baggage / brand label (e.g. "1PC", "2PC Luggage").
+   *
+   * @param {string} cardText - Substring to match inside the card.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getPricingOptionCardByText(cardText) {
+    const overlay = this.getPricingOptionsOverlay();
+    return overlay
+      .locator(SELECTORS.PRICING_OPTIONS_CARD)
+      .filter({ hasText: cardText })
+      .first();
+  }
+
+  /**
+   * Returns the out-of-policy indicator locator scoped inside the first pricing-option
+   * card whose visible text contains the given substring.
+   *
+   * @param {string} cardText - Substring identifying the target card.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getOOPIndicatorInPricingOptionByText(cardText) {
+    return this.getPricingOptionCardByText(cardText)
+      .locator(SELECTORS.OOP_INDICATOR_IN_PRICING_OPTION);
+  }
+
+  /**
+   * Waits for and clicks the Select button inside the first pricing-option card
+   * whose visible text contains the given substring.
+   *
+   * @param {string} cardText - Substring identifying the target card.
+   */
+  async clickSelectButtonInPricingOptionByText(cardText) {
+    const card = this.getPricingOptionCardByText(cardText);
+    await card.waitFor({ state: 'visible', timeout: 30000 });
+    const selectButton = card.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON);
+    await selectButton.waitFor({ state: 'visible', timeout: 15000 });
+    await selectButton.click();
+    // NOTE: small buffer for el-tabs to switch to the next leg after Select click —
+    // the leg-pricing-option emits goToNextLeg async and there is no DOM signal we can reliably await
+    await this.page.waitForTimeout(1000);
   }
 
   /**

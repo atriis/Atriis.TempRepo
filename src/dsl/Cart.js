@@ -779,6 +779,28 @@ const Cart = {
   },
 
   /**
+   * Selects an OOP justification option from an already-open dropdown and saves.
+   * Use this when a previous step already opened the dropdown (e.g. to verify options).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} justificationOption - The justification option to select
+   * @returns {Promise<void>}
+   */
+  async selectOpenOOPJustificationDropdownOptionAndSave(page, justificationOption) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!justificationOption || typeof justificationOption !== 'string') {
+      throw new Error('justificationOption must be a non-empty string');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForJustificationDropdownOption(justificationOption);
+    await cartPage.selectJustificationDropdownOption(justificationOption);
+    await cartPage.saveOOPJustificationText();
+  },
+
+  /**
    * Opens the OOP justification dropdown and verifies the number of available options.
    *
    * @param {import('playwright').Page} page

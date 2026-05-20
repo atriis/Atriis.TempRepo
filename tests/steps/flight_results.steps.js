@@ -326,6 +326,16 @@ When('I select {string} fare from pricing options top section', async function (
   await FlightResults.selectCabinClassFromPricingOptionsTop(this.page, cabinName);
 });
 
+When('I select the pricing option containing {string}', async function (cardText) {
+  logger.info('Selecting pricing option containing text', { cardText });
+  await FlightResults.selectPricingOptionByText(this.page, cardText);
+});
+
+Then('the pricing options row containing {string} should show the out of policy indicator', async function (cardText) {
+  logger.info('Verifying OOP indicator on pricing option row', { cardText });
+  await FlightResults.verifyPricingOptionOOPByText(this.page, cardText);
+});
+
 When('I "Select to share" first option from pricing options', async function () {
   logger.info("Selecting first option from pricing options");
   await FlightResults.selectToShareFirstPricingOption(this.page);

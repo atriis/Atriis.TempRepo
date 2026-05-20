@@ -2324,6 +2324,60 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     return { navigated: true };
   },
+
+  /**
+   * Verifies that a pricing-option card in the open modal whose visible text
+   * contains the given substring shows the out-of-policy indicator.
+   *
+   * Used by tests that need to assert OOP on a specific fare row identified
+   * by its baggage label (e.g. "2PC Luggage").
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} cardText - Substring used to identify the target card.
+   * @returns {Promise<{ cardText: string }>}
+   */
+  async verifyPricingOptionOOPByText(page, cardText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!cardText || typeof cardText !== 'string') {
+      throw new Error('cardText must be a non-empty string, got: ' + typeof cardText);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const card = flightResultsPage.getPricingOptionCardByText(cardText);
+    await card.waitFor({ state: 'visible', timeout: 30000 });
+
+    const oopIndicator = flightResultsPage.getOOPIndicatorInPricingOptionByText(cardText);
+    await expect(
+      oopIndicator,
+      `Expected out-of-policy indicator on pricing option card containing "${cardText}"`,
+    ).toBeVisible({ timeout: 30000 });
+
+    return { cardText };
+  },
+
+  /**
+   * Selects the first pricing-option card in the open modal whose visible text
+   * contains the given substring by clicking its Select button.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} cardText - Substring used to identify the target card.
+   * @returns {Promise<{ selected: true, cardText: string }>}
+   */
+  async selectPricingOptionByText(page, cardText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!cardText || typeof cardText !== 'string') {
+      throw new Error('cardText must be a non-empty string, got: ' + typeof cardText);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickSelectButtonInPricingOptionByText(cardText);
+
+    return { selected: true, cardText };
+  },
 }
 
 module.exports = FlightResults;
