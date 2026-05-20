@@ -79,6 +79,9 @@ const SELECTORS = {
   FLIGHT_DETAILS_BUTTON: ".more-details-btn",
   FLIGHT_DETAILS_DRAWER_BODY: '.app-drawer.flight-details-drawer .el-drawer__body',
   FLIGHT_DETAILS_DRAWER_CABIN_TEXT: (text) => `.app-drawer.flight-details-drawer .el-drawer__body :text("${text}")`,
+  // Text-based locator for baggage advisory inside the flight details drawer body.
+  // Robust against layout changes (avoids position-based selectors like :nth-child(3)).
+  FLIGHT_DETAILS_DRAWER_BAGGAGE_TEXT: (text) => `.app-drawer.flight-details-drawer .el-drawer__body :text("${text}")`,
   FLIGHT_CART_MORE_DETAILS_DRAWER: "[aria-label='More details']",
   FLIGHT_CART_MORE_DETAILS_PRICE_TEXT: /\$\s*\d[\d,]*(?:\.\d+)?/,
   POST_TICKETING_TABLE_HEADERS: '.flight-post-ticketing-details .post-ticketing-table thead th',
@@ -3696,6 +3699,22 @@ class CartPage {
       throw new Error(`occurrenceIndex must be a non-negative integer, got: ${occurrenceIndex}`);
     }
     const target = this.page.locator(SELECTORS.FLIGHT_DETAILS_DRAWER_CABIN_TEXT(expectedText)).nth(occurrenceIndex);
+    await target.waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Waits for a baggage advisory text to be visible inside the open flight
+   * details drawer body. Uses a text-based selector scoped to the drawer body
+   * to avoid brittle positional selectors.
+   *
+   * @param {string} expectedText - Baggage descriptor (e.g. "1 x hold bag (15kg)")
+   * @param {{ timeout?: number }} options
+   */
+  async waitForBaggageTextInFlightDetailsDrawer(expectedText, { timeout = 15000 } = {}) {
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('expectedText must be a non-empty string, got: ' + expectedText);
+    }
+    const target = this.page.locator(SELECTORS.FLIGHT_DETAILS_DRAWER_BAGGAGE_TEXT(expectedText)).first();
     await target.waitFor({ state: 'visible', timeout });
   }
 

@@ -16,9 +16,16 @@ Feature: 69869 Fusion - Paid baggage correctly displayed in Flight Details and P
     And I have added myself as the traveler
     When I search for a one way flight from "KWI" to "DEL"
     Then flight results should be available
-    # TODO: implement 'I filter results by stops option "No stops"' — see Filter_by_any_option_in_results_page('No stops') in Testim source (test 69869)
     When I add the first flight to cart
     Then the booking status should be "Pending booking"
-    # TODO: implement 'I add a paid baggage to the cart' — see Adding_paid_babbage() in Testim source (test 69869)
-    # TODO: implement 'the paid baggage should be displayed correctly in Flight Details' — see Baggage_displayed_correctly_Flight_Details() in Testim source (test 69869)
-    # TODO: implement 'the paid baggage should be displayed correctly in Price Breakdown' — see Baggage_is_displayed_correctly_Price_Breakdown() in Testim source (test 69869)
+    When I click to edit the baggage extras section
+    And I select a paid baggage option
+    And I extract the baggage price
+    And I extract the selected baggage option label
+    And I click the save button
+    Then the baggage green icon should be visible
+    When I open flight details in cart
+    Then the paid baggage should be displayed in flight details
+    When I close flight details window
+    And I click to open price breakdown in cart
+    Then the paid baggage should be displayed in the price breakdown

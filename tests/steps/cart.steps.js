@@ -315,6 +315,11 @@ When("I extract the baggage price", async function () {
   logger.info("Extracted baggage price from selected option", { baggagePrice: this.baggagePrice });
 });
 
+When("I extract the selected baggage option label", async function () {
+  this.baggageOptionText = await Cart.extractSelectedBaggageOptionLabel(this.page);
+  logger.info("Extracted selected baggage option label", { baggageOptionText: this.baggageOptionText });
+});
+
 When("I extract the price from price breakdown", async function () {
   const cartPage = getPageObject(this.page, CartPage);
   // Sum Subtotal rows from Price Summary > Rate Information — these include
@@ -738,6 +743,22 @@ Then("the baggage green icon should be visible", async function () {
   const cartPage = getPageObject(this.page, CartPage);
   const icon = cartPage.getBaggageGreenIcon();
   await expect(icon).toBeVisible({ timeout: 30000 });
+});
+
+Then("the paid baggage should be displayed in flight details", async function () {
+  if (!this.baggageOptionText) {
+    throw new Error("No stored baggage option label found. Run 'I extract the selected baggage option label' before this step.");
+  }
+  logger.info("Verifying paid baggage is displayed in flight details", { baggageOptionText: this.baggageOptionText });
+  await Cart.verifyBaggageInFlightDetails(this.page, this.baggageOptionText);
+});
+
+Then("the paid baggage should be displayed in the price breakdown", async function () {
+  if (typeof this.baggagePrice !== 'number') {
+    throw new Error("No stored baggage price found. Run 'I extract the baggage price' before this step.");
+  }
+  logger.info("Verifying paid baggage is displayed in the price breakdown Other row", { baggagePrice: this.baggagePrice });
+  await Cart.verifyBaggagePriceInPriceBreakdown(this.page, this.baggagePrice);
 });
 
 Then("the baggage option {string} should be saved", async function (expectedOption) {
