@@ -23,7 +23,7 @@ Feature: 61069 Galileo - Flight booking after hotel booked with single PNR
     And I complete the booking
     Then the booking status should be "Confirmed"
     And I click to add a flight to my trip from cart
-    When I edit the flight search from "BKK" to "DEL" with the same dates as the hotel search
+    When I edit the flight search from "LON" to "DOH" with the same dates as the hotel search
     And flight results should be available
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
