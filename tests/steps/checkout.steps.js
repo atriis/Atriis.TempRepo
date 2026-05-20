@@ -49,6 +49,11 @@ When("I complete the booking", async function () {
   }
 });
 
+When("I complete the booking without navigating to trip overview", async function () {
+  logger.info("Completing booking without navigating to trip overview");
+  await Checkout.bookTripWithoutNavigatingToTripOverview(this.page);
+});
+
 When("I complete the booking with Fusion credit card verification", async function () {
   logger.info("Completing Fusion booking with card verification");
   await Checkout.bookAndFinalizeWithFusionCardVerification(this.page);
