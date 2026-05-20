@@ -97,8 +97,12 @@ Same classification as `@regression-pipeline`:
 
 ### Phase 3: Fix-Rerun Loop (up to 5 iterations)
 Same protocol as `@regression-pipeline` Phase 3:
-- Fix failures using `@test-fixer-pipeline`
-- **If a failure is caused by no search results** (e.g., no flights/hotels/cars/trains found for the search criteria), do NOT attempt to fix it. Simply advise the user that the test has no results for that product/route and move on to the next failure.
+- **Attempt to fix EVERY failure** using `@test-fixer-pipeline` — do not skip failures because they look hard, flaky, or unfamiliar. Exhaust reasonable fix strategies (locator updates, wait/sync adjustments, data refresh, DSL/step refactors, page object updates, environment/config corrections) before giving up.
+- **Advise-only exceptions** (do NOT attempt to fix, just report and move on):
+  - **No search results** — the supplier returned zero flights/hotels/cars/trains for the search criteria. This is a data/availability issue, not a test bug.
+  - **Booking errors from the supplier/provider** — e.g., GDS rejection, payment provider error, supplier API 5xx, PNR creation failure, inventory unavailable at booking time. These are upstream/provider issues, not test bugs.
+  - For both cases: log clearly in the report which test, which product/route/supplier, and the underlying message. Move on to the next failure.
+- For **all other failure categories** (timeout, locator, assertion, navigation, race condition, stale element, env/config, data setup, flaky, persistent, new — anything that is not no-results or booking error), you MUST attempt a fix. If the first fix strategy doesn't work, try a different angle in the next iteration.
 - Re-run using `@test-runner-pipeline`
 - **After each fix, validate locally in headed mode** (`HEADLESS=false`) before counting it as fixed. A fix is only considered successful if the test passes locally in headed mode.
 - Iterate up to 5 times
@@ -165,5 +169,6 @@ If `gh` CLI is not configured, help the user:
 - **6:00 AM Portugal time** — that's the expected daily check schedule
 - **No auto-assignment** — just report findings for the team to review
 - **No external artifact writes** — never save reports, files, or artifacts outside `Atriis.Test.Automation`. All output stays in the repository
-- **No-results = advise only** — if a test fails because there are no search results for that product/route, do NOT try to fix it. Just advise the user and move on
+- **Fix everything you can** — the default action for any failure is to attempt a fix. Do not refuse, skip, or defer fixes based on perceived difficulty. Try multiple strategies across iterations if needed
+- **Advise-only is limited to two cases**: (1) no search results returned by the supplier, (2) booking/provider errors (GDS, payment, supplier API, PNR, inventory). Everything else MUST be fixed
 - **Validate fixes locally in headed mode** — every fix MUST be validated by running the test locally with `HEADLESS=false` before it counts as fixed. Unvalidated fixes must not be committed
