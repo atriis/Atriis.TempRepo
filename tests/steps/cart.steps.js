@@ -207,6 +207,11 @@ When("I select a baggage option", async function () {
   await Cart.selectFirstBaggageOption(this.page);
 });
 
+When("I select a paid baggage option", async function () {
+  logger.info("Selecting first paid baggage option (with price)");
+  await Cart.selectFirstPaidBaggageOption(this.page);
+});
+
 When("I add baggage for outbound and return segments", async function () {
   logger.info("Adding baggage for outbound and return segments");
   await Cart.addBaggageForAllSegments(this.page);
@@ -303,6 +308,24 @@ When("I extract seat price in seat map drawer", async function () {
   this.seatPrice = await Cart.extractSeatPriceFromDrawer(this.page);
   logger.info("Extracted seat price from seat map drawer", { seatPrice: this.seatPrice });
   console.log(`[Seat Price] ${this.seatPrice}`);
+});
+
+When("I extract the baggage price", async function () {
+  this.baggagePrice = await Cart.extractSelectedBaggagePrice(this.page);
+  logger.info("Extracted baggage price from selected option", { baggagePrice: this.baggagePrice });
+});
+
+When("I extract the price from price breakdown", async function () {
+  const cartPage = getPageObject(this.page, CartPage);
+  // Sum Subtotal rows from Price Summary > Rate Information — these include
+  // baggage/extras (via 'other' and 'optionalServices'), while the drawer
+  // footer 'Total price' reflects only the supplier flight price.
+  const segments = await cartPage.getFlightPriceBreakdownSegments();
+  this.priceBreakdownTotal = segments.reduce((sum, seg) => sum + seg.subtotal, 0);
+  logger.info("Extracted Subtotal from price breakdown Price Summary", {
+    priceBreakdownTotal: this.priceBreakdownTotal,
+    segmentCount: segments.length,
+  });
 });
 
 When("I select a random preferred seat", async function () {
@@ -404,6 +427,43 @@ Then("the total price in cart is equal to total price in cart before seats + sea
     currentTotal,
     12,
     "Cart total = flight price + seat price"
+  );
+});
+
+Then("the price breakdown price should equal the cart price", async function () {
+  const cartPage = getPageObject(this.page, CartPage);
+  const cartTotal = await cartPage.getCartTotalPrice();
+  logger.info("Comparing price breakdown total to cart total", {
+    priceBreakdownTotal: this.priceBreakdownTotal,
+    cartTotal,
+  });
+  expectNumbersToBeEqualWithTolerance(
+    this.priceBreakdownTotal,
+    cartTotal,
+    1,
+    "Price breakdown total vs cart total"
+  );
+});
+
+Then("the price in cart should equal the total price before adding baggage + the baggage price", async function () {
+  const { expect: pwExpect } = require("@playwright/test");
+  const cartPage = getPageObject(this.page, CartPage);
+  const priceBeforeBaggage = this.flightCartTotalForCheckout;
+  const baggagePrice = this.baggagePrice;
+
+  let currentTotal;
+  await pwExpect(async () => {
+    currentTotal = await cartPage.getCartTotalPrice();
+    pwExpect(currentTotal).not.toBe(priceBeforeBaggage);
+  }).toPass({ timeout: 20000 });
+
+  console.log(`[Price Assertion] Before baggage: ${priceBeforeBaggage}, Baggage price: ${baggagePrice}, Expected total: ${priceBeforeBaggage + baggagePrice}, Actual: ${currentTotal}`);
+  expectSumToBeEqualWithTolerance(
+    priceBeforeBaggage,
+    baggagePrice,
+    currentTotal,
+    12,
+    "Cart total = flight price + baggage price"
   );
 });
 

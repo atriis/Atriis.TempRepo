@@ -10,6 +10,7 @@ const tripStatus = require("@data/tripStatus.json");
 const config = require("@config/config");
 const BookingErrorHandler = require("@utils/BookingErrorHandler");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
+const { parseAmountText } = require("@utils/dom");
 const logger = require("@utils/logger").child("Cart-DSL");
 
 /**
@@ -2717,6 +2718,36 @@ const Cart = {
 
     const cartPage = getPageObject(page, CartPage);
     await cartPage.selectFirstAvailableBaggageOption();
+  },
+
+  /**
+   * Selects the first paid baggage option for the first segment (outbound).
+   * Paid options contain a price separator (" - ") in their label, e.g.
+   * "1 x hold bag (15kg) - 67.98EUR". Free options like "No Baggage" are skipped.
+   * @param {import('playwright').Page} page
+   */
+  async selectFirstPaidBaggageOption(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.selectFirstAvailableBaggageOptionForSegment(0);
+  },
+
+  /**
+   * Extracts the price from the currently selected baggage option text.
+   * The option label is formatted like "1 x hold bag (15kg) - 67.98EUR";
+   * this method takes the trailing amount segment after " - " and parses it to a number.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>} The selected baggage price
+   */
+  async extractSelectedBaggagePrice(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const text = await cartPage.getSelectedBaggageOptionText();
+    const parts = text.split(' - ');
+    if (parts.length < 2) {
+      throw new Error(`Unable to parse baggage price from selected option text: "${text}"`);
+    }
+    return parseAmountText(parts[parts.length - 1].trim(), 'selected baggage price');
   },
 
   /**
