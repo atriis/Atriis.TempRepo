@@ -3283,11 +3283,14 @@ const Cart = {
   async verifyFlightDetailsTableHeaders(page) {
     if (!page) throw new Error('page is required');
 
-    const expectedHeaders = ['Traveler', 'Ticket number', 'FF', 'Meal', 'Seat'];
+    const expectedHeaders = ['Traveller', 'Ticket number', 'FF', 'Meal', 'Seat'];
     const cartPage = getPageObject(page, CartPage);
     const actualHeaders = await cartPage.getPostTicketingTableHeaders();
 
-    expect(actualHeaders, 'Flight details table headers should match the post-ticketing columns').toEqual(expectedHeaders);
+    expect(
+      actualHeaders,
+      `Flight details table headers should match the post-ticketing columns. Expected: [${expectedHeaders.join(', ')}], got: [${actualHeaders.join(', ')}]`,
+    ).toEqual(expectedHeaders);
     return actualHeaders;
   },
 
