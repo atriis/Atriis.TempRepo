@@ -15,9 +15,11 @@ Feature: 64372 Flights - Save correct FQTV from traveler profile with separate t
     Given I am logged in as "multifqtv@corp.club" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "ATL" to "EWR"
+    And flight results should be available
     And I filter results by carrier "DL"
     And I select one flight segment by schedule
     And I wait for the change flight button to be visible
+    And flight results should be available
     And I filter results by carrier "UA"
     And I select one flight segment by schedule
     And I wait for "Your Selection" text to be visible
