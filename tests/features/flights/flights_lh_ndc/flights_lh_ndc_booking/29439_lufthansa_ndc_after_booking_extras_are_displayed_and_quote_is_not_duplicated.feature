@@ -22,5 +22,5 @@ Feature: 29439 Lufthansa NDC - After booking extras are displayed and quote is n
     When I proceed to checkout
     When I complete the booking
     Then the quote destination should contain "Flight to"
-    And the Optional Services extras section should be visible
+    And the optional services extras section should be visible
     And there should be 1 elements matching css locator ".ticket-layout-container.is-flex.is-flex-direction-column.confirmed"
