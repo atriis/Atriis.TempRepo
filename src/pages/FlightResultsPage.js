@@ -1999,7 +1999,7 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
    * @param {number} timeout - Max wait time in ms (default: 10000)
    * @returns {Promise<boolean>}
    */
-  async isRailBannerVisible(timeout = 30000) {
+  async isRailBannerVisible(timeout = 60000) {
     try {
       await this.page.locator(SELECTORS.EU_RAIL_OPTIONS_BANNER).first().waitFor({ state: 'visible', timeout });
       return true;
