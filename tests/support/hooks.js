@@ -59,12 +59,16 @@ After(async function (scenario) {
     }
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const featureFile = path.basename(scenario.pickle.uri || "", ".feature");
+    const workItemMatch = featureFile.match(/^(\d+)_/);
+    const workItemPrefix = workItemMatch ? `${workItemMatch[1]}_` : "";
     const scenarioName = scenario.pickle.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
       .substring(0, 50);
     const scenarioStatus = String(scenario.result?.status || "unknown").toLowerCase();
-    const filename = `${scenarioName}_${scenarioStatus}_${timestamp}.png`;
+    const attemptNumber = (scenario.attempt ?? 0) + 1;
+    const filename = `${workItemPrefix}${scenarioName}_attempt${attemptNumber}_${scenarioStatus}_${timestamp}.png`;
     const filepath = path.join(screenshotsDir, filename);
 
     fs.writeFileSync(filepath, screenshot);
