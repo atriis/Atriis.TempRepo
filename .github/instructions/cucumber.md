@@ -42,7 +42,6 @@ module.exports = {
     require: [
       'tests/support/world.js',           // World class
       'tests/support/hooks.js',           // Before/After hooks
-      'tests/support/retry-handler.js',   // CI retry logic
       'tests/steps/**/*.js',              // All step definitions
       'tests/support/**/*.js',            // Support files
       'node_modules/allure-cucumberjs'    // Allure integration
@@ -93,7 +92,7 @@ npx cucumber-js --strict
 npx cucumber-js --publish
 
 # With retry in CI
-CI=true RETRY_COUNT=3 RETRY_DELAY=2000 npx cucumber-js
+CI=true RETRY_COUNT=2 npx cucumber-js --retry 2
 ```
 
 ---
@@ -208,11 +207,6 @@ Runs **after every scenario** (even if failed).
 3. **Attach to Cucumber report**
    ```javascript
    this.attach(screenshot, 'image/png');
-   ```
-
-4. **Record for retry** (CI only)
-   ```javascript
-   recordFailure(scenario.pickle.name);
    ```
 
 #### Cleanup
@@ -614,45 +608,36 @@ AUTOMATION_BROWSER_TYPE="chromium"
 
 ### When Retry Activates
 
-Retry **only** activates in CI environments:
+Retry **only** activates in CI environments (`CI=true`), configured natively via Cucumber's `--retry` flag and the `retry` option in `cucumber.js`:
 
 ```bash
 # Local development (no retry)
 npx cucumber-js
 
-# CI with retry
-CI=true RETRY_COUNT=3 RETRY_DELAY=2000 npx cucumber-js
+# CI with retry (2 extra attempts per failed scenario)
+CI=true RETRY_COUNT=2 npx cucumber-js --retry 2
 ```
 
 ### How It Works
 
-**Setup** (`tests/support/retry-handler.js`):
+Cucumber re-runs failed scenarios in-process. If a scenario passes on any retry, it is reported as PASSED and the process exits 0. Only scenarios that fail every attempt mark the run as failed.
+
+Configuration lives in `cucumber.js`:
 
 ```javascript
-// Only retry in CI
-retry: process.env.CI ? 1 : 0,
-
-// Configure delay
-RETRY_DELAY=2000  // Wait 2 seconds between retries
+retry: process.env.CI ? parseInt(process.env.RETRY_COUNT || '2', 10) : 0,
 ```
 
-**Failure Recording**:
-
-```javascript
-// After Hook records failures for CI retry
-if (scenario.result.status === "failed") {
-  recordFailure(scenario.pickle.name);
-}
-```
+The `After` hook in `tests/support/hooks.js` captures a screenshot for every attempt (filename suffix indicates `_failed_` or `_passed_`).
 
 ### Running with Retry
 
 ```bash
 # CI environment with retry
-CI=true RETRY_COUNT=3 RETRY_DELAY=2000 npx cucumber-js
+CI=true RETRY_COUNT=2 npx cucumber-js --retry 2
 
 # Retry only specific tag
-CI=true npx cucumber-js --tags "@flaky"
+CI=true npx cucumber-js --retry 2 --tags "@flaky"
 ```
 
 ---
@@ -703,10 +688,10 @@ npx cucumber-js tests/features/flights/general/new_feature.feature --dry-run
 
 ```bash
 # Full suite with retry
-CI=true RETRY_COUNT=2 RETRY_DELAY=1000 npx cucumber-js
+CI=true RETRY_COUNT=2 npx cucumber-js --retry 2
 
 # Critical tests first
-CI=true npx cucumber-js --tags "@priority:critical"
+CI=true npx cucumber-js --retry 2 --tags "@priority:critical"
 
 # Then regression
 CI=true npx cucumber-js --tags "@regression"

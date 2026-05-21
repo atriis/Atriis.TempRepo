@@ -186,8 +186,7 @@ tests/
 │   └── ...
 └── support/
     ├── hooks.js        # Cucumber Before/After lifecycle
-    ├── world.js        # Custom World class
-    └── retry-handler.js  # CI retry logic
+    └── world.js        # Custom World class
 ```
 
 ## When to Create New Files

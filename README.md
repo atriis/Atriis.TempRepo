@@ -120,8 +120,7 @@ atriis-automation/
 │   │   └── ...                       # Other product step definitions
 │   └── support/
 │       ├── hooks.js                  # Cucumber lifecycle hooks (Before/After scenario)
-│       ├── world.js                  # Custom World class (shared context)
-│       └── retry-handler.js          # CI-only retry logic for failed scenarios
+│       └── world.js                  # Custom World class (shared context)
 ├── .github/
 │   ├── workflows/
 │   │   └── test-suite.yml            # CI/CD pipeline (GitHub Actions)
@@ -488,8 +487,8 @@ The framework runs on GitHub Actions via `.github/workflows/test-suite.yml`:
 ### Retry Logic (CI Only)
 
 - **Activated when**: `CI=true` (GitHub Actions sets this automatically)
-- **Retries**: `RETRY_COUNT` env var (default: 2)
-- **Delay**: `RETRY_DELAY` env var (default: 2000ms)
+- **Retries**: Cucumber native `--retry` flag, configurable via `RETRY_COUNT` env var (default: 2)
+- **Behavior**: Failed scenarios are re-run in-process; the run only fails if a scenario fails every attempt
 - **Locally**: Retries are disabled for faster feedback
 
 ### CI Reports

@@ -3,7 +3,6 @@ module.exports = {
     require: [
       'tests/support/world.js',
       'tests/support/hooks.js',
-      'tests/support/retry-handler.js',
       'tests/steps/**/*.js',
       'tests/support/**/*.js',
       'node_modules/allure-cucumberjs'
@@ -16,6 +15,6 @@ module.exports = {
       'allure-cucumberjs/reporter',
       'rerun:test-results/rerun.txt'
     ],
-    retry: process.env.CI ? parseInt(process.env.RETRY_COUNT || '1', 10) : 0,
+    retry: process.env.CI ? parseInt(process.env.RETRY_COUNT || '2', 10) : 0,
   }
 };

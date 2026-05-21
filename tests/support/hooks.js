@@ -13,7 +13,6 @@ const fs = require("fs");
 const { launchBrowser } = require("./browserFactory");
 const config = require("../../src/config/config");
 const logger = require("@utils/logger").child("Hooks");
-const { recordFailure, isRetryEnabled } = require("./retry-handler");
 
 setDefaultTimeout(120000);
 
@@ -82,11 +81,6 @@ After(async function (scenario) {
     }
   } catch (error) {
     logger.error("Failed to capture screenshot", { error: error.message });
-  }
-
-  if (scenario.result.status === Status.FAILED && isRetryEnabled()) {
-    const error = scenario.result.message || "Scenario failed";
-    recordFailure(scenario, new Error(error));
   }
 
   // Close context and browser

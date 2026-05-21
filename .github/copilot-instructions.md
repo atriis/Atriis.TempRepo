@@ -186,7 +186,7 @@ Emails are written **directly in feature files** — no `USER_*` env vars, no la
 
 - **CI Workflow**: `.github/workflows/test-suite.yml` with 7 matrix jobs (flights-amadeus, flights-general, flights-galileo, flights-sabre, cars, hotels, rails) + report job
 - **Schedule**: Daily at 18:30 UTC, also on `workflow_dispatch`
-- **Retry Logic**: Enabled only in CI (`CI=true`), configured via `RETRY_COUNT` and `RETRY_DELAY`
+- **Retry Logic**: Native Cucumber retry, enabled only in CI (`CI=true`) via `--retry 2` / `RETRY_COUNT` env var. Failed scenarios are re-run in-process; the job only fails if a scenario fails every attempt.
 - **Screenshot Capture**: Automatic on failure, saved to `test-results/screenshots/`
 - **Playwright Traces**: Captured on failure alongside screenshots
 - **Cucumber Reports**: JSON + JUnit XML formats in `test-results/`
