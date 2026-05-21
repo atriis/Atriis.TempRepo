@@ -273,8 +273,14 @@ const FlightResults = {
     const flightResultsPage = getPageObject(page, FlightResultsPage);
 
     await flightResultsPage.waitForFlightResults();
-    await flightResultsPage.waitForComparisonTable();
-    await flightResultsPage.waitForComparisonToggleText('Hide Comparison');
+    await flightResultsPage.waitForComparisonToggle();
+
+    const currentText = await flightResultsPage.getComparisonToggleText();
+    if (currentText.trim() === 'Show Comparison') {
+      // Table is already hidden — desired state is already achieved
+      return { hidden: true };
+    }
+
     await flightResultsPage.clickComparisonToggle();
     await flightResultsPage.waitForComparisonToggleText('Show Comparison');
 
