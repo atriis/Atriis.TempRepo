@@ -19,8 +19,11 @@ Feature: 37302 Ratehawk - Book refundable hotel with price verification
     When I search for a hotel in "123 Champs-elysees" for 1 night
     And I select the first hotel result
     And I wait for the first add to trip button to be visible in room level results
+    And I filter room results by refundable
     And I extract the price from room level results
-    And I add a refundable room to my cart
+    And I add the first available room to my cart
+    Then the booking status should be "Pending booking"
+    And the hotel should appear as refundable in cart
     When I extract the hotel quote price from cart
     Then the price in cart should match the room level price
     When I click more details in cart
