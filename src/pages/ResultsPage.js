@@ -193,12 +193,67 @@ class ResultsPage {
       return this.page.getByRole('button', { name: SELECTORS.EDIT_SEARCH_BUTTON_NAME });
   }
 
+  /**
+   * Throws a descriptive error when the "No results found" empty state is
+   * displayed on the results page instead of bookable products.
+   *
+   * Includes the empty-state title text so the failure message is actionable
+   * in CI logs instead of a generic timeout.
+   *
+   * @param {string} expectedButton - The button label that was expected (e.g. "Select", "Add to trip")
+   * @throws {Error} Always throws when this is called
+   */
+  async _throwNoResultsError(expectedButton) {
+    let titleText = 'No results found';
+    try {
+      titleText = (await this.getNoResultsTitle().textContent({ timeout: 1000 }))?.trim() || titleText;
+    } catch {
+      // Title not readable — fall back to default text
+    }
+    throw new Error(
+      `No results found on results page. The "${titleText}" empty state was displayed ` +
+      `instead of bookable results; expected "${expectedButton}" button never appeared. ` +
+      `This is typically a data/availability issue (supplier returned zero options for the search criteria), ` +
+      `not a test bug.`
+    );
+  }
+
+  /**
+   * Waits for one of the result-action button locators or the "No results found"
+   * empty state, whichever appears first. Throws a descriptive error when the
+   * empty state wins the race; otherwise returns normally.
+   *
+   * @param {import('@playwright/test').Locator} buttonLocator - Locator for the expected result button
+   * @param {string} expectedButton - Human-readable name of the expected button (for error message)
+   * @param {number} timeout - Maximum wait time in milliseconds
+   */
+  async _waitForResultButtonOrNoResults(buttonLocator, expectedButton, timeout) {
+    const buttonPromise = buttonLocator
+      .waitFor({ state: 'visible', timeout })
+      .then(() => 'button');
+    const noResultsPromise = this.getNoResultsContainer()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => 'no-results');
+
+    const winner = await Promise.race([buttonPromise, noResultsPromise]).catch(() => null);
+
+    if (winner === 'no-results') {
+      await this._throwNoResultsError(expectedButton);
+    }
+
+    if (winner !== 'button') {
+      // Neither resolved (both timed out / errored). Let the original button
+      // wait surface the real Playwright timeout for diagnostics.
+      await buttonLocator.waitFor({ state: 'visible', timeout });
+    }
+  }
+
   /** 
    * Waits until the first "Select" button is visible
    * Extended timeout for CI/CD environments where results load slower
    */
   async waitForSelectText() {
-    await this.getSelectButton().waitFor({ state: "visible", timeout: 60000 });
+    await this._waitForResultButtonOrNoResults(this.getSelectButton(), 'Select', 60000);
   }
 
   /**
@@ -221,7 +276,7 @@ class ResultsPage {
    * Extended timeout for CI/CD environments where results load slower
    */
   async waitForAddToTripText() {
-    await this.getAddToTripButton().waitFor({ state: "visible", timeout: 60000 });
+    await this._waitForResultButtonOrNoResults(this.getAddToTripButton(), 'Add to trip', 60000);
   }
 
   /**
@@ -230,7 +285,7 @@ class ResultsPage {
    * @param {number} timeout - Maximum wait time in milliseconds
    */
   async waitForResultButtonText(text, timeout = 60000) {
-    await this.getResultButtonByText(text).waitFor({ state: 'visible', timeout });
+    await this._waitForResultButtonOrNoResults(this.getResultButtonByText(text), text, timeout);
   }
 
   async waitForNoResultsTitle(expectedText, timeout = 60000) {

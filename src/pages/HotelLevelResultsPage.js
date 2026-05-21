@@ -101,12 +101,34 @@ class HotelLevelResultsPage {
     // Wait for results page to be ready before looking for buttons (map button signals results loaded)
     await this.waitForResultsPageReady();
 
-    // Ensure the button exists, then scroll it into view (180s timeout for slower GDS suppliers like Galileo)
-    await viewRatesButton.waitFor({ state: "attached", timeout: 180000 });
-    await viewRatesButton.scrollIntoViewIfNeeded({ timeout: 180000 });
+    // Race the expected button against the "Hotel wasn't found" empty state so we throw a
+    // descriptive error in CI instead of a generic 180s timeout when the supplier returns
+    // zero hotels for the search criteria.
+    const buttonPromise = viewRatesButton
+      .waitFor({ state: 'attached', timeout: 180000 })
+      .then(() => 'button');
+    const noResultsPromise = this.page.locator(SELECTORS.HOTEL_NO_RESULTS)
+      .waitFor({ state: 'visible', timeout: 180000 })
+      .then(() => 'no-results');
 
-    // Confirm it is visible and ready for interaction
-    await viewRatesButton.waitFor({ state: "visible", timeout: 180000 });
+    const winner = await Promise.race([buttonPromise, noResultsPromise]).catch(() => null);
+
+    if (winner === 'no-results') {
+      throw new Error(
+        `No hotels found on results page. The "Hotel wasn't found" empty state was displayed ` +
+        `instead of bookable hotels; expected "View rates" button never appeared. ` +
+        `This is typically a data/availability issue (supplier returned zero hotels for the search criteria), ` +
+        `not a test bug.`
+      );
+    }
+
+    if (winner !== 'button') {
+      // Neither resolved — surface the original Playwright timeout for diagnostics.
+      await viewRatesButton.waitFor({ state: 'attached', timeout: 180000 });
+    }
+
+    await viewRatesButton.scrollIntoViewIfNeeded({ timeout: 180000 });
+    await viewRatesButton.waitFor({ state: 'visible', timeout: 180000 });
   }
 
   async waitForResultsPageReady() {
