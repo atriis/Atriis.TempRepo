@@ -16,7 +16,7 @@ Feature: 36581 Flights - Multi pax price displayed correctly in cart and checkou
     And I have added myself as the traveler
     And I have added traveler by name "josh"
     And I have added traveler by name "bene"
-    When I search for a one way flight from "LIS" to "NYC"
+    When I search for a one way flight from "LIS" to "NYC" with preferred carrier "S4"
     And flight results should be available
     Then the CO2 Squake tooltip should be visible in flight results
     And I add the first result to trip

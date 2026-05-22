@@ -49,6 +49,11 @@ When('I search for a round trip flight from {string} to {string} with preferred 
   await FlightSearch.searchFlightRoundTripWithPreferredCarrier(this.page, { from, to }, carrier);
 });
 
+When('I search for a one way flight from {string} to {string} with preferred carrier {string}', async function (from, to, carrier) {
+  logger.info('Searching for one-way flight with preferred carrier', { from, to, carrier });
+  await FlightSearch.searchFlightOneWayWithPreferredCarrier(this.page, { from, to }, carrier);
+});
+
 When('I search for a round trip {string} class flight from {string} to {string}', async function (cabinClass, from, to) {
   logger.info('Searching for round trip flight with cabin class', { cabinClass, from, to });
   await FlightSearch.searchFlightRoundTripWithCabinClass(this.page, { from, to }, cabinClass);

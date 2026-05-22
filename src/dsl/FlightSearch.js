@@ -367,6 +367,54 @@ const FlightSearch = {
   },
 
   /**
+   * One-way flight search with an advanced-search preferred carrier filter.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string|Object} routeInput - Route key or {from, to}
+   * @param {string} carrier - Preferred carrier label, e.g. "Qantas"
+   * @param {Object} options - Date-selection options
+   */
+  async searchFlightOneWayWithPreferredCarrier(
+    page,
+    routeInput,
+    carrier,
+    {
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+    } = {},
+  ) {
+    if (!page) throw new Error('page is required');
+    if (!routeInput) throw new Error('routeInput is required');
+    if (!carrier || typeof carrier !== 'string') {
+      throw new Error('carrier must be a non-empty string, got: ' + carrier);
+    }
+
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
+    logger.info('Starting oneWay flight search with preferred carrier', { from, to, carrier });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectOneWayTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+    await searchPage.clickDepartureDateField();
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      startIndex: departureIndex,
+      endIndex: null,
+    });
+
+    await this.openAdvancedSearch(page);
+    await flightSearchPage.clearPreferredCarriers();
+    await flightSearchPage.selectPreferredCarrier(carrier);
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'oneWay', searchType: 'completeTrip', carrier };
+  },
+
+  /**
    * Round-trip flight search with a requested cabin class.
    *
    * @param {Object} page - Playwright page object
