@@ -15,7 +15,7 @@ Feature: 46673 Amadeus - Split rules complete trip quote is split correctly
     And I have added myself as the traveler
     When I search for a round trip flight from "BOS" to "DFW"
     And flight results should be available
-    And I filter results by carrier "AA, DL"
+    And I filter airline results by "Multi carrier" checkbox
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     Then the first quote destination should contain "Dallas"
