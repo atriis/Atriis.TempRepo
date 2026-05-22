@@ -17,9 +17,11 @@ Feature: 28647 Amadeus - Multi-pax booking with rail banner
     And I have added myself as the traveler
     And I have added traveler by name "pit rip"
     When I search for a round trip flight from "AMS" to "BRU"
-    And I click proceed on the reference fields popup
+    And I click proceed button if visible
+    And flight results should be available
     Then the rail banner should be visible in results
     And I add the first flight to cart
+    And the booking status should be "Pending booking"
     And I proceed to checkout
     And I complete the booking
     Then the quote destination should contain "Flight to"
