@@ -15,7 +15,7 @@ Feature: 65269 Expedia - Check availability button shown on expired hotel quote
   @priority:medium
   Scenario: Check availability button is shown when hotel quote has expired
     Given I am logged in as "edi@yahot.com"
-    When I navigate to trip 3628213
+    When I navigate to trip 3696710
     Then the booking status should be "Expired"
     And the check availability button should be visible
     And the remove quote button should be visible
