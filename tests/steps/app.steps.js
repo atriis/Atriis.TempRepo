@@ -30,10 +30,13 @@ async function captureTripIdFromCurrentPage(page, { timeoutMs = 20000 } = {}) {
  */
 Given("I am logged in as {string}", async function (user) {
   logger.info("Logging in (no provider)", { user });
-  const session = await App.loginAsUser(user);
+  // Assign browser/context/page BEFORE login so the After hook can always
+  // capture a screenshot, even when login itself fails.
+  const session = await App.createBrowserSession();
   this.browser = session.browser;
   this.context = session.context;
   this.page = session.page;
+  await App.login(this.page, user);
 });
 
 /**
@@ -41,10 +44,14 @@ Given("I am logged in as {string}", async function (user) {
  */
 Given("I am logged in as {string} booking a new trip", async function (user) {
   logger.info("Logging in and booking", { user });
-  const session = await App.loginAsUserAndBookANewTrip(user);
-  this.browser = session.browser;
-  this.context = session.context;
-  this.page = session.page;
+  // Assign browser/context/page BEFORE login so the After hook can always
+  // capture a screenshot, even when login itself fails.
+  const browserSession = await App.createBrowserSession();
+  this.browser = browserSession.browser;
+  this.context = browserSession.context;
+  this.page = browserSession.page;
+  await App.login(this.page, user);
+  this.page = await App.bookANewTrip(this.page);
 
   const tripId = await captureTripIdFromCurrentPage(this.page);
   if (tripId) {

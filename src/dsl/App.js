@@ -50,21 +50,41 @@ async function performLogin(page, email) {
 }
 
 async function createSession(email) {
-  const browser = await launchBrowser();
-  const context = await browser.newContext({
-    viewport: config.viewport,
-    screen: config.viewport,
-    ignoreHTTPSErrors: true,
-  });
-  const page = await context.newPage();
-
+  const { browser, context, page } = await App.createBrowserSession();
   await page.goto(config.baseUrl, { waitUntil: "domcontentloaded" });
   await performLogin(page, email);
-
   return { browser, context, page };
 }
 
 const App = {
+  /**
+   * Creates a browser session (browser + context + page) without navigating or logging in.
+   * Use this when you need this.page assigned before the login attempt, so that
+   * failures during login still produce a screenshot in the After hook.
+   */
+  async createBrowserSession() {
+    const browser = await launchBrowser();
+    const context = await browser.newContext({
+      viewport: config.viewport,
+      screen: config.viewport,
+      ignoreHTTPSErrors: true,
+    });
+    const page = await context.newPage();
+    return { browser, context, page };
+  },
+
+  /**
+   * Navigates to the app and logs in on an already-open page.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} email
+   */
+  async login(page, email) {
+    if (!page) throw new Error('page is required');
+    await page.goto(config.baseUrl, { waitUntil: 'domcontentloaded' });
+    await performLogin(page, email);
+  },
+
   /**
    * Logs in using an email address directly.
    *
