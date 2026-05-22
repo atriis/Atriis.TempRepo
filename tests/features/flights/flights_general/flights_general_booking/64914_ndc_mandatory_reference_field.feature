@@ -21,4 +21,3 @@ Feature: 64914 NDC - Booking successful with mandatory reference field
     And I fill in the "NDC ONLY" reference field with "abc"
     And I complete the booking
     Then the quote destination should contain "Flight to"
-    And I attempt to cancel the trip safely
