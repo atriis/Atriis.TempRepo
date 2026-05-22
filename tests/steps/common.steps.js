@@ -163,6 +163,13 @@ Then("the extracted price at index {int} should equal the extracted price at ind
   expectNumbersToBeEqualWithTolerance(priceA, priceB, 0.02, `Price comparison [${indexA}] vs [${indexB}]`);
 });
 
+Then("the extracted price at index {int} should equal the extracted price at index {int} within tolerance of {float}", function (indexA, indexB, tolerance) {
+  logger.info("Asserting extracted prices are equal within tolerance", { indexA, indexB, tolerance });
+  const priceA = this.extractedPrices[indexA];
+  const priceB = this.extractedPrices[indexB];
+  expectNumbersToBeEqualWithTolerance(priceA, priceB, tolerance, `Price comparison [${indexA}] vs [${indexB}]`);
+});
+
 Then("the sum of extracted prices at index {int} and {int} should equal {float}", function (indexA, indexB, expectedSum) {
   logger.info("Asserting sum of extracted prices equals value", { indexA, indexB, expectedSum });
   const priceA = this.extractedPrices[indexA];

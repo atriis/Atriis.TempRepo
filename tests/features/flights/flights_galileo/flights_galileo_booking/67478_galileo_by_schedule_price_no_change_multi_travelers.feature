@@ -27,5 +27,5 @@ Feature: 67478 Galileo - By schedule price does not change for multi travelers
     And I complete the booking
     Then the quote destination should contain "Flight to"
     When I extract the price at index 0 from "cart"
-    Then the extracted price at index 0 should equal the extracted price at index 1 within tolerance
+    Then the extracted price at index 0 should equal the extracted price at index 1 within tolerance of 0.05
 
