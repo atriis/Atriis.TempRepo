@@ -15,8 +15,7 @@ Feature: 72577 Amadeus Light Ticketing - Booking ticketed on approval
   Scenario: Ryanair booking is ticketed when sent for approval
     Given I am logged in as "ryanAir@amadeus.ams" booking a new trip
     And I have added a random guest traveler
-    When I search for a round trip flight from "DUB" to "CPH"
-    And I filter results by carrier "FR"
+    When I search for a round trip flight from "STN" to "BCN" with preferred carrier "Ryanair"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     And I fill credit card cvv if needed
