@@ -15,12 +15,15 @@ Feature: 64333 Flights - Add FQTV to single quote with separate tickets
     Given I am logged in as "multifqtv@corp.club" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "ATL" to "EWR"
-    And I filter results by carrier "DL"
+    And flight results should be available
+    And I filter results by carrier "Delta"
     And I select one flight segment by schedule
     And I wait for the change flight button to be visible
-    And I filter results by carrier "UA"
+    And flight results should be available
+    And I filter results by carrier "United"
     And I select one flight segment by schedule
     And I wait for "Your Selection" text to be visible
+    Then the "Separated Tickets" indicator should be visible in results
     And I add "Your Selection" fare to trip
     Then the booking status should be "Pending booking"
     And I click frequent flyer in extras
