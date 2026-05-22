@@ -19,7 +19,7 @@ Feature: 45750 Sabre - Separate tickets by schedule booking
     And I filter airline results by "Air France" checkbox
     When I select one flight segment by schedule
     And I wait for the change flight button to be visible
-    And I filter results by carrier "Tap Air Portugal"
+    And I filter results by carrier "Lufthansa"
     When I select one flight segment by schedule
     And I wait for "Your Selection" text to be visible
     Then the "Separated Tickets" indicator should be visible in the pricing page

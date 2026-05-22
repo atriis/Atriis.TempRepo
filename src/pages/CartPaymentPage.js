@@ -156,9 +156,13 @@ class CartPaymentPage {
 
   /**
    * Clicks the button to open the Add Payment Method modal.
+   * In flows with multiple form-of-payment blocks (e.g. Sabre Separate Tickets),
+   * the DOM exposes one "Add payment method" button per ticket. Scope to the
+   * first match to avoid strict-mode violations; callers that need to act on
+   * a subsequent block should add a dedicated helper.
    */
   async clickAddPaymentMethodButton() {
-    const button = this.page.getByRole("button", { name: SELECTORS.ADD_PAYMENT_METHOD_BTN_NAME });
+    const button = this.page.getByRole("button", { name: SELECTORS.ADD_PAYMENT_METHOD_BTN_NAME }).first();
     await button.waitFor({ state: "visible", timeout: 30000 });
     await button.click({ timeout: 30000 });
   }
