@@ -31,6 +31,7 @@ const COLORS = {
   greenSoft: 'D1FAE5',
   yellow: 'F59E0B',
   yellowSoft: 'FEF3C7',
+  red: 'EF4444',
   gray: 'E5E7EB',
   graySoft: 'F3F4F6',
   border: 'E5E7EB',
@@ -44,7 +45,7 @@ slide.addText('Test Migration Progress: Testim.io → Playwright', {
   x: 0.4, y: 0.25, w: 12.5, h: 0.55,
   fontSize: 28, bold: true, color: COLORS.ink, fontFace: 'Calibri',
 });
-slide.addText('Scope: OBT tests only  •  Executive snapshot', {
+slide.addText('Scope: OBT tests only', {
   x: 0.4, y: 0.78, w: 12.5, h: 0.3,
   fontSize: 12, color: COLORS.sub, fontFace: 'Calibri',
 });
@@ -55,28 +56,9 @@ slide.addShape(pptx.ShapeType.line, {
   line: { color: COLORS.border, width: 1 },
 });
 
-// === LEFT COLUMN: Why + Agents ===
+// === LEFT COLUMN: Agents ===
 const LX = 0.4;
 let ly = 1.35;
-
-slide.addText('Why Playwright', {
-  x: LX, y: ly, w: 4.2, h: 0.35,
-  fontSize: 14, bold: true, color: COLORS.accent, fontFace: 'Calibri',
-});
-ly += 0.38;
-
-const whyItems = [
-  'Full control over selectors & waits',
-  'Deterministic behavior',
-  'Better debugging (logs, traces, screenshots)',
-  'Clean architecture (DSL + POM)',
-  'Strong CI/CD + Git workflows',
-];
-slide.addText(
-  whyItems.map(t => ({ text: t, options: { bullet: { code: '25A0' }, color: COLORS.ink } })),
-  { x: LX, y: ly, w: 4.2, h: 1.6, fontSize: 11, fontFace: 'Calibri', paraSpaceAfter: 4 }
-);
-ly += 1.7;
 
 slide.addText('AI Agents accelerating migration', {
   x: LX, y: ly, w: 4.2, h: 0.35,
@@ -95,8 +77,43 @@ slide.addText(
     { text: 'Agent 3: ', options: { bold: true, color: COLORS.ink } },
     { text: 'implements step definitions.', options: { color: COLORS.ink } },
   ],
-  { x: LX, y: ly, w: 4.2, h: 1.6, fontSize: 11, fontFace: 'Calibri', paraSpaceAfter: 3 }
+  { x: LX, y: ly, w: 4.2, h: 1.4, fontSize: 11, fontFace: 'Calibri', paraSpaceAfter: 3 }
 );
+ly += 1.5;
+
+// Migration trend chart
+slide.addText('Migration Progress per Sprint', {
+  x: LX, y: ly, w: 4.2, h: 0.3,
+  fontSize: 12, bold: true, color: COLORS.accent, fontFace: 'Calibri',
+});
+ly += 0.3;
+
+slide.addChart(pptx.ChartType.line, [
+  {
+    name: 'Migration %',
+    labels: ['Sprint 9', 'Sprint 10'],
+    values: [45, 53],
+  },
+], {
+  x: LX, y: ly, w: 4.2, h: 2.2,
+  showLegend: false,
+  showValue: true,
+  dataLabelPosition: 'above',
+  dataLabelFontSize: 10,
+  dataLabelColor: COLORS.ink,
+  dataLabelFormatCode: '0"%"',
+  catAxisLabelFontSize: 10,
+  catAxisLabelColor: COLORS.ink,
+  valAxisLabelFontSize: 9,
+  valAxisLabelColor: COLORS.sub,
+  valAxisMinVal: 0,
+  valAxisMaxVal: 100,
+  valAxisLabelFormatCode: '0"%"',
+  lineDataSymbol: 'circle',
+  lineDataSymbolSize: 8,
+  chartColors: [COLORS.green],
+  plotArea: { border: { color: COLORS.border, width: 1 }, fill: { color: 'FFFFFF' } },
+});
 
 // === CENTER COLUMN: KPI + Breakdown ===
 const CX = 4.85;
@@ -112,34 +129,33 @@ slide.addText('Overall Migration', {
   x: CX, y: 1.42, w: 3.7, h: 0.3,
   fontSize: 12, bold: true, color: COLORS.ink, align: 'center', fontFace: 'Calibri',
 });
-slide.addText('40%', {
+slide.addText('53%', {
   x: CX, y: 1.7, w: 3.7, h: 0.95,
   fontSize: 64, bold: true, color: COLORS.green, align: 'center', fontFace: 'Calibri',
 });
-slide.addText('296 / 740 tests migrated', {
+slide.addText('397 / 753 tests migrated', {
   x: CX, y: 2.65, w: 3.7, h: 0.35,
   fontSize: 13, color: COLORS.ink, align: 'center', fontFace: 'Calibri',
 });
-
 // Domain breakdown header
 slide.addText('Domain Breakdown', {
-  x: CX, y: 3.2, w: 3.7, h: 0.35,
+  x: CX, y: 3.1, w: 3.7, h: 0.35,
   fontSize: 14, bold: true, color: COLORS.accent, fontFace: 'Calibri',
 });
 
 // Horizontal bars per domain
 const domains = [
-  { name: 'Hotels',         total: 119, done: 119, pct: 100, color: COLORS.green  },
-  { name: 'Flights',        total: 255, done: 166, pct: 65,  color: COLORS.green  },
-  { name: 'Transportation', total: 148, done: 9,   pct: 6,   color: COLORS.yellow },
+  { name: 'Hotels',         total: 133, done: 119, pct: 89,  color: COLORS.green  },
+  { name: 'Flights',        total: 254, done: 254, pct: 100, color: COLORS.green  },
+  { name: 'Transportation', total: 148, done: 22,   pct: 15,   color: COLORS.yellow },
   { name: 'Shell',          total: 218, done: 2,   pct: 1,   color: COLORS.gray   },
 ];
 
 const barX = CX;
-const barY0 = 3.6;
+const barY0 = 3.5;
 const barW = 3.7;
-const rowH = 0.55;
-const trackH = 0.22;
+const rowH = 0.52;
+const trackH = 0.20;
 
 domains.forEach((d, i) => {
   const ry = barY0 + i * rowH;
@@ -173,8 +189,15 @@ domains.forEach((d, i) => {
   });
 });
 
+// Blocked tests note
+const blockedY = barY0 + domains.length * rowH + 0.1;
+slide.addText('\uD83D\uDEA7 24 tests blocked (supplier errors / known bugs) \u2013 pending review', {
+  x: barX, y: blockedY, w: barW, h: 0.35,
+  fontSize: 9, italic: true, color: COLORS.yellow, fontFace: 'Calibri',
+});
+
 // Legend
-const legY = barY0 + domains.length * rowH + 0.05;
+const legY = blockedY + 0.35;
 const legendItems = [
   { label: 'Completed', color: COLORS.green },
   { label: 'In progress', color: COLORS.yellow },
@@ -207,19 +230,22 @@ slide.addText('Daily Stability Run', {
   x: RX + 0.2, y: 1.45, w: 3.8, h: 0.35,
   fontSize: 14, bold: true, color: COLORS.accent, fontFace: 'Calibri',
 });
-slide.addText('Mostly non-booking flows • Growing daily', {
-  x: RX + 0.2, y: 1.78, w: 3.8, h: 0.3,
-  fontSize: 10, italic: true, color: COLORS.sub, fontFace: 'Calibri',
-});
+slide.addText(
+  'Passing rate depends on supplier availability, environment speed, and administration \u2014 reviewed regularly to stay reliable and grow coverage.',
+  {
+    x: RX + 0.2, y: 2.0, w: 3.8, h: 0.5,
+    fontSize: 9, color: COLORS.sub, fontFace: 'Calibri',
+  }
+);
 
 // KPI tiles
 const tiles = [
-  { label: 'Tests running daily',   value: '189',         color: COLORS.accent },
-  { label: 'Avg passing rate',      value: '86.52%',      color: COLORS.green  },
-  { label: 'Avg total duration',    value: '26 min',      color: COLORS.ink    },
+  { label: 'Tests running daily',   value: '340',         color: COLORS.accent },
+  { label: 'Avg passing rate',      value: '82.50%',      color: COLORS.green  },
+  { label: 'Avg total duration',    value: '50 min',      color: COLORS.ink    },
 ];
 tiles.forEach((t, i) => {
-  const ty = 2.2 + i * 0.85;
+  const ty = 2.6 + i * 0.8;
   slide.addShape(pptx.ShapeType.roundRect, {
     x: RX + 0.2, y: ty, w: 3.75, h: 0.75,
     fill: { color: 'FFFFFF' }, line: { color: COLORS.border, width: 1 },
@@ -237,19 +263,18 @@ tiles.forEach((t, i) => {
 
 // Composition
 slide.addText('Composition', {
-  x: RX + 0.2, y: 4.85, w: 3.8, h: 0.3,
+  x: RX + 0.2, y: 5.0, w: 3.8, h: 0.3,
   fontSize: 12, bold: true, color: COLORS.ink, fontFace: 'Calibri',
 });
 
 const comp = [
-  { name: 'Flights', value: 101 },
-  { name: 'Hotels',  value: 77  },
-  { name: 'Cars',    value: 9   },
-  { name: 'Rails',   value: 2   },
+  { name: 'Flights', value: 205 },
+  { name: 'Hotels',  value: 111 },
+  { name: 'Transportation',    value: 24  },
 ];
 const compTotal = comp.reduce((a, b) => a + b.value, 0);
 comp.forEach((c, i) => {
-  const cy = 5.2 + i * 0.38;
+  const cy = 5.35 + i * 0.38;
   slide.addText(c.name, {
     x: RX + 0.2, y: cy, w: 1.0, h: 0.28,
     fontSize: 11, color: COLORS.ink, fontFace: 'Calibri',
