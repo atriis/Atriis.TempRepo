@@ -1,5 +1,6 @@
+require("module-alias/register");
 const { expect } = require("@playwright/test");
-const { fetchPayloadFromAzureStorage } = require("@utils/azureStorageClient");
+const { fetchPayloadFromAzureStorage } = require("@utils/payloadValidationClient");
 const logger = require("@utils/logger").child("PayloadValidation-DSL");
 
 function buildKey(source, requestType) {
@@ -651,7 +652,6 @@ const PayloadValidation = {
         transactionId: identifiers.transactionId,
         sid: identifiers.sid,
         returnAllMatches: true,
-        maxMatches: 10,
       });
     } catch {
       // Storage fallback unavailable — surface the original assertion error.
@@ -892,7 +892,6 @@ const PayloadValidation = {
         transactionId: identifiers.transactionId,
         sid: identifiers.sid,
         returnAllMatches: true,
-        maxMatches: 10,
       });
     } catch {
       throw firstError;
@@ -1380,7 +1379,6 @@ const PayloadValidation = {
       transactionId: identifiers.transactionId,
       sid: identifiers.sid,
       returnAllMatches: true,
-      maxMatches: 10,
     });
 
     for (const match of multiMatchResult.matches) {

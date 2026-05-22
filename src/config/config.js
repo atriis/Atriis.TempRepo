@@ -22,6 +22,23 @@ function getOptionalEnv(name, defaultValue = "") {
   return value;
 }
 
+function getOptionalBooleanEnv(name, defaultValue = false) {
+  const raw = process.env[name];
+  if (raw === undefined || String(raw).trim() === "") {
+    return defaultValue;
+  }
+
+  const normalized = String(raw).trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  return defaultValue;
+}
+
 /**
  * Viewport presets for flexibility.
  * Can be changed via VIEWPORT env variable.
@@ -59,15 +76,24 @@ const config = {
 
   viewport: ACTIVE_VIEWPORT,
 
-  azureStorage: {
-    get connectionString() {
-      return getOptionalEnv("AZURE_STORAGE_CONNECTION_STRING", "");
+  payloadValidation: {
+    get enabled() {
+      return getOptionalBooleanEnv("PAYLOAD_VALIDATION_ENABLED", true);
+    },
+    get internalAtriisBaseUrl() {
+      return getOptionalEnv("PAYLOAD_VALIDATION_INTERNAL_ATRIIS_BASE_URL", "");
+    },
+    get internalAtriisToken() {
+      return getOptionalEnv("PAYLOAD_VALIDATION_INTERNAL_ATRIIS_TOKEN", "");
     },
     get lookbackMinutes() {
-      return Number(getOptionalEnv("AZURE_STORAGE_LOOKBACK_MINUTES", "60"));
+      return Number(getOptionalEnv("PAYLOAD_VALIDATION_LOOKBACK_MINUTES", "60"));
     },
     get timeoutMs() {
-      return Number(getOptionalEnv("AZURE_STORAGE_TIMEOUT_MS", "30000"));
+      return Number(getOptionalEnv("PAYLOAD_VALIDATION_TIMEOUT_MS", "12000"));
+    },
+    get maxRequestsMatches() {
+      return Number(getOptionalEnv("PAYLOAD_VALIDATION_MAX_REQUESTS_MATCHES", "10"));
     },
   },
 };

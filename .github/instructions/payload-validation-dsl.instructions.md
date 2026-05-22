@@ -23,9 +23,11 @@ applyTo: '**/*.feature, **/payload_validation.steps.js, **/PayloadValidation.js'
 | When | Then |
 |------|------|
 | Capture payloads by request type | Assert contains/not contains with operators |
-| | Multi-line XML block assertions |
-| | Multi-line JSON block assertions |
+| | Multi-line XML block assertions (exact tag match) |
+| | Multi-line JSON block assertions (deep subset match) |
 | | JSON path exists/contains/not contains |
+
+> **Priority rules:** Always run a capture step before assertions. Use existing step definitions; do not invent new expression types.
 
 ## Expression Operators
 
@@ -61,6 +63,9 @@ Then the captured "request" payload for request type "Booking" should contain th
   {
     "tripId": 123,
     "status": "confirmed"
+  And the captured "response" payload for request type "API" should contain "locationCode".block("locationAddress")
+  Then the captured "block" payload for request type "API" should contain "MADRID".split(",")[0]
+  ```
   }
   """
 
@@ -80,10 +85,12 @@ Automatically scans up to 10 recent candidates if latest doesn't match.
 
 ### 2. Block Extraction → Chained Assertions
 ```gherkin
-And the captured "response" payload for request type "API" should contain "location".block("locationAddress")
+And the captured "response" payload for request type "API" should contain "locationCode".block("locationAddress")
 Then the captured "block" payload for request type "API" should contain "MADRID".split(",")[0]
 ```
 Extracted block becomes the new cached payload for subsequent assertions.
+
+  > **NOTE:** When using `.block`, ensure the marker or pattern you provide is unique within the request or response payload. If the pattern appears more than once, the block extraction may select the wrong section, causing test mismatches. Always use a unique, unambiguous marker for block extraction steps.
 
 ### 3. Dynamic Values from World
 ```gherkin
@@ -106,7 +113,7 @@ Then the captured "request" payload for request type "Booking" should contain th
   }
   """
 ```
-Expected structure is matched as a deep subset of actual payload.
+Expected structure is matched as a deep subset of actual payload. If the payload is malformed or cannot be parsed as JSON, the step will throw an assertion error with a message indicating the parse failure and the request type — treat this as a contract violation and investigate the API response before adjusting the test.
 
 ## Scenario Identifiers (world context)
 
@@ -202,7 +209,7 @@ Error: Expected content not found in any of the 3 captured request payload(s) fo
 
 ## Full Documentation
 
-See [docs/PayloadValidation.md](../../../docs/PayloadValidation.md) for comprehensive reference:
+See [docs/PayloadValidation.md](../../docs/PayloadValidation.md) for comprehensive reference:
 - All DSL methods and their behaviors
 - Fallback and multi-match logic
 - Placeholder resolution details

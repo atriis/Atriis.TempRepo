@@ -482,7 +482,7 @@ Then the captured "response" payload for request type "Booking" should contain "
 
 ### DO
 - ✅ **Always use existing step definitions and DSL methods** — they handle all edge cases and fallback logic
-- ✅ **Use block extraction for chained assertions** — e.g., `.block("locationAddress")` followed by `.split()` or `.onKey()` on the block
+- ✅ **Use block extraction for chained assertions** — e.g., `.block("locationAddress")` followed by `.split()` or `.onKey()` use it whenever possible
 - ✅ **Rely on automatic fallback logic** — no need for manual retry steps
 - ✅ **Use specific request types** — e.g., "Amadeus4.Car_LocationList" not just "Car_LocationList"
 - ✅ **Verify scenario identifiers are set** — tripId, transactionId, sid in world context
@@ -580,7 +580,7 @@ And the extracted trip identifier should not be empty
 - **`tests/features/cars/payload_test/PAYLOADVALIDATION_TECHNICAL_SURVEY.md`** — Detailed technical survey
 
 ### Integration Points
-- **`src/utils/azureStorageClient.js`** — Azure Storage client (called by `capturePayloadByRequestType`)
+- **`src/utils/payloadValidationClient.js`** — Payload validation client (called by `capturePayloadByRequestType`)
 - **`src/dsl/index.js`** — Barrel export for DSL modules
 - **`tests/steps/app.steps.js`** — Global hooks for world context initialization
 
@@ -593,6 +593,7 @@ And the extracted trip identifier should not be empty
 ```
 Plain text:
   "foo"
+
 
 Block extraction:
   "foo".block("tag")
@@ -634,6 +635,7 @@ JSON path:
 ### Scenario: Block Extraction Followed by Split
 **Problem:** Need to extract a block, then split a field inside it.
 **Solution:** Use `.block("tag")` to extract, then use `source: "block"` in next step with `.split()` expression.
+**Note:** When using `.block`, ensure the marker or pattern you provide is unique within the request or response payload. If the pattern appears more than once, the block extraction may select the wrong section, causing test mismatches. Always use a unique, unambiguous marker for block extraction steps. Prefer single words without spaces or commas to minimize the risk of no matches, since block does not do the split.
 
 ### Scenario: Validating Nested JSON Path
 **Problem:** Need to check deep field value in JSON payload.

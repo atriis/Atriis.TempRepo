@@ -1,6 +1,7 @@
 require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { PayloadValidation } = require("@dsl");
+const config = require("@config/config");
 const logger = require("@utils/logger").child("PayloadValidation");
 
 setDefaultTimeout(120000);
@@ -24,60 +25,88 @@ function resolveWorldPlaceholders(expectedText, world) {
     .replace(/\{sid\}/g, world.sid ?? '{sid}');
 }
 
-async function expectCapturedContains(world, source, requestType, expectedText, logMessage, logMeta = {}) {
-  const resolvedText = resolveWorldPlaceholders(expectedText, world);
-  logger.info(logMessage, {
-    source,
-    requestType,
-    ...logMeta,
-    ...(resolvedText !== expectedText && { resolvedText }),
-  });
+async function runPayloadValidationStep(world, stepName, metadata, action) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false", {
+      step: stepName,
+      ...metadata,
+    });
+    return;
+  }
 
-  await PayloadValidation.expectCapturedPayloadContains(
-    world.page,
+  await action();
+}
+
+async function expectCapturedContains(world, source, requestType, expectedText, logMessage, logMeta = {}) {
+  await runPayloadValidationStep(
     world,
-    source,
-    requestType,
-    resolvedText
+    "expectCapturedPayloadContains",
+    { source, requestType, ...logMeta },
+    async () => {
+      const resolvedText = resolveWorldPlaceholders(expectedText, world);
+      logger.info(logMessage, {
+        source,
+        requestType,
+        ...logMeta,
+        ...(resolvedText !== expectedText && { resolvedText }),
+      });
+
+      await PayloadValidation.expectCapturedPayloadContains(
+        world.page,
+        world,
+        source,
+        requestType,
+        resolvedText
+      );
+    }
   );
 }
 
 async function expectCapturedNotContains(world, source, requestType, expectedText, logMessage, logMeta = {}) {
-  const resolvedText = resolveWorldPlaceholders(expectedText, world);
-  logger.info(logMessage, {
-    source,
-    requestType,
-    ...logMeta,
-    ...(resolvedText !== expectedText && { resolvedText }),
-  });
-
-  await PayloadValidation.expectCapturedPayloadNotContains(
-    world.page,
+  await runPayloadValidationStep(
     world,
-    source,
-    requestType,
-    resolvedText
+    "expectCapturedPayloadNotContains",
+    { source, requestType, ...logMeta },
+    async () => {
+      const resolvedText = resolveWorldPlaceholders(expectedText, world);
+      logger.info(logMessage, {
+        source,
+        requestType,
+        ...logMeta,
+        ...(resolvedText !== expectedText && { resolvedText }),
+      });
+
+      await PayloadValidation.expectCapturedPayloadNotContains(
+        world.page,
+        world,
+        source,
+        requestType,
+        resolvedText
+      );
+    }
   );
 }
 
 // Primary wording
 When("I capture the {string} payload for request type {string} from Storage", async function (source, requestType) {
-  const identifiers = getScenarioIdentifiers(this);
-  logger.info("Capturing payload from Storage", { source, requestType, ...identifiers });
+  await runPayloadValidationStep(this, "capturePayloadByRequestType", { source, requestType }, async () => {
+    const identifiers = getScenarioIdentifiers(this);
+    logger.info("Capturing payload from Storage", { source, requestType, ...identifiers });
 
-  const record = await PayloadValidation.capturePayloadByRequestType(
-    this.page,
-    this,
-    source,
-    requestType,
-    identifiers
-  );
+    const record = await PayloadValidation.capturePayloadByRequestType(
+      this.page,
+      this,
+      source,
+      requestType,
+      identifiers
+    );
 
-  this.lastCapturedParserPayload = record;
-  logger.info("Payload captured from Storage", {
-    source: record.source,
-    requestType: record.requestType,
-    capturedAt: record.capturedAt,
+    this.lastCapturedParserPayload = record;
+    logger.info("Payload captured from Storage", {
+      source: record.source,
+      requestType: record.requestType,
+      capturedAt: record.capturedAt,
+    });
   });
 });
 
@@ -368,114 +397,150 @@ Then(
 Then(
   "the captured {string} payload for request type {string} should contain the XML block:",
   async function (source, requestType, expectedXmlBlock) {
-    logger.info("Validating captured payload contains XML block with all key-value pairs", {
+    await runPayloadValidationStep(this, "expectCapturedPayloadContainsXmlBlock", {
       source,
       requestType,
       expectedXmlLength: String(expectedXmlBlock || "").length,
-    });
-
-    await PayloadValidation.expectCapturedPayloadContainsXmlBlock(
-      this.page,
-      this,
-      source,
-      requestType,
-      expectedXmlBlock
-    );
-  }
-);
-  Then(
-    "the captured {string} payload for request type {string} should not contain the XML block:",
-    async function (source, requestType, expectedXmlBlock) {
-      logger.info("Validating captured payload does not contain XML block with all key-value pairs", {
+    }, async () => {
+      logger.info("Validating captured payload contains XML block with all key-value pairs", {
         source,
         requestType,
         expectedXmlLength: String(expectedXmlBlock || "").length,
       });
 
-      await PayloadValidation.expectCapturedPayloadNotContainsXmlBlock(
+      await PayloadValidation.expectCapturedPayloadContainsXmlBlock(
         this.page,
         this,
         source,
         requestType,
         expectedXmlBlock
       );
+    });
+  }
+);
+  Then(
+    "the captured {string} payload for request type {string} should not contain the XML block:",
+    async function (source, requestType, expectedXmlBlock) {
+      await runPayloadValidationStep(this, "expectCapturedPayloadNotContainsXmlBlock", {
+        source,
+        requestType,
+        expectedXmlLength: String(expectedXmlBlock || "").length,
+      }, async () => {
+        logger.info("Validating captured payload does not contain XML block with all key-value pairs", {
+          source,
+          requestType,
+          expectedXmlLength: String(expectedXmlBlock || "").length,
+        });
+
+        await PayloadValidation.expectCapturedPayloadNotContainsXmlBlock(
+          this.page,
+          this,
+          source,
+          requestType,
+          expectedXmlBlock
+        );
+      });
     }
   );
 
 Then(
   "the captured {string} payload for request type {string} should contain the JSON block:",
   async function (source, requestType, expectedJsonBlock) {
-    const resolvedBlock = resolveWorldPlaceholders(expectedJsonBlock, this);
-    logger.info("Validating captured payload contains JSON block with all key-value pairs", {
+    await runPayloadValidationStep(this, "expectCapturedPayloadContainsJsonBlock", {
       source,
       requestType,
-      expectedJsonLength: String(resolvedBlock || "").length,
-    });
+    }, async () => {
+      const resolvedBlock = resolveWorldPlaceholders(expectedJsonBlock, this);
+      logger.info("Validating captured payload contains JSON block with all key-value pairs", {
+        source,
+        requestType,
+        expectedJsonLength: String(resolvedBlock || "").length,
+      });
 
-    await PayloadValidation.expectCapturedPayloadContainsJsonBlock(
-      this.page,
-      this,
-      source,
-      requestType,
-      resolvedBlock
-    );
+      await PayloadValidation.expectCapturedPayloadContainsJsonBlock(
+        this.page,
+        this,
+        source,
+        requestType,
+        resolvedBlock
+      );
+    });
   }
 );
 
 Then(
   "the captured {string} payload for request type {string} should not contain the JSON block:",
   async function (source, requestType, expectedJsonBlock) {
-    const resolvedBlock = resolveWorldPlaceholders(expectedJsonBlock, this);
-    logger.info("Validating captured payload does not contain JSON block with all key-value pairs", {
+    await runPayloadValidationStep(this, "expectCapturedPayloadNotContainsJsonBlock", {
       source,
       requestType,
-      expectedJsonLength: String(resolvedBlock || "").length,
-    });
+    }, async () => {
+      const resolvedBlock = resolveWorldPlaceholders(expectedJsonBlock, this);
+      logger.info("Validating captured payload does not contain JSON block with all key-value pairs", {
+        source,
+        requestType,
+        expectedJsonLength: String(resolvedBlock || "").length,
+      });
 
-    await PayloadValidation.expectCapturedPayloadNotContainsJsonBlock(
-      this.page,
-      this,
-      source,
-      requestType,
-      resolvedBlock
-    );
+      await PayloadValidation.expectCapturedPayloadNotContainsJsonBlock(
+        this.page,
+        this,
+        source,
+        requestType,
+        resolvedBlock
+      );
+    });
   }
 );
 
 Then(
   "in the captured {string} payload for request type {string}, path {string} should exist",
   async function (source, requestType, path) {
-    logger.info("Validating captured payload path exists", { source, requestType, path });
-    await PayloadValidation.expectCapturedPayloadPathExists(this.page, this, source, requestType, path);
+    await runPayloadValidationStep(this, "expectCapturedPayloadPathExists", { source, requestType, path }, async () => {
+      logger.info("Validating captured payload path exists", { source, requestType, path });
+      await PayloadValidation.expectCapturedPayloadPathExists(this.page, this, source, requestType, path);
+    });
   }
 );
 
 Then(
   "in the captured {string} payload for request type {string}, path {string} should contain {string}",
   async function (source, requestType, path, expectedValue) {
-    logger.info("Validating captured payload path contains", { source, requestType, path, expectedValue });
-    await PayloadValidation.expectCapturedPayloadPathContains(
-      this.page,
-      this,
+    await runPayloadValidationStep(this, "expectCapturedPayloadPathContains", {
       source,
       requestType,
       path,
-      expectedValue
-    );
+    }, async () => {
+      logger.info("Validating captured payload path contains", { source, requestType, path, expectedValue });
+      await PayloadValidation.expectCapturedPayloadPathContains(
+        this.page,
+        this,
+        source,
+        requestType,
+        path,
+        expectedValue
+      );
+    });
   }
 );
 
 Then(
   "in the captured {string} payload for request type {string}, path {string} should not contain {string}",
   async function (source, requestType, path, expectedValue) {
-    logger.info("Validating captured payload path does not contain", { source, requestType, path, expectedValue });
-    await PayloadValidation.expectCapturedPayloadPathNotContains(
-      this.page,
-      this,
+    await runPayloadValidationStep(this, "expectCapturedPayloadPathNotContains", {
       source,
       requestType,
       path,
-      expectedValue
-    );
+    }, async () => {
+      logger.info("Validating captured payload path does not contain", { source, requestType, path, expectedValue });
+      await PayloadValidation.expectCapturedPayloadPathNotContains(
+        this.page,
+        this,
+        source,
+        requestType,
+        path,
+        expectedValue
+      );
+    });
   }
 );
