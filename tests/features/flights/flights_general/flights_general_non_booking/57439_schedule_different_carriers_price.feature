@@ -14,9 +14,15 @@ Feature: 57439 Amadeus By Schedule - Different carriers My Selection correct pri
   Scenario: My Selection price matches from pricing page to cart with different carriers
     Given I am logged in as "ruimendes@amadeus.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a flight by schedule from "DUB" to "PAR"
-    And I select flight segments by schedule
-    And I extract the price from first pricing option
-    And I add to trip from pricing options
-    And I handle conflicting quotes if visible
+    When I search for a flight by schedule from "FRA" to "PAR"
+    And flight results should be available
+    And I filter results by carrier "Lufthansa"
+    And I select one flight segment by schedule
+    And I wait for the change flight button to be visible
+    And I filter results by carrier "KLM"
+    And I select one flight segment by schedule
+    And I wait for "Your Selection" text to be visible
+    And I extract the price from "Your Selection" fare
+    And I add "Your Selection" fare to trip
+    And the booking status should be "Pending booking"
     Then the cart total price should match the last extracted price

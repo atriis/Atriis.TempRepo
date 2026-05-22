@@ -22,7 +22,7 @@ Feature: 53410 Amadeus - Flight - Search by schedule - Multipax - "My Selection"
     And I select the first option from pricing options
     And I add to trip from pricing options
     And I wait for "Your Selection" text to be visible
-    And I extract the price at index 0 from "Your Selection"
+    And I extract the price from "Your Selection" fare
     And I add "Your Selection" fare to trip
     And I extract the price at index 0 from "cart"
     Then the sum of extracted prices at index 0 "TAP pricing option" and 1 "Iberia pricing option" should equal the extracted price at index 2 "Your Selection"
