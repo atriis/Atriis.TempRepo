@@ -1976,6 +1976,56 @@ const Cart = {
   },
 
   /**
+   * Verifies that at least one quote/booking item in the cart displays the
+   * expected status badge (e.g. "On hold", "Pending booking").
+   *
+   * Difference vs {@link verifyBookingStatus}:
+   * - `verifyBookingStatus` reads the FIRST `.quote-payment-card .app-label--quote`
+   *   (a single-value check, effectively "what is the first booking's status?").
+   *   Manual quotes have no `.quote-payment-card` wrapper, so they are invisible
+   *   to that assertion, and when several payment-card items have different
+   *   statuses you can only check whichever one renders first.
+   * - This method scans ALL status badges (`.app-label, .app-label--quote`) and
+   *   filters by the expected text — it passes as long as ANY item in the cart
+   *   shows that status (an existence check).
+   *
+   * Use this when a single scenario produces multiple items in the cart with
+   * DIFFERENT expected statuses at the same time (e.g. a real hotel booking
+   * "Pending booking" alongside a flight manual quote "On hold"), so that each
+   * status can be asserted independently regardless of DOM order or item type.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedStatus - e.g. "On hold"
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   */
+  async verifyQuoteWithStatusVisible(page, expectedStatus, { timeout = 30000 } = {}) {
+    if (!page) {
+      throw new Error('[Cart.verifyQuoteWithStatusVisible] "page" is required.');
+    }
+    if (!expectedStatus || typeof expectedStatus !== 'string') {
+      throw new Error(
+        `[Cart.verifyQuoteWithStatusVisible] "expectedStatus" must be a non-empty string, got: ${typeof expectedStatus} (${expectedStatus})`
+      );
+    }
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      const actual = await cartPage.getStatusByExpectedText(expectedStatus, { timeout, page });
+      expect(
+        actual.toLowerCase(),
+        `[Cart.verifyQuoteWithStatusVisible] Found a status badge but its text "${actual}" does not contain expected "${expectedStatus}".`
+      ).toContain(expectedStatus.toLowerCase());
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyQuoteWithStatusVisible] No quote in the cart displayed the status "${expectedStatus}" within ${timeout}ms. ` +
+        `Likely causes: the workflow that produces this status (e.g. manual quote submission, booking call) has not completed, ` +
+        `the cart has not refreshed, or the expected status is incorrect for the supplier/product. ` +
+        `Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Verifies that all quotes in the cart have visible PNR codes.
    * Expects at least 2 PNR code elements to be visible (one per held quote).
    * @param {import('playwright').Page} page
@@ -2086,6 +2136,32 @@ const Cart = {
     if (!page) throw new Error('page is required');
     const cartPage = getPageObject(page, CartPage);
     await cartPage.clickAddFlightFromCarousel();
+  },
+
+  /**
+   * Clicks the "Manual quote" button from the "Add more services" product carousel
+   * in the cart and waits for the manual-quote page to load. Used when the trip
+   * already has at least one item in the cart and the user wants to add a manual
+   * quote (e.g. a flight manual quote) on top of it.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async navigateToManualQuoteFromCart(page) {
+    if (!page) {
+      throw new Error('[Cart.navigateToManualQuoteFromCart] "page" is required.');
+    }
+    logger.debug('[Cart.navigateToManualQuoteFromCart] Opening manual quote page from cart product carousel');
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.clickAddManualQuoteFromCarousel();
+    } catch (err) {
+      throw new Error(
+        `[Cart.navigateToManualQuoteFromCart] Failed to navigate to the manual quote page from the cart. ` +
+        `Check that the current user has manual quote permission and that the cart shows the "Add more services" carousel. ` +
+        `Original: ${err.message}`
+      );
+    }
   },
 
   /**

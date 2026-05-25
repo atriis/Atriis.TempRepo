@@ -93,9 +93,17 @@ class ManualQuoteSearchPage {
 
   /**
    * Clicks the Manual Quote tab to switch to manual quote mode.
+   * Skips gracefully if the tab is not present (e.g. when the user already
+   * navigated to the dedicated /manual-quote page from the cart product
+   * carousel — that page has no `#tab-manual` because it IS the manual quote
+   * surface).
    */
   async clickManualQuoteTab() {
-    await this.page.click(SELECTORS.MANUAL_QUOTE_TAB);
+    const tab = this.page.locator(SELECTORS.MANUAL_QUOTE_TAB);
+    const isVisible = await tab.isVisible().catch(() => false);
+    if (isVisible) {
+      await tab.click();
+    }
   }
 
   /**

@@ -14,7 +14,7 @@ Feature: 27809 Flights - Contact details unchecking checkbox refused by default
   Scenario: Contact details checkbox is unchecked by default and booking succeeds
     Given I am logged in as "coreytaylor@amadeusclubdubu.com" booking a new trip
     And I have added myself as the traveler
-    When I search and add a flight manual quote
+    When I add a flight manual quote from "LON" to "MAD"
     Then the booking status should be "On hold"
     And I fill in the OOP justification text "bbbb"
     And I click the proceed to checkout button

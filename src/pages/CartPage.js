@@ -229,7 +229,9 @@ const SELECTORS = {
   // Add product from cart product carousel
   ADD_HOTEL_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Hotel")',
   ADD_FLIGHT_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Flight")',
+  ADD_MANUAL_QUOTE_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Manual quote")',
   ADD_HOTEL_SEARCH_DRAWER: '.app-drawer.atrs-edit-search-drawer',
+  MANUAL_QUOTE_PAGE_CONTAINER: '.manual-quote-page',
 
   // Seat map segment tabs (flight-deck.vue el-tabs)
   SEAT_MAP_SEGMENT_TAB: '.flights-tabs .el-tabs__item', // Tab items for outbound/inbound segments
@@ -2658,6 +2660,30 @@ class CartPage {
     await btn.waitFor({ state: 'visible', timeout });
     await btn.click();
     await this.page.waitForLoadState('networkidle', { timeout: 30000 });
+  }
+
+  /**
+   * Clicks the "Manual quote" button in the "Add more services" product carousel.
+   * Navigates to the manual-quote page (separate route from the trip search index).
+   * @param {number} [timeout=10000]
+   */
+  async clickAddManualQuoteFromCarousel({ timeout = 10000 } = {}) {
+    const btn = this.page.locator(SELECTORS.ADD_MANUAL_QUOTE_CAROUSEL_BUTTON);
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      await btn.click();
+      await this.page
+        .locator(SELECTORS.MANUAL_QUOTE_PAGE_CONTAINER)
+        .waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickAddManualQuoteFromCarousel] Could not navigate to the manual quote page from the cart product carousel ` +
+        `(button selector: ${SELECTORS.ADD_MANUAL_QUOTE_CAROUSEL_BUTTON}). ` +
+        `Likely causes: the "Manual quote" button is not present for this user (no permission / isCanAddManualQuote=false), ` +
+        `it is hidden inside the "more" overflow dropdown, or the manual-quote-page failed to load within 30s. ` +
+        `Original: ${err.message}`
+      );
+    }
   }
 
   /**

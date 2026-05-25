@@ -968,9 +968,19 @@ When("I click to add a flight to my trip from cart", async function () {
   await Cart.clickAddFlightFromCart(this.page);
 });
 
+When("I navigate to the manual quote search page from the cart", async function () {
+  logger.info("Navigating to manual quote search page from cart product carousel");
+  await Cart.navigateToManualQuoteFromCart(this.page);
+});
+
 Then("the last quote status should be {string}", async function (expectedStatus) {
   logger.info("Verifying last quote status", { expectedStatus });
   await Cart.verifyLastQuoteStatus(this.page, expectedStatus);
+});
+
+Then("I should see a quote with status {string}", async function (expectedStatus) {
+  logger.info("Verifying that a quote with the expected status is visible in the cart", { expectedStatus });
+  await Cart.verifyQuoteWithStatusVisible(this.page, expectedStatus);
 });
 
 Then("all quotes should have PNR codes", async function () {

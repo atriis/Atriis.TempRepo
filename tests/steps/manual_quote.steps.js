@@ -10,9 +10,9 @@ setDefaultTimeout(120000);
 
 // ===== WHEN STEPS =====
 
-When("I search and add a flight manual quote", async function () {
-  logger.info("Searching and adding flight manual quote");
-  await ManualQuoteSearch.searchAndAddFlightManualQuote(this.page);
+When("I add a flight manual quote from {string} to {string}", async function (from, to) {
+  logger.info("Adding flight manual quote", { from, to });
+  await ManualQuoteSearch.searchAndAddFlightManualQuote(this.page, { from, to });
 });
 
 When("I add a hotel manual quote in {string}", async function (city) {
