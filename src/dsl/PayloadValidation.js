@@ -1,6 +1,6 @@
 require("module-alias/register");
 const { expect } = require("@playwright/test");
-const { fetchPayloadFromAzureStorage } = require("@utils/payloadValidationClient");
+const { fetchPayloadFromStorage } = require("@utils/payloadValidationClient");
 const logger = require("@utils/logger").child("PayloadValidation-DSL");
 
 function buildKey(source, requestType) {
@@ -70,7 +70,7 @@ function parseBlockExpression(expectedText) {
 
 function extractXmlBlocksByTag(xmlPayload, blockTag) {
   const safeTag = escapeRegex(blockTag);
-  const regex = new RegExp(`<${safeTag}>[\\s\\S]*?<\\/${safeTag}>`, "gi");
+  const regex = new RegExp(`<${safeTag}\\b[^>]*>[\\s\\S]*?<\\/${safeTag}>`, "gi");
   const matches = xmlPayload.match(regex);
   return matches || [];
 }
@@ -268,6 +268,13 @@ function normalizeForContains(value) {
     .toLowerCase();
 }
 
+function stripParentheticalQualifiers(value) {
+  return String(value || "")
+    .replace(/\s*\([^)]*\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /**
  * Extracts all XML tag values from an XML string.
  * E.g., <tag>value</tag> → ["tag:value"]
@@ -295,6 +302,25 @@ function extractXmlKeyValuePairs(xmlString) {
   }
 
   return pairs;
+}
+
+function extractXmlAttributeValues(xmlString) {
+  if (!xmlString || typeof xmlString !== "string") {
+    throw new Error("xmlString must be a non-empty string");
+  }
+
+  const values = [];
+  const attributeRegex = /\s+[a-zA-Z_:][a-zA-Z0-9_.:-]*\s*=\s*(["'])(.*?)\1/g;
+
+  let match;
+  while ((match = attributeRegex.exec(xmlString)) !== null) {
+    const attributeValue = match[2]?.trim();
+    if (attributeValue) {
+      values.push(attributeValue);
+    }
+  }
+
+  return values;
 }
 
 /**
@@ -379,7 +405,7 @@ const PayloadValidation = {
       sid: options.sid,
     });
 
-    const captureResult = await fetchPayloadFromAzureStorage({
+    const captureResult = await fetchPayloadFromStorage({
       source: normalizedSource,
       requestType: normalizedRequestType,
       tripId: options.tripId,
@@ -508,14 +534,28 @@ const PayloadValidation = {
           // XML: look for <key>value</key>
           const xmlRegex = new RegExp(`<${safeKey}>\\s*([^<]*)\\s*<\\/${safeKey}>`, "i");
           const xmlMatch = rawPayload.match(xmlRegex);
-          if (!xmlMatch) {
-            throw new Error(`XML tag <${key}> not found in captured ${source} payload for request type "${requestType}"`);
+          if (xmlMatch) {
+            const actualXml = xmlMatch[1].trim();
+            if (actualXml !== rawValue) {
+              throw new Error(`XML tag <${key}> expected "${rawValue}" but got "${actualXml}" in captured ${source} payload for request type "${requestType}"`);
+            }
+            logger.info(`onKey matched XML tag: key="${key}" value="${rawValue}"`);
+            return {};
           }
-          const actualXml = xmlMatch[1].trim();
-          if (actualXml !== rawValue) {
-            throw new Error(`XML tag <${key}> expected "${rawValue}" but got "${actualXml}" in captured ${source} payload for request type "${requestType}"`);
+
+          // XML attribute fallback: look for key="value" inside any opening tag.
+          const xmlAttributeRegex = new RegExp(`\\b${safeKey}\\s*=\\s*(["'])(.*?)\\1`, "i");
+          const xmlAttributeMatch = rawPayload.match(xmlAttributeRegex);
+          if (!xmlAttributeMatch) {
+            throw new Error(`XML key "${key}" (as tag or attribute) not found in captured ${source} payload for request type "${requestType}"`);
           }
-          logger.info(`onKey matched XML: key="${key}" value="${rawValue}"`);
+
+          const actualAttributeValue = xmlAttributeMatch[2].trim();
+          if (actualAttributeValue !== rawValue) {
+            throw new Error(`XML attribute ${key} expected "${rawValue}" but got "${actualAttributeValue}" in captured ${source} payload for request type "${requestType}"`);
+          }
+
+          logger.info(`onKey matched XML attribute: key="${key}" value="${rawValue}"`);
         }
         return {};
       }
@@ -545,10 +585,19 @@ const PayloadValidation = {
           const normalizedLookup = normalizeForContains(blockExpression.text);
           const matchedBlock = blocks.find((block) => {
             const keyValuePairs = extractXmlKeyValuePairs(block);
-            return keyValuePairs.some((pair) => normalizeForContains(pair.value) === normalizedLookup);
+            const attributeValues = extractXmlAttributeValues(block);
+
+            const hasExactTagValueMatch = keyValuePairs.some(
+              (pair) => normalizeForContains(pair.value) === normalizedLookup
+            );
+            const hasExactAttributeValueMatch = attributeValues.some(
+              (value) => normalizeForContains(value) === normalizedLookup
+            );
+
+            return hasExactTagValueMatch || hasExactAttributeValueMatch;
           });
           if (!matchedBlock) {
-            throw new Error(`No <${blockExpression.blockTag}> block with exact key-value match for "${blockExpression.text}" found in captured ${source} payload for request type "${requestType}"`);
+            throw new Error(`No <${blockExpression.blockTag}> block with exact tag-value or attribute-value match for "${blockExpression.text}" found in captured ${source} payload for request type "${requestType}"`);
           }
           logger.info(`Block match found: blockTag="${blockExpression.blockTag}" text="${blockExpression.text}"`);
           return { blockPayload: matchedBlock, blockFilters: {} };
@@ -570,10 +619,40 @@ const PayloadValidation = {
           while ((locationCodeMatch = locationCodeRegex.exec(rawPayload)) !== null) {
             locationCodes.push(locationCodeMatch[1].trim());
           }
-          logger.debug(`Map expression evaluation: pattern="${mapExpression.pattern}" locationCodesFound=${locationCodes.length}`, { locationCodes: locationCodes.slice(0, 10) });
-          const hasMappedCode = locationCodes.some((code) => patternRegex.test(code));
+          const keyValuePairs = extractXmlKeyValuePairs(rawPayload);
+          const attributeValues = extractXmlAttributeValues(rawPayload);
+          const searchableValues = [
+            ...locationCodes,
+            ...keyValuePairs.map((pair) => pair.value),
+            ...attributeValues,
+          ];
+
+          logger.debug(
+            `Map expression evaluation: pattern="${mapExpression.pattern}" searchableValues=${searchableValues.length}`,
+            { sampleValues: searchableValues.slice(0, 10) }
+          );
+
+          const hasPatternMatch = searchableValues.some((value) => patternRegex.test(value));
+
+          // Semantic fallback: when map is called as label.map(label),
+          // allow matching the qualifier-stripped label (e.g., "Lisbon (City Center)" -> "Lisbon").
+          const normalizedPattern = normalizeForContains(mapExpression.pattern);
+          const normalizedMappedLabel = normalizeForContains(mapExpression.mappedLabel);
+          const isLabelPattern = normalizedPattern === normalizedMappedLabel;
+          let hasSemanticLabelMatch = false;
+          if (!hasPatternMatch && isLabelPattern) {
+            const simplifiedLabel = stripParentheticalQualifiers(mapExpression.mappedLabel);
+            if (simplifiedLabel) {
+              const normalizedSimplifiedLabel = normalizeForContains(simplifiedLabel);
+              hasSemanticLabelMatch = searchableValues.some(
+                (value) => normalizeForContains(value) === normalizedSimplifiedLabel
+              );
+            }
+          }
+
+          const hasMappedCode = hasPatternMatch || hasSemanticLabelMatch;
           if (!hasMappedCode) {
-            throw new Error(`Map expression failed for "${mapExpression.mappedLabel}": no locationCode matched pattern "${mapExpression.pattern}"`);
+            throw new Error(`Map expression failed for "${mapExpression.mappedLabel}": no XML value or attribute matched pattern "${mapExpression.pattern}"`);
           }
           logger.info(`Map expression matched: mappedLabel="${mapExpression.mappedLabel}" pattern="${mapExpression.pattern}"`);
         }
@@ -645,7 +724,7 @@ const PayloadValidation = {
     const identifiers = getScenarioIdentifiers(world);
     let multiMatchResult;
     try {
-      multiMatchResult = await fetchPayloadFromAzureStorage({
+      multiMatchResult = await fetchPayloadFromStorage({
         source,
         requestType,
         tripId: identifiers.tripId,
@@ -762,6 +841,16 @@ const PayloadValidation = {
               throw new Error(`XML tag <${key}> unexpectedly matched "${rawValue}" in captured ${source} payload for request type "${requestType}"`);
             }
           }
+
+          const xmlAttributeRegex = new RegExp(`\\b${safeKey}\\s*=\\s*(["'])(.*?)\\1`, "i");
+          const xmlAttributeMatch = rawPayload.match(xmlAttributeRegex);
+          if (xmlAttributeMatch) {
+            const actualAttributeValue = xmlAttributeMatch[2].trim();
+            if (actualAttributeValue === rawValue) {
+              throw new Error(`XML attribute ${key} unexpectedly matched "${rawValue}" in captured ${source} payload for request type "${requestType}"`);
+            }
+          }
+
           logger.info(`onKey not contains passed for XML: key="${key}" value="${rawValue}"`);
         }
         return {};
@@ -818,9 +907,33 @@ const PayloadValidation = {
             locationCodes.push(locationCodeMatch[1].trim());
           }
 
-          const hasMappedCode = locationCodes.some((code) => patternRegex.test(code));
+          const keyValuePairs = extractXmlKeyValuePairs(rawPayload);
+          const attributeValues = extractXmlAttributeValues(rawPayload);
+          const searchableValues = [
+            ...locationCodes,
+            ...keyValuePairs.map((pair) => pair.value),
+            ...attributeValues,
+          ];
+
+          const hasPatternMatch = searchableValues.some((value) => patternRegex.test(value));
+
+          const normalizedPattern = normalizeForContains(mapExpression.pattern);
+          const normalizedMappedLabel = normalizeForContains(mapExpression.mappedLabel);
+          const isLabelPattern = normalizedPattern === normalizedMappedLabel;
+          let hasSemanticLabelMatch = false;
+          if (!hasPatternMatch && isLabelPattern) {
+            const simplifiedLabel = stripParentheticalQualifiers(mapExpression.mappedLabel);
+            if (simplifiedLabel) {
+              const normalizedSimplifiedLabel = normalizeForContains(simplifiedLabel);
+              hasSemanticLabelMatch = searchableValues.some(
+                (value) => normalizeForContains(value) === normalizedSimplifiedLabel
+              );
+            }
+          }
+
+          const hasMappedCode = hasPatternMatch || hasSemanticLabelMatch;
           if (hasMappedCode) {
-            throw new Error(`Map expression unexpectedly matched for "${mapExpression.mappedLabel}": found locationCode matching pattern "${mapExpression.pattern}"`);
+            throw new Error(`Map expression unexpectedly matched for "${mapExpression.mappedLabel}": found XML value or attribute matching pattern "${mapExpression.pattern}"`);
           }
           logger.info(`Map not contains passed: mappedLabel="${mapExpression.mappedLabel}" pattern="${mapExpression.pattern}"`);
         }
@@ -885,7 +998,7 @@ const PayloadValidation = {
     const identifiers = getScenarioIdentifiers(world);
     let multiMatchResult;
     try {
-      multiMatchResult = await fetchPayloadFromAzureStorage({
+      multiMatchResult = await fetchPayloadFromStorage({
         source,
         requestType,
         tripId: identifiers.tripId,
@@ -1372,7 +1485,7 @@ const PayloadValidation = {
     // Fallback: some request types (e.g. Booking) can be emitted multiple times quickly.
     // Validate against multiple matching rows and pass if any has the expected key/value.
     const identifiers = getScenarioIdentifiers(world);
-    const multiMatchResult = await fetchPayloadFromAzureStorage({
+    const multiMatchResult = await fetchPayloadFromStorage({
       source,
       requestType,
       tripId: identifiers.tripId,

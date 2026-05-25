@@ -16,7 +16,7 @@ const { payloadValidation } = require("@config/config");
 const logger = require("@utils/logger").child("PayloadValidationClient");
 
 const DEFAULT_LOOKUP_ATTEMPTS = 3;
-const DEFAULT_LOOKUP_RETRY_MS = 3000;
+const DEFAULT_LOOKUP_RETRY_MS = 1000;
 
 /**
  * Timeout wrapper to prevent indefinite iteration in asynchronous flows.
@@ -237,7 +237,7 @@ async function downloadPayload({ baseUrl, tripId, rowKey, source, operationTimeo
  * @param {number}  [options.lookbackMinutes]     - defaults to config value
  * @returns {Promise<{ payload: string, metadata: object }>}
  */
-async function fetchPayloadFromAzureStorage({ source, requestType, tripId, transactionId, sid, lookbackMinutes, returnAllMatches = false, maxMatches } = {}) {
+async function fetchPayloadFromStorage({ source, requestType, tripId, transactionId, sid, lookbackMinutes, returnAllMatches = false, maxMatches } = {}) {
   if (!source || !["request", "response"].includes(source)) {
     throw new Error(`source must be "request" or "response", got: ${source}`);
   }
@@ -262,10 +262,10 @@ async function fetchPayloadFromAzureStorage({ source, requestType, tripId, trans
   const configuredMaxRequestsMatches = payloadValidation.maxRequestsMatches;
   const maxRequestsMatches = Number(maxMatches ?? configuredMaxRequestsMatches);
   const lookupAttempts = Number(
-    process.env.PAYLOAD_VALIDATION_LOOKUP_ATTEMPTS || process.env.AZURE_STORAGE_LOOKUP_ATTEMPTS || DEFAULT_LOOKUP_ATTEMPTS
+    process.env.PAYLOAD_VALIDATION_LOOKUP_ATTEMPTS || DEFAULT_LOOKUP_ATTEMPTS
   );
   const lookupRetryMs = Number(
-    process.env.PAYLOAD_VALIDATION_LOOKUP_RETRY_MS || process.env.AZURE_STORAGE_LOOKUP_RETRY_MS || DEFAULT_LOOKUP_RETRY_MS
+    process.env.PAYLOAD_VALIDATION_LOOKUP_RETRY_MS || DEFAULT_LOOKUP_RETRY_MS
   );
   const operationDeadline = Date.now() + operationTimeoutMs;
 
@@ -587,4 +587,4 @@ async function fetchPayloadFromAzureStorage({ source, requestType, tripId, trans
   };
 }
 
-module.exports = { fetchPayloadFromAzureStorage };
+module.exports = { fetchPayloadFromStorage };
