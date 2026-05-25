@@ -2318,6 +2318,24 @@ const Cart = {
     expect(hasImage, 'Share email preview should contain a hotel image').toBe(true);
   },
 
+  /**
+   * Verifies that the open More Details drawer contains the expected text.
+   * The drawer must already be open. Match is case-insensitive and whitespace-tolerant.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Substring expected in the drawer
+   */
+  async verifyMoreDetailsDrawerContainsText(page, expectedText) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedText !== 'string' || !expectedText) {
+      throw new Error('expectedText must be a non-empty string, got: ' + typeof expectedText);
+    }
+    const cartPage = getPageObject(page, CartPage);
+    const drawerText = await cartPage.getMoreDetailsDrawerText();
+    expect(drawerText, 'More Details drawer text should not be empty').toBeTruthy();
+    const normalize = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+    expect(normalize(drawerText)).toContain(normalize(expectedText));
+  },
+
   // ===== TRIP NAVIGATION =====
 
   /**

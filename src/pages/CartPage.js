@@ -278,6 +278,9 @@ const SELECTORS = {
   TIME_LIMIT_CONTAINER: '.time-limit-container',
   // More Details drawer — hotel quote total price in footer (hotel-quote-more-details.vue → app-footer → app-price → h4.amount)
   MORE_DETAILS_TOTAL_PRICE: ".cart-more-details-drawer .app-footer .total-price .amount",
+  MORE_DETAILS_DRAWER_CONTAINER: ".cart-more-details-drawer",
+  // Skeleton placeholders rendered inside the More Details drawer while content loads.
+  MORE_DETAILS_DRAWER_SKELETON: ".el-skeleton, .el-skeleton__item",
   // Share dialog close button
   SHARE_DIALOG_CLOSE: '.el-dialog__header [fill="currentColor"], .el-dialog__headerbtn',
   // Share dialog language dropdown
@@ -3056,6 +3059,28 @@ class CartPage {
     const closeBtn = this.page.locator(SELECTORS.MORE_DETAILS_DRAWER_CLOSE).first();
     await closeBtn.waitFor({ state: 'visible', timeout: 10000 });
     await closeBtn.click();
+  }
+
+  /**
+   * Returns the full visible text content of the hotel More Details drawer.
+   * The drawer must already be open.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000] - Max wait for the drawer
+   * @returns {Promise<string>} Drawer inner text
+   */
+  async getMoreDetailsDrawerText({ timeout = 15000 } = {}) {
+    const drawer = this.page.locator(SELECTORS.MORE_DETAILS_DRAWER_CONTAINER).first();
+    await drawer.waitFor({ state: 'visible', timeout });
+    // Drawer renders el-skeleton placeholders while content loads. Wait for
+    // them to disappear before reading the text, otherwise we'll capture
+    // empty skeletons instead of the real content.
+    const skeletons = drawer.locator(SELECTORS.MORE_DETAILS_DRAWER_SKELETON);
+    try {
+      await skeletons.first().waitFor({ state: 'detached', timeout });
+    } catch {
+      // No skeletons present (already loaded) or different placeholder — fall through.
+    }
+    return drawer.innerText();
   }
 
   /**

@@ -14,3 +14,8 @@ When("I search and add a flight manual quote", async function () {
   logger.info("Searching and adding flight manual quote");
   await ManualQuoteSearch.searchAndAddFlightManualQuote(this.page);
 });
+
+When("I add a hotel manual quote in {string}", async function (city) {
+  logger.info("Adding hotel manual quote", { city });
+  await ManualQuoteSearch.addHotelManualQuote(this.page, city);
+});

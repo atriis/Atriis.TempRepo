@@ -3,7 +3,7 @@ const ManualQuoteSearchPage = require("@pages/ManualQuoteSearchPage");
 const FlightSearchPage = require("@pages/FlightSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const flightRoutes = require("@data/flights.json");
-const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const { selectDatesByNthAvailable, selectDateAfterAdvancingMonths } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const logger = require("@utils/logger").child("ManualQuoteSearch-DSL");
@@ -68,6 +68,112 @@ const ManualQuoteSearch = {
     // Enter pricing and add quote to cart
     await manualQuoteSearchPage.typeBaseFare("10");
     await manualQuoteSearchPage.clickAddQuoteButton();
+  },
+
+  /**
+   * Adds a hotel manual quote using the "Enter details manually" mode.
+   * Fills the minimum required fields (hotel name, address, city, dates,
+   * number of rooms, cancellation policy, confirmation, room description,
+   * base fare) and submits the quote.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string} city - City text used in the address autocomplete (e.g. "Portland")
+   * @param {Object} [options]
+   * @param {number} [options.numberOfRooms=4] - Number of rooms to select
+   * @param {string} [options.hotelName="Test Hotel"]
+   * @param {string} [options.address="123 Main St"]
+   * @param {string} [options.confirmationNum="12345"]
+   * @param {string} [options.roomDescription="Standard double"]
+   * @param {string} [options.cancellationPolicy="48HRS Prior to Arrival"]
+   * @param {string|number} [options.baseFare=100]
+   * @param {number} [options.checkInIndex=2] - Nth available day in calendar for check-in
+   * @param {number} [options.checkOutIndex=5] - Nth available day in calendar for check-out
+   */
+  async addHotelManualQuote(page, city, options = {}) {
+    if (!page) throw new Error("page is required");
+    if (typeof city !== "string" || !city.trim()) {
+      throw new Error("city must be a non-empty string, got: " + typeof city);
+    }
+    if (options !== null && typeof options !== "object") {
+      throw new Error("options must be an object, got: " + typeof options);
+    }
+
+    const {
+      numberOfRooms = 4,
+      hotelName = "Test Hotel",
+      address = "123 Main St",
+      confirmationNum = "12345",
+      roomDescription = "Standard double",
+      cancellationPolicy = "48HRS Prior to Arrival",
+      baseFare = 10,
+      checkInIndex = 2,
+      checkOutIndex = 5,
+    } = options;
+
+    if (!Number.isInteger(numberOfRooms) || numberOfRooms < 1) {
+      throw new Error(
+        "options.numberOfRooms must be a positive integer, got: " + numberOfRooms,
+      );
+    }
+
+    logger.info("Adding hotel manual quote", { city, numberOfRooms, hotelName });
+
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+
+    // Navigate to manual quote → Hotel sub-tab
+    await manualQuoteSearchPage.clickManualQuoteTab();
+    await manualQuoteSearchPage.clickHotelSubTab();
+    await manualQuoteSearchPage.waitForHotelFormVisible();
+
+    // Form defaults to "Search location" mode; switch to manual entry so the
+    // hotel name / address / dates / rooms fields become visible.
+    await manualQuoteSearchPage.selectHotelManualEntryMode();
+
+    // Basic hotel info
+    await manualQuoteSearchPage.typeHotelName(hotelName);
+    await manualQuoteSearchPage.typeHotelAddress(address);
+    await manualQuoteSearchPage.selectHotelCity(city);
+
+    // Check-in / check-out dates. Advance 2 months ahead for each date to
+    // avoid past/unavailable days and ensure stability.
+    await manualQuoteSearchPage.clickHotelDateInput(0);
+    await selectDateAfterAdvancingMonths(page, {
+      monthsToAdvance: 2,
+      dayIndex: checkInIndex,
+    });
+    await manualQuoteSearchPage.clickHotelDateInput(1);
+    await selectDateAfterAdvancingMonths(page, {
+      monthsToAdvance: 2,
+      dayIndex: checkOutIndex,
+    });
+
+    // Number of rooms (label-scoped)
+    await manualQuoteSearchPage.openHotelSelect("numberOfRooms");
+    await manualQuoteSearchPage.clickDropdownOptionByText(`${numberOfRooms} Rooms`);
+
+    // Cancellation policy (label-scoped)
+    await manualQuoteSearchPage.openHotelSelect("cancellationPolicy");
+    await manualQuoteSearchPage.clickDropdownOptionByText(cancellationPolicy);
+
+    // Confirmation + room description
+    await manualQuoteSearchPage.typeHotelConfirmationNumber(confirmationNum);
+    await manualQuoteSearchPage.typeHotelRoomDescription(roomDescription);
+
+    // Base fare + submit
+    await manualQuoteSearchPage.typeHotelBaseFare(baseFare);
+    await manualQuoteSearchPage.clickAddQuoteButton();
+
+    return {
+      added: true,
+      city,
+      numberOfRooms,
+      hotelName,
+      address,
+      confirmationNum,
+      roomDescription,
+      cancellationPolicy,
+      baseFare,
+    };
   },
 };
 

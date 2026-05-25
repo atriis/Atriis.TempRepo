@@ -1052,6 +1052,16 @@ Then("the share quote email preview should contain a hotel picture", async funct
   await Cart.verifyShareEmailContainsHotelImage(this.page);
 });
 
+Then("the share quote preview should show {string}", async function (expectedText) {
+  logger.info("Verifying share quote preview contains text", { expectedText });
+  await Cart.verifySharePreviewContainsText(this.page, expectedText);
+});
+
+Then("the hotel manual quote details should show {string}", async function (expectedText) {
+  logger.info("Verifying More Details drawer contains text", { expectedText });
+  await Cart.verifyMoreDetailsDrawerContainsText(this.page, expectedText);
+});
+
 // ========================================
 // TRIP NAVIGATION
 // ========================================

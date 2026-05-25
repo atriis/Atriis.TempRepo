@@ -618,6 +618,37 @@ async function selectRoundTripDatesOnNthWeekday(page, { dayOfWeek, nth = 1 } = {
   });
 }
 
+/**
+ * Advances the visible calendar by N months (clicks the next-month arrow N times),
+ * then picks the Nth available day in the now-visible month.
+ * The calendar must already be open.
+ *
+ * @param {import('playwright').Page} page
+ * @param {object} options
+ * @param {number} [options.monthsToAdvance=2] - How many times to click the next-month arrow
+ * @param {number} [options.dayIndex=0] - Zero-based index of the available day to pick
+ * @param {"first"|"last"} [options.pickerPosition="first"] - Which visible picker to use
+ */
+async function selectDateAfterAdvancingMonths(
+  page,
+  { monthsToAdvance = 2, dayIndex = 0, pickerPosition = "first" } = {},
+) {
+  if (!Number.isInteger(monthsToAdvance) || monthsToAdvance < 0) {
+    throw new Error(
+      `monthsToAdvance must be a non-negative integer, got: ${monthsToAdvance}`,
+    );
+  }
+  if (!Number.isInteger(dayIndex) || dayIndex < 0) {
+    throw new Error(`dayIndex must be a non-negative integer, got: ${dayIndex}`);
+  }
+
+  for (let i = 0; i < monthsToAdvance; i++) {
+    await clickNextVisibleMonth(page);
+  }
+
+  await selectDatesByNthAvailable(page, { startIndex: dayIndex, pickerPosition });
+}
+
 module.exports = {
   selectDatesByNthAvailable,
   selectDatesByNthAvailableFromNextVisibleMonth,
@@ -625,4 +656,6 @@ module.exports = {
   selectTodayFromVisibleCalendar,
   selectNthWeekdayFromNextMonth,
   selectRoundTripDatesOnNthWeekday,
+  clickNextVisibleMonth,
+  selectDateAfterAdvancingMonths,
 };

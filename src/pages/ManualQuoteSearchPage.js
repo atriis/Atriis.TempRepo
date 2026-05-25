@@ -36,6 +36,33 @@ const SELECTORS = {
   // Pricing and actions
   BASE_FARE_FIELD: "[name=\"base-fare\"]",
   ADD_QUOTE_BUTTON: "button.add-quote-btn",
+
+  // ===== HOTEL MANUAL QUOTE =====
+  // Sub-tab inside the manual-quote-page (Element-Plus el-tabs, the Hotel pane label)
+  HOTEL_SUBTAB: ".manual-quote-page .el-tabs__item:has-text(\"Hotel\")",
+  // Container for the hotel manual quote form (manual-quote-hotel.vue)
+  HOTEL_FORM_CONTAINER: ".manual-quote-hotel",
+  // Radio inside manual-quote-hotel.vue: <el-radio value="manual">Enter details manually</el-radio>
+  HOTEL_MANUAL_MODE_RADIO:
+    '.manual-quote-hotel .el-radio:has-text("Enter details manually")',
+  // Element Plus date picker popup, scoped to whichever picker is currently visible.
+  HOTEL_DATE_PICKER_PANEL: ".el-picker-panel:visible",
+  // Form fields scoped by visible label text (.field:has(label:text-is("...")) is the
+  // project's established pattern — see CartPage.PASSENGER_INFO_*).
+  HOTEL_NAME_INPUT: ".manual-quote-hotel input[name=\"hotel-name\"]",
+  HOTEL_ADDRESS_INPUT: ".manual-quote-hotel input[name=\"Address\"]",
+  HOTEL_CITY_INPUT: ".manual-quote-hotel .field:has(label:text-is(\"City\")) input",
+  HOTEL_CITY_DROPDOWN_OPTION: ".boxed-autocomplete-popper .autocomplete-result, .el-autocomplete-suggestion li",
+  HOTEL_CHECK_IN_FIELD: ".manual-quote-hotel .field:has(label:text-is(\"Check In Date\"))",
+  HOTEL_CHECK_OUT_FIELD: ".manual-quote-hotel .field:has(label:text-is(\"Check Out Date\"))",
+  HOTEL_NUMBER_OF_ROOMS_SELECT: ".manual-quote-hotel .field:has(label:text-is(\"Number Of Rooms\")) .el-select__wrapper",
+  HOTEL_CANCELLATION_POLICY_SELECT: ".manual-quote-hotel .field:has(label:text-is(\"Cancellation policy\")) .el-select__wrapper",
+  HOTEL_CONFIRMATION_NUM_INPUT: ".manual-quote-hotel input[name=\"confirmation-num\"]",
+  HOTEL_ROOM_DESCRIPTION_TEXTAREA: ".manual-quote-hotel .field:has(label:text-is(\"Room description\")) textarea",
+  // Base fare lives in the price section; it's the first number input there.
+  HOTEL_BASE_FARE_INPUT: ".manual-quote-hotel .field:has(label:text-is(\"Base fare\")) input, .manual-quote-hotel .price-section input[type=\"number\"]",
+  // Generic visible dropdown options (Element-Plus renders dropdown at body level)
+  SELECT_DROPDOWN_OPTION: ".el-select-dropdown:visible .el-select-dropdown__item",
 };
 
 class ManualQuoteSearchPage {
@@ -232,6 +259,139 @@ class ManualQuoteSearchPage {
     const addQuoteBtn = this.page.locator(SELECTORS.ADD_QUOTE_BUTTON).first();
     await addQuoteBtn.scrollIntoViewIfNeeded();
     await addQuoteBtn.click();
+  }
+
+  // ===== HOTEL MANUAL QUOTE =====
+
+  /**
+   * Clicks the Hotel sub-tab inside the manual quote page.
+   */
+  async clickHotelSubTab() {
+    await this.page.locator(SELECTORS.HOTEL_SUBTAB).first().click();
+  }
+
+  /**
+   * Waits for the hotel manual quote form container to be visible.
+   */
+  async waitForHotelFormVisible() {
+    await this.page
+      .locator(SELECTORS.HOTEL_FORM_CONTAINER)
+      .first()
+      .waitFor({ state: "visible", timeout: 20000 });
+  }
+
+  /**
+   * Selects the "Enter details manually" radio inside the hotel form.
+   * The form defaults to "Search location" mode, so this MUST be called
+   * before any of the manual-entry fields (hotel name, address, etc.) are
+   * visible.
+   */
+  async selectHotelManualEntryMode() {
+    const radio = this.page.locator(SELECTORS.HOTEL_MANUAL_MODE_RADIO).first();
+    await radio.waitFor({ state: "visible", timeout: 10000 });
+    await radio.click();
+  }
+
+  /**
+   * Fills the hotel name field.
+   * @param {string} name - Hotel name
+   */
+  async typeHotelName(name) {
+    await this.page.locator(SELECTORS.HOTEL_NAME_INPUT).first().fill(name);
+  }
+
+  /**
+   * Fills the hotel address field.
+   * @param {string} address - Hotel street address
+   */
+  async typeHotelAddress(address) {
+    await this.page.locator(SELECTORS.HOTEL_ADDRESS_INPUT).first().fill(address);
+  }
+
+  /**
+   * Types into the city autocomplete and selects the first suggestion.
+   * @param {string} city - City text to type (e.g. "Portland")
+   * @param {number} [timeout=10000] - Max wait for dropdown
+   */
+  async selectHotelCity(city, timeout = 10000) {
+    const input = this.page.locator(SELECTORS.HOTEL_CITY_INPUT).first();
+    await input.click();
+    await input.fill(city);
+    const option = this.page.locator(SELECTORS.HOTEL_CITY_DROPDOWN_OPTION).first();
+    await option.waitFor({ state: "visible", timeout });
+    await option.click();
+  }
+
+  /**
+   * Opens the check-in or check-out date picker by clicking the field's input,
+   * scoped by visible label text. Waits for the picker panel to be visible.
+   * @param {number} index - 0 for check-in, 1 for check-out
+   */
+  async clickHotelDateInput(index) {
+    const fieldSelector =
+      index === 0 ? SELECTORS.HOTEL_CHECK_IN_FIELD : SELECTORS.HOTEL_CHECK_OUT_FIELD;
+    await this.page.locator(`${fieldSelector} input`).first().click();
+    await this.page
+      .locator(SELECTORS.HOTEL_DATE_PICKER_PANEL)
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+  }
+
+  /**
+   * Opens an app-select dropdown by visible label text.
+   * @param {"numberOfRooms"|"cancellationPolicy"} field
+   */
+  async openHotelSelect(field) {
+    const selector =
+      field === "cancellationPolicy"
+        ? SELECTORS.HOTEL_CANCELLATION_POLICY_SELECT
+        : SELECTORS.HOTEL_NUMBER_OF_ROOMS_SELECT;
+    await this.page.locator(selector).first().click();
+  }
+
+  /**
+   * Clicks a dropdown option that exactly matches the provided text.
+   * @param {string} optionText - Text of the option to select
+   * @param {number} [timeout=10000] - Max wait for the option
+   */
+  async clickDropdownOptionByText(optionText, timeout = 10000) {
+    const option = this.page
+      .locator(SELECTORS.SELECT_DROPDOWN_OPTION, { hasText: optionText })
+      .first();
+    await option.waitFor({ state: "visible", timeout });
+    await option.click();
+  }
+
+  /**
+   * Fills the confirmation number field.
+   * @param {string} confirmationNum - Booking confirmation number
+   */
+  async typeHotelConfirmationNumber(confirmationNum) {
+    await this.page
+      .locator(SELECTORS.HOTEL_CONFIRMATION_NUM_INPUT)
+      .first()
+      .fill(confirmationNum);
+  }
+
+  /**
+   * Fills the room description textarea.
+   * @param {string} description - Room description text
+   */
+  async typeHotelRoomDescription(description) {
+    await this.page
+      .locator(SELECTORS.HOTEL_ROOM_DESCRIPTION_TEXTAREA)
+      .first()
+      .fill(description);
+  }
+
+  /**
+   * Fills the base fare input in the hotel price section.
+   * @param {string|number} value - Numeric value to enter
+   */
+  async typeHotelBaseFare(value) {
+    const field = this.page.locator(SELECTORS.HOTEL_BASE_FARE_INPUT).first();
+    await field.scrollIntoViewIfNeeded();
+    await field.fill(String(value));
   }
 }
 
