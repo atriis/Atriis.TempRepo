@@ -1,0 +1,51 @@
+# Test Name: Fusion Wizz Air - Verify fare rules across entry points using by-schedule search
+# Status: Active
+# Labels: Regression,Flights,Fusion,Wizz Air,by schedule,Fare Rules
+# Owner: Bruna Santos
+
+@regression @flights @fusion @wizzair @by-schedule @fare-rules
+Feature: 73380 Fusion Wizz Air - Verify fare rules using by-schedule search
+  As a corporate traveler searching a Fusion Wizz Air flight by schedule
+  I want fare rules to be visible at every entry point in results, pricing options and cart
+  So that the strictest terms note is consistently displayed throughout the booking flow
+
+  Scenario: Verify fare rules in every entry point for a Fusion Wizz Air by-schedule search
+    Given I am logged in as "wizzAir@TFreg.club" booking a new trip
+    And I have added myself as the traveler
+    When I search for a flight by schedule from "LTN" to "BUD"
+    And flight results should be available
+    And I filter results by carrier "Wizz Air"
+    And I click to open fare rules
+    Then I should see the fare rules note about strictest terms
+    When I close fare rules window
+    When I click to open first pricing options
+    And I click to open fare rules from modal
+    Then I should see the fare rules note about strictest terms
+    When I close fare rules window
+    Then I close pricing options modal
+    When I click to open flight details
+    And I click to open fare rules from modal
+    Then I should see the fare rules note about strictest terms
+    When I close fare rules window
+    And I close flight details window
+    When I select one flight segment by schedule
+    And I wait for the change flight button to be visible
+    And flight results should be available
+    And I filter results by carrier "Wizz Air"
+    And I click to open fare rules
+    Then I should see the fare rules note about strictest terms
+    When I close fare rules window
+    When I click to open first pricing options
+    And I click to open fare rules from modal
+    Then I should see the fare rules note about strictest terms
+    When I close fare rules window
+    Then I close pricing options modal
+    When I click to open flight details
+    And I click to open fare rules from modal
+    Then I should see the fare rules note about strictest terms
+    When I close fare rules window
+    And I close flight details window
+    When I select one flight segment by schedule
+    And I wait for "Your Selection" text to be visible
+    And I add "Your Selection" fare to trip
+    Then the booking status should be "Pending booking"
