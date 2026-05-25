@@ -192,17 +192,19 @@ For each TODO (step, DSL method, page method, or locator):
 2. **Page Object methods** (`page` category)
    - Add atomic action methods using the new locators
    - One Playwright action per method
-   - Include timeout on waitFor calls
+   - Include timeout on waitFor calls — and **always pass a descriptive error message** (see "Error Messaging Standards" below). Never let a raw Playwright timeout bubble up.
    - **Centralize ALL selectors in the SELECTORS constant** at the top of the page file — never use inline string selectors like `this.page.locator('.some-class')` inside methods. Always define them as `SELECTORS.SOME_NAME` and reference that constant.
+   - Wrap risky Playwright calls (`waitFor`, `click`, `fill`, navigation) in `try/catch` and **re-throw with context** that identifies the page, the element, and what the method was trying to do.
 
 3. **DSL methods** (`dsl` category)
    - **SCAN FIRST** — search ALL `src/dsl/*.js` files for methods that already perform the same action (this was already done in Step 2b, use those results)
    - If an existing method covers the same workflow → reuse it, do not create a duplicate
    - If an existing method is close but not quite right → only modify it if you are confident the change is safe; otherwise create a new method alongside it
    - Check if DSL file exists; create if TODO says "Create DSL file"
-   - Add method with full input validation (page first, type checks)
+   - Add method with full input validation (page first, type checks) — every validation `throw` must say **which parameter failed, what was expected, and what was received** (see "Error Messaging Standards" below).
    - Compose from Page Object methods only
-   - Include assertions where the TODO implies verification
+   - Include assertions where the TODO implies verification — every assertion must have a **custom failure message** that explains the business expectation, not just "expected true to be false".
+   - Wrap the workflow in `try/catch` and re-throw with **business context** (e.g., `Failed to add traveler "${name}" to cart: ${err.message}`).
    - Update barrel export (`src/dsl/index.js`) if new file created
 
 4. **Step definitions** (`step` category)
@@ -212,7 +214,7 @@ For each TODO (step, DSL method, page method, or locator):
    - If an existing step is close but slightly different → only broaden it if you are confident it won't break other tests; otherwise create a new step
    - **Prioritize shared steps first** — if multiple files need the same step, create it once
    - If no match exists, create in the correct `tests/steps/{domain}.steps.js`
-   - Step body: extract params → call DSL → log with logger
+   - Step body: extract params → call DSL → log with logger. **Do not swallow errors** — let them propagate so Cucumber attaches the step name, but ensure the DSL beneath has already produced a descriptive message.
    - Follow existing patterns in the same file
 
 5. **Other TODOs** (`other` category)
@@ -505,7 +507,148 @@ The agent understands these TODO formats:
 // TODO: Move this to ResultsPage - this is specific to results page.
 ```
 
-## Integration with Other Pipelines
+## Error Messaging Standards (MANDATORY for all generated code)
+
+> **Principle: A failure message must answer three questions without anyone opening a screenshot, trace, or video: WHAT was the code trying to do, WHERE did it fail (which page / element / step), and WHY (what was expected vs. what was found). If a message answers only "timeout exceeded" or "expected true received false", it is unacceptable and must be rewritten.**
+
+Every step, DSL method, and Page Object method generated or modified by this pipeline **MUST** follow these rules. Code review (Phase 4.6) will block on violations.
+
+### Rule 1 — No naked Playwright timeouts
+
+Never let Playwright's default error (`Timeout 30000ms exceeded` / `locator.click: Timeout 120000ms exceeded`) reach the test runner. Wrap every `waitFor`, `click`, `fill`, `selectOption`, and navigation in a `try/catch` (or use the assertion's message option) and re-throw with context.
+
+```javascript
+// ❌ BAD — opaque, requires screenshot to diagnose
+async clickBookButton() {
+  await this.page.locator(SELECTORS.BOOK_BUTTON).click();
+}
+
+// ✅ GOOD — message tells you the page, the element, and what was happening
+async clickBookButton() {
+  try {
+    await this.page.locator(SELECTORS.BOOK_BUTTON).click({ timeout: 15000 });
+  } catch (err) {
+    throw new Error(
+      `[CartPage.clickBookButton] Could not click the "Book" button (selector: ${SELECTORS.BOOK_BUTTON}). ` +
+      `The button was not visible or enabled within 15s — likely cart is empty, price recalculation is still in progress, or a blocking modal is open. ` +
+      `Original: ${err.message}`
+    );
+  }
+}
+```
+
+### Rule 2 — Input validation errors must name the parameter, the expected type/shape, and the received value
+
+```javascript
+// ❌ BAD
+if (!Array.isArray(travelers)) throw new Error('Invalid input');
+
+// ✅ GOOD
+if (!Array.isArray(travelers)) {
+  throw new Error(
+    `[HotelBooking.addTravelers] "travelers" must be a non-empty array of traveler objects, got: ${typeof travelers} (${JSON.stringify(travelers)})`
+  );
+}
+if (travelers.length === 0) {
+  throw new Error(`[HotelBooking.addTravelers] "travelers" array is empty — at least one traveler is required to proceed with booking.`);
+}
+```
+
+### Rule 3 — Every assertion gets a custom failure message
+
+Playwright's `expect()` and Node's `assert` both accept a message argument. **Always use it.** Generic "expected X received Y" failures are forbidden.
+
+```javascript
+// ❌ BAD
+await expect(page.locator(SELECTORS.PRICE)).toHaveText('€250.00');
+
+// ✅ GOOD
+await expect(
+  page.locator(SELECTORS.PRICE),
+  `Hotel total price in cart did not match expected. This usually means the supplier returned a different rate than what was selected on the results page, or a fee/tax was added at the cart step.`
+).toHaveText('€250.00');
+```
+
+For DSL-level assertions, prefer explicit `if (...) throw` with a full business message:
+
+```javascript
+// ✅ GOOD — clearly explains the business expectation
+const isRefundable = await cartPage.isHotelRefundable();
+if (!isRefundable) {
+  throw new Error(
+    `[HotelBooking.verifyRefundableInCart] Hotel in cart is NOT refundable — booking aborted to prevent real charges. ` +
+    `Check that the refundable filter was applied at the room level before adding to cart.`
+  );
+}
+```
+
+### Rule 4 — DSL methods wrap workflows and add business context
+
+A DSL method orchestrates several Page Object calls. If any underlying call fails, the DSL must catch and re-throw with the business action it was performing.
+
+```javascript
+// ✅ GOOD
+async function bookHotel(page, { hotelName, roomIndex }) {
+  if (!page) throw new Error('[HotelBooking.bookHotel] "page" is required.');
+  if (!hotelName) throw new Error('[HotelBooking.bookHotel] "hotelName" is required (string).');
+  if (!Number.isInteger(roomIndex) || roomIndex < 0) {
+    throw new Error(`[HotelBooking.bookHotel] "roomIndex" must be a non-negative integer, got: ${roomIndex}`);
+  }
+
+  try {
+    const resultsPage = getPageObject(page, HotelResultsPage);
+    await resultsPage.selectHotelByName(hotelName);
+  } catch (err) {
+    throw new Error(`[HotelBooking.bookHotel] Failed to select hotel "${hotelName}" from results: ${err.message}`);
+  }
+
+  try {
+    const detailsPage = getPageObject(page, HotelDetailsPage);
+    await detailsPage.selectRoom(roomIndex);
+  } catch (err) {
+    throw new Error(`[HotelBooking.bookHotel] Failed to select room #${roomIndex} for hotel "${hotelName}": ${err.message}`);
+  }
+}
+```
+
+### Rule 5 — Standard message format
+
+All thrown errors must follow this shape so they grep cleanly in CI logs:
+
+```
+[<Layer>.<methodName>] <What was attempted>. <Why it likely failed / what to check>. Original: <underlying error if any>
+```
+
+- `<Layer>` = `PageClassName` for Page Objects, `DSLFileName` for DSL methods (omit for step definitions — Cucumber adds the step name)
+- `<methodName>` = the function that threw
+- `<What was attempted>` = business action in plain English, including dynamic values (name, index, supplier)
+- `<Why it likely failed>` = a hint at the most common cause (empty cart, missing filter, slow supplier, locator drift)
+- `Original:` = preserve the original error message at the end so stack traces remain useful
+
+### Rule 6 — Never catch and swallow
+
+Catching an error and not re-throwing (or returning `false` silently) is **forbidden**. Every `catch` block must either re-throw with context or log and re-throw. The only exception is intentional polling loops, which must throw a descriptive error when the polling budget is exhausted.
+
+### Rule 7 — Use `logger.debug()` before risky operations
+
+Before any non-trivial DSL workflow, log what's about to happen at debug level. This gives a breadcrumb trail in CI logs even when nothing throws:
+
+```javascript
+logger.debug(`[HotelBooking.bookHotel] Selecting hotel "${hotelName}", room #${roomIndex}`);
+```
+
+### Rule 8 — Phase 4.6 Code Review enforces this
+
+The `@code-reviewer` agent in Phase 4.6 will flag as **🔴 BLOCKER**:
+- Any `try/catch` that re-throws without adding context
+- Any `waitFor` / `click` / `fill` without a wrapping `try/catch` OR an `expect(...).toBeVisible({ message: ... })`-style guard
+- Any `throw new Error('...')` without the `[Layer.method]` prefix and a "why" hint
+- Any `expect(...)` assertion without a custom message
+- Any input validation that doesn't name the parameter and show the received value
+
+Blockers are auto-fixed (up to 3 iterations) before the final test run.
+
+
 - `@ado-pipeline` can hand off to `@todo-pipeline` if the generated test has TODOs
 - `@regression-pipeline` can invoke `@todo-pipeline` for tests that fail due to undefined steps
 - `@ci-monitor` can flag tests with TODOs as "incomplete" in the daily report
@@ -531,6 +674,7 @@ The agent understands these TODO formats:
 - **5 fix iterations max** — per file, not per batch
 - **Duplication & dead code check after fixes** — after Phase 4 completes, always run Phase 4.5 to scan for dead methods from iteration churn, duplicate step definitions, and unused selectors. Fix iterations frequently leave behind orphaned code that was replaced in later iterations. Clean it up before moving files.
 - **Code review before final run (MANDATORY — CANNOT BE SKIPPED)** — after Phase 4.5 cleanup, always run Phase 4.6 (`@code-reviewer` in strict mode) on all created/modified files. This is a mandatory quality gate that catches pattern violations, layer breaches, missing validation, and reuse opportunities that Phase 4.5 doesn't cover. Auto-fix mechanical blockers (max 3 iterations), replace ambiguous ones with `#TODO`, and never let a review fix break a passing test. **Never skip this phase**, even if changes seem trivial.
+- **Error messages must be self-diagnosing (MANDATORY)** — see "Error Messaging Standards" section. Every generated `throw`, `expect`, `waitFor`, and `catch` must produce a message that tells the reader WHAT was attempted, WHERE it failed, and WHY (likely cause), so a CI log alone is enough to diagnose a failure. No naked Playwright timeouts. No `'Invalid input'`. No `expect(x).toBeTruthy()` without a message. Phase 4.6 blocks on violations.
 - **No search results = STOP** — if a test fails because a product search (hotels, flights, cars, rails) returned zero results, do NOT attempt to fix it. Search results depend on supplier availability, test data, and environment — no code change can solve this. Mark the file as "blocked: no search results" and move on. We need results in order to proceed with creating or validating steps.
 
 ### Hotels — Critical Cost Rules
