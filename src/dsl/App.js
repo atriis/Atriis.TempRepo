@@ -39,12 +39,17 @@ async function performLogin(page, email) {
   const menuPage = getPageObject(page, MenuPage);
 
   await loginPage.waitForLoginPage();
+  // Cookie consent banner may overlay the login form — dismiss if present.
+  await loginPage.acceptCookiesIfPresent();
   await loginPage.fillEmail(email);
   await loginPage.fillPassword(config.password);
   await loginPage.clickLoginButton();
 
   // Keep as-is: app needs time to finish authentication and loading
   await page.waitForLoadState("networkidle", { timeout: 60000 });
+
+  // Banner may re-appear on the post-login domain — dismiss if present.
+  await loginPage.acceptCookiesIfPresent();
 
   await menuPage.waitForLogoutIcon();
 }
@@ -118,6 +123,11 @@ const App = {
     }
     
     const menuPage = getPageObject(page, MenuPage);
+    const loginPage = getPageObject(page, LoginPage);
+
+    // Cookie consent banner can appear on the post-login domain after a short
+    // delay and overlays the "Book a New Trip" icon. Dismiss before clicking.
+    await loginPage.acceptCookiesIfPresent(8000);
 
     await menuPage.waitForBookANewTripIcon();
 
