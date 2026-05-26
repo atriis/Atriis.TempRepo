@@ -17,8 +17,9 @@ Feature: 24358 Default CC that was set in admin is selected as default card
     Given I am logged in as "boaz@ron.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "TLV"
+    And I click proceed button if visible
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    When I click add payment method button
+    When I click to edit the card
     Then the card "default card flight" should be visible
     And the card "default card flight" checkbox should be checked

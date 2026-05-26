@@ -19,4 +19,4 @@ Feature: 60986 FOP - Personal credit card is displayed as "Paid by Traveler"
     When I search for a one way flight from "LON" to "FRA"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    And the payment type should be "Paid by Traveler"
+    And the payment type should be "Paid by Traveller"
