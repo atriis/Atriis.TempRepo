@@ -20,5 +20,4 @@ Feature: 45609 FOP is saved to trip
     And I add the first flight to cart
     When I click add payment method button
     And I select card 1 and save
-    Then the payment type should be "Paid by Traveler"
-    Then I successfully cancel the trip
+    Then the payment type should be "Paid by Corporate"

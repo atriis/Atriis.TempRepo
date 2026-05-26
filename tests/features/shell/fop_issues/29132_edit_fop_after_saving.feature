@@ -19,7 +19,9 @@ Feature: 29132 Edit FOP after saving
     When I search for a one way flight from "LON" to "MAD"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    When I select card 1 and save
-    Then the payment type should be "Paid by Traveler"
-    When I select card 2 and save
+    When I click add payment method button
+    And I select card 1 and save
+    Then the payment type should be "Paid by Traveller"
+    When I click to edit the card
+    And I select card 2 and save
     Then the payment type should be "Paid by TMC"

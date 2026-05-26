@@ -22,7 +22,6 @@ Feature: 61567 FOP - When adding a new credit card and navigating back to the pa
     When I click add payment method button
     Then the card "visa (not default)" should be visible
     When I click add card details button
-    # TODO: new step in cart_fop.steps.js — assert 'Card details' header text is visible after navigating to add-credit-card form
     Then the card details text should be visible
     When I click the back arrow
     Then the card "visa (not default)" should be visible
