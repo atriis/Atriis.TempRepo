@@ -2273,9 +2273,9 @@ const Cart = {
    * @param {import('playwright').Page} page
    */
   async openMoreDetailsInCart(page) {
-    if (!page) throw new Error('page is required');
+    if (!page) throw new Error('[Cart.openMoreDetailsInCart] "page" is required.');
     const cartPage = getPageObject(page, CartPage);
-    await cartPage.clickMoreDetailsHotel();
+    await cartPage.clickMoreDetailsInCart();
   },
 
   /**
@@ -2298,6 +2298,46 @@ const Cart = {
     if (!page) throw new Error('page is required');
     const cartPage = getPageObject(page, CartPage);
     await cartPage.closeMoreDetailsDrawer();
+  },
+
+  /**
+   * Verifies the "Fare rules" link is NOT rendered inside the open More Details
+   * drawer. Used for flight manual quotes, which must omit Fare Rules since
+   * the fare information does not apply to manually-entered prices.
+   *
+   * Preconditions: the More Details drawer must already be open
+   * (call `openMoreDetailsInCart` first).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{fareRulesCount: number}>} Diagnostic count (expected: 0)
+   */
+  async verifyFareRulesLinkNotVisibleInMoreDetails(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyFareRulesLinkNotVisibleInMoreDetails] "page" is required.');
+    }
+
+    logger.debug('[Cart.verifyFareRulesLinkNotVisibleInMoreDetails] Checking that Fare Rules link is absent in the open More Details drawer');
+
+    const cartPage = getPageObject(page, CartPage);
+    let fareRulesCount;
+    try {
+      fareRulesCount = await cartPage.getFareRulesButtonCountInMoreDetailsDrawer();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyFareRulesLinkNotVisibleInMoreDetails] Failed to inspect the More Details drawer for a Fare Rules link. ` +
+        `Original: ${err.message}`,
+      );
+    }
+
+    if (fareRulesCount > 0) {
+      throw new Error(
+        `[Cart.verifyFareRulesLinkNotVisibleInMoreDetails] Expected NO "Fare rules" button inside the More Details drawer ` +
+        `for the flight manual quote, but found ${fareRulesCount}. Manual quotes must not expose fare-rules information ` +
+        `because the fare is manually entered and does not map to a real fare basis.`,
+      );
+    }
+
+    return { fareRulesCount };
   },
 
   /**

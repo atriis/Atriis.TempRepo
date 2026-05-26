@@ -17,6 +17,6 @@ Feature: 46276 Manual Quote - Fare Rules link is not shown for flight manual quo
     And I add a flight manual quote from "LON" to "MAD"
     Then the booking status should be "On hold"
     When I click more details in cart
-    #TODO Then the fare rules link is not visible in the flight manual quote more details
+    Then the fare rules link is not visible in the flight manual quote more details
     And I close more details in cart
     Then I successfully cancel the trip

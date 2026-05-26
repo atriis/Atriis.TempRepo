@@ -1447,6 +1447,11 @@ When("I close more details in cart", async function () {
   await Cart.closeMoreDetailsInCart(this.page);
 });
 
+Then("the fare rules link is not visible in the flight manual quote more details", async function () {
+  logger.info("Verifying Fare Rules link is not visible inside the flight manual quote More Details drawer");
+  await Cart.verifyFareRulesLinkNotVisibleInMoreDetails(this.page);
+});
+
 When("I add loyalty number {string} using the first available chain", async function (loyaltyNumber) {
   logger.info("Adding loyalty number with first available chain", { loyaltyNumber });
   this.selectedChainText = await Cart.addLoyaltyNumberWithFirstAvailableChain(this.page, loyaltyNumber);

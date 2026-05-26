@@ -84,12 +84,20 @@ const SELECTORS = {
   FLIGHT_DETAILS_DRAWER_BAGGAGE_TEXT: (text) => `.app-drawer.flight-details-drawer .el-drawer__body :text("${text}")`,
   FLIGHT_CART_MORE_DETAILS_DRAWER: "[aria-label='More details']",
   FLIGHT_CART_MORE_DETAILS_PRICE_TEXT: /\$\s*\d[\d,]*(?:\.\d+)?/,
+  // Fare-rules button scoped inside the open More Details drawer. Manual quotes
+  // must NOT show this button — the assertion in Cart.verifyFareRulesLinkNotVisibleInMoreDetails
+  // relies on this selector returning 0 elements while the drawer is open.
+  FARE_RULES_BUTTON_IN_MORE_DETAILS_DRAWER: "[aria-label='More details'] .fare-rules-btn",
   POST_TICKETING_TABLE_HEADERS: '.flight-post-ticketing-details .post-ticketing-table thead th',
   POST_TICKETING_TABLE: '.flight-post-ticketing-details .post-ticketing-table',
   POST_TICKETING_TICKET_NUMBER_TEXT: 'tbody tr td:nth-child(2) .mr-1:visible',
   POST_TICKETING_FIRST_SEAT_BUTTON: '.flight-post-ticketing-details .post-ticketing-table tbody tr:first-child td:nth-child(5) .add-seats-btn',
   MORE_DETAILS_HOTEL_BUTTON: ".more-details",
   MORE_DETAILS_CAR_BUTTON: ".more-details.is-flex",
+  // Generic "More details" trigger that matches both hotel cart items (.more-details)
+  // and flight cart items (.more-details-btn). Used by Cart.openMoreDetailsInCart
+  // so a single Gherkin step works across hotel and flight manual quotes.
+  MORE_DETAILS_BUTTON_ANY: ".more-details-btn, .more-details",
   LOCATION_LABEL: '.location-label',
   CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
@@ -3033,6 +3041,26 @@ class CartPage {
   }
 
   /**
+   * Clicks the More Details trigger on any cart item (hotel or flight). The
+   * underlying DOM uses two different classes — `.more-details` for hotels and
+   * `.more-details-btn` for flights — but both open the same drawer
+   * (`[aria-label='More details']`), so one Gherkin step covers both.
+   */
+  async clickMoreDetailsInCart() {
+    const moreDetails = this.page.locator(SELECTORS.MORE_DETAILS_BUTTON_ANY).first();
+    try {
+      await moreDetails.waitFor({ state: 'visible', timeout: 15000 });
+      await moreDetails.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickMoreDetailsInCart] Could not click a "More details" trigger in the cart ` +
+        `(selector: ${SELECTORS.MORE_DETAILS_BUTTON_ANY}). The cart may still be loading or no hotel/flight item is present. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
    * Gets the hotel address text from the More Details drawer.
    * @returns {Promise<string>} The hotel address text
    */
@@ -3085,6 +3113,39 @@ class CartPage {
     const closeBtn = this.page.locator(SELECTORS.MORE_DETAILS_DRAWER_CLOSE).first();
     await closeBtn.waitFor({ state: 'visible', timeout: 10000 });
     await closeBtn.click();
+  }
+
+  /**
+   * Waits for the open More Details drawer to be visible and returns the count of
+   * fare-rules buttons rendered inside it. Manual quotes should render 0; real
+   * flight quotes typically render 1.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000] - Max wait for the drawer
+   * @returns {Promise<number>} Count of fare-rules buttons inside the drawer
+   */
+  async getFareRulesButtonCountInMoreDetailsDrawer({ timeout = 10000 } = {}) {
+    const drawer = this.page.locator(SELECTORS.FLIGHT_CART_MORE_DETAILS_DRAWER).first();
+    try {
+      await drawer.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getFareRulesButtonCountInMoreDetailsDrawer] More Details drawer ` +
+        `(selector: ${SELECTORS.FLIGHT_CART_MORE_DETAILS_DRAWER}) was not visible within ${timeout}ms — ` +
+        `it must be opened (e.g. via Cart.openMoreDetailsInCart) before this check. Original: ${err.message}`,
+      );
+    }
+    // The drawer renders el-skeleton placeholders while its body content loads.
+    // Counting before they detach would return 0 for the wrong reason (content
+    // not rendered yet) and produce a false-negative assertion. Wait for the
+    // skeletons to disappear before reading the real content.
+    const skeletons = drawer.locator(SELECTORS.MORE_DETAILS_DRAWER_SKELETON);
+    try {
+      await skeletons.first().waitFor({ state: 'detached', timeout });
+    } catch {
+      // No skeletons present (already loaded or drawer doesn't use them) — fall through.
+    }
+    return this.page.locator(SELECTORS.FARE_RULES_BUTTON_IN_MORE_DETAILS_DRAWER).count();
   }
 
   /**
