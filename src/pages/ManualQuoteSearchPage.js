@@ -63,6 +63,37 @@ const SELECTORS = {
   HOTEL_BASE_FARE_INPUT: ".manual-quote-hotel .field:has(label:text-is(\"Base fare\")) input, .manual-quote-hotel .price-section input[type=\"number\"]",
   // Generic visible dropdown options (Element-Plus renders dropdown at body level)
   SELECT_DROPDOWN_OPTION: ".el-select-dropdown:visible .el-select-dropdown__item",
+
+  // ===== MANUAL QUOTE PAGE CHROME (title, back, warning) =====
+  // Source: src/app/Atriis.OBT/src/views/trip/manual-quote/manual-quote-page.vue
+  // <div class="title-container"> wraps the Back button and the <h1> title.
+  PAGE_HEADING: ".title-container h1",
+  BACK_BUTTON: ".title-container .go-back-btn",
+  // Warning shown before a traveler is added (".has-text-weight-bold" inside the
+  // manual-quote-page section). Element-Plus renders one per tab pane; we scope
+  // to the active tab via `:visible` so we read the one the user can see.
+  WARNING_TEXT: ".manual-quote-page .has-text-weight-bold:visible",
+
+  // ===== CAR MANUAL QUOTE =====
+  // Element-Plus el-tabs auto-generates `id="tab-{name}"` / `id="pane-{name}"`
+  // from the el-tab-pane :name binding. These are deterministic, NOT dynamic.
+  CAR_TAB: "#tab-car",
+  CAR_PANE: "#pane-car",
+  // Payment details section (named class on <section> in manual-quote-payment-details.vue)
+  CAR_PAYMENT_SECTION: "#pane-car .manual-quote-payment-details",
+  // FOP (Available credit cards) — label-scoped, matches existing hotel pattern in this file
+  CAR_FOP_TRIGGER:
+    "#pane-car .manual-quote-payment-details .field:has(label:text-is(\"Available credit cards\")) .el-select__wrapper",
+  // Card type uses the explicit class `credit-type-select` from the Vue source
+  CAR_CARD_TYPE_SELECT: "#pane-car .credit-type-select",
+  CAR_CARD_TYPE_TRIGGER: "#pane-car .credit-type-select .el-select__wrapper",
+  CAR_CARD_TYPE_DISPLAY: "#pane-car .credit-type-select .el-select__placeholder",
+
+  // Element-Plus teleports every dropdown to <body>; multiple dropdown panels
+  // coexist in the DOM and the closed ones are hidden via a parent wrapper
+  // (no inline `style="display:none"` on the items themselves). Use Playwright's
+  // `:visible` engine to filter for the dropdown panel that's actually visible.
+  VISIBLE_DROPDOWN_ITEM: ".el-select-dropdown__item:visible",
 };
 
 class ManualQuoteSearchPage {
@@ -400,6 +431,97 @@ class ManualQuoteSearchPage {
     const field = this.page.locator(SELECTORS.HOTEL_BASE_FARE_INPUT).first();
     await field.scrollIntoViewIfNeeded();
     await field.fill(String(value));
+  }
+
+  // ===== MANUAL QUOTE PAGE CHROME =====
+
+  /** Returns the manual quote page heading locator (".title-container h1"). */
+  getPageHeading() {
+    return this.page.locator(SELECTORS.PAGE_HEADING).first();
+  }
+
+  /** Returns the manual quote page Back button locator (".title-container .go-back-btn"). */
+  getBackButton() {
+    return this.page.locator(SELECTORS.BACK_BUTTON).first();
+  }
+
+  /** Returns the warning banner locator filtered by the given text. */
+  getWarningTextByContent(text) {
+    return this.page.locator(SELECTORS.WARNING_TEXT, { hasText: text }).first();
+  }
+
+  async clickBackButton() {
+    const button = this.getBackButton();
+    await button.waitFor({ state: "visible", timeout: 10000 });
+    await button.click();
+  }
+
+  // ===== CAR MANUAL QUOTE =====
+
+  async clickCarTab() {
+    const tab = this.page.locator(SELECTORS.CAR_TAB).first();
+    await tab.waitFor({ state: "visible", timeout: 15000 });
+    await tab.click();
+    await this.page
+      .locator(SELECTORS.CAR_PANE)
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+  }
+
+  async scrollCarPaymentSectionIntoView() {
+    const section = this.page.locator(SELECTORS.CAR_PAYMENT_SECTION).first();
+    await section.waitFor({ state: "visible", timeout: 10000 });
+    await section.scrollIntoViewIfNeeded();
+  }
+
+  async openCarFopDropdown() {
+    const trigger = this.page.locator(SELECTORS.CAR_FOP_TRIGGER).first();
+    await trigger.waitFor({ state: "visible", timeout: 10000 });
+    await trigger.click();
+    await this.page
+      .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM)
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+  }
+
+  async openCarCardTypeDropdown() {
+    const trigger = this.page.locator(SELECTORS.CAR_CARD_TYPE_TRIGGER).first();
+    await trigger.waitFor({ state: "visible", timeout: 10000 });
+    await trigger.click();
+    await this.page
+      .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM)
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+  }
+
+  async getCarCardTypeDisplayText() {
+    const display = this.page.locator(SELECTORS.CAR_CARD_TYPE_DISPLAY).first();
+    await display.waitFor({ state: "visible", timeout: 10000 });
+    return (await display.innerText()).trim();
+  }
+
+  /** Returns a locator for a visible Element-Plus dropdown option matching the given text. */
+  getVisibleDropdownOptionByText(text) {
+    return this.page
+      .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM, { hasText: text })
+      .first();
+  }
+
+  async selectVisibleDropdownOption(text) {
+    const option = this.getVisibleDropdownOptionByText(text);
+    await option.waitFor({ state: "visible", timeout: 10000 });
+    await option.click();
+  }
+
+  async listVisibleDropdownOptionTexts() {
+    await this.page
+      .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM)
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+    const texts = await this.page
+      .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM)
+      .allInnerTexts();
+    return texts.map((t) => t.trim()).filter((t) => t.length > 0);
   }
 }
 

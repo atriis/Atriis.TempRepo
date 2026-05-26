@@ -13,30 +13,18 @@ Feature: Manual Quote - Credit card selection and Back button on Car manual quot
   @priority:high
   Scenario: Manual quote Car form displays credit cards, card type and Back button
     Given I am logged in as "brunasantos@manualquote.com" booking a new trip
-    # TODO: New step + DSL — ManualQuoteSearch.openManualQuotePage(page) (also used in 35770)
-    When I navigate to the Manual Quote page
-    # TODO: New step + DSL — ManualQuoteSearch.expectWarningText(page, text) (warning shown before traveler is added)
-    Then the manual quote page should warn "Please add traveler for this trip."
+    When I navigate to the manual quote search page
+    Then the manual quote page should warn "Please add traveller for this trip."
     When I have added myself as the traveler
-    # TODO: New step + DSL — ManualQuoteSearch.expectHeadingContains(page, fragment) (regex match against page heading)
     Then the manual quote page title should mention "quote"
-    # TODO: New step + DSL — ManualQuoteSearchPage.BACK_BUTTON locator + DSL assertion (Back button visible)
     And a Back button should be displayed on the manual quote page
-    # TODO: New step + DSL — ManualQuoteSearchPage.clickCarTab() (click '#tab-car')
-    When I open the Manual Quote - Car tab
-    # TODO: New step + DSL — ManualQuoteSearch.scrollToCarFopSection(page)
-    And I scroll to the manual quote Car form of payment section
-    # TODO: New step + DSL — ManualQuoteSearch.openCarFopDropdown(page) (click focused FOP caret in Car pane)
-    And I open the manual quote Car form of payment dropdown
-    # TODO: New step + DSL — ManualQuoteSearch.expectFopOptionVisible(page, cardName) (assert 'testim one' present)
+    When I navigate to car search form
+    And I scroll to the manual quote car form of payment section
+    And I open the manual quote car form of payment dropdown
     Then the credit card "testim one" should be available
-    # TODO: New step + DSL — ManualQuoteSearch.selectFopOption(page, cardName)
     When I select the credit card "testim one"
-    # TODO: New step + DSL — ManualQuoteSearch.expectCardTypeDisplayed(page, cardType) (credit-type-select placeholder)
-    Then the manual quote Car card type should display "Visa Credit"
-    # TODO: New step + DSL — ManualQuoteSearch.openCardTypeDropdown(page)
-    When I open the manual quote Car credit type dropdown
-    # TODO: New step + DSL — ManualQuoteSearch.expectCardTypesInDropdown(page, expectedList) (data-table-driven assertion)
+    Then the manual quote car card type should display "Visa Credit"
+    When I open the manual quote car credit type dropdown
     Then the credit type dropdown should list the following card types
       | MasterCard      |
       | American Express|
@@ -45,6 +33,5 @@ Feature: Manual Quote - Credit card selection and Back button on Car manual quot
       | Visa Credit     |
       | Air Plus        |
       | EHotel          |
-    # TODO: New step + DSL — ManualQuoteSearch.clickBack(page) (click title-container Back button)
     When I click the Back button on the manual quote page
     Then the welcome heading should contain "Welcome"

@@ -175,6 +175,292 @@ const ManualQuoteSearch = {
       baseFare,
     };
   },
+
+  // ===== MANUAL QUOTE PAGE CHROME =====
+
+  async openManualQuotePage(page) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.openManualQuotePage] "page" is required.');
+    }
+    logger.debug("[ManualQuoteSearch.openManualQuotePage] Opening manual quote page");
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    try {
+      await manualQuoteSearchPage.clickManualQuoteTab();
+      await manualQuoteSearchPage
+        .getPageHeading()
+        .waitFor({ state: "visible", timeout: 20000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.openManualQuotePage] Failed to open the manual quote page. ` +
+          `The Manual Quote tab was not visible/clickable, or the page heading did not render within 20s — ` +
+          `likely the trip page failed to load or the user has no access to manual quotes. Original: ${err.message}`,
+      );
+    }
+  },
+
+  async expectWarningText(page, text) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.expectWarningText] "page" is required.');
+    }
+    if (typeof text !== "string" || !text.trim()) {
+      throw new Error(
+        `[ManualQuoteSearch.expectWarningText] "text" must be a non-empty string, got: ${typeof text} (${JSON.stringify(text)})`,
+      );
+    }
+    logger.debug("[ManualQuoteSearch.expectWarningText] Verifying warning text", { text });
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    const warning = manualQuoteSearchPage.getWarningTextByContent(text);
+    try {
+      await warning.waitFor({ state: "visible", timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.expectWarningText] Expected the manual quote page to display the warning "${text}", ` +
+          `but it was not visible within 10s. Likely a traveler is already added, or the warning copy changed in the UI. ` +
+          `Original: ${err.message}`,
+      );
+    }
+  },
+
+  async expectHeadingContains(page, fragment) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.expectHeadingContains] "page" is required.');
+    }
+    if (typeof fragment !== "string" || !fragment.trim()) {
+      throw new Error(
+        `[ManualQuoteSearch.expectHeadingContains] "fragment" must be a non-empty string, got: ${typeof fragment} (${JSON.stringify(fragment)})`,
+      );
+    }
+    logger.debug("[ManualQuoteSearch.expectHeadingContains] Verifying page heading", { fragment });
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    const heading = manualQuoteSearchPage.getPageHeading();
+    let actual;
+    try {
+      await heading.waitFor({ state: "visible", timeout: 10000 });
+      actual = (await heading.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.expectHeadingContains] Manual quote page heading was not visible within 10s — ` +
+          `the page may not have loaded. Original: ${err.message}`,
+      );
+    }
+    if (!actual.toLowerCase().includes(fragment.toLowerCase())) {
+      throw new Error(
+        `[ManualQuoteSearch.expectHeadingContains] Manual quote page heading does not contain "${fragment}". ` +
+          `Actual heading: "${actual}".`,
+      );
+    }
+  },
+
+  async expectBackButtonVisible(page) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.expectBackButtonVisible] "page" is required.');
+    }
+    logger.debug("[ManualQuoteSearch.expectBackButtonVisible] Verifying Back button is visible");
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    const button = manualQuoteSearchPage.getBackButton();
+    try {
+      await button.waitFor({ state: "visible", timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.expectBackButtonVisible] Back button was not visible within 10s on the manual quote page. ` +
+          `Likely the title-container is hidden (mobile view?) or the page did not finish loading. Original: ${err.message}`,
+      );
+    }
+  },
+
+  async clickBack(page) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.clickBack] "page" is required.');
+    }
+    logger.debug("[ManualQuoteSearch.clickBack] Clicking Back button on manual quote page");
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    try {
+      await manualQuoteSearchPage.clickBackButton();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.clickBack] Failed to click the Back button on the manual quote page — ` +
+          `the title-container button was not visible/clickable within 10s. Likely the manual quote page did not load. ` +
+          `Original: ${err.message}`,
+      );
+    }
+  },
+
+  // ===== CAR MANUAL QUOTE FORM OF PAYMENT =====
+
+  async navigateToCarSearchForm(page) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.navigateToCarSearchForm] "page" is required.');
+    }
+    logger.debug("[ManualQuoteSearch.navigateToCarSearchForm] Switching to Car sub-tab");
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    try {
+      await manualQuoteSearchPage.clickCarTab();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.navigateToCarSearchForm] Failed to switch to the Car sub-tab on the manual quote page — ` +
+          `the Car tab was not visible or the pane never rendered. Likely the manual quote page did not load, ` +
+          `or the Car product is not enabled for this user. Original: ${err.message}`,
+      );
+    }
+  },
+
+  async scrollToCarFopSection(page) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.scrollToCarFopSection] "page" is required.');
+    }
+    logger.debug("[ManualQuoteSearch.scrollToCarFopSection] Scrolling Car payment section into view");
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    try {
+      await manualQuoteSearchPage.scrollCarPaymentSectionIntoView();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.scrollToCarFopSection] Failed to scroll the Car payment-details section into view — ` +
+          `the section was not visible within 10s. Likely the Car tab is not active or the form has not finished rendering. ` +
+          `Original: ${err.message}`,
+      );
+    }
+  },
+
+  async openCarFopDropdown(page) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.openCarFopDropdown] "page" is required.');
+    }
+    logger.debug("[ManualQuoteSearch.openCarFopDropdown] Opening Available credit cards dropdown");
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    try {
+      await manualQuoteSearchPage.openCarFopDropdown();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.openCarFopDropdown] Failed to open the "Available credit cards" dropdown in the Car pane — ` +
+          `the trigger was not clickable or the dropdown options never appeared. ` +
+          `Likely the payment section is not visible or no credit cards are configured for this user. ` +
+          `Original: ${err.message}`,
+      );
+    }
+  },
+
+  async expectFopOptionVisible(page, cardName) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.expectFopOptionVisible] "page" is required.');
+    }
+    if (typeof cardName !== "string" || !cardName.trim()) {
+      throw new Error(
+        `[ManualQuoteSearch.expectFopOptionVisible] "cardName" must be a non-empty string, got: ${typeof cardName} (${JSON.stringify(cardName)})`,
+      );
+    }
+    logger.debug("[ManualQuoteSearch.expectFopOptionVisible] Checking FOP option visibility", { cardName });
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    const option = manualQuoteSearchPage.getVisibleDropdownOptionByText(cardName);
+    try {
+      await option.waitFor({ state: "visible", timeout: 10000 });
+    } catch (err) {
+      let available = [];
+      try {
+        available = await manualQuoteSearchPage.listVisibleDropdownOptionTexts();
+      } catch (listErr) {
+        logger.debug(
+          "[ManualQuoteSearch.expectFopOptionVisible] Could not enumerate dropdown options for diagnostic",
+          { err: listErr.message },
+        );
+        available = ["<could not enumerate>"];
+      }
+      throw new Error(
+        `[ManualQuoteSearch.expectFopOptionVisible] Expected credit card "${cardName}" to be available in the ` +
+          `Car FOP dropdown, but it was not visible within 10s. ` +
+          `Available options: [${available.join(", ")}]. ` +
+          `Likely the test user does not have this credit card configured, or the dropdown is not the FOP one. ` +
+          `Original: ${err.message}`,
+      );
+    }
+  },
+
+  async selectFopOption(page, cardName) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.selectFopOption] "page" is required.');
+    }
+    if (typeof cardName !== "string" || !cardName.trim()) {
+      throw new Error(
+        `[ManualQuoteSearch.selectFopOption] "cardName" must be a non-empty string, got: ${typeof cardName} (${JSON.stringify(cardName)})`,
+      );
+    }
+    logger.info("[ManualQuoteSearch.selectFopOption] Selecting FOP credit card", { cardName });
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    try {
+      await manualQuoteSearchPage.selectVisibleDropdownOption(cardName);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.selectFopOption] Failed to select FOP credit card "${cardName}" from the Car dropdown — ` +
+          `the option was not visible or the dropdown closed before the click. ` +
+          `Likely the credit card is not configured for this user, or the dropdown was already closed. ` +
+          `Original: ${err.message}`,
+      );
+    }
+  },
+
+  async expectCardTypeDisplayed(page, cardType) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.expectCardTypeDisplayed] "page" is required.');
+    }
+    if (typeof cardType !== "string" || !cardType.trim()) {
+      throw new Error(
+        `[ManualQuoteSearch.expectCardTypeDisplayed] "cardType" must be a non-empty string, got: ${typeof cardType} (${JSON.stringify(cardType)})`,
+      );
+    }
+    logger.debug("[ManualQuoteSearch.expectCardTypeDisplayed] Verifying displayed card type", { cardType });
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    const actual = await manualQuoteSearchPage.getCarCardTypeDisplayText();
+    if (!actual.toLowerCase().includes(cardType.toLowerCase())) {
+      throw new Error(
+        `[ManualQuoteSearch.expectCardTypeDisplayed] Expected Car card-type field to display "${cardType}", ` +
+          `but it shows "${actual}". Likely the selected FOP did not auto-populate the card type, ` +
+          `or the credit card was created with a different card type than expected.`,
+      );
+    }
+  },
+
+  async openCardTypeDropdown(page) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.openCardTypeDropdown] "page" is required.');
+    }
+    logger.debug("[ManualQuoteSearch.openCardTypeDropdown] Opening Card Type dropdown");
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    try {
+      await manualQuoteSearchPage.openCarCardTypeDropdown();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.openCardTypeDropdown] Failed to open the Card Type dropdown in the Car pane — ` +
+          `the trigger was not clickable or no options appeared. Likely the payment section is hidden. ` +
+          `Original: ${err.message}`,
+      );
+    }
+  },
+
+  async expectCardTypesInDropdown(page, expectedList) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.expectCardTypesInDropdown] "page" is required.');
+    }
+    if (!Array.isArray(expectedList) || expectedList.length === 0) {
+      throw new Error(
+        `[ManualQuoteSearch.expectCardTypesInDropdown] "expectedList" must be a non-empty array of card-type names, ` +
+          `got: ${typeof expectedList} (${JSON.stringify(expectedList)})`,
+      );
+    }
+    logger.debug("[ManualQuoteSearch.expectCardTypesInDropdown] Verifying card types in dropdown", { expectedList });
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+    const actual = await manualQuoteSearchPage.listVisibleDropdownOptionTexts();
+    const actualNormalized = actual.map((t) => t.trim().toLowerCase());
+    const missing = expectedList.filter(
+      (expected) => !actualNormalized.includes(String(expected).trim().toLowerCase()),
+    );
+    if (missing.length > 0) {
+      throw new Error(
+        `[ManualQuoteSearch.expectCardTypesInDropdown] Card-type dropdown is missing expected entries: [${missing.join(", ")}]. ` +
+          `Actual options: [${actual.join(", ")}]. ` +
+          `Likely the supported card types list changed, or the dropdown is not the Card Type one.`,
+      );
+    }
+    return { actual, expectedList };
+  },
 };
 
 module.exports = ManualQuoteSearch;
