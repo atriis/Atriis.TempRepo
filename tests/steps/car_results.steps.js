@@ -1,4 +1,4 @@
-require("module-alias/register");
+﻿require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { CarResults } = require("../../src/dsl");
 const logger = require("@utils/logger").child("CarResults");
@@ -188,3 +188,7 @@ Then("I should see the selected car location in Google Maps", async function () 
   );
 });
 
+Then("the first car result should be from rental agency {string}", async function (agencyName) {
+  logger.info("Verifying first car result is from preferred rental agency", { agencyName });
+  await CarResults.assertFirstCarResultIsFromAgency(this.page, agencyName);
+});

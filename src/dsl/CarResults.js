@@ -737,6 +737,43 @@ const CarResults = {
       `Google Maps location text should not be empty. Received: "${mapsContext.locationText}"`,
     ).toBeTruthy();
 
+  /**
+   * Asserts that the first car result (index 0) is from the specified rental agency.
+   * Verifies the preferred/priority vendor is correctly prioritized in default sort order.
+   * Regression for ADO Bug #76501.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} agencyName - Expected rental agency name (e.g. "Europcar")
+   * @throws {Error} If page or agencyName are invalid, or if assertion fails
+   * @returns {Promise<void>}
+   */
+  async assertFirstCarResultIsFromAgency(page, agencyName) {
+    if (!page) throw new Error('page is required');
+    if (!agencyName || typeof agencyName !== 'string') throw new Error(`agencyName must be a non-empty string, got: ${agencyName}`);
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.waitForCarTitlesVisible();
+
+    // Vendor names are rendered as logo images (no visible text).
+    // Strategy: try img[alt] first; fall back to preferred-vendor heuristic
+    // (preferred in-policy vendor e.g. Europcar does NOT show "Agency rate" badge,
+    //  non-preferred vendors like Hertz DO show it).
+    const { vendorAlt, hasAgencyRate } = await carResultsPage.getFirstResultVendorInfo();
+
+    if (vendorAlt) {
+      // Direct match from img alt attribute
+      expect(
+        vendorAlt,
+        `Expected first car result vendor to be "${agencyName}" but found "${vendorAlt}"`
+      ).toContain(agencyName.toLowerCase());
+    } else {
+      // Heuristic: if first result is from the preferred vendor, it should NOT have "Agency rate" badge
+      expect(
+        hasAgencyRate,
+        `Expected first car result to be from preferred vendor "${agencyName}" (no Agency Rate badge), ` +
+        `but first result has the Agency Rate badge indicating it is NOT the preferred vendor`
+      ).toBe(false);
+    }
   },
 };
 

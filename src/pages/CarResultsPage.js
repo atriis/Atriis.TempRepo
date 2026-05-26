@@ -247,6 +247,7 @@ class CarResultsPage {
 
   /**
    * Returns a locator for all car result title elements (.car-title in car-preview component).
+   * Note: .car-title contains the car CLASS (e.g. "Economy 2/4 doors"), NOT the vendor name.
    * @returns {import('playwright').Locator}
    */
   getCarTitles() {
@@ -255,6 +256,98 @@ class CarResultsPage {
 
   async waitForCarTitlesVisible() {
     await this.page.locator('.car-title').first().waitFor({ state: 'visible', timeout: 60000 });
+  }
+
+  /**
+   * Returns the vendor name of the first result card.
+   *
+   * The vendor name is NOT available as visible text — it is rendered as a logo image.
+   * However, non-preferred vendors (e.g. Hertz in an agency-rate contract) display
+   * an "Agency rate" text badge. Preferred/in-policy vendors (e.g. Europcar) do NOT
+   * display this badge.
+   *
+   * This method returns the img[alt] of the vendor logo if found, or a best-effort
+   * signal based on presence/absence of the agency-rate badge.
+   *
+   * @returns {Promise<{vendorAlt: string, hasAgencyRate: boolean}>}
+   */
+  async getFirstResultVendorInfo() {
+    const firstTitle = this.page.locator('.car-title').first();
+    await firstTitle.waitFor({ state: 'visible', timeout: 60000 });
+
+    return await this.page.evaluate(() => {
+      const firstTitle = document.querySelector('.car-title');
+      if (!firstTitle) return { vendorAlt: '', hasAgencyRate: false };
+
+      // Walk up to the nearest card ancestor (up to 15 levels)
+      let card = firstTitle.parentElement;
+      for (let i = 0; i < 15; i++) {
+        if (!card) break;
+        const cls = (card.className || '').toLowerCase();
+        if (cls.includes('result') || cls.includes('card') || cls.includes('quote') || cls.includes('item')) break;
+        if (card.tagName === 'BODY') break;
+        card = card.parentElement;
+      }
+      if (!card) card = document.body;
+
+      // Sabre vendor code → canonical name mapping
+      const SABRE_VENDOR_CODES = {
+        zi: 'avis', ze: 'avis', zd: 'avis',
+        zr: 'hertz', hz: 'hertz',
+        ep: 'europcar', eu: 'europcar',
+        et: 'enterprise', ea: 'enterprise',
+        zl: 'national', nl: 'national',
+        al: 'alamo',
+        bu: 'budget', bw: 'budget',
+        sc: 'sixt', sx: 'sixt',
+        ff: 'fox', fv: 'fox',
+        ey: 'enterprise', ez: 'europcar',
+        th: 'thrifty', tt: 'thrifty',
+        dollar: 'dollar', dl: 'dollar',
+        av: 'avis',
+      };
+
+      // Try to find the vendor logo img - vendor logos are SVG files with the vendor name as filename
+      // e.g. europcar.svg, hertz.svg, zi.svg (Avis)
+      // Dynamic car images use: retrievecaritem?prov=zi (Sabre code)
+      let vendorAlt = '';
+      const imgs = Array.from(card ? card.querySelectorAll('img') : []);
+      for (const img of imgs) {
+        const src = (img.src || img.getAttribute('src') || '').toLowerCase();
+        const alt = (img.alt || '').trim().toLowerCase();
+        // Skip known UI icons
+        if (src.includes('close') || src.includes('check') || src.includes('bolt') || src.includes('eco') || src.includes('handshake')) continue;
+        if (alt.includes('close') || alt.includes('check') || alt.includes('bolt') || alt.includes('eco')) continue;
+        // Prefer: img with meaningful alt text (static SVG logos often have alt="europcar.svg")
+        if (alt && alt.length > 1) {
+          vendorAlt = alt.replace(/\.svg$/i, '');
+          break;
+        }
+        // Prefer: static SVG logo src (e.g. /assets/europcar.svg) — skip dynamic retrievecaritem URLs
+        if (!alt && src && src.includes('.svg') && !src.includes('retrievecaritem')) {
+          const srcFile = src.split('/').pop().replace(/\.svg$/i, '');
+          if (srcFile && srcFile.length > 1 && !['close', 'check', 'bolt', 'eco', 'handshake', 'icon'].includes(srcFile)) {
+            vendorAlt = srcFile;
+            break;
+          }
+        }
+        // Fallback: dynamic API URL — extract prov= Sabre code and map to vendor name
+        if (!alt && src.includes('retrievecaritem') && src.includes('prov=')) {
+          const match = src.match(/prov=([a-z0-9]+)/);
+          if (match) {
+            const code = match[1].toLowerCase();
+            vendorAlt = SABRE_VENDOR_CODES[code] || code;
+            break;
+          }
+        }
+      }
+
+      // Check if first result card has "agency rate" badge text
+      const cardText = (card.textContent || '').toLowerCase();
+      const hasAgencyRate = cardText.includes('agency rate');
+
+      return { vendorAlt, hasAgencyRate };
+    });
   }
 
   /**
