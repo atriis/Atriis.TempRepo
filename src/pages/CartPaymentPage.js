@@ -45,6 +45,16 @@ const SELECTORS = {
   // Billback inner checkbox input (used to check `is-checked` class)
   BILLBACK_CHECKBOX_INPUT: '.el-checkbox__input',
 
+  // Element UI checkbox or radio container — used to find a selectable payment item by its label text.
+  EL_CHECKBOX_OR_RADIO: '.el-checkbox, .el-radio',
+  // Inner input wrapper inside an el-checkbox/el-radio that carries the `is-checked` class.
+  EL_CHECKBOX_OR_RADIO_INPUT: '.el-checkbox__input, .el-radio__input',
+
+  // Card wrapper used by the select-credit-card dialog. Each available card is rendered as
+  // `el-card.box-card`, and the wrapper gains the `selected-card` class when chosen.
+  // Used by name-based selection helpers as a fallback when no checkbox/radio matches the card name.
+  SELECT_CREDIT_CARD_BOX: '.box-card',
+
   // Button names (used with getByRole)
   ADD_PAYMENT_METHOD_BTN_NAME: "Add payment method",
   ADD_CARD_DETAILS_BTN_NAME: "Add card details",
@@ -537,11 +547,32 @@ class CartPaymentPage {
    */
   async isCardCheckboxCheckedByName(cardName) {
     if (!cardName || typeof cardName !== 'string') {
-      throw new Error('cardName must be a non-empty string');
+      throw new Error('[CartPaymentPage.isCardCheckboxCheckedByName] "cardName" must be a non-empty string, got: ' + typeof cardName + ' (' + JSON.stringify(cardName) + ')');
     }
-    const checkbox = this.page.locator('.el-checkbox').filter({ hasText: cardName }).first();
-    await checkbox.waitFor({ state: 'visible', timeout: 10000 });
-    return checkbox.locator(SELECTORS.BILLBACK_CHECKBOX_INPUT).evaluate(el => el.classList.contains('is-checked'));
+
+    // Prefer the most specific selectable element first: an el-checkbox or el-radio
+    // whose own text matches cardName (this preserves legacy behavior for billback and radio flows).
+    // Only fall back to the select-credit-card `.box-card` wrapper if no checkbox/radio matches,
+    // because in that dialog the card itself carries the `selected-card` class and contains no
+    // checkbox/radio whose text matches the card name directly.
+    const checkboxOrRadio = this.page.locator(SELECTORS.EL_CHECKBOX_OR_RADIO).filter({ hasText: cardName }).first();
+    if (await checkboxOrRadio.count() > 0) {
+      try {
+        await checkboxOrRadio.waitFor({ state: 'visible', timeout: 10000 });
+      } catch (err) {
+        throw new Error(`[CartPaymentPage.isCardCheckboxCheckedByName] Found a checkbox/radio labeled "${cardName}" but it never became visible within 10s. Original: ${err.message}`);
+      }
+      return checkboxOrRadio.locator(SELECTORS.EL_CHECKBOX_OR_RADIO_INPUT).first().evaluate(el => el.classList.contains('is-checked'));
+    }
+
+    // Fallback: select-credit-card dialog — each card is `.box-card`, marked with `.selected-card` when chosen.
+    const card = this.page.locator(SELECTORS.SELECT_CREDIT_CARD_BOX).filter({ hasText: cardName }).first();
+    try {
+      await card.waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(`[CartPaymentPage.isCardCheckboxCheckedByName] Could not find a selectable payment item (checkbox, radio, or card box) labeled "${cardName}" within 10s. Likely the Add Payment Method dialog is not open or the card label changed. Original: ${err.message}`);
+    }
+    return card.evaluate(el => el.classList.contains('selected-card'));
   }
 
   /**
