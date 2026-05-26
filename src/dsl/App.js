@@ -131,6 +131,15 @@ const App = {
 
     await menuPage.waitForBookANewTripIcon();
 
+    // Dismiss CookieHub consent banner if it is blocking pointer events
+    const cookieBanner = page.locator('.ch2-container');
+    const bannerVisible = await cookieBanner.isVisible().catch(() => false);
+    if (bannerVisible) {
+      const acceptBtn = page.locator('.ch2-btn-primary, .ch2-btn[data-ch2-variant="accept"], button:has-text("Accept"), button:has-text("Allow all")').first();
+      await acceptBtn.click({ timeout: 5000, force: true }).catch(() => {});
+      await cookieBanner.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+    }
+
     const context = page.context();
     if (!context) {
       throw new Error('Page context is null or undefined');
