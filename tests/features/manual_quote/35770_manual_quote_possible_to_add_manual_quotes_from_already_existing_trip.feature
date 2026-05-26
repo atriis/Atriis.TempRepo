@@ -5,7 +5,7 @@
 # Created: 2023-09-12T01:55:25Z
 # Updated: 2025-10-21T11:33:47Z
 @regression @manual_quote
-Feature: Manual Quote - Add manual quote to an already existing trip
+Feature: 35770 Manual Quote - Add manual quote to an already existing trip
   As a corporate traveler
   I want to add a flight manual quote to a trip that already contains a hotel
   So that I can mix real bookings with manual quotes in the same trip
