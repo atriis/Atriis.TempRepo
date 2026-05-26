@@ -15,6 +15,11 @@ const SELECTORS = {
   INPUT_DISABLED: '.el-input.is-disabled',
   VALIDATION_ERROR: '.form-validation-msg .help',
   MANDATORY_MARKER: 'span.has-text-danger',
+  // Financial reference modal (cart.financialReferenceModal) — el-select rendered
+  // by financial-reference.vue inside the reference-form / financial-reference popup.
+  FINANCIAL_REFERENCE_SECTION: '.financial-reference',
+  FINANCIAL_REFERENCE_CARET: '.financial-reference .el-select__caret',
+  FINANCIAL_REFERENCE_DROPDOWN_OPTION: '.el-select-dropdown__item:not(.is-disabled)',
 };
 
 class DynamicAndReferenceFieldsPage {
@@ -256,6 +261,86 @@ class DynamicAndReferenceFieldsPage {
     return error.isVisible();
   }
 
+  /**
+   * Waits for the financial-reference el-select to be visible.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async waitForFinancialReferenceDropdown({ timeout = 15000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.FINANCIAL_REFERENCE_SECTION).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.waitForFinancialReferenceDropdown] Financial Reference dropdown ` +
+        `(selector: ${SELECTORS.FINANCIAL_REFERENCE_SECTION}) did not become visible within ${timeout}ms. ` +
+        `Likely the financial-reference modal was not triggered after proceed-to-checkout — check that the ` +
+        `user has financialReferenceCodes configured and that financialReferenceId is not already set. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Opens the financial-reference dropdown by clicking its caret.
+   */
+  async openFinancialReferenceDropdown() {
+    try {
+      await this.page.locator(SELECTORS.FINANCIAL_REFERENCE_CARET).first().click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.openFinancialReferenceDropdown] Could not click the Financial Reference ` +
+        `dropdown caret (selector: ${SELECTORS.FINANCIAL_REFERENCE_CARET}). The caret was not visible or clickable ` +
+        `within 10s — the financial-reference section may not have rendered yet. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the first non-disabled option in the currently open el-select dropdown.
+   */
+  async selectFirstFinancialReferenceOption() {
+    const firstOption = this.page.locator(SELECTORS.FINANCIAL_REFERENCE_DROPDOWN_OPTION).first();
+    try {
+      await firstOption.waitFor({ state: 'visible', timeout: 10000 });
+      await firstOption.click();
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.selectFirstFinancialReferenceOption] Could not select the first available ` +
+        `Financial Reference option (selector: ${SELECTORS.FINANCIAL_REFERENCE_DROPDOWN_OPTION}). The dropdown ` +
+        `had no enabled options within 10s — the user may have no financial reference codes configured. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the modal-scoped "Proceed" confirmation button for the Financial Reference popup.
+   * Uses an exact role+name match so it does not collide with the page-level
+   * "Proceed to Checkout" CTA in the cart.
+   *
+   * @returns {import('playwright').Locator}
+   */
+  getFinancialReferenceProceedButton() {
+    return this.page.getByRole('button', { name: 'Proceed', exact: true });
+  }
+
+  /**
+   * Waits for the Financial Reference modal's "Proceed" button to be visible and clicks it.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async clickFinancialReferenceProceedButton({ timeout = 15000 } = {}) {
+    const btn = this.getFinancialReferenceProceedButton();
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      await btn.click({ timeout: 5000 });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.clickFinancialReferenceProceedButton] Could not click the modal-scoped ` +
+        `"Proceed" button (role=button name="Proceed" exact) within ${timeout}ms — likely an unrelated validation ` +
+        `error in the Financial Reference modal blocked submission, or the modal already closed. Original: ${err.message}`
+      );
+    }
+  }
 
 }
 

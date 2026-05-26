@@ -53,8 +53,17 @@ const ManualQuoteSearch = {
       endIndex: null, // Single date selection for departure
     });
 
-    // TODO: Add return date selection once a stable locator is available
-    // Current RETURNING_DATE_INPUT selector matches multiple elements
+    // Select return date (5 days after the outbound) in the separate returning-date picker.
+    // The two date fields each open their own Element-Plus calendar, so the return date
+    // cannot be selected as a range with the departure — it requires a fresh picker.
+    const returnDateIndex = departureIndex + 5;
+    await manualQuoteSearchPage.clickReturningDateField();
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      startIndex: returnDateIndex,
+      endIndex: null,
+      pickerPosition: "last",
+    });
 
     // Fill in carrier details
     await manualQuoteSearchPage.typeCarrierLocator("TP");

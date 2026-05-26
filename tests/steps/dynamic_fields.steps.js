@@ -28,6 +28,11 @@ When("I fill in the {string} reference field with {string}", async function (fie
   await DynamicAndReferenceFields.fillCheckoutReferenceField(this.page, fieldName, value);
 });
 
+When("I select the first available financial reference", async function () {
+  logger.info("Selecting the first available Financial Reference code");
+  await DynamicAndReferenceFields.selectFirstFinancialReference(this.page);
+});
+
 When("I fill in NL reference fields education and courses", async function () {
   logger.info("Selecting NL reference field: Type of Trip → EDUCATION (with 10s timeout)");
   const result = await DynamicAndReferenceFields.selectReferenceFieldDropdownIfVisible(

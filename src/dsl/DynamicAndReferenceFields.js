@@ -171,31 +171,71 @@ const DynamicAndReferenceFields = {
 
     const commonPage = getPageObject(page, CommonPage);
 
+    // Case-insensitive regex matchers — UI label may be e.g. "Soort Reis/Type Of Trip"
+    // while the step passes "Type of Trip"; option may be "Education and courses" vs "EDUCATION".
+    const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const labelRegex = new RegExp(escape(fieldName), 'i');
+    const optionRegex = new RegExp(escape(optionText), 'i');
+
+    // Soft-check: did the field actually appear within the timeout? If not, exit silently
+    // (some flows expect the popup to NOT appear, e.g. travelers without NL reference config).
+    const label = page.locator('label').filter({ hasText: labelRegex }).first();
     try {
-      // Wait for the label text that contains the field name to appear
-      const label = page.locator('label').filter({ hasText: fieldName }).first();
-      // Scroll into view first — the field may be below the fold in the popup
-      await label.scrollIntoViewIfNeeded({ timeout });
       await label.waitFor({ state: 'visible', timeout });
+    } catch {
+      return { fieldFound: false };
+    }
+
+    // Field IS visible — from here on, errors are real failures and must surface.
+    try {
+      await label.scrollIntoViewIfNeeded({ timeout: 5000 });
 
       // Find the el-select dropdown within the same field container
       const selectWrapper = label.locator('..').locator('.el-select').first();
-      await selectWrapper.click();
+      await selectWrapper.click({ timeout: 5000 });
 
-      // Select the option by partial text match in the dropdown popup
-      const option = page.locator('.el-select-dropdown__item').filter({ hasText: optionText }).first();
+      // Select the option by case-insensitive partial text match in the dropdown popup
+      const option = page.locator('.el-select-dropdown__item').filter({ hasText: optionRegex }).first();
       await option.waitFor({ state: 'visible', timeout: 5000 });
-      await option.click();
-
-      // Wait for and click Proceed button
-      await commonPage.getProceedButton().waitFor({ state: 'visible', timeout: 10000 });
-      await commonPage.clickProceedButton();
-
-      return { fieldFound: true };
-    } catch {
-      // Reference field did not appear — silently proceed
-      return { fieldFound: false };
+      await option.click({ timeout: 5000 });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectReferenceFieldDropdownIfVisible] Reference field "${fieldName}" was visible ` +
+        `but selecting option "${optionText}" failed — likely the dropdown structure changed or the option text no longer matches. ` +
+        `Original: ${err.message}`
+      );
     }
+
+    // Confirm with whichever button is present (Proceed in most flows, Save in the NL Trip Reference Form modal).
+    // Sequential, deterministic: prefer Proceed; only fall back to Save if Proceed never appears.
+    const proceedBtn = commonPage.getProceedButton();
+    const saveBtn = commonPage.getSaveButton();
+    let confirmBtn = null;
+    try {
+      await proceedBtn.waitFor({ state: 'visible', timeout: 10000 });
+      confirmBtn = proceedBtn;
+    } catch {
+      try {
+        await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
+        confirmBtn = saveBtn;
+      } catch (err) {
+        throw new Error(
+          `[DynamicAndReferenceFields.selectReferenceFieldDropdownIfVisible] Selected "${optionText}" for "${fieldName}" ` +
+          `but neither a "Proceed" nor a "Save" button became visible to dismiss the modal. ` +
+          `Original: ${err.message || err}`
+        );
+      }
+    }
+    try {
+      await confirmBtn.click({ timeout: 5000 });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectReferenceFieldDropdownIfVisible] Failed to click the confirmation button ` +
+        `after selecting "${optionText}" for "${fieldName}". Original: ${err.message}`
+      );
+    }
+
+    return { fieldFound: true };
   },
 
   /**
@@ -347,6 +387,49 @@ const DynamicAndReferenceFields = {
     const commonPage = getPageObject(page, CommonPage);
     await commonPage.getProceedButton().waitFor({ state: 'visible', timeout: 15000 });
     await commonPage.clickProceedButton();
+  },
+
+  /**
+   * Selects the first available Financial Reference code from the modal
+   * (cart.financialReferenceModal) that appears after clicking "Proceed to checkout"
+   * when the user has financialReferenceCodes configured.
+   *
+   * Flow: wait for financial-reference section -> open el-select -> click first
+   * non-disabled option -> click the Proceed button to confirm.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async selectFirstFinancialReference(page) {
+    if (!page) {
+      throw new Error('[DynamicAndReferenceFields.selectFirstFinancialReference] "page" is required.');
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+
+    try {
+      await dynamicFieldsPage.waitForFinancialReferenceDropdown();
+      await dynamicFieldsPage.openFinancialReferenceDropdown();
+      await dynamicFieldsPage.selectFirstFinancialReferenceOption();
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectFirstFinancialReference] Failed to pick the first Financial Reference ` +
+        `option from the post-cart modal: ${err.message}`
+      );
+    }
+
+    try {
+      // Use exact-text match: "Proceed" alone (not "Proceed to Checkout" which also lives on the page).
+      const modalProceed = page.getByRole('button', { name: 'Proceed', exact: true });
+      await modalProceed.waitFor({ state: 'visible', timeout: 15000 });
+      await modalProceed.click({ timeout: 5000 });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectFirstFinancialReference] Selected the first Financial Reference but ` +
+        `could not click the Proceed button to confirm and continue to checkout. The button was not visible ` +
+        `within 15s \u2014 likely an unrelated validation error in the same modal blocked submission. Original: ${err.message}`
+      );
+    }
   },
 
 };
