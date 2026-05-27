@@ -50,6 +50,9 @@ jobs:
           - suite_id: flights-ypsilon-non-booking
             suite_name: Flights Ypsilon Non Booking
             test_path: tests/features/flights/flights_ypsilon/flights_ypsilon_non_booking/
+          - suite_id: flights-travelfusion-non-booking
+            suite_name: Flights Travelfusion Non Booking
+            test_path: tests/features/flights/flights_travelfusion/flights_travelfusion_non_booking/
           # NDC Flights - Non Booking
           - suite_id: flights-aa-ndc-non-booking
             suite_name: Flights AA NDC Non Booking
@@ -175,6 +178,9 @@ jobs:
           - suite_id: flights-ypsilon-booking
             suite_name: Flights Ypsilon Booking
             test_path: tests/features/flights/flights_ypsilon/flights_ypsilon_booking/
+          - suite_id: flights-travelfusion-booking
+            suite_name: Flights Travelfusion Booking
+            test_path: tests/features/flights/flights_travelfusion/flights_travelfusion_booking/
           # NDC Flights - Booking
           - suite_id: flights-afkl-ndc-booking
             suite_name: Flights AFKL NDC Booking
