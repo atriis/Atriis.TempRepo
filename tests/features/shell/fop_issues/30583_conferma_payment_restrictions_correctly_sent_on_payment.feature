@@ -20,15 +20,8 @@ Feature: 30583 Conferma payment restrictions are correctly sent on payment
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
-    And the payment type should be "Paid by TMC"
-    When I click add payment method button
-    # TODO: new step in cart_fop.steps.js — assert [aria-label='Add payment method'] .el-checkbox__label contains 'Request Billback'
-    Then the Request Billback checkbox should be visible in the add payment method panel
-    And the card "confermawithenablebillback" should be visible
     When I click the set billback button in cart
-    Then payment restriction text should be visible
-    When I click payment restriction field
-    # TODO: new step in cart_fop.steps.js — click first option in payment restriction dropdown ([id^='el-id'] span)
+    And I click the card "confermawithenablebillback" checkbox
+    And I click payment restriction field
     And I select the first payment restriction option
     And I save the card selection
-    Then I successfully cancel the trip

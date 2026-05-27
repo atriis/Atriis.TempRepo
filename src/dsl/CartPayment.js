@@ -208,6 +208,26 @@ class CartPayment {
   }
 
   /**
+   * Selects the first available payment restriction option from the open dropdown.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async selectFirstPaymentRestrictionOption(page) {
+    if (!page) {
+      throw new Error('[CartPayment.selectFirstPaymentRestrictionOption] "page" is required.');
+    }
+
+    try {
+      const paymentPage = getPageObject(page, CartPaymentPage);
+      await paymentPage.selectFirstPaymentRestrictionOption();
+    } catch (err) {
+      throw new Error(
+        `[CartPayment.selectFirstPaymentRestrictionOption] Failed to select the first payment restriction option. ` +
+        `Ensure the payment restriction dropdown is open before calling this method. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
    * Verifies specific payment restriction options are visible in dropdown.
    * @param {import('@playwright/test').Page} page
    * @param {string[]} options

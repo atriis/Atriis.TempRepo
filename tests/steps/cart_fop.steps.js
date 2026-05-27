@@ -64,6 +64,11 @@ When("I click payment restriction field", async function () {
   await CartPayment.openPaymentRestrictionOptions(this.page);
 });
 
+When("I select the first payment restriction option", async function () {
+  logger.info("Selecting first payment restriction option from dropdown");
+  await CartPayment.selectFirstPaymentRestrictionOption(this.page);
+});
+
 // ===== THEN STEPS =====
 
 Then("the payment method should be added", async function () {

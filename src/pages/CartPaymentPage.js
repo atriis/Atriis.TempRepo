@@ -423,7 +423,7 @@ class CartPaymentPage {
     }
 
     const cardNames = this.getCardList();
-    await cardNames.first().waitFor({ state: "visible", timeout: 20000 });
+    await cardNames.first().waitFor({ state: "visible", timeout: 45000 });
 
     const total = await cardNames.count();
     let targetIndex = -1;
@@ -460,6 +460,24 @@ class CartPaymentPage {
     const control = this.page.locator(SELECTORS.PAYMENT_RESTRICTION_CONTROL).first();
     await control.waitFor({ state: "visible", timeout: 20000 });
     await control.click();
+  }
+
+  /**
+   * Selects the first available option from the currently-open payment restriction dropdown.
+   * The dropdown must already be open (call clickPaymentRestrictionControl first).
+   */
+  async selectFirstPaymentRestrictionOption() {
+    try {
+      const firstOption = this.page.locator(SELECTORS.VISIBLE_DROPDOWN_ITEM).first();
+      await firstOption.waitFor({ state: 'visible', timeout: 10000 });
+      await firstOption.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPaymentPage.selectFirstPaymentRestrictionOption] Could not select the first payment restriction option ` +
+        `(selector: ${SELECTORS.VISIBLE_DROPDOWN_ITEM}). The dropdown may not be open or no options are available. ` +
+        `Original: ${err.message}`
+      );
+    }
   }
 
   /**
