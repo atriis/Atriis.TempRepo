@@ -470,6 +470,110 @@ const ManualQuoteSearch = {
     }
     return { actual, expectedList };
   },
+
+  // ===== OTHER PRODUCTS MANUAL QUOTE =====
+
+  async addOtherProductManualQuote(page, { quoteType, comment = "", baseFare = 10, startDateIndex = 2, endDateIndex = 5 } = {}) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.addOtherProductManualQuote] "page" is required.');
+    }
+    if (typeof quoteType !== "string" || !quoteType.trim()) {
+      throw new Error(
+        `[ManualQuoteSearch.addOtherProductManualQuote] "quoteType" must be a non-empty string (e.g., "Per Diem"), got: ${typeof quoteType} (${JSON.stringify(quoteType)})`,
+      );
+    }
+    if (typeof baseFare !== "number" && typeof baseFare !== "string") {
+      throw new Error(
+        `[ManualQuoteSearch.addOtherProductManualQuote] "baseFare" must be a number or string, got: ${typeof baseFare}`,
+      );
+    }
+
+    logger.info("Adding Other Product manual quote", { quoteType, comment, baseFare });
+
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+
+    // Navigate to manual quote → Other Products tab
+    try {
+      await manualQuoteSearchPage.clickManualQuoteTab();
+      await manualQuoteSearchPage.clickOtherProductsTab();
+      await manualQuoteSearchPage.waitForOtherProductsFormVisible();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addOtherProductManualQuote] Failed to navigate to Other Products tab — ` +
+          `the tab may not be visible or the form did not render. Original: ${err.message}`,
+      );
+    }
+
+    // Select quote type from dropdown
+    try {
+      await manualQuoteSearchPage.openOtherQuoteTypeDropdown();
+      await manualQuoteSearchPage.selectVisibleDropdownOption(quoteType);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addOtherProductManualQuote] Failed to select quote type "${quoteType}" — ` +
+          `the dropdown may not have opened or the option "${quoteType}" was not found in the list. ` +
+          `Original: ${err.message}`,
+      );
+    }
+
+    // Select start date (2 months ahead for stability)
+    try {
+      await manualQuoteSearchPage.clickOtherStartDateInput();
+      await selectDateAfterAdvancingMonths(page, { monthsToAdvance: 2, dayIndex: startDateIndex });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addOtherProductManualQuote] Failed to select start date — ` +
+          `the date picker may not have opened or day index ${startDateIndex} was not available. ` +
+          `Original: ${err.message}`,
+      );
+    }
+
+    // Select end date (2 months ahead, a few days after start)
+    try {
+      await manualQuoteSearchPage.clickOtherEndDateInput();
+      await selectDateAfterAdvancingMonths(page, { monthsToAdvance: 2, dayIndex: endDateIndex });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addOtherProductManualQuote] Failed to select end date — ` +
+          `the date picker may not have opened or day index ${endDateIndex} was not available. ` +
+          `Original: ${err.message}`,
+      );
+    }
+
+    // Fill comment if provided
+    if (comment) {
+      try {
+        await manualQuoteSearchPage.typeOtherComment(comment);
+      } catch (err) {
+        throw new Error(
+          `[ManualQuoteSearch.addOtherProductManualQuote] Failed to fill comment "${comment}" — ` +
+            `the textarea may not be visible. Original: ${err.message}`,
+        );
+      }
+    }
+
+    // Fill base fare
+    try {
+      await manualQuoteSearchPage.typeOtherBaseFare(baseFare);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addOtherProductManualQuote] Failed to fill base fare "${baseFare}" — ` +
+          `the price section input may not be visible. Original: ${err.message}`,
+      );
+    }
+
+    // Click Add Quote button
+    try {
+      await manualQuoteSearchPage.clickAddQuoteButton();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addOtherProductManualQuote] Failed to click "Add Quote" button — ` +
+          `the button may be disabled (form validation failed?) or not visible. Original: ${err.message}`,
+      );
+    }
+
+    return { added: true, quoteType, comment, baseFare };
+  },
 };
 
 module.exports = ManualQuoteSearch;

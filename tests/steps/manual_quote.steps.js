@@ -90,3 +90,10 @@ Then(
     await ManualQuoteSearch.expectCardTypesInDropdown(this.page, expectedList);
   },
 );
+
+// ===== OTHER PRODUCTS MANUAL QUOTE =====
+
+When("I add a {string} other manual quote with comment {string} and base fare {int}", async function (quoteType, comment, baseFare) {
+  logger.info("Adding other product manual quote", { quoteType, comment, baseFare });
+  await ManualQuoteSearch.addOtherProductManualQuote(this.page, { quoteType, comment, baseFare });
+});

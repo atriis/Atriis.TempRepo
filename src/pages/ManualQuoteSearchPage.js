@@ -94,6 +94,15 @@ const SELECTORS = {
   // (no inline `style="display:none"` on the items themselves). Use Playwright's
   // `:visible` engine to filter for the dropdown panel that's actually visible.
   VISIBLE_DROPDOWN_ITEM: ".el-select-dropdown__item:visible",
+
+  // ===== OTHER PRODUCTS MANUAL QUOTE =====
+  OTHER_PRODUCTS_TAB: "#tab-manualOtherProducts",
+  OTHER_PRODUCTS_SECTION: ".manual-quote-other-products",
+  OTHER_QUOTE_TYPE_TRIGGER: ".manual-quote-other-products .field:has(label:has-text(\"Select quote type\")) .el-select__wrapper",
+  OTHER_START_DATE_INPUT: ".manual-quote-other-products .start-from-input input",
+  OTHER_END_DATE_INPUT: ".manual-quote-other-products .end-by-input input",
+  OTHER_COMMENT_TEXTAREA: ".manual-quote-other-products textarea",
+  OTHER_BASE_FARE_INPUT: ".manual-quote-other-products .price-section input[type=\"number\"]",
 };
 
 class ManualQuoteSearchPage {
@@ -522,6 +531,120 @@ class ManualQuoteSearchPage {
       .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM)
       .allInnerTexts();
     return texts.map((t) => t.trim()).filter((t) => t.length > 0);
+  }
+
+  // ===== OTHER PRODUCTS MANUAL QUOTE =====
+
+  async clickOtherProductsTab() {
+    const tab = this.page.locator(SELECTORS.OTHER_PRODUCTS_TAB).first();
+    try {
+      await tab.waitFor({ state: "visible", timeout: 15000 });
+      await tab.click();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.clickOtherProductsTab] Could not click the "Other" products tab ` +
+        `(selector: ${SELECTORS.OTHER_PRODUCTS_TAB}). The tab was not visible within 15s — ` +
+        `likely the manual quote page did not load or this product type is not enabled. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async waitForOtherProductsFormVisible() {
+    try {
+      await this.page
+        .locator(SELECTORS.OTHER_PRODUCTS_SECTION)
+        .first()
+        .waitFor({ state: "visible", timeout: 20000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.waitForOtherProductsFormVisible] The Other Products form ` +
+        `(selector: ${SELECTORS.OTHER_PRODUCTS_SECTION}) did not become visible within 20s — ` +
+        `likely the tab click did not register or the form skeleton is still loading. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async openOtherQuoteTypeDropdown() {
+    const trigger = this.page.locator(SELECTORS.OTHER_QUOTE_TYPE_TRIGGER).first();
+    try {
+      await trigger.waitFor({ state: "visible", timeout: 10000 });
+      await trigger.click();
+      await this.page
+        .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM)
+        .first()
+        .waitFor({ state: "visible", timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.openOtherQuoteTypeDropdown] Could not open the quote type dropdown ` +
+        `(selector: ${SELECTORS.OTHER_QUOTE_TYPE_TRIGGER}). The trigger was not visible or ` +
+        `no dropdown options appeared within 10s — likely the form has not finished loading. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickOtherStartDateInput() {
+    const input = this.page.locator(SELECTORS.OTHER_START_DATE_INPUT).first();
+    try {
+      await input.click();
+      await this.page
+        .locator(SELECTORS.HOTEL_DATE_PICKER_PANEL)
+        .first()
+        .waitFor({ state: "visible", timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.clickOtherStartDateInput] Could not open the start date picker ` +
+        `(selector: ${SELECTORS.OTHER_START_DATE_INPUT}). The input was not clickable or the ` +
+        `calendar panel did not appear within 10s. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickOtherEndDateInput() {
+    const input = this.page.locator(SELECTORS.OTHER_END_DATE_INPUT).first();
+    try {
+      await input.click();
+      await this.page
+        .locator(SELECTORS.HOTEL_DATE_PICKER_PANEL)
+        .first()
+        .waitFor({ state: "visible", timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.clickOtherEndDateInput] Could not open the end date picker ` +
+        `(selector: ${SELECTORS.OTHER_END_DATE_INPUT}). The input was not clickable or the ` +
+        `calendar panel did not appear within 10s. Original: ${err.message}`
+      );
+    }
+  }
+
+  async typeOtherComment(comment) {
+    const textarea = this.page.locator(SELECTORS.OTHER_COMMENT_TEXTAREA).first();
+    try {
+      await textarea.scrollIntoViewIfNeeded();
+      await textarea.fill(comment);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.typeOtherComment] Could not fill the comment textarea ` +
+        `(selector: ${SELECTORS.OTHER_COMMENT_TEXTAREA}) with "${comment}". ` +
+        `The textarea was not visible or not editable. Original: ${err.message}`
+      );
+    }
+  }
+
+  async typeOtherBaseFare(amount) {
+    const field = this.page.locator(SELECTORS.OTHER_BASE_FARE_INPUT).first();
+    try {
+      await field.scrollIntoViewIfNeeded();
+      await field.fill(String(amount));
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.typeOtherBaseFare] Could not fill the base fare field ` +
+        `(selector: ${SELECTORS.OTHER_BASE_FARE_INPUT}) with "${amount}". ` +
+        `The input was not visible in the price section. Original: ${err.message}`
+      );
+    }
   }
 }
 

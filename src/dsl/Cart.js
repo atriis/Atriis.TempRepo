@@ -4642,6 +4642,96 @@ const Cart = {
     await cartPage.fillSunnyFlightNumber(flightNumber);
     await cartPage.saveSunnyFlightNumber();
   },
+
+  // ===== QUOTE EXTRAS - ATTACH FILES =====
+
+  async uploadRelatedFile(page, filePath) {
+    if (!page) {
+      throw new Error('[Cart.uploadRelatedFile] "page" is required.');
+    }
+    if (typeof filePath !== "string" || !filePath.trim()) {
+      throw new Error(
+        `[Cart.uploadRelatedFile] "filePath" must be a non-empty string pointing to the file to upload, got: ${typeof filePath} (${JSON.stringify(filePath)})`,
+      );
+    }
+
+    logger.info("Uploading file via quote Extras", { filePath });
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickExtrasCollapse();
+    } catch (err) {
+      throw new Error(
+        `[Cart.uploadRelatedFile] Failed to expand the Extras section — ` +
+          `the collapse may not be visible on the quote card. Original: ${err.message}`,
+      );
+    }
+
+    try {
+      await cartPage.clickAttachFilesViewBtn();
+    } catch (err) {
+      throw new Error(
+        `[Cart.uploadRelatedFile] Failed to click View/Add button on attach files — ` +
+          `the button may not be visible or the user lacks upload permission. Original: ${err.message}`,
+      );
+    }
+
+    try {
+      await cartPage.uploadAttachFile(filePath);
+    } catch (err) {
+      throw new Error(
+        `[Cart.uploadRelatedFile] Failed to upload file "${filePath}" — ` +
+          `the file input was not available after opening the attach files card. Original: ${err.message}`,
+      );
+    }
+
+    try {
+      await cartPage.clickAttachFilesSaveBtn();
+    } catch (err) {
+      throw new Error(
+        `[Cart.uploadRelatedFile] Failed to click Save after uploading file — ` +
+          `the Save button may be disabled (no file selected) or not visible. Original: ${err.message}`,
+      );
+    }
+
+    try {
+      await cartPage.waitForAttachFileItemVisible();
+    } catch (err) {
+      throw new Error(
+        `[Cart.uploadRelatedFile] File upload appeared to fail — no file appeared in the attach files list ` +
+          `after uploading "${filePath}". The API may have returned an error or the save timed out. ` +
+          `Original: ${err.message}`,
+      );
+    }
+
+    return { uploaded: true, filePath };
+  },
+
+  async verifyUploadedFileVisible(page, fileName) {
+    if (!page) {
+      throw new Error('[Cart.verifyUploadedFileVisible] "page" is required.');
+    }
+    if (!fileName || typeof fileName !== "string") {
+      throw new Error(
+        `[Cart.verifyUploadedFileVisible] "fileName" must be a non-empty string with the expected file name, got: ${typeof fileName} (${JSON.stringify(fileName)})`,
+      );
+    }
+
+    logger.debug(`[Cart.verifyUploadedFileVisible] Verifying file "${fileName}" is visible in attach files section`);
+
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      await cartPage.isFileNameVisibleInAttachFiles(fileName);
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyUploadedFileVisible] Failed to verify file "${fileName}" is visible in the trip attach files section. ` +
+          `The file may not have been uploaded or saved correctly. ` +
+          `Original: ${err.message}`,
+      );
+    }
+
+    return { verified: true, fileName };
+  },
 };
 
 

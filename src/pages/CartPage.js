@@ -397,6 +397,14 @@ const SELECTORS = {
   PAYMENT_TERMS_LINK: 'a:has-text("terms"), button:has-text("terms"), .more-details-btn:has-text("terms"), [role="button"]:has-text("terms")',
   RENTAL_PERIOD_TERMS_MODAL: ':has(> :text("Terms & Conditions")), .app-dialog, .el-dialog, .terms-modal, [role="dialog"]',
   TERMS_MODAL_CLOSE_BUTTON: '[aria-label="Close this dialog"], .el-dialog__close, .close-btn, button:has-text("Close")',
+
+  // Quote Extras - Attach Files (per-diem-quote-card → extras-collapse → attach-files-extra)
+  EXTRAS_COLLAPSE_HEADER: '.extras-collapse-container .el-collapse-item__header',
+  ATTACH_FILES_VIEW_BTN: '.attach-file-extra .extra__btns .is-clickable',
+  ATTACH_FILES_UPLOAD_INPUT: '#fileUploader',
+  ATTACH_FILES_SAVE_BTN: '.attach-file-extra button:has-text("Save")',
+  ATTACH_FILES_FILE_ITEM: '.attach-file-extra .file-item',
+  ATTACH_FILES_FILE_NAME: '.attach-file-extra .file-item p',
 };
 
 class CartPage {
@@ -4526,6 +4534,95 @@ class CartPage {
     }, headingText);
 
     return content || '';
+  }
+
+  // ===== QUOTE EXTRAS - ATTACH FILES =====
+
+  async clickExtrasCollapse() {
+    const header = this.page.locator(SELECTORS.EXTRAS_COLLAPSE_HEADER).first();
+    try {
+      await header.waitFor({ state: "visible", timeout: 10000 });
+      await header.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickExtrasCollapse] Could not click the "Extras" collapse header ` +
+        `(selector: ${SELECTORS.EXTRAS_COLLAPSE_HEADER}). The extras section was not visible within 10s — ` +
+        `likely the quote card is not expanded or the quote type does not support extras. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickAttachFilesViewBtn() {
+    const btn = this.page.locator(SELECTORS.ATTACH_FILES_VIEW_BTN).first();
+    try {
+      await btn.waitFor({ state: "visible", timeout: 10000 });
+      await btn.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickAttachFilesViewBtn] Could not click the "View"/"Add" button on the attach files extra ` +
+        `(selector: ${SELECTORS.ATTACH_FILES_VIEW_BTN}). The button was not visible within 10s — ` +
+        `likely the Extras section is not expanded or the user does not have file upload permissions. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async uploadAttachFile(filePath) {
+    const input = this.page.locator(SELECTORS.ATTACH_FILES_UPLOAD_INPUT);
+    try {
+      await input.setInputFiles(filePath);
+    } catch (err) {
+      throw new Error(
+        `[CartPage.uploadAttachFile] Could not upload file "${filePath}" ` +
+        `(selector: ${SELECTORS.ATTACH_FILES_UPLOAD_INPUT}). The file input was not found — ` +
+        `likely the attach files card is not open. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickAttachFilesSaveBtn() {
+    const btn = this.page.locator(SELECTORS.ATTACH_FILES_SAVE_BTN).first();
+    try {
+      await btn.waitFor({ state: "visible", timeout: 10000 });
+      await btn.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickAttachFilesSaveBtn] Could not click the "Save" button on attach files ` +
+        `(selector: ${SELECTORS.ATTACH_FILES_SAVE_BTN}). The button was not visible or disabled within 10s — ` +
+        `likely no file was selected or the upload is still in progress. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async waitForAttachFileItemVisible(timeout = 20000) {
+    try {
+      await this.page.locator(SELECTORS.ATTACH_FILES_FILE_ITEM).first()
+        .waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForAttachFileItemVisible] No file item appeared in the attach files list within ${timeout}ms ` +
+        `(selector: ${SELECTORS.ATTACH_FILES_FILE_ITEM}). The file upload may have failed or the save did not complete. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async isFileNameVisibleInAttachFiles(fileName, timeout = 15000) {
+    try {
+      const fileNameLocator = this.page.locator(SELECTORS.ATTACH_FILES_FILE_NAME, { hasText: fileName });
+      await fileNameLocator.first().waitFor({ state: "visible", timeout });
+      return true;
+    } catch (err) {
+      throw new Error(
+        `[CartPage.isFileNameVisibleInAttachFiles] File "${fileName}" was not found in the attach files list within ${timeout}ms ` +
+        `(selector: ${SELECTORS.ATTACH_FILES_FILE_NAME} with text "${fileName}"). ` +
+        `The upload may have failed, the save did not complete, or the file name does not match. ` +
+        `Original: ${err.message}`
+      );
+    }
   }
 }
 

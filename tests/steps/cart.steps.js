@@ -1726,7 +1726,18 @@ Then("the trip should not be eligible for copy trip", async function () {
   await Cart.verifyTripCannotBeCopied(this.page);
 });
 
+// ===== TRIP RELATED FILES =====
 
+When("I upload the file {string} to the trip related files", async function (fileName) {
+  const path = require("path");
+  const filePath = path.resolve(__dirname, "../../src/data/fixtures", fileName);
+  logger.info("Uploading file to trip related files", { fileName, filePath });
+  await Cart.uploadRelatedFile(this.page, filePath);
+});
 
+Then("the file {string} should be visible in the trip related files section", async function (fileName) {
+  logger.info("Verifying uploaded file is visible", { fileName });
+  await Cart.verifyUploadedFileVisible(this.page, fileName);
+});
 
 
