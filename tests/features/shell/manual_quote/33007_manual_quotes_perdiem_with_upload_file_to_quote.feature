@@ -5,7 +5,7 @@
 # Created: 2023-07-06T12:58:05Z
 # Updated: 2025-08-19T01:32:16Z
 @regression @manual_quote
-Feature: Manual Quote - Per Diem quote with file upload
+Feature: 33007 Manual Quote - Per Diem quote with file upload
   As a corporate traveler
   I want to add a Per Diem manual quote and attach a supporting document
   So that the file is stored against the quote in the trip
