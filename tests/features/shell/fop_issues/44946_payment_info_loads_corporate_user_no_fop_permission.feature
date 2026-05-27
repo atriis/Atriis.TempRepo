@@ -21,6 +21,4 @@ Feature: 44946 Payment info loads correctly for corporate user without FOP selec
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     And the payment type should be "Paid by Corporate"
-    # TODO: new step in cart_fop.steps.js — assert .payment-status-icon is visible in the cart ticket
-    And the payment status icon should be visible in the cart
-    Then I successfully cancel the trip
+    Then the edit button is not displayed in the payment section

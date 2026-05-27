@@ -489,6 +489,23 @@ class CartPayment {
   }
 
   /**
+   * Verifies the edit card button/link is NOT displayed in the payment section.
+   * Used for users without "Can Select FOP at the Cart" permission.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async verifyEditCardNotDisplayed(page) {
+    if (!page) throw new Error('[CartPayment.verifyEditCardNotDisplayed] "page" is required.');
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const isVisible = await paymentPage.isEditCardLinkVisible({ timeout: 3000 });
+    if (isVisible) {
+      throw new Error(
+        `[CartPayment.verifyEditCardNotDisplayed] The edit card link IS visible, but should be hidden. ` +
+        `This user should not have "Can Select FOP at the Cart" permission — check user configuration.`
+      );
+    }
+  }
+
+  /**
    * Clicks the checkbox for the "no country" card (second card in the select panel).
    * @param {import('@playwright/test').Page} page
    */

@@ -237,6 +237,11 @@ When("I click to edit the card", async function () {
   await CartPayment.clickEditCard(this.page);
 });
 
+Then("the edit button is not displayed in the payment section", async function () {
+  logger.info("Verifying edit card button is NOT visible in payment section");
+  await CartPayment.verifyEditCardNotDisplayed(this.page);
+});
+
 When("I select the no country card", async function () {
   logger.info("Selecting the no country card");
   await CartPayment.selectNoCountryCard(this.page);

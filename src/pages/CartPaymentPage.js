@@ -801,6 +801,22 @@ class CartPaymentPage {
   }
 
   /**
+   * Checks whether the edit card link is visible in the payment section.
+   * @param {object} [options]
+   * @param {number} [options.timeout=3000] - How long to wait before concluding it's hidden
+   * @returns {Promise<boolean>}
+   */
+  async isEditCardLinkVisible({ timeout = 3000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.EDIT_CARD_LINK).first()
+        .waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Clicks the checkbox for the "no country" card (second card in the first group).
    */
   async clickNoCountryCardCheckbox() {
