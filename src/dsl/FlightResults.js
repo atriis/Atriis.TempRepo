@@ -1,5 +1,6 @@
 const { expect } = require("@playwright/test");
 const FlightResultsPage = require("@pages/FlightResultsPage");
+const logger = require("@utils/logger").child("FlightResults-DSL");
 const { CartPage } = require("@pages/CartPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const Results = require("./Results");
@@ -2383,6 +2384,97 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     await flightResultsPage.clickSelectButtonInPricingOptionByText(cardText);
 
     return { selected: true, cardText };
+  },
+
+  // ===== NEW FLIGHT FLOW =====
+
+  /**
+   * Selects the first pricing option (brand card) for the outbound leg in the new flight flow.
+   */
+  async selectOutboundFirstBrandCardNewFlightFlow(page) {
+    if (!page) {
+      throw new Error('[FlightResults.selectOutboundFirstBrandCardNewFlightFlow] "page" is required.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForNewFlightFlowBrandCards(0);
+    await flightResultsPage.clickNewFlightFlowBrandCard(0, 0);
+
+    return { selected: true, leg: 'outbound' };
+  },
+
+  /**
+   * Selects the first pricing option (brand card) for the inbound leg in the new flight flow.
+   */
+  async selectInboundFirstBrandCardNewFlightFlow(page) {
+    if (!page) {
+      throw new Error('[FlightResults.selectInboundFirstBrandCardNewFlightFlow] "page" is required.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForNewFlightFlowBrandCards(1);
+    await flightResultsPage.clickNewFlightFlowBrandCard(1, 0);
+
+    return { selected: true, leg: 'inbound' };
+  },
+
+  /**
+   * Verifies the inbound leg heading in the new flight flow contains the expected text.
+   * The heading format is e.g., "London To Lisbon".
+   * @param {import('playwright').Page} page
+   * @param {string} expectedHeading - Text expected in the inbound heading
+   */
+  async verifyInboundHeadingNewFlightFlow(page, expectedHeading) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyInboundHeadingNewFlightFlow] "page" is required.');
+    }
+    if (!expectedHeading || typeof expectedHeading !== 'string') {
+      throw new Error(`[FlightResults.verifyInboundHeadingNewFlightFlow] "expectedHeading" must be a non-empty string, got: ${typeof expectedHeading}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    // After outbound selection, only the inbound leg has a visible header-name.
+    // Try index 0 first (most common — only one header visible), fallback to index 1.
+    let headerText;
+    try {
+      headerText = await flightResultsPage.getNewFlightFlowLegHeaderName(0);
+      logger.debug(`Header at index 0: "${headerText}"`);
+    } catch (err0) {
+      logger.debug(`Header index 0 failed: ${err0.message}`);
+      try {
+        headerText = await flightResultsPage.getNewFlightFlowLegHeaderName(1);
+        logger.debug(`Header at index 1: "${headerText}"`);
+      } catch (err1) {
+        logger.debug(`Header index 1 also failed: ${err1.message}`);
+        throw new Error(
+          `[FlightResults.verifyInboundHeadingNewFlightFlow] No leg header found. ` +
+          `The inbound leg pricing options may not have loaded.`
+        );
+      }
+    }
+
+    if (!headerText.toLowerCase().includes(expectedHeading.toLowerCase())) {
+      throw new Error(
+        `[FlightResults.verifyInboundHeadingNewFlightFlow] Expected inbound heading to contain "${expectedHeading}", ` +
+        `but found "${headerText}". The inbound leg may not have loaded after outbound selection.`
+      );
+    }
+
+    return { heading: headerText };
+  },
+
+  /**
+   * Clicks the "Add to cart" (or "Select") button in the new flight flow footer.
+   */
+  async addToCartNewFlightFlow(page) {
+    if (!page) {
+      throw new Error('[FlightResults.addToCartNewFlightFlow] "page" is required.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickNewFlightFlowAddToCartButton();
+
+    return { addedToCart: true };
   },
 }
 

@@ -117,6 +117,14 @@ const SELECTORS = {
   CONFLICT_MODAL_PROCEED: '.conflicting-quotes-dialog .btn:has-text("Proceed")',
   TRIP_OVERVIEW_TITLE: '.payments-title',
 
+  // New Flight Flow (flight-selection component with brand cards)
+  NEW_FLOW_BRAND_CARD: '[data-testid="flight.flight-selection.brand-card"]',
+  NEW_FLOW_BRAND_CARD_FARE: '.card.fare-card',
+  NEW_FLOW_BRAND_LEG: '.flight-brand-leg',
+  NEW_FLOW_LEG_HEADER_NAME: '.flight-brand-leg-header .header-name',
+  NEW_FLOW_ADD_TO_CART_BUTTON: '[data-testid="flight.flight-selection.add-to-cart-btn"]',
+  NEW_FLOW_SELECT_BUTTON: '[data-testid="flight.flight-selection.select-btn"]',
+
   // Fare rules note
   FARE_RULES_NOTE: '.note',
   FARE_RULES_MAIN_HEADLINE: '.fare-rules .main-headline',
@@ -2391,6 +2399,102 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     const link = this.page.locator(SELECTORS.RESULTS_BREADCRUMB_SEARCH_LINK).first();
     await link.waitFor({ state: 'visible', timeout: 30000 });
     await link.click();
+  }
+
+  // ===== NEW FLIGHT FLOW (flight-selection brand cards) =====
+
+  /**
+   * Waits for the brand cards within a specific leg to appear.
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
+   */
+  async waitForNewFlightFlowBrandCards(legIndex = 0, timeout = 60000) {
+    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
+    try {
+      await leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first()
+        .waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.waitForNewFlightFlowBrandCards] Brand cards for leg ${legIndex} did not appear within ${timeout}ms. ` +
+        `The flight-selection component may not have loaded or no pricing options are available for this leg. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the first brand card within a specific leg.
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
+   * @param {number} cardIndex - Zero-based index of the brand card to click (default: 0)
+   */
+  async clickNewFlightFlowBrandCard(legIndex = 0, cardIndex = 0) {
+    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
+    const card = leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).nth(cardIndex);
+    try {
+      await card.waitFor({ state: 'visible', timeout: 30000 });
+      await card.locator(SELECTORS.NEW_FLOW_BRAND_CARD_FARE).click({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.clickNewFlightFlowBrandCard] Could not click brand card at leg ${legIndex}, card ${cardIndex}. ` +
+        `The card may not be visible or the pricing options may not have loaded. ` +
+        `Original: ${err.message}`
+      );
+    }
+    // Brief pause to allow the UI to animate the card selection and load the next leg
+    await this.page.waitForTimeout(1000);
+  }
+
+  /**
+   * Returns the leg header name text for the inbound leg (index 1).
+   * The heading appears as e.g., "London To Lisbon".
+   * @param {number} legIndex - Zero-based index of the leg header (default: 1 for inbound)
+   */
+  async getNewFlightFlowLegHeaderName(legIndex = 1) {
+    const header = this.page.locator(SELECTORS.NEW_FLOW_LEG_HEADER_NAME).nth(legIndex);
+    try {
+      await header.waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getNewFlightFlowLegHeaderName] Leg header at index ${legIndex} not visible. ` +
+        `The pricing options for this leg may not have loaded. ` +
+        `Original: ${err.message}`
+      );
+    }
+    return (await header.textContent()).trim();
+  }
+
+  /**
+   * Clicks the "Add to cart" button in the new flight flow footer.
+   */
+  async clickNewFlightFlowAddToCartButton() {
+    const addBtn = this.page.locator(SELECTORS.NEW_FLOW_ADD_TO_CART_BUTTON).first();
+    const selectBtn = this.page.locator(SELECTORS.NEW_FLOW_SELECT_BUTTON).first();
+
+    // The flow shows "Add to cart" or "Select" depending on search type
+    const addVisible = await addBtn.isVisible().catch(() => false);
+    const selectVisible = await selectBtn.isVisible().catch(() => false);
+
+    const button = addVisible ? addBtn : selectVisible ? selectBtn : null;
+    if (!button) {
+      throw new Error(
+        `[FlightResultsPage.clickNewFlightFlowAddToCartButton] Neither "Add to cart" nor "Select" button is visible in the flight-selection footer.`
+      );
+    }
+
+    try {
+      await button.waitFor({ state: 'visible', timeout: 15000 });
+      await button.click({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.clickNewFlightFlowAddToCartButton] Could not click the footer action button. ` +
+        `It may be disabled (not all legs selected). ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    // Wait for navigation or cart update after adding to cart
+    await this.page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    // Additional settle time for cart page render after network idle
+    await this.page.waitForTimeout(2000);
   }
 }
 module.exports = FlightResultsPage;
