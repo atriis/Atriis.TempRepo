@@ -542,6 +542,40 @@ class CartPayment {
    * Use this to verify that a payment option does not require CVV entry.
    * @param {import('@playwright/test').Page} page
    */
+  /**
+   * Opens the expiration year dropdown in the Add Card Details form.
+   * Leaves the panel open so its items can be counted or inspected.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async openExpirationYearDropdown(page) {
+    if (!page) throw new Error('[CartPayment.openExpirationYearDropdown] "page" is required.');
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await paymentPage.openExpirationYearDropdown();
+  }
+
+  /**
+   * Asserts that the currently-open dropdown displays exactly {expectedCount} items starting with {prefix}.
+   * @param {import('@playwright/test').Page} page
+   * @param {number} expectedCount - Expected number of items
+   * @param {string} prefix - Text prefix each item must start with (e.g. '2')
+   */
+  static async verifyDropdownItemCount(page, expectedCount, prefix) {
+    if (!page) throw new Error('[CartPayment.verifyDropdownItemCount] "page" is required.');
+    if (typeof expectedCount !== 'number' || expectedCount < 1) {
+      throw new Error(`[CartPayment.verifyDropdownItemCount] "expectedCount" must be a positive number, got: ${expectedCount}`);
+    }
+    if (!prefix || typeof prefix !== 'string') {
+      throw new Error(`[CartPayment.verifyDropdownItemCount] "prefix" must be a non-empty string, got: ${typeof prefix}`);
+    }
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const actual = await paymentPage.countOpenDropdownItemsStartingWith(prefix);
+    expect(
+      actual,
+      `Expected expiration year dropdown to show exactly ${expectedCount} entries starting with "${prefix}", but found ${actual}. ` +
+      `This usually means the dropdown did not open correctly or the year range configured for this environment differs from expected.`
+    ).toBe(expectedCount);
+  }
+
   static async verifyCVVFieldNotVisible(page) {
     if (!page) throw new Error('page is required');
     const paymentPage = getPageObject(page, CartPaymentPage);

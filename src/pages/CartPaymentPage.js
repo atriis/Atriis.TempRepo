@@ -77,6 +77,11 @@ const SELECTORS = {
   EDIT_CARD_LINK: '.edit-payment-btn .is-clickable',
   LAST_FOUR_DIGIT: '.last-four-digit',
   NO_COUNTRY_CARD_CHECKBOX: '.select-credit-card > :nth-child(1) > :nth-child(2) > :nth-child(2) [type="checkbox"]',
+  // Items inside the currently-visible el-select dropdown popper panel.
+  // Element Plus teleports poppers to <body>; :visible scopes to the active one.
+  VISIBLE_DROPDOWN_ITEM: '.el-select-dropdown:visible .el-select-dropdown__item',
+  // Scrollable wrapper inside the currently-visible el-select-dropdown panel.
+  VISIBLE_DROPDOWN_SCROLL_WRAP: '.el-select-dropdown:visible .el-scrollbar__wrap',
 };
 
 class CartPaymentPage {
@@ -802,6 +807,84 @@ class CartPaymentPage {
     const checkbox = this.page.locator(SELECTORS.NO_COUNTRY_CARD_CHECKBOX).first();
     await checkbox.waitFor({ state: 'visible', timeout: 10000 });
     await checkbox.click();
+  }
+
+  /**
+   * Opens the expiration year dropdown by clicking it (without selecting any value).
+   * Leaves the dropdown panel open so its items can be inspected.
+   */
+  async openExpirationYearDropdown() {
+    const dropdown = this.getExpirationYearDropdown();
+    try {
+      await dropdown.waitFor({ state: 'visible', timeout: 15000 });
+      await dropdown.click();
+      // Wait for the dropdown panel to actually appear after clicking
+      await this.page.locator(SELECTORS.VISIBLE_DROPDOWN_ITEM).first()
+        .waitFor({ state: 'visible', timeout: 5000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPaymentPage.openExpirationYearDropdown] Could not open the expiration year dropdown. ` +
+        `The "Add card details" form may not be open yet, or the dropdown was not found within 15s. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Counts ALL dropdown items whose text starts with the given prefix by hovering and scrolling
+   * through the dropdown panel. Element UI renders only ~8 items in the viewport at once inside
+   * an overflow-scroll container — this method scrolls from top to bottom, accumulating unique
+   * item texts until no new ones appear, then returns the count of matching items.
+   * Assumes a dropdown panel is already open.
+   * @param {string} prefix - Text prefix to match (e.g. '2')
+   * @returns {Promise<number>} Number of matching items
+   */
+  async countOpenDropdownItemsStartingWith(prefix) {
+    if (!prefix || typeof prefix !== 'string') {
+      throw new Error(
+        `[CartPaymentPage.countOpenDropdownItemsStartingWith] "prefix" must be a non-empty string, got: ${typeof prefix}`
+      );
+    }
+
+    // Element Plus teleports dropdown popper panels to <body>. Multiple hidden panels exist
+    // from various el-select components. Use :visible-scoped selectors for the active panel.
+    const visibleItems = this.page.locator(SELECTORS.VISIBLE_DROPDOWN_ITEM);
+    let panelAlreadyOpen = await visibleItems.first().isVisible().catch(() => false);
+
+    if (!panelAlreadyOpen) {
+      // The dropdown may have closed between Cucumber steps — re-open with retry
+      try {
+        await this.openExpirationYearDropdown();
+        panelAlreadyOpen = true;
+      } catch (err) {
+        throw new Error(
+          `[CartPaymentPage.countOpenDropdownItemsStartingWith] Could not open the expiration year dropdown. ` +
+          `Original: ${err.message}`
+        );
+      }
+    }
+
+    // Locate the visible dropdown's scrollable wrapper
+    const scrollWrap = this.page.locator(SELECTORS.VISIBLE_DROPDOWN_SCROLL_WRAP);
+    await scrollWrap.scrollIntoViewIfNeeded();
+    await scrollWrap.hover();
+
+    // Reset to top
+    await scrollWrap.evaluate(el => { el.scrollTop = 0; });
+    await this.page.waitForTimeout(100);
+
+    // Scroll through, collecting all unique item texts until no new items appear.
+    const allTexts = new Set();
+    let previousSize = -1;
+    while (allTexts.size !== previousSize) {
+      previousSize = allTexts.size;
+      const texts = await visibleItems.allTextContents();
+      texts.forEach(t => allTexts.add(t.trim()));
+      await scrollWrap.evaluate(el => { el.scrollTop += 300; });
+      await this.page.waitForTimeout(150);
+    }
+
+    return [...allTexts].filter(t => t.startsWith(prefix)).length;
   }
 
   /**

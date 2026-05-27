@@ -257,6 +257,16 @@ Then("the CVV field should not be displayed", async function () {
   await CartPayment.verifyCVVFieldNotVisible(this.page);
 });
 
+When("I open the credit card expiration year dropdown", async function () {
+  logger.info("Opening credit card expiration year dropdown");
+  await CartPayment.openExpirationYearDropdown(this.page);
+});
+
+Then("the credit card expiration year dropdown should display {int} entries starting with {string}", async function (count, prefix) {
+  logger.info("Verifying expiration year dropdown item count", { count, prefix });
+  await CartPayment.verifyDropdownItemCount(this.page, count, prefix);
+});
+
 When("I fill the credit card CVV", async function () {
   logger.info("Filling credit card CVV (mandatory)");
   await CartPayment.fillCreditCardCVV(this.page);

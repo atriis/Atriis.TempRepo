@@ -21,7 +21,5 @@ Feature: 61703 FOP - Credit card expiry year dropdown displays a 10-year range
     Then the booking status should be "Pending booking"
     When I click add payment method button
     And I click add card details button
-    # TODO: new step in cart_fop.steps.js — click expiry year dropdown (.el-select__wrapper for year field)
     And I open the credit card expiration year dropdown
-    # TODO: new step in cart_fop.steps.js — assert exactly 10 li.el-select-dropdown__item entries whose text starts with '2'
     Then the credit card expiration year dropdown should display 10 entries starting with "2"
