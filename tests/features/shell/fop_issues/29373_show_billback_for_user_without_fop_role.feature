@@ -19,9 +19,7 @@ Feature: 29373 Show billback for user without FOP role
     When I search for a hotel in "LHR" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    When I click add payment method button
-    # TODO: new step in cart_fop.steps.js — click .el-select__wrapper to open payment restriction dropdown
-    And I open the payment restriction dropdown
-    # TODO: new step in cart_fop.steps.js — assert payment restriction option text visible (Testim asserts TEST and TEST1)
-    Then the payment restriction option "TEST" should be visible
-    And the payment restriction option "TEST1" should be visible
+    And the booking status should be "Pending booking"
+    When I click the set billback button in cart
+    And I click payment restriction field
+    Then payment restriction options should include "TEST" and "TEST1"
