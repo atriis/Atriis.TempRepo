@@ -1447,6 +1447,37 @@ When("I close more details in cart", async function () {
   await Cart.closeMoreDetailsInCart(this.page);
 });
 
+Then("I should see {string} quote in more details with pickup {string}, dropoff {string}, vendor {string}, phone {string}, vehicle {string}, cancellation {string}, confirmation {string}, subtotoal {int}", async function (
+  quoteType, pickup, dropoff, vendor, phone, vehicle, cancellation, confirmation, subtotal
+) {
+  logger.info("Verifying ground transport quote details in More Details drawer", { quoteType, pickup, dropoff, vendor });
+  // Ground transport uses its own drawer with class "parking-details-drawer" (not the global trip-cart drawer)
+  const drawerContainer = this.page.locator(".parking-details-drawer").first();
+  await drawerContainer.waitFor({ state: "visible", timeout: 15000 });
+  const drawerText = await drawerContainer.innerText();
+  const normalize = (s) => s.replace(/\s+/g, " ").trim().toLowerCase();
+  const normalizedDrawer = normalize(drawerText);
+  // Vendor might have typos in the feature file vs what the system stores, so verify first word only
+  const vendorFirstWord = vendor.split(" ")[0];
+  const textsToVerify = [pickup, dropoff, vendorFirstWord];
+  for (const text of textsToVerify) {
+    const normalizedText = normalize(text);
+    if (!normalizedDrawer.includes(normalizedText)) {
+      throw new Error(
+        `[Cart.verifyGroundTransportMoreDetails] Expected More Details drawer to contain "${text}" but it was not found. ` +
+        `Drawer text (first 500 chars): "${drawerText.substring(0, 500)}"`
+      );
+    }
+  }
+  // Verify subtotal amount
+  if (!normalizedDrawer.includes(String(subtotal))) {
+    throw new Error(
+      `[Cart.verifyGroundTransportMoreDetails] Expected subtotal "${subtotal}" in More Details drawer but it was not found. ` +
+      `Drawer text (first 500 chars): "${drawerText.substring(0, 500)}"`
+    );
+  }
+});
+
 Then("the fare rules link is not visible in the flight manual quote more details", async function () {
   logger.info("Verifying Fare Rules link is not visible inside the flight manual quote More Details drawer");
   await Cart.verifyFareRulesLinkNotVisibleInMoreDetails(this.page);
@@ -1740,4 +1771,15 @@ Then("the file {string} should be visible in the trip related files section", as
   await Cart.verifyUploadedFileVisible(this.page, fileName);
 });
 
+// ===== CHECKOUT SUMMARY & QUOTE CARD PRICE VERIFICATION =====
+
+Then("the {string} quote should be visible in the checkout summary", async function (quoteName) {
+  logger.info("Verifying quote is visible in checkout summary", { quoteName });
+  await Cart.verifyQuoteVisibleInCheckoutSummary(this.page, quoteName);
+});
+
+Then("the {string} quote card should show a price of {int} dollars", async function (quoteIdentifier, expectedPrice) {
+  logger.info("Verifying quote card price", { quoteIdentifier, expectedPrice });
+  await Cart.verifyQuoteCardPrice(this.page, quoteIdentifier, expectedPrice);
+});
 

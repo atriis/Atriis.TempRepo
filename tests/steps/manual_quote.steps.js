@@ -97,3 +97,23 @@ When("I add a {string} other manual quote with comment {string} and base fare {i
   logger.info("Adding other product manual quote", { quoteType, comment, baseFare });
   await ManualQuoteSearch.addOtherProductManualQuote(this.page, { quoteType, comment, baseFare });
 });
+
+// ===== GROUND TRANSPORT MANUAL QUOTE =====
+
+When("I add a ground transport manual quote with pickup {string} dropoff {string} vendor {string} phone {string} vehicle {string} cancellation {string} confirmation {string} base fare {int} and tax {int}", async function (
+  pickup, dropoff, vendor, vendorPhone, vehicleType, cancellationPolicy, confirmationNumber, baseFare, tax
+) {
+  logger.info("Adding ground transport manual quote", { pickup, dropoff, vendor, baseFare });
+  await ManualQuoteSearch.addGroundTransportManualQuote(this.page, {
+    pickup,
+    dropoff,
+    hour: "10:00",
+    vehicleType,
+    vendor,
+    vendorPhone,
+    cancellationPolicy,
+    confirmationNumber,
+    baseFare,
+    tax,
+  });
+});

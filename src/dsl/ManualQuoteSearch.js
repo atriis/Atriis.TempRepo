@@ -574,6 +574,197 @@ const ManualQuoteSearch = {
 
     return { added: true, quoteType, comment, baseFare };
   },
+
+  async addGroundTransportManualQuote(page, {
+    pickup,
+    dropoff,
+    monthsToAdvance = 1,
+    dayIndex = 0,
+    hour = "10:00",
+    vehicleType = "All Types",
+    vendor,
+    vendorPhone,
+    cancellationPolicy,
+    confirmationNumber,
+    baseFare = 0,
+    tax = 0,
+  } = {}) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.addGroundTransportManualQuote] "page" is required.');
+    }
+    if (!pickup || typeof pickup !== "string") {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] "pickup" must be a non-empty string, got: ${typeof pickup} (${JSON.stringify(pickup)})`,
+      );
+    }
+    if (!dropoff || typeof dropoff !== "string") {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] "dropoff" must be a non-empty string, got: ${typeof dropoff} (${JSON.stringify(dropoff)})`,
+      );
+    }
+    if (!vendor || typeof vendor !== "string") {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] "vendor" must be a non-empty string, got: ${typeof vendor} (${JSON.stringify(vendor)})`,
+      );
+    }
+    if (!vendorPhone || typeof vendorPhone !== "string") {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] "vendorPhone" must be a non-empty string of digits, got: ${typeof vendorPhone} (${JSON.stringify(vendorPhone)})`,
+      );
+    }
+    if (!cancellationPolicy || typeof cancellationPolicy !== "string") {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] "cancellationPolicy" must be a non-empty string, got: ${typeof cancellationPolicy} (${JSON.stringify(cancellationPolicy)})`,
+      );
+    }
+    if (!confirmationNumber || typeof confirmationNumber !== "string") {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] "confirmationNumber" must be a non-empty string, got: ${typeof confirmationNumber} (${JSON.stringify(confirmationNumber)})`,
+      );
+    }
+
+    logger.info("Adding Ground Transport manual quote", { pickup, dropoff, vendor, baseFare, tax });
+
+    const searchPage = getPageObject(page, ManualQuoteSearchPage);
+
+    // Navigate to Manual Quote tab → Ground Transport sub-tab
+    try {
+      await searchPage.clickManualQuoteTab();
+      await searchPage.waitForManualQuotePageVisible();
+      await searchPage.clickGroundTransportTab();
+      await searchPage.waitForGroundTransportFormVisible();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to navigate to Ground Transport tab — ` +
+          `the tab may not be visible or the form didn't load. Original: ${err.message}`,
+      );
+    }
+
+    // Fill pickup address
+    try {
+      await searchPage.fillGroundPickup(pickup);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill pickup address "${pickup}" — ` +
+          `Google Places autocomplete may not have returned results. Original: ${err.message}`,
+      );
+    }
+
+    // Fill dropoff address
+    try {
+      await searchPage.fillGroundDropoff(dropoff);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill dropoff address "${dropoff}" — ` +
+          `Google Places autocomplete may not have returned results. Original: ${err.message}`,
+      );
+    }
+
+    // Select date
+    try {
+      await searchPage.clickGroundDateInput();
+      await selectDateAfterAdvancingMonths(page, { monthsToAdvance, dayIndex });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to select date (months+${monthsToAdvance}, day index ${dayIndex}) — ` +
+          `the calendar may not have opened or the day was unavailable. Original: ${err.message}`,
+      );
+    }
+
+    // Fill hour
+    try {
+      await searchPage.fillGroundHour(hour);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill hour "${hour}" — ` +
+          `the timepicker input may not be visible. Original: ${err.message}`,
+      );
+    }
+
+    // Select vehicle type
+    try {
+      await searchPage.selectGroundVehicleType(vehicleType);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to select vehicle type "${vehicleType}" — ` +
+          `the dropdown option may not exist. Original: ${err.message}`,
+      );
+    }
+
+    // Select vendor
+    try {
+      await searchPage.selectGroundVendor(vendor);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to select vendor "${vendor}" — ` +
+          `the dropdown option may not exist in the vendor list. Original: ${err.message}`,
+      );
+    }
+
+    // Fill vendor phone
+    try {
+      await searchPage.fillGroundVendorPhone(vendorPhone);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill vendor phone "${vendorPhone}" — ` +
+          `the phone inputs may not be visible. Original: ${err.message}`,
+      );
+    }
+
+    // Fill cancellation policy
+    try {
+      await searchPage.fillGroundCancellationPolicy(cancellationPolicy);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill cancellation policy — ` +
+          `the input may not be visible. Original: ${err.message}`,
+      );
+    }
+
+    // Fill confirmation number
+    try {
+      await searchPage.fillGroundConfirmationNumber(confirmationNumber);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill confirmation number "${confirmationNumber}" — ` +
+          `the input may not be visible. Original: ${err.message}`,
+      );
+    }
+
+    // Fill base fare
+    try {
+      await searchPage.fillGroundBaseFare(baseFare);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill base fare "${baseFare}" — ` +
+          `the price section may not be visible. Original: ${err.message}`,
+      );
+    }
+
+    // Fill tax
+    if (tax > 0) {
+      try {
+        await searchPage.fillGroundTax(tax);
+      } catch (err) {
+        throw new Error(
+          `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill tax "${tax}" — ` +
+            `the tax input may not be visible. Original: ${err.message}`,
+        );
+      }
+    }
+
+    // Click Add Quote
+    try {
+      await searchPage.clickAddQuoteButton();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to click "Add Quote" button — ` +
+          `the button may be disabled (form validation failed?) or not visible. Original: ${err.message}`,
+      );
+    }
+
+    return { added: true, pickup, dropoff, vendor, baseFare, tax };
+  },
 };
 
 module.exports = ManualQuoteSearch;

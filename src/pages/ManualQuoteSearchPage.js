@@ -103,6 +103,41 @@ const SELECTORS = {
   OTHER_END_DATE_INPUT: ".manual-quote-other-products .end-by-input input",
   OTHER_COMMENT_TEXTAREA: ".manual-quote-other-products textarea",
   OTHER_BASE_FARE_INPUT: ".manual-quote-other-products .price-section input[type=\"number\"]",
+
+  // ===== GROUND TRANSPORT MANUAL QUOTE =====
+  // The manual quote page section (confirms we navigated away from main search)
+  MANUAL_QUOTE_PAGE_SECTION: ".manual-quote-page",
+  // Tab: scoped within .manual-quote-page to avoid collision with main Transport tab (#tab-groundService)
+  GROUND_TRANSPORT_TAB: ".manual-quote-page #tab-groundService",
+  GROUND_TRANSPORT_SECTION: ".manual-quote-ground-transport",
+  // Address autocomplete inputs (address-autocomplete.vue renders app-autocomplete with an input)
+  GROUND_PICKUP_INPUT: ".manual-quote-ground-transport .app-columns:first-child .field:nth-child(1) .address-autocomplete input",
+  GROUND_DROPOFF_INPUT: ".manual-quote-ground-transport .app-columns:first-child .field:nth-child(2) .address-autocomplete input",
+  // Autocomplete suggestion dropdown (only visible popper — multiple exist in DOM)
+  GROUND_AUTOCOMPLETE_OPTION: ".boxed-autocomplete-popper:not([style*='display: none']) .autocomplete-result",
+  // Date picker (app-datepicker)
+  GROUND_DATE_INPUT: ".manual-quote-ground-transport .field:has(label:has-text(\"Date\")) input",
+  // Time picker (app-timepicker) — input is readonly, opens el-dropdown with time-selector-popper
+  GROUND_HOUR_INPUT: ".manual-quote-ground-transport .field:has(label:has-text(\"Hour\")) input.app-timepicker-input",
+  GROUND_TIME_POPPER: ".time-selector-popper",
+  GROUND_TIME_HOURS_SELECT: ".time-selector-popper .section-time-select .app-column:nth-child(1) .el-select__wrapper",
+  GROUND_TIME_MINUTES_SELECT: ".time-selector-popper .section-time-select .app-column:nth-child(2) .el-select__wrapper",
+  GROUND_TIME_PM_BUTTON: ".time-selector-popper .section-ampm .time-part:last-child",
+  // Vendor select (required, filterable app-select-v2)
+  GROUND_VENDOR_TRIGGER: ".manual-quote-ground-transport .field:has(label:has-text(\"Vendor\")) .el-select__wrapper",
+  GROUND_VENDOR_INPUT: ".manual-quote-ground-transport .field:has(label:has-text(\"Vendor\")) input",
+  // Vendor phone (3 el-input fields in .phone-inputs)
+  GROUND_VENDOR_PHONE_INPUTS: ".manual-quote-ground-transport .field:has(label:has-text(\"Vendor phone\")) .phone-inputs input",
+  // Vehicle type select (required, filterable app-select-v2)
+  GROUND_VEHICLE_TYPE_TRIGGER: ".manual-quote-ground-transport .field:has(label:has-text(\"Vehicle type\")) .el-select__wrapper",
+  GROUND_VEHICLE_TYPE_INPUT: ".manual-quote-ground-transport .field:has(label:has-text(\"Vehicle type\")) input",
+  // Cancellation policy (required text input)
+  GROUND_CANCELLATION_POLICY_INPUT: ".manual-quote-ground-transport .field:has(label:has-text(\"Cancellation policy\")) input",
+  // Confirmation number (required text input)
+  GROUND_CONFIRMATION_NUMBER_INPUT: ".manual-quote-ground-transport .field:has(label:has-text(\"Confirmation\")) input",
+  // Base fare and tax (in .price-section)
+  GROUND_BASE_FARE_INPUT: ".manual-quote-ground-transport .price-section .field:nth-child(1) input[type=\"number\"]",
+  GROUND_TAX_INPUT: ".manual-quote-ground-transport .price-section .field:nth-child(3) input[type=\"number\"]",
 };
 
 class ManualQuoteSearchPage {
@@ -643,6 +678,230 @@ class ManualQuoteSearchPage {
         `[ManualQuoteSearchPage.typeOtherBaseFare] Could not fill the base fare field ` +
         `(selector: ${SELECTORS.OTHER_BASE_FARE_INPUT}) with "${amount}". ` +
         `The input was not visible in the price section. Original: ${err.message}`
+      );
+    }
+  }
+
+  // ===== GROUND TRANSPORT MANUAL QUOTE =====
+
+  async waitForManualQuotePageVisible() {
+    try {
+      await this.page.locator(SELECTORS.MANUAL_QUOTE_PAGE_SECTION).first()
+        .waitFor({ state: "visible", timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.waitForManualQuotePageVisible] Manual Quote page section did not appear ` +
+        `(selector: ${SELECTORS.MANUAL_QUOTE_PAGE_SECTION}) within 15s — the Manual Quote tab click may not have worked. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickGroundTransportTab() {
+    try {
+      await this.page.locator(SELECTORS.GROUND_TRANSPORT_TAB).click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.clickGroundTransportTab] Could not click the Ground Transport tab ` +
+        `(selector: ${SELECTORS.GROUND_TRANSPORT_TAB}). The tab was not visible within 10s. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async waitForGroundTransportFormVisible() {
+    try {
+      await this.page.locator(SELECTORS.GROUND_TRANSPORT_SECTION).first()
+        .waitFor({ state: "visible", timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.waitForGroundTransportFormVisible] Ground transport form did not appear ` +
+        `(selector: ${SELECTORS.GROUND_TRANSPORT_SECTION}) within 15s. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillGroundPickup(address) {
+    try {
+      const input = this.page.locator(SELECTORS.GROUND_PICKUP_INPUT).first();
+      await input.click({ timeout: 10000 });
+      await input.fill(address);
+      const visibleOption = this.page.locator(SELECTORS.GROUND_AUTOCOMPLETE_OPTION).locator("visible=true").first();
+      await visibleOption.waitFor({ state: "visible", timeout: 10000 });
+      await visibleOption.click();
+      // Wait for dropdown to close before proceeding
+      await this.page.waitForTimeout(500);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillGroundPickup] Could not fill pickup address "${address}" ` +
+        `(selector: ${SELECTORS.GROUND_PICKUP_INPUT}). The input or autocomplete dropdown was not available. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillGroundDropoff(address) {
+    try {
+      const input = this.page.locator(SELECTORS.GROUND_DROPOFF_INPUT).first();
+      await input.click({ timeout: 10000 });
+      await input.fill(address);
+      const visibleOption = this.page.locator(SELECTORS.GROUND_AUTOCOMPLETE_OPTION).locator("visible=true").first();
+      await visibleOption.waitFor({ state: "visible", timeout: 10000 });
+      await visibleOption.click();
+      // Wait for dropdown to close before proceeding
+      await this.page.waitForTimeout(500);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillGroundDropoff] Could not fill dropoff address "${address}" ` +
+        `(selector: ${SELECTORS.GROUND_DROPOFF_INPUT}). The input or autocomplete dropdown was not available. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickGroundDateInput() {
+    try {
+      await this.page.locator(SELECTORS.GROUND_DATE_INPUT).first().click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.clickGroundDateInput] Could not click the date input ` +
+        `(selector: ${SELECTORS.GROUND_DATE_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillGroundHour(hour) {
+    try {
+      // Click the timepicker input to open the dropdown
+      const input = this.page.locator(SELECTORS.GROUND_HOUR_INPUT).first();
+      await input.click({ timeout: 10000 });
+      // Wait for the time selector popper to appear (scope to visible one)
+      const visiblePopper = this.page.locator(SELECTORS.GROUND_TIME_POPPER).locator("visible=true");
+      await visiblePopper.waitFor({ state: "visible", timeout: 5000 });
+      // Default is 12:00 AM — just click PM to get 12:00 PM
+      await visiblePopper.locator(".section-ampm .time-part:last-child").click({ timeout: 5000 });
+      // Close popper by pressing Escape
+      await this.page.keyboard.press("Escape");
+      await this.page.waitForTimeout(300);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillGroundHour] Could not fill hour "${hour}" ` +
+        `(selector: ${SELECTORS.GROUND_HOUR_INPUT}). The time popper or PM button were not available. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async selectGroundVehicleType(vehicleType) {
+    try {
+      await this.page.locator(SELECTORS.GROUND_VEHICLE_TYPE_TRIGGER).first().click({ timeout: 10000 });
+      // "All Types" is excluded from the dropdown by the app — select first available instead
+      if (vehicleType.toLowerCase().includes("all")) {
+        await this.page.locator(SELECTORS.VISIBLE_DROPDOWN_ITEM).first()
+          .click({ timeout: 10000 });
+      } else {
+        await this.page.locator(SELECTORS.VISIBLE_DROPDOWN_ITEM, { hasText: vehicleType }).first()
+          .click({ timeout: 10000 });
+      }
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.selectGroundVehicleType] Could not select vehicle type "${vehicleType}" ` +
+        `(trigger: ${SELECTORS.GROUND_VEHICLE_TYPE_TRIGGER}). The select or option was not available. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async selectGroundVendor(vendor) {
+    try {
+      await this.page.locator(SELECTORS.GROUND_VENDOR_TRIGGER).first().click({ timeout: 10000 });
+      // Use only the first word for filtering to avoid typos/partial mismatches
+      const filterTerm = vendor.split(" ")[0];
+      await this.page.locator(SELECTORS.GROUND_VENDOR_INPUT).first().fill(filterTerm);
+      await this.page.waitForTimeout(500);
+      // Click the first visible dropdown option after filtering
+      await this.page.locator(SELECTORS.VISIBLE_DROPDOWN_ITEM).first().click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.selectGroundVendor] Could not select vendor "${vendor}" ` +
+        `(trigger: ${SELECTORS.GROUND_VENDOR_TRIGGER}). The select or option was not available. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillGroundVendorPhone(phone) {
+    try {
+      const inputs = this.page.locator(SELECTORS.GROUND_VENDOR_PHONE_INPUTS);
+      const count = await inputs.count();
+      if (count < 3) {
+        throw new Error(`Expected 3 phone inputs, found ${count}`);
+      }
+      // Split phone into country code (first 1 digit), area code (next 3), number (rest)
+      const countryCode = phone.substring(0, 1);
+      const areaCode = phone.substring(1, 4);
+      const number = phone.substring(4);
+      await inputs.nth(0).fill(countryCode);
+      await inputs.nth(1).fill(areaCode);
+      await inputs.nth(2).fill(number);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillGroundVendorPhone] Could not fill vendor phone "${phone}" ` +
+        `(selector: ${SELECTORS.GROUND_VENDOR_PHONE_INPUTS}). ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillGroundCancellationPolicy(policy) {
+    try {
+      const input = this.page.locator(SELECTORS.GROUND_CANCELLATION_POLICY_INPUT).first();
+      await input.scrollIntoViewIfNeeded();
+      await input.fill(policy);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillGroundCancellationPolicy] Could not fill cancellation policy "${policy}" ` +
+        `(selector: ${SELECTORS.GROUND_CANCELLATION_POLICY_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillGroundConfirmationNumber(number) {
+    try {
+      const input = this.page.locator(SELECTORS.GROUND_CONFIRMATION_NUMBER_INPUT).first();
+      await input.scrollIntoViewIfNeeded();
+      await input.fill(number);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillGroundConfirmationNumber] Could not fill confirmation number "${number}" ` +
+        `(selector: ${SELECTORS.GROUND_CONFIRMATION_NUMBER_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillGroundBaseFare(amount) {
+    try {
+      const input = this.page.locator(SELECTORS.GROUND_BASE_FARE_INPUT).first();
+      await input.scrollIntoViewIfNeeded();
+      await input.fill(String(amount));
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillGroundBaseFare] Could not fill base fare "${amount}" ` +
+        `(selector: ${SELECTORS.GROUND_BASE_FARE_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillGroundTax(amount) {
+    try {
+      const input = this.page.locator(SELECTORS.GROUND_TAX_INPUT).first();
+      await input.scrollIntoViewIfNeeded();
+      await input.fill(String(amount));
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillGroundTax] Could not fill tax "${amount}" ` +
+        `(selector: ${SELECTORS.GROUND_TAX_INPUT}). Original: ${err.message}`
       );
     }
   }

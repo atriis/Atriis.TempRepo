@@ -47,6 +47,8 @@ const SELECTORS = {
   // Required field detection — inputs inside is-danger wrappers across checkout
   REQUIRED_INPUTS: ".is-danger .el-input__inner",
   CHECKOUT_TOTAL_PRICE: '.price-summary .price-total .amount',
+  CHECKOUT_SUMMARY_SECTION: '.trip-summary',
+  CHECKOUT_SUMMARY_QUOTE_TITLE: '.trip-summary .summary-title',
 };
 
 class CheckoutPage {
@@ -520,6 +522,22 @@ class CheckoutPage {
       if (!val) {
         await input.fill(fallbackValues[i]);
       }
+    }
+  }
+
+  async verifyQuoteVisibleInCheckoutSummary(quoteName, { timeout = 15000 } = {}) {
+    try {
+      const summarySection = this.page.locator(SELECTORS.CHECKOUT_SUMMARY_SECTION).first();
+      await summarySection.waitFor({ state: 'visible', timeout });
+      const summaryText = await summarySection.innerText();
+      return summaryText;
+    } catch (err) {
+      throw new Error(
+        `[CheckoutPage.verifyQuoteVisibleInCheckoutSummary] Could not find the checkout summary section ` +
+        `(selector: ${SELECTORS.CHECKOUT_SUMMARY_SECTION}) within ${timeout}ms while looking for quote "${quoteName}". ` +
+        `The checkout page may not have loaded, or the trip-summary sidebar is not rendered. ` +
+        `Original: ${err.message}`
+      );
     }
   }
 

@@ -4732,6 +4732,62 @@ const Cart = {
 
     return { verified: true, fileName };
   },
+
+  async verifyQuoteVisibleInCheckoutSummary(page, quoteName) {
+    if (!page) throw new Error('[Cart.verifyQuoteVisibleInCheckoutSummary] "page" is required.');
+    if (!quoteName || typeof quoteName !== 'string') {
+      throw new Error(`[Cart.verifyQuoteVisibleInCheckoutSummary] "quoteName" must be a non-empty string, got: ${typeof quoteName} (${quoteName})`);
+    }
+
+    logger.debug(`[Cart.verifyQuoteVisibleInCheckoutSummary] Checking checkout summary for quote "${quoteName}"`);
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const summaryText = await checkoutPage.verifyQuoteVisibleInCheckoutSummary(quoteName);
+    const normalizedSummary = summaryText.replace(/\s+/g, ' ').toLowerCase();
+    const normalizedName = quoteName.toLowerCase();
+
+    if (!normalizedSummary.includes(normalizedName)) {
+      throw new Error(
+        `[Cart.verifyQuoteVisibleInCheckoutSummary] Expected the checkout summary to contain "${quoteName}" ` +
+        `but it was not found. This means the quote was not added to the cart before checkout, or the summary ` +
+        `component did not render it. Summary text (first 300 chars): "${summaryText.substring(0, 300)}"`
+      );
+    }
+
+    return { verified: true, quoteName };
+  },
+
+  async verifyQuoteCardPrice(page, quoteIdentifier, expectedPrice) {
+    if (!page) throw new Error('[Cart.verifyQuoteCardPrice] "page" is required.');
+    if (!quoteIdentifier || typeof quoteIdentifier !== 'string') {
+      throw new Error(`[Cart.verifyQuoteCardPrice] "quoteIdentifier" must be a non-empty string, got: ${typeof quoteIdentifier} (${quoteIdentifier})`);
+    }
+    if (typeof expectedPrice !== 'number' || expectedPrice < 0) {
+      throw new Error(`[Cart.verifyQuoteCardPrice] "expectedPrice" must be a non-negative number, got: ${expectedPrice}`);
+    }
+
+    logger.debug(`[Cart.verifyQuoteCardPrice] Verifying quote "${quoteIdentifier}" shows price ${expectedPrice}`);
+
+    const cartPage = getPageObject(page, CartPage);
+    const priceText = await cartPage.getQuoteCardPriceByText(quoteIdentifier);
+    const numericPrice = parseFloat(priceText.replace(/[^0-9.,]/g, '').replace(/,/g, '.'));
+
+    if (Number.isNaN(numericPrice)) {
+      throw new Error(
+        `[Cart.verifyQuoteCardPrice] Could not parse a numeric price from text "${priceText}" on the "${quoteIdentifier}" quote card. ` +
+        `The price element may contain unexpected formatting or be empty.`
+      );
+    }
+
+    if (Math.abs(numericPrice - expectedPrice) > 1) {
+      throw new Error(
+        `[Cart.verifyQuoteCardPrice] Quote "${quoteIdentifier}" displays price ${numericPrice} but expected ${expectedPrice}. ` +
+        `Difference exceeds $1 tolerance. This may indicate a tax/fee discrepancy or wrong quote was matched.`
+      );
+    }
+
+    return { verified: true, quoteIdentifier, displayedPrice: numericPrice, expectedPrice };
+  },
 };
 
 

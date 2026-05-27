@@ -15,6 +15,8 @@ const SELECTORS = {
   PROCEED_TO_CHECKOUT_BUTTON: ".btn-container:has-text('Proceed to Checkout')",
   QUOTE_STATUS_LABEL: ".app-label--quote",
   QUOTE_CARD_STATUS_LABEL: '.quote-payment-card .app-label--quote',
+  QUOTE_PAYMENT_CARD: '.quote-payment-card',
+  QUOTE_CARD_PRICE_AMOUNT: '.price-wrapper .amount, .product-extra-info .amount',
   ANY_STATUS_LABEL: '.app-label, .app-label--quote',
   HOLD_BUTTON: ".btn--default.mt-2",
 
@@ -4620,6 +4622,25 @@ class CartPage {
         `[CartPage.isFileNameVisibleInAttachFiles] File "${fileName}" was not found in the attach files list within ${timeout}ms ` +
         `(selector: ${SELECTORS.ATTACH_FILES_FILE_NAME} with text "${fileName}"). ` +
         `The upload may have failed, the save did not complete, or the file name does not match. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async getQuoteCardPriceByText(cardText, { timeout = 15000 } = {}) {
+    try {
+      const card = this.page.locator(SELECTORS.QUOTE_PAYMENT_CARD, { hasText: cardText }).first();
+      await card.waitFor({ state: 'visible', timeout });
+      const priceEl = card.locator(SELECTORS.QUOTE_CARD_PRICE_AMOUNT).first();
+      await priceEl.waitFor({ state: 'visible', timeout: 5000 });
+      const text = await priceEl.innerText();
+      return text.trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getQuoteCardPriceByText] Could not find a visible quote card containing "${cardText}" ` +
+        `or its price element within ${timeout}ms. ` +
+        `Likely causes: the quote card is not yet rendered, the text doesn't match what's displayed, ` +
+        `or the page hasn't navigated to the trip overview yet. ` +
         `Original: ${err.message}`
       );
     }
