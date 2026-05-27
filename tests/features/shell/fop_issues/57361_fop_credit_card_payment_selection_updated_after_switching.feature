@@ -22,7 +22,6 @@ Feature: 57361 FOP - Credit card payment selection is updated after switching cr
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     And the payment type should be "Paid by Corporate"
-    # TODO: new step in cart_fop.steps.js — click .ticket-top-section .is-clickable to open the FOP edit panel, then wait for 'Select payment method' text
-    When I open the FOP edit panel from the cart ticket
+    When I click to edit the card
     And I select card 1 and save
-    Then the payment type should be "Paid by Traveler"
+    Then the payment type should be "Paid by Traveller"
