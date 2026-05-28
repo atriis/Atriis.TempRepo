@@ -41,7 +41,7 @@ Each supplier entry contains:
 - `type` — GDS, NDC, or LowCost
 - `tags` — Cucumber tag expression (e.g. `@amadeus and not @blocked`)
 - `featurePaths` — directories to scan for matching features
-- `users` — known compatible user labels from `.env`
+- `users` — known compatible user emails (written directly in feature files)
 - `notes` — human-readable caveats
 
 Execution policies:
@@ -158,5 +158,5 @@ Execution policies:
 - Existing `.feature` files: unchanged
 - Existing step definitions: unchanged
 - Existing DSL/Pages: unchanged
-- Credentials: read from `.env` by Cucumber hooks as normal
+- Credentials: emails written directly in feature files; only `GENERAL_PASSWORD` from `.env`
 - No new npm dependencies required

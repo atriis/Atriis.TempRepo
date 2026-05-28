@@ -16,7 +16,7 @@ The Cucumber BDD + Playwright automation framework.
 - **DSL**: `src/dsl/` — 24 business workflow modules (barrel-exported from `src/dsl/index.js`)
 - **Pages**: `src/pages/` — 26 page objects with `SELECTORS` constants + atomic actions
 - **Data**: `src/data/` — `flights.json`, `hotels.json`, `cars.json`, `benerail.json`, `evolvi.json`, `amtrak.json`, `groundtransport.json`, `cards.json`, `tripStatus.json`
-- **Config**: `src/config/config.js` — provider + user configuration (auto-discovered from `.env`)
+- **Config**: `src/config/config.js` — provider configuration (emails are written directly in feature files; only `GENERAL_PASSWORD` from `.env`)
 - **Utils**: `src/utils/` — `pageObjectCache.js`, `logger.js`, `calendar.helper.js`, `dom.js`, `wait.js`, etc.
 
 ### 2. Azure DevOps
@@ -137,7 +137,7 @@ The application source code being tested.
 ### Hotels
 - **Suppliers**: Amadeus GDS, Galileo GDS, Sabre GDS, Expedia, Booking.com, Ratehawk, eHotel, Travelodge, Premier Inn, Go Global
 - **NEVER book non-refundable hotels** — always filter by refundable first
-- **Each supplier has specific test users** in `.env`
+- **Each supplier has specific test users** — emails are written directly in feature files
 
 ### Transportation
 - **Cars**: Amadeus GDS, Galileo GDS, Sabre GDS, SunnyCars

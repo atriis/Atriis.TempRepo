@@ -205,7 +205,7 @@ At the bottom, list:
 - **Suppliers**: Amadeus GDS, Galileo GDS, Sabre GDS, Expedia, Booking.com, Ratehawk, eHotel, Travelodge, Premier Inn, Go Global
 - **ALWAYS include refundable filter step** before room selection
 - **NEVER convert a test that books non-refundable** — flag as issue
-- **Use correct supplier test user** from `.env`
+- **Use correct supplier test user** — write the email directly in the Gherkin step (no `.env` user entries needed)
 
 ### Transportation
 - **Cars**: Amadeus GDS, Galileo GDS, Sabre GDS, SunnyCars

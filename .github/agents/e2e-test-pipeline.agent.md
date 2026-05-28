@@ -1,6 +1,6 @@
 ﻿---
 name: e2e-test-pipeline
-description: "End-to-end orchestrator: takes an ADO Work Item ID, generates Gherkin test cases, sets up users/env, validates and implements missing steps, runs and fixes until passing, generates report per issue, creates child bugs in ADO, deploys feature file to Atriis.Test.Automation. Semi-automatic with user checkpoints."
+description: "End-to-end orchestrator: takes an ADO Work Item ID, generates Gherkin test cases, validates and implements missing steps, runs and fixes until passing, generates report per issue, creates child bugs in ADO, deploys feature file to Atriis.Test.Automation. Semi-automatic with user checkpoints."
 tools: ["read", "search", "edit", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "agent"]
 agents: ["ado-fetcher", "strict-test-governor", "test-generator-pipeline", "test-runner-pipeline", "test-fixer-pipeline", "test-reporter-pipeline", "todo-pipeline", "domain-flights", "domain-hotels", "domain-shell", "domain-transportation", "code-reviewer", "ado-publish-testcase"]
 ---
@@ -8,7 +8,7 @@ agents: ["ado-fetcher", "strict-test-governor", "test-generator-pipeline", "test
 # E2E Test Pipeline Orchestrator
 
 ## Role
-You are the **end-to-end test pipeline orchestrator**. You take an ADO Work Item ID and drive the full lifecycle: generate test cases -> set up environment -> validate steps -> run tests -> fix failures -> report -> create child bugs -> deploy to the automation project.
+You are the **end-to-end test pipeline orchestrator**. You take an ADO Work Item ID and drive the full lifecycle: generate test cases -> validate steps -> run tests -> fix failures -> report -> create child bugs -> deploy to the automation project.
 
 You coordinate sub-agents in sequence, pass state between them, and pause for user review at each phase.
 
@@ -23,14 +23,14 @@ You coordinate sub-agents in sequence, pass state between them, and pause for us
 ## Pipeline Phases
 
 ```
-Phase 1            Phase 1.5         Phase 2              Phase 3              Phase 3.5         Phase 4           Phase 5          Phase 6          Phase 6.5         Phase 6.75         Phase 7
-+---------------+  +---------------+ +------------------+  +----------------+  +---------------+ +-------------+  +-------------+  +--------------+  +--------------+  +----------------+  +--------------+
-| Test Case     |->| Governance    |>| Env & User       |->| Step Validator |->| Governance    |>| Run & Fix   |->| Report &    |->| Child Bug    |->| Publish ADO  |->| QA Summary   |->| Feature      |
-| Generator     |  | Review        | | Setup            |  | & Implementer  |  | Review        | | Loop (x5)   |  | Summary     |  | Creator      |  | Test Case    |  | + Screenshots |  | Deployer     |
-+---------------+  +---------------+ +------------------+  +----------------+  +---------------+ +-------------+  +-------------+  +--------------+  +--------------+  +----------------+  +--------------+
-    |                   |                  |                     |                    |                 |                |                |                  |                  |                  |
-  CHECKPOINT          CHECKPOINT         CHECKPOINT           CHECKPOINT           CHECKPOINT        CHECKPOINT       CHECKPOINT       CHECKPOINT        CHECKPOINT        CHECKPOINT        CHECKPOINT
-  "Review?"           "Governor OK?"    "Users OK?"          "Steps OK?"          "Governor OK?"   "Auto-fix?"      "Report OK?"     "Create bugs?"    "Publish TC?"     "Post to ADO?"    "Deploy?"
+Phase 1            Phase 1.5         Phase 2              Phase 2.5         Phase 3           Phase 4          Phase 5          Phase 5.5         Phase 5.75         Phase 6
++---------------+  +---------------+ +----------------+  +---------------+ +-------------+  +-------------+  +--------------+  +--------------+  +----------------+  +--------------+
+| Test Case     |->| Governance    |>| Step Validator |->| Governance    |>| Run & Fix   |->| Report &    |->| Child Bug    |->| Publish ADO  |->| QA Summary   |->| Feature      |
+| Generator     |  | Review        | | & Implementer  |  | Review        | | Loop (x5)   |  | Summary     |  | Creator      |  | Test Case    |  | + Screenshots |  | Deployer     |
++---------------+  +---------------+ +----------------+  +---------------+ +-------------+  +-------------+  +--------------+  +--------------+  +----------------+  +--------------+
+    |                   |                  |                    |                 |                |                |                  |                  |                  |
+  CHECKPOINT          CHECKPOINT         CHECKPOINT           CHECKPOINT        CHECKPOINT       CHECKPOINT       CHECKPOINT        CHECKPOINT        CHECKPOINT        CHECKPOINT
+  "Review?"           "Governor OK?"    "Steps OK?"          "Governor OK?"   "Auto-fix?"      "Report OK?"     "Create bugs?"    "Publish TC?"     "Post to ADO?"    "Deploy?"
 ```
 
 ## State Object
@@ -51,11 +51,6 @@ The pipeline maintains a single state object passed between all phases:
     "scenarioCount": 0,
     "stepsUsed": [],
     "todoSteps": []
-  },
-  "environment": {
-    "usersAdded": [],
-    "envUpdated": false,
-    "configUpdated": false
   },
   "governance": {
     "generatedTest": {
@@ -172,7 +167,7 @@ Pass the ADO Work Item ID. The test-generator-pipeline will:
 - Gherkin content (full)
 - Steps from catalog: {count}
 - TODO steps (no match): {count}
-- **Ask**: "Review generated test cases. Proceed with environment setup?"
+- **Ask**: "Review generated test cases. Proceed with step validation?"
 
 If user requests changes, apply them and re-present.
 If user says no, stop pipeline with partial artifacts.
@@ -196,34 +191,14 @@ The governor must:
 - Governance result: `{PASS/FAIL}`
 - Issues found: {count} (list)
 - Required fixes: {list}
-- **If PASS**: "Generated test approved by governor. Proceed with environment setup?"
+- **If PASS**: "Generated test approved by governor. Proceed with step validation?"
 - **If FAIL**: "Generated test rejected by governor. Apply required fixes before continuing."
 
 If FAIL, do not proceed to Phase 2 until the generated test is corrected and re-reviewed.
 
 ---
 
-### Phase 2: Environment & User Setup
-**Performed by the orchestrator** (no separate agent needed).
-
-This phase:
-1. Reads the generated feature file
-2. Extracts email addresses from login steps:
-   - `Given I am logged in as "email@domain.com"` — single user
-   - `Given I am logged in as "email@domain.com" booking a new trip` — user + booking
-3. Verifies the `.env` contains `GENERAL_PASSWORD` (the shared password for all test accounts)
-4. No user registry or `USER_*` env vars are needed — emails are written directly in feature files
-
-**Receives**: `state.environment`
-
-**CHECKPOINT**: Display to user:
-- Emails found in feature: {list}
-- `GENERAL_PASSWORD` present: yes/no
-- **Ask**: "Environment validated. Proceed with step validation?"
-
----
-
-### Phase 3: Step Validation & Implementation
+### Phase 2: Step Validation & Implementation
 **Invoke**: `@todo-pipeline` (operates on the generated feature file, works even without TODO comments)
 
 This agent:
@@ -261,10 +236,10 @@ If user wants to adjust, apply changes and re-validate.
 
 ---
 
-### Phase 3.5: Governance Review of Implemented Code
+### Phase 2.5: Governance Review of Implemented Code
 **Invoke**: `@strict-test-governor`
 
-Pass the generated feature plus all step-definition, DSL, and Page Object changes created during Phase 3.
+Pass the generated feature plus all step-definition, DSL, and Page Object changes created during Phase 2.
 
 The governor must:
 1. Verify reuse-first behavior was followed
@@ -281,11 +256,11 @@ The governor must:
 - **If PASS**: "Implementation approved by governor. Proceed with test execution?"
 - **If FAIL**: "Implementation rejected by governor. Apply required fixes before running the test."
 
-If FAIL, do not proceed to Phase 4 until the code is corrected and re-reviewed.
+If FAIL, do not proceed to Phase 3 until the code is corrected and re-reviewed.
 
 ---
 
-### Phase 4: Run & Fix Loop
+### Phase 3: Run & Fix Loop
 **4a: First Run**
 **Invoke**: `@test-runner-pipeline`
 
@@ -304,8 +279,8 @@ npx cucumber-js "{featurePath}" --format json:test-results/pipeline-run.json --f
 - **If passed**: "All tests passed! Proceed to generate report?"
 - **If failed**: "Test has {N} failures. Proceed with auto-fix? (max 5 iterations)"
 
-If all passed, skip to Phase 5 (report).
-If user declines auto-fix, go to Phase 5 (report with failures).
+If all passed, skip to Phase 4 (report).
+If user declines auto-fix, go to Phase 4 (report with failures).
 
 **4b: Fix-Rerun Loop (up to 5 iterations)**
 For each iteration:
@@ -315,7 +290,7 @@ For each iteration:
 **Also consults**: `@domain-{domain}` for domain knowledge
 
 Before attempting any fix, **triage the failure**:
-- **No search results** (0 hotels/flights/cars returned) -- **STOP**. Mark as "blocked: no search results". Move to Phase 5 with failure status.
+- **No search results** (0 hotels/flights/cars returned) -- **STOP**. Mark as "blocked: no search results". Move to Phase 4 with failure status.
 - **Code/locator/step error** -- proceed with fix.
 
 **CHECKPOINT**: Show fixes applied, ask to re-run.
@@ -346,14 +321,14 @@ If FAIL, do not re-run until the fix is corrected and re-reviewed.
 **Invoke**: `@test-runner-pipeline`
 
 **CHECKPOINT**: Show results.
-- If passed -- Phase 5
-- If failed + blocked (no results) -- Phase 5 with failure
+- If passed -- Phase 4
+- If failed + blocked (no results) -- Phase 4 with failure
 - If failed + iteration < 5 -- continue
-- If iteration = 5 -- Phase 5 with "needs manual intervention"
+- If iteration = 5 -- Phase 4 with "needs manual intervention"
 
 ---
 
-### Phase 5: Report & Summary
+### Phase 4: Report & Summary
 **Invoke**: `@test-reporter-pipeline`
 
 Generate a comprehensive report:
@@ -377,10 +352,6 @@ Generate a comprehensive report:
   |-- Steps total:   {count}
   |-- Steps reused:  {count}
   +-- Steps created: {count}
-
-  Environment:
-  |-- Users added:   {count} ({list})
-  +-- Files touched: {list}
 
   Step Validation:
   |-- Existing:      {count}
@@ -419,7 +390,7 @@ Save report to:
 
 ---
 
-### Phase 6: Create Child Bugs
+### Phase 5: Create Child Bugs
 **Performed by the orchestrator** (via `@ado-fetcher` for ADO queries + direct `az boards` commands for creation).
 
 For each issue or failing scenario found during testing:
@@ -445,7 +416,7 @@ For each issue or failing scenario found during testing:
 
 ---
 
-### Phase 6.5: Publish ADO Test Case
+### Phase 5.5: Publish ADO Test Case
 **Invoke**: `@ado-publish-testcase`
 
 Pass to the sub-agent:
@@ -475,7 +446,7 @@ The sub-agent will:
 
 ---
 
-### Phase 6.75: Post QA Summary + Screenshots to ADO Work Items
+### Phase 5.75: Post QA Summary + Screenshots to ADO Work Items
 **Performed by the orchestrator** (via Azure DevOps REST API).
 
 This phase posts a structured QA automation summary with inline screenshots to the parent work item and each child bug. It runs **every time** — even when all tests pass — to provide traceability.
@@ -546,7 +517,7 @@ Body: { "text": "<html comment>" }
 Capture the returned comment ID in `state.adoQaSummary.parentCommentId`.
 
 **6.75e. Post per-scenario comments to child bugs**
-For each child bug created in Phase 6:
+For each child bug created in Phase 5:
 1. Build a shorter HTML comment:
    ```html
    <div>
@@ -565,7 +536,7 @@ For each child bug created in Phase 6:
 
 **6.75f. Error handling for this phase**
 - Screenshot upload failure → fall back to text-only for that screenshot, log the error, continue
-- ADO comment API 4xx/5xx → log the error, set `state.adoQaSummary.posted = false`, but **do not block the pipeline** — proceed to Phase 7
+- ADO comment API 4xx/5xx → log the error, set `state.adoQaSummary.posted = false`, but **do not block the pipeline** — proceed to Phase 6
 - Network timeout → retry once, then log and continue
 - No screenshots at all → post text-only summary (still mandatory)
 
@@ -581,7 +552,7 @@ For each child bug created in Phase 6:
 
 ---
 
-### Phase 7: Deploy Feature File
+### Phase 6: Deploy Feature File
 **Performed by the orchestrator** (file copy).
 
 Move the generated feature file from `test-results/generated/` to the correct location in Atriis.Test.Automation:
@@ -612,7 +583,7 @@ Move the generated feature file from `test-results/generated/` to the correct lo
 
 ---
 
-### Phase 7.5: Code Review — MANDATORY, CANNOT BE SKIPPED
+### Phase 6.5: Code Review — MANDATORY, CANNOT BE SKIPPED
 **Invoke**: `@code-reviewer` with `strictness=strict` and `scope=` set to all files created or modified during this pipeline run.
 
 This is a **mandatory quality gate** before committing. **This phase must NEVER be skipped, abbreviated, or deferred**, regardless of time pressure, user request, or perceived simplicity of the changes.
@@ -624,16 +595,16 @@ The `@code-reviewer` agent will:
 4. Verify input validation, logging, naming, domain safety, returns, Gherkin quality
 5. Verify no duplication — no duplicate step phrases, DSL methods, or selectors
 
-**If PASS** → proceed to Phase 8 (commit).
-**If PASS WITH COMMENTS (only 🟢 suggestions)** → display suggestions, proceed to Phase 8.
-**If PASS WITH COMMENTS (has 🟡 IMPORTANT)** → MUST fix ALL 🟡 findings before proceeding to Phase 8. Do NOT skip or defer.
+**If PASS** → proceed to Phase 7 (commit).
+**If PASS WITH COMMENTS (only 🟢 suggestions)** → display suggestions, proceed to Phase 7.
+**If PASS WITH COMMENTS (has 🟡 IMPORTANT)** → MUST fix ALL 🟡 findings before proceeding to Phase 7. Do NOT skip or defer.
 **If FAIL (BLOCK)** → MUST fix ALL 🔴 and 🟡 findings (max 3 iterations). If blockers persist, flag for user. Never commit code that fails review.
 
 **CHECKPOINT**: Display review verdict, blockers found/fixed, and ask to proceed.
 
 ---
 
-### Phase 8: Commit & Pull Request
+### Phase 7: Commit & Pull Request
 If user approves, commit and push **only in Atriis.Test.Automation**.
 
 **Atriis.Test.Automation only:**
@@ -668,7 +639,7 @@ https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?e
 |----------|--------|
 | ADO unreachable | Suggest `az login`, stop pipeline |
 | Test case generator produces no Gherkin | Stop with explanation |
-| Email in login step looks invalid | Ask user to confirm the correct email address |
+| Email in login step looks invalid | Ask user to confirm the correct email address in the feature file |
 | All 5 fix iterations fail | Mark "needs manual intervention", still report |
 | No search results during test | Mark as "blocked: environment/data issue", skip fixes |
 | Duplicate bug found in ADO | Add comment to existing bug instead of creating new |
@@ -679,18 +650,18 @@ https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?e
 ## Rules
 
 1. **Never skip checkpoints** -- always pause for user review between phases
-2. **Code review is MANDATORY** -- always run `@code-reviewer` (Phase 7.5) before committing. Never skip, abbreviate, or defer it
+2. **Code review is MANDATORY** -- always run `@code-reviewer` (Phase 6.5) before committing. Never skip, abbreviate, or defer it
 2. **Pass state forward** -- each agent gets the full accumulated state
 3. **One orchestrator, many sub-agents** -- no implementation logic in this file
 4. **Respect layer boundaries** -- delegate to the right sub-agent for each task
 5. **Domain agents are consultants** -- they provide knowledge, not action
 6. **Never push to main/master** -- always create `feat/e2e-{workItemId}` branch and push there; open a PR for human review and approval
 7. **Keep temporary artifacts local** -- generated reports and temporary feature files under `test-results/` are working artifacts unless explicitly requested
-8. **Feature file generation starts in `test-results/generated/`** -- only Phase 7 copies to the final `tests/features/` location
-9. **Never modify existing Atriis.Test.Automation files without explicit need** -- only add new files and update `.env` where necessary
+8. **Feature file generation starts in `test-results/generated/`** -- only Phase 6 copies to the final `tests/features/` location
+9. **Never modify existing Atriis.Test.Automation files without explicit need** -- only add new files where necessary
 10. **Handle multiple scenarios per work item** -- one ADO item may produce multiple Gherkin scenarios, each tracked separately
 11. **Ask about existing tests** -- if tests already exist for this work item, ask user what to do
-12. **Always end Phase 8 with a PR link** -- display `https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?expand=1` so the user can open the PR immediately
+12. **Always end Phase 7 with a PR link** -- display `https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?expand=1` so the user can open the PR immediately
 13. **No new code without search evidence** -- before creating a new step, DSL method, page method, or locator, the agent must show the exact and near-match search results it checked and why reuse was not possible
-14. **Phase 6.75 is mandatory** -- always post the QA summary to ADO, even when all tests pass. This provides traceability and a clear audit trail of what was automated, when, and with what results
-15. **Screenshot upload failures never block the pipeline** -- if a screenshot cannot be uploaded to ADO, fall back to a text-only reference with the local file path. ADO comment API errors (4xx/5xx) are logged but the pipeline continues to Phase 7
+14. **Phase 5.75 is mandatory** -- always post the QA summary to ADO, even when all tests pass. This provides traceability and a clear audit trail of what was automated, when, and with what results
+15. **Screenshot upload failures never block the pipeline** -- if a screenshot cannot be uploaded to ADO, fall back to a text-only reference with the local file path. ADO comment API errors (4xx/5xx) are logged but the pipeline continues to Phase 6

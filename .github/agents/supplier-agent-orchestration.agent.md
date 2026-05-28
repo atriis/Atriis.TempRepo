@@ -106,7 +106,7 @@ For each enabled supplier in each enabled domain:
    - Domain context package
    - Supplier name
   - Supplier config node from registry
-   - Supplier-specific users from `.env`
+   - Supplier-specific user emails (written directly in feature files)
    - Supplier endpoints
    - Supplier business rules
    - Test cases or scenario set
