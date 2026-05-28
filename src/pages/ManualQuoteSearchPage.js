@@ -52,7 +52,7 @@ const SELECTORS = {
   HOTEL_NAME_INPUT: ".manual-quote-hotel input[name=\"hotel-name\"]",
   HOTEL_ADDRESS_INPUT: ".manual-quote-hotel input[name=\"Address\"]",
   HOTEL_CITY_INPUT: ".manual-quote-hotel .field:has(label:text-is(\"City\")) input",
-  HOTEL_CITY_DROPDOWN_OPTION: ".boxed-autocomplete-popper .autocomplete-result, .el-autocomplete-suggestion li",
+  HOTEL_CITY_DROPDOWN_OPTION: ".boxed-autocomplete-popper:visible .autocomplete-result, .el-autocomplete-suggestion:visible li",
   HOTEL_CHECK_IN_FIELD: ".manual-quote-hotel .field:has(label:text-is(\"Check In Date\"))",
   HOTEL_CHECK_OUT_FIELD: ".manual-quote-hotel .field:has(label:text-is(\"Check Out Date\"))",
   HOTEL_NUMBER_OF_ROOMS_SELECT: ".manual-quote-hotel .field:has(label:text-is(\"Number Of Rooms\")) .el-select__wrapper",
@@ -88,6 +88,30 @@ const SELECTORS = {
   CAR_CARD_TYPE_SELECT: "#pane-car .credit-type-select",
   CAR_CARD_TYPE_TRIGGER: "#pane-car .credit-type-select .el-select__wrapper",
   CAR_CARD_TYPE_DISPLAY: "#pane-car .credit-type-select .el-select__placeholder",
+
+  // ===== CAR MANUAL QUOTE FORM FIELDS =====
+  // Source: manual-quote-car.vue — car-autocomplete uses app-autocomplete with name prop
+  CAR_FORM_SECTION: ".manual-quote-car",
+  CAR_PICKUP_LOCATION_INPUT: ".manual-quote-car input[name=\"car-autocomplete-pick-up\"]",
+  CAR_PICKUP_CITY_INPUT: ".manual-quote-car input[name=\"hotel-autocomplete-pick-up\"]",
+  CAR_PICKUP_DATE_INPUT: ".manual-quote-car input[name=\"date-pick-up\"]",
+  CAR_PICKUP_TIME_INPUT: ".manual-quote-car .app-columns:nth-child(1) input.app-timepicker-input",
+  CAR_TIME_SELECTOR_POPPER: ".time-selector-popper:visible",
+  CAR_TIME_PM_BUTTON: ".section-ampm .time-part:last-child",
+  CAR_DROPOFF_LOCATION_INPUT: ".manual-quote-car input[name=\"car-autocomplete-drop-off\"]",
+  CAR_DROPOFF_CITY_INPUT: ".manual-quote-car input[name=\"hotel-autocomplete-drop-off\"]",
+  CAR_DROPOFF_DATE_INPUT: ".manual-quote-car .app-columns:nth-of-type(2) .app-datepicker input",
+  CAR_DROPOFF_TIME_INPUT: ".manual-quote-car .app-columns:nth-of-type(2) input.app-timepicker-input",
+  CAR_CLASS_TRIGGER: ".manual-quote-car .field:has(label:has-text(\"Car Class\")) .el-select__wrapper",
+  CAR_VENDOR_TRIGGER: ".manual-quote-car .field:has(label:has-text(\"Vendor\")) .el-select__wrapper",
+  CAR_VENDOR_INPUT: ".manual-quote-car .field:has(label:has-text(\"Vendor\")) input",
+  CAR_CANCELLATION_INPUT: ".manual-quote-car .field:has(label:has-text(\"Cancellation policy\")) input",
+  CAR_CONFIRMATION_INPUT: ".manual-quote-car .field:has(label:has-text(\"Confirmation Number\")) input",
+  CAR_BASE_FARE_INPUT: ".manual-quote-car .field:has(label:has-text(\"Base fare\")) input[type=\"number\"]",
+  CAR_TAX_INPUT: ".manual-quote-car .field:has(label:has-text(\"Tax\")) input[type=\"number\"]",
+  // Autocomplete dropdown — car-autocomplete uses "app-autocomplete-popper", hotel-autocomplete uses "hotel-autocomplete-popper"
+  // Use :visible to avoid matching hidden poppers from previous interactions still in DOM
+  CAR_AUTOCOMPLETE_OPTION: ".app-autocomplete-popper:visible .autocomplete-result, .hotel-autocomplete-popper:visible .autocomplete-result",
 
   // Element-Plus teleports every dropdown to <body>; multiple dropdown panels
   // coexist in the DOM and the closed ones are hidden via a parent wrapper
@@ -396,13 +420,38 @@ class ManualQuoteSearchPage {
    * @param {string} city - City text to type (e.g. "Portland")
    * @param {number} [timeout=10000] - Max wait for dropdown
    */
-  async selectHotelCity(city, timeout = 10000) {
-    const input = this.page.locator(SELECTORS.HOTEL_CITY_INPUT).first();
-    await input.click();
-    await input.fill(city);
-    const option = this.page.locator(SELECTORS.HOTEL_CITY_DROPDOWN_OPTION).first();
-    await option.waitFor({ state: "visible", timeout });
-    await option.click();
+  async selectHotelCity(city, timeout = 15000) {
+    try {
+      const input = this.page.locator(SELECTORS.HOTEL_CITY_INPUT).first();
+      await input.click();
+      await input.fill(city);
+
+      // Wait for debounce (300ms) + API response to stabilize results
+      await this.page.waitForTimeout(500);
+
+      const option = this.page.locator(SELECTORS.HOTEL_CITY_DROPDOWN_OPTION).first();
+      await option.waitFor({ state: "visible", timeout });
+      await option.click();
+
+      // Verify the dropdown closed (confirming selection registered with el-autocomplete)
+      await this.page.locator(SELECTORS.HOTEL_CITY_DROPDOWN_OPTION).first()
+        .waitFor({ state: "hidden", timeout: 5000 })
+        .catch(async () => {
+          // Dropdown didn't close — retry click on the option
+          const retryOption = this.page.locator(SELECTORS.HOTEL_CITY_DROPDOWN_OPTION).first();
+          if (await retryOption.isVisible()) {
+            await retryOption.click();
+            await this.page.waitForTimeout(300);
+          }
+        });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.selectHotelCity] Could not select city "${city}" from autocomplete dropdown ` +
+        `(input: ${SELECTORS.HOTEL_CITY_INPUT}, options: ${SELECTORS.HOTEL_CITY_DROPDOWN_OPTION}). ` +
+        `The dropdown may not have returned results or the selection did not register. ` +
+        `Original: ${err.message}`
+      );
+    }
   }
 
   /**
@@ -429,7 +478,20 @@ class ManualQuoteSearchPage {
       field === "cancellationPolicy"
         ? SELECTORS.HOTEL_CANCELLATION_POLICY_SELECT
         : SELECTORS.HOTEL_NUMBER_OF_ROOMS_SELECT;
-    await this.page.locator(selector).first().click();
+    try {
+      await this.page.locator(selector).first().click({ timeout: 10000 });
+      await this.page
+        .locator(SELECTORS.SELECT_DROPDOWN_OPTION)
+        .first()
+        .waitFor({ state: "visible", timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.openHotelSelect] Could not open the "${field}" dropdown ` +
+        `(selector: ${selector}). The select trigger was not clickable or dropdown options ` +
+        `did not appear within 10s — likely the form has not finished rendering. ` +
+        `Original: ${err.message}`
+      );
+    }
   }
 
   /**
@@ -566,6 +628,242 @@ class ManualQuoteSearchPage {
       .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM)
       .allInnerTexts();
     return texts.map((t) => t.trim()).filter((t) => t.length > 0);
+  }
+
+  // ===== CAR MANUAL QUOTE FORM =====
+
+  async waitForCarFormVisible() {
+    try {
+      await this.page
+        .locator(SELECTORS.CAR_FORM_SECTION)
+        .first()
+        .waitFor({ state: "visible", timeout: 20000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.waitForCarFormVisible] Car manual quote form (selector: ${SELECTORS.CAR_FORM_SECTION}) ` +
+        `did not become visible within 20s — likely the Car tab click did not register or the form is still loading. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillCarPickupLocation(location) {
+    try {
+      const input = this.page.locator(SELECTORS.CAR_PICKUP_LOCATION_INPUT).first();
+      await input.click({ timeout: 10000 });
+      await input.fill(location);
+      const option = this.page.locator(SELECTORS.CAR_AUTOCOMPLETE_OPTION).first();
+      await option.waitFor({ state: "visible", timeout: 10000 });
+      await option.click();
+      await this.page.waitForTimeout(300);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillCarPickupLocation] Could not fill pickup location "${location}" ` +
+        `(selector: ${SELECTORS.CAR_PICKUP_LOCATION_INPUT}). The input or autocomplete dropdown was not available. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillCarPickupCity(city) {
+    try {
+      const input = this.page.locator(SELECTORS.CAR_PICKUP_CITY_INPUT).first();
+      await input.click({ timeout: 10000 });
+      await input.fill(city);
+      const option = this.page.locator(SELECTORS.CAR_AUTOCOMPLETE_OPTION).first();
+      await option.waitFor({ state: "visible", timeout: 10000 });
+      await option.click();
+      await this.page.waitForTimeout(300);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillCarPickupCity] Could not fill pickup city "${city}" ` +
+        `(selector: ${SELECTORS.CAR_PICKUP_CITY_INPUT}). The input or autocomplete dropdown was not available. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillCarDropoffLocation(location) {
+    try {
+      const input = this.page.locator(SELECTORS.CAR_DROPOFF_LOCATION_INPUT).first();
+      await input.click({ timeout: 10000 });
+      await input.fill(location);
+      const option = this.page.locator(SELECTORS.CAR_AUTOCOMPLETE_OPTION).first();
+      await option.waitFor({ state: "visible", timeout: 10000 });
+      await option.click();
+      await this.page.waitForTimeout(300);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillCarDropoffLocation] Could not fill dropoff location "${location}" ` +
+        `(selector: ${SELECTORS.CAR_DROPOFF_LOCATION_INPUT}). The input or autocomplete dropdown was not available. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillCarDropoffCity(city) {
+    try {
+      const input = this.page.locator(SELECTORS.CAR_DROPOFF_CITY_INPUT).first();
+      await input.click({ timeout: 10000 });
+      await input.fill(city);
+      const option = this.page.locator(SELECTORS.CAR_AUTOCOMPLETE_OPTION).first();
+      await option.waitFor({ state: "visible", timeout: 10000 });
+      await option.click();
+      await this.page.waitForTimeout(300);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillCarDropoffCity] Could not fill dropoff city "${city}" ` +
+        `(selector: ${SELECTORS.CAR_DROPOFF_CITY_INPUT}). The input or autocomplete dropdown was not available. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickCarPickupDateInput() {
+    try {
+      const input = this.page.locator(SELECTORS.CAR_PICKUP_DATE_INPUT).first();
+      await input.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.clickCarPickupDateInput] Could not click the pickup date input ` +
+        `(selector: ${SELECTORS.CAR_PICKUP_DATE_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickCarDropoffDateInput() {
+    try {
+      const input = this.page.locator(SELECTORS.CAR_DROPOFF_DATE_INPUT).first();
+      await input.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.clickCarDropoffDateInput] Could not click the dropoff date input ` +
+        `(selector: ${SELECTORS.CAR_DROPOFF_DATE_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickCarPickupTimePM() {
+    try {
+      const input = this.page.locator(SELECTORS.CAR_PICKUP_TIME_INPUT).first();
+      await input.click({ timeout: 10000 });
+      const popper = this.page.locator(SELECTORS.CAR_TIME_SELECTOR_POPPER).first();
+      await popper.waitFor({ state: "visible", timeout: 5000 });
+      await popper.locator(SELECTORS.CAR_TIME_PM_BUTTON).click({ timeout: 5000 });
+      await this.page.keyboard.press("Escape");
+      await this.page.waitForTimeout(300);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.clickCarPickupTimePM] Could not set pickup time to PM. ` +
+        `The time picker popper (class: time-selector-popper) or the PM button was not available. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickCarDropoffTimePM() {
+    try {
+      const input = this.page.locator(SELECTORS.CAR_DROPOFF_TIME_INPUT).first();
+      await input.click({ timeout: 10000 });
+      const popper = this.page.locator(SELECTORS.CAR_TIME_SELECTOR_POPPER).first();
+      await popper.waitFor({ state: "visible", timeout: 5000 });
+      await popper.locator(SELECTORS.CAR_TIME_PM_BUTTON).click({ timeout: 5000 });
+      await this.page.keyboard.press("Escape");
+      await this.page.waitForTimeout(300);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.clickCarDropoffTimePM] Could not set dropoff time to PM. ` +
+        `The time picker popper (class: time-selector-popper) or the PM button was not available. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async selectCarClass(carClass) {
+    try {
+      await this.page.locator(SELECTORS.CAR_CLASS_TRIGGER).first().click({ timeout: 10000 });
+      await this.page
+        .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM, { hasText: carClass })
+        .first()
+        .click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.selectCarClass] Could not select car class "${carClass}" ` +
+        `(trigger: ${SELECTORS.CAR_CLASS_TRIGGER}). The select or option was not available. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async selectCarVendor(vendor) {
+    try {
+      await this.page.locator(SELECTORS.CAR_VENDOR_TRIGGER).first().click({ timeout: 10000 });
+      const input = this.page.locator(SELECTORS.CAR_VENDOR_INPUT).first();
+      await input.fill(vendor);
+      await this.page.waitForTimeout(500);
+      await this.page
+        .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM)
+        .first()
+        .click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.selectCarVendor] Could not select vendor "${vendor}" ` +
+        `(trigger: ${SELECTORS.CAR_VENDOR_TRIGGER}). The select or option was not available. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillCarCancellationPolicy(policy) {
+    try {
+      const input = this.page.locator(SELECTORS.CAR_CANCELLATION_INPUT).first();
+      await input.scrollIntoViewIfNeeded();
+      await input.fill(policy);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillCarCancellationPolicy] Could not fill cancellation policy "${policy}" ` +
+        `(selector: ${SELECTORS.CAR_CANCELLATION_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillCarConfirmationNumber(confirmationNum) {
+    try {
+      const input = this.page.locator(SELECTORS.CAR_CONFIRMATION_INPUT).first();
+      await input.scrollIntoViewIfNeeded();
+      await input.fill(confirmationNum);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillCarConfirmationNumber] Could not fill confirmation number "${confirmationNum}" ` +
+        `(selector: ${SELECTORS.CAR_CONFIRMATION_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillCarBaseFare(amount) {
+    try {
+      const input = this.page.locator(SELECTORS.CAR_BASE_FARE_INPUT).first();
+      await input.scrollIntoViewIfNeeded();
+      await input.fill(String(amount));
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillCarBaseFare] Could not fill base fare "${amount}" ` +
+        `(selector: ${SELECTORS.CAR_BASE_FARE_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillCarTax(amount) {
+    try {
+      const input = this.page.locator(SELECTORS.CAR_TAX_INPUT).first();
+      await input.scrollIntoViewIfNeeded();
+      await input.fill(String(amount));
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillCarTax] Could not fill tax "${amount}" ` +
+        `(selector: ${SELECTORS.CAR_TAX_INPUT}). Original: ${err.message}`
+      );
+    }
   }
 
   // ===== OTHER PRODUCTS MANUAL QUOTE =====

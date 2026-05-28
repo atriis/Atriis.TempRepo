@@ -20,6 +20,11 @@ When("I add a hotel manual quote in {string}", async function (city) {
   await ManualQuoteSearch.addHotelManualQuote(this.page, city);
 });
 
+When("I add a hotel manual quote in {string} for {int} room(s)", async function (city, numberOfRooms) {
+  logger.info("Adding hotel manual quote", { city, numberOfRooms });
+  await ManualQuoteSearch.addHotelManualQuote(this.page, city, { numberOfRooms });
+});
+
 When("I navigate to the manual quote search page", async function () {
   logger.info("Navigating to the manual quote search page");
   await ManualQuoteSearch.openManualQuotePage(this.page);
@@ -96,6 +101,13 @@ Then(
 When("I add a {string} other manual quote with comment {string} and base fare {int}", async function (quoteType, comment, baseFare) {
   logger.info("Adding other product manual quote", { quoteType, comment, baseFare });
   await ManualQuoteSearch.addOtherProductManualQuote(this.page, { quoteType, comment, baseFare });
+});
+
+// ===== CAR MANUAL QUOTE =====
+
+When("I add a car manual quote with pick up in {string} and drop off in {string}", async function (pickupCity, dropoffCity) {
+  logger.info("Adding car manual quote", { pickupCity, dropoffCity });
+  await ManualQuoteSearch.addCarManualQuote(this.page, { pickupCity, dropoffCity });
 });
 
 // ===== GROUND TRANSPORT MANUAL QUOTE =====

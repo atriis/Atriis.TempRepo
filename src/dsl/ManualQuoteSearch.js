@@ -156,9 +156,10 @@ const ManualQuoteSearch = {
       dayIndex: checkOutIndex,
     });
 
-    // Number of rooms (label-scoped)
+    // Number of rooms (label-scoped) — UI uses singular "Room" for 1, plural "Rooms" for 2+
     await manualQuoteSearchPage.openHotelSelect("numberOfRooms");
-    await manualQuoteSearchPage.clickDropdownOptionByText(`${numberOfRooms} Rooms`);
+    const roomLabel = numberOfRooms === 1 ? `${numberOfRooms} Room` : `${numberOfRooms} Rooms`;
+    await manualQuoteSearchPage.clickDropdownOptionByText(roomLabel);
 
     // Cancellation policy (label-scoped)
     await manualQuoteSearchPage.openHotelSelect("cancellationPolicy");
@@ -171,6 +172,18 @@ const ManualQuoteSearch = {
     // Base fare + submit
     await manualQuoteSearchPage.typeHotelBaseFare(baseFare);
     await manualQuoteSearchPage.clickAddQuoteButton();
+
+    // Verify the form was actually submitted — wait for the hotel form to disappear
+    try {
+      await page.locator(".manual-quote-hotel").first()
+        .waitFor({ state: "hidden", timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addHotelManualQuote] Clicked "Add Quote" but the hotel form did not close within 15s — ` +
+        `likely a form validation error prevented submission (check city, dates, rooms fields for red borders). ` +
+        `Original: ${err.message}`
+      );
+    }
 
     return {
       added: true,
@@ -764,6 +777,220 @@ const ManualQuoteSearch = {
     }
 
     return { added: true, pickup, dropoff, vendor, baseFare, tax };
+  },
+
+  // ===== CAR MANUAL QUOTE =====
+
+  async addCarManualQuote(page, {
+    pickupCity,
+    dropoffCity,
+    pickupAirport = "PDX",
+    dropoffAirport = "SFO",
+    carClass = "Mini Elite",
+    vendor = "Avis",
+    cancellationPolicy = "No limitation",
+    confirmationNumber = "966231A",
+    baseFare = 60,
+    tax = 10,
+    pickupDateIndex = 2,
+    dropoffDateIndex = 5,
+  } = {}) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.addCarManualQuote] "page" is required.');
+    }
+    if (typeof pickupCity !== "string" || !pickupCity.trim()) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] "pickupCity" must be a non-empty string, got: ${typeof pickupCity} (${JSON.stringify(pickupCity)})`,
+      );
+    }
+    if (typeof dropoffCity !== "string" || !dropoffCity.trim()) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] "dropoffCity" must be a non-empty string, got: ${typeof dropoffCity} (${JSON.stringify(dropoffCity)})`,
+      );
+    }
+
+    logger.info("[ManualQuoteSearch.addCarManualQuote] Adding car manual quote", {
+      pickupCity, dropoffCity, pickupAirport, dropoffAirport, carClass, vendor,
+    });
+
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+
+    // Navigate to manual quote → Car tab
+    try {
+      await manualQuoteSearchPage.clickManualQuoteTab();
+      await manualQuoteSearchPage.clickCarTab();
+      await manualQuoteSearchPage.waitForCarFormVisible();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to navigate to Car tab — ` +
+          `the tab may not be visible or the form did not render. Original: ${err.message}`,
+      );
+    }
+
+    // Fill pickup location (airport code)
+    try {
+      await manualQuoteSearchPage.fillCarPickupLocation(pickupAirport);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to fill pickup location "${pickupAirport}" — ` +
+          `the car-autocomplete dropdown may not have returned results for this airport code. ` +
+          `Original: ${err.message}`,
+      );
+    }
+
+    // Fill pickup city
+    try {
+      await manualQuoteSearchPage.fillCarPickupCity(pickupCity);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to fill pickup city "${pickupCity}" — ` +
+          `the city autocomplete may not have returned results. Original: ${err.message}`,
+      );
+    }
+
+    // Fill dropoff location (airport code)
+    try {
+      await manualQuoteSearchPage.fillCarDropoffLocation(dropoffAirport);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to fill dropoff location "${dropoffAirport}" — ` +
+          `the car-autocomplete dropdown may not have returned results for this airport code. ` +
+          `Original: ${err.message}`,
+      );
+    }
+
+    // Fill dropoff city
+    try {
+      await manualQuoteSearchPage.fillCarDropoffCity(dropoffCity);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to fill dropoff city "${dropoffCity}" — ` +
+          `the city autocomplete may not have returned results. Original: ${err.message}`,
+      );
+    }
+
+    // Select pickup date — only if the field is empty (app may auto-fill from trip dates)
+    const pickupDateValue = await page.locator(".manual-quote-car input[name=\"date-pick-up\"]").first().inputValue();
+    if (!pickupDateValue) {
+      try {
+        await manualQuoteSearchPage.clickCarPickupDateInput();
+        await selectDateAfterAdvancingMonths(page, { monthsToAdvance: 1, dayIndex: pickupDateIndex });
+      } catch (err) {
+        throw new Error(
+          `[ManualQuoteSearch.addCarManualQuote] Failed to select pickup date — ` +
+            `the date picker may not have opened or day index ${pickupDateIndex} was not available. ` +
+            `Original: ${err.message}`,
+        );
+      }
+    } else {
+      logger.debug("[ManualQuoteSearch.addCarManualQuote] Pickup date already filled, skipping", { pickupDateValue });
+    }
+
+    // Set pickup time to PM (only if AM/PM mode is active — metric users have 24h format)
+    try {
+      await manualQuoteSearchPage.clickCarPickupTimePM();
+    } catch (err) {
+      logger.debug("[ManualQuoteSearch.addCarManualQuote] Could not set pickup time PM — may be 24h format, skipping", { error: err.message });
+    }
+
+    // Select dropoff date — only if the field is empty (app may auto-fill from trip dates)
+    const dropoffDateInput = page.locator(".manual-quote-car .app-columns:nth-of-type(2) .app-datepicker input").first();
+    const dropoffDateValue = await dropoffDateInput.inputValue();
+    if (!dropoffDateValue) {
+      try {
+        await manualQuoteSearchPage.clickCarDropoffDateInput();
+        await selectDateAfterAdvancingMonths(page, { monthsToAdvance: 1, dayIndex: dropoffDateIndex });
+      } catch (err) {
+        throw new Error(
+          `[ManualQuoteSearch.addCarManualQuote] Failed to select dropoff date — ` +
+            `the date picker may not have opened or day index ${dropoffDateIndex} was not available. ` +
+            `Original: ${err.message}`,
+        );
+      }
+    } else {
+      logger.debug("[ManualQuoteSearch.addCarManualQuote] Dropoff date already filled, skipping", { dropoffDateValue });
+    }
+
+    // Set dropoff time to PM (only if AM/PM mode is active — metric users have 24h format)
+    try {
+      await manualQuoteSearchPage.clickCarDropoffTimePM();
+    } catch (err) {
+      logger.debug("[ManualQuoteSearch.addCarManualQuote] Could not set dropoff time PM — may be 24h format, skipping", { error: err.message });
+    }
+
+    // Select car class
+    try {
+      await manualQuoteSearchPage.selectCarClass(carClass);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to select car class "${carClass}" — ` +
+          `the dropdown may not have opened or the option was not found. Original: ${err.message}`,
+      );
+    }
+
+    // Select vendor
+    try {
+      await manualQuoteSearchPage.selectCarVendor(vendor);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to select vendor "${vendor}" — ` +
+          `the vendor dropdown may not have opened or the option was not found. Original: ${err.message}`,
+      );
+    }
+
+    // Fill cancellation policy
+    try {
+      await manualQuoteSearchPage.fillCarCancellationPolicy(cancellationPolicy);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to fill cancellation policy "${cancellationPolicy}". ` +
+          `Original: ${err.message}`,
+      );
+    }
+
+    // Fill confirmation number
+    try {
+      await manualQuoteSearchPage.fillCarConfirmationNumber(confirmationNumber);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to fill confirmation number "${confirmationNumber}". ` +
+          `Original: ${err.message}`,
+      );
+    }
+
+    // Fill base fare
+    try {
+      await manualQuoteSearchPage.fillCarBaseFare(baseFare);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to fill base fare "${baseFare}" — ` +
+          `the price section input may not be visible. Original: ${err.message}`,
+      );
+    }
+
+    // Fill tax
+    try {
+      await manualQuoteSearchPage.fillCarTax(tax);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to fill tax "${tax}" — ` +
+          `the price section tax input may not be visible. Original: ${err.message}`,
+      );
+    }
+
+    // Click Add Quote
+    try {
+      await manualQuoteSearchPage.clickAddQuoteButton();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to click "Add Quote" button — ` +
+          `the button may be disabled (form validation failed?) or not visible. Check that all required fields ` +
+          `(location, city, dates, class, vendor, cancellation, confirmation) are properly filled. ` +
+          `Original: ${err.message}`,
+      );
+    }
+
+    return { added: true, pickupCity, dropoffCity, pickupAirport, dropoffAirport, carClass, vendor, baseFare, tax };
   },
 };
 
