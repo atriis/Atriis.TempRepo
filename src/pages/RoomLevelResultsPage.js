@@ -262,6 +262,19 @@ class RoomLevelResultsPage {
     return await this.page.locator(SELECTORS.MEMBER_BADGE).first().isVisible();
   }
 
+  async getMemberBadgeText() {
+    const badge = this.page.locator(SELECTORS.MEMBER_BADGE).first();
+    try {
+      await badge.waitFor({ state: "visible", timeout: 10000 });
+      return (await badge.textContent())?.trim() ?? '';
+    } catch (err) {
+      throw new Error(
+        `[RoomLevelResultsPage.getMemberBadgeText] Member badge not visible within 10s (selector: ${SELECTORS.MEMBER_BADGE}). ` +
+        `The room results may not have member rate offers, or the page is still loading. Original: ${err.message}`
+      );
+    }
+  }
+
   async getPriceComparison() {
     const memberPriceText = await this.page.locator(SELECTORS.MEMBER_PRICE).first().innerText();
     const regularPriceText = await this.page.locator(SELECTORS.REGULAR_PRICE_BEFORE_DISCOUNT).first().innerText();

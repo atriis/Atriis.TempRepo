@@ -196,6 +196,30 @@ const RoomLevelResults = {
   },
 
   /**
+   * Verifies the member badge tag contains the expected text in room level results.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - The expected badge text (case-insensitive match)
+   * @throws {Error} If the badge text does not contain the expected text
+   */
+  async verifyMemberBadgeTagText(page, expectedText) {
+    if (!page) throw new Error('[RoomLevelResults.verifyMemberBadgeTagText] "page" is required.');
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(`[RoomLevelResults.verifyMemberBadgeTagText] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`);
+    }
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const actualText = await roomLevelResultsPage.getMemberBadgeText();
+
+    if (!actualText.toLowerCase().includes(expectedText.toLowerCase())) {
+      throw new Error(
+        `[RoomLevelResults.verifyMemberBadgeTagText] Expected room member badge to contain "${expectedText}", ` +
+        `but actual badge text was "${actualText}". Check that the Expedia member rate offer is present in room results.`
+      );
+    }
+    return actualText;
+  },
+
+  /**
    * Compares member rate price vs regular price and verifies discount exists.
    * @param {import('playwright').Page} page
    * @returns {Promise<{memberPrice: number, regularPrice: number, hasDiscount: boolean}>}

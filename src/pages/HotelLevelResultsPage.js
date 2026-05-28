@@ -169,6 +169,19 @@ class HotelLevelResultsPage {
     }
   }
 
+  async getMemberBadgeText() {
+    const badge = this.page.locator(SELECTORS.MEMBER_BADGE).first();
+    try {
+      await badge.waitFor({ state: "visible", timeout: 10000 });
+      return (await badge.textContent())?.trim() ?? '';
+    } catch (err) {
+      throw new Error(
+        `[HotelLevelResultsPage.getMemberBadgeText] Member badge not visible within 10s (selector: ${SELECTORS.MEMBER_BADGE}). ` +
+        `The hotel results may not have member rate offers, or the page is still loading. Original: ${err.message}`
+      );
+    }
+  }
+
   /**
    * Clicks on the first hotel that displays a member rate badge
    * @throws {Error} If no hotel with member badge is found

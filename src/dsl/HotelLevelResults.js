@@ -104,6 +104,30 @@ const HotelLevelResults = {
   },
 
   /**
+   * Verifies the member badge tag contains the expected text in hotel level results.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - The expected badge text (case-insensitive match)
+   * @throws {Error} If the badge text does not contain the expected text
+   */
+  async verifyMemberBadgeTagText(page, expectedText) {
+    if (!page) throw new Error('[HotelLevelResults.verifyMemberBadgeTagText] "page" is required.');
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(`[HotelLevelResults.verifyMemberBadgeTagText] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`);
+    }
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const actualText = await hotelLevelResultsPage.getMemberBadgeText();
+
+    if (!actualText.toLowerCase().includes(expectedText.toLowerCase())) {
+      throw new Error(
+        `[HotelLevelResults.verifyMemberBadgeTagText] Expected hotel member badge to contain "${expectedText}", ` +
+        `but actual badge text was "${actualText}". Check that the Expedia member rate offer is present in hotel results.`
+      );
+    }
+    return actualText;
+  },
+
+  /**
    * Verifies the corporate preferred badge is visible on hotel level results.
    * @param {import('playwright').Page} page
    * @throws {Error} If the badge is not visible
