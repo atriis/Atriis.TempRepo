@@ -2,7 +2,7 @@
 name: e2e-test-pipeline
 description: "End-to-end orchestrator: takes an ADO Work Item ID, generates Gherkin test cases, validates and implements missing steps, runs and fixes until passing, generates report per issue, creates child bugs in ADO, deploys feature file to Atriis.Test.Automation. Semi-automatic with user checkpoints."
 tools: ["read", "search", "edit", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "agent"]
-agents: ["ado-fetcher", "strict-test-governor", "test-generator-pipeline", "test-runner-pipeline", "test-fixer-pipeline", "test-reporter-pipeline", "todo-pipeline", "domain-flights", "domain-hotels", "domain-shell", "domain-transportation", "code-reviewer", "ado-publish-testcase"]
+agents: ["ado-fetcher", "strict-test-governor", "test-generator-pipeline", "test-runner-pipeline", "test-fixer-pipeline", "test-reporter-pipeline", "todo-pipeline", "domain-flights", "domain-hotels", "domain-shell", "domain-transportation", "code-reviewer", "ado-publish-testcase", "commit"]
 ---
 
 # E2E Test Pipeline Orchestrator
@@ -605,25 +605,21 @@ The `@code-reviewer` agent will:
 ---
 
 ### Phase 7: Commit & Pull Request
-If user approves, commit and push **only in Atriis.Test.Automation**.
+If user approves, **delegate to the `@commit` agent** to handle staging, commit message generation, and push.
 
-**Atriis.Test.Automation only:**
-```powershell
-cd c:\DEV\Atriis.Test.Automation
-git checkout -b feat/e2e-{workItemId}
-git add {all created/modified files}
-git commit -m "feat(e2e-pipeline): automate ADO #{workItemId} -- {title}
+**Invoke**: `@commit` with the following context:
+- **Ticket number**: `{workItemId}`
+- **Branch**: `feat/e2e-{workItemId}` (the branch created in Phase 0)
+- **Scope**: All files created or modified during this pipeline run
+- **Exclude**: Temporary artifacts under `test-results/` unless explicitly requested
 
-- Feature: {featurePath}
-- Steps created: {count}
-- DSL methods: {count}
-- Result: {PASSED/FAILED}
-- Fix iterations: {count}
-- Domain: {domain}"
-git push -u origin feat/e2e-{workItemId}
-```
+The `@commit` agent will:
+1. Review pending changes and generate a conventional commit message
+2. Stage the appropriate files (excluding `test-results/` by default)
+3. Commit with a message following project conventions
+4. Push to the `feat/e2e-{workItemId}` branch
 
-After pushing, display the PR link for the user to open and approve:
+After the `@commit` agent finishes, display the PR link for the user to open and approve:
 ```
 https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?expand=1
 ```
@@ -661,7 +657,7 @@ https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?e
 9. **Never modify existing Atriis.Test.Automation files without explicit need** -- only add new files where necessary
 10. **Handle multiple scenarios per work item** -- one ADO item may produce multiple Gherkin scenarios, each tracked separately
 11. **Ask about existing tests** -- if tests already exist for this work item, ask user what to do
-12. **Always end Phase 7 with a PR link** -- display `https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?expand=1` so the user can open the PR immediately
+12. **Always delegate commits to `@commit`** -- never use inline git commands for committing; the `@commit` agent handles staging, message generation, and push. Always end Phase 7 with a PR link: `https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?expand=1`
 13. **No new code without search evidence** -- before creating a new step, DSL method, page method, or locator, the agent must show the exact and near-match search results it checked and why reuse was not possible
 14. **Phase 5.75 is mandatory** -- always post the QA summary to ADO, even when all tests pass. This provides traceability and a clear audit trail of what was automated, when, and with what results
 15. **Screenshot upload failures never block the pipeline** -- if a screenshot cannot be uploaded to ADO, fall back to a text-only reference with the local file path. ADO comment API errors (4xx/5xx) are logged but the pipeline continues to Phase 6
