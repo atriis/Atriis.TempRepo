@@ -100,6 +100,10 @@ const SELECTORS = {
   // and flight cart items (.more-details-btn). Used by Cart.openMoreDetailsInCart
   // so a single Gherkin step works across hotel and flight manual quotes.
   MORE_DETAILS_BUTTON_ANY: ".more-details-btn, .more-details",
+  // Any visible Element-Plus drawer (used to read text from whichever drawer is currently open)
+  ANY_VISIBLE_DRAWER: '.el-drawer:visible, .parking-details-drawer:visible',
+  // Inner anchor inside a More Details wrapper (car quote uses div > a pattern)
+  MORE_DETAILS_INNER_LINK: 'a',
   LOCATION_LABEL: '.location-label',
   CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
@@ -3066,6 +3070,74 @@ class CartPage {
         `[CartPage.clickMoreDetailsInCart] Could not click a "More details" trigger in the cart ` +
         `(selector: ${SELECTORS.MORE_DETAILS_BUTTON_ANY}). The cart may still be loading or no hotel/flight item is present. ` +
         `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Clicks the More Details trigger within a specific quote card identified by its text content.
+   * @param {string} cardText - Partial text to identify the quote card (e.g. "Flight to", "Test Hotel", "Car Rental")
+   */
+  async clickMoreDetailsForQuoteByText(cardText) {
+    const card = this.page.locator(SELECTORS.QUOTE_PAYMENT_CARD, { hasText: cardText }).first();
+    const moreDetailsContainer = card.locator(SELECTORS.MORE_DETAILS_BUTTON_ANY).first();
+    try {
+      await card.waitFor({ state: 'visible', timeout: 15000 });
+      await moreDetailsContainer.waitFor({ state: 'visible', timeout: 10000 });
+      // Car quote uses a wrapper div with an <a> inside — click the link, not the div
+      const innerLink = moreDetailsContainer.locator(SELECTORS.MORE_DETAILS_INNER_LINK);
+      if (await innerLink.count() > 0) {
+        await innerLink.first().click({ timeout: 10000 });
+      } else {
+        await moreDetailsContainer.click({ timeout: 10000 });
+      }
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickMoreDetailsForQuoteByText] Could not click "More details" on the quote card containing "${cardText}". ` +
+        `The card may not be visible, or it does not have a More Details link/button. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Returns the full text of whichever drawer is currently visible (flight, hotel, or car).
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>}
+   */
+  async getAnyVisibleDrawerText({ timeout = 15000 } = {}) {
+    const drawer = this.page.locator(SELECTORS.ANY_VISIBLE_DRAWER).first();
+    try {
+      await drawer.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getAnyVisibleDrawerText] No visible drawer found within ${timeout}ms. ` +
+        `Ensure "More Details" was clicked before calling this method. Original: ${err.message}`,
+      );
+    }
+    const skeletons = drawer.locator(SELECTORS.MORE_DETAILS_DRAWER_SKELETON);
+    try {
+      await skeletons.first().waitFor({ state: 'detached', timeout: 10000 });
+    } catch {
+      // No skeletons or already loaded
+    }
+    return drawer.innerText();
+  }
+
+  /**
+   * Closes whichever drawer is currently visible by pressing Escape.
+   */
+  async closeAnyVisibleDrawer() {
+    const drawer = this.page.locator(SELECTORS.ANY_VISIBLE_DRAWER).first();
+    try {
+      await drawer.waitFor({ state: 'visible', timeout: 5000 });
+      await this.page.keyboard.press('Escape');
+      await drawer.waitFor({ state: 'hidden', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.closeAnyVisibleDrawer] Failed to close the open drawer — ` +
+        `it may not have been open or Escape did not dismiss it. Original: ${err.message}`,
       );
     }
   }

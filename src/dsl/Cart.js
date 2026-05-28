@@ -2279,6 +2279,60 @@ const Cart = {
   },
 
   /**
+   * Opens the More Details drawer for a specific quote card identified by text.
+   * @param {import('playwright').Page} page
+   * @param {string} quoteIdentifier - Partial text to identify the quote card (e.g. "Flight to", "Test Hotel", "Car Rental")
+   */
+  async openMoreDetailsForQuote(page, quoteIdentifier) {
+    if (!page) throw new Error('[Cart.openMoreDetailsForQuote] "page" is required.');
+    if (!quoteIdentifier || typeof quoteIdentifier !== 'string') {
+      throw new Error(`[Cart.openMoreDetailsForQuote] "quoteIdentifier" must be a non-empty string, got: ${typeof quoteIdentifier} (${quoteIdentifier})`);
+    }
+    logger.debug(`[Cart.openMoreDetailsForQuote] Opening More Details for quote containing "${quoteIdentifier}"`);
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.clickMoreDetailsForQuoteByText(quoteIdentifier);
+    } catch (err) {
+      throw new Error(
+        `[Cart.openMoreDetailsForQuote] Failed to open More Details for the "${quoteIdentifier}" quote — ` +
+        `the quote card may not exist in the cart or its More Details button is not visible. ` +
+        `Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the currently open drawer (any product type) contains the expected text.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Text to find in the open drawer
+   */
+  async verifyOpenDrawerContainsText(page, expectedText) {
+    if (!page) throw new Error('[Cart.verifyOpenDrawerContainsText] "page" is required.');
+    if (typeof expectedText !== 'string' || !expectedText) {
+      throw new Error(`[Cart.verifyOpenDrawerContainsText] "expectedText" must be a non-empty string, got: ${typeof expectedText}`);
+    }
+    const cartPage = getPageObject(page, CartPage);
+    const drawerText = await cartPage.getAnyVisibleDrawerText();
+    const normalize = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+    if (!normalize(drawerText).includes(normalize(expectedText))) {
+      throw new Error(
+        `[Cart.verifyOpenDrawerContainsText] Expected the open drawer to contain "${expectedText}" but it was not found. ` +
+        `Drawer text (first 500 chars): "${drawerText.substring(0, 500)}"`
+      );
+    }
+  },
+
+  /**
+   * Closes whichever drawer is currently open.
+   * @param {import('playwright').Page} page
+   */
+  async closeOpenDrawer(page) {
+    if (!page) throw new Error('[Cart.closeOpenDrawer] "page" is required.');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.closeAnyVisibleDrawer();
+  },
+
+  /**
    * Extracts the total price from the More Details drawer footer.
    * The drawer must already be open.
    * @param {import('playwright').Page} page

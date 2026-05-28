@@ -1447,6 +1447,23 @@ When("I close more details in cart", async function () {
   await Cart.closeMoreDetailsInCart(this.page);
 });
 
+When("I click more details for the {string} quote in cart", async function (quoteIdentifier) {
+  logger.info("Opening More Details drawer for specific quote", { quoteIdentifier });
+  await Cart.openMoreDetailsForQuote(this.page, quoteIdentifier);
+});
+
+Then("the more details should show {string}", async function (expectedText) {
+  logger.info("Verifying open drawer contains text", { expectedText });
+  await Cart.verifyOpenDrawerContainsText(this.page, expectedText);
+});
+
+// Uses Escape key — works universally across all drawer types (flight, hotel, car).
+// Differs from "I close more details in cart" which clicks the explicit close button.
+When("I close the open drawer", async function () {
+  logger.info("Closing the currently open drawer");
+  await Cart.closeOpenDrawer(this.page);
+});
+
 Then("I should see {string} quote in more details with pickup {string}, dropoff {string}, vendor {string}, phone {string}, vehicle {string}, cancellation {string}, confirmation {string}, subtotoal {int}", async function (
   quoteType, pickup, dropoff, vendor, phone, vehicle, cancellation, confirmation, subtotal
 ) {
