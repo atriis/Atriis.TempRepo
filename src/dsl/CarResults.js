@@ -557,6 +557,7 @@ const CarResults = {
       mapsContext.locationText,
       `Google Maps location text should not be empty. Received: "${mapsContext.locationText}"`,
     ).toBeTruthy();
+  },
 
   },
 };
