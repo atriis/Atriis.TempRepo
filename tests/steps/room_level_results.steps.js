@@ -142,6 +142,11 @@ Then("I should see member rates displayed in room level results", async function
   expect(isVisible).toBe(true);
 });
 
+Then("I should see a tag with the text {string} in room level results", async function (tagText) {
+  logger.info("Verifying member badge tag text in room level results", { tagText });
+  await RoomLevelResults.verifyMemberBadgeTagText(this.page, tagText);
+});
+
 Then("the CO2 emissions should be displayed in room level results", async function () {
   logger.info("Verifying CO2 emissions are displayed in room level results");
   const result = await RoomLevelResults.verifyCO2InRoomLevel(this.page);

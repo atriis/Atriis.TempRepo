@@ -19,7 +19,9 @@ Feature: 18420 Expedia - Member rates are displayed
     When I search for a hotel in "Verona,Italy,(VRN)" for 1 night
     And I wait to see view rates text in results page
     Then I should see member rates displayed in hotel level results
+    Then I should see a tag with the text "Member rates Available" in hotel level results
     When I select a hotel with member rates
     And I wait for the first add to trip button to be visible in room level results
     Then I should see member rates displayed in room level results
+    Then I should see a tag with the text "Member rate" in room level results
     Then the member rate price should be lower than the regular price
