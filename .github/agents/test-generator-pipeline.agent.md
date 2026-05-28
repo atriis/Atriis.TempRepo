@@ -61,7 +61,20 @@ Rules:
 For each Gherkin step:
 1. Check if an existing step definition matches (exact or parameterized)
 2. If YES → mark as "reused" — no new code needed
-3. If NO → mark as "new" — needs step definition + possibly DSL
+3. If NO → mark as "new" — add a `#TODO` comment above the step in the feature file
+
+**TODO comment format** (must match what `@todo-pipeline` scans for):
+```gherkin
+# TODO: Create step "When I share the hotel price offer by email"
+When I share the hotel price offer by email
+```
+
+Categories for the TODO comment:
+- `# TODO: Create step "..."` — for steps needing a step definition
+- `# TODO: Create DSL method ...` — for steps needing a DSL method
+- `# TODO: Add locator for ...` — for steps needing a page object locator
+
+> In **Gherkin-Only mode** (when called from `@e2e-test-pipeline` Phase 1), stop here. Do NOT proceed to Steps 5-8. The `@todo-pipeline` will handle implementation.
 
 ### Step 5: Generate Step Definitions (new steps only)
 For each new step:
@@ -93,6 +106,20 @@ For each new step that needs a DSL method:
 ## Output — State Contract
 Add to the orchestrator state:
 
+**Gherkin-Only mode** (from e2e-pipeline):
+```json
+{
+  "phase": "generated",
+  "generation": {
+    "featurePath": "tests/features/flights/flights_general/flights_general_non_booking/74500_price_mismatch.feature",
+    "scenarioCount": 2,
+    "stepsUsed": ["I am logged in as {string}", "I search for a one way flight from {string}"],
+    "todoSteps": ["I verify the flight price is consistent after {string}"]
+  }
+}
+```
+
+**Full mode** (standalone):
 ```json
 {
   "phase": "generated",
@@ -114,8 +141,18 @@ After generation, **PAUSE and present to the user**:
 - Any new DSL methods or page object changes proposed
 - Ask: "Review the generated test. Proceed with execution?"
 
+## Gherkin-Only Mode
+
+When invoked by the `@e2e-test-pipeline` (Phase 1), run in **Gherkin-Only mode**:
+- Execute Steps 1-4 only
+- For every unmatched step, add a `#TODO` comment above it in the feature file
+- Do NOT execute Steps 5-8 (no step definitions, DSL, or page objects)
+- The `@todo-pipeline` (Phase 2 of e2e-pipeline) will scan the `#TODO` comments and implement them if they don't already exist
+
+When invoked **standalone** (not from e2e-pipeline), execute all Steps 1-8 as normal.
+
 ## Rules
-- **Never invent steps** — if you can't map to existing or create a clean new step, add a TODO comment
+- **Never invent steps** — if you can't map to existing or create a clean new step, add a `#TODO`
 - **Never put Playwright code in steps** — steps call DSL only
 - **Never put business logic in page objects** — locators and atomic actions only
 - **Prefer extending existing files** over creating new ones
