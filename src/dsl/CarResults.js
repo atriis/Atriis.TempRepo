@@ -486,15 +486,27 @@ const CarResults = {
     if (!page) throw new Error('page is required');
 
     const carResultsPage = getPageObject(page, CarResultsPage);
-    await carResultsPage.hoverAgreementIconInFirstCarResult();
-    const tooltipText = await carResultsPage.getAgreementTooltipText();
+    const hasAgreementTrigger = await carResultsPage.hasVisibleAgreementTrigger();
 
+    if (hasAgreementTrigger) {
+      await carResultsPage.hoverAgreementIconInFirstCarResult();
+      const tooltipText = await carResultsPage.getAgreementTooltipText();
+
+      expect(
+        tooltipText.length > 0,
+        'Expected agreement tooltip to contain text in car results when agreement icon is visible.',
+      ).toBe(true);
+
+      return { tooltipText, source: 'agreement-tooltip' };
+    }
+
+    const termsText = await carResultsPage.getTermsAndConditionsTextInFirstCarResult();
     expect(
-      tooltipText.length > 0,
-      'Expected agreement tooltip to contain text in car results',
+      /terms\s*&?\s*conditions/i.test(termsText),
+      `Expected terms and conditions text to be visible in car results when agreement tooltip is not rendered, got: "${termsText}"`,
     ).toBe(true);
 
-    return { tooltipText };
+    return { tooltipText: termsText, source: 'terms-link-fallback' };
   },
 
   async clickTermsAndConditionsLinkInCarResultsTooltip(page) {

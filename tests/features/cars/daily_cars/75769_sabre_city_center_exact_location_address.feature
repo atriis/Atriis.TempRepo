@@ -12,7 +12,7 @@ Feature: 75769 Sabre city center exact location address display
     When I search for a car at "<pickupLocation>" with rental agency "<agency>"
     And the agency station label should contain "<expectedAgencyStationLabel>" and address should contain "<expectedAddressOnResults>" on the vendor list
     And I select the city center pickup location by agency station label "<expectedAgencyStationLabel>" and address "<expectedAddressOnResults>"
-    And the car location label at index 0 should contain "<expectedLabelOnResults>" on results
+    And the car location label at index 0 should contain "<expectedAgencyStationLabel>" on results
     And the car city center address at index 0 should contain "<expectedAddressOnResults>" on results
     When I add a car from city center results to cart
     Then the car location label at index 0 should contain "<expectedLabelOnCart>" on cart
@@ -26,6 +26,6 @@ Feature: 75769 Sabre city center exact location address display
     And I successfully cancel the trip
 
     Examples:
-      | pickupLocation | agency   | expectedAgencyStationLabel                   | expectedLabelOnResults                       | expectedAddressOnResults                                   | expectedLabelOnCart                          | expectedAddressOnCart                                      |
-      | MAD            | Europcar | Madrid Plaza Espana (City Center)            | Madrid Plaza Espana (City Center)            | San Leonardo 8, Madrid, 28015, ES                          | Madrid Plaza Espana (City Center)            | San Leonardo 8, Madrid, 28015, ES                          |
-      | MAD            | Hertz    | Estacion De Atocha (Railway Station)         | Estacion De Atocha (Railway Station)         | Glorieta Emperador Carlos V P3 Planta 0, Madrid, 28045, ES | Estacion De Atocha (Railway Station)         | Glorieta Emperador Carlos V P3 Planta 0, Madrid, 28045, ES |
+      | pickupLocation | agency   | expectedAgencyStationLabel             | expectedAddressOnResults                          | expectedLabelOnCart                   | expectedAddressOnCart                             |
+      | MAD            | Europcar | Madrid San Leonardo (City Center)      | San Leonardo 8, Madrid, 28015, ES                 | Madrid San Leonardo (City Center)     | San Leonardo 8, Madrid, 28015, ES                 |
+      | MAD            | Hertz    | Estacion Tren Madrid (Railway Station) | Glorieta Emperador Carol V S N, Madrid, 28045, ES | Estacion Tren Madrid (Railway Station)| Glorieta Emperador Carol V S N, Madrid, 28045, ES |

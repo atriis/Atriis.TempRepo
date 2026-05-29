@@ -7,6 +7,32 @@ const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { getPageObject } = require("@utils/pageObjectCache");
 const carLocations = require("@data/cars.json");
 
+async function selectDropoffDateWithFallback(page, carSearchPage, dropoffIndex) {
+  try {
+    await selectDatesByNthAvailable(page, {
+      startIndex: dropoffIndex,
+      endIndex: null,
+      pickerPosition: "last",
+    });
+  } catch (error) {
+    const shouldTryNextMonth =
+      typeof error?.message === "string"
+      && error.message.includes("Not enough available dates in the calendar");
+
+    if (!shouldTryNextMonth) {
+      throw error;
+    }
+
+    await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
+
+    await selectDatesByNthAvailable(page, {
+      startIndex: dropoffIndex,
+      endIndex: null,
+      pickerPosition: "last",
+    });
+  }
+}
+
 /**
  * CarSearch DSL
  *
@@ -301,31 +327,14 @@ const CarSearch = {
     // Drop-off date
     await carSearchPage.clickDropoffDateField();
 
-    try {
-      // Prefer selecting from the currently shown month.
-      await selectDatesByNthAvailable(page, {
-        startIndex: dropoffIndex,
-        endIndex: null,
-        pickerPosition: "last",
-      });
-    } catch (error) {
-      const shouldTryNextMonth =
-        typeof error?.message === "string" &&
-        error.message.includes("Not enough available dates in the calendar");
+    await selectDropoffDateWithFallback(page, carSearchPage, dropoffIndex);
 
-      if (!shouldTryNextMonth) {
-        throw error;
-      }
+    const pickupDateValue = await carSearchPage.getPickupDateFieldValue();
+    const dropoffDateValue = await carSearchPage.getDropoffDateFieldValue();
 
-      // Transition-month fallback: if there are not enough selectable days left
-      // in the current month, move to the next month and pick again.
-      await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
-
-      await selectDatesByNthAvailable(page, {
-        startIndex: dropoffIndex,
-        endIndex: null,
-        pickerPosition: "last",
-      });
+    if (pickupDateValue === dropoffDateValue) {
+      await carSearchPage.clickDropoffDateField();
+      await selectDropoffDateWithFallback(page, carSearchPage, dropoffIndex + 1);
     }
 
     await searchPage.waitAndClickSearchButton();

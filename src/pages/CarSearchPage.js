@@ -7,6 +7,7 @@ const logger = require("@utils/logger").child("CarSearchPage");
 
 const SELECTORS = {
   CAR_TAB: "#tab-car",
+  PICKUP_DATE_INPUT: "[placeholder='Pick-up Date']",
   DROPOFF_DATE_INPUT: "[placeholder='Drop-off Date']",
   DATE_PICKER_PANEL: ".el-picker-panel:visible",
   PICKUP_NEXT_ARROW: "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
@@ -114,6 +115,18 @@ class CarSearchPage {
    */
   async clickDropoffDateField() {
     await this.page.click(SELECTORS.DROPOFF_DATE_INPUT);
+  }
+
+  async getPickupDateFieldValue() {
+    const field = this.page.locator(SELECTORS.PICKUP_DATE_INPUT).first();
+    await field.waitFor({ state: "visible", timeout: 10000 });
+    return (await field.inputValue()).trim();
+  }
+
+  async getDropoffDateFieldValue() {
+    const field = this.page.locator(SELECTORS.DROPOFF_DATE_INPUT).first();
+    await field.waitFor({ state: "visible", timeout: 10000 });
+    return (await field.inputValue()).trim();
   }
 
   /**

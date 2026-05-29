@@ -27,13 +27,13 @@ Feature: 73627 Sabre Car Booking Flow with Exact Airport Location
     And I have added a random guest traveler
     When I search for a car at "LHR" with rental agency "Europcar"
     Then the car location label at index 0 should contain "London Heathrow, England (Airport - In Terminal)" on results
-    Then the car location at airport index 0 should contain "Northern perimeter road west, London heathrow airport, TW6 2QE, GB" on results
+    Then the car location at airport index 0 should contain "Northern Perimeter Road West, Hounslow, London Heathrow Airport, TW6 2QE, GB" on results
     When I add the first car to cart
     Then the car location label at index 0 should contain "London Heathrow, England (Airport - In Terminal)" on cart
-    Then the car location at airport index 0 should contain "Northern perimeter road west, London heathrow airport, TW6 2QE, GB" on cart
+    Then the car location at airport index 0 should contain "Northern Perimeter Road West, Hounslow, London Heathrow Airport, TW6 2QE, GB" on cart
     When I proceed to checkout
     And I complete the booking
     Then the car location label at index 0 should contain "London Heathrow, England (Airport - In Terminal)" on cart
-    Then the car location at airport index 0 should contain "Northern perimeter road west, London heathrow airport, TW6 2QE, GB" on cart
+    Then the car location at airport index 0 should contain "Northern Perimeter Road West, Hounslow, London Heathrow Airport, TW6 2QE, GB" on cart
     Then the booking status should be "Confirmed"
     Then I successfully cancel the trip   

@@ -11,8 +11,10 @@ const SELECTORS = {
   CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   FIRST_CAR_PREVIEW: '.car-preview',
   AGREEMENT_ICON_IN_CARD: '.agreements .agreement-img',
+  AGREEMENT_TOOLTIP_TRIGGER_IN_CARD: '.agreements .ticket-agreement > div',
   AGREEMENT_TOOLTIP_DESCRIPTION: '.agreement-tooltip-list .agreement-tooltip__description',
   TERMS_BUTTON_IN_CARD: '.more-details-btn',
+  TERMS_BUTTON_TEXT_IN_CARD: '.more-details-btn p',
   // Car model subtitle — visible only for SunnyCars supplier when makeModel is populated
   CAR_MODEL_SUBTITLE: '.car-model-subtitle',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
@@ -260,9 +262,70 @@ class CarResultsPage {
     const card = this.getFirstCarPreview();
     await card.waitFor({ state: 'visible', timeout });
 
-    const agreementIcon = card.locator(SELECTORS.AGREEMENT_ICON_IN_CARD).first();
-    await agreementIcon.waitFor({ state: 'visible', timeout });
-    await agreementIcon.hover();
+    const firstAgreementTrigger = this.page
+      .locator(`${SELECTORS.FIRST_CAR_PREVIEW} ${SELECTORS.AGREEMENT_TOOLTIP_TRIGGER_IN_CARD}`)
+      .first();
+
+    try {
+      await firstAgreementTrigger.waitFor({ state: 'visible', timeout });
+      await firstAgreementTrigger.hover();
+      return;
+    } catch {
+      // Fallback to direct icon hover for older markup variants.
+      const firstAgreementIcon = this.page
+        .locator(`${SELECTORS.FIRST_CAR_PREVIEW} ${SELECTORS.AGREEMENT_ICON_IN_CARD}`)
+        .first();
+
+      try {
+        await firstAgreementIcon.waitFor({ state: 'visible', timeout });
+        await firstAgreementIcon.hover();
+        return;
+      } catch (err) {
+        throw new Error(
+          `[CarResultsPage.hoverAgreementIconInFirstCarResult] Could not open the agreement tooltip in car results. ` +
+          `No visible agreement trigger/icon was found in the returned car cards within ${timeout}ms. ` +
+          `Original: ${err.message}`,
+        );
+      }
+    }
+  }
+
+  async hasVisibleAgreementTrigger({ timeout = 3000 } = {}) {
+    const trigger = this.page
+      .locator(`${SELECTORS.FIRST_CAR_PREVIEW} ${SELECTORS.AGREEMENT_TOOLTIP_TRIGGER_IN_CARD}`)
+      .first();
+
+    try {
+      await trigger.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      const icon = this.page
+        .locator(`${SELECTORS.FIRST_CAR_PREVIEW} ${SELECTORS.AGREEMENT_ICON_IN_CARD}`)
+        .first();
+      try {
+        await icon.waitFor({ state: 'visible', timeout });
+        return true;
+      } catch {
+        return false;
+      }
+    }
+  }
+
+  async getTermsAndConditionsTextInFirstCarResult({ timeout = 15000 } = {}) {
+    const card = this.getFirstCarPreview();
+    await card.waitFor({ state: 'visible', timeout });
+
+    const termsTextElement = card.locator(SELECTORS.TERMS_BUTTON_TEXT_IN_CARD).filter({ hasText: /terms/i }).first();
+
+    try {
+      await termsTextElement.waitFor({ state: 'visible', timeout });
+      return ((await termsTextElement.textContent()) || '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.getTermsAndConditionsTextInFirstCarResult] Could not find visible terms and conditions text in the first car result within ${timeout}ms. ` +
+        `Original: ${err.message}`,
+      );
+    }
   }
 
   async getAgreementTooltipText({ timeout = 10000 } = {}) {
