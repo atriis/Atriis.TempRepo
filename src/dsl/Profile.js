@@ -189,6 +189,111 @@ const Profile = {
       );
     }
   },
+
+  /**
+   * Opens the Contact Information tab in the user profile.
+   */
+  async openContactInformationTab(page) {
+    if (!page) {
+      throw new Error('[Profile.openContactInformationTab] "page" is required.');
+    }
+
+    logger.debug("[Profile.openContactInformationTab] Clicking Contact Information tab");
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickContactInformationTab();
+      await profilePage.waitForContactInfoForm();
+    } catch (err) {
+      throw new Error(
+        `[Profile.openContactInformationTab] Failed to open Contact Information tab: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the business phone number fields display the expected values.
+   */
+  async verifyBusinessPhoneNumber(page, { countryCode, areaCode, number }) {
+    if (!page) {
+      throw new Error('[Profile.verifyBusinessPhoneNumber] "page" is required.');
+    }
+    if (typeof countryCode !== 'string' || typeof areaCode !== 'string' || typeof number !== 'string') {
+      throw new Error(
+        `[Profile.verifyBusinessPhoneNumber] "countryCode", "areaCode", and "number" must all be strings, got: ` +
+        `countryCode=${typeof countryCode}, areaCode=${typeof areaCode}, number=${typeof number}`
+      );
+    }
+
+    logger.debug(`[Profile.verifyBusinessPhoneNumber] Expecting: +${countryCode} (${areaCode}) ${number}`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let actual;
+    try {
+      actual = await profilePage.getBusinessPhoneValues();
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyBusinessPhoneNumber] Failed to read business phone values: ${err.message}`
+      );
+    }
+
+    if (actual.countryCode !== countryCode) {
+      throw new Error(
+        `[Profile.verifyBusinessPhoneNumber] Country code mismatch — expected "${countryCode}", got "${actual.countryCode}". ` +
+        `The user's profile may have different phone data than expected.`
+      );
+    }
+    if (actual.areaCode !== areaCode) {
+      throw new Error(
+        `[Profile.verifyBusinessPhoneNumber] Area code mismatch — expected "${areaCode}", got "${actual.areaCode}".`
+      );
+    }
+    if (actual.number !== number) {
+      throw new Error(
+        `[Profile.verifyBusinessPhoneNumber] Phone number mismatch — expected "${number}", got "${actual.number}".`
+      );
+    }
+
+    return actual;
+  },
+
+  /**
+   * Verifies the State dropdown field displays the expected value.
+   */
+  async verifyStateField(page, expectedValue) {
+    if (!page) {
+      throw new Error('[Profile.verifyStateField] "page" is required.');
+    }
+    if (!expectedValue || typeof expectedValue !== 'string') {
+      throw new Error(
+        `[Profile.verifyStateField] "expectedValue" must be a non-empty string, got: ${typeof expectedValue} (${JSON.stringify(expectedValue)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyStateField] Expecting state field value: "${expectedValue}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let actual;
+    try {
+      actual = await profilePage.getStateFieldValue();
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyStateField] Failed to read state field value: ${err.message}`
+      );
+    }
+
+    if (actual !== expectedValue) {
+      throw new Error(
+        `[Profile.verifyStateField] State field value mismatch — expected "${expectedValue}", got "${actual}". ` +
+        `This field only appears for countries that have states (e.g., US, Canada). Check the user's business address country.`
+      );
+    }
+
+    return actual;
+  },
 };
 
 module.exports = Profile;

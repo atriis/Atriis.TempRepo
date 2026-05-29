@@ -5,6 +5,13 @@ const SELECTORS = {
 
   // Profile tabs
   FREQUENT_PROGRAMS_TAB: '#tab-frequentPrograms',
+  CONTACT_INFORMATION_TAB: "[id='tab-contactInformation'] p",
+
+  // Contact information form
+  CONTACT_INFO_FORM: '.contact-info-form-content',
+  BUSINESS_PHONE_INPUTS: '.contact-info-form-content .phone-inputs-container .field.app-column.is-3:nth-child(2) .phone-inputs input',
+  STATE_LABEL: '.contact-info-form-content > :nth-child(6) > :nth-child(5) .label',
+  STATE_VALUE: '.contact-info-form-content > :nth-child(6) > :nth-child(5) .el-select__placeholder span',
 
   // Frequent Programs form
   FREQUENT_PROGRAMS_FORM: '.frequent-programs-form',
@@ -192,6 +199,61 @@ class ProfilePage {
       throw new Error(
         `[ProfilePage.clickSaveFrequentPrograms] Could not click the Save button (selector: ${SELECTORS.SAVE_BUTTON}). ` +
         `The form may not be in a valid state or the button is disabled. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Contact Information Tab ---
+
+  async clickContactInformationTab() {
+    try {
+      const tab = this.page.locator(SELECTORS.CONTACT_INFORMATION_TAB);
+      await tab.waitFor({ state: 'attached', timeout: 10000 });
+      await tab.dispatchEvent('click');
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickContactInformationTab] Could not click Contact Information tab (selector: ${SELECTORS.CONTACT_INFORMATION_TAB}). ` +
+        `The profile page may not have loaded or the tab is hidden behind overflow. Original: ${err.message}`
+      );
+    }
+  }
+
+  async waitForContactInfoForm() {
+    try {
+      await this.page.locator(SELECTORS.CONTACT_INFO_FORM).waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.waitForContactInfoForm] Contact Information form did not appear (selector: ${SELECTORS.CONTACT_INFO_FORM}). ` +
+        `The tab may not have switched or the form failed to load. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getBusinessPhoneValues() {
+    try {
+      const inputs = this.page.locator(SELECTORS.BUSINESS_PHONE_INPUTS);
+      await inputs.first().waitFor({ state: 'visible', timeout: 10000 });
+      const countryCode = await inputs.nth(0).inputValue();
+      const areaCode = await inputs.nth(1).inputValue();
+      const number = await inputs.nth(2).inputValue();
+      return { countryCode, areaCode, number };
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getBusinessPhoneValues] Could not read business phone input values (selector: ${SELECTORS.BUSINESS_PHONE_INPUTS}). ` +
+        `The Contact Information form may not be loaded or phone fields are not rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getStateFieldValue() {
+    try {
+      await this.page.locator(SELECTORS.STATE_LABEL).waitFor({ state: 'visible', timeout: 10000 });
+      const value = await this.page.locator(SELECTORS.STATE_VALUE).textContent();
+      return value ? value.trim() : '';
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getStateFieldValue] Could not read state field value (label: ${SELECTORS.STATE_LABEL}, value: ${SELECTORS.STATE_VALUE}). ` +
+        `The "State" dropdown may not be visible — this field only appears for countries that have states. Original: ${err.message}`
       );
     }
   }

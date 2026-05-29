@@ -63,4 +63,21 @@ When("I select the second rail loyalty vendor and proceed to checkout", async fu
   );
 });
 
+// --- Contact Information steps ---
+
+When("I open the contact information tab in my profile", async function () {
+  logger.info("Opening Contact Information tab in user profile");
+  await Profile.openContactInformationTab(this.page);
+});
+
+Then("the business phone number should display country code {string} and area code {string} and number {string}", async function (countryCode, areaCode, number) {
+  logger.info("Verifying business phone number", { countryCode, areaCode, number });
+  await Profile.verifyBusinessPhoneNumber(this.page, { countryCode, areaCode, number });
+});
+
+Then("the state field should be visible with value {string}", async function (expectedValue) {
+  logger.info("Verifying state field value", { expectedValue });
+  await Profile.verifyStateField(this.page, expectedValue);
+});
+
 

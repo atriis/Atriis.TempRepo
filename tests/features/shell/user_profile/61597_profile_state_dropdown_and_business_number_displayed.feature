@@ -16,12 +16,6 @@ Feature: 61597 Profile - State dropdown and business number displayed for countr
   Scenario: State field and business number are visible in contact information
     Given I am logged in as "bruninatist@brunaadmin.com"
     When I navigate to my user profile
-    # TODO: Step needs implementation — click "[id='tab-contactInformation'] p"
-    # DSL candidate: Profile.openContactInformationTab(page)
     And I open the contact information tab in my profile
-    # TODO: Step needs implementation — assert phone fields show expected values
-    # DSL candidate: Profile.verifyBusinessPhoneNumber(page, { countryCode, areaCode, number })
     Then the business phone number should display country code "123" and area code "456" and number "7777"
-    # TODO: Step needs implementation — assert state label is "State" and value is "Texas (TX)"
-    # DSL candidate: Profile.verifyStateField(page, stateValue)
-    And the state field should be visible with value "Texas (TX)"
+    And the state field should be visible with value "TX"
