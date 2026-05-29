@@ -22,7 +22,7 @@ class BookingErrorHandler {
     const candidate = this.normalizeErrorValue(errorValue);
 
     if (!known || !candidate) return false;
-    return candidate === known;
+    return candidate.includes(known);
   }
 
   /**

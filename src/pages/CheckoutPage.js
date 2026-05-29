@@ -29,8 +29,8 @@ const SELECTORS = {
   SEND_FOR_APPROVAL_BUTTON: "button:has-text('Send for approval')",
   APPROVAL_SUCCESS_TITLE: "text=Trip Submitted for Approval",
   APPROVAL_SUCCESS_MESSAGE: "text=/Your order has been booked and sent to your approver for approval/i",
-  BOOKING_ERROR_DIALOG: ".booking-error-dialog",
-  BACK_TO_TRIP_BUTTON: ".back-to-trip-btn",
+  BOOKING_ERROR_DIALOG: ".booking-error-dialog, .el-dialog.app-dialog.app-confirm:has(.booking-response-errors), .el-dialog:has-text('Checkout notification'):has-text('Booking error')",
+  BACK_TO_TRIP_BUTTON: ".back-to-trip-btn, .app-footer .btn--primary:has-text('Back to trip'), button:has-text('Back to trip')",
   EMAIL_INPUT: ".email-input .el-input__inner",
 
   // Contact details (reference-form-contact-details.vue)
@@ -78,6 +78,14 @@ class CheckoutPage {
    */
   getGoToTripButton() {
     return this.page.getByRole('button', { name: SELECTORS.GO_TO_TRIP_BUTTON_NAME }).first();
+  }
+
+  /**
+   * Gets the booking error dialog locator.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getBookingErrorDialog() {
+    return this.page.locator(SELECTORS.BOOKING_ERROR_DIALOG).first();
   }
 
   /**
@@ -189,14 +197,18 @@ class CheckoutPage {
    * Waits until the booking error dialog is visible.
    */
   async waitForBookingErrorDialog() {
-    await this.page.locator(SELECTORS.BOOKING_ERROR_DIALOG).waitFor({ state: "visible", timeout: 60000 });
+    await this.getBookingErrorDialog().waitFor({ state: "visible", timeout: 60000 });
   }
 
   /**
    * Clicks the "Back to trip" button inside the booking error dialog.
    */
   async clickBackToTripButton() {
-    await this.page.locator(SELECTORS.BACK_TO_TRIP_BUTTON).click();
+    const dialog = this.getBookingErrorDialog();
+    await dialog.waitFor({ state: 'visible', timeout: 60000 });
+    const backToTripButton = dialog.locator(SELECTORS.BACK_TO_TRIP_BUTTON).first();
+    await backToTripButton.waitFor({ state: 'visible', timeout: 10000 });
+    await backToTripButton.click();
   }
 
   /**
@@ -206,7 +218,7 @@ class CheckoutPage {
    * @returns {Promise<string|null>}
    */
   async getBookingErrorSupplierName() {
-    const errorDialog = this.page.locator(SELECTORS.BOOKING_ERROR_DIALOG).first();
+    const errorDialog = this.getBookingErrorDialog();
     const errorText = await errorDialog.innerText();
 
     let match = errorText.match(/supplier:\s*\*{1,2}([^*\n]+?)\*{1,2}/i);
@@ -224,7 +236,7 @@ class CheckoutPage {
    * @returns {Promise<string>}
    */
   async getBookingErrorDialogText() {
-    const errorDialog = this.page.locator(SELECTORS.BOOKING_ERROR_DIALOG).first();
+    const errorDialog = this.getBookingErrorDialog();
     const errorText = await errorDialog.innerText();
     return typeof errorText === 'string' ? errorText.trim() : '';
   }

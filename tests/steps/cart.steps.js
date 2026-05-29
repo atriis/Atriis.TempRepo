@@ -63,7 +63,40 @@ When("I click the proceed to checkout button", async function () {
 
 When("I hold the trip", async function () {
   logger.info("Holding the trip");
-  const result = await Cart.holdTrip(this.page);
+  const scenarioTags = Array.isArray(this.scenarioTags) ? this.scenarioTags : [];
+  const bookingContext = {
+    product: scenarioTags.includes('@transportation') ? 'transportation' : scenarioTags.includes('@hotels') ? 'hotels' : scenarioTags.includes('@flights') ? 'flights' : null,
+    subProduct: scenarioTags.includes('@cars')
+      ? 'cars'
+      : scenarioTags.includes('@rails')
+        ? 'rails'
+        : scenarioTags.includes('@parking')
+          ? 'parking'
+          : scenarioTags.includes('@groundtransport')
+            ? 'groundTransport'
+            : null,
+  };
+
+  const result = await Cart.holdTrip(this.page, bookingContext);
+  this.bookingOutcome = result;
+
+  if (result?.knownBookingError) {
+    await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
+    await Checkout.clickBackToTripButton(this.page);
+    return 'pending';
+  }
+
+  if (result?.bookingError && !result.knownBookingError) {
+    const errorSummary = result.supplier
+      ? `supplier: ${result.supplier}`
+      : `message: ${result.bookingErrorText || 'unknown booking error'}`;
+    throw new Error(`Unexpected booking error detected during booking finalization (${errorSummary})`);
+  }
+
+  if (!result?.status) {
+    throw new Error('Hold trip did not return a booking status after hold action.');
+  }
+
   expect(result.status.toLowerCase()).toContain(tripStatus.label.onHold.status.toLowerCase());
 });
 
@@ -512,13 +545,6 @@ Then("the booking status should be {string}", async function (status) {
   });
 
   if (result?.knownBookingError && result.shouldSkip) {
-    logger.warn('Known booking error matched configured supplier issue', {
-      supplier: result.supplier,
-      bookingErrorText: result.bookingErrorText,
-      status,
-      bookingContext,
-    });
-
     await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
 
     const checkoutPage = getPageObject(this.page, CheckoutPage);

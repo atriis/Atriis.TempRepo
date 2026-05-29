@@ -8,7 +8,7 @@ const FlightResultsPage = require("@pages/FlightResultsPage");
 const FlightResults = require("./FlightResults");
 const tripStatus = require("@data/tripStatus.json");
 const config = require("@config/config");
-const BookingErrorHandler = require("@utils/BookingErrorHandler");
+const BookingErrorHandler = require("@utils/bookingErrorHandler");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const { parseAmountText } = require("@utils/dom");
 const logger = require("@utils/logger").child("Cart-DSL");
@@ -48,30 +48,44 @@ const Cart = {
 
     const cartPage = getPageObject(page, CartPage);
     const proceedWithChangeButton = cartPage.getProceedWithChangeButton();
+    const bookingErrorDialog = page.locator(CheckoutSelectors.BOOKING_ERROR_DIALOG).first();
 
     try {
       await Promise.race([
         targetLocator.waitFor({ state: 'visible', timeout }),
         proceedWithChangeButton.waitFor({ state: 'visible', timeout }),
+        bookingErrorDialog.waitFor({ state: 'visible', timeout }),
       ]);
     } catch (error) {
       throw new Error(
-        `Neither ${targetDescription} nor the price change modal appeared within ${timeout}ms. Original error: ${error.message}`,
+        `Neither ${targetDescription}, booking error modal, nor the price change modal appeared within ${timeout}ms. Original error: ${error.message}`,
       );
     }
 
     if (await targetLocator.isVisible().catch(() => false)) {
-      return { clickedModal: false };
+      return { clickedModal: false, bookingErrorDetected: false };
+    }
+
+    if (await bookingErrorDialog.isVisible().catch(() => false)) {
+      return { clickedModal: false, bookingErrorDetected: true };
     }
 
     const clickedModal = await cartPage.clickProceedWithChangeIfVisible(1000);
 
     if (!clickedModal) {
-      throw new Error(`Expected ${targetDescription} or a visible price change modal, but neither became actionable.`);
+      throw new Error(`Expected ${targetDescription}, a visible booking error modal, or a visible price change modal, but neither became actionable.`);
     }
 
-    await targetLocator.waitFor({ state: 'visible', timeout: 60000 });
-    return { clickedModal: true };
+    await Promise.race([
+      targetLocator.waitFor({ state: 'visible', timeout: 60000 }),
+      bookingErrorDialog.waitFor({ state: 'visible', timeout: 60000 }),
+    ]);
+
+    if (await bookingErrorDialog.isVisible().catch(() => false)) {
+      return { clickedModal: true, bookingErrorDetected: true };
+    }
+
+    return { clickedModal: true, bookingErrorDetected: false };
   },
 
   /**
@@ -1098,23 +1112,84 @@ const Cart = {
    * @param {import('playwright').Page} page - Playwright page instance
    * @returns {Promise<{held: boolean, status: string}>} Hold status and booking status
    */
-  async holdTrip(page) {
+  async holdTrip(page, bookingContext = {}) {
     if (!page) {
       throw new Error('page is required');
     }
     
     const cartPage = getPageObject(page, CartPage);
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const onHoldStatusLabel = cartPage.getOnHoldStatusLabel();
+    const bookingErrorDialog = page.locator(CheckoutSelectors.BOOKING_ERROR_DIALOG).first();
+    const timeout = process.env.CI ? 120000 : 90000;
+    const deadline = Date.now() + timeout;
+
+    let clickedModal = false;
+
+    const resolveBookingErrorResult = async () => {
+      const supplier = await checkoutPage.getBookingErrorSupplierName();
+      const bookingErrorText = await checkoutPage.getBookingErrorDialogText();
+      const knownBySupplier = supplier
+        ? BookingErrorHandler.isKnownBookingError(bookingContext.product, bookingContext.subProduct, supplier)
+        : false;
+      const knownByMessage = bookingErrorText
+        ? BookingErrorHandler.isKnownBookingError(bookingContext.product, bookingContext.subProduct, bookingErrorText)
+        : false;
+      const knownBookingError = knownBySupplier || knownByMessage;
+      const shouldSkip = knownBookingError
+        ? BookingErrorHandler.getSkipOnErrorConfig(bookingContext.product, bookingContext.subProduct)
+        : false;
+
+      BookingErrorHandler.handleBookingError(
+        bookingContext.product,
+        supplier || bookingErrorText || 'UNKNOWN',
+        bookingContext.subProduct,
+      );
+
+      return {
+        held: false,
+        status: null,
+        clickedModal,
+        bookingError: true,
+        knownBookingError,
+        shouldSkip,
+        supplier: supplier || null,
+        bookingErrorText: bookingErrorText || null,
+      };
+    };
+
+    // Initial hold action.
     await cartPage.waitForHoldButton();
-    await cartPage.clickHoldButton();
+    await cartPage.clickHoldButton().catch(() => {});
 
-    const { clickedModal } = await this.waitForTargetOrHandlePriceChange(
-      page,
-      cartPage.getOnHoldStatusLabel(),
-      'on hold status',
-    );
+    while (Date.now() < deadline) {
+      if (await onHoldStatusLabel.isVisible().catch(() => false)) {
+        const status = await cartPage.getBookingStatus({ page });
+        return {
+          held: true,
+          status,
+          clickedModal,
+          bookingError: false,
+          knownBookingError: false,
+          shouldSkip: false,
+          supplier: null,
+          bookingErrorText: null,
+        };
+      }
 
-    const status = await cartPage.getBookingStatus({ page });
-    return { held: true, status, clickedModal };
+      if (await bookingErrorDialog.isVisible().catch(() => false)) {
+        return resolveBookingErrorResult();
+      }
+
+      const clickedPriceChange = await cartPage.clickProceedWithChangeIfVisible(500).catch(() => false);
+      if (clickedPriceChange) {
+        clickedModal = true;
+      }
+
+      await page.waitForTimeout(1000);
+    }
+
+    throw new Error(`Neither on hold status, booking error modal, nor price-change recovery completed within ${timeout}ms.`);
   },
 
   /**

@@ -3,7 +3,7 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const { CheckoutPage } = require("@pages/CheckoutPage");
 const { CartPage } = require("@pages/CartPage");
 const { CommonPage } = require("@pages/CommonPage");
-const BookingErrorHandler = require("@utils/BookingErrorHandler");
+const BookingErrorHandler = require("@utils/bookingErrorHandler");
 const logger = require("@utils/logger").child("Checkout-DSL");
 
 

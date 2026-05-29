@@ -1321,7 +1321,21 @@ class CartPage {
    * Clicks the Hold button.
    */
   async clickHoldButton() {
-    await this.page.locator(SELECTORS.HOLD_BUTTON).click();
+    const button = this.page.locator(SELECTORS.HOLD_BUTTON).first();
+    await button.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Wait until the button finishes its own loading state before clicking.
+    await this.page.waitForFunction(
+      (selector) => {
+        const element = document.querySelector(selector);
+        if (!element) return false;
+        return !element.classList.contains('is-loading') && !element.hasAttribute('disabled');
+      },
+      SELECTORS.HOLD_BUTTON,
+      { timeout: 10000 },
+    ).catch(() => {});
+
+    await button.click({ timeout: 10000 });
   }
 
   /**

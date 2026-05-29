@@ -22,7 +22,8 @@
   },
   "flights": {
     "knownErrors": [
-      "Error details as received from the supplier:", "Error occurred on booking, please check for the PNR in the GDS."
+      "Error details as received from the supplier:", 
+      "Error occurred on booking, please check for the PNR in the GDS."
     ],
     "skipOnError": true,
     "description": "Known supplier booking issues that should not cause test failure"

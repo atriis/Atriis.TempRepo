@@ -30,12 +30,6 @@ When("I complete the booking", async function () {
   this.bookingOutcome = result;
 
   if (result?.knownBookingError && result.shouldSkip) {
-    logger.warn('Known booking error detected during booking finalization', {
-      supplier: result.supplier,
-      bookingErrorText: result.bookingErrorText,
-      bookingContext,
-    });
-
     await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
     await Checkout.clickBackToTripButton(this.page);
     return 'pending';

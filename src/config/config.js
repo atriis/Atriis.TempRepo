@@ -95,6 +95,9 @@ const config = {
     get maxRequestsMatches() {
       return Number(getOptionalEnv("PAYLOAD_VALIDATION_MAX_REQUESTS_MATCHES", "10"));
     },
+    get maxRequestsMatches() {
+      return Number(getOptionalEnv("PAYLOAD_VALIDATION_MAX_REQUESTS_MATCHES", "10"));
+    },
   },
 };
 
