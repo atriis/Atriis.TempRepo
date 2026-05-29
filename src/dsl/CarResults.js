@@ -4,7 +4,13 @@ const CarResultsPage = require("@pages/CarResultsPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { normalizeTextStrict, tokenizeAddress } = require("@utils/text");
+const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const { SEARCH_DEFAULTS } = require("@utils/search.constants");
+const CarSearchPage = require("@pages/CarSearchPage");
+const { SearchPage } = require("@pages/SearchPage");
 const logger = require("@utils/logger").child("CarResults-DSL");
+
+const MAX_LOCATION_SELECTION_RETRIES = 2;
 
 
 /**
@@ -240,10 +246,26 @@ const CarResults = {
   /**
    * Selects the first city center pickup location from the pick-up location selection page.
    * Navigates from the vendor list to the actual car results with individual car cards.
+   * If after selection no results appear, retries by editing search dates only (max 2 retries).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is invalid
+   * @returns {Promise<Object>} { selected: true, noResultsRetry: { retriesUsed, resolved } }
    */
   async selectFirstCityCenterPickupLocation(page) {
     if (!page) throw new Error('page is required');
-    await Results.waitAndClickSelectButton(page);
+
+    const selectionCallback = async () => {
+      await Results.waitAndClickSelectButton(page);
+    };
+
+    const retryResult = await this._retryLocationSelectionOnNoResults(page, selectionCallback, {
+      maxRetries: MAX_LOCATION_SELECTION_RETRIES,
+      pickupIndex: SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
+      dropoffIndex: SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
+    });
+
+    return { selected: true, noResultsRetry: retryResult };
   },
 
   /**
@@ -379,24 +401,9 @@ const CarResults = {
   },
 
   /**
-   * Selects a city center pickup location by station label.
-   * When stationAddress is provided, selection is constrained to the card containing both fields.
-   *
-   * @param {import('playwright').Page} page - Playwright page instance
-   * @param {string} stationLabel - The station label to search for
-   * @param {string} [stationAddress] - Optional station address to disambiguate duplicate labels
-   * @throws {Error} If inputs are invalid, or if the station is not found
-   * @returns {Promise<void>}
+   * Internal helper: clicks Select on the matched agency station card.
    */
-  async selectCityCenterPickupLocationByLabel(page, stationLabel, stationAddress) {
-    if (!page) throw new Error('page is required');
-    if (!stationLabel || typeof stationLabel !== 'string') {
-      throw new Error(`stationLabel must be a non-empty string, got: ${stationLabel}`);
-    }
-    if (stationAddress != null && (typeof stationAddress !== 'string' || !stationAddress.trim())) {
-      throw new Error(`stationAddress must be a non-empty string when provided, got: ${stationAddress}`);
-    }
-
+  async _clickSelectOnStationCard(page, stationLabel, stationAddress) {
     const normalizedLabel = stationLabel.trim();
     const normalizedAddress = typeof stationAddress === 'string' ? stationAddress.trim() : stationAddress;
 
@@ -426,6 +433,140 @@ const CarResults = {
     await selectButton.waitFor({ state: 'visible', timeout: 15000 });
     await selectButton.scrollIntoViewIfNeeded();
     await selectButton.click({ timeout: 15000 });
+  },
+
+  /**
+   * Selects a city center pickup location by station label with automatic no-results retry.
+   * When stationAddress is provided, selection is constrained to the card containing both fields.
+   * If after selection no results appear, retries by editing search dates only (max 2 retries).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} stationLabel - The station label to search for
+   * @param {string} [stationAddress] - Optional station address to disambiguate duplicate labels
+   * @throws {Error} If inputs are invalid, or if the station is not found
+   * @returns {Promise<Object>} { selected: true, noResultsRetry: { retriesUsed, resolved } }
+   */
+  async selectCityCenterPickupLocationByLabel(page, stationLabel, stationAddress) {
+    if (!page) throw new Error('page is required');
+    if (!stationLabel || typeof stationLabel !== 'string') {
+      throw new Error(`stationLabel must be a non-empty string, got: ${stationLabel}`);
+    }
+    if (stationAddress != null && (typeof stationAddress !== 'string' || !stationAddress.trim())) {
+      throw new Error(`stationAddress must be a non-empty string when provided, got: ${stationAddress}`);
+    }
+
+    await this._clickSelectOnStationCard(page, stationLabel, stationAddress);
+
+    const retryResult = await this._retryLocationSelectionOnNoResults(page, () =>
+      this._clickSelectOnStationCard(page, stationLabel, stationAddress),
+      {
+        maxRetries: MAX_LOCATION_SELECTION_RETRIES,
+        pickupIndex: SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
+        dropoffIndex: SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
+      },
+    );
+
+    return { selected: true, noResultsRetry: retryResult };
+  },
+
+  /**
+   * Internal helper: retries location selection by editing search dates when no-results appears.
+   */
+  async _retryLocationSelectionOnNoResults(
+    page,
+    selectionCallback,
+    { maxRetries = 2, pickupIndex = 0, dropoffIndex = 5 } = {},
+  ) {
+    const resultsPage = getPageObject(page, ResultsPage);
+    const searchPage = getPageObject(page, SearchPage);
+    const carSearchPage = getPageObject(page, CarSearchPage);
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const status = await resultsPage.waitForCarCardsOrNoResultsAfterStationSelection(60000);
+      if (status === 'results') {
+        return { retriesUsed: attempt - 1, resolved: true };
+      }
+
+      logger.info('No car results after location selection. Retrying by changing dates only in edit search', {
+        attempt,
+        maxRetries,
+        pickupIndex,
+        dropoffIndex,
+      });
+
+      const noResultsEditButton = resultsPage.getNoResultsEditSearchButton();
+      if (await noResultsEditButton.isVisible().catch(() => false)) {
+        await noResultsEditButton.click();
+      } else {
+        await resultsPage.clickEditButton();
+      }
+
+      await searchPage.clickPickupDateField();
+      await searchPage.clickCalendarNextArrow(1);
+      await selectDatesByNthAvailable(page, {
+        startIndex: pickupIndex,
+        endIndex: null,
+      });
+
+      await carSearchPage.clickDropoffDateField();
+      try {
+        await selectDatesByNthAvailable(page, {
+          startIndex: dropoffIndex,
+          endIndex: null,
+          pickerPosition: 'last',
+        });
+      } catch (error) {
+        const shouldTryNextMonth =
+          typeof error?.message === 'string' &&
+          error.message.includes('Not enough available dates in the calendar');
+
+        if (!shouldTryNextMonth) {
+          throw error;
+        }
+
+        await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
+        await selectDatesByNthAvailable(page, {
+          startIndex: dropoffIndex,
+          endIndex: null,
+          pickerPosition: 'last',
+        });
+      }
+
+      const pickupDateValue = await carSearchPage.getPickupDateFieldValue();
+      const dropoffDateValue = await carSearchPage.getDropoffDateFieldValue();
+
+      if (pickupDateValue === dropoffDateValue) {
+        await carSearchPage.clickDropoffDateField();
+        try {
+          await selectDatesByNthAvailable(page, {
+            startIndex: dropoffIndex + 1,
+            endIndex: null,
+            pickerPosition: 'last',
+          });
+        } catch (error) {
+          const shouldTryNextMonth =
+            typeof error?.message === 'string' &&
+            error.message.includes('Not enough available dates in the calendar');
+
+          if (shouldTryNextMonth) {
+            await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
+            await selectDatesByNthAvailable(page, {
+              startIndex: dropoffIndex + 1,
+              endIndex: null,
+              pickerPosition: 'last',
+            });
+          } else {
+            throw error;
+          }
+        }
+      }
+
+      await searchPage.waitAndClickSearchButton();
+      await selectionCallback();
+    }
+
+    const finalStatus = await resultsPage.waitForCarCardsOrNoResultsAfterStationSelection(60000);
+    return { retriesUsed: maxRetries, resolved: finalStatus === 'results' };
   },
 
   /**

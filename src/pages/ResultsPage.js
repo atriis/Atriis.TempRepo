@@ -309,6 +309,65 @@ class ResultsPage {
     await this.getNoResultsContainer().waitFor({ state: 'visible', timeout });
   }
 
+  async waitForCarResultsOrNoResults(timeout = 60000) {
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be a non-negative number, got ${timeout}`);
+    }
+
+    const selectPromise = this.getSelectButton()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => 'results');
+
+    const addToTripPromise = this.getAddToTripButton()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => 'results');
+
+    const noResultsPromise = this.getNoResultsContainer()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => 'no-results');
+
+    const winner = await Promise.race([selectPromise, addToTripPromise, noResultsPromise]).catch(() => null);
+
+    if (winner === 'results' || winner === 'no-results') {
+      return winner;
+    }
+
+    throw new Error(
+      `[ResultsPage.waitForCarResultsOrNoResults] Could not determine search outcome within ${timeout}ms. ` +
+      `Expected either car results (Select/Add to trip) or the no-results state.`
+    );
+  }
+
+  /**
+   * City-centre only: waits for post-station-selection outcome.
+   * At this stage, "Select" can still be visible from the agency list, so we must
+   * only treat "Add to trip" as a successful car-results state.
+   */
+  async waitForCarCardsOrNoResultsAfterStationSelection(timeout = 60000) {
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be a non-negative number, got ${timeout}`);
+    }
+
+    const addToTripPromise = this.getAddToTripButton()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => 'results');
+
+    const noResultsPromise = this.getNoResultsContainer()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => 'no-results');
+
+    const winner = await Promise.race([addToTripPromise, noResultsPromise]).catch(() => null);
+
+    if (winner === 'results' || winner === 'no-results') {
+      return winner;
+    }
+
+    throw new Error(
+      `[ResultsPage.waitForCarCardsOrNoResultsAfterStationSelection] Could not determine city-centre post-selection outcome within ${timeout}ms. ` +
+      `Expected either car cards (Add to trip) or the no-results state.`
+    );
+  }
+
   async waitForNoResultsActionButtons(timeout = 60000) {
     if (typeof timeout !== 'number' || timeout < 0) {
       throw new Error(`timeout must be a non-negative number, got ${timeout}`);
