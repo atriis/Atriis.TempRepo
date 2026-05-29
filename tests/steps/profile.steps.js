@@ -80,4 +80,32 @@ Then("the state field should be visible with value {string}", async function (ex
   await Profile.verifyStateField(this.page, expectedValue);
 });
 
+When("I open the permissions tab in my profile", async function () {
+  logger.info("Opening permissions tab");
+  await Profile.openPermissionsTab(this.page);
+});
 
+When("I open the {string} section", async function (sectionName) {
+  logger.info("Opening permissions section", { sectionName });
+  await Profile.openPermissionsSection(this.page, sectionName);
+});
+
+When("I remove a user from the booking permissions list", async function () {
+  logger.info("Removing user from booking permissions list");
+  await Profile.removeUserFromBookingPermissions(this.page);
+});
+
+Then("the user should be removed from the list", async function () {
+  logger.info("Verifying user was removed from permissions list");
+  await Profile.verifyUserRemovedFromPermissions(this.page);
+});
+
+When("I add {string} as a travel arranger", async function (arrangerName) {
+  logger.info("Adding travel arranger", { arrangerName });
+  await Profile.addTravelArranger(this.page, arrangerName);
+});
+
+Then("{string} should be displayed as the selected travel arranger", async function (expectedName) {
+  logger.info("Verifying selected travel arranger", { expectedName });
+  await Profile.verifyTravelArranger(this.page, expectedName);
+});

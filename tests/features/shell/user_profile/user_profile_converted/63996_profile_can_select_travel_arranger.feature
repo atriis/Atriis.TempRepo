@@ -16,21 +16,9 @@ Feature: 63996 Profile - Can select travel arranger
   Scenario: Select and configure travel arranger in permissions tab
     Given I am logged in as "Stuart@Stuart.com"
     When I navigate to my user profile
-    # TODO: Step needs implementation — click "[id='tab-permissions'] p"
-    # DSL candidate: Profile.openPermissionsTab(page)
     And I open the permissions tab in my profile
-    # TODO: Step needs implementation — click section tab by text (e.g., "#tab-travellers > div > p")
-    # DSL candidate: Profile.openPermissionsSection(page, sectionName)
     And I open the "Who can I book for" section
-    # TODO: Step needs implementation — click SVG icon, select a user, click to remove
-    # DSL candidate: Profile.removeUserFromBookingPermissions(page)
     And I remove a user from the booking permissions list
-    # TODO: Step needs implementation — assert placeholder shows "Select user to add"
-    # DSL candidate: Profile.verifyUserRemovedFromPermissions(page)
     Then the user should be removed from the list
-    # TODO: Step needs implementation — click add button, type name, select from dropdown
-    # DSL candidate: Profile.addTravelArranger(page, name)
     When I add "rita franklin" as a travel arranger
-    # TODO: Step needs implementation — assert ".el-select__placeholder span" matches expected name
-    # DSL candidate: Profile.verifyTravelArranger(page, expectedName)
     Then "Rita Franklin" should be displayed as the selected travel arranger

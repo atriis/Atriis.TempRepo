@@ -13,6 +13,17 @@ const SELECTORS = {
   STATE_LABEL: '.contact-info-form-content > :nth-child(6) > :nth-child(5) .label',
   STATE_VALUE: '.contact-info-form-content > :nth-child(6) > :nth-child(5) .el-select__placeholder span',
 
+  // Permissions tab
+  PERMISSIONS_TAB: "[id='tab-permissions'] p",
+  PERMISSIONS_SECTION_TAB: '.permissions-form .tabs-container [id*="tab-travellers"] p',
+  PERMISSIONS_USER_SELECT: '.travel-arranger-table .user-select',
+  PERMISSIONS_ARRANGER_ROW: '.travel-arranger-table .arranger-row',
+  PERMISSIONS_TRASH_ICON: '.travel-arranger-table .trash-icon',
+  PERMISSIONS_NO_ARRANGERS: '.travel-arranger-table .no-arrangers',
+  TRAVEL_ARRANGER_INPUT: '.travel-arranger-table .user-select input',
+  TRAVEL_ARRANGER_DROPDOWN_OPTION: '.el-vl__window span',
+  TRAVEL_ARRANGER_SELECTED: '.travel-arranger-table .user-select .el-select__placeholder',
+
   // Frequent Programs form
   FREQUENT_PROGRAMS_FORM: '.frequent-programs-form',
   FREQUENT_PROGRAMS_INPUTS: '.frequent-programs-inputs',
@@ -254,6 +265,113 @@ class ProfilePage {
       throw new Error(
         `[ProfilePage.getStateFieldValue] Could not read state field value (label: ${SELECTORS.STATE_LABEL}, value: ${SELECTORS.STATE_VALUE}). ` +
         `The "State" dropdown may not be visible — this field only appears for countries that have states. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Permissions Tab ---
+
+  async clickPermissionsTab() {
+    try {
+      const tab = this.page.locator(SELECTORS.PERMISSIONS_TAB);
+      await tab.waitFor({ state: 'attached', timeout: 10000 });
+      await tab.dispatchEvent('click');
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickPermissionsTab] Could not click Permissions tab (selector: ${SELECTORS.PERMISSIONS_TAB}). ` +
+        `The tab may not be visible — it only appears for users with the CanUseTravelArrangerAssignment permission. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickPermissionsSection(sectionName) {
+    try {
+      const section = this.page.locator(SELECTORS.PERMISSIONS_SECTION_TAB);
+      await section.waitFor({ state: 'attached', timeout: 15000 });
+      await section.dispatchEvent('click');
+      // Wait for the section content to render after tab switch
+      await this.page.locator(SELECTORS.PERMISSIONS_USER_SELECT).waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickPermissionsSection] Could not click section "${sectionName}" (selector: ${SELECTORS.PERMISSIONS_SECTION_TAB}). ` +
+        `The inner tab may be hidden behind CSS overflow or the content failed to load. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickTrashIconOnFirstArranger() {
+    try {
+      const trashIcon = this.page.locator(SELECTORS.PERMISSIONS_TRASH_ICON).first();
+      await trashIcon.waitFor({ state: 'visible', timeout: 10000 });
+      await trashIcon.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickTrashIconOnFirstArranger] Could not click trash icon on first arranger row (selector: ${SELECTORS.PERMISSIONS_TRASH_ICON}). ` +
+        `There may be no users in the table or the trash icon is not rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  async confirmRemoveUser() {
+    try {
+      const confirmBtn = this.page.locator(SELECTORS.CONFIRM_DELETE_BUTTON);
+      await confirmBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await confirmBtn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.confirmRemoveUser] Could not click confirm button in remove dialog (selector: ${SELECTORS.CONFIRM_DELETE_BUTTON}). ` +
+        `The confirm dialog may not have appeared. Original: ${err.message}`
+      );
+    }
+  }
+
+  async isArrangerTableEmpty() {
+    const noArrangers = this.page.locator(SELECTORS.PERMISSIONS_NO_ARRANGERS);
+    const rows = this.page.locator(SELECTORS.PERMISSIONS_ARRANGER_ROW);
+    const noArrangersVisible = await noArrangers.isVisible().catch(() => false);
+    if (noArrangersVisible) return true;
+    const rowCount = await rows.count();
+    return rowCount === 0;
+  }
+
+  async fillTravelArrangerSearch(name) {
+    try {
+      const select = this.page.locator(SELECTORS.PERMISSIONS_USER_SELECT);
+      await select.click({ timeout: 10000 });
+      const input = this.page.locator(SELECTORS.TRAVEL_ARRANGER_INPUT);
+      await input.waitFor({ state: 'visible', timeout: 10000 });
+      await input.fill(name, { timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.fillTravelArrangerSearch] Could not fill travel arranger search with "${name}" (selector: ${SELECTORS.TRAVEL_ARRANGER_INPUT}). ` +
+        `The select may not have opened or input is not visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async selectTravelArrangerFromDropdown() {
+    try {
+      const option = this.page.locator(SELECTORS.TRAVEL_ARRANGER_DROPDOWN_OPTION);
+      await option.first().waitFor({ state: 'visible', timeout: 10000 });
+      await option.first().click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.selectTravelArrangerFromDropdown] Could not select option from travel arranger dropdown (selector: ${SELECTORS.TRAVEL_ARRANGER_DROPDOWN_OPTION}). ` +
+        `No results may have appeared for the search query. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getTravelArrangerSelectedText() {
+    try {
+      const selected = this.page.locator(SELECTORS.TRAVEL_ARRANGER_SELECTED);
+      await selected.waitFor({ state: 'visible', timeout: 10000 });
+      const text = await selected.textContent();
+      return text ? text.trim() : '';
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getTravelArrangerSelectedText] Could not read selected travel arranger text (selector: ${SELECTORS.TRAVEL_ARRANGER_SELECTED}). ` +
+        `No travel arranger may have been selected yet. Original: ${err.message}`
       );
     }
   }

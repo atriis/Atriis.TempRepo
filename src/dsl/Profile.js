@@ -294,6 +294,179 @@ const Profile = {
 
     return actual;
   },
+
+  /**
+   * Opens the Permissions tab in the user profile.
+   */
+  async openPermissionsTab(page) {
+    if (!page) {
+      throw new Error('[Profile.openPermissionsTab] "page" is required.');
+    }
+
+    logger.debug("[Profile.openPermissionsTab] Clicking Permissions tab");
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickPermissionsTab();
+    } catch (err) {
+      throw new Error(
+        `[Profile.openPermissionsTab] Failed to open Permissions tab: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Opens a permissions section (e.g., "Who can I book for") within the permissions tab.
+   */
+  async openPermissionsSection(page, sectionName) {
+    if (!page) {
+      throw new Error('[Profile.openPermissionsSection] "page" is required.');
+    }
+    if (!sectionName || typeof sectionName !== 'string') {
+      throw new Error(
+        `[Profile.openPermissionsSection] "sectionName" must be a non-empty string, got: ${typeof sectionName} (${JSON.stringify(sectionName)})`
+      );
+    }
+
+    logger.debug(`[Profile.openPermissionsSection] Opening section "${sectionName}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickPermissionsSection(sectionName);
+    } catch (err) {
+      throw new Error(
+        `[Profile.openPermissionsSection] Failed to open section "${sectionName}": ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Removes a user from the booking permissions list by clicking the trash icon and confirming.
+   */
+  async removeUserFromBookingPermissions(page) {
+    if (!page) {
+      throw new Error('[Profile.removeUserFromBookingPermissions] "page" is required.');
+    }
+
+    logger.debug("[Profile.removeUserFromBookingPermissions] Clicking trash icon on first arranger row");
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickTrashIconOnFirstArranger();
+    } catch (err) {
+      throw new Error(
+        `[Profile.removeUserFromBookingPermissions] Failed to click trash icon: ${err.message}`
+      );
+    }
+
+    try {
+      await profilePage.confirmRemoveUser();
+    } catch (err) {
+      throw new Error(
+        `[Profile.removeUserFromBookingPermissions] Failed to confirm user removal: ${err.message}`
+      );
+    }
+
+    // Wait for the table to update after removal
+    await page.waitForTimeout(1500);
+  },
+
+  /**
+   * Verifies that the user was removed by checking the table is empty or has fewer rows.
+   */
+  async verifyUserRemovedFromPermissions(page) {
+    if (!page) {
+      throw new Error('[Profile.verifyUserRemovedFromPermissions] "page" is required.');
+    }
+
+    logger.debug("[Profile.verifyUserRemovedFromPermissions] Checking table is empty");
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    const isEmpty = await profilePage.isArrangerTableEmpty();
+    if (!isEmpty) {
+      throw new Error(
+        `[Profile.verifyUserRemovedFromPermissions] Arranger table is not empty after removal — ` +
+        `the user may not have been removed, or the table did not refresh.`
+      );
+    }
+  },
+
+  /**
+   * Adds a travel arranger by searching and selecting from the dropdown.
+   */
+  async addTravelArranger(page, arrangerName) {
+    if (!page) {
+      throw new Error('[Profile.addTravelArranger] "page" is required.');
+    }
+    if (!arrangerName || typeof arrangerName !== 'string') {
+      throw new Error(
+        `[Profile.addTravelArranger] "arrangerName" must be a non-empty string, got: ${typeof arrangerName} (${JSON.stringify(arrangerName)})`
+      );
+    }
+
+    logger.debug(`[Profile.addTravelArranger] Searching and selecting "${arrangerName}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.fillTravelArrangerSearch(arrangerName);
+    } catch (err) {
+      throw new Error(
+        `[Profile.addTravelArranger] Failed to fill search for "${arrangerName}": ${err.message}`
+      );
+    }
+
+    // Wait for search results to populate from the server
+    await page.waitForTimeout(2500);
+
+    try {
+      await profilePage.selectTravelArrangerFromDropdown();
+    } catch (err) {
+      throw new Error(
+        `[Profile.addTravelArranger] Failed to select "${arrangerName}" from dropdown results: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the selected travel arranger matches the expected name.
+   */
+  async verifyTravelArranger(page, expectedName) {
+    if (!page) {
+      throw new Error('[Profile.verifyTravelArranger] "page" is required.');
+    }
+    if (!expectedName || typeof expectedName !== 'string') {
+      throw new Error(
+        `[Profile.verifyTravelArranger] "expectedName" must be a non-empty string, got: ${typeof expectedName} (${JSON.stringify(expectedName)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyTravelArranger] Expecting travel arranger: "${expectedName}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let actual;
+    try {
+      actual = await profilePage.getTravelArrangerSelectedText();
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyTravelArranger] Failed to read selected travel arranger text: ${err.message}`
+      );
+    }
+
+    if (actual.toLowerCase() !== expectedName.toLowerCase()) {
+      throw new Error(
+        `[Profile.verifyTravelArranger] Travel arranger mismatch — expected "${expectedName}", got "${actual}". ` +
+        `The search/selection may have picked the wrong user, or the dropdown did not populate.`
+      );
+    }
+
+    return actual;
+  },
 };
 
 module.exports = Profile;
