@@ -1255,6 +1255,16 @@ Then("the loyalty number should be saved with a green success icon", async funct
   await Cart.verifyLoyaltySavedWithSuccessIcon(this.page);
 });
 
+Then("the loyalty number should be pre-populated with a green success icon", async function () {
+  logger.info("Verifying loyalty number is pre-populated with success icon");
+  await Cart.verifyLoyaltyPrepopulatedWithSuccess(this.page);
+});
+
+Then("the loyalty chain dropdown should show {string}", async function (expectedChainAndNumber) {
+  logger.info("Verifying loyalty chain dropdown shows expected value", { expectedChainAndNumber });
+  await Cart.verifyLoyaltyChainDropdown(this.page, expectedChainAndNumber);
+});
+
 // ========================================
 // PREMIER INN EXTRAS (BREAKFAST/PAYMENT)
 // ========================================

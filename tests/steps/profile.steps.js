@@ -34,29 +34,6 @@ When("I add a new FQTV entry with number {string} using the first available airl
   await Profile.addFqtvEntry(this.page, fqtvNumber);
 });
 
-// --- Hotel loyalty prepopulation steps ---
-
-Then("the loyalty number should be pre-populated with a green success icon", async function () {
-  logger.info("Verifying loyalty number is pre-populated with success icon");
-  throw new Error(
-    "TODO: implement 'the loyalty number should be pre-populated with a green success icon' — " +
-    "scroll to the loyalty section, wait for '.card-title' text 'Loyalty number', " +
-    "then verify '.success-icon' contains 'check_circle' text. " +
-    "See case_1 and case_2 in Testim 53953. " +
-    "DSL candidate: Cart.verifyLoyaltyPrepopulatedWithSuccess(page)"
-  );
-});
-
-Then("the loyalty chain dropdown should show {string}", async function (expectedChainAndNumber) {
-  logger.info("Verifying loyalty chain dropdown shows expected value", { expectedChainAndNumber });
-  throw new Error(
-    `TODO: implement 'the loyalty chain dropdown should show "${expectedChainAndNumber}"' — ` +
-    "click the loyalty clickable area (.quote-extras--loyalty-number .is-clickable), " +
-    "then verify '.el-select__placeholder span' contains the expected text. " +
-    "See case_1 and case_2 in Testim 53953. " +
-    "DSL candidate: Cart.verifyLoyaltyChainDropdown(page, expectedChainAndNumber)"
-  );
-});
 
 // --- Rail loyalty steps ---
 

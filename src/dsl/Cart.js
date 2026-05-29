@@ -2914,6 +2914,54 @@ const Cart = {
   },
 
   /**
+   * Verifies that a pre-populated loyalty number shows a green success icon.
+   * Scrolls to the loyalty section and waits with a longer timeout since
+   * prepopulation requires an API fetch after the room is added to cart.
+   * @param {import('playwright').Page} page
+   */
+  async verifyLoyaltyPrepopulatedWithSuccess(page) {
+    if (!page) throw new Error('[Cart.verifyLoyaltyPrepopulatedWithSuccess] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForLoyaltyPrepopulatedIcon();
+  },
+
+  /**
+   * Verifies that the loyalty chain dropdown shows the expected text (chain code + number).
+   * Used for pre-populated loyalty scenarios where the system auto-fills from the master chain.
+   * Assumes the loyalty extras section has been expanded already.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Expected text in the dropdown (e.g. "CN - 121212")
+   */
+  async verifyLoyaltyChainDropdown(page, expectedText) {
+    if (!page) throw new Error('[Cart.verifyLoyaltyChainDropdown] "page" is required.');
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.verifyLoyaltyChainDropdown] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    let actualText;
+    try {
+      actualText = await cartPage.getExistingLoyaltyDropdownText();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyLoyaltyChainDropdown] Could not read loyalty dropdown text — ` +
+        `the loyalty section may not be expanded or no loyalty is pre-populated. ${err.message}`
+      );
+    }
+
+    if (!actualText.includes(expectedText)) {
+      throw new Error(
+        `[Cart.verifyLoyaltyChainDropdown] Expected loyalty dropdown to contain "${expectedText}", ` +
+        `but found: "${actualText}". The master chain hierarchy may not match, or the loyalty number ` +
+        `was not pre-populated for this hotel chain.`
+      );
+    }
+  },
+
+  /**
    * Opens the flight frequent flyer extras section in the cart.
    * @param {import('playwright').Page} page
    * @returns {Promise<void>}

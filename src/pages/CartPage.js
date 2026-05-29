@@ -3810,6 +3810,32 @@ class CartPage {
   }
 
   /**
+   * Scrolls to the loyalty section and waits for the green success icon to appear.
+   * Used for pre-populated scenarios where loyalty is fetched from API after room is added.
+   */
+  async waitForLoyaltyPrepopulatedIcon() {
+    const section = this.page.locator(SELECTORS.LOYALTY_SECTION);
+    try {
+      await section.scrollIntoViewIfNeeded();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForLoyaltyPrepopulatedIcon] Could not scroll to loyalty section (selector: ${SELECTORS.LOYALTY_SECTION}). ` +
+        `The cart page may not have loaded the extras sections yet. Original: ${err.message}`
+      );
+    }
+    try {
+      await this.page.locator(SELECTORS.LOYALTY_SUCCESS_ICON)
+        .waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForLoyaltyPrepopulatedIcon] Green success icon not visible in loyalty section within 60s ` +
+        `(selector: ${SELECTORS.LOYALTY_SUCCESS_ICON}). The loyalty number may not have been pre-populated by the ` +
+        `master chain — check that the traveler has loyalty numbers configured for this hotel chain. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
    * Checks if the loyalty extras card panel is currently visible.
    * @returns {Promise<boolean>}
    */
