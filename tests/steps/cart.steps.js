@@ -1240,6 +1240,21 @@ Then("the loyalty number {string} and chain {string} should be saved", async fun
   await Cart.verifyLoyaltyNumberSaved(this.page, expectedChain, expectedNumber);
 });
 
+When("I select existing loyalty number {string} from profile", async function (loyaltyText) {
+  logger.info("Selecting existing loyalty number from profile", { loyaltyText });
+  await Cart.selectExistingLoyaltyFromProfile(this.page, loyaltyText);
+});
+
+When("I select the first existing loyalty number from profile", async function () {
+  logger.info("Selecting the first existing loyalty number from profile");
+  await Cart.selectFirstExistingLoyaltyFromProfile(this.page);
+});
+
+Then("the loyalty number should be saved with a green success icon", async function () {
+  logger.info("Verifying loyalty number saved with green success icon");
+  await Cart.verifyLoyaltySavedWithSuccessIcon(this.page);
+});
+
 // ========================================
 // PREMIER INN EXTRAS (BREAKFAST/PAYMENT)
 // ========================================

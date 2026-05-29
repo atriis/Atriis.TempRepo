@@ -2814,6 +2814,106 @@ const Cart = {
   },
 
   /**
+   * Selects an existing loyalty number from the traveler's profile.
+   * Assumes the loyalty extras section is already expanded.
+   * Flow: click Existing radio → select from dropdown → save → verify green icon.
+   * @param {import('playwright').Page} page
+   * @param {string} loyaltyText - Text to match in the dropdown (e.g. "6C - 456789")
+   */
+  async selectExistingLoyaltyFromProfile(page, loyaltyText) {
+    if (!page) throw new Error('[Cart.selectExistingLoyaltyFromProfile] "page" is required.');
+    if (!loyaltyText || typeof loyaltyText !== 'string') {
+      throw new Error(
+        `[Cart.selectExistingLoyaltyFromProfile] "loyaltyText" must be a non-empty string, got: ${typeof loyaltyText} (${JSON.stringify(loyaltyText)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.selectExistingLoyaltyRadio();
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectExistingLoyaltyFromProfile] Failed to select "Existing" radio for loyalty "${loyaltyText}": ${err.message}`
+      );
+    }
+
+    try {
+      await cartPage.selectExistingLoyaltyOption(loyaltyText);
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectExistingLoyaltyFromProfile] Failed to select loyalty option "${loyaltyText}" from dropdown — ` +
+        `the option may not exist in the traveler's profile. ${err.message}`
+      );
+    }
+
+    try {
+      await cartPage.clickLoyaltySaveButton();
+      await cartPage.waitForLoyaltySuccessIcon();
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectExistingLoyaltyFromProfile] Loyalty "${loyaltyText}" was selected but save/verify failed: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Selects the first existing loyalty number from the traveler's profile.
+   * Assumes the loyalty extras section is already expanded.
+   * Flow: click Existing radio → select first option from dropdown → save → verify green icon.
+   * @param {import('playwright').Page} page
+   */
+  async selectFirstExistingLoyaltyFromProfile(page) {
+    if (!page) throw new Error('[Cart.selectFirstExistingLoyaltyFromProfile] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.selectExistingLoyaltyRadio();
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectFirstExistingLoyaltyFromProfile] Failed to select "Existing" radio: ${err.message}`
+      );
+    }
+
+    try {
+      await cartPage.selectFirstExistingLoyaltyOption();
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectFirstExistingLoyaltyFromProfile] Failed to select the first loyalty option from dropdown — ` +
+        `the traveler may not have any loyalty numbers in their profile. ${err.message}`
+      );
+    }
+
+    try {
+      await cartPage.clickLoyaltySaveButton();
+      await cartPage.waitForLoyaltySuccessIcon();
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectFirstExistingLoyaltyFromProfile] First loyalty option was selected but save/verify failed: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the loyalty number section shows a green success icon (check_circle).
+   * @param {import('playwright').Page} page
+   */
+  async verifyLoyaltySavedWithSuccessIcon(page) {
+    if (!page) throw new Error('[Cart.verifyLoyaltySavedWithSuccessIcon] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.waitForLoyaltySuccessIcon();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyLoyaltySavedWithSuccessIcon] Green success icon not visible in loyalty section — ` +
+        `loyalty number may not have been saved correctly. ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Opens the flight frequent flyer extras section in the cart.
    * @param {import('playwright').Page} page
    * @returns {Promise<void>}

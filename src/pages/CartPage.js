@@ -332,6 +332,8 @@ const SELECTORS = {
   LOYALTY_SECTION: '.quote-extras--loyalty-number',
   LOYALTY_CLICKABLE: '.quote-extras--loyalty-number .is-clickable, .car-driver-loyalty .card-title, .quote-extras--container .is-clickable:has-text("Loyalty ID")',
   LOYALTY_ADD_BUTTON: '.car-driver-loyalty .is-clickable, .quote-extras--loyalty-number .add-text, .quote-extras--loyalty-number .add-btn, .quote-extras--container .add-text:has-text("Add")',
+  LOYALTY_EXISTING_RADIO: '.quote-extras--loyalty-number .el-radio-group .el-radio:nth-child(1)',
+  LOYALTY_EXISTING_DROPDOWN: '.quote-extras--loyalty-number .extras-card .el-select',
   LOYALTY_NEW_RADIO: '.quote-extras--loyalty-number .el-radio-group .el-radio:nth-child(2)',
   LOYALTY_CHAIN_SELECT: '.quote-extras--loyalty-number .select-container .select-element:first-child .el-select',
   LOYALTY_NUMBER_INPUT: '.quote-extras--loyalty-number .select-container .select-element:last-child input, .quote-extras--loyalty-number .el-input__inner, .car-driver-loyalty input[type="text"], .car-driver-loyalty .el-input__inner',
@@ -3698,6 +3700,58 @@ class CartPage {
     const radio = this.page.locator(SELECTORS.LOYALTY_NEW_RADIO);
     await radio.waitFor({ state: 'visible', timeout: 10000 });
     await radio.click();
+  }
+
+  /**
+   * Clicks the "Existing" radio button in the loyalty number section.
+   */
+  async selectExistingLoyaltyRadio() {
+    try {
+      const radio = this.page.locator(SELECTORS.LOYALTY_EXISTING_RADIO);
+      await radio.waitFor({ state: 'visible', timeout: 10000 });
+      await radio.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.selectExistingLoyaltyRadio] Could not click the "Existing" radio button (selector: ${SELECTORS.LOYALTY_EXISTING_RADIO}). ` +
+        `The radio may be disabled because no loyalty numbers exist in the traveler profile. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Selects an existing loyalty option from the dropdown by matching text.
+   * @param {string} loyaltyText - Text to match in the dropdown (e.g. "6C - 456789")
+   */
+  async selectExistingLoyaltyOption(loyaltyText) {
+    try {
+      const dropdown = this.page.locator(SELECTORS.LOYALTY_EXISTING_DROPDOWN);
+      await dropdown.waitFor({ state: 'visible', timeout: 10000 });
+      await dropdown.click();
+      const option = this.page.locator(SELECTORS.DROPDOWN_OPTION).filter({ hasText: loyaltyText }).first();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.selectExistingLoyaltyOption] Could not select loyalty option "${loyaltyText}" from the existing loyalty dropdown. ` +
+        `The dropdown may not have opened or the option doesn't exist in the traveler profile. Original: ${err.message}`
+      );
+    }
+  }
+
+  async selectFirstExistingLoyaltyOption() {
+    try {
+      const dropdown = this.page.locator(SELECTORS.LOYALTY_EXISTING_DROPDOWN);
+      await dropdown.waitFor({ state: 'visible', timeout: 10000 });
+      await dropdown.click();
+      const option = this.page.locator(SELECTORS.DROPDOWN_OPTION).first();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.selectFirstExistingLoyaltyOption] Could not select the first loyalty option from the existing loyalty dropdown. ` +
+        `The dropdown may not have opened or no options are available in the traveler profile. Original: ${err.message}`
+      );
+    }
   }
 
   /**

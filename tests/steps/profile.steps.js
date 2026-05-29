@@ -86,27 +86,4 @@ When("I select the second rail loyalty vendor and proceed to checkout", async fu
   );
 });
 
-// --- Hotel loyalty from profile steps ---
 
-When("I select existing loyalty number from profile", async function () {
-  logger.info("Selecting existing loyalty number from traveler profile");
-  throw new Error(
-    "TODO: implement 'I select existing loyalty number from profile' — " +
-    "scroll to loyalty section, click the clickable loyalty area, " +
-    "click the first radio button (existing loyalty), " +
-    "open the chain dropdown, select '6C' chain option, " +
-    "save, verify success notification and green check_circle. " +
-    "See add_loyalty_number___6c_456789() in Testim 33863. " +
-    "DSL candidate: Cart.selectExistingHotelLoyaltyFromProfile(page)"
-  );
-});
-
-Then("the loyalty number should be saved with a green success icon", async function () {
-  logger.info("Verifying loyalty number is saved with green success icon");
-  throw new Error(
-    "TODO: implement 'the loyalty number should be saved with a green success icon' — " +
-    "verify '.success-icon' text is 'check_circle' in the loyalty section. " +
-    "See add_loyalty_number___6c_456789() in Testim 33863. " +
-    "DSL candidate: Cart.verifyLoyaltySavedWithSuccess(page)"
-  );
-});
