@@ -1,7 +1,7 @@
 # ADO Bug #74652 - Sunny Cars // Car model not mentioned in new UI
 # Regression: Car model name must be visible in search results when searching via Sunny Cars supplier.
 
-@regression @provider:sunnycars @cars @bug:74652
+@transportation @cars @regression @daily_cars @provider:sunnycars @bug:74652
 Feature: 74652 Sunny Cars - Car Model Visibility in Search Results
   As a corporate traveler using Sunny Cars
   I want to see the car model name in the search results

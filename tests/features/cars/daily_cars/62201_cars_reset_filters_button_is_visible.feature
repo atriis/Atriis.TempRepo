@@ -1,4 +1,4 @@
-﻿@daily_cars @provider:amadeus
+﻿@transportation @cars @regression @daily_cars @provider:amadeus
 Feature: 62201 Cars - "Reset Filters" button is visible
   As a corporate traveler using Galileo
   I want to search for cars

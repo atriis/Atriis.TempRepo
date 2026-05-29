@@ -1,4 +1,4 @@
-@daily_cars @userstory @priority:high @ado:65557
+@transportation @cars @provider:amadeus @priority:high @ado:65557
 Feature: 65557 Parallel car search - Pick up and drop off locations should be correctly referenced
   As a corporate traveler
   I want to search for a car with different pick up and drop off locations

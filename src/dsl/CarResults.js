@@ -255,8 +255,10 @@ const CarResults = {
   async selectFirstCityCenterPickupLocation(page) {
     if (!page) throw new Error('page is required');
 
+    const carResultsPage = getPageObject(page, CarResultsPage);
+
     const selectionCallback = async () => {
-      await Results.waitAndClickSelectButton(page);
+      await carResultsPage.clickStationButtonByIndex(0, 'Select', { timeout: 30000 });
     };
 
     const retryResult = await this._retryLocationSelectionOnNoResults(page, selectionCallback, {
@@ -275,7 +277,9 @@ const CarResults = {
    */
   async selectFirstCityCenterDropoffLocation(page) {
     if (!page) throw new Error('page is required');
-    await Results.waitAndClickSelectButton(page);
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.clickStationButtonByIndex(0, 'Select', { timeout: 30000 });
   },
 
   /**
@@ -410,6 +414,9 @@ const CarResults = {
     const resultsPage = getPageObject(page, ResultsPage);
     await resultsPage.waitForSelectText();
 
+    // Re-query the DOM fresh each time to avoid stale element references.
+    // The station list can re-render (Vue reactivity) between attempts, so we must
+    // not hold onto a previously resolved locator across retry iterations.
     const stationCard = await this.findAgencyStationCard(page, normalizedLabel, normalizedAddress);
 
     await stationCard.waitFor({ state: 'visible', timeout: 15000 });
@@ -428,11 +435,24 @@ const CarResults = {
       throw new Error(`Matched station card does not contain expected address: ${normalizedAddress}`);
     }
 
-    const selectButton = stationCard.locator('.vendor-select-container .add-btn:visible').first();
+    // Build the Select button locator from the freshly resolved card index.
+    // Using the card's index-based re-query avoids clicking a detached node
+    // if Vue replaced the element between the card lookup and the click.
+    const selectButton = stationCard.locator('.vendor-select-container .add-btn').first();
 
-    await selectButton.waitFor({ state: 'visible', timeout: 15000 });
-    await selectButton.scrollIntoViewIfNeeded();
-    await selectButton.click({ timeout: 15000 });
+    try {
+      await selectButton.waitFor({ state: 'visible', timeout: 15000 });
+      await selectButton.scrollIntoViewIfNeeded();
+      await selectButton.click({ timeout: 15000 });
+    } catch (err) {
+      // Element may have been detached due to Vue list re-render — retry the full card lookup
+      // and click once more before giving up.
+      const freshCard = await this.findAgencyStationCard(page, normalizedLabel, normalizedAddress);
+      const freshButton = freshCard.locator('.vendor-select-container .add-btn').first();
+      await freshButton.waitFor({ state: 'visible', timeout: 15000 });
+      await freshButton.scrollIntoViewIfNeeded();
+      await freshButton.click({ timeout: 15000 });
+    }
   },
 
   /**
@@ -455,8 +475,8 @@ const CarResults = {
       throw new Error(`stationAddress must be a non-empty string when provided, got: ${stationAddress}`);
     }
 
-    await this._clickSelectOnStationCard(page, stationLabel, stationAddress);
-
+    // Do NOT click here — the retry orchestrator calls the callback on its first iteration.
+    // Clicking twice here would cause the station list to detach/re-render mid-click.
     const retryResult = await this._retryLocationSelectionOnNoResults(page, () =>
       this._clickSelectOnStationCard(page, stationLabel, stationAddress),
       {
@@ -482,6 +502,9 @@ const CarResults = {
     const carSearchPage = getPageObject(page, CarSearchPage);
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      // Click first, then wait to see if results or no-results appears
+      await selectionCallback();
+      
       const status = await resultsPage.waitForCarCardsOrNoResultsAfterStationSelection(60000);
       if (status === 'results') {
         return { retriesUsed: attempt - 1, resolved: true };
@@ -500,6 +523,9 @@ const CarResults = {
       } else {
         await resultsPage.clickEditButton();
       }
+
+      // Wait for the pickup date field to be visible and interactive after edit modal closes
+      await searchPage.waitForPickupDateFieldVisible({ timeout: 15000 });
 
       await searchPage.clickPickupDateField();
       await searchPage.clickCalendarNextArrow(1);

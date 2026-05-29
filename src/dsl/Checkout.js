@@ -81,9 +81,14 @@ const Checkout = {
         ? BookingErrorHandler.getSkipOnErrorConfig(bookingContext.product, bookingContext.subProduct)
         : false;
 
+      // Pass the value that actually matched so the log level (WARN vs ERROR) is
+      // consistent with knownBookingError.
+      const errorLogValue = (knownBySupplier && supplier) ? supplier
+        : (knownByMessage && bookingErrorText) ? bookingErrorText
+        : (supplier || bookingErrorText || 'UNKNOWN');
       BookingErrorHandler.handleBookingError(
         bookingContext.product,
-        supplier || bookingErrorText || 'UNKNOWN',
+        errorLogValue,
         bookingContext.subProduct,
       );
 

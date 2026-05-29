@@ -10,6 +10,7 @@ const { SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 
 const SELECTORS = {
   RESULTS_BUTTON: ".btn.btn--primary",
+  CAR_RESULT_CARD: '.car-preview',
   AGENCY_STATION_ADDRESS: '.station-details p.has-text-weight-bold.is-size-7',
   SHARE_MAIN_BUTTON: 'button.share-btn.mr-4',
   SHARE_QUOTE_RESULTS_BUTTON: '.share-btn.py-2',
@@ -348,6 +349,12 @@ class ResultsPage {
       throw new Error(`timeout must be a non-negative number, got ${timeout}`);
     }
 
+    const carCardPromise = this.page
+      .locator(SELECTORS.CAR_RESULT_CARD)
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => 'results');
+
     const addToTripPromise = this.getAddToTripButton()
       .waitFor({ state: 'visible', timeout })
       .then(() => 'results');
@@ -356,7 +363,7 @@ class ResultsPage {
       .waitFor({ state: 'visible', timeout })
       .then(() => 'no-results');
 
-    const winner = await Promise.race([addToTripPromise, noResultsPromise]).catch(() => null);
+    const winner = await Promise.race([carCardPromise, addToTripPromise, noResultsPromise]).catch(() => null);
 
     if (winner === 'results' || winner === 'no-results') {
       return winner;
@@ -364,7 +371,7 @@ class ResultsPage {
 
     throw new Error(
       `[ResultsPage.waitForCarCardsOrNoResultsAfterStationSelection] Could not determine city-centre post-selection outcome within ${timeout}ms. ` +
-      `Expected either car cards (Add to trip) or the no-results state.`
+      `Expected either visible car cards, Add to trip, or the no-results state.`
     );
   }
 

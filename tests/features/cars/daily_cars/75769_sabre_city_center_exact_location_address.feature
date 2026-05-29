@@ -1,6 +1,6 @@
 # ADO #75769 - [Cars][Sabre] City Center Search - Use Exact Location Address
 # Reference test case: ADO #75769
-@daily_cars @provider:sabre @regression @transportation @cars @ado:75769 @priority:critical
+@transportation @cars @daily_cars @provider:sabre @regression  @ado:75769 @priority:critical
 Feature: 75769 Sabre city center exact location address display
   As a corporate traveler using Sabre city center search
   I want location formatting to remain consistent from results to cart and booking

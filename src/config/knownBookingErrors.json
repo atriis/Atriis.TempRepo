@@ -2,7 +2,8 @@
   "transportation": {
     "cars": {
       "knownErrors": [
-        "HERTZ", "Error: Reservation with the given data already exists."
+        "HERTZ", "Error: Reservation with the given data already exists.",
+        "The selected rate changed from"
       ],
       "skipOnError": true,
       "description": "Known supplier booking issues that should not cause test failure"

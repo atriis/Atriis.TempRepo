@@ -80,13 +80,13 @@ When("I hold the trip", async function () {
   const result = await Cart.holdTrip(this.page, bookingContext);
   this.bookingOutcome = result;
 
-  if (result?.knownBookingError) {
+  if (result?.knownBookingError && result.shouldSkip) {
     await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
     await Checkout.clickBackToTripButton(this.page);
     return 'pending';
   }
 
-  if (result?.bookingError && !result.knownBookingError) {
+  if (result?.bookingError && !(result.knownBookingError && result.shouldSkip)) {
     const errorSummary = result.supplier
       ? `supplier: ${result.supplier}`
       : `message: ${result.bookingErrorText || 'unknown booking error'}`;

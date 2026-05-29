@@ -1,4 +1,4 @@
-@daily_cars @provider:amadeus @regression
+@transportation @cars @regression @daily_cars @provider:amadeus
 Feature: 75326 Car Search Results - Quote Title Should Not Contain Unexpected "Car" Word
   As a corporate traveler
   When I search for cars via Amadeus

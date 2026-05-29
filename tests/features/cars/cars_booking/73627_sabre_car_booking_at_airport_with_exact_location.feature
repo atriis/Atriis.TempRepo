@@ -1,4 +1,4 @@
-﻿@daily_cars @provider:sabre
+﻿@transportation @cars @provider:sabre
 Feature: 73627 Sabre Car Booking Flow with Exact Airport Location
   As a corporate traveler using Sabre
   I want to book cars with exact airport location validation

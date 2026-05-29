@@ -58,6 +58,22 @@ class CarResultsPage {
     await this.getStationButtonByIndex(index, buttonName).waitFor({ state: 'visible', timeout });
   }
 
+  async clickStationButtonByIndex(index, buttonName, { timeout = 30000 } = {}) {
+    const button = this.getStationButtonByIndex(index, buttonName);
+
+    try {
+      await button.waitFor({ state: 'visible', timeout });
+      await button.scrollIntoViewIfNeeded();
+      await button.click({ timeout });
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.clickStationButtonByIndex] Failed to click the "${buttonName}" button for station index ${index}. ` +
+        `The station list may not have loaded yet, the button may be covered, or the city-centre station card may have re-rendered. ` +
+        `Original: ${error.message}`
+      );
+    }
+  }
+
   /**
    * Gets a location element by index.
    * @param {number} index - Zero-based index of the location element
