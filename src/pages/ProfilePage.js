@@ -75,6 +75,7 @@ const SELECTORS = {
   VISA_NUMBER_INPUT: '.visa-inputs .field.app-column:nth-child(3) input',
   VISA_REMOVE_BUTTON: '.visa-inputs .remove-btn-wrapper .remove-btn',
   SAVE_PASSPORTS_VISAS_BUTTON: '.passport-visa-form .btns-container button',
+  KNOWN_TRAVELER_INPUT: '.additional-inputs-container .field.app-column:first-child input',
   DATE_PICKER_PANEL: '.el-picker-panel:visible',
   DATE_PICKER_NEXT_YEAR_ARROW: 'button.el-picker-panel__icon-btn.d-arrow-right:visible',
 
@@ -768,6 +769,35 @@ class ProfilePage {
       throw new Error(
         `[ProfilePage.clickPassportsVisasTab] Could not click Passports & Visas tab (selector: ${SELECTORS.PASSPORTS_VISAS_TAB}). ` +
         `The profile page may not have loaded or the tab is hidden. Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillKnownTravelerNumber(value) {
+    try {
+      const input = this.page.locator(SELECTORS.KNOWN_TRAVELER_INPUT);
+      await input.waitFor({ state: 'visible', timeout: 10000 });
+      // Triple-click to select any existing value, then use pressSequentially so
+      // each keystroke fires the keyboard events needed for Vue v-model to update.
+      await input.click({ clickCount: 3, timeout: 10000 });
+      await input.pressSequentially(value, { delay: 50 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.fillKnownTravelerNumber] Could not fill known traveler number "${value}" (selector: ${SELECTORS.KNOWN_TRAVELER_INPUT}). ` +
+        `The Passports & Visas tab may not be open or the additional-inputs section is not visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getKnownTravelerNumberValue() {
+    try {
+      const input = this.page.locator(SELECTORS.KNOWN_TRAVELER_INPUT);
+      await input.waitFor({ state: 'visible', timeout: 10000 });
+      return await input.inputValue();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getKnownTravelerNumberValue] Could not read known traveler number field (selector: ${SELECTORS.KNOWN_TRAVELER_INPUT}). ` +
+        `The Passports & Visas tab may not be open. Original: ${err.message}`
       );
     }
   }

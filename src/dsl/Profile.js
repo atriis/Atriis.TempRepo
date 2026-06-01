@@ -945,6 +945,104 @@ const Profile = {
 
     logger.info('[Profile.deleteVisa] Visa removed and form saved');
   },
+
+  async openPassportsAndVisasTab(page) {
+    if (!page) throw new Error('[Profile.openPassportsAndVisasTab] "page" is required.');
+
+    logger.debug('[Profile.openPassportsAndVisasTab] Clicking Passports & Visas tab');
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickPassportsVisasTab();
+      await profilePage.waitForPassportVisaForm();
+    } catch (err) {
+      throw new Error(`[Profile.openPassportsAndVisasTab] Failed to open Passports & Visas tab: ${err.message}`);
+    }
+
+    logger.info('[Profile.openPassportsAndVisasTab] Passports & Visas tab opened');
+  },
+
+  async enterKnownTravelerNumber(page, value) {
+    if (!page) throw new Error('[Profile.enterKnownTravelerNumber] "page" is required.');
+    if (!value || typeof value !== 'string') {
+      throw new Error(
+        `[Profile.enterKnownTravelerNumber] "value" must be a non-empty string, got: ${typeof value} (${JSON.stringify(value)})`
+      );
+    }
+
+    logger.debug(`[Profile.enterKnownTravelerNumber] Filling known traveler number "${value}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.fillKnownTravelerNumber(value);
+    } catch (err) {
+      throw new Error(`[Profile.enterKnownTravelerNumber] Failed to enter known traveler number "${value}": ${err.message}`);
+    }
+
+    return { knownTravelerNumber: value };
+  },
+
+  async verifyKnownTravelerNumberSaved(page, expectedValue) {
+    if (!page) throw new Error('[Profile.verifyKnownTravelerNumberSaved] "page" is required.');
+    if (!expectedValue || typeof expectedValue !== 'string') {
+      throw new Error(
+        `[Profile.verifyKnownTravelerNumberSaved] "expectedValue" must be a non-empty string, got: ${typeof expectedValue} (${JSON.stringify(expectedValue)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyKnownTravelerNumberSaved] Reloading profile to verify saved value "${expectedValue}"`);
+
+    try {
+      await page.reload({ waitUntil: 'networkidle', timeout: 30000 });
+    } catch (err) {
+      throw new Error(`[Profile.verifyKnownTravelerNumberSaved] Page reload failed: ${err.message}`);
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickPassportsVisasTab();
+      await profilePage.waitForPassportVisaForm();
+    } catch (err) {
+      throw new Error(`[Profile.verifyKnownTravelerNumberSaved] Failed to reopen Passports & Visas tab after reload: ${err.message}`);
+    }
+
+    let actualValue;
+    try {
+      actualValue = await profilePage.getKnownTravelerNumberValue();
+    } catch (err) {
+      throw new Error(`[Profile.verifyKnownTravelerNumberSaved] Failed to read known traveler number after reload: ${err.message}`);
+    }
+
+    if (actualValue !== expectedValue) {
+      throw new Error(
+        `[Profile.verifyKnownTravelerNumberSaved] Known traveler number was NOT saved correctly. ` +
+        `Expected: "${expectedValue}", Actual: "${actualValue}". ` +
+        `The save may have not persisted the value or the wrong field was typed into.`
+      );
+    }
+
+    logger.info(`[Profile.verifyKnownTravelerNumberSaved] Known traveler number "${actualValue}" confirmed saved`);
+    return { savedValue: actualValue };
+  },
+
+  async savePassportsAndVisasChanges(page) {
+    if (!page) throw new Error('[Profile.savePassportsAndVisasChanges] "page" is required.');
+
+    logger.debug('[Profile.savePassportsAndVisasChanges] Clicking Save on Passports & Visas form');
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickSavePassportsVisas();
+    } catch (err) {
+      throw new Error(`[Profile.savePassportsAndVisasChanges] Failed to save Passports & Visas form: ${err.message}`);
+    }
+
+    logger.info('[Profile.savePassportsAndVisasChanges] Passports & Visas changes saved');
+  },
 };
 
 module.exports = Profile;

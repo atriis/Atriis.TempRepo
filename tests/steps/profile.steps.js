@@ -187,3 +187,25 @@ When("I delete the visa from my profile", async function () {
   logger.info("Deleting visa from profile");
   await Profile.deleteVisa(this.page);
 });
+
+When("I open the passports and visas tab in my profile", async function () {
+  logger.info("Opening Passports & Visas tab in user profile");
+  await Profile.openPassportsAndVisasTab(this.page);
+});
+
+When("I enter a known traveler number with alphanumeric characters", async function () {
+  const value = `ABC${Math.floor(Math.random() * 900 + 100)}DEF`;
+  logger.info("Entering known traveler number", { value });
+  const result = await Profile.enterKnownTravelerNumber(this.page, value);
+  this.knownTravelerNumber = result.knownTravelerNumber;
+});
+
+When("I save the passports and visas changes", async function () {
+  logger.info("Saving Passports & Visas changes");
+  await Profile.savePassportsAndVisasChanges(this.page);
+});
+
+Then("the known traveler number should be saved correctly", async function () {
+  logger.info("Verifying known traveler number was persisted", { expected: this.knownTravelerNumber });
+  await Profile.verifyKnownTravelerNumberSaved(this.page, this.knownTravelerNumber);
+});
