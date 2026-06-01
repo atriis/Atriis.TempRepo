@@ -467,6 +467,130 @@ const Profile = {
 
     return actual;
   },
+
+  /**
+   * Opens a traveler's profile from the trip page by clicking their name link.
+   * Profile opens in a new tab — returns the new page instance.
+   */
+  async openTravelerProfile(page, travelerName) {
+    if (!page) {
+      throw new Error('[Profile.openTravelerProfile] "page" is required.');
+    }
+    if (!travelerName || typeof travelerName !== 'string') {
+      throw new Error(
+        `[Profile.openTravelerProfile] "travelerName" must be a non-empty string, got: ${typeof travelerName} (${JSON.stringify(travelerName)})`
+      );
+    }
+
+    logger.debug(`[Profile.openTravelerProfile] Opening profile for traveler "${travelerName}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const context = page.context();
+
+    const newPagePromise = context.waitForEvent("page", { timeout: 15000 }).catch(() => null);
+
+    try {
+      await profilePage.clickTravelerNameLink(travelerName);
+    } catch (err) {
+      throw new Error(
+        `[Profile.openTravelerProfile] Failed to click traveler name "${travelerName}": ${err.message}`
+      );
+    }
+
+    const newProfilePage = await newPagePromise;
+
+    if (newProfilePage) {
+      logger.info(`[Profile.openTravelerProfile] Profile for "${travelerName}" opened in a new tab`);
+      await newProfilePage.waitForLoadState("domcontentloaded", { timeout: 30000 });
+      const newProfilePageObj = getPageObject(newProfilePage, ProfilePage);
+      await newProfilePageObj.waitForPersonalDetailsForm();
+      return newProfilePage;
+    }
+
+    // Fallback: profile opened in same tab
+    logger.info(`[Profile.openTravelerProfile] Profile for "${travelerName}" opened in same tab`);
+    await page.waitForLoadState("domcontentloaded", { timeout: 30000 });
+    await profilePage.waitForPersonalDetailsForm();
+    return page;
+  },
+
+  /**
+   * Edits the date of birth field by typing a valid adult date (30 years ago) directly into the input.
+   * The datepicker uses 'DD MMM YYYY' format and the editable attribute allows direct text input.
+   * Clicking the field first triggers resetFieldValueIfMasked to clear any masked value.
+   * Returns the original DOB value for later verification.
+   */
+  async editDateOfBirth(page) {
+    if (!page) {
+      throw new Error('[Profile.editDateOfBirth] "page" is required.');
+    }
+
+    logger.debug("[Profile.editDateOfBirth] Reading current DOB, then editing");
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let originalValue;
+    try {
+      originalValue = await profilePage.getDobInputValue();
+    } catch (err) {
+      throw new Error(
+        `[Profile.editDateOfBirth] Failed to read current DOB value: ${err.message}`
+      );
+    }
+
+    // Build an adult DOB: 30 years before today in 'DD MMM YYYY' format
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const adultDob = new Date();
+    adultDob.setFullYear(adultDob.getFullYear() - 30);
+    const dobString = `${String(adultDob.getDate()).padStart(2, '0')} ${MONTHS[adultDob.getMonth()]} ${adultDob.getFullYear()}`;
+
+    logger.debug(`[Profile.editDateOfBirth] Typing adult DOB: "${dobString}"`);
+
+    try {
+      await profilePage.typeDobValue(dobString);
+    } catch (err) {
+      throw new Error(
+        `[Profile.editDateOfBirth] Failed to type DOB value: ${err.message}`
+      );
+    }
+
+    // Brief wait for the input to reflect the typed date
+    await page.waitForTimeout(500);
+
+    return { originalValue };
+  },
+
+  /**
+   * Verifies the DOB field value has changed from the original value.
+   */
+  async verifyDobUpdated(page, originalValue) {
+    if (!page) {
+      throw new Error('[Profile.verifyDobUpdated] "page" is required.');
+    }
+
+    logger.debug(`[Profile.verifyDobUpdated] Checking DOB has changed from "${originalValue}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let currentValue;
+    try {
+      currentValue = await profilePage.getDobInputValue();
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyDobUpdated] Failed to read DOB input value after edit: ${err.message}`
+      );
+    }
+
+    if (currentValue === originalValue) {
+      throw new Error(
+        `[Profile.verifyDobUpdated] DOB field value did not change — still "${currentValue}". ` +
+        `The date selection may not have been saved, or the field is disabled for this user.`
+      );
+    }
+
+    logger.info(`[Profile.verifyDobUpdated] DOB changed from "${originalValue}" to "${currentValue}"`);
+    return { originalValue, currentValue };
+  },
 };
 
 module.exports = Profile;

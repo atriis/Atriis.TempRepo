@@ -24,6 +24,11 @@ const SELECTORS = {
   TRAVEL_ARRANGER_DROPDOWN_OPTION: '.el-vl__window span',
   TRAVEL_ARRANGER_SELECTED: '.travel-arranger-table .user-select .el-select__placeholder',
 
+  // Traveler profile from trip page
+  TRAVELER_NAME_LINK: '.trip-traveler-tag .traveler-name.is-clickable',
+  PERSONAL_DETAILS_FORM: '.personal-details-form-content',
+  DOB_INPUT: '.personal-details-form-content .birth-date-date-picker input',
+
   // Frequent Programs form
   FREQUENT_PROGRAMS_FORM: '.frequent-programs-form',
   FREQUENT_PROGRAMS_INPUTS: '.frequent-programs-inputs',
@@ -375,6 +380,64 @@ class ProfilePage {
       );
     }
   }
+
+  // --- Traveler Profile (from trip page) ---
+
+  async clickTravelerNameLink(travelerName) {
+    try {
+      const link = this.page.locator(SELECTORS.TRAVELER_NAME_LINK).filter({ hasText: travelerName });
+      await link.waitFor({ state: 'visible', timeout: 15000 });
+      await link.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickTravelerNameLink] Could not click traveler name link "${travelerName}" (selector: ${SELECTORS.TRAVELER_NAME_LINK}). ` +
+        `The traveler may not have been added to the trip or the name didn't load. Original: ${err.message}`
+      );
+    }
+  }
+
+  async waitForPersonalDetailsForm() {
+    try {
+      await this.page.locator(SELECTORS.PERSONAL_DETAILS_FORM).waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.waitForPersonalDetailsForm] Personal details form did not appear (selector: ${SELECTORS.PERSONAL_DETAILS_FORM}). ` +
+        `The traveler profile may not have opened or is still loading. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getDobInputValue() {
+    try {
+      const input = this.page.locator(SELECTORS.DOB_INPUT);
+      await input.waitFor({ state: 'visible', timeout: 10000 });
+      return await input.inputValue();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getDobInputValue] Could not read DOB input value (selector: ${SELECTORS.DOB_INPUT}). ` +
+        `The personal details form may not be loaded. Original: ${err.message}`
+      );
+    }
+  }
+
+  // Directly types a date string into the DOB input (format: 'DD MMM YYYY', e.g. '15 Jan 1990').
+  // Clicks first to trigger resetFieldValueIfMasked, then fills and confirms with Tab.
+  async typeDobValue(dateString) {
+    try {
+      const input = this.page.locator(SELECTORS.DOB_INPUT);
+      await input.waitFor({ state: 'visible', timeout: 10000 });
+      await input.click({ timeout: 10000 });
+      await input.fill(dateString);
+      await input.press('Tab');
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.typeDobValue] Could not type DOB value "${dateString}" into input (selector: ${SELECTORS.DOB_INPUT}). ` +
+        `The field may be disabled or not visible. Original: ${err.message}`
+      );
+    }
+  }
+
+
 }
 
 module.exports = ProfilePage;

@@ -109,3 +109,25 @@ Then("{string} should be displayed as the selected travel arranger", async funct
   logger.info("Verifying selected travel arranger", { expectedName });
   await Profile.verifyTravelArranger(this.page, expectedName);
 });
+
+// --- Traveler profile (from trip page) steps ---
+
+When("I open the traveler profile for {string}", async function (travelerName) {
+  logger.info("Opening traveler profile from trip page", { travelerName });
+  const profilePage = await Profile.openTravelerProfile(this.page, travelerName);
+  this.profilePage = profilePage;
+  this.activePage = profilePage;
+});
+
+When("I edit the date of birth to a new date", async function () {
+  logger.info("Editing date of birth in traveler profile");
+  const targetPage = this.activePage || this.profilePage || this.page;
+  const result = await Profile.editDateOfBirth(targetPage);
+  this.originalDobValue = result.originalValue;
+});
+
+Then("the date of birth should be updated", async function () {
+  logger.info("Verifying date of birth was updated");
+  const targetPage = this.activePage || this.profilePage || this.page;
+  await Profile.verifyDobUpdated(targetPage, this.originalDobValue);
+});
