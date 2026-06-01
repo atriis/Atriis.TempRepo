@@ -21,6 +21,11 @@ When("I click to add myself as the traveler", async function () {
   await Search.clickAddMeButton(this.page);
 });
 
+When("I add a traveler by name {string} from the search autocomplete", async function (name) {
+  logger.info("Selecting traveler from autocomplete (profile popup expected)", { name });
+  await Search.selectTravelerFromAutocomplete(this.page, name);
+});
+
 Given("I have added traveler by name {string}", async function (travelerName) {
   logger.info("Adding traveler by name", { travelerName });
   const result = await Search.addTravelerByName(this.page, travelerName);

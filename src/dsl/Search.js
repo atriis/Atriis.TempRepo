@@ -54,6 +54,39 @@ const Search = {
   },
 
   /**
+   * Types a traveler name into the autocomplete field and selects the first option,
+   * but does NOT wait for the traveler tag or star icon.
+   * Use when adding a traveler with missing mandatory fields is expected to trigger
+   * the profile popup rather than completing the add.
+   */
+  async selectTravelerFromAutocomplete(page, name) {
+    if (!page) {
+      throw new Error('[Search.selectTravelerFromAutocomplete] "page" is required.');
+    }
+    if (!name || typeof name !== 'string') {
+      throw new Error(
+        `[Search.selectTravelerFromAutocomplete] "name" must be a non-empty string, got: ${typeof name} (${JSON.stringify(name)})`
+      );
+    }
+
+    logger.debug(`[Search.selectTravelerFromAutocomplete] Clicking Add traveller, typing "${name}" and selecting from autocomplete`);
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.clickAddTravelerButton();
+      await searchPage.fillInTravelerName(name);
+      await searchPage.selectFirstTravelerNameOption();
+    } catch (err) {
+      throw new Error(
+        `[Search.selectTravelerFromAutocomplete] Failed to add traveler "${name}" from autocomplete: ${err.message}. ` +
+        `Ensure the "Add traveller" button is visible and the autocomplete returned results for "${name}".`
+      );
+    }
+
+    logger.info(`[Search.selectTravelerFromAutocomplete] Selected "${name}" from autocomplete`);
+  },
+
+  /**
    * Removes the logged-in traveler from the trip.
    * Returns whether the Add Me button becomes visible again.
    */
