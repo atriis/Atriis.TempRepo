@@ -1638,6 +1638,214 @@ const Profile = {
     logger.info(`[Profile.verifyCardName] Card display name "${actualName}" matches expected "${cardName}"`);
     return { actualName };
   },
+
+  /**
+   * Waits for the user-profile mandatory-field dialog popup to appear and verifies
+   * that the specified field is marked as mandatory inside the popup.
+   *
+   * @param {import('playwright').Page} page - The OBT page where the popup is rendered
+   * @param {string} fieldName - The field label text expected to carry the "mandatory" class (e.g. "Mobile")
+   */
+  async verifyMandatoryFieldPopup(page, fieldName) {
+    if (!page) {
+      throw new Error('[Profile.verifyMandatoryFieldPopup] "page" is required.');
+    }
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(
+        `[Profile.verifyMandatoryFieldPopup] "fieldName" must be a non-empty string, got: ${typeof fieldName} (${JSON.stringify(fieldName)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyMandatoryFieldPopup] Waiting for profile popup and verifying "${fieldName}" is mandatory`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.waitForProfilePopup();
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyMandatoryFieldPopup] Profile mandatory-field popup did not appear: ${err.message}`
+      );
+    }
+
+    let actualLabel;
+    try {
+      actualLabel = await profilePage.getMandatoryFieldLabel();
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyMandatoryFieldPopup] Could not read mandatory field label from popup: ${err.message}. ` +
+        `The popup may be open but no field carries the CSS class "mandatory" — check that the mobile field is actually mandatory for this corporation.`
+      );
+    }
+
+    if (!actualLabel.includes(fieldName)) {
+      throw new Error(
+        `[Profile.verifyMandatoryFieldPopup] Mandatory field label "${actualLabel}" does not contain expected field "${fieldName}". ` +
+        `The label class "mandatory" is applied conditionally by checkIsMandateField() — verify the corporation settings mark Mobile as mandatory.`
+      );
+    }
+
+    logger.info(`[Profile.verifyMandatoryFieldPopup] Profile popup shows "${actualLabel}" as mandatory`);
+    return { actualLabel };
+  },
+
+  /**
+   * Clicks the "Save Contact Information" button in the profile popup to trigger validation.
+   * Use this when the popup has empty mandatory fields and you want to see the validation messages.
+   */
+  async trySaveProfilePopup(page) {
+    if (!page) {
+      throw new Error('[Profile.trySaveProfilePopup] "page" is required.');
+    }
+
+    logger.debug('[Profile.trySaveProfilePopup] Clicking Save in profile popup to trigger validation');
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickSaveInPopup();
+    } catch (err) {
+      throw new Error(
+        `[Profile.trySaveProfilePopup] Failed to click the Save button in the profile popup: ${err.message}. ` +
+        `Ensure the profile popup is visible and the Save button is present.`
+      );
+    }
+
+    logger.info('[Profile.trySaveProfilePopup] Save button clicked — validation messages should now appear');
+  },
+
+  /**
+   * Verifies the validation message displayed inside the profile popup.
+   *
+   * @param {import('playwright').Page} page - The OBT page where the popup is rendered
+   * @param {string} message - The expected validation message text (e.g. "Invalid phone number")
+   */
+  async verifyValidationMessage(page, message) {
+    if (!page) {
+      throw new Error('[Profile.verifyValidationMessage] "page" is required.');
+    }
+    if (!message || typeof message !== 'string') {
+      throw new Error(
+        `[Profile.verifyValidationMessage] "message" must be a non-empty string, got: ${typeof message} (${JSON.stringify(message)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyValidationMessage] Verifying validation message contains "${message}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let actualMessage;
+    try {
+      actualMessage = await profilePage.getValidationMessage();
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyValidationMessage] Could not read validation message from profile popup: ${err.message}. ` +
+        `The message appears only when a phone input is touched and invalid — ensure the popup has been triggered by saving with empty mobile.`
+      );
+    }
+
+    if (!actualMessage.includes(message)) {
+      throw new Error(
+        `[Profile.verifyValidationMessage] Validation message "${actualMessage}" does not contain expected text "${message}". ` +
+        `Check the i18n key "validation.invalidPhone" for the correct translated value.`
+      );
+    }
+
+    logger.info(`[Profile.verifyValidationMessage] Validation message verified: "${actualMessage}"`);
+    return { actualMessage };
+  },
+
+  /**
+   * Verifies the informational message displayed at the bottom of the profile popup
+   * (the "please fill all required fields" message rendered when form is invalid on submit).
+   *
+   * @param {import('playwright').Page} page - The OBT page where the popup is rendered
+   * @param {string} message - The expected info message text
+   */
+  async verifyInfoMessage(page, message) {
+    if (!page) {
+      throw new Error('[Profile.verifyInfoMessage] "page" is required.');
+    }
+    if (!message || typeof message !== 'string') {
+      throw new Error(
+        `[Profile.verifyInfoMessage] "message" must be a non-empty string, got: ${typeof message} (${JSON.stringify(message)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyInfoMessage] Verifying info message contains "${message}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let actualMessage;
+    try {
+      actualMessage = await profilePage.getInfoMessage();
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyInfoMessage] Could not read info message from profile popup: ${err.message}. ` +
+        `The message appears only when markFields is true and the form is invalid — ensure the save was attempted before checking.`
+      );
+    }
+
+    if (!actualMessage.includes(message)) {
+      throw new Error(
+        `[Profile.verifyInfoMessage] Info message "${actualMessage}" does not contain expected text "${message}". ` +
+        `Check the i18n key "userProfile.pleaseFillRequiredFields" for the correct translated value.`
+      );
+    }
+
+    logger.info(`[Profile.verifyInfoMessage] Info message verified: "${actualMessage}"`);
+    return { actualMessage };
+  },
+
+  /**
+   * Fills in the mobile phone number fields inside the profile mandatory-field popup
+   * and clicks Save. The popup should already be open.
+   *
+   * @param {import('playwright').Page} page - The OBT page where the popup is rendered
+   * @param {{ countryCode: string, areaCode: string, number: string }} options
+   */
+  async enterMobileInPopup(page, { countryCode, areaCode, number } = {}) {
+    if (!page) {
+      throw new Error('[Profile.enterMobileInPopup] "page" is required.');
+    }
+    if (!countryCode || typeof countryCode !== 'string') {
+      throw new Error(
+        `[Profile.enterMobileInPopup] "countryCode" must be a non-empty string, got: ${typeof countryCode} (${JSON.stringify(countryCode)})`
+      );
+    }
+    if (!areaCode || typeof areaCode !== 'string') {
+      throw new Error(
+        `[Profile.enterMobileInPopup] "areaCode" must be a non-empty string, got: ${typeof areaCode} (${JSON.stringify(areaCode)})`
+      );
+    }
+    if (!number || typeof number !== 'string') {
+      throw new Error(
+        `[Profile.enterMobileInPopup] "number" must be a non-empty string, got: ${typeof number} (${JSON.stringify(number)})`
+      );
+    }
+
+    logger.debug(`[Profile.enterMobileInPopup] Filling mobile in popup: ${countryCode}-${areaCode}-${number}`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.fillMobileInPopup({ countryCode, areaCode, number });
+    } catch (err) {
+      throw new Error(
+        `[Profile.enterMobileInPopup] Failed to fill mobile (${countryCode}-${areaCode}-${number}) in popup: ${err.message}`
+      );
+    }
+
+    try {
+      await profilePage.clickSaveInPopup();
+    } catch (err) {
+      throw new Error(
+        `[Profile.enterMobileInPopup] Failed to click Save in popup after filling mobile: ${err.message}. ` +
+        `The phone number may still be invalid — verify the format is correct for the configured validator.`
+      );
+    }
+
+    logger.info(`[Profile.enterMobileInPopup] Mobile entered and saved in popup: ${countryCode}-${areaCode}-${number}`);
+  },
 };
 
 module.exports = Profile;

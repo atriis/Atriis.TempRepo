@@ -15,31 +15,16 @@ Feature: 30631 Fill mandatory field for yourself
   @priority:high
   Scenario: Profile pops up with error message when adding yourself with empty mandatory mobile field
     Given I am logged in as "Mendy@Tori.com"
-    # TODO: Step needs implementation — click "[to='/'] .material-symbols-outlined", wait for admin form
-    # DSL candidate: Profile.navigateToAdministration(page)
     When I navigate to the administration page
-    # TODO: Step needs implementation — go to Users tab, search "mendy tori", open contact info, clear mobile, save
-    # DSL candidate: Profile.clearUserMobileInAdmin(page, userName)
     And I clear the mobile field for user "mendy tori" in the administration
     And I book a new trip
-    And I have added myself as the traveler
-    # TODO: Step needs implementation — assert ".mandatory" text matches field name
-    # DSL candidate: Profile.verifyMandatoryFieldPopup(page, fieldName)
+    And I click to add myself as the traveler
     Then the profile popup should display "Mobile" as a mandatory field
-    # TODO: Step needs implementation — assert ".help" text matches
-    # DSL candidate: Profile.verifyValidationMessage(page, message)
-    And I should see the validation message "Invalid phone number"
-    # TODO: Step needs implementation — assert ".btns-container p" text matches
-    # DSL candidate: Profile.verifyInfoMessage(page, message)
+    When I try to save the profile popup with empty mandatory fields
+    Then I should see the validation message "Invalid phone number"
     And I should see the message "Please fill all required fields which are marked"
-    # TODO: Step needs implementation — fill country code, area code, number in popup, click save
-    # DSL candidate: Profile.enterMobileInPopup(page, { countryCode, areaCode, number })
     When I enter a mobile number in the profile popup with country code "972" area code "50" and number "8521478"
     Then I should see a success notification
-    When I navigate to the administration page
-    # TODO: Step needs implementation — navigate to Users, type name, click user, open contact info
-    # DSL candidate: Profile.searchUserInAdmin(page, userName)
+    When I switch to the administration page
     And I search for user "mendy tori" in the administration
-    # TODO: Step needs implementation — assert phone-number fields match expected values
-    # DSL candidate: Profile.verifyMobileInAdmin(page, { countryCode, areaCode, number })
     Then the mobile field should show country code "972" area code "50" and number "8521478"

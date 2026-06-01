@@ -1,6 +1,7 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const { SearchPage } = require("@pages/SearchPage");
 const { generateRandomGuestData } = require("@utils/data/generateRandomGuestData.js");
+const logger = require("@utils/logger").child("Search");
 
 /**
  * Search (Domain DSL)
@@ -25,6 +26,31 @@ const Search = {
     const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
 
     return { added: true, starIconVisible: true, selectedTravelerCount };
+  },
+
+  /**
+   * Clicks the "Add me" button but does NOT wait for the traveler tag to appear.
+   * Use this when clicking "Add me" is expected to trigger a profile popup
+   * (e.g. when mandatory fields are missing) rather than adding a tag.
+   */
+  async clickAddMeButton(page) {
+    if (!page) {
+      throw new Error('[Search.clickAddMeButton] "page" is required.');
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.waitForAddMeButton();
+      await searchPage.clickAddMe();
+    } catch (err) {
+      throw new Error(
+        `[Search.clickAddMeButton] Failed to find or click the "Add me" button: ${err.message}. ` +
+        `Ensure the traveler selector section is visible on the current page.`
+      );
+    }
+
+    logger.info('[Search.clickAddMeButton] "Add me" button clicked');
   },
 
   /**

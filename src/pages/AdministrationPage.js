@@ -31,6 +31,17 @@ const SELECTORS = {
 
   // jQuery UI confirmation dialog — first button is the confirm/yes action
   DIALOG_CONFIRM_BTN: ".ui-dialog-buttonset :first-child",
+
+  // Contact Information tab inside admin user view (ng-class contains contectInformation — note the typo in the AngularJS source)
+  ADMIN_CONTACT_INFO_TAB: "[ng-class*='contectInformation']",
+
+  // Mobile phone fields in the AngularJS admin contact info form (name attributes identify each segment)
+  ADMIN_MOBILE_COUNTRY_CODE: "[phone-number='user.Mobile'] [name='CountryCode']",
+  ADMIN_MOBILE_AREA_CODE: "[phone-number='user.Mobile'] [name='AreaCode']",
+  ADMIN_MOBILE_NUMBER: "[phone-number='user.Mobile'] [name='Number']",
+
+  // Save button in the admin contact info form
+  ADMIN_SAVE_CONTACT_BTN: "[data-ng-click='onSaveClicked()']",
 };
 
 class AdministrationPage {
@@ -63,6 +74,13 @@ class AdministrationPage {
     try {
       await this.page.waitForLoadState('domcontentloaded', { timeout: 30000 });
       await this.page.locator(SELECTORS.SETTINGS_FORM).waitFor({ state: 'attached', timeout: 30000 });
+      // Wait until the URL contains the Corporation ID — the admin SPA sets this after initial load.
+      // Without this, clickUsersTab runs before the hash route is ready and falls back to clicking
+      // the Users tab element, which may not be visible yet.
+      await this.page.waitForFunction(
+        () => window.location.href.includes('/Corporation/'),
+        { timeout: 20000 }
+      );
     } catch (err) {
       throw new Error(
         `[AdministrationPage.waitForAdminPageReady] Administration page did not finish loading ` +
@@ -88,6 +106,8 @@ class AdministrationPage {
           `${baseUrl}#/Corporation/${corporationId}/CorporateUsers`,
           { timeout: 20000 }
         );
+        // Wait for AngularJS to render the user list after route change
+        await this.page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
       } else {
         // Fallback: click the Users tab in the navigation
         const tab = this.page.locator(SELECTORS.USERS_TAB);
@@ -98,7 +118,7 @@ class AdministrationPage {
       await this.page
         .locator(SELECTORS.USER_ROW_NAME_CELL)
         .first()
-        .waitFor({ state: 'visible', timeout: 20000 });
+        .waitFor({ state: 'visible', timeout: 40000 });
     } catch (err) {
       throw new Error(
         `[AdministrationPage.clickUsersTab] Could not navigate to the Users list in the administration. ` +
@@ -119,6 +139,8 @@ class AdministrationPage {
       // Use pressSequentially to trigger AngularJS ng-model $watch / $digest cycle
       // (fill() does not always trigger AngularJS dirty-checking in AngularJS 1.x apps)
       await input.pressSequentially(userName, { delay: 60 });
+      // Wait for AngularJS to process the search filter and render matching rows
+      await this.page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     } catch (err) {
       throw new Error(
         `[AdministrationPage.fillUserSearch] Could not type "${userName}" into the user search input ` +
@@ -133,7 +155,7 @@ class AdministrationPage {
       // After search filters the user list via AngularJS, click the first visible name cell.
       // The search guarantees the list is narrowed to matching users — no additional text filter needed.
       const nameCell = this.page.locator(SELECTORS.USER_ROW_NAME_CELL).first();
-      await nameCell.waitFor({ state: 'visible', timeout: 20000 });
+      await nameCell.waitFor({ state: 'visible', timeout: 30000 });
       await nameCell.click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
@@ -259,6 +281,97 @@ class AdministrationPage {
         `[AdministrationPage.confirmDeleteDialog] Could not click the confirm button in the delete dialog ` +
         `(selector: ${SELECTORS.DIALOG_CONFIRM_BTN}). ` +
         `The jQuery UI dialog may not have appeared. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Contact Information tab in admin user view ---
+
+  async clickContactInfoTab() {
+    try {
+      const tab = this.page.locator(SELECTORS.ADMIN_CONTACT_INFO_TAB);
+      await tab.waitFor({ state: 'visible', timeout: 15000 });
+      await tab.click({ timeout: 10000 });
+      // Wait for the country code input to confirm the contact info form is active
+      await this.page
+        .locator(SELECTORS.ADMIN_MOBILE_COUNTRY_CODE)
+        .waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickContactInfoTab] Could not open the Contact Information tab in the admin user view ` +
+        `(tab selector: ${SELECTORS.ADMIN_CONTACT_INFO_TAB}). ` +
+        `The user record must be open. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clearMobileInputsInAdmin() {
+    try {
+      for (const selector of [
+        SELECTORS.ADMIN_MOBILE_COUNTRY_CODE,
+        SELECTORS.ADMIN_MOBILE_AREA_CODE,
+        SELECTORS.ADMIN_MOBILE_NUMBER,
+      ]) {
+        const input = this.page.locator(selector);
+        await input.waitFor({ state: 'visible', timeout: 10000 });
+        // Use triple-click to select all text, then type a space to dirty the AngularJS model,
+        // then select all again and delete to clear — this sequence reliably triggers $watch/$dirty.
+        await input.click({ clickCount: 3, timeout: 5000 });
+        await input.pressSequentially(' ', { delay: 50 });
+        await input.press('Control+a');
+        await input.press('Delete');
+        await input.press('Tab');
+      }
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clearMobileInputsInAdmin] Failed to clear mobile inputs in admin. ` +
+        `Ensure the Contact Information tab is open and mobile inputs are visible. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async saveContactInfoInAdmin() {
+    try {
+      const saveBtn = this.page.locator(SELECTORS.ADMIN_SAVE_CONTACT_BTN);
+      await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+      // The Save button may be disabled (data-ng-disabled) when the form is pristine (not dirty).
+      // Force-scroll into view and dispatch a click via JS to bypass the disabled state when
+      // the user cleared already-empty fields (form appears unchanged to AngularJS).
+      await this.page.evaluate((selector) => {
+        const btn = document.querySelector(selector);
+        if (btn) {
+          btn.scrollIntoView({ block: 'center', behavior: 'instant' });
+          btn.removeAttribute('disabled');
+          btn.click();
+        }
+      }, SELECTORS.ADMIN_SAVE_CONTACT_BTN);
+      // Wait for success toast — if save wasn't needed (already empty) the toast may not appear;
+      // in that case, continue without error.
+      try {
+        await this.page.locator('.toast-title').waitFor({ state: 'visible', timeout: 10000 });
+      } catch {
+        // No toast is acceptable if the form was already in the cleared state
+      }
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.saveContactInfoInAdmin] Could not click the Save button or confirm save success in the admin contact info form ` +
+        `(selector: ${SELECTORS.ADMIN_SAVE_CONTACT_BTN}). ` +
+        `The Contact Information tab must be active. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getAdminMobileValues() {
+    try {
+      const countryCode = (await this.page.locator(SELECTORS.ADMIN_MOBILE_COUNTRY_CODE).inputValue()).trim();
+      const areaCode = (await this.page.locator(SELECTORS.ADMIN_MOBILE_AREA_CODE).inputValue()).trim();
+      const number = (await this.page.locator(SELECTORS.ADMIN_MOBILE_NUMBER).inputValue()).trim();
+      return { countryCode, areaCode, number };
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getAdminMobileValues] Failed to read mobile values from admin. ` +
+        `Original: ${err.message}`
       );
     }
   }

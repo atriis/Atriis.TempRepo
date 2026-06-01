@@ -307,3 +307,30 @@ Then("I should see a masked loyalty number ending in {string}", async function (
   const targetPage = this.activePage || this.profilePage || this.page;
   await Profile.verifyMaskedLoyaltyEnding(targetPage, lastDigits);
 });
+
+// --- Mandatory field popup steps ---
+
+Then("the profile popup should display {string} as a mandatory field", async function (fieldName) {
+  logger.info("Verifying mandatory field in profile popup", { fieldName });
+  await Profile.verifyMandatoryFieldPopup(this.page, fieldName);
+});
+
+When("I try to save the profile popup with empty mandatory fields", async function () {
+  logger.info("Clicking Save in profile popup to trigger validation");
+  await Profile.trySaveProfilePopup(this.page);
+});
+
+Then("I should see the validation message {string}", async function (message) {
+  logger.info("Verifying validation message in profile popup", { message });
+  await Profile.verifyValidationMessage(this.page, message);
+});
+
+Then("I should see the message {string}", async function (message) {
+  logger.info("Verifying info message in profile popup", { message });
+  await Profile.verifyInfoMessage(this.page, message);
+});
+
+When("I enter a mobile number in the profile popup with country code {string} area code {string} and number {string}", async function (countryCode, areaCode, number) {
+  logger.info("Entering mobile number in profile popup", { countryCode, areaCode, number });
+  await Profile.enterMobileInPopup(this.page, { countryCode, areaCode, number });
+});

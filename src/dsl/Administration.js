@@ -1,5 +1,6 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const AdministrationPage = require("@src/pages/AdministrationPage");
+const LoginPage = require("@src/pages/LoginPage");
 const logger = require("@utils/logger").child("Administration");
 
 /**
@@ -29,6 +30,10 @@ const Administration = {
     }
 
     const adminPage = getPageObject(page, AdministrationPage);
+
+    // Dismiss cookie consent banner if present — it can intercept pointer events
+    const loginPage = getPageObject(page, LoginPage);
+    await loginPage.acceptCookiesIfPresent(5000);
 
     const newPagePromise = context.waitForEvent('page', { timeout: 20000 }).catch(() => null);
 
@@ -250,6 +255,131 @@ const Administration = {
     }
 
     logger.info(`[Administration.deleteCcFromAdmin] Card "${cardName}" deleted from administration`);
+  },
+
+  /**
+   * Searches for a user in the administration, opens their record, navigates to the
+   * Contact Information tab, clears all mobile phone inputs, and saves the changes.
+   * Used to set up a test scenario where mandatory mobile field is empty.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} userName - Full name of the user to search for (e.g. "mendy tori")
+   */
+  async clearUserMobileInAdmin(adminPage, userName) {
+    if (!adminPage) {
+      throw new Error('[Administration.clearUserMobileInAdmin] "adminPage" is required.');
+    }
+    if (!userName || typeof userName !== 'string') {
+      throw new Error(
+        `[Administration.clearUserMobileInAdmin] "userName" must be a non-empty string, got: ${typeof userName} (${JSON.stringify(userName)})`
+      );
+    }
+
+    logger.debug(`[Administration.clearUserMobileInAdmin] Clearing mobile for user "${userName}"`);
+
+    await Administration.searchUserInAdmin(adminPage, userName);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickContactInfoTab();
+    } catch (err) {
+      throw new Error(
+        `[Administration.clearUserMobileInAdmin] Failed to open Contact Information tab for user "${userName}": ${err.message}`
+      );
+    }
+
+    try {
+      await page.clearMobileInputsInAdmin();
+    } catch (err) {
+      throw new Error(
+        `[Administration.clearUserMobileInAdmin] Failed to clear mobile inputs for user "${userName}": ${err.message}`
+      );
+    }
+
+    try {
+      await page.saveContactInfoInAdmin();
+    } catch (err) {
+      throw new Error(
+        `[Administration.clearUserMobileInAdmin] Failed to save after clearing mobile for user "${userName}": ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.clearUserMobileInAdmin] Mobile field cleared and saved for user "${userName}"`);
+  },
+
+  /**
+   * Verifies the mobile phone values shown in the administration Contact Information tab.
+   * Assumes the user record is already open (e.g. after searchUserInAdmin).
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {{ countryCode: string, areaCode: string, number: string }} options
+   */
+  async verifyMobileInAdmin(adminPage, { countryCode, areaCode, number } = {}) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyMobileInAdmin] "adminPage" is required.');
+    }
+    if (!countryCode || typeof countryCode !== 'string') {
+      throw new Error(
+        `[Administration.verifyMobileInAdmin] "countryCode" must be a non-empty string, got: ${typeof countryCode} (${JSON.stringify(countryCode)})`
+      );
+    }
+    if (!areaCode || typeof areaCode !== 'string') {
+      throw new Error(
+        `[Administration.verifyMobileInAdmin] "areaCode" must be a non-empty string, got: ${typeof areaCode} (${JSON.stringify(areaCode)})`
+      );
+    }
+    if (!number || typeof number !== 'string') {
+      throw new Error(
+        `[Administration.verifyMobileInAdmin] "number" must be a non-empty string, got: ${typeof number} (${JSON.stringify(number)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyMobileInAdmin] Verifying mobile ${countryCode}-${areaCode}-${number} in administration`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickContactInfoTab();
+    } catch (err) {
+      throw new Error(
+        `[Administration.verifyMobileInAdmin] Failed to open Contact Information tab: ${err.message}`
+      );
+    }
+
+    let actual;
+    try {
+      actual = await page.getAdminMobileValues();
+    } catch (err) {
+      throw new Error(
+        `[Administration.verifyMobileInAdmin] Failed to read mobile values from admin: ${err.message}`
+      );
+    }
+
+    if (actual.countryCode !== countryCode) {
+      throw new Error(
+        `[Administration.verifyMobileInAdmin] Mobile country code mismatch. ` +
+        `Expected "${countryCode}" but admin shows "${actual.countryCode}". ` +
+        `The value entered in the profile popup may not have synced to administration.`
+      );
+    }
+    if (actual.areaCode !== areaCode) {
+      throw new Error(
+        `[Administration.verifyMobileInAdmin] Mobile area code mismatch. ` +
+        `Expected "${areaCode}" but admin shows "${actual.areaCode}". ` +
+        `The value entered in the profile popup may not have synced to administration.`
+      );
+    }
+    if (actual.number !== number) {
+      throw new Error(
+        `[Administration.verifyMobileInAdmin] Mobile number mismatch. ` +
+        `Expected "${number}" but admin shows "${actual.number}". ` +
+        `The value entered in the profile popup may not have synced to administration.`
+      );
+    }
+
+    logger.info(`[Administration.verifyMobileInAdmin] Mobile verified in admin: ${actual.countryCode}-${actual.areaCode}-${actual.number}`);
+    return actual;
   },
 };
 

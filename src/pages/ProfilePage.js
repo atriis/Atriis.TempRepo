@@ -101,6 +101,19 @@ const SELECTORS = {
 
   // Dropdown options
   DROPDOWN_OPTION: '.el-select-dropdown__item',
+
+  // User profile dialog popup — shown when mandatory profile fields are missing on "add myself"
+  USER_PROFILE_DIALOG: '.app-dialog.user-profile-dialog',
+  // Mandatory field label in the popup contact info form — gets class `mandatory` via Vue binding
+  PROFILE_POPUP_MANDATORY_LABEL: '.user-profile-dialog .contact-info-form-content label.mandatory',
+  // Validation message shown below invalid phone inputs (e.g. "Invalid phone number")
+  PROFILE_POPUP_VALIDATION_MSG: '.user-profile-dialog .contact-info-form-content p.help',
+  // Info message rendered when markFields is true and the form is invalid
+  PROFILE_POPUP_INFO_MSG: '.user-profile-dialog .contact-info-form-content .btns-container .is-word-break',
+  // Mobile is the first .field.app-column.is-3 within .phone-inputs-container (3 inputs: country, area, number)
+  PROFILE_POPUP_MOBILE_INPUTS: '.user-profile-dialog .contact-info-form-content .phone-inputs-container .field.app-column.is-3:first-child .phone-inputs input',
+  // Save button inside the popup contact info form
+  PROFILE_POPUP_SAVE_BTN: '.user-profile-dialog button:has-text("Save")',
 };
 
 class ProfilePage {
@@ -1277,6 +1290,106 @@ class ProfilePage {
       throw new Error(
         `[ProfilePage.confirmRemovePassportVisa] Could not confirm the delete dialog (selector: ${SELECTORS.CONFIRM_DELETE_BUTTON}). ` +
         `The confirmation dialog may not have appeared after clicking remove. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- User profile mandatory-field dialog popup ---
+
+  async waitForProfilePopup() {
+    try {
+      await this.page
+        .locator(SELECTORS.USER_PROFILE_DIALOG)
+        .waitFor({ state: 'visible', timeout: 20000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.waitForProfilePopup] The user profile dialog popup did not appear ` +
+        `(selector: ${SELECTORS.USER_PROFILE_DIALOG}). ` +
+        `The popup shows when a traveler is added with missing mandatory fields. ` +
+        `Verify the mobile field is cleared in the administration before the test. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async getMandatoryFieldLabel() {
+    try {
+      const label = this.page.locator(SELECTORS.PROFILE_POPUP_MANDATORY_LABEL).first();
+      await label.waitFor({ state: 'visible', timeout: 10000 });
+      return (await label.textContent()).trim();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getMandatoryFieldLabel] Could not read the mandatory field label inside the profile popup ` +
+        `(selector: ${SELECTORS.PROFILE_POPUP_MANDATORY_LABEL}). ` +
+        `The popup must be open and the mandatory field label must carry the CSS class "mandatory". ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async getValidationMessage() {
+    try {
+      const msg = this.page.locator(SELECTORS.PROFILE_POPUP_VALIDATION_MSG).first();
+      await msg.waitFor({ state: 'visible', timeout: 10000 });
+      return (await msg.textContent()).trim();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getValidationMessage] Could not read the validation message inside the profile popup ` +
+        `(selector: ${SELECTORS.PROFILE_POPUP_VALIDATION_MSG}). ` +
+        `The validation message ("Invalid phone number") appears only when the phone field is touched and invalid. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async getInfoMessage() {
+    try {
+      const msg = this.page.locator(SELECTORS.PROFILE_POPUP_INFO_MSG).first();
+      await msg.waitFor({ state: 'visible', timeout: 10000 });
+      return (await msg.textContent()).trim();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getInfoMessage] Could not read the info message inside the profile popup ` +
+        `(selector: ${SELECTORS.PROFILE_POPUP_INFO_MSG}). ` +
+        `The message "Please fill all required fields which are marked" only appears when the form is submitted with invalid data. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillMobileInPopup({ countryCode, areaCode, number }) {
+    try {
+      const inputs = this.page.locator(SELECTORS.PROFILE_POPUP_MOBILE_INPUTS);
+      await inputs.first().waitFor({ state: 'visible', timeout: 10000 });
+      const count = await inputs.count();
+      if (count < 3) {
+        throw new Error(
+          `Expected 3 mobile inputs in popup (country code, area code, number) but found ${count}. ` +
+          `Selector: ${SELECTORS.PROFILE_POPUP_MOBILE_INPUTS}`
+        );
+      }
+      await inputs.nth(0).fill(countryCode);
+      await inputs.nth(1).fill(areaCode);
+      await inputs.nth(2).fill(number);
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.fillMobileInPopup] Failed to fill mobile number (country: "${countryCode}", area: "${areaCode}", number: "${number}") in the profile popup. ` +
+        `The popup must be open and the mobile field must be editable. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickSaveInPopup() {
+    try {
+      const saveBtn = this.page.locator(SELECTORS.PROFILE_POPUP_SAVE_BTN);
+      await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await saveBtn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickSaveInPopup] Could not click the Save button inside the profile popup ` +
+        `(selector: ${SELECTORS.PROFILE_POPUP_SAVE_BTN}). ` +
+        `All mandatory fields must be valid before saving. Original: ${err.message}`
       );
     }
   }

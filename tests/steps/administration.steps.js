@@ -10,6 +10,17 @@ When("I navigate to the administration page", async function () {
   this.adminPage = adminTab;
 });
 
+When("I switch to the administration page", async function () {
+  logger.info("Switching to the existing administration tab");
+  if (!this.adminPage) {
+    throw new Error('[administration.steps] No admin page stored — call "I navigate to the administration page" first.');
+  }
+  await this.adminPage.bringToFront();
+  // Reload to ensure a clean state after background changes (e.g. profile popup save)
+  await this.adminPage.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+  await this.adminPage.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+});
+
 When("I search for user {string} in the administration", async function (userName) {
   logger.info("Searching for user in administration", { userName });
   await Administration.searchUserInAdmin(this.adminPage, userName);
@@ -28,4 +39,14 @@ Then("the credit card {string} should show expiry month {string} and year {strin
 When("I delete the credit card {string} from the administration", async function (cardName) {
   logger.info("Deleting credit card from administration", { cardName });
   await Administration.deleteCcFromAdmin(this.adminPage, cardName);
+});
+
+When("I clear the mobile field for user {string} in the administration", async function (userName) {
+  logger.info("Clearing mobile field for user in administration", { userName });
+  await Administration.clearUserMobileInAdmin(this.adminPage, userName);
+});
+
+Then("the mobile field should show country code {string} area code {string} and number {string}", async function (countryCode, areaCode, number) {
+  logger.info("Verifying mobile values in administration", { countryCode, areaCode, number });
+  await Administration.verifyMobileInAdmin(this.adminPage, { countryCode, areaCode, number });
 });

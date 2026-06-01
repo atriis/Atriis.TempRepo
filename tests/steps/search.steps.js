@@ -16,6 +16,11 @@ Given("I have added myself as the traveler", async function () {
   this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
+When("I click to add myself as the traveler", async function () {
+  logger.info("Clicking Add me button (profile popup expected)");
+  await Search.clickAddMeButton(this.page);
+});
+
 Given("I have added traveler by name {string}", async function (travelerName) {
   logger.info("Adding traveler by name", { travelerName });
   const result = await Search.addTravelerByName(this.page, travelerName);
