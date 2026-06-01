@@ -39,6 +39,10 @@ const SELECTORS = {
   SAVE_PERSONAL_DETAILS_BUTTON: '.personal-details-form-content button:has-text("Save")',
   BACKUP_APPROVER_LABEL: 'Backup approver',
 
+  // Personal Details — dynamic reference fields
+  DYNAMIC_FIELD_WARNING: '.reference-fields-container .form-validation-msg',
+  DYNAMIC_FIELD_SELECT_VALUE: '.reference-fields-container .el-select__placeholder span',
+
   // Frequent Programs form
   FREQUENT_PROGRAMS_FORM: '.frequent-programs-form',
   FREQUENT_PROGRAMS_INPUTS: '.frequent-programs-inputs',
@@ -264,6 +268,33 @@ class ProfilePage {
       throw new Error(
         `[ProfilePage.clickSaveFrequentPrograms] Could not click the Save button (selector: ${SELECTORS.SAVE_BUTTON}). ` +
         `The form may not be in a valid state or the button is disabled. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Personal Details — Dynamic Reference Fields ---
+
+  async getDynamicFieldWarningCount() {
+    try {
+      return await this.page.locator(SELECTORS.DYNAMIC_FIELD_WARNING).count();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getDynamicFieldWarningCount] Failed to count dynamic field warning messages ` +
+        `(selector: ${SELECTORS.DYNAMIC_FIELD_WARNING}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async getDynamicFieldSelectValue() {
+    try {
+      const locator = this.page.locator(SELECTORS.DYNAMIC_FIELD_SELECT_VALUE).first();
+      await locator.waitFor({ state: 'visible', timeout: 10000 });
+      return await locator.textContent();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getDynamicFieldSelectValue] Failed to read the selected value from the dynamic field dropdown ` +
+        `(selector: ${SELECTORS.DYNAMIC_FIELD_SELECT_VALUE}). ` +
+        `The field may not be rendered or the reference-fields-container is missing. Original: ${err.message}`
       );
     }
   }

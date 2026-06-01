@@ -16,9 +16,5 @@ Feature: 61474 Profile - No warning when dynamic field is filled
   Scenario: Dynamic field warning messages are not shown when field is filled in profile
     Given I am logged in as "dynafiel@dynamicprofilecorp.com" booking a new trip
     When I navigate to my user profile
-    # TODO: Step needs implementation — assert no warning/error elements visible (negative element validation)
-    # DSL candidate: Profile.verifyNoDynamicFieldWarnings(page)
     Then no dynamic field warning messages should be displayed
-    # TODO: Step needs implementation — assert ".reference-fields-container .el-select__placeholder span" text matches
-    # DSL candidate: Profile.verifyDynamicFieldValue(page, value)
     And the dynamic profile field should show value "1"

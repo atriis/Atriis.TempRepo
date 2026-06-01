@@ -1339,6 +1339,79 @@ const Profile = {
 
     logger.info('[Profile.verifySeatPreferenceCleared] Seat preference confirmed cleared ("No preference")');
   },
+
+  /**
+   * Verifies no validation warning messages are visible in the dynamic reference fields section of the profile.
+   */
+  async verifyNoDynamicFieldWarnings(page) {
+    if (!page) throw new Error('[Profile.verifyNoDynamicFieldWarnings] "page" is required.');
+
+    logger.debug('[Profile.verifyNoDynamicFieldWarnings] Waiting for personal details form before checking warnings');
+
+    try {
+      await page.locator('.personal-details-form-content').waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyNoDynamicFieldWarnings] Personal details form did not become visible — cannot check for dynamic field warnings. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    let warningCount;
+
+    try {
+      warningCount = await profilePage.getDynamicFieldWarningCount();
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyNoDynamicFieldWarnings] Failed to count dynamic field warnings: ${err.message}`
+      );
+    }
+
+    if (warningCount > 0) {
+      throw new Error(
+        `[Profile.verifyNoDynamicFieldWarnings] Expected no dynamic field warning messages but found ${warningCount}. ` +
+        `This means a required dynamic reference field may not be filled in the traveler profile. ` +
+        `Check the profile data for the test user.`
+      );
+    }
+
+    logger.info('[Profile.verifyNoDynamicFieldWarnings] No dynamic field warning messages are visible');
+  },
+
+  /**
+   * Verifies the selected value of the dynamic profile dropdown field matches the expected value.
+   */
+  async verifyDynamicFieldValue(page, expectedValue) {
+    if (!page) throw new Error('[Profile.verifyDynamicFieldValue] "page" is required.');
+    if (typeof expectedValue !== 'string') {
+      throw new Error(
+        `[Profile.verifyDynamicFieldValue] "expectedValue" must be a string, got: ${typeof expectedValue} (${JSON.stringify(expectedValue)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyDynamicFieldValue] Verifying dynamic reference field shows "${expectedValue}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+    let actualValue;
+
+    try {
+      actualValue = await profilePage.getDynamicFieldSelectValue();
+    } catch (err) {
+      throw new Error(`[Profile.verifyDynamicFieldValue] Failed to read dynamic field value: ${err.message}`);
+    }
+
+    const trimmed = (actualValue || '').trim();
+    if (trimmed !== expectedValue) {
+      throw new Error(
+        `[Profile.verifyDynamicFieldValue] Dynamic profile field shows "${trimmed}" but expected "${expectedValue}". ` +
+        `The field may have a different value saved in the profile, or the locator is reading the placeholder instead of the selected value.`
+      );
+    }
+
+    logger.info(`[Profile.verifyDynamicFieldValue] Dynamic profile field confirmed showing "${trimmed}"`);
+    return { dynamicFieldValue: trimmed };
+  },
 };
 
 module.exports = Profile;

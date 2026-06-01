@@ -274,3 +274,15 @@ Then("the seat preference should be cleared", async function () {
   logger.info("Verifying seat preference is cleared");
   await Profile.verifySeatPreferenceCleared(this.page);
 });
+
+// --- Dynamic Fields steps ---
+
+Then("no dynamic field warning messages should be displayed", async function () {
+  logger.info("Verifying no dynamic field warning messages are displayed");
+  await Profile.verifyNoDynamicFieldWarnings(this.page);
+});
+
+Then("the dynamic profile field should show value {string}", async function (expectedValue) {
+  logger.info("Verifying dynamic profile field value", { expectedValue });
+  await Profile.verifyDynamicFieldValue(this.page, expectedValue);
+});
