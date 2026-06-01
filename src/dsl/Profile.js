@@ -650,6 +650,169 @@ const Profile = {
     logger.info(`[Profile.verifyDobUpdated] DOB changed from "${originalValue}" to "${currentValue}"`);
     return { originalValue, currentValue };
   },
+
+  /**
+   * Opens the Form of Payment tab in the user profile.
+   */
+  async openFormOfPaymentTab(page) {
+    if (!page) {
+      throw new Error('[Profile.openFormOfPaymentTab] "page" is required.');
+    }
+
+    logger.debug("[Profile.openFormOfPaymentTab] Clicking Form of Payment tab");
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickFormOfPaymentTab();
+      await profilePage.waitForFopSection();
+    } catch (err) {
+      throw new Error(
+        `[Profile.openFormOfPaymentTab] Failed to open Form of Payment tab: ${err.message}`
+      );
+    }
+
+    logger.info("[Profile.openFormOfPaymentTab] Form of Payment tab opened");
+  },
+
+  /**
+   * Adds a new credit card to the profile with the specified details.
+   */
+  async addCreditCard(page, { city, cardholder, cardNumber = '4580458045804580', cardAlias = 'Test Card', cardType = 'Visa', expiryMonth = '12', expiryYear = '2029', address = '123 Test St', zipCode = '10001', country = 'UNITED STATES (US)', state = 'New York' } = {}) {
+    if (!page) {
+      throw new Error('[Profile.addCreditCard] "page" is required.');
+    }
+    if (!city || typeof city !== 'string') {
+      throw new Error(
+        `[Profile.addCreditCard] "city" must be a non-empty string, got: ${typeof city} (${JSON.stringify(city)})`
+      );
+    }
+    if (!cardholder || typeof cardholder !== 'string') {
+      throw new Error(
+        `[Profile.addCreditCard] "cardholder" must be a non-empty string, got: ${typeof cardholder} (${JSON.stringify(cardholder)})`
+      );
+    }
+
+    logger.debug(`[Profile.addCreditCard] Adding card with city="${city}", cardholder="${cardholder}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickAddNewCard();
+      await profilePage.waitForFopForm();
+    } catch (err) {
+      throw new Error(`[Profile.addCreditCard] Failed to open add card form: ${err.message}`);
+    }
+
+    try {
+      await profilePage.fillCardDisplayName(cardAlias);
+      await profilePage.selectCardType(cardType);
+      await profilePage.fillCardHolderName(cardholder);
+      await profilePage.insertCardNumber(cardNumber);
+      await profilePage.selectExpiryMonth(expiryMonth);
+      await profilePage.selectExpiryYear(expiryYear);
+      await profilePage.fillBillingAddress(address);
+      await profilePage.fillBillingCity(city);
+      await profilePage.fillBillingZipCode(zipCode);
+      await profilePage.selectBillingCountry(country);
+      await profilePage.selectBillingState(state);
+    } catch (err) {
+      throw new Error(`[Profile.addCreditCard] Failed to fill card details: ${err.message}`);
+    }
+
+    try {
+      await profilePage.clickSaveFop();
+    } catch (err) {
+      throw new Error(`[Profile.addCreditCard] Failed to save credit card: ${err.message}`);
+    }
+
+    logger.info(`[Profile.addCreditCard] Credit card added with city="${city}", cardholder="${cardholder}"`);
+  },
+
+  /**
+   * Verifies the card holder name is displayed in the card preview list.
+   */
+  async verifyCardHolderName(page, expectedName) {
+    if (!page) {
+      throw new Error('[Profile.verifyCardHolderName] "page" is required.');
+    }
+    if (!expectedName || typeof expectedName !== 'string') {
+      throw new Error(
+        `[Profile.verifyCardHolderName] "expectedName" must be a non-empty string, got: ${typeof expectedName} (${JSON.stringify(expectedName)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyCardHolderName] Verifying card holder name "${expectedName}" is displayed`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let actualName;
+    try {
+      actualName = await profilePage.getCardHolderNameFromPreview();
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyCardHolderName] Failed to read card holder name from preview: ${err.message}`
+      );
+    }
+
+    if (!actualName.toLowerCase().includes(expectedName.toLowerCase())) {
+      throw new Error(
+        `[Profile.verifyCardHolderName] Card holder name "${actualName}" does not contain expected "${expectedName}". ` +
+        `The card may not have been saved successfully or a different card is shown.`
+      );
+    }
+
+    logger.info(`[Profile.verifyCardHolderName] Card holder name "${actualName}" matches expected "${expectedName}"`);
+  },
+
+  /**
+   * Deletes the last credit card from the profile (clicks actions → delete → confirm).
+   */
+  async deleteCreditCard(page) {
+    if (!page) {
+      throw new Error('[Profile.deleteCreditCard] "page" is required.');
+    }
+
+    logger.debug("[Profile.deleteCreditCard] Deleting last credit card from profile");
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    const countBefore = await profilePage.getCardPreviewCount();
+
+    try {
+      await profilePage.clickDeleteOnLastCard();
+      await profilePage.confirmRemoveFopCard();
+    } catch (err) {
+      throw new Error(`[Profile.deleteCreditCard] Failed to delete credit card: ${err.message}`);
+    }
+
+    logger.info(`[Profile.deleteCreditCard] Credit card deleted (was ${countBefore} cards)`);
+    return { countBefore };
+  },
+
+  /**
+   * Verifies the credit card was removed (card count decreased or is zero).
+   */
+  async verifyCreditCardRemoved(page, countBefore) {
+    if (!page) {
+      throw new Error('[Profile.verifyCreditCardRemoved] "page" is required.');
+    }
+
+    logger.debug("[Profile.verifyCreditCardRemoved] Verifying card was removed");
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    const countAfter = await profilePage.getCardPreviewCount();
+
+    if (countAfter >= (countBefore || 1)) {
+      throw new Error(
+        `[Profile.verifyCreditCardRemoved] Card was not removed — count before: ${countBefore}, count after: ${countAfter}. ` +
+        `The delete operation may not have completed or the confirmation was not clicked.`
+      );
+    }
+
+    logger.info(`[Profile.verifyCreditCardRemoved] Card removed (before: ${countBefore}, after: ${countAfter})`);
+  },
 };
 
 module.exports = Profile;

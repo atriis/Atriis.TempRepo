@@ -141,3 +141,31 @@ Then("the date of birth should be updated", async function () {
   const targetPage = this.activePage || this.profilePage || this.page;
   await Profile.verifyDobUpdated(targetPage, this.originalDobValue);
 });
+
+// --- Form of Payment steps ---
+
+When("I open the form of payment tab in my profile", async function () {
+  logger.info("Opening Form of Payment tab in user profile");
+  await Profile.openFormOfPaymentTab(this.page);
+});
+
+When("I add a new credit card with city {string} and cardholder {string}", async function (city, cardholder) {
+  logger.info("Adding new credit card", { city, cardholder });
+  await Profile.addCreditCard(this.page, { city, cardholder });
+});
+
+Then("the card holder name {string} should be displayed", async function (expectedName) {
+  logger.info("Verifying card holder name is displayed", { expectedName });
+  await Profile.verifyCardHolderName(this.page, expectedName);
+});
+
+When("I delete the credit card from my profile", async function () {
+  logger.info("Deleting credit card from profile");
+  const result = await Profile.deleteCreditCard(this.page);
+  this.cardCountBefore = result.countBefore;
+});
+
+Then("the credit card should be removed", async function () {
+  logger.info("Verifying credit card was removed");
+  await Profile.verifyCreditCardRemoved(this.page, this.cardCountBefore);
+});
