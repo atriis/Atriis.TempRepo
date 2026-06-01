@@ -287,9 +287,10 @@ function extractXmlKeyValuePairs(xmlString) {
   }
 
   const pairs = [];
-  // Match opening tags with simple content: <tag>content</tag>
-  // This regex finds: <tagName>...content...</tagName>
-  const tagRegex = /<([a-zA-Z][a-zA-Z0-9]*?)>([^<]*?)<\/\1>/g;
+  // Match opening tags (with or without attributes) and simple content:
+  // <tag>content</tag> or <tag attr="...">content</tag>
+  // The opening tag may carry attributes (e.g. xmlns) before the closing ">".
+  const tagRegex = /<([a-zA-Z][a-zA-Z0-9]*?)(?:\s[^>]*)?>([^<]*?)<\/\1>/g;
 
   let match;
   while ((match = tagRegex.exec(xmlString)) !== null) {
