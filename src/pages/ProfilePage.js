@@ -1,6 +1,6 @@
 const SELECTORS = {
   // Navigation to profile
-  PASSENGER_AVATAR: '.passenger-avatar',
+  PASSENGER_AVATAR: '.app-header .passenger-avatar',
   USER_PROFILE_LINK: '.user-profile-link',
 
   // Profile tabs
@@ -9,6 +9,8 @@ const SELECTORS = {
 
   // Contact information form
   CONTACT_INFO_FORM: '.contact-info-form-content',
+
+  SAVE_CONTACT_INFO_BUTTON: '.contact-info-form-content button:has-text("Save")',
   BUSINESS_PHONE_INPUTS: '.contact-info-form-content .phone-inputs-container .field.app-column.is-3:nth-child(2) .phone-inputs input',
   STATE_LABEL: '.contact-info-form-content > :nth-child(6) > :nth-child(5) .label',
   STATE_VALUE: '.contact-info-form-content > :nth-child(6) > :nth-child(5) .el-select__placeholder span',
@@ -241,6 +243,37 @@ class ProfilePage {
       throw new Error(
         `[ProfilePage.waitForContactInfoForm] Contact Information form did not appear (selector: ${SELECTORS.CONTACT_INFO_FORM}). ` +
         `The tab may not have switched or the form failed to load. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getCityInputValue() {
+    try {
+      // Locate the Business address city field by finding the .field container
+      // with a label containing "City" text under the Business address section
+      const cityField = this.page.locator(SELECTORS.CONTACT_INFO_FORM)
+        .locator('.field.app-column', { has: this.page.locator('label', { hasText: 'City' }) })
+        .first()
+        .locator('input');
+      await cityField.waitFor({ state: 'visible', timeout: 10000 });
+      return await cityField.inputValue();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getCityInputValue] Could not read city input value. ` +
+        `The contact information form may not be loaded or the city field is not visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickSaveContactInfo() {
+    try {
+      const saveBtn = this.page.locator(SELECTORS.SAVE_CONTACT_INFO_BUTTON).first();
+      await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await saveBtn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickSaveContactInfo] Could not click the Save Contact Information button (selector: ${SELECTORS.SAVE_CONTACT_INFO_BUTTON}). ` +
+        `The button may be hidden, disabled, or the form did not load. Original: ${err.message}`
       );
     }
   }

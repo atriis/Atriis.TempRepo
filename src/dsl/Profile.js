@@ -515,6 +515,65 @@ const Profile = {
   },
 
   /**
+   * Verifies the city field value in contact information matches expected (case-insensitive).
+   */
+  async verifyCityFieldValue(page, expectedValue) {
+    if (!page) {
+      throw new Error('[Profile.verifyCityFieldValue] "page" is required.');
+    }
+    if (!expectedValue || typeof expectedValue !== 'string') {
+      throw new Error(
+        `[Profile.verifyCityFieldValue] "expectedValue" must be a non-empty string, got: ${typeof expectedValue} (${JSON.stringify(expectedValue)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyCityFieldValue] Expecting city to contain: "${expectedValue}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let actualValue;
+    try {
+      actualValue = await profilePage.getCityInputValue();
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyCityFieldValue] Failed to read city field value: ${err.message}`
+      );
+    }
+
+    if (!actualValue.toLowerCase().includes(expectedValue.toLowerCase())) {
+      throw new Error(
+        `[Profile.verifyCityFieldValue] City field value "${actualValue}" does not contain expected "${expectedValue}". ` +
+        `The city may not have been saved previously, or the wrong tab/section is displayed.`
+      );
+    }
+
+    logger.info(`[Profile.verifyCityFieldValue] City field value "${actualValue}" contains expected "${expectedValue}"`);
+  },
+
+  /**
+   * Clicks the Save button on the Contact Information form.
+   */
+  async saveContactInfo(page) {
+    if (!page) {
+      throw new Error('[Profile.saveContactInfo] "page" is required.');
+    }
+
+    logger.debug("[Profile.saveContactInfo] Clicking Save on Contact Information form");
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickSaveContactInfo();
+    } catch (err) {
+      throw new Error(
+        `[Profile.saveContactInfo] Failed to save contact information: ${err.message}`
+      );
+    }
+
+    logger.info("[Profile.saveContactInfo] Contact information saved");
+  },
+
+  /**
    * Edits the date of birth field by typing a valid adult date (30 years ago) directly into the input.
    * The datepicker uses 'DD MMM YYYY' format and the editable attribute allows direct text input.
    * Clicking the field first triggers resetFieldValueIfMasked to clear any masked value.

@@ -70,6 +70,16 @@ When("I open the contact information tab in my profile", async function () {
   await Profile.openContactInformationTab(this.page);
 });
 
+Then("the city field should contain {string}", async function (expectedValue) {
+  logger.info("Verifying city field value", { expectedValue });
+  await Profile.verifyCityFieldValue(this.page, expectedValue);
+});
+
+When("I save the profile changes", async function () {
+  logger.info("Saving profile changes");
+  await Profile.saveContactInfo(this.page);
+});
+
 Then("the business phone number should display country code {string} and area code {string} and number {string}", async function (countryCode, areaCode, number) {
   logger.info("Verifying business phone number", { countryCode, areaCode, number });
   await Profile.verifyBusinessPhoneNumber(this.page, { countryCode, areaCode, number });
