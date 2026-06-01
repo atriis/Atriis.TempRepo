@@ -744,6 +744,18 @@ class SearchPage {
   }
 
   /**
+   * Waits for the pickup date field to be visible and interactive.
+   * Used after closing the edit-search modal to confirm the date picker panel is ready
+   * before attempting to interact with calendar controls.
+   *
+   * @param {Object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async waitForPickupDateFieldVisible({ timeout = 15000 } = {}) {
+    await this.page.locator(SELECTORS.PICK_UP_DATE_INPUT).waitFor({ state: 'visible', timeout });
+  }
+
+  /**
  * Clicks a trip type radio button by label text (e.g., "One Way", "Round Trip").
  *
  * Waits until the trip type radio labels are visible before attempting

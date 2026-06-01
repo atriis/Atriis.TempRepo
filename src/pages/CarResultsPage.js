@@ -59,13 +59,30 @@ class CarResultsPage {
   }
 
   async clickStationButtonByIndex(index, buttonName, { timeout = 30000 } = {}) {
-    const button = this.getStationButtonByIndex(index, buttonName);
+    const getButton = () => this.getStationButtonByIndex(index, buttonName);
 
     try {
+      const button = getButton();
       await button.waitFor({ state: 'visible', timeout });
       await button.scrollIntoViewIfNeeded();
       await button.click({ timeout });
     } catch (error) {
+      // Vue list re-renders can detach the element between resolving and clicking.
+      // Re-query the button fresh and retry once before giving up.
+      if (/detached|not attached/i.test(error.message || '')) {
+        try {
+          const freshButton = getButton();
+          await freshButton.waitFor({ state: 'visible', timeout });
+          await freshButton.scrollIntoViewIfNeeded();
+          await freshButton.click({ timeout });
+          return;
+        } catch (retryError) {
+          throw new Error(
+            `[CarResultsPage.clickStationButtonByIndex] Failed to click "${buttonName}" at station index ${index} even after retrying due to DOM re-render. ` +
+            `Original: ${error.message}. Retry: ${retryError.message}`
+          );
+        }
+      }
       throw new Error(
         `[CarResultsPage.clickStationButtonByIndex] Failed to click the "${buttonName}" button for station index ${index}. ` +
         `The station list may not have loaded yet, the button may be covered, or the city-centre station card may have re-rendered. ` +

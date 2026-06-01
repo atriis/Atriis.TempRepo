@@ -130,6 +130,105 @@ class CarSearchPage {
   }
 
   /**
+   * Waits until the pickup date input has a non-empty value.
+   * Vue reactivity updates the input's value asynchronously after a calendar selection —
+   * calling inputValue() immediately after selectDatesByNthAvailable can still read the
+   * old/empty value. This method polls until the update has settled.
+   *
+   * NOTE: Prefer waitForPickupDateChanged(previousValue) when you already know the old
+   * value — it guarantees the NEW date has settled, not just that some date is present.
+   *
+   * @param {Object} [options]
+   * @param {number} [options.timeout=5000]
+   */
+  async waitForPickupDateNonEmpty({ timeout = 5000 } = {}) {
+    const selector = SELECTORS.PICKUP_DATE_INPUT;
+    await this.page.waitForFunction(
+      (sel) => {
+        const el = document.querySelector(sel);
+        return el && el.value && el.value.trim().length > 0;
+      },
+      selector,
+      { timeout }
+    );
+  }
+
+  /**
+   * Waits until the dropoff date input has a non-empty value.
+   * Same Vue reactivity settling issue as pickup — see waitForPickupDateNonEmpty.
+   *
+   * NOTE: Prefer waitForDropoffDateChanged(previousValue) when you already know the old
+   * value — it guarantees the NEW date has settled, not just that some date is present.
+   *
+   * @param {Object} [options]
+   * @param {number} [options.timeout=5000]
+   */
+  async waitForDropoffDateNonEmpty({ timeout = 5000 } = {}) {
+    const selector = SELECTORS.DROPOFF_DATE_INPUT;
+    await this.page.waitForFunction(
+      (sel) => {
+        const el = document.querySelector(sel);
+        return el && el.value && el.value.trim().length > 0;
+      },
+      selector,
+      { timeout }
+    );
+  }
+
+  /**
+   * Waits until the pickup date input value has CHANGED from a known previous value.
+   *
+   * The date input fields are never empty (they hold the previous search date while the
+   * calendar is open). waitForPickupDateNonEmpty therefore passes immediately with the
+   * OLD value, and a subsequent getPickupDateFieldValue() may still return that stale
+   * value if Vue hasn't flushed the DOM update yet. This method avoids that race by
+   * polling until the value is both non-empty AND different from previousValue.
+   *
+   * If timeout elapses without a change (e.g., the same month was re-selected),
+   * the caller should treat the current value as the "new" value and let the
+   * same-date check decide.
+   *
+   * @param {string} previousValue - The date string that was in the input before editing
+   * @param {Object} [options]
+   * @param {number} [options.timeout=5000]
+   */
+  async waitForPickupDateChanged(previousValue, { timeout = 5000 } = {}) {
+    const selector = SELECTORS.PICKUP_DATE_INPUT;
+    await this.page.waitForFunction(
+      ({ sel, prev }) => {
+        const el = document.querySelector(sel);
+        if (!el) return false;
+        const current = el.value ? el.value.trim() : '';
+        return current.length > 0 && current !== prev;
+      },
+      { sel: selector, prev: previousValue },
+      { timeout }
+    );
+  }
+
+  /**
+   * Waits until the dropoff date input value has CHANGED from a known previous value.
+   * See waitForPickupDateChanged for the full explanation.
+   *
+   * @param {string} previousValue - The date string that was in the input before editing
+   * @param {Object} [options]
+   * @param {number} [options.timeout=5000]
+   */
+  async waitForDropoffDateChanged(previousValue, { timeout = 5000 } = {}) {
+    const selector = SELECTORS.DROPOFF_DATE_INPUT;
+    await this.page.waitForFunction(
+      ({ sel, prev }) => {
+        const el = document.querySelector(sel);
+        if (!el) return false;
+        const current = el.value ? el.value.trim() : '';
+        return current.length > 0 && current !== prev;
+      },
+      { sel: selector, prev: previousValue },
+      { timeout }
+    );
+  }
+
+  /**
    * Moves the second (drop-off) calendar forward.
    * This function is specific to Car search as it's the only product
    * that requires clicking to interact with the second calendar.

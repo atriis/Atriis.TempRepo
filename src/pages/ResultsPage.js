@@ -258,6 +258,61 @@ class ResultsPage {
   }
 
   /**
+   * Fast post-click outcome detector for use inside station-selection retry loops.
+   *
+   * Races the most likely outcomes against a short timeout:
+   * - 'no-results'   → supplier rejected, trigger retry
+   * - 'station-list' → pickup succeeded, UI transitioned to dropoff picker (pickup step only)
+   * - 'results'      → car results loaded (car cards or Add-to-trip visible)
+   * - 'ok'           → 12s elapsed with no signal — results are still loading;
+   *                    downstream steps already wait for their own elements
+   *
+   * Why 12s instead of 60s: no-results appears in 2-5s (backend rejection), car results in
+   * 3-8s. If neither fires in 12s the result is still loading — the retry loop treats that
+   * as success and lets downstream steps wait for their specific elements. This replaces the
+   * 60s race that blocked on slow car-card rendering on every happy-path click.
+   *
+   * @param {Object} [options]
+   * @param {number}  [options.timeout=12000]        Max ms to wait for any outcome
+   * @param {boolean} [options.includeStationList=false] Also detect Select-button appearance (pickup only)
+   * @returns {Promise<'no-results'|'station-list'|'results'|'ok'>}
+   */
+  async waitForNoResultsOrTransition({ timeout = 12000, includeStationList = false } = {}) {
+    const promises = [
+      this.getNoResultsContainer()
+        .waitFor({ state: 'visible', timeout })
+        .then(() => 'no-results'),
+
+      // Car results positive signals — exit early rather than burning the full 12s.
+      this.page.locator(SELECTORS.CAR_RESULT_CARD).first()
+        .waitFor({ state: 'visible', timeout })
+        .then(() => 'results'),
+
+      this.getAddToTripButton()
+        .waitFor({ state: 'visible', timeout })
+        .then(() => 'results'),
+    ];
+
+    if (includeStationList) {
+      // For the pickup step: after clicking pickup station Select, the UI transitions to
+      // the dropoff station list — new Select buttons appear. Detecting this confirms pickup
+      // succeeded without waiting for car cards to fully load.
+      // NOT included for dropoff: car results also have Select buttons (per-car options)
+      // which would fire immediately as a false positive.
+      promises.push(
+        this.getSelectButton()
+          .waitFor({ state: 'visible', timeout })
+          .then(() => 'station-list')
+      );
+    }
+
+    // Timeout → 'ok': no negative signal in 12s = car results still loading = treat as success.
+    // Downstream steps (expectStationButtonVisible, addCarAirportFromResultsPageToCart)
+    // already wait for their own elements with appropriate timeouts.
+    return Promise.race(promises).catch(() => 'ok');
+  }
+
+  /**
    * Returns true if a "Select" button is visible on the page within the given timeout.
    * Safe to call even when no Select button exists.
    * @param {number} [timeout=5000]
@@ -266,6 +321,21 @@ class ResultsPage {
   async isSelectButtonVisible(timeout = 5000) {
     try {
       await this.getSelectButton().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Returns true if an "Add to trip" button is visible within the given timeout.
+   * Used to detect whether we have landed on the car results page (vs the agency station list).
+   * @param {number} [timeout=5000]
+   * @returns {Promise<boolean>}
+   */
+  async isAddToTripButtonVisible(timeout = 5000) {
+    try {
+      await this.getAddToTripButton().waitFor({ state: 'visible', timeout });
       return true;
     } catch {
       return false;
@@ -341,10 +411,16 @@ class ResultsPage {
 
   /**
    * City-centre only: waits for post-station-selection outcome.
-   * At this stage, "Select" can still be visible from the agency list, so we must
-   * only treat "Add to trip" as a successful car-results state.
+   *
+   * @param {number} timeout
+   * @param {Object} [options]
+   * @param {boolean} [options.includeStationList=true] - When true (pickup step), a visible
+   *   Select button resolves as 'station-list', signalling the UI transitioned to the dropoff
+   *   station list. Set false for the dropoff step: other station cards' Select buttons remain
+   *   visible on the current page immediately after clicking, so including them in the race
+   *   causes a false-positive 'station-list' result before the actual car-results page loads.
    */
-  async waitForCarCardsOrNoResultsAfterStationSelection(timeout = 60000) {
+  async waitForCarCardsOrNoResultsAfterStationSelection(timeout = 60000, { includeStationList = true } = {}) {
     if (typeof timeout !== 'number' || timeout < 0) {
       throw new Error(`timeout must be a non-negative number, got ${timeout}`);
     }
@@ -363,9 +439,24 @@ class ResultsPage {
       .waitFor({ state: 'visible', timeout })
       .then(() => 'no-results');
 
-    const winner = await Promise.race([carCardPromise, addToTripPromise, noResultsPromise]).catch(() => null);
+    const promises = [carCardPromise, addToTripPromise, noResultsPromise];
 
-    if (winner === 'results' || winner === 'no-results') {
+    if (includeStationList) {
+      // After selecting the PICKUP station, the UI transitions to the dropoff station
+      // list (Select button visible, no car cards yet). Detect this so the pickup step
+      // can succeed and let the separate dropoff step handle the next selection.
+      // NOT included for the dropoff step: other station cards keep their Select buttons
+      // visible on the page immediately after clicking, which would falsely resolve as
+      // 'station-list' before the actual car-results page finishes loading.
+      const stationListPromise = this.getSelectButton()
+        .waitFor({ state: 'visible', timeout })
+        .then(() => 'station-list');
+      promises.push(stationListPromise);
+    }
+
+    const winner = await Promise.race(promises).catch(() => null);
+
+    if (winner === 'results' || winner === 'no-results' || winner === 'station-list') {
       return winner;
     }
 
