@@ -276,6 +276,27 @@ class ProfilePage {
     }
   }
 
+  async getAllLoyaltyInputValues() {
+    try {
+      // Loyalty entries span 3 sections (flights, hotel, car/rail), each using different row classes.
+      // Querying all el-input fields within the form covers every section in one pass.
+      const inputs = this.page.locator(`${SELECTORS.FREQUENT_PROGRAMS_FORM} ${SELECTORS.FF_NUMBER_INPUT}`);
+      const count = await inputs.count();
+      const values = [];
+      for (let i = 0; i < count; i++) {
+        const val = await inputs.nth(i).inputValue().catch(() => '');
+        if (val) values.push(val);
+      }
+      return values;
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getAllLoyaltyInputValues] Could not collect loyalty number input values ` +
+        `(selector: ${SELECTORS.FREQUENT_PROGRAMS_FORM} ${SELECTORS.FF_NUMBER_INPUT}). ` +
+        `Ensure the Frequent Programs tab is open. Original: ${err.message}`
+      );
+    }
+  }
+
   // --- Personal Details — Dynamic Reference Fields ---
 
   async getDynamicFieldWarningCount() {

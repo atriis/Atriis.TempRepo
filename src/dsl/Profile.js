@@ -1475,6 +1475,61 @@ const Profile = {
     logger.info(`[Profile.verifyTooltipText] Tooltip text confirmed: "${trimmed}"`);
     return { tooltipText: trimmed };
   },
+
+  async verifyLoyaltyNumbersMasked(page) {
+    if (!page) throw new Error('[Profile.verifyLoyaltyNumbersMasked] "page" is required.');
+    logger.debug('[Profile.verifyLoyaltyNumbersMasked] Reading all loyalty number input values');
+    const profilePage = getPageObject(page, ProfilePage);
+    let values;
+    try {
+      values = await profilePage.getAllLoyaltyInputValues();
+    } catch (err) {
+      throw new Error(`[Profile.verifyLoyaltyNumbersMasked] Failed to read loyalty inputs: ${err.message}`);
+    }
+    if (values.length === 0) {
+      throw new Error(
+        '[Profile.verifyLoyaltyNumbersMasked] No loyalty number inputs found in the frequent programs form. ' +
+        'Ensure the traveler has loyalty numbers and the Frequent Programs tab is open.'
+      );
+    }
+    const maskedValues = values.filter(v => /^\*{9}.{3}$/.test(v));
+    if (maskedValues.length === 0) {
+      throw new Error(
+        `[Profile.verifyLoyaltyNumbersMasked] None of the ${values.length} input(s) are masked with the expected format. ` +
+        `Values found: ${JSON.stringify(values)}. Expected format: *********XXX. ` +
+        `Ensure the logged-in user has "Can view profile of other users" privilege to trigger masking.`
+      );
+    }
+    logger.info(`[Profile.verifyLoyaltyNumbersMasked] ${maskedValues.length}/${values.length} loyalty numbers confirmed masked`);
+    return { maskedCount: maskedValues.length, totalCount: values.length };
+  },
+
+  async verifyMaskedLoyaltyEnding(page, lastDigits) {
+    if (!page) throw new Error('[Profile.verifyMaskedLoyaltyEnding] "page" is required.');
+    if (typeof lastDigits !== 'string' || !lastDigits) {
+      throw new Error(
+        `[Profile.verifyMaskedLoyaltyEnding] "lastDigits" must be a non-empty string, got: ${typeof lastDigits} (${JSON.stringify(lastDigits)})`
+      );
+    }
+    logger.debug(`[Profile.verifyMaskedLoyaltyEnding] Looking for masked loyalty number ending in "${lastDigits}"`);
+    const profilePage = getPageObject(page, ProfilePage);
+    let values;
+    try {
+      values = await profilePage.getAllLoyaltyInputValues();
+    } catch (err) {
+      throw new Error(`[Profile.verifyMaskedLoyaltyEnding] Failed to read loyalty inputs: ${err.message}`);
+    }
+    const match = values.find(v => v.endsWith(lastDigits));
+    if (!match) {
+      throw new Error(
+        `[Profile.verifyMaskedLoyaltyEnding] No loyalty number ending in "${lastDigits}" found. ` +
+        `Values present: ${JSON.stringify(values)}. ` +
+        `Expected a masked entry matching "*********${lastDigits}". Verify the traveler's loyalty data in their profile.`
+      );
+    }
+    logger.info(`[Profile.verifyMaskedLoyaltyEnding] Found masked loyalty number ending in "${lastDigits}": "${match}"`);
+    return { matchedValue: match };
+  },
 };
 
 module.exports = Profile;

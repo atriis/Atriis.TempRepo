@@ -277,3 +277,23 @@ Then("the tooltip should display {string}", async function (expectedText) {
   logger.info("Verifying tooltip text", { expectedText });
   await Profile.verifyTooltipText(this.page, expectedText);
 });
+
+// --- Loyalty number masking steps ---
+
+When("I open the frequent programs tab in the traveler profile", async function () {
+  logger.info("Opening frequent programs tab in traveler profile");
+  const targetPage = this.activePage || this.profilePage || this.page;
+  await Profile.openFrequentProgramsTab(targetPage);
+});
+
+Then("the FQTV loyalty numbers should be masked showing only the last 3 digits", async function () {
+  logger.info("Verifying FQTV loyalty numbers are masked");
+  const targetPage = this.activePage || this.profilePage || this.page;
+  await Profile.verifyLoyaltyNumbersMasked(targetPage);
+});
+
+Then("I should see a masked loyalty number ending in {string}", async function (lastDigits) {
+  logger.info("Verifying masked loyalty number ending", { lastDigits });
+  const targetPage = this.activePage || this.profilePage || this.page;
+  await Profile.verifyMaskedLoyaltyEnding(targetPage, lastDigits);
+});
