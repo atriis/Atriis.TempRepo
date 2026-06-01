@@ -813,6 +813,138 @@ const Profile = {
 
     logger.info(`[Profile.verifyCreditCardRemoved] Card removed (before: ${countBefore}, after: ${countAfter})`);
   },
+
+  // --- Passports & Visas ---
+
+  async navigateToPassportsFromTraveler(page) {
+    if (!page) {
+      throw new Error('[Profile.navigateToPassportsFromTraveler] "page" is required.');
+    }
+
+    logger.debug('[Profile.navigateToPassportsFromTraveler] Clicking traveler name and navigating to Passports & Visas tab');
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const context = page.context();
+
+    const newPagePromise = context.waitForEvent('page', { timeout: 15000 }).catch(() => null);
+
+    try {
+      await profilePage.clickFirstTravelerNameLink();
+    } catch (err) {
+      throw new Error(
+        `[Profile.navigateToPassportsFromTraveler] Could not click traveler name link: ${err.message}`
+      );
+    }
+
+    const newProfilePage = await newPagePromise;
+    let targetPage = page;
+
+    if (newProfilePage) {
+      logger.info('[Profile.navigateToPassportsFromTraveler] Profile opened in a new tab');
+      await newProfilePage.waitForLoadState('domcontentloaded', { timeout: 30000 });
+      targetPage = newProfilePage;
+    } else {
+      await page.waitForLoadState('domcontentloaded', { timeout: 30000 });
+    }
+
+    const targetProfilePage = getPageObject(targetPage, ProfilePage);
+    await targetProfilePage.waitForPersonalDetailsForm();
+    await targetProfilePage.clickPassportsVisasTab();
+    await targetProfilePage.waitForPassportVisaForm();
+
+    logger.info('[Profile.navigateToPassportsFromTraveler] Passports & Visas tab is open');
+    return targetPage;
+  },
+
+  async addVisa(page, { number, expiryYearsAhead = 3, country = 'United States' } = {}) {
+    if (!page) {
+      throw new Error('[Profile.addVisa] "page" is required.');
+    }
+    if (!number || typeof number !== 'string') {
+      throw new Error(
+        `[Profile.addVisa] "number" must be a non-empty string, got: ${typeof number} (${JSON.stringify(number)})`
+      );
+    }
+    if (!Number.isInteger(expiryYearsAhead) || expiryYearsAhead < 1) {
+      throw new Error(
+        `[Profile.addVisa] "expiryYearsAhead" must be a positive integer, got: ${expiryYearsAhead}`
+      );
+    }
+
+    logger.debug(`[Profile.addVisa] Adding visa with number "${number}", expiry ${expiryYearsAhead} years ahead`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.ensurePassportExists();
+    } catch (err) {
+      throw new Error(`[Profile.addVisa] Failed to ensure a passport entry exists: ${err.message}`);
+    }
+
+    try {
+      await profilePage.clickAddVisa();
+    } catch (err) {
+      throw new Error(`[Profile.addVisa] Failed to click "Add new visa": ${err.message}`);
+    }
+
+    try {
+      await profilePage.selectVisaCountry(country);
+    } catch (err) {
+      throw new Error(`[Profile.addVisa] Failed to select visa country "${country}": ${err.message}`);
+    }
+
+    try {
+      await profilePage.openVisaDatePicker();
+      await profilePage.clickNextYearArrow(expiryYearsAhead);
+      await profilePage.selectFirstAvailableDay();
+    } catch (err) {
+      throw new Error(`[Profile.addVisa] Failed to set visa expiry date (${expiryYearsAhead} years ahead): ${err.message}`);
+    }
+
+    try {
+      await profilePage.fillVisaNumber(number);
+    } catch (err) {
+      throw new Error(`[Profile.addVisa] Failed to fill visa number "${number}": ${err.message}`);
+    }
+
+    try {
+      await profilePage.clickSavePassportsVisas();
+    } catch (err) {
+      throw new Error(`[Profile.addVisa] Failed to save passport & visa form: ${err.message}`);
+    }
+
+    logger.info(`[Profile.addVisa] Visa added with number "${number}"`);
+  },
+
+  async deleteVisa(page) {
+    if (!page) {
+      throw new Error('[Profile.deleteVisa] "page" is required.');
+    }
+
+    logger.debug('[Profile.deleteVisa] Removing last visa entry');
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickRemoveVisa();
+    } catch (err) {
+      throw new Error(`[Profile.deleteVisa] Failed to click remove on visa: ${err.message}`);
+    }
+
+    try {
+      await profilePage.confirmRemovePassportVisa();
+    } catch (err) {
+      throw new Error(`[Profile.deleteVisa] Failed to confirm visa removal: ${err.message}`);
+    }
+
+    try {
+      await profilePage.clickSavePassportsVisas();
+    } catch (err) {
+      throw new Error(`[Profile.deleteVisa] Failed to save after visa removal: ${err.message}`);
+    }
+
+    logger.info('[Profile.deleteVisa] Visa removed and form saved');
+  },
 };
 
 module.exports = Profile;

@@ -64,6 +64,20 @@ const SELECTORS = {
   FOP_CARD_ACTIONS_DROPDOWN: '.profile-form-of-payment .card-preview .actions-dropdown .expand-icon',
   FOP_DELETE_CARD_OPTION: '.share-popper .el-dropdown-menu__item:last-child p',
 
+  // Passports & Visas tab
+  PASSPORTS_VISAS_TAB: "[id='tab-passportsAndVisas'] p",
+  PASSPORT_VISA_FORM: '.passport-visa-form',
+  PASSPORT_INPUTS: '.passport-inputs',
+  VISA_INPUTS_CONTAINER: '.visa-inputs-container',
+  VISA_INPUTS: '.visa-inputs',
+  VISA_COUNTRY_SELECT: '.visa-inputs .field.app-column:nth-child(1) .el-select',
+  VISA_VALID_UNTIL_INPUT: '.visa-inputs .field.app-column:nth-child(2) .app-datepicker input',
+  VISA_NUMBER_INPUT: '.visa-inputs .field.app-column:nth-child(3) input',
+  VISA_REMOVE_BUTTON: '.visa-inputs .remove-btn-wrapper .remove-btn',
+  SAVE_PASSPORTS_VISAS_BUTTON: '.passport-visa-form .btns-container button',
+  DATE_PICKER_PANEL: '.el-picker-panel:visible',
+  DATE_PICKER_NEXT_YEAR_ARROW: 'button.el-picker-panel__icon-btn.d-arrow-right:visible',
+
   // Confirm delete dialog
   CONFIRM_DELETE_BUTTON: 'button:has-text("Yes, Delete")',
 
@@ -453,6 +467,19 @@ class ProfilePage {
     }
   }
 
+  async clickFirstTravelerNameLink() {
+    try {
+      const link = this.page.locator(SELECTORS.TRAVELER_NAME_LINK).first();
+      await link.waitFor({ state: 'visible', timeout: 15000 });
+      await link.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickFirstTravelerNameLink] Could not click first traveler name link (selector: ${SELECTORS.TRAVELER_NAME_LINK}). ` +
+        `No traveler may have been added to the trip. Original: ${err.message}`
+      );
+    }
+  }
+
   async waitForPersonalDetailsForm() {
     try {
       await this.page.locator(SELECTORS.PERSONAL_DETAILS_FORM).waitFor({ state: 'visible', timeout: 15000 });
@@ -729,6 +756,184 @@ class ProfilePage {
       );
     }
   }
+
+  // --- Passports & Visas Tab ---
+
+  async clickPassportsVisasTab() {
+    try {
+      const tab = this.page.locator(SELECTORS.PASSPORTS_VISAS_TAB);
+      await tab.waitFor({ state: 'attached', timeout: 10000 });
+      await tab.dispatchEvent('click');
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickPassportsVisasTab] Could not click Passports & Visas tab (selector: ${SELECTORS.PASSPORTS_VISAS_TAB}). ` +
+        `The profile page may not have loaded or the tab is hidden. Original: ${err.message}`
+      );
+    }
+  }
+
+  async waitForPassportVisaForm() {
+    try {
+      await this.page.locator(SELECTORS.PASSPORT_VISA_FORM).waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.waitForPassportVisaForm] Passport & Visa form did not appear (selector: ${SELECTORS.PASSPORT_VISA_FORM}). ` +
+        `The tab may not have switched or the form failed to load. Original: ${err.message}`
+      );
+    }
+  }
+
+  async ensurePassportExists() {
+    const passportInputs = this.page.locator(SELECTORS.PASSPORT_INPUTS);
+    const count = await passportInputs.count();
+    if (count > 0) return;
+
+    // No passport exists — click "Add new passport" to create an empty entry
+    try {
+      const addPassportBtn = this.page.getByText('Add new passport');
+      await addPassportBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await addPassportBtn.click({ timeout: 10000 });
+      await this.page.locator(SELECTORS.PASSPORT_INPUTS).first().waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.ensurePassportExists] Could not add a passport entry. ` +
+        `The "Add new passport" button may not be visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickAddVisa() {
+    try {
+      const addVisaBtn = this.page.getByText('Add new visa').first();
+      await addVisaBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await addVisaBtn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickAddVisa] Could not click "Add new visa" button. ` +
+        `A passport entry must exist first — visas are nested under a passport. Original: ${err.message}`
+      );
+    }
+  }
+
+  async selectVisaCountry(countryName) {
+    try {
+      const visaCountrySelect = this.page.locator(SELECTORS.VISA_COUNTRY_SELECT).last();
+      await visaCountrySelect.click({ timeout: 10000 });
+      // Filterable app-select: type to filter, then pick the visible option
+      const input = visaCountrySelect.locator('input');
+      await input.waitFor({ state: 'visible', timeout: 5000 });
+      await input.fill(countryName);
+      const option = this.page.locator('.el-select-dropdown__item:visible').filter({ hasText: new RegExp(`^${countryName}`, 'i') }).first();
+      await option.waitFor({ state: 'visible', timeout: 5000 });
+      await option.click({ timeout: 5000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.selectVisaCountry] Could not select visa country "${countryName}". ` +
+        `The dropdown may not have opened, the input may not be filterable, or the country option doesn't exist. Original: ${err.message}`
+      );
+    }
+  }
+
+  async openVisaDatePicker() {
+    try {
+      const dateInput = this.page.locator(SELECTORS.VISA_VALID_UNTIL_INPUT).last();
+      await dateInput.waitFor({ state: 'visible', timeout: 10000 });
+      await dateInput.click({ timeout: 10000 });
+      await this.page.locator(SELECTORS.DATE_PICKER_PANEL).waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.openVisaDatePicker] Could not open the visa "Valid until" date picker. ` +
+        `The visa row may not have been added or the input is not visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickNextYearArrow(times = 1) {
+    try {
+      for (let i = 0; i < times; i++) {
+        const arrow = this.page.locator(SELECTORS.DATE_PICKER_NEXT_YEAR_ARROW).first();
+        await arrow.waitFor({ state: 'visible', timeout: 5000 });
+        await arrow.click({ timeout: 5000 });
+        await this.page.waitForTimeout(300);
+      }
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickNextYearArrow] Could not click next-year arrow ${times} time(s). ` +
+        `The date picker panel may not be visible or the year arrows are not rendered (showYearArrows must be true). Original: ${err.message}`
+      );
+    }
+  }
+
+  async selectFirstAvailableDay() {
+    try {
+      const panel = this.page.locator(SELECTORS.DATE_PICKER_PANEL);
+      const day = panel.locator('td.available .el-date-table-cell__text').first();
+      await day.waitFor({ state: 'visible', timeout: 5000 });
+      await day.click({ timeout: 5000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.selectFirstAvailableDay] Could not select a day from the date picker calendar. ` +
+        `No available day cells were found — the calendar may not be visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillVisaNumber(number) {
+    try {
+      const input = this.page.locator(SELECTORS.VISA_NUMBER_INPUT).last();
+      await input.waitFor({ state: 'visible', timeout: 10000 });
+      await input.fill(number, { timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.fillVisaNumber] Could not fill visa number "${number}" (selector: ${SELECTORS.VISA_NUMBER_INPUT}). ` +
+        `The visa form row may not have been added. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickSavePassportsVisas() {
+    try {
+      const saveBtn = this.page.locator(SELECTORS.SAVE_PASSPORTS_VISAS_BUTTON).first();
+      await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await saveBtn.click({ timeout: 10000 });
+      await this.page.waitForLoadState('networkidle', { timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickSavePassportsVisas] Could not click "Save Passports and Visas" button (selector: ${SELECTORS.SAVE_PASSPORTS_VISAS_BUTTON}). ` +
+        `The form may have validation errors or the button is not visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickRemoveVisa() {
+    try {
+      const removeBtn = this.page.locator(SELECTORS.VISA_REMOVE_BUTTON).last();
+      await removeBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await removeBtn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickRemoveVisa] Could not click remove button on visa (selector: ${SELECTORS.VISA_REMOVE_BUTTON}). ` +
+        `No visa entry may exist or the remove icon is not visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async confirmRemovePassportVisa() {
+    try {
+      const confirmBtn = this.page.locator(SELECTORS.CONFIRM_DELETE_BUTTON);
+      await confirmBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await confirmBtn.click({ timeout: 10000 });
+      // Wait for dialog to close and any triggered API call to complete
+      await confirmBtn.waitFor({ state: 'hidden', timeout: 10000 });
+      await this.page.waitForLoadState('networkidle', { timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.confirmRemovePassportVisa] Could not confirm the delete dialog (selector: ${SELECTORS.CONFIRM_DELETE_BUTTON}). ` +
+        `The confirmation dialog may not have appeared after clicking remove. Original: ${err.message}`
+      );
+    }
+  }
+
 }
 
 module.exports = ProfilePage;

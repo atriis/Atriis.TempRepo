@@ -1,5 +1,5 @@
 const { When, Then } = require("@cucumber/cucumber");
-const { Cart, Profile } = require("@dsl");
+const { Profile } = require("@dsl");
 const logger = require("@utils/logger").child("Profile");
 
 // --- Profile navigation steps ---
@@ -168,4 +168,22 @@ When("I delete the credit card from my profile", async function () {
 Then("the credit card should be removed", async function () {
   logger.info("Verifying credit card was removed");
   await Profile.verifyCreditCardRemoved(this.page, this.cardCountBefore);
+});
+
+// --- Passports & Visas steps ---
+
+When("I navigate to the passport and visa profile page from the traveler name", async function () {
+  logger.info("Navigating to Passports & Visas tab from traveler name link");
+  const targetPage = await Profile.navigateToPassportsFromTraveler(this.page);
+  this.page = targetPage;
+});
+
+When("I add a visa with an expiration date and number {string}", async function (visaNumber) {
+  logger.info("Adding visa with number", { visaNumber });
+  await Profile.addVisa(this.page, { number: visaNumber });
+});
+
+When("I delete the visa from my profile", async function () {
+  logger.info("Deleting visa from profile");
+  await Profile.deleteVisa(this.page);
 });
