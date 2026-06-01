@@ -366,67 +366,6 @@ const FlightPricing = {
     return { markup: expected, currency: configuredCurrency };
   },
 
-  /**
-   * Validates that `totalPriceDisplayCurrency` === `wholePrice` + `markup`
-   * for the selected result in a captured flightPricing API response.
-   *
-   * Background: The pricing response was extended to include `wholePrice` (base
-   * fare without markup). The total must always equal the sum of these two fields.
-   *
-   * @param {import('playwright').Page} page
-   * @param {Promise<*>} responsePromise - Captured flightPricing response promise.
-   * @param {string|null} [carrierCode] - Optional carrier code to filter results by.
-   */
-  async validatePricingResponseTotalPriceConsistency(page, responsePromise, carrierCode = null) {
-    if (!page) throw new Error('page is required');
-    if (!responsePromise) throw new Error('responsePromise is required — call startCapturingPricingResponse before the pricing action');
-    if (carrierCode !== null && (typeof carrierCode !== 'string' || carrierCode.length === 0)) {
-      throw new Error(`carrierCode must be a non-empty string or null, got: ${carrierCode}`);
-    }
-
-    const flightPricingPage = getPageObject(page, FlightPricingPage);
-    const body = await flightPricingPage.readPricingApiResponseBody(responsePromise);
-
-    const results = body && Array.isArray(body.results) ? body.results : Array.isArray(body) ? body : null;
-    if (!results || results.length === 0) {
-      throw new Error('flightPricing response body has no results array');
-    }
-
-    const result = carrierCode ? findResultByCarrier(results, carrierCode) : results[0];
-    if (!result) {
-      throw new Error(`No result in flightPricing response matches carrier code "${carrierCode}"`);
-    }
-
-    const total = Number(result.totalPriceDisplayCurrency);
-    const wholePrice = Number(result.wholePrice);
-    const markup = Number(result.markup);
-
-    if (!Number.isFinite(total) || !Number.isFinite(wholePrice) || !Number.isFinite(markup)) {
-      throw new Error(
-        `flightPricing result is missing totalPriceDisplayCurrency, wholePrice, or markup. ` +
-        `Got: total=${result.totalPriceDisplayCurrency}, wholePrice=${result.wholePrice}, markup=${result.markup}`
-      );
-    }
-
-    const expected = wholePrice + markup;
-    const TOLERANCE = 0.01;
-
-    logger.info('Validating totalPriceDisplayCurrency == wholePrice + markup', {
-      total,
-      wholePrice,
-      markup,
-      expected,
-      carrierCode,
-    });
-
-    expect(
-      Math.abs(total - expected) <= TOLERANCE,
-      `totalPriceDisplayCurrency ${total} should equal wholePrice ${wholePrice} + markup ${markup} = ${expected}`,
-    ).toBe(true);
-
-    logger.info('Total price consistency validated', { total, wholePrice, markup });
-    return { total, wholePrice, markup };
-  },
 };
 
 module.exports = FlightPricing;

@@ -1577,18 +1577,6 @@ Then("the flight details drawer total price should match the cart total", async 
   logger.info("Flight details drawer total verified", result);
 });
 
-// ===== QUOTES API INTERCEPTION =====
-
-When('I start intercepting the cart quotes response', function () {
-  logger.info('Starting cart quotes API response capture');
-  const promise = Cart.startCapturingQuotesResponse(this.page);
-  this.cartQuotesResponsePromise = promise;
-  this.lastInterceptedResponsePromise = promise;
-});
-
-// NOTE: Cart quotes total price validation is now handled by the generic step in common.steps.js:
-//   Then the "totalPriceDisplayCurrency" in the intercepted response should equal "wholePrice" plus "flightPricing.DisplayMarkup"
-
 When("I scroll down in the flight details drawer", async function () {
   logger.info("Scrolling down in the flight details drawer");
   await Cart.scrollFlightDetailsDrawerInCart(this.page);

@@ -4803,59 +4803,6 @@ const Cart = {
     return cartPage.captureQuotesApiResponse();
   },
 
-  /**
-   * Validates that `totalPriceDisplayCurrency` === `wholePrice` + `flightPricing.DisplayMarkup`
-   * from the captured /api/v3/quotes?tripId=... response.
-   *
-   * Response shape expected:
-   * {
-   *   wholePrice: number,
-   *   totalPriceDisplayCurrency: number,
-   *   flightPricing: { DisplayMarkup: number, ... }
-   * }
-   *
-   * @param {import('playwright').Page} page
-   * @param {Promise<*>} responsePromise - Captured quotes API response promise.
-   */
-  async validateCartQuotesTotalPrice(page, responsePromise) {
-    if (!page) throw new Error('page is required');
-    if (!responsePromise) throw new Error('responsePromise is required — call startCapturingQuotesResponse before adding the fare to trip');
-
-    const response = await responsePromise;
-    const body = await response.json();
-
-    const quote = Array.isArray(body) ? body[0] : body;
-    if (!quote) throw new Error('quotes API response is empty');
-
-    const wholePrice = Number(quote.wholePrice);
-    const displayMarkup = Number(quote.flightPricing && quote.flightPricing.DisplayMarkup);
-    const total = Number(quote.totalPriceDisplayCurrency);
-
-    if (!Number.isFinite(wholePrice) || !Number.isFinite(displayMarkup) || !Number.isFinite(total)) {
-      throw new Error(
-        `quotes response is missing required fields. ` +
-        `Got: wholePrice=${quote.wholePrice}, flightPricing.DisplayMarkup=${quote.flightPricing && quote.flightPricing.DisplayMarkup}, totalPriceDisplayCurrency=${quote.totalPriceDisplayCurrency}`
-      );
-    }
-
-    const expected = wholePrice + displayMarkup;
-    const TOLERANCE = 0.01;
-
-    logger.info('Validating cart quotes: totalPriceDisplayCurrency == wholePrice + DisplayMarkup', {
-      total,
-      wholePrice,
-      displayMarkup,
-      expected,
-    });
-
-    expect(
-      Math.abs(total - expected) <= TOLERANCE,
-      `totalPriceDisplayCurrency ${total} should equal wholePrice ${wholePrice} + DisplayMarkup ${displayMarkup} = ${expected}`,
-    ).toBe(true);
-
-    logger.info('Cart quotes total price validated', { total, wholePrice, displayMarkup });
-    return { total, wholePrice, displayMarkup };
-  },
 };
 
 
