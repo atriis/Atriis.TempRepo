@@ -34,35 +34,6 @@ When("I add a new FQTV entry with number {string} using the first available airl
   await Profile.addFqtvEntry(this.page, fqtvNumber);
 });
 
-
-// --- Rail loyalty steps ---
-
-When("I select rail loyalty number {string} with value {string} and proceed to checkout", async function (vendorCode, loyaltyValue) {
-  logger.info("Selecting rail loyalty number and proceeding to checkout", { vendorCode, loyaltyValue });
-  throw new Error(
-    `TODO: implement 'I select rail loyalty number "${vendorCode}" with value "${loyaltyValue}" and proceed to checkout' — ` +
-    "expand loyalty section (click .loyalty-program .is-clickable), " +
-    "click existing tab (#tab-1), wait, click SVG icon to open vendor dropdown, " +
-    "select the vendor matching the code, save (.no-border), " +
-    "verify green check_circle icon, then accept T&C and proceed to checkout. " +
-    "See choose_loyalty_number_for_EUR__4578213__and_book() in Testim 33805. " +
-    "DSL candidate: Cart.selectRailLoyaltyAndProceedToCheckout(page, { vendorCode, loyaltyValue })"
-  );
-});
-
-When("I select the second rail loyalty vendor and proceed to checkout", async function () {
-  logger.info("Selecting second rail loyalty vendor and proceeding to checkout");
-  throw new Error(
-    "TODO: implement 'I select the second rail loyalty vendor and proceed to checkout' — " +
-    "expand loyalty section (click .loyalty-program .is-clickable), " +
-    "click existing tab (#tab-1), open vendor dropdown (.el-select__caret), " +
-    "select 2nd option in scrollbar view, save (.no-border), " +
-    "verify green check_circle, then accept T&C and proceed to checkout. " +
-    "See choose_loyalty_number_for_EUR__4578213__and_book_1() in Testim 33805. " +
-    "DSL candidate: Cart.selectSecondRailLoyaltyAndProceedToCheckout(page)"
-  );
-});
-
 // --- Contact Information steps ---
 
 When("I open the contact information tab in my profile", async function () {
