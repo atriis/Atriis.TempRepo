@@ -336,6 +336,11 @@ Then('the pricing options row containing {string} should show the out of policy 
   await FlightResults.verifyPricingOptionOOPByText(this.page, cardText);
 });
 
+Then('the pricing options row containing {string} should not contain {string}', async function (cardText, excludedText) {
+  logger.info('Verifying pricing option row does not contain text', { cardText, excludedText });
+  await FlightResults.verifyPricingOptionCardDoesNotContainText(this.page, cardText, excludedText);
+});
+
 When('I "Select to share" first option from pricing options', async function () {
   logger.info("Selecting first option from pricing options");
   await FlightResults.selectToShareFirstPricingOption(this.page);
