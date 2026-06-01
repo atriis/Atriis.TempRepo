@@ -367,7 +367,7 @@ Then(
 );
 
 Then(
-  "the captured {string} payload for request type {string} should contain:",
+  "the captured {string} payload for request type {string} should contain the multiline text:",
   async function (source, requestType, expectedTextBlock) {
     await expectCapturedContains(
       this,
@@ -381,7 +381,7 @@ Then(
 );
 
 Then(
-  "the captured {string} payload for request type {string} should not contain:",
+  "the captured {string} payload for request type {string} should not contain the multiline text:",
   async function (source, requestType, expectedTextBlock) {
     await expectCapturedNotContains(
       this,

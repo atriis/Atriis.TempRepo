@@ -116,7 +116,7 @@
 - **Error Handling:** Throws when unexpected content is found, including expression/operator-specific details.
 - **Usage:**
   - `Then the captured "{source}" payload for request type "{requestType}" should not contain "{expression}"`
-  - `Then the captured "{source}" payload for request type "{requestType}" should not contain:`
+  - `Then the captured "{source}" payload for request type "{requestType}" should not contain the multiline text:`
 
 ---
 
@@ -287,8 +287,8 @@ All step definitions are in `tests/steps/payload_validation.steps.js`. Here is t
 | `When I capture the "{source}" payload for request type "{requestType}" from Storage` | `capturePayloadByRequestType()` | Fetch and cache payload |
 | `Then the captured "{source}" payload for request type "{requestType}" should contain "{expression}"` | `expectCapturedPayloadContains()` | Assert payload contains text/block/split/map/onKey |
 | `Then the captured "{source}" payload for request type "{requestType}" should not contain "{expression}"` | `expectCapturedPayloadNotContains()` | Assert payload does not contain text/block/split/map/onKey |
-| `Then the captured "{source}" payload for request type "{requestType}" should contain:` | `expectCapturedPayloadContains()` | Assert payload contains multi-line plain-text block (no operators) |
-| `Then the captured "{source}" payload for request type "{requestType}" should not contain:` | `expectCapturedPayloadNotContains()` | Assert payload does not contain multi-line plain-text block (no operators) |
+| `Then the captured "{source}" payload for request type "{requestType}" should contain the multiline text:` | `expectCapturedPayloadContains()` | Assert payload contains multi-line plain-text block (no operators) |
+| `Then the captured "{source}" payload for request type "{requestType}" should not contain the multiline text:` | `expectCapturedPayloadNotContains()` | Assert payload does not contain multi-line plain-text block (no operators) |
 | `Then the captured "{source}" payload for request type "{requestType}" should contain the XML:` | `expectCapturedPayloadContainsXmlBlock()` | Assert XML exists |
 | `Then the captured "{source}" payload for request type "{requestType}" should not contain the XML:` | `expectCapturedPayloadNotContainsXmlBlock()` | Assert XML does not exist |
 | `Then the captured "{source}" payload for request type "{requestType}" should contain the JSON:` | `expectCapturedPayloadContainsJsonBlock()` | Assert JSON exists |
@@ -314,7 +314,7 @@ See [payload_amadeus_city_center_exact_location_address.feature](../tests/featur
 6. **Multi-line XML** – Loose structure validation (all tag/value pairs must exist, any order)
 7. **Multi-line XML negation** – `should not contain the XML:` verifies incorrect structure is absent
 8. **Multi-line plain text** – Substring match across multiple lines (no operators supported)
-9. **Multi-line plain text negation** – `should not contain:` docstring verifies error patterns are absent
+9. **Multi-line plain text negation** – `should not contain the multiline text:` docstring verifies error patterns are absent
 10. **Dynamic world placeholder on key assertions** – `"{tripNumber}".onKey("tripId")` validates runtime trip IDs safely
 11. **JSON deep subset matching** – expected object/array fragments are matched against larger actual payload objects
 12. **Fallback logic** – Multiple request types captured in sequence; fallback auto-scans candidates if latest doesn't match
@@ -329,12 +329,12 @@ Then the captured "response" payload for request type "Booking" should not conta
 
 #### Multi-Line Plain Text (Docstring, No Operators)
 ```gherkin
-Then the captured "response" payload for request type "Booking" should contain:
+Then the captured "response" payload for request type "Booking" should contain the multiline text:
   """
   some expected
   multi-line text
   """
-Then the captured "response" payload for request type "Booking" should not contain:
+Then the captured "response" payload for request type "Booking" should not contain the multiline text:
   """
   unwanted
   error message

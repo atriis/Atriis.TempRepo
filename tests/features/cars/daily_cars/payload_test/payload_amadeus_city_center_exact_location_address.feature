@@ -45,12 +45,12 @@ Feature: 76707 Amadeus city center exact location address display
       </locationAddress>
       """
     # Multi-line plain text validation (no operators)
-    And the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain:
+    And the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain the multiline text:
       """
       MADRID ATOCHA RRS
       """
     # Verify error patterns are NOT in the payload
-    And the captured "block" payload for request type "Amadeus4.Car_LocationList" should not contain:
+    And the captured "block" payload for request type "Amadeus4.Car_LocationList" should not contain the multiline text:
       """
       ERROR
       FAILED
