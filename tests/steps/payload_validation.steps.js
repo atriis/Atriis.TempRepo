@@ -395,14 +395,14 @@ Then(
 );
 
 Then(
-  "the captured {string} payload for request type {string} should contain the XML block:",
+  "the captured {string} payload for request type {string} should contain the XML:",
   async function (source, requestType, expectedXmlBlock) {
     await runPayloadValidationStep(this, "expectCapturedPayloadContainsXmlBlock", {
       source,
       requestType,
       expectedXmlLength: String(expectedXmlBlock || "").length,
     }, async () => {
-      logger.info("Validating captured payload contains XML block with all key-value pairs", {
+      logger.info("Validating captured payload contains XML with all key-value pairs", {
         source,
         requestType,
         expectedXmlLength: String(expectedXmlBlock || "").length,
@@ -419,14 +419,14 @@ Then(
   }
 );
   Then(
-    "the captured {string} payload for request type {string} should not contain the XML block:",
+    "the captured {string} payload for request type {string} should not contain the XML:",
     async function (source, requestType, expectedXmlBlock) {
       await runPayloadValidationStep(this, "expectCapturedPayloadNotContainsXmlBlock", {
         source,
         requestType,
         expectedXmlLength: String(expectedXmlBlock || "").length,
       }, async () => {
-        logger.info("Validating captured payload does not contain XML block with all key-value pairs", {
+        logger.info("Validating captured payload does not contain XML with all key-value pairs", {
           source,
           requestType,
           expectedXmlLength: String(expectedXmlBlock || "").length,
@@ -444,14 +444,14 @@ Then(
   );
 
 Then(
-  "the captured {string} payload for request type {string} should contain the JSON block:",
+  "the captured {string} payload for request type {string} should contain the JSON:",
   async function (source, requestType, expectedJsonBlock) {
     await runPayloadValidationStep(this, "expectCapturedPayloadContainsJsonBlock", {
       source,
       requestType,
     }, async () => {
       const resolvedBlock = resolveWorldPlaceholders(expectedJsonBlock, this);
-      logger.info("Validating captured payload contains JSON block with all key-value pairs", {
+      logger.info("Validating captured payload contains JSON with all key-value pairs", {
         source,
         requestType,
         expectedJsonLength: String(resolvedBlock || "").length,
@@ -469,14 +469,14 @@ Then(
 );
 
 Then(
-  "the captured {string} payload for request type {string} should not contain the JSON block:",
+  "the captured {string} payload for request type {string} should not contain the JSON:",
   async function (source, requestType, expectedJsonBlock) {
     await runPayloadValidationStep(this, "expectCapturedPayloadNotContainsJsonBlock", {
       source,
       requestType,
     }, async () => {
       const resolvedBlock = resolveWorldPlaceholders(expectedJsonBlock, this);
-      logger.info("Validating captured payload does not contain JSON block with all key-value pairs", {
+      logger.info("Validating captured payload does not contain JSON with all key-value pairs", {
         source,
         requestType,
         expectedJsonLength: String(resolvedBlock || "").length,

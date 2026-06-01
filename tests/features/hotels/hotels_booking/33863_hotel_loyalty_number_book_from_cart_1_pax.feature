@@ -29,7 +29,7 @@ Feature: 33863 Hotel loyalty number - book from cart with 1 passenger
     Then the hotel should appear as refundable in cart
     When I successfully cancel the trip
     And I capture the "request" payload for request type "Amadeus4.Hotel_Sell" from Storage
-    Then the captured "request" payload for request type "Amadeus4.Hotel_Sell" should contain the XML block:
+    Then the captured "request" payload for request type "Amadeus4.Hotel_Sell" should contain the XML:
       """
 					<customerInfo>
 						<customerReferences>

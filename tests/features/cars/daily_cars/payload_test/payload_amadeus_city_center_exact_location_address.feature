@@ -21,7 +21,7 @@ Feature: 76707 Amadeus city center exact location address display
     Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should not contain "28013".onKey("postalCode")
     Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain "28012".onKey("postalCode")
     Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain "Madrid Atocha Rrs, Madrid, 28012, ES".split(",")[3]
-    Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain the XML block:
+    Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain the XML:
       """
       <locationAddress>
         <addressInfo>
@@ -38,7 +38,7 @@ Feature: 76707 Amadeus city center exact location address display
       </locationAddress>
       """
     # Validate that incorrect postal code is NOT in the block
-    And the captured "block" payload for request type "Amadeus4.Car_LocationList" should not contain the XML block:
+    And the captured "block" payload for request type "Amadeus4.Car_LocationList" should not contain the XML:
       """
       <locationAddress>
         <postalCode>28013</postalCode>
@@ -75,7 +75,7 @@ Feature: 76707 Amadeus city center exact location address display
     Then the captured "response" payload for request type "Booking" should contain "false".onKey("isCardAuthenticationRequired")
     When I capture the "request" payload for request type "Booking" from Storage
     Then the captured "request" payload for request type "Booking" should contain "{tripNumber}".onKey("tripId")
-    Then the captured "request" payload for request type "Booking" should contain the JSON block:
+    Then the captured "request" payload for request type "Booking" should contain the JSON:
       """
       {
         "bookingItems": [{

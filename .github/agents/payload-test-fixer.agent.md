@@ -95,7 +95,7 @@ When fixing Amadeus cars payload assertions, use the PayloadValidation DSL (docu
   - Plain text: `Then the captured "response" payload for request type "Amadeus4.Car_Availability" should contain "MADRID"`
   - Key lookup: `should contain "CONFIRMED".onKey("status")`
   - Block extraction: `should contain "MADRID".block("locationAddress")`
-  - JSON block (multi-line, subset match): `should contain the JSON block: { "cityName": "MADRID" }`
+  - JSON (multi-line, subset match): `should contain the JSON: { "cityName": "MADRID" }`
   - JSON path assertions: `in the captured "response" payload for request type "...", path "data.address" should exist`
 - Never invent new step patterns — always use the DSL steps defined in `payload-validation.steps.js`
 
@@ -145,7 +145,7 @@ Apply fixes in this order of preference:
      - Simple assertions: `Then the captured "response" payload for request type "..." should contain "value"`
      - Key lookup: `should contain "value".onKey("fieldName")`
      - Block extraction: `should contain "marker".block("tag")`
-     - JSON block (multi-line): `should contain the JSON block: { ... }`
+     - JSON (multi-line): `should contain the JSON: { ... }`
      - JSON path: `in the captured "response" payload for request type "...", path "data.field" should exist`
    - Never create custom payload assertion steps — use the DSL
 
