@@ -1043,6 +1043,120 @@ const Profile = {
 
     logger.info('[Profile.savePassportsAndVisasChanges] Passports & Visas changes saved');
   },
+
+  async savePersonalDetails(page) {
+    if (!page) throw new Error('[Profile.savePersonalDetails] "page" is required.');
+
+    logger.debug('[Profile.savePersonalDetails] Clicking Save on Personal Details form');
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickSavePersonalDetails();
+    } catch (err) {
+      throw new Error(`[Profile.savePersonalDetails] Failed to save Personal Details: ${err.message}`);
+    }
+
+    logger.info('[Profile.savePersonalDetails] Personal Details saved');
+  },
+
+  async addBackupApprover(page, searchTerm) {
+    if (!page) throw new Error('[Profile.addBackupApprover] "page" is required.');
+    if (!searchTerm || typeof searchTerm !== 'string') {
+      throw new Error(
+        `[Profile.addBackupApprover] "searchTerm" must be a non-empty string, got: ${typeof searchTerm} (${JSON.stringify(searchTerm)})`
+      );
+    }
+
+    logger.debug(`[Profile.addBackupApprover] Searching for backup approver with term "${searchTerm}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickBackupApproverDropdown();
+      await profilePage.fillBackupApproverSearch(searchTerm);
+      await profilePage.selectFirstDropdownOption();
+    } catch (err) {
+      throw new Error(`[Profile.addBackupApprover] Failed to add backup approver by searching "${searchTerm}": ${err.message}`);
+    }
+
+    logger.info(`[Profile.addBackupApprover] Backup approver selected with search term "${searchTerm}"`);
+  },
+
+  async removeBackupApprover(page) {
+    if (!page) throw new Error('[Profile.removeBackupApprover] "page" is required.');
+
+    logger.debug('[Profile.removeBackupApprover] Clearing backup approver selection');
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clearBackupApprover();
+    } catch (err) {
+      throw new Error(`[Profile.removeBackupApprover] Failed to remove backup approver: ${err.message}`);
+    }
+
+    logger.info('[Profile.removeBackupApprover] Backup approver removed');
+  },
+
+  async verifyBackupApproverContains(page, text) {
+    if (!page) throw new Error('[Profile.verifyBackupApproverContains] "page" is required.');
+    if (!text || typeof text !== 'string') {
+      throw new Error(
+        `[Profile.verifyBackupApproverContains] "text" must be a non-empty string, got: ${typeof text} (${JSON.stringify(text)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyBackupApproverContains] Checking backup approver field contains "${text}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+    let actualText;
+
+    try {
+      actualText = await profilePage.getBackupApproverText();
+    } catch (err) {
+      throw new Error(`[Profile.verifyBackupApproverContains] Failed to read backup approver text: ${err.message}`);
+    }
+
+    if (!actualText || !actualText.toUpperCase().includes(text.toUpperCase())) {
+      throw new Error(
+        `[Profile.verifyBackupApproverContains] Backup approver field does not contain "${text}". ` +
+        `Actual value: "${actualText}". The selection may not have been applied.`
+      );
+    }
+
+    logger.info(`[Profile.verifyBackupApproverContains] Confirmed backup approver contains "${text}" (actual: "${actualText}")`);
+    return { actualText };
+  },
+
+  async verifyBackupApproverPlaceholder(page, text) {
+    if (!page) throw new Error('[Profile.verifyBackupApproverPlaceholder] "page" is required.');
+    if (!text || typeof text !== 'string') {
+      throw new Error(
+        `[Profile.verifyBackupApproverPlaceholder] "text" must be a non-empty string, got: ${typeof text} (${JSON.stringify(text)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyBackupApproverPlaceholder] Checking backup approver placeholder is "${text}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+    let actualText;
+
+    try {
+      actualText = await profilePage.getBackupApproverText();
+    } catch (err) {
+      throw new Error(`[Profile.verifyBackupApproverPlaceholder] Failed to read backup approver text: ${err.message}`);
+    }
+
+    if (actualText !== text) {
+      throw new Error(
+        `[Profile.verifyBackupApproverPlaceholder] Backup approver field shows "${actualText}" but expected "${text}". ` +
+        `The approver may not have been properly removed.`
+      );
+    }
+
+    logger.info(`[Profile.verifyBackupApproverPlaceholder] Confirmed backup approver shows "${text}"`);
+  },
 };
 
 module.exports = Profile;

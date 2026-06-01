@@ -30,6 +30,8 @@ const SELECTORS = {
   TRAVELER_NAME_LINK: '.trip-traveler-tag .traveler-name.is-clickable',
   PERSONAL_DETAILS_FORM: '.personal-details-form-content',
   DOB_INPUT: '.personal-details-form-content .birth-date-date-picker input',
+  SAVE_PERSONAL_DETAILS_BUTTON: '.personal-details-form-content button:has-text("Save")',
+  BACKUP_APPROVER_LABEL: 'Backup approver',
 
   // Frequent Programs form
   FREQUENT_PROGRAMS_FORM: '.frequent-programs-form',
@@ -488,6 +490,102 @@ class ProfilePage {
       throw new Error(
         `[ProfilePage.waitForPersonalDetailsForm] Personal details form did not appear (selector: ${SELECTORS.PERSONAL_DETAILS_FORM}). ` +
         `The traveler profile may not have opened or is still loading. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickSavePersonalDetails() {
+    try {
+      const saveBtn = this.page.locator(SELECTORS.SAVE_PERSONAL_DETAILS_BUTTON).first();
+      await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await saveBtn.click({ timeout: 10000 });
+      await this.page.waitForLoadState('networkidle', { timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickSavePersonalDetails] Could not click the Save Personal Details button (selector: ${SELECTORS.SAVE_PERSONAL_DETAILS_BUTTON}). ` +
+        `The button may be hidden, disabled, or the form did not load. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickBackupApproverDropdown() {
+    try {
+      const field = this.page.locator(SELECTORS.PERSONAL_DETAILS_FORM)
+        .locator('.field.app-column')
+        .filter({ has: this.page.locator(`label.label:text-is("${SELECTORS.BACKUP_APPROVER_LABEL}")`) });
+      const select = field.locator('.el-select');
+      await select.waitFor({ state: 'visible', timeout: 10000 });
+      await select.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickBackupApproverDropdown] Could not click the backup approver dropdown. ` +
+        `The personal details form may not be loaded or the field is disabled. Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillBackupApproverSearch(term) {
+    try {
+      const field = this.page.locator(SELECTORS.PERSONAL_DETAILS_FORM)
+        .locator('.field.app-column')
+        .filter({ has: this.page.locator(`label.label:text-is("${SELECTORS.BACKUP_APPROVER_LABEL}")`) });
+      const input = field.locator('.el-select input');
+      await input.waitFor({ state: 'visible', timeout: 5000 });
+      await input.fill(term, { timeout: 5000 });
+      // Wait for virtualized dropdown results to appear
+      await this.page.waitForTimeout(1000);
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.fillBackupApproverSearch] Could not type "${term}" into the backup approver search input. ` +
+        `The dropdown may not be open or the input is not visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async selectFirstDropdownOption() {
+    try {
+      const option = this.page.locator('.el-vl__window span').first();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click({ timeout: 5000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.selectFirstDropdownOption] Could not select the first dropdown option. ` +
+        `No options appeared — the search may have returned no results. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getBackupApproverText() {
+    try {
+      const field = this.page.locator(SELECTORS.PERSONAL_DETAILS_FORM)
+        .locator('.field.app-column')
+        .filter({ has: this.page.locator(`label.label:text-is("${SELECTORS.BACKUP_APPROVER_LABEL}")`) });
+      const placeholder = field.locator('.el-select .el-select__placeholder span');
+      await placeholder.waitFor({ state: 'visible', timeout: 10000 });
+      return await placeholder.textContent();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getBackupApproverText] Could not read backup approver field text. ` +
+        `The field may not be visible or the form didn't load. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clearBackupApprover() {
+    try {
+      const field = this.page.locator(SELECTORS.PERSONAL_DETAILS_FORM)
+        .locator('.field.app-column')
+        .filter({ has: this.page.locator(`label.label:text-is("${SELECTORS.BACKUP_APPROVER_LABEL}")`) });
+      const select = field.locator('.el-select');
+      await select.hover({ timeout: 10000 });
+      await this.page.waitForTimeout(500);
+      // In Element Plus el-select-v2, the clear icon is a circle-close SVG that appears on hover
+      const clearIcon = select.locator('.el-select__suffix .el-icon:visible').first();
+      await clearIcon.click({ timeout: 5000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clearBackupApprover] Could not clear the backup approver selection. ` +
+        `The clear icon may not be visible — ensure a value is selected and the field is not disabled. Original: ${err.message}`
       );
     }
   }

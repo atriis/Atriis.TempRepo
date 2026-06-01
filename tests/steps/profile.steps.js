@@ -209,3 +209,30 @@ Then("the known traveler number should be saved correctly", async function () {
   logger.info("Verifying known traveler number was persisted", { expected: this.knownTravelerNumber });
   await Profile.verifyKnownTravelerNumberSaved(this.page, this.knownTravelerNumber);
 });
+
+// --- Backup Approver steps ---
+
+When("I add a backup approver by searching {string}", async function (searchTerm) {
+  logger.info("Adding backup approver by searching", { searchTerm });
+  await Profile.addBackupApprover(this.page, searchTerm);
+});
+
+Then("the backup approver field should show a name containing {string}", async function (text) {
+  logger.info("Verifying backup approver contains", { text });
+  await Profile.verifyBackupApproverContains(this.page, text);
+});
+
+When("I remove the backup approver", async function () {
+  logger.info("Removing backup approver");
+  await Profile.removeBackupApprover(this.page);
+});
+
+Then("the backup approver field should show {string}", async function (text) {
+  logger.info("Verifying backup approver placeholder", { text });
+  await Profile.verifyBackupApproverPlaceholder(this.page, text);
+});
+
+When("I save the personal details", async function () {
+  logger.info("Saving Personal Details form");
+  await Profile.savePersonalDetails(this.page);
+});
