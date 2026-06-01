@@ -4645,6 +4645,23 @@ class CartPage {
       );
     }
   }
+
+  /**
+   * Sets up a listener for the next /api/v3/quotes?tripId=... GET response.
+   * Must be called BEFORE the action that triggers the cart to load/refresh.
+   * Returns an unresolved Promise that resolves when the response arrives.
+   *
+   * @returns {Promise<import('@playwright/test').Response>}
+   */
+  captureQuotesApiResponse() {
+    return this.page.waitForResponse(
+      response =>
+        response.url().includes('/api/v3/quotes') &&
+        response.url().includes('tripId') &&
+        response.request().method() === 'GET',
+      { timeout: 120000 }
+    );
+  }
 }
 
 // Export CartPage and SELECTORS for use in tests and DSL

@@ -2071,6 +2071,48 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   }
 
   /**
+   * Clicks the pricing options button on the first flight result that displays
+   * the given info label (e.g. "NDC direct rate").
+   *
+   * @param {string} label - Label text to match (e.g. "NDC direct rate")
+   * @param {number} timeout - Max wait in ms
+   */
+  async clickPricingOptionsForFirstFlightWithLabel(label, timeout = 90000) {
+    if (!label || typeof label !== 'string') {
+      throw new Error('label must be a non-empty string');
+    }
+    const row = this.page
+      .locator(SELECTORS.FLIGHT_PREVIEW)
+      .filter({ has: this.page.locator(SELECTORS.FLIGHT_INFO_TOP_BAR_LABEL).filter({ hasText: label }) })
+      .first();
+    await row.waitFor({ state: 'visible', timeout });
+    const btn = row.locator(SELECTORS.PRICING_OPTIONS_BUTTON).first();
+    await btn.scrollIntoViewIfNeeded();
+    await btn.click({ timeout: 10000 });
+  }
+
+  /**
+   * Clicks the pricing options button on the first flight result that does NOT
+   * display the given info label (e.g. skipping all "NDC direct rate" rows).
+   *
+   * @param {string} label - Label text to exclude (e.g. "NDC direct rate")
+   * @param {number} timeout - Max wait in ms
+   */
+  async clickPricingOptionsForFirstFlightWithoutLabel(label, timeout = 90000) {
+    if (!label || typeof label !== 'string') {
+      throw new Error('label must be a non-empty string');
+    }
+    const row = this.page
+      .locator(SELECTORS.FLIGHT_PREVIEW)
+      .filter({ hasNot: this.page.locator(SELECTORS.FLIGHT_INFO_TOP_BAR_LABEL).filter({ hasText: label }) })
+      .first();
+    await row.waitFor({ state: 'visible', timeout });
+    const btn = row.locator(SELECTORS.PRICING_OPTIONS_BUTTON).first();
+    await btn.scrollIntoViewIfNeeded();
+    await btn.click({ timeout: 10000 });
+  }
+
+  /**
    * Checks if the Marine Fare icon (anchor) is visible in flight results.
    * @param {number} timeout - Max wait time in ms (default: 15000)
    * @returns {Promise<boolean>}

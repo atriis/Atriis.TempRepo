@@ -81,7 +81,7 @@ When('I start intercepting the flight pricing response', function () {
 Then('the markup in the flight pricing response should be {string} per pax configured in {string}', async function (expectedMarkup, configuredCurrency) {
   logger.info('Validating markup in flightPricing response against configured currency', { expectedMarkup, configuredCurrency });
   const result = await FlightPricing.validatePricingResponseMarkup(
-    this.page, this.flightPricingResponsePromise, expectedMarkup, configuredCurrency
+    this.page, this.lastInterceptedResponsePromise ?? this.flightPricingResponsePromise, expectedMarkup, configuredCurrency
   );
   logger.info('Markup validation complete', result);
 });
@@ -89,7 +89,7 @@ Then('the markup in the flight pricing response should be {string} per pax confi
 Then('the markup in the flight pricing response for carrier {string} should be {string} per pax configured in {string}', async function (carrierCode, expectedMarkup, configuredCurrency) {
   logger.info('Validating markup in flightPricing response for specific carrier', { carrierCode, expectedMarkup, configuredCurrency });
   const result = await FlightPricing.validatePricingResponseMarkup(
-    this.page, this.flightPricingResponsePromise, expectedMarkup, configuredCurrency, carrierCode
+    this.page, this.lastInterceptedResponsePromise ?? this.flightPricingResponsePromise, expectedMarkup, configuredCurrency, carrierCode
   );
   logger.info('Markup validation complete', result);
 });
@@ -97,7 +97,12 @@ Then('the markup in the flight pricing response for carrier {string} should be {
 Then('the markup in the flight pricing response should be {string}', async function (expectedMarkup) {
   logger.info('Validating markup value in flightPricing response (no currency check)', { expectedMarkup });
   const result = await FlightPricing.validatePricingResponseMarkup(
-    this.page, this.flightPricingResponsePromise, expectedMarkup, null
+    this.page, this.lastInterceptedResponsePromise ?? this.flightPricingResponsePromise, expectedMarkup, null
   );
   logger.info('Markup validation complete', result);
 });
+
+// NOTE: Total price consistency (totalPriceDisplayCurrency == wholePrice + markup) is now validated
+// via the generic step in common.steps.js:
+//   Then the "totalPriceDisplayCurrency" in the intercepted response should equal "wholePrice" plus "markup"
+//   Then the "totalPriceDisplayCurrency" in the intercepted response should equal "wholePrice" plus "flightPricing.DisplayMarkup"

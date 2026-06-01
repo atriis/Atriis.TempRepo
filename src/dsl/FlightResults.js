@@ -2476,6 +2476,34 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     return { addedToCart: true };
   },
+
+  /**
+   * Clicks pricing options on the first flight result labelled "NDC direct rate".
+   * Use this when the search returns a mix of NDC and GDS results and you need
+   * to explicitly target the NDC row.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async clickPricingOptionsForFirstNdcResult(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForFlightResults(90000);
+    await flightResultsPage.clickPricingOptionsForFirstFlightWithLabel('NDC direct rate');
+  },
+
+  /**
+   * Clicks pricing options on the first flight result that is NOT an "NDC direct rate".
+   * Use this when the search returns a mix of NDC and GDS results and you need
+   * to explicitly target a non-NDC (GDS) row.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async clickPricingOptionsForFirstNonNdcResult(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForFlightResults(90000);
+    await flightResultsPage.clickPricingOptionsForFirstFlightWithoutLabel('NDC direct rate');
+  },
 }
 
 module.exports = FlightResults;
