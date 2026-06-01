@@ -15,15 +15,7 @@ Feature: 20386 User cannot select a DOB for travelers under 18
   @priority:high
   Scenario: Date of birth picker does not allow selecting a date for travelers under 18
     Given I am logged in as "ruimariano@amadeus.com" booking a new trip
-    # TODO: Step needs implementation — click ".has-text-weight-semibold" then ".add-guest-btn"
-    # DSL candidate: Search.openAddGuestTravelerForm(page)
     When I open the add guest traveler form
-    # TODO: Step needs implementation — click on DOB field (el-id date picker)
-    # DSL candidate: Search.openGuestDobPicker(page)
     And I open the date of birth picker for the guest traveler
-    # TODO: Step needs implementation — assert year displayed is current year - 18 (e.g., 2008)
-    # DSL candidate: Search.verifyDobYearRestriction(page, 18)
     Then the date of birth picker should show the year restricted to 18 years ago
-    # TODO: Step needs implementation — assert ".hide-day .el-picker-panel__body" is visible
-    # DSL candidate: Search.verifyDobPickerStillOpen(page)
     And the date picker should remain open for month selection

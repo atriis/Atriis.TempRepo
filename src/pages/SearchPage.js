@@ -46,6 +46,8 @@ const SELECTORS = {
   DATE_PICKER_TODAY_AVAILABLE_DAY_CELL: "td.available.today .el-date-table-cell__text",
   DATE_RANGE_HEADER_LABEL: ".el-date-range-picker__header div",
   DATE_PICKER_HEADER_LABEL: ".el-date-picker__header-label",
+  DOB_PICKER_PANEL: '.datepicker-popper.hide-day:visible',
+  DOB_PICKER_PANEL_BODY: '.datepicker-popper.hide-day:visible .el-picker-panel__body',
 
   // Traveler search
   TRAVELER_NAME_FIELD:
@@ -937,6 +939,47 @@ class SearchPage {
     const checkbox = this.page.locator(SELECTORS.PRIMARY_TRAVELER_CHECKBOX).first();
     await checkbox.waitFor({ state: 'visible', timeout: 10000 });
     await checkbox.click();
+  }
+
+  async clickDobInput() {
+    try {
+      const dobInput = this.page.locator(SELECTORS.DATE_OF_BIRTH_INPUT).first();
+      await dobInput.waitFor({ state: 'visible', timeout: 10000 });
+      await dobInput.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.clickDobInput] Could not click DOB input (selector: ${SELECTORS.DATE_OF_BIRTH_INPUT}). ` +
+        `The add guest form may not be open or the field is not visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getDobPickerYear() {
+    try {
+      const panel = this.page.locator(SELECTORS.DOB_PICKER_PANEL);
+      await panel.waitFor({ state: 'visible', timeout: 10000 });
+      const yearLabel = panel.locator('.el-date-picker__header-label').first();
+      const yearText = await yearLabel.textContent({ timeout: 5000 });
+      return parseInt(yearText.trim(), 10);
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.getDobPickerYear] Could not read year from DOB picker header. ` +
+        `The date picker may not have opened or the hide-day panel is not visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async isDobPickerPanelBodyVisible() {
+    try {
+      const panelBody = this.page.locator(SELECTORS.DOB_PICKER_PANEL_BODY);
+      await panelBody.waitFor({ state: 'visible', timeout: 10000 });
+      return true;
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.isDobPickerPanelBodyVisible] The DOB picker panel body (hide-day mode) is not visible (selector: ${SELECTORS.DOB_PICKER_PANEL_BODY}). ` +
+        `Expected the picker to remain open in month-selection mode. Original: ${err.message}`
+      );
+    }
   }
 
   /**

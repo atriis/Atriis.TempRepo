@@ -93,6 +93,26 @@ When("I click add guest traveler", async function () {
   throw new Error("TODO: implement 'I click add guest traveler' — click add guest traveler button in traveler drawer");
 });
 
+When("I open the add guest traveler form", async function () {
+  logger.info("Opening add guest traveler form");
+  await Search.openAddGuestTravelerForm(this.page);
+});
+
+When("I open the date of birth picker for the guest traveler", async function () {
+  logger.info("Opening DOB picker in guest traveler form");
+  await Search.openGuestDobPicker(this.page);
+});
+
+Then("the date of birth picker should show the year restricted to {int} years ago", async function (minAge) {
+  logger.info("Verifying DOB picker year restriction", { minAge });
+  await Search.verifyDobYearRestriction(this.page, minAge);
+});
+
+Then("the date picker should remain open for month selection", async function () {
+  logger.info("Verifying DOB picker remains open in month selection mode");
+  await Search.verifyDobPickerStillOpen(this.page);
+});
+
 Then("the gender field should display Please select gender", async function () {
   throw new Error("TODO: implement 'the gender field should display Please select gender' — validate guest gender dropdown placeholder text");
 });

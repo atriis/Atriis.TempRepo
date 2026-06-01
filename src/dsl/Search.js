@@ -267,6 +267,64 @@ const Search = {
       guestData: { firstName, middleName, lastName, dateOfBirth, email, phone },
     };
   },
+
+  async openAddGuestTravelerForm(page) {
+    if (!page) throw new Error('[Search.openAddGuestTravelerForm] "page" is required.');
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.clickAddTravelerButton();
+    } catch (err) {
+      throw new Error(`[Search.openAddGuestTravelerForm] Failed to open traveler drawer: ${err.message}`);
+    }
+
+    try {
+      await searchPage.clickAddGuestTravelerButton();
+    } catch (err) {
+      throw new Error(`[Search.openAddGuestTravelerForm] Failed to click "Add guest traveler" button: ${err.message}`);
+    }
+  },
+
+  async openGuestDobPicker(page) {
+    if (!page) throw new Error('[Search.openGuestDobPicker] "page" is required.');
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.clickDobInput();
+    } catch (err) {
+      throw new Error(`[Search.openGuestDobPicker] Failed to open DOB date picker: ${err.message}`);
+    }
+  },
+
+  async verifyDobYearRestriction(page, minAge) {
+    if (!page) throw new Error('[Search.verifyDobYearRestriction] "page" is required.');
+    if (!Number.isInteger(minAge) || minAge < 1) {
+      throw new Error(`[Search.verifyDobYearRestriction] "minAge" must be a positive integer, got: ${minAge}`);
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+    const displayedYear = await searchPage.getDobPickerYear();
+    const expectedYear = new Date().getFullYear() - minAge;
+
+    if (displayedYear !== expectedYear) {
+      throw new Error(
+        `[Search.verifyDobYearRestriction] DOB picker year restriction failed. ` +
+        `Expected year ${expectedYear} (current year - ${minAge}), but picker displays ${displayedYear}. ` +
+        `The date picker may not be restricting travelers under ${minAge}.`
+      );
+    }
+
+    return { displayedYear, expectedYear };
+  },
+
+  async verifyDobPickerStillOpen(page) {
+    if (!page) throw new Error('[Search.verifyDobPickerStillOpen] "page" is required.');
+
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.isDobPickerPanelBodyVisible();
+  },
 };
 
 module.exports = Search;
