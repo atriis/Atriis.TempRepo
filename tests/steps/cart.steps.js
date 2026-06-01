@@ -371,6 +371,38 @@ When("I extract the price from price breakdown", async function () {
   });
 });
 
+When("I extract the Other price from price breakdown", async function () {
+  const cartPage = getPageObject(this.page, CartPage);
+  const segments = await cartPage.getFlightPriceBreakdownSegments();
+  const otherTotal = segments.reduce((sum, seg) => sum + seg.other, 0);
+  const cartTotal = await cartPage.getCartTotalPrice();
+  if (!this.extractedPrices) this.extractedPrices = [];
+  if (!this.priceSnapshots) this.priceSnapshots = [];
+  this.extractedPrices.push(otherTotal);
+  const snapshot = {
+    cartTotal,
+    segments: segments.map(s => ({
+      price: s.price,
+      tax: s.tax,
+      other: s.other,
+      subtotal: s.subtotal,
+      handlingFee: s.handlingFee,
+      ccCharge: s.ccCharge,
+      optionalServices: s.optionalServices,
+      discount: s.discount,
+    })),
+    otherTotal,
+  };
+  this.priceSnapshots.push(snapshot);
+  logger.info("=== PRICE SNAPSHOT ===", {
+    phase: this.priceSnapshots.length === 1 ? "BEFORE BOOKING" : "AFTER BOOKING",
+    cartTotal,
+    otherTotal,
+    segments: JSON.stringify(snapshot.segments),
+    extractedPricesIndex: this.extractedPrices.length - 1,
+  });
+});
+
 When("I select a random preferred seat", async function () {
   logger.info("Selecting a random preferred seat from the seat map");
   await Cart.selectRandomPreferredSeat(this.page);
