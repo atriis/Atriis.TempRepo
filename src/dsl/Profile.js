@@ -1412,6 +1412,69 @@ const Profile = {
     logger.info(`[Profile.verifyDynamicFieldValue] Dynamic profile field confirmed showing "${trimmed}"`);
     return { dynamicFieldValue: trimmed };
   },
+
+  async openPersonalDetailsTab(page) {
+    if (!page) throw new Error('[Profile.openPersonalDetailsTab] "page" is required.');
+    logger.debug('[Profile.openPersonalDetailsTab] Clicking Personal Details tab');
+    const profilePage = getPageObject(page, ProfilePage);
+    try {
+      await profilePage.clickPersonalDetailsTab();
+      await profilePage.waitForPersonalDetailsForm();
+    } catch (err) {
+      throw new Error(`[Profile.openPersonalDetailsTab] Failed to open Personal Details tab: ${err.message}`);
+    }
+    logger.info('[Profile.openPersonalDetailsTab] Personal Details tab opened');
+  },
+
+  async scrollToDynamicFields(page) {
+    if (!page) throw new Error('[Profile.scrollToDynamicFields] "page" is required.');
+    logger.debug('[Profile.scrollToDynamicFields] Scrolling to dynamic reference fields section');
+    const profilePage = getPageObject(page, ProfilePage);
+    try {
+      await profilePage.scrollToDynamicFieldLabel();
+    } catch (err) {
+      throw new Error(`[Profile.scrollToDynamicFields] Failed to scroll to dynamic reference fields: ${err.message}`);
+    }
+    logger.info('[Profile.scrollToDynamicFields] Scrolled to dynamic reference fields section');
+  },
+
+  async hoverDynamicFieldIcon(page) {
+    if (!page) throw new Error('[Profile.hoverDynamicFieldIcon] "page" is required.');
+    logger.debug('[Profile.hoverDynamicFieldIcon] Hovering over dynamic field info icon');
+    const profilePage = getPageObject(page, ProfilePage);
+    try {
+      await profilePage.hoverDynamicFieldInfoIcon();
+    } catch (err) {
+      throw new Error(`[Profile.hoverDynamicFieldIcon] Failed to hover over dynamic field info icon: ${err.message}`);
+    }
+    logger.info('[Profile.hoverDynamicFieldIcon] Hovered over dynamic field info icon');
+  },
+
+  async verifyTooltipText(page, expectedText) {
+    if (!page) throw new Error('[Profile.verifyTooltipText] "page" is required.');
+    if (typeof expectedText !== 'string') {
+      throw new Error(
+        `[Profile.verifyTooltipText] "expectedText" must be a string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+    logger.debug(`[Profile.verifyTooltipText] Verifying tooltip displays "${expectedText}"`);
+    const profilePage = getPageObject(page, ProfilePage);
+    let actualText;
+    try {
+      actualText = await profilePage.getDynamicFieldTooltipText();
+    } catch (err) {
+      throw new Error(`[Profile.verifyTooltipText] Failed to read tooltip text: ${err.message}`);
+    }
+    const trimmed = (actualText || '').trim();
+    if (trimmed !== expectedText) {
+      throw new Error(
+        `[Profile.verifyTooltipText] Tooltip shows "${trimmed}" but expected "${expectedText}". ` +
+        `The tooltip may not have appeared, or the dynamic field helpQuestionText is different from expected.`
+      );
+    }
+    logger.info(`[Profile.verifyTooltipText] Tooltip text confirmed: "${trimmed}"`);
+    return { tooltipText: trimmed };
+  },
 };
 
 module.exports = Profile;

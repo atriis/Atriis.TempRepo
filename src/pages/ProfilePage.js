@@ -7,6 +7,7 @@ const SELECTORS = {
   FREQUENT_PROGRAMS_TAB: '#tab-frequentPrograms',
   CONTACT_INFORMATION_TAB: "[id='tab-contactInformation'] p",
   TRAVEL_PREFERENCES_TAB: "[id='tab-travelPreferences'] p",
+  PERSONAL_DETAILS_TAB: "[id='tab-personalDetails'] p",
 
   // Contact information form
   CONTACT_INFO_FORM: '.contact-info-form-content',
@@ -42,6 +43,9 @@ const SELECTORS = {
   // Personal Details — dynamic reference fields
   DYNAMIC_FIELD_WARNING: '.reference-fields-container .form-validation-msg',
   DYNAMIC_FIELD_SELECT_VALUE: '.reference-fields-container .el-select__placeholder span',
+  DYNAMIC_FIELD_LABEL: '.reference-fields-container > :nth-child(2) .label',
+  DYNAMIC_FIELD_INFO_ICON: '.reference-fields-container .info-icon',
+  DYNAMIC_FIELD_TOOLTIP: '.el-popper.is-light:not([aria-hidden="true"]) .help',
 
   // Frequent Programs form
   FREQUENT_PROGRAMS_FORM: '.frequent-programs-form',
@@ -295,6 +299,63 @@ class ProfilePage {
         `[ProfilePage.getDynamicFieldSelectValue] Failed to read the selected value from the dynamic field dropdown ` +
         `(selector: ${SELECTORS.DYNAMIC_FIELD_SELECT_VALUE}). ` +
         `The field may not be rendered or the reference-fields-container is missing. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickPersonalDetailsTab() {
+    try {
+      const tab = this.page.locator(SELECTORS.PERSONAL_DETAILS_TAB);
+      await tab.waitFor({ state: 'attached', timeout: 10000 });
+      await tab.dispatchEvent('click');
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickPersonalDetailsTab] Could not click Personal Details tab ` +
+        `(selector: ${SELECTORS.PERSONAL_DETAILS_TAB}). The profile page may not have loaded or the tab is not rendered. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async scrollToDynamicFieldLabel() {
+    try {
+      const label = this.page.locator(SELECTORS.DYNAMIC_FIELD_LABEL).first();
+      await label.waitFor({ state: 'visible', timeout: 10000 });
+      await label.scrollIntoViewIfNeeded();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.scrollToDynamicFieldLabel] Could not scroll to the dynamic reference field label ` +
+        `(selector: ${SELECTORS.DYNAMIC_FIELD_LABEL}). The reference-fields-container may not be present on this profile. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async hoverDynamicFieldInfoIcon() {
+    try {
+      const icon = this.page.locator(SELECTORS.DYNAMIC_FIELD_INFO_ICON).first();
+      await icon.waitFor({ state: 'visible', timeout: 10000 });
+      await icon.hover();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.hoverDynamicFieldInfoIcon] Could not hover over the dynamic field info icon ` +
+        `(selector: ${SELECTORS.DYNAMIC_FIELD_INFO_ICON}). The icon may not exist for this field or the field is not in view. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async getDynamicFieldTooltipText() {
+    try {
+      const tooltip = this.page.locator(SELECTORS.DYNAMIC_FIELD_TOOLTIP).first();
+      await tooltip.waitFor({ state: 'attached', timeout: 10000 });
+      return await tooltip.textContent();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getDynamicFieldTooltipText] Could not read tooltip text ` +
+        `(selector: ${SELECTORS.DYNAMIC_FIELD_TOOLTIP}). The tooltip may not have appeared after hover — ` +
+        `ensure the info icon was hovered and the helpQuestionText is populated for this field. ` +
+        `Original: ${err.message}`
       );
     }
   }

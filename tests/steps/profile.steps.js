@@ -257,3 +257,23 @@ Then("the dynamic profile field should show value {string}", async function (exp
   logger.info("Verifying dynamic profile field value", { expectedValue });
   await Profile.verifyDynamicFieldValue(this.page, expectedValue);
 });
+
+When("I open the personal details tab in my profile", async function () {
+  logger.info("Opening personal details tab in profile");
+  await Profile.openPersonalDetailsTab(this.page);
+});
+
+When("I scroll to the dynamic reference fields section", async function () {
+  logger.info("Scrolling to dynamic reference fields section");
+  await Profile.scrollToDynamicFields(this.page);
+});
+
+When("I hover over the dynamic field info icon", async function () {
+  logger.info("Hovering over dynamic field info icon");
+  await Profile.hoverDynamicFieldIcon(this.page);
+});
+
+Then("the tooltip should display {string}", async function (expectedText) {
+  logger.info("Verifying tooltip text", { expectedText });
+  await Profile.verifyTooltipText(this.page, expectedText);
+});
