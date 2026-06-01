@@ -236,3 +236,41 @@ When("I save the personal details", async function () {
   logger.info("Saving Personal Details form");
   await Profile.savePersonalDetails(this.page);
 });
+
+// --- Travel Preferences steps ---
+
+When("I open the traveler profile from the traveler name", async function () {
+  logger.info("Opening traveler profile from traveler name link");
+  const newPage = await Profile.openTravelerProfileFromName(this.page);
+  this.page = newPage;
+});
+
+When("I open the travel preferences tab in my profile", async function () {
+  logger.info("Opening Travel Preferences tab in user profile");
+  await Profile.openTravelPreferencesTab(this.page);
+});
+
+When("I select a seat preference from the dropdown", async function () {
+  logger.info("Selecting seat preference from dropdown");
+  await Profile.selectSeatPreference(this.page);
+});
+
+When("I save the travel preferences", async function () {
+  logger.info("Saving Travel Preferences form");
+  await Profile.saveTravelPreferences(this.page);
+});
+
+Then("the seat preference should be saved", async function () {
+  logger.info("Verifying seat preference is saved");
+  await Profile.verifySeatPreferenceSaved(this.page);
+});
+
+When("I clear the seat preference selection", async function () {
+  logger.info("Clearing seat preference selection");
+  await Profile.clearSeatPreference(this.page);
+});
+
+Then("the seat preference should be cleared", async function () {
+  logger.info("Verifying seat preference is cleared");
+  await Profile.verifySeatPreferenceCleared(this.page);
+});

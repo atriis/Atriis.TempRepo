@@ -1157,6 +1157,188 @@ const Profile = {
 
     logger.info(`[Profile.verifyBackupApproverPlaceholder] Confirmed backup approver shows "${text}"`);
   },
+
+  /**
+   * Opens the traveler profile by clicking the first traveler name link on the trip page.
+   * The profile opens in a new tab; this method returns the new page handle.
+   */
+  async openTravelerProfileFromName(page) {
+    if (!page) throw new Error('[Profile.openTravelerProfileFromName] "page" is required.');
+
+    logger.debug('[Profile.openTravelerProfileFromName] Clicking first traveler name link');
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let newPage;
+    try {
+      const context = page.context();
+      const [newTab] = await Promise.all([
+        context.waitForEvent('page', { timeout: 15000 }),
+        profilePage.clickFirstTravelerNameLink(),
+      ]);
+      newPage = newTab;
+      await newPage.waitForLoadState('domcontentloaded', { timeout: 20000 });
+    } catch (err) {
+      throw new Error(
+        `[Profile.openTravelerProfileFromName] Failed to open traveler profile in new tab. ` +
+        `The traveler name link may not be visible or no traveler was added to the trip. Original: ${err.message}`
+      );
+    }
+
+    const newProfilePage = getPageObject(newPage, ProfilePage);
+
+    try {
+      await newProfilePage.waitForPersonalDetailsForm();
+    } catch (err) {
+      throw new Error(
+        `[Profile.openTravelerProfileFromName] Traveler profile tab opened but personal details form did not load: ${err.message}`
+      );
+    }
+
+    logger.info('[Profile.openTravelerProfileFromName] Traveler profile opened in new tab');
+    return newPage;
+  },
+
+  /**
+   * Navigates to the Travel Preferences tab on the traveler profile page.
+   */
+  async openTravelPreferencesTab(page) {
+    if (!page) throw new Error('[Profile.openTravelPreferencesTab] "page" is required.');
+
+    logger.debug('[Profile.openTravelPreferencesTab] Clicking Travel Preferences tab');
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickTravelPreferencesTab();
+      await profilePage.waitForTravelPreferencesForm();
+    } catch (err) {
+      throw new Error(`[Profile.openTravelPreferencesTab] Failed to open Travel Preferences tab: ${err.message}`);
+    }
+
+    logger.info('[Profile.openTravelPreferencesTab] Travel Preferences tab opened');
+  },
+
+  /**
+   * Selects the first available seat preference (Aisle) from the seat type dropdown.
+   */
+  async selectSeatPreference(page) {
+    if (!page) throw new Error('[Profile.selectSeatPreference] "page" is required.');
+
+    logger.debug('[Profile.selectSeatPreference] Selecting seat preference from dropdown');
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickSeatPreferenceDropdown();
+      // Select "Aisle" — the first meaningful option (index 0 in the options array)
+      await profilePage.selectSeatPreferenceOption('Aisle');
+    } catch (err) {
+      throw new Error(
+        `[Profile.selectSeatPreference] Failed to select seat preference: ${err.message}`
+      );
+    }
+
+    logger.info('[Profile.selectSeatPreference] Seat preference "Aisle" selected');
+  },
+
+  /**
+   * Clicks the Save button on the Travel Preferences form and waits for the save to complete.
+   */
+  async saveTravelPreferences(page) {
+    if (!page) throw new Error('[Profile.saveTravelPreferences] "page" is required.');
+
+    logger.debug('[Profile.saveTravelPreferences] Clicking Save on Travel Preferences form');
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickSaveTravelPreferences();
+    } catch (err) {
+      throw new Error(
+        `[Profile.saveTravelPreferences] Failed to save travel preferences: ${err.message}`
+      );
+    }
+
+    logger.info('[Profile.saveTravelPreferences] Travel preferences saved');
+  },
+
+  /**
+   * Verifies that the seat preference is saved (text is not the default "No preference" placeholder).
+   */
+  async verifySeatPreferenceSaved(page) {
+    if (!page) throw new Error('[Profile.verifySeatPreferenceSaved] "page" is required.');
+
+    logger.debug('[Profile.verifySeatPreferenceSaved] Verifying seat preference is saved');
+
+    const profilePage = getPageObject(page, ProfilePage);
+    let actualText;
+
+    try {
+      actualText = await profilePage.getSeatPreferenceText();
+    } catch (err) {
+      throw new Error(`[Profile.verifySeatPreferenceSaved] Failed to read seat preference text: ${err.message}`);
+    }
+
+    if (!actualText || actualText === 'No preference') {
+      throw new Error(
+        `[Profile.verifySeatPreferenceSaved] Seat preference was NOT saved — field still shows "${actualText || 'empty'}". ` +
+        `The selection may not have been applied or the save did not persist the value.`
+      );
+    }
+
+    logger.info(`[Profile.verifySeatPreferenceSaved] Seat preference is saved: "${actualText}"`);
+    return { seatPreference: actualText };
+  },
+
+  /**
+   * Clears the seat preference by opening the dropdown and selecting "No preference".
+   */
+  async clearSeatPreference(page) {
+    if (!page) throw new Error('[Profile.clearSeatPreference] "page" is required.');
+
+    logger.debug('[Profile.clearSeatPreference] Clearing seat preference by selecting "No preference"');
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickSeatPreferenceDropdown();
+      await profilePage.selectSeatPreferenceOption('No preference');
+    } catch (err) {
+      throw new Error(
+        `[Profile.clearSeatPreference] Failed to clear seat preference — could not select "No preference": ${err.message}`
+      );
+    }
+
+    logger.info('[Profile.clearSeatPreference] Seat preference cleared (set to "No preference")');
+  },
+
+  /**
+   * Verifies that the seat preference shows the default "No preference" placeholder (i.e., is cleared).
+   */
+  async verifySeatPreferenceCleared(page) {
+    if (!page) throw new Error('[Profile.verifySeatPreferenceCleared] "page" is required.');
+
+    logger.debug('[Profile.verifySeatPreferenceCleared] Verifying seat preference is cleared');
+
+    const profilePage = getPageObject(page, ProfilePage);
+    let actualText;
+
+    try {
+      actualText = await profilePage.getSeatPreferenceText();
+    } catch (err) {
+      throw new Error(`[Profile.verifySeatPreferenceCleared] Failed to read seat preference text: ${err.message}`);
+    }
+
+    if (actualText !== 'No preference') {
+      throw new Error(
+        `[Profile.verifySeatPreferenceCleared] Seat preference was NOT cleared — field shows "${actualText}" but expected "No preference". ` +
+        `The "No preference" option may not have been selected or the save did not persist the change.`
+      );
+    }
+
+    logger.info('[Profile.verifySeatPreferenceCleared] Seat preference confirmed cleared ("No preference")');
+  },
 };
 
 module.exports = Profile;

@@ -6,6 +6,7 @@ const SELECTORS = {
   // Profile tabs
   FREQUENT_PROGRAMS_TAB: '#tab-frequentPrograms',
   CONTACT_INFORMATION_TAB: "[id='tab-contactInformation'] p",
+  TRAVEL_PREFERENCES_TAB: "[id='tab-travelPreferences'] p",
 
   // Contact information form
   CONTACT_INFO_FORM: '.contact-info-form-content',
@@ -14,6 +15,11 @@ const SELECTORS = {
   BUSINESS_PHONE_INPUTS: '.contact-info-form-content .phone-inputs-container .field.app-column.is-3:nth-child(2) .phone-inputs input',
   STATE_LABEL: '.contact-info-form-content > :nth-child(6) > :nth-child(5) .label',
   STATE_VALUE: '.contact-info-form-content > :nth-child(6) > :nth-child(5) .el-select__placeholder span',
+
+  // Travel preferences form
+  TRAVEL_PREFERENCES_FORM: '.travel-preferences-form-content',
+  SAVE_TRAVEL_PREFERENCES_BUTTON: '.travel-preferences-form-content button:has-text("Save")',
+  SEAT_TYPE_LABEL: 'Seat type',
 
   // Permissions tab
   PERMISSIONS_TAB: "[id='tab-permissions'] p",
@@ -258,6 +264,92 @@ class ProfilePage {
       throw new Error(
         `[ProfilePage.clickSaveFrequentPrograms] Could not click the Save button (selector: ${SELECTORS.SAVE_BUTTON}). ` +
         `The form may not be in a valid state or the button is disabled. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Travel Preferences Tab ---
+
+  async clickTravelPreferencesTab() {
+    try {
+      const tab = this.page.locator(SELECTORS.TRAVEL_PREFERENCES_TAB);
+      await tab.waitFor({ state: 'attached', timeout: 10000 });
+      await tab.dispatchEvent('click');
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickTravelPreferencesTab] Could not click Travel Preferences tab (selector: ${SELECTORS.TRAVEL_PREFERENCES_TAB}). ` +
+        `The profile page may not have loaded or the tab is hidden behind overflow. Original: ${err.message}`
+      );
+    }
+  }
+
+  async waitForTravelPreferencesForm() {
+    try {
+      await this.page.locator(SELECTORS.TRAVEL_PREFERENCES_FORM).waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.waitForTravelPreferencesForm] Travel Preferences form did not appear (selector: ${SELECTORS.TRAVEL_PREFERENCES_FORM}). ` +
+        `The tab may not have switched or the form failed to load. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickSeatPreferenceDropdown() {
+    try {
+      const seatField = this.page.locator(SELECTORS.TRAVEL_PREFERENCES_FORM)
+        .locator('.field.app-column')
+        .filter({ has: this.page.locator(`label.label:text-is("${SELECTORS.SEAT_TYPE_LABEL}")`) });
+      const select = seatField.locator('.el-select');
+      await select.waitFor({ state: 'visible', timeout: 10000 });
+      await select.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickSeatPreferenceDropdown] Could not click the Seat type dropdown (label: "${SELECTORS.SEAT_TYPE_LABEL}"). ` +
+        `The travel preferences form may not be loaded or the field is disabled. Original: ${err.message}`
+      );
+    }
+  }
+
+  async selectSeatPreferenceOption(optionText) {
+    try {
+      const option = this.page.locator(SELECTORS.DROPDOWN_OPTION).filter({ hasText: optionText });
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.selectSeatPreferenceOption] Could not select seat preference option "${optionText}" from dropdown. ` +
+        `The dropdown may not have opened or the option does not exist. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getSeatPreferenceText() {
+    try {
+      const seatField = this.page.locator(SELECTORS.TRAVEL_PREFERENCES_FORM)
+        .locator('.field.app-column')
+        .filter({ has: this.page.locator(`label.label:text-is("${SELECTORS.SEAT_TYPE_LABEL}")`) });
+      const placeholder = seatField.locator('.el-select__placeholder span');
+      await placeholder.waitFor({ state: 'attached', timeout: 10000 });
+      const text = await placeholder.textContent();
+      return text ? text.trim() : '';
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getSeatPreferenceText] Could not read seat preference value (label: "${SELECTORS.SEAT_TYPE_LABEL}"). ` +
+        `The travel preferences form may not be loaded. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickSaveTravelPreferences() {
+    try {
+      const saveBtn = this.page.locator(SELECTORS.SAVE_TRAVEL_PREFERENCES_BUTTON).first();
+      await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await saveBtn.click({ timeout: 10000 });
+      await this.page.waitForLoadState('networkidle', { timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickSaveTravelPreferences] Could not click the Save Travel Preferences button (selector: ${SELECTORS.SAVE_TRAVEL_PREFERENCES_BUTTON}). ` +
+        `The button may be hidden, disabled, or the form did not load. Original: ${err.message}`
       );
     }
   }
