@@ -76,6 +76,7 @@ const SELECTORS = {
   FOP_STATE_SELECT: '.profile-form-of-payment-content .app-columns:nth-child(2) .field.app-column:nth-child(5) .el-select',
   FOP_SAVE_BUTTON: '.profile-form-of-payment-content button:has-text("Save")',
   FOP_CARD_PREVIEW: '.profile-form-of-payment .card-preview',
+  FOP_CARD_NAME_DISPLAY: '.profile-form-of-payment .card-name',
   FOP_CARD_HOLDER_NAME_DISPLAY: '.profile-form-of-payment .card-holder-name',
   FOP_CARD_ACTIONS_DROPDOWN: '.profile-form-of-payment .card-preview .actions-dropdown .expand-icon',
   FOP_DELETE_CARD_OPTION: '.share-popper .el-dropdown-menu__item:last-child p',
@@ -926,7 +927,7 @@ class ProfilePage {
   async selectExpiryMonth(month) {
     try {
       await this.page.locator(SELECTORS.FOP_EXPIRY_MONTH_SELECT).click({ timeout: 10000 });
-      await this.page.locator(SELECTORS.DROPDOWN_OPTION).filter({ hasText: month }).click({ timeout: 10000 });
+      await this.page.locator(SELECTORS.DROPDOWN_OPTION).filter({ hasText: new RegExp(`^\\s*${month}\\s*$`) }).click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
         `[ProfilePage.selectExpiryMonth] Could not select expiry month "${month}". Original: ${err.message}`
@@ -1020,6 +1021,19 @@ class ProfilePage {
       throw new Error(
         `[ProfilePage.getCardHolderNameFromPreview] Could not read card holder name from preview (selector: ${SELECTORS.FOP_CARD_HOLDER_NAME_DISPLAY}). ` +
         `No card may be listed. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getCardNameFromPreview() {
+    try {
+      const cardName = this.page.locator(SELECTORS.FOP_CARD_NAME_DISPLAY).last();
+      await cardName.waitFor({ state: 'visible', timeout: 15000 });
+      return (await cardName.textContent()).trim();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getCardNameFromPreview] Could not read card display name (alias) from preview (selector: ${SELECTORS.FOP_CARD_NAME_DISPLAY}). ` +
+        `The card may not have saved or the preview is not visible. Original: ${err.message}`
       );
     }
   }

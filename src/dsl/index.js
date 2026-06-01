@@ -6,6 +6,7 @@
  */
 
 module.exports = {
+  Administration: require("./Administration"),
   AmtrakSearch: require("./AmtrakSearch"),
   App: require("./App"),
   BenerailResults: require("./BenerailResults"),

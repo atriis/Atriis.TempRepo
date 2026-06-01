@@ -125,9 +125,19 @@ When("I add a new credit card with city {string} and cardholder {string}", async
   await Profile.addCreditCard(this.page, { city, cardholder });
 });
 
+When("I add a credit card with name {string} type {string} number {string} expiry month {string} year {string}", async function (name, type, number, expiryMonth, expiryYear) {
+  logger.info("Adding credit card with full details", { name, type, expiryMonth, expiryYear });
+  await Profile.addCreditCardFull(this.page, { name, type, number, expiryMonth, expiryYear });
+});
+
 Then("the card holder name {string} should be displayed", async function (expectedName) {
   logger.info("Verifying card holder name is displayed", { expectedName });
   await Profile.verifyCardHolderName(this.page, expectedName);
+});
+
+Then("the card name {string} should be displayed in the profile", async function (cardName) {
+  logger.info("Verifying card display name is shown in FOP preview", { cardName });
+  await Profile.verifyCardName(this.page, cardName);
 });
 
 When("I delete the credit card from my profile", async function () {

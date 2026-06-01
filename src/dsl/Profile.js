@@ -1530,6 +1530,114 @@ const Profile = {
     logger.info(`[Profile.verifyMaskedLoyaltyEnding] Found masked loyalty number ending in "${lastDigits}": "${match}"`);
     return { matchedValue: match };
   },
+
+  /**
+   * Adds a credit card using name (alias), type, number, expiry month and year only.
+   * Does not require billing address fields (uses defaults for non-mandatory fields).
+   * Call openFormOfPaymentTab first.
+   */
+  async addCreditCardFull(page, { name, type, number, expiryMonth, expiryYear } = {}) {
+    if (!page) {
+      throw new Error('[Profile.addCreditCardFull] "page" is required.');
+    }
+    if (!name || typeof name !== 'string') {
+      throw new Error(
+        `[Profile.addCreditCardFull] "name" (card alias) must be a non-empty string, got: ${typeof name} (${JSON.stringify(name)})`
+      );
+    }
+    if (!type || typeof type !== 'string') {
+      throw new Error(
+        `[Profile.addCreditCardFull] "type" (card type e.g. "visa") must be a non-empty string, got: ${typeof type} (${JSON.stringify(type)})`
+      );
+    }
+    if (!number || typeof number !== 'string') {
+      throw new Error(
+        `[Profile.addCreditCardFull] "number" (card number) must be a non-empty string, got: ${typeof number} (${JSON.stringify(number)})`
+      );
+    }
+    if (!expiryMonth || typeof expiryMonth !== 'string') {
+      throw new Error(
+        `[Profile.addCreditCardFull] "expiryMonth" must be a non-empty string (e.g. "02"), got: ${typeof expiryMonth} (${JSON.stringify(expiryMonth)})`
+      );
+    }
+    if (!expiryYear || typeof expiryYear !== 'string') {
+      throw new Error(
+        `[Profile.addCreditCardFull] "expiryYear" must be a non-empty string (e.g. "2032"), got: ${typeof expiryYear} (${JSON.stringify(expiryYear)})`
+      );
+    }
+
+    logger.debug(`[Profile.addCreditCardFull] Adding card with name="${name}", type="${type}", expiry=${expiryMonth}/${expiryYear}`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clickAddNewCard();
+      await profilePage.waitForFopForm();
+    } catch (err) {
+      throw new Error(`[Profile.addCreditCardFull] Failed to open add-card form: ${err.message}`);
+    }
+
+    try {
+      await profilePage.fillCardDisplayName(name);
+      await profilePage.selectCardType(type);
+      await profilePage.fillCardHolderName(name);
+      await profilePage.insertCardNumber(number);
+      await profilePage.selectExpiryMonth(expiryMonth);
+      await profilePage.selectExpiryYear(expiryYear);
+      await profilePage.fillBillingAddress('123 Main Street');
+      await profilePage.fillBillingCity('New York');
+      await profilePage.fillBillingZipCode('10001');
+      await profilePage.selectBillingCountry('UNITED STATES (US)');
+    } catch (err) {
+      throw new Error(`[Profile.addCreditCardFull] Failed to fill card details for "${name}": ${err.message}`);
+    }
+
+    try {
+      await profilePage.clickSaveFop();
+    } catch (err) {
+      throw new Error(`[Profile.addCreditCardFull] Failed to save credit card "${name}": ${err.message}`);
+    }
+
+    logger.info(`[Profile.addCreditCardFull] Credit card "${name}" saved successfully`);
+  },
+
+  /**
+   * Verifies the card display name (alias) shown in the profile FOP card preview.
+   * Checks the .card-name element, which differs from the cardholder name (.card-holder-name).
+   */
+  async verifyCardName(page, cardName) {
+    if (!page) {
+      throw new Error('[Profile.verifyCardName] "page" is required.');
+    }
+    if (!cardName || typeof cardName !== 'string') {
+      throw new Error(
+        `[Profile.verifyCardName] "cardName" must be a non-empty string, got: ${typeof cardName} (${JSON.stringify(cardName)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyCardName] Verifying card display name "${cardName}" is shown in FOP preview`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let actualName;
+    try {
+      actualName = await profilePage.getCardNameFromPreview();
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyCardName] Failed to read card display name from FOP preview: ${err.message}`
+      );
+    }
+
+    if (!actualName.toLowerCase().includes(cardName.toLowerCase())) {
+      throw new Error(
+        `[Profile.verifyCardName] Card display name "${actualName}" does not contain expected "${cardName}". ` +
+        `The card may not have been saved correctly or the alias did not persist.`
+      );
+    }
+
+    logger.info(`[Profile.verifyCardName] Card display name "${actualName}" matches expected "${cardName}"`);
+    return { actualName };
+  },
 };
 
 module.exports = Profile;
