@@ -33,7 +33,7 @@ const SELECTORS = {
   DIALOG_CONFIRM_BTN: ".ui-dialog-buttonset :first-child",
 };
 
-class AdminPage {
+class AdministrationPage {
   constructor(page) {
     this.page = page;
   }
@@ -49,7 +49,7 @@ class AdminPage {
       await icon.click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
-        `[AdminPage.clickAdminSettingsIcon] Could not click the admin settings icon in the side nav ` +
+        `[AdministrationPage.clickAdminSettingsIcon] Could not click the admin settings icon in the side nav ` +
         `(selector: ${SELECTORS.ADMIN_SETTINGS_ICON}, text filter: "settings"). ` +
         `Ensure the logged-in user has administration access and the side nav is visible. ` +
         `Original: ${err.message}`
@@ -65,7 +65,7 @@ class AdminPage {
       await this.page.locator(SELECTORS.SETTINGS_FORM).waitFor({ state: 'attached', timeout: 30000 });
     } catch (err) {
       throw new Error(
-        `[AdminPage.waitForAdminPageReady] Administration page did not finish loading ` +
+        `[AdministrationPage.waitForAdminPageReady] Administration page did not finish loading ` +
         `(selector: ${SELECTORS.SETTINGS_FORM}). ` +
         `The admin settings URL may be incorrect or the user lacks admin privileges. ` +
         `Original: ${err.message}`
@@ -101,7 +101,7 @@ class AdminPage {
         .waitFor({ state: 'visible', timeout: 20000 });
     } catch (err) {
       throw new Error(
-        `[AdminPage.clickUsersTab] Could not navigate to the Users list in the administration. ` +
+        `[AdministrationPage.clickUsersTab] Could not navigate to the Users list in the administration. ` +
         `The admin URL may not contain a Corporation ID, or the user list did not render. ` +
         `Original: ${err.message}`
       );
@@ -121,7 +121,7 @@ class AdminPage {
       await input.pressSequentially(userName, { delay: 60 });
     } catch (err) {
       throw new Error(
-        `[AdminPage.fillUserSearch] Could not type "${userName}" into the user search input ` +
+        `[AdministrationPage.fillUserSearch] Could not type "${userName}" into the user search input ` +
         `(selector: ${SELECTORS.USER_SEARCH_INPUT}). ` +
         `The Users tab must be open before searching. Original: ${err.message}`
       );
@@ -137,7 +137,7 @@ class AdminPage {
       await nameCell.click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
-        `[AdminPage.clickFirstUserRowWithName] Could not click first user name cell after searching for "${userName}" ` +
+        `[AdministrationPage.clickFirstUserRowWithName] Could not click first user name cell after searching for "${userName}" ` +
         `(selector: ${SELECTORS.USER_ROW_NAME_CELL}). ` +
         `The search may have returned no results or the user list did not render. ` +
         `Original: ${err.message}`
@@ -153,7 +153,7 @@ class AdminPage {
         .waitFor({ state: 'attached', timeout: 15000 });
     } catch (err) {
       throw new Error(
-        `[AdminPage.waitForUserRecord] User record for "${firstName}" did not load ` +
+        `[AdministrationPage.waitForUserRecord] User record for "${firstName}" did not load ` +
         `(selector: ${SELECTORS.USER_FIRST_NAME_FIELD}). ` +
         `The user row click may not have opened the user detail panel. Original: ${err.message}`
       );
@@ -169,7 +169,7 @@ class AdminPage {
       await tab.click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
-        `[AdminPage.clickFopTab] Could not click the Form of Payment tab in the admin user view ` +
+        `[AdministrationPage.clickFopTab] Could not click the Form of Payment tab in the admin user view ` +
         `(selector: ${SELECTORS.FOP_TAB}). ` +
         `The user must be opened first and have a FOP tab. Original: ${err.message}`
       );
@@ -188,7 +188,7 @@ class AdminPage {
       await cell.click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
-        `[AdminPage.clickCreditCardRow] Could not find and click credit card row for "${cardName}" ` +
+        `[AdministrationPage.clickCreditCardRow] Could not find and click credit card row for "${cardName}" ` +
         `(selector: ${SELECTORS.CREDIT_CARD_ROW_NAME}). ` +
         `The FOP tab must be open and the card must exist. Original: ${err.message}`
       );
@@ -203,7 +203,7 @@ class AdminPage {
       return (await monthChosen.textContent()).trim();
     } catch (err) {
       throw new Error(
-        `[AdminPage.getExpiryMonth] Could not read expiry month from Select2 dropdown ` +
+        `[AdministrationPage.getExpiryMonth] Could not read expiry month from Select2 dropdown ` +
         `(selector: ${SELECTORS.CREDIT_CARD_EXPIRY_CHOSEN}, index 1). ` +
         `The credit card row must be clicked first to open the edit form. Original: ${err.message}`
       );
@@ -218,7 +218,7 @@ class AdminPage {
       return (await yearChosen.textContent()).trim();
     } catch (err) {
       throw new Error(
-        `[AdminPage.getExpiryYear] Could not read expiry year from Select2 dropdown ` +
+        `[AdministrationPage.getExpiryYear] Could not read expiry year from Select2 dropdown ` +
         `(selector: ${SELECTORS.CREDIT_CARD_EXPIRY_CHOSEN}, index 2). ` +
         `The credit card row must be clicked first to open the edit form. Original: ${err.message}`
       );
@@ -242,7 +242,7 @@ class AdminPage {
       await imgLocator.click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
-        `[AdminPage.clickDeleteImageForCard] Could not click delete image for card "${cardName}" ` +
+        `[AdministrationPage.clickDeleteImageForCard] Could not click delete image for card "${cardName}" ` +
         `(selector: ${SELECTORS.CARD_DELETE_IMG}). ` +
         `The card must exist in the FOP tab. Original: ${err.message}`
       );
@@ -256,7 +256,7 @@ class AdminPage {
       await confirmBtn.click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
-        `[AdminPage.confirmDeleteDialog] Could not click the confirm button in the delete dialog ` +
+        `[AdministrationPage.confirmDeleteDialog] Could not click the confirm button in the delete dialog ` +
         `(selector: ${SELECTORS.DIALOG_CONFIRM_BTN}). ` +
         `The jQuery UI dialog may not have appeared. Original: ${err.message}`
       );
@@ -264,4 +264,4 @@ class AdminPage {
   }
 }
 
-module.exports = AdminPage;
+module.exports = AdministrationPage;

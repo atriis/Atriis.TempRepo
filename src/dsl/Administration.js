@@ -1,5 +1,5 @@
 const { getPageObject } = require("@utils/pageObjectCache");
-const AdminPage = require("@pages/AdminPage");
+const AdministrationPage = require("@src/pages/AdministrationPage");
 const logger = require("@utils/logger").child("Administration");
 
 /**
@@ -28,7 +28,7 @@ const Administration = {
       throw new Error('[Administration.navigateToAdministration] Page context is null — cannot detect new tab.');
     }
 
-    const adminPage = getPageObject(page, AdminPage);
+    const adminPage = getPageObject(page, AdministrationPage);
 
     const newPagePromise = context.waitForEvent('page', { timeout: 20000 }).catch(() => null);
 
@@ -51,7 +51,7 @@ const Administration = {
 
     logger.info('[Administration.navigateToAdministration] Administration portal opened in a new tab');
 
-    const adminPageInNewTab = getPageObject(newAdminTab, AdminPage);
+    const adminPageInNewTab = getPageObject(newAdminTab, AdministrationPage);
     await adminPageInNewTab.waitForAdminPageReady();
 
     logger.info('[Administration.navigateToAdministration] Administration portal is ready');
@@ -76,7 +76,7 @@ const Administration = {
 
     logger.debug(`[Administration.searchUserInAdmin] Searching for user "${userName}"`);
 
-    const page = getPageObject(adminPage, AdminPage);
+    const page = getPageObject(adminPage, AdministrationPage);
 
     try {
       await page.clickUsersTab();
@@ -118,7 +118,7 @@ const Administration = {
 
     logger.debug('[Administration.openFopTabInAdmin] Clicking Form of Payment tab in admin user view');
 
-    const page = getPageObject(adminPage, AdminPage);
+    const page = getPageObject(adminPage, AdministrationPage);
 
     try {
       await page.clickFopTab();
@@ -161,7 +161,7 @@ const Administration = {
 
     logger.debug(`[Administration.verifyCcExpiryInAdmin] Verifying card "${cardName}" shows expiry ${month}/${year}`);
 
-    const page = getPageObject(adminPage, AdminPage);
+    const page = getPageObject(adminPage, AdministrationPage);
 
     try {
       await page.clickCreditCardRow(cardName);
@@ -231,7 +231,7 @@ const Administration = {
 
     logger.debug(`[Administration.deleteCcFromAdmin] Deleting card "${cardName}" from administration`);
 
-    const page = getPageObject(adminPage, AdminPage);
+    const page = getPageObject(adminPage, AdministrationPage);
 
     try {
       await page.clickDeleteImageForCard(cardName);
