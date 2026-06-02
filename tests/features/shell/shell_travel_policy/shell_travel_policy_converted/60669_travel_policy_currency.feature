@@ -17,5 +17,5 @@ Feature: 60669 Travel Policy - Policy currency triggers, not user group currency
     Given I am logged in as "bobsinclair@travelpolicy.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "ARN" to "MAD"
-    Then the "Add to trip" text should be visible in results
-    And the out of policy indicator should not be visible in results
+    And flight results should be available
+    Then the out of policy indicator should not be visible in results
