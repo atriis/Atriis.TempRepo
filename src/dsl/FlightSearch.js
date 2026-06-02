@@ -415,6 +415,53 @@ const FlightSearch = {
   },
 
   /**
+   * One-way flight search with a specific departure time preference.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string|Object} routeInput - Route key or {from, to}
+   * @param {string} timePreference - Departure time label, e.g. "Early (04:00-08:00)"
+   * @param {Object} options - Date-selection options
+   */
+  async searchFlightOneWayWithDepartureTime(
+    page,
+    routeInput,
+    timePreference,
+    {
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+    } = {},
+  ) {
+    if (!page) throw new Error('[FlightSearch.searchFlightOneWayWithDepartureTime] "page" is required.');
+    if (!routeInput) throw new Error('[FlightSearch.searchFlightOneWayWithDepartureTime] "routeInput" is required.');
+    if (!timePreference || typeof timePreference !== 'string') {
+      throw new Error(`[FlightSearch.searchFlightOneWayWithDepartureTime] "timePreference" must be a non-empty string, got: ${timePreference}`);
+    }
+
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
+    logger.info('Starting oneWay flight search with departure time preference', { from, to, timePreference });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectOneWayTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+    await searchPage.clickDepartureDateField();
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      startIndex: departureIndex,
+      endIndex: null,
+    });
+
+    await this.openAdvancedSearch(page);
+    await flightSearchPage.selectDepartureFlightTime(timePreference);
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'oneWay', searchType: 'completeTrip', timePreference };
+  },
+
+  /**
    * Round-trip flight search with a requested cabin class.
    *
    * @param {Object} page - Playwright page object

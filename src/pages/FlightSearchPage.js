@@ -18,8 +18,10 @@ const SELECTORS = {
   PREFERRED_CARRIER_INPUT: '.flight-more-search-inputs > :nth-child(2) input[role="combobox"]',
   PREFERRED_CARRIER_CLEAR_ICON: '.el-tag__close',
   VISIBLE_DROPDOWN_ITEMS: '.el-select-dropdown__item:visible',
-  // Advanced search — departure leg selectors
+  // Advanced search — departure leg selectors (round-trip uses section.departure; one-way does not)
   DEPARTURE_APP_SELECT: 'section.departure .app-select',
+  // One-way advanced search time/dateType selectors are inside .inputs-wrapper divs (no section.departure wrapper)
+  ONE_WAY_APP_SELECT: '.inputs-wrapper .app-select',
   // Advanced search — return leg selectors
   RETURN_APP_SELECT: 'section.return .app-select',
   DROPDOWN_OPTION: (text) => `.el-select-dropdown__item:visible:has-text("${text}")`,
@@ -158,6 +160,29 @@ class FlightSearchPage {
   async selectDepartureDateType(value) {
     await this.page.locator(SELECTORS.DEPARTURE_APP_SELECT).nth(0).click();
     await this.page.locator(SELECTORS.DROPDOWN_OPTION(value)).click();
+  }
+
+  /**
+   * Selects a value from the departure leg flight time dropdown in advanced search.
+   * Flight time is the second app-select in the departure section.
+   * @param {string} value - e.g. "Anytime", "Early (04:00-08:00)", "Morning (08:00-12:00)"
+   */
+  async selectDepartureFlightTime(value) {
+    try {
+      // Round-trip advanced search wraps departure fields in section.departure;
+      // one-way advanced search does not — fall back to .inputs-wrapper .app-select
+      const roundTripCount = await this.page.locator(SELECTORS.DEPARTURE_APP_SELECT).count();
+      const locator = roundTripCount >= 2
+        ? this.page.locator(SELECTORS.DEPARTURE_APP_SELECT).nth(1)
+        : this.page.locator(SELECTORS.ONE_WAY_APP_SELECT).nth(1);
+      await locator.click({ timeout: 15000 });
+      await this.page.locator(SELECTORS.DROPDOWN_OPTION(value)).click();
+    } catch (err) {
+      throw new Error(
+        `[FlightSearchPage.selectDepartureFlightTime] Could not select departure flight time "${value}". ` +
+        `The advanced search panel may not be open, the time option is unavailable, or the selector needs updating. Original: ${err.message}`
+      );
+    }
   }
 
   /**

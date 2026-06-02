@@ -16,9 +16,8 @@ Feature: 49287 Travel Policy - OOP triggered for specific departure time
   Scenario: OOP badge and tooltip show time-based policy violation
     Given I am logged in as "jeffsan@travelpolicy.com" booking a new trip
     And I have added myself as the traveler
-    # TODO: Need new step "I search for a one way flight from {string} to {string} with departure time {string}" — searches with time preference "Early (04:00-08:00)"
-    When I search for a one way flight from "LON" to "MAD"
+    When I search for a one way flight from "LON" to "MAD" with departure time "Early (04:00-08:00)"
     Then the out of policy indicator should be visible in results
     And the out of policy tooltip in results should be "Hour of departure Is Before 11:00 Inbound Flight"
     When I add the first flight to cart
-    Then I successfully cancel the trip
+    Then the booking status should be "Pending booking"
