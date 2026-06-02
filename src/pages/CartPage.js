@@ -128,6 +128,7 @@ const SELECTORS = {
 
   // OOP Justification selectors
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
+  OOP_VIOLATION_LABEL: '.out-of-policy-label', // Violation reason text shown inside .oop-justification (oop-justification.vue)
   OOP_JUSTIFICATION_SECTION: '.oop-justification', // Section containing the OOP justification dropdown/text (oop-justification.vue)
   OOP_JUSTIFICATION_SELECT: '.oop-justification .app-select .el-select', // The el-select wrapper inside the OOP justification section
   OOP_JUSTIFICATION_SELECTED_VALUE: '.oop-justification .el-select__selected-item',
@@ -674,6 +675,25 @@ class CartPage {
    */
   getOOPJustificationTextbox() {
     return this.page.locator(SELECTORS.OOP_JUSTIFICATION_TEXTBOX);
+  }
+
+  /**
+   * Gets the OOP violation label text (the policy reason shown above the justification input).
+   * Returns the first violation label, trimmed.
+   *
+   * @returns {Promise<string>}
+   */
+  async getOOPViolationLabelText() {
+    const label = this.page.locator(SELECTORS.OOP_VIOLATION_LABEL).first();
+    try {
+      await label.waitFor({ state: 'visible', timeout: 10000 });
+      return (await label.textContent())?.trim() ?? '';
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getOOPViolationLabelText] OOP violation label (.out-of-policy-label) was not visible within 10s. ` +
+        `Check that the OOP justification section is present on the page. Original: ${err.message}`
+      );
+    }
   }
 
   /**

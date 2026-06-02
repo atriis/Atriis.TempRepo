@@ -20,9 +20,10 @@ Feature: 57429 Travel Policy - OOP justification displayed in trip after booking
     And I add the first flight to cart
     And I fill in the OOP justification text "abc"
     And I proceed to checkout
-    # TODO: Click cart button to go back to trip view
-    Then the trip status should be "On hold"
-    # TODO: Verify "Out of policy" title is visible in trip
-    # TODO: Verify justification text "abc" is displayed
-    # TODO: Verify policy reason "Destination is not brazil" is displayed
+    And I wait for booking details in checkout
+    And I navigate to cart from checkout
+    Then the booking status should be "On hold"
+    Then the out of policy indicator should be visible in cart
+    Then the OOP justification text should be "abc"
+    Then the OOP policy reason should be "Destination is not brazil"
     Then I successfully cancel the trip

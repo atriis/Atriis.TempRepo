@@ -18,11 +18,6 @@ When("I add a number checkout field", async function () {
   await DynamicAndReferenceFields.addNumberCheckoutField(this.page);
 });
 
-When("I wait for booking details in checkout", async function () {
-  logger.info("Waiting for booking details heading in checkout page");
-  await DynamicAndReferenceFields.waitForCheckoutBookingDetails(this.page);
-});
-
 When("I fill in the {string} reference field with {string}", async function (fieldName, value) {
   logger.info(`Filling checkout reference field "${fieldName}" with "${value}"`);
   await DynamicAndReferenceFields.fillCheckoutReferenceField(this.page, fieldName, value);

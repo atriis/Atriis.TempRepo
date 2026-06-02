@@ -752,6 +752,72 @@ const Cart = {
   },
 
   /**
+   * Verifies that the OOP justification textarea contains the expected text after saving.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   */
+  async verifyOOPJustificationTextInCart(page, expectedText) {
+    if (!page) {
+      throw new Error('[Cart.verifyOOPJustificationTextInCart] "page" is required.');
+    }
+    if (typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.verifyOOPJustificationTextInCart] "expectedText" must be a string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      const textbox = cartPage.getOOPJustificationTextbox();
+      await textbox.waitFor({ state: 'visible', timeout: 10000 });
+      const actualText = await textbox.inputValue();
+      expect(
+        actualText.trim(),
+        `OOP justification text in trip did not match. Expected: "${expectedText}", got: "${actualText.trim()}". ` +
+        `This may mean the justification was not saved correctly before navigating to checkout.`
+      ).toBe(expectedText);
+    } catch (err) {
+      if (err.matcherResult) throw err;
+      throw new Error(
+        `[Cart.verifyOOPJustificationTextInCart] Failed to verify OOP justification text "${expectedText}": ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the OOP policy reason label text (violation description) inside the oop-justification section.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   */
+  async verifyOOPPolicyReasonInCart(page, expectedText) {
+    if (!page) {
+      throw new Error('[Cart.verifyOOPPolicyReasonInCart] "page" is required.');
+    }
+    if (typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.verifyOOPPolicyReasonInCart] "expectedText" must be a string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      const actualText = await cartPage.getOOPViolationLabelText();
+      expect(
+        actualText,
+        `OOP policy reason label did not match. Expected: "${expectedText}", got: "${actualText}". ` +
+        `This is the violation description text shown in the oop-justification section (.out-of-policy-label), not the tooltip.`
+      ).toBe(expectedText);
+    } catch (err) {
+      if (err.matcherResult) throw err;
+      throw new Error(
+        `[Cart.verifyOOPPolicyReasonInCart] Failed to verify OOP policy reason "${expectedText}": ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Fills in the OOP justification text and saves it immediately.
    * Business-level action combining text input and save.
    *

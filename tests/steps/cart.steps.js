@@ -699,6 +699,16 @@ Then("the out of policy free text justification should not be visible in cart", 
   await Cart.verifyOOPFreeTextJustificationNotVisibleInCart(this.page);
 });
 
+Then("the OOP justification text should be {string}", async function (expectedText) {
+  logger.info("Verifying OOP justification text in trip", { expectedText });
+  await Cart.verifyOOPJustificationTextInCart(this.page, expectedText);
+});
+
+Then("the OOP policy reason should be {string}", async function (expectedText) {
+  logger.info("Verifying OOP policy reason label in trip", { expectedText });
+  await Cart.verifyOOPPolicyReasonInCart(this.page, expectedText);
+});
+
 Then("the out of policy tooltip in cart should be {string}", async function (expectedText) {
   logger.info("Verifying OOP tooltip in cart", { expectedText });
   const actualText = await Cart.hoverAndGetOOPTooltipTextInCart(this.page);
