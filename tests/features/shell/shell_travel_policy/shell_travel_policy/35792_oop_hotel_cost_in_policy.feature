@@ -16,9 +16,11 @@ Feature: 35792 Travel Policy - Hotel cost in policy does not trigger OOP in cart
   Scenario: Hotel within cost policy does not show OOP in cart
     Given I am logged in as "didoribeira@amadeus.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "ibis Styles London Heathrow Airport, Bath Road, London, UK" for 1 night(s)
+    When I search for a hotel in "ibis Styles London Heathrow Airport, Bath Road, London, UK" for 1 night
     And I wait to see view rates text in results page
-    And I sort hotel results by "Price - Low to High"
+    When I sort hotel results by "Price"
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the out of policy indicator should not be visible in cart
+
+    
