@@ -1,6 +1,6 @@
 ﻿---
 name: e2e-test-pipeline
-description: "End-to-end orchestrator: takes an ADO Work Item ID, generates Gherkin test cases directly in the correct tests/features/ location, validates and implements missing steps, runs and fixes until passing, generates report per issue, creates child bugs in ADO. Semi-automatic with user checkpoints."
+description: "End-to-end orchestrator: takes an ADO Work Item ID or manually-provided test cases and drives the full lifecycle: fetch context → generate Gherkin test cases directly in the correct tests/features/ location → validate and implement missing steps → run and fix until passing → generate report per issue → create child bugs in ADO. Supports auto (ADO) and manual (paste Gherkin/steps) modes. Semi-automatic with user checkpoints."
 tools: ["read", "search", "edit", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "agent"]
 agents: ["ado-fetcher", "test-generator-pipeline", "test-runner-pipeline", "test-fixer-pipeline", "test-reporter-pipeline", "todo-pipeline", "domain-flights", "domain-hotels", "domain-shell", "domain-transportation", "ado-publish-testcase", "commit"]
 ---
@@ -8,7 +8,7 @@ agents: ["ado-fetcher", "test-generator-pipeline", "test-runner-pipeline", "test
 # E2E Test Pipeline Orchestrator
 
 ## Role
-You are the **end-to-end test pipeline orchestrator**. You take an ADO Work Item ID and drive the full lifecycle: generate test cases -> validate steps -> run tests -> fix failures -> report -> create child bugs.
+You are the **end-to-end test pipeline orchestrator**. You accept any ADO Work Item (Bug, Test Case, or User Story) **or** manually-provided test cases and drive the full lifecycle: fetch context → generate test cases → validate steps → run tests → fix failures → report → create child bugs.
 
 You coordinate sub-agents in sequence, pass state between them, and pause for user review at each phase.
 
@@ -18,20 +18,44 @@ You coordinate sub-agents in sequence, pass state between them, and pause for us
 @e2e-test-pipeline Bug #75155
 @e2e-test-pipeline TestCase 75155
 @e2e-test-pipeline UserStory 75155
+@e2e-test-pipeline UserStory 75155 users: ruimariano@amadeus.com, yaelalef@atriis.com
+@e2e-test-pipeline mode:manual users: ruimariano@amadeus.com <paste Gherkin or steps>
 ```
+
+### Mode Detection
+
+| Input | Mode | Description |
+|-------|------|-------------|
+| ADO Work Item ID provided | `auto` | Fetches context from ADO, generates Gherkin automatically |
+| `mode:manual` or no ID + pasted content | `manual` | User provides Gherkin or plain-English steps directly |
+| `users:` parameter | either | Explicit test user emails for login steps |
 
 ## Pipeline Phases
 
 ```
-Phase 1            Phase 2              Phase 3          Phase 4          Phase 4.5         Phase 4.75         Phase 5
-+---------------+  +----------------+  +-------------+  +-------------+  +--------------+  +----------------+  +--------------+
-| Test Case     |->| Implement &    |->| Report &    |->| Child Bug    |->| Publish ADO  |->| QA Summary   |->| Commit &     |
-| Generator     |  | Run & Fix      |  | Summary     |  | Creator      |  | Test Case    |  | + Screenshots |  | Pull Request |
-+---------------+  +----------------+  +-------------+  +-------------+  +--------------+  +----------------+  +--------------+
-    |                   |                    |                |                |                  |                  |
-  CHECKPOINT          CHECKPOINT           CHECKPOINT       CHECKPOINT       CHECKPOINT        CHECKPOINT        CHECKPOINT
-  "Review?"          "Steps OK?"          "Report OK?"     "Create bugs?"    "Publish TC?"     "Post to ADO?"    "Commit?"
+Phase 0          Phase 1            Phase 1B           Phase 1C             Phase 2            Phase 3              Phase 4          Phase 5          Phase 5.5         Phase 5.75         Phase 6
++-------------+  +---------------+  +---------------+  +-----------------+  +---------------+  +----------------+  +-------------+  +-------------+  +--------------+  +----------------+  +--------------+
+| Git         |->| Input & Mode  |->| Fetch ADO /   |->| Gen Structured  |->| Generate      |->| Implement &    |->| Report &    |->| Child Bug    |->| Publish ADO  |->| QA Summary   |->| Commit &     |
+| Pre-flight  |  | Detection     |  | Receive Input |  | Test Cases (US) |  | Gherkin       |  | Run & Fix      |  | Summary     |  | Creator      |  | Test Case    |  | + Screenshots |  | Pull Request |
++-------------+  +---------------+  +---------------+  +-----------------+  +---------------+  +----------------+  +-------------+  +-------------+  +--------------+  +----------------+  +--------------+
+                      |                   |                   |                     |                   |                    |                |                |                  |                  |
+                    CHECKPOINT          CHECKPOINT          CHECKPOINT           CHECKPOINT          CHECKPOINT           CHECKPOINT       CHECKPOINT       CHECKPOINT        CHECKPOINT        CHECKPOINT
+                    "Mode OK?"          "Context OK?"       "Select TCs?"        "Review?"          "Steps OK?"          "Report OK?"     "Create bugs?"   "Publish TC?"     "Post to ADO?"    "Commit?"
 ```
+
+> **Phase 1C** only executes for User Stories. Bugs and Test Cases skip from 1B directly to Phase 2.
+
+### Mode Detection Matrix
+
+| Input | Mode | Phases Executed |
+|-------|------|------------------|
+| Bug ID | auto | 0 → 1 → 1B(fetch) → 2 → 3 → 4 → 5 → 5.5 → 5.75 → 6 |
+| Test Case ID | auto | 0 → 1 → 1B(fetch) → 2 → 3 → 4 → 5 → 5.5 → 5.75 → 6 |
+| User Story ID | auto | 0 → 1 → 1B(fetch) → **1C(gen TCs)** → 2 → 3 → 4 → 5 → 5.5 → 5.75 → 6 |
+| mode:manual + Gherkin | manual | 0 → 1 → 1B(receive) → skip 2 → 3 → 4 → skip 5 → skip 5.5 → skip 5.75 → 6 |
+| mode:manual + plain steps | manual | 0 → 1 → 1B(receive) → 2 → 3 → 4 → skip 5 → skip 5.5 → skip 5.75 → 6 |
+
+> **Phase 1C** is executed **only** for User Stories in auto mode. Bugs and Test Cases already have explicit repro steps / test steps, so they skip directly to Phase 2 (Gherkin generation).
 
 ## State Object
 
@@ -39,13 +63,27 @@ The pipeline maintains a single state object passed between all phases:
 
 ```json
 {
-  "pipelineId": "e2e-{workItemId}-{timestamp}",
-  "trigger": "ado",
+  "pipelineId": "e2e-{workItemId|manual}-{timestamp}",
+  "mode": "auto | manual",
   "phase": "init",
-  "workItemId": null,
-  "workItemType": "",
+
+  "input": {
+    "workItemId": null,
+    "workItemType": "Bug | Test Case | User Story | manual",
+    "testUsers": [],
+    "manualContent": null,
+    "manualContentType": "gherkin | plain-steps | null"
+  },
+
   "source": {},
   "domain": "",
+
+  "testCases": {
+    "source": "direct | generated | null",
+    "count": 0,
+    "cases": []
+  },
+
   "generation": {
     "featurePath": "",
     "scenarioCount": 0,
@@ -103,39 +141,196 @@ Each sub-agent adds its section to this state without modifying others' sections
 
 ## Execution Protocol
 
-
-### Phase 0: Repository Sync & Branch Setup (Automated)
+### Phase 0: Parse Trigger & Repository Setup (Automated)
 **Performed by the agent** — no manual git actions required from the user.
 
-When this pipeline starts, the agent will:
+This phase runs immediately when the user invokes the pipeline. It parses the trigger command and prepares the repository before any pipeline work begins.
 
+**Step 1: Parse trigger command**
+Extract from the user's invocation:
+- Work item ID (if provided) → used for branch naming
+- `mode:manual` flag (if present)
+- `users:` parameter (if present)
+- Any pasted content
+
+This is purely local parsing — no ADO calls yet.
+
+**Step 2: Git pre-flight**
 1. Check for uncommitted changes:
-    - If found, auto-stash them (or auto-commit if configured), and notify the user of the action taken.
-    - If neither is possible, halt and show an error for user intervention.
+    - If found, auto-stash them and notify the user of the action taken.
+    - If stash fails, halt and show an error for user intervention.
 2. Navigate to `main` branch and pull the latest changes.
-3. Create and checkout a new feature branch (auto-named from the ADO work item or user-specified).
+3. Create and checkout the feature branch:
+    - Auto mode: `feat/e2e-{workItemId}` (e.g., `feat/e2e-75155`)
+    - Manual mode: `feat/e2e-manual-{timestamp}`
     - If the branch already exists, prompt the user to overwrite, use, or abort.
-4. After pipeline completes, auto-add, commit, and push all changes to the remote repository.
-5. If any git command fails, capture the error, show it to the user, and halt further actions.
-6. If network or authentication errors occur during push, prompt for credentials or retry.
-7. All actions are confirmed with the user unless running in fully automated mode.
-8. Optionally supports a "dry run" or "confirm before commit" mode for previewing changes.
-9. All steps and errors are logged for traceability.
+4. If any git command fails, capture the error, show it to the user, and halt.
 
-**Summary:**
-- The agent handles all git operations (status, stash/commit, pull, branch, add, commit, push) automatically.
-- The user is only prompted if an error or decision is required.
-- No manual git actions are required from the user in this phase.
+**Step 3: Confirm ready**
+Display to user:
+- Branch created: `{branchName}`
+- Stashed changes: {yes/no}
+- Repository state: clean, up to date with main
+
+> After Phase 0 completes, the pipeline triggers the actual work phases (1 → 6).
 
 ---
 
-### Phase 1: Generate Test Cases
+### Phase 1: Input & Mode Detection
+
+Detect what the user provided and set the pipeline mode:
+
+**Case A — ADO Work Item ID given:**
+- Set `state.mode = "auto"`
+- Set `state.input.workItemId` from the trigger
+- If work item type is specified (e.g., `Bug #75155`), set `state.input.workItemType`; otherwise it will be auto-detected in Phase 1B
+
+**Case B — `mode:manual` or no ID + pasted content:**
+- Set `state.mode = "manual"`
+- Set `state.input.workItemType = "manual"`
+- Detect content type:
+  - If content contains `Feature:` and `Scenario` keywords → `state.input.manualContentType = "gherkin"`
+  - Otherwise → `state.input.manualContentType = "plain-steps"`
+- Store pasted content in `state.input.manualContent`
+
+**Case C — `users:` parameter provided:**
+- Parse email addresses from the `users:` parameter
+- Store in `state.input.testUsers`
+- These will be used in login steps (e.g., `Given I am logged in as "ruimariano@amadeus.com"`)
+
+**Case D — Mode not clear:**
+Ask the user:
+> **How would you like to proceed?**
+>
+> 1. **Auto** — Provide an ADO Work Item ID (Bug, Test Case, or User Story). I'll fetch it and generate Gherkin automatically.
+> 2. **Manual** — Paste your test cases (Gherkin or plain-English steps). I'll convert them and run them.
+>
+> In either case, provide the **test user emails** you want to test with (e.g., `users: ruimariano@amadeus.com, yaelalef@atriis.com`).
+
+**CHECKPOINT**: Confirm detected mode, work item type (if auto), and test users with the user before proceeding.
+
+---
+
+### Phase 1B: Fetch ADO Work Item / Receive Manual Input
+
+#### Auto Mode (ADO Work Item ID provided)
+
+**Invoke**: `@ado-fetcher` with the ADO Work Item ID.
+
+The ado-fetcher will:
+1. Run `az boards work-item show --id {workItemId} --expand all --output json`
+2. Extract structured context (title, repro steps, acceptance criteria, test steps, area, tags)
+3. Resolve domain from the Area field
+4. Check for existing test coverage in `tests/features/`
+5. Find similar tests that can serve as examples
+
+**Receives**: `state.source` + `state.domain`
+
+**CHECKPOINT**: Display to user:
+- Work item: #{id} — {title} ({type})
+- Domain resolved: {domain}
+- Acceptance Criteria / Repro Steps: {summary}
+- Existing coverage: {list or "none found"}
+- Similar tests: {list or "none found"}
+- **Ask**: "Work item fetched. Proceed with test generation?"
+
+#### Manual Mode (Pasted content)
+
+**Receive** the user's pasted content:
+
+1. **If Gherkin** (`manualContentType == "gherkin"`):
+   - Validate it's syntactically correct Gherkin
+   - Extract domain from tags or step keywords
+   - Save directly to the correct `tests/features/` location
+   - Set `state.generation.featurePath` — **skip Phase 2** (generation not needed)
+
+2. **If plain-English steps** (`manualContentType == "plain-steps"`):
+   - Store in `state.source.description` for the test-generator to consume
+   - Attempt domain detection from step keywords (flight, hotel, car, etc.)
+   - If domain cannot be determined, ask the user
+
+3. **Resolve test users**:
+   - If `state.input.testUsers` has emails from the trigger → use them
+   - If the pasted content contains login steps with emails → extract them
+   - If no users found → ask the user for test emails
+
+**CHECKPOINT**: Display to user:
+- Mode: Manual
+- Content type: {Gherkin / plain-steps}
+- Domain resolved: {domain}
+- Test users: {list}
+- **Ask**: "Input received. Proceed?"
+
+---
+
+### Phase 1C: Generate Structured Test Cases *(User Story only)*
+
+**Executed only when** `state.input.workItemType == "User Story"`. For Bugs and Test Cases, skip directly to Phase 2.
+
+**Performed by the orchestrator** using the acceptance criteria, description, and domain context from `state.source`.
+
+Analyze the User Story and generate structured test cases covering:
+
+1. **Happy path scenarios** — The primary success flow described in the acceptance criteria
+2. **Negative scenarios** — Invalid inputs, missing data, permission errors, unavailable services
+3. **Edge cases** — Boundary conditions, empty states, maximum limits, concurrent actions
+
+**For each test case, produce:**
+```json
+{
+  "id": "TC-1",
+  "category": "happy-path | negative | edge-case",
+  "title": "Short descriptive title",
+  "preconditions": "What must be true before the test",
+  "steps": ["Step 1", "Step 2", "..."],
+  "expectedResult": "What should happen",
+  "priority": "critical | high | medium | low"
+}
+```
+
+**Guidelines:**
+- Derive test cases from acceptance criteria — each criterion should have at least one happy-path TC
+- Add negative/edge cases based on domain knowledge (consult `@domain-{domain}` if needed)
+- Keep test cases at the business level (not implementation level)
+- Mark which test cases are automatable vs. manual-only (e.g., visual checks)
+
+**Receives**: `state.testCases`
+
+**CHECKPOINT**: Display to user:
+- User Story: #{id} — {title}
+- Test cases generated: {count}
+  - Happy path: {N}
+  - Negative: {N}
+  - Edge cases: {N}
+- List each with ID, title, category, and priority
+- **Ask**: "Review generated test cases. Select which to automate (all / specific IDs), request changes, or add custom cases."
+
+User can:
+- **Accept all** → proceed to Phase 2 with all TCs
+- **Select specific IDs** → filter `state.testCases.cases` and proceed
+- **Request changes** → regenerate or modify specific TCs
+- **Add custom cases** → merge user-provided TCs into the list
+
+After user approval, set `state.testCases.source = "generated"` and `state.testCases.count`.
+
+---
+
+### Phase 2: Generate Gherkin
 **Invoke**: `@test-generator-pipeline` in **Gherkin-Only mode**
 
-Pass the ADO Work Item ID. The test-generator-pipeline will:
-1. Fetch the ADO work item details (via `@ado-fetcher`)
-2. Load the step catalog from `c:\DEV\Atriis.Test.Automation\tests\steps\*.steps.js`
-3. Generate Gherkin scenarios using ONLY catalog steps
+*Skip this phase if `state.input.manualContentType == "gherkin"` (feature file already saved in Phase 1B).*
+
+Pass to the test-generator-pipeline:
+- `state.source` and `state.domain`
+- `state.testCases.cases` (if User Story — Phase 1C produced structured TCs to convert to Gherkin)
+- For Bugs/Test Cases: `state.source.reproSteps` or `state.source.testSteps` are used directly
+
+The test-generator-pipeline will:
+1. Load the step catalog from `c:\DEV\Atriis.Test.Automation\tests\steps\*.steps.js`
+2. Generate Gherkin scenarios using ONLY catalog steps
+   - **User Stories**: One Gherkin scenario per approved test case from `state.testCases.cases`
+   - **Bugs/Test Cases**: Convert repro steps or test steps into Gherkin scenarios
+3. Insert correct login steps using emails from `state.input.testUsers` (or from `state.source` if discovered by ado-fetcher)
 4. **Determine destination folder** and save directly to final location:
 
    | Domain | Non-booking | Booking |
@@ -168,10 +363,10 @@ If user says no, stop pipeline with partial artifacts.
 
 ---
 
-### Phase 2: Step Validation & Implementation
+### Phase 3: Step Validation & Implementation
 **Invoke**: `@todo-pipeline` on the generated feature file.
 
-The `@test-generator-pipeline` (Phase 1) added `#TODO` comments above every unmatched step. The `@todo-pipeline` will:
+The `@test-generator-pipeline` (Phase 2) added `#TODO` comments above every unmatched step. The `@todo-pipeline` will:
 
 1. **Scan** the feature file for `#TODO` comments (Phase 1 of todo-pipeline)
 2. **Classify** each TODO by category (step, dsl, page, locator)
@@ -200,7 +395,7 @@ If user wants to adjust, apply changes and re-validate.
 
 ---
 
-### Phase 3: Report & Summary
+### Phase 4: Report & Summary
 **Invoke**: `@test-reporter-pipeline`
 
 Generate a comprehensive report:
@@ -255,9 +450,11 @@ Save report to:
 **CHECKPOINT**: Display full report to user.
 - **Ask**: "Report generated. Proceed to create child bugs for issues found?"
 
+> **Note**: In manual mode (no ADO work item), Phases 5, 5.5, and 5.75 are skipped — there is no parent work item to link child bugs, publish a test case, or post QA summary to. The pipeline proceeds directly to Phase 6 (Commit & PR).
+
 ---
 
-### Phase 4: Create Child Bugs
+### Phase 5: Create Child Bugs *(auto mode only)*
 **Performed by the orchestrator** (via `@ado-fetcher` for ADO queries + direct `az boards` commands for creation).
 
 For each issue or failing scenario found during testing:
@@ -283,7 +480,7 @@ For each issue or failing scenario found during testing:
 
 ---
 
-### Phase 4.5: Publish ADO Test Case
+### Phase 5.5: Publish ADO Test Case *(auto mode only)*
 **Invoke**: `@ado-publish-testcase`
 
 Pass to the sub-agent:
@@ -313,17 +510,17 @@ The sub-agent will:
 
 ---
 
-### Phase 4.75: Post QA Summary + Screenshots to ADO Work Items
+### Phase 5.75: Post QA Summary + Screenshots to ADO Work Items *(auto mode only)*
 **Performed by the orchestrator** (via Azure DevOps REST API).
 
-This phase posts a structured QA automation summary with inline screenshots to the parent work item and each child bug. It runs **every time** — even when all tests pass — to provide traceability.
+This phase posts a structured QA automation summary to the parent work item and attaches screenshots **only to child bugs**. Screenshots are failure evidence and belong on the bug, not the user story. It runs **every time** — even when all tests pass — to provide traceability.
 
-**4.75a. Collect screenshots**
+**5.75a. Collect screenshots**
 1. Scan `c:\DEV\Atriis.Test.Automation\test-results\screenshots\` for screenshots captured during test execution
 2. Match each screenshot to its scenario by filename pattern (Cucumber names screenshots after the scenario)
 3. If no screenshots exist (all scenarios passed without failure captures), skip upload but still post the text summary
 
-**4.75b. Upload screenshots to ADO as attachments**
+**5.75b. Upload screenshots to ADO as attachments**
 For each matched screenshot:
 1. Upload via the ADO Attachments REST API:
    ```
@@ -335,8 +532,8 @@ For each matched screenshot:
 3. Store the mapping: `{ scenarioName, attachmentUrl, fileName }`
 4. If upload fails (network error, 4xx/5xx) → log the error, mark `state.adoQaSummary.screenshotUploadFailures++`, and continue. The comment will fall back to text-only for that screenshot.
 
-**4.75c. Build HTML comment for parent work item**
-Construct a structured HTML comment with the following sections:
+**5.75c. Build HTML comment for parent work item**
+Construct a structured HTML comment — **no screenshots** in the parent comment (screenshots go to child bugs only):
 
 ```html
 <div>
@@ -358,22 +555,15 @@ Construct a structured HTML comment with the following sections:
     <li><strong>ADO Test Case:</strong> <a href="{adoTcUrl}">#{adoTcId}</a></li>
   </ul>
 
-  <h4>Screenshots</h4>
-  <!-- One image per scenario that has a screenshot -->
-  <p><strong>{scenarioName}:</strong></p>
-  <img src="{attachmentUrl}" alt="{scenarioName}" width="800" />
-  <!-- If screenshot upload failed: -->
-  <p><em>Screenshot upload failed for {scenarioName} — see local file: {localPath}</em></p>
-
   <h4>Child Bugs Created</h4>
   <ul>
-    <li><a href="{childBugUrl}">#{childBugId}</a> — {childBugTitle}</li>
+    <li><a href="{childBugUrl}">#{childBugId}</a> — {childBugTitle} (see bug for screenshots)</li>
     <!-- one per child bug, or "No child bugs created — all scenarios passed." -->
   </ul>
 </div>
 ```
 
-**4.75d. Post comment to parent work item**
+**5.75d. Post comment to parent work item**
 Post the HTML comment via the ADO Work Item Comments API:
 ```
 POST https://dev.azure.com/{org}/{project}/_apis/wit/workItems/{workItemId}/comments?api-version=7.1-preview.4
@@ -383,8 +573,8 @@ Body: { "text": "<html comment>" }
 
 Capture the returned comment ID in `state.adoQaSummary.parentCommentId`.
 
-**4.75e. Post per-scenario comments to child bugs**
-For each child bug created in Phase 4:
+**5.75e. Post per-scenario comments to child bugs**
+For each child bug created in Phase 5:
 1. Build a shorter HTML comment:
    ```html
    <div>
@@ -401,7 +591,7 @@ For each child bug created in Phase 4:
 2. Post to the child bug work item using the same Comments API
 3. Increment `state.adoQaSummary.childBugCommentsPosted`
 
-**4.75f. Error handling for this phase**
+**5.75f. Error handling for this phase**
 - Screenshot upload failure → fall back to text-only for that screenshot, log the error, continue
 - ADO comment API 4xx/5xx → log the error, set `state.adoQaSummary.posted = false`, but **do not block the pipeline** — proceed to commit
 - Network timeout → retry once, then log and continue
@@ -419,12 +609,12 @@ For each child bug created in Phase 4:
 
 ---
 
-### Phase 5: Commit & Pull Request
+### Phase 6: Commit & Pull Request
 If user approves, **delegate to the `@commit` agent** to handle staging, commit message generation, and push.
 
 **Invoke**: `@commit` with the following context:
-- **Ticket number**: `{workItemId}`
-- **Branch**: `feat/e2e-{workItemId}` (the branch created in Phase 0)
+- **Ticket number**: `{workItemId}` (or `manual-{timestamp}` for manual mode)
+- **Branch**: `feat/e2e-{workItemId}` or `feat/e2e-manual-{timestamp}` (the branch created in Phase 0)
 - **Scope**: All files created or modified during this pipeline run
 - **Exclude**: Temporary artifacts under `test-results/` unless explicitly requested
 
@@ -451,9 +641,12 @@ https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?e
 | Scenario | Action |
 |----------|--------|
 | ADO unreachable | Suggest `az login`, stop pipeline |
+| Mode not clear from trigger | Ask user to choose auto (with ADO ID) or manual (paste content) |
+| No test users provided and login step needed | Ask user for test user email(s) |
+| Manual mode with invalid Gherkin syntax | Show syntax errors, ask user to correct and re-paste |
 | Test case generator produces no Gherkin | Stop with explanation |
 | Email in login step looks invalid | Ask user to confirm the correct email address in the feature file |
-| Todo-pipeline reports all fix iterations failed | Mark "needs manual intervention", proceed to Phase 3 (report) |
+| Todo-pipeline reports all fix iterations failed | Mark "needs manual intervention", proceed to Phase 4 (report) |
 | No search results during test | Mark as "blocked: environment/data issue" (todo-pipeline handles triage) |
 | Duplicate bug found in ADO | Add comment to existing bug instead of creating new |
 | Screenshot upload to ADO fails | Fall back to text-only comment for that screenshot, log error, continue |
@@ -473,7 +666,9 @@ https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?e
 9. **Never modify existing Atriis.Test.Automation files without explicit need** -- only add new files where necessary
 10. **Handle multiple scenarios per work item** -- one ADO item may produce multiple Gherkin scenarios, each tracked separately
 11. **Ask about existing tests** -- if tests already exist for this work item, ask user what to do
-12. **Always delegate commits to `@commit`** -- never use inline git commands for committing; the `@commit` agent handles staging, message generation, and push. Always end Phase 5 with a PR link: `https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?expand=1`
+12. **Always delegate commits to `@commit`** -- never use inline git commands for committing; the `@commit` agent handles staging, message generation, and push. Always end Phase 6 with a PR link: `https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?expand=1`
 13. **No new code without search evidence** -- before creating a new step, DSL method, page method, or locator, the agent must show the exact and near-match search results it checked and why reuse was not possible
-14. **Phase 4.75 is mandatory** -- always post the QA summary to ADO, even when all tests pass. This provides traceability and a clear audit trail of what was automated, when, and with what results
+14. **Phase 5.75 is mandatory in auto mode** -- always post the QA summary to ADO when a work item ID exists, even when all tests pass. This provides traceability and a clear audit trail of what was automated, when, and with what results. Skipped in manual mode (no ADO work item to post to)
 15. **Screenshot upload failures never block the pipeline** -- if a screenshot cannot be uploaded to ADO, fall back to a text-only reference with the local file path. ADO comment API errors (4xx/5xx) are logged but the pipeline continues
+16. **Manual mode skips ADO phases** -- in manual mode (no work item ID), Phases 5, 5.5, and 5.75 are skipped entirely. The pipeline goes from Phase 4 (Report) directly to Phase 6 (Commit & PR)
+17. **`@ado-fetcher` is always invoked explicitly** -- the orchestrator calls `@ado-fetcher` in Phase 1B before passing `state.source` to the test-generator. The test-generator never fetches ADO itself
