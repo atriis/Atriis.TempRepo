@@ -17,5 +17,5 @@ Feature: 56095 Travel Policy - Region restriction works as expected
     Given I am logged in as "iancurtis@bannedregionoop.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LHR" to "SVD"
-    Then the "Add to trip" text should be visible in results
-    # TODO: Verify negative validation — OOP badge should NOT be visible (region is restricted, not just OOP)
+    And flight results should be available
+    Then the out of policy indicator should not be visible in results
