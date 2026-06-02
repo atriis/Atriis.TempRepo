@@ -419,17 +419,20 @@ class ResultsPage {
    *   station list. Set false for the dropoff step: other station cards' Select buttons remain
    *   visible on the current page immediately after clicking, so including them in the race
    *   causes a false-positive 'station-list' result before the actual car-results page loads.
+   * @param {boolean} [options.requireAddToTrip=false] - When true, the car-result-card signal is
+   *   excluded from the 'results' race so only a visible "Add to trip" button counts as bookable
+   *   results. Use this when the caller asserts on the results page next: the car card can render
+   *   as a transient skeleton before the "No results found" empty state paints, which would
+   *   otherwise falsely resolve as 'results' and let the no-results state surface later at the
+   *   assertion instead of here. Matches the authoritative waitForAddToTripText() race.
    */
-  async waitForCarCardsOrNoResultsAfterStationSelection(timeout = 60000, { includeStationList = true } = {}) {
+  async waitForCarCardsOrNoResultsAfterStationSelection(
+    timeout = 60000,
+    { includeStationList = true, requireAddToTrip = false } = {},
+  ) {
     if (typeof timeout !== 'number' || timeout < 0) {
       throw new Error(`timeout must be a non-negative number, got ${timeout}`);
     }
-
-    const carCardPromise = this.page
-      .locator(SELECTORS.CAR_RESULT_CARD)
-      .first()
-      .waitFor({ state: 'visible', timeout })
-      .then(() => 'results');
 
     const addToTripPromise = this.getAddToTripButton()
       .waitFor({ state: 'visible', timeout })
@@ -439,7 +442,17 @@ class ResultsPage {
       .waitFor({ state: 'visible', timeout })
       .then(() => 'no-results');
 
-    const promises = [carCardPromise, addToTripPromise, noResultsPromise];
+    const promises = [addToTripPromise, noResultsPromise];
+
+    if (!requireAddToTrip) {
+      // Default: a visible car-result card also counts as bookable results.
+      const carCardPromise = this.page
+        .locator(SELECTORS.CAR_RESULT_CARD)
+        .first()
+        .waitFor({ state: 'visible', timeout })
+        .then(() => 'results');
+      promises.push(carCardPromise);
+    }
 
     if (includeStationList) {
       // After selecting the PICKUP station, the UI transitions to the dropoff station

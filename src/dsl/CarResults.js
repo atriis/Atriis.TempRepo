@@ -496,11 +496,13 @@ const CarResults = {
    * Selects a city center pickup location by station label with automatic no-results retry.
    * When stationAddress is provided, selection is constrained to the card containing both fields.
    * If after selection no results appear, retries by editing search dates only (max 2 retries).
+   * Throws when no bookable car results are reached after all retries, so the failure surfaces
+   * at this selection step (data/availability) rather than at a later on-results assertion.
    *
    * @param {import('playwright').Page} page - Playwright page instance
    * @param {string} stationLabel - The station label to search for
    * @param {string} [stationAddress] - Optional station address to disambiguate duplicate labels
-   * @throws {Error} If inputs are invalid, or if the station is not found
+   * @throws {Error} If inputs are invalid, the station is not found, or no results appear after retries
    * @returns {Promise<Object>} { selected: true, noResultsRetry: { retriesUsed, resolved } }
    */
   async selectCityCenterPickupLocationByLabel(page, stationLabel, stationAddress) {
@@ -520,8 +522,21 @@ const CarResults = {
         maxRetries: MAX_LOCATION_SELECTION_RETRIES,
         pickupIndex: SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
         dropoffIndex: SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
+        // The caller asserts on the results page immediately after this step, so an ambiguous
+        // "still loading" outcome must be confirmed as real results before proceeding —
+        // otherwise a slow "No results found" state would surface at the assertion instead of
+        // triggering the date-change retry here.
+        confirmResultsOnTimeout: true,
       },
     );
+
+    if (!retryResult.resolved) {
+      throw new Error(
+        `[CarResults.selectCityCenterPickupLocationByLabel] No car results appeared for station "${stationLabel}" ` +
+        `after ${retryResult.retriesUsed} date-change retry attempt(s). ` +
+        `The supplier returned no available cars for all tried date ranges. This is a data/availability issue, not a test bug.`
+      );
+    }
 
     return { selected: true, noResultsRetry: retryResult };
   },
@@ -532,7 +547,7 @@ const CarResults = {
   async _retryLocationSelectionOnNoResults(
     page,
     selectionCallback,
-    { maxRetries = 2, pickupIndex = 0, dropoffIndex = 5, isDropoffStep = false } = {},
+    { maxRetries = 2, pickupIndex = 0, dropoffIndex = 5, isDropoffStep = false, confirmResultsOnTimeout = false } = {},
   ) {
     const resultsPage = getPageObject(page, ResultsPage);
     const searchPage = getPageObject(page, SearchPage);
@@ -552,8 +567,34 @@ const CarResults = {
         includeStationList: !isDropoffStep,
       });
 
-      if (status === 'ok' || status === 'station-list' || status === 'results') {
+      if (status === 'results') {
         return { retriesUsed: attempt - 1, resolved: true };
+      }
+
+      if (status === 'station-list' || status === 'ok') {
+        // By default a 'station-list' or ambiguous 'ok' (12s timeout, results still loading)
+        // is treated as success — downstream steps wait for their own elements.
+        if (!confirmResultsOnTimeout) {
+          return { retriesUsed: attempt - 1, resolved: true };
+        }
+
+        // The by-label pickup flow lands directly on the car results page (which itself has
+        // per-car Select buttons) and the caller asserts on results immediately after this step.
+        // A 'station-list' signal here is therefore most likely stale vendor-list Select buttons,
+        // and an ambiguous 'ok' may settle into "No results found". Confirm REAL car results
+        // (Select buttons excluded) before proceeding; a no-results outcome falls through to the
+        // date-change retry instead of surfacing later at the on-results assertion.
+        const confirmedStatus = await resultsPage.waitForCarCardsOrNoResultsAfterStationSelection(60000, {
+          includeStationList: false,
+          // Require the bookable "Add to trip" button (not a transient car-card skeleton) so this
+          // confirmation agrees with the on-results assertion's waitForAddToTripText() check and
+          // never false-resolves before the "No results found" state paints.
+          requireAddToTrip: true,
+        });
+        if (confirmedStatus === 'results') {
+          return { retriesUsed: attempt - 1, resolved: true };
+        }
+        // confirmedStatus === 'no-results' → continue to the retry path below.
       }
 
       logger.info('No car results after location selection. Retrying by changing dates only in edit search', {
@@ -618,16 +659,16 @@ const CarResults = {
       // value, guaranteeing we read the newly selected date.
       // If the calendar re-selected the same month (rare), the timeout catches gracefully.
       await carSearchPage.waitForPickupDateChanged(oldPickupDate, { timeout: 5000 }).catch(() => {
-        logger.debug('[CarResults._retryLocationSelectionOnNoResults] Pickup date did not change (same month re-selected?); same-date check will handle if needed.');
+        logger.debug('Pickup date did not change (same month re-selected?); same-date check will handle if needed.');
       });
       await carSearchPage.waitForDropoffDateChanged(oldDropoffDate, { timeout: 5000 }).catch(() => {
-        logger.debug('[CarResults._retryLocationSelectionOnNoResults] Dropoff date did not change (same month re-selected?); same-date check will handle if needed.');
+        logger.debug('Dropoff date did not change (same month re-selected?); same-date check will handle if needed.');
       });
 
       const pickupDateValue = await carSearchPage.getPickupDateFieldValue();
       const dropoffDateValue = await carSearchPage.getDropoffDateFieldValue();
 
-      logger.info('[CarResults._retryLocationSelectionOnNoResults] Dates after retry selection', {
+      logger.info('Dates after retry selection', {
         oldPickupDate,
         oldDropoffDate,
         newPickupDate: pickupDateValue,
@@ -636,7 +677,7 @@ const CarResults = {
       });
 
       if (pickupDateValue === dropoffDateValue) {
-        logger.info('[CarResults._retryLocationSelectionOnNoResults] Same date detected ("Invalid time" state) — advancing dropoff by 1 slot to clear validation error', {
+        logger.info('Same date detected ("Invalid time" state) — advancing dropoff by 1 slot to clear validation error', {
           date: pickupDateValue,
         });
         await carSearchPage.clickDropoffDateField();
@@ -665,7 +706,16 @@ const CarResults = {
       }
 
       await searchPage.waitAndClickSearchButton();
-      await selectionCallback();
+
+      // For the dropoff flow this bottom re-select clicks the PICKUP Select and transitions the
+      // UI to the dropoff station list, so the NEXT iteration's top callback re-selects there.
+      // For the by-label pickup flow (confirmResultsOnTimeout) the re-search lands back on the
+      // station list and a SINGLE select per attempt is correct — the next iteration's top
+      // callback clicks Select and checks the outcome. Re-selecting here as well would re-click
+      // on the car-results page (station card already gone) and hang the step until timeout.
+      if (!confirmResultsOnTimeout) {
+        await selectionCallback();
+      }
     }
 
     if (isDropoffStep) {
@@ -676,6 +726,18 @@ const CarResults = {
       await selectionCallback();
       const finalStatus = await resultsPage.waitForCarCardsOrNoResultsAfterStationSelection(60000, {
         includeStationList: false,
+      });
+      return { retriesUsed: maxRetries, resolved: finalStatus === 'results' };
+    }
+
+    if (confirmResultsOnTimeout) {
+      // The by-label pickup loop performs a single select per attempt, so after the last
+      // re-search the UI is on the station list. Click the station Select once more, then
+      // require real bookable results (Add to trip) so this agrees with the on-results assertion.
+      await selectionCallback();
+      const finalStatus = await resultsPage.waitForCarCardsOrNoResultsAfterStationSelection(60000, {
+        includeStationList: false,
+        requireAddToTrip: true,
       });
       return { retriesUsed: maxRetries, resolved: finalStatus === 'results' };
     }
