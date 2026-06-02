@@ -16,10 +16,9 @@ Feature: 61568 Travel Policy - Hotel location policy is correctly triggered
   Scenario: Hotel in Pino Alto Spain does not trigger OOP location policy
     Given I am logged in as "tata@travelpolicy.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Pino Alto, Spain" for 1 night(s)
+    When I search for a hotel in "Pino Alto, Spain" for 1 night
     And I wait to see view rates text in results page
-    And I sort hotel results by "Price - Low to High"
+    When I sort hotel results by "Price"
     And I select the first hotel result
-    # TODO: Verify OOP badge is NOT visible at room level
-    When I add the first available room to my cart
+    And I add a refundable room to my cart
     Then the out of policy indicator should not be visible in cart
