@@ -17,5 +17,5 @@ Feature: 57962 Travel Policy - City vs airport differentiation in flight policy
     Given I am logged in as "veronicaoliveira@travelpolicyflight.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LHR" to "PAR"
-    Then the "Add to trip" text should be visible in results
-    And the out of policy indicator should not be visible in results
+    And flight results should be available
+    Then the out of policy indicator should not be visible in results
