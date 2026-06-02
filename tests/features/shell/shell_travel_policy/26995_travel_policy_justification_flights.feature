@@ -18,8 +18,9 @@ Feature: 26995 Travel Policy - Justification required for OOP flights
     And I have added myself as the traveler
     When I search for a one way flight from "JFK" to "PHX"
     And I add the first flight to cart
+    Then the booking status should be "Pending booking"
     Then the out of policy indicator should be visible in cart
-    When I proceed to checkout
-    # TODO: Verify error message "*In order to proceed, please add all required information" is displayed
-    When I fill in the OOP justification text "Yes"
-    Then I successfully cancel the quote
+    And I accept Terms & Conditions
+    And I click the proceed to checkout button
+    Then the cart should show the in order to proceed warning
+    And I fill in the OOP justification text "Yes"
