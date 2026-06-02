@@ -31,6 +31,26 @@ When("I open the form of payment tab in the administration", async function () {
   await Administration.openFopTabInAdmin(this.adminPage);
 });
 
+When("I navigate to the Travel Policies section", async function () {
+  logger.info("Navigating to the Travel Policies section in administration");
+  await Administration.openTravelPoliciesSection(this.adminPage);
+});
+
+When("I search for policy {string}", async function (policyName) {
+  logger.info("Searching for travel policy in administration", { policyName });
+  await Administration.searchTravelPolicy(this.adminPage, policyName);
+});
+
+When("I open the first travel policy rule", async function () {
+  logger.info("Opening the first travel policy rule in administration");
+  await Administration.openFirstTravelPolicyRule(this.adminPage);
+});
+
+Then("the flight direction dropdown should contain {string}, {string}, and {string}", async function (anyFlight, inboundFlight, outboundFlight) {
+  logger.info("Verifying flight direction dropdown options in administration", { anyFlight, inboundFlight, outboundFlight });
+  await Administration.verifyFlightDirectionDropdownOptions(this.adminPage, [anyFlight, inboundFlight, outboundFlight]);
+});
+
 Then("the credit card {string} should show expiry month {string} and year {string}", async function (cardName, month, year) {
   logger.info("Verifying credit card expiry in administration", { cardName, month, year });
   await Administration.verifyCcExpiryInAdmin(this.adminPage, { cardName, month, year });

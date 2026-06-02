@@ -221,6 +221,10 @@ const SELECTORS = {
 
   // Results page breadcrumb — first item links back to the trip search page
   RESULTS_BREADCRUMB_SEARCH_LINK: '.results-breadscrumbs li:first-child a',
+
+  // Sort by dropdown (extended sort options in flight-list-sort component)
+  SORT_BY_BUTTON: '.flight-list-sort .sort-by-wrapper',
+  SORT_DROPDOWN_ITEM: (label) => `.el-dropdown-menu__item:has-text("${label}")`,
 };
 
 class FlightResultsPage {
@@ -2495,6 +2499,36 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     await this.page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
     // Additional settle time for cart page render after network idle
     await this.page.waitForTimeout(2000);
+  }
+  /**
+   * Selects a sort option from the "Sort by" extended dropdown in flight results.
+   * Clicks the Sort by button to open the el-dropdown, then clicks the matching item.
+   *
+   * @param {string} label - Sort option label text (e.g. "Departure Earliest")
+   * @param {{ timeout?: number }} options
+   */
+  async selectSortOption(label, { timeout = 15000 } = {}) {
+    if (!label || typeof label !== 'string') {
+      throw new Error(`[FlightResultsPage.selectSortOption] "label" must be a non-empty string, got: ${typeof label}`);
+    }
+
+    const sortButton = this.page.locator(SELECTORS.SORT_BY_BUTTON).first();
+    try {
+      await sortButton.waitFor({ state: 'visible', timeout });
+      await sortButton.click();
+    } catch (err) {
+      throw new Error(`[FlightResultsPage.selectSortOption] Could not click "Sort by" button (${SELECTORS.SORT_BY_BUTTON}). Sort bar may not be visible. Original: ${err.message}`);
+    }
+
+    const item = this.page.locator(SELECTORS.SORT_DROPDOWN_ITEM(label)).first();
+    try {
+      await item.waitFor({ state: 'visible', timeout });
+      await item.click();
+    } catch (err) {
+      throw new Error(`[FlightResultsPage.selectSortOption] Could not click sort option "${label}". Option not visible in dropdown — label may not exist. Original: ${err.message}`);
+    }
+
+    await this.waitForFlightResults(timeout);
   }
 }
 module.exports = FlightResultsPage;

@@ -138,6 +138,137 @@ const Administration = {
   },
 
   /**
+   * Opens the Travel Policies section in the administration portal.
+   * If an unsaved-items dialog appears, it is dismissed before continuing.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async openTravelPoliciesSection(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.openTravelPoliciesSection] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.openTravelPoliciesSection] Opening Travel Policies section in admin portal');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickTravelPoliciesTab();
+    } catch (err) {
+      throw new Error(
+        `[Administration.openTravelPoliciesSection] Failed to click the Travel Policies tab: ${err.message}`
+      );
+    }
+
+    try {
+      await page.dismissUnsavedItemsDialogIfPresent();
+    } catch (err) {
+      throw new Error(
+        `[Administration.openTravelPoliciesSection] Travel Policies tab opened, but the unsaved-items dialog could not be dismissed: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.openTravelPoliciesSection] Travel Policies section opened');
+  },
+
+  /**
+   * Searches for and opens a travel policy by name.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} policyName - The policy name to search for
+   */
+  async searchTravelPolicy(adminPage, policyName) {
+    if (!adminPage) {
+      throw new Error('[Administration.searchTravelPolicy] "adminPage" is required.');
+    }
+    if (!policyName || typeof policyName !== 'string') {
+      throw new Error(
+        `[Administration.searchTravelPolicy] "policyName" must be a non-empty string, got: ${typeof policyName} (${JSON.stringify(policyName)})`
+      );
+    }
+
+    logger.debug(`[Administration.searchTravelPolicy] Searching for travel policy "${policyName}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.fillTravelPolicySearch(policyName);
+    } catch (err) {
+      throw new Error(
+        `[Administration.searchTravelPolicy] Failed to search for travel policy "${policyName}": ${err.message}`
+      );
+    }
+
+    try {
+      await page.clickFirstTravelPolicyItem(policyName);
+    } catch (err) {
+      throw new Error(
+        `[Administration.searchTravelPolicy] Failed to open travel policy "${policyName}" from the search results: ${err.message}. ` +
+        `The search may have returned no policy rows.`
+      );
+    }
+
+    logger.info(`[Administration.searchTravelPolicy] Travel policy "${policyName}" opened`);
+  },
+
+  /**
+   * Opens the first travel policy rule in the currently selected policy.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async openFirstTravelPolicyRule(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.openFirstTravelPolicyRule] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.openFirstTravelPolicyRule] Opening the first travel policy rule');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickFirstTravelPolicyRule();
+    } catch (err) {
+      throw new Error(
+        `[Administration.openFirstTravelPolicyRule] Failed to open the first travel policy rule: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.openFirstTravelPolicyRule] First travel policy rule opened');
+  },
+
+  /**
+   * Verifies the flight direction dropdown contains the expected options.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string[]} expectedOptions - The options that must be present
+   */
+  async verifyFlightDirectionDropdownOptions(adminPage, expectedOptions) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyFlightDirectionDropdownOptions] "adminPage" is required.');
+    }
+    if (!Array.isArray(expectedOptions)) {
+      throw new Error(
+        `[Administration.verifyFlightDirectionDropdownOptions] "expectedOptions" must be an array, got: ${typeof expectedOptions} (${JSON.stringify(expectedOptions)})`
+      );
+    }
+    if (expectedOptions.length === 0) {
+      throw new Error('[Administration.verifyFlightDirectionDropdownOptions] "expectedOptions" must not be empty.');
+    }
+
+    logger.debug('[Administration.verifyFlightDirectionDropdownOptions] Verifying flight direction dropdown options', { expectedOptions });
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      return await page.verifyFlightDirectionDropdownOptions(expectedOptions);
+    } catch (err) {
+      throw new Error(
+        `[Administration.verifyFlightDirectionDropdownOptions] Failed to verify flight direction dropdown options: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Verifies the expiry month and year of a credit card in the administration FOP view.
    * Clicks on the card row to open its edit form, then reads the Select2 dropdown values.
    *

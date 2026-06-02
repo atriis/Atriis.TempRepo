@@ -17,11 +17,12 @@ Feature: 53437 Travel Policy - Outbound and inbound flights differentiation
     Given I am logged in as "emma@iberiaoop.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LIS" to "MAD"
-    # TODO: Sort results by earliest departure
+    And flight results should be available
+    When I sort flight results by "Departure Earliest"
     Then the out of policy indicator should be visible in results
-    And the out of policy tooltip in results should be "Any Flight"
+    And the out of policy tooltip in results should be "Difference from lowest fare is greater than or equals 1 USD and Destination is europe and Hour of departure Is After 8:00 Any Flight"
     When I navigate to the administration page
-    # TODO: Navigate to Travel Policies section
-    # TODO: Search for policy "TESTIM_7"
-    # TODO: Open the first travel policy rule
-    # TODO: Verify the flight direction dropdown contains "Any Flight", "Inbound Flight", "Outbound Flight"
+    When I navigate to the Travel Policies section
+    And I search for policy "TESTIM_7"
+    And I open the first travel policy rule
+    Then the flight direction dropdown should contain "Any Flight", "Inbound Flight", and "Outbound Flight"

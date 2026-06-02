@@ -2417,6 +2417,32 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     return { cardText, excludedText };
   },
 
+  /**
+   * Sorts flight results using the extended "Sort by" dropdown.
+   * Clicks the Sort by button and selects the matching option by label.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} label - Sort option label (e.g. "Departure Earliest")
+   * @returns {Promise<{ sorted: boolean, label: string }>}
+   */
+  async sortBy(page, label) {
+    if (!page) throw new Error('[FlightResults.sortBy] "page" is required');
+    if (!label || typeof label !== 'string') {
+      throw new Error(`[FlightResults.sortBy] "label" must be a non-empty string, got: ${typeof label}`);
+    }
+
+    logger.debug(`Sorting flight results by "${label}"`);
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    try {
+      await flightResultsPage.selectSortOption(label);
+    } catch (err) {
+      throw new Error(`[FlightResults.sortBy] Failed to sort by "${label}". Original: ${err.message}`);
+    }
+
+    return { sorted: true, label };
+  },
+
   // ===== NEW FLIGHT FLOW =====
 
   /**

@@ -956,3 +956,8 @@ Then('the first flight result price should not be zero', async function () {
   logger.info('Verifying the first flight result price is not zero');
   await FlightResults.verifyFirstFlightResultPriceIsNotZero(this.page);
 });
+
+When('I sort flight results by {string}', async function (label) {
+  logger.info('Sorting flight results by', { label });
+  await FlightResults.sortBy(this.page, label);
+});

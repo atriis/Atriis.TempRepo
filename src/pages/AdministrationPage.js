@@ -7,12 +7,16 @@ const SELECTORS = {
 
   // Navigation tabs inside the admin app
   USERS_TAB: "[title='Users']",
+  TRAVEL_POLICIES_TAB: "[title='Travel Policies']",
 
   // User search input (AngularJS ng-disabled attribute identifies it)
   USER_SEARCH_INPUT: "[ng-disabled='isDisabled']",
+  TRAVEL_POLICY_SEARCH_INPUT: "[placeholder='Search policy name']",
 
   // User row in the results list — each row has columns; 3rd column (name cell) is the click target
   USER_ROW_NAME_CELL: "[data-ng-repeat*='user in users'] > :nth-child(3)",
+  TRAVEL_POLICY_ITEM_NAME: "[ng-click='onTravelPolicyItemClicked(travelPolicy)'] .ng-binding",
+  TRAVEL_POLICY_RULE_FIRST_ROW: "[data-ng-repeat*='travelPolicyRule in travelPolicyRules'] > :nth-child(1)",
 
   // User first-name field shown after opening a user record
   USER_FIRST_NAME_FIELD: "[data-ng-model='user.FirstName']",
@@ -31,9 +35,17 @@ const SELECTORS = {
 
   // jQuery UI confirmation dialog — first button is the confirm/yes action
   DIALOG_CONFIRM_BTN: ".ui-dialog-buttonset :first-child",
+  UNSAVED_ITEMS_DIALOG: "#ui-id-1",
 
   // Contact Information tab inside admin user view (ng-class contains contectInformation — note the typo in the AngularJS source)
   ADMIN_CONTACT_INFO_TAB: "[ng-class*='contectInformation']",
+
+  TRAVEL_POLICY_ACTION_LABEL: "[ng-switch-when='0'] > :nth-child(5) > :nth-child(1) label",
+  TRAVEL_POLICY_SELECTED_DIRECTION: ".select2-choice .select2-chosen",
+  TRAVEL_POLICY_SELECT2_TRIGGER: ".select2-choice",
+  TRAVEL_POLICY_SELECT2_ARROW: ".select2-arrow b",
+  TRAVEL_POLICY_SELECT2_DROPDOWN: ".select2-drop:visible",
+  TRAVEL_POLICY_SELECT2_OPTION: ".select2-drop:visible .select2-results .select2-result-selectable > div",
 
   // Mobile phone fields in the AngularJS admin contact info form (name attributes identify each segment)
   ADMIN_MOBILE_COUNTRY_CODE: "[phone-number='user.Mobile'] [name='CountryCode']",
@@ -124,6 +136,147 @@ class AdministrationPage {
         `[AdministrationPage.clickUsersTab] Could not navigate to the Users list in the administration. ` +
         `The admin URL may not contain a Corporation ID, or the user list did not render. ` +
         `Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickTravelPoliciesTab() {
+    try {
+      const tab = this.page.locator(SELECTORS.TRAVEL_POLICIES_TAB);
+      await tab.waitFor({ state: 'visible', timeout: 15000 });
+      await tab.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickTravelPoliciesTab] Could not click the Travel Policies tab in the admin portal ` +
+        `(selector: ${SELECTORS.TRAVEL_POLICIES_TAB}). ` +
+        `The administration page may not have loaded or the tab is hidden. Original: ${err.message}`
+      );
+    }
+  }
+
+  async dismissUnsavedItemsDialogIfPresent() {
+    try {
+      const dialog = this.page.locator(SELECTORS.UNSAVED_ITEMS_DIALOG);
+      const visible = await dialog.isVisible().catch(() => false);
+      if (!visible) {
+        return false;
+      }
+
+      const dialogText = ((await dialog.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+      if (!dialogText.includes('There are some unsaved items in this screen')) {
+        throw new Error(
+          `[AdministrationPage.dismissUnsavedItemsDialogIfPresent] An unexpected dialog appeared in the admin portal ` +
+          `(selector: ${SELECTORS.UNSAVED_ITEMS_DIALOG}). Text: ${dialogText || '<empty>'}`
+        );
+      }
+
+      const confirmBtn = this.page.locator(SELECTORS.DIALOG_CONFIRM_BTN);
+      await confirmBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await confirmBtn.click({ timeout: 10000 });
+      return true;
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.dismissUnsavedItemsDialogIfPresent] Could not dismiss the unsaved-items dialog in the admin portal. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillTravelPolicySearch(policyName) {
+    try {
+      const input = this.page.locator(SELECTORS.TRAVEL_POLICY_SEARCH_INPUT);
+      await input.waitFor({ state: 'visible', timeout: 15000 });
+      await input.click({ timeout: 5000 });
+      await input.fill(policyName, { timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.fillTravelPolicySearch] Could not search for travel policy "${policyName}" ` +
+        `(selector: ${SELECTORS.TRAVEL_POLICY_SEARCH_INPUT}). ` +
+        `The Travel Policies tab may not be open or the search field is hidden. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickFirstTravelPolicyItem(policyName) {
+    try {
+      const item = this.page.locator(SELECTORS.TRAVEL_POLICY_ITEM_NAME).first();
+      await item.waitFor({ state: 'visible', timeout: 15000 });
+      await item.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickFirstTravelPolicyItem] Could not open the first travel policy item after searching for "${policyName}" ` +
+        `(selector: ${SELECTORS.TRAVEL_POLICY_ITEM_NAME}). ` +
+        `The search may have returned no results or the item did not render. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickFirstTravelPolicyRule() {
+    try {
+      const rule = this.page.locator(SELECTORS.TRAVEL_POLICY_RULE_FIRST_ROW);
+      await rule.waitFor({ state: 'visible', timeout: 15000 });
+      await rule.click({ timeout: 10000 });
+
+      await this.page.locator(SELECTORS.TRAVEL_POLICY_ACTION_LABEL).waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickFirstTravelPolicyRule] Could not open the first travel policy rule ` +
+        `(selector: ${SELECTORS.TRAVEL_POLICY_RULE_FIRST_ROW}). ` +
+        `The travel policy item may not be open or the rule list did not render. Original: ${err.message}`
+      );
+    }
+  }
+
+  async verifyFlightDirectionDropdownOptions(expectedOptions) {
+    try {
+      if (!Array.isArray(expectedOptions)) {
+        throw new Error(
+          `[AdministrationPage.verifyFlightDirectionDropdownOptions] "expectedOptions" must be an array, got: ${typeof expectedOptions} (${JSON.stringify(expectedOptions)})`
+        );
+      }
+      if (expectedOptions.length === 0) {
+        throw new Error(
+          '[AdministrationPage.verifyFlightDirectionDropdownOptions] "expectedOptions" must not be empty.'
+        );
+      }
+
+      const expandedRule = this.page.locator("[ng-switch-when='0']").first();
+      await expandedRule.waitFor({ state: 'visible', timeout: 15000 });
+
+      // Scan all <select> elements in the expanded rule to find the flight direction one
+      const actualOptions = await this.page.evaluate(() => {
+        const panels = document.querySelectorAll("[ng-switch-when='0']");
+        for (const panel of panels) {
+          for (const select of panel.querySelectorAll('select')) {
+            const texts = Array.from(select.options).map((o) => o.text.replace(/\s+/g, ' ').trim()).filter(Boolean);
+            if (texts.includes('Any Flight')) return texts;
+          }
+        }
+        return null;
+      });
+
+      if (!actualOptions) {
+        throw new Error(
+          '[AdministrationPage.verifyFlightDirectionDropdownOptions] Could not find a <select> containing "Any Flight" in the expanded rule. ' +
+          'The flight direction dropdown may not be visible or the rule type does not support flight direction.'
+        );
+      }
+
+      for (const expectedOption of expectedOptions) {
+        if (!actualOptions.includes(expectedOption)) {
+          throw new Error(
+            `[AdministrationPage.verifyFlightDirectionDropdownOptions] Flight direction dropdown is missing option "${expectedOption}". ` +
+            `Expected to find: ${JSON.stringify(expectedOptions)}. Actual options: ${JSON.stringify(actualOptions)}. ` +
+            `The travel policy rule may not be the correct one or the admin UI changed.`
+          );
+        }
+      }
+
+      return actualOptions;
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.verifyFlightDirectionDropdownOptions] Could not verify the flight direction dropdown options ` +
+        `(selector: ${SELECTORS.TRAVEL_POLICY_SELECT2_DROPDOWN}). Original: ${err.message}`
       );
     }
   }
