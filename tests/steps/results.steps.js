@@ -97,6 +97,11 @@ When("I add to cart and proceed past flight capacity modal", async function () {
   expect(result.modalVisible).toBe(true);
 });
 
+When("I click add to cart to trigger the flight capacity restriction modal", async function () {
+  logger.info("Clicking add to cart to trigger the flight capacity restriction modal");
+  await Results.waitAndClickAddToTripButton(this.page);
+});
+
 // ===== THEN STEPS - OOP INDICATORS IN RESULTS =====
 
 Then("the out of policy indicator should be visible in results", async function () {
