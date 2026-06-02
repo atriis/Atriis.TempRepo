@@ -17,6 +17,6 @@ Feature: 44305 Travel Policy - OOP indication in by-schedule pricing options
     Given I am logged in as "viniciusjusten@oop.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "LIS" to "AMS"
-    And I select one flight segment by schedule
-    And I select one flight segment by schedule
+    And I select flight segments by schedule
+    And I wait for "Your Selection" text to be visible
     Then the out of policy indicator should be visible in results
