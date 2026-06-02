@@ -70,7 +70,8 @@ function parseBlockExpression(expectedText) {
 
 function extractXmlBlocksByTag(xmlPayload, blockTag) {
   const safeTag = escapeRegex(blockTag);
-  const regex = new RegExp(`<${safeTag}\\b[^>]*>[\\s\\S]*?<\\/${safeTag}>`, "gi");
+  // Matches either a self-closing element (<Tag .../>) or a paired element (<Tag ...>...</Tag>)
+  const regex = new RegExp(`<${safeTag}\\b[^>]*?(?:\\/>|>[\\s\\S]*?<\\/${safeTag}>)`, "gi");
   const matches = xmlPayload.match(regex);
   return matches || [];
 }
