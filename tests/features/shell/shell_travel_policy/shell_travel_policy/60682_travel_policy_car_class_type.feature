@@ -16,8 +16,6 @@ Feature: 60682 Travel Policy - Car class and type policy works as expected
   Scenario: Mini car class does not trigger OOP for Sabre car with Enterprise
     Given I am logged in as "monteirolobato@cartravelpolicygdgsabre.com" booking a new trip
     And I have added myself as the traveler
-    When I select rental agency "Enterprise"
-    And I search for a car at "LHR"
-    # TODO: Wait for car results to display "Showing" text
+    When I search for a car at "LHR" with rental agency "Enterprise"
     And I filter results by "Mini" checkbox
     Then the out of policy indicator should not be visible in results

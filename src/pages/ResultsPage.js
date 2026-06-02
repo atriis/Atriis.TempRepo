@@ -862,32 +862,62 @@ class ResultsPage {
     await checkbox.click();
   }
 
+  async expandAllFilterViewMoreButtons(timeout = 5000) {
+    const viewMoreContainers = this.page
+      .locator(SELECTORS.FILTER_VIEW_MORE_CONTAINER)
+      .filter({ has: this.page.locator(SELECTORS.FILTER_VIEW_MORE_LABEL, { hasText: 'View more' }) });
+
+    const count = await viewMoreContainers.count();
+    for (let i = 0; i < count; i++) {
+      try {
+        const btn = viewMoreContainers.nth(i).locator(SELECTORS.FILTER_VIEW_MORE_BUTTON).first();
+        const isVisible = await btn.isVisible();
+        if (isVisible) {
+          await btn.click();
+        }
+      } catch (err) {
+        throw new Error(
+          `[ResultsPage.expandAllFilterViewMoreButtons] Failed to expand filter view-more section #${i}. ` +
+          `Original: ${err.message}`
+        );
+      }
+    }
+  }
+
   /**
    * Clicks a filter checkbox identified by its label text.
-   * @param {string} option - The label text of the checkbox to click (e.g. 'Refundable')
+   * If the option is not immediately visible, expands all filter "view more" sections and retries.
+   * @param {string} option - The label text of the checkbox to click (e.g. 'Refundable', 'Mini')
    */
   async filterByCheckboxOption(option) {
     if (typeof option !== 'string' || !option.trim()) {
-      throw new Error(`option must be a non-empty string, got: ${typeof option}`);
+      throw new Error(`[ResultsPage.filterByCheckboxOption] option must be a non-empty string, got: ${typeof option}`);
     }
     const optionText = option.trim();
-    const exactCheckbox = this.page
-      .locator(SELECTORS.FILTER_CHECKBOX_LABEL, { has: this.page.locator(`p:text-is('${optionText}')`) })
+    const resolvedText = AIRLINE_FILTER_ALIASES[optionText] || optionText;
+
+    const getCheckbox = (text) => this.page
+      .locator(SELECTORS.FILTER_CHECKBOX_LABEL, { has: this.page.locator(`p:text-is('${text}')`) })
       .locator(SELECTORS.FILTER_CHECKBOX_INNER)
       .first();
 
-    const checkbox = await exactCheckbox.isVisible()
-      ? exactCheckbox
-      : this.page
-          .locator(
-            SELECTORS.FILTER_CHECKBOX_LABEL,
-            { has: this.page.locator(`p:text-is('${AIRLINE_FILTER_ALIASES[optionText] || optionText}')`) }
-          )
-          .locator(SELECTORS.FILTER_CHECKBOX_INNER)
-          .first();
+    let checkbox = getCheckbox(optionText);
 
-    await checkbox.waitFor({ state: 'visible' });
-    await checkbox.click();
+    if (!(await checkbox.isVisible())) {
+      await this.expandAllFilterViewMoreButtons();
+      checkbox = getCheckbox(resolvedText);
+    }
+
+    try {
+      await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+      await checkbox.click();
+    } catch (err) {
+      throw new Error(
+        `[ResultsPage.filterByCheckboxOption] Could not click checkbox "${optionText}" — option not visible after expanding all filter sections. ` +
+        `Verify the filter panel is loaded and "${optionText}" is a valid option for this result set. ` +
+        `Original: ${err.message}`
+      );
+    }
   }
 
   async clickEditButton() {
