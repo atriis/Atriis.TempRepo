@@ -19,5 +19,5 @@ Feature: 60156 Travel Policy - Flight capacity restriction is triggered
     And I have added traveler by name "vini cake"
     When I search for a one way flight from "LON" to "MIA"
     And I click proceed button if visible
-    When I click add to cart to trigger the flight capacity restriction modal
+    And I add the first result to trip
     Then the flight capacity restriction modal should be visible
