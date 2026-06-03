@@ -37,11 +37,11 @@ Feature: 46303 Galileo - Can reserve paid seat before booking
     Then the booking status should be "Pending booking"
     When I accept Terms & Conditions
     And I hold the trip
-    When I capture the "request" payload for request type "AirMerchandisingFulfillmentReq" from Storage # Capture the request on the payload first
-    Then the captured "request" payload for request type "AirMerchandisingFulfillmentReq" should contain "GTPShare".onKey("AuthorizedBy") # Validate "AuthorizedBy" key has the value "GTPShare"
-    When I capture the "response" payload for request type "AirMerchandisingFulfillmentReq" from Storage # Capture the response on the payload first
-    Then the captured "response" payload for request type "AirMerchandisingFulfillmentReq" should contain "HK".block("AirSeatAssignment") # Capture from the payload what is necessary only instead validate on all the log
-    Then the captured "block" payload for request type "AirMerchandisingFulfillmentReq" should contain "HK".onKey("Status") # Validate "Status" key has the value "HK"
-    Then the captured "block" payload for request type "AirMerchandisingFulfillmentReq" should not contain "".onKey("Seat") # Validate "Seat" key is not not Empty
+    When I capture the "request" payload for request type "AirMerchandisingFulfillmentReq" from Storage
+    Then the captured "request" payload for request type "AirMerchandisingFulfillmentReq" should contain "GTPShare".onKey("AuthorizedBy")
+    When I capture the "response" payload for request type "AirMerchandisingFulfillmentReq" from Storage
+    Then the captured "response" payload for request type "AirMerchandisingFulfillmentReq" should contain "HK".block("AirSeatAssignment")
+    Then the captured "block" payload for request type "AirMerchandisingFulfillmentReq" should contain "HK".onKey("Status")
+    Then the captured "block" payload for request type "AirMerchandisingFulfillmentReq" should not contain "".onKey("Seat")
     Then I successfully cancel the trip
 
