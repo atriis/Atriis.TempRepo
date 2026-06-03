@@ -65,6 +65,13 @@ const SELECTORS = {
   EDIT_TRAVELER_NAME_FIELD: ".edit-traveler [placeholder='Search by name, user group, username or email']",
   EDIT_TRAVELER_OPTION: '.user-autocomplete-popper li',
 
+  // Guest form — copy settings from users group
+  COPY_SETTINGS_USERS_GROUP_RADIO: ".copy-settings-container .el-radio:nth-child(2) .el-radio__inner",
+  // Caret SVG inside the group-select — clicking this reliably opens filterable el-select
+  GROUP_SELECT_CARET: ".copy-settings-container .group-select .el-select__caret",
+  GROUP_SELECT_EL: ".copy-settings-container .group-select .el-select",
+  GROUP_SELECT_DROPDOWN_ITEM: ".el-select-dropdown__item",
+
   // Edit Search
   EDIT_SEARCH_DRAWER: '.atrs-edit-search-drawer',
   EDIT_SEARCH_DRAWER_CLOSE_BTN: '.atrs-edit-search-drawer .close-btn',
@@ -353,6 +360,46 @@ class SearchPage {
 
     await this.getAddGuestButton().click();
     await modal.waitFor({ state: 'hidden', timeout: 10000 });
+  }
+
+  /**
+   * Selects "Users Group" in the copy-settings radio group of the guest form.
+   */
+  async selectCopySettingsFromUsersGroup() {
+    try {
+      await this.page.locator(SELECTORS.COPY_SETTINGS_USERS_GROUP_RADIO).click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(`[SearchPage.selectCopySettingsFromUsersGroup] Could not click "Users Group" radio (${SELECTORS.COPY_SETTINGS_USERS_GROUP_RADIO}). Original: ${err.message}`);
+    }
+  }
+
+  /**
+   * Selects a user group by name from the group-select dropdown in the guest form.
+   * Uses the caret trigger to open the filterable el-select reliably.
+   * @param {string} groupName - Visible text of the group option (e.g. "Post Adis Ababa")
+   */
+  async selectUserGroupByName(groupName) {
+    // Wait for the group-select to appear after the "Users Group" radio is selected
+    try {
+      await this.page.locator(SELECTORS.GROUP_SELECT_EL).waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(`[SearchPage.selectUserGroupByName] Group-select did not appear (${SELECTORS.GROUP_SELECT_EL}). Ensure "Users Group" radio was selected first. Original: ${err.message}`);
+    }
+    // Click the caret to open the dropdown (more reliable than clicking the wrapper for filterable selects)
+    try {
+      await this.page.locator(SELECTORS.GROUP_SELECT_CARET).click({ timeout: 5000 });
+    } catch {
+      // Fallback: click the el-select container itself
+      await this.page.locator(SELECTORS.GROUP_SELECT_EL).click({ timeout: 5000 });
+    }
+    try {
+      const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const option = this.page.locator(SELECTORS.GROUP_SELECT_DROPDOWN_ITEM).filter({ hasText: new RegExp(escape(groupName), 'i') }).first();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click({ timeout: 5000 });
+    } catch (err) {
+      throw new Error(`[SearchPage.selectUserGroupByName] Could not select user group "${groupName}" from dropdown (${SELECTORS.GROUP_SELECT_DROPDOWN_ITEM}). Group may not exist or dropdown did not open. Original: ${err.message}`);
+    }
   }
 
   // Guest form fields

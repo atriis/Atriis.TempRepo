@@ -273,6 +273,50 @@ const Search = {
   },
 
   /**
+   * Adds a guest traveler with a specific first/last name and user group.
+   * Selects "Users Group" in the copy-settings section, then picks the given group
+   * before filling in personal details and submitting.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} firstName
+   * @param {string} lastName
+   * @param {string} userGroupName - Visible label of the user group (e.g. "Adis Ababa")
+   * @returns {Promise<{added: boolean, starIconVisible: boolean, selectedTravelerCount: number}>}
+   */
+  async addGuestWithUserGroup(page, firstName, lastName, userGroupName) {
+    if (!page) throw new Error('[Search.addGuestWithUserGroup] "page" is required.');
+    if (!firstName || typeof firstName !== 'string') throw new Error('[Search.addGuestWithUserGroup] "firstName" must be a non-empty string');
+    if (!lastName || typeof lastName !== 'string') throw new Error('[Search.addGuestWithUserGroup] "lastName" must be a non-empty string');
+    if (!userGroupName || typeof userGroupName !== 'string') throw new Error('[Search.addGuestWithUserGroup] "userGroupName" must be a non-empty string');
+
+    logger.debug(`[Search.addGuestWithUserGroup] Adding guest ${firstName} ${lastName} with user group "${userGroupName}"`);
+
+    const searchPage = getPageObject(page, SearchPage);
+    const { dateOfBirth, email, phone } = generateRandomGuestData();
+
+    try {
+      await searchPage.clickAddTravelerButton();
+      await searchPage.clickAddGuestTravelerButton();
+      await searchPage.selectCopySettingsFromUsersGroup();
+      await searchPage.selectUserGroupByName(userGroupName);
+      await searchPage.fillInRandomFirstName(firstName);
+      await searchPage.fillInRandomLastName(lastName);
+      await searchPage.selectGenderMale();
+      await searchPage.fillInRandomDateOfBirth(dateOfBirth);
+      await searchPage.fillInRandomEmail(email);
+      await searchPage.fillInRandomPhone(phone);
+      await searchPage.clickAddGuestButton();
+    } catch (err) {
+      throw new Error(`[Search.addGuestWithUserGroup] Failed to add guest "${firstName} ${lastName}" with user group "${userGroupName}": ${err.message}`);
+    }
+
+    const starIconVisible = await searchPage.isStarIconVisible();
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
+
+    return { added: true, starIconVisible, selectedTravelerCount };
+  },
+
+  /**
    * Adds a random guest traveler whose first name is padded with leading and
    * trailing spaces. Used to verify that the booking flow trims whitespace
    * from names before sending them to the supplier (e.g. Fusion ProcessTerms).

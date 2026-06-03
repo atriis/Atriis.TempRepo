@@ -323,6 +323,41 @@ class DynamicAndReferenceFieldsPage {
   }
 
   /**
+   * Opens the financial-reference dropdown and returns the visible option texts.
+   * Leaves the dropdown open so the caller can assert or interact with options.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string[]>}
+   */
+  async getFinancialReferenceDropdownOptionTexts({ timeout = 15000 } = {}) {
+    await this.waitForFinancialReferenceDropdown({ timeout });
+    await this.openFinancialReferenceDropdown();
+    try {
+      const optionLocator = this.page.locator(SELECTORS.FINANCIAL_REFERENCE_DROPDOWN_OPTION);
+      await optionLocator.first().waitFor({ state: 'visible', timeout: 10000 });
+      const count = await optionLocator.count();
+      const texts = [];
+      for (let i = 0; i < count; i++) {
+        texts.push(((await optionLocator.nth(i).innerText()) || '').trim());
+      }
+      return texts;
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.getFinancialReferenceDropdownOptionTexts] Could not read options from ` +
+        `financial reference dropdown (${SELECTORS.FINANCIAL_REFERENCE_DROPDOWN_OPTION}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Closes the financial-reference dropdown without selecting an option,
+   * by pressing Escape.
+   */
+  async closeFinancialReferenceDropdown() {
+    await this.page.keyboard.press('Escape');
+  }
+
+  /**
    * Waits for the Financial Reference modal's "Proceed" button to be visible and clicks it.
    *
    * @param {object} [options]

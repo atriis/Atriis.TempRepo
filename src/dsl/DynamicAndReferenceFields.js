@@ -239,6 +239,116 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Opens the financial-reference dropdown, verifies that each expected option
+   * is present (case-insensitive partial match), then closes the dropdown.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string[]} expectedOptions - Option texts that must appear in the dropdown
+   * @returns {Promise<void>}
+   */
+  async verifyFinancialReferenceOptions(page, expectedOptions) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyFinancialReferenceOptions] "page" is required.');
+    if (!Array.isArray(expectedOptions) || expectedOptions.length === 0) {
+      throw new Error('[DynamicAndReferenceFields.verifyFinancialReferenceOptions] "expectedOptions" must be a non-empty array.');
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+
+    let actualOptions;
+    try {
+      actualOptions = await dynamicFieldsPage.getFinancialReferenceDropdownOptionTexts();
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyFinancialReferenceOptions] Failed to read financial reference options: ${err.message}`
+      );
+    }
+
+    const missing = expectedOptions.filter(
+      (expected) => !actualOptions.some((actual) => actual.toLowerCase().includes(expected.toLowerCase()))
+    );
+
+    await dynamicFieldsPage.closeFinancialReferenceDropdown();
+
+    if (missing.length > 0) {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyFinancialReferenceOptions] Missing financial reference options: [${missing.join(', ')}]. ` +
+        `Actual options found: [${actualOptions.join(', ')}]`
+      );
+    }
+  },
+
+  /**
+   * Selects an option from a reference field dropdown WITHOUT clicking Proceed.
+   * Use when filling multiple fields before proceeding (i.e. follow with
+   * "I click proceed on the reference fields popup").
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} fieldName - Visible label of the dropdown field (e.g. "Type of Trip")
+   * @param {string} optionText - Text to match in the dropdown option (partial, case-insensitive)
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<void>}
+   */
+  async selectReferenceFieldDropdownOnly(page, fieldName, optionText, { timeout = 10000 } = {}) {
+    if (!page) throw new Error('page is required');
+    if (!fieldName || typeof fieldName !== 'string') throw new Error('fieldName must be a non-empty string');
+    if (!optionText || typeof optionText !== 'string') throw new Error('optionText must be a non-empty string');
+
+    const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Anchor the label match so "Location" does NOT also match "Location travel policy".
+    // The question text is rendered in its own <span> inside the label
+    // (input-dropdown.vue), so an exact (anchored) match on that span uniquely
+    // identifies the field. A plain substring match would pick whichever matching
+    // container appears first in the DOM (e.g. "Location travel policy"), causing
+    // the option to be typed into the wrong field.
+    const labelRegex = new RegExp('^\\s*' + escape(fieldName) + '\\s*$', 'i');
+    const optionRegex = new RegExp(escape(optionText), 'i');
+
+    // Scope to the .input-dropdown container whose label span exactly matches fieldName.
+    const fieldContainer = page
+      .locator('.input-dropdown')
+      .filter({ has: page.locator('label span', { hasText: labelRegex }) })
+      .first();
+    try {
+      await fieldContainer.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectReferenceFieldDropdownOnly] Field "${fieldName}" did not appear within ${timeout}ms. ` +
+        `Reference fields popup may not have opened. Original: ${err.message}`
+      );
+    }
+
+    try {
+      await fieldContainer.scrollIntoViewIfNeeded({ timeout: 5000 });
+      const selectWrapper = fieldContainer.locator('.el-select').first();
+      await selectWrapper.click({ timeout: 5000 });
+
+      // The el-select is filterable (input-dropdown.vue sets filterable on el-select).
+      // Typing the option text after opening filters the list to matching items only,
+      // which makes them visible regardless of dropdown overflow or scrollbar clipping.
+      await page.keyboard.type(optionText, { delay: 30 });
+
+      // Wait for the filtered list to have at least one matching item.
+      const option = page.locator('.el-select-dropdown__item').filter({ hasText: optionRegex }).first();
+      await option.waitFor({ state: 'attached', timeout: 5000 });
+
+      // In filterable el-select, Enter alone doesn't select if no option is highlighted.
+      // ArrowDown navigates to the first filtered result, then Enter commits selection
+      // and closes the dropdown popper.
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+
+      // Give the popper time to finish its close animation before the next field click.
+      await page.waitForTimeout(300);
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectReferenceFieldDropdownOnly] Field "${fieldName}" was visible ` +
+        `but selecting option "${optionText}" failed. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Verifies that all specified field labels are visible in the reference fields popup.
    * @param {import('playwright').Page} page
    * @param {string[]} labels - Array of label texts to check

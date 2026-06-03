@@ -131,6 +131,14 @@ When("I close the guest traveler dialog", async function () {
   throw new Error("TODO: implement 'I close the guest traveler dialog' — close add guest popup/dialog");
 });
 
+Given("I have added a guest traveler {string} {string} with user group {string}", async function (firstName, lastName, userGroupName) {
+  logger.info("Adding guest traveler with user group", { firstName, lastName, userGroupName });
+  const result = await Search.addGuestWithUserGroup(this.page, firstName, lastName, userGroupName);
+  expect(result.added, "Guest traveler should be added with user group").toBe(true);
+  this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
+  this.selectedTravelerCount = result.selectedTravelerCount;
+});
+
 Given("I add a third traveler named {string}", async function (travelerName) {
   throw new Error(`TODO: implement 'I add a third traveler named {string}' — add an additional traveler named ${travelerName}`);
 });
