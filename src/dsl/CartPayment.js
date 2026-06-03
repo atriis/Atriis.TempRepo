@@ -300,6 +300,13 @@ class CartPayment {
     expect(isVisible, 'Expected "Add card" button to be hidden (no other CC privilege)').toBe(false);
   }
 
+  static async verifyAddCardDetailsButtonVisible(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const isVisible = await paymentPage.isAddCardButtonVisible();
+    expect(isVisible, '[CartPayment.verifyAddCardDetailsButtonVisible] "Add card details" button should be visible — payment drawer may not have opened or user lacks card-add privileges').toBe(true);
+  }
+
   /**
    * Verifies that a card's checkbox is checked, matched by card name string.
    * @param {import('@playwright/test').Page} page

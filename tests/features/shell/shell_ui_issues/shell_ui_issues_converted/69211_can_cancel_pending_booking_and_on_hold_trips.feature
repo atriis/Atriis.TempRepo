@@ -24,7 +24,6 @@ Feature: 69211 - Can cancel 'Pending Booking' and 'On Hold' trips
     And I have added myself as the traveler
     And I search for a one way flight from "LIS" to "VIE"
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
     When I accept Terms & Conditions
     And I hold the trip

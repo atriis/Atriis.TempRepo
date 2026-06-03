@@ -17,7 +17,6 @@ Feature: 44963 FOP - "Add new cc" button is displayed
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "ATH"
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
-    When I add a credit card as payment method
-    Then the card details text should be visible
+    When I click add payment method button
+    Then the add card details button should be visible
