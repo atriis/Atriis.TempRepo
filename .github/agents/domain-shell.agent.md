@@ -115,7 +115,7 @@ Then the trip status should be {string}
 ## ⚠️ CRITICAL RULES
 
 ### ✅ DO's
-- **Login is username/password only** — use credentials from `.env` file
+- **Login is username/password only** — emails are written directly in feature files; only `GENERAL_PASSWORD` comes from `.env`
 - **Payment: use test credit card or invoice** — these are the only two methods for testing
 - **Approval workflow**: testable, but **requires email validation** — coordinate with test setup
 - **Cart works the same general way** but expect quirks per supplier and route

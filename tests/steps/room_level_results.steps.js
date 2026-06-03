@@ -142,6 +142,11 @@ Then("I should see member rates displayed in room level results", async function
   expect(isVisible).toBe(true);
 });
 
+Then("I should see a tag with the text {string} in room level results", async function (tagText) {
+  logger.info("Verifying member badge tag text in room level results", { tagText });
+  await RoomLevelResults.verifyMemberBadgeTagText(this.page, tagText);
+});
+
 Then("the CO2 emissions should be displayed in room level results", async function () {
   logger.info("Verifying CO2 emissions are displayed in room level results");
   const result = await RoomLevelResults.verifyCO2InRoomLevel(this.page);
@@ -333,4 +338,9 @@ Then("I should see a provided by label in room level results", async function ()
 When("I navigate back to hotel level results via breadcrumb", async function () {
   logger.info("Navigating back to hotel level results via breadcrumb");
   await RoomLevelResults.navigateBackViaBreakcrumb(this.page);
+});
+
+When("I filter room results by max price {int}", async function (maxPrice) {
+  logger.info("Filtering room results by max price", { maxPrice });
+  await RoomLevelResults.filterRoomsByMaxPrice(this.page, maxPrice);
 });

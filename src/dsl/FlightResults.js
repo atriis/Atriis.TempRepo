@@ -2386,6 +2386,63 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     return { selected: true, cardText };
   },
 
+  /**
+   * Verifies that a pricing-option card identified by cardText does NOT contain
+   * the specified excludedText substring.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} cardText - Substring used to identify the target card.
+   * @param {string} excludedText - Text that should NOT appear in the card.
+   * @returns {Promise<{ cardText: string, excludedText: string }>}
+   */
+  async verifyPricingOptionCardDoesNotContainText(page, cardText, excludedText) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!cardText || typeof cardText !== 'string') {
+      throw new Error('cardText must be a non-empty string, got: ' + typeof cardText);
+    }
+    if (!excludedText || typeof excludedText !== 'string') {
+      throw new Error('excludedText must be a non-empty string, got: ' + typeof excludedText);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const card = flightResultsPage.getPricingOptionCardByText(cardText);
+    await card.waitFor({ state: 'visible', timeout: 30000 });
+    await card.scrollIntoViewIfNeeded();
+
+    const fullText = await card.textContent();
+    expect(fullText).not.toContain(excludedText);
+
+    return { cardText, excludedText };
+  },
+
+  /**
+   * Sorts flight results using the extended "Sort by" dropdown.
+   * Clicks the Sort by button and selects the matching option by label.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} label - Sort option label (e.g. "Departure Earliest")
+   * @returns {Promise<{ sorted: boolean, label: string }>}
+   */
+  async sortBy(page, label) {
+    if (!page) throw new Error('[FlightResults.sortBy] "page" is required');
+    if (!label || typeof label !== 'string') {
+      throw new Error(`[FlightResults.sortBy] "label" must be a non-empty string, got: ${typeof label}`);
+    }
+
+    logger.debug(`Sorting flight results by "${label}"`);
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    try {
+      await flightResultsPage.selectSortOption(label);
+    } catch (err) {
+      throw new Error(`[FlightResults.sortBy] Failed to sort by "${label}". Original: ${err.message}`);
+    }
+
+    return { sorted: true, label };
+  },
+
   // ===== NEW FLIGHT FLOW =====
 
   /**

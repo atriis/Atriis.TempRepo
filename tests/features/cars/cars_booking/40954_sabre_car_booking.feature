@@ -1,4 +1,4 @@
-﻿@daily_cars @provider:sabre
+﻿@transportation @cars @regression @provider:sabre
 Feature: 40954 Sabre Car Booking Flow
   As a corporate traveler using Sabre
   I want to book cars through the Sabre provider

@@ -36,10 +36,8 @@ Parse the ADO response and extract:
 ### Step 3: Discover Test User
 Scan the ADO work item for user references:
 1. Check the description/repro steps for email addresses or user names
-2. Match to existing users in `.env` file
-3. If user is not found in `.env`:
-   - **Add the user to `.env`** with the correct environment variable format
-   - Alert the user that a new secret needs to be created in GitHub
+2. The email address will be written directly in the Gherkin feature file (e.g., `Given I am logged in as "user@domain.com"`)
+3. No `.env` changes are needed — only `GENERAL_PASSWORD` is read from `.env` (shared password for all test accounts)
 
 ### Step 4: Resolve Domain
 Determine which domain agent should handle this work item.
@@ -118,8 +116,8 @@ After extracting context, **PAUSE and present to the user**:
 
 ### Do's
 - ✅ Always use the ADO "Area" field as the primary domain resolver
-- ✅ Scan for user references and validate they exist in `.env`
-- ✅ Add missing users to `.env` (alert about secrets)
+- ✅ Scan for user references (email addresses) in the work item description/repro steps
+- ✅ Include discovered emails in the output context for downstream agents to write directly in Gherkin
 - ✅ Check for existing test coverage by searching for the work item ID and related keywords in `tests/features/` and across the codebase
 - ✅ Return structured context with all specified fields for downstream agents
 - ✅ Ask the user to clarify if the work item is incomplete or ambiguous
@@ -129,4 +127,4 @@ After extracting context, **PAUSE and present to the user**:
 - ❌ Never fetch related/linked work items — only the main item
 - ❌ Never assume domain if the Area field is generic — ask the user
 - ❌ Never proceed with incomplete work item context — prompt the user
-- ❌ Never guess user credentials — verify from `.env` or ask
+- ❌ Never guess user credentials — verify the email from the work item or ask the user

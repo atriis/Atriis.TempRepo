@@ -28,15 +28,6 @@ Feature: 76707 Amadeus city center exact location address display
     Then the car location label at index 0 should contain "<expectedLabelOnCart>" on cart
     And the car city center address at index 0 should contain "<expectedAddressOnCart>" on cart
     And the booking status should be "Confirmed"
-    # Payload validation (after Car Sell)
-    When I capture the "request" payload for request type "Amadeus4.Car_Sell" from Storage
-    Then the captured "request" payload for request type "Amadeus4.Car_Sell" should contain "<expectedAgencyLocationCode>"
-    # Payload validation (after Booking request)
-    When I capture the "request" payload for request type "Booking" from Storage
-    Then the captured "request" payload for request type "Booking" should contain "AMADEUS"
-    And the captured "request" payload for request type "Booking" should contain "{tripNumber}".onKey("tripId")
-    When I capture the "response" payload for request type "Booking" from Storage
-    Then the captured "response" payload for request type "Booking" should contain "false".onKey("isCardAuthenticationRequired")
     And I successfully cancel the trip
 
     Examples:

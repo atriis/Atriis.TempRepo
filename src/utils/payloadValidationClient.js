@@ -59,6 +59,33 @@ function parseTimestamp(value) {
   return dateValue;
 }
 
+function escapeRegex(value) {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildRequestTypeMatcher(requestTypePattern) {
+  const normalizedPattern = String(requestTypePattern || "").trim();
+  const hasWildcard = normalizedPattern.includes("*");
+
+  if (!hasWildcard) {
+    return {
+      hasWildcard,
+      matches: (requestTypeValue) => requestTypeValue === normalizedPattern,
+    };
+  }
+
+  const regexPattern = `^${normalizedPattern
+    .split("*")
+    .map((part) => escapeRegex(part))
+    .join(".*")}$`;
+  const requestTypeRegex = new RegExp(regexPattern);
+
+  return {
+    hasWildcard,
+    matches: (requestTypeValue) => requestTypeRegex.test(String(requestTypeValue || "")),
+  };
+}
+
 /**
  * Normalize entry keys from the internal API response.
  * Supports both PascalCase and camelCase properties.
@@ -261,6 +288,7 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
   const operationTimeoutMs = payloadValidation.timeoutMs;
   const configuredMaxRequestsMatches = payloadValidation.maxRequestsMatches;
   const maxRequestsMatches = Number(maxMatches ?? configuredMaxRequestsMatches);
+  const requestTypeMatcher = buildRequestTypeMatcher(requestType);
   const lookupAttempts = Number(
     process.env.PAYLOAD_VALIDATION_LOOKUP_ATTEMPTS || DEFAULT_LOOKUP_ATTEMPTS
   );
@@ -317,6 +345,9 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
       to: criteria.toDate.toISOString(),
       tripId: criteria.includeTripId ? tripIdString : "<ignored>",
       requestType: criteria.includeRequestType ? requestType : "<ignored>",
+      requestTypeMatchMode: criteria.includeRequestType
+        ? (requestTypeMatcher.hasWildcard ? "wildcard" : "exact")
+        : "<ignored>",
       transactionId: criteria.includeTransactionId ? (criteria.transactionIdOverride || null) : "<ignored>",
       sid: criteria.includeSid ? (criteria.sidOverride || null) : "<ignored>",
     });
@@ -358,7 +389,7 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
       if (!entry) continue;
 
       if (entry.timestamp < criteria.fromDate || entry.timestamp > criteria.toDate) continue;
-      if (criteria.includeRequestType && entry.requestType !== requestType) continue;
+      if (criteria.includeRequestType && !requestTypeMatcher.matches(entry.requestType)) continue;
       if (criteria.includeTransactionId && criteria.transactionIdOverride && entry.transactionId !== criteria.transactionIdOverride) continue;
       if (criteria.includeSid && criteria.sidOverride && entry.sid !== criteria.sidOverride) continue;
 

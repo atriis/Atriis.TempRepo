@@ -1,6 +1,7 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const { SearchPage } = require("@pages/SearchPage");
 const { generateRandomGuestData } = require("@utils/data/generateRandomGuestData.js");
+const logger = require("@utils/logger").child("Search");
 
 /**
  * Search (Domain DSL)
@@ -25,6 +26,64 @@ const Search = {
     const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
 
     return { added: true, starIconVisible: true, selectedTravelerCount };
+  },
+
+  /**
+   * Clicks the "Add me" button but does NOT wait for the traveler tag to appear.
+   * Use this when clicking "Add me" is expected to trigger a profile popup
+   * (e.g. when mandatory fields are missing) rather than adding a tag.
+   */
+  async clickAddMeButton(page) {
+    if (!page) {
+      throw new Error('[Search.clickAddMeButton] "page" is required.');
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.waitForAddMeButton();
+      await searchPage.clickAddMe();
+    } catch (err) {
+      throw new Error(
+        `[Search.clickAddMeButton] Failed to find or click the "Add me" button: ${err.message}. ` +
+        `Ensure the traveler selector section is visible on the current page.`
+      );
+    }
+
+    logger.info('[Search.clickAddMeButton] "Add me" button clicked');
+  },
+
+  /**
+   * Types a traveler name into the autocomplete field and selects the first option,
+   * but does NOT wait for the traveler tag or star icon.
+   * Use when adding a traveler with missing mandatory fields is expected to trigger
+   * the profile popup rather than completing the add.
+   */
+  async selectTravelerFromAutocomplete(page, name) {
+    if (!page) {
+      throw new Error('[Search.selectTravelerFromAutocomplete] "page" is required.');
+    }
+    if (!name || typeof name !== 'string') {
+      throw new Error(
+        `[Search.selectTravelerFromAutocomplete] "name" must be a non-empty string, got: ${typeof name} (${JSON.stringify(name)})`
+      );
+    }
+
+    logger.debug(`[Search.selectTravelerFromAutocomplete] Clicking Add traveller, typing "${name}" and selecting from autocomplete`);
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.clickAddTravelerButton();
+      await searchPage.fillInTravelerName(name);
+      await searchPage.selectFirstTravelerNameOption();
+    } catch (err) {
+      throw new Error(
+        `[Search.selectTravelerFromAutocomplete] Failed to add traveler "${name}" from autocomplete: ${err.message}. ` +
+        `Ensure the "Add traveller" button is visible and the autocomplete returned results for "${name}".`
+      );
+    }
+
+    logger.info(`[Search.selectTravelerFromAutocomplete] Selected "${name}" from autocomplete`);
   },
 
   /**
@@ -214,6 +273,50 @@ const Search = {
   },
 
   /**
+   * Adds a guest traveler with a specific first/last name and user group.
+   * Selects "Users Group" in the copy-settings section, then picks the given group
+   * before filling in personal details and submitting.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} firstName
+   * @param {string} lastName
+   * @param {string} userGroupName - Visible label of the user group (e.g. "Adis Ababa")
+   * @returns {Promise<{added: boolean, starIconVisible: boolean, selectedTravelerCount: number}>}
+   */
+  async addGuestWithUserGroup(page, firstName, lastName, userGroupName) {
+    if (!page) throw new Error('[Search.addGuestWithUserGroup] "page" is required.');
+    if (!firstName || typeof firstName !== 'string') throw new Error('[Search.addGuestWithUserGroup] "firstName" must be a non-empty string');
+    if (!lastName || typeof lastName !== 'string') throw new Error('[Search.addGuestWithUserGroup] "lastName" must be a non-empty string');
+    if (!userGroupName || typeof userGroupName !== 'string') throw new Error('[Search.addGuestWithUserGroup] "userGroupName" must be a non-empty string');
+
+    logger.debug(`[Search.addGuestWithUserGroup] Adding guest ${firstName} ${lastName} with user group "${userGroupName}"`);
+
+    const searchPage = getPageObject(page, SearchPage);
+    const { dateOfBirth, email, phone } = generateRandomGuestData();
+
+    try {
+      await searchPage.clickAddTravelerButton();
+      await searchPage.clickAddGuestTravelerButton();
+      await searchPage.selectCopySettingsFromUsersGroup();
+      await searchPage.selectUserGroupByName(userGroupName);
+      await searchPage.fillInRandomFirstName(firstName);
+      await searchPage.fillInRandomLastName(lastName);
+      await searchPage.selectGenderMale();
+      await searchPage.fillInRandomDateOfBirth(dateOfBirth);
+      await searchPage.fillInRandomEmail(email);
+      await searchPage.fillInRandomPhone(phone);
+      await searchPage.clickAddGuestButton();
+    } catch (err) {
+      throw new Error(`[Search.addGuestWithUserGroup] Failed to add guest "${firstName} ${lastName}" with user group "${userGroupName}": ${err.message}`);
+    }
+
+    const starIconVisible = await searchPage.isStarIconVisible();
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
+
+    return { added: true, starIconVisible, selectedTravelerCount };
+  },
+
+  /**
    * Adds a random guest traveler whose first name is padded with leading and
    * trailing spaces. Used to verify that the booking flow trims whitespace
    * from names before sending them to the supplier (e.g. Fusion ProcessTerms).
@@ -266,6 +369,120 @@ const Search = {
       selectedTravelerCount,
       guestData: { firstName, middleName, lastName, dateOfBirth, email, phone },
     };
+  },
+
+  async openAddGuestTravelerForm(page) {
+    if (!page) throw new Error('[Search.openAddGuestTravelerForm] "page" is required.');
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.clickAddTravelerButton();
+    } catch (err) {
+      throw new Error(`[Search.openAddGuestTravelerForm] Failed to open traveler drawer: ${err.message}`);
+    }
+
+    try {
+      await searchPage.clickAddGuestTravelerButton();
+    } catch (err) {
+      throw new Error(`[Search.openAddGuestTravelerForm] Failed to click "Add guest traveler" button: ${err.message}`);
+    }
+  },
+
+  async openGuestDobPicker(page) {
+    if (!page) throw new Error('[Search.openGuestDobPicker] "page" is required.');
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.clickDobInput();
+    } catch (err) {
+      throw new Error(`[Search.openGuestDobPicker] Failed to open DOB date picker: ${err.message}`);
+    }
+  },
+
+  async verifyDobYearRestriction(page, minAge) {
+    if (!page) throw new Error('[Search.verifyDobYearRestriction] "page" is required.');
+    if (!Number.isInteger(minAge) || minAge < 1) {
+      throw new Error(`[Search.verifyDobYearRestriction] "minAge" must be a positive integer, got: ${minAge}`);
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+    const displayedYear = await searchPage.getDobPickerYear();
+    const expectedYear = new Date().getFullYear() - minAge;
+
+    if (displayedYear !== expectedYear) {
+      throw new Error(
+        `[Search.verifyDobYearRestriction] DOB picker year restriction failed. ` +
+        `Expected year ${expectedYear} (current year - ${minAge}), but picker displays ${displayedYear}. ` +
+        `The date picker may not be restricting travelers under ${minAge}.`
+      );
+    }
+
+    return { displayedYear, expectedYear };
+  },
+
+  async verifyDobPickerStillOpen(page) {
+    if (!page) throw new Error('[Search.verifyDobPickerStillOpen] "page" is required.');
+
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.isDobPickerPanelBodyVisible();
+  },
+
+  /**
+   * Verifies that the add-traveler icon button is visible on the new-trip search page.
+   * @param {import('playwright').Page} page
+   */
+  async verifyTravelerIconDisplayed(page) {
+    if (!page) throw new Error('[Search.verifyTravelerIconDisplayed] "page" is required.');
+
+    logger.debug('[Search.verifyTravelerIconDisplayed] Checking traveler icon button visibility');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.waitForAddTravelerIconVisible();
+    } catch (err) {
+      throw new Error(`[Search.verifyTravelerIconDisplayed] Traveler icon not displayed on search page: ${err.message}`);
+    }
+  },
+
+  /**
+   * Clicks the add-traveler button and waits for the edit-traveler dialog to open.
+   * @param {import('playwright').Page} page
+   */
+  async clickAddTraveler(page) {
+    if (!page) throw new Error('[Search.clickAddTraveler] "page" is required.');
+
+    logger.debug('[Search.clickAddTraveler] Clicking add-traveler button');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.clickAddTravelerButton();
+    } catch (err) {
+      throw new Error(`[Search.clickAddTraveler] Failed to open add-traveler dialog: ${err.message}`);
+    }
+  },
+
+  /**
+   * Verifies that a traveler checkbox with the given label text is visible
+   * in the edit-traveler dialog.
+   * @param {import('playwright').Page} page
+   * @param {string} labelText - Expected checkbox label text
+   */
+  async verifyTravelerCheckboxVisible(page, labelText) {
+    if (!page) throw new Error('[Search.verifyTravelerCheckboxVisible] "page" is required.');
+    if (!labelText || typeof labelText !== 'string') {
+      throw new Error(`[Search.verifyTravelerCheckboxVisible] "labelText" must be a non-empty string, got: ${typeof labelText} (${JSON.stringify(labelText)})`);
+    }
+
+    logger.debug('[Search.verifyTravelerCheckboxVisible] Verifying traveler checkbox visibility', { labelText });
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.isCheckboxWithLabelVisible(labelText);
+    } catch (err) {
+      throw new Error(`[Search.verifyTravelerCheckboxVisible] Checkbox "${labelText}" not visible in edit-traveler dialog: ${err.message}`);
+    }
   },
 };
 

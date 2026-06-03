@@ -101,6 +101,10 @@ const SELECTORS = {
   // and flight cart items (.more-details-btn). Used by Cart.openMoreDetailsInCart
   // so a single Gherkin step works across hotel and flight manual quotes.
   MORE_DETAILS_BUTTON_ANY: ".more-details-btn, .more-details",
+  // Any visible Element-Plus drawer (used to read text from whichever drawer is currently open)
+  ANY_VISIBLE_DRAWER: '.el-drawer:visible, .parking-details-drawer:visible',
+  // Inner anchor inside a More Details wrapper (car quote uses div > a pattern)
+  MORE_DETAILS_INNER_LINK: 'a',
   LOCATION_LABEL: '.location-label',
   CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
@@ -125,6 +129,7 @@ const SELECTORS = {
 
   // OOP Justification selectors
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
+  OOP_VIOLATION_LABEL: '.out-of-policy-label', // Violation reason text shown inside .oop-justification (oop-justification.vue)
   OOP_JUSTIFICATION_SECTION: '.oop-justification', // Section containing the OOP justification dropdown/text (oop-justification.vue)
   OOP_JUSTIFICATION_SELECT: '.oop-justification .app-select .el-select', // The el-select wrapper inside the OOP justification section
   OOP_JUSTIFICATION_SELECTED_VALUE: '.oop-justification .el-select__selected-item',
@@ -329,6 +334,8 @@ const SELECTORS = {
   LOYALTY_SECTION: '.quote-extras--loyalty-number',
   LOYALTY_CLICKABLE: '.quote-extras--loyalty-number .is-clickable, .car-driver-loyalty .card-title, .quote-extras--container .is-clickable:has-text("Loyalty ID")',
   LOYALTY_ADD_BUTTON: '.car-driver-loyalty .is-clickable, .quote-extras--loyalty-number .add-text, .quote-extras--loyalty-number .add-btn, .quote-extras--container .add-text:has-text("Add")',
+  LOYALTY_EXISTING_RADIO: '.quote-extras--loyalty-number .el-radio-group .el-radio:nth-child(1)',
+  LOYALTY_EXISTING_DROPDOWN: '.quote-extras--loyalty-number .extras-card .el-select',
   LOYALTY_NEW_RADIO: '.quote-extras--loyalty-number .el-radio-group .el-radio:nth-child(2)',
   LOYALTY_CHAIN_SELECT: '.quote-extras--loyalty-number .select-container .select-element:first-child .el-select',
   LOYALTY_NUMBER_INPUT: '.quote-extras--loyalty-number .select-container .select-element:last-child input, .quote-extras--loyalty-number .el-input__inner, .car-driver-loyalty input[type="text"], .car-driver-loyalty .el-input__inner',
@@ -669,6 +676,25 @@ class CartPage {
    */
   getOOPJustificationTextbox() {
     return this.page.locator(SELECTORS.OOP_JUSTIFICATION_TEXTBOX);
+  }
+
+  /**
+   * Gets the OOP violation label text (the policy reason shown above the justification input).
+   * Returns the first violation label, trimmed.
+   *
+   * @returns {Promise<string>}
+   */
+  async getOOPViolationLabelText() {
+    const label = this.page.locator(SELECTORS.OOP_VIOLATION_LABEL).first();
+    try {
+      await label.waitFor({ state: 'visible', timeout: 10000 });
+      return (await label.textContent())?.trim() ?? '';
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getOOPViolationLabelText] OOP violation label (.out-of-policy-label) was not visible within 10s. ` +
+        `Check that the OOP justification section is present on the page. Original: ${err.message}`
+      );
+    }
   }
 
   /**
@@ -1316,7 +1342,21 @@ class CartPage {
    * Clicks the Hold button.
    */
   async clickHoldButton() {
-    await this.page.locator(SELECTORS.HOLD_BUTTON).click();
+    const button = this.page.locator(SELECTORS.HOLD_BUTTON).first();
+    await button.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Wait until the button finishes its own loading state before clicking.
+    await this.page.waitForFunction(
+      (selector) => {
+        const element = document.querySelector(selector);
+        if (!element) return false;
+        return !element.classList.contains('is-loading') && !element.hasAttribute('disabled');
+      },
+      SELECTORS.HOLD_BUTTON,
+      { timeout: 10000 },
+    ).catch(() => {});
+
+    await button.click({ timeout: 10000 });
   }
 
   /**
@@ -3072,6 +3112,74 @@ class CartPage {
   }
 
   /**
+   * Clicks the More Details trigger within a specific quote card identified by its text content.
+   * @param {string} cardText - Partial text to identify the quote card (e.g. "Flight to", "Test Hotel", "Car Rental")
+   */
+  async clickMoreDetailsForQuoteByText(cardText) {
+    const card = this.page.locator(SELECTORS.QUOTE_PAYMENT_CARD, { hasText: cardText }).first();
+    const moreDetailsContainer = card.locator(SELECTORS.MORE_DETAILS_BUTTON_ANY).first();
+    try {
+      await card.waitFor({ state: 'visible', timeout: 15000 });
+      await moreDetailsContainer.waitFor({ state: 'visible', timeout: 10000 });
+      // Car quote uses a wrapper div with an <a> inside — click the link, not the div
+      const innerLink = moreDetailsContainer.locator(SELECTORS.MORE_DETAILS_INNER_LINK);
+      if (await innerLink.count() > 0) {
+        await innerLink.first().click({ timeout: 10000 });
+      } else {
+        await moreDetailsContainer.click({ timeout: 10000 });
+      }
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickMoreDetailsForQuoteByText] Could not click "More details" on the quote card containing "${cardText}". ` +
+        `The card may not be visible, or it does not have a More Details link/button. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Returns the full text of whichever drawer is currently visible (flight, hotel, or car).
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>}
+   */
+  async getAnyVisibleDrawerText({ timeout = 15000 } = {}) {
+    const drawer = this.page.locator(SELECTORS.ANY_VISIBLE_DRAWER).first();
+    try {
+      await drawer.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getAnyVisibleDrawerText] No visible drawer found within ${timeout}ms. ` +
+        `Ensure "More Details" was clicked before calling this method. Original: ${err.message}`,
+      );
+    }
+    const skeletons = drawer.locator(SELECTORS.MORE_DETAILS_DRAWER_SKELETON);
+    try {
+      await skeletons.first().waitFor({ state: 'detached', timeout: 10000 });
+    } catch {
+      // No skeletons or already loaded
+    }
+    return drawer.innerText();
+  }
+
+  /**
+   * Closes whichever drawer is currently visible by pressing Escape.
+   */
+  async closeAnyVisibleDrawer() {
+    const drawer = this.page.locator(SELECTORS.ANY_VISIBLE_DRAWER).first();
+    try {
+      await drawer.waitFor({ state: 'visible', timeout: 5000 });
+      await this.page.keyboard.press('Escape');
+      await drawer.waitFor({ state: 'hidden', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.closeAnyVisibleDrawer] Failed to close the open drawer — ` +
+        `it may not have been open or Escape did not dismiss it. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
    * Gets the hotel address text from the More Details drawer.
    * @returns {Promise<string>} The hotel address text
    */
@@ -3630,6 +3738,58 @@ class CartPage {
   }
 
   /**
+   * Clicks the "Existing" radio button in the loyalty number section.
+   */
+  async selectExistingLoyaltyRadio() {
+    try {
+      const radio = this.page.locator(SELECTORS.LOYALTY_EXISTING_RADIO);
+      await radio.waitFor({ state: 'visible', timeout: 10000 });
+      await radio.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.selectExistingLoyaltyRadio] Could not click the "Existing" radio button (selector: ${SELECTORS.LOYALTY_EXISTING_RADIO}). ` +
+        `The radio may be disabled because no loyalty numbers exist in the traveler profile. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Selects an existing loyalty option from the dropdown by matching text.
+   * @param {string} loyaltyText - Text to match in the dropdown (e.g. "6C - 456789")
+   */
+  async selectExistingLoyaltyOption(loyaltyText) {
+    try {
+      const dropdown = this.page.locator(SELECTORS.LOYALTY_EXISTING_DROPDOWN);
+      await dropdown.waitFor({ state: 'visible', timeout: 10000 });
+      await dropdown.click();
+      const option = this.page.locator(SELECTORS.DROPDOWN_OPTION).filter({ hasText: loyaltyText }).first();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.selectExistingLoyaltyOption] Could not select loyalty option "${loyaltyText}" from the existing loyalty dropdown. ` +
+        `The dropdown may not have opened or the option doesn't exist in the traveler profile. Original: ${err.message}`
+      );
+    }
+  }
+
+  async selectFirstExistingLoyaltyOption() {
+    try {
+      const dropdown = this.page.locator(SELECTORS.LOYALTY_EXISTING_DROPDOWN);
+      await dropdown.waitFor({ state: 'visible', timeout: 10000 });
+      await dropdown.click();
+      const option = this.page.locator(SELECTORS.DROPDOWN_OPTION).first();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.selectFirstExistingLoyaltyOption] Could not select the first loyalty option from the existing loyalty dropdown. ` +
+        `The dropdown may not have opened or no options are available in the traveler profile. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
    * Selects a hotel chain from the loyalty chain dropdown by visible label text.
    * @param {string} chainText - Text to match in the dropdown option (e.g. "Choic Hotels (EC)")
    */
@@ -3682,6 +3842,32 @@ class CartPage {
   async waitForLoyaltySuccessIcon() {
     await this.page.locator(SELECTORS.LOYALTY_SUCCESS_ICON)
       .waitFor({ state: 'visible', timeout: 30000 });
+  }
+
+  /**
+   * Scrolls to the loyalty section and waits for the green success icon to appear.
+   * Used for pre-populated scenarios where loyalty is fetched from API after room is added.
+   */
+  async waitForLoyaltyPrepopulatedIcon() {
+    const section = this.page.locator(SELECTORS.LOYALTY_SECTION);
+    try {
+      await section.scrollIntoViewIfNeeded();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForLoyaltyPrepopulatedIcon] Could not scroll to loyalty section (selector: ${SELECTORS.LOYALTY_SECTION}). ` +
+        `The cart page may not have loaded the extras sections yet. Original: ${err.message}`
+      );
+    }
+    try {
+      await this.page.locator(SELECTORS.LOYALTY_SUCCESS_ICON)
+        .waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForLoyaltyPrepopulatedIcon] Green success icon not visible in loyalty section within 60s ` +
+        `(selector: ${SELECTORS.LOYALTY_SUCCESS_ICON}). The loyalty number may not have been pre-populated by the ` +
+        `master chain — check that the traveler has loyalty numbers configured for this hotel chain. Original: ${err.message}`
+      );
+    }
   }
 
   /**

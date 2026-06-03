@@ -1,4 +1,4 @@
-@daily_cars @regression @priority:high @ado:74479 @wip
+@transportation @cars @regression @daily_cars @provider:amadeus @priority:high @ado:74479 @wip
 Feature: 75105 [Cars][GTP Admin] Is Prepaid Agreement Override Flag
   As a corporate traveler
   I want the car search results and cart to display the correct payment type

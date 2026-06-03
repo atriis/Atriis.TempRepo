@@ -11,8 +11,10 @@ const SELECTORS = {
   CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   FIRST_CAR_PREVIEW: '.car-preview',
   AGREEMENT_ICON_IN_CARD: '.agreements .agreement-img',
+  AGREEMENT_TOOLTIP_TRIGGER_IN_CARD: '.agreements .ticket-agreement > div',
   AGREEMENT_TOOLTIP_DESCRIPTION: '.agreement-tooltip-list .agreement-tooltip__description',
   TERMS_BUTTON_IN_CARD: '.more-details-btn',
+  TERMS_BUTTON_TEXT_IN_CARD: '.more-details-btn p',
   // Car model subtitle — visible only for SunnyCars supplier when makeModel is populated
   CAR_MODEL_SUBTITLE: '.car-model-subtitle',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
@@ -54,6 +56,39 @@ class CarResultsPage {
 
   async waitForStationButtonVisible(index, buttonName, { timeout = 30000 } = {}) {
     await this.getStationButtonByIndex(index, buttonName).waitFor({ state: 'visible', timeout });
+  }
+
+  async clickStationButtonByIndex(index, buttonName, { timeout = 30000 } = {}) {
+    const getButton = () => this.getStationButtonByIndex(index, buttonName);
+
+    try {
+      const button = getButton();
+      await button.waitFor({ state: 'visible', timeout });
+      await button.scrollIntoViewIfNeeded();
+      await button.click({ timeout });
+    } catch (error) {
+      // Vue list re-renders can detach the element between resolving and clicking.
+      // Re-query the button fresh and retry once before giving up.
+      if (/detached|not attached/i.test(error.message || '')) {
+        try {
+          const freshButton = getButton();
+          await freshButton.waitFor({ state: 'visible', timeout });
+          await freshButton.scrollIntoViewIfNeeded();
+          await freshButton.click({ timeout });
+          return;
+        } catch (retryError) {
+          throw new Error(
+            `[CarResultsPage.clickStationButtonByIndex] Failed to click "${buttonName}" at station index ${index} even after retrying due to DOM re-render. ` +
+            `Original: ${error.message}. Retry: ${retryError.message}`
+          );
+        }
+      }
+      throw new Error(
+        `[CarResultsPage.clickStationButtonByIndex] Failed to click the "${buttonName}" button for station index ${index}. ` +
+        `The station list may not have loaded yet, the button may be covered, or the city-centre station card may have re-rendered. ` +
+        `Original: ${error.message}`
+      );
+    }
   }
 
   /**
@@ -260,9 +295,70 @@ class CarResultsPage {
     const card = this.getFirstCarPreview();
     await card.waitFor({ state: 'visible', timeout });
 
-    const agreementIcon = card.locator(SELECTORS.AGREEMENT_ICON_IN_CARD).first();
-    await agreementIcon.waitFor({ state: 'visible', timeout });
-    await agreementIcon.hover();
+    const firstAgreementTrigger = this.page
+      .locator(`${SELECTORS.FIRST_CAR_PREVIEW} ${SELECTORS.AGREEMENT_TOOLTIP_TRIGGER_IN_CARD}`)
+      .first();
+
+    try {
+      await firstAgreementTrigger.waitFor({ state: 'visible', timeout });
+      await firstAgreementTrigger.hover();
+      return;
+    } catch {
+      // Fallback to direct icon hover for older markup variants.
+      const firstAgreementIcon = this.page
+        .locator(`${SELECTORS.FIRST_CAR_PREVIEW} ${SELECTORS.AGREEMENT_ICON_IN_CARD}`)
+        .first();
+
+      try {
+        await firstAgreementIcon.waitFor({ state: 'visible', timeout });
+        await firstAgreementIcon.hover();
+        return;
+      } catch (err) {
+        throw new Error(
+          `[CarResultsPage.hoverAgreementIconInFirstCarResult] Could not open the agreement tooltip in car results. ` +
+          `No visible agreement trigger/icon was found in the returned car cards within ${timeout}ms. ` +
+          `Original: ${err.message}`,
+        );
+      }
+    }
+  }
+
+  async hasVisibleAgreementTrigger({ timeout = 3000 } = {}) {
+    const trigger = this.page
+      .locator(`${SELECTORS.FIRST_CAR_PREVIEW} ${SELECTORS.AGREEMENT_TOOLTIP_TRIGGER_IN_CARD}`)
+      .first();
+
+    try {
+      await trigger.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      const icon = this.page
+        .locator(`${SELECTORS.FIRST_CAR_PREVIEW} ${SELECTORS.AGREEMENT_ICON_IN_CARD}`)
+        .first();
+      try {
+        await icon.waitFor({ state: 'visible', timeout });
+        return true;
+      } catch {
+        return false;
+      }
+    }
+  }
+
+  async getTermsAndConditionsTextInFirstCarResult({ timeout = 15000 } = {}) {
+    const card = this.getFirstCarPreview();
+    await card.waitFor({ state: 'visible', timeout });
+
+    const termsTextElement = card.locator(SELECTORS.TERMS_BUTTON_TEXT_IN_CARD).filter({ hasText: /terms/i }).first();
+
+    try {
+      await termsTextElement.waitFor({ state: 'visible', timeout });
+      return ((await termsTextElement.textContent()) || '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.getTermsAndConditionsTextInFirstCarResult] Could not find visible terms and conditions text in the first car result within ${timeout}ms. ` +
+        `Original: ${err.message}`,
+      );
+    }
   }
 
   async getAgreementTooltipText({ timeout = 10000 } = {}) {

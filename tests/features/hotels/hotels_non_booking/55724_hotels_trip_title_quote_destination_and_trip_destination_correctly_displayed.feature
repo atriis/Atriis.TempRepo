@@ -14,9 +14,9 @@ Feature: 55724 Hotels - Trip title, quote destination and trip destination are c
 
   @priority:medium
   Scenario: Trip title, quote destination and trip destination are correcly displayed
-    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
+    Given I am logged in as "pini@gov.nl" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Leonardo Plana Ashdod" for 1 night
+    When I search for a hotel in "leonardo plasa ashdod" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"

@@ -63,7 +63,40 @@ When("I click the proceed to checkout button", async function () {
 
 When("I hold the trip", async function () {
   logger.info("Holding the trip");
-  const result = await Cart.holdTrip(this.page);
+  const scenarioTags = Array.isArray(this.scenarioTags) ? this.scenarioTags : [];
+  const bookingContext = {
+    product: scenarioTags.includes('@transportation') ? 'transportation' : scenarioTags.includes('@hotels') ? 'hotels' : scenarioTags.includes('@flights') ? 'flights' : null,
+    subProduct: scenarioTags.includes('@cars')
+      ? 'cars'
+      : scenarioTags.includes('@rails')
+        ? 'rails'
+        : scenarioTags.includes('@parking')
+          ? 'parking'
+          : scenarioTags.includes('@groundtransport')
+            ? 'groundTransport'
+            : null,
+  };
+
+  const result = await Cart.holdTrip(this.page, bookingContext);
+  this.bookingOutcome = result;
+
+  if (result?.knownBookingError && result.shouldSkip) {
+    await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
+    await Checkout.clickBackToTripButton(this.page);
+    return 'pending';
+  }
+
+  if (result?.bookingError && !(result.knownBookingError && result.shouldSkip)) {
+    const errorSummary = result.supplier
+      ? `supplier: ${result.supplier}`
+      : `message: ${result.bookingErrorText || 'unknown booking error'}`;
+    throw new Error(`Unexpected booking error detected during booking finalization (${errorSummary})`);
+  }
+
+  if (!result?.status) {
+    throw new Error('Hold trip did not return a booking status after hold action.');
+  }
+
   expect(result.status.toLowerCase()).toContain(tripStatus.label.onHold.status.toLowerCase());
 });
 
@@ -512,13 +545,6 @@ Then("the booking status should be {string}", async function (status) {
   });
 
   if (result?.knownBookingError && result.shouldSkip) {
-    logger.warn('Known booking error matched configured supplier issue', {
-      supplier: result.supplier,
-      bookingErrorText: result.bookingErrorText,
-      status,
-      bookingContext,
-    });
-
     await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
 
     const checkoutPage = getPageObject(this.page, CheckoutPage);
@@ -671,6 +697,16 @@ Then("the out of policy indicator should not be visible in cart", async function
 Then("the out of policy free text justification should not be visible in cart", async function () {
   logger.info("Verifying OOP free text justification is not visible in cart");
   await Cart.verifyOOPFreeTextJustificationNotVisibleInCart(this.page);
+});
+
+Then("the OOP justification text should be {string}", async function (expectedText) {
+  logger.info("Verifying OOP justification text in trip", { expectedText });
+  await Cart.verifyOOPJustificationTextInCart(this.page, expectedText);
+});
+
+Then("the OOP policy reason should be {string}", async function (expectedText) {
+  logger.info("Verifying OOP policy reason label in trip", { expectedText });
+  await Cart.verifyOOPPolicyReasonInCart(this.page, expectedText);
 });
 
 Then("the out of policy tooltip in cart should be {string}", async function (expectedText) {
@@ -1240,6 +1276,31 @@ Then("the loyalty number {string} and chain {string} should be saved", async fun
   await Cart.verifyLoyaltyNumberSaved(this.page, expectedChain, expectedNumber);
 });
 
+When("I select existing loyalty number {string} from profile", async function (loyaltyText) {
+  logger.info("Selecting existing loyalty number from profile", { loyaltyText });
+  await Cart.selectExistingLoyaltyFromProfile(this.page, loyaltyText);
+});
+
+When("I select the first existing loyalty number from profile", async function () {
+  logger.info("Selecting the first existing loyalty number from profile");
+  await Cart.selectFirstExistingLoyaltyFromProfile(this.page);
+});
+
+Then("the loyalty number should be saved with a green success icon", async function () {
+  logger.info("Verifying loyalty number saved with green success icon");
+  await Cart.verifyLoyaltySavedWithSuccessIcon(this.page);
+});
+
+Then("the loyalty number should be pre-populated with a green success icon", async function () {
+  logger.info("Verifying loyalty number is pre-populated with success icon");
+  await Cart.verifyLoyaltyPrepopulatedWithSuccess(this.page);
+});
+
+Then("the loyalty chain dropdown should show {string}", async function (expectedChainAndNumber) {
+  logger.info("Verifying loyalty chain dropdown shows expected value", { expectedChainAndNumber });
+  await Cart.verifyLoyaltyChainDropdown(this.page, expectedChainAndNumber);
+});
+
 // ========================================
 // PREMIER INN EXTRAS (BREAKFAST/PAYMENT)
 // ========================================
@@ -1445,6 +1506,23 @@ When("I extract the price from more details", async function () {
 When("I close more details in cart", async function () {
   logger.info("Closing More Details drawer in cart");
   await Cart.closeMoreDetailsInCart(this.page);
+});
+
+When("I click more details for the {string} quote in cart", async function (quoteIdentifier) {
+  logger.info("Opening More Details drawer for specific quote", { quoteIdentifier });
+  await Cart.openMoreDetailsForQuote(this.page, quoteIdentifier);
+});
+
+Then("the more details should show {string}", async function (expectedText) {
+  logger.info("Verifying open drawer contains text", { expectedText });
+  await Cart.verifyOpenDrawerContainsText(this.page, expectedText);
+});
+
+// Uses Escape key — works universally across all drawer types (flight, hotel, car).
+// Differs from "I close more details in cart" which clicks the explicit close button.
+When("I close the open drawer", async function () {
+  logger.info("Closing the currently open drawer");
+  await Cart.closeOpenDrawer(this.page);
 });
 
 Then("I should see {string} quote in more details with pickup {string}, dropoff {string}, vendor {string}, phone {string}, vehicle {string}, cancellation {string}, confirmation {string}, subtotoal {int}", async function (

@@ -12,16 +12,16 @@ Feature: 76707 Amadeus city center exact location address display
     When I search for a car at "Madrid" with rental agency "Europcar" and 1 months ahead
     And the agency station label should contain "Madrid (Railway Station)" and address should contain "Madrid (Railway Station)" on the vendor list
     And I select the city center pickup location by agency station label "Madrid (Railway Station)" and address "Madrid Atocha Rrs, Madrid, 28012, ES"
-    When I capture the "response" payload for request type "Amadeus4.Car_LocationList" from Storage
-    And the captured "response" payload for request type "Amadeus4.Car_LocationList" should contain "MADX03".block("locationAddress")
-    Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain "Madrid (Railway Station)".map("MADX*")
-    Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain "Madrid Atocha Rrs, Madrid, 28012, ES".split(",")
-    Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should not contain "Barcelona Atocha Rrs, Madrid, 28012, ES".split(",")[0]
-    Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain "Madrid Atocha Rrs, Madrid, 28012, ES".split(",")[1]
-    Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should not contain "28013".onKey("postalCode")
-    Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain "28012".onKey("postalCode")
-    Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain "Madrid Atocha Rrs, Madrid, 28012, ES".split(",")[3]
-    Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain the XML block:
+    When I capture the "response" payload for request type "Amadeus4.Car_Location*" from Storage
+    And the captured "response" payload for request type "Amadeus4.Car_Location*" should contain "MADX03".block("locationAddress")
+    Then the captured "block" payload for request type "Amadeus4.Car_Location*" should contain "Madrid (Railway Station)".map("MADX*")
+    Then the captured "block" payload for request type "Amadeus4.Car_Location*" should contain "Madrid Atocha Rrs, Madrid, 28012, ES".split(",")
+    Then the captured "block" payload for request type "Amadeus4.Car_Location*" should not contain "Barcelona Atocha Rrs, Madrid, 28012, ES".split(",")[0]
+    Then the captured "block" payload for request type "Amadeus4.Car_Location*" should contain "Madrid Atocha Rrs, Madrid, 28012, ES".split(",")[1]
+    Then the captured "block" payload for request type "Amadeus4.Car_Location*" should not contain "28013".onKey("postalCode")
+    Then the captured "block" payload for request type "Amadeus4.Car_Location*" should contain "28012".onKey("postalCode")
+    Then the captured "block" payload for request type "Amadeus4.Car_Location*" should contain "Madrid Atocha Rrs, Madrid, 28012, ES".split(",")[3]
+    Then the captured "block" payload for request type "Amadeus4.Car_Location*" should contain the XML:
       """
       <locationAddress>
         <addressInfo>
@@ -38,19 +38,19 @@ Feature: 76707 Amadeus city center exact location address display
       </locationAddress>
       """
     # Validate that incorrect postal code is NOT in the block
-    And the captured "block" payload for request type "Amadeus4.Car_LocationList" should not contain the XML block:
+    And the captured "block" payload for request type "Amadeus4.Car_Location*" should not contain the XML:
       """
       <locationAddress>
         <postalCode>28013</postalCode>
       </locationAddress>
       """
     # Multi-line plain text validation (no operators)
-    And the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain:
+    And the captured "block" payload for request type "Amadeus4.Car_Location*" should contain the multiline text:
       """
       MADRID ATOCHA RRS
       """
     # Verify error patterns are NOT in the payload
-    And the captured "block" payload for request type "Amadeus4.Car_LocationList" should not contain:
+    And the captured "block" payload for request type "Amadeus4.Car_Location*" should not contain the multiline text:
       """
       ERROR
       FAILED
@@ -67,15 +67,15 @@ Feature: 76707 Amadeus city center exact location address display
     Then the car location label at index 0 should contain "Madrid 28012 (Railway Station)" on cart
     And the car city center address at index 0 should contain "Puerta Atocha Llegadas Ave, Madrid 28012, ES" on cart
     And the booking status should be "Confirmed"
-    When I capture the "request" payload for request type "Amadeus4.Car_Sell" from Storage
-    Then the captured "request" payload for request type "Amadeus4.Car_Sell" should contain "MADX03"
+    When I capture the "request" payload for request type "*Car_Sell" from Storage
+    Then the captured "request" payload for request type "*Car_Sell" should contain "MADX03"
     When I capture the "request" payload for request type "Booking" from Storage
     Then the captured "request" payload for request type "Booking" should contain "AMADEUS"
     When I capture the "response" payload for request type "Booking" from Storage
     Then the captured "response" payload for request type "Booking" should contain "false".onKey("isCardAuthenticationRequired")
     When I capture the "request" payload for request type "Booking" from Storage
     Then the captured "request" payload for request type "Booking" should contain "{tripNumber}".onKey("tripId")
-    Then the captured "request" payload for request type "Booking" should contain the JSON block:
+    Then the captured "request" payload for request type "Booking" should contain the JSON:
       """
       {
         "bookingItems": [{

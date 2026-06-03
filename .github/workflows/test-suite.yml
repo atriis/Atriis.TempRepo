@@ -86,6 +86,19 @@ jobs:
           - suite_id: rails-daily
             suite_name: Rails Daily
             test_path: tests/features/rails/daily_rails/
+          # Shell
+          - suite_id: shell-fop-issues
+            suite_name: Shell FOP Issues
+            test_path: tests/features/shell/shell_fop_issues/
+          - suite_id: shell-frequent-programs
+            suite_name: Shell Frequent Programs
+            test_path: tests/features/shell/shell_frequent_programs/
+          - suite_id: shell-manual-quote
+            suite_name: Shell Manual Quote
+            test_path: tests/features/shell/shell_manual_quote/
+          - suite_id: shell-user-profile
+            suite_name: Shell User Profile
+            test_path: tests/features/shell/shell_user_profile/
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 

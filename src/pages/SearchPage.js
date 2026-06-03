@@ -2,6 +2,7 @@ const {
   typeIntoNthAvailableInput,
   pressTab,
 } = require("@utils/dom");
+const { normalizeText } = require("@utils/text");
 
 /**
  * Page Object for search page.
@@ -46,6 +47,8 @@ const SELECTORS = {
   DATE_PICKER_TODAY_AVAILABLE_DAY_CELL: "td.available.today .el-date-table-cell__text",
   DATE_RANGE_HEADER_LABEL: ".el-date-range-picker__header div",
   DATE_PICKER_HEADER_LABEL: ".el-date-picker__header-label",
+  DOB_PICKER_PANEL: '.datepicker-popper.hide-day:visible',
+  DOB_PICKER_PANEL_BODY: '.datepicker-popper.hide-day:visible .el-picker-panel__body',
 
   // Traveler search
   TRAVELER_NAME_FIELD:
@@ -59,9 +62,17 @@ const SELECTORS = {
   ADD_GUEST_TRAVELER_BUTTON: '.edit-traveler .add-guest-btn',
   // Edit traveler dialog — primary traveler checkbox
   PRIMARY_TRAVELER_CHECKBOX: '.edit-traveler .el-checkbox',
+  CHECKBOX_LABEL: '.edit-traveler .el-checkbox .checkbox-label',
   // Edit traveler dialog — autocomplete input for searching traveler
   EDIT_TRAVELER_NAME_FIELD: ".edit-traveler [placeholder='Search by name, user group, username or email']",
   EDIT_TRAVELER_OPTION: '.user-autocomplete-popper li',
+
+  // Guest form — copy settings from users group
+  COPY_SETTINGS_USERS_GROUP_RADIO: ".copy-settings-container .el-radio:nth-child(2) .el-radio__inner",
+  // Caret SVG inside the group-select — clicking this reliably opens filterable el-select
+  GROUP_SELECT_CARET: ".copy-settings-container .group-select .el-select__caret",
+  GROUP_SELECT_EL: ".copy-settings-container .group-select .el-select",
+  GROUP_SELECT_DROPDOWN_ITEM: ".el-select-dropdown__item",
 
   // Edit Search
   EDIT_SEARCH_DRAWER: '.atrs-edit-search-drawer',
@@ -351,6 +362,46 @@ class SearchPage {
 
     await this.getAddGuestButton().click();
     await modal.waitFor({ state: 'hidden', timeout: 10000 });
+  }
+
+  /**
+   * Selects "Users Group" in the copy-settings radio group of the guest form.
+   */
+  async selectCopySettingsFromUsersGroup() {
+    try {
+      await this.page.locator(SELECTORS.COPY_SETTINGS_USERS_GROUP_RADIO).click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(`[SearchPage.selectCopySettingsFromUsersGroup] Could not click "Users Group" radio (${SELECTORS.COPY_SETTINGS_USERS_GROUP_RADIO}). Original: ${err.message}`);
+    }
+  }
+
+  /**
+   * Selects a user group by name from the group-select dropdown in the guest form.
+   * Uses the caret trigger to open the filterable el-select reliably.
+   * @param {string} groupName - Visible text of the group option (e.g. "Post Adis Ababa")
+   */
+  async selectUserGroupByName(groupName) {
+    // Wait for the group-select to appear after the "Users Group" radio is selected
+    try {
+      await this.page.locator(SELECTORS.GROUP_SELECT_EL).waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(`[SearchPage.selectUserGroupByName] Group-select did not appear (${SELECTORS.GROUP_SELECT_EL}). Ensure "Users Group" radio was selected first. Original: ${err.message}`);
+    }
+    // Click the caret to open the dropdown (more reliable than clicking the wrapper for filterable selects)
+    try {
+      await this.page.locator(SELECTORS.GROUP_SELECT_CARET).click({ timeout: 5000 });
+    } catch {
+      // Fallback: click the el-select container itself
+      await this.page.locator(SELECTORS.GROUP_SELECT_EL).click({ timeout: 5000 });
+    }
+    try {
+      const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const option = this.page.locator(SELECTORS.GROUP_SELECT_DROPDOWN_ITEM).filter({ hasText: new RegExp(escape(groupName), 'i') }).first();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click({ timeout: 5000 });
+    } catch (err) {
+      throw new Error(`[SearchPage.selectUserGroupByName] Could not select user group "${groupName}" from dropdown (${SELECTORS.GROUP_SELECT_DROPDOWN_ITEM}). Group may not exist or dropdown did not open. Original: ${err.message}`);
+    }
   }
 
   // Guest form fields
@@ -744,6 +795,18 @@ class SearchPage {
   }
 
   /**
+   * Waits for the pickup date field to be visible and interactive.
+   * Used after closing the edit-search modal to confirm the date picker panel is ready
+   * before attempting to interact with calendar controls.
+   *
+   * @param {Object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async waitForPickupDateFieldVisible({ timeout = 15000 } = {}) {
+    await this.page.locator(SELECTORS.PICK_UP_DATE_INPUT).waitFor({ state: 'visible', timeout });
+  }
+
+  /**
  * Clicks a trip type radio button by label text (e.g., "One Way", "Round Trip").
  *
  * Waits until the trip type radio labels are visible before attempting
@@ -925,6 +988,95 @@ class SearchPage {
     const checkbox = this.page.locator(SELECTORS.PRIMARY_TRAVELER_CHECKBOX).first();
     await checkbox.waitFor({ state: 'visible', timeout: 10000 });
     await checkbox.click();
+  }
+
+  async clickDobInput() {
+    try {
+      const dobInput = this.page.locator(SELECTORS.DATE_OF_BIRTH_INPUT).first();
+      await dobInput.waitFor({ state: 'visible', timeout: 10000 });
+      await dobInput.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.clickDobInput] Could not click DOB input (selector: ${SELECTORS.DATE_OF_BIRTH_INPUT}). ` +
+        `The add guest form may not be open or the field is not visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getDobPickerYear() {
+    try {
+      const panel = this.page.locator(SELECTORS.DOB_PICKER_PANEL);
+      await panel.waitFor({ state: 'visible', timeout: 10000 });
+      const yearLabel = panel.locator('.el-date-picker__header-label').first();
+      const yearText = await yearLabel.textContent({ timeout: 5000 });
+      return parseInt(yearText.trim(), 10);
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.getDobPickerYear] Could not read year from DOB picker header. ` +
+        `The date picker may not have opened or the hide-day panel is not visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async isDobPickerPanelBodyVisible() {
+    try {
+      const panelBody = this.page.locator(SELECTORS.DOB_PICKER_PANEL_BODY);
+      await panelBody.waitFor({ state: 'visible', timeout: 10000 });
+      return true;
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.isDobPickerPanelBodyVisible] The DOB picker panel body (hide-day mode) is not visible (selector: ${SELECTORS.DOB_PICKER_PANEL_BODY}). ` +
+        `Expected the picker to remain open in month-selection mode. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the add-traveler icon button to be visible on the search/new-trip page.
+   * @param {number} [timeout=10000]
+   */
+  async waitForAddTravelerIconVisible({ timeout = 10000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.ADD_TRAVELER_BUTTON).waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.waitForAddTravelerIconVisible] Add-traveler icon button not visible (${SELECTORS.ADD_TRAVELER_BUTTON}). ` +
+        `The new-trip search page may not have loaded yet. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the primary-traveler checkbox label to be visible and verifies its text.
+   * @param {string} labelText - Expected label text on the checkbox
+   */
+  async isCheckboxWithLabelVisible(labelText) {
+    const checkbox = this.page.locator(SELECTORS.PRIMARY_TRAVELER_CHECKBOX).first();
+    try {
+      await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.isCheckboxWithLabelVisible] Primary traveler checkbox not visible (${SELECTORS.PRIMARY_TRAVELER_CHECKBOX}). ` +
+        `The edit-traveler dialog may not be open. Original: ${err.message}`
+      );
+    }
+
+    const label = checkbox.locator('.checkbox-label').first();
+    try {
+      await label.waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.isCheckboxWithLabelVisible] Checkbox label not visible (${SELECTORS.CHECKBOX_LABEL}). Original: ${err.message}`
+      );
+    }
+
+    const actualText = normalizeText(await label.innerText());
+    if (!actualText.toLowerCase().includes(labelText.toLowerCase())) {
+      throw new Error(
+        `[SearchPage.isCheckboxWithLabelVisible] Checkbox label text mismatch. ` +
+        `Expected to contain: "${labelText}", got: "${actualText}"`
+      );
+    }
   }
 
   /**

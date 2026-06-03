@@ -2,7 +2,8 @@
   "transportation": {
     "cars": {
       "knownErrors": [
-        "HERTZ", "Error: Reservation with the given data already exists."
+        "HERTZ", "Error: Reservation with the given data already exists.",
+        "The selected rate changed from"
       ],
       "skipOnError": true,
       "description": "Known supplier booking issues that should not cause test failure"
@@ -22,7 +23,8 @@
   },
   "flights": {
     "knownErrors": [
-      "Error details as received from the supplier:", "Error occurred on booking, please check for the PNR in the GDS."
+      "Error details as received from the supplier:", 
+      "Error occurred on booking, please check for the PNR in the GDS."
     ],
     "skipOnError": true,
     "description": "Known supplier booking issues that should not cause test failure"

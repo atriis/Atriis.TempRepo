@@ -2,6 +2,7 @@ require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { Checkout } = require("@dsl");
+const { DynamicAndReferenceFields } = require("../../src/dsl");
 const logger = require("@utils/logger").child("Checkout");
 
 setDefaultTimeout(120000);
@@ -30,12 +31,6 @@ When("I complete the booking", async function () {
   this.bookingOutcome = result;
 
   if (result?.knownBookingError && result.shouldSkip) {
-    logger.warn('Known booking error detected during booking finalization', {
-      supplier: result.supplier,
-      bookingErrorText: result.bookingErrorText,
-      bookingContext,
-    });
-
     await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
     await Checkout.clickBackToTripButton(this.page);
     return 'pending';
@@ -144,4 +139,9 @@ Then('the checkout total price should match the saved flight cart total', async 
 
   const result = await Checkout.verifyCheckoutTotalMatchesExpected(this.page, this.flightCartTotalForCheckout);
   logger.info('Checkout total price matched saved flight cart total', result);
+});
+
+When("I wait for booking details in checkout", async function () {
+  logger.info("Waiting for booking details heading in checkout page");
+  await DynamicAndReferenceFields.waitForCheckoutBookingDetails(this.page);
 });

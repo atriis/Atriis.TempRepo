@@ -1,4 +1,4 @@
-﻿@daily_cars @provider:amadeus
+﻿@transportation @cars @regression @daily_cars @provider:amadeus
 Feature: 41168 Search Amadeus Car in City Center 
   As a corporate traveler using Amadeus
   I want to search for cars in city center locations

@@ -96,6 +96,11 @@ Then("I should see member rates displayed in hotel level results", async functio
   expect(isVisible).toBe(true);
 });
 
+Then("I should see a tag with the text {string} in hotel level results", async function (tagText) {
+  logger.info("Verifying member badge tag text in hotel level results", { tagText });
+  await HotelLevelResults.verifyMemberBadgeTagText(this.page, tagText);
+});
+
 Then("the corporate rates badge should be visible on hotel level results", async function () {
   logger.info("Verifying corporate preferred badge is visible on hotel level results");
   await HotelLevelResults.verifyCorporatePreferredBadge(this.page);
@@ -264,14 +269,7 @@ Then("the hotel at position {int} should preferably be {string}", async function
   }
 });
 
-When("I filter hotel results by {string} {string}", async function (filterName, optionText) {
-  logger.info("Clicking hotel filter checkbox", { filterName, optionText });
-  if (filterName.toLowerCase() === 'supplier' || filterName.toLowerCase() === 'suppliers') {
-    await HotelLevelResults.clickSupplierFilter(this.page, optionText);
-  } else {
-    const hotelLevelResultsPage = getPageObject(this.page, HotelLevelResultsPage);
-    const checkbox = this.page.locator(`.hotel-filter .filter-container:has(h4:has-text("${filterName}")) label.el-checkbox:has-text("${optionText}")`);
-    await checkbox.waitFor({ state: 'visible', timeout: 15000 });
-    await checkbox.click();
-  }
+When("I filter hotel results by max price {int}", async function (maxPrice) {
+  logger.info("Filtering hotel results by max price", { maxPrice });
+  await HotelLevelResults.filterHotelsByMaxPrice(this.page, maxPrice);
 });

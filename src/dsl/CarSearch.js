@@ -5,7 +5,96 @@ const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveLocation } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { getPageObject } = require("@utils/pageObjectCache");
+const logger = require("@utils/logger").child("CarSearch");
 const carLocations = require("@data/cars.json");
+
+const MAX_NO_RESULTS_RETRIES = 2;
+
+async function selectDropoffDateWithFallback(page, carSearchPage, dropoffIndex) {
+  try {
+    await selectDatesByNthAvailable(page, {
+      startIndex: dropoffIndex,
+      endIndex: null,
+      pickerPosition: "last",
+    });
+  } catch (error) {
+    const shouldTryNextMonth =
+      typeof error?.message === "string" &&
+      error.message.includes("Not enough available dates in the calendar");
+
+    if (!shouldTryNextMonth) {
+      throw error;
+    }
+
+    await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
+
+    await selectDatesByNthAvailable(page, {
+      startIndex: dropoffIndex,
+      endIndex: null,
+      pickerPosition: "last",
+    });
+  }
+}
+
+async function ensureDropoffAfterPickup(page, carSearchPage, dropoffIndex) {
+  const pickupDateValue = await carSearchPage.getPickupDateFieldValue();
+  const dropoffDateValue = await carSearchPage.getDropoffDateFieldValue();
+
+  if (pickupDateValue === dropoffDateValue) {
+    await carSearchPage.clickDropoffDateField();
+    await selectDropoffDateWithFallback(page, carSearchPage, dropoffIndex + 1);
+  }
+}
+
+async function retryCarSearchByChangingDatesOnNoResults(
+  page,
+  {
+    pickupIndex,
+    dropoffIndex,
+    maxRetries = MAX_NO_RESULTS_RETRIES,
+  } = {},
+) {
+  const resultsPage = getPageObject(page, ResultsPage);
+  const searchPage = getPageObject(page, SearchPage);
+  const carSearchPage = getPageObject(page, CarSearchPage);
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const status = await resultsPage.waitForCarResultsOrNoResults(60000);
+    if (status === "results") {
+      return { retriesUsed: attempt - 1, resolved: true };
+    }
+
+    logger.info("No car results found. Retrying by changing dates only in edit search", {
+      attempt,
+      maxRetries,
+      pickupIndex,
+      dropoffIndex,
+    });
+
+    const noResultsEditButton = resultsPage.getNoResultsEditSearchButton();
+    if (await noResultsEditButton.isVisible().catch(() => false)) {
+      await noResultsEditButton.click();
+    } else {
+      await resultsPage.clickEditButton();
+    }
+
+    await searchPage.clickPickupDateField();
+    await searchPage.clickCalendarNextArrow(1);
+    await selectDatesByNthAvailable(page, {
+      startIndex: pickupIndex,
+      endIndex: null,
+    });
+
+    await carSearchPage.clickDropoffDateField();
+    await selectDropoffDateWithFallback(page, carSearchPage, dropoffIndex);
+    await ensureDropoffAfterPickup(page, carSearchPage, dropoffIndex);
+
+    await searchPage.waitAndClickSearchButton();
+  }
+
+  const finalStatus = await resultsPage.waitForCarResultsOrNoResults(60000);
+  return { retriesUsed: maxRetries, resolved: finalStatus === "results" };
+}
 
 /**
  * CarSearch DSL
@@ -95,7 +184,12 @@ const CarSearch = {
 
     await searchPage.waitAndClickSearchButton();
 
-    return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex };
+    const retryResult = await retryCarSearchByChangingDatesOnNoResults(page, {
+      pickupIndex,
+      dropoffIndex,
+    });
+
+    return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex, noResultsRetry: retryResult };
   },
 
   /**
@@ -221,7 +315,12 @@ const CarSearch = {
 
     await searchPage.waitAndClickSearchButton();
 
-    return { searched: true, pickupPlace, dropoffPlace, monthsAhead, pickupIndex, dropoffIndex };
+    const retryResult = await retryCarSearchByChangingDatesOnNoResults(page, {
+      pickupIndex,
+      dropoffIndex,
+    });
+
+    return { searched: true, pickupPlace, dropoffPlace, monthsAhead, pickupIndex, dropoffIndex, noResultsRetry: retryResult };
   },
 
   /**
@@ -301,32 +400,8 @@ const CarSearch = {
     // Drop-off date
     await carSearchPage.clickDropoffDateField();
 
-    try {
-      // Prefer selecting from the currently shown month.
-      await selectDatesByNthAvailable(page, {
-        startIndex: dropoffIndex,
-        endIndex: null,
-        pickerPosition: "last",
-      });
-    } catch (error) {
-      const shouldTryNextMonth =
-        typeof error?.message === "string" &&
-        error.message.includes("Not enough available dates in the calendar");
-
-      if (!shouldTryNextMonth) {
-        throw error;
-      }
-
-      // Transition-month fallback: if there are not enough selectable days left
-      // in the current month, move to the next month and pick again.
-      await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
-
-      await selectDatesByNthAvailable(page, {
-        startIndex: dropoffIndex,
-        endIndex: null,
-        pickerPosition: "last",
-      });
-    }
+    await selectDropoffDateWithFallback(page, carSearchPage, dropoffIndex);
+    await ensureDropoffAfterPickup(page, carSearchPage, dropoffIndex);
 
     await searchPage.waitAndClickSearchButton();
 

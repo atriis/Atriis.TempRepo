@@ -37,7 +37,7 @@
   - `page`: Playwright page object (required)
   - `world`: Test context object (required)
   - `source`: "request", "response", or "block"
-  - `requestType`: API request type identifier
+  - `requestType`: API request type identifier. Supports `*` wildcard matching (for example, `RevalidateItenarary*` for starts-with and `*RevalidateItenarary*` for contains)
   - `options`: Object with optional `tripId`, `transactionId`, `sid`
 - **Key Logic:** Calls `fetchPayloadFromAzureStorage`, stores result via `setCapturedPayload`.
 - **Returns:** The stored payload record.
@@ -116,7 +116,7 @@
 - **Error Handling:** Throws when unexpected content is found, including expression/operator-specific details.
 - **Usage:**
   - `Then the captured "{source}" payload for request type "{requestType}" should not contain "{expression}"`
-  - `Then the captured "{source}" payload for request type "{requestType}" should not contain:`
+  - `Then the captured "{source}" payload for request type "{requestType}" should not contain the multiline text:`
 
 ---
 
@@ -172,13 +172,13 @@
   3. Does not require exact structure, only presence of values
 - **Returns:** void (assertion passes or throws)
 - **Error Handling:** Throws with list of missing values if any not found.
-- **Usage:** Step: `Then the captured "{source}" payload for request type "{requestType}" should contain the XML block:`
+- **Usage:** Step: `Then the captured "{source}" payload for request type "{requestType}" should contain the XML:`
 - **Negation Variant:** `expectCapturedPayloadNotContainsXmlBlock(...)`
-  - **Usage:** `Then the captured "{source}" payload for request type "{requestType}" should not contain the XML block:`
+  - **Usage:** `Then the captured "{source}" payload for request type "{requestType}" should not contain the XML:`
   - **Behavior:** Fails if any expected XML tag/value pair is found in the captured payload.
 - **Example:**
   ```gherkin
-  Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain the XML block:
+  Then the captured "block" payload for request type "Amadeus4.Car_LocationList" should contain the XML:
     """
     <locationAddress>
       <postalCode>28012</postalCode>
@@ -207,14 +207,14 @@
   4. Supports world placeholder resolution at step layer for JSON docstrings (e.g., `{tripNumber}`, `{transactionId}`, `{sid}`)
 - **Returns:** void (assertion passes or throws)
 - **Error Handling:** Throws with detailed path information for each mismatch.
-- **Usage:** Step: `Then the captured "{source}" payload for request type "{requestType}" should contain the JSON block:`
+- **Usage:** Step: `Then the captured "{source}" payload for request type "{requestType}" should contain the JSON:`
 - **Negation Variant:** `expectCapturedPayloadNotContainsJsonBlock(...)`
-  - **Usage:** `Then the captured "{source}" payload for request type "{requestType}" should not contain the JSON block:`
+  - **Usage:** `Then the captured "{source}" payload for request type "{requestType}" should not contain the JSON:`
   - **Behavior:** Fails if any expected JSON key/value pair is found in the captured payload.
 - **Example:**
   ```gherkin
   Then the captured "request" payload for request type "Booking" should contain "{tripNumber}".onKey("tripId")
-  Then the captured "request" payload for request type "Booking" should contain the JSON block:
+  Then the captured "request" payload for request type "Booking" should contain the JSON:
     """
     {
       "bookingItems": [{
@@ -287,12 +287,12 @@ All step definitions are in `tests/steps/payload_validation.steps.js`. Here is t
 | `When I capture the "{source}" payload for request type "{requestType}" from Storage` | `capturePayloadByRequestType()` | Fetch and cache payload |
 | `Then the captured "{source}" payload for request type "{requestType}" should contain "{expression}"` | `expectCapturedPayloadContains()` | Assert payload contains text/block/split/map/onKey |
 | `Then the captured "{source}" payload for request type "{requestType}" should not contain "{expression}"` | `expectCapturedPayloadNotContains()` | Assert payload does not contain text/block/split/map/onKey |
-| `Then the captured "{source}" payload for request type "{requestType}" should contain:` | `expectCapturedPayloadContains()` | Assert payload contains multi-line plain-text block (no operators) |
-| `Then the captured "{source}" payload for request type "{requestType}" should not contain:` | `expectCapturedPayloadNotContains()` | Assert payload does not contain multi-line plain-text block (no operators) |
-| `Then the captured "{source}" payload for request type "{requestType}" should contain the XML block:` | `expectCapturedPayloadContainsXmlBlock()` | Assert XML block exists |
-| `Then the captured "{source}" payload for request type "{requestType}" should not contain the XML block:` | `expectCapturedPayloadNotContainsXmlBlock()` | Assert XML block does not exist |
-| `Then the captured "{source}" payload for request type "{requestType}" should contain the JSON block:` | `expectCapturedPayloadContainsJsonBlock()` | Assert JSON block exists |
-| `Then the captured "{source}" payload for request type "{requestType}" should not contain the JSON block:` | `expectCapturedPayloadNotContainsJsonBlock()` | Assert JSON block does not exist |
+| `Then the captured "{source}" payload for request type "{requestType}" should contain the multiline text:` | `expectCapturedPayloadContains()` | Assert payload contains multi-line plain-text block (no operators) |
+| `Then the captured "{source}" payload for request type "{requestType}" should not contain the multiline text:` | `expectCapturedPayloadNotContains()` | Assert payload does not contain multi-line plain-text block (no operators) |
+| `Then the captured "{source}" payload for request type "{requestType}" should contain the XML:` | `expectCapturedPayloadContainsXmlBlock()` | Assert XML exists |
+| `Then the captured "{source}" payload for request type "{requestType}" should not contain the XML:` | `expectCapturedPayloadNotContainsXmlBlock()` | Assert XML does not exist |
+| `Then the captured "{source}" payload for request type "{requestType}" should contain the JSON:` | `expectCapturedPayloadContainsJsonBlock()` | Assert JSON exists |
+| `Then the captured "{source}" payload for request type "{requestType}" should not contain the JSON:` | `expectCapturedPayloadNotContainsJsonBlock()` | Assert JSON does not exist |
 | `Then in the captured "{source}" payload for request type "{requestType}", path "{path}" should exist` | `expectCapturedPayloadPathExists()` | Assert JSON path exists |
 | `Then in the captured "{source}" payload for request type "{requestType}", path "{path}" should contain "{expectedValue}"` | `expectCapturedPayloadPathContains()` | Assert JSON path contains substring |
 | `Then in the captured "{source}" payload for request type "{requestType}", path "{path}" should not contain "{expectedValue}"` | `expectCapturedPayloadPathNotContains()` | Assert JSON path does not contain substring |
@@ -311,12 +311,12 @@ See [payload_amadeus_city_center_exact_location_address.feature](../tests/featur
 3. **Split with exact XML matching** – `.split(",")[0]` compares each part against exact XML tag values (case-insensitive, whitespace-normalized)
 4. **Negative single-line expressions** – `should not contain` for both split/map/onKey operators and plain text
 5. **onKey JSON/XML lookups** – `.onKey("postalCode")` finds and validates specific key values
-6. **Multi-line XML block** – Loose structure validation (all tag/value pairs must exist, any order)
-7. **Multi-line XML negation** – `should not contain the XML block:` verifies incorrect structure is absent
+6. **Multi-line XML** – Loose structure validation (all tag/value pairs must exist, any order)
+7. **Multi-line XML negation** – `should not contain the XML:` verifies incorrect structure is absent
 8. **Multi-line plain text** – Substring match across multiple lines (no operators supported)
-9. **Multi-line plain text negation** – `should not contain:` docstring verifies error patterns are absent
+9. **Multi-line plain text negation** – `should not contain the multiline text:` docstring verifies error patterns are absent
 10. **Dynamic world placeholder on key assertions** – `"{tripNumber}".onKey("tripId")` validates runtime trip IDs safely
-11. **JSON block deep subset matching** – expected object/array fragments are matched against larger actual payload objects
+11. **JSON deep subset matching** – expected object/array fragments are matched against larger actual payload objects
 12. **Fallback logic** – Multiple request types captured in sequence; fallback auto-scans candidates if latest doesn't match
 
 ### 5.2 Expression Examples
@@ -329,12 +329,12 @@ Then the captured "response" payload for request type "Booking" should not conta
 
 #### Multi-Line Plain Text (Docstring, No Operators)
 ```gherkin
-Then the captured "response" payload for request type "Booking" should contain:
+Then the captured "response" payload for request type "Booking" should contain the multiline text:
   """
   some expected
   multi-line text
   """
-Then the captured "response" payload for request type "Booking" should not contain:
+Then the captured "response" payload for request type "Booking" should not contain the multiline text:
   """
   unwanted
   error message
@@ -508,7 +508,7 @@ Then the captured "block" payload for request type "SomeAPI.Request" should cont
 And the captured "block" payload for request type "SomeAPI.Request" should contain "value".onKey("key")
 
 # 4. Validate full XML/JSON if needed
-Then the captured "response" payload for request type "SomeAPI.Request" should contain the XML block:
+Then the captured "response" payload for request type "SomeAPI.Request" should contain the XML:
   """
   <tag>
     <value>expected</value>
@@ -643,7 +643,7 @@ JSON path:
 
 ### Scenario: XML/JSON Block Must Exist Entirely
 **Problem:** Need to verify all fields in a block exist.
-**Solution:** Use multi-line step `should contain the XML block:` or `should contain the JSON block:` with full block.
+**Solution:** Use multi-line step `should contain the XML:` or `should contain the JSON:` with full block.
 
 ---
 

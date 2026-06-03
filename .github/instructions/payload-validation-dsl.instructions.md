@@ -15,16 +15,16 @@ applyTo: '**/*.feature, **/payload_validation.steps.js, **/PayloadValidation.js'
 - ✅ Extract blocks, split values, lookup keys, pattern match
 - ✅ Multi-match fallback for parallel API traffic
 - ✅ Dynamic world placeholders for runtime values (`{tripNumber}`, `{transactionId}`, `{sid}`)
-- ✅ Deep JSON block subset matching (arrays + object nesting)
-- ✅ XML and JSON block validation with loose structure matching
+- ✅ Deep JSON subset matching (arrays + object nesting)
+- ✅ XML and JSON validation with loose structure matching
 
 ## Supported Step Definitions
 
 | When | Then |
 |------|------|
 | Capture payloads by request type | Assert contains/not contains with operators |
-| | Multi-line XML block assertions (exact tag match) |
-| | Multi-line JSON block assertions (deep subset match) |
+| | Multi-line XML assertions (exact tag match) |
+| | Multi-line JSON assertions (deep subset match) |
 | | JSON path exists/contains/not contains |
 
 > **Priority rules:** Always run a capture step before assertions. Use existing step definitions; do not invent new expression types.
@@ -51,14 +51,14 @@ Then the captured "block" payload for request type "API" should contain "label".
 Then the captured "request" payload for request type "Booking" should contain "{tripNumber}".onKey("tripId")
 Then the captured "response" payload for request type "Booking" should contain "{transactionId}"
 
-# Multi-line XML block (no operators)
-Then the captured "response" payload for request type "API" should contain the XML block:
+# Multi-line XML (no operators)
+Then the captured "response" payload for request type "API" should contain the XML:
   """
   <tag>value</tag>
   """
 
-# Multi-line JSON block (no operators, subset match)
-Then the captured "request" payload for request type "Booking" should contain the JSON block:
+# Multi-line JSON (no operators, subset match)
+Then the captured "request" payload for request type "Booking" should contain the JSON:
   """
   {
     "tripId": 123,
@@ -102,7 +102,7 @@ Then the captured "request" payload for request type "Booking" should contain "{
 
 ### 4. Full Payload Validation
 ```gherkin
-Then the captured "request" payload for request type "Booking" should contain the JSON block:
+Then the captured "request" payload for request type "Booking" should contain the JSON:
   """
   {
     "bookingItems": [{
@@ -141,7 +141,7 @@ Then the captured "response" payload for request type "Booking" should contain "
 
 ### Validate Nested JSON Structure
 ```gherkin
-Then the captured "request" payload for request type "Booking" should contain the JSON block:
+Then the captured "request" payload for request type "Booking" should contain the JSON:
   """
   {
     "bookingItems": [{"productType": "car", "isPassive": false}],
@@ -162,7 +162,7 @@ Then the captured "block" payload for request type "Amadeus4.Car_LocationList" s
 When I complete the booking
 When I capture the "request" payload for request type "Booking" from Storage
 Then the captured "request" payload for request type "Booking" should contain "{tripNumber}".onKey("tripId")
-Then the captured "request" payload for request type "Booking" should contain the JSON block:
+Then the captured "request" payload for request type "Booking" should contain the JSON:
   """
   {
     "bookingItems": [{"productType": "car"}],
@@ -198,13 +198,13 @@ Error: Expected content not found in any of the 3 captured request payload(s) fo
 - ✅ Rely on auto-fallback for parallel traffic
 - ✅ Use specific request types (e.g., "Amadeus4.Car_Sell" not "Car")
 - ✅ Use `.map()` for flexible pattern matching instead of exact strings
-- ✅ Use multi-line JSON block for full structure validation
+- ✅ Use multi-line JSON for full structure validation
 
 ### DON'T
 - ❌ Skip the capture step before assertions
 - ❌ Create new expression types
 - ❌ Hardcode dynamic values — use `{tripNumber}`, `{transactionId}`, `{sid}`
-- ❌ Assume order of keys in JSON blocks
+- ❌ Assume order of keys in JSON
 - ❌ Test Storage directly — use the DSL
 
 ## Full Documentation

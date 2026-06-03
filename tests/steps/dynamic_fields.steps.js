@@ -18,11 +18,6 @@ When("I add a number checkout field", async function () {
   await DynamicAndReferenceFields.addNumberCheckoutField(this.page);
 });
 
-When("I wait for booking details in checkout", async function () {
-  logger.info("Waiting for booking details heading in checkout page");
-  await DynamicAndReferenceFields.waitForCheckoutBookingDetails(this.page);
-});
-
 When("I fill in the {string} reference field with {string}", async function (fieldName, value) {
   logger.info(`Filling checkout reference field "${fieldName}" with "${value}"`);
   await DynamicAndReferenceFields.fillCheckoutReferenceField(this.page, fieldName, value);
@@ -66,6 +61,14 @@ When("I select the {string} reference field as {string} and proceed", async func
 When("I click proceed on the reference fields popup", async function () {
   logger.info("Clicking Proceed button on reference fields popup");
   await DynamicAndReferenceFields.proceedThroughReferenceFieldsPopup(this.page);
+});
+
+// ===== FINANCIAL REFERENCE STEPS =====
+
+Then("the financial reference dropdown should contain the following options:", async function (dataTable) {
+  const expectedOptions = dataTable.raw().map((row) => row[0]);
+  logger.info("Verifying financial reference dropdown contains expected options", { expectedOptions });
+  await DynamicAndReferenceFields.verifyFinancialReferenceOptions(this.page, expectedOptions);
 });
 
 // ===== REFERENCE FIELD VALIDATION STEPS =====
@@ -119,6 +122,14 @@ Then("the following reference fields should not be editable:", async function (d
   if (editable.length > 0) {
     throw new Error(`Reference fields should not be editable but are: ${editable.join(', ')}`);
   }
+});
+
+// Selects a dropdown option for a reference field WITHOUT clicking Proceed.
+// Use when filling multiple fields before a single Proceed click.
+// For a single-field flow that auto-proceeds, use: "I select the {string} reference field as {string} and proceed"
+When("I select the {string} reference field as {string}", async function (fieldName, optionText) {
+  logger.info(`Selecting reference field dropdown "${fieldName}" as "${optionText}" (no proceed)`);
+  await DynamicAndReferenceFields.selectReferenceFieldDropdownOnly(this.page, fieldName, optionText);
 });
 
 Then("clicking proceed should show a mandatory field validation error", async function () {

@@ -8,7 +8,7 @@ const FlightResultsPage = require("@pages/FlightResultsPage");
 const FlightResults = require("./FlightResults");
 const tripStatus = require("@data/tripStatus.json");
 const config = require("@config/config");
-const BookingErrorHandler = require("@utils/BookingErrorHandler");
+const BookingErrorHandler = require("@utils/bookingErrorHandler");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const { parseAmountText } = require("@utils/dom");
 const logger = require("@utils/logger").child("Cart-DSL");
@@ -48,30 +48,44 @@ const Cart = {
 
     const cartPage = getPageObject(page, CartPage);
     const proceedWithChangeButton = cartPage.getProceedWithChangeButton();
+    const bookingErrorDialog = page.locator(CheckoutSelectors.BOOKING_ERROR_DIALOG).first();
 
     try {
       await Promise.race([
         targetLocator.waitFor({ state: 'visible', timeout }),
         proceedWithChangeButton.waitFor({ state: 'visible', timeout }),
+        bookingErrorDialog.waitFor({ state: 'visible', timeout }),
       ]);
     } catch (error) {
       throw new Error(
-        `Neither ${targetDescription} nor the price change modal appeared within ${timeout}ms. Original error: ${error.message}`,
+        `Neither ${targetDescription}, booking error modal, nor the price change modal appeared within ${timeout}ms. Original error: ${error.message}`,
       );
     }
 
     if (await targetLocator.isVisible().catch(() => false)) {
-      return { clickedModal: false };
+      return { clickedModal: false, bookingErrorDetected: false };
+    }
+
+    if (await bookingErrorDialog.isVisible().catch(() => false)) {
+      return { clickedModal: false, bookingErrorDetected: true };
     }
 
     const clickedModal = await cartPage.clickProceedWithChangeIfVisible(1000);
 
     if (!clickedModal) {
-      throw new Error(`Expected ${targetDescription} or a visible price change modal, but neither became actionable.`);
+      throw new Error(`Expected ${targetDescription}, a visible booking error modal, or a visible price change modal, but neither became actionable.`);
     }
 
-    await targetLocator.waitFor({ state: 'visible', timeout: 60000 });
-    return { clickedModal: true };
+    await Promise.race([
+      targetLocator.waitFor({ state: 'visible', timeout: 60000 }),
+      bookingErrorDialog.waitFor({ state: 'visible', timeout: 60000 }),
+    ]);
+
+    if (await bookingErrorDialog.isVisible().catch(() => false)) {
+      return { clickedModal: true, bookingErrorDetected: true };
+    }
+
+    return { clickedModal: true, bookingErrorDetected: false };
   },
 
   /**
@@ -370,7 +384,12 @@ const Cart = {
         ? BookingErrorHandler.getSkipOnErrorConfig(bookingContext.product, bookingContext.subProduct)
         : false;
 
-      const errorLogValue = supplier || bookingErrorText || 'UNKNOWN';
+      // Pass the value that actually matched so the log level (WARN vs ERROR) is
+      // consistent with knownBookingError. Using `supplier` when it didn't match
+      // would cause handleBookingError to log ERROR even for known errors.
+      const errorLogValue = (knownBySupplier && supplier) ? supplier
+        : (knownByMessage && bookingErrorText) ? bookingErrorText
+        : (supplier || bookingErrorText || 'UNKNOWN');
       BookingErrorHandler.handleBookingError(bookingContext.product, errorLogValue, bookingContext.subProduct);
 
       return {
@@ -730,6 +749,72 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     const isVisible = await cartPage.getOOPJustificationTextbox().isVisible();
     expect(isVisible).toBe(false);
+  },
+
+  /**
+   * Verifies that the OOP justification textarea contains the expected text after saving.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   */
+  async verifyOOPJustificationTextInCart(page, expectedText) {
+    if (!page) {
+      throw new Error('[Cart.verifyOOPJustificationTextInCart] "page" is required.');
+    }
+    if (typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.verifyOOPJustificationTextInCart] "expectedText" must be a string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      const textbox = cartPage.getOOPJustificationTextbox();
+      await textbox.waitFor({ state: 'visible', timeout: 10000 });
+      const actualText = await textbox.inputValue();
+      expect(
+        actualText.trim(),
+        `OOP justification text in trip did not match. Expected: "${expectedText}", got: "${actualText.trim()}". ` +
+        `This may mean the justification was not saved correctly before navigating to checkout.`
+      ).toBe(expectedText);
+    } catch (err) {
+      if (err.matcherResult) throw err;
+      throw new Error(
+        `[Cart.verifyOOPJustificationTextInCart] Failed to verify OOP justification text "${expectedText}": ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the OOP policy reason label text (violation description) inside the oop-justification section.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   */
+  async verifyOOPPolicyReasonInCart(page, expectedText) {
+    if (!page) {
+      throw new Error('[Cart.verifyOOPPolicyReasonInCart] "page" is required.');
+    }
+    if (typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.verifyOOPPolicyReasonInCart] "expectedText" must be a string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      const actualText = await cartPage.getOOPViolationLabelText();
+      expect(
+        actualText,
+        `OOP policy reason label did not match. Expected: "${expectedText}", got: "${actualText}". ` +
+        `This is the violation description text shown in the oop-justification section (.out-of-policy-label), not the tooltip.`
+      ).toBe(expectedText);
+    } catch (err) {
+      if (err.matcherResult) throw err;
+      throw new Error(
+        `[Cart.verifyOOPPolicyReasonInCart] Failed to verify OOP policy reason "${expectedText}": ${err.message}`
+      );
+    }
   },
 
   /**
@@ -1098,23 +1183,89 @@ const Cart = {
    * @param {import('playwright').Page} page - Playwright page instance
    * @returns {Promise<{held: boolean, status: string}>} Hold status and booking status
    */
-  async holdTrip(page) {
+  async holdTrip(page, bookingContext = {}) {
     if (!page) {
       throw new Error('page is required');
     }
     
     const cartPage = getPageObject(page, CartPage);
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const onHoldStatusLabel = cartPage.getOnHoldStatusLabel();
+    const bookingErrorDialog = page.locator(CheckoutSelectors.BOOKING_ERROR_DIALOG).first();
+    const timeout = process.env.CI ? 120000 : 90000;
+    const deadline = Date.now() + timeout;
+
+    let clickedModal = false;
+
+    const resolveBookingErrorResult = async () => {
+      const supplier = await checkoutPage.getBookingErrorSupplierName();
+      const bookingErrorText = await checkoutPage.getBookingErrorDialogText();
+      const knownBySupplier = supplier
+        ? BookingErrorHandler.isKnownBookingError(bookingContext.product, bookingContext.subProduct, supplier)
+        : false;
+      const knownByMessage = bookingErrorText
+        ? BookingErrorHandler.isKnownBookingError(bookingContext.product, bookingContext.subProduct, bookingErrorText)
+        : false;
+      const knownBookingError = knownBySupplier || knownByMessage;
+      const shouldSkip = knownBookingError
+        ? BookingErrorHandler.getSkipOnErrorConfig(bookingContext.product, bookingContext.subProduct)
+        : false;
+
+      // Pass the value that actually matched so the log level (WARN vs ERROR) is
+      // consistent with knownBookingError.
+      const holdErrorLogValue = (knownBySupplier && supplier) ? supplier
+        : (knownByMessage && bookingErrorText) ? bookingErrorText
+        : (supplier || bookingErrorText || 'UNKNOWN');
+      BookingErrorHandler.handleBookingError(
+        bookingContext.product,
+        holdErrorLogValue,
+        bookingContext.subProduct,
+      );
+
+      return {
+        held: false,
+        status: null,
+        clickedModal,
+        bookingError: true,
+        knownBookingError,
+        shouldSkip,
+        supplier: supplier || null,
+        bookingErrorText: bookingErrorText || null,
+      };
+    };
+
+    // Initial hold action.
     await cartPage.waitForHoldButton();
-    await cartPage.clickHoldButton();
+    await cartPage.clickHoldButton().catch(() => {});
 
-    const { clickedModal } = await this.waitForTargetOrHandlePriceChange(
-      page,
-      cartPage.getOnHoldStatusLabel(),
-      'on hold status',
-    );
+    while (Date.now() < deadline) {
+      if (await onHoldStatusLabel.isVisible().catch(() => false)) {
+        const status = await cartPage.getBookingStatus({ page });
+        return {
+          held: true,
+          status,
+          clickedModal,
+          bookingError: false,
+          knownBookingError: false,
+          shouldSkip: false,
+          supplier: null,
+          bookingErrorText: null,
+        };
+      }
 
-    const status = await cartPage.getBookingStatus({ page });
-    return { held: true, status, clickedModal };
+      if (await bookingErrorDialog.isVisible().catch(() => false)) {
+        return resolveBookingErrorResult();
+      }
+
+      const clickedPriceChange = await cartPage.clickProceedWithChangeIfVisible(500).catch(() => false);
+      if (clickedPriceChange) {
+        clickedModal = true;
+      }
+
+      await page.waitForTimeout(1000);
+    }
+
+    throw new Error(`Neither on hold status, booking error modal, nor price-change recovery completed within ${timeout}ms.`);
   },
 
   /**
@@ -2279,6 +2430,60 @@ const Cart = {
   },
 
   /**
+   * Opens the More Details drawer for a specific quote card identified by text.
+   * @param {import('playwright').Page} page
+   * @param {string} quoteIdentifier - Partial text to identify the quote card (e.g. "Flight to", "Test Hotel", "Car Rental")
+   */
+  async openMoreDetailsForQuote(page, quoteIdentifier) {
+    if (!page) throw new Error('[Cart.openMoreDetailsForQuote] "page" is required.');
+    if (!quoteIdentifier || typeof quoteIdentifier !== 'string') {
+      throw new Error(`[Cart.openMoreDetailsForQuote] "quoteIdentifier" must be a non-empty string, got: ${typeof quoteIdentifier} (${quoteIdentifier})`);
+    }
+    logger.debug(`[Cart.openMoreDetailsForQuote] Opening More Details for quote containing "${quoteIdentifier}"`);
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.clickMoreDetailsForQuoteByText(quoteIdentifier);
+    } catch (err) {
+      throw new Error(
+        `[Cart.openMoreDetailsForQuote] Failed to open More Details for the "${quoteIdentifier}" quote — ` +
+        `the quote card may not exist in the cart or its More Details button is not visible. ` +
+        `Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the currently open drawer (any product type) contains the expected text.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Text to find in the open drawer
+   */
+  async verifyOpenDrawerContainsText(page, expectedText) {
+    if (!page) throw new Error('[Cart.verifyOpenDrawerContainsText] "page" is required.');
+    if (typeof expectedText !== 'string' || !expectedText) {
+      throw new Error(`[Cart.verifyOpenDrawerContainsText] "expectedText" must be a non-empty string, got: ${typeof expectedText}`);
+    }
+    const cartPage = getPageObject(page, CartPage);
+    const drawerText = await cartPage.getAnyVisibleDrawerText();
+    const normalize = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+    if (!normalize(drawerText).includes(normalize(expectedText))) {
+      throw new Error(
+        `[Cart.verifyOpenDrawerContainsText] Expected the open drawer to contain "${expectedText}" but it was not found. ` +
+        `Drawer text (first 500 chars): "${drawerText.substring(0, 500)}"`
+      );
+    }
+  },
+
+  /**
+   * Closes whichever drawer is currently open.
+   * @param {import('playwright').Page} page
+   */
+  async closeOpenDrawer(page) {
+    if (!page) throw new Error('[Cart.closeOpenDrawer] "page" is required.');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.closeAnyVisibleDrawer();
+  },
+
+  /**
    * Extracts the total price from the More Details drawer footer.
    * The drawer must already be open.
    * @param {import('playwright').Page} page
@@ -2757,6 +2962,154 @@ const Cart = {
     await cartPage.clickLoyaltySaveButton();
     await cartPage.waitForLoyaltySuccessIcon();
     return chainText;
+  },
+
+  /**
+   * Selects an existing loyalty number from the traveler's profile.
+   * Assumes the loyalty extras section is already expanded.
+   * Flow: click Existing radio → select from dropdown → save → verify green icon.
+   * @param {import('playwright').Page} page
+   * @param {string} loyaltyText - Text to match in the dropdown (e.g. "6C - 456789")
+   */
+  async selectExistingLoyaltyFromProfile(page, loyaltyText) {
+    if (!page) throw new Error('[Cart.selectExistingLoyaltyFromProfile] "page" is required.');
+    if (!loyaltyText || typeof loyaltyText !== 'string') {
+      throw new Error(
+        `[Cart.selectExistingLoyaltyFromProfile] "loyaltyText" must be a non-empty string, got: ${typeof loyaltyText} (${JSON.stringify(loyaltyText)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.selectExistingLoyaltyRadio();
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectExistingLoyaltyFromProfile] Failed to select "Existing" radio for loyalty "${loyaltyText}": ${err.message}`
+      );
+    }
+
+    try {
+      await cartPage.selectExistingLoyaltyOption(loyaltyText);
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectExistingLoyaltyFromProfile] Failed to select loyalty option "${loyaltyText}" from dropdown — ` +
+        `the option may not exist in the traveler's profile. ${err.message}`
+      );
+    }
+
+    try {
+      await cartPage.clickLoyaltySaveButton();
+      await cartPage.waitForLoyaltySuccessIcon();
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectExistingLoyaltyFromProfile] Loyalty "${loyaltyText}" was selected but save/verify failed: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Selects the first existing loyalty number from the traveler's profile.
+   * Assumes the loyalty extras section is already expanded.
+   * Flow: click Existing radio → select first option from dropdown → save → verify green icon.
+   * @param {import('playwright').Page} page
+   */
+  async selectFirstExistingLoyaltyFromProfile(page) {
+    if (!page) throw new Error('[Cart.selectFirstExistingLoyaltyFromProfile] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.selectExistingLoyaltyRadio();
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectFirstExistingLoyaltyFromProfile] Failed to select "Existing" radio: ${err.message}`
+      );
+    }
+
+    try {
+      await cartPage.selectFirstExistingLoyaltyOption();
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectFirstExistingLoyaltyFromProfile] Failed to select the first loyalty option from dropdown — ` +
+        `the traveler may not have any loyalty numbers in their profile. ${err.message}`
+      );
+    }
+
+    try {
+      await cartPage.clickLoyaltySaveButton();
+      await cartPage.waitForLoyaltySuccessIcon();
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectFirstExistingLoyaltyFromProfile] First loyalty option was selected but save/verify failed: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the loyalty number section shows a green success icon (check_circle).
+   * @param {import('playwright').Page} page
+   */
+  async verifyLoyaltySavedWithSuccessIcon(page) {
+    if (!page) throw new Error('[Cart.verifyLoyaltySavedWithSuccessIcon] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.waitForLoyaltySuccessIcon();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyLoyaltySavedWithSuccessIcon] Green success icon not visible in loyalty section — ` +
+        `loyalty number may not have been saved correctly. ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies that a pre-populated loyalty number shows a green success icon.
+   * Scrolls to the loyalty section and waits with a longer timeout since
+   * prepopulation requires an API fetch after the room is added to cart.
+   * @param {import('playwright').Page} page
+   */
+  async verifyLoyaltyPrepopulatedWithSuccess(page) {
+    if (!page) throw new Error('[Cart.verifyLoyaltyPrepopulatedWithSuccess] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForLoyaltyPrepopulatedIcon();
+  },
+
+  /**
+   * Verifies that the loyalty chain dropdown shows the expected text (chain code + number).
+   * Used for pre-populated loyalty scenarios where the system auto-fills from the master chain.
+   * Assumes the loyalty extras section has been expanded already.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Expected text in the dropdown (e.g. "CN - 121212")
+   */
+  async verifyLoyaltyChainDropdown(page, expectedText) {
+    if (!page) throw new Error('[Cart.verifyLoyaltyChainDropdown] "page" is required.');
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.verifyLoyaltyChainDropdown] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    let actualText;
+    try {
+      actualText = await cartPage.getExistingLoyaltyDropdownText();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyLoyaltyChainDropdown] Could not read loyalty dropdown text — ` +
+        `the loyalty section may not be expanded or no loyalty is pre-populated. ${err.message}`
+      );
+    }
+
+    if (!actualText.includes(expectedText)) {
+      throw new Error(
+        `[Cart.verifyLoyaltyChainDropdown] Expected loyalty dropdown to contain "${expectedText}", ` +
+        `but found: "${actualText}". The master chain hierarchy may not match, or the loyalty number ` +
+        `was not pre-populated for this hotel chain.`
+      );
+    }
   },
 
   /**

@@ -1,4 +1,4 @@
-﻿@daily_cars @provider:amadeus
+﻿@transportation @cars @regression @daily_cars @provider:amadeus
 Feature: 59775 Cars - Different drop off and pick up - Location is updated correctly after edit search
   As a corporate traveler using Amadeus
   I want to search for a car with different pickup and dropoff locations

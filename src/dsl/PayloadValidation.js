@@ -70,7 +70,8 @@ function parseBlockExpression(expectedText) {
 
 function extractXmlBlocksByTag(xmlPayload, blockTag) {
   const safeTag = escapeRegex(blockTag);
-  const regex = new RegExp(`<${safeTag}\\b[^>]*>[\\s\\S]*?<\\/${safeTag}>`, "gi");
+  // Matches either a self-closing element (<Tag .../>) or a paired element (<Tag ...>...</Tag>)
+  const regex = new RegExp(`<${safeTag}\\b[^>]*?(?:\\/>|>[\\s\\S]*?<\\/${safeTag}>)`, "gi");
   const matches = xmlPayload.match(regex);
   return matches || [];
 }
@@ -287,9 +288,10 @@ function extractXmlKeyValuePairs(xmlString) {
   }
 
   const pairs = [];
-  // Match opening tags with simple content: <tag>content</tag>
-  // This regex finds: <tagName>...content...</tagName>
-  const tagRegex = /<([a-zA-Z][a-zA-Z0-9]*?)>([^<]*?)<\/\1>/g;
+  // Match opening tags (with or without attributes) and simple content:
+  // <tag>content</tag> or <tag attr="...">content</tag>
+  // The opening tag may carry attributes (e.g. xmlns) before the closing ">".
+  const tagRegex = /<([a-zA-Z][a-zA-Z0-9]*?)(?:\s[^>]*)?>([^<]*?)<\/\1>/g;
 
   let match;
   while ((match = tagRegex.exec(xmlString)) !== null) {
