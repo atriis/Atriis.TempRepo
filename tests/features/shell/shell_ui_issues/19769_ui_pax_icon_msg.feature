@@ -16,6 +16,6 @@ Feature: 19769 UI - pax icon message in add traveler
   Scenario: Travelers list and traveler checkbox options are displayed on a new trip
     Given I am logged in as "test@io.com"
     When I book a new trip
-    Then the travelers list should be visible
-    When I click the traveler name
-    Then the traveler checkbox container should be visible
+    Then the traveler icon should be displayed
+    When I click add traveller
+    Then the traveler checkbox "Use as primary traveller (for policy and approval flow)" should be visible

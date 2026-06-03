@@ -428,6 +428,62 @@ const Search = {
     const searchPage = getPageObject(page, SearchPage);
     await searchPage.isDobPickerPanelBodyVisible();
   },
+
+  /**
+   * Verifies that the add-traveler icon button is visible on the new-trip search page.
+   * @param {import('playwright').Page} page
+   */
+  async verifyTravelerIconDisplayed(page) {
+    if (!page) throw new Error('[Search.verifyTravelerIconDisplayed] "page" is required.');
+
+    logger.debug('[Search.verifyTravelerIconDisplayed] Checking traveler icon button visibility');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.waitForAddTravelerIconVisible();
+    } catch (err) {
+      throw new Error(`[Search.verifyTravelerIconDisplayed] Traveler icon not displayed on search page: ${err.message}`);
+    }
+  },
+
+  /**
+   * Clicks the add-traveler button and waits for the edit-traveler dialog to open.
+   * @param {import('playwright').Page} page
+   */
+  async clickAddTraveler(page) {
+    if (!page) throw new Error('[Search.clickAddTraveler] "page" is required.');
+
+    logger.debug('[Search.clickAddTraveler] Clicking add-traveler button');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.clickAddTravelerButton();
+    } catch (err) {
+      throw new Error(`[Search.clickAddTraveler] Failed to open add-traveler dialog: ${err.message}`);
+    }
+  },
+
+  /**
+   * Verifies that a traveler checkbox with the given label text is visible
+   * in the edit-traveler dialog.
+   * @param {import('playwright').Page} page
+   * @param {string} labelText - Expected checkbox label text
+   */
+  async verifyTravelerCheckboxVisible(page, labelText) {
+    if (!page) throw new Error('[Search.verifyTravelerCheckboxVisible] "page" is required.');
+    if (!labelText || typeof labelText !== 'string') {
+      throw new Error(`[Search.verifyTravelerCheckboxVisible] "labelText" must be a non-empty string, got: ${typeof labelText} (${JSON.stringify(labelText)})`);
+    }
+
+    logger.debug('[Search.verifyTravelerCheckboxVisible] Verifying traveler checkbox visibility', { labelText });
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.isCheckboxWithLabelVisible(labelText);
+    } catch (err) {
+      throw new Error(`[Search.verifyTravelerCheckboxVisible] Checkbox "${labelText}" not visible in edit-traveler dialog: ${err.message}`);
+    }
+  },
 };
 
 module.exports = Search;

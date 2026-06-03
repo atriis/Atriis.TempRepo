@@ -95,6 +95,21 @@ Given("I have added a random guest traveler with spaces in the first name", asyn
   this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
+Then("the traveler icon should be displayed", async function () {
+  logger.info("Verifying traveler icon button is visible on new trip page");
+  await Search.verifyTravelerIconDisplayed(this.page);
+});
+
+When("I click add traveller", async function () {
+  logger.info("Clicking add traveller button to open edit-traveler dialog");
+  await Search.clickAddTraveler(this.page);
+});
+
+Then("the traveler checkbox {string} should be visible", async function (labelText) {
+  logger.info("Verifying traveler checkbox is visible", { labelText });
+  await Search.verifyTravelerCheckboxVisible(this.page, labelText);
+});
+
 When("I open the traveler drawer", async function () {
   throw new Error("TODO: implement 'I open the traveler drawer' — open traveler section from search page");
 });

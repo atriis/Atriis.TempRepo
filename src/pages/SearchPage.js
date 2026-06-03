@@ -2,6 +2,7 @@ const {
   typeIntoNthAvailableInput,
   pressTab,
 } = require("@utils/dom");
+const { normalizeText } = require("@utils/text");
 
 /**
  * Page Object for search page.
@@ -61,6 +62,7 @@ const SELECTORS = {
   ADD_GUEST_TRAVELER_BUTTON: '.edit-traveler .add-guest-btn',
   // Edit traveler dialog — primary traveler checkbox
   PRIMARY_TRAVELER_CHECKBOX: '.edit-traveler .el-checkbox',
+  CHECKBOX_LABEL: '.edit-traveler .el-checkbox .checkbox-label',
   // Edit traveler dialog — autocomplete input for searching traveler
   EDIT_TRAVELER_NAME_FIELD: ".edit-traveler [placeholder='Search by name, user group, username or email']",
   EDIT_TRAVELER_OPTION: '.user-autocomplete-popper li',
@@ -1025,6 +1027,54 @@ class SearchPage {
       throw new Error(
         `[SearchPage.isDobPickerPanelBodyVisible] The DOB picker panel body (hide-day mode) is not visible (selector: ${SELECTORS.DOB_PICKER_PANEL_BODY}). ` +
         `Expected the picker to remain open in month-selection mode. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the add-traveler icon button to be visible on the search/new-trip page.
+   * @param {number} [timeout=10000]
+   */
+  async waitForAddTravelerIconVisible({ timeout = 10000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.ADD_TRAVELER_BUTTON).waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.waitForAddTravelerIconVisible] Add-traveler icon button not visible (${SELECTORS.ADD_TRAVELER_BUTTON}). ` +
+        `The new-trip search page may not have loaded yet. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the primary-traveler checkbox label to be visible and verifies its text.
+   * @param {string} labelText - Expected label text on the checkbox
+   */
+  async isCheckboxWithLabelVisible(labelText) {
+    const checkbox = this.page.locator(SELECTORS.PRIMARY_TRAVELER_CHECKBOX).first();
+    try {
+      await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.isCheckboxWithLabelVisible] Primary traveler checkbox not visible (${SELECTORS.PRIMARY_TRAVELER_CHECKBOX}). ` +
+        `The edit-traveler dialog may not be open. Original: ${err.message}`
+      );
+    }
+
+    const label = checkbox.locator('.checkbox-label').first();
+    try {
+      await label.waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.isCheckboxWithLabelVisible] Checkbox label not visible (${SELECTORS.CHECKBOX_LABEL}). Original: ${err.message}`
+      );
+    }
+
+    const actualText = normalizeText(await label.innerText());
+    if (!actualText.toLowerCase().includes(labelText.toLowerCase())) {
+      throw new Error(
+        `[SearchPage.isCheckboxWithLabelVisible] Checkbox label text mismatch. ` +
+        `Expected to contain: "${labelText}", got: "${actualText}"`
       );
     }
   }

@@ -20,8 +20,7 @@ Feature: 24209 Booking for a guest when selecting "Copy settings from - My Profi
     And I wait for add to trip text to be visible
     And I filter results by carrier "UA"
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
-    # TODO: wait for cart status "Pending booking" -> proposed step: When I wait for the cart status to be "Pending booking" (Cart.expectBookingStatusToBe("Pending booking", { page }))
+    And the booking status should be "Pending booking"
     And I proceed to checkout
     And I complete the booking
     # TODO: open the approvers list from the trip overview share menu -> proposed step: When I view the approvers in the trip overview (DSL: hover share button, click first share-popper option to open approvers panel)
