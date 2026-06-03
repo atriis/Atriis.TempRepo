@@ -59,7 +59,7 @@ concurrency:
 
 jobs:
   test-non-booking:
-    name: '[Non-Booking] ${{ matrix.suite_name }}'
+    name: '[Non-Booking Matrix] (skips in filtered-only runs)'
     if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_non_booking == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 65
@@ -337,7 +337,7 @@ jobs:
           if-no-files-found: ignore
 
   test-booking:
-    name: '[Booking] ${{ matrix.suite_name }}'
+    name: '[Booking Matrix] (skips in filtered-only runs)'
     if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_booking == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
