@@ -37,7 +37,7 @@
   - `page`: Playwright page object (required)
   - `world`: Test context object (required)
   - `source`: "request", "response", or "block"
-  - `requestType`: API request type identifier
+  - `requestType`: API request type identifier. Supports `*` wildcard matching (for example, `RevalidateItenarary*` for starts-with and `*RevalidateItenarary*` for contains)
   - `options`: Object with optional `tripId`, `transactionId`, `sid`
 - **Key Logic:** Calls `fetchPayloadFromAzureStorage`, stores result via `setCapturedPayload`.
 - **Returns:** The stored payload record.
