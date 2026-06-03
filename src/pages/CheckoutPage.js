@@ -26,7 +26,8 @@ const SELECTORS = {
   // Some Ypsilon 3DS dialogs are a simple accept screen with no challenge form;
   // clicking the in-dialog accept button completes verification without iframe interaction.
   YPSILON_3DS_ACCEPT_BUTTON: "#submit_accept",
-  SEND_FOR_APPROVAL_BUTTON: "button:has-text('Send for approval')",
+  // "Send for approval" = standard approval flow; "Submit for Approval" = OOP/justification flow
+  SEND_FOR_APPROVAL_BUTTON: "button:has-text('Send for approval'), button:has-text('Submit for Approval')",
   APPROVAL_SUCCESS_TITLE: "text=Trip Submitted for Approval",
   APPROVAL_SUCCESS_MESSAGE: "text=/Your order has been booked and sent to your approver for approval/i",
   BOOKING_ERROR_DIALOG: ".booking-error-dialog, .el-dialog.app-dialog.app-confirm:has(.booking-response-errors), .el-dialog:has-text('Checkout notification'):has-text('Booking error')",

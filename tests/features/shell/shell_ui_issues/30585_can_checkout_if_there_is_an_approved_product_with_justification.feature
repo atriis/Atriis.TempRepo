@@ -15,25 +15,25 @@ Feature: 30585 - Checkout possible when an approved product with justification e
   Scenario: Book an OOP hotel with justification, add a flight, and cancel the trip
     Given I am logged in as "brunasantos@approval.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "LHR" for 1 night
-    And I click proceed after search
+    When I search for a hotel in "London" for 1 night
+    And I click proceed button if visible
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
-    And I wait for the first add to trip button to be visible in room level results
     And I add a refundable room to my cart
     And I fill credit card cvv if needed
     And I fill in the OOP justification text "abc"
     And I accept Terms & Conditions
     And I click the proceed to checkout button
-    And I complete the booking
-    # TODO: wait for the "/Night/" text to be displayed in the hotel trip overview after booking
-    #       proposed step: Then the hotel night count should be displayed in the trip overview
+    And I send booking for approval
+    Then the booking status should be "Confirmed"
     And I click to add a flight to my trip from cart
-    When I edit the flight search from "ATH" to "LHR"
+    When I edit the flight search from "LON" to "DOH" with the same dates as the hotel search
     And flight results should be available
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
+    Then the booking status should be "Pending booking"
     And I accept Terms & Conditions
     And I click the proceed to checkout button
-    # TODO: navigate back to the cart from the checkout page (wait for "Book and Finalize", then click the cart icon)
-    #       proposed step: When I navigate back to the cart from checkout
+    And I wait for booking details in checkout
+    And I navigate to cart from checkout
     Then I successfully cancel the trip
