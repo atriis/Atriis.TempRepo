@@ -1,4 +1,4 @@
-const knownErrors = require("@config/knownBookingErrors.json");
+const knownErrors = require("@config/knownBookingErrors");
 const logger = require("@utils/logger").child("BookingErrorHandler");
 
 /**
@@ -76,12 +76,18 @@ class BookingErrorHandler {
    */
   static handleBookingError(product, supplierName, subProduct) {
     const isKnown = this.isKnownBookingError(product, subProduct, supplierName);
+    const knownErrorSource = knownErrors.getKnownErrorSource?.(
+      product,
+      subProduct,
+      supplierName
+    );
     
     if (isKnown) {
       logger.warn("Known Booking Error", { 
         product, 
         subProduct, 
         supplier: supplierName,
+        source: knownErrorSource === "unknown" ? "json" : knownErrorSource,
         action: "SKIP TEST - Known supplier issue"
       });
       return true; // Skip the test
