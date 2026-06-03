@@ -14,6 +14,33 @@ on:
         required: false
         type: boolean
         default: false
+      product:
+        description: 'Product to run'
+        required: false
+        type: choice
+        default: all
+        options:
+          - all
+          - flights
+          - hotels
+          - cars
+          - rails
+          - shell
+      run_non_booking:
+        description: 'Run non-booking suites'
+        required: false
+        type: boolean
+        default: true
+      run_booking:
+        description: 'Run booking suites'
+        required: false
+        type: boolean
+        default: true
+      labels_or_test_id:
+        description: 'Optional filter: @tag expression or test id/scenario name'
+        required: false
+        type: string
+        default: ''
 
 # Structured logging configuration for all jobs
 env:
@@ -33,6 +60,7 @@ concurrency:
 jobs:
   test-non-booking:
     name: '[Non-Booking] ${{ matrix.suite_name }}'
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_non_booking == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 65
     strategy:
@@ -138,18 +166,53 @@ jobs:
         timeout-minutes: 60
         run: |
           set -o pipefail
+          SELECTED_PRODUCT="${{ github.event.inputs.product || 'all' }}"
+          FILTER_INPUT="${{ github.event.inputs.labels_or_test_id || '' }}"
+          SUITE_ID="${{ matrix.suite_id }}"
+
+          case "${SUITE_ID}" in
+            flights-*) SUITE_PRODUCT="flights" ;;
+            hotels-*) SUITE_PRODUCT="hotels" ;;
+            cars-*) SUITE_PRODUCT="cars" ;;
+            rails-*) SUITE_PRODUCT="rails" ;;
+            shell-*) SUITE_PRODUCT="shell" ;;
+            *) SUITE_PRODUCT="all" ;;
+          esac
+
+          if [[ "${SELECTED_PRODUCT}" != "all" && "${SELECTED_PRODUCT}" != "${SUITE_PRODUCT}" ]]; then
+            echo "Skipping suite ${SUITE_ID} for selected product '${SELECTED_PRODUCT}'"
+            exit 0
+          fi
+
           if [[ "${{ github.event.inputs.debug || 'false' }}" == "true" ]]; then
             PARALLEL=1
-            FORMAT_ARGS="--format progress --backtrace"
+            DEBUG_ARGS=(--format progress --backtrace)
           else
             PARALLEL=4
-            FORMAT_ARGS="--format progress"
+            DEBUG_ARGS=(--format progress)
+          fi
+
+          FILTER_ARGS=()
+          if [[ -n "${FILTER_INPUT}" ]]; then
+            if [[ "${FILTER_INPUT}" == @* ]]; then
+              FILTER_ARGS=(--tags "${FILTER_INPUT}")
+              echo "Applying tag filter: ${FILTER_INPUT}"
+            else
+              FILTER_ARGS=(--name "${FILTER_INPUT}")
+              echo "Applying name/test-id filter: ${FILTER_INPUT}"
+            fi
           fi
 
           echo "Debug mode: ${{ github.event.inputs.debug || 'false' }}"
           echo "Cucumber parallel workers: ${PARALLEL}"
 
-          npx cucumber-js ${{ matrix.test_path }} --parallel "${PARALLEL}" --retry 2 ${FORMAT_ARGS} 2>&1 | tee test-results/cucumber-raw.log
+          npx cucumber-js \
+            ${{ matrix.test_path }} \
+            --parallel "${PARALLEL}" \
+            --retry 2 \
+            "${DEBUG_ARGS[@]}" \
+            "${FILTER_ARGS[@]}" \
+            2>&1 | tee test-results/cucumber-raw.log
         env:
           CI: "true"
 
@@ -195,6 +258,7 @@ jobs:
 
   test-booking:
     name: '[Booking] ${{ matrix.suite_name }}'
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_booking == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -274,18 +338,53 @@ jobs:
         timeout-minutes: 80
         run: |
           set -o pipefail
+          SELECTED_PRODUCT="${{ github.event.inputs.product || 'all' }}"
+          FILTER_INPUT="${{ github.event.inputs.labels_or_test_id || '' }}"
+          SUITE_ID="${{ matrix.suite_id }}"
+
+          case "${SUITE_ID}" in
+            flights-*) SUITE_PRODUCT="flights" ;;
+            hotels-*) SUITE_PRODUCT="hotels" ;;
+            cars-*) SUITE_PRODUCT="cars" ;;
+            rails-*) SUITE_PRODUCT="rails" ;;
+            shell-*) SUITE_PRODUCT="shell" ;;
+            *) SUITE_PRODUCT="all" ;;
+          esac
+
+          if [[ "${SELECTED_PRODUCT}" != "all" && "${SELECTED_PRODUCT}" != "${SUITE_PRODUCT}" ]]; then
+            echo "Skipping suite ${SUITE_ID} for selected product '${SELECTED_PRODUCT}'"
+            exit 0
+          fi
+
           if [[ "${{ github.event.inputs.debug || 'false' }}" == "true" ]]; then
             PARALLEL=1
-            FORMAT_ARGS="--format progress --backtrace"
+            DEBUG_ARGS=(--format progress --backtrace)
           else
             PARALLEL=2
-            FORMAT_ARGS="--format progress"
+            DEBUG_ARGS=(--format progress)
+          fi
+
+          FILTER_ARGS=()
+          if [[ -n "${FILTER_INPUT}" ]]; then
+            if [[ "${FILTER_INPUT}" == @* ]]; then
+              FILTER_ARGS=(--tags "${FILTER_INPUT}")
+              echo "Applying tag filter: ${FILTER_INPUT}"
+            else
+              FILTER_ARGS=(--name "${FILTER_INPUT}")
+              echo "Applying name/test-id filter: ${FILTER_INPUT}"
+            fi
           fi
 
           echo "Debug mode: ${{ github.event.inputs.debug || 'false' }}"
           echo "Cucumber parallel workers: ${PARALLEL}"
 
-          npx cucumber-js ${{ matrix.test_path }} --parallel "${PARALLEL}" --retry 2 ${FORMAT_ARGS} 2>&1 | tee test-results/cucumber-raw.log
+          npx cucumber-js \
+            ${{ matrix.test_path }} \
+            --parallel "${PARALLEL}" \
+            --retry 2 \
+            "${DEBUG_ARGS[@]}" \
+            "${FILTER_ARGS[@]}" \
+            2>&1 | tee test-results/cucumber-raw.log
         env:
           CI: "true"
 
@@ -334,7 +433,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [test-non-booking, test-booking]
-    if: always()
+    if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_non_booking == 'true' || github.event.inputs.run_booking == 'true') }}
 
     permissions:
       contents: read
