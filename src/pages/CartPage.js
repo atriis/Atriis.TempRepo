@@ -1,6 +1,7 @@
 const { expect } = require("@playwright/test");
 const { waitForText } = require("@utils/wait");
 const { parseAmountText } = require("@utils/dom");
+const config = require("@config/config");
 
 /**
  * Page Object for cart page.
@@ -4656,7 +4657,7 @@ class CartPage {
   captureQuotesApiResponse() {
     return this.page.waitForResponse(
       response =>
-        response.url().includes('/api/v3/quotes') &&
+        response.url().includes(config.quotesApiPath) &&
         response.url().includes('tripId') &&
         response.request().method() === 'GET',
       { timeout: 120000 }
