@@ -169,6 +169,7 @@ jobs:
           SELECTED_PRODUCT="${{ github.event.inputs.product || 'all' }}"
           FILTER_INPUT="${{ github.event.inputs.labels_or_test_id || '' }}"
           SUITE_ID="${{ matrix.suite_id }}"
+          TEST_PATH="${{ matrix.test_path }}"
 
           case "${SUITE_ID}" in
             flights-*) SUITE_PRODUCT="flights" ;;
@@ -193,21 +194,66 @@ jobs:
           fi
 
           FILTER_ARGS=()
+          TARGET_PATHS=("${TEST_PATH}")
+
           if [[ -n "${FILTER_INPUT}" ]]; then
             if [[ "${FILTER_INPUT}" == @* ]]; then
               FILTER_ARGS=(--tags "${FILTER_INPUT}")
               echo "Applying tag filter: ${FILTER_INPUT}"
             else
-              FILTER_ARGS=(--name "${FILTER_INPUT}")
+              ESCAPED_FILTER="$(printf '%s' "${FILTER_INPUT}" | sed -E 's/[][(){}.^$*+?|\\/]/\\\\&/g')"
+              FILTER_ARGS=(--name "${ESCAPED_FILTER}")
               echo "Applying name/test-id filter: ${FILTER_INPUT}"
+
+              if command -v rg >/dev/null 2>&1; then
+                mapfile -t MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_INPUT}" "${TEST_PATH}" || true)
+              else
+                mapfile -t MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_INPUT}" "${TEST_PATH}" || true)
+              fi
+
+              if [[ "${FILTER_INPUT}" =~ ^[0-9]+$ ]] || [[ "${FILTER_INPUT}" =~ ^TC-?[0-9]+$ ]]; then
+                FILTER_ID="${FILTER_INPUT//[^0-9]/}"
+                if command -v rg >/dev/null 2>&1; then
+                  mapfile -t ID_MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_ID}" "${TEST_PATH}" || true)
+                else
+                  mapfile -t ID_MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_ID}" "${TEST_PATH}" || true)
+                fi
+                if [[ ${#ID_MATCHED_FILES[@]} -gt 0 ]]; then
+                  MATCHED_FILES=("${ID_MATCHED_FILES[@]}")
+                fi
+              fi
+
+              if [[ ${#MATCHED_FILES[@]} -gt 0 ]]; then
+                TARGET_PATHS=("${MATCHED_FILES[@]}")
+                echo "Matched feature files: ${#TARGET_PATHS[@]}"
+              else
+                echo "No feature files matched filter text under ${TEST_PATH}; using suite path with --name filter"
+              fi
             fi
+
+            PREFLIGHT_OUTPUT="$(npx cucumber-js \
+              "${TARGET_PATHS[@]}" \
+              --parallel 1 \
+              --retry 0 \
+              --dry-run \
+              --format summary \
+              "${FILTER_ARGS[@]}" \
+              2>&1 || true)"
+            printf '%s\n' "${PREFLIGHT_OUTPUT}" > test-results/cucumber-filter-preflight.log
+
+            if echo "${PREFLIGHT_OUTPUT}" | grep -Eq '(^|[^0-9])0 scenarios([^0-9]|$)'; then
+              echo "No scenarios matched labels_or_test_id='${FILTER_INPUT}' for suite ${SUITE_ID}; skipping suite."
+              exit 0
+            fi
+
+            touch test-results/filter-match.txt
           fi
 
           echo "Debug mode: ${{ github.event.inputs.debug || 'false' }}"
           echo "Cucumber parallel workers: ${PARALLEL}"
 
           npx cucumber-js \
-            ${{ matrix.test_path }} \
+            "${TARGET_PATHS[@]}" \
             --parallel "${PARALLEL}" \
             --retry 2 \
             "${DEBUG_ARGS[@]}" \
@@ -222,6 +268,14 @@ jobs:
         with:
           name: ${{ matrix.suite_id }}-raw-log
           path: test-results/cucumber-raw.log
+          if-no-files-found: ignore
+
+      - name: Upload ${{ matrix.suite_name }} Filter Match Marker
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.suite_id }}-filter-match
+          path: test-results/filter-match.txt
           if-no-files-found: ignore
 
       - name: Upload ${{ matrix.suite_name }} JUnit Results
@@ -341,6 +395,7 @@ jobs:
           SELECTED_PRODUCT="${{ github.event.inputs.product || 'all' }}"
           FILTER_INPUT="${{ github.event.inputs.labels_or_test_id || '' }}"
           SUITE_ID="${{ matrix.suite_id }}"
+          TEST_PATH="${{ matrix.test_path }}"
 
           case "${SUITE_ID}" in
             flights-*) SUITE_PRODUCT="flights" ;;
@@ -365,21 +420,66 @@ jobs:
           fi
 
           FILTER_ARGS=()
+          TARGET_PATHS=("${TEST_PATH}")
+
           if [[ -n "${FILTER_INPUT}" ]]; then
             if [[ "${FILTER_INPUT}" == @* ]]; then
               FILTER_ARGS=(--tags "${FILTER_INPUT}")
               echo "Applying tag filter: ${FILTER_INPUT}"
             else
-              FILTER_ARGS=(--name "${FILTER_INPUT}")
+              ESCAPED_FILTER="$(printf '%s' "${FILTER_INPUT}" | sed -E 's/[][(){}.^$*+?|\\/]/\\\\&/g')"
+              FILTER_ARGS=(--name "${ESCAPED_FILTER}")
               echo "Applying name/test-id filter: ${FILTER_INPUT}"
+
+              if command -v rg >/dev/null 2>&1; then
+                mapfile -t MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_INPUT}" "${TEST_PATH}" || true)
+              else
+                mapfile -t MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_INPUT}" "${TEST_PATH}" || true)
+              fi
+
+              if [[ "${FILTER_INPUT}" =~ ^[0-9]+$ ]] || [[ "${FILTER_INPUT}" =~ ^TC-?[0-9]+$ ]]; then
+                FILTER_ID="${FILTER_INPUT//[^0-9]/}"
+                if command -v rg >/dev/null 2>&1; then
+                  mapfile -t ID_MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_ID}" "${TEST_PATH}" || true)
+                else
+                  mapfile -t ID_MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_ID}" "${TEST_PATH}" || true)
+                fi
+                if [[ ${#ID_MATCHED_FILES[@]} -gt 0 ]]; then
+                  MATCHED_FILES=("${ID_MATCHED_FILES[@]}")
+                fi
+              fi
+
+              if [[ ${#MATCHED_FILES[@]} -gt 0 ]]; then
+                TARGET_PATHS=("${MATCHED_FILES[@]}")
+                echo "Matched feature files: ${#TARGET_PATHS[@]}"
+              else
+                echo "No feature files matched filter text under ${TEST_PATH}; using suite path with --name filter"
+              fi
             fi
+
+            PREFLIGHT_OUTPUT="$(npx cucumber-js \
+              "${TARGET_PATHS[@]}" \
+              --parallel 1 \
+              --retry 0 \
+              --dry-run \
+              --format summary \
+              "${FILTER_ARGS[@]}" \
+              2>&1 || true)"
+            printf '%s\n' "${PREFLIGHT_OUTPUT}" > test-results/cucumber-filter-preflight.log
+
+            if echo "${PREFLIGHT_OUTPUT}" | grep -Eq '(^|[^0-9])0 scenarios([^0-9]|$)'; then
+              echo "No scenarios matched labels_or_test_id='${FILTER_INPUT}' for suite ${SUITE_ID}; skipping suite."
+              exit 0
+            fi
+
+            touch test-results/filter-match.txt
           fi
 
           echo "Debug mode: ${{ github.event.inputs.debug || 'false' }}"
           echo "Cucumber parallel workers: ${PARALLEL}"
 
           npx cucumber-js \
-            ${{ matrix.test_path }} \
+            "${TARGET_PATHS[@]}" \
             --parallel "${PARALLEL}" \
             --retry 2 \
             "${DEBUG_ARGS[@]}" \
@@ -394,6 +494,14 @@ jobs:
         with:
           name: ${{ matrix.suite_id }}-raw-log
           path: test-results/cucumber-raw.log
+          if-no-files-found: ignore
+
+      - name: Upload ${{ matrix.suite_name }} Filter Match Marker
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.suite_id }}-filter-match
+          path: test-results/filter-match.txt
           if-no-files-found: ignore
 
       - name: Upload ${{ matrix.suite_name }} JUnit Results
@@ -451,6 +559,18 @@ jobs:
         with:
           path: all-results
         continue-on-error: true
+
+      - name: Validate Filter Matched At Least One Suite
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.labels_or_test_id != '' }}
+        shell: bash
+        run: |
+          match_count=$(find all-results -name 'filter-match.txt' -type f 2>/dev/null | wc -l)
+          echo "Filter match markers found: ${match_count}"
+          if [ "${match_count}" -eq 0 ]; then
+            echo "::error::No scenarios matched labels_or_test_id='${{ github.event.inputs.labels_or_test_id }}'."
+            echo "::error::Adjust product/booking toggles or provide a different tag/name/test id."
+            exit 1
+          fi
 
       - name: Download Allure Results
         if: always()
