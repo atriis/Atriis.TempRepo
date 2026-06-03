@@ -195,6 +195,7 @@ jobs:
 
           FILTER_ARGS=()
           TARGET_PATHS=("${TEST_PATH}")
+          REQUIRE_FILE_MATCH=false
 
           if [[ -n "${FILTER_INPUT}" ]]; then
             FILTER_INPUT_TRIMMED="$(printf '%s' "${FILTER_INPUT}" | sed -E 's/^\s+|\s+$//g')"
@@ -208,6 +209,7 @@ jobs:
 
               if [[ "${FILTER_INPUT_TRIMMED}" =~ ^[0-9]+$ ]] || [[ "${FILTER_INPUT_TRIMMED}" =~ ^TC-?[0-9]+$ ]]; then
                 USE_NAME_FILTER=false
+                REQUIRE_FILE_MATCH=true
                 FILTER_ID="${FILTER_INPUT_TRIMMED//[^0-9]/}"
                 echo "Applying test-id filter: ${FILTER_ID}"
                 if command -v rg >/dev/null 2>&1; then
@@ -242,6 +244,10 @@ jobs:
                 TARGET_PATHS=("${MATCHED_FILES[@]}")
                 echo "Matched feature files: ${#TARGET_PATHS[@]}"
               else
+                if [[ "${REQUIRE_FILE_MATCH}" == "true" ]]; then
+                  echo "No feature files matched test-id filter under ${TEST_PATH}; skipping suite ${SUITE_ID}."
+                  exit 0
+                fi
                 echo "No feature files matched filter text under ${TEST_PATH}; using suite path"
               fi
 
@@ -441,6 +447,7 @@ jobs:
 
           FILTER_ARGS=()
           TARGET_PATHS=("${TEST_PATH}")
+          REQUIRE_FILE_MATCH=false
 
           if [[ -n "${FILTER_INPUT}" ]]; then
             FILTER_INPUT_TRIMMED="$(printf '%s' "${FILTER_INPUT}" | sed -E 's/^\s+|\s+$//g')"
@@ -454,6 +461,7 @@ jobs:
 
               if [[ "${FILTER_INPUT_TRIMMED}" =~ ^[0-9]+$ ]] || [[ "${FILTER_INPUT_TRIMMED}" =~ ^TC-?[0-9]+$ ]]; then
                 USE_NAME_FILTER=false
+                REQUIRE_FILE_MATCH=true
                 FILTER_ID="${FILTER_INPUT_TRIMMED//[^0-9]/}"
                 echo "Applying test-id filter: ${FILTER_ID}"
                 if command -v rg >/dev/null 2>&1; then
@@ -488,6 +496,10 @@ jobs:
                 TARGET_PATHS=("${MATCHED_FILES[@]}")
                 echo "Matched feature files: ${#TARGET_PATHS[@]}"
               else
+                if [[ "${REQUIRE_FILE_MATCH}" == "true" ]]; then
+                  echo "No feature files matched test-id filter under ${TEST_PATH}; skipping suite ${SUITE_ID}."
+                  exit 0
+                fi
                 echo "No feature files matched filter text under ${TEST_PATH}; using suite path"
               fi
 
