@@ -16,12 +16,13 @@ Feature: 56760 Travel Policy - Hotel city limitation is correctly triggered
   Scenario: Hotel limitation triggers OOP at hotel and room level for New York city
     Given I am logged in as "angelinajolie@amadeusoophotel.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "New York,NY,USA,(NYC)" for 1 night(s)
+    When I search for a hotel in "New York,NY,USA,(NYC)" for 1 night
     And I wait to see view rates text in results page
-    # TODO: Filter by max price 375 in hotel results
+    And I filter hotel results by max price 375
     Then the out of policy indicator should be visible in results
     And the out of policy tooltip in results should be "Limitation  testim 2 - do not touch is violated  350 USD in New York,NY,USA,(NYC)"
     When I select the first hotel result
-    # TODO: Filter by max price 375 in room results
-    Then the out of policy indicator should be visible in room results
-    # TODO: Verify OOP tooltip at room level matches "Limitation  testim 2 - do not touch is violated  350 USD in New York,NY,USA,(NYC)"
+    And I wait for the first add to trip button to be visible in room level results
+    And I filter room results by max price 375
+    Then the out of policy indicator should be visible in results
+    And the out of policy tooltip in results should be "Limitation  testim 2 - do not touch is violated  350 USD in New York,NY,USA,(NYC)"

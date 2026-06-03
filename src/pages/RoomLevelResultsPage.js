@@ -61,6 +61,9 @@ const SELECTORS = {
   PRICE_BREAKDOWN_SUBTOTAL: '.price-details .price-details-row:first-child .amount',
   PRICE_BREAKDOWN_TOTAL: '.price-details .price-details-row:has-text("Total") .amount',
   BREADCRUMB_LINK: (text) => `nav.breadcrumb a:has-text("${text}")`,
+  // Slider runway and thumb for the room-level Price filter panel
+  ROOM_PRICE_SLIDER_RUNWAY: '.room-filter .price-slider .el-slider__runway',
+  ROOM_PRICE_SLIDER_THUMB: '.room-filter .price-slider .el-slider__button-wrapper',
 };
 
 class RoomLevelResultsPage {
@@ -743,6 +746,43 @@ class RoomLevelResultsPage {
     const link = this.page.locator(SELECTORS.BREADCRUMB_LINK(linkText)).first();
     await link.waitFor({ state: 'visible', timeout });
     await link.click();
+  }
+
+  /**
+   * Drags the max (right) handle of the room-level Price slider to the given price value.
+   * Reads the slider min/max bounds from the Vuex store to calculate the correct pixel position.
+   * @param {number} maxPrice - The maximum price value to drag to
+   */
+  async setMaxPriceFilter(maxPrice) {
+    if (typeof maxPrice !== 'number' || maxPrice <= 0) {
+      throw new Error(`[RoomLevelResultsPage.setMaxPriceFilter] "maxPrice" must be a positive number, got: ${typeof maxPrice} (${maxPrice})`);
+    }
+    const runway = this.page.locator(SELECTORS.ROOM_PRICE_SLIDER_RUNWAY).first();
+    try {
+      await runway.waitFor({ state: 'visible', timeout: 15000 });
+
+      const [sliderMin, sliderMax] = await this.page.evaluate(() => {
+        const store = document.querySelector('#app').__vue_app__.config.globalProperties.$store;
+        const { priceMinMax } = store.getters['roomStore/roomFilter'];
+        return priceMinMax;
+      });
+
+      const runwayBox = await runway.boundingBox();
+      const targetPercent = Math.min(1, Math.max(0, (maxPrice - sliderMin) / (sliderMax - sliderMin)));
+      const targetX = runwayBox.x + runwayBox.width * targetPercent;
+      const targetY = runwayBox.y + runwayBox.height / 2;
+
+      // nth(1) is the max (right) thumb in range mode
+      const maxThumb = this.page.locator(SELECTORS.ROOM_PRICE_SLIDER_THUMB).nth(1);
+      const thumbBox = await maxThumb.boundingBox();
+
+      await this.page.mouse.move(thumbBox.x + thumbBox.width / 2, thumbBox.y + thumbBox.height / 2);
+      await this.page.mouse.down();
+      await this.page.mouse.move(targetX, targetY, { steps: 20 });
+      await this.page.mouse.up();
+    } catch (err) {
+      throw new Error(`[RoomLevelResultsPage.setMaxPriceFilter] Could not drag price slider to ${maxPrice}. Original: ${err.message}`);
+    }
   }
 }
 

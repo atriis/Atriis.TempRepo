@@ -791,6 +791,25 @@ const HotelLevelResults = {
     const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
     await hotelLevelResultsPage.clickSupplierFilterCheckbox(supplierId);
   },
+
+  /**
+   * Sets the max price in the hotel-level Price filter panel.
+   * @param {import('playwright').Page} page
+   * @param {number} maxPrice - Maximum price value to filter by
+   */
+  async filterHotelsByMaxPrice(page, maxPrice) {
+    if (!page) throw new Error('[HotelLevelResults.filterHotelsByMaxPrice] page is required');
+    if (typeof maxPrice !== 'number' || maxPrice <= 0) {
+      throw new Error(`[HotelLevelResults.filterHotelsByMaxPrice] "maxPrice" must be a positive number, got: ${typeof maxPrice} (${maxPrice})`);
+    }
+    logger.debug('Filtering hotel results by max price', { maxPrice });
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    try {
+      await hotelLevelResultsPage.setMaxPriceFilter(maxPrice);
+    } catch (err) {
+      throw new Error(`[HotelLevelResults.filterHotelsByMaxPrice] Failed to apply max price filter of ${maxPrice}. ${err.message}`);
+    }
+  },
 };
 
 module.exports = HotelLevelResults;

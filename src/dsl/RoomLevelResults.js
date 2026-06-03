@@ -1,4 +1,5 @@
 ﻿const { getPageObject } = require("@utils/pageObjectCache");
+const logger = require("@utils/logger");
 const RoomLevelResultsPage = require("@pages/RoomLevelResultsPage");
 const { CommonPage } = require("@pages/CommonPage");
 const { ResultsPage } = require("@pages/ResultsPage");
@@ -542,6 +543,25 @@ const RoomLevelResults = {
     await roomLevelResultsPage.clickBreadcrumbLink(linkText);
     await page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
     await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
+  },
+
+  /**
+   * Sets the max price in the room-level Price filter panel.
+   * @param {import('playwright').Page} page
+   * @param {number} maxPrice - Maximum price value to filter by
+   */
+  async filterRoomsByMaxPrice(page, maxPrice) {
+    if (!page) throw new Error('[RoomLevelResults.filterRoomsByMaxPrice] page is required');
+    if (typeof maxPrice !== 'number' || maxPrice <= 0) {
+      throw new Error(`[RoomLevelResults.filterRoomsByMaxPrice] "maxPrice" must be a positive number, got: ${typeof maxPrice} (${maxPrice})`);
+    }
+    logger.debug('Filtering room results by max price', { maxPrice });
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    try {
+      await roomLevelResultsPage.setMaxPriceFilter(maxPrice);
+    } catch (err) {
+      throw new Error(`[RoomLevelResults.filterRoomsByMaxPrice] Failed to apply max price filter of ${maxPrice}. ${err.message}`);
+    }
   },
 };
 

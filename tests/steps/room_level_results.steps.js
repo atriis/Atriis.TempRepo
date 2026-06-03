@@ -339,3 +339,8 @@ When("I navigate back to hotel level results via breadcrumb", async function () 
   logger.info("Navigating back to hotel level results via breadcrumb");
   await RoomLevelResults.navigateBackViaBreakcrumb(this.page);
 });
+
+When("I filter room results by max price {int}", async function (maxPrice) {
+  logger.info("Filtering room results by max price", { maxPrice });
+  await RoomLevelResults.filterRoomsByMaxPrice(this.page, maxPrice);
+});
