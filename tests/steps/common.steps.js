@@ -15,9 +15,95 @@ const { CommonPage } = require("@pages/CommonPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { expect } = require("@playwright/test");
 const App = require("@dsl/App");
+const FlightPricing = require("@dsl/FlightPricing");
+const Cart = require("@dsl/Cart");
 const logger = require("@utils/logger").child("Common");
 
 setDefaultTimeout(120000);
+
+// ========================================
+// GENERIC API INTERCEPTION
+// ========================================
+
+const SUPPORTED_APIS = {
+  flightPricing: (page) => FlightPricing.startCapturingPricingResponse(page),
+  quotes: (page) => Cart.startCapturingQuotesResponse(page),
+};
+
+/**
+ * Generic API response interceptor. Must be called BEFORE the action that triggers the request.
+ * Stores the promise in this.lastInterceptedResponsePromise.
+ * Also sets the legacy-named variable (e.g. this.flightPricingResponsePromise) for backward compat.
+ *
+ * Supported API names: flightPricing, quotes
+ */
+When('I start intercepting the {string} API response', function (apiName) {
+  if (!SUPPORTED_APIS[apiName]) {
+    throw new Error(`Unknown API name: "${apiName}". Supported values: ${Object.keys(SUPPORTED_APIS).join(', ')}`);
+  }
+  logger.info('Starting API response capture', { apiName });
+  const promise = SUPPORTED_APIS[apiName](this.page);
+  this.lastInterceptedResponsePromise = promise;
+  // Backward compat aliases so existing Then steps continue to work
+  if (apiName === 'flightPricing') this.flightPricingResponsePromise = promise;
+  if (apiName === 'quotes') this.cartQuotesResponsePromise = promise;
+});
+
+/**
+ * Resolves a dot-notation field path (e.g. "flightPricing.DisplayMarkup") on a JSON object.
+ * Throws if the resolved value is not a finite number.
+ *
+ * @param {object} body - Parsed JSON response body.
+ * @param {string} path - Dot-notation path to the field.
+ * @returns {number}
+ */
+function resolveField(body, path) {
+  const value = path.split('.').reduce((obj, key) => obj && obj[key], body);
+  const num = Number(value);
+  if (!Number.isFinite(num)) {
+    throw new Error(`Field "${path}" resolved to non-finite value: ${JSON.stringify(value)}`);
+  }
+  return num;
+}
+
+/**
+ * Generic assertion: resolves two field paths from the last intercepted API response
+ * and asserts that totalField === addendA + addendB (within 0.01 tolerance).
+ *
+ * Supports dot-notation paths for nested fields, e.g. "flightPricing.DisplayMarkup".
+ *
+ * Example Gherkin:
+ *   Then the "totalPriceDisplayCurrency" in the intercepted response should equal "wholePrice" plus "markup"
+ *   Then the "totalPriceDisplayCurrency" in the intercepted response should equal "wholePrice" plus "flightPricing.DisplayMarkup"
+ */
+Then('the {string} in the intercepted response should equal {string} plus {string}', async function (totalField, addendA, addendB) {
+  if (!this.lastInterceptedResponsePromise) {
+    throw new Error('No intercepted response found. Call "I start intercepting the {string} API response" before this step.');
+  }
+  logger.info('Validating field sum in intercepted response', { totalField, addendA, addendB });
+  const response = await this.lastInterceptedResponsePromise;
+  const raw = await response.json();
+  const body = Array.isArray(raw) ? raw[0] : raw;
+  if (!body) throw new Error('Intercepted response body is empty');
+
+  const total = resolveField(body, totalField);
+  const a = resolveField(body, addendA);
+  const b = resolveField(body, addendB);
+  const expected = a + b;
+  const TOLERANCE = 0.01;
+
+  logger.info('Field sum assertion', { totalField, total, addendA, a, addendB, b, expected });
+
+  if (Math.abs(total - expected) > TOLERANCE) {
+    throw new Error(
+      `Expected "${totalField}" (${total}) to equal "${addendA}" (${a}) + "${addendB}" (${b}) = ${expected}, ` +
+      `but difference was ${Math.abs(total - expected).toFixed(4)}`
+    );
+  }
+
+  logger.info('Field sum validated', { total, a, b });
+  return { total, a, b };
+});
 
 Given("I work on tab {int}", async function (tabNumber) {
   logger.info("Switching active tab for scenario", { tabNumber });

@@ -1,6 +1,7 @@
 const { expect } = require("@playwright/test");
 const { waitForText } = require("@utils/wait");
 const { parseAmountText } = require("@utils/dom");
+const config = require("@config/config");
 
 /**
  * Page Object for cart page.
@@ -4830,6 +4831,23 @@ class CartPage {
         `Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Sets up a listener for the next /api/v3/quotes?tripId=... GET response.
+   * Must be called BEFORE the action that triggers the cart to load/refresh.
+   * Returns an unresolved Promise that resolves when the response arrives.
+   *
+   * @returns {Promise<import('@playwright/test').Response>}
+   */
+  captureQuotesApiResponse() {
+    return this.page.waitForResponse(
+      response =>
+        response.url().includes(config.quotesApiPath) &&
+        response.url().includes('tripId') &&
+        response.request().method() === 'GET',
+      { timeout: 120000 }
+    );
   }
 }
 

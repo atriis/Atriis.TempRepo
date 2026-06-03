@@ -1,6 +1,7 @@
 const { extractNumber } = require("@utils/dom");
 const { waitForText } = require("@utils/wait");
 const { escapeRegExp } = require("@utils/text");
+const config = require("@config/config");
 
 /**
  * Page Object for flight pricing page.
@@ -24,7 +25,6 @@ const SELECTORS = {
   ADDITIONAL_PRICING_OPTIONS_FIRST_CARD: '.additional-pricing-options-wrapper .flight-by-schedule-pricing-option',
   ADDITIONAL_PRICING_OPTIONS_FIRST_ADD_TO_TRIP_BUTTON: '.additional-pricing-options-wrapper .flight-by-schedule-pricing-option .add-btn',
   SEPARATED_TICKETS_TEXT: 'Separated Tickets',
-  FLIGHT_PRICING_API_URL_PATTERN: '/api/v3/flightPricing',
 };
 
 class FlightPricingPage {
@@ -264,7 +264,7 @@ class FlightPricingPage {
   capturePricingApiResponse() {
     return this.page.waitForResponse(
       response =>
-        response.url().includes(SELECTORS.FLIGHT_PRICING_API_URL_PATTERN) &&
+        response.url().includes(config.flightPricingApiPath) &&
         response.request().method() === 'POST',
       { timeout: 120000 }
     );

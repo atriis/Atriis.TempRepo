@@ -76,6 +76,14 @@ const config = {
 
   viewport: ACTIVE_VIEWPORT,
 
+  get quotesApiPath() {
+    return getOptionalEnv("QUOTES_API_PATH", "/api/v3/quotes");
+  },
+
+  get flightPricingApiPath() {
+    return getOptionalEnv("FLIGHT_PRICING_API_PATH", "/api/v3/flightPricing");
+  },
+
   payloadValidation: {
     get enabled() {
       return getOptionalBooleanEnv("PAYLOAD_VALIDATION_ENABLED", true);

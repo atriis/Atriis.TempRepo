@@ -5141,6 +5141,21 @@ const Cart = {
 
     return { verified: true, quoteIdentifier, displayedPrice: numericPrice, expectedPrice };
   },
+
+  /**
+   * Starts capturing the next /api/v3/quotes?tripId=... GET response.
+   * Must be called BEFORE the action that navigates to / refreshes the cart.
+   * Returns an unresolved Promise — do NOT await in the calling step.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<import('@playwright/test').Response>}
+   */
+  startCapturingQuotesResponse(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    return cartPage.captureQuotesApiResponse();
+  },
+
 };
 
 
