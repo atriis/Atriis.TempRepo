@@ -60,7 +60,7 @@ concurrency:
 jobs:
   test-non-booking:
     name: '[Non-Booking] ${{ matrix.suite_name }}'
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_non_booking == 'true' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_non_booking == 'true' || (github.event.inputs.labels_or_test_id != '' && github.event.inputs.run_non_booking != 'true' && github.event.inputs.run_booking != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 65
     strategy:
@@ -197,29 +197,44 @@ jobs:
           TARGET_PATHS=("${TEST_PATH}")
 
           if [[ -n "${FILTER_INPUT}" ]]; then
+            FILTER_INPUT_TRIMMED="$(printf '%s' "${FILTER_INPUT}" | sed -E 's/^\s+|\s+$//g')"
+
             if [[ "${FILTER_INPUT}" == @* ]]; then
-              FILTER_ARGS=(--tags "${FILTER_INPUT}")
-              echo "Applying tag filter: ${FILTER_INPUT}"
+              FILTER_ARGS=(--tags "${FILTER_INPUT_TRIMMED}")
+              echo "Applying tag filter: ${FILTER_INPUT_TRIMMED}"
             else
-              ESCAPED_FILTER="$(printf '%s' "${FILTER_INPUT}" | sed -E 's/[][(){}.^$*+?|\\/]/\\\\&/g')"
-              FILTER_ARGS=(--name "${ESCAPED_FILTER}")
-              echo "Applying name/test-id filter: ${FILTER_INPUT}"
+              USE_NAME_FILTER=true
+              LOWER_FILTER="$(printf '%s' "${FILTER_INPUT_TRIMMED}" | tr '[:upper:]' '[:lower:]')"
 
-              if command -v rg >/dev/null 2>&1; then
-                mapfile -t MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_INPUT}" "${TEST_PATH}" || true)
-              else
-                mapfile -t MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_INPUT}" "${TEST_PATH}" || true)
-              fi
-
-              if [[ "${FILTER_INPUT}" =~ ^[0-9]+$ ]] || [[ "${FILTER_INPUT}" =~ ^TC-?[0-9]+$ ]]; then
-                FILTER_ID="${FILTER_INPUT//[^0-9]/}"
+              if [[ "${FILTER_INPUT_TRIMMED}" =~ ^[0-9]+$ ]] || [[ "${FILTER_INPUT_TRIMMED}" =~ ^TC-?[0-9]+$ ]]; then
+                USE_NAME_FILTER=false
+                FILTER_ID="${FILTER_INPUT_TRIMMED//[^0-9]/}"
+                echo "Applying test-id filter: ${FILTER_ID}"
                 if command -v rg >/dev/null 2>&1; then
-                  mapfile -t ID_MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_ID}" "${TEST_PATH}" || true)
+                  mapfile -t MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_ID}" "${TEST_PATH}" || true)
                 else
-                  mapfile -t ID_MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_ID}" "${TEST_PATH}" || true)
+                  mapfile -t MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_ID}" "${TEST_PATH}" || true)
                 fi
-                if [[ ${#ID_MATCHED_FILES[@]} -gt 0 ]]; then
-                  MATCHED_FILES=("${ID_MATCHED_FILES[@]}")
+              else
+                # Label shorthand without '@' (e.g. galileo) is treated as a tag when matching tags exist.
+                TAG_CANDIDATE="@${LOWER_FILTER}"
+                if command -v rg >/dev/null 2>&1; then
+                  tag_match_count=$(rg -n --glob '*.feature' --fixed-strings "${TAG_CANDIDATE}" "${TEST_PATH}" | wc -l)
+                else
+                  tag_match_count=$(grep -RIn --include='*.feature' --fixed-strings "${TAG_CANDIDATE}" "${TEST_PATH}" | wc -l)
+                fi
+
+                if [[ "${tag_match_count}" -gt 0 ]]; then
+                  USE_NAME_FILTER=false
+                  FILTER_ARGS=(--tags "${TAG_CANDIDATE}")
+                  echo "Applying label-as-tag filter: ${TAG_CANDIDATE}"
+                else
+                  echo "Applying scenario/name filter: ${FILTER_INPUT_TRIMMED}"
+                  if command -v rg >/dev/null 2>&1; then
+                    mapfile -t MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_INPUT_TRIMMED}" "${TEST_PATH}" || true)
+                  else
+                    mapfile -t MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_INPUT_TRIMMED}" "${TEST_PATH}" || true)
+                  fi
                 fi
               fi
 
@@ -227,7 +242,12 @@ jobs:
                 TARGET_PATHS=("${MATCHED_FILES[@]}")
                 echo "Matched feature files: ${#TARGET_PATHS[@]}"
               else
-                echo "No feature files matched filter text under ${TEST_PATH}; using suite path with --name filter"
+                echo "No feature files matched filter text under ${TEST_PATH}; using suite path"
+              fi
+
+              if [[ "${USE_NAME_FILTER}" == "true" ]]; then
+                ESCAPED_FILTER="$(printf '%s' "${FILTER_INPUT_TRIMMED}" | sed -E 's/[][(){}.^$*+?|\\/]/\\\\&/g')"
+                FILTER_ARGS=(--name "${ESCAPED_FILTER}")
               fi
             fi
 
@@ -312,7 +332,7 @@ jobs:
 
   test-booking:
     name: '[Booking] ${{ matrix.suite_name }}'
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_booking == 'true' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_booking == 'true' || (github.event.inputs.labels_or_test_id != '' && github.event.inputs.run_non_booking != 'true' && github.event.inputs.run_booking != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -423,29 +443,44 @@ jobs:
           TARGET_PATHS=("${TEST_PATH}")
 
           if [[ -n "${FILTER_INPUT}" ]]; then
+            FILTER_INPUT_TRIMMED="$(printf '%s' "${FILTER_INPUT}" | sed -E 's/^\s+|\s+$//g')"
+
             if [[ "${FILTER_INPUT}" == @* ]]; then
-              FILTER_ARGS=(--tags "${FILTER_INPUT}")
-              echo "Applying tag filter: ${FILTER_INPUT}"
+              FILTER_ARGS=(--tags "${FILTER_INPUT_TRIMMED}")
+              echo "Applying tag filter: ${FILTER_INPUT_TRIMMED}"
             else
-              ESCAPED_FILTER="$(printf '%s' "${FILTER_INPUT}" | sed -E 's/[][(){}.^$*+?|\\/]/\\\\&/g')"
-              FILTER_ARGS=(--name "${ESCAPED_FILTER}")
-              echo "Applying name/test-id filter: ${FILTER_INPUT}"
+              USE_NAME_FILTER=true
+              LOWER_FILTER="$(printf '%s' "${FILTER_INPUT_TRIMMED}" | tr '[:upper:]' '[:lower:]')"
 
-              if command -v rg >/dev/null 2>&1; then
-                mapfile -t MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_INPUT}" "${TEST_PATH}" || true)
-              else
-                mapfile -t MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_INPUT}" "${TEST_PATH}" || true)
-              fi
-
-              if [[ "${FILTER_INPUT}" =~ ^[0-9]+$ ]] || [[ "${FILTER_INPUT}" =~ ^TC-?[0-9]+$ ]]; then
-                FILTER_ID="${FILTER_INPUT//[^0-9]/}"
+              if [[ "${FILTER_INPUT_TRIMMED}" =~ ^[0-9]+$ ]] || [[ "${FILTER_INPUT_TRIMMED}" =~ ^TC-?[0-9]+$ ]]; then
+                USE_NAME_FILTER=false
+                FILTER_ID="${FILTER_INPUT_TRIMMED//[^0-9]/}"
+                echo "Applying test-id filter: ${FILTER_ID}"
                 if command -v rg >/dev/null 2>&1; then
-                  mapfile -t ID_MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_ID}" "${TEST_PATH}" || true)
+                  mapfile -t MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_ID}" "${TEST_PATH}" || true)
                 else
-                  mapfile -t ID_MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_ID}" "${TEST_PATH}" || true)
+                  mapfile -t MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_ID}" "${TEST_PATH}" || true)
                 fi
-                if [[ ${#ID_MATCHED_FILES[@]} -gt 0 ]]; then
-                  MATCHED_FILES=("${ID_MATCHED_FILES[@]}")
+              else
+                # Label shorthand without '@' (e.g. galileo) is treated as a tag when matching tags exist.
+                TAG_CANDIDATE="@${LOWER_FILTER}"
+                if command -v rg >/dev/null 2>&1; then
+                  tag_match_count=$(rg -n --glob '*.feature' --fixed-strings "${TAG_CANDIDATE}" "${TEST_PATH}" | wc -l)
+                else
+                  tag_match_count=$(grep -RIn --include='*.feature' --fixed-strings "${TAG_CANDIDATE}" "${TEST_PATH}" | wc -l)
+                fi
+
+                if [[ "${tag_match_count}" -gt 0 ]]; then
+                  USE_NAME_FILTER=false
+                  FILTER_ARGS=(--tags "${TAG_CANDIDATE}")
+                  echo "Applying label-as-tag filter: ${TAG_CANDIDATE}"
+                else
+                  echo "Applying scenario/name filter: ${FILTER_INPUT_TRIMMED}"
+                  if command -v rg >/dev/null 2>&1; then
+                    mapfile -t MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_INPUT_TRIMMED}" "${TEST_PATH}" || true)
+                  else
+                    mapfile -t MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_INPUT_TRIMMED}" "${TEST_PATH}" || true)
+                  fi
                 fi
               fi
 
@@ -453,7 +488,12 @@ jobs:
                 TARGET_PATHS=("${MATCHED_FILES[@]}")
                 echo "Matched feature files: ${#TARGET_PATHS[@]}"
               else
-                echo "No feature files matched filter text under ${TEST_PATH}; using suite path with --name filter"
+                echo "No feature files matched filter text under ${TEST_PATH}; using suite path"
+              fi
+
+              if [[ "${USE_NAME_FILTER}" == "true" ]]; then
+                ESCAPED_FILTER="$(printf '%s' "${FILTER_INPUT_TRIMMED}" | sed -E 's/[][(){}.^$*+?|\\/]/\\\\&/g')"
+                FILTER_ARGS=(--name "${ESCAPED_FILTER}")
               fi
             fi
 
@@ -541,7 +581,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [test-non-booking, test-booking]
-    if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_non_booking == 'true' || github.event.inputs.run_booking == 'true') }}
+    if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_non_booking == 'true' || github.event.inputs.run_booking == 'true' || (github.event.inputs.labels_or_test_id != '' && github.event.inputs.run_non_booking != 'true' && github.event.inputs.run_booking != 'true')) }}
 
     permissions:
       contents: read
