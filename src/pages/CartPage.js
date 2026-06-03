@@ -242,6 +242,14 @@ const SELECTORS = {
   SHARE_BUTTON: ".share-container .share-btn",
   SHARE_POPPER_MENU: "ul.share-popper[role='menu']:visible",
 
+  // Options (more_vert) dropdown — contains "View approvals", "Cancel trip", etc.
+  OPTIONS_BUTTON: ".options-container .share-btn",
+
+  // Approvals dialog (opened via options menu → "View approvals")
+  APPROVALS_DIALOG: '.el-dialog.approvals-dialog',
+  APPROVALS_DIALOG_APPROVER_NAME: '.approvals-dialog .approver-name',
+  APPROVALS_DIALOG_CLOSE_BUTTON: '.approvals-dialog .el-dialog__headerbtn',
+
   // Add product from cart product carousel
   ADD_HOTEL_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Hotel")',
   ADD_FLIGHT_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Flight")',
@@ -1160,6 +1168,98 @@ class CartPage {
     await originalPrice.waitFor({ state: 'visible', timeout: 30000 });
 
     return parseAmountText(await originalPrice.textContent(), 'flight quote original price');
+  }
+
+  /**
+   * Clicks the options (more_vert) button and waits for its dropdown menu to appear.
+   * The options menu contains items like "View approvals", "Cancel trip", etc.
+   */
+  async clickOptionsButton() {
+    const optionsButton = this.page.locator(SELECTORS.OPTIONS_BUTTON);
+    try {
+      await optionsButton.waitFor({ state: 'visible', timeout: 30000 });
+      await optionsButton.click();
+      await this.getVisibleShareMenu().waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickOptionsButton] Could not open options dropdown (${SELECTORS.OPTIONS_BUTTON}). ` +
+        `Button may not be visible or trip has no options available. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks "View approvals" from the currently visible options dropdown menu.
+   */
+  async clickViewApprovalsMenuItem() {
+    const menu = this.getVisibleShareMenu();
+    try {
+      const item = menu.locator('li[role="menuitem"]', { hasText: 'View approvals' });
+      await item.waitFor({ state: 'visible', timeout: 10000 });
+      await item.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickViewApprovalsMenuItem] Could not click "View approvals" menu item. ` +
+        `Item may not be visible — trip may have no approval flow or trip is cancelled. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the approvals dialog to become visible after clicking "View approvals".
+   */
+  async waitForApprovalsDialogVisible() {
+    try {
+      await this.page.locator(SELECTORS.APPROVALS_DIALOG).waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForApprovalsDialogVisible] Approvals dialog did not open (${SELECTORS.APPROVALS_DIALOG}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Counts the approver name elements inside the approvals dialog.
+   * Waits for the first approver to appear (dialog has a loading state before data renders).
+   * @param {number} [timeout=15000]
+   * @returns {Promise<number>}
+   */
+  async getApproverCount({ timeout = 15000 } = {}) {
+    const dialog = this.page.locator(SELECTORS.APPROVALS_DIALOG);
+    try {
+      await dialog.waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getApproverCount] Approvals dialog not visible (${SELECTORS.APPROVALS_DIALOG}). Original: ${err.message}`
+      );
+    }
+    // Wait for at least one approver name — the component shows a skeleton while isLoading=true
+    const firstApprover = this.page.locator(SELECTORS.APPROVALS_DIALOG_APPROVER_NAME).first();
+    try {
+      await firstApprover.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getApproverCount] No approver names appeared in the approvals dialog after ${timeout}ms (${SELECTORS.APPROVALS_DIALOG_APPROVER_NAME}). ` +
+        `The trip may have no approval flow or data failed to load. Original: ${err.message}`
+      );
+    }
+    return this.page.locator(SELECTORS.APPROVALS_DIALOG_APPROVER_NAME).count();
+  }
+
+  /**
+   * Closes the approvals dialog by clicking its header close button.
+   */
+  async closeApprovalsDialog() {
+    const closeBtn = this.page.locator(SELECTORS.APPROVALS_DIALOG_CLOSE_BUTTON);
+    try {
+      await closeBtn.waitFor({ state: 'visible', timeout: 5000 });
+      await closeBtn.click();
+      await this.page.locator(SELECTORS.APPROVALS_DIALOG).waitFor({ state: 'hidden', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.closeApprovalsDialog] Could not close approvals dialog (${SELECTORS.APPROVALS_DIALOG_CLOSE_BUTTON}). Original: ${err.message}`
+      );
+    }
   }
 
   /**

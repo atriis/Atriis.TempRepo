@@ -5143,6 +5143,55 @@ const Cart = {
   },
 
   /**
+   * Opens the approvals dialog from the trip overview options menu.
+   * Clicks the more_vert options button, selects "View approvals", and waits
+   * for the approvals dialog to appear.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async viewApproversInTripOverview(page) {
+    if (!page) throw new Error('[Cart.viewApproversInTripOverview] "page" is required.');
+
+    logger.debug('[Cart.viewApproversInTripOverview] Opening approvals dialog via options menu');
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickOptionsButton();
+      await cartPage.clickViewApprovalsMenuItem();
+      await cartPage.waitForApprovalsDialogVisible();
+    } catch (err) {
+      throw new Error(`[Cart.viewApproversInTripOverview] Failed to open approvals dialog: ${err.message}`);
+    }
+  },
+
+  /**
+   * Verifies the number of approvers shown in the open approvals dialog.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount - Expected number of approver names
+   */
+  async verifyApproverCount(page, expectedCount) {
+    if (!page) throw new Error('[Cart.verifyApproverCount] "page" is required.');
+    if (!Number.isInteger(expectedCount) || expectedCount < 0) {
+      throw new Error(`[Cart.verifyApproverCount] "expectedCount" must be a non-negative integer, got: ${expectedCount}`);
+    }
+
+    logger.debug('[Cart.verifyApproverCount] Counting approvers in approvals dialog', { expectedCount });
+    const cartPage = getPageObject(page, CartPage);
+    const actualCount = await cartPage.getApproverCount();
+
+    if (actualCount !== expectedCount) {
+      await cartPage.closeApprovalsDialog().catch(() => {});
+      throw new Error(
+        `[Cart.verifyApproverCount] Approver count mismatch. Expected ${expectedCount}, got ${actualCount}. ` +
+        `Check the approval flow configuration for this trip's arranger profile.`
+      );
+    }
+
+    await cartPage.closeApprovalsDialog();
+  },
+
+  /**
    * Starts capturing the next /api/v3/quotes?tripId=... GET response.
    * Must be called BEFORE the action that navigates to / refreshes the cart.
    * Returns an unresolved Promise — do NOT await in the calling step.

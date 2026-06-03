@@ -153,6 +153,16 @@ When("I close price breakdown modal", async function () {
   await cartPage.clickXToClosePriceBreakdownModal();
 });
 
+When("I view the approvers in the trip overview", async function () {
+  logger.info("Opening approvals dialog via trip overview options menu");
+  await Cart.viewApproversInTripOverview(this.page);
+});
+
+Then("the trip overview should show {int} approvers", async function (expectedCount) {
+  logger.info("Verifying approver count in trip overview approvals dialog", { expectedCount });
+  await Cart.verifyApproverCount(this.page, expectedCount);
+});
+
 When("I click the share quote button", async function () {
   logger.info("Clicking share quote button");
   await Cart.clickShareQuoteAndWaitForSubjectField(this.page);

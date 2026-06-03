@@ -22,7 +22,8 @@ Feature: 24209 Booking for a guest when selecting "Copy settings from - My Profi
     And I add the first flight to cart
     And the booking status should be "Pending booking"
     And I proceed to checkout
-    And I complete the booking
-    # TODO: open the approvers list from the trip overview share menu -> proposed step: When I view the approvers in the trip overview (DSL: hover share button, click first share-popper option to open approvers panel)
-    # TODO: assert exactly 2 approvers are shown -> proposed step: Then the trip overview should show 2 approvers (DSL: count visible approver-name list items, expect 2)
+    And I send booking for approval
+    And the quote destination should contain "Flight to"
+    When I view the approvers in the trip overview
+    Then the trip overview should show 2 approvers
     Then I successfully cancel the trip
