@@ -8,6 +8,12 @@ on:
   schedule:
     - cron: '30 18 */2 * *'  # Run every other day at 18:30 UTC
   workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Enable debug mode (single worker + backtrace)'
+        required: false
+        type: boolean
+        default: false
 
 # Structured logging configuration for all jobs
 env:
@@ -130,9 +136,30 @@ jobs:
 
       - name: Run ${{ matrix.suite_name }} Tests
         timeout-minutes: 60
-        run: npx cucumber-js ${{ matrix.test_path }} --parallel 4 --retry 2
+        run: |
+          set -o pipefail
+          if [[ "${{ github.event.inputs.debug || 'false' }}" == "true" ]]; then
+            PARALLEL=1
+            FORMAT_ARGS="--format progress --backtrace"
+          else
+            PARALLEL=4
+            FORMAT_ARGS="--format progress"
+          fi
+
+          echo "Debug mode: ${{ github.event.inputs.debug || 'false' }}"
+          echo "Cucumber parallel workers: ${PARALLEL}"
+
+          npx cucumber-js ${{ matrix.test_path }} --parallel "${PARALLEL}" --retry 2 ${FORMAT_ARGS} 2>&1 | tee test-results/cucumber-raw.log
         env:
           CI: "true"
+
+      - name: Upload ${{ matrix.suite_name }} Raw Log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.suite_id }}-raw-log
+          path: test-results/cucumber-raw.log
+          if-no-files-found: ignore
 
       - name: Upload ${{ matrix.suite_name }} JUnit Results
         if: always()
@@ -245,9 +272,30 @@ jobs:
 
       - name: Run ${{ matrix.suite_name }} Tests
         timeout-minutes: 80
-        run: npx cucumber-js ${{ matrix.test_path }} --parallel 2 --retry 2
+        run: |
+          set -o pipefail
+          if [[ "${{ github.event.inputs.debug || 'false' }}" == "true" ]]; then
+            PARALLEL=1
+            FORMAT_ARGS="--format progress --backtrace"
+          else
+            PARALLEL=2
+            FORMAT_ARGS="--format progress"
+          fi
+
+          echo "Debug mode: ${{ github.event.inputs.debug || 'false' }}"
+          echo "Cucumber parallel workers: ${PARALLEL}"
+
+          npx cucumber-js ${{ matrix.test_path }} --parallel "${PARALLEL}" --retry 2 ${FORMAT_ARGS} 2>&1 | tee test-results/cucumber-raw.log
         env:
           CI: "true"
+
+      - name: Upload ${{ matrix.suite_name }} Raw Log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.suite_id }}-raw-log
+          path: test-results/cucumber-raw.log
+          if-no-files-found: ignore
 
       - name: Upload ${{ matrix.suite_name }} JUnit Results
         if: always()
