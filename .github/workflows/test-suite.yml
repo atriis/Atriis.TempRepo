@@ -60,7 +60,7 @@ concurrency:
 jobs:
   test-non-booking:
     name: '[Non-Booking] ${{ matrix.suite_name }}'
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_non_booking == 'true' || (github.event.inputs.labels_or_test_id != '' && github.event.inputs.run_non_booking != 'true' && github.event.inputs.run_booking != 'true') }}
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_non_booking == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 65
     strategy:
@@ -338,7 +338,7 @@ jobs:
 
   test-booking:
     name: '[Booking] ${{ matrix.suite_name }}'
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_booking == 'true' || (github.event.inputs.labels_or_test_id != '' && github.event.inputs.run_non_booking != 'true' && github.event.inputs.run_booking != 'true') }}
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_booking == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -588,11 +588,191 @@ jobs:
           path: test-results/screenshots/
           if-no-files-found: ignore
 
+  test-filtered:
+    name: '[Filtered] labels_or_test_id'
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.labels_or_test_id != '' && github.event.inputs.run_non_booking != 'true' && github.event.inputs.run_booking != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: mkdir -p test-results test-results/screenshots
+
+      - name: Load environment variables
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
+
+      - name: Run filtered tests only
+        timeout-minutes: 80
+        run: |
+          set -o pipefail
+          FILTER_INPUT="${{ github.event.inputs.labels_or_test_id || '' }}"
+          FILTER_INPUT_TRIMMED="$(printf '%s' "${FILTER_INPUT}" | sed -E 's/^\s+|\s+$//g')"
+          SELECTED_PRODUCT="${{ github.event.inputs.product || 'all' }}"
+          SEARCH_ROOT='tests/features'
+
+          if [[ "${SELECTED_PRODUCT}" != "all" ]]; then
+            SEARCH_ROOT="tests/features/${SELECTED_PRODUCT}"
+          fi
+
+          if [[ "${{ github.event.inputs.debug || 'false' }}" == "true" ]]; then
+            PARALLEL=1
+            DEBUG_ARGS=(--format progress --backtrace)
+          else
+            PARALLEL=2
+            DEBUG_ARGS=(--format progress)
+          fi
+
+          FILTER_ARGS=()
+          TARGET_PATHS=("${SEARCH_ROOT}")
+          USE_NAME_FILTER=true
+
+          if [[ "${FILTER_INPUT_TRIMMED}" == @* ]]; then
+            USE_NAME_FILTER=false
+            FILTER_ARGS=(--tags "${FILTER_INPUT_TRIMMED}")
+            echo "Applying tag filter: ${FILTER_INPUT_TRIMMED}"
+          elif [[ "${FILTER_INPUT_TRIMMED}" =~ ^[0-9]+$ ]] || [[ "${FILTER_INPUT_TRIMMED}" =~ ^TC-?[0-9]+$ ]]; then
+            USE_NAME_FILTER=false
+            FILTER_ID="${FILTER_INPUT_TRIMMED//[^0-9]/}"
+            echo "Applying test-id filter: ${FILTER_ID}"
+            if command -v rg >/dev/null 2>&1; then
+              mapfile -t MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_ID}" "${SEARCH_ROOT}" || true)
+            else
+              mapfile -t MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_ID}" "${SEARCH_ROOT}" || true)
+            fi
+            if [[ ${#MATCHED_FILES[@]} -eq 0 ]]; then
+              echo "::error::No feature files matched test id '${FILTER_INPUT_TRIMMED}' under ${SEARCH_ROOT}."
+              exit 1
+            fi
+            TARGET_PATHS=("${MATCHED_FILES[@]}")
+            echo "Matched feature files: ${#TARGET_PATHS[@]}"
+          else
+            LOWER_FILTER="$(printf '%s' "${FILTER_INPUT_TRIMMED}" | tr '[:upper:]' '[:lower:]')"
+            TAG_CANDIDATE="@${LOWER_FILTER}"
+            if command -v rg >/dev/null 2>&1; then
+              tag_match_count=$(rg -n --glob '*.feature' --fixed-strings "${TAG_CANDIDATE}" "${SEARCH_ROOT}" | wc -l)
+            else
+              tag_match_count=$(grep -RIn --include='*.feature' --fixed-strings "${TAG_CANDIDATE}" "${SEARCH_ROOT}" | wc -l)
+            fi
+
+            if [[ "${tag_match_count}" -gt 0 ]]; then
+              USE_NAME_FILTER=false
+              FILTER_ARGS=(--tags "${TAG_CANDIDATE}")
+              echo "Applying label-as-tag filter: ${TAG_CANDIDATE}"
+            else
+              if command -v rg >/dev/null 2>&1; then
+                mapfile -t MATCHED_FILES < <(rg -l --glob '*.feature' --fixed-strings "${FILTER_INPUT_TRIMMED}" "${SEARCH_ROOT}" || true)
+              else
+                mapfile -t MATCHED_FILES < <(grep -RIl --include='*.feature' --fixed-strings "${FILTER_INPUT_TRIMMED}" "${SEARCH_ROOT}" || true)
+              fi
+              if [[ ${#MATCHED_FILES[@]} -gt 0 ]]; then
+                TARGET_PATHS=("${MATCHED_FILES[@]}")
+                echo "Matched feature files: ${#TARGET_PATHS[@]}"
+              fi
+              ESCAPED_FILTER="$(printf '%s' "${FILTER_INPUT_TRIMMED}" | sed -E 's/[][(){}.^$*+?|\\/]/\\\\&/g')"
+              FILTER_ARGS=(--name "${ESCAPED_FILTER}")
+              echo "Applying scenario/name filter: ${FILTER_INPUT_TRIMMED}"
+            fi
+          fi
+
+          PREFLIGHT_OUTPUT="$(npx cucumber-js \
+            "${TARGET_PATHS[@]}" \
+            --parallel 1 \
+            --retry 0 \
+            --dry-run \
+            --format summary \
+            "${FILTER_ARGS[@]}" \
+            2>&1 || true)"
+          printf '%s\n' "${PREFLIGHT_OUTPUT}" > test-results/cucumber-filter-preflight.log
+
+          if echo "${PREFLIGHT_OUTPUT}" | grep -Eq '(^|[^0-9])0 scenarios([^0-9]|$)'; then
+            echo "::error::No scenarios matched labels_or_test_id='${FILTER_INPUT_TRIMMED}'."
+            exit 1
+          fi
+
+          touch test-results/filter-match.txt
+
+          npx cucumber-js \
+            "${TARGET_PATHS[@]}" \
+            --parallel "${PARALLEL}" \
+            --retry 2 \
+            "${DEBUG_ARGS[@]}" \
+            "${FILTER_ARGS[@]}" \
+            2>&1 | tee test-results/cucumber-raw.log
+        env:
+          CI: "true"
+
+      - name: Upload filtered raw log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filtered-raw-log
+          path: test-results/cucumber-raw.log
+          if-no-files-found: ignore
+
+      - name: Upload filtered JUnit Results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filtered-results
+          path: test-results/cucumber-junit.xml
+          if-no-files-found: ignore
+
+      - name: Upload filtered Cucumber Report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filtered-report
+          path: test-results/cucumber-report.json
+          if-no-files-found: ignore
+
+      - name: Upload filtered Allure Results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filtered-allure-results
+          path: allure-results/
+          if-no-files-found: ignore
+
+      - name: Upload filtered Screenshots
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filtered-screenshots
+          path: test-results/screenshots/
+          if-no-files-found: ignore
+
+      - name: Upload filtered match marker
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filtered-filter-match
+          path: test-results/filter-match.txt
+          if-no-files-found: ignore
+
   report:
     name: Test Report
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [test-non-booking, test-booking]
+    needs: [test-non-booking, test-booking, test-filtered]
     if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_non_booking == 'true' || github.event.inputs.run_booking == 'true' || (github.event.inputs.labels_or_test_id != '' && github.event.inputs.run_non_booking != 'true' && github.event.inputs.run_booking != 'true')) }}
 
     permissions:
