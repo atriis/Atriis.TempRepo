@@ -110,6 +110,29 @@ When("I capture the {string} payload for request type {string} from Storage", as
   });
 });
 
+// Partial-match wording: captures any request whose type contains the given keyword
+When("I capture the {string} payload for request type containing {string} from Storage", async function (source, requestTypeKeyword) {
+  await runPayloadValidationStep(this, "capturePayloadByRequestType", { source, requestType: requestTypeKeyword }, async () => {
+    const identifiers = getScenarioIdentifiers(this);
+    logger.info("Capturing payload from Storage (contains match)", { source, requestTypeKeyword, ...identifiers });
+
+    const record = await PayloadValidation.capturePayloadByRequestType(
+      this.page,
+      this,
+      source,
+      requestTypeKeyword,
+      { ...identifiers, matchMode: "contains" }
+    );
+
+    this.lastCapturedParserPayload = record;
+    logger.info("Payload captured from Storage", {
+      source: record.source,
+      requestType: record.requestType,
+      capturedAt: record.capturedAt,
+    });
+  });
+});
+
 Then("the captured {string} payload for request type {string} should contain {string}", async function (source, requestType, expectedText) {
   await expectCapturedContains(
     this,

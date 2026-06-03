@@ -237,7 +237,7 @@ async function downloadPayload({ baseUrl, tripId, rowKey, source, operationTimeo
  * @param {number}  [options.lookbackMinutes]     - defaults to config value
  * @returns {Promise<{ payload: string, metadata: object }>}
  */
-async function fetchPayloadFromStorage({ source, requestType, tripId, transactionId, sid, lookbackMinutes, returnAllMatches = false, maxMatches } = {}) {
+async function fetchPayloadFromStorage({ source, requestType, tripId, transactionId, sid, lookbackMinutes, returnAllMatches = false, maxMatches, requestTypeMatchMode = "exact" } = {}) {
   if (!source || !["request", "response"].includes(source)) {
     throw new Error(`source must be "request" or "response", got: ${source}`);
   }
@@ -308,6 +308,7 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
       includeSid,
       transactionIdOverride,
       sidOverride,
+      requestTypeMatchMode, // from fetchPayloadFromStorage outer scope
     };
   }
 
@@ -358,7 +359,13 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
       if (!entry) continue;
 
       if (entry.timestamp < criteria.fromDate || entry.timestamp > criteria.toDate) continue;
-      if (criteria.includeRequestType && entry.requestType !== requestType) continue;
+      if (criteria.includeRequestType) {
+        if (criteria.requestTypeMatchMode === "contains") {
+          if (!entry.requestType || !entry.requestType.includes(requestType)) continue;
+        } else {
+          if (entry.requestType !== requestType) continue;
+        }
+      }
       if (criteria.includeTransactionId && criteria.transactionIdOverride && entry.transactionId !== criteria.transactionIdOverride) continue;
       if (criteria.includeSid && criteria.sidOverride && entry.sid !== criteria.sidOverride) continue;
 

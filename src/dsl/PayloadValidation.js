@@ -413,6 +413,7 @@ const PayloadValidation = {
       tripId: options.tripId,
       transactionId: options.transactionId,
       sid: options.sid,
+      requestTypeMatchMode: options.matchMode || "exact",
     });
 
     logger.info(`Payload captured successfully from Storage source="${normalizedSource}" requestType="${normalizedRequestType}"`, {
