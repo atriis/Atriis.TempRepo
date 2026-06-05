@@ -8,7 +8,7 @@ Feature: Amadeus Value Hotel E2E Booking
   Scenario Outline: Booking Amadeus Value Hotel
     Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "amos one"
-    When I search for a hotel in "hyatt place denver downtown" for 1 night
+    When I search for a hotel in "London" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     When I proceed to checkout
