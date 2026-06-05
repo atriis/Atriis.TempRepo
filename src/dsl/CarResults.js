@@ -887,6 +887,7 @@ const CarResults = {
       mapsContext.locationText,
       `Google Maps location text should not be empty. Received: "${mapsContext.locationText}"`,
     ).toBeTruthy();
+  },
 
   /**
    * Asserts that the first car result (index 0) is from the specified rental agency.
