@@ -145,3 +145,8 @@ When("I wait for booking details in checkout", async function () {
   logger.info("Waiting for booking details heading in checkout page");
   await DynamicAndReferenceFields.waitForCheckoutBookingDetails(this.page);
 });
+
+Then('"Yay! No additional details are required..." should not be displayed anywhere on checkout page', async function () {
+  logger.info('Verifying "Yay! No additional details are required..." message is not displayed on checkout');
+  await Checkout.verifyYayMessageNotVisible(this.page);
+});

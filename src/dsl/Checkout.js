@@ -486,6 +486,37 @@ const Checkout = {
     return { visible: true, enabled: true };
   },
 
+  /**
+   * Verifies the "Yay! No additional details are required..." alert is NOT
+   * displayed anywhere on the checkout page. This message must be suppressed
+   * when the user has additional (reference) details configured.
+   *
+   * Waits for the checkout page to load first so the absence assertion cannot
+   * pass simply because the reference form has not rendered yet.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async verifyYayMessageNotVisible(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+
+    // Ensure the checkout page (and its reference-fields section) is fully loaded
+    // before asserting absence, to avoid a false pass on a not-yet-rendered page.
+    // The "Book and Finalize" button only appears once checkout has finished
+    // rendering, so it is a more reliable readiness signal than the optional 5s heading wait.
+    await checkoutPage.waitForBookingDetailsText();
+    await checkoutPage.waitForBookAndFinalizeButton();
+
+    logger.debug('Asserting "Yay! No additional details are required..." alert is not displayed on checkout');
+
+    const yayAlert = checkoutPage.getNoAdditionalDetailsAlert();
+    await expect(
+      yayAlert,
+      'The "Yay! No additional details are required..." alert was displayed on checkout, but the user has additional details configured — it must be suppressed.',
+    ).toHaveCount(0);
+  },
+
 };
 
 module.exports = Checkout;

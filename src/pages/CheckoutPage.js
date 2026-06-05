@@ -47,6 +47,9 @@ const SELECTORS = {
 
   // Required field detection — inputs inside is-danger wrappers across checkout
   REQUIRED_INPUTS: ".is-danger .el-input__inner",
+  // "Yay! No additional details are required..." alert (trip-reference-form.vue).
+  // Rendered via v-if and removed from the DOM entirely when reference fields ARE required.
+  NO_ADDITIONAL_DETAILS_ALERT: ".no-reference-fields-alert",
   CHECKOUT_TOTAL_PRICE: '.price-summary .price-total .amount',
   CHECKOUT_SUMMARY_SECTION: '.trip-summary',
   CHECKOUT_SUMMARY_QUOTE_TITLE: '.trip-summary .summary-title',
@@ -536,6 +539,16 @@ class CheckoutPage {
         await input.fill(fallbackValues[i]);
       }
     }
+  }
+
+  /**
+   * Gets the "Yay! No additional details are required..." alert locator.
+   * The alert is only present in the DOM when no reference fields are required,
+   * so callers asserting its absence should expect a count of 0.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getNoAdditionalDetailsAlert() {
+    return this.page.locator(SELECTORS.NO_ADDITIONAL_DETAILS_ALERT);
   }
 
   async verifyQuoteVisibleInCheckoutSummary(quoteName, { timeout = 15000 } = {}) {

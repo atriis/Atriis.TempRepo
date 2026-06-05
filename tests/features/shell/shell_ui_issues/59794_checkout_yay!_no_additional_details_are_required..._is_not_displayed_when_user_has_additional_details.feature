@@ -17,16 +17,7 @@ Feature: 59794 - Checkout "Yay! No additional details are required..." is not di
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
-    And I wait for the first add to trip button to be visible in room level results
     And I add a refundable room to my cart
-    And I handle conflicting quotes if visible
     When I proceed to checkout
-    # TODO: negative-element-validation — verify the "Yay! No additional details are required..." message is NOT displayed on the checkout page
-    #       Proposed step: Then "Yay! No additional details are required..." should not be displayed on the checkout page
-    #       DSL method: Checkout.verifyYayMessageNotVisible(page)
-    # TODO: negative-element-validation — verify the "Yay! No additional details are required..." message is NOT displayed (second check)
-    #       Proposed step: Then "Yay! No additional details are required..." should not be displayed on the checkout page
-    #       DSL method: Checkout.verifyYayMessageNotVisible(page)
-    # TODO: negative-element-validation — verify the "Yay! No additional details are required..." message is NOT displayed (third check)
-    #       Proposed step: Then "Yay! No additional details are required..." should not be displayed on the checkout page
-    #       DSL method: Checkout.verifyYayMessageNotVisible(page)
+    And I wait for booking details in checkout
+    Then "Yay! No additional details are required..." should not be displayed anywhere on checkout page
