@@ -59,6 +59,14 @@ const Administration = {
     const adminPageInNewTab = getPageObject(newAdminTab, AdministrationPage);
     await adminPageInNewTab.waitForAdminPageReady();
 
+    // The admin portal opens on a separate host with its own CookieHub consent
+    // banner that overlays the page and intercepts pointer events, blocking clicks
+    // on the user search, tabs, and save buttons. Dismiss it once — CookieHub
+    // persists the consent for the rest of the session, so it survives the tab
+    // reload performed by the "switch to administration" step.
+    const adminLoginPage = getPageObject(newAdminTab, LoginPage);
+    await adminLoginPage.acceptCookiesIfPresent(6000);
+
     logger.info('[Administration.navigateToAdministration] Administration portal is ready');
     return newAdminTab;
   },
