@@ -1585,9 +1585,13 @@ const Profile = {
       await profilePage.selectExpiryMonth(expiryMonth);
       await profilePage.selectExpiryYear(expiryYear);
       await profilePage.fillBillingAddress('123 Main Street');
-      await profilePage.fillBillingCity('New York');
-      await profilePage.fillBillingZipCode('10001');
-      await profilePage.selectBillingCountry('UNITED STATES (US)');
+      await profilePage.fillBillingCity('London');
+      // The zip/postcode field only accepts numeric input.
+      await profilePage.fillBillingZipCode('12345');
+      // Use United Kingdom rather than United States: a US billing country makes the
+      // State field mandatory, and this form does not populate it, so the card silently
+      // fails validation and never saves. The UK has no mandatory state/province field.
+      await profilePage.selectBillingCountry('UNITED KINGDOM (GB)');
     } catch (err) {
       throw new Error(`[Profile.addCreditCardFull] Failed to fill card details for "${name}": ${err.message}`);
     }
