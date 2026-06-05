@@ -1241,6 +1241,31 @@ const FlightSearch = {
   },
 
   /**
+   * Verifies the "Allow nearby airports" checkbox in the advanced flight search is checked.
+   *
+   * The checkbox state reflects the administration configuration; this asserts it is enabled.
+   * Expects the flight search form to already be displayed (open the flight tab first).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{allowNearbyAirportsChecked: boolean}>}
+   */
+  async verifyAllowNearbyAirportsCheckboxIsChecked(page) {
+    if (!page) throw new Error('[FlightSearch.verifyAllowNearbyAirportsCheckboxIsChecked] "page" is required.');
+
+    logger.info('Verifying the "Allow nearby airports" checkbox is checked');
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const isChecked = await flightSearchPage.isAllowNearbyAirportsCheckboxChecked();
+
+    expect(
+      isChecked,
+      '"Allow nearby airports" checkbox in the advanced flight search should be checked per administration configuration, but it was unchecked.',
+    ).toBe(true);
+
+    return { allowNearbyAirportsChecked: isChecked };
+  },
+
+  /**
    * Searches for a round trip flight with the parallel car search checkbox enabled.
    * @param {import('playwright').Page} page
    * @param {string|Object} routeInput - Route key or {from, to} object

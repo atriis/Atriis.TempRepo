@@ -270,6 +270,11 @@ Then("the car search checkbox should be checked by default", async function () {
   await FlightSearch.verifyCarSearchCheckboxChecked(this.page);
 });
 
+Then('the "Allow nearby airports" checkbox in the advanced flight search should be checked', async function () {
+  logger.info('Verifying the "Allow nearby airports" checkbox is checked');
+  await FlightSearch.verifyAllowNearbyAirportsCheckboxIsChecked(this.page);
+});
+
 Then("the search loading screen should be visible", async function () {
   logger.info('Verifying the search loading screen is visible');
   await FlightSearch.verifySearchLoadingScreenVisible(this.page);

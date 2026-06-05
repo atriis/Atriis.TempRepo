@@ -10,6 +10,8 @@ const SELECTORS = {
   FLIGHT_CLASS_FIELD: '.class-input .app-select',
   ADVANCED_SEARCH_BUTTON: ".advanced-search-container .btn",
   ALLOW_NEARBY_AIRPORTS_CHECKBOX: ".advanced-search-container .el-checkbox__inner",
+  // The el-checkbox__input wrapper carries the `is-checked` class — used to read the checkbox state.
+  ALLOW_NEARBY_AIRPORTS_CHECKBOX_INPUT: ".advanced-search-container .el-checkbox__input",
   ADVANCED_SEARCH_OPTIONS: '.flight-more-search-inputs',
   FLIGHT_STOPS_FIELD: '.flight-more-search-inputs > :nth-child(1)',
   FLIGHT_STOPS_COMBOBOX: '.flight-more-search-inputs > :nth-child(1) input[role="combobox"]',
@@ -150,6 +152,23 @@ class FlightSearchPage {
    */
   async toggleAllowNearbyAirportsCheckbox() {
     await this.page.locator(SELECTORS.ALLOW_NEARBY_AIRPORTS_CHECKBOX).click();
+  }
+
+  /**
+   * Checks whether the "Allow nearby airports" checkbox is checked.
+   *
+   * The checkbox lives in the advanced-search-container footer and is always rendered, so it can be
+   * read without expanding the advanced options. Reads the `is-checked` class on the el-checkbox input.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isAllowNearbyAirportsCheckboxChecked(timeout = 15000) {
+    // Shares the el-checkbox `is-checked` read used by isCarSearchCheckboxChecked / check|uncheckParallelCarSearch.
+    // If a 5th copy is ever needed, extract a private _isElCheckboxChecked(input) helper instead of duplicating.
+    const checkboxInput = this.page.locator(SELECTORS.ALLOW_NEARBY_AIRPORTS_CHECKBOX_INPUT).first();
+    await checkboxInput.waitFor({ state: 'visible', timeout });
+    return await checkboxInput.evaluate((el) => el.classList.contains('is-checked'));
   }
 
   /**

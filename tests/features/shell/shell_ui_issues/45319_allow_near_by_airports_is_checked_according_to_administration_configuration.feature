@@ -14,4 +14,5 @@ Feature: 45319 - "Allow near by airports" is checked according to administration
 
   Scenario: Allow nearby airports checkbox is checked when enabled in administration
     Given I am logged in as "ruimendes@amadeus.com" booking a new trip
-    # TODO: Then the "Allow nearby airports" checkbox in the advanced flight search should be checked — assert the advanced-search-container checkbox (.advanced-search-container .el-checkbox__input) is checked; proposed DSL method: FlightSearch.verifyAllowNearbyAirportsCheckboxIsChecked(page)
+    When I click on the flight tab
+    Then the "Allow nearby airports" checkbox in the advanced flight search should be checked
