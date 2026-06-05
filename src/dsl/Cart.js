@@ -1,6 +1,6 @@
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
-const { CartPage, SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
+const { CartPage, SELECTORS: CART_SELECTORS, CANCELLATION_CONFIRMED_TEXT } = require("@pages/CartPage");
 const { CheckoutPage, SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 const { ResultsPage } = require("@pages/ResultsPage");
@@ -124,7 +124,7 @@ const Cart = {
 
     // Check if cancellation was successful
     await cartPage.waitForTripCancelledMessage();
-    const messageVisible = await page.getByText("Cancellation confirmed!", { exact: true }).isVisible();
+    const messageVisible = await page.getByText(CANCELLATION_CONFIRMED_TEXT, { exact: true }).isVisible();
 
     // Allow backend and UI to settle
     await page.waitForLoadState("networkidle");
@@ -182,6 +182,63 @@ const Cart = {
         error: error?.message,
       };
     }
+  },
+
+  /**
+   * Verifies the car (or any product) date shown in the cart is not the given broken value.
+   *
+   * Guards against the "Thursday, January 01" regression where a date that fails to parse renders
+   * as the epoch default. Asserts the unwanted date text does NOT appear in the cart quotes tabs.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} unwantedDate - The broken date text that must not appear, e.g. "Thursday, January 01"
+   * @returns {Promise<{unwantedDate: string, shown: boolean}>}
+   */
+  async verifyCarDateInCartIsNot(page, unwantedDate) {
+    if (!page) throw new Error('[Cart.verifyCarDateInCartIsNot] "page" is required.');
+    if (!unwantedDate || typeof unwantedDate !== 'string') {
+      throw new Error(
+        `[Cart.verifyCarDateInCartIsNot] "unwantedDate" must be a non-empty string, got: ${typeof unwantedDate} (${JSON.stringify(unwantedDate)})`,
+      );
+    }
+
+    logger.info('Verifying the car date in cart is not the broken default value', { unwantedDate });
+
+    const cartPage = getPageObject(page, CartPage);
+    const shown = await cartPage.isDateTextShownInCartTabs(unwantedDate);
+
+    expect(
+      shown,
+      `Car date in cart shows "${unwantedDate}" — the pickup date failed to parse/render (regression of the broken default-date bug).`,
+    ).toBe(false);
+
+    return { unwantedDate, shown };
+  },
+
+  /**
+   * Verifies the cancellation-confirmed page title is spelled exactly correctly.
+   *
+   * Reads the actual rendered title text and asserts it equals "Cancellation confirmed!" — catching
+   * any misspelling. Must be called after the trip has been cancelled (confirmation page visible).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{confirmationText: string}>}
+   */
+  async verifyCancellationConfirmedSpelledCorrectly(page) {
+    if (!page) throw new Error('[Cart.verifyCancellationConfirmedSpelledCorrectly] "page" is required.');
+
+    logger.info('Verifying the cancellation confirmation message is spelled correctly');
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualText = await cartPage.getCancellationConfirmedTitleText();
+    const expectedText = CANCELLATION_CONFIRMED_TEXT;
+
+    expect(
+      actualText,
+      `Cancellation confirmation message is misspelled — expected "${expectedText}" but the page showed "${actualText}".`,
+    ).toBe(expectedText);
+
+    return { confirmationText: actualText };
   },
 
   async cancelFirstActiveQuote(page) {

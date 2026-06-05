@@ -8,6 +8,10 @@ const config = require("@config/config");
  * Contains only UI-level interactions.
  */
 
+// Canonical, correctly-spelled cancellation-confirmed message. Single source of truth shared by the
+// visibility checks and the spelling assertion so the literal is never re-typed (and can't drift).
+const CANCELLATION_CONFIRMED_TEXT = "Cancellation confirmed!";
+
 const SELECTORS = {
 
   // Cart general selectors
@@ -67,6 +71,12 @@ const SELECTORS = {
   TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label='Trip cancellation'] .el-dialog__title",
   CONFIRM_CANCEL_BUTTON: "role=button[name='Cancel trip']",
   CANCELLATION_SUCCESS_MESSAGE: "text='Cancellation confirmed!'",
+  // Title on the cancellation-confirmed page; renders $t('trip.cancellationConfirmed') + '!'. Matched
+  // structurally (not by text) so its actual rendered text can be read to verify correct spelling.
+  CANCELLATION_CONFIRMED_TITLE: '.booking-success .msg-title',
+  // Quotes tabs container in the cart (el-tabs.tabs-container), scoped to the cart view (.trip-cart)
+  // because the .tabs-container class is reused by profile/manual-quote/parking views.
+  CART_TABS_CONTAINER: '.trip-cart .tabs-container',
   CANCELLED_QUOTES_SECTION: '.cancelled-quotes-container',
   CANCELLED_QUOTES_TITLE: '.cancelled-quotes-title',
   CANCELLED_QUOTE_CHECK_PRICE_BUTTON: '.cancelled-quotes-container .check-price-btn',
@@ -1095,7 +1105,7 @@ class CartPage {
     // or is still in-progress (slow GDS backends like Sabre/Amadeus).
     // 120s covers slow backend cancellation processing times.
     const successMessage = this.page.getByText(
-      "Cancellation confirmed!",
+      CANCELLATION_CONFIRMED_TEXT,
       { exact: true },
     );
     await successMessage.waitFor({ state: "visible", timeout });
@@ -1109,7 +1119,7 @@ class CartPage {
   async isTripCancelledMessageVisible({ timeout = 120000 } = {}) {
     try {
       const successMessage = this.page.getByText(
-        "Cancellation confirmed!",
+        CANCELLATION_CONFIRMED_TEXT,
         { exact: true },
       );
       await successMessage.waitFor({ state: "visible", timeout });
@@ -1117,6 +1127,44 @@ class CartPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Reads the rendered text of the cancellation-confirmed page title.
+   *
+   * Returned text-as-displayed so callers can assert correct spelling (e.g. "Cancellation confirmed!").
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>} The trimmed title text
+   */
+  async getCancellationConfirmedTitleText({ timeout = 30000 } = {}) {
+    const title = this.page.locator(SELECTORS.CANCELLATION_CONFIRMED_TITLE).first();
+    await title.waitFor({ state: "visible", timeout });
+    return ((await title.textContent()) ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Checks whether the given date text appears anywhere in the cart quotes tabs container.
+   *
+   * Used to guard against the broken default date (e.g. "Thursday, January 01") rendering when a
+   * product's date fails to parse. Text-based (not positional) so it catches the value regardless
+   * of which quote-card element shows it. Never throws; returns a boolean.
+   *
+   * @param {string} dateText - The date text to look for
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<boolean>}
+   */
+  async isDateTextShownInCartTabs(dateText, { timeout = 10000 } = {}) {
+    if (!dateText || typeof dateText !== "string") {
+      throw new Error(
+        `[CartPage.isDateTextShownInCartTabs] "dateText" must be a non-empty string, got: ${typeof dateText} (${JSON.stringify(dateText)})`,
+      );
+    }
+    const tabs = this.page.locator(SELECTORS.CART_TABS_CONTAINER).first();
+    await tabs.waitFor({ state: "visible", timeout });
+    // exact:false is deliberate — the date renders as "{date} · {time}", so the broken value must be
+    // matched as a substring. Do not tighten to exact:true or the guard will stop catching it.
+    return (await tabs.getByText(dateText, { exact: false }).count()) > 0;
   }
 
   /**
@@ -4955,4 +5003,5 @@ class CartPage {
 module.exports = {
   CartPage,
   SELECTORS,
+  CANCELLATION_CONFIRMED_TEXT,
 };

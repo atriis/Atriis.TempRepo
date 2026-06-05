@@ -532,6 +532,16 @@ Then("I successfully cancel the trip with 60 seconds wait", async function () {
   expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
 });
 
+Then("the car date in cart should not be {string}", async function (unwantedDate) {
+  logger.info("Verifying car date in cart is not the broken default value", { unwantedDate });
+  await Cart.verifyCarDateInCartIsNot(this.page, unwantedDate);
+});
+
+Then("cancellation confirmation is spelled correctly", async function () {
+  logger.info("Verifying cancellation confirmation is spelled correctly");
+  await Cart.verifyCancellationConfirmedSpelledCorrectly(this.page);
+});
+
 Then("the booking status should be {string}", async function (status) {
   logger.info("Verifying booking status", { status });
 

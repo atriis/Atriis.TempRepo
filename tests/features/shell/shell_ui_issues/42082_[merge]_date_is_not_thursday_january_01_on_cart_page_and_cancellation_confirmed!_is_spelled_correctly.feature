@@ -17,7 +17,6 @@ Feature: 42082 - Date is not "Thursday, January 01" on cart page and "Cancellati
     And I have added myself as the traveler
     When I search for a car at "LHR"
     And I add the first car to cart
-    # TODO: Extract the car date text displayed in the cart tabs container and assert it is not "Thursday, January 01"
-    #       Proposed step: Then the car date in cart should not be "Thursday, January 01"
-    #       DSL method: Cart.verifyCarDateIsNotJanuary01(page) — reads text from ".tabs-container [class^='mb'], [class*=' mb']" and throws if value equals "Thursday, January 01"
-    Then I successfully cancel the trip
+    Then the car date in cart should not be "Thursday, January 01"
+    And I successfully cancel the trip
+    And cancellation confirmation is spelled correctly
