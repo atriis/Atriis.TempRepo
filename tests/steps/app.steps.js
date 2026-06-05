@@ -85,6 +85,11 @@ When("I logout from the application", async function () {
   await App.logout(this.page);
 });
 
+When("I switch the application language to {string}", async function (language) {
+  logger.info("Switching application language", { language });
+  await App.switchLanguage(this.page, language);
+});
+
 // ===== THEN STEPS =====
 
 /**

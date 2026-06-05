@@ -194,6 +194,31 @@ const App = {
   },
 
   /**
+   * Switches the application display language from the header language menu.
+   *
+   * This flow:
+   * - hovers the language (globe) icon to open the language list
+   * - clicks the requested language by name
+   *
+   * Verification of the resulting localized UI is left to the calling step.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} languageName - The language as shown in the list (e.g. "Italian", "English")
+   */
+  async switchLanguage(page, languageName) {
+    if (!page) throw new Error('page is required');
+    if (!languageName || typeof languageName !== 'string') {
+      throw new Error('languageName must be a non-empty string, got: ' + typeof languageName);
+    }
+
+    logger.debug('Switching application language', { languageName });
+
+    const menuPage = getPageObject(page, MenuPage);
+    await menuPage.hoverLanguageIcon();
+    await menuPage.clickLanguageOption(languageName);
+  },
+
+  /**
    * Reloads the current page. Centralized here so retries, post-reload
    * waits, or instrumentation can be added in one place.
    * @param {import('playwright').Page} page
