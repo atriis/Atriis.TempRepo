@@ -16,16 +16,16 @@ Feature: 66005 AA NDC - Complete Trip - Corporate Role 'Use New Flight Booking F
   So that I must go through pricing options to complete the booking for both outbound and inbound legs
 
   Scenario: Complete a round trip booking via pricing options with the 'Use New Flight Booking Flow' role
-    Given I am logged in as "aandcuser@aa.com" booking a new trip
+    Given I am logged in as "aandcuser@soniatest.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "ORD" to "LGA"
+    When I search for a round trip flight from "ORD" to "AMS"
     And flight results should be available
     Then the Select Flight button should be visible in results
     And the Add to trip and Pricing Options buttons should not be visible in results
     #Same selector for "Select flight" and "Select", that's why this function was reused here
     When I select one flight segment by schedule
     And I select the first option from pricing options
-    Then I should see the heading "Flight To Amsterdam"
+    Then I should see the heading "Flight To Chicago"
     And I select the first option from pricing options
     And I add to trip from pricing options
     Then the booking status should be "Pending booking"
