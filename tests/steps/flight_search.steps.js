@@ -270,6 +270,11 @@ Then("the car search checkbox should be checked by default", async function () {
   await FlightSearch.verifyCarSearchCheckboxChecked(this.page);
 });
 
+Then("the search loading screen should be visible", async function () {
+  logger.info('Verifying the search loading screen is visible');
+  await FlightSearch.verifySearchLoadingScreenVisible(this.page);
+});
+
 When("I search for a round trip flight from {string} to {string} with parallel car search", async function (from, to) {
   logger.info('Searching for round trip flight with parallel car search', { from, to });
   await FlightSearch.searchFlightRoundTripWithParallelCar(this.page, { from, to });

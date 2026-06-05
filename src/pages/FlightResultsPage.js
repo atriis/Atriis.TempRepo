@@ -52,6 +52,9 @@ function parseDurationRange(rangeText) {
 const SELECTORS = {
   // Flight selection
   PRODUCT_LOADER: '.app-product-loader',
+  // The loader slideshow shown while a search runs. Scoped to the product loader and matched by
+  // stable class (not a positional :nth-child) so reordering loader content can't silently break it.
+  SEARCH_SLIDESHOW: '.app-product-loader .slideshow',
   RESULTS_CONTAINER_SKELETON: '.results-container-skeleton',
   FILTER_CONTAINER_SKELETON: '.flight-filter-container-skeleton',
   CHANGE_FLIGHT_BUTTON: '.change-flight-btn-wrapper',
@@ -522,6 +525,24 @@ class FlightResultsPage {
   async isResultsLoaderVisible(timeout = 3000) {
     try {
       await this.page.locator(SELECTORS.PRODUCT_LOADER).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Returns whether the search loading screen (loader slideshow message) is currently visible.
+   *
+   * The slideshow appears immediately after a flight search is submitted and disappears
+   * once results render, so callers should check it right after submitting the search.
+   *
+   * @param {number} timeout - Max wait time in ms to detect visibility (default: 5000)
+   * @returns {Promise<boolean>}
+   */
+  async isSearchSlideshowVisible(timeout = 5000) {
+    try {
+      await this.page.locator(SELECTORS.SEARCH_SLIDESHOW).first().waitFor({ state: 'visible', timeout });
       return true;
     } catch {
       return false;

@@ -1,6 +1,8 @@
 const FlightSearchPage = require("@pages/FlightSearchPage");
+const FlightResultsPage = require("@pages/FlightResultsPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { SearchPage } = require("@pages/SearchPage");
+const { expect } = require("@playwright/test");
 const flightRoutes = require("@data/flights.json");
 const {
   selectDatesByInputValues,
@@ -1189,6 +1191,31 @@ const FlightSearch = {
     await searchPage.waitAndClickEditSearchButton();
 
     return { searched: true };
+  },
+
+  /**
+   * Verifies the search loading screen appears after a flight search is submitted.
+   *
+   * Asserts the loader slideshow message is visible, confirming the system is processing
+   * the request. Must be called immediately after submitting the search — the loader is
+   * transient and disappears once results render.
+   *
+   * @param {import('playwright').Page} page - Playwright page object
+   */
+  async verifySearchLoadingScreenVisible(page) {
+    if (!page) throw new Error('[FlightSearch.verifySearchLoadingScreenVisible] "page" is required.');
+
+    logger.info('Verifying the search loading screen is visible');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const isVisible = await flightResultsPage.isSearchSlideshowVisible();
+
+    expect(
+      isVisible,
+      'Search loading screen (loader slideshow) was not visible after submitting the search — the loader may not have rendered or results returned too quickly to observe it.',
+    ).toBe(true);
+
+    return { loadingScreenVisible: isVisible };
   },
 
   /**

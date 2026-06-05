@@ -16,4 +16,4 @@ Feature: 44881 - Loader is there
     Given I am logged in as "pax@prebook.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "MAD"
-    # TODO: Then the search loading screen should be visible — assert the slideshow loader (.slideshow > :nth-child(2)) is visible immediately after search is submitted; call FlightSearch.verifySearchLoadingScreenVisible(page) or FlightResultsPage.isSearchSlideshowVisible()
+    Then the search loading screen should be visible
