@@ -7,10 +7,18 @@ const logger = require("@utils/logger").child("Checkout");
 
 setDefaultTimeout(120000);
 
+// Booking finalization is a real GDS round-trip: it clicks Book & Finalize, then
+// waits up to 60s for the booking to process and another span for the trip
+// overview to render — internal waits that can approach the 120000ms default
+// step timeout and trip the opaque "function timed out within 120000ms" error
+// before the booking can complete. This step needs headroom above that internal
+// budget so slow-but-successful bookings finish and real failures surface clearly.
+const CHECKOUT_STEP_TIMEOUT_MS = 180000;
+
 
 // ===== WHEN STEPS =====
 
-When("I complete the booking", async function () {
+When("I complete the booking", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
   logger.info("Completing booking");
 
   const scenarioTags = Array.isArray(this.scenarioTags) ? this.scenarioTags : [];
@@ -49,12 +57,12 @@ When("I complete the booking without navigating to trip overview", async functio
   await Checkout.bookTripWithoutNavigatingToTripOverview(this.page);
 });
 
-When("I complete the booking with Fusion credit card verification", async function () {
+When("I complete the booking with Fusion credit card verification", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
   logger.info("Completing Fusion booking with card verification");
   await Checkout.bookAndFinalizeWithFusionCardVerification(this.page);
 });
 
-When("I complete the booking with Ypsilon credit card verification", async function () {
+When("I complete the booking with Ypsilon credit card verification", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
   logger.info("Completing Ypsilon booking with credit card verification");
   await Checkout.bookAndFinalizeWithYpsilon3dsVerification(this.page);
 });
@@ -66,7 +74,7 @@ When('I click "Don\'t share the contact details with airlines" checkbox in check
 
 
 
-When("I send booking for approval", async function () {
+When("I send booking for approval", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
   logger.info("Sending booking for approval");
   await Checkout.sendForApprovalAndFinalize(this.page);
 });

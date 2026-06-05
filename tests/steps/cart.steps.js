@@ -17,6 +17,16 @@ const {
 
 setDefaultTimeout(120000);
 
+// Checkout/booking finalization runs a real GDS round-trip. Its internal waits
+// (e.g. Cart.waitForTargetOrHandlePriceChange) are bounded at up to 120000ms in
+// CI — equal to the default step timeout — so Cucumber would always kill the
+// step with the opaque "function timed out within 120000ms" error before that
+// wait could finish a slow checkout or raise its own actionable error. These
+// steps therefore need a step timeout strictly greater than that internal
+// budget so slow-but-successful checkouts complete and real failures surface a
+// clear message.
+const CHECKOUT_STEP_TIMEOUT_MS = 180000;
+
 // ===== WHEN STEPS =====
 
 When("I click to open fare rules in cart", async function () {
@@ -35,7 +45,7 @@ When("I accept all Terms & Conditions on the page", async function () {
   await Cart.acceptAllTermsAndConditions(this.page);
 });
 
-When("I proceed to checkout", async function () {
+When("I proceed to checkout", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
   logger.info("Proceeding to checkout");
   await Cart.acceptTermsAndConditionsAndProceedToCheckout(this.page);
 });
@@ -61,7 +71,7 @@ When("I click the proceed to checkout button", async function () {
   await cartPage.clickProceedToCheckout();
 });
 
-When("I hold the trip", async function () {
+When("I hold the trip", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
   logger.info("Holding the trip");
   const scenarioTags = Array.isArray(this.scenarioTags) ? this.scenarioTags : [];
   const bookingContext = {
