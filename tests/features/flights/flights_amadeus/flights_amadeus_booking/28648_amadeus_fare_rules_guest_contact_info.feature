@@ -15,7 +15,7 @@ Feature: 28648 Amadeus - Book flight with fare rules check and guest contact inf
   Scenario: Fare rules displayed in results, cart, and trip overview with guest contact info
     Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added a random guest traveler
-    When I search for a round trip flight from "LON" to "DOH"
+    When I search for a round trip flight from "LIS" to "DOH"
     And I filter results by carrier "Qatar Airways"
     And I click to open fare rules
     Then I should see the fare rules note about strictest terms
