@@ -91,8 +91,8 @@ ly += 0.3;
 slide.addChart(pptx.ChartType.line, [
   {
     name: 'Migration %',
-    labels: ['Sprint 9', 'Sprint 10'],
-    values: [45, 53],
+    labels: ['Sprint 9', 'Sprint 10', 'Sprint 11'],
+    values: [45, 53, 63],
   },
 ], {
   x: LX, y: ly, w: 4.2, h: 2.2,
@@ -129,11 +129,11 @@ slide.addText('Overall Migration', {
   x: CX, y: 1.42, w: 3.7, h: 0.3,
   fontSize: 12, bold: true, color: COLORS.ink, align: 'center', fontFace: 'Calibri',
 });
-slide.addText('53%', {
+slide.addText('63%', {
   x: CX, y: 1.7, w: 3.7, h: 0.95,
   fontSize: 64, bold: true, color: COLORS.green, align: 'center', fontFace: 'Calibri',
 });
-slide.addText('397 / 753 tests migrated', {
+slide.addText('464 / 739 tests migrated', {
   x: CX, y: 2.65, w: 3.7, h: 0.35,
   fontSize: 13, color: COLORS.ink, align: 'center', fontFace: 'Calibri',
 });
@@ -145,10 +145,10 @@ slide.addText('Domain Breakdown', {
 
 // Horizontal bars per domain
 const domains = [
-  { name: 'Hotels',         total: 133, done: 119, pct: 89,  color: COLORS.green  },
+  { name: 'Hotels',         total: 133, done: 121, pct: 91,  color: COLORS.yellow },
   { name: 'Flights',        total: 254, done: 254, pct: 100, color: COLORS.green  },
   { name: 'Transportation', total: 148, done: 22,   pct: 15,   color: COLORS.yellow },
-  { name: 'Shell',          total: 218, done: 2,   pct: 1,   color: COLORS.gray   },
+  { name: 'Shell',          total: 204, done: 67,  pct: 33,  color: COLORS.yellow },
 ];
 
 const barX = CX;
@@ -191,7 +191,7 @@ domains.forEach((d, i) => {
 
 // Blocked tests note
 const blockedY = barY0 + domains.length * rowH + 0.1;
-slide.addText('\uD83D\uDEA7 24 tests blocked (supplier errors / known bugs) \u2013 pending review', {
+slide.addText('\uD83D\uDEA7 32 tests blocked (supplier errors / known bugs / require review)', {
   x: barX, y: blockedY, w: barW, h: 0.35,
   fontSize: 9, italic: true, color: COLORS.yellow, fontFace: 'Calibri',
 });
@@ -240,7 +240,7 @@ slide.addText(
 
 // KPI tiles
 const tiles = [
-  { label: 'Tests running daily',   value: '340',         color: COLORS.accent },
+  { label: 'Tests running daily',   value: '432',         color: COLORS.accent },
   { label: 'Avg passing rate',      value: '82.50%',      color: COLORS.green  },
   { label: 'Avg total duration',    value: '50 min',      color: COLORS.ink    },
 ];
@@ -268,9 +268,10 @@ slide.addText('Composition', {
 });
 
 const comp = [
-  { name: 'Flights', value: 205 },
-  { name: 'Hotels',  value: 111 },
-  { name: 'Transportation',    value: 24  },
+  { name: 'Flights', value: 254 },
+  { name: 'Hotels',  value: 112 },
+  { name: 'Transportation',    value: 28  },
+  { name: 'Shell',   value: 38  },
 ];
 const compTotal = comp.reduce((a, b) => a + b.value, 0);
 comp.forEach((c, i) => {
