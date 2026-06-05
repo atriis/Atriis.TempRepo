@@ -842,12 +842,47 @@ class ResultsPage {
     await section.waitFor({ state: 'visible', timeout });
   }
 
+  /**
+   * Locates an airport filter section by its title alone (e.g. "Atlanta Airports"),
+   * directly under the Airports filter container — without depending on a per-leg
+   * route toggle. Used for the single-leg layout where no route toggle is rendered.
+   * (Route-scoped counterpart: getAirportSection.)
+   */
+  getAirportSectionByTitle(sectionTitle) {
+    return this.getAirportsFilterContainer()
+      .locator(SELECTORS.AIRPORT_FILTER_GROUP)
+      .filter({
+        has: this.page.locator(SELECTORS.FILTER_GROUP_TITLE, { hasText: sectionTitle }),
+      })
+      .first();
+  }
+
+  /**
+   * Waits for an airport filter section to be visible, handling both layouts:
+   * - Multi-leg (round trip): a per-route toggle (e.g. "Milan to London") is shown,
+   *   so the route is expanded first via the route-scoped path.
+   * - Single-leg (e.g. by-schedule with a segment already selected): no route toggle
+   *   is rendered, so the section is matched directly by its title.
+   */
   async waitForAirportSection(routeLabel, sectionTitle, timeout = 60000) {
     if (!sectionTitle || typeof sectionTitle !== 'string') {
       throw new Error('sectionTitle must be a non-empty string');
     }
 
-    await this.expandAirportRouteIfNeeded(routeLabel, sectionTitle, timeout);
+    await this.getAirportsFilterContainer().waitFor({ state: 'visible', timeout });
+    await this.getAirportsFilterContainer().scrollIntoViewIfNeeded();
+
+    const hasRouteToggle = Boolean(routeLabel)
+      && (await this.page.locator(SELECTORS.AIRPORT_ROUTE_TOGGLE_LABEL, { hasText: routeLabel }).count()) > 0;
+
+    if (hasRouteToggle) {
+      await this.expandAirportRouteIfNeeded(routeLabel, sectionTitle, timeout);
+      return;
+    }
+
+    const section = this.getAirportSectionByTitle(sectionTitle);
+    await this.scrollAirportFilterElementIntoView(section, timeout);
+    await section.waitFor({ state: 'visible', timeout });
   }
 
   async selectAirportOption(routeLabel, sectionTitle, airportCode, timeout = 60000) {
