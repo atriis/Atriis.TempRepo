@@ -12,17 +12,18 @@ Feature: 69211 - Can cancel 'Pending Booking' and 'On Hold' trips
   I want to be able to cancel a trip that is in 'Pending Booking' status and a trip that is 'On Hold'
   So that I can correct mistakes or change plans at both stages of the booking lifecycle
 
-  Scenario: Cancel a Pending Booking trip and then cancel an On Hold trip
+  Scenario: Cancel a Pending Booking trip 
     Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "LON" to "MAD"
+    When I search for a one way flight from "LON" to "DOH"
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
     And I successfully cancel the trip
-    When I click to add a flight to my trip from cart
-    And I have added myself as the traveler
-    And I search for a one way flight from "LIS" to "VIE"
+
+  Scenario: Cancel an On Hold trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
+    And I have added a random guest traveler
+    When I search for a one way flight from "LIS" to "DOH"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I accept Terms & Conditions
