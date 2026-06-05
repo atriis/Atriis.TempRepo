@@ -7,11 +7,12 @@ require("module-alias/register");
  * Cucumber Hooks
  */
 
-const { Before, After, setDefaultTimeout, Status } = require("@cucumber/cucumber");
+const { Before, After, AfterStep, setDefaultTimeout, Status } = require("@cucumber/cucumber");
 const path = require("path");
 const fs = require("fs");
 const { launchBrowser } = require("./browserFactory");
 const config = require("../../src/config/config");
+const { BookingModal } = require("@dsl");
 const logger = require("@utils/logger").child("Hooks");
 
 setDefaultTimeout(120000);
@@ -21,6 +22,7 @@ setDefaultTimeout(120000);
  */
 Before(async function (testCase) {
   this.scenarioTags = (testCase.pickle?.tags || []).map((tag) => tag.name);
+  this.autoHandleModals = this.scenarioTags.includes("@nomodalneeded");
 
   // All scenarios use parameterized login: `Given I am logged in as "email"`
   // The login step itself handles browser launch and navigation via App.loginAsUser(email).
@@ -94,4 +96,25 @@ After(async function (scenario) {
   if (this.browser) {
     await this.browser.close();
   }
+});
+
+/**
+ * @nomodalneeded — auto-handle booking interruption modals
+ *
+ * When a scenario is tagged @nomodalneeded the modal is not part of the test
+ * assertion. This hook fires after every step in such scenarios and dismisses
+ * any visible reference-field / financial-reference modal by:
+ *   1. Expanding collapsed sections
+ *   2. Filling required fields (first option for dropdowns, "Test" for text)
+ *   3. Clicking Proceed / Save and waiting for the modal to close
+ *
+ * Only runs after PASSED steps — a failed step may have left the page in an
+ * unexpected state and the modal check would be unreliable.
+ *
+ * The 300ms detection timeout adds negligible overhead (~4s for a 15-step scenario).
+ */
+AfterStep({ tags: "@nomodalneeded" }, async function ({ result }) {
+  if (!this.page) return;
+  if (result?.status !== Status.PASSED) return;
+  await BookingModal.handleIfPresent(this.page, { timeout: 300 });
 });

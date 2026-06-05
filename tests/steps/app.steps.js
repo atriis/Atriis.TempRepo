@@ -2,6 +2,7 @@ require("module-alias/register");
 
 const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { App } = require("@dsl");
+const autoHandleContext = require("@utils/autoHandleContext");
 const logger = require("@utils/logger").child("App");
 const { expect } = require("@playwright/test");
 
@@ -36,6 +37,7 @@ Given("I am logged in as {string}", async function (user) {
   this.browser = session.browser;
   this.context = session.context;
   this.page = session.page;
+  autoHandleContext.set(this.page, this.autoHandleModals ?? false);
   await App.login(this.page, user);
 });
 
@@ -52,6 +54,7 @@ Given("I am logged in as {string} booking a new trip", async function (user) {
   this.page = browserSession.page;
   await App.login(this.page, user);
   this.page = await App.bookANewTrip(this.page);
+  autoHandleContext.set(this.page, this.autoHandleModals ?? false);
 
   const tripId = await captureTripIdFromCurrentPage(this.page);
   if (tripId) {

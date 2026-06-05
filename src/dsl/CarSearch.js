@@ -5,6 +5,8 @@ const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveLocation } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { getPageObject } = require("@utils/pageObjectCache");
+const autoHandleContext = require("@utils/autoHandleContext");
+const BookingModal = require("./BookingModal");
 const logger = require("@utils/logger").child("CarSearch");
 const carLocations = require("@data/cars.json");
 
@@ -139,6 +141,7 @@ const CarSearch = {
     {
       pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
       dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
+      maxRetries = MAX_NO_RESULTS_RETRIES,
     } = {},
   ) {
     if (!page) {
@@ -184,9 +187,14 @@ const CarSearch = {
 
     await searchPage.waitAndClickSearchButton();
 
+    if (autoHandleContext.isEnabled(page)) {
+      await BookingModal.handleIfPresent(page, { timeout: 3000 });
+    }
+
     const retryResult = await retryCarSearchByChangingDatesOnNoResults(page, {
       pickupIndex,
       dropoffIndex,
+      maxRetries,
     });
 
     return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex, noResultsRetry: retryResult };
@@ -315,6 +323,10 @@ const CarSearch = {
 
     await searchPage.waitAndClickSearchButton();
 
+    if (autoHandleContext.isEnabled(page)) {
+      await BookingModal.handleIfPresent(page, { timeout: 3000 });
+    }
+
     const retryResult = await retryCarSearchByChangingDatesOnNoResults(page, {
       pickupIndex,
       dropoffIndex,
@@ -404,6 +416,10 @@ const CarSearch = {
     await ensureDropoffAfterPickup(page, carSearchPage, dropoffIndex);
 
     await searchPage.waitAndClickSearchButton();
+
+    if (autoHandleContext.isEnabled(page)) {
+      await BookingModal.handleIfPresent(page, { timeout: 3000 });
+    }
 
     return { searched: true, pickupPlace, dropoffPlace, monthsAhead, pickupIndex, dropoffIndex };
   },

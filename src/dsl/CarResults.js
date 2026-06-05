@@ -8,6 +8,8 @@ const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const CarSearchPage = require("@pages/CarSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
+const autoHandleContext = require("@utils/autoHandleContext");
+const BookingModal = require("./BookingModal");
 const logger = require("@utils/logger").child("CarResults-DSL");
 
 const MAX_LOCATION_SELECTION_RETRIES = 2;
@@ -36,6 +38,10 @@ const CarResults = {
     // Handle any Conflicting Quotes modal triggered by the car add itself.
     await Results.clickProceedConflictQuoteModal(page);
 
+    if (autoHandleContext.isEnabled(page)) {
+      await BookingModal.handleIfPresent(page, { timeout: 3000 });
+    }
+
     return { added: true };
   },
 
@@ -59,6 +65,10 @@ const CarResults = {
 
     // Handle optional conflict modal
     await Results.clickProceedConflictQuoteModal(page);
+
+    if (autoHandleContext.isEnabled(page)) {
+      await BookingModal.handleIfPresent(page, { timeout: 3000 });
+    }
 
     return { added: true };
   },

@@ -7,6 +7,7 @@
 
 module.exports = {
   Administration: require("./Administration"),
+  BookingModal: require("./BookingModal"),
   AmtrakSearch: require("./AmtrakSearch"),
   App: require("./App"),
   BenerailResults: require("./BenerailResults"),
