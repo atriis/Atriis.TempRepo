@@ -24,6 +24,11 @@ When('I search for a same day one way flight from {string} to {string}', async f
   await FlightSearch.searchFlightOneWaySameDay(this.page, { from, to });
 });
 
+When('I search for a same day round trip flight from {string} to {string}', async function (from, to) {
+  logger.info('Searching for same-day round-trip flight', { from, to });
+  await FlightSearch.searchFlightRoundTripSameDay(this.page, { from, to });
+});
+
 When("I search for a one way flight from {string} to {string} on the {int} {string} of next month", async function (from, to, nth, dayOfWeek) {
   logger.info('Searching for one-way flight on specific weekday of next month', { from, to, nth, dayOfWeek });
   await FlightSearch.searchOneWayOnNthWeekday(this.page, from, to, dayOfWeek, nth);
@@ -273,6 +278,11 @@ Then("the car search checkbox should be checked by default", async function () {
 Then('the "Allow nearby airports" checkbox in the advanced flight search should be checked', async function () {
   logger.info('Verifying the "Allow nearby airports" checkbox is checked');
   await FlightSearch.verifyAllowNearbyAirportsCheckboxIsChecked(this.page);
+});
+
+Then('{string} message should not be displayed anywhere in search page', async function (message) {
+  logger.info('Verifying validation message is not displayed on the search page', { message });
+  await FlightSearch.verifyValidationMessageNotDisplayedOnSearchPage(this.page, message);
 });
 
 Then("the search loading screen should be visible", async function () {

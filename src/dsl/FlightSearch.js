@@ -302,6 +302,43 @@ const FlightSearch = {
   },
 
   /**
+   * Round-trip flight search with today's date for both the departure and return legs.
+   *
+   * Used to exercise the same-day-return validation behaviour on the search form.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string|Object} routeInput - Route key or {from, to}
+   */
+  async searchFlightRoundTripSameDay(page, routeInput) {
+    if (!page) {
+      throw new Error('[FlightSearch.searchFlightRoundTripSameDay] "page" is required.');
+    }
+
+    if (!routeInput) {
+      throw new Error('[FlightSearch.searchFlightRoundTripSameDay] "routeInput" is required.');
+    }
+
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
+    logger.info('Starting same-day roundTrip flight search', { from, to });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectRoundTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+    await searchPage.clickDepartureDateField();
+    // Same-day round trip: pick today as the departure, then today again as the return.
+    await selectTodayFromVisibleCalendar(page);
+    await selectTodayFromVisibleCalendar(page);
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'roundTrip', searchType: 'completeTrip', departureDate: 'today', returnDate: 'today' };
+  },
+
+  /**
    * Round-trip flight search: completeTrip + roundTrip + default route from routes
    */
   async searchFlightRoundTrip(
@@ -1263,6 +1300,38 @@ const FlightSearch = {
     ).toBe(true);
 
     return { allowNearbyAirportsChecked: isChecked };
+  },
+
+  /**
+   * Verifies a validation message is NOT displayed anywhere on the search page.
+   *
+   * Used to guard against a spurious validation message (e.g. "This field is required") appearing
+   * after a same-day round-trip search. Gives the message a window to surface before asserting absence,
+   * so the negative assertion is meaningful rather than passing before any message could render.
+   *
+   * @param {import('playwright').Page} page - Playwright page object
+   * @param {string} message - The validation message text that must not appear
+   * @returns {Promise<{message: string, displayed: boolean}>}
+   */
+  async verifyValidationMessageNotDisplayedOnSearchPage(page, message) {
+    if (!page) throw new Error('[FlightSearch.verifyValidationMessageNotDisplayedOnSearchPage] "page" is required.');
+    if (!message || typeof message !== 'string') {
+      throw new Error(
+        `[FlightSearch.verifyValidationMessageNotDisplayedOnSearchPage] "message" must be a non-empty string, got: ${typeof message} (${JSON.stringify(message)})`,
+      );
+    }
+
+    logger.info('Verifying the validation message is not displayed on the search page', { message });
+
+    const searchPage = getPageObject(page, SearchPage);
+    const displayed = await searchPage.isValidationMessageVisible(message);
+
+    expect(
+      displayed,
+      `"${message}" validation message should NOT be displayed on the search page after a same-day round-trip search, but it was shown.`,
+    ).toBe(false);
+
+    return { message, displayed };
   },
 
   /**

@@ -1099,6 +1099,46 @@ class SearchPage {
     await option.click();
   }
 
+  /**
+   * Checks whether a validation message with the given text is visible anywhere on the search page.
+   *
+   * The text is matched page-wide (every field, not scoped to one). The message renders synchronously
+   * on an invalid submit; `timeout` is the window allowed for it to surface before concluding it is
+   * absent, so a negative check (asserting it does NOT show) gives it a real chance to appear first.
+   * EVERY matching element is checked for visibility — not just the first — because the message can
+   * surface on more than one field (e.g. both date fields), some of which may be hidden.
+   *
+   * @param {string} message - The validation message text to look for
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<boolean>} true if any matching element is visible
+   */
+  async isValidationMessageVisible(message, { timeout = 5000 } = {}) {
+    if (!message || typeof message !== 'string') {
+      throw new Error(
+        `[SearchPage.isValidationMessageVisible] "message" must be a non-empty string, got: ${typeof message} (${JSON.stringify(message)})`,
+      );
+    }
+
+    const matches = this.page.getByText(message, { exact: false });
+
+    try {
+      // Wait for the message to render at all; if nothing ever attaches, it is not displayed.
+      await matches.first().waitFor({ state: 'attached', timeout });
+    } catch {
+      return false;
+    }
+
+    // Scan every occurrence — the message may appear on multiple fields, so checking only the first
+    // could miss a visible one behind a hidden earlier match.
+    const count = await matches.count();
+    for (let i = 0; i < count; i++) {
+      if (await matches.nth(i).isVisible()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
 }
 
 /**
