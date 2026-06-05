@@ -8,7 +8,7 @@ Feature: 53410 Amadeus - Flight - Search by schedule - Multipax - "My Selection"
   Scenario: Add flight by schedule to cart
     Given I am logged in as "ruimendes@amadeus.com" booking a new trip
     And I have added myself as the traveler
-    And I have added traveler by name "Rui Marista"
+    And I have added a random guest traveler
     When I search for a flight by schedule from "LIS" to "MAD"
     And I filter results by carrier "TAP"
     And I click to open first pricing options

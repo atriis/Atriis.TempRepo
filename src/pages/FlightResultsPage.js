@@ -324,17 +324,27 @@ class FlightResultsPage {
    * @param {number} [index=0] - Index of the pricing option (default: 0 for first option)
    */
   async clickSelectButtonInPricingOptionsModal(index = 0) {
-    // Target the button directly inside the pricing options overlay
+    // Target the button directly inside the pricing options overlay.
+    // exact:true so "Select" does not also match the "Unselect" state.
     const overlay = this.getPricingOptionsOverlay();
     const selectButton = overlay
-      .getByRole('button', { name: SELECTORS.PRICING_OPTIONS_SELECT_BUTTON_NAME })
+      .getByRole('button', { name: SELECTORS.PRICING_OPTIONS_SELECT_BUTTON_NAME, exact: true })
       .nth(index);
-    
+
     await selectButton.waitFor({ state: 'visible', timeout: 10000 });
     await selectButton.click();
-    
-    // Wait for the UI to update after selection
-    await this.page.waitForTimeout(1000);
+
+    // Confirm the selection registered before proceeding: the chosen fare's
+    // button flips to "Unselect" once the price recalculation completes (slower
+    // for multipax). "Add to trip" stays disabled until then, so waiting on this
+    // condition prevents a flaky click on a still-disabled button. Mirrors the
+    // original flow which waited for the "Unselect" state.
+    await overlay
+      .locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON, {
+        hasText: SELECTORS.PRICING_OPTIONS_UNSELECT_BUTTON_TEXT,
+      })
+      .first()
+      .waitFor({ state: 'visible', timeout: 30000 });
   }
 
   /**
@@ -1427,10 +1437,10 @@ async clickAddToTripButtonPricingOptionsModal() {
   }
 
   const addButton = this.page.locator(SELECTORS.PRICING_OPTIONS_ADD_TO_TRIP_BUTTON);
-  
+
   // Wait for button to be enabled (not disabled)
   await addButton.waitFor({ state: 'attached', timeout: 30000 });
-  
+
   // Additional wait for the disabled attribute to be removed
   await this.page.waitForTimeout(1500);
   
