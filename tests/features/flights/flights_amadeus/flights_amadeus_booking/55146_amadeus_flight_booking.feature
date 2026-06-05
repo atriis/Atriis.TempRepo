@@ -16,7 +16,7 @@ Feature: 55146 Amadeus - Flight booking
   Scenario: Book a round trip Amadeus flight successfully
     Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "LON" to "DOH"
+    When I search for a round trip flight from "LIS" to "GRU"
     And I add the first flight to cart
     And I proceed to checkout
     And I complete the booking
