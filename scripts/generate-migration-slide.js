@@ -241,8 +241,8 @@ slide.addText(
 // KPI tiles
 const tiles = [
   { label: 'Tests running daily',   value: '432',         color: COLORS.accent },
-  { label: 'Avg passing rate',      value: '82.50%',      color: COLORS.green  },
-  { label: 'Avg total duration',    value: '50 min',      color: COLORS.ink    },
+  { label: 'Avg passing rate',      value: '80%',      color: COLORS.green  },
+  { label: 'Avg total duration',    value: '65 min',      color: COLORS.ink    },
 ];
 tiles.forEach((t, i) => {
   const ty = 2.6 + i * 0.8;
