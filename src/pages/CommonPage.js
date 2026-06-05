@@ -51,6 +51,32 @@ const SELECTORS = {
   SHOPPING_CART_ICON: 'span:has-text("shopping_cart")',
 };
 
+/**
+ * Parses the primary (account-currency) amount from a shared email offer's
+ * total text. Suppliers that quote in a different currency than the account
+ * render the total as "<account amount> (<converted amount>)", e.g.
+ * "Total: £92.00 ($123.70)". The parenthetical conversion is dropped so the
+ * two amounts are not concatenated into an invalid number, and the first
+ * monetary value is returned.
+ *
+ * @param {string|null} rawText
+ * @returns {number|null} Parsed amount, or null if none found
+ */
+function parseFirstSharedOfferAmount(rawText) {
+  if (!rawText) return null;
+
+  // Remove any parenthetical converted-currency amount, e.g. "($123.70)".
+  const withoutConversion = rawText.replace(/\([^)]*\)/g, " ");
+
+  // Prefer a decimal price (e.g. 92.00, 1,987.23); fall back to an integer.
+  const match =
+    withoutConversion.match(/\d[\d,]*\.\d{1,2}/) || withoutConversion.match(/\d[\d,]*/);
+  if (!match) return null;
+
+  const value = Number(match[0].replace(/,/g, ""));
+  return Number.isNaN(value) ? null : value;
+}
+
 class CommonPage {
   constructor(page) {
     this.page = page;
@@ -321,27 +347,29 @@ class CommonPage {
   /**
    * Extracts price from email preview for a specific flight offer.
    * Searches both main page and iframes (email preview).
-   * 
-   * @param {number} index - Index of the price element in the email   * @returns {Promise<number|null>} The price value
+   *
+   * The offer total can be rendered in two currencies — the account currency
+   * followed by a converted amount in parentheses, e.g. "Total: £92.00
+   * ($123.70)". The primary (first) amount is the one the booker sees and the
+   * one the results price is captured in, so the parenthetical conversion is
+   * stripped before parsing. Stripping all non-digits (the previous approach)
+   * merged both amounts into an invalid number (NaN) for such suppliers.
+   *
+   * @param {number} index - Index of the price element in the email preview
+   * @returns {Promise<number|null>} The price value
    */
   async getPriceFromEmailOffer(index) {
-    // Try main page first
-    const mainPageElements = this.page.locator(SELECTORS.SHARE_EMAIL_ELEMENT);
-    if ((await mainPageElements.count()) > index) {
-      const price = await extractNumber(this.page, SELECTORS.SHARE_EMAIL_ELEMENT, index);
-      if (price !== null) return price;
-    }
-    
-    // Search in iframes (email preview case)
-    for (const frame of this.page.frames()) {
-      if (frame === this.page.mainFrame()) continue;
-      
-      const frameElements = frame.locator(SELECTORS.SHARE_EMAIL_ELEMENT);
-      if ((await frameElements.count()) > index) {
-        return extractNumber(frame, SELECTORS.SHARE_EMAIL_ELEMENT, index);
+    // Try the main page first, then any iframes (the email preview renders in one).
+    const contexts = [this.page, ...this.page.frames().filter((f) => f !== this.page.mainFrame())];
+    for (const context of contexts) {
+      const elements = context.locator(SELECTORS.SHARE_EMAIL_ELEMENT);
+      if ((await elements.count()) > index) {
+        const rawText = await elements.nth(index).textContent();
+        const price = parseFirstSharedOfferAmount(rawText);
+        if (price !== null) return price;
       }
     }
-    
+
     return null;
   }
 
