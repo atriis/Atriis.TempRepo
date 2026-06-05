@@ -15,7 +15,7 @@ Feature: 57382 Profile - Edit DOB for other users with privilege
   @priority:high
   Scenario: User with edit privilege can modify DOB of another traveler
     Given I am logged in as "franciscosantos@editprofileprivilege.com" booking a new trip
-    And I have added traveler by name "ruimariano"
-    When I open the traveler profile for "Rui Mariano"
+    And I have added traveler by name "Ariane Pequena"
+    When I open the traveler profile for "Ariane Pequena"
     And I edit the date of birth to a new date
     Then the date of birth should be updated
