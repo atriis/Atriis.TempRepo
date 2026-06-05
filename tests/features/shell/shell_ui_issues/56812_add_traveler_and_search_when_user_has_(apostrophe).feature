@@ -14,6 +14,6 @@ Feature: 56812 - Add traveler and search when user has ' (apostrophe)
 
   Scenario: Add traveler with apostrophe in name and search for a one-way flight
     Given I am logged in as "andreiao'donovan@aaatestim.com" booking a new trip
-    And I have added traveler by name "Mary Rose O'Donovan"
+    And I have added traveler by name "O'Donovan"
     When I search for a one way flight from "LON" to "MAD"
     And I wait for add to trip text to be visible
