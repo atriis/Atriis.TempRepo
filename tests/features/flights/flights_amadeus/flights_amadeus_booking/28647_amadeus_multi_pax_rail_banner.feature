@@ -15,7 +15,7 @@ Feature: 28647 Amadeus - Multi-pax booking with rail banner
   Scenario: Book round trip for 2 ADTs and verify rail banner is displayed
     Given I am logged in as "amos@one.com" booking a new trip
     And I have added myself as the traveler
-    And I have added traveler by name "pit rip"
+    And I have added traveler by name "alvares azevedo"
     When I search for a round trip flight from "AMS" to "BRU"
     And I click proceed button if visible
     And flight results should be available
@@ -26,4 +26,4 @@ Feature: 28647 Amadeus - Multi-pax booking with rail banner
     And I complete the booking
     Then the quote destination should contain "Flight to"
     Then the passenger initials "AO" should be visible
-    And the passenger initials "PR" should be visible
+    And the passenger initials "AA" should be visible
