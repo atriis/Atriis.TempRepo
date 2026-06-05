@@ -10,19 +10,21 @@ const SELECTORS = {
 
   // Financial reference section (inside an el-collapse panel in the modal)
   FINANCIAL_REF: '.financial-reference',
-  FINANCIAL_CARET: '.el-select__caret',
 
   // Collapse panels that might hide sections until expanded
   COLLAPSE_HEADER_INACTIVE: '.el-collapse-item__header:not(.is-active)',
 
   // Atomic input elements inside each field container
-  EL_SELECT_TRIGGER: '.el-select',
+  // EP1 uses .el-select__caret (arrow icon); EP2 uses .el-select__wrapper — try both
+  EL_SELECT_CARET: '.el-select__caret',
+  EL_SELECT_WRAPPER: '.el-select__wrapper',
   EL_INPUT: '.el-input__inner',
   EL_TEXTAREA: '.el-textarea__inner',
   CHECKBOX: 'input[type="checkbox"]',
 
-  // Dropdown list option (teleported to <body> by Element Plus)
-  DROPDOWN_OPTION: '.el-select-dropdown__item:not(.is-disabled)',
+  // Dropdown list option (teleported to <body> by Element Plus).
+  // Scoped to the currently visible dropdown panel to avoid matching stale/hidden panels.
+  DROPDOWN_OPTION: '.el-select-dropdown:visible .el-select-dropdown__item:not(.is-disabled)',
 };
 
 class BookingInterruptionModalPage {
@@ -44,14 +46,33 @@ class BookingInterruptionModalPage {
   }
 
   /**
-   * Expands any collapsed sections inside the modal so their fields are reachable.
-   * The financial-reference section lives inside an el-collapse that starts closed.
+   * Expands all collapsed sections inside the modal so their fields are reachable.
+   *
+   * Runs up to 3 passes to handle nested collapses:
+   *   Pass 1 → outer section (e.g. "Travellers Reference Questions")
+   *   Pass 2 → inner per-traveler sections (e.g. "Pedro Marcelo") that only
+   *             become visible after the outer section opens
+   *
+   * Each header is checked for visibility before clicking — prevents attempting
+   * to click a header that is still hidden inside a not-yet-expanded parent.
+   * A pass that produces zero clicks stops the loop early.
    */
   async expandCollapsedSections() {
-    const inactiveHeaders = this.getModal().locator(SELECTORS.COLLAPSE_HEADER_INACTIVE);
-    const count = await inactiveHeaders.count();
-    for (let i = 0; i < count; i++) {
-      await inactiveHeaders.nth(i).click();
+    for (let pass = 0; pass < 3; pass++) {
+      const inactiveHeaders = this.getModal().locator(SELECTORS.COLLAPSE_HEADER_INACTIVE);
+      const count = await inactiveHeaders.count();
+      if (count === 0) break;
+
+      let clicked = 0;
+      for (let i = 0; i < count; i++) {
+        const header = inactiveHeaders.nth(i);
+        if (await header.isVisible().catch(() => false)) {
+          await header.click();
+          clicked++;
+        }
+      }
+
+      if (clicked === 0) break;
     }
   }
 
@@ -88,10 +109,8 @@ class BookingInterruptionModalPage {
    */
   async fillFinancialReference() {
     try {
-      await this.getFinancialReferenceSection()
-        .locator(SELECTORS.FINANCIAL_CARET)
-        .first()
-        .click({ timeout: 5000 });
+      const section = this.getFinancialReferenceSection();
+      await this._clickSelectTrigger(section);
       const option = this.page.locator(SELECTORS.DROPDOWN_OPTION).first();
       await option.waitFor({ state: 'visible', timeout: 5000 });
       await option.click();
@@ -104,12 +123,26 @@ class BookingInterruptionModalPage {
   }
 
   /**
+   * Clicks the trigger that opens an el-select dropdown.
+   * Tries the EP1 caret icon first; falls back to the EP2 wrapper div.
+   * @param {import('playwright').Locator} scope  - locator scoped to the select's container
+   */
+  async _clickSelectTrigger(scope) {
+    const caret = scope.locator(SELECTORS.EL_SELECT_CARET).first();
+    if ((await caret.count()) > 0) {
+      await caret.click({ timeout: 5000 });
+    } else {
+      await scope.locator(SELECTORS.EL_SELECT_WRAPPER).first().click({ timeout: 5000 });
+    }
+  }
+
+  /**
    * Opens an el-select inside a field container and clicks the first enabled option.
    * @param {import('playwright').Locator} container
    */
   async fillDropdownField(container) {
     try {
-      await container.locator(SELECTORS.EL_SELECT_TRIGGER).first().click({ timeout: 5000 });
+      await this._clickSelectTrigger(container);
       const option = this.page.locator(SELECTORS.DROPDOWN_OPTION).first();
       await option.waitFor({ state: 'visible', timeout: 5000 });
       await option.click();
