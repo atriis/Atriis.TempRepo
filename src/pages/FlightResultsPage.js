@@ -332,19 +332,24 @@ class FlightResultsPage {
       .nth(index);
 
     await selectButton.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Confirming a fare marks its leg tab with a green "check_circle" (isStepSelected).
+    // This is the one post-selection signal that holds for every flow:
+    //   - one-way / last leg: the fare also flips to "Unselect" on the visible tab.
+    //   - multi-leg, non-last leg: selecting advances the wizard to the NEXT leg's
+    //     tab (goToNextLeg), so no "Unselect" is ever visible on the active tab —
+    //     but the just-selected leg's tab still gets its green check.
+    // Waiting for the count of selected-leg checks to grow confirms the selection
+    // registered (including the slower multipax price recalculation) in all cases,
+    // and prevents a flaky click on a still-disabled button.
+    const selectedLegChecks = overlay.locator(
+      `${SELECTORS.PRICING_OPTIONS_TAB} ${SELECTORS.GREEN_CIRCLE_ICON_PRICING_OPTIONS}`,
+    );
+    const selectedBefore = await selectedLegChecks.count();
+
     await selectButton.click();
 
-    // Confirm the selection registered before proceeding: the chosen fare's
-    // button flips to "Unselect" once the price recalculation completes (slower
-    // for multipax). "Add to trip" stays disabled until then, so waiting on this
-    // condition prevents a flaky click on a still-disabled button. Mirrors the
-    // original flow which waited for the "Unselect" state.
-    await overlay
-      .locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON, {
-        hasText: SELECTORS.PRICING_OPTIONS_UNSELECT_BUTTON_TEXT,
-      })
-      .first()
-      .waitFor({ state: 'visible', timeout: 30000 });
+    await selectedLegChecks.nth(selectedBefore).waitFor({ state: 'visible', timeout: 30000 });
   }
 
   /**
