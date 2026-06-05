@@ -17,7 +17,7 @@ Feature: 59206 Amadeus - Multi-pax booking with contact info per pax
     And I have added a random guest traveler
     And I have added a random guest traveler
     And I have added a random guest traveler
-    When I search for a one way flight from "PAR" to "FRA"
+    When I search for a one way flight from "SIN" to "FRA"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout

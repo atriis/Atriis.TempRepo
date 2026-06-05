@@ -390,8 +390,14 @@ const Checkout = {
     // Ensure checkout page is loaded
     await checkoutPage.waitForBookingDetailsText();
 
-    // Uncheck the "Don't share contact details" checkbox to enable phone fields
-    await checkoutPage.clickContactDetailsCheckbox();
+    // The "Don't share contact details" checkbox controls whether the phone
+    // fields are enabled (fields are disabled while it is checked). Its initial
+    // state is user-dependent (driven by the profile's isRefusedToSharePersonalData),
+    // so toggle only when needed to reach the unchecked/enabled state — clicking
+    // unconditionally would disable the fields for users who already share.
+    if (await checkoutPage.isContactDetailsCheckboxChecked()) {
+      await checkoutPage.clickContactDetailsCheckbox();
+    }
 
     // Fill phone fields
     await checkoutPage.fillContactPhoneCountryCode(countryCode);
