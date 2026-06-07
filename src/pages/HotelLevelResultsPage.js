@@ -445,13 +445,28 @@ class HotelLevelResultsPage {
 
   /**
    * Clicks a checkbox option inside a named filter section in the hotel filter panel.
-   * @param {string} filterName - Filter section title (e.g. "Agreement")
-   * @param {string} optionText - Checkbox option label (e.g. "Corp")
+   * If the checkbox is hidden behind a "View more" expander, it clicks "View more" first.
+   * @param {string} filterName - Filter section title (e.g. "Agreement", "Amenities")
+   * @param {string} optionText - Checkbox option label (e.g. "Corp", "Pet Friendly")
    */
   async clickHotelFilterOption(filterName, optionText) {
     if (!filterName || typeof filterName !== 'string') throw new Error('filterName must be a non-empty string');
     if (!optionText || typeof optionText !== 'string') throw new Error('optionText must be a non-empty string');
     const checkbox = this.page.locator(SELECTORS.HOTEL_FILTER_CHECKBOX(filterName, optionText)).first();
+
+    // Some filter sections truncate options behind a "View more" link.
+    // If the target checkbox is not immediately visible, expand the section first.
+    const isVisible = await checkbox.isVisible().catch(() => false);
+    if (!isVisible) {
+      const viewMoreBtn = this.page.locator(
+        `.hotel-filter .filter-container:has(h4:has-text("${filterName}")) :text("View more")`
+      ).first();
+      const viewMoreVisible = await viewMoreBtn.isVisible().catch(() => false);
+      if (viewMoreVisible) {
+        await viewMoreBtn.click();
+      }
+    }
+
     await checkbox.waitFor({ state: 'visible', timeout: 15000 });
     await checkbox.click();
   }
