@@ -31,6 +31,9 @@ Feature: 69750 Amadeus - Baggage weight sent in AddMultiElement
     Then the baggage green icon should be visible
     And I click to edit extras at index 1
     Then the baggage option "EXCESS BAGGAGE REQUEST" should be saved
-    And I accept Terms & Conditions
-    And I hold the trip
+    And I click the save button
+    Then the booking status should be "Pending booking"
+    When I fill credit card cvv if needed
+    And I proceed to checkout
+    And I complete the booking
     Then I successfully cancel the trip
