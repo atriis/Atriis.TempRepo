@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR Review Guide — Atriis Test Automation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #f4f6fb;
+    color: #1f2937;
+    line-height: 1.5;
+    padding: 32px 16px;
+  }
+  .page { max-width: 900px; margin: 0 auto; }
+
+  header {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #fff;
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    box-shadow: 0 8px 24px rgba(79,70,229,.25);
+  }
+  header h1 { font-size: 26px; margin-bottom: 6px; }
+  header p { opacity: .9; font-size: 15px; }
+
+  /* The golden rule banner */
+  .rule {
+    background: #fff;
+    border-left: 6px solid #4f46e5;
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 28px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .rule h2 { font-size: 16px; color: #4f46e5; margin-bottom: 8px; }
+  .flow {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    font-weight: 600; font-size: 14px;
+  }
+  .flow span {
+    background: #eef2ff; color: #4338ca;
+    padding: 6px 12px; border-radius: 8px;
+  }
+  .flow .arrow { background: none; color: #9ca3af; padding: 0 2px; }
+
+  /* Section headers */
+  .band {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 18px; font-weight: 700;
+    margin: 28px 0 14px;
+  }
+  .dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; }
+  .red .dot { background: #ef4444; }
+  .yellow .dot { background: #f59e0b; }
+  .green .dot { background: #22c55e; }
+  .red    { color: #b91c1c; }
+  .yellow { color: #b45309; }
+  .green  { color: #15803d; }
+
+  /* Cards */
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .card h3 { font-size: 15px; margin-bottom: 12px; color: #111827; }
+
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 680px) { .pair { grid-template-columns: 1fr; } }
+
+  .snippet { border-radius: 8px; padding: 12px 14px; font-size: 12.5px; }
+  .snippet .tag { font-weight: 700; font-size: 12px; display: block; margin-bottom: 6px; }
+  .bad  { background: #fef2f2; border: 1px solid #fecaca; }
+  .bad .tag  { color: #dc2626; }
+  .good { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .good .tag { color: #16a34a; }
+  pre { white-space: pre-wrap; font-family: "SF Mono", Consolas, monospace; color: #1f2937; }
+  .note { font-size: 12.5px; color: #6b7280; margin-top: 10px; font-style: italic; }
+
+  /* Checklist */
+  .checklist {
+    background: #fff; border-radius: 12px; padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05); margin-top: 8px;
+  }
+  .checklist h3 { margin-bottom: 12px; }
+  .checklist ul { list-style: none; }
+  .checklist li { padding: 5px 0 5px 28px; position: relative; font-size: 14px; }
+  .checklist li:before {
+    content: "☐"; position: absolute; left: 0; font-size: 16px; color: #4f46e5;
+  }
+  .verdict {
+    margin-top: 16px; padding: 12px 16px; border-radius: 10px;
+    background: #fffbeb; border: 1px solid #fde68a; font-size: 14px; font-weight: 600; color: #92400e;
+  }
+  footer { text-align: center; color: #9ca3af; font-size: 12.5px; margin-top: 28px; }
+  code { background: #eef2ff; color: #4338ca; padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>🔍 PR Review Guide</h1>
+    <p>Atriis Test Automation · Playwright + Cucumber BDD · quick visual reference</p>
+  </header>
+
+  <div class="rule">
+    <h2>⭐ The one rule that catches most problems</h2>
+    <p style="margin-bottom:10px;font-size:14px;">Code flows <strong>DOWN only</strong>. Never skip a layer, never go back up.</p>
+    <div class="flow">
+      <span>Feature</span><span class="arrow">→</span>
+      <span>Steps</span><span class="arrow">→</span>
+      <span>DSL</span><span class="arrow">→</span>
+      <span>Page Objects</span><span class="arrow">→</span>
+      <span>Playwright</span>
+    </div>
+  </div>
+
+  <!-- ============ RED ============ -->
+  <div class="band red"><span class="dot"></span> STOP — do not merge until fixed</div>
+
+  <div class="card">
+    <h3>1 · A step reaches into a Page Object (layer skip)</h3>
+    <div class="pair">
+      <div class="snippet bad"><span class="tag">❌ Don't</span><pre>When('I click the flight tab', async function () {
+  const p = new FlightSearchPage(this.page);
+  await p.clickFlightTab();
+});</pre></div>
+      <div class="snippet good"><span class="tag">✅ Do</span><pre>When('I open the flight search', async function () {
+  await FlightSearch.openFlightSearch(this.page);
+});</pre></div>
+    </div>
+    <p class="note">Steps only ever call DSL (<code>@dsl</code>) — never Page Objects, never Playwright.</p>
+  </div>
+
+  <div class="card">
+    <h3>2 · Arrow function in a step (breaks <code>this.page</code>)</h3>
+    <div class="pair">
+      <div class="snippet bad"><span class="tag">❌ Don't</span><pre>When('I search', async () => {
+  await FlightSearch.search(this.page); // undefined!
+});</pre></div>
+      <div class="snippet good"><span class="tag">✅ Do</span><pre>When('I search from {string}', async function (route) {
+  await FlightSearch.searchFlightOneWay(this.page, route);
+});</pre></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>3 · DSL talks to the browser directly</h3>
+    <div class="pair">
+      <div class="snippet bad"><span class="tag">❌ Don't</span><pre>const Search = {
+  async fillFrom(page, value) {
+    await page.locator('#from').fill(value);
+  },
+};</pre></div>
+      <div class="snippet good"><span class="tag">✅ Do</span><pre>const Search = {
+  async fillFrom(page, value) {
+    if (!page) throw new Error('page is required');
+    const sp = getPageObject(page, SearchPage);
+    await sp.fillInFromField(value);
+  },
+};</pre></div>
+    </div>
+    <p class="note">DSL composes Page Object methods. (Only <code>waitForLoadState</code> / commented <code>waitForTimeout</code> allowed.)</p>
+  </div>
+
+  <div class="card">
+    <h3>4 · DSL written as a class</h3>
+    <div class="pair">
+      <div class="snippet bad"><span class="tag">❌ Don't</span><pre>class FlightSearch {
+  constructor(page) { this.page = page; }
+  async search() { ... }
+}</pre></div>
+      <div class="snippet good"><span class="tag">✅ Do</span><pre>const FlightSearch = {
+  async searchFlight(page, route) {
+    return { searched: true, route };
+  },
+};</pre></div>
+    </div>
+    <p class="note">Object literal, <code>page</code> always first, returns an object (never just <code>true</code>).</p>
+  </div>
+
+  <div class="card">
+    <h3>5 · Domain safety — this costs real money 💸</h3>
+    <div class="pair">
+      <div class="snippet bad"><span class="tag">❌ Don't</span><pre>Scenario: Book Amadeus flight
+  When I book a flight LON→NYC
+  Then booking is confirmed
+  # no cancellation = live PNR!</pre></div>
+      <div class="snippet good"><span class="tag">✅ Do</span><pre>Scenario: Book Amadeus flight
+  When I book a flight LON→NYC
+  Then booking is confirmed
+  And I cancel the trip</pre></div>
+    </div>
+    <p class="note">Always cancel GDS flights. Always filter <strong>refundable</strong> before selecting a hotel room — never book non-refundable.</p>
+  </div>
+
+  <div class="card">
+    <h3>6 · Don't reinvent — reuse exists</h3>
+    <div class="pair">
+      <div class="snippet bad"><span class="tag">❌ Don't</span><pre>async clickOneWay(page) { ... }
+async clickRoundTrip(page) { ... }</pre></div>
+      <div class="snippet good"><span class="tag">✅ Do</span><pre>async selectTripType(page, tripType) { ... }</pre></div>
+    </div>
+    <p class="note">Before approving any new step / DSL method / selector, search the repo for one that already does it.</p>
+  </div>
+
+  <!-- ============ YELLOW ============ -->
+  <div class="band yellow"><span class="dot"></span> FIX BEFORE MERGE — important</div>
+
+  <div class="card">
+    <h3>Logging, selectors & waits</h3>
+    <div class="pair">
+      <div class="snippet bad"><span class="tag">❌ Don't</span><pre>console.log('searching');
+await page.locator('button.submit').click();
+await page.waitForTimeout(5000);</pre></div>
+      <div class="snippet good"><span class="tag">✅ Do</span><pre>logger.info('Searching', { route });
+await page.locator(SELECTORS.SUBMIT).click({ timeout: 10000 });
+await spinner.waitFor({ state: 'hidden', timeout: 15000 });</pre></div>
+    </div>
+    <p class="note">No <code>console.log</code>. No inline selectors (use <code>SELECTORS</code>). No bare sleeps — wait for a condition.</p>
+  </div>
+
+  <div class="card">
+    <h3>Feature files read like user stories</h3>
+    <div class="pair">
+      <div class="snippet bad"><span class="tag">❌ Don't</span><pre>Scenario: search
+  When I click the locator for "from"
+  and type "LON"</pre></div>
+      <div class="snippet good"><span class="tag">✅ Do</span><pre>@regression @priority:critical @provider:amadeus
+Scenario: Search a one-way flight
+  When I search for a one way flight from "LON-NYC"
+  Then I see available flight results</pre></div>
+    </div>
+    <p class="note">Tagged · parameterized (<code>{string}</code>/<code>{int}</code>) · no technical jargon · <code>@provider:*</code> matches the real supplier.</p>
+  </div>
+
+  <!-- ============ GREEN ============ -->
+  <div class="band green"><span class="dot"></span> NICE TO HAVE — non-blocking</div>
+  <div class="card">
+    <p style="font-size:14px;">Clearer names · richer error messages (what failed + actual + expected) · simpler logic · extra logging context. Note them, but they don't block the merge.</p>
+  </div>
+
+  <!-- ============ CHECKLIST ============ -->
+  <div class="checklist">
+    <h3>⚡ 30-second triage</h3>
+    <ul>
+      <li>No layer skips (Feature→Steps→DSL→Pages→Playwright)</li>
+      <li>Steps use <code>function</code>, not <code>=&gt;</code>; import only from <code>@dsl</code></li>
+      <li>DSL is an object literal, <code>page</code> first, inputs validated, returns objects</li>
+      <li>No new code duplicating existing steps/DSL/selectors</li>
+      <li>GDS flights cancelled · hotels filtered refundable before booking</li>
+      <li><code>@provider:*</code> tag matches the supplier flow used</li>
+      <li>No <code>console.log</code>, no inline selectors, no unjustified <code>waitForTimeout</code></li>
+      <li>Feature reads like a user story, tagged, parameterized</li>
+      <li>New DSL file added to <code>src/dsl/index.js</code></li>
+    </ul>
+    <div class="verdict">⚖️ Any 🔴 or 🟡 finding = do NOT merge until fixed. Only 🟢 = good to go.</div>
+  </div>
+
+  <footer>
+    Shortcut: run <code>@code-reviewer scope=pr</code> or <code>/review</code> for an automated pass ·
+    Full rules: <code>.github/agents/code-reviewer.agent.md</code>
+  </footer>
+
+</div>
+</body>
+</html>

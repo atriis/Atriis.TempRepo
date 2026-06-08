@@ -55,6 +55,8 @@ function parseArgs(argv) {
       case '--name': out.name = next(); break;
       case '--org': out.org = next(); break;
       case '--project': out.project = next(); break;
+      case '--add-missing': out.addMissing = true; break;
+      case '--mark-points': out.markPoints = true; break;
       case '--apply': out.apply = true; break;
       default: console.error(`Unknown arg: ${a}`); process.exit(2);
     }
@@ -167,6 +169,35 @@ async function getPoints(planId, suiteId) {
   return data.value || [];
 }
 
+// Batch-resolve work item types so we only add real Test Cases to a suite.
+async function getWorkItemTypes(ids) {
+  const types = new Map();
+  for (let i = 0; i < ids.length; i += 200) {
+    const batch = ids.slice(i, i + 200).map(Number);
+    const data = await ado('POST', `wit/workitemsbatch?api-version=7.1`,
+      { ids: batch, fields: ['System.WorkItemType'] });
+    for (const w of data.value || []) types.set(String(w.id), w.fields['System.WorkItemType']);
+  }
+  return types;
+}
+
+// Bulk-add Test Case work items to a static suite (creates test points).
+async function addTestCasesToSuite(planId, suiteId, ids) {
+  const body = ids.map(id => ({ workItem: { id: Number(id) } }));
+  await ado('POST', `testplan/Plans/${planId}/Suites/${suiteId}/TestCase?api-version=7.1`, body);
+}
+
+// Directly set test-point outcomes (what the "Mark outcome" button does) so the
+// manual Execute grid's filter + "% run" reflect them. Accepts testplan enum
+// values: passed | failed | notApplicable | blocked | active | notRun ...
+async function markPointOutcomes(planId, suiteId, items) {
+  for (let i = 0; i < items.length; i += 100) {
+    const body = items.slice(i, i + 100).map(it => ({ id: it.pointId, results: { outcome: it.outcome } }));
+    await ado('PATCH', `testplan/Plans/${planId}/Suites/${suiteId}/TestPoint?api-version=7.1`, body);
+  }
+}
+const MARK_OUTCOME = { Passed: 'passed', Failed: 'failed', NotApplicable: 'notApplicable' };
+
 // ── main ───────────────────────────────────────────────────────────────────
 let TOKEN;
 (async () => {
@@ -211,6 +242,63 @@ let TOKEN;
     }
   }
   console.log(`Plan ${args.plan}: ${suites.length} suite(s), ${pointByCase.size} test points.\n`);
+
+  // Optionally add run Test Cases that aren't yet in the suite (creates points).
+  if (args.addMissing) {
+    if (!args.suite) { console.error('--add-missing requires --suite <id>.'); process.exit(2); }
+    const candidates = [...byId.keys()].filter(id => !pointByCase.has(id));
+    const types = await getWorkItemTypes(candidates);
+    const eligible = candidates.filter(id => types.get(id) === 'Test Case');
+    const ineligible = candidates.filter(id => types.get(id) && types.get(id) !== 'Test Case');
+    console.log(`Add-missing: ${eligible.length} Test Case(s) not yet in suite ${args.suite}.`);
+    if (ineligible.length) {
+      const groups = {};
+      for (const id of ineligible) (groups[types.get(id)] ||= []).push(id);
+      for (const [t, arr] of Object.entries(groups))
+        console.log(`   skipping ${arr.length} ${t}(s): ${arr.join(', ')}`);
+    }
+    if (eligible.length && args.apply) {
+      console.log(`   adding ${eligible.length} test case(s) to suite ${args.suite} ...`);
+      for (let i = 0; i < eligible.length; i += 100) {
+        await addTestCasesToSuite(args.plan, args.suite, eligible.slice(i, i + 100));
+      }
+      // refresh points for the suite
+      for (const pt of await getPoints(args.plan, args.suite)) {
+        const tcId = String(pt.testCase?.id ?? '');
+        if (tcId && !pointByCase.has(tcId)) pointByCase.set(tcId, pt.id);
+      }
+      console.log(`   suite now has ${pointByCase.size} matchable point(s).`);
+    } else if (eligible.length) {
+      console.log('   (dry-run — add --apply to actually add them)');
+    }
+    console.log('');
+  }
+
+  // ── mark-points mode: set 3 outcomes directly on every point in the suite ──
+  // Passed / Failed for cases covered by the run, NotApplicable for suite cases
+  // the run didn't cover. Uses the direct TestPoint outcome API so the manual
+  // Execute grid (filter + "% run") reflects it.
+  if (args.markPoints) {
+    if (!args.suite) { console.error('--mark-points requires --suite <id>.'); process.exit(2); }
+    const items = [];
+    const tally = { Passed: 0, Failed: 0, NotApplicable: 0 };
+    for (const [tcId, pointId] of pointByCase) {
+      const outcome = byId.get(tcId)?.outcome || 'NotApplicable'; // not in run -> N/A
+      tally[outcome]++;
+      items.push({ pointId, outcome: MARK_OUTCOME[outcome] });
+    }
+    console.log(`Mark-points on suite ${args.suite} (${items.length} point(s)):`);
+    console.log(`   Passed: ${tally.Passed}   Failed: ${tally.Failed}   Not applicable (not in run): ${tally.NotApplicable}`);
+    if (!args.apply) {
+      console.log('\nDRY RUN — nothing was sent to ADO. Add --apply to mark the points.');
+      return;
+    }
+    console.log(`   marking ${items.length} point outcome(s) ...`);
+    await markPointOutcomes(args.plan, args.suite, items);
+    console.log('   done. The Execute grid Outcome column + filter now reflect these.');
+    console.log(`\nSuite URL: https://dev.azure.com/${args.org}/${args.project}/_testPlans/execute?planId=${args.plan}&suiteId=${args.suite}`);
+    return;
+  }
 
   // Match run results against plan points.
   const toPublish = []; // { id, pointId, outcome, classname }

@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How to use Git — A Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --font-body:"Nunito","Trebuchet MS",Verdana,sans-serif;
+    --font-head:"Baloo 2","Trebuchet MS",Verdana,sans-serif;
+    --ink:#1f2937; --muted:#64748b;
+    --blue:#2563eb; --blue-d:#1e40af; --blue-l:#dbeafe;
+    --green:#16a34a; --green-d:#15803d; --green-l:#dcfce7;
+    --purple:#7c3aed; --purple-l:#ede9fe;
+    --amber:#d97706; --amber-l:#fef3c7;
+    --red:#dc2626; --red-l:#fee2e2;
+    --pink:#db2777; --teal:#0d9488; --navy:#0f2a52;
+  }
+  *{ box-sizing:border-box; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  @page{ size:A4; margin:13mm 13mm; }
+  body{
+    font-family:var(--font-body);
+    color:var(--ink); margin:0; font-size:13.5px; line-height:1.5; background:#fff;
+  }
+  h1,h2,.head .badge,.pin b,.card .t,.tc b{ font-family:var(--font-head); }
+  .sheet{ padding:0; }
+  .pb{ page-break-before:always; }
+  svg, .card, .legend, table, .strip, .trouble, .xp{ break-inside:avoid; page-break-inside:avoid; }
+
+  .head{ display:flex; align-items:center; gap:16px; margin-bottom:6px; }
+  .head .badge{ width:54px; height:54px; border-radius:16px; background:var(--navy);
+    color:#fff; display:flex; align-items:center; justify-content:center; font-size:28px; flex:0 0 auto;
+    box-shadow:0 4px 10px rgba(15,42,82,.3); }
+  .head h1{ font-size:25px; margin:0; line-height:1.1; }
+  .head .sub{ color:var(--muted); font-size:12.5px; margin-top:3px; }
+
+  h2{ font-size:16px; margin:20px 0 4px; display:flex; align-items:center; gap:9px; }
+  h2 .dot{ width:13px; height:13px; border-radius:50%; flex:0 0 auto; }
+  .hint{ color:var(--muted); font-size:12px; margin:2px 0 8px; }
+
+  svg{ width:100%; height:auto; display:block; }
+  svg text{ font-family:var(--font-body); }
+  svg text[font-weight="700"]{ font-family:var(--font-head); }
+
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:8px; }
+  .card{ border:1px solid #e5e7eb; border-left-width:5px; border-radius:10px; padding:9px 12px;
+    background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+  .card .t{ font-weight:700; font-size:12.5px; display:flex; align-items:center; gap:7px; }
+  .card .n{ width:20px; height:20px; border-radius:50%; color:#fff; font-size:11px; font-weight:700;
+    display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .card code{ display:block; margin-top:6px; font-family:Consolas,monospace; font-size:11.5px;
+    background:#0f172a; color:#e2e8f0; padding:6px 9px; border-radius:6px; white-space:pre-wrap; }
+  .card small{ color:var(--muted); display:block; margin-top:4px; font-size:11px; }
+  .card small code, .card .t code{ display:inline; margin:0; background:#f1f5f9; color:#334155;
+    padding:0 5px; border-radius:4px; font-size:11px; white-space:nowrap; }
+
+  /* explainer card (detailed, with explanation text) */
+  .xp{ border:1px solid #e5e7eb; border-left-width:5px; border-radius:11px; padding:11px 15px;
+    margin:9px 0; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+  .xp .xh{ display:flex; align-items:center; gap:9px; font-family:var(--font-head);
+    font-weight:700; font-size:14px; color:var(--ink); }
+  .xp .xh .n{ width:22px; height:22px; border-radius:50%; color:#fff; font-size:12px; font-weight:700;
+    display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .xp p{ font-size:12px; margin:6px 0 0; color:#334155; }
+  .xp code{ background:#f1f5f9; color:#334155; padding:0 5px; border-radius:4px;
+    font-family:Consolas,monospace; font-size:11px; }
+  .xp code.cmd{ display:block; margin:8px 0 0; padding:8px 11px; border-radius:7px;
+    background:#0f172a; color:#e2e8f0; font-size:11.5px; white-space:pre-wrap; }
+  .xp .sub{ background:#f8fafc; border:1px solid #eef2f7; border-radius:8px; padding:7px 11px;
+    margin-top:7px; font-size:11.5px; line-height:1.55; color:#475569; }
+  .xp .sub b{ color:var(--ink); }
+
+  .legend{ display:flex; gap:18px; flex-wrap:wrap; font-size:11.5px; color:var(--muted); margin-top:4px; }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .legend i{ width:12px; height:12px; border-radius:3px; display:inline-block; }
+
+  .strip{ display:flex; gap:10px; margin-top:8px; }
+  .pin{ flex:1; border-radius:10px; padding:10px 12px; color:#fff; }
+  .pin b{ display:block; font-size:13px; margin-bottom:2px; }
+  .pin small{ opacity:.95; font-size:11px; line-height:1.4; }
+
+  .trouble{ display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:8px; }
+  .tc{ border-radius:10px; padding:9px 12px; font-size:11.5px; background:#fff;
+    border:1px solid #eee; border-top:4px solid var(--amber); box-shadow:0 1px 4px rgba(0,0,0,.05); }
+  .tc b{ display:block; color:var(--ink); margin-bottom:3px; font-size:12px; }
+  .tc code{ background:#f1f5f9; padding:1px 5px; border-radius:4px; font-family:Consolas,monospace; font-size:11px; }
+
+  .foot{ margin-top:18px; padding-top:10px; border-top:1px solid #eee; color:var(--muted); font-size:10.5px; }
+</style>
+</head>
+<body>
+
+<!-- ================= PAGE 1 : MIND MAP ================= -->
+<div class="sheet">
+  <div class="head">
+    <div class="badge">🌿</div>
+    <div>
+      <h1>How to use Git — A Visual Guide</h1>
+      <div class="sub">The everyday workflow: branch, commit, push, and open a pull request — explained simply.</div>
+    </div>
+  </div>
+
+  <h2><span class="dot" style="background:var(--navy)"></span>What's inside</h2>
+  <p class="hint">Everything you need for day-to-day Git: the two repositories, the 7-stop journey, the VS Code way, and the handy commands.</p>
+
+  <svg viewBox="0 0 820 360" role="img" aria-label="Git guide map">
+    <defs>
+      <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#000" flood-opacity="0.18"/>
+      </filter>
+    </defs>
+
+    <!-- connectors -->
+    <path d="M352,168 C300,150 300,98 322,86" fill="none" stroke="var(--green)" stroke-width="3"/>
+    <path d="M352,194 C300,214 300,272 322,284" fill="none" stroke="var(--teal)" stroke-width="3"/>
+    <path d="M468,168 C520,150 520,98 498,86" fill="none" stroke="var(--blue)" stroke-width="3"/>
+    <path d="M468,194 C520,214 520,272 498,284" fill="none" stroke="var(--purple)" stroke-width="3"/>
+
+    <!-- center -->
+    <rect x="345" y="156" width="130" height="50" rx="15" fill="var(--navy)" filter="url(#sh)"/>
+    <text x="410" y="180" text-anchor="middle" fill="#fff" font-size="16" font-weight="700">🌿 GIT</text>
+    <text x="410" y="197" text-anchor="middle" fill="#cbd5e1" font-size="10.5">how your work gets in</text>
+
+    <!-- LT: two repositories -->
+    <rect x="40" y="42" width="282" height="74" rx="13" fill="#fff" stroke="var(--green)" stroke-width="1.6" filter="url(#sh)"/>
+    <text x="60" y="70" fill="var(--green-d)" font-size="13.5" font-weight="700">💻 Two repositories</text>
+    <text x="60" y="90" fill="var(--muted)" font-size="11.5">local (your computer) ↔ remote (GitHub)</text>
+    <text x="60" y="106" fill="var(--muted)" font-size="11.5">push sends up · pull brings down</text>
+
+    <!-- LB: the journey -->
+    <rect x="40" y="244" width="282" height="74" rx="13" fill="var(--green-l)" stroke="var(--teal)" stroke-width="1.4" filter="url(#sh)"/>
+    <text x="60" y="272" fill="#0f5e57" font-size="13.5" font-weight="700">🛤️ The 7-stop journey</text>
+    <text x="60" y="292" fill="#3a6f6a" font-size="11.5">pull → branch → add → commit</text>
+    <text x="60" y="308" fill="#3a6f6a" font-size="11.5">→ sync → push → open PR</text>
+
+    <!-- RT: VS Code -->
+    <rect x="498" y="42" width="282" height="74" rx="13" fill="var(--blue-l)" stroke="var(--blue)" stroke-width="1.4" filter="url(#sh)"/>
+    <text x="518" y="70" fill="var(--blue-d)" font-size="13.5" font-weight="700">🖱️ Do it in VS Code</text>
+    <text x="518" y="90" fill="#3b5b92" font-size="11.5">the Source Control panel does</text>
+    <text x="518" y="106" fill="#3b5b92" font-size="11.5">every step with buttons</text>
+
+    <!-- RB: handy commands -->
+    <rect x="498" y="244" width="282" height="74" rx="13" fill="var(--purple-l)" stroke="var(--purple)" stroke-width="1.4" filter="url(#sh)"/>
+    <text x="518" y="272" fill="#5b3aa8" font-size="13.5" font-weight="700">🧰 Handy commands</text>
+    <text x="518" y="292" fill="#6b4ba8" font-size="11.5">git status · git branch</text>
+    <text x="518" y="308" fill="#6b4ba8" font-size="11.5">git checkout · git stash</text>
+  </svg>
+</div>
+
+<!-- ================= PAGE 2 : GIT JOURNEY ================= -->
+<div class="sheet pb">
+  <h2><span class="dot" style="background:var(--green)"></span>1 · Git basics &amp; the journey</h2>
+  <p class="hint">Git keeps <b>two copies</b> of your project. You work on the <b>local</b> one on your computer; <b>push</b> and <b>pull</b> keep it in sync with the shared <b>remote</b> on GitHub.</p>
+
+  <svg viewBox="0 0 820 200" role="img" aria-label="Local vs remote repository">
+    <defs>
+      <marker id="aR" markerWidth="11" markerHeight="11" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--green)"/></marker>
+      <marker id="aL" markerWidth="11" markerHeight="11" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--blue)"/></marker>
+      <filter id="shp" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.16"/></filter>
+    </defs>
+
+    <!-- LOCAL -->
+    <rect x="40" y="34" width="300" height="132" rx="16" fill="var(--navy)" filter="url(#shp)"/>
+    <text x="190" y="64" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">💻 LOCAL repository</text>
+    <text x="190" y="83" text-anchor="middle" fill="#cbd5e1" font-size="11">the copy on your computer</text>
+    <text x="62" y="110" fill="#e2e8f0" font-size="11.5">• your files, branches &amp; commits</text>
+    <text x="62" y="130" fill="#e2e8f0" font-size="11.5">• you edit, git add &amp; git commit here</text>
+    <text x="62" y="150" fill="#e2e8f0" font-size="11.5">• works even offline</text>
+
+    <!-- REMOTE -->
+    <rect x="480" y="34" width="300" height="132" rx="16" fill="var(--blue)" filter="url(#shp)"/>
+    <text x="630" y="64" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">☁️ REMOTE repository</text>
+    <text x="630" y="83" text-anchor="middle" fill="#dbeafe" font-size="11">"origin" — shared, on GitHub</text>
+    <text x="502" y="110" fill="#eaf2ff" font-size="11.5">• shared with the whole team</text>
+    <text x="502" y="130" fill="#eaf2ff" font-size="11.5">• holds main + everyone's branches</text>
+    <text x="502" y="150" fill="#eaf2ff" font-size="11.5">• the shared source of truth</text>
+
+    <!-- push / pull arrows -->
+    <text x="410" y="78" text-anchor="middle" fill="var(--green-d)" font-size="12.5" font-weight="700">git push ⬆</text>
+    <path d="M346,90 L470,90" fill="none" stroke="var(--green)" stroke-width="3" marker-end="url(#aR)"/>
+    <path d="M474,120 L350,120" fill="none" stroke="var(--blue)" stroke-width="3" marker-end="url(#aL)"/>
+    <text x="410" y="146" text-anchor="middle" fill="var(--blue-d)" font-size="12.5" font-weight="700">git pull ⬇</text>
+  </svg>
+  <p class="hint" style="text-align:center;margin-top:2px"><b style="color:var(--green-d)">push</b> = send your commits up to the team &nbsp;·&nbsp; <b style="color:var(--blue-d)">pull</b> = bring everyone else's commits down</p>
+
+  <p class="hint" style="margin-top:14px">Golden rule: never work straight on <b>main</b>. The 7 stops below move your work from local up to the shared main.</p>
+
+  <svg viewBox="0 0 820 116" role="img" aria-label="Git journey metro line">
+    <line x1="55" y1="55" x2="765" y2="55" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="55" cy="55" r="18" fill="var(--green)"/><text x="55" y="61" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">1</text>
+    <text x="55" y="92" text-anchor="middle" fill="var(--ink)" font-size="11" font-weight="600">pull main</text>
+    <text x="55" y="106" text-anchor="middle" fill="var(--muted)" font-size="9.5">get latest</text>
+    <circle cx="173" cy="55" r="18" fill="var(--green)"/><text x="173" y="61" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">2</text>
+    <text x="173" y="92" text-anchor="middle" fill="var(--ink)" font-size="11" font-weight="600">branch</text>
+    <text x="173" y="106" text-anchor="middle" fill="var(--muted)" font-size="9.5">your space</text>
+    <circle cx="291" cy="55" r="18" fill="var(--teal)"/><text x="291" y="61" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">3</text>
+    <text x="291" y="92" text-anchor="middle" fill="var(--ink)" font-size="11" font-weight="600">add</text>
+    <text x="291" y="106" text-anchor="middle" fill="var(--muted)" font-size="9.5">stage</text>
+    <circle cx="409" cy="55" r="18" fill="var(--teal)"/><text x="409" y="61" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">4</text>
+    <text x="409" y="92" text-anchor="middle" fill="var(--ink)" font-size="11" font-weight="600">commit</text>
+    <text x="409" y="106" text-anchor="middle" fill="var(--muted)" font-size="9.5">save</text>
+    <circle cx="527" cy="55" r="18" fill="var(--blue)"/><text x="527" y="61" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">5</text>
+    <text x="527" y="92" text-anchor="middle" fill="var(--ink)" font-size="11" font-weight="600">sync</text>
+    <text x="527" y="106" text-anchor="middle" fill="var(--muted)" font-size="9.5">pull main</text>
+    <circle cx="645" cy="55" r="18" fill="var(--blue)"/><text x="645" y="61" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">6</text>
+    <text x="645" y="92" text-anchor="middle" fill="var(--ink)" font-size="11" font-weight="600">push</text>
+    <text x="645" y="106" text-anchor="middle" fill="var(--muted)" font-size="9.5">send up</text>
+    <circle cx="765" cy="55" r="18" fill="var(--purple)"/><text x="765" y="61" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">7</text>
+    <text x="765" y="92" text-anchor="middle" fill="var(--ink)" font-size="11" font-weight="600">open PR</text>
+    <text x="765" y="106" text-anchor="middle" fill="var(--muted)" font-size="9.5">→ merge</text>
+  </svg>
+
+  <div class="strip" style="margin-top:14px">
+    <div class="pin" style="background:var(--green)">
+      <b>🌿 Why a branch?</b><small>main stays clean and releasable. Your branch is a private sandbox — experiment freely, and nothing reaches main until it's reviewed.</small>
+    </div>
+    <div class="pin" style="background:var(--navy)">
+      <b>🔁 The loop in one line</b><small>pull main → branch → add → commit → sync → push → PR → merge. Then start again for the next task.</small>
+    </div>
+  </div>
+</div>
+
+<!-- ================= GIT STOPS 1–4 EXPLAINED ================= -->
+<div class="sheet pb">
+  <h2><span class="dot" style="background:var(--green)"></span>2 · Stops 1–4, explained</h2>
+  <p class="hint">Getting your work ready: start fresh → branch → stage → save.</p>
+
+  <div class="xp" style="border-left-color:var(--green)">
+    <div class="xh"><span class="n" style="background:var(--green)">1</span> Start from the latest main</div>
+    <code class="cmd">git checkout main
+git pull</code>
+    <p><code>git checkout main</code> moves you onto the <b>main</b> branch, so the files you see are main's version. <code>git pull</code> then downloads everyone's latest commits from GitHub and merges them in — now you're standing on the newest shared code.</p>
+    <div class="sub">Already on main? Skip the checkout and just run <code>git pull</code>. It's the short form of <code>git pull origin main</code> because main already <b>tracks</b> origin/main (more on that at stop 5).</div>
+  </div>
+
+  <div class="xp" style="border-left-color:var(--green)">
+    <div class="xh"><span class="n" style="background:var(--green)">2</span> Create your own branch</div>
+    <code class="cmd">git checkout -b test/my-new-test</code>
+    <p><code>-b</code> means <i>"make a new branch and switch to it"</i> in one step. A branch is your private copy of the code where you can change things without touching main. Name it for the work: <code>test/…</code>, <code>fix/…</code> or <code>docs/…</code>.</p>
+    <div class="sub">Always branch off an <b>up-to-date</b> main — that's why stop 1 comes first.</div>
+  </div>
+
+  <div class="xp" style="border-left-color:var(--teal)">
+    <div class="xh"><span class="n" style="background:var(--teal)">3</span> Stage your changes — <code>git add</code></div>
+    <code class="cmd">git add .                              # stage everything you changed
+git add tests/features/hotel.feature   # ...or one file at a time</code>
+    <p>Staging tells Git <b>which</b> changes go into the next commit. The <code>.</code> stages everything changed in the current folder and below. You can also add files one-by-one when you only want some of them in this commit.</p>
+    <div class="sub">🎨 <b>Colours</b> (in <code>git status</code> and VS Code): <b style="color:#dc2626">red = changed but not staged yet</b>, <b style="color:#16a34a">green = staged</b> (going into the commit). After <code>git add</code>, files flip from red to green.</div>
+  </div>
+
+  <div class="xp" style="border-left-color:var(--teal)">
+    <div class="xh"><span class="n" style="background:var(--teal)">4</span> Save it — <code>git commit</code></div>
+    <code class="cmd">git commit -m "test(sabre): add hold flight EWR-LHR price check"</code>
+    <p><code>commit</code> saves your <i>staged</i> changes as a permanent snapshot in your branch's history. <code>-m</code> is the message that describes what you did.</p>
+    <div class="sub">📦 <b>add vs commit:</b> <code>git add</code> chooses <i>what</i> goes in (put items in the box). <code>git commit</code> <i>saves</i> the box with a label. Add stages; commit records — nothing is saved until you commit.</div>
+    <div class="sub">✍️ <b>What the message should contain:</b> <code>type(scope): summary</code> — e.g. <code>test(hotels): add refundable filter check</code>. <b>type</b> = test / fix / feat / docs / chore · <b>scope</b> = the area (sabre, hotels…) · <b>summary</b> = short, present-tense, says what the change does.</div>
+  </div>
+</div>
+
+<!-- ================= GIT STOPS 5–7 EXPLAINED ================= -->
+<div class="sheet pb">
+  <h2><span class="dot" style="background:var(--blue)"></span>3 · Stops 5–7, explained</h2>
+  <p class="hint">Sharing your work: sync → push → open the Pull Request.</p>
+
+  <div class="xp" style="border-left-color:var(--blue)">
+    <div class="xh"><span class="n" style="background:var(--blue)">5</span> Sync with main again</div>
+    <code class="cmd">git pull origin main</code>
+    <p>Before pushing, pull main's latest <b>into your branch</b>. You're on your feature branch now, so this merges the team's newest main into your work — any conflicts appear here, on your machine, instead of in the PR.</p>
+    <div class="sub">❓ <b>Why not just <code>git pull</code>?</b> Plain <code>git pull</code> follows <i>your branch's</i> upstream (<code>origin/test/my-new-test</code>) — which has nothing new, since only you push there. To pull <i>main's</i> changes you must name it: <code>git pull origin main</code> = "from <b>origin</b>, the <b>main</b> branch, into where I am right now." That explicitness is the whole point.</div>
+  </div>
+
+  <div class="xp" style="border-left-color:var(--blue)">
+    <div class="xh"><span class="n" style="background:var(--blue)">6</span> Push your branch up</div>
+    <code class="cmd">git push -u origin test/my-new-test    # the first time
+git push                                # every time after</code>
+    <p><code>push</code> uploads your commits to GitHub (the <code>origin</code> remote), onto a branch with the same name.</p>
+    <div class="sub">🔗 <b><code>git push origin test/my-new-test</code></b> pushes once. <b><code>git push -u origin test/my-new-test</code></b> pushes <i>and</i> links your local branch to the remote one (<code>-u</code> = set upstream). After that first <code>-u</code> push, plain <code>git push</code> and <code>git pull</code> just work. You only need <code>-u</code> the first time you push a new branch.</div>
+  </div>
+
+  <div class="xp" style="border-left-color:var(--purple)">
+    <div class="xh"><span class="n" style="background:var(--purple)">7</span> Open the PR — and where the link is</div>
+    <code class="cmd">gh pr create --base main --fill</code>
+    <p>Open a Pull Request so a teammate reviews your branch before it joins main.</p>
+    <div class="sub">🔗 <b>Where you'll see the PR link:</b><br>
+      • Right after <code>git push</code>, the terminal prints a URL like <code>https://github.com/atriis/Atriis.Test.Automation/pull/new/test/my-new-test</code> — Ctrl-click it.<br>
+      • On github.com, the repo shows a yellow <b>"Compare &amp; pull request"</b> banner for your just-pushed branch.<br>
+      • <code>gh pr create</code> prints the new PR's URL when it finishes.</div>
+    <div class="sub">🧹 <b>After it's merged:</b> <code>git checkout main</code> → <code>git pull</code> → <code>git branch -d test/my-new-test</code> to tidy up the branch you finished with.</div>
+  </div>
+</div>
+
+<!-- ================= OTHER GIT COMMANDS ================= -->
+<div class="sheet pb">
+  <h2><span class="dot" style="background:var(--amber)"></span>4 · Other commands worth knowing</h2>
+  <p class="hint">Not part of the main loop, but you'll reach for these often.</p>
+
+  <div class="xp" style="border-left-color:var(--green)">
+    <div class="xh">🔀 Switch to an existing branch — <code>git checkout &lt;name&gt;</code></div>
+    <code class="cmd">git checkout test/my-new-test    # jump onto a branch that already exists
+git checkout main                # ...or back to main</code>
+    <p>Same <code>checkout</code>, but with <b>no <code>-b</code></b> — because the branch already exists. <code>-b</code> <i>creates</i> a new branch; without it you just move onto one that's already there. (Newer Git also has <code>git switch &lt;name&gt;</code>, which does exactly the same thing.)</p>
+  </div>
+
+  <div class="xp" style="border-left-color:var(--blue)">
+    <div class="xh">🌳 See your branches — <code>git branch</code></div>
+    <code class="cmd">git branch        # your local branches (* = the one you're on)
+git branch -a     # include the remote branches too
+git branch -d test/my-new-test   # delete a branch once it's merged</code>
+    <p>Lists your branches and marks the current one with <code>*</code>. Handy before switching, or to copy the exact branch name.</p>
+  </div>
+
+  <div class="xp" style="border-left-color:var(--purple)">
+    <div class="xh">📦 Shelve work — <code>git stash</code> / <code>git stash -u</code></div>
+    <code class="cmd">git stash        # shelve your tracked changes
+git stash -u     # ALSO shelve new (untracked) files
+git stash pop    # bring everything back</code>
+    <p>Parks your uncommitted changes so you get a clean tree — handy when you suddenly need to switch branch or pull but aren't ready to commit half-done work.</p>
+    <div class="sub"><b><code>git stash</code></b> hides tracked (changed / staged) files but <b>leaves brand-new files behind</b>. <b><code>git stash -u</code></b> (<i>--include-untracked</i>) also sweeps up those new files. Either way, <code>git stash pop</code> brings them all back when you return.</div>
+  </div>
+</div>
+
+<!-- ================= PAGE 3 : GIT IN VS CODE ================= -->
+<div class="sheet pb">
+  <h2><span class="dot" style="background:var(--teal)"></span>5 · The same thing inside VS Code</h2>
+  <p class="hint">Prefer buttons over commands? VS Code's <b>Source Control</b> panel does every step. Open it with the branch icon in the left bar (or <b>Ctrl+Shift+G</b>).</p>
+
+  <!-- MOCKUP 1: Source Control panel -->
+  <svg viewBox="0 0 820 430" role="img" aria-label="VS Code Source Control panel mockup">
+    <defs>
+      <filter id="vs" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.22"/>
+      </filter>
+    </defs>
+
+    <!-- window -->
+    <rect x="2" y="2" width="816" height="426" rx="10" fill="#1e1e1e" filter="url(#vs)"/>
+    <!-- editor backdrop (right of panel) -->
+    <rect x="348" y="2" width="470" height="404" fill="#1e1e1e"/>
+
+    <!-- activity bar -->
+    <rect x="2" y="2" width="46" height="404" fill="#333333"/>
+    <rect x="2" y="120" width="3" height="44" fill="#0091ff"/>
+    <text x="25" y="52" text-anchor="middle" font-size="17" fill="#858585">📄</text>
+    <text x="25" y="98" text-anchor="middle" font-size="16" fill="#858585">🔍</text>
+    <!-- Source Control icon (VS Code git-branch codicon) -->
+    <g fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round">
+      <line x1="19" y1="133" x2="19" y2="151"/>
+      <path d="M30,133 C30,142 19,141 19,146"/>
+    </g>
+    <g fill="#ffffff" stroke="none">
+      <circle cx="19" cy="131" r="2.6"/>
+      <circle cx="19" cy="152.5" r="2.6"/>
+      <circle cx="30" cy="131" r="2.6"/>
+    </g>
+    <circle cx="37" cy="130" r="8" fill="#0091ff"/><text x="37" y="133.5" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">3</text>
+    <text x="25" y="196" text-anchor="middle" font-size="16" fill="#858585">▷</text>
+    <text x="25" y="242" text-anchor="middle" font-size="16" fill="#858585">🧩</text>
+
+    <!-- side panel -->
+    <rect x="48" y="2" width="300" height="404" fill="#252526"/>
+    <text x="62" y="26" fill="#cccccc" font-size="11" font-weight="700" letter-spacing="0.6">SOURCE CONTROL</text>
+    <text x="300" y="26" fill="#cccccc" font-size="13">✓</text>
+    <text x="320" y="26" fill="#cccccc" font-size="13">⟳</text>
+    <text x="336" y="26" fill="#cccccc" font-size="13">⋯</text>
+
+    <!-- message box -->
+    <rect x="62" y="40" width="274" height="50" rx="5" fill="#3c3c3c" stroke="#5a5a5a" stroke-width="1"/>
+    <text x="72" y="60" fill="#9a9a9a" font-size="11">Message (Ctrl+Enter to commit on</text>
+    <text x="72" y="76" fill="#9a9a9a" font-size="11">'test/my-new-test')</text>
+
+    <!-- commit button -->
+    <rect x="62" y="98" width="274" height="30" rx="5" fill="#0e639c"/>
+    <text x="199" y="118" text-anchor="middle" fill="#ffffff" font-size="12.5" font-weight="700">✓  Commit</text>
+
+    <!-- changes group -->
+    <text x="62" y="156" fill="#cccccc" font-size="11.5" font-weight="700">CHANGES</text>
+    <circle cx="124" cy="152" r="9" fill="#4d4d4d"/><text x="124" y="155.5" text-anchor="middle" fill="#fff" font-size="9.5" font-weight="700">3</text>
+
+    <!-- file rows -->
+    <text x="64" y="184" font-size="13" fill="#4ec9b0">▦</text>
+    <text x="80" y="184" fill="#cccccc" font-size="11.5">19201_hotel.feature</text>
+    <text x="300" y="184" fill="#cccccc" font-size="14">＋</text>
+    <text x="324" y="184" fill="#e2c08d" font-size="12" font-weight="700">M</text>
+
+    <text x="64" y="210" font-size="13" fill="#dcdcaa">▦</text>
+    <text x="80" y="210" fill="#cccccc" font-size="11.5">hotel_steps.js</text>
+    <text x="300" y="210" fill="#cccccc" font-size="14">＋</text>
+    <text x="324" y="210" fill="#e2c08d" font-size="12" font-weight="700">M</text>
+
+    <text x="64" y="236" font-size="13" fill="#73c991">▦</text>
+    <text x="80" y="236" fill="#cccccc" font-size="11.5">hotelPage.js</text>
+    <text x="300" y="236" fill="#cccccc" font-size="14">＋</text>
+    <text x="324" y="236" fill="#73c991" font-size="12" font-weight="700">U</text>
+
+    <!-- status bar -->
+    <rect x="2" y="406" width="816" height="22" rx="0" fill="#007acc"/>
+    <rect x="2" y="406" width="816" height="22" fill="#007acc"/>
+    <g fill="none" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round">
+      <line x1="15" y1="412" x2="15" y2="421"/>
+      <path d="M21,412 C21,416.5 15,415.5 15,418"/>
+    </g>
+    <g fill="#ffffff" stroke="none">
+      <circle cx="15" cy="410.5" r="1.7"/><circle cx="15" cy="421.5" r="1.7"/><circle cx="21" cy="410.5" r="1.7"/>
+    </g>
+    <text x="30" y="421" fill="#ffffff" font-size="11.5">test/my-new-test</text>
+    <text x="150" y="421" fill="#ffffff" font-size="11.5">⟲ 0↓ 1↑</text>
+
+    <!-- ===== numbered pins ===== -->
+    <!-- 1 branch -->
+    <circle cx="130" cy="416" r="9" fill="#fff" stroke="var(--green)" stroke-width="2.5"/><text x="130" y="419.5" text-anchor="middle" fill="var(--green)" font-size="11" font-weight="700">1</text>
+    <!-- 2 stage + -->
+    <circle cx="300" cy="166" r="9" fill="#fff" stroke="var(--teal)" stroke-width="2.5"/><text x="300" y="169.5" text-anchor="middle" fill="var(--teal)" font-size="11" font-weight="700">2</text>
+    <!-- 3 message -->
+    <circle cx="62" cy="40" r="9" fill="#fff" stroke="var(--blue)" stroke-width="2.5"/><text x="62" y="43.5" text-anchor="middle" fill="var(--blue)" font-size="11" font-weight="700">3</text>
+    <!-- 4 commit -->
+    <circle cx="62" cy="113" r="9" fill="#fff" stroke="var(--blue-d)" stroke-width="2.5"/><text x="62" y="116.5" text-anchor="middle" fill="var(--blue-d)" font-size="11" font-weight="700">4</text>
+    <!-- 5 sync -->
+    <circle cx="150" cy="416" r="9" fill="#fff" stroke="var(--purple)" stroke-width="2.5"/><text x="150" y="419.5" text-anchor="middle" fill="var(--purple)" font-size="11" font-weight="700">5</text>
+
+    <!-- ===== legend card ===== -->
+    <rect x="384" y="34" width="412" height="332" rx="14" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" filter="url(#vs)"/>
+    <text x="408" y="66" fill="#1f2937" font-size="15" font-weight="700">What each button does</text>
+
+    <circle cx="416" cy="98" r="12" fill="var(--green)"/><text x="416" y="102.5" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">1</text>
+    <text x="440" y="94" fill="#1f2937" font-size="12.5" font-weight="700">Pick or create your branch</text>
+    <text x="440" y="110" fill="#64748b" font-size="11">Click the branch name, bottom-left → "Create new branch".</text>
+
+    <circle cx="416" cy="148" r="12" fill="var(--teal)"/><text x="416" y="152.5" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">2</text>
+    <text x="440" y="144" fill="#1f2937" font-size="12.5" font-weight="700">Stage your files</text>
+    <text x="440" y="160" fill="#64748b" font-size="11">Hover a file under Changes and click the + (or + on "Changes").</text>
+
+    <circle cx="416" cy="198" r="12" fill="var(--blue)"/><text x="416" y="202.5" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">3</text>
+    <text x="440" y="194" fill="#1f2937" font-size="12.5" font-weight="700">Write a short message</text>
+    <text x="440" y="210" fill="#64748b" font-size="11">Type in the box — e.g. test(hotels): add refundable check.</text>
+
+    <circle cx="416" cy="248" r="12" fill="var(--blue-d)"/><text x="416" y="252.5" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">4</text>
+    <text x="440" y="244" fill="#1f2937" font-size="12.5" font-weight="700">Click ✓ Commit</text>
+    <text x="440" y="260" fill="#64748b" font-size="11">Saves the staged changes onto your branch.</text>
+
+    <circle cx="416" cy="298" r="12" fill="var(--purple)"/><text x="416" y="302.5" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">5</text>
+    <text x="440" y="294" fill="#1f2937" font-size="12.5" font-weight="700">Click Sync / Publish Branch</text>
+    <text x="440" y="310" fill="#64748b" font-size="11">First time it says "Publish Branch"; after that, "Sync" = pull + push.</text>
+
+    <text x="408" y="346" fill="#94a3b8" font-size="10.5">Illustration of the VS Code Source Control panel — your screen will look like this.</text>
+  </svg>
+
+  <!-- MOCKUP 2: branch quick-pick -->
+  <p class="hint" style="margin-top:12px"><b>Stop 2 — making a branch:</b> click the branch name in the bottom-left, and this menu pops up:</p>
+  <svg viewBox="0 0 820 180" role="img" aria-label="VS Code branch quick pick mockup">
+    <defs>
+      <filter id="vs2" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.25"/>
+      </filter>
+    </defs>
+    <rect x="210" y="14" width="400" height="152" rx="8" fill="#252526" stroke="#454545" stroke-width="1" filter="url(#vs2)"/>
+    <rect x="222" y="26" width="376" height="28" rx="4" fill="#3c3c3c" stroke="#0091ff" stroke-width="1.4"/>
+    <text x="232" y="44" fill="#9a9a9a" font-size="11.5">Select a branch or tag to checkout</text>
+
+    <rect x="214" y="60" width="392" height="26" fill="#04395e"/>
+    <text x="234" y="78" fill="#ffffff" font-size="11.5" font-weight="700">＋  Create new branch…</text>
+    <text x="234" y="104" fill="#cccccc" font-size="11.5">＋  Create new branch from…</text>
+    <text x="234" y="128" fill="#cccccc" font-size="11.5">⑂  main</text>
+    <text x="234" y="152" fill="#cccccc" font-size="11.5">⑂  test/my-new-test</text>
+
+    <!-- callout -->
+    <path d="M606,73 C660,73 660,73 700,73" fill="none" stroke="var(--green)" stroke-width="2.5" marker-end="url(#arrG)"/>
+    <defs><marker id="arrG" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--green)"/></marker></defs>
+    <text x="640" y="60" fill="var(--green-d)" font-size="11.5" font-weight="700">Pick this,</text>
+    <text x="640" y="92" fill="var(--green-d)" font-size="11.5" font-weight="700">type a name,</text>
+    <text x="640" y="108" fill="var(--muted)" font-size="11">press Enter ↵</text>
+  </svg>
+
+  <div class="strip" style="margin-top:12px">
+    <div class="pin" style="background:var(--teal)">
+      <b>🧩 Even easier: GitHub Pull Requests extension</b>
+      <small>Install it to create and review PRs (stop 7) without leaving VS Code.</small>
+    </div>
+  </div>
+
+  <h2><span class="dot" style="background:var(--amber)"></span>Reading the changes — colours &amp; <code style="font-size:13px">git status</code></h2>
+  <p class="hint">Those little letters next to each file (and their colours) tell you what happened to it. The terminal says the same thing.</p>
+  <div class="grid">
+    <div class="card" style="border-left-color:var(--green)">
+      <div class="t">🎨 What the letters &amp; colours mean</div>
+      <div style="margin-top:6px;font-size:11.5px;line-height:1.85">
+        <span style="color:#1a9e4b;font-weight:800">U</span> &nbsp;<b>Untracked</b> — a brand-new file Git doesn't know yet <span style="color:#64748b">(green)</span><br>
+        <span style="color:#c2870b;font-weight:800">M</span> &nbsp;<b>Modified</b> — an existing file you changed <span style="color:#64748b">(orange / gold)</span><br>
+        <span style="color:#1a9e4b;font-weight:800">A</span> &nbsp;<b>Added</b> — a new file you've staged <span style="color:#64748b">(green)</span><br>
+        <span style="color:#dc2626;font-weight:800">D</span> &nbsp;<b>Deleted</b> — you removed the file <span style="color:#64748b">(red)</span><br>
+        <span style="color:#dc2626;font-weight:800">C</span> / <span style="color:#dc2626;font-weight:800">!</span> &nbsp;<b>Conflict</b> — needs you to resolve it <span style="color:#64748b">(red)</span>
+      </div>
+    </div>
+    <div class="card" style="border-left-color:var(--teal)">
+      <div class="t">🔎 <code>git status</code> — the terminal version</div>
+      <code>git status   # what changed + what's staged</code>
+      <small style="line-height:1.7">It groups files into <b style="color:#16a34a">Changes to be committed</b> (staged — shown <b style="color:#16a34a">green</b>)
+      and <b style="color:#dc2626">not staged / Untracked</b> (shown <b style="color:#dc2626">red</b>).
+      <br>Quick rule: <b style="color:#16a34a">green = ready to commit</b>, <b style="color:#dc2626">red = still needs <code>git add</code></b>.</small>
+    </div>
+  </div>
+</div>
+
+<!-- ================= GIT TROUBLESHOOTING ================= -->
+<div class="sheet pb">
+  <h2><span class="dot" style="background:var(--red)"></span>6 · If something goes wrong</h2>
+  <p class="hint">The everyday Git snags — and the quick way out of each.</p>
+  <div class="trouble">
+    <div class="tc" style="border-top-color:var(--red)">
+      <b>Push rejected ("updates were rejected")</b>
+      Someone pushed to main first. Run <code>git pull origin main</code>, fix any conflicts, then push again.
+    </div>
+    <div class="tc" style="border-top-color:var(--amber)">
+      <b>Merge conflict</b>
+      Git marks the clashing spots with <code>&lt;&lt;&lt;</code> / <code>===</code> / <code>&gt;&gt;&gt;</code>. Edit the file to keep the right version, delete the markers, then <code>git add</code> &amp; <code>git commit</code>.
+    </div>
+    <div class="tc" style="border-top-color:var(--blue)">
+      <b>Started work on the wrong branch</b>
+      Nothing committed yet? Shelve it and move: <code>git stash -u</code> → <code>git checkout -b test/my-work</code> → <code>git stash pop</code>.
+    </div>
+    <div class="tc" style="border-top-color:var(--purple)">
+      <b>Typo in your last commit message</b>
+      Before you push, fix it with <code>git commit --amend -m "test(scope): better message"</code>.
+    </div>
+    <div class="tc" style="border-top-color:var(--teal)">
+      <b>Not sure what state you're in?</b>
+      <code>git status</code> shows your branch, what's staged (green) and what isn't (red). When in doubt, run it.
+    </div>
+    <div class="tc" style="border-top-color:var(--green)">
+      <b>Pulled and got a scary "merge" message</b>
+      Usually fine — Git just combined main into your branch. If there were conflicts, resolve them as above; otherwise you're good to push.
+    </div>
+  </div>
+
+  <div class="foot">Atriis · How to use Git — a visual guide · keep it handy 🌿</div>
+</div>
+
+</body>
+</html>
