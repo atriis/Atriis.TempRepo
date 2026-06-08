@@ -1,4 +1,4 @@
-﻿@daily_flights @provider:amadeus
+﻿@daily_flights @flights @provider:amadeus
 Feature: 53410 Amadeus - Flight - Search by schedule - Multipax - "My Selection" has the correct price in pricing page and cart
   As a corporate traveler
   I want to add flights to my cart

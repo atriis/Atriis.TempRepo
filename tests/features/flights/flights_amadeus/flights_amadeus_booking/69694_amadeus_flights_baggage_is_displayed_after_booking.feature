@@ -1,4 +1,4 @@
-﻿@daily_flights @provider:amadeus
+﻿@daily_flights @flights @provider:amadeus
 Feature: 69694 Amadeus - Verify baggage is displayed after booking
   As a corporate traveler
   I want to add baggage to my flight booking

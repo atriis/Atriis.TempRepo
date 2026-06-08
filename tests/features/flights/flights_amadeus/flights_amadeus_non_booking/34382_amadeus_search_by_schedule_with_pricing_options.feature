@@ -6,7 +6,7 @@
 # Created: 2023-08-10T09:17:07Z
 # Updated: 2025-08-07T04:15:17Z
 
-@regression @provider:amadeus
+@regression @flights @provider:amadeus
 Feature: 34382 Amadeus - Results are displayed with Pricing Options on search By Schedule
   As a corporate traveler
   I want to search flights by schedule and see pricing options

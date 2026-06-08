@@ -1,4 +1,4 @@
-﻿@daily_flights @provider:amadeus_light_ticketing
+﻿@daily_flights @flights @provider:amadeus_light_ticketing
 Feature: 61133 Amadeus Light Ticketing - Ryanair - Total price in cart is correct after adding seat
   As a corporate traveler using Amadeus Light Ticketing
   I want to add a Ryanair flight and a seat to my trip

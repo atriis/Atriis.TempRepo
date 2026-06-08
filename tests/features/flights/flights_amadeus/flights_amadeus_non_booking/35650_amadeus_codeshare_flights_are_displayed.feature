@@ -6,7 +6,7 @@
 # Created: 2023-09-08T09:11:19Z
 # Updated: 2025-02-03T09:10:37Z
 
-@regression @provider:amadeus
+@regression @flights @provider:amadeus
 Feature: 35650 Amadeus - Codeshare flights are displayed
   As a corporate traveler
   I want to see codeshare flight information in results

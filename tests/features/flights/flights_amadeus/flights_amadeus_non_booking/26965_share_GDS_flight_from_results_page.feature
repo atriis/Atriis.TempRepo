@@ -1,4 +1,4 @@
-@share-flight
+@share-flight @flights
 Feature: Share flight price offer
   As a corporate traveler
   I want to share 2 price offers from results for different carriers for any GDS supplier

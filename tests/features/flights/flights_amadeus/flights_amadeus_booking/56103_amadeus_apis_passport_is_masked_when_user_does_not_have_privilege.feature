@@ -1,4 +1,4 @@
-﻿@daily_flights @provider:amadeus
+﻿@daily_flights @flights @provider:amadeus
 Feature: 56103 [Merge] Amadeus - APIS - Passport is masked when user does not have "Can edit and view profile for other users" privilege and go to checkout
   As a corporate traveler using Amadeus supplier
   I want to search a one-way flight to the United States and add it to cart

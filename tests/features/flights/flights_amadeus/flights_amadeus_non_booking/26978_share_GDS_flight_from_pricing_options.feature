@@ -1,4 +1,4 @@
-@share-flight @pricing-options
+@share-flight @flights @pricing-options
 Feature: Share flight from pricing options
   As a corporate traveler
   I want to share flight offers selected from pricing options

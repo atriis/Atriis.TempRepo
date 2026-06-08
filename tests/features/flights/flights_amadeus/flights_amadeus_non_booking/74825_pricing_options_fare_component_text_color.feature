@@ -1,4 +1,4 @@
-@regression @priority:medium @domain:flights @workitem:74825
+@regression @flights @priority:medium @domain:flights @workitem:74825
 Feature: Flight pricing options fare component visual validation
   As a traveler
   I want the pricing options fare component text to use the correct color

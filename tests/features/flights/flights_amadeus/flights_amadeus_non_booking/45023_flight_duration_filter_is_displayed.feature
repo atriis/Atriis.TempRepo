@@ -1,4 +1,4 @@
-﻿@daily_flights @provider:amadeus
+﻿@daily_flights @flights @provider:amadeus
 Feature: 45023 Flight Duration - Flight Duration filter is displayed
   As a corporate traveler
   I want to search for a round trip flight

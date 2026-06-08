@@ -1,4 +1,4 @@
-﻿@regression @provider:amadeus
+﻿@regression @flights @provider:amadeus
 Feature: 72982 Amadeus - Can book for multi pax with GDS profile
   As a corporate travel arranger
   I want to add multiple travelers and hold a flight booking

@@ -1,4 +1,4 @@
-﻿@daily_flights
+﻿@daily_flights @flights
 Feature: 69492 Complete Trip – Select Outbound, Proceed to Select Return
   As a corporate traveler
   I want to search for a round trip flight and complete trip search

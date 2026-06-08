@@ -6,7 +6,7 @@
 # Created: 2024-12-05T01:56:37Z
 # Updated: 2026-01-19T07:43:56Z
 
-@regression @provider:amadeus
+@regression @flights @provider:amadeus
 Feature: 55146 Amadeus - Flight booking
   As a corporate traveler
   I want to book a round trip flight via Amadeus GDS
