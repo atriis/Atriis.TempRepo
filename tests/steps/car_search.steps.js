@@ -1,6 +1,8 @@
 require("module-alias/register");
 const { When, setDefaultTimeout } = require("@cucumber/cucumber");
 const { CarSearch } = require("../../src/dsl");
+const { ResultsPage } = require("@pages/ResultsPage");
+const { getPageObject } = require("@utils/pageObjectCache");
 const logger = require("@utils/logger").child("CarSearch");
 
 setDefaultTimeout(120000);
@@ -55,4 +57,15 @@ When("I edit the car search from {string} to {string} with {int} months ahead", 
 When("I edit the car search from {string} to {string}", async function (pickupLocation, dropoffLocation) {
   logger.info("Editing car search with different pickup and dropoff locations", { pickupLocation, dropoffLocation });
   await CarSearch.editCarSearchWithDifferentDropoffLocation(this.page, pickupLocation, dropoffLocation);
+});
+
+// ========================================
+// WHEN STEPS - CAR SEARCH EXPECTING NO RESULTS
+// ========================================
+
+When("I search for a car at {string} with rental agency {string} no results should be returned", async function (location, agency) {
+  logger.info("Searching for car at location with rental agency, expecting no results", { location, agency });
+  await CarSearch.searchCarByPlaceAndRentalAgency(this.page, location, agency, 3, { maxRetries: 0 });
+  const resultsPage = getPageObject(this.page, ResultsPage);
+  await resultsPage.waitForNoResults();
 });

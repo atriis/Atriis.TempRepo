@@ -14,6 +14,11 @@ When("I add a car from city center results to cart", async function () {
   await CarResults.addCarCityCenterFromResultsPageToCart(this.page);
 });
 
+When("I add the first car to cart", async function () {
+  logger.info("Adding first car to cart");
+  await CarResults.addCarAirportFromResultsPageToCart(this.page);
+});
+
 // ========================================
 // THEN STEPS - ASSERTIONS
 // ========================================

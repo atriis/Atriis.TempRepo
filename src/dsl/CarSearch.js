@@ -139,6 +139,7 @@ const CarSearch = {
     {
       pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
       dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
+      maxRetries = MAX_NO_RESULTS_RETRIES,
     } = {},
   ) {
     if (!page) {
@@ -187,6 +188,7 @@ const CarSearch = {
     const retryResult = await retryCarSearchByChangingDatesOnNoResults(page, {
       pickupIndex,
       dropoffIndex,
+      maxRetries,
     });
 
     return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex, noResultsRetry: retryResult };
