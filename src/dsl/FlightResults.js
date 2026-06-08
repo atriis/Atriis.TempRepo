@@ -2446,6 +2446,19 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   // ===== NEW FLIGHT FLOW =====
 
   /**
+   * Clicks the "Select Flight" button on the first result to enter the NFF brand-cards view.
+   * In New Flight Flow the results list shows a "Select Flight" primary button instead of
+   * "Pricing Options". Clicking it transitions to the flight-selection component.
+   */
+  async selectFirstFlightResultNFF(page) {
+    if (!page) {
+      throw new Error('[FlightResults.selectFirstFlightResultNFF] "page" is required.');
+    }
+    await Results.waitAndClickSelectButton(page);
+    return { selected: true };
+  },
+
+  /**
    * Selects the first pricing option (brand card) for the outbound leg in the new flight flow.
    */
   async selectOutboundFirstBrandCardNewFlightFlow(page) {
@@ -2560,6 +2573,100 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     await flightResultsPage.waitForFlightResults(90000);
     await flightResultsPage.clickPricingOptionsForFirstFlightWithoutLabel('NDC direct rate');
+  },
+
+  async verifyOutboundLegShowsStartingFromPricing(page) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyOutboundLegShowsStartingFromPricing] "page" is required.');
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.verifyLegBrandCardsShowStartingFrom(0);
+    return { outboundStartingFromVisible: true };
+  },
+
+  async verifyInboundLegShowsDeltaPricing(page) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyInboundLegShowsDeltaPricing] "page" is required.');
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.verifyLegBrandCardsShowDelta(1);
+    return { inboundDeltaVisible: true };
+  },
+
+  async verifyOutboundLegBrandCardsVisible(page) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyOutboundLegBrandCardsVisible] "page" is required.');
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForNewFlightFlowBrandCards(0);
+    return { outboundBrandCardsVisible: true };
+  },
+
+  async verifyInboundLegBrandCardsVisible(page) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyInboundLegBrandCardsVisible] "page" is required.');
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForNewFlightFlowBrandCards(1);
+    return { inboundBrandCardsVisible: true };
+  },
+
+  async verifyPriceWithoutStartingFromLabel(page) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyPriceWithoutStartingFromLabel] "page" is required.');
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.verifyLegBrandCardsShowPriceOnly();
+    return { priceOnlyVisible: true };
+  },
+
+  async verifyNoDeltaPricing(page) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyNoDeltaPricing] "page" is required.');
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.verifyNoBrandCardDelta();
+    return { noDeltaConfirmed: true };
+  },
+
+  async verifyThirdLegBrandCardsVisible(page) {
+    if (!page) throw new Error('[FlightResults.verifyThirdLegBrandCardsVisible] "page" is required.');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForNewFlightFlowBrandCards(2);
+    return { thirdLegBrandCardsVisible: true };
+  },
+
+  async verifyThirdLegShowsDeltaPricing(page) {
+    if (!page) throw new Error('[FlightResults.verifyThirdLegShowsDeltaPricing] "page" is required.');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.verifyLegBrandCardsShowDelta(2);
+    return { thirdLegDeltaVisible: true };
+  },
+
+  async selectThirdLegFirstBrandCard(page) {
+    if (!page) throw new Error('[FlightResults.selectThirdLegFirstBrandCard] "page" is required.');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForNewFlightFlowBrandCards(2);
+    await flightResultsPage.clickNewFlightFlowBrandCard(2, 0);
+    return { selected: true, leg: 'third' };
+  },
+
+  async verifySeparatedTicketsIndicationVisible(page) {
+    if (!page) {
+      throw new Error('[FlightResults.verifySeparatedTicketsIndicationVisible] "page" is required.');
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.verifySeparatedTicketsIndicationVisible();
+    return { separatedTicketsVisible: true };
+  },
+
+  async verifyFlightSelectionFooterTotalPerTraveller(page) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyFlightSelectionFooterTotalPerTraveller] "page" is required.');
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.verifyFlightSelectionFooterTotalPerTraveller();
+    return { footerTotalPerTraveller: true };
   },
 }
 

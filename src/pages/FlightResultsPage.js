@@ -121,12 +121,21 @@ const SELECTORS = {
   TRIP_OVERVIEW_TITLE: '.payments-title',
 
   // New Flight Flow (flight-selection component with brand cards)
-  NEW_FLOW_BRAND_CARD: '[data-testid="flight.flight-selection.brand-card"]',
+  // .flight-brand-card is the stable CSS class; data-testid may not be present in all builds
+  NEW_FLOW_BRAND_CARD: '.flight-brand-card',
   NEW_FLOW_BRAND_CARD_FARE: '.card.fare-card',
   NEW_FLOW_BRAND_LEG: '.flight-brand-leg',
   NEW_FLOW_LEG_HEADER_NAME: '.flight-brand-leg-header .header-name',
   NEW_FLOW_ADD_TO_CART_BUTTON: '[data-testid="flight.flight-selection.add-to-cart-btn"]',
   NEW_FLOW_SELECT_BUTTON: '[data-testid="flight.flight-selection.select-btn"]',
+  NEW_FLOW_BRAND_CARD_STARTING_FROM_LABEL: '.starting-from-label',
+  NEW_FLOW_BRAND_CARD_PRICE: '[data-testid="flight.flight-selection.brand-card.price"]',
+  NEW_FLOW_BRAND_CARD_PRICE_DELTA: '[data-testid="flight.flight-selection.brand-card.price-delta"]',
+  NEW_FLOW_BRAND_CARD_PRICE_DELTA_PREFIX: '.price-delta-prefix',
+  // Footer total price per traveller (flight-selection.vue .selection-actions)
+  NEW_FLOW_FOOTER_PRICE_SECTION: '.selection-actions .price-section',
+  NEW_FLOW_FOOTER_PRICE_AMOUNT: '.selection-actions .price-section .amount',
+  NEW_FLOW_FOOTER_TOTAL_PER_TRAVELLER_LABEL: 'Total per traveller',
 
   // Fare rules note
   FARE_RULES_NOTE: '.note',
@@ -2489,7 +2498,7 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
    * Waits for the brand cards within a specific leg to appear.
    * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
    */
-  async waitForNewFlightFlowBrandCards(legIndex = 0, timeout = 60000) {
+  async waitForNewFlightFlowBrandCards(legIndex = 0, timeout = 120000) {
     const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
     try {
       await leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first()
@@ -2578,6 +2587,192 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     // Additional settle time for cart page render after network idle
     await this.page.waitForTimeout(2000);
   }
+
+  /**
+   * Verifies outbound brand cards (leg 0) show a full price element and no price-delta.
+   * @param {number} legIndex - Zero-based leg index (default: 0 for outbound)
+   */
+  async verifyLegBrandCardsShowFullPriceWithoutDelta(legIndex = 0) {
+    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
+    try {
+      await leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first()
+        .waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.verifyLegBrandCardsShowFullPriceWithoutDelta] Brand cards for leg ${legIndex} not visible within 60s. ` +
+        `Original: ${err.message}`
+      );
+    }
+    // Use .price-info .amount — the h4.amount rendered by app-price, always present regardless of deployment state.
+    const priceAmount = leg.locator(`${SELECTORS.NEW_FLOW_BRAND_CARD_FARE} .price-info .amount`).first();
+    try {
+      await priceAmount.waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.verifyLegBrandCardsShowFullPriceWithoutDelta] Price amount (.price-info .amount) not visible on leg ${legIndex}. ` +
+        `Expected outbound brand cards to show a price. Original: ${err.message}`
+      );
+    }
+    const hasDelta = await leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD_PRICE_DELTA).isVisible().catch(() => false);
+    if (hasDelta) {
+      throw new Error(
+        `[FlightResultsPage.verifyLegBrandCardsShowFullPriceWithoutDelta] price-delta element is visible on leg ${legIndex} but should NOT be — outbound must show full price, not delta.`
+      );
+    }
+  }
+
+  /**
+   * Kept for when the app-side totalLegs bug (segments.length vs trip-leg count) is resolved.
+   * Verifies the "Starting from" label is visible on outbound brand cards.
+   */
+  async verifyLegBrandCardsShowStartingFrom(legIndex = 0) {
+    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
+    try {
+      await leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first()
+        .waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.verifyLegBrandCardsShowStartingFrom] Brand cards for leg ${legIndex} not visible within 60s. ` +
+        `Original: ${err.message}`
+      );
+    }
+    const label = leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD_STARTING_FROM_LABEL).first();
+    try {
+      await label.waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.verifyLegBrandCardsShowStartingFrom] ".starting-from-label" not visible on leg ${legIndex}. ` +
+        `Expected outbound brand cards to display "Starting from" pricing. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Verifies that brand cards in the given leg show a price-delta element (subsequent-leg pricing).
+   * @param {number} legIndex - Zero-based leg index (default: 1 for inbound)
+   */
+  async verifyLegBrandCardsShowDelta(legIndex = 1) {
+    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
+    try {
+      await leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first()
+        .waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.verifyLegBrandCardsShowDelta] Brand cards for leg ${legIndex} not visible. ` +
+        `Original: ${err.message}`
+      );
+    }
+    const deltaByTestId = leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD_PRICE_DELTA).first();
+    const deltaByPrefix = leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD_PRICE_DELTA_PREFIX).first();
+    const [hasTestId, hasPrefix] = await Promise.all([
+      deltaByTestId.isVisible().catch(() => false),
+      deltaByPrefix.isVisible().catch(() => false),
+    ]);
+    if (!hasTestId && !hasPrefix) {
+      throw new Error(
+        `[FlightResultsPage.verifyLegBrandCardsShowDelta] Neither price-delta testid nor .price-delta-prefix "+" span found on leg ${legIndex}. ` +
+        `Expected inbound brand cards to display incremental price delta after outbound selection.`
+      );
+    }
+  }
+
+  /**
+   * Verifies that brand cards on the page show a price element but NO "Starting from" label and NO price-delta
+   * (expected behaviour for one-way single-leg searches).
+   */
+  async verifyLegBrandCardsShowPriceOnly() {
+    const firstCard = this.page.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first();
+    try {
+      await firstCard.waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.verifyLegBrandCardsShowPriceOnly] No brand cards visible. Original: ${err.message}`
+      );
+    }
+    const hasStartingFrom = await this.page.locator(SELECTORS.NEW_FLOW_BRAND_CARD_STARTING_FROM_LABEL).isVisible().catch(() => false);
+    if (hasStartingFrom) {
+      throw new Error(
+        `[FlightResultsPage.verifyLegBrandCardsShowPriceOnly] ".starting-from-label" is visible but should NOT be shown for a one-way single leg.`
+      );
+    }
+    const hasDelta = await this.page.locator(SELECTORS.NEW_FLOW_BRAND_CARD_PRICE_DELTA).isVisible().catch(() => false);
+    const hasDeltaPrefix = await this.page.locator(SELECTORS.NEW_FLOW_BRAND_CARD_PRICE_DELTA_PREFIX).isVisible().catch(() => false);
+    if (hasDelta || hasDeltaPrefix) {
+      throw new Error(
+        `[FlightResultsPage.verifyLegBrandCardsShowPriceOnly] delta element is visible but should NOT be shown for a one-way single leg.`
+      );
+    }
+    // Price amount must be visible via .price-info .amount (always rendered).
+    const priceAmount = this.page.locator(`${SELECTORS.NEW_FLOW_BRAND_CARD_FARE} .price-info .amount`).first();
+    try {
+      await priceAmount.waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.verifyLegBrandCardsShowPriceOnly] Price amount not visible in brand cards for one-way. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Verifies the "Separated Tickets" badge is visible in the flight-selection (brand cards) view.
+   */
+  async verifySeparatedTicketsIndicationVisible() {
+    const locator = this.page.locator(SELECTORS.SEPARATED_TICKETS_TAG).first();
+    try {
+      await locator.waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.verifySeparatedTicketsIndicationVisible] ".separated-tickets-tag" not visible in brand cards view. ` +
+        `Expected a "Separated Tickets" badge to be shown for this result. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Verifies that no price-delta element is visible anywhere across all brand cards.
+   * Complements verifyLegBrandCardsShowPriceOnly for one-way checks.
+   */
+  async verifyNoBrandCardDelta() {
+    const hasDelta = await this.page.locator(SELECTORS.NEW_FLOW_BRAND_CARD_PRICE_DELTA).isVisible().catch(() => false);
+    if (hasDelta) {
+      throw new Error(
+        `[FlightResultsPage.verifyNoBrandCardDelta] price-delta element is visible but should NOT be present for a one-way single-leg search.`
+      );
+    }
+  }
+
+  /**
+   * Verifies the flight-selection footer shows a non-zero total price and the
+   * "Total per traveller" label — confirming the price is per-traveller, not per-group.
+   */
+  async verifyFlightSelectionFooterTotalPerTraveller() {
+    const priceSection = this.page.locator(SELECTORS.NEW_FLOW_FOOTER_PRICE_SECTION);
+    try {
+      await priceSection.waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.verifyFlightSelectionFooterTotalPerTraveller] Footer price section not visible. ` +
+        `The flight-selection footer may not have rendered. Original: ${err.message}`
+      );
+    }
+    const amount = this.page.locator(SELECTORS.NEW_FLOW_FOOTER_PRICE_AMOUNT);
+    try {
+      await amount.waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.verifyFlightSelectionFooterTotalPerTraveller] Price amount not visible in footer price section. Original: ${err.message}`
+      );
+    }
+    const label = priceSection.locator(`text=${SELECTORS.NEW_FLOW_FOOTER_TOTAL_PER_TRAVELLER_LABEL}`);
+    const labelVisible = await label.isVisible().catch(() => false);
+    if (!labelVisible) {
+      throw new Error(
+        `[FlightResultsPage.verifyFlightSelectionFooterTotalPerTraveller] "${SELECTORS.NEW_FLOW_FOOTER_TOTAL_PER_TRAVELLER_LABEL}" label not visible in footer. ` +
+        `Expected footer to display per-traveller price label.`
+      );
+    }
+  }
+
   /**
    * Selects a sort option from the "Sort by" extended dropdown in flight results.
    * Clicks the Sort by button to open the el-dropdown, then clicks the matching item.

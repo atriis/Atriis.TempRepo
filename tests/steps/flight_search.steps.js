@@ -203,6 +203,17 @@ When("I search for a multi-city by-schedule flight with legs {string} and {strin
   await FlightSearch.searchFlightMultiCity(this.page, legs, { searchType: 'bySchedule' });
 });
 
+When("I search for a multi-city flight with legs {string} and {string} and {string} and {string}", async function (leg1, leg2, leg3, leg4) {
+  const parseLeg = (leg) => {
+    const parts = leg.toUpperCase().split('-');
+    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
+    return { from: parts[0], to: parts[1] };
+  };
+  const legs = [leg1, leg2, leg3, leg4].map(parseLeg);
+  logger.info('Searching for multi-city flight', { legs });
+  await FlightSearch.searchFlightMultiCity(this.page, legs);
+});
+
 When("I search for a multi-city flight with legs {string} and {string}", async function (leg1, leg2) {
   const parseLeg = (leg) => {
     const parts = leg.toUpperCase().split('-');
