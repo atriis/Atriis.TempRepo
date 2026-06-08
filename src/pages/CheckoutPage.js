@@ -120,7 +120,9 @@ class CheckoutPage {
   async waitForBookAndFinalizeButton() {
     await this.page.waitForSelector(
       `${SELECTORS.FINALIZE_BUTTON}, ${SELECTORS.BOOK_AND_FINALIZE_BUTTON}, ${SELECTORS.BOOK_NOW_BUTTON}`,
-      { timeout: 10000 },
+      // 30s: the checkout page renders this button after a supplier round-trip,
+      // which routinely exceeds 10s headless in CI (failed even on serial runs).
+      { timeout: 30000 },
     );
   }
 

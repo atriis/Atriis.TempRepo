@@ -130,7 +130,11 @@ jobs:
 
       - name: Run ${{ matrix.suite_name }} Tests
         timeout-minutes: 60
-        run: npx cucumber-js ${{ matrix.test_path }} --parallel 4 --retry 2
+        # --parallel 2: each scenario launches its own 1920x1080 Chromium, and the
+        # GitHub-hosted runner has only 2 vCPUs. Running 4 browsers here starved the
+        # CPU and caused random click/visibility timeouts (different step each run).
+        # The matrix already fans suites across separate runners for throughput.
+        run: npx cucumber-js ${{ matrix.test_path }} --parallel 2 --retry 2
         env:
           CI: "true"
 
@@ -164,6 +168,14 @@ jobs:
         with:
           name: ${{ matrix.suite_id }}-screenshots
           path: test-results/screenshots/
+          if-no-files-found: ignore
+
+      - name: Upload ${{ matrix.suite_name }} Playwright Traces
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.suite_id }}-traces
+          path: test-results/traces/
           if-no-files-found: ignore
 
   test-booking:
@@ -245,7 +257,10 @@ jobs:
 
       - name: Run ${{ matrix.suite_name }} Tests
         timeout-minutes: 80
-        run: npx cucumber-js ${{ matrix.test_path }} --parallel 2 --retry 2
+        # --parallel 1: booking flows are the heaviest (real PNR + cancel) and were
+        # the worst hit by CPU contention on the 2-vCPU runner. Run them serially so
+        # each browser gets a full core; the matrix still parallelises across suites.
+        run: npx cucumber-js ${{ matrix.test_path }} --parallel 1 --retry 2
         env:
           CI: "true"
 
@@ -279,6 +294,14 @@ jobs:
         with:
           name: ${{ matrix.suite_id }}-screenshots
           path: test-results/screenshots/
+          if-no-files-found: ignore
+
+      - name: Upload ${{ matrix.suite_name }} Playwright Traces
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.suite_id }}-traces
+          path: test-results/traces/
           if-no-files-found: ignore
 
   report:

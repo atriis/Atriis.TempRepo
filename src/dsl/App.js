@@ -74,6 +74,14 @@ const App = {
       screen: config.viewport,
       ignoreHTTPSErrors: true,
     });
+
+    // In CI, record a Playwright trace for the whole session (covers login, the
+    // new-trip tab, and every step). The After hook exports it on failure so we
+    // can see exactly which step got stuck instead of guessing from a screenshot.
+    if (process.env.CI) {
+      await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+    }
+
     const page = await context.newPage();
     return { browser, context, page };
   },
