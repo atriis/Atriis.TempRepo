@@ -75,6 +75,8 @@ Feature file → step definitions → DSL files → page objects → `@domain-{d
 4. **Steps** — scan first. Shared steps before file-specific. One step per phrase. Call DSL, log with `logger`.
 5. **Other** — implement if actionable; leave future-note TODOs as-is.
 
+> Place every new piece (step, DSL, page) in the file that matches the page/feature it acts on — e.g. a flight-results step goes in the flight-results step, DSL, and page files, never a generic or unrelated file. If the correct target file is not obvious, **ask the user** before creating anything.
+
 ### 2d: Remove resolved TODOs
 Delete the `# TODO:` line. No replacement. No blank lines left behind. Keep "adjust when…" / "replace with…" TODOs.
 
@@ -227,6 +229,8 @@ Phase 4.6 blocks (🔴) on: naked timeouts, missing `try/catch`, missing `[Layer
 - **If unsure about broadening, don't touch it** — create new.
 - **Always ask user to pick files** before processing.
 - **Bottom-up**: locators → page objects → DSL → steps.
+- **Right file for the page/feature** — each new step/DSL/page goes in the file matching the page or feature it acts on (flight-results step → flight-results step/DSL/page files). If unclear, **ask the user** before creating.
+- **Respect architecture layers** — honor the layer separation in `.github/CLAUDE.md` (Gherkin → Steps → DSL → Page Objects → Helpers). Data flows DOWN only: steps call DSL (never Page Objects/Playwright); DSL composes page methods + holds assertions (never Playwright directly); Page Objects hold locators + atomic actions only (no business logic, no assertions). Never collapse logic into the wrong layer to make a step work.
 - **`data-testid` first** — then role > CSS > XPath.
 - **Centralize selectors** in SELECTORS constant — no inline strings in methods.
 - **Remove TODO comments cleanly** — no blank lines left.

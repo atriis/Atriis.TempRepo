@@ -33,14 +33,14 @@ You coordinate sub-agents in sequence, pass state between them, and pause for us
 ## Pipeline Phases
 
 ```
-Phase 0          Phase 1            Phase 1B           Phase 1C             Phase 2            Phase 3              Phase 4          Phase 5          Phase 5.5         Phase 5.75         Phase 6
-+-------------+  +---------------+  +---------------+  +-----------------+  +---------------+  +----------------+  +-------------+  +-------------+  +--------------+  +----------------+  +--------------+
-| Git         |->| Input & Mode  |->| Fetch ADO /   |->| Gen Structured  |->| Generate      |->| Implement &    |->| Report &    |->| Child Bug    |->| Publish ADO  |->| QA Summary   |->| Commit &     |
-| Pre-flight  |  | Detection     |  | Receive Input |  | Test Cases (US) |  | Gherkin       |  | Run & Fix      |  | Summary     |  | Creator      |  | Test Case    |  | + Screenshots |  | Pull Request |
-+-------------+  +---------------+  +---------------+  +-----------------+  +---------------+  +----------------+  +-------------+  +-------------+  +--------------+  +----------------+  +--------------+
-                      |                   |                   |                     |                   |                    |                |                |                  |                  |
-                    CHECKPOINT          CHECKPOINT          CHECKPOINT           CHECKPOINT          CHECKPOINT           CHECKPOINT       CHECKPOINT       CHECKPOINT        CHECKPOINT        CHECKPOINT
-                    "Mode OK?"          "Context OK?"       "Select TCs?"        "Review?"          "Steps OK?"          "Report OK?"     "Create bugs?"   "Publish TC?"     "Post to ADO?"    "Commit?"
+Phase 1            Phase 1B           Phase 1C             Phase 2            Phase 3              Phase 4          Phase 5          Phase 5.5         Phase 5.75         Phase 6
++---------------+  +---------------+  +-----------------+  +---------------+  +----------------+  +-------------+  +-------------+  +--------------+  +----------------+  +--------------+
+| Input & Mode  |->| Fetch ADO /   |->| Gen Structured  |->| Generate      |->| Implement &    |->| Report &    |->| Child Bug    |->| Publish ADO  |->| QA Summary   |->| Commit &     |
+| Detection     |  | Receive Input |  | Test Cases (US) |  | Gherkin       |  | Run & Fix      |  | Summary     |  | Creator      |  | Test Case    |  | + Screenshots |  | Pull Request |
++---------------+  +---------------+  +-----------------+  +---------------+  +----------------+  +-------------+  +-------------+  +--------------+  +----------------+  +--------------+
+     |                   |                   |                     |                   |                    |                |                |                  |                  |
+   CHECKPOINT          CHECKPOINT          CHECKPOINT           CHECKPOINT          CHECKPOINT           CHECKPOINT       CHECKPOINT       CHECKPOINT        CHECKPOINT        CHECKPOINT
+   "Mode OK?"          "Context OK?"       "Select TCs?"        "Review?"          "Steps OK?"          "Report OK?"     "Create bugs?"   "Publish TC?"     "Post to ADO?"    "Commit?"
 ```
 
 > **Phase 1C** only executes for User Stories. Bugs and Test Cases skip from 1B directly to Phase 2.
@@ -49,11 +49,11 @@ Phase 0          Phase 1            Phase 1B           Phase 1C             Phas
 
 | Input | Mode | Phases Executed |
 |-------|------|------------------|
-| Bug ID | auto | 0 → 1 → 1B(fetch) → 2 → 3 → 4 → 5 → 5.5 → 5.75 → 6 |
-| Test Case ID | auto | 0 → 1 → 1B(fetch) → 2 → 3 → 4 → 5 → 5.5 → 5.75 → 6 |
-| User Story ID | auto | 0 → 1 → 1B(fetch) → **1C(gen TCs)** → 2 → 3 → 4 → 5 → 5.5 → 5.75 → 6 |
-| mode:manual + Gherkin | manual | 0 → 1 → 1B(receive) → skip 2 → 3 → 4 → skip 5 → skip 5.5 → skip 5.75 → 6 |
-| mode:manual + plain steps | manual | 0 → 1 → 1B(receive) → 2 → 3 → 4 → skip 5 → skip 5.5 → skip 5.75 → 6 |
+| Bug ID | auto | 1 → 1B(fetch) → 2 → 3 → 4 → 5 → 5.5 → 5.75 → 6 |
+| Test Case ID | auto | 1 → 1B(fetch) → 2 → 3 → 4 → 5 → 5.5 → 5.75 → 6 |
+| User Story ID | auto | 1 → 1B(fetch) → **1C(gen TCs)** → 2 → 3 → 4 → 5 → 5.5 → 5.75 → 6 |
+| mode:manual + Gherkin | manual | 1 → 1B(receive) → skip 2 → 3 → 4 → skip 5 → skip 5.5 → skip 5.75 → 6 |
+| mode:manual + plain steps | manual | 1 → 1B(receive) → 2 → 3 → 4 → skip 5 → skip 5.5 → skip 5.75 → 6 |
 
 > **Phase 1C** is executed **only** for User Stories in auto mode. Bugs and Test Cases already have explicit repro steps / test steps, so they skip directly to Phase 2 (Gherkin generation).
 
@@ -122,7 +122,8 @@ The pipeline maintains a single state object passed between all phases:
     "created": false,
     "testCaseId": null,
     "testCaseUrl": "",
-    "linkedToWorkItem": false
+    "linkedToWorkItem": false,
+    "embeddedInFeatureFile": false
   },
   "adoQaSummary": {
     "posted": false,
@@ -140,41 +141,6 @@ Each sub-agent adds its section to this state without modifying others' sections
 ---
 
 ## Execution Protocol
-
-### Phase 0: Parse Trigger & Repository Setup (Automated)
-**Performed by the agent** — no manual git actions required from the user.
-
-This phase runs immediately when the user invokes the pipeline. It parses the trigger command and prepares the repository before any pipeline work begins.
-
-**Step 1: Parse trigger command**
-Extract from the user's invocation:
-- Work item ID (if provided) → used for branch naming
-- `mode:manual` flag (if present)
-- `users:` parameter (if present)
-- Any pasted content
-
-This is purely local parsing — no ADO calls yet.
-
-**Step 2: Git pre-flight**
-1. Check for uncommitted changes:
-    - If found, auto-stash them and notify the user of the action taken.
-    - If stash fails, halt and show an error for user intervention.
-2. Navigate to `main` branch and pull the latest changes.
-3. Create and checkout the feature branch:
-    - Auto mode: `feat/e2e-{workItemId}` (e.g., `feat/e2e-75155`)
-    - Manual mode: `feat/e2e-manual-{timestamp}`
-    - If the branch already exists, prompt the user to overwrite, use, or abort.
-4. If any git command fails, capture the error, show it to the user, and halt.
-
-**Step 3: Confirm ready**
-Display to user:
-- Branch created: `{branchName}`
-- Stashed changes: {yes/no}
-- Repository state: clean, up to date with main
-
-> After Phase 0 completes, the pipeline triggers the actual work phases (1 → 6).
-
----
 
 ### Phase 1: Input & Mode Detection
 
@@ -372,6 +338,7 @@ The `@test-generator-pipeline` (Phase 2) added `#TODO` comments above every unma
 2. **Classify** each TODO by category (step, dsl, page, locator)
 3. **Search for existing implementations** before creating anything new (mandatory dedup check)
 4. **Implement** missing pieces bottom-up: locators → page objects → DSL → step definitions
+   - Create each new piece in the file that matches the page/feature it acts on (e.g., a flight-results step goes in the flight-results step, DSL, and page files — never a generic or unrelated file). If the correct target file is not obvious, **prompt the user** before creating anything. See rule #19.
 5. **Consult domain agents** (`@domain-{domain}`) for domain-specific patterns
 6. **Remove resolved `#TODO` comments** from the feature file after implementation
 
@@ -498,6 +465,18 @@ The sub-agent will:
 6. Add the TC to the user-chosen suite
 7. Link the TC to the original work item with relationship `Tested By`
 
+**Embed the Test Case ID back into the feature file** (orchestrator, after the sub-agent returns `adoTcId`):
+
+Write the returned Test Case ID into the feature file as both a comment and a tag, directly above the `Feature:` declaration:
+
+```gherkin
+# ADO Test Case ID: {adoTcId}
+@ado:{adoTcId}
+Feature: ...
+```
+
+This creates a permanent link between the automation code and the ADO Test Case, allowing any future CI/CD pipeline or test runner to read the ID from the file and know which ADO Test Case to update with run results. Without this, there is no traceable correlation between the feature file and its ADO Test Case. Set `state.adoTestCase.embeddedInFeatureFile = true` on success.
+
 **Receives**: `state.adoTestCase`
 
 **CHECKPOINT** (returned by sub-agent):
@@ -506,6 +485,7 @@ The sub-agent will:
 - Plan: {planName} / Suite: {suiteName}
 - URL: {adoTcUrl}
 - Linked to: #{workItemId} (Tested By)
+- Embedded in feature file: {yes/no} (`# ADO Test Case ID` comment + `@ado:{adoTcId}` tag above `Feature:`)
 - **Ask**: "ADO Test Case published. Proceed to post QA summary to ADO?"
 
 ---
@@ -614,15 +594,16 @@ If user approves, **delegate to the `@commit` agent** to handle staging, commit 
 
 **Invoke**: `@commit` with the following context:
 - **Ticket number**: `{workItemId}` (or `manual-{timestamp}` for manual mode)
-- **Branch**: `feat/e2e-{workItemId}` or `feat/e2e-manual-{timestamp}` (the branch created in Phase 0)
+- **Branch**: `feat/e2e-{workItemId}` or `feat/e2e-manual-{timestamp}` (create from latest `main` if it does not already exist)
 - **Scope**: All files created or modified during this pipeline run
 - **Exclude**: Temporary artifacts under `test-results/` unless explicitly requested
 
 The `@commit` agent will:
-1. Review pending changes and generate a conventional commit message
-2. Stage the appropriate files (excluding `test-results/` by default)
-3. Commit with a message following project conventions
-4. Push to the `feat/e2e-{workItemId}` branch
+1. Ensure work is on the feature branch (create it from `main` if needed — never commit to `main`)
+2. Review pending changes and generate a conventional commit message
+3. Stage the appropriate files (excluding `test-results/` by default)
+4. Commit with a message following project conventions
+5. Push to the `feat/e2e-{workItemId}` branch
 
 After the `@commit` agent finishes, display the PR link for the user to open and approve:
 ```
@@ -672,3 +653,6 @@ https://github.com/atriis/Atriis.Test.Automation/compare/feat/e2e-{workItemId}?e
 15. **Screenshot upload failures never block the pipeline** -- if a screenshot cannot be uploaded to ADO, fall back to a text-only reference with the local file path. ADO comment API errors (4xx/5xx) are logged but the pipeline continues
 16. **Manual mode skips ADO phases** -- in manual mode (no work item ID), Phases 5, 5.5, and 5.75 are skipped entirely. The pipeline goes from Phase 4 (Report) directly to Phase 6 (Commit & PR)
 17. **`@ado-fetcher` is always invoked explicitly** -- the orchestrator calls `@ado-fetcher` in Phase 1B before passing `state.source` to the test-generator. The test-generator never fetches ADO itself
+18. **Embed the ADO Test Case ID in the feature file** -- after Phase 5.5 creates the ADO Test Case, the orchestrator must write the returned Test Case ID back into the feature file as both a comment (`# ADO Test Case ID: {adoTcId}`) and a tag (`@ado:{adoTcId}`), directly above the `Feature:` declaration. This is the only traceable correlation between the feature file and its ADO Test Case, letting any future CI/CD pipeline or test runner read the ID from the file and update the right Test Case with run results. Set `state.adoTestCase.embeddedInFeatureFile = true` on success
+19. **New steps go in the file that matches the page/feature** -- only when a step genuinely needs to be created (after the search evidence in rule #13 shows no reuse), create it in the step, DSL, and page files that correspond to the page or feature it acts on. For example, a step for the flight results page goes in the flight-results step, DSL, and page files — not in a generic or unrelated file. If the correct target file is not obvious, **prompt the user** to confirm where the step, DSL method, and page method should live before creating anything
+20. **Respect the project's architecture layers** -- all generated code must honor the layer separation defined in `.github/CLAUDE.md` (Gherkin Features → Step Definitions → DSL → Page Objects → Helpers). **Data flows DOWN only — never skip layers or go backwards**: steps call DSL (never Page Objects or Playwright directly); DSL composes Page Object methods and holds the assertions (never calls Playwright APIs directly); Page Objects hold locators and atomic actions only (no business logic, no assertions, no workflows). When implementing a new step in Phase 3, place each piece in its correct layer per rule #19, and never collapse logic into the wrong layer to make a step "work"
