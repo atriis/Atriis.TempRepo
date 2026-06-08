@@ -563,8 +563,8 @@ Then("the price in cart should equal the total price before adding baggage + the
 });
 
 Then("I successfully cancel the trip", async function () {
-  logger.info("Cancelling the trip successfully after a 20-second wait");
-  const result = await Cart.cancelTripStrictWithWait(this.page, 20000);
+  logger.info("Cancelling the trip successfully after a 10-second wait");
+  const result = await Cart.cancelTripStrictWithWait(this.page, 10000);
   expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
 });
 
