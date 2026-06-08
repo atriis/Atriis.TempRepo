@@ -16,7 +16,7 @@ Feature: HYBRID 68135 United NDC - Known Traveler Number is being sent in the bo
   Scenario: Complete booking with known traveler number and cancel trip
     Given I am logged in as "bsua@bsua.com" booking a new trip
     And I have added traveler by name "Cristiano Ronaldo"
-    When I search for a one way flight from "IAH" to "SEA"
+    When I search for a one way flight from "IAH" to "EWR"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout

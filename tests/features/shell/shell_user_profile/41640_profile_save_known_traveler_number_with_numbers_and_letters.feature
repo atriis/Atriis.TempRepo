@@ -21,3 +21,4 @@ Feature: 41640 Profile - Save known traveler number with numbers and letters
     And I save the passports and visas changes
     Then I should see a success notification
     And the known traveler number should be saved correctly
+    And I reset the known traveler number

@@ -791,6 +791,46 @@ const Profile = {
   },
 
   /**
+   * Removes every existing credit card so the test starts from a clean state.
+   * Leftover cards accumulate across runs, so this deletes the last card
+   * repeatedly until none remain.
+   */
+  async deleteAllCreditCards(page) {
+    if (!page) {
+      throw new Error('[Profile.deleteAllCreditCards] "page" is required.');
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let remaining = await profilePage.getCardPreviewCount();
+    const initialCount = remaining;
+    logger.debug(`[Profile.deleteAllCreditCards] Found ${remaining} existing card(s) to remove`);
+
+    let attempts = 0;
+    while (remaining > 0) {
+      // safety cap — a real profile never holds this many cards
+      if (attempts++ >= 20) {
+        throw new Error(
+          `[Profile.deleteAllCreditCards] Aborting after ${attempts} attempts — ${remaining} card(s) still present. ` +
+          `A card is not deleting correctly.`
+        );
+      }
+
+      try {
+        await profilePage.clickDeleteOnLastCard();
+        await profilePage.confirmRemoveFopCard();
+      } catch (err) {
+        throw new Error(`[Profile.deleteAllCreditCards] Failed to delete a card: ${err.message}`);
+      }
+
+      remaining = await profilePage.getCardPreviewCount();
+    }
+
+    logger.info("[Profile.deleteAllCreditCards] All existing credit cards removed — profile is clean");
+    return { removed: initialCount };
+  },
+
+  /**
    * Verifies the credit card was removed (card count decreased or is zero).
    */
   async verifyCreditCardRemoved(page, countBefore) {
@@ -1026,6 +1066,24 @@ const Profile = {
 
     logger.info(`[Profile.verifyKnownTravelerNumberSaved] Known traveler number "${actualValue}" confirmed saved`);
     return { savedValue: actualValue };
+  },
+
+  async resetKnownTravelerNumber(page) {
+    if (!page) throw new Error('[Profile.resetKnownTravelerNumber] "page" is required.');
+
+    logger.debug('[Profile.resetKnownTravelerNumber] Clearing known traveler number and saving');
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.clearKnownTravelerNumber();
+      await profilePage.clickSavePassportsVisas();
+    } catch (err) {
+      throw new Error(`[Profile.resetKnownTravelerNumber] Failed to reset known traveler number: ${err.message}`);
+    }
+
+    logger.info('[Profile.resetKnownTravelerNumber] Known traveler number reset to empty and saved');
+    return { savedValue: '' };
   },
 
   async savePassportsAndVisasChanges(page) {

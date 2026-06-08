@@ -120,6 +120,11 @@ When("I open the form of payment tab in my profile", async function () {
   await Profile.openFormOfPaymentTab(this.page);
 });
 
+When("I remove all existing credit cards from my profile", async function () {
+  logger.info("Removing all existing credit cards to start from a clean state");
+  await Profile.deleteAllCreditCards(this.page);
+});
+
 When("I add a new credit card with city {string} and cardholder {string}", async function (city, cardholder) {
   logger.info("Adding new credit card", { city, cardholder });
   await Profile.addCreditCard(this.page, { city, cardholder });
@@ -189,6 +194,11 @@ When("I save the passports and visas changes", async function () {
 Then("the known traveler number should be saved correctly", async function () {
   logger.info("Verifying known traveler number was persisted", { expected: this.knownTravelerNumber });
   await Profile.verifyKnownTravelerNumberSaved(this.page, this.knownTravelerNumber);
+});
+
+When("I reset the known traveler number", async function () {
+  logger.info("Resetting known traveler number to clean up profile state");
+  await Profile.resetKnownTravelerNumber(this.page);
 });
 
 // --- Backup Approver steps ---

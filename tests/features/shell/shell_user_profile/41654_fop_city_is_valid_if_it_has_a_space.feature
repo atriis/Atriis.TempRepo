@@ -17,6 +17,7 @@ Feature: 41654 FOP - City field is valid when it contains a space
     Given I am logged in as "analucia@cardadmin.com"
     When I navigate to my user profile
     And I open the form of payment tab in my profile
+    And I remove all existing credit cards from my profile
     And I add a new credit card with city "new york city" and cardholder "testim"
     Then I should see a success notification
     And the card holder name "testim" should be displayed

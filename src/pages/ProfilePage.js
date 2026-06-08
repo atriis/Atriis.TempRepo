@@ -1132,6 +1132,22 @@ class ProfilePage {
     }
   }
 
+  async clearKnownTravelerNumber() {
+    try {
+      const input = this.page.locator(SELECTORS.KNOWN_TRAVELER_INPUT);
+      await input.waitFor({ state: 'visible', timeout: 10000 });
+      // Triple-click to select the existing value, then Delete — real key events
+      // so Vue v-model registers the field as empty (fill('') would not).
+      await input.click({ clickCount: 3, timeout: 10000 });
+      await input.press('Delete');
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clearKnownTravelerNumber] Could not clear known traveler number (selector: ${SELECTORS.KNOWN_TRAVELER_INPUT}). ` +
+        `The Passports & Visas tab may not be open. Original: ${err.message}`
+      );
+    }
+  }
+
   async waitForPassportVisaForm() {
     try {
       await this.page.locator(SELECTORS.PASSPORT_VISA_FORM).waitFor({ state: 'visible', timeout: 15000 });
