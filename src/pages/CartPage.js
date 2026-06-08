@@ -180,6 +180,8 @@ const SELECTORS = {
   SEAT_MAP_PRICE: '.total-sum-wrapper .price', // Price element in the seat map footer (app-price component)
   SEAT_MAP_SAVE_CLOSE_BUTTON: 'button:has-text("Save And Close")', // Save & Close button in seat map drawer
   CART_TOTAL_PRICE: '.price-total .amount', // Grand total in the cart summary sidebar (trip-summary.vue)
+  PRICE_CHANGE_PREV_PRICE: '.booking-response-errors .prev-price', // Previous price in the price-change modal
+  PRICE_CHANGE_UPDATED_PRICE: '.booking-response-errors .updated-price', // New price in the price-change modal
   NUMBER_OF_BAGGAGE_DROPDOWN_FIELD: "//span[normalize-space()='Number of baggage']", // XPath used due to complex dropdown structure - TODO: adjust when we have a data-test-id selector.
   DROPDOWN_OPTION: 'li.el-select-dropdown__item', // Dropdown option selector (used with hasText filter for partial matching)
   BAGGAGE_CLICKABLE: '.flight-baggage .is-clickable',
@@ -1470,6 +1472,18 @@ class CartPage {
 
     await btn.click();
     return true;
+  }
+
+  /**
+   * Reads the old and new prices from the price-change modal.
+   *
+   * @returns {Promise<{oldPrice: number, newPrice: number, oldText: string, newText: string}>}
+   */
+  async getPriceChangeValues() {
+    const parsePrice = (text) => parseFloat((text ?? '').replace(/[^0-9.]/g, '')) || 0;
+    const oldText = await this.page.locator(SELECTORS.PRICE_CHANGE_PREV_PRICE).first().textContent().catch(() => '');
+    const newText = await this.page.locator(SELECTORS.PRICE_CHANGE_UPDATED_PRICE).first().textContent().catch(() => '');
+    return { oldPrice: parsePrice(oldText), newPrice: parsePrice(newText), oldText, newText };
   }
 
   /**

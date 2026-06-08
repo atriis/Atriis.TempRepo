@@ -1923,3 +1923,28 @@ Then("the {string} quote card should show a price of {int} dollars", async funct
   await Cart.verifyQuoteCardPrice(this.page, quoteIdentifier, expectedPrice);
 });
 
+When("I validate price change if displayed and proceed", async function () {
+  logger.info("Validating price change modal if displayed and proceeding");
+  const { priceChangeShown, oldPrice, newPrice, nearIdentical, oldText, newText } =
+    await Cart.validatePriceChangeAndProceed(this.page);
+
+  if (!priceChangeShown) {
+    logger.info("No price change modal displayed - skipping");
+    return;
+  }
+
+  logger.info("Price change modal detected - proceeding", { oldPrice, newPrice, oldText, newText });
+
+  if (nearIdentical) {
+    const warning = `WARNING: Price change modal shows identical or near-identical prices (${oldText?.trim()} → ${newText?.trim()}) - possible bug where price change is incorrectly triggered`;
+    logger.warn(warning);
+    this.attach(warning, 'text/plain');
+  }
+});
+
+Then("the trip total to pay should not be zero", async function () {
+  const cartPage = getPageObject(this.page, CartPage);
+  const total = await cartPage.getCartTotalPrice();
+  expect(total, "Trip total to pay should not be zero").toBeGreaterThan(0);
+});
+

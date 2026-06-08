@@ -89,6 +89,38 @@ const Cart = {
   },
 
   /**
+   * Races for the price-change modal or on-hold status, reads price values,
+   * clicks "Proceed with change" if shown, and returns what was found.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{priceChangeShown: boolean, oldPrice: number, newPrice: number, nearIdentical: boolean}>}
+   */
+  async validatePriceChangeAndProceed(page) {
+    const cartPage = getPageObject(page, CartPage);
+    const timeout = process.env.CI ? 60000 : 45000;
+    const proceedBtn = cartPage.getProceedWithChangeButton();
+    const onHoldLabel = cartPage.getOnHoldStatusLabel();
+
+    try {
+      await Promise.race([
+        proceedBtn.waitFor({ state: 'visible', timeout }),
+        onHoldLabel.waitFor({ state: 'visible', timeout }),
+      ]);
+    } catch {
+      return { priceChangeShown: false, oldPrice: 0, newPrice: 0, nearIdentical: false };
+    }
+
+    if (!await proceedBtn.isVisible().catch(() => false)) {
+      return { priceChangeShown: false, oldPrice: 0, newPrice: 0, nearIdentical: false };
+    }
+
+    const { oldPrice, newPrice, oldText, newText } = await cartPage.getPriceChangeValues();
+    await proceedBtn.click();
+    const nearIdentical = Math.abs(oldPrice - newPrice) <= 1.00;
+    return { priceChangeShown: true, oldPrice, newPrice, nearIdentical, oldText, newText };
+  },
+
+  /**
    * STRICT cancel flow (returns cancellation status)
    *
    * This flow:
