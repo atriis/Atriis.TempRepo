@@ -108,7 +108,7 @@ Read the relevant file before working on that area:
 ### DSL Methods
 - One responsibility; method names start with verbs: `selectFlight()`, `addPassenger()`, `verifyPrice()`
 - Compose from Page methods only — never write Playwright code in DSL
-- Assertions live in DSL, not tests; handle errors with context-rich re-throws
+- Assertions: business/test assertions belong in the step `Then`; DSL holds **only critical state validation** (e.g., booking status, page-ready checks) — see [`dsl.md`](instructions/dsl.md). Handle errors with context-rich re-throws
 
 ### Page Objects
 - Locators only — no business logic, no assertions, no workflows

@@ -19,6 +19,14 @@ Your review mindset:
 4. **Be constructive** — explain WHY and provide the corrected version
 5. **Prefer under-implementation over wrong implementation** — `#TODO` is better than incorrect code
 
+### Grounding rule (no hallucinated findings)
+
+This is a **mandatory blocking** gate, so a false finding is expensive — it blocks correct code on a phantom problem. Therefore:
+
+- **Never cite a reuse target you haven't verified.** Before pointing to `SomeModule.someMethod()` as existing code to reuse, you MUST have actually found it via `search`/`read`. Quote the real `file:line`. Do not invent or guess method, selector, or file names.
+- **Anchor line numbers to the diff.** Reference the actual changed hunk. If you are unsure of an exact line, cite the hunk or quote the offending snippet rather than guessing a number.
+- **If you cannot verify a claim, downgrade it** to a 🟢 SUGGESTION phrased as a question ("Does `X` already exist? If so, reuse it") instead of a 🔴 BLOCK.
+
 ## Source of Truth
 
 **You MUST use these files as the authoritative reference** (in priority order):
@@ -41,7 +49,7 @@ If any feedback conflicts with these files, the instruction files always take pr
 - **scope** (optional): Can be one of the following:
   - **Directory path** (e.g., `scope=tests/regression/flights`): Review only files inside that directory
   - **Glob pattern** (e.g., `scope=src/dsl/**/*.js` or `scope=tests/**/*.feature`): Review files matching the pattern
-  - **`pr` or `PR`**: Review changes as if this branch was a pull request to `remote/main` branch
+  - **`pr` or `PR`**: Review the changes as if this branch was a pull request to `main` (diff against `origin/main`).
   - If not provided, all changed files will be reviewed.
 - **output** (optional): Name of the output file in markdown format (e.g., `output=review-report.md`). If provided, the review feedback will be saved to this file.
 - **strictness** (optional): `normal` (default) or `strict`. In strict mode, apply full governor rules — block any new function if similar logic exists anywhere in the project.
@@ -52,9 +60,13 @@ Before writing any feedback, execute this workflow:
 
 ### Phase 1: Discovery
 
-1. **Identify changed files** using `git diff` or scope parameter
-2. **Classify each file** by layer (Feature / Step / DSL / Page Object / Helper / Config)
-3. **Read the full content** of each changed file
+1. **Identify changed files** with the command matching the scope:
+   - No scope (default): `git diff --name-only HEAD` (staged + unstaged vs. last commit)
+   - `pr` / `PR`: `git diff --name-only origin/main...HEAD` (run `git fetch origin main` first if needed)
+   - Directory / glob scope: the changed files filtered to that path/pattern
+2. **If the diff is empty** (no changed files): report "No changes to review" and stop. Do NOT fabricate findings or review unchanged files.
+3. **Classify each file** by layer (Feature / Step / DSL / Page Object / Helper / Config)
+4. **Read the full content** of each changed file for context, but **scope your findings to the added/changed lines** (use `git diff <file>` to see the hunks). Pre-existing issues in untouched parts of a file are **noted**, not blocked (see Enforcement Rules → pre-existing issues).
 
 ### Phase 2: Reuse Verification (Governor Mode)
 
@@ -69,11 +81,23 @@ If similar logic exists → **REJECT** the new code and point to the existing im
 If no match exists and a new function is truly needed → **APPROVE** with justification.
 If implementation is uncertain → Replace with `#TODO: reuse or implement <clear description>`.
 
-### Phase 3: Pattern Compliance
+### Phase 3: Placement Verification (Module Cohesion)
+
+The system is mapped **by page**. Each screen owns a **trio**: a Page Object, a DSL module, and a step file. New code MUST live in the trio that matches its concern.
+
+For EVERY new selector, Page Object method, DSL method, and step definition:
+
+1. **Identify the screen/concern** it belongs to (e.g., flight search form vs. flight results list vs. fare pricing).
+2. **Confirm it is in the matching trio** using the **Module Cohesion & Placement** ownership map below.
+3. If it's in the wrong module → **🔴 BLOCK** and point to the correct file.
+
+`CommonPage` / `Search` / `Results` / `common.steps.js` are for **genuinely screen-agnostic, cross-cutting** elements only. A domain-specific element (e.g., anything flight-search-specific) placed there is a placement violation — not "close enough".
+
+### Phase 4: Pattern Compliance
 
 Verify every file against the layer-specific rules below.
 
-### Phase 4: Report
+### Phase 5: Report
 
 Generate a structured report with severity levels and corrected code.
 
@@ -82,6 +106,7 @@ Generate a structured report with severity levels and corrected code.
 ### 🔴 BLOCK (Must fix before merge)
 
 - Layer violations (step calling Page Object, DSL calling Playwright directly)
+- **Module placement violations** — code placed in the wrong domain module (e.g., a flight-search selector in `FlightResultsPage` or `CommonPage`, a flight-search DSL method in `FlightResults`, a step in the wrong `*.steps.js`). See **Module Cohesion & Placement**.
 - Duplicate logic that already exists in the project
 - New functions created when existing ones can be reused or parameterized
 - Missing input validation in DSL methods
@@ -90,7 +115,7 @@ Generate a structured report with severity levels and corrected code.
 - Incorrect architecture (class-based DSL, assertions in Page Objects)
 - Arrow functions in step definitions (breaks `this.page` binding)
 
-### 🟡 IMPORTANT (Requires discussion or fix)
+### 🟡 IMPORTANT (Must fix before commit — same as a blocker)
 
 - Missing logger or using `console.log()`
 - Hard-coded waits without justification comment
@@ -177,6 +202,7 @@ Generate a structured report with severity levels and corrected code.
 - [ ] Explicit timeouts on all `waitFor` calls
 - [ ] Selector priority: `data-testid` > role > attribute > ID > class > CSS chain
 - [ ] No inline selectors — everything in `SELECTORS`
+- [ ] **New/changed selectors verified against the UI source of truth** — the Vue components in `../Atriis.App/src/app/Atriis.OBT/`. Prefer the real `data-testid` from the component. A brittle CSS/class-chain selector added when a `data-testid` exists in the source = 🟡 IMPORTANT. If the cross-project source is not available in this review context, note the selector as unverified rather than approving it silently.
 - [ ] Methods that return locators: `get*` prefix (e.g., `getCompleteTripRadio()`)
 - [ ] Methods that return state: `is*` prefix (e.g., `isAdvancedSearchExpanded()`)
 
@@ -187,6 +213,40 @@ Generate a structured report with severity levels and corrected code.
 - [ ] Proper input validation
 - [ ] No side effects (except DOM helpers)
 - [ ] Exported individually or as named exports
+
+## Module Cohesion & Placement
+
+The framework is organized **by page/screen**. Everything related to one screen lives together across the three layers. New code that lands in the wrong module is a **🔴 BLOCK**, even if it is otherwise well-written, because it erodes the by-page mapping the whole framework depends on.
+
+### The trio rule
+
+Every screen owns a **Page ↔ DSL ↔ Steps** trio with parallel names:
+
+| Concern / screen | Page Object | DSL module | Step file |
+|---|---|---|---|
+| Flight search form | `FlightSearchPage` | `FlightSearch` | `flight_search.steps.js` |
+| Flight results list | `FlightResultsPage` | `FlightResults` | `flight_results.steps.js` |
+| Flight fare / pricing | `FlightPricingPage` | `FlightPricing` | `flight_pricing.steps.js` |
+| Hotel search | `HotelSearchPage` | `HotelSearch` | `hotel_search.steps.js` |
+| Hotel-level results | `HotelLevelResultsPage` | `HotelLevelResults` | `hotel_level_results.steps.js` |
+| Room-level results | `RoomLevelResultsPage` | `RoomLevelResults` | `room_level_results.steps.js` |
+| Car search / results | `CarSearchPage` / `CarResultsPage` | `CarSearch` / `CarResults` | `car_search.steps.js` / `car_results.steps.js` |
+| Cart / payment | `CartPage` / `CartPaymentPage` | `Cart` / `CartPayment` | `cart.steps.js` / `cart_fop.steps.js` |
+| Checkout | `CheckoutPage` | `Checkout` | `checkout.steps.js` |
+| Trips | `TripsPage` | `Trips` | `trips.steps.js` |
+
+> This table is illustrative, not exhaustive — derive the authoritative trio for any screen from the live modules (see **Discovering current modules** below). Rail (Benerail/Evolvi/Amtrak), Ground Transport, and Parking follow the same trio pattern.
+
+### Placement checks
+
+- [ ] A new **selector** belongs in the Page Object for the screen where it appears — e.g. a flight-search field goes in `FlightSearchPage`, never in `FlightResultsPage` or `CommonPage`.
+- [ ] A new **Page method** belongs in the Page Object matching the screen it acts on.
+- [ ] A new **DSL method** belongs in the DSL module for that screen's workflow (search logic in `FlightSearch`, results logic in `FlightResults`, fare logic in `FlightPricing`).
+- [ ] A new **step** belongs in the `*.steps.js` matching the screen it drives.
+- [ ] `CommonPage` / `Search` / `Results` / `common.steps.js` hold **only** screen-agnostic, reused-everywhere elements. Domain-specific code placed there = 🔴 BLOCK.
+- [ ] If a genuinely new screen has no trio yet, the new files must follow the parallel-naming convention (`XSearchPage` / `XSearch` / `x_search.steps.js`).
+
+**Action when misplaced**: 🔴 BLOCK. State the wrong location, name the correct trio member, and provide the moved code.
 
 ## Duplication Detection Rules
 
@@ -277,25 +337,28 @@ Search all `src/pages/*.js` SELECTORS for:
 | `return true` from DSL | DSL | 🟡 | Return `{ success: true, ...context }` |
 | `page.waitForTimeout(5000)` | Any | 🟡 | Use explicit wait or add justification comment |
 | Inline selector string | Pages | 🟡 | Add to SELECTORS constant |
+| CSS/class-chain selector when a `data-testid` exists in the Vue source | Pages | 🟡 | Use the `data-testid` from `../Atriis.App/src/app/Atriis.OBT/` |
 | Missing `if (!page) throw` | DSL | 🟡 | Add validation at method start |
 | `require('@pages/...')` in steps | Steps | 🔴 | Import from `@dsl` only |
 | Duplicate step text | Steps | 🔴 | Reuse existing step or parameterize |
 | Missing `@regression` tag | Feature | 🟡 | Add appropriate tags |
 | Hardcoded value in Gherkin | Feature | 🟡 | Use `{string}` / `{int}` parameter |
+| Flight-search element in `FlightResultsPage`/`CommonPage` | Pages | 🔴 | Move to the page for its screen (`FlightSearchPage`) |
+| Domain-specific selector dumped in `CommonPage` | Pages | 🔴 | Move to the owning screen's Page Object |
+| DSL method in wrong domain module (search vs results vs pricing) | DSL | 🔴 | Move to the matching domain DSL module |
+| Step in the wrong `*.steps.js` for its screen | Steps | 🔴 | Move to the matching domain step file |
 
 ## Real Project Reference
 
-### DSL Modules (25 — exported from `src/dsl/index.js`)
+### Discovering current modules
 
-`AmtrakSearch`, `App`, `BenerailResults`, `BenerailSearch`, `CarResults`, `CarSearch`, `Cart`, `CartPayment`, `Checkout`, `DynamicAndReferenceFields`, `EvolviResults`, `EvolviSearch`, `FlightPricing`, `FlightResults`, `FlightSearch`, `GroundTransportSearch`, `HotelLevelResults`, `HotelSearch`, `ManualQuoteSearch`, `Results`, `RoomLevelResults`, `Search`, `TravelRequest`, `Trips`, `UKParkingSearch`
+**Do not rely on a hardcoded inventory — it rots.** Derive the authoritative module list at review time, then reason about placement against it:
 
-### Page Objects (26 files in `src/pages/`)
+- **DSL modules**: read the barrel export `src/dsl/index.js` (the exported names are the canonical DSL modules).
+- **Page Objects**: list `src/pages/*.js`.
+- **Step files**: list `tests/steps/*.steps.js`.
 
-`AmtrakResultsPage`, `CarResultsPage`, `CarSearchPage`, `CartPage`, `CartPaymentPage`, `CheckoutPage`, `CommonPage`, `DynamicAndReferenceFieldsPage`, `EvolviResultsPage`, `EvolviSearchPage`, `FlightPricingPage`, `FlightResultsPage`, `FlightSearchPage`, `GroundTransportSearchPage`, `HotelLevelResultsPage`, `HotelSearchPage`, `LoginPage`, `LogoutPage`, `ManualQuoteSearchPage`, `MenuPage`, `ResultsPage`, `RoomLevelResultsPage`, `SearchPage`, `TravelRequestPage`, `TripsPage`, `UKParkingSearchPage`
-
-### Step Definition Files (28 files in `tests/steps/`)
-
-`amtrak.steps.js`, `amtrak_results.steps.js`, `app.steps.js`, `benerail_results.steps.js`, `benerail_search.steps.js`, `cars.step.js`, `cart.steps.js`, `cart_fop.steps.js`, `car_results.steps.js`, `car_search.steps.js`, `checkout.steps.js`, `common.steps.js`, `dynamic_fields.steps.js`, `evolvi_results.steps.js`, `evolvi_search.steps.js`, `flight_pricing.steps.js`, `flight_results.steps.js`, `flight_search.steps.js`, `ground_transport.steps.js`, `hotel_level_results.steps.js`, `hotel_search.steps.js`, `manual_quote.steps.js`, `parking.steps.js`, `results.steps.js`, `room_level_results.steps.js`, `search.steps.js`, `smoke.steps.js`, `trips.steps.js`
+Use these live lists to (a) find existing code to reuse, and (b) verify a new addition lands in the correct trio (see **Module Cohesion & Placement**). When a new file is being added, check that its name parallels its trio siblings (`XSearchPage` / `XSearch` / `x_search.steps.js`).
 
 ### Utility Patterns
 
@@ -345,7 +408,7 @@ Structure your review as follows:
 [Auto-generated based on findings]
 
 If 🔴 or 🟡 findings exist:
-> **YOU MUST FIX ALL 🔴 AND 🟡 FINDINGS ABOVE BEFORE COMMITTING. This is not optional. Do not proceed to commit until every blocker and important issue has been resolved in code. After fixing, you may commit without re-invoking the reviewer unless you added >10 new lines.**
+> **YOU MUST FIX ALL 🔴 AND 🟡 FINDINGS ABOVE BEFORE COMMITTING. This is not optional. Do not proceed to commit until every blocker and important issue has been resolved in code. After fixing, you may commit without re-invoking the reviewer IF the fix was a direct correction of the noted issues. Re-invoke the reviewer if the fix introduced new logic — a new method, selector, step, or branch — since that new code was never reviewed.**
 
 If only 🟢 findings exist:
 > **No mandatory fixes required. You may commit. Consider the suggestions for a follow-up.**
@@ -370,7 +433,7 @@ When a pipeline agent receives the code review report:
 1. **If verdict is FAIL (BLOCK)**: The pipeline agent MUST fix ALL 🔴 findings, then re-request review
 2. **If verdict is PASS WITH COMMENTS**: The pipeline agent MUST fix ALL 🔴 and 🟡 findings before committing. No exceptions. No deferral. No "will fix later".
 3. **If verdict is PASS**: The pipeline agent MAY commit immediately
-4. **After fixing**: The pipeline agent does NOT need to re-invoke the reviewer unless the fix introduced new code (> 10 lines)
+4. **After fixing**: The pipeline agent does NOT need to re-invoke the reviewer if the fix was a direct correction of the noted findings. It MUST re-invoke if the fix introduced **new logic that was never reviewed** — a new method, selector, step definition, or conditional branch (a raw line count is not the trigger).
 5. **Pre-existing issues**: If a finding is marked as "pre-existing" (not introduced by the current pipeline run), it MUST still be fixed if it's in a file that was already modified. If it's in an untouched file, it MAY be deferred.
 
 ### What happens if a pipeline agent skips fixes

@@ -16,9 +16,7 @@ Feature:  58331 Galileo - Hotel - Special request has a limit of 80 characters a
   Scenario: Special request has a limit of 80 characters and booking is succeeded when special request has special characters
     Given I am logged in as "edwardcullen@galileogdg.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Blue Mansion Hotel, Oosteinderweg, Aalsmeer, Netherlands" for 1 night
-    And I wait to see view rates text in results page
-    And I filter hotel results by hotel name "Blue Mansion Hotel"
+    When I search for a hotel in "London" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     When I add a special request text of 100 characters

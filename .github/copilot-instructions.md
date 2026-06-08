@@ -105,7 +105,7 @@ Playwright + Cucumber BDD framework for a corporate travel booking platform (Atr
 ### DSL Methods
 - One responsibility; method names start with verbs: `selectFlight()`, `addPassenger()`, `verifyPrice()`
 - Compose from Page methods only — never write Playwright code in DSL
-- Assertions live in DSL, not tests; handle errors with context-rich re-throws
+- Assertions: business/test assertions belong in the step `Then`; DSL holds **only critical state validation** (e.g., booking status, page-ready checks) — see [`dsl.md`](instructions/dsl.md). Handle errors with context-rich re-throws
 - Example signature: `async selectFlight(page, flightIndex) { ... }`
 
 ### Page Objects
