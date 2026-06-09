@@ -1,9 +1,9 @@
-# Test Name: 77807 Sabre - New Flight Flow - Multi-city leg pricing: "Starting from" on first leg, delta on subsequent
+# Test Name: 78654 Sabre - New Flight Flow - Multi-city leg pricing: "Starting from" on first leg, delta on subsequent
 # Status: Active
 # Labels: Regression,Flights,Sabre,New Flight Flow,Leg Pricing,Multi City
 
 @regression @flights @sabre @nff @leg-pricing @multi-city
-Feature: 77807 Sabre - New Flight Flow - Multi-city leg pricing display
+Feature: 78654 Sabre - New Flight Flow - Multi-city leg pricing display
   As a corporate traveler booking multi-city flights via Sabre
   I want to see "Starting from" on the first leg brand card and incremental delta on subsequent leg brand cards
   So that I can clearly compare the incremental cost across multi-city fare options

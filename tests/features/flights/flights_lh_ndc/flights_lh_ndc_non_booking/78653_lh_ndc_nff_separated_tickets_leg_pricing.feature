@@ -1,9 +1,9 @@
-# Test Name: 77807 Lufthansa NDC - New Flight Flow - Leg pricing for separated tickets
+# Test Name: 78653 Lufthansa NDC - New Flight Flow - Leg pricing for separated tickets
 # Status: Active
 # Labels: Regression,Flights,LH NDC,New Flight Flow,Leg Pricing,Separated Tickets
 
 @regression @flights @ndc @lufthansa @nff @leg-pricing @separated-tickets
-Feature: 77807 Lufthansa NDC - New Flight Flow - Leg pricing display for separated tickets
+Feature: 78653 Lufthansa NDC - New Flight Flow - Leg pricing display for separated tickets
   As a corporate traveler booking separated tickets via LH NDC
   I want to see "Starting from" on the first leg brand card and incremental delta on inbound leg
   So that I can clearly understand the incremental cost of each fare per leg

@@ -1,9 +1,9 @@
-# Test Name: 77807 BA NDC - New Flight Flow - One-way: no "Starting from" and no delta on brand cards
+# Test Name: 78652 BA NDC - New Flight Flow - One-way: no "Starting from" and no delta on brand cards
 # Status: Active
 # Labels: Regression,Flights,BA NDC,New Flight Flow,Leg Pricing,One Way
 
 @regression @flights @ndc @ba-ndc @nff @leg-pricing @one-way
-Feature: 77807 BA NDC - New Flight Flow - One-way leg pricing shows price without "Starting from" or delta
+Feature: 78652 BA NDC - New Flight Flow - One-way leg pricing shows price without "Starting from" or delta
   As a corporate traveler on a one-way trip
   I want to see just the fare price on brand cards without "Starting from" prefix or incremental delta
   So that I understand the exact cost for my single leg without confusion

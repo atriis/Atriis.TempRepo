@@ -1,17 +1,18 @@
-# Test Name: 77807 Amadeus - New Flight Flow - Round trip leg pricing: "Starting from" on outbound, delta on inbound
+# Test Name: 78651 Amadeus Light Ticketing - New Flight Flow - Multi pax: outbound full price, inbound visible, footer shows total per traveller
 # Status: Active
-# Labels: Regression,Flights,Amadeus,New Flight Flow,Leg Pricing
+# Labels: Regression,Flights,Amadeus Light Ticketing,New Flight Flow,Leg Pricing,Multi Pax
 
-@regression @flights @amadeus @nff @leg-pricing
-Feature: 77807 Amadeus - New Flight Flow - Round trip leg pricing display
-  As a corporate traveler
+@regression @flights @amadeus @nff @leg-pricing @multi-pax
+Feature: 78651 Amadeus Light Ticketing - New Flight Flow - Multi pax round trip leg pricing display
+  As a corporate traveler booking for multiple passengers
   I want to see "Starting from" on the outbound brand card and incremental delta on the inbound brand card
-  So that I can clearly understand the incremental cost of each fare option per leg
+  So that I can understand the per-traveler incremental cost per leg when booking round trip
 
-  Scenario: Round trip non-separated - outbound brand cards show "Starting from", inbound brand cards show incremental delta
-    Given I am logged in as "corp.amadeus.nff@amsalem.com" booking a new trip
+  Scenario: Round trip multi pax - outbound shows full price, inbound visible, footer shows total per traveller
+    Given I am logged in as "corp.amadeusligth.nff@amsalem.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "LIS" to "LON"
+    And I have added a random guest traveler
+    When I search for a round trip flight from "DUB" to "BUD"
     Then flight results should be available
     When I select the first flight result in new flight flow
     Then the outbound leg brand cards are displayed
