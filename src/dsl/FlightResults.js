@@ -2668,6 +2668,21 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     await flightResultsPage.verifyFlightSelectionFooterTotalPerTraveller();
     return { footerTotalPerTraveller: true };
   },
+
+  async selectOutboundFirstNonAgreementBrandCard(page) {
+    if (!page) throw new Error('[FlightResults.selectOutboundFirstNonAgreementBrandCard] "page" is required.');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForNewFlightFlowBrandCards(0);
+    await flightResultsPage.clickFirstNonAgreementBrandCard(0);
+    return { selected: true, leg: 'outbound' };
+  },
+
+  async getInboundLegAgreementCardIndices(page) {
+    if (!page) throw new Error('[FlightResults.getInboundLegAgreementCardIndices] "page" is required.');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const { agreementCardIndices } = await flightResultsPage.getAgreementIconCountInLegBrandCards(1);
+    return { agreementCardIndices };
+  },
 }
 
 module.exports = FlightResults;

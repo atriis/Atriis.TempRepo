@@ -2803,5 +2803,38 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
 
     await this.waitForFlightResults(timeout);
   }
+
+  async clickFirstNonAgreementBrandCard(legIndex = 0) {
+    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
+    const nonAgreementCard = leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD)
+      .filter({ hasNot: this.page.locator(SELECTORS.AGREEMENT_ICON) })
+      .first();
+    try {
+      await nonAgreementCard.waitFor({ state: 'visible', timeout: 30000 });
+      await nonAgreementCard.locator(SELECTORS.NEW_FLOW_BRAND_CARD_FARE).click({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.clickFirstNonAgreementBrandCard] No non-agreement brand card found in leg ${legIndex}. ` +
+        `All visible cards may have agreement icons. Original: ${err.message}`
+      );
+    }
+    await this.page.locator(SELECTORS.NEW_FLOW_FOOTER_PRICE_AMOUNT).waitFor({ state: 'visible', timeout: 15000 });
+  }
+
+  async getAgreementIconCountInLegBrandCards(legIndex = 1, timeout = 30000) {
+    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
+    await leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first().waitFor({ state: 'visible', timeout });
+    const cards = leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD);
+    const cardCount = await cards.count();
+    const agreementCardIndices = [];
+    for (let i = 0; i < cardCount; i++) {
+      const agreementIcon = cards.nth(i).locator(SELECTORS.AGREEMENT_ICON);
+      const iconCount = await agreementIcon.count();
+      if (iconCount > 0 && await agreementIcon.first().isVisible()) {
+        agreementCardIndices.push(i);
+      }
+    }
+    return { agreementCardIndices };
+  }
 }
 module.exports = FlightResultsPage;

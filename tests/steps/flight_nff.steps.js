@@ -1,5 +1,6 @@
 require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
+const { expect } = require("@playwright/test");
 const { FlightResults } = require("../../src/dsl");
 const logger = require("@utils/logger").child("FlightNFF");
 
@@ -95,4 +96,16 @@ Then("the flight selection footer should display a total price per traveller", a
   logger.info("[NewFlightFlow] Verifying footer shows total price per traveller");
   const result = await FlightResults.verifyFlightSelectionFooterTotalPerTraveller(this.page);
   logger.info("[NewFlightFlow] Footer total per traveller verified", result);
+});
+
+When("I select the outbound first non-agreement brand card from pricing options new flight flow", async function () {
+  logger.info("[NewFlightFlow] Selecting first outbound non-agreement brand card");
+  await FlightResults.selectOutboundFirstNonAgreementBrandCard(this.page);
+});
+
+Then("the inbound leg brand cards should only display non-agreement fares", async function () {
+  logger.info("[NewFlightFlow] Verifying inbound brand cards only show non-agreement fares");
+  const { agreementCardIndices } = await FlightResults.getInboundLegAgreementCardIndices(this.page);
+  expect(agreementCardIndices).toHaveLength(0);
+  logger.info("[NewFlightFlow] Inbound non-agreement fares verified", { agreementCardIndices });
 });
