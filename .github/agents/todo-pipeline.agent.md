@@ -1,6 +1,7 @@
 ---
 description: "Orchestrator for completing incomplete tests: scans feature files for TODO comments, implements missing step definitions, DSL methods, and page object updates, then runs and fixes iteratively until the test passes."
 tools: ["read", "search", "edit", "execute/getTerminalOutput", "execute/runInTerminal", "read/terminalLastCommand", "read/terminalSelection", "agent"]
+agents: ["test-runner-pipeline", "test-fixer-pipeline", "code-reviewer", "domain-flights", "domain-hotels", "domain-shell", "domain-transportation"]
 ---
 
 # TODO Resolver Pipeline
@@ -119,6 +120,8 @@ Run after Phase 4, before moving files.
 ---
 
 ## Phase 4.6: Code Review (mandatory — cannot be skipped)
+
+> ⚠️ **Do not remove or weaken this phase.** It is the *only* code-review gate for the `@e2e-test-pipeline`, which intentionally does not call `@code-reviewer` itself and relies on this Phase 4.6 (see e2e-test-pipeline rule #2 and its Phase 6 note). Dropping it silently bypasses code review for the entire e2e flow.
 
 Invoke `@code-reviewer` with `strictness=strict` on all created/modified files.
 
