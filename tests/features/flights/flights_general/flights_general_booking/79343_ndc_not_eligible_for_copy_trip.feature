@@ -1,6 +1,6 @@
-# ADO Test Case ID: 77711
-@ado:77711 @regression @flights @ndc @copy-trip @priority:critical
-Feature: 77711 NDC - Trip is not eligible for copy trip
+# ADO Test Case ID: 79343
+@ado:79343 @regression @flights @ndc @copy-trip @priority:critical
+Feature: 79343 NDC - Trip is not eligible for copy trip
 
   As a corporate traveler using an NDC supplier
   I want to verify that NDC bookings cannot be copied
