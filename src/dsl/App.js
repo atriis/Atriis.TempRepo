@@ -153,6 +153,8 @@ const App = {
     if (newTripPage) {
       logger.info("New trip opened in a new tab");
       await newTripPage.waitForLoadState("networkidle", { timeout: 60000 });
+      const newTripLoginPage = getPageObject(newTripPage, LoginPage);
+      await newTripLoginPage.acceptCookiesIfPresent(5000);
       return newTripPage;
     }
 
