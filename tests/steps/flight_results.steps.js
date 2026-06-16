@@ -1,7 +1,7 @@
 ﻿require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
-const { Cart, FlightPricing, FlightResults } = require("../../src/dsl");
+const { Cart, FlightPricing, FlightResults, PayloadValidation } = require("../../src/dsl");
 const FlightResultsPage = require("../../src/pages/FlightResultsPage");
 const { ResultsPage } = require("../../src/pages/ResultsPage");
 const { CommonPage } = require("../../src/pages/CommonPage");
@@ -972,4 +972,39 @@ Then('the first flight result price should not be zero', async function () {
 When('I sort flight results by {string}', async function (label) {
   logger.info('Sorting flight results by', { label });
   await FlightResults.sortBy(this.page, label);
+});
+
+function getCapturedBlockPayload(world, source) {
+  if (source.toLowerCase() !== 'block') {
+    throw new Error(`Expected source "block" for fare/payload cross-reference step, got "${source}"`);
+  }
+  const requestType = world.lastCapturedParserPayload?.requestType;
+  if (!requestType) {
+    throw new Error('No payload captured yet. Run a capture step before this step.');
+  }
+  return PayloadValidation.getCapturedPayload(world, 'block', requestType).payload;
+}
+
+Then('the fares in the captured {string} should show {string} in pricing options', async function (source, expectedText) {
+  logger.info('Verifying fares in captured block show text in pricing options', { source, expectedText });
+  const blockXml = getCapturedBlockPayload(this, source);
+  await FlightResults.verifyPricingOptionFaresFromBlockContainText(this.page, blockXml, expectedText, { mode: 'in' });
+});
+
+Then('the fares not in the captured {string} should show {string} in pricing options', async function (source, expectedText) {
+  logger.info('Verifying fares not in captured block show text in pricing options', { source, expectedText });
+  const blockXml = getCapturedBlockPayload(this, source);
+  await FlightResults.verifyPricingOptionFaresFromBlockContainText(this.page, blockXml, expectedText, { mode: 'not-in' });
+});
+
+Then('the fares with {string} provision in the captured {string} should show {string} in pricing options', async function (provisionValue, source, expectedText) {
+  logger.info('Verifying fares with provision in captured block show text in pricing options', { source, provisionValue, expectedText });
+  const blockXml = getCapturedBlockPayload(this, source);
+  await FlightResults.verifyPricingOptionFaresFromBlockContainText(this.page, blockXml, expectedText, { mode: 'in', provisionFilter: provisionValue });
+});
+
+Then('the fares without {string} provision in the captured {string} should show {string} in pricing options', async function (provisionValue, source, expectedText) {
+  logger.info('Verifying fares without provision in captured block show text in pricing options', { source, provisionValue, expectedText });
+  const blockXml = getCapturedBlockPayload(this, source);
+  await FlightResults.verifyPricingOptionFaresFromBlockContainText(this.page, blockXml, expectedText, { mode: 'not-in', provisionFilter: provisionValue });
 });

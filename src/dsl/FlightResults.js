@@ -29,6 +29,46 @@ function extractDayToken(dateText) {
   return match[1];
 }
 
+function extractConditionAttributes(xml) {
+  const regex = /<Condition\s+([^>]+?)\/?\s*>/gi;
+  const results = [];
+  let match;
+  while ((match = regex.exec(xml)) !== null) {
+    results.push(match[1]);
+  }
+  return results;
+}
+
+function extractSupplierClassesFromBlock(blockXml) {
+  return extractConditionAttributes(blockXml).reduce((acc, attrs) => {
+    const isSupplierClass = /Type\s*=\s*["']SupplierClass["']/i.test(attrs);
+    const valueMatch = attrs.match(/Value\s*=\s*["']([^"']+)["']/i);
+    if (isSupplierClass && valueMatch) acc.push(valueMatch[1]);
+    return acc;
+  }, []);
+}
+
+function extractSupplierClassesWithProvision(blockXml, provisionValue) {
+  const optionRegex = /<Option\b[^>]*>([\s\S]*?)<\/Option>/gi;
+  const result = [];
+  let match;
+  while ((match = optionRegex.exec(blockXml)) !== null) {
+    const condAttrs = extractConditionAttributes(match[1]);
+    const hasProvision = condAttrs.some((attrs) => {
+      const isProvision = /Type\s*=\s*["']Provision["']/i.test(attrs);
+      const valueMatch = attrs.match(/Value\s*=\s*["']([^"']+)["']/i);
+      return isProvision && valueMatch && valueMatch[1] === provisionValue;
+    });
+    if (!hasProvision) continue;
+    const scAttrs = condAttrs.find((attrs) => /Type\s*=\s*["']SupplierClass["']/i.test(attrs));
+    if (scAttrs) {
+      const valueMatch = scAttrs.match(/Value\s*=\s*["']([^"']+)["']/i);
+      if (valueMatch) result.push(valueMatch[1]);
+    }
+  }
+  return result;
+}
+
 /**
  * FlightResults DSL
  *
@@ -2682,6 +2722,72 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     const { agreementCardIndices } = await flightResultsPage.getAgreementIconCountInLegBrandCards(1);
     return { agreementCardIndices };
+  },
+
+  /**
+   * Verifies that each fare visible in pricing options shows the expected text,
+   * where "which fares" is determined by SupplierClass values extracted from
+   * a captured XML block (e.g. a <Feature> element from a CheckRouting payload).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} blockXml - Raw XML of the captured block (e.g. <Feature Type="LargeCabinBag">...</Feature>)
+   * @param {string} expectedText - UI text that should appear in each matched fare card
+   * @param {object} opts
+   * @param {'in'|'not-in'} opts.mode - 'in' checks fares whose names ARE in the block; 'not-in' checks fares whose names are NOT in the block
+   * @param {string} [opts.provisionFilter] - When set, further filters to SupplierClass values co-occurring with this Provision value (e.g. 'Bundled')
+   */
+  async verifyPricingOptionFaresFromBlockContainText(page, blockXml, expectedText, opts = {}) {
+    if (!page) throw new Error('page is required');
+    if (!blockXml || typeof blockXml !== 'string') throw new Error('blockXml must be a non-empty string');
+    if (!expectedText || typeof expectedText !== 'string') throw new Error('expectedText must be a non-empty string');
+
+    const { mode, provisionFilter } = opts;
+    if (mode !== 'in' && mode !== 'not-in') throw new Error('opts.mode must be "in" or "not-in"');
+
+    const targetFares = provisionFilter
+      ? extractSupplierClassesWithProvision(blockXml, provisionFilter)
+      : extractSupplierClassesFromBlock(blockXml);
+
+    if (targetFares.length === 0) {
+      throw new Error(
+        `No SupplierClass fares extracted from block XML${provisionFilter ? ` with provision "${provisionFilter}"` : ''}. Block XML: ${blockXml.substring(0, 200)}`
+      );
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    // Auto-detect NFF (brand cards) vs classic pricing-options overlay
+    const isNFF = await flightResultsPage.isNFFBrandCardsVisible();
+
+    const allFareNames = isNFF
+      ? await flightResultsPage.getNFFBrandCardNames(0)
+      : await flightResultsPage.getPricingOptionsBrandNames();
+
+    if (allFareNames.length === 0) {
+      throw new Error('No pricing option brand names found in the UI');
+    }
+
+    const faresToCheck = mode === 'in'
+      ? allFareNames.filter((name) => targetFares.some((tf) => name.toLowerCase() === tf.toLowerCase()))
+      : allFareNames.filter((name) => !targetFares.some((tf) => name.toLowerCase() === tf.toLowerCase()));
+
+    if (faresToCheck.length === 0) {
+      throw new Error(
+        `No fares to verify (mode="${mode}", targetFares=${JSON.stringify(targetFares)}, allFares=${JSON.stringify(allFareNames)})`
+      );
+    }
+
+    logger.info(`Verifying ${faresToCheck.length} fare(s) in pricing options`, { mode, faresToCheck, expectedText, isNFF });
+
+    for (const fareName of faresToCheck) {
+      const card = isNFF
+        ? flightResultsPage.getNFFBrandCardByName(0, fareName)
+        : flightResultsPage.getPricingOptionCardByText(fareName);
+      await card.waitFor({ state: 'visible', timeout: 30000 });
+      const fullText = await card.textContent();
+      expect(fullText).toContain(expectedText);
+      logger.info(`Fare "${fareName}" correctly shows "${expectedText}" in pricing options`);
+    }
   },
 }
 
