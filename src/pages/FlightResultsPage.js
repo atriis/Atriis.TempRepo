@@ -2554,48 +2554,6 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   }
 
   /**
-   * Returns true if NFF brand cards are currently visible (as opposed to the
-   * classic pricing-options overlay). Used by the DSL to auto-detect the active flow.
-   * @returns {Promise<boolean>}
-   */
-  async isNFFBrandCardsVisible() {
-    return this.page
-      .locator(SELECTORS.NEW_FLOW_BRAND_LEG)
-      .first()
-      .isVisible()
-      .catch(() => false);
-  }
-
-  /**
-   * Returns all visible brand names for a given leg in the new flight flow.
-   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
-   * @param {number} timeout - Max wait time in ms (default: 30000)
-   * @returns {Promise<string[]>}
-   */
-  async getNFFBrandCardNames(legIndex = 0, timeout = 30000) {
-    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
-    const brandNames = leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).locator(SELECTORS.BRAND_NAME);
-    await brandNames.first().waitFor({ state: 'visible', timeout });
-    return (await brandNames.allTextContents())
-      .map((text) => text.replace(/\s+/g, ' ').trim())
-      .filter(Boolean);
-  }
-
-  /**
-   * Returns a brand card locator for a given leg matched by brand name text.
-   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
-   * @param {string} brandName - Exact brand name text to match
-   * @returns {import('@playwright/test').Locator}
-   */
-  getNFFBrandCardByName(legIndex, brandName) {
-    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
-    return leg
-      .locator(SELECTORS.NEW_FLOW_BRAND_CARD)
-      .filter({ has: this.page.locator(SELECTORS.BRAND_NAME, { hasText: brandName }) })
-      .first();
-  }
-
-  /**
    * Clicks the "Add to cart" button in the new flight flow footer.
    */
   async clickNewFlightFlowAddToCartButton() {
