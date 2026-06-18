@@ -109,3 +109,9 @@ Then("the inbound leg brand cards should only display non-agreement fares", asyn
   expect(agreementCardIndices).toHaveLength(0);
   logger.info("[NewFlightFlow] Inbound non-agreement fares verified", { agreementCardIndices });
 });
+
+Then("the fares with {string} should show {string} in pricing options", async function (fareName, expectedText) {
+  logger.info("[NewFlightFlow] Verifying brand card feature text", { fareName, expectedText });
+  const result = await FlightResults.verifyFareShowsFeatureInBrandCard(this.page, fareName, expectedText);
+  logger.info("[NewFlightFlow] Brand card feature text verified", result);
+});

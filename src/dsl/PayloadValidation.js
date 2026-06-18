@@ -1330,7 +1330,9 @@ const PayloadValidation = {
 
     const foundValues = [];
     for (const pair of expectedPairs) {
-      if (payload.includes(pair.value)) {
+      // Use >value< boundary to avoid matching substrings (e.g. "Inclusive" inside "Inclusive Plus")
+      // Works with namespaced tags (e.g. <xs:Value>Inclusive</xs:Value>) unlike full-element string match
+      if (payload.includes(`>${pair.value}<`)) {
         foundValues.push({ tag: pair.tag, value: pair.value });
       }
     }

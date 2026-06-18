@@ -2683,6 +2683,22 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     const { agreementCardIndices } = await flightResultsPage.getAgreementIconCountInLegBrandCards(1);
     return { agreementCardIndices };
   },
+
+  async verifyFareShowsFeatureInBrandCard(page, fareName, expectedText) {
+    if (!page) throw new Error('[FlightResults.verifyFareShowsFeatureInBrandCard] "page" is required.');
+    if (!fareName || typeof fareName !== 'string') throw new Error('[FlightResults.verifyFareShowsFeatureInBrandCard] "fareName" must be a non-empty string, got: ' + typeof fareName);
+    if (!expectedText || typeof expectedText !== 'string') throw new Error('[FlightResults.verifyFareShowsFeatureInBrandCard] "expectedText" must be a non-empty string, got: ' + typeof expectedText);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const featureTexts = await flightResultsPage.getBrandCardFeatureTexts(fareName);
+    const found = featureTexts.some((t) => t.trim() === expectedText);
+    if (!found) {
+      throw new Error(
+        `[FlightResults.verifyFareShowsFeatureInBrandCard] Fare "${fareName}" does not show "${expectedText}". ` +
+        `Found: [${featureTexts.map((t) => `"${t.trim()}"`).join(', ')}]`
+      );
+    }
+    return { fareName, expectedText, featureTexts };
+  },
 }
 
 module.exports = FlightResults;

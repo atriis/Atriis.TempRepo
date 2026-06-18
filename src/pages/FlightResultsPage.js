@@ -132,6 +132,7 @@ const SELECTORS = {
   NEW_FLOW_BRAND_CARD_PRICE: '[data-testid="flight.flight-selection.brand-card.price"]',
   NEW_FLOW_BRAND_CARD_PRICE_DELTA: '[data-testid="flight.flight-selection.brand-card.price-delta"]',
   NEW_FLOW_BRAND_CARD_PRICE_DELTA_PREFIX: '.price-delta-prefix',
+  NEW_FLOW_BRAND_CARD_FEATURE_TEXT: '.features-text',
   // Footer total price per traveller (flight-selection.vue .selection-actions)
   NEW_FLOW_FOOTER_PRICE_SECTION: '.selection-actions .price-section',
   NEW_FLOW_FOOTER_PRICE_AMOUNT: '.selection-actions .price-section .amount',
@@ -2819,6 +2820,36 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       );
     }
     await this.page.locator(SELECTORS.NEW_FLOW_FOOTER_PRICE_AMOUNT).waitFor({ state: 'visible', timeout: 15000 });
+  }
+
+  async getBrandCardFeatureTexts(fareName, timeout = 30000) {
+    const allCards = this.page.locator(SELECTORS.NEW_FLOW_BRAND_CARD);
+    try {
+      await allCards.first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getBrandCardFeatureTexts] No brand cards visible. Original: ${err.message}`
+      );
+    }
+
+    const count = await allCards.count();
+    const foundBrandNames = [];
+
+    for (let i = 0; i < count; i++) {
+      const card = allCards.nth(i);
+      const brandNameEl = card.locator(SELECTORS.BRAND_NAME);
+      if ((await brandNameEl.count()) === 0) continue;
+      const cardBrandName = (await brandNameEl.first().innerText()).trim();
+      foundBrandNames.push(cardBrandName);
+      if (cardBrandName === fareName) {
+        return card.locator(SELECTORS.NEW_FLOW_BRAND_CARD_FEATURE_TEXT).allInnerTexts();
+      }
+    }
+
+    throw new Error(
+      `[FlightResultsPage.getBrandCardFeatureTexts] No brand card found with fare name "${fareName}". ` +
+      `Available: [${foundBrandNames.map((n) => `"${n}"`).join(', ')}]`
+    );
   }
 
   async getAgreementIconCountInLegBrandCards(legIndex = 1, timeout = 30000) {
