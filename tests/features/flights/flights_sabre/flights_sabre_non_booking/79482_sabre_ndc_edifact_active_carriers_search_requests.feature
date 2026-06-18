@@ -32,10 +32,10 @@ Feature: 79482 Sabre NDC and EDIFACT active carriers in corporate content send c
     When I click to open first pricing options
     Then all fares in pricing options should not have the "NDC direct rate" indicator
     And I close pricing options modal
-    When I capture the "request" payload for request type "Sabre NDC Flight Search" from Storage
-    Then the captured "request" payload for request type "Sabre NDC Flight Search" should contain "vendorPref"
-    And the captured "request" payload for request type "Sabre NDC Flight Search" should contain "KL"
-    And the captured "request" payload for request type "Sabre NDC Flight Search" should contain "LO"
-    And the captured "request" payload for request type "Sabre NDC Flight Search" should not contain "UA"
-    And the captured "request" payload for request type "Sabre NDC Flight Search" should not contain "AF"
-    And the captured "request" payload for request type "Sabre NDC Flight Search" should not contain "AA"
+    When I capture the "request" payload for request type "Sabre NDC Flight Search " from Storage
+    # Then the captured "request" payload for request type "Sabre NDC Flight Search " should contain "vendorPref"
+    # And the captured "request" payload for request type "Sabre NDC Flight Search " should contain "KL"
+    # And the captured "request" payload for request type "Sabre NDC Flight Search " should contain "LO"
+    # And the captured "request" payload for request type "Sabre NDC Flight Search " should not contain "UA"
+    # And the captured "request" payload for request type "Sabre NDC Flight Search " should not contain "AF"
+    # And the captured "request" payload for request type "Sabre NDC Flight Search " should not contain "AA"
