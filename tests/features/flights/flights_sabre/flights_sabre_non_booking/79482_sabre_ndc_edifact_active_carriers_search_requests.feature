@@ -6,7 +6,7 @@
 # Created: 2026-06-18
 
 @regression @flights @sabre @sabre-ndc @payload @ado:79482
-Feature: 75751 Sabre NDC and EDIFACT active carriers in corporate content send correct search requests
+Feature: 79482 Sabre NDC and EDIFACT active carriers in corporate content send correct search requests
   As a corporate traveler whose corporate content has both NDC and EDIFACT active carriers
   I want to search for flights
   So that NDC carriers appear as NDC results and EDIFACT carriers appear as non-NDC results,
