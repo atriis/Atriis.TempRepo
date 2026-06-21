@@ -754,8 +754,14 @@ class SearchPage {
   async waitAndClickSearchButton() {
     const searchButton = this.page.locator(SELECTORS.SEARCH_BUTTON);
     await searchButton.waitFor({ state: "visible" });
-    // Small delay to ensure form validation completes
-    await this.page.waitForTimeout(500);
+    await this.page.waitForFunction(
+      (selector) => {
+        const btn = document.querySelector(selector);
+        return btn && !btn.disabled && !btn.classList.contains("is-disabled");
+      },
+      SELECTORS.SEARCH_BUTTON,
+      { timeout: 10000 }
+    );
     await searchButton.click();
   }
 
