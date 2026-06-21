@@ -4,13 +4,14 @@
 # Owner: Noam Miller
 # Created: 2026-06-21
 
-@regression @flights @ndc @united @hybrid @hold-flight @payload @clientid
+# ADO Test Case ID: 79777
+@ado:79777 @regression @flights @ndc @united @hybrid @hold-flight @payload @clientid
 Feature: United NDC - ClientId AugmentationPoint is sent in OrderCreate request
   As a corporate traveler
   I want to hold a United NDC round trip flight with a guest traveler
   So that the ClientId AugmentationPoint (OSI1/QCI/UA0001) is correctly sent in the OrderCreate request
 
-  Scenario: United NDC flight hold sends ClientId AugmentationPoint in OrderCreate payload
+  Scenario: United NDC Send Corporate ClientId as OSI remark in OrderCreate Request
     Given I am logged in as "traveler@uandc.ams" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "DEN" to "MSP"
