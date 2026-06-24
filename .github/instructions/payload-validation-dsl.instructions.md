@@ -63,9 +63,6 @@ Then the captured "request" payload for request type "Booking" should contain th
   {
     "tripId": 123,
     "status": "confirmed"
-  And the captured "response" payload for request type "API" should contain "locationCode".block("locationAddress")
-  Then the captured "block" payload for request type "API" should contain "MADRID".split(",")[0]
-  ```
   }
   """
 

@@ -76,6 +76,7 @@ async clickElement() {
     console.log("Failed"); // ❌ Don't do this
   }
 }
+```
 
 ## Error Message Quality
 

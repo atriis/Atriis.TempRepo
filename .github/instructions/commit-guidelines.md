@@ -192,5 +192,5 @@ feat(cart): add OOP indicator validation
 
 ## Testing
 - Manual: book out-of-policy hotel, verify red indicator
-- Automated: general-hotel-booking.spec.js validates presence
+- Automated: hotel_booking.feature validates presence
 ```

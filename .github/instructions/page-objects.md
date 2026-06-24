@@ -169,17 +169,6 @@ class CommonPage {
 module.exports = { CommonPage, SELECTORS };
 ```
 
-```js
-// GeneralElementsPage.js — Notifications, common UI feedback
-class GeneralElementsPage {
-  constructor(page) { this.page = page; }
-
-  async waitForSuccessNotification() {
-    // ...
-  }
-}
-```
-
 ## Complete Page Object Template
 
 ```js

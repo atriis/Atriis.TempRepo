@@ -9,19 +9,7 @@ description: Writing readable Gherkin scenarios and step definitions for BDD tes
 
 Scenarios describe **what users do and what they expect** in human-readable language (Gherkin). Step definitions are the code that makes scenarios executable, calling DSL methods to perform actions.
 
-### The Flow
-
-```
-Feature File (Gherkin)
-    ↓ Human-readable scenario
-When I search for a one-way flight
-    ↓ Matched to step definition
-When('I search for a one-way flight from {string} to {string}', ...)
-    ↓ Calls DSL method
-await FlightSearch.searchOneWayFlight(page, origin, destination)
-    ↓ Composes page methods
-Executes business workflow
-```
+Architecture & data flow: see [architecture.md](architecture.md).
 
 ## Core Principles for Gherkin
 
@@ -132,16 +120,9 @@ Then('results show at least {int} flight', async function (count) {
 
 ### Context Access
 
-The current page is stored on the Cucumber World as `this.page`:
+The current page is stored on the Cucumber World as `this.page` (set by the login step or the Before hook). Use regular `function` handlers in step definitions whenever you need access to the World — arrow functions do not bind the Cucumber World correctly.
 
-```javascript
-When('I search for a flight', async function () {
-  // this.page is set by the login step or Before hook in tests/support/hooks.js
-  await FlightSearch.searchOneWayFlight(this.page, 'LON', 'NYC');
-});
-```
-
-Use regular `function` handlers in step definitions whenever you need access to the World. Arrow functions do not bind the Cucumber World correctly.
+World setup, `this.page`, and hook lifecycle: see [cucumber.md](cucumber.md#world-and-hooks).
 
 ### Error Handling in Steps
 
@@ -162,35 +143,14 @@ Then('flight results are displayed', async function () {
 
 ## Tagging Scenarios
 
-Tags organize and filter tests. Place tags before `Scenario:`:
+Place tags on the line before `Feature:` (applies to all scenarios) or before a `Scenario:` (applies to that scenario):
 
 ```gherkin
 @smoke @priority:critical @provider:amadeus
 Scenario: Book a round-trip flight
 ```
 
-### Tag Categories
-
-| Category | Examples | Purpose |
-|----------|----------|---------|
-| **Test Level** | `@smoke`, `@regression` | Test scope/criticality |
-| **Priority** | `@priority:critical`, `@priority:high` | Execution priority |
-| **Provider** | `@provider:amadeus`, `@provider:lufthansa` | Supplier-specific |
-| **Feature** | `@flights`, `@hotels`, `@complex` | Product area |
-| **Performance** | `@slow`, `@fast` | Execution time |
-
-### Running by Tags
-
-```bash
-# Run smoke tests
-npx cucumber-js --tags "@smoke"
-
-# Run critical tests for Amadeus
-npx cucumber-js --tags "@priority:critical and @provider:amadeus"
-
-# Run everything except slow tests
-npx cucumber-js --tags "not @slow"
-```
+The full tag catalog (standard tags, provider/user tags, `@loginOnly`) and tag-based test filtering / `--tags` run commands: see [cucumber.md](cucumber.md#tags).
 
 ## Feature File Organization
 
@@ -198,24 +158,29 @@ Organize by product, then by test type:
 
 ```
 tests/features/
-├── smoke/                          # Critical path tests
-│   └── basic_booking.feature
 ├── flights/
 │   ├── general/                    # Supplier-agnostic tests
 │   │   ├── one_way_search.feature
 │   │   ├── round_trip_search.feature
 │   │   └── passenger_types.feature
+│   ├── direct/                     # Direct flight tests
 │   ├── daily_flights/              # Daily regression
 │   │   └── daily_regression.feature
-│   └── lufthansa/                  # Supplier-specific
+│   └── supplier-specific/          # Supplier-specific (Lufthansa, Air France, ...)
 │       └── lufthansa_pricing.feature
 ├── hotels/
 │   ├── general/
 │   ├── daily_hotels/
 │   └── booking_com/
-└── cars/
-    ├── general/
-    └── daily_cars/
+├── cars/
+│   ├── general/
+│   └── daily_cars/
+├── rails/
+├── ground_transport/
+├── parking/
+├── manual_quote/
+├── smoke/                          # Critical path smoke tests
+└── shell/                          # Basic shell tests
 ```
 
 ## Test Independence & Data
@@ -310,36 +275,10 @@ Scenario: Add Round-Trip Flight to Cart
   Then both flights should be added to my cart
 ```
 
-## Test Organization
-
-```
-tests/
-├── features/           # Cucumber .feature files (human-readable scenarios)
-│   ├── flights/
-│   │   ├── general/           # Flight features (all suppliers)
-│   │   ├── direct/            # Direct flight tests
-│   │   └── supplier-specific/ # Lufthansa, Air France, etc.
-│   ├── hotels/
-│   ├── cars/
-│   ├── rails/
-│   ├── ground_transport/
-│   ├── parking/
-│   ├── manual_quote/
-│   ├── smoke/                 # Critical path smoke tests
-│   └── shell/                 # Basic shell tests
-├── steps/              # Step definitions (Gherkin → DSL)
-│   ├── common.steps.js
-│   ├── flight_search.steps.js
-│   └── ... (one per feature area)
-└── support/            # Hooks & world configuration
-    ├── hooks.js        # Before/After hooks
-    └── world.js        # World configuration
-```
-
 ## Anti-Patterns (What NOT to Do)
 
 ```gherkin
-# ❌ 1. Technical implementation details in Gherkin
+# ❌ Technical implementation details in Gherkin
 Scenario: Click search button and fill form
   Given I am on the flight search page
   When I click #search-button with class submit-btn
@@ -352,37 +291,7 @@ Scenario: Search for flights
   Then I should see available flight options
 ```
 
-```js
-// ❌ 2. Page Objects called directly from step definitions
-const { Given } = require('@cucumber/cucumber');
-const FlightSearchPage = require('@pages/FlightSearchPage');
-
-Given('I search for a flight', async function () {
-  const page = new FlightSearchPage(this.page);
-  await page.clickFlightTab();  // WRONG: Direct Page Object usage
-});
-
-// ✅ GOOD: Step definitions call DSL methods
-const { Given } = require('@cucumber/cucumber');
-const { FlightSearch } = require('@dsl');
-
-Given('I have selected one-way trip type', async function () {
-  await FlightSearch.selectOneWay(this.page);  // DSL method
-});
-```
-
-```js
-// ❌ 3. Raw Playwright in step definitions
-When('I search', async function () {
-  await this.page.click('#search-button');  // WRONG: Direct Playwright
-  await this.page.fill('#from', 'LHR');
-});
-
-// ✅ GOOD: Use DSL for business actions
-When('I search for a flight from {string} to {string}', async function (from, to) {
-  await FlightSearch.searchOneWay(this.page, from, to);
-});
-```
+Step-definition wiring anti-patterns (raw Playwright in steps, calling Page Objects directly instead of DSL): see [cucumber.md](cucumber.md#step-definitions).
 
 ## Summary Checklist
 

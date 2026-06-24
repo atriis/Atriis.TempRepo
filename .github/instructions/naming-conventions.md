@@ -1,6 +1,6 @@
 ---
 applyTo: src/, tests/
-description: Naming standards for files, classes, methods, variables, tests, and commits.
+description: Naming standards for files, classes, methods, variables, and tests.
 ---
 
 # Naming Conventions
@@ -10,7 +10,7 @@ description: Naming standards for files, classes, methods, variables, tests, and
 | Type | Pattern | Location | Example |
 |------|---------|----------|---------|
 | Page Object | `*Page.js` | `src/pages/` | `FlightSearchPage.js` |
-| Shared Page Object | `*Page.js` | `src/pages/` | `CommonPage.js`, `GeneralElementsPage.js` |
+| Shared Page Object | `*Page.js` | `src/pages/` | `CommonPage.js` |
 | DSL | `*.js` | `src/dsl/` | `FlightSearch.js`, `Cart.js` |
 | DSL Barrel | `index.js` | `src/dsl/` | `index.js` |
 | Helper | `*.helper.js` | `src/utils/` | `calendar.helper.js`, `route.helper.js` |
@@ -18,7 +18,7 @@ description: Naming standards for files, classes, methods, variables, tests, and
 | Data Generator | `generate*.js` | `src/utils/data/` | `generateRandomGuestData.js` |
 | Test Data | `*.json` | `src/data/` | `flights.json`, `tripStatus.json` |
 | Feature File | `*.feature` | `tests/features/` | `flight_add_to_cart.feature` |
-| Step Definition | `*.steps.js` or `*.step.js` | `tests/steps/` | `flight.steps.js`, `cars.step.js` |
+| Step Definition | `*.steps.js` | `tests/steps/` | `flight_search.steps.js`, `car_search.steps.js` |
 | Hook File | `*.js` | `tests/support/` | `hooks.js`, `world.js` |
 
 ### File Naming Examples
@@ -28,7 +28,7 @@ description: Naming standards for files, classes, methods, variables, tests, and
 FlightSearchPage.js                  flightSearch.js
 CommonPage.js                        header.js
 calendar.helper.js                   calendarUtils.js
-general-flight-add-to-cart.spec.js   flightTest.js
+flight_search.steps.js               flightTest.js
 flight_add_to_cart.feature           flights.feature
 generateRandomGuestData.js           randomData.js
 ```
@@ -199,47 +199,14 @@ Then the results div with class flight-options should be visible
 
 ## Commit Messages
 
-Format: `<type>(<scope>): <message>`
-
-### Types
-
-- `feat` — New feature
-- `fix` — Bug fix
-- `refactor` — Code restructuring
-- `test` — Adding/updating tests
-- `docs` — Documentation changes
-- `chore` — Maintenance tasks
-
-### Examples
-
-```
-✅ GOOD
-feat(search): add random flight route selection by region
-fix(cart): prevent duplicate items from being added
-refactor(data): group flight routes by region in flights.json
-test(flights): add intercontinental roundtrip search test
-docs(instructions): update DSL guidelines to match actual patterns
-
-❌ BAD
-update files
-fix bugs
-changes
-WIP
-```
-
-### Guidelines
-
-- Max 80 characters for subject line
-- Use imperative mood ("add" not "added")
-- Be specific about what changed
-- Include affected domain/component in scope
+Commit naming follows Conventional Commits (`<type>(<scope>): <subject>`). See [commit-guidelines.md](commit-guidelines.md) for types, scopes, examples, and the pre-commit checklist.
 
 ## Summary Checklist
 
 **Files:**
 - [ ] Page Objects end with `Page.js`
 - [ ] Helpers end with `.helper.js`
-- [ ] Tests end with `.spec.js` or `.feature`
+- [ ] Feature files end with `.feature`, step definitions with `.steps.js`
 - [ ] Data generators start with `generate`
 
 **Code:**

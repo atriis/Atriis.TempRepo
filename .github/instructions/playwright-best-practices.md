@@ -1,343 +1,184 @@
 ---
 applyTo: src/pages/, src/dsl/
-description: Locator strategies, waits, assertions, form handling, and browser automation patterns for Page Objects and DSL methods in Cucumber BDD context.
+description: Wait strategies, race-condition handling, and form/dynamic-content patterns for Playwright in Page Objects and DSL methods.
 ---
 
 # Playwright Best Practices
 
-## Context in Cucumber BDD
+## Scope
 
-In this framework, **only Page Objects and DSL methods interact directly with Playwright**:
+**Only Page Objects (`src/pages/`) and DSL methods (`src/dsl/`) touch Playwright directly.** Gherkin scenarios and step definitions call DSL and never use Playwright APIs.
 
-```
-Gherkin Scenarios
-    ↓
-Step Definitions (extract parameters, call DSL)
-    ↓
-DSL Methods (business workflows, assertions)
-    ↓ Calls Page Objects
-Page Objects (UI selectors, atomic actions) ← THIS LAYER uses Playwright
-    ↓
-Playwright APIs
-```
+This file covers the Playwright-specific concerns that other instruction files don't:
 
-**This guide applies to**: Page Objects (`src/pages/`) and DSL methods (`src/dsl/`) that compose Page Object calls.
+- **Selectors** — `SELECTORS` constant, locator declaration, selector types/priority: see [`page-objects.md`](./page-objects.md).
+- **Assertions** — auto-retry `expect()`, and the critical-state-validation exception that lets assertions live in DSL: see [`dsl.md`](./dsl.md).
 
-**Not applicable to**: Gherkin scenarios or step definitions (they call DSL, never touch Playwright directly).
-
-## Locator Strategy
-
-### This Project's Pattern
-
-Page Objects use a `SELECTORS` constant with CSS/attribute selectors:
-
-```js
-const SELECTORS = {
-  FLIGHT_TAB: '#tab-flight',
-  TRIP_TYPE: '.search-for-select .el-radio',
-  JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
-  CONFIRM_CANCEL_BUTTON: "role=button[name='Cancel trip']",
-  CANCELLATION_SUCCESS: "text='Cancellation confirmed!'",
-};
-```
-
-### Selector Priority (When Adding New Ones)
-
-1. **`data-testid`** — Most stable, designed for testing
-2. **Role selectors** — `role=button[name='...']`
-3. **Attribute selectors** — `[placeholder='...']`, `[aria-label='...']`
-4. **ID selectors** — `#element-id`
-5. **Class selectors** — `.class-name` (less stable but commonly used)
-6. **CSS chains** — Last resort, avoid deep nesting
-
-### Use Specific Selectors
-
-```js
-// ✅ GOOD: Specific
-SUBMIT_BUTTON: "role=button[name='Submit Order']"
-CANCEL_BUTTON: "role=button[name='Cancel trip']"
-
-// ❌ BAD: Too generic
-BUTTON: 'button'  // Which button?
-```
+The rest of this guide is about **waits**, **race conditions**, and **dynamic content** — where most flakiness comes from.
 
 ## Waiting Strategies
 
-### Auto-Waiting
+### Hard rule: no hardcoded sleeps
 
-Playwright auto-waits for actionability. Trust it for basic actions:
+Never park the test on a fixed timer to "wait for things to settle". When something is slow or racy, escalate in this order:
+
+1. **`waitForSelector` / `locator.waitFor({ state })`** — wait for the *actual* element/state you depend on. Always preferred.
+2. **Bump the timeout** on that wait/assertion (e.g. `{ timeout: 60000 }`) — when the element is correct but the backend is slow.
+3. **`waitForLoadState('networkidle')`** — last resort, when there is no single element to anchor on.
+
+`waitForTimeout` is a last-last resort and must carry a comment explaining the specific reason.
+
+### Auto-waiting (trust it for basic actions)
+
+Playwright auto-waits for actionability on `click`/`fill`/etc. Don't precede them with a manual visibility wait.
 
 ```js
-// ✅ GOOD: Playwright waits automatically for click/fill
+// ✅ GOOD: Playwright waits automatically
 await this.page.click(SELECTORS.BUTTON);
 await this.page.fill(SELECTORS.INPUT, 'text');
 ```
 
-### Explicit Waits (When Needed)
+### Explicit waits (when you depend on a specific state)
 
 ```js
-// ✅ GOOD: Wait for specific state
+// ✅ Wait for a state transition (spinner appears then disappears)
+await this.page.waitForSelector(SELECTORS.LOADING_SPINNER, { state: 'visible' });
 await this.page.waitForSelector(SELECTORS.LOADING_SPINNER, { state: 'hidden' });
-await this.page.waitForLoadState('networkidle');
 
-// ✅ GOOD: Wait for element visibility
-await element.waitFor({ state: 'visible' });
-await element.waitFor({ state: 'hidden' });
+// ✅ Wait for a specific element to be ready
+await element.waitFor({ state: 'visible', timeout: 30000 });
 
-// ✅ GOOD: waitForText helper (waits for element to contain text)
+// ✅ waitForText helper — waits for an element to contain text
 const { waitForText } = require('@utils/wait');
 await waitForText(page, SELECTORS.STATUS_LABEL, 'Pending booking');
 ```
 
-### Race Conditions (Actual Pattern)
+Always pass an explicit `timeout` on `waitFor` calls.
+
+### Acceptable vs unacceptable timeouts
 
 ```js
-// ✅ GOOD: Race between two possible outcomes
+// ✅ ACCEPTABLE: documented workaround for a known animation
+await page.waitForTimeout(500);  // Calendar widget has a known open animation delay
+
+// ❌ BAD: arbitrary sleep with no reason — use waitForSelector instead
+await page.waitForTimeout(3000);
+```
+
+## Race Conditions
+
+When more than one outcome is possible (e.g. a checkout heading *or* a "proceed" button can appear next), don't guess which — race them, then act on whichever won.
+
+```js
+// ✅ GOOD: race two possible outcomes, swallow the loser's timeout
 await Promise.race([
   checkoutHeading.waitFor({ state: 'visible', timeout: 45000 }).catch(() => {}),
   proceedBtn.waitFor({ state: 'visible', timeout: 45000 }).catch(() => {}),
 ]);
 
-// Then handle whichever appeared
+// Then handle whichever actually appeared
 if (await proceedBtn.isVisible()) {
   await proceedBtn.click();
 }
 ```
 
-### Documented Timeouts
-
-If you **must** use `waitForTimeout`, explain why:
-
-```js
-// ✅ ACCEPTABLE: Documented workaround
-await page.waitForTimeout(500);  // Calendar widget has known animation delay
-
-// ❌ BAD: Arbitrary timeout without reason
-await page.waitForTimeout(3000);
-```
-
-## Assertions
-
-### Use Playwright Assertions (Auto-Retry)
-
-Assertions should use Playwright's `expect()` for auto-retry stability. **In Cucumber BDD**, assertions typically live in **DSL methods**, not in Page Objects:
-
-```js
-// Page Object (src/pages/)
-class CartPage {
-  async getBookingStatus() {
-    return await this.page.locator(SELECTORS.STATUS_LABEL).textContent();
-  }
-}
-
-// DSL (src/dsl/Cart.js) — Contains assertion logic
-const { getPageObject } = require('@utils/pageObjectCache');
-
-async expectBookingStatus(page, expectedStatus, { timeout = 60000 } = {}) {
-  const cartPage = getPageObject(page, CartPage);
-  const locator = page.locator(SELECTORS.QUOTE_STATUS_LABEL);
-  
-  // Assert using Playwright expect (auto-retry)
-  await expect(locator).toBeVisible({ timeout });
-  await expect(locator).toContainText(expectedStatus, { timeout, ignoreCase: true });
-}
-```
-
-**Step Definition** (calls DSL):
-```js
-Then('the booking status should be {string}', async function (status) {
-  await Cart.expectBookingStatus(this.page, status);
-});
-```
-
-### Assertion Pattern
-
-```js
-// ✅ GOOD: Auto-retry assertions (use in DSL/Page Objects)
-await expect(locator).toBeVisible();
-await expect(locator).toBeVisible({ timeout: 60000 });
-await expect(locator).toContainText('Pending booking', { ignoreCase: true });
-await expect(locator).toBeHidden();
-
-// ❌ BAD: No auto-retry (don't use)
-const isVisible = await locator.isVisible();
-expect(isVisible).toBe(true);  // Can fail due to timing
-```
-
 ## Forms and Inputs
 
-### Filling Inputs (Actual Pattern)
+### Filling fields
 
 ```js
-// ✅ GOOD: Using this.page.fill with SELECTORS
+// ✅ GOOD: this.page.fill with SELECTORS
 await this.page.fill(SELECTORS.TRAVELER_NAME_FIELD, name);
 await this.page.fill(SELECTORS.EMAIL_INPUT, email);
-
-// For autocomplete fields — type slowly then select
-await this.page.fill(SELECTORS.FROM_PLACEHOLDER, city);
-// Then wait for dropdown and select option
 ```
 
-### Clicking Elements
+### Autocomplete / typeahead fields
+
+These are a common race source: the dropdown options load asynchronously after typing, so you must wait for the option before selecting it — never assume it's there.
+
+```js
+// ✅ GOOD: type, wait for the option, then select
+await this.page.fill(SELECTORS.FROM_PLACEHOLDER, city);
+await this.page.waitForSelector(SELECTORS.AUTOCOMPLETE_OPTION, { state: 'visible' });
+await this.page.click(SELECTORS.AUTOCOMPLETE_OPTION);
+```
+
+### Clicking and dropdowns
 
 ```js
 // ✅ Direct click
 await this.page.click(SELECTORS.FLIGHT_TAB);
 
-// ✅ Nth element
+// ✅ Nth match
 await this.page.locator(SELECTORS.TRIP_TYPE).nth(0).click();
 
-// ✅ Hover then click
+// ✅ Hover to reveal, then click (dropdown menus)
 await this.page.hover(SELECTORS.DROPDOWN_ICON);
 await this.page.click(SELECTORS.DROPDOWN_OPTION);
 ```
 
-### Checkboxes
+## Dynamic Content
+
+### Loading states
+
+Anchor on the loading indicator's lifecycle rather than sleeping past it.
 
 ```js
-// ✅ Click on checkbox selector
-await this.page.click(SELECTORS.TERMS_CHECKBOX);
-```
-
-## Handling Dynamic Content
-
-### Loading States
-
-```js
-// ✅ GOOD: Wait for loading to finish
+// ✅ GOOD: wait for loading to finish
 async waitForSearchComplete() {
   await this.page.waitForSelector(SELECTORS.LOADING_SPINNER, { state: 'visible' });
   await this.page.waitForSelector(SELECTORS.LOADING_SPINNER, { state: 'hidden' });
 }
 ```
 
-### Network State
+### Network state
 
 ```js
-// ✅ GOOD: Wait for network idle
+// ✅ Last resort when there's no element to anchor on
 await page.waitForLoadState('networkidle');
 ```
 
-### Conditional Elements
+### Conditional elements
+
+Some elements (modals, "proceed with change" prompts) appear only sometimes. Check visibility before acting.
 
 ```js
-// ✅ GOOD: Check visibility before action (actual pattern)
+// ✅ GOOD: only act if the element is actually present
 const proceedBtn = cartPage.getProceedWithChangeButton();
 if (await proceedBtn.isVisible()) {
   await proceedBtn.click();
-### Interactive Debugging
-
-```js
-// Pause execution for interactive debugging (access page, inspect, etc.)
-await page.pause();
-
-// Take screenshot
-await page.screenshot({ path: 'debug-screenshot.png' });
-
-// Full page screenshot
-await page.screenshot({ path: 'full-page.png', fullPage: true });
-
-// Console output for debugging
-console.log('Current URL:', page.url());
+}
 ```
 
-### In Cucumber Context
+## Debugging
 
-**Automatic screenshot capture on failure** is handled by the [After hook](./cucumber.md#after-hook):
-- Screenshots saved to `test-results/screenshots/`
-- Automatically attached to Cucumber report
-- No manual action needed in DSL/Page Objects
+Screenshots on failure are captured automatically by the Cucumber [After hook](./cucumber.md#after-hook) (saved to `test-results/screenshots/` and attached to the report) — no manual action needed.
 
-For debugging tests locally, use `logger.info()` in step definitions and DSL methods instead of `console.log()`:
-
-```js
-// Step Definition
-When('I search for a flight', async function () {
-  logger.info('Searching for one-way flight', { from, to });
-  await FlightSearch.searchFlightOneWay(this.page, from, to);
-}
-
-## Screenshots and Debugging
-
-```js
-// Pause execution for interactive debugging
-await page.pause();
-
-// Take screenshot
-await page.screenshot({ path: 'debug-screenshot.png' });
-
-// Full page screenshot
-await page.screenshot({ path: 'full-page.png', fullPage: true });
-
-// Console output for debugging
-console.log('Current URL:', page.url());
-```
-
-## Common Patterns (hard to maintain, brittle)
-this.page.locator('div > ul > li:first-child > button');
-
-// ❌ Arbitrary timeouts without explanation
-await page.waitForTimeout(5000);
-
-// ❌ No auto-retry assertions
-const text = await element.textContent();
-expect(text).toBe('Expected');  // Use await expect(element).toHaveText()
-
-// ❌ Locators defined in test/DSL (should be in SELECTORS)
-await page.click('.submit-button');  // Move to Page Object SELECTORS
-
-// ❌ Assertions in Page Objects (belongs in DSL)
-// Page Objects should only have getters and actions, not assertions
-class CartPage {
-  async expectStatusVisible() {  // ❌ WRONG: assertion logic in Page Object
-    await expect(...).toBeVisible();
-  }
-}
-
-// ✅ CORRECT: DSL contains assertions, Page Objects have actions
-// CartPage.js
-async getStatus() {
-  return await this.page.locator(SELECTORS.STATUS).textContent();
-}
-
-// Cart.js (DSL)
-const { getPageObject } = require('@utils/pageObjectCache');
-
-async expectStatus(page, expectedStatus) {
-  const cartPage = getPageObject(page, CartPage);
-  const locator = page.locator(SELECTORS.STATUS);
-  await expect(locator).toContainText(expectedStatus);
-}
-await this.page.locator(SELECTORS.FLIGHT_CARD).first().click();
-await this.page.locator(SELECTORS.FLIGHT_CARD).nth(2).click();
-```
+For local debugging use `page.pause()` to step interactively, and `logger.info()` (not `console.log()`) in DSL/step definitions so output stays consistent with the project logger.
 
 ## Anti-Patterns
 
 ```js
-// ❌ Deep CSS chains
-this.page.locator('div > ul > li:first-child > button');
-
-// ❌ Arbitrary timeouts without explanation
+// ❌ Hardcoded sleep instead of waiting for the real state
 await page.waitForTimeout(5000);
 
-// ❌ No auto-retry assertions
-const text = await element.textContent();
-expect(text).toBe('Expected');  // Use expect(element).toHaveText()
+// ❌ Selecting an autocomplete option without waiting for it to load
+await this.page.fill(SELECTORS.FROM_PLACEHOLDER, city);
+await this.page.click(SELECTORS.AUTOCOMPLETE_OPTION);  // may not exist yet
 
-// ❌ Locators defined in test/DSL (should be in SELECTORS)
-await page.click('.submit-button');  // Move to Page Object SELECTORS
+// ❌ Manual visibility check that races — use auto-retry expect() (see dsl.md)
+const isVisible = await locator.isVisible();
+expect(isVisible).toBe(true);
 ```
 
 ## Checklist
 
-- [ ] Selectors defined in SELECTORS const in Page Objects
-- [ ] Use specific selectors (not generic)
-- [ ] Trust Playwright auto-waiting for basic actions
-- [ ] Use `expect()` assertions with auto-retry (in DSL/Page Objects)
-- [ ] Comment any `waitForTimeout()` usage
-- [ ] Wait for loading states explicitly
-- [ ] Handle race conditions with `Promise.race`
-- [ ] Use `page.pause()` for interactive debugging
-- [ ] Assertions in DSL, not in Page Objects
-- [ ] No Playwright code in step definitions (call DSL instead)
+- [ ] No hardcoded sleeps — `waitForSelector` > timeout bump > `waitForLoadState('networkidle')`
+- [ ] Any `waitForTimeout()` carries a comment explaining the specific reason
+- [ ] Trust Playwright auto-waiting for basic `click`/`fill`
+- [ ] Explicit `waitFor` calls include a `timeout`
+- [ ] Multiple possible outcomes handled with `Promise.race`
+- [ ] Autocomplete options awaited before selection
+- [ ] Loading states anchored on the spinner lifecycle, not sleeps
+- [ ] Conditional elements guarded with a visibility check
+- [ ] Selectors → `page-objects.md`; assertions → `dsl.md`

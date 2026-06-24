@@ -9,23 +9,7 @@ description: Cucumber BDD framework configuration, execution flow, hooks, world 
 
 This project uses **Cucumber.js** (^12.6.0) to execute Gherkin feature files as behavior-driven tests. Cucumber integrates Playwright for browser automation and provides a human-readable test interface.
 
-### Execution Flow
-
-```
-Feature File (Gherkin)
-    ↓
-Cucumber Parser (reads .feature files)
-    ↓
-Step Definition Matcher (finds matching step functions)
-    ↓
-Before Hook (sets up browser, logs in, books new trip)
-    ↓
-Step Functions Execute (call DSL methods)
-    ↓
-After Hook (captures screenshot on failure, records for retry)
-    ↓
-Cucumber Report (summary, pretty, json, junit, allure formatters)
-```
+Architecture & data flow: see [architecture.md](architecture.md).
 
 ---
 
@@ -265,26 +249,7 @@ When("I search for a one way flight from {string} to {string}",
 );
 ```
 
-### Parameter Types
-
-| Type | Format | Example |
-|------|--------|---------|
-| String | `{string}` | "LHR", "user_one", "amadeus" |
-| Number | `{int}` | 2, 42, 3 |
-| Float | `{float}` | 1.5, 99.99, 1234.567 |
-
-```javascript
-// String parameter
-When('I search from {string}', async function (cityCode) {
-  // cityCode = "LHR"
-});
-
-// Multiple parameters
-When('I book {int} seats for {float} each', async function (count, price) {
-  // count = 2 (number)
-  // price = 150.50 (float)
-});
-```
+Step parameters / placeholders (`{string}`, `{int}`, `{float}`): see [tests.md](tests.md#step-parameters).
 
 ### Best Practices
 
@@ -367,131 +332,7 @@ grep -r "When\|Then\|Given" tests/steps/*.js | grep -v "module.exports"
 
 ## Feature Files
 
-### Organization
-
-```
-tests/features/
-├── flights/
-│   ├── general/           # Tests across all providers
-│   │   ├── one_way_search.feature
-│   │   ├── round_trip_search.feature
-│   │   └── add_to_cart.feature
-│   ├── smoke/             # Critical path tests
-│   │   └── smoke.feature
-│   └── supplier-specific/ # Provider-specific tests
-│       ├── lufthansa.feature
-│       └── air_france.feature
-├── hotels/
-│   ├── general/
-│   └── supplier-specific/
-├── cars/
-├── rails/
-├── ground_transport/
-├── parking/
-├── manual_quote/
-└── shell/                 # Basic tests (no complex workflows)
-```
-
-### Structure
-
-```gherkin
-# tests/features/flights/general/one_way_search.feature
-
-@regression @flights
-Feature: One-Way Flight Search
-  As a travel booker
-  I want to search for one-way flights
-  So that I can find the best option
-
-  Background:
-    Given I am logged in as "ruimariano" booking a new trip
-    And I have added myself as the traveler
-
-  @priority:critical
-  Scenario: Search returns available flights
-    When I search for a one way flight from "lhrToMad"
-    Then flight results should be displayed
-    And the price should be greater than 0
-
-  @priority:high @slow
-  Scenario Outline: Search in different regions
-    When I search for a one way flight from "<route>"
-    Then flight results should be displayed
-
-    Examples:
-      | route      |
-      | lhrToMad   |
-      | cdgToLhr   |
-      | nycToLax   |
-```
-
-### Gherkin Keywords
-
-| Keyword | Purpose | Use |
-|---------|---------|-----|
-| `Feature:` | Feature description | Title, user story, benefit |
-| `Background:` | Shared setup | Login, traveler setup (runs before each scenario) |
-| `Scenario:` | Single test case | One business outcome |
-| `Scenario Outline:` | Parameterized test | Multiple data variations |
-| `Given` | Precondition | System state before action (setup) |
-| `When` | Action | What the user does |
-| `Then` | Outcome | What the user expects to see |
-| `And` / `But` | Extension | Additional Given/When/Then clauses |
-| `Examples:` | Data table | Parameters for Scenario Outline |
-
-### Best Practices
-
-#### ✅ DO
-
-```gherkin
-@regression @flights @priority:critical
-Feature: Flight Search
-  As a travel booker
-  I want to search for flights
-  So that I can complete my booking
-
-  Background:
-    Given I am logged in as "ruimariano" booking a new trip
-
-  # One scenario = one business outcome
-  Scenario: Search returns available flights
-    When I search for a one way flight from "lhrToMad"
-    Then flight results should be displayed
-
-  # Multiple examples with Scenario Outline
-  Scenario Outline: Search in different regions
-    When I search from "<from>" to "<to>"
-    Then results should display
-
-    Examples:
-      | from | to   |
-      | LHR  | MAD  |
-      | CDG  | LHR  |
-```
-
-#### ❌ DON'T
-
-```gherkin
-# Don't use technical language
-Scenario: Click search button and assert DOM
-  # ❌ Technical, not business-focused
-
-# Don't skip Background setup
-Scenario: User searches
-  Given I click login button
-  And I fill email field
-  # ❌ Duplicate login code instead of using Background
-
-# Don't use vague assertions
-Scenario: Flight search
-  Then the page loads
-  # ❌ Vague; what specifically?
-
-# Don't hardcode data in Gherkin
-Scenario: Search from London to Madrid
-  When I enter "LHR" in departure field
-  # ❌ Hardcoded; use parameters instead
-```
+Writing feature files — Gherkin keywords, scenario structure, best practices, and feature-file organization: see [tests.md](tests.md).
 
 ---
 

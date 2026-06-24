@@ -26,18 +26,9 @@ When invoking an agent, read its `.github/agents/<name>.agent.md` file first to 
 
 ## Architecture Layers
 
-| Layer | Location | Responsibility | Uses Only |
-|-------|----------|----------------|-----------|
-| **Gherkin Features** | `tests/features/` | Human-readable scenarios + tags | Step definitions |
-| **Step Definitions** | `tests/steps/` | Parameter extraction, context setup | DSL methods |
-| **DSL** | `src/dsl/` | Business workflows, assertions | Page objects, utils |
-| **Page Objects** | `src/pages/` | UI selectors, atomic actions | Playwright APIs, utils |
-| **Helpers** | `src/utils/` | Data generation, DOM helpers, waits | Playwright, external libs |
+Layered Cucumber BDD: **Feature → Step → DSL → Page Object → Playwright**. Data flows down only — never skip a layer or call backwards (no Step → Page, no DSL → Playwright, no business logic in Steps/Pages).
 
-**Data flows DOWN only. Never skip layers or go backwards.**
-- ❌ Tests must never call Page Objects directly
-- ❌ DSL must never call Playwright APIs directly
-- ❌ Page Objects must never contain business logic
+Full layer responsibilities, path aliases, and project structure: [`.github/instructions/architecture.md`](.github/instructions/architecture.md).
 
 ## Core Principles
 
