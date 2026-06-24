@@ -1,0 +1,42 @@
+{
+  "_comment": "Single source of truth for the Test Suite matrix. Both the matrix jobs (via fromJSON) and the report job's reconciliation step (.github/scripts/reconcile-suites.js) read this file, so the 'expected suites' list can never drift from what actually runs. Add/remove suites here only.",
+  "_split_note": "Hotels Non Booking and Flights General Non Booking are split into 'shards' to keep each job's wall-clock well under the 60-min step timeout — they previously ran ~48-60 min and timed out under load (run #439). Sharding is purely by file index (.github/scripts/list-shard.js): suite_id with shard=i, shards=N runs every Nth .feature file. It is independent of tags and folder layout, so test authors never affect pipeline balance and no scenario can be dropped (every file lands in exactly one shard). To rebalance, change 'shards' and add/remove the matching entries.",
+  "non-booking": [
+    { "suite_id": "flights-amadeus-non-booking", "suite_name": "Flights Amadeus Non Booking", "test_path": "tests/features/flights/flights_amadeus/flights_amadeus_non_booking/" },
+    { "suite_id": "flights-general-non-booking-1", "suite_name": "Flights General Non Booking (1/2)", "test_path": "tests/features/flights/flights_general/flights_general_non_booking/", "shard": 1, "shards": 2 },
+    { "suite_id": "flights-general-non-booking-2", "suite_name": "Flights General Non Booking (2/2)", "test_path": "tests/features/flights/flights_general/flights_general_non_booking/", "shard": 2, "shards": 2 },
+    { "suite_id": "flights-galileo-non-booking", "suite_name": "Flights Galileo Non Booking", "test_path": "tests/features/flights/flights_galileo/flights_galileo_non_booking/" },
+    { "suite_id": "flights-sabre-non-booking", "suite_name": "Flights Sabre Non Booking", "test_path": "tests/features/flights/flights_sabre/flights_sabre_non_booking/" },
+    { "suite_id": "flights-ypsilon-non-booking", "suite_name": "Flights Ypsilon Non Booking", "test_path": "tests/features/flights/flights_ypsilon/flights_ypsilon_non_booking/" },
+    { "suite_id": "flights-travelfusion-non-booking", "suite_name": "Flights Travelfusion Non Booking", "test_path": "tests/features/flights/flights_travelfusion/flights_travelfusion_non_booking/" },
+    { "suite_id": "flights-aa-ndc-non-booking", "suite_name": "Flights AA NDC Non Booking", "test_path": "tests/features/flights/flights_aa_ndc/flights_aa_ndc_non_booking/" },
+    { "suite_id": "flights-afkl-ndc-non-booking", "suite_name": "Flights AFKL NDC Non Booking", "test_path": "tests/features/flights/flights_afkl_ndc/flights_afkl_ndc_non_booking/" },
+    { "suite_id": "flights-ba-ndc-non-booking", "suite_name": "Flights BA NDC Non Booking", "test_path": "tests/features/flights/flights_ba_ndc/flights_ba_ndc_non_booking/" },
+    { "suite_id": "flights-ib-ndc-non-booking", "suite_name": "Flights IB NDC Non Booking", "test_path": "tests/features/flights/flights_ib_ndc/flights_ib_ndc_non_booking/" },
+    { "suite_id": "flights-lh-ndc-non-booking", "suite_name": "Flights LH NDC Non Booking", "test_path": "tests/features/flights/flights_lh_ndc/flights_lh_ndc_non_booking/" },
+    { "suite_id": "flights-ua-ndc-non-booking", "suite_name": "Flights UA NDC Non Booking", "test_path": "tests/features/flights/flights_ua_ndc/flights_ua_ndc_non_booking/" },
+    { "suite_id": "hotels-non-booking-1", "suite_name": "Hotels Non Booking (1/2)", "test_path": "tests/features/hotels/hotels_non_booking/", "shard": 1, "shards": 2 },
+    { "suite_id": "hotels-non-booking-2", "suite_name": "Hotels Non Booking (2/2)", "test_path": "tests/features/hotels/hotels_non_booking/", "shard": 2, "shards": 2 },
+    { "suite_id": "cars-booking", "suite_name": "Cars Booking", "test_path": "tests/features/cars/cars_booking/" },
+    { "suite_id": "cars-daily", "suite_name": "Cars Daily", "test_path": "tests/features/cars/daily_cars/" },
+    { "suite_id": "rails-daily", "suite_name": "Rails Daily", "test_path": "tests/features/rails/daily_rails/" },
+    { "suite_id": "shell-fop-issues", "suite_name": "Shell FOP Issues", "test_path": "tests/features/shell/shell_fop_issues/" },
+    { "suite_id": "shell-frequent-programs", "suite_name": "Shell Frequent Programs", "test_path": "tests/features/shell/shell_frequent_programs/" },
+    { "suite_id": "shell-manual-quote", "suite_name": "Shell Manual Quote", "test_path": "tests/features/shell/shell_manual_quote/" },
+    { "suite_id": "shell-user-profile", "suite_name": "Shell User Profile", "test_path": "tests/features/shell/shell_user_profile/" }
+  ],
+  "booking": [
+    { "suite_id": "flights-amadeus-booking", "suite_name": "Flights Amadeus Booking", "test_path": "tests/features/flights/flights_amadeus/flights_amadeus_booking/" },
+    { "suite_id": "flights-general-booking", "suite_name": "Flights General Booking", "test_path": "tests/features/flights/flights_general/flights_general_booking/" },
+    { "suite_id": "flights-galileo-booking", "suite_name": "Flights Galileo Booking", "test_path": "tests/features/flights/flights_galileo/flights_galileo_booking/" },
+    { "suite_id": "flights-sabre-booking", "suite_name": "Flights Sabre Booking", "test_path": "tests/features/flights/flights_sabre/flights_sabre_booking/" },
+    { "suite_id": "flights-ypsilon-booking", "suite_name": "Flights Ypsilon Booking", "test_path": "tests/features/flights/flights_ypsilon/flights_ypsilon_booking/" },
+    { "suite_id": "flights-travelfusion-booking", "suite_name": "Flights Travelfusion Booking", "test_path": "tests/features/flights/flights_travelfusion/flights_travelfusion_booking/" },
+    { "suite_id": "flights-afkl-ndc-booking", "suite_name": "Flights AFKL NDC Booking", "test_path": "tests/features/flights/flights_afkl_ndc/flights_afkl_ndc_booking/" },
+    { "suite_id": "flights-ba-ndc-booking", "suite_name": "Flights BA NDC Booking", "test_path": "tests/features/flights/flights_ba_ndc/flights_ba_ndc_booking/" },
+    { "suite_id": "flights-ib-ndc-booking", "suite_name": "Flights IB NDC Booking", "test_path": "tests/features/flights/flights_ib_ndc/flights_ib_ndc_booking/" },
+    { "suite_id": "flights-lh-ndc-booking", "suite_name": "Flights LH NDC Booking", "test_path": "tests/features/flights/flights_lh_ndc/flights_lh_ndc_booking/" },
+    { "suite_id": "flights-ua-ndc-booking", "suite_name": "Flights UA NDC Booking", "test_path": "tests/features/flights/flights_ua_ndc/flights_ua_ndc_booking/" },
+    { "suite_id": "hotels-booking", "suite_name": "Hotels Booking", "test_path": "tests/features/hotels/hotels_booking/" }
+  ]
+}
