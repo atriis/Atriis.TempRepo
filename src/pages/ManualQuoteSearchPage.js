@@ -150,8 +150,13 @@ const SELECTORS = {
   // Vendor select (required, filterable app-select-v2)
   GROUND_VENDOR_TRIGGER: ".manual-quote-ground-transport .field:has(label:has-text(\"Vendor\")) .el-select__wrapper",
   GROUND_VENDOR_INPUT: ".manual-quote-ground-transport .field:has(label:has-text(\"Vendor\")) input",
-  // Vendor phone (3 el-input fields in .phone-inputs)
-  GROUND_VENDOR_PHONE_INPUTS: ".manual-quote-ground-transport .field:has(label:has-text(\"Vendor phone\")) .phone-inputs input",
+  // Vendor phone — redesigned app-phone-input: country dropdown button + area/number text inputs
+  GROUND_VENDOR_PHONE_COUNTRY_BTN: ".manual-quote-ground-transport .field:has(label:has-text(\"Vendor phone\")) .app-phone-input__country",
+  GROUND_VENDOR_PHONE_AREA: ".manual-quote-ground-transport .field:has(label:has-text(\"Vendor phone\")) .app-phone-input__area",
+  GROUND_VENDOR_PHONE_NUMBER: ".manual-quote-ground-transport .field:has(label:has-text(\"Vendor phone\")) .app-phone-input__number",
+  // Country-code dropdown popover (teleported to <body> by el-popover; :visible scopes to the active one)
+  PHONE_INPUT_POPOVER_SEARCH: ".app-phone-input-popover .app-phone-input__search input:visible",
+  PHONE_INPUT_POPOVER_OPTION: ".app-phone-input-popover:visible .app-phone-input__option",
   // Vehicle type select (required, filterable app-select-v2)
   GROUND_VEHICLE_TYPE_TRIGGER: ".manual-quote-ground-transport .field:has(label:has-text(\"Vehicle type\")) .el-select__wrapper",
   GROUND_VEHICLE_TYPE_INPUT: ".manual-quote-ground-transport .field:has(label:has-text(\"Vehicle type\")) input",
@@ -1131,22 +1136,35 @@ class ManualQuoteSearchPage {
 
   async fillGroundVendorPhone(phone) {
     try {
-      const inputs = this.page.locator(SELECTORS.GROUND_VENDOR_PHONE_INPUTS);
-      const count = await inputs.count();
-      if (count < 3) {
-        throw new Error(`Expected 3 phone inputs, found ${count}`);
-      }
       // Split phone into country code (first 1 digit), area code (next 3), number (rest)
       const countryCode = phone.substring(0, 1);
       const areaCode = phone.substring(1, 4);
       const number = phone.substring(4);
-      await inputs.nth(0).fill(countryCode);
-      await inputs.nth(1).fill(areaCode);
-      await inputs.nth(2).fill(number);
+
+      // Open the country-code dropdown
+      const countryBtn = this.page.locator(SELECTORS.GROUND_VENDOR_PHONE_COUNTRY_BTN);
+      await countryBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await countryBtn.click();
+
+      // Search for the dial code and pick the first matching option
+      const searchInput = this.page.locator(SELECTORS.PHONE_INPUT_POPOVER_SEARCH);
+      await searchInput.waitFor({ state: 'visible', timeout: 5000 });
+      await searchInput.fill(countryCode);
+      const option = this.page.locator(SELECTORS.PHONE_INPUT_POPOVER_OPTION)
+        .filter({ hasText: `+${countryCode}` })
+        .first();
+      await option.waitFor({ state: 'visible', timeout: 5000 });
+      await option.click();
+
+      // Fill area code and phone number
+      const areaInput = this.page.locator(SELECTORS.GROUND_VENDOR_PHONE_AREA);
+      await areaInput.waitFor({ state: 'visible', timeout: 5000 });
+      await areaInput.fill(areaCode);
+      const numberInput = this.page.locator(SELECTORS.GROUND_VENDOR_PHONE_NUMBER);
+      await numberInput.fill(number);
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearchPage.fillGroundVendorPhone] Could not fill vendor phone "${phone}" ` +
-        `(selector: ${SELECTORS.GROUND_VENDOR_PHONE_INPUTS}). ` +
+        `[ManualQuoteSearchPage.fillGroundVendorPhone] Could not fill vendor phone "${phone}". ` +
         `Original: ${err.message}`
       );
     }
