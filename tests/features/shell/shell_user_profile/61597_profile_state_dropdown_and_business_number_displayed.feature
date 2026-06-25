@@ -17,5 +17,5 @@ Feature: 61597 Profile - State dropdown and business number displayed for countr
     Given I am logged in as "bruninatist@brunaadmin.com"
     When I navigate to my user profile
     And I open the contact information tab in my profile
-    Then the business phone number should display country code "123" and area code "456" and number "7777"
+    Then the business phone number should display country code "1" and area code "234" and number "567777"
     And the state field should be visible with value "TX"

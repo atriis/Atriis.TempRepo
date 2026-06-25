@@ -13,7 +13,9 @@ const SELECTORS = {
   CONTACT_INFO_FORM: '.contact-info-form-content',
 
   SAVE_CONTACT_INFO_BUTTON: '.contact-info-form-content button:has-text("Save")',
-  BUSINESS_PHONE_INPUTS: '.contact-info-form-content .phone-inputs-container .field.app-column.is-3:nth-child(2) .phone-inputs input',
+  BUSINESS_PHONE_DIAL: '.contact-info-form-content .phone-inputs-container .field.app-column.is-3:nth-child(2) .app-phone-input__dial',
+  BUSINESS_PHONE_AREA: '.contact-info-form-content .phone-inputs-container .field.app-column.is-3:nth-child(2) .app-phone-input__area',
+  BUSINESS_PHONE_NUMBER: '.contact-info-form-content .phone-inputs-container .field.app-column.is-3:nth-child(2) .app-phone-input__number',
   STATE_LABEL: '.contact-info-form-content > :nth-child(6) > :nth-child(5) .label',
   STATE_VALUE: '.contact-info-form-content > :nth-child(6) > :nth-child(5) .el-select__placeholder span',
 
@@ -546,15 +548,16 @@ class ProfilePage {
 
   async getBusinessPhoneValues() {
     try {
-      const inputs = this.page.locator(SELECTORS.BUSINESS_PHONE_INPUTS);
-      await inputs.first().waitFor({ state: 'visible', timeout: 10000 });
-      const countryCode = await inputs.nth(0).inputValue();
-      const areaCode = await inputs.nth(1).inputValue();
-      const number = await inputs.nth(2).inputValue();
+      const dialEl = this.page.locator(SELECTORS.BUSINESS_PHONE_DIAL);
+      await dialEl.waitFor({ state: 'visible', timeout: 10000 });
+      const dialText = await dialEl.textContent();
+      const countryCode = (dialText || '').replace(/^\+/, '').trim();
+      const areaCode = await this.page.locator(SELECTORS.BUSINESS_PHONE_AREA).inputValue();
+      const number = await this.page.locator(SELECTORS.BUSINESS_PHONE_NUMBER).inputValue();
       return { countryCode, areaCode, number };
     } catch (err) {
       throw new Error(
-        `[ProfilePage.getBusinessPhoneValues] Could not read business phone input values (selector: ${SELECTORS.BUSINESS_PHONE_INPUTS}). ` +
+        `[ProfilePage.getBusinessPhoneValues] Could not read business phone values. ` +
         `The Contact Information form may not be loaded or phone fields are not rendered. Original: ${err.message}`
       );
     }
