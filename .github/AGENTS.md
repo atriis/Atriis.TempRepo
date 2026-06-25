@@ -21,7 +21,7 @@ Custom agents for the Playwright + Cucumber BDD automation framework. Use these 
 │  @ado-fetcher              Fetch & parse ADO work items                  │
 │  @test-generator-pipeline  Generate Gherkin + steps + DSL                │
 │  @test-runner-pipeline     Execute tests, capture results                │
-│  @test-fixer-pipeline      Analyze failures, apply minimal fixes         │
+│  @test-fixer-pipeline      Fix failures (orchestrates 3 fixer sub-agents)│
 │  @test-reporter-pipeline   Generate local reports and ADO summaries       │
 │  @ci-checker               Parse GitHub Actions results                  │
 │  @strict-test-governor     Enforce reuse-first and anti-duplication      │
@@ -40,6 +40,12 @@ Custom agents for the Playwright + Cucumber BDD automation framework. Use these 
 │  @context-bridge           Connect ADO + Atriis.OBT + Automation         │
 │  @test-case-converter      Manual test cases → Gherkin                   │
 │  @testim-converter         Testim exports → Gherkin (orchestrator)       │
+│                                                                          │
+├─── FIXER SUB-AGENTS (called by @test-fixer-pipeline) ────────────────────┤
+│                                                                          │
+│  @fix-triage               Gate + classify one failure (read-only)       │
+│  @fix-context              Gather failing chain + reuse candidates (R/O)  │
+│  @fix-applier              Apply the smallest safe fix (only writer)      │
 │                                                                          │
 ├─── TESTIM CONVERSION SUB-AGENTS (called by @testim-converter) ───────────┤
 │                                                                          │
@@ -204,12 +210,13 @@ Orchestrator → Sub-Agent → Sub-Agent → ... → Report
 ---
 
 ### test-fixer-pipeline
-**Purpose**: Analyze test failures and apply the smallest safe fixes.
+**Purpose**: Fix test failures by making them pass for the right reason. Orchestrates three fixer sub-agents (triage → investigate → apply) per failure; holds no fixing logic itself.
 
 **Input**: Failure details + generation context + domain
-**Output**: Fixes applied per file
-**Iterates**: Up to 5 times (controlled by orchestrator)
-**Scans**: Atriis.Test.Automation, Atriis.App
+**Output**: Fixes applied per file + iteration history
+**Iterates**: Up to 5 times
+**Sub-agents used**: `@fix-triage` → `@fix-context` → `@fix-applier` → `@test-runner-pipeline`
+**Why split**: separates DECIDE (read-only triage freezes the failure class) from DO (applier edits only within that frozen class + surfaced context), so the applier cannot rationalize a fix backward — the source of deterministic output.
 
 ---
 
@@ -363,6 +370,35 @@ Orchestrator → Sub-Agent → Sub-Agent → ... → Report
 **Input**: `extraction.metadata` + `mapping` + `input`
 **Output**: `output` (featurePath, stepDefPaths, new/reused steps) + standard output block
 **Writes**: feature file in `next/`, new step defs in the most related existing step file.
+
+---
+
+## Fixer Sub-Agents
+
+### fix-triage
+**Purpose**: Gate one failure (blocked vs fixable) and classify it into exactly one of 9 classes from the evidence. The DECIDE stage — committed before any edit exists.
+
+**Input**: one `execution.errors[]` entry + `domain` + `generation`
+**Output**: `triage` (blocked, blockedReason, class, confidence, evidenceUsed)
+**Read-only**: never proposes or sketches a fix.
+
+---
+
+### fix-context
+**Purpose**: Given the frozen class, read the layer chain that controls the failure, source real selectors from Atriis.App, and find reuse candidates before any new code is written.
+
+**Input**: `triage.class` + the failing error + `domain`
+**Output**: `context` (chain, appSourceSelectors, reuseCandidates, reuseEvidence, sharedRisk)
+**Read-only**: never edits; reports exact vs near reuse matches; never broadens a near-match.
+
+---
+
+### fix-applier
+**Purpose**: Apply the smallest safe fix per the 9-tier ladder, acting only within the frozen class and surfaced context. The only fixer stage that edits code.
+
+**Input**: `triage` + `context` + `fixes.iteration`
+**Output**: `fixes.fixesApplied` (+ `blocked`/`blockedReason` when no safe fix exists)
+**Constraints**: keeps assertions strong, protects shared code (5+ callers), removes only its own dead code, never re-classifies or edits outside `context.chain`.
 
 ---
 
