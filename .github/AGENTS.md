@@ -47,6 +47,12 @@ Custom agents for the Playwright + Cucumber BDD automation framework. Use these 
 │  @fix-context              Gather failing chain + reuse candidates (R/O)  │
 │  @fix-applier              Apply the smallest safe fix (only writer)      │
 │                                                                          │
+├─── TODO SUB-AGENTS (called by @todo-pipeline) ───────────────────────────┤
+│                                                                          │
+│  @todo-scanner             Scan + classify TODOs into inventory (R/O)     │
+│  @todo-planner             Decide reuse/create + target file (R/O)        │
+│  @todo-implementer         Build only the frozen plan (only writer)       │
+│                                                                          │
 ├─── TESTIM CONVERSION SUB-AGENTS (called by @testim-converter) ───────────┤
 │                                                                          │
 │  @testim-extractor         Parse Testim export → ordered action list     │
@@ -133,9 +139,11 @@ Orchestrator → Sub-Agent → Sub-Agent → ... → Report
 
 **Trigger**: `@todo-pipeline {featurePath}` or `@todo-pipeline --scan` or `@todo-pipeline --scan --domain hotels`
 
-**Phases**: Scan TODOs → Implement (bottom-up: locators → pages → DSL → steps) → Run → Fix (×5) → Report
+**Phases**: Scan → per file (Plan → Implement) → Run → Fix (×5) → Dedup → Review → Report
 
-**Sub-agents used**: `@test-generator-pipeline` + `@domain-*` → `@test-runner-pipeline` → `@test-fixer-pipeline` → `@test-reporter-pipeline`
+**Sub-agents used**: `@todo-scanner` → `@todo-planner` + `@domain-*` → `@todo-implementer` → `@test-runner-pipeline` → `@test-fixer-pipeline` → `@code-reviewer`
+
+**Why split**: separates DECIDE (read-only planner freezes reuse-vs-create and the exact target file) from DO (implementer builds only the frozen plan), so the implementer cannot rationalize "create new" backward — the source of deterministic output.
 
 **Features**:
 - Deduplicates shared TODOs across files (one implementation resolves many)
@@ -143,7 +151,7 @@ Orchestrator → Sub-Agent → Sub-Agent → ... → Report
 - Batches files by domain for efficiency
 - Removes resolved TODO comments, keeps future-note TODOs
 
-**Checkpoints**: After every phase (semi-auto)
+**Checkpoints**: After scan, plan (ambiguous target files block), implement, run, fix, dedup, and review
 
 ---
 
@@ -399,6 +407,35 @@ Orchestrator → Sub-Agent → Sub-Agent → ... → Report
 **Input**: `triage` + `context` + `fixes.iteration`
 **Output**: `fixes.fixesApplied` (+ `blocked`/`blockedReason` when no safe fix exists)
 **Constraints**: keeps assertions strong, protects shared code (5+ callers), removes only its own dead code, never re-classifies or edits outside `context.chain`.
+
+---
+
+## TODO Sub-Agents
+
+### todo-scanner
+**Purpose**: Scan feature files for TODO comments, classify each into one category (step/dsl/page/locator/other), and resolve its domain. The first DECIDE stage — emits a frozen inventory.
+
+**Input**: `input.paths` (file, folder, or scan scope) + optional `input.domain`
+**Output**: `inventory` (todos, byCategory, byFile, kept future-notes)
+**Read-only**: records future-note TODOs as `keep: true`; never edits.
+
+---
+
+### todo-planner
+**Purpose**: For one file's TODOs, decide reuse vs broaden vs create per artifact and resolve the exact target file + layer — before any code exists. Surfaces ambiguous target files and missing domain safeguards instead of guessing.
+
+**Input**: one file's `inventory.todos` + `domain`
+**Output**: `plan` (artifacts with action/targetFile/layer/selectorSource/reuseEvidence, ambiguous, ordered, safeguards)
+**Read-only**: never broadens a near-match with many callers; never picks a file it is unsure of.
+
+---
+
+### todo-implementer
+**Purpose**: Build exactly the artifacts in the frozen plan, bottom-up, then remove resolved TODOs and verify syntax. The only TODO stage that edits code.
+
+**Input**: `plan` + `domain`
+**Output**: `implementation` (artifactsCreated, todosResolved, todosKept, deadRemoved, syntaxOk, blocked)
+**Constraints**: cannot re-decide reuse, create artifacts in unnamed files, or remove `keep: true` future-notes; enforces the Error Messaging Standards; removes only its own dead code.
 
 ---
 
