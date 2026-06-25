@@ -23,8 +23,8 @@ Feature: 30631 Fill mandatory field for yourself
     When I try to save the profile popup with empty mandatory fields
     Then I should see the validation message "Invalid phone number"
     And I should see the message "Please fill all required fields which are marked"
-    When I enter a mobile number in the profile popup with country code "972" area code "50" and number "8521478"
+    When I enter a mobile number in the profile popup with country code "351" area code "50" and number "8521478"
     Then I should see a success notification
     When I switch to the administration page
     And I search for user "mendy tori" in the administration
-    Then the mobile field should show country code "972" area code "50" and number "8521478"
+    Then the mobile field should show country code "351" area code "50" and number "8521478"
