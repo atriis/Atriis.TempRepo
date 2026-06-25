@@ -39,7 +39,14 @@ Custom agents for the Playwright + Cucumber BDD automation framework. Use these 
 │  @code-reviewer            MANDATORY review gate for all pipelines       │
 │  @context-bridge           Connect ADO + Atriis.OBT + Automation         │
 │  @test-case-converter      Manual test cases → Gherkin                   │
-│  @testim-converter         Testim exports → Gherkin                      │
+│  @testim-converter         Testim exports → Gherkin (orchestrator)       │
+│                                                                          │
+├─── TESTIM CONVERSION SUB-AGENTS (called by @testim-converter) ───────────┤
+│                                                                          │
+│  @testim-extractor         Parse Testim export → ordered action list     │
+│  @testim-step-catalog      Inventory existing step phrases + DSL methods │
+│  @testim-step-mapper       Map actions → exact catalog phrase or TODO    │
+│  @testim-feature-writer    Render feature file + new step defs           │
 │                                                                          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
@@ -306,6 +313,56 @@ Orchestrator → Sub-Agent → Sub-Agent → ... → Report
 
 ### testim-converter
 **Purpose**: Migrate Testim-exported Playwright tests into Gherkin BDD format.
+
+**Trigger**: `@testim-converter <path-to-testim-export.js>` or `@testim-converter <path> domain:flights` (add `refresh:catalog` to bypass the catalog cache)
+
+**Phases**: Resolve input → Extract actions → Build catalog → Map actions → Write feature & steps
+
+**Sub-agents used**: `@testim-extractor` → `@testim-step-catalog` → `@testim-step-mapper` → `@testim-feature-writer`
+
+**Why split**: separates mechanical work (parse/catalog/render) from the single judgment stage (mapping); the mapper may only select phrases from the catalog, so it cannot invent steps — this is what makes output deterministic.
+
+**Checkpoints**: After input resolution, extraction, mapping, and writing. Catalog flows straight into mapping.
+
+**No review gate**: conversions intentionally carry `# TODO:` placeholders for unmapped steps, so they are work-in-progress by design. Code review is deferred to `@todo-pipeline` once the TODOs are implemented.
+
+---
+
+## Testim Conversion Sub-Agents
+
+### testim-extractor
+**Purpose**: Parse a Testim-exported Playwright file into a deterministic, ordered, flattened action list (JSON).
+
+**Input**: `testimFilePath`
+**Output**: `extraction` (metadata + ordered actions)
+**Read-only**: Never maps or writes Gherkin.
+
+---
+
+### testim-step-catalog
+**Purpose**: Build a complete inventory of every existing step phrase and DSL method for a domain — the closed set the mapper may reuse.
+
+**Input**: `domain` (+ optional `refreshCatalog`)
+**Output**: `catalog` (steps + DSL methods + files read + `fromCache`)
+**Cache**: `tests/steps/.catalog-cache/<domain>.json`, invalidated by a git-blob fingerprint of the step files (any in-place edit forces a rebuild). Writes only its own cache file.
+
+---
+
+### testim-step-mapper
+**Purpose**: Map each extracted action to an exact catalog phrase or a TODO. The only judgment stage; constrained to the catalog so it cannot invent step phrases.
+
+**Input**: `extraction.actions` + `catalog`
+**Output**: `mapping` (mapped + todos)
+**Read-only**.
+
+---
+
+### testim-feature-writer
+**Purpose**: Render the final `.feature` file and any new step definitions from the mapper's output.
+
+**Input**: `extraction.metadata` + `mapping` + `input`
+**Output**: `output` (featurePath, stepDefPaths, new/reused steps) + standard output block
+**Writes**: feature file in `next/`, new step defs in the most related existing step file.
 
 ---
 

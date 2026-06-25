@@ -13,14 +13,15 @@ Playwright + Cucumber BDD framework for a corporate travel booking platform (Atr
 
 ## Agent Ecosystem
 
-24 custom agents in `.github/agents/`. See [AGENTS.md](.github/AGENTS.md) for full registry.
+28 custom agents in `.github/agents/`. See [AGENTS.md](.github/AGENTS.md) for full registry.
 
 | Category | Agents | Purpose |
 |----------|--------|---------|
 | **Orchestrators** (8) | `@ado-pipeline`, `@feature-pipeline`, `@regression-pipeline`, `@ci-monitor`, `@todo-pipeline`, `@e2e-test-pipeline`, `@supplier-agent-orchestration`, `@flights-domain-orchestration` | End-to-end or domain workflows with user checkpoints |
 | **Sub-Agents** (8) | `@ado-fetcher`, `@test-generator-pipeline`, `@test-runner-pipeline`, `@test-fixer-pipeline`, `@test-reporter-pipeline`, `@ci-checker`, `@strict-test-governor`, `@ado-publish-testcase` | Single-responsibility agents called by orchestrators |
 | **Domain Agents** (4) | `@domain-flights`, `@domain-hotels`, `@domain-transportation`, `@domain-shell` | Domain knowledge consulted during generation/fixing |
-| **Standalone** (4) | `@code-reviewer`, `@context-bridge`, `@test-case-converter`, `@testim-converter` | Independent tools not part of pipelines |
+| **Standalone** (4) | `@code-reviewer`, `@context-bridge`, `@test-case-converter`, `@testim-converter` | Independent tools not part of pipelines (`@testim-converter` orchestrates the 4 conversion sub-agents below) |
+| **Testim Conversion Sub-Agents** (4) | `@testim-extractor`, `@testim-step-catalog`, `@testim-step-mapper`, `@testim-feature-writer` | Deterministic extract → catalog → map → write stages called by `@testim-converter` |
 
 When invoking an agent, read its `.github/agents/<name>.agent.md` file first to understand its contract.
 
