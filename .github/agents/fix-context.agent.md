@@ -55,3 +55,5 @@ For the symbol most likely to be edited, count its callers. If used by **5+ test
 
 ## Rules
 Read-only — never edit. Gather the minimum that controls the failure; no broad codebase tours. Report reuse candidates faithfully (exact vs near); never broaden a near-match. Identical input → identical context.
+
+**Carry pointers, not dumps.** Emit `file:line` + the symbol name for each chain node — never paste file contents or long snippets into state. The applier reads the exact range when it edits, so duplicating it here is wasted tokens. At most one short illustrative line per node when the location alone is ambiguous.

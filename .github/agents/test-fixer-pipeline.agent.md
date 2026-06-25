@@ -53,18 +53,26 @@ Receives `state.triage`. **If `blocked: true` → stop now**: copy `blockedReaso
 ### Phase 2 — Investigate → `@fix-context`(`triage.class`, the error, `domain`)
 Receives `state.context`. Lift `context.reuseEvidence` into `fixes.reuseEvidence`. No pause — flows into apply.
 
-### Phase 3 — Apply → `@fix-applier`(`triage`, `context`, `fixes.iteration`)
-Receives `state.fixes.fixesApplied` (+ `blocked` if it had to stop). The only stage that edits code.
+### Phase 3 — Apply → `@fix-applier`(`triage`, `context`, `fixes.iteration`, `fixes.history`)
+Receives `state.fixes.fixesApplied` (+ `blocked` if it had to stop). The only stage that edits code. Pass **only** `triage` + `context` + iteration + the prior `fixesApplied` for this failure — never re-send the raw error stack/trace (the class and the chain already distil it).
 
 ### Phase 4 — Re-run → `@test-runner-pipeline`(`generation.featurePath`)
 Append `{ iteration, passed, errorsRemaining, fixesApplied }` to `fixes.history`.
 
 ## Iteration Protocol
-1. For each failure: Triage → Investigate → Apply.
+1. **Iteration 1** — full pass per failure: Triage → Investigate → Apply.
 2. After all failures in the batch are addressed, call `@test-runner-pipeline` to re-run.
-3. Still failing and `iteration < 5` → increment and loop from Phase 1 with the updated errors.
+3. Still failing and `iteration < 5` → increment and re-fix, using the **retry fast-path** below.
 4. `iteration = 5` and still failing → mark **manual intervention required** and stop.
 5. Any `blocked: true` failure is reported and excluded from further fix attempts.
+
+### Retry fast-path (iterations 2–5) — do not redo work
+Compare each still-failing error to its previous-iteration entry in `fixes.history`:
+- **Same class, same chain** (same scenario + same failure signature) → **skip Phase 1 and Phase 2**. Reuse the frozen `triage` and `context`; call `@fix-applier` directly with the next rung of the fix ladder. This is the common case — re-triaging an unchanged failure is wasted tokens.
+- **Failure signature changed** (different error, or the fix moved the failure to a new step/file) → re-run **only Phase 1** to re-classify; re-run Phase 2 only if the new class points at a different chain than the cached `context`.
+- **Newly passing** → drop from the loop; never re-investigate.
+
+Carry `triage` and `context` forward in state across iterations so the fast-path can reuse them; refresh a section only when the rule above says to.
 
 ## Checkpoint
 After each fix iteration, present a **Fix Summary** (no markdown dump of code):
