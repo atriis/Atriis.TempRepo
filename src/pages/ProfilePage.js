@@ -110,8 +110,14 @@ const SELECTORS = {
   PROFILE_POPUP_VALIDATION_MSG: '.user-profile-dialog .contact-info-form-content p.help',
   // Info message rendered when markFields is true and the form is invalid
   PROFILE_POPUP_INFO_MSG: '.user-profile-dialog .contact-info-form-content .btns-container .is-word-break',
-  // Mobile is the first .field.app-column.is-3 within .phone-inputs-container (3 inputs: country, area, number)
-  PROFILE_POPUP_MOBILE_INPUTS: '.user-profile-dialog .contact-info-form-content .phone-inputs-container .field.app-column.is-3:first-child .phone-inputs input',
+  // Mobile field in popup uses app-phone-input component: country=dropdown button, area+number=text inputs
+  PROFILE_POPUP_MOBILE_COUNTRY_BTN: '.user-profile-dialog .contact-info-form-content .phone-inputs-container .field.app-column.is-3:first-child .app-phone-input__country',
+  PROFILE_POPUP_MOBILE_AREA: '.user-profile-dialog .contact-info-form-content .phone-inputs-container .field.app-column.is-3:first-child .app-phone-input__area',
+  PROFILE_POPUP_MOBILE_NUMBER: '.user-profile-dialog .contact-info-form-content .phone-inputs-container .field.app-column.is-3:first-child .app-phone-input__number',
+  // Country-code dropdown popover — teleported to <body> by el-popover, one visible at a time
+  // :visible scopes to the active popover; all 5 phone-field popovers share the same body-level class
+  PHONE_INPUT_POPOVER_SEARCH: '.app-phone-input-popover .app-phone-input__search input:visible',
+  PHONE_INPUT_POPOVER_OPTION: '.app-phone-input-popover:visible .app-phone-input__option',
   // Save button inside the popup contact info form
   PROFILE_POPUP_SAVE_BTN: '.user-profile-dialog button:has-text("Save")',
 };
@@ -1375,18 +1381,27 @@ class ProfilePage {
 
   async fillMobileInPopup({ countryCode, areaCode, number }) {
     try {
-      const inputs = this.page.locator(SELECTORS.PROFILE_POPUP_MOBILE_INPUTS);
-      await inputs.first().waitFor({ state: 'visible', timeout: 10000 });
-      const count = await inputs.count();
-      if (count < 3) {
-        throw new Error(
-          `Expected 3 mobile inputs in popup (country code, area code, number) but found ${count}. ` +
-          `Selector: ${SELECTORS.PROFILE_POPUP_MOBILE_INPUTS}`
-        );
-      }
-      await inputs.nth(0).fill(countryCode);
-      await inputs.nth(1).fill(areaCode);
-      await inputs.nth(2).fill(number);
+      // Open country-code dropdown
+      const countryBtn = this.page.locator(SELECTORS.PROFILE_POPUP_MOBILE_COUNTRY_BTN);
+      await countryBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await countryBtn.click();
+
+      // Search for the dial code and pick the first matching option
+      const searchInput = this.page.locator(SELECTORS.PHONE_INPUT_POPOVER_SEARCH);
+      await searchInput.waitFor({ state: 'visible', timeout: 5000 });
+      await searchInput.fill(countryCode);
+      const option = this.page.locator(SELECTORS.PHONE_INPUT_POPOVER_OPTION)
+        .filter({ hasText: `+${countryCode}` })
+        .first();
+      await option.waitFor({ state: 'visible', timeout: 5000 });
+      await option.click();
+
+      // Fill area code and phone number
+      const areaInput = this.page.locator(SELECTORS.PROFILE_POPUP_MOBILE_AREA);
+      await areaInput.waitFor({ state: 'visible', timeout: 5000 });
+      await areaInput.fill(areaCode);
+      const numberInput = this.page.locator(SELECTORS.PROFILE_POPUP_MOBILE_NUMBER);
+      await numberInput.fill(number);
     } catch (err) {
       throw new Error(
         `[ProfilePage.fillMobileInPopup] Failed to fill mobile number (country: "${countryCode}", area: "${areaCode}", number: "${number}") in the profile popup. ` +
