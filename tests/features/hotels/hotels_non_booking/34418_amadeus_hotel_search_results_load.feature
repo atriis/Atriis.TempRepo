@@ -16,6 +16,6 @@ Feature: 34418 "Hotel wasn't found" error message is not displayed (no specific 
   Scenario: "Hotel wasn't found" error message is not displayed (no specific hotel requested)
     Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Mönchengladbach" for 1 night
+    When I search for a hotel in "London, UK" for 1 night
     And I wait to see view rates text in results page 
     Then "hotel wasn't found" error message is not displayed
