@@ -37,9 +37,14 @@ const SELECTORS = {
   // Contact details (reference-form-contact-details.vue)
   CONTACT_DETAILS_CHECKBOX: ".reference-form-contact-details .share-checkbox-container .el-checkbox__inner",
   CONTACT_DETAILS_CHECKBOX_INPUT: ".reference-form-contact-details .share-checkbox-container .el-checkbox__original",
-  CONTACT_PHONE_COUNTRY_CODE: ".reference-form-contact-details .el-input:nth-of-type(1) .el-input__inner",
-  CONTACT_PHONE_AREA_CODE: ".reference-form-contact-details .el-input:nth-of-type(2) .el-input__inner",
-  CONTACT_PHONE_NUMBER: ".reference-form-contact-details .el-input:nth-of-type(3) .el-input__inner",
+  // Contact phone — redesigned app-phone-input: country dropdown button + area/number text inputs
+  CONTACT_PHONE_COUNTRY_BTN: ".reference-form-contact-details .app-phone-input__country",
+  CONTACT_PHONE_DIAL: ".reference-form-contact-details .app-phone-input__dial",
+  CONTACT_PHONE_AREA: ".reference-form-contact-details .app-phone-input__area",
+  CONTACT_PHONE_NUMBER: ".reference-form-contact-details .app-phone-input__number",
+  // Country-code dropdown popover (teleported to <body> by el-popover; :visible scopes to the active one)
+  PHONE_INPUT_POPOVER_SEARCH: ".app-phone-input-popover .app-phone-input__search input:visible",
+  PHONE_INPUT_POPOVER_OPTION: ".app-phone-input-popover:visible .app-phone-input__option",
 
   // Booker notification phone (trip-reference-form.vue — notifications-behalf section)
   BOOKER_PHONE_CONTAINER: ".notifications-behalf-collapse",
@@ -359,13 +364,21 @@ class CheckoutPage {
   }
 
   /**
-   * Fills the contact phone country code field.
-   * @param {string} value
+   * Opens the country-code popover, searches for the dial code, and selects the matching option.
+   * @param {string} value - Dial code digits only (e.g. "1" for +1)
    */
   async fillContactPhoneCountryCode(value) {
-    const input = this.page.locator(SELECTORS.CONTACT_PHONE_COUNTRY_CODE).first();
-    await input.waitFor({ state: 'visible', timeout: 10000 });
-    await input.fill(value);
+    const countryBtn = this.page.locator(SELECTORS.CONTACT_PHONE_COUNTRY_BTN).first();
+    await countryBtn.waitFor({ state: 'visible', timeout: 10000 });
+    await countryBtn.click();
+    const searchInput = this.page.locator(SELECTORS.PHONE_INPUT_POPOVER_SEARCH);
+    await searchInput.waitFor({ state: 'visible', timeout: 5000 });
+    await searchInput.fill(value);
+    const option = this.page.locator(SELECTORS.PHONE_INPUT_POPOVER_OPTION)
+      .filter({ hasText: `+${value}` })
+      .first();
+    await option.waitFor({ state: 'visible', timeout: 5000 });
+    await option.click();
   }
 
   /**
@@ -373,7 +386,7 @@ class CheckoutPage {
    * @param {string} value
    */
   async fillContactPhoneAreaCode(value) {
-    const input = this.page.locator(SELECTORS.CONTACT_PHONE_AREA_CODE).first();
+    const input = this.page.locator(SELECTORS.CONTACT_PHONE_AREA).first();
     await input.waitFor({ state: 'visible', timeout: 10000 });
     await input.fill(value);
   }
@@ -394,8 +407,11 @@ class CheckoutPage {
    * @returns {Promise<string>}
    */
   async getContactPhoneValues() {
-    const cc = await this.page.locator(SELECTORS.CONTACT_PHONE_COUNTRY_CODE).first().inputValue().catch(() => '');
-    const ac = await this.page.locator(SELECTORS.CONTACT_PHONE_AREA_CODE).first().inputValue().catch(() => '');
+    const dialEl = this.page.locator(SELECTORS.CONTACT_PHONE_DIAL).first();
+    await dialEl.waitFor({ state: 'visible', timeout: 10000 });
+    const dialText = await dialEl.textContent();
+    const cc = (dialText || '').replace(/^\+/, '').trim();
+    const ac = await this.page.locator(SELECTORS.CONTACT_PHONE_AREA).first().inputValue().catch(() => '');
     const num = await this.page.locator(SELECTORS.CONTACT_PHONE_NUMBER).first().inputValue().catch(() => '');
     return cc + ac + num;
   }
