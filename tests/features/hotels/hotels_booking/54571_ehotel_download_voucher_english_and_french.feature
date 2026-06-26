@@ -27,4 +27,4 @@ Feature: 54571 eHotel - Download hotel voucher in English and French
     And I complete the booking
     Then the booking status should be "Confirmed"
     Then the download voucher options for english and french should be visible in cart
-    Then I successfully cancel the trip
+    And I attempt to cancel the trip safely
