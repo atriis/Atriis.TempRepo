@@ -1343,12 +1343,16 @@ const Cart = {
       }
 
       if (await bookingErrorDialog.isVisible().catch(() => false)) {
-        return resolveBookingErrorResult();
-      }
-
-      const clickedPriceChange = await cartPage.clickProceedWithChangeIfVisible(500).catch(() => false);
-      if (clickedPriceChange) {
-        clickedModal = true;
+        // Price-change dialogs also match the booking-error selector (they share .booking-response-errors).
+        // Try clicking "Proceed with change" first; if it's there this is a price-change, not a booking error.
+        const priceChangeClicked = await cartPage.clickProceedWithChangeIfVisible(500).catch(() => false);
+        if (priceChangeClicked) {
+          clickedModal = true;
+          // Wait for the dialog to dismiss before continuing the hold loop.
+          await bookingErrorDialog.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+        } else {
+          return resolveBookingErrorResult();
+        }
       }
 
       await page.waitForTimeout(1000);
