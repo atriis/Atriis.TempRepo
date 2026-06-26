@@ -15,8 +15,8 @@ Feature: 36581 Flights - Multi pax price displayed correctly in cart and checkou
     Given I am logged in as "sebastian@one.com" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "josh"
-    And I have added traveler by name "bene"
-    When I search for a one way flight from "LIS" to "NYC" with preferred carrier "S4"
+    And I have added traveler by name "bene levi"
+    When I search for a one way flight from "LIS" to "NYC"
     And flight results should be available
     Then the CO2 Squake tooltip should be visible in flight results
     And I add the first result to trip
@@ -31,5 +31,6 @@ Feature: 36581 Flights - Multi pax price displayed correctly in cart and checkou
     And I wait for booking details in checkout
     Then the checkout total price should match the saved flight cart total
     When I navigate to cart from checkout
+    And I validate price change if displayed and proceed
     Then the booking status should be "On hold"
     Then I successfully cancel the trip
