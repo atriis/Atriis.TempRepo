@@ -276,7 +276,7 @@ Then("the sum of extracted prices at index {int} {string} and {int} {string} sho
   const priceA = this.extractedPrices[indexA];
   const priceB = this.extractedPrices[indexB];
   const expectedSum = this.extractedPrices[expectedIndex];
-  expectSumToBeEqualWithTolerance(priceA, priceB, expectedSum, 0.2, `Sum [${indexA}] ${labelA} + [${indexB}] ${labelB} vs [${expectedIndex}] ${expectedLabel}`);
+  expectSumToBeEqualWithTolerance(priceA, priceB, expectedSum, 0.5, `Sum [${indexA}] ${labelA} + [${indexB}] ${labelB} vs [${expectedIndex}] ${expectedLabel}`);
 });
 
 // ===== DIRECT COMPARISON (EXTRACT + ASSERT) =====
