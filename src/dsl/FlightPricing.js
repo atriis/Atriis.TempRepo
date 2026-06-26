@@ -55,6 +55,20 @@ const FlightPricing = {
     await flightPricingPage.waitForFareTitleText(fareTitle);
   },
 
+  async waitForCheapestOption(page) {
+    if (!page) throw new Error('page is required');
+    logger.info('Waiting for cheapest option (either "Cheapest package" card or CHEAPEST ribbon)');
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+    await flightPricingPage.waitForCheapestOption();
+  },
+
+  async extractCheapestOptionPrice(page) {
+    if (!page) throw new Error('page is required');
+    logger.info('Extracting price from cheapest option');
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+    return flightPricingPage.getCheapestOptionPrice();
+  },
+
   async extractFarePrice(page, fareTitle) {
     if (!page) {
       throw new Error('page is required');

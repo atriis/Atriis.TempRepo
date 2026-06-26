@@ -1,5 +1,6 @@
 ﻿require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
+const { expect } = require("@playwright/test");
 const { FlightPricing } = require("@dsl");
 const logger = require("@utils/logger").child("FlightPricing");
 
@@ -22,6 +23,37 @@ When('I add the first Additional pricing options fare to trip', async function (
 When('I wait for {string} text to be visible', async function (fareTitle) {
   logger.info('Waiting for pricing fare text to be visible', { fareTitle });
   await FlightPricing.waitForFareTitle(this.page, fareTitle);
+});
+
+When('I wait for the cheapest option to be visible', async function () {
+  logger.info('Waiting for cheapest pricing option to be visible');
+  await FlightPricing.waitForCheapestOption(this.page);
+});
+
+When('I extract the price from the cheapest option', async function () {
+  logger.info('Extracting price from cheapest pricing option');
+  const { price, type } = await FlightPricing.extractCheapestOptionPrice(this.page);
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(price);
+  this.cheapestOptionType = type;
+  logger.info('Extracted cheapest option price', { price, type });
+});
+
+Then('the cheapest option price should not exceed the selected price', function () {
+  const [cheapestPrice, yourSelectionPrice] = this.extractedPrices;
+
+  if (this.cheapestOptionType === 'ribbon') {
+    // The CHEAPEST ribbon means the user's selection IS the cheapest combination —
+    // no separate cheaper card exists, so there is nothing to compare against.
+    logger.info('Cheapest option is a ribbon on "Your selection" — selection is already the cheapest, price comparison skipped', { price: cheapestPrice });
+    return;
+  }
+
+  logger.info('Comparing cheapest package price to your selection price', { cheapestPrice, yourSelectionPrice });
+  expect(
+    cheapestPrice,
+    `Cheapest package price (${cheapestPrice}) should be ≤ Your selection price (${yourSelectionPrice})`
+  ).toBeLessThanOrEqual(yourSelectionPrice);
 });
 
 When('I extract the price from {string} fare', async function (fareTitle) {

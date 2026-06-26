@@ -16,6 +16,7 @@ const SELECTORS = {
   PRICING_FARE_ADD_TO_TRIP_BUTTON: '.add-btn',
   PRICING_FARE_AGREEMENT_SECTION: '.more-info',
   PRICING_FARE_AGREEMENT_ICON: '.agreement-icon',
+  PRICING_FARE_CHEAPEST_RIBBON: '.ribbon-text',
   YOUR_SELECTION_TEXT: "section.flight-by-schedule-pricing .best-combination-wrapper .header .title",
   YOUR_SELECTION_CARD: '.flight-by-schedule-pricing .flight-by-schedule-pricing-option',
   YOUR_SELECTION_CARD_TITLE: '.header .title',
@@ -252,6 +253,49 @@ class FlightPricingPage {
       }
       return [...found];
     }, SELECTORS.PRICING_PAGE_SECTION);
+  }
+
+  /**
+   * Waits for the cheapest option to appear in either form and returns a locator to it.
+   * Two layouts are supported:
+   *   - A fare card whose title is "Cheapest package"
+   *   - Any fare card that carries a .ribbon-text element with text "CHEAPEST"
+   *
+   * Throws if neither appears within the timeout.
+   *
+   * @returns {Promise<import('@playwright/test').Locator>}
+   */
+  async waitForCheapestOption() {
+    const namedCard = this.getFareCard('Cheapest package');
+    const ribbonCard = this.page
+      .locator(SELECTORS.PRICING_FARE_CARD)
+      .filter({
+        has: this.page.locator(SELECTORS.PRICING_FARE_CHEAPEST_RIBBON).filter({ hasText: /^CHEAPEST$/i }),
+      })
+      .first();
+
+    await this.page.waitForTimeout(3000);
+
+    try {
+      return await Promise.any([
+        namedCard.waitFor({ state: 'visible', timeout: 60000 }).then(() => ({ type: 'named', locator: namedCard })),
+        ribbonCard.waitFor({ state: 'visible', timeout: 60000 }).then(() => ({ type: 'ribbon', locator: ribbonCard })),
+      ]);
+    } catch {
+      throw new Error('Cheapest option not found: neither a "Cheapest package" card nor a CHEAPEST ribbon card appeared within timeout');
+    }
+  }
+
+  /**
+   * Gets the numeric price from the cheapest-option card, whichever form it takes.
+   *
+   * @returns {Promise<number|null>}
+   */
+  async getCheapestOptionPrice() {
+    const { type, locator } = await this.waitForCheapestOption();
+    await locator.waitFor({ state: 'visible', timeout: 30000 });
+    const price = await extractNumber(locator, SELECTORS.PRICING_FARE_PRICE, 0);
+    return { price, type };
   }
 
   /**

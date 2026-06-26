@@ -22,7 +22,8 @@ Feature: 31202 By Schedule - Cheapest combination price not higher than your sel
     And I wait for the change flight button to be visible
     And I filter results by carrier "Lufthansa"
     And I select one flight segment by schedule
-    And I wait for "Cheapest package" text to be visible
-    And I extract the price from "Cheapest package" fare
+    And I wait for the cheapest option to be visible
+    And I extract the price from the cheapest option
     And I extract the price from "Your selection" fare
-    Then the extracted price at index 0 should be less than or equal to the extracted price at index 1
+    # This will handle if the cheapest option appear as a ribon-text in "Your Selection" card or in a new pricing option card
+    Then the cheapest option price should not exceed the selected price
