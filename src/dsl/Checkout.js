@@ -364,7 +364,7 @@ const Checkout = {
     const checkoutPage = getPageObject(page, CheckoutPage);
     const values = await checkoutPage.getBookerNotificationPhoneValues();
     if (values === null) {
-      throw new Error('Booker notification phone section is not visible or has fewer than 3 input fields on checkout');
+      throw new Error('Booker notification phone section is not visible or app-phone-input fields not found on checkout');
     }
     const { expect } = require("@playwright/test");
     expect(values).toMatch(/\d/);

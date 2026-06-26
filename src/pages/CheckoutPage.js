@@ -47,8 +47,11 @@ const SELECTORS = {
   PHONE_INPUT_POPOVER_OPTION: ".app-phone-input-popover:visible .app-phone-input__option",
 
   // Booker notification phone (trip-reference-form.vue — notifications-behalf section)
+  // Redesigned to use app-phone-input; inputs use __dial/__area/__number classes (not .el-input__inner)
   BOOKER_PHONE_CONTAINER: ".notifications-behalf-collapse",
-  BOOKER_PHONE_INPUTS: ".notifications-behalf-collapse .el-input__inner",
+  BOOKER_PHONE_DIAL: ".notifications-behalf-collapse .app-phone-input__dial",
+  BOOKER_PHONE_AREA: ".notifications-behalf-collapse .app-phone-input__area",
+  BOOKER_PHONE_NUMBER: ".notifications-behalf-collapse .app-phone-input__number",
 
   // Required field detection — inputs inside is-danger wrappers across checkout
   REQUIRED_INPUTS: ".is-danger .el-input__inner",
@@ -425,15 +428,14 @@ class CheckoutPage {
     const container = this.page.locator(SELECTORS.BOOKER_PHONE_CONTAINER);
     const isVisible = await container.isVisible().catch(() => false);
     if (!isVisible) return null;
-    const inputs = this.page.locator(SELECTORS.BOOKER_PHONE_INPUTS);
-    const count = await inputs.count();
-    if (count < 3) return null;
-    const values = await Promise.all([
-      inputs.nth(0).inputValue().catch(() => ''),
-      inputs.nth(1).inputValue().catch(() => ''),
-      inputs.nth(2).inputValue().catch(() => ''),
-    ]);
-    return values.join('');
+    const dialEl = this.page.locator(SELECTORS.BOOKER_PHONE_DIAL).first();
+    const dialVisible = await dialEl.isVisible().catch(() => false);
+    if (!dialVisible) return null;
+    const dialText = await dialEl.textContent().catch(() => '');
+    const cc = (dialText || '').replace(/^\+/, '').trim();
+    const ac = await this.page.locator(SELECTORS.BOOKER_PHONE_AREA).first().inputValue().catch(() => '');
+    const num = await this.page.locator(SELECTORS.BOOKER_PHONE_NUMBER).first().inputValue().catch(() => '');
+    return cc + ac + num;
   }
 
   /**
