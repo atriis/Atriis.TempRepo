@@ -3,6 +3,7 @@ const { launchBrowser } = require("@utils/browserFactory");
 const LoginPage = require("@pages/LoginPage");
 const LogoutPage = require("@pages/LogoutPage");
 const MenuPage = require("@pages/MenuPage");
+const QuickLinksPage = require("@pages/QuickLinksPage");
 const { CommonPage } = require("@pages/CommonPage");
 const config = require("@config/config");
 const logger = require("@utils/logger").child("App");
@@ -226,6 +227,48 @@ const App = {
     const menuPage = getPageObject(page, MenuPage);
     await menuPage.hoverLanguageIcon();
     await menuPage.clickLanguageOption(languageName);
+  },
+
+  /**
+   * Hovers the Quick Links nav item in the sidebar menu to reveal the
+   * product card tooltip on the homepage.
+   * @param {import('playwright').Page} page
+   */
+  async hoverQuickLinkProductCard(page) {
+    if (!page) throw new Error('[App.hoverQuickLinkProductCard] page is required');
+    logger.info('Hovering over quick link nav item to reveal product card tooltip');
+    try {
+      const loginPage = getPageObject(page, LoginPage);
+      const quickLinksPage = getPageObject(page, QuickLinksPage);
+      // Cookie banner can re-appear on the post-login page and block pointer events
+      await loginPage.acceptCookiesIfPresent(5000);
+      await quickLinksPage.hoverQuickLinkNavItem();
+      await quickLinksPage.waitForQuickLinkTooltipVisible();
+    } catch (err) {
+      throw new Error(
+        `[App.hoverQuickLinkProductCard] Failed to hover quick link nav item and reveal tooltip. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Reads the image src from the quick link product card tooltip.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string|null>}
+   */
+  async getQuickLinkCardImageSrc(page) {
+    if (!page) throw new Error('[App.getQuickLinkCardImageSrc] page is required');
+    logger.debug('Getting quick link card image src from tooltip');
+    try {
+      const quickLinksPage = getPageObject(page, QuickLinksPage);
+      const src = await quickLinksPage.getFirstQuickLinkImageSrc();
+      logger.debug('Quick link card image src', { src: src ? src.substring(0, 60) + '...' : src });
+      return src;
+    } catch (err) {
+      throw new Error(
+        `[App.getQuickLinkCardImageSrc] Failed to read image src from quick link card tooltip. Original: ${err.message}`
+      );
+    }
   },
 
   /**

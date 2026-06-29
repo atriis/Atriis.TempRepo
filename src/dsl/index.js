@@ -30,7 +30,6 @@ module.exports = {
   Results: require("./Results"),
   RoomLevelResults: require("./RoomLevelResults"),
   Search: require("./Search"),
-  Shell: require("./Shell"),
   TravelRequest: require("./TravelRequest"),
   Trips: require("./Trips"),
   UKParkingSearch: require("./UKParkingSearch"),

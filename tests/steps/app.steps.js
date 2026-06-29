@@ -108,3 +108,18 @@ Then("the welcome heading should contain {string}", async function (expectedText
   const isVisible = await App.isHeadingContainingTextVisible(this.page, expectedText);
   expect(isVisible).toBe(true);
 });
+
+When("I hover over the quick link product card on the homepage", async function () {
+  logger.info("Hovering over quick link product card on homepage");
+  await App.hoverQuickLinkProductCard(this.page);
+});
+
+Then("the default product picture should be displayed on the quick link card", async function () {
+  logger.info("Verifying default picture is displayed on quick link card");
+  const src = await App.getQuickLinkCardImageSrc(this.page);
+  // Vite inlines the no-qlink.svg as a data URI; an external configured image would be an http(s) URL
+  expect(
+    src,
+    `Quick link card should display the default inline SVG (data:image/svg+xml) when no external image is configured. Got: "${src}"`
+  ).toMatch(/^data:image\/svg\+xml/);
+});
