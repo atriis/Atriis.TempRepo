@@ -164,7 +164,7 @@ When("I click book and finalize button", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, 
   await Checkout.clickBookAndFinalizeButton(this.page);
 });
 
-Then("go to trip text is visible", async function () {
+Then("go to trip text is visible", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
   logger.info("Verifying Go to trip button is visible on booking success page");
   await Checkout.waitForGoToTripButtonVisible(this.page);
 });

@@ -24,7 +24,7 @@ Feature: 33937 - Line with product details is displayed after checkout
     And I wait for booking details in checkout
     When I click book and finalize button
     And go to trip text is visible
-    Then line with product details is displayed after checkout with status "On hold"
+    Then line with product details is displayed after checkout with status "Confirmed"
     And I click go to trip button
     And the booking status should be "Confirmed"
     Then I successfully cancel the trip

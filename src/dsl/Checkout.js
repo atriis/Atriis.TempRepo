@@ -526,20 +526,35 @@ const Checkout = {
 
   /**
    * Waits for the "Go to trip" button to be visible on the booking-success page.
-   * Confirms the booking completed and the success screen rendered.
+   * Races the success button against the booking-error dialog so a supplier error is
+   * detected immediately rather than silently timing out.
    */
   async waitForGoToTripButtonVisible(page) {
     if (!page) throw new Error('page is required');
     const checkoutPage = getPageObject(page, CheckoutPage);
-    try {
-      await checkoutPage.waitForGoToTripButton();
-      logger.info('"Go to trip" button is visible on booking success page');
-    } catch (err) {
+    const bookingErrorDialog = page.locator('.booking-error-dialog').first();
+
+    const outcome = await Promise.race([
+      checkoutPage.getGoToTripButton().waitFor({ state: 'visible', timeout: 60000 }).then(() => 'success').catch(() => null),
+      bookingErrorDialog.waitFor({ state: 'visible', timeout: 60000 }).then(() => 'booking-error').catch(() => null),
+    ]);
+
+    if (outcome === 'booking-error') {
+      const errorText = await checkoutPage.getBookingErrorDialogText().catch(() => '');
       throw new Error(
-        `[Checkout.waitForGoToTripButtonVisible] "Go to trip" button did not appear after booking. ` +
-        `The booking may not have completed successfully. Original: ${err.message}`
+        `[Checkout.waitForGoToTripButtonVisible] Booking error dialog appeared after clicking Book and Finalize. ` +
+        `Error details: ${errorText || 'unknown'}`
       );
     }
+
+    if (outcome !== 'success') {
+      throw new Error(
+        `[Checkout.waitForGoToTripButtonVisible] "Go to trip" button did not appear after booking. ` +
+        `The booking may not have completed successfully.`
+      );
+    }
+
+    logger.info('"Go to trip" button is visible on booking success page');
   },
 
   /**
@@ -553,8 +568,6 @@ const Checkout = {
       throw new Error(`"expectedStatus" must be a non-empty string, got: ${typeof expectedStatus}`);
     const checkoutPage = getPageObject(page, CheckoutPage);
     try {
-      const productLine = checkoutPage.getBookingSuccessProductLine();
-      await productLine.waitFor({ state: 'visible', timeout: 30000 });
       const statusBadge = checkoutPage.getBookingSuccessProductStatus();
       await expect(
         statusBadge,
@@ -572,13 +585,14 @@ const Checkout = {
 
   /**
    * Clicks the "Go to trip" button on the booking-success page and waits for the trip overview to load.
+   * Button visibility was already confirmed by waitForGoToTripButtonVisible, so clicks directly without re-waiting.
    */
   async clickGoToTripButton(page) {
     if (!page) throw new Error('page is required');
     const checkoutPage = getPageObject(page, CheckoutPage);
     const cartPage = getPageObject(page, CartPage);
     try {
-      await checkoutPage.clickGoToTrip();
+      await checkoutPage.getGoToTripButton().click();
       await cartPage.waitForTripOverviewTitle();
     } catch (err) {
       throw new Error(
