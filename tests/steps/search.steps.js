@@ -154,6 +154,26 @@ Given("I have added a guest traveler {string} {string} with user group {string}"
   this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
+When("I select {string} as the copy settings for the guest", async function (settingsType) {
+  logger.info("Selecting copy settings for guest traveler", { settingsType });
+  await Search.selectGuestCopySettings(this.page, settingsType);
+});
+
+When("I fill in the guest details first name {string} last name {string} gender {string} email {string}", async function (firstName, lastName, gender, email) {
+  logger.info("Filling in guest personal details", { firstName, lastName, gender, email });
+  await Search.fillGuestDetails(this.page, firstName, lastName, gender, email);
+});
+
+When("I attempt to add the guest traveler", async function () {
+  logger.info("Attempting to add guest traveler (triggering form validation)");
+  await Search.attemptAddGuestTraveler(this.page);
+});
+
+Then("the user group field should be marked as mandatory for the guest", async function () {
+  logger.info("Verifying user group field is mandatory");
+  await Search.verifyUserGroupMandatory(this.page);
+});
+
 Given("I add a third traveler named {string}", async function (travelerName) {
   throw new Error(`TODO: implement 'I add a third traveler named {string}' — add an additional traveler named ${travelerName}`);
 });

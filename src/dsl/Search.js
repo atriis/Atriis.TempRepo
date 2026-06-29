@@ -464,6 +464,96 @@ const Search = {
   },
 
   /**
+   * Selects the copy-settings radio in the guest form by type name.
+   * Currently supports "Users Group" (second radio).
+   * @param {import('playwright').Page} page
+   * @param {string} settingsType - Visible label of the radio option (e.g. "Users Group")
+   */
+  async selectGuestCopySettings(page, settingsType) {
+    if (!page) throw new Error('[Search.selectGuestCopySettings] "page" is required.');
+    if (!settingsType || typeof settingsType !== 'string') throw new Error('[Search.selectGuestCopySettings] "settingsType" must be a non-empty string');
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    if (settingsType === 'Users Group') {
+      try {
+        await searchPage.selectCopySettingsFromUsersGroup();
+      } catch (err) {
+        throw new Error(`[Search.selectGuestCopySettings] Failed to select "Users Group" copy settings: ${err.message}`);
+      }
+    } else {
+      throw new Error(`[Search.selectGuestCopySettings] Unsupported settings type "${settingsType}". Supported: "Users Group"`);
+    }
+  },
+
+  /**
+   * Fills in guest personal details (first name, last name, gender, email) without DOB or phone.
+   * Use this when the scenario requires partial submission to test field validation.
+   * @param {import('playwright').Page} page
+   * @param {string} firstName
+   * @param {string} lastName
+   * @param {string} gender - Visible option label (e.g. "Female", "Male")
+   * @param {string} email
+   */
+  async fillGuestDetails(page, firstName, lastName, gender, email) {
+    if (!page) throw new Error('[Search.fillGuestDetails] "page" is required.');
+    if (!firstName || typeof firstName !== 'string') throw new Error('[Search.fillGuestDetails] "firstName" must be a non-empty string');
+    if (!lastName || typeof lastName !== 'string') throw new Error('[Search.fillGuestDetails] "lastName" must be a non-empty string');
+    if (!gender || typeof gender !== 'string') throw new Error('[Search.fillGuestDetails] "gender" must be a non-empty string');
+    if (!email || typeof email !== 'string') throw new Error('[Search.fillGuestDetails] "email" must be a non-empty string');
+
+    logger.debug('[Search.fillGuestDetails] Filling guest details', { firstName, lastName, gender, email });
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.fillInRandomFirstName(firstName);
+      await searchPage.fillInRandomLastName(lastName);
+      await searchPage.selectGenderByName(gender);
+      await searchPage.fillInRandomEmail(email);
+    } catch (err) {
+      throw new Error(`[Search.fillGuestDetails] Failed to fill guest details: ${err.message}`);
+    }
+  },
+
+  /**
+   * Clicks the "Add guest" button without waiting for the modal to close.
+   * Triggers form validation so mandatory-field errors become visible.
+   * @param {import('playwright').Page} page
+   */
+  async attemptAddGuestTraveler(page) {
+    if (!page) throw new Error('[Search.attemptAddGuestTraveler] "page" is required.');
+
+    logger.debug('[Search.attemptAddGuestTraveler] Clicking Add guest to trigger validation');
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.clickAddGuestButtonWithoutWaiting();
+    } catch (err) {
+      throw new Error(`[Search.attemptAddGuestTraveler] Failed to click Add guest button: ${err.message}`);
+    }
+  },
+
+  /**
+   * Asserts that the user-group select field is flagged as mandatory (is-danger).
+   * Fails if the validation error is not visible after attempting to submit.
+   * @param {import('playwright').Page} page
+   */
+  async verifyUserGroupMandatory(page) {
+    if (!page) throw new Error('[Search.verifyUserGroupMandatory] "page" is required.');
+
+    logger.debug('[Search.verifyUserGroupMandatory] Checking user group mandatory state');
+
+    const searchPage = getPageObject(page, SearchPage);
+    const isMandatory = await searchPage.isUserGroupFieldMandatory();
+
+    if (!isMandatory) {
+      throw new Error('[Search.verifyUserGroupMandatory] User group field is not flagged as mandatory (is-danger class not found). Ensure "Users Group" copy settings is selected and the form was submitted without choosing a group.');
+    }
+  },
+
+  /**
    * Verifies that a traveler checkbox with the given label text is visible
    * in the edit-traveler dialog.
    * @param {import('playwright').Page} page

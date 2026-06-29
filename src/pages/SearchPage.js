@@ -74,6 +74,8 @@ const SELECTORS = {
   GROUP_SELECT_CARET: ".copy-settings-container .group-select .el-select__caret",
   GROUP_SELECT_EL: ".copy-settings-container .group-select .el-select",
   GROUP_SELECT_DROPDOWN_ITEM: ".el-select-dropdown__item",
+  // is-danger class applied by Vue validation when user group is required but not selected
+  GROUP_SELECT_IS_DANGER: ".copy-settings-container .group-select.is-danger",
 
   // Edit Search
   EDIT_SEARCH_DRAWER: '.atrs-edit-search-drawer',
@@ -429,6 +431,39 @@ class SearchPage {
   async selectGenderMale() {
     await this.page.locator(SELECTORS.GENDER_DROPDOWN).click();
     await this.page.getByRole("option", { name: "Male" }).first().click();
+  }
+
+  /**
+   * Selects a gender option by its visible label in the guest form.
+   * Reuses the GENDER_DROPDOWN selector (anchored to "Please select gender" placeholder)
+   * so it reliably targets the gender field even when other selects are visible.
+   * @param {string} genderName - Option label as shown in UI (e.g. "Female", "Male")
+   */
+  async selectGenderByName(genderName) {
+    const dropdown = this.page.locator(SELECTORS.GENDER_DROPDOWN).first();
+    await dropdown.waitFor({ state: 'visible', timeout: 10000 });
+    await dropdown.click();
+    const option = this.page.getByRole('option', { name: genderName }).first();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    await option.click();
+  }
+
+  /**
+   * Clicks the "Add guest" button to trigger form validation without waiting
+   * for the modal to close. Use when testing mandatory-field enforcement.
+   */
+  async clickAddGuestButtonWithoutWaiting() {
+    await this.getAddGuestButton().waitFor({ state: 'visible', timeout: 10000 });
+    await this.getAddGuestButton().click({ timeout: 5000 });
+  }
+
+  /**
+   * Returns true when the user-group select has the is-danger class applied,
+   * indicating the field is flagged as required by the Vue validator.
+   * @returns {Promise<boolean>}
+   */
+  async isUserGroupFieldMandatory() {
+    return this.page.locator(SELECTORS.GROUP_SELECT_IS_DANGER).isVisible({ timeout: 5000 });
   }
 
   async fillInRandomDateOfBirth(dateOfBirth) {
