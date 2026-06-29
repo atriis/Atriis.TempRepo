@@ -126,6 +126,11 @@ Then("the contact telephone on checkout should contain numbers", async function 
   await Checkout.verifyContactPhoneContainsNumbers(this.page);
 });
 
+Then("the contact telephone on checkout should contain {string}", async function (phone) {
+  logger.info("Verifying contact telephone on checkout contains expected numbers", { phone });
+  await Checkout.verifyContactPhoneContains(this.page, phone);
+});
+
 Then("the contact details checkbox should be unchecked", async function () {
   logger.info("Verifying contact details checkbox is unchecked");
   await Checkout.verifyContactDetailsCheckboxUnchecked(this.page);

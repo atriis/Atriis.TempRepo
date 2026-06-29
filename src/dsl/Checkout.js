@@ -304,6 +304,42 @@ const Checkout = {
   },
 
   /**
+   * Verifies the traveler contact phone on checkout contains the expected digits.
+   * The configured profile phone is pre-populated into the contact phone fields
+   * (dial code + area code + number); the concatenated value must contain the
+   * expected number (spaces ignored).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedPhone - Expected phone digits, may be space-separated (e.g. "888 666 76876")
+   */
+  async verifyContactPhoneContains(page, expectedPhone) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedPhone !== 'string' || !expectedPhone.trim()) {
+      throw new Error('expectedPhone must be a non-empty string, got: ' + typeof expectedPhone);
+    }
+
+    const { expect } = require("@playwright/test");
+    const checkoutPage = getPageObject(page, CheckoutPage);
+
+    // Ensure the checkout page (and its contact-details section) is fully loaded
+    // before reading the phone fields, to avoid a false read on a not-yet-rendered page.
+    await checkoutPage.waitForBookingDetailsText();
+
+    const expected = expectedPhone.replace(/\s+/g, '');
+
+    // The contact phone is hydrated from the (GDS) profile asynchronously, so it
+    // can still hold the empty "+00" default for a moment after the booking-details
+    // heading appears. Poll the concatenated phone value until it contains the
+    // expected digits, rather than reading once.
+    await expect
+      .poll(async () => checkoutPage.getContactPhoneValues(), {
+        message: `[Checkout.verifyContactPhoneContains] Expected the checkout contact telephone to contain "${expectedPhone}", but the contact phone fields never showed it. The configured profile phone may not be surfaced on checkout.`,
+        timeout: 15000,
+      })
+      .toContain(expected);
+  },
+
+  /**
    * Verifies the contact details sharing checkbox is unchecked on first load.
    *
    * @param {import('playwright').Page} page

@@ -17,14 +17,11 @@ Feature: 69873 Galileo - Atriis phone number is displayed on checkout when confi
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "GRU"
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
-    Then the trip status should be "Pending booking"
+    Then the booking status should be "Pending booking"
     When I add a credit card as payment method
-    And I accept Terms & Conditions
-    And I click the proceed to checkout button
-    # TODO: verify the Atriis phone number parts ("888", "666", "76876") are displayed on the checkout page for the GDS profile
-    #       proposed step: Then the Atriis phone number "888 666 76876" should be displayed on checkout for the GDS profile
-    #       DSL method to add: Checkout.verifyGDSProfilePhoneNumber(page, countryCode, areaCode, number)
+    And I proceed to checkout
+    And I wait for booking details in checkout
+    Then the contact telephone on checkout should contain "888 666 76876"
     When I navigate to cart from checkout
-    Then the trip status should be "On hold"
+    Then the booking status should be "On hold"
     And I successfully cancel the trip
