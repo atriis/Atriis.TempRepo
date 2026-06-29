@@ -157,3 +157,15 @@ Given("I have added a guest traveler {string} {string} with user group {string}"
 Given("I add a third traveler named {string}", async function (travelerName) {
   throw new Error(`TODO: implement 'I add a third traveler named {string}' — add an additional traveler named ${travelerName}`);
 });
+
+Given(
+  /^I have added a random traveler from the list: (.+)$/,
+  async function (nameList) {
+    const names = nameList.split(",").map((n) => n.trim());
+    const selectedName = names[Math.floor(Math.random() * names.length)];
+    logger.info("Adding randomly selected traveler from list", { selectedName, nameList });
+    const result = await Search.addTravelerByName(this.page, selectedName);
+    expect(result.starIconVisible, "Star icon should be visible after adding traveler by name").toBe(true);
+    this.selectedTravelerCount = result.selectedTravelerCount;
+  }
+);
