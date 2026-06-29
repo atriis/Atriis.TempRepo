@@ -18,8 +18,8 @@ Feature: 31331 - Optional services are loading on cart page
     And I have added myself as the traveler
     When I search for a one way flight from "LHR" to "FRA"
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
+    And the booking status should be "Pending booking"
     Then the "Frequent Flyer" section should be visible in the extras
     And the "Meal" section should be visible in the extras
     And the "Seating" section should be visible in the extras
-    And I successfully cancel the trip
+    
