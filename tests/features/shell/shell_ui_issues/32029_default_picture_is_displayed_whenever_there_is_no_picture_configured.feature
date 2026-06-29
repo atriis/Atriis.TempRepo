@@ -14,5 +14,5 @@ Feature: 32029 - Default picture is displayed whenever there is no picture confi
 
   Scenario: Default picture is shown for a quick link product without a configured picture
     Given I am logged in as "testim@Quick.link"
-    #TODO When I hover over the quick link product card on the homepage
-    #TODO Then the default product picture should be displayed on the quick link card - check the html to see the default picture. we need to make sure we are validating the picture here
+    When I hover over the quick link product card on the homepage
+    Then the default product picture should be displayed on the quick link card
