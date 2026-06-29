@@ -15,16 +15,16 @@ Feature: 33937 - Line with product details is displayed after checkout
   Scenario: Hotel product details line is displayed on the trip overview after checkout
     Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added a random guest traveler
-    When I initiate a hotel search in "London, UK" for 1 night
-    And I click proceed button if visible
+    When I search for a hotel in "London, UK" for 1 night
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
-    And I wait for the first add to trip button to be visible in room level results
     And I add a refundable room to my cart
-    # TODO: fill_free_text_justification_in_cart_if_needed() — conditional OOP free-text justification only if "Out of policy" / "Please save your justification" appears.
-    #       Proposed step: When I fill in the OOP justification text "abc" if needed -> Cart.fillInOOPJustificationTextAndSaveIfNeeded(page, text)
-    And I accept Terms & Conditions
-    And I click the proceed to checkout button
-    And I complete the booking
-    # TODO: Making_sure_trip_overview_page_is_fully_loaded() — wait for the product details line showing nights (/Night/) on the trip overview.
-    #       Proposed step: Then the hotel product details line should be displayed in the trip overview -> Cart.verifyHotelNightsLineVisibleInTripOverview(page)
+    And I proceed to checkout
+    And I wait for booking details in checkout
+    When I click book and finalize button
+    And go to trip text is visible
+    Then line with product details is displayed after checkout with status "On hold"
+    And I click go to trip button
+    And the booking status should be "Confirmed"
     Then I successfully cancel the trip

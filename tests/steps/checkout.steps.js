@@ -159,6 +159,26 @@ When("I wait for booking details in checkout", async function () {
   await DynamicAndReferenceFields.waitForCheckoutBookingDetails(this.page);
 });
 
+When("I click book and finalize button", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
+  logger.info("Clicking Book and Finalize button");
+  await Checkout.clickBookAndFinalizeButton(this.page);
+});
+
+Then("go to trip text is visible", async function () {
+  logger.info("Verifying Go to trip button is visible on booking success page");
+  await Checkout.waitForGoToTripButtonVisible(this.page);
+});
+
+Then("line with product details is displayed after checkout with status {string}", async function (status) {
+  logger.info("Verifying product details line is displayed after checkout", { status });
+  await Checkout.verifyProductDetailsLineDisplayedWithStatus(this.page, status);
+});
+
+When("I click go to trip button", async function () {
+  logger.info("Clicking Go to trip button to navigate to trip overview");
+  await Checkout.clickGoToTripButton(this.page);
+});
+
 Then('"Yay! No additional details are required..." should not be displayed anywhere on checkout page', async function () {
   logger.info('Verifying "Yay! No additional details are required..." message is not displayed on checkout');
   await Checkout.verifyYayMessageNotVisible(this.page);

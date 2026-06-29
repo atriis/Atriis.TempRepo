@@ -61,6 +61,10 @@ const SELECTORS = {
   CHECKOUT_TOTAL_PRICE: '.price-summary .price-total .amount',
   CHECKOUT_SUMMARY_SECTION: '.trip-summary',
   CHECKOUT_SUMMARY_QUOTE_TITLE: '.trip-summary .summary-title',
+
+  // Booking-success page — product details line (booking-success.vue .quote-result card)
+  BOOKING_SUCCESS_PRODUCT_LINE: '.quote-result .quote-results__wrapper',
+  BOOKING_SUCCESS_PRODUCT_STATUS: '.quote-results__status.app-label--quote',
 };
 
 class CheckoutPage {
@@ -569,6 +573,30 @@ class CheckoutPage {
    */
   getNoAdditionalDetailsAlert() {
     return this.page.locator(SELECTORS.NO_ADDITIONAL_DETAILS_ALERT);
+  }
+
+  /**
+   * Waits for the "Go to trip" button to be visible on the booking-success page.
+   * @param {number} timeout
+   */
+  async waitForGoToTripButton(timeout = 60000) {
+    await this.getGoToTripButton().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Gets the first product details line on the booking-success page (.quote-results__wrapper).
+   * @returns {import('@playwright/test').Locator}
+   */
+  getBookingSuccessProductLine() {
+    return this.page.locator(SELECTORS.BOOKING_SUCCESS_PRODUCT_LINE).first();
+  }
+
+  /**
+   * Gets the status badge on the booking-success product details line (.quote-results__status.app-label--quote).
+   * @returns {import('@playwright/test').Locator}
+   */
+  getBookingSuccessProductStatus() {
+    return this.page.locator(SELECTORS.BOOKING_SUCCESS_PRODUCT_STATUS).first();
   }
 
   async verifyQuoteVisibleInCheckoutSummary(quoteName, { timeout = 15000 } = {}) {

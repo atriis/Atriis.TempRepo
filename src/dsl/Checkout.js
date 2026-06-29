@@ -506,6 +506,88 @@ const Checkout = {
   },
 
   // ========================================
+  // BOOKING SUCCESS — STEP-BY-STEP FLOW
+  // ========================================
+
+  /**
+   * Clicks the "Book and Finalize" button on the checkout page.
+   * Assumes booking details are already visible (preceded by "I wait for booking details in checkout").
+   * Includes a brief stability wait before interacting, matching the pattern in bookTripWithoutNavigatingToTripOverview.
+   */
+  async clickBookAndFinalizeButton(page) {
+    if (!page) throw new Error('page is required');
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    // Intentional wait required for UI stability before interacting, so test is not flaky
+    await page.waitForTimeout(4000);
+    await checkoutPage.waitForBookAndFinalizeButton();
+    logger.debug('Clicking Book and Finalize button');
+    await checkoutPage.clickBookAndFinalizeButton();
+  },
+
+  /**
+   * Waits for the "Go to trip" button to be visible on the booking-success page.
+   * Confirms the booking completed and the success screen rendered.
+   */
+  async waitForGoToTripButtonVisible(page) {
+    if (!page) throw new Error('page is required');
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    try {
+      await checkoutPage.waitForGoToTripButton();
+      logger.info('"Go to trip" button is visible on booking success page');
+    } catch (err) {
+      throw new Error(
+        `[Checkout.waitForGoToTripButtonVisible] "Go to trip" button did not appear after booking. ` +
+        `The booking may not have completed successfully. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the product details line on the booking-success page is visible and shows the expected status.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedStatus - Expected status text (e.g. "Confirmed")
+   */
+  async verifyProductDetailsLineDisplayedWithStatus(page, expectedStatus) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedStatus !== 'string' || !expectedStatus)
+      throw new Error(`"expectedStatus" must be a non-empty string, got: ${typeof expectedStatus}`);
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    try {
+      const productLine = checkoutPage.getBookingSuccessProductLine();
+      await productLine.waitFor({ state: 'visible', timeout: 30000 });
+      const statusBadge = checkoutPage.getBookingSuccessProductStatus();
+      await expect(
+        statusBadge,
+        `Product details line status should be "${expectedStatus}" on the booking success page`,
+      ).toContainText(expectedStatus, { ignoreCase: true });
+      logger.info('Product details line is visible with expected status', { expectedStatus });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Checkout.verifyProductDetailsLineDisplayedWithStatus] Product details line not visible or status ` +
+        `"${expectedStatus}" not found on the booking success page. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Clicks the "Go to trip" button on the booking-success page and waits for the trip overview to load.
+   */
+  async clickGoToTripButton(page) {
+    if (!page) throw new Error('page is required');
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await checkoutPage.clickGoToTrip();
+      await cartPage.waitForTripOverviewTitle();
+    } catch (err) {
+      throw new Error(
+        `[Checkout.clickGoToTripButton] Failed to navigate to trip overview after clicking "Go to trip". Original: ${err.message}`
+      );
+    }
+  },
+
+  // ========================================
   // BOOKING STATUS
   // ========================================
 
