@@ -16,5 +16,5 @@ Feature: 45663 - Trip monitor user group is displayed on the trip monitor
     Given I am logged in as "ruimariano@amadeus.com"
     Then the welcome heading should contain "Welcome"
     When I navigate to the trips page
-    And I switch to the in-travel trips tab
-    # TODO: Then the user group label should be visible on the first in-travel trip — assert the "Group" label is visible inside .booker-consultant-container on the first in-travel trip row; proposed DSL: Trips.verifyUserGroupLabelVisibleOnFirstInTravelTrip(page)
+    And I click active trips tab
+    Then the user group label should be visible on the first trip
