@@ -14,6 +14,9 @@ const SELECTORS = {
 
   FIRST_TRIP_USER_GROUP_CONTAINER:
     '.trip-preview:first-of-type .booker-consultant-container',
+
+  MY_TRIPS_ONLY_CHECKBOX:
+    '.trip-monitor-filter .el-checkbox:has-text("My trips only")',
 };
 
 class TripsPage {
@@ -62,6 +65,18 @@ class TripsPage {
     } catch (err) {
       throw new Error(
         `[TripsPage.getFirstTripUserGroupContainer] Could not find the user group container (${SELECTORS.FIRST_TRIP_USER_GROUP_CONTAINER}) on the first trip. The trip may have no UserGroupName or the active trips tab was not switched. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getMyTripsOnlyCheckbox({ timeout = 30000 } = {}) {
+    const checkbox = this.page.locator(SELECTORS.MY_TRIPS_ONLY_CHECKBOX).first();
+    try {
+      await checkbox.waitFor({ state: 'visible', timeout });
+      return checkbox;
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.getMyTripsOnlyCheckbox] "My trips only" checkbox not found (${SELECTORS.MY_TRIPS_ONLY_CHECKBOX}) within ${timeout}ms. The trips filter panel may not be rendered or the account lacks CanViewAllCorporateTrips permission. Original: ${err.message}`
       );
     }
   }

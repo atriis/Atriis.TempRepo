@@ -1,7 +1,6 @@
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
-const { expect } = require("@playwright/test");
 const { Trips } = require("@dsl");
 const logger = require("@utils/logger").child("Trips");
 
@@ -23,11 +22,15 @@ When("I click active trips tab", async function () {
 
 Then("the trips page should be loaded", async function () {
   logger.info("Verifying trips page is loaded");
-  const title = await this.page.title();
-  expect(title).not.toBe("");
+  await Trips.verifyTripsPageLoaded(this.page);
 });
 
 Then("the user group label should be visible on the first trip", async function () {
   logger.info("Verifying user group label is visible on the first trip");
   await Trips.verifyUserGroupLabelVisibleOnFirstTrip(this.page);
+});
+
+Then('the {string} filter checkbox should be visible on the trips page', async function (checkboxLabel) {
+  logger.debug(`Verifying filter checkbox "${checkboxLabel}" is visible on the trips page`);
+  await Trips.verifyMyTripsOnlyCheckboxVisible(this.page);
 });
