@@ -126,6 +126,7 @@ const SELECTORS = {
 
   // Trip title and destination selectors (cart-info-bar.vue)
   TRIP_TITLE: '.cart-info-bar h4.trip-title',
+  TRIP_ID_DISPLAY: '.cart-info-bar p.trip-id',
   TRIP_DESTINATION_INFO: '.cart-info-bar .info-wrapper p',
 
   // Quote title selector (base-quote-header.vue)
@@ -2974,6 +2975,21 @@ class CartPage {
   async getTripTitleText({ timeout = 10000 } = {}) {
     const el = this.page.locator(SELECTORS.TRIP_TITLE).first();
     await el.waitFor({ state: 'visible', timeout });
+    return (await el.innerText()).trim();
+  }
+
+  /**
+   * Gets the numeric trip ID shown below the trip title in the cart info bar (e.g. "12345").
+   * @param {number} [timeout=30000]
+   * @returns {Promise<string>}
+   */
+  async getTripIdText({ timeout = 30000 } = {}) {
+    const el = this.page.locator(SELECTORS.TRIP_ID_DISPLAY).first();
+    try {
+      await el.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(`[CartPage.getTripIdText] Trip ID element not visible in cart info bar. Original: ${err.message}`);
+    }
     return (await el.innerText()).trim();
   }
 

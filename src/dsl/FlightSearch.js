@@ -183,6 +183,22 @@ const FlightSearch = {
   },
 
   /**
+   * Clicks the flight search button when navigating from the cart to add a second flight.
+   * Uses a primary-class-specific selector to avoid strict-mode failures caused by multiple
+   * .search-btn elements (hotel cross-sell, overview) rendered alongside the flight search form.
+   * @param {import('playwright').Page} page
+   */
+  async clickSearchButtonFromCart(page) {
+    if (!page) throw new Error('page is required');
+
+    logger.info('Clicking the flight search button from cart context');
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.waitAndClickFlightSearchButtonFromCart();
+
+    return { searched: true };
+  },
+
+  /**
    * Search a random flight (one-way or round-trip) by region
    * @param {Object} page - Playwright page object
    * @param {Object} options - { region, tripType, searchType, departureIndex, returnIndex }

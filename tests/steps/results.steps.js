@@ -44,6 +44,37 @@ Then("the conflicting quote modal should be visible", async function () {
   await Results.verifyConflictQuoteModalVisible(this.page);
 });
 
+When("I extract and store the trip number from the conflicting quote modal", async function () {
+  logger.info("Extracting trip number from conflicting quote modal");
+  this.storedConflictingTripId = await Results.extractTripNumberFromConflictingQuoteModal(this.page);
+  logger.info("Stored conflicting trip ID", { tripId: this.storedConflictingTripId });
+});
+
+When("I click the trip number in the conflicting quote modal", async function () {
+  logger.info("Clicking trip number link in conflicting quote modal");
+  this.newTabPage = await Results.clickTripNumberInConflictingQuoteModal(this.page);
+  logger.info("New tab opened for conflicting trip cart");
+});
+
+Then("a new tab should have been opened", async function () {
+  logger.info("Verifying a new tab was opened");
+  expect(
+    this.newTabPage,
+    "Expected a new tab to have been opened after clicking the trip number in the conflicting quote modal",
+  ).toBeTruthy();
+});
+
+Then("the trip number in the new tab cart should match the stored conflicting quote trip number", async function () {
+  if (!this.newTabPage) {
+    throw new Error("[Results] Cannot verify trip number in cart: no new tab page stored. Ensure the click step ran first.");
+  }
+  if (!this.storedConflictingTripId) {
+    throw new Error("[Results] Cannot verify trip number in cart: no trip ID stored. Ensure the extract step ran first.");
+  }
+  logger.info("Verifying trip number in new tab cart matches stored ID", { storedTripId: this.storedConflictingTripId });
+  await Results.verifyTripNumberInNewTabMatchesStored(this.newTabPage, this.storedConflictingTripId);
+});
+
 When("I select and add round trip journey to trip", async function () {
   logger.info("Selecting round trip journey and adding to trip");
   await Results.clickSelectButtonRoundTripAndClickAddToTrip(this.page);

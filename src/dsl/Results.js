@@ -93,6 +93,54 @@ const Results = {
     expect(visible, 'Expected the conflicting quote modal to be visible').toBe(true);
   },
 
+  /**
+   * Reads and returns the trip number displayed in the conflicting quotes modal.
+   * Stores nothing — the caller (step) is responsible for persisting the value.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} Trip ID as a string (e.g. "12345")
+   */
+  async extractTripNumberFromConflictingQuoteModal(page) {
+    if (!page) throw new Error('page is required');
+    const resultsPage = getPageObject(page, ResultsPage);
+    return await resultsPage.getConflictingQuoteModalTripNumber();
+  },
+
+  /**
+   * Clicks the trip number link inside the conflicting quotes modal.
+   * The app opens the trip cart in a new browser tab.
+   * Returns the new tab's Page object so the caller can store and use it.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<import('playwright').Page>} The newly opened cart tab
+   */
+  async clickTripNumberInConflictingQuoteModal(page) {
+    if (!page) throw new Error('page is required');
+    const resultsPage = getPageObject(page, ResultsPage);
+    return await resultsPage.clickConflictingQuoteModalTripNumber();
+  },
+
+  /**
+   * Verifies that the trip ID shown in the new-tab cart matches the stored conflicting trip ID.
+   * Reads the numeric trip-id element from the cart info bar.
+   * @param {import('playwright').Page} newTabPage - The page opened in the new tab
+   * @param {string} storedTripId - Trip ID captured from the conflicting quotes modal
+   * @returns {Promise<void>}
+   */
+  async verifyTripNumberInNewTabMatchesStored(newTabPage, storedTripId) {
+    if (!newTabPage) throw new Error('"newTabPage" is required');
+    if (!storedTripId || typeof storedTripId !== 'string') {
+      throw new Error(`"storedTripId" must be a non-empty string, got: ${typeof storedTripId}`);
+    }
+
+    const { CartPage } = require('@pages/CartPage');
+    const cartPage = getPageObject(newTabPage, CartPage);
+    const tripIdInCart = await cartPage.getTripIdText();
+
+    expect(
+      tripIdInCart,
+      `Expected trip ID in cart ("${tripIdInCart}") to match stored conflicting quote trip ID ("${storedTripId}")`,
+    ).toBe(storedTripId);
+  },
+
   // ===== JOURNEY SELECTION WORKFLOWS =====
 
   /**

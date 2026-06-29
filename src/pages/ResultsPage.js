@@ -32,6 +32,7 @@ const SELECTORS = {
   FILTER_VIEW_MORE_LABEL: '.view-more-btn',
   FILTER_VIEW_MORE_AIRLINES_EXPANDER: '.carriers-filter .view-more-btn',
   CONFLICT_MODAL_PROCEED: '.conflicting-quotes-dialog .btn:has-text("Proceed")',
+  CONFLICT_MODAL_TRIP_LINK: '.conflicting-quotes-dialog .cart-link',
   EDIT_SEARCH_BUTTON_NAME: /^Edit(?: search)?$/i,
   SHARE_BAR_CLOSE_BUTTON: '.share-bar span.material-symbols-outlined.is-clickable',
 };
@@ -689,6 +690,51 @@ class ResultsPage {
 
     await proceedButton.waitFor({ state: 'visible', timeout });
     return true;
+  }
+
+  /**
+   * Reads the trip number shown in the conflicting quotes modal.
+   * @param {number} [timeout=30000]
+   * @returns {Promise<string>} The trip ID as a string (e.g. "12345")
+   */
+  async getConflictingQuoteModalTripNumber(timeout = 30000) {
+    const tripLink = this.page.locator(SELECTORS.CONFLICT_MODAL_TRIP_LINK).first();
+    try {
+      await tripLink.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(`[ResultsPage.getConflictingQuoteModalTripNumber] Trip number link not visible in conflicting quotes modal. Modal may not be open. Original: ${err.message}`);
+    }
+    return (await tripLink.innerText()).trim();
+  }
+
+  /**
+   * Clicks the trip number link inside the conflicting quotes modal.
+   * The click opens the trip cart in a new browser tab.
+   * Registers the new-page listener BEFORE clicking to avoid a race condition.
+   * @param {number} [timeout=30000]
+   * @returns {Promise<import('playwright').Page>} The newly opened tab
+   */
+  async clickConflictingQuoteModalTripNumber(timeout = 30000) {
+    const tripLink = this.page.locator(SELECTORS.CONFLICT_MODAL_TRIP_LINK).first();
+    try {
+      await tripLink.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(`[ResultsPage.clickConflictingQuoteModalTripNumber] Trip number link not visible in conflicting quotes modal. Original: ${err.message}`);
+    }
+
+    const context = this.page.context();
+    const newPagePromise = context.waitForEvent('page', { timeout: 15000 });
+    await tripLink.click();
+
+    let newPage;
+    try {
+      newPage = await newPagePromise;
+    } catch (err) {
+      throw new Error(`[ResultsPage.clickConflictingQuoteModalTripNumber] No new tab opened after clicking the trip number. Expected the app to open the trip cart in a new tab. Original: ${err.message}`);
+    }
+
+    await newPage.waitForLoadState('domcontentloaded', { timeout: 30000 });
+    return newPage;
   }
 
   /**

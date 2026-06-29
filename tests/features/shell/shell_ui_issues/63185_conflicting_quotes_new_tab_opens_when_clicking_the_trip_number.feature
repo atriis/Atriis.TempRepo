@@ -18,9 +18,12 @@ Feature: 63185 - Conflicting Quotes - New tab opens when clicking the trip numbe
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "BKK"
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
+    And the booking status should be "Pending booking"
     And I click to add a flight to my trip from cart
-    And I add the first flight to cart
+    And I click the search button from the cart
+    And I add the first result to trip
     Then the conflicting quote modal should be visible
-    When I navigate to the trip cart
-    Then the quote destination should contain "Bangkok"
+    And I extract and store the trip number from the conflicting quote modal
+    When I click the trip number in the conflicting quote modal
+    Then a new tab should have been opened
+    And the trip number in the new tab cart should match the stored conflicting quote trip number

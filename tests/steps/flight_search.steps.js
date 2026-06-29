@@ -49,6 +49,11 @@ When("I click the search button", async function () {
   await FlightSearch.clickSearchButton(this.page);
 });
 
+When("I click the search button from the cart", async function () {
+  logger.info('Clicking the flight search button from cart context');
+  await FlightSearch.clickSearchButtonFromCart(this.page);
+});
+
 When('I search for a round trip flight from {string} to {string} with preferred carrier {string}', async function (from, to, carrier) {
   logger.info('Searching for round trip flight with preferred carrier', { from, to, carrier });
   await FlightSearch.searchFlightRoundTripWithPreferredCarrier(this.page, { from, to }, carrier);

@@ -18,6 +18,7 @@ const SELECTORS = {
 
   // Search and guest management
   SEARCH_BUTTON: "button.search-btn",
+  FLIGHT_SEARCH_BUTTON_PRIMARY: "button.btn--primary.search-btn",
 
   // Guest information form
   FIRST_NAME_INPUT: "[placeholder='First Name']",
@@ -762,6 +763,26 @@ class SearchPage {
         return btn && !btn.disabled && !btn.classList.contains("is-disabled");
       },
       SELECTORS.SEARCH_BUTTON,
+      { timeout: 10000 }
+    );
+    await searchButton.click();
+  }
+
+  /**
+   * Waits for the primary flight search button (btn--primary.search-btn) to be enabled
+   * and clicks it. Used when navigating from the cart to add a second flight — in that
+   * context multiple .search-btn elements are present (hotel, overview, flight) and the
+   * generic SEARCH_BUTTON selector would fail in strict mode.
+   */
+  async waitAndClickFlightSearchButtonFromCart() {
+    const searchButton = this.page.locator(SELECTORS.FLIGHT_SEARCH_BUTTON_PRIMARY);
+    await searchButton.waitFor({ state: 'visible', timeout: 30000 });
+    await this.page.waitForFunction(
+      (selector) => {
+        const btn = document.querySelector(selector);
+        return btn && !btn.disabled && !btn.classList.contains("is-disabled");
+      },
+      SELECTORS.FLIGHT_SEARCH_BUTTON_PRIMARY,
       { timeout: 10000 }
     );
     await searchButton.click();
