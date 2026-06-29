@@ -20,6 +20,11 @@ When("I search for a car at {string}", async function (place) {
   await CarSearch.searchCarByPlace(this.page, place);
 });
 
+When("I submit a car search at {string} without waiting for results", async function (place) {
+  logger.info("Submitting car search without waiting for results (search expected to be blocked)", { place });
+  await CarSearch.submitCarSearchWithoutWaitingForResults(this.page, place);
+});
+
 When("I search for a car at {string} with rental agency {string} and {int} months ahead", async function (place, agencyName, monthsAhead) {
   logger.info("Searching for car with agency", { place, agencyName, monthsAhead });
   await CarSearch.searchCarByPlaceAndRentalAgency(this.page, place, agencyName, monthsAhead);

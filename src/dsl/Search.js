@@ -574,6 +574,66 @@ const Search = {
       throw new Error(`[Search.verifyTravelerCheckboxVisible] Checkbox "${labelText}" not visible in edit-traveler dialog: ${err.message}`);
     }
   },
+
+  /**
+   * Waits until the named traveler's chip is visible in the travelers list.
+   * The chip uses .traveler-name.black to indicate a confirmed named traveler.
+   * @param {import('playwright').Page} page
+   * @param {string} name - Full name to look for (e.g. "Gadi Cohen")
+   */
+  async verifyTravelerNameVisible(page, name) {
+    if (!page) throw new Error('[Search.verifyTravelerNameVisible] "page" is required.');
+    if (!name || typeof name !== 'string') {
+      throw new Error(`[Search.verifyTravelerNameVisible] "name" must be a non-empty string, got: ${typeof name} (${JSON.stringify(name)})`);
+    }
+
+    logger.info('[Search.verifyTravelerNameVisible] Verifying traveler name is visible in travelers list', { name });
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.waitForTravelerNameVisible(name);
+    } catch (err) {
+      throw new Error(`[Search.verifyTravelerNameVisible] Traveler "${name}" not visible in the travelers list: ${err.message}`);
+    }
+  },
+
+  /**
+   * Adds an empty traveler slot by clicking the add-traveler button and closing
+   * the modal without selecting anyone. The slot is preserved in the store because
+   * numberOfPassengers was incremented before the modal opened.
+   * @param {import('playwright').Page} page
+   */
+  async addEmptyTravelerSlot(page) {
+    if (!page) throw new Error('[Search.addEmptyTravelerSlot] "page" is required.');
+
+    logger.info('[Search.addEmptyTravelerSlot] Adding empty traveler slot');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.clickAddEmptyTravelerSlot();
+    } catch (err) {
+      throw new Error(`[Search.addEmptyTravelerSlot] Failed to add empty traveler slot: ${err.message}`);
+    }
+  },
+
+  /**
+   * Verifies that only the empty traveler slot is highlighted in red (.is-danger) while
+   * named traveler slots are not. Must be called right after a search has been submitted
+   * with an empty traveler slot present.
+   * @param {import('playwright').Page} page
+   */
+  async verifyOnlyEmptyTravelerSlotIsRed(page) {
+    if (!page) throw new Error('[Search.verifyOnlyEmptyTravelerSlotIsRed] "page" is required.');
+
+    logger.info('[Search.verifyOnlyEmptyTravelerSlotIsRed] Verifying only empty traveler slot is highlighted');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.verifyOnlyEmptyTravelerSlotIsRed();
+    } catch (err) {
+      throw new Error(`[Search.verifyOnlyEmptyTravelerSlotIsRed] ${err.message}`);
+    }
+  },
 };
 
 module.exports = Search;

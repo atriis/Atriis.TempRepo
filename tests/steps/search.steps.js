@@ -51,7 +51,22 @@ Given("I have added a random guest traveler with phone type {string}", async fun
 
 // ===== WHEN STEPS =====
 
+When("I add an empty traveler slot", async function () {
+  logger.info("Adding empty traveler slot (click add-traveler then close without selecting)");
+  await Search.addEmptyTravelerSlot(this.page);
+});
+
 // ===== THEN STEPS =====
+
+Then("the traveler name {string} should be visible in the travelers list", async function (name) {
+  logger.info("Verifying traveler name is visible in travelers list", { name });
+  await Search.verifyTravelerNameVisible(this.page, name);
+});
+
+Then("only the empty traveler slot should be highlighted in red", async function () {
+  logger.info("Verifying only the empty traveler slot is highlighted and named travelers are not in red");
+  await Search.verifyOnlyEmptyTravelerSlotIsRed(this.page);
+});
 
 Then("the search title should contain {string}", async function (expectedText) {
   logger.info("Validating search title contains text", { expectedText });

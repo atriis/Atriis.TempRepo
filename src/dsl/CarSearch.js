@@ -195,6 +195,65 @@ const CarSearch = {
   },
 
   /**
+   * Fills the car search form and clicks Search, WITHOUT waiting for car results.
+   *
+   * Used by regression scenarios where the search is intentionally expected to be blocked —
+   * e.g. when an empty traveler slot is present, trip-index.handleSearch() emits
+   * showTravelersErrorTooltip and returns without navigating, so no results ever load.
+   * Polling for results (as searchCarByPlace does) would time out; this method stops right
+   * after the Search click so the caller can assert on the resulting validation state.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string|Object} placeInput - Location or location object
+   * @param {number} monthsAhead - Number of months ahead to search
+   * @param {Object} options
+   * @param {number} options.pickupIndex - Pickup date index (>= 0)
+   * @param {number} options.dropoffIndex - Drop-off date index (>= 0)
+   */
+  async submitCarSearchWithoutWaitingForResults(
+    page,
+    placeInput = carLocations.defaultLocation,
+    monthsAhead = 3,
+    {
+      pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
+      dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
+    } = {},
+  ) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (pickupIndex < 0) {
+      throw new Error(`pickupIndex must be >= 0, got ${pickupIndex}`);
+    }
+    if (dropoffIndex < 0) {
+      throw new Error(`dropoffIndex must be >= 0, got ${dropoffIndex}`);
+    }
+
+    const place = resolveLocation(placeInput, ["place", "location"], carLocations);
+
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await carSearchPage.clickCarTab();
+    await searchPage.fillInOrField(place, 1);
+
+    // Pickup date
+    await searchPage.clickPickupDateField();
+    await searchPage.clickCalendarNextArrow(monthsAhead);
+    await selectDatesByNthAvailable(page, { startIndex: pickupIndex, endIndex: null });
+
+    // Drop-off date
+    await carSearchPage.clickDropoffDateField();
+    await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
+    await selectDatesByNthAvailable(page, { startIndex: dropoffIndex, endIndex: null });
+
+    // Submit — do NOT wait for results; the search is expected to be blocked by validation.
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex };
+  },
+
+  /**
    * Searches for a car by place and rental agency.
    * @param {Object} page - Playwright page instance
    * @param {string|Object} placeInput - Location or location object

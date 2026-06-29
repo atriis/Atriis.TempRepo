@@ -123,6 +123,9 @@ const SELECTORS = {
   DEPARTURE_PLACEHOLDER: "input[placeholder*='Depart']",
   RETURN_PLACEHOLDER: "input[placeholder*='Return']",
   PICK_UP_DATE_INPUT: "[placeholder='Pick-up Date']", //Same locator used for Cars and GroundScope/Transferz
+
+  // Traveler slot validation state (.is-danger applied when search is attempted with an empty slot)
+  TRAVELER_SLOT_DANGER: '.trip-traveler-tag.is-danger',
 };
 
 /**
@@ -1207,6 +1210,106 @@ class SearchPage {
     const option = this.page.locator(SELECTORS.EDIT_TRAVELER_OPTION).first();
     await option.waitFor({ state: 'visible', timeout: 30000 });
     await option.click();
+  }
+
+  /**
+   * Waits until a named traveler's chip is visible in the travelers list.
+   * The named chip uses .traveler-name.black; the search is case-insensitive via hasText.
+   * @param {string} name - Full name to look for (e.g. "Gadi Cohen")
+   */
+  async waitForTravelerNameVisible(name) {
+    if (!name || typeof name !== 'string') {
+      throw new Error(`[SearchPage.waitForTravelerNameVisible] "name" must be a non-empty string, got: ${typeof name}`);
+    }
+    const locator = this.page.locator(SELECTORS.SELECTED_TRAVELER_NAME).filter({ hasText: name });
+    try {
+      await locator.waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.waitForTravelerNameVisible] Traveler name "${name}" not visible in the travelers list ` +
+        `(selector: ${SELECTORS.SELECTED_TRAVELER_NAME}). Ensure the traveler was added successfully. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Adds an empty traveler slot by clicking the add-traveler button and immediately
+   * closing the modal without selecting anyone. The empty slot persists in the Vuex store
+   * because numberOfPassengers is incremented by addEmptyTraveler() before the modal opens.
+   * The slot is not visible on the search-page chip list immediately (the loading state
+   * hides it briefly); it becomes visible in the cart-info-bar avatar list after navigation.
+   */
+  async clickAddEmptyTravelerSlot() {
+    await this.clickAddTravelerButton();
+    await this.closeVisibleEditTravelerModal();
+  }
+
+  /**
+   * Verifies that only the empty traveler slot is highlighted in red (.is-danger on its
+   * trip-traveler-tag) while named traveler slots are NOT highlighted.
+   *
+   * This checks the regression where all travelers' names were shown in red when one slot
+   * was empty — only the unnamed slot should receive the .is-danger class.
+   * Must be called immediately after a search has been submitted with an empty traveler slot
+   * (the search is blocked and showTravelersErrorTooltip applies .is-danger for ~5s).
+   */
+  async verifyOnlyEmptyTravelerSlotIsRed() {
+    const dangerSlots = this.page.locator(SELECTORS.TRAVELER_SLOT_DANGER);
+
+    // The validation fires asynchronously after the search click — wait for it to appear.
+    try {
+      await dangerSlots.first().waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.verifyOnlyEmptyTravelerSlotIsRed] No traveler slot became highlighted in red ` +
+        `(selector: ${SELECTORS.TRAVELER_SLOT_DANGER}) after the search was submitted. Expected the empty slot to be ` +
+        `flagged via showTravelersErrorTooltip. The validation may not have fired or has already reset. Original: ${err.message}`
+      );
+    }
+
+    // The .is-danger class is removed ~5s after the search click (errorTooltipVisible resets via
+    // setTimeout). Capture every traveler tag's state in ONE DOM snapshot so all checks read from
+    // the same instant — serial round-trips could straddle the reset and report a false regression.
+    // A named slot is identified by a confirmed name node (.traveler-name.black); the empty slot has none.
+    const tags = await this.page.locator(SELECTORS.TRIP_TRAVELER_TAG).evaluateAll((nodes) =>
+      nodes.map((node) => ({
+        isDanger: node.classList.contains('is-danger'),
+        hasNamedTraveler: !!node.querySelector('.traveler-name.black'),
+        text: (node.textContent || '').replace(/\s+/g, ' ').trim(),
+      }))
+    );
+
+    const dangerTags = tags.filter((t) => t.isDanger);
+    if (dangerTags.length === 0) {
+      throw new Error(
+        `[SearchPage.verifyOnlyEmptyTravelerSlotIsRed] No traveler slot had .is-danger in the snapshot ` +
+        `(selector: ${SELECTORS.TRAVELER_SLOT_DANGER}). Expected exactly 1 empty slot highlighted in red; ` +
+        `the highlight may have reset before capture.`
+      );
+    }
+    if (dangerTags.length > 1) {
+      throw new Error(
+        `[SearchPage.verifyOnlyEmptyTravelerSlotIsRed] ${dangerTags.length} traveler slots have .is-danger; expected exactly 1. ` +
+        `This indicates the regression where named travelers are also highlighted in red.`
+      );
+    }
+
+    // The single danger slot must be the EMPTY one — never a named traveler.
+    if (dangerTags[0].hasNamedTraveler) {
+      throw new Error(
+        `[SearchPage.verifyOnlyEmptyTravelerSlotIsRed] A NAMED traveler slot "${dangerTags[0].text}" has the .is-danger class. ` +
+        `Only the empty slot should be highlighted. This confirms the regression.`
+      );
+    }
+
+    // At least one named traveler slot must remain un-highlighted.
+    const namedUnhighlighted = tags.filter((t) => t.hasNamedTraveler && !t.isDanger);
+    if (namedUnhighlighted.length === 0) {
+      throw new Error(
+        `[SearchPage.verifyOnlyEmptyTravelerSlotIsRed] No named traveler slots remained un-highlighted. ` +
+        `Expected the named travelers (e.g. Shani Cohen, Gadi Cohen) to keep their normal styling.`
+      );
+    }
   }
 
   /**
