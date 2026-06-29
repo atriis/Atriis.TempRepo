@@ -236,6 +236,27 @@ When("I search for a multi-city flight with legs {string} and {string} with para
   await FlightSearch.searchFlightMultiCityWithParallelCar(this.page, legs);
 });
 
+When("I search for a multi-city flight with legs {string} and {string} with cabin class {string} without clicking search button", async function (leg1, leg2, cabinClass) {
+  const parseLeg = (leg) => {
+    const parts = leg.toUpperCase().split('-');
+    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
+    return { from: parts[0], to: parts[1] };
+  };
+  const legs = [leg1, leg2].map(parseLeg);
+  logger.info('Setting up multi-city flight with cabin class without clicking search', { legs, cabinClass });
+  await FlightSearch.setupMultiCityFlightWithCabinClassWithoutSearch(this.page, legs, cabinClass);
+});
+
+Then("the search type should be {string}", async function (searchType) {
+  logger.info('Verifying search type is selected', { searchType });
+  await FlightSearch.verifySearchTypeSelected(this.page, searchType);
+});
+
+When("I remove the last flight leg from the multi-city search", async function () {
+  logger.info('Removing the last flight leg from the multi-city search');
+  await FlightSearch.removeLastFlightLeg(this.page);
+});
+
 When("I search for a round trip flight from {string} to {string} with advanced search and return date type {string} and time {string} and parallel hotel", async function (from, to, returnDateType, returnFlightTime) {
   logger.info('Searching for advanced round trip flight with parallel hotel', { from, to, returnDateType, returnFlightTime });
   await FlightSearch.searchRoundTripAdvanced(this.page, from, to, {

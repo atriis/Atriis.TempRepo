@@ -1401,6 +1401,108 @@ const FlightSearch = {
     await flightSearchPage.uncheckParallelHotelSearch();
     await flightSearchPage.uncheckParallelCarSearch();
   },
+
+  /**
+   * Sets up a multi-city flight search with a specific cabin class for all legs
+   * without clicking the search button. Used to assert UI state changes
+   * (e.g. search type auto-switching to "By schedule") before the search is submitted.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Array<{from: string, to: string}>} legs - At least 2 {from, to} objects
+   * @param {string} cabinClass - Cabin class label applied to every leg, e.g. "Business"
+   * @returns {Promise<{setup: boolean, legs: Array, cabinClass: string}>}
+   */
+  async setupMultiCityFlightWithCabinClassWithoutSearch(page, legs, cabinClass) {
+    if (!page) throw new Error('[FlightSearch.setupMultiCityFlightWithCabinClassWithoutSearch] "page" is required.');
+    if (!Array.isArray(legs) || legs.length < 2) {
+      throw new Error('legs must be an array of at least 2 {from, to} objects, got: ' + JSON.stringify(legs));
+    }
+    if (!cabinClass || typeof cabinClass !== 'string') {
+      throw new Error('cabinClass must be a non-empty string, got: ' + cabinClass);
+    }
+
+    logger.info('Setting up multi-city flight with cabin class (no search click)', { legs, cabinClass });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectMultiCityTrip();
+    await searchPage.waitForMultiCitySection();
+
+    const currentRows = await page.locator('.multi-city-line').count();
+    for (let i = currentRows; i < legs.length; i++) {
+      await searchPage.clickAddFlightRowButton();
+    }
+
+    for (let i = 0; i < legs.length; i++) {
+      const { from, to } = legs[i];
+      await searchPage.fillMultiCityLeg(from, to, i);
+      await searchPage.openMultiCityDatePickerAtIndex(i);
+      await searchPage.clickCalendarNextArrow();
+      await selectDatesByNthAvailable(page, {
+        startIndex: SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX + i * 3,
+        endIndex: null,
+      });
+      // Dismiss any open date-picker panel before clicking the cabin-class dropdown.
+      // El Plus normally closes on date commit, but the portal may linger during fast
+      // sequential leg fills — pressing Escape is the idiomatic close signal.
+      await page.keyboard.press('Escape');
+      await searchPage.selectFlightClassForLeg(cabinClass, i);
+    }
+
+    return { setup: true, legs, cabinClass };
+  },
+
+  /**
+   * Asserts that a specific search-type radio button is currently selected.
+   * Polls for up to 10 seconds to handle Vue's async reactivity when the search
+   * type switches automatically (e.g. after setting cabin class in multi-city).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} searchType - Visible radio label: "Complete trip" or "By schedule"
+   * @returns {Promise<{searchType: string, selected: boolean}>}
+   */
+  async verifySearchTypeSelected(page, searchType) {
+    if (!page) throw new Error('[FlightSearch.verifySearchTypeSelected] "page" is required.');
+    if (!searchType || typeof searchType !== 'string') {
+      throw new Error('[FlightSearch.verifySearchTypeSelected] "searchType" must be a non-empty string, got: ' + typeof searchType);
+    }
+
+    logger.info('Verifying search type is selected', { searchType });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const { expect } = require('@playwright/test');
+
+    await expect
+      .poll(
+        async () => flightSearchPage.isSearchTypeSelected(searchType),
+        {
+          message: `Search type "${searchType}" should be selected. The search form auto-switches type based on cabin class and leg count.`,
+          timeout: 10000,
+        },
+      )
+      .toBe(true);
+
+    return { searchType, selected: true };
+  },
+
+  /**
+   * Removes the last flight leg from the multi-city search form.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{removed: boolean}>}
+   */
+  async removeLastFlightLeg(page) {
+    if (!page) throw new Error('[FlightSearch.removeLastFlightLeg] "page" is required.');
+
+    logger.info('Removing the last flight leg from multi-city search');
+
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.clickRemoveLastFlightLeg();
+
+    return { removed: true };
+  },
 };
 
 module.exports = FlightSearch;

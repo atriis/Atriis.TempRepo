@@ -85,6 +85,8 @@ const SELECTORS = {
   MULTI_CITY_AIRPORT_AUTOCOMPLETE: '.airport-autocomplete',
   MULTI_CITY_DATEPICKER_INPUT: '.flight-date-picker input',
   ADD_FLIGHT_ROW_BUTTON: '.add-flight-btn',
+  MULTI_CITY_CABIN_CLASS_FIELD: '.class-input .app-select',
+  MULTI_CITY_REMOVE_BTN: '.remove-btn .material-symbols-outlined',
 
   // Tabs
   GENERAL_RAIL_TAB: "#tab-rails",
@@ -945,6 +947,52 @@ class SearchPage {
     }
     // Wait for panel animation to stabilize before interacting with month arrows
     await this.page.waitForTimeout(300);
+  }
+
+  /**
+   * Selects a cabin class for a specific multi-city leg.
+   *
+   * @param {string} cabinClass - Cabin class label, e.g. "Business", "Economy"
+   * @param {number} legIndex - Zero-based leg row index
+   */
+  async selectFlightClassForLeg(cabinClass, legIndex) {
+    if (!cabinClass || typeof cabinClass !== 'string') {
+      throw new Error(`[SearchPage.selectFlightClassForLeg] "cabinClass" must be a non-empty string, got: ${typeof cabinClass}`);
+    }
+    if (!Number.isInteger(legIndex) || legIndex < 0) {
+      throw new Error(`[SearchPage.selectFlightClassForLeg] "legIndex" must be a non-negative integer, got: ${legIndex}`);
+    }
+    try {
+      const row = this.page.locator(SELECTORS.MULTI_CITY_LINE).nth(legIndex);
+      const classDropdown = row.locator(SELECTORS.MULTI_CITY_CABIN_CLASS_FIELD);
+      await classDropdown.waitFor({ state: 'visible', timeout: 10000 });
+      await classDropdown.click();
+      await this.page.locator(`.el-select-dropdown__item:visible:has-text("${cabinClass}")`).click();
+      await classDropdown.getByText(cabinClass, { exact: true }).first().waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.selectFlightClassForLeg] Could not select cabin class "${cabinClass}" for leg ${legIndex}. ` +
+        `The multi-city form may not be open or the cabin class option is unavailable. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the remove button for the last multi-city flight leg.
+   * The first leg has no remove button — only legs at index > 0 can be removed.
+   */
+  async clickRemoveLastFlightLeg() {
+    try {
+      const lastRow = this.page.locator(SELECTORS.MULTI_CITY_LINE).last();
+      const removeBtn = lastRow.locator(SELECTORS.MULTI_CITY_REMOVE_BTN);
+      await removeBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await removeBtn.click();
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.clickRemoveLastFlightLeg] Could not click the remove button on the last flight leg. ` +
+        `The multi-city form may have only one leg or the remove button is not visible. Original: ${err.message}`
+      );
+    }
   }
 
   /**

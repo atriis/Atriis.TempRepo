@@ -442,6 +442,34 @@ class FlightSearchPage {
       await checkbox.click();
     }
   }
+
+  /**
+   * Checks whether a search-type radio button (e.g. "Complete trip" or "By schedule") is currently selected.
+   * Returns false instead of throwing when the radio is not found, to support polling assertions.
+   *
+   * @param {string} displayLabel - Visible label text of the radio, e.g. "Complete trip" or "By schedule"
+   * @returns {Promise<boolean>}
+   */
+  async isSearchTypeSelected(displayLabel) {
+    if (!displayLabel || typeof displayLabel !== 'string') {
+      throw new Error('[FlightSearchPage.isSearchTypeSelected] "displayLabel" must be a non-empty string, got: ' + typeof displayLabel);
+    }
+    try {
+      const radio = this.page
+        .locator(SELECTORS.SEARCH_MODE_SECTION)
+        .locator('.el-radio')
+        .filter({ hasText: displayLabel })
+        .first();
+      return await radio.locator('.el-radio__input').evaluate(el => el.classList.contains('is-checked'));
+    } catch (err) {
+      // Re-throw infrastructure failures (page closed, navigation away) so they
+      // propagate instead of being silently swallowed as a false poll result.
+      if (err.message?.includes('Target page') || err.message?.includes('page was closed')) {
+        throw err;
+      }
+      return false;
+    }
+  }
 }
 
 module.exports = FlightSearchPage;
