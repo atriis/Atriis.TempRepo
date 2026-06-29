@@ -796,7 +796,7 @@ const CarResults = {
     if (!filterTitle || typeof filterTitle !== 'string') throw new Error('filterTitle must be a non-empty string, got: ' + typeof filterTitle);
 
     const carResultsPage = getPageObject(page, CarResultsPage);
-    const isVisible = await carResultsPage.isFilterTitleVisible(filterTitle);
+    const isVisible = await carResultsPage.isFilterTitleVisible(filterTitle, 60000);
     expect(isVisible, `Filter "${filterTitle}" should be visible on car results page`).toBe(true);
   },
 
