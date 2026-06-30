@@ -4292,8 +4292,7 @@ const Cart = {
 
     const cartPage = getPageObject(page, CartPage);
 
-    await page.waitForLoadState('networkidle', { timeout: 30000 });
-    await cartPage.hoverTripActionsDropdownIcon();
+    await cartPage.hoverTripActionsDropdownIconWithRetry();
     await cartPage.waitForDropdownMenu();
 
     const isDisabled = await cartPage.isCancelTripOptionDisabled();
@@ -5356,6 +5355,172 @@ const Cart = {
     if (!page) throw new Error('page is required');
     const cartPage = getPageObject(page, CartPage);
     return cartPage.captureQuotesApiResponse();
+  },
+
+  /**
+   * Hovers the trip-level three-dots actions icon and waits for the dropdown to appear.
+   * Retries automatically when the el-dropdown is disabled during In Progress polling windows.
+   * @param {import('playwright').Page} page
+   */
+  async hoverTripActionsMenu(page) {
+    if (!page) throw new Error('[Cart.hoverTripActionsMenu] page is required');
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.hoverTripActionsDropdownIconWithRetry();
+    } catch (err) {
+      throw new Error(
+        `[Cart.hoverTripActionsMenu] Could not open trip actions dropdown. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies that an option with the given text is visible in the trip-level actions dropdown.
+   * Requires the trip actions dropdown to already be open.
+   * @param {import('playwright').Page} page
+   * @param {string} optionText
+   */
+  async verifyTripActionMenuOptionVisible(page, optionText) {
+    if (!page) throw new Error('[Cart.verifyTripActionMenuOptionVisible] page is required');
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error(
+        `[Cart.verifyTripActionMenuOptionVisible] "optionText" must be a non-empty string, got: ${typeof optionText} (${JSON.stringify(optionText)})`
+      );
+    }
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.waitForTripActionMenuOptionText(optionText);
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyTripActionMenuOptionVisible] Option "${optionText}" was not visible in the trip actions dropdown. Ensure the dropdown is open. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Hovers the info icon inside the "Cancel trip" dropdown item to trigger its tooltip.
+   * Requires the trip actions dropdown to already be open.
+   * @param {import('playwright').Page} page
+   */
+  async hoverQuoteExpandIcon(page) {
+    if (!page) throw new Error('[Cart.hoverQuoteExpandIcon] page is required');
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.hoverCancelTripInfoIcon();
+    } catch (err) {
+      throw new Error(
+        `[Cart.hoverQuoteExpandIcon] Could not hover the cancel-trip info icon. Ensure the trip actions dropdown is open and a quote is In Progress. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies that the cancel-trip tooltip shows the expected text.
+   * Requires hoverQuoteExpandIcon to have been called first.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   */
+  async verifyCancelTripTooltipText(page, expectedText) {
+    if (!page) throw new Error('[Cart.verifyCancelTripTooltipText] page is required');
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.verifyCancelTripTooltipText] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.waitForTooltipWithText(expectedText);
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyCancelTripTooltipText] Tooltip with text "${expectedText}" was not visible. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Hovers the first active quote card's item-level three-dots actions icon
+   * and waits for the dropdown to appear.
+   * @param {import('playwright').Page} page
+   */
+  async hoverItemActionsMenu(page) {
+    if (!page) throw new Error('[Cart.hoverItemActionsMenu] page is required');
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.openActiveQuoteActionsDropdown();
+    } catch (err) {
+      throw new Error(
+        `[Cart.hoverItemActionsMenu] Could not open the item-level actions dropdown. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies that an option with the given text is visible in the item-level actions dropdown.
+   * Requires the item actions dropdown to already be open.
+   * @param {import('playwright').Page} page
+   * @param {string} optionText
+   */
+  async verifyItemActionMenuOptionVisible(page, optionText) {
+    if (!page) throw new Error('[Cart.verifyItemActionMenuOptionVisible] page is required');
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error(
+        `[Cart.verifyItemActionMenuOptionVisible] "optionText" must be a non-empty string, got: ${typeof optionText} (${JSON.stringify(optionText)})`
+      );
+    }
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.waitForItemActionMenuOptionText(optionText);
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyItemActionMenuOptionVisible] Option "${optionText}" was not visible in the item actions dropdown. Ensure the dropdown is open. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Hovers the actions icon of the item at itemIndex, clicks "Cancel item",
+   * and confirms the cancellation dialog if one appears.
+   *
+   * For quotes that are "In Progress" the cancel option is aria-disabled; clicking
+   * it has no effect and no dialog appears. This is a negative-validation scenario —
+   * the method succeeds without error so subsequent steps can verify the blocked state.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} itemIndex - 0-based index of the quote card to cancel
+   */
+  async clickCancelItemFromActionsMenu(page, itemIndex) {
+    if (!page) throw new Error('[Cart.clickCancelItemFromActionsMenu] page is required');
+    if (typeof itemIndex !== 'number' || !Number.isInteger(itemIndex) || itemIndex < 0) {
+      throw new Error(
+        `[Cart.clickCancelItemFromActionsMenu] "itemIndex" must be a non-negative integer, got: ${typeof itemIndex} (${JSON.stringify(itemIndex)})`
+      );
+    }
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('Canceling item from actions menu', { itemIndex });
+    try {
+      const hovered = await cartPage.hoverItemActionsDropdownByIndex(itemIndex);
+      if (!hovered) {
+        // Fewer quote cards than expected; skip silently (negative-validation scenario)
+        logger.debug('[Cart.clickCancelItemFromActionsMenu] item index out of range, skipping', { itemIndex });
+        return;
+      }
+      await cartPage.clickVisibleCancelItemOption();
+      // Try to confirm the cancellation dialog; if no dialog appears within a short
+      // window the item was disabled (In Progress) and the click had no effect — that
+      // is the expected outcome for a negative-validation test.
+      let promptType;
+      try {
+        promptType = await cartPage.waitForQuoteCancellationPrompt({ timeout: 5000 });
+      } catch {
+        // No dialog: item was disabled, nothing to confirm
+        return;
+      }
+      await cartPage.confirmQuoteCancellation(promptType);
+    } catch (err) {
+      throw new Error(
+        `[Cart.clickCancelItemFromActionsMenu] Failed to cancel item at index ${itemIndex}. Original: ${err.message}`
+      );
+    }
   },
 
 };

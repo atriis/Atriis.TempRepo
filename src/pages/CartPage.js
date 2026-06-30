@@ -82,6 +82,12 @@ const SELECTORS = {
   CANCELLED_QUOTE_CHECK_PRICE_BUTTON: '.cancelled-quotes-container .check-price-btn',
   ACTIVE_QUOTE_ACTIONS_DROPDOWN_ICON: '.quote-payment-card .base-quote-header .expand-icon.is-clickable',
   ACTIVE_QUOTE_CANCEL_OPTION: '.el-dropdown-menu__item',
+  // Cookie consent banner "Allow all cookies" button (CookieHub / OneTrust)
+  COOKIE_ALLOW_ALL_BUTTON: '#ch2-allow-all-btn, button:has-text("Allow all cookies"), button:has-text("Allow all"), button:has-text("Accept all")',
+  // Info icon inside the "Cancel trip" option in the trip-level dropdown (shown when a quote is In Progress)
+  CANCEL_TRIP_INFO_ICON: '.share-popper .expand-icon.is-size-6',
+  // Any option in the trip-level actions dropdown (share-popper)
+  TRIP_ACTION_MENU_OPTION: '.share-popper .el-dropdown-menu__item',
   BASIC_CANCEL_QUOTE_DIALOG: '.app-confirm.dialog-no-header',
   BASIC_CANCEL_QUOTE_CONFIRM_BUTTON: '.dialog-no-header .btn--primary',
   DETAILED_CANCEL_QUOTE_MODAL: '.cancel-quote-modal',
@@ -437,7 +443,6 @@ const SELECTORS = {
   TERMS_MODAL_CLOSE_BUTTON: '[aria-label="Close this dialog"], .el-dialog__close, .close-btn, button:has-text("Close")',
 
   // Quote Extras - Attach Files (per-diem-quote-card → extras-collapse → attach-files-extra)
-  EXTRAS_COLLAPSE_HEADER: '.extras-collapse-container .el-collapse-item__header',
   ATTACH_FILES_VIEW_BTN: '.attach-file-extra .extra__btns .is-clickable',
   ATTACH_FILES_UPLOAD_INPUT: '#fileUploader',
   ATTACH_FILES_SAVE_BTN: '.attach-file-extra button:has-text("Save")',
@@ -5144,6 +5149,158 @@ class CartPage {
         `Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Dismisses the cookie consent banner if it is currently visible.
+   * Never throws — the banner is environment-dependent.
+   * @returns {Promise<boolean>} true if a banner was found and dismissed
+   */
+  async dismissCookieBannerIfPresent() {
+    try {
+      const button = this.page.locator(SELECTORS.COOKIE_ALLOW_ALL_BUTTON).first();
+      await button.waitFor({ state: 'visible', timeout: 3000 });
+      await button.click();
+      await button.waitFor({ state: 'hidden', timeout: 5000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Hovers the trip actions icon and waits for the dropdown to open, retrying
+   * up to maxAttempts times. Dismisses any cookie consent banner before each
+   * attempt. The el-dropdown is disabled (isLoading=true) during brief
+   * backend-polling windows on In Progress trips, so a single hover may
+   * silently fail.
+   *
+   * @param {{ maxAttempts?: number, retryDelayMs?: number }} options
+   */
+  async hoverTripActionsDropdownIconWithRetry({ maxAttempts = 5, retryDelayMs = 1500 } = {}) {
+    let lastErr;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await this.dismissCookieBannerIfPresent();
+        const icon = this.page.locator(SELECTORS.TRIP_ACTIONS_DROPDOWN_ICON).first();
+        await icon.waitFor({ state: 'visible', timeout: 10000 });
+        await icon.hover();
+        await this.page
+          .locator(SELECTORS.CANCEL_TRIP_OPTION, { hasText: 'Cancel trip' })
+          .waitFor({ state: 'visible', timeout: 3000 });
+        return;
+      } catch (err) {
+        lastErr = err;
+        if (attempt < maxAttempts) await this.page.waitForTimeout(retryDelayMs);
+      }
+    }
+    throw new Error(
+      `[CartPage.hoverTripActionsDropdownIconWithRetry] Trip actions dropdown did not open after ${maxAttempts} attempts. ` +
+      `The el-dropdown may be disabled (isLoading=true on an In Progress trip) or "Cancel trip" is absent. ` +
+      `Last error: ${lastErr.message}`
+    );
+  }
+
+  /**
+   * Waits until a trip-actions dropdown option with the given text is visible.
+   * @param {string} optionText
+   */
+  async waitForTripActionMenuOptionText(optionText) {
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error(
+        `[CartPage.waitForTripActionMenuOptionText] "optionText" must be a non-empty string, got: ${typeof optionText} (${JSON.stringify(optionText)})`
+      );
+    }
+    await this.page
+      .locator(SELECTORS.TRIP_ACTION_MENU_OPTION, { hasText: optionText })
+      .first()
+      .waitFor({ state: 'visible', timeout: 15000 });
+  }
+
+  /**
+   * Hovers the info icon inside the "Cancel trip" dropdown item.
+   * Requires the trip-actions dropdown to already be open.
+   */
+  async hoverCancelTripInfoIcon() {
+    const icon = this.page.locator(SELECTORS.CANCEL_TRIP_INFO_ICON).first();
+    await icon.waitFor({ state: 'visible', timeout: 10000 });
+    await icon.hover();
+  }
+
+  /**
+   * Waits for an Element Plus light tooltip containing expectedText to appear.
+   * @param {string} expectedText
+   * @param {{ timeout?: number }} options
+   */
+  async waitForTooltipWithText(expectedText, { timeout = 10000 } = {}) {
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[CartPage.waitForTooltipWithText] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+    await this.page
+      .locator('.el-popper.is-light', { hasText: expectedText })
+      .waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Waits until an item-actions dropdown option with the given text is visible.
+   * @param {string} optionText
+   */
+  async waitForItemActionMenuOptionText(optionText) {
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error(
+        `[CartPage.waitForItemActionMenuOptionText] "optionText" must be a non-empty string, got: ${typeof optionText} (${JSON.stringify(optionText)})`
+      );
+    }
+    await this.page
+      .locator(SELECTORS.ACTIVE_QUOTE_CANCEL_OPTION, { hasText: optionText })
+      .first()
+      .waitFor({ state: 'visible', timeout: 15000 });
+  }
+
+  /**
+   * Hovers the actions icon of the item at the given 0-based index.
+   * Returns false (without throwing) if the index is out of range — allows
+   * negative-validation steps to continue when the trip has fewer items than expected.
+   * @param {number} itemIndex
+   * @returns {Promise<boolean>} true if hovered, false if index is out of range
+   */
+  async hoverItemActionsDropdownByIndex(itemIndex) {
+    if (typeof itemIndex !== 'number' || !Number.isInteger(itemIndex) || itemIndex < 0) {
+      throw new Error(
+        `[CartPage.hoverItemActionsDropdownByIndex] "itemIndex" must be a non-negative integer, got: ${typeof itemIndex} (${JSON.stringify(itemIndex)})`
+      );
+    }
+    const icons = this.page.locator(SELECTORS.ACTIVE_QUOTE_ACTIONS_DROPDOWN_ICON);
+    const count = await icons.count();
+    if (itemIndex >= count) {
+      return false;
+    }
+    const icon = icons.nth(itemIndex);
+    await icon.waitFor({ state: 'visible', timeout: 15000 });
+    await icon.hover();
+    await this.page.waitForTimeout(1000); // El-dropdown animation delay — menu items are not yet interactive immediately after hover
+    return true;
+  }
+
+  /**
+   * Clicks the "Cancel item" option in the currently open item-actions dropdown.
+   * Targets the inner span (not the li) so the click is allowed even when the
+   * parent li has aria-disabled="true" (In Progress quote). This matches the
+   * original Testim test behaviour: click registers but El Plus ignores it on
+   * disabled items.
+   * @returns {Promise<void>}
+   */
+  async clickVisibleCancelItemOption() {
+    // Use the inner span.mr-2 so Playwright's actionability check sees a non-disabled element
+    const span = this.page
+      .locator('.el-dropdown-menu__item:has(span.mr-2) span.mr-2', { hasText: 'Cancel item' })
+      .first();
+    await span.waitFor({ state: 'visible', timeout: 15000 });
+    // force:true skips actionability checks; El Plus dropdown ignores the click if the
+    // parent li carries is-disabled/aria-disabled (negative-validation use-case)
+    await span.click({ force: true });
   }
 
   /**

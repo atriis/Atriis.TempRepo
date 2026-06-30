@@ -1660,6 +1660,46 @@ Then("the hold flight button should be disabled", async function () {
   await Cart.verifyHoldFlightButtonIsDisabled(this.page);
 });
 
+When("I hover the trip actions menu", async function () {
+  logger.info("Hovering the trip-level actions menu");
+  await Cart.hoverTripActionsMenu(this.page);
+});
+
+Then("the trip actions menu should show {string}", async function (optionText) {
+  logger.info("Verifying trip actions menu option is visible", { optionText });
+  await Cart.verifyTripActionMenuOptionVisible(this.page, optionText);
+});
+
+When("I hover the quote expand icon", async function () {
+  logger.info("Hovering the cancel-trip info icon to reveal tooltip");
+  await Cart.hoverQuoteExpandIcon(this.page);
+});
+
+Then("the cancel trip tooltip should say {string}", async function (expectedText) {
+  logger.info("Verifying cancel trip tooltip text", { expectedText });
+  await Cart.verifyCancelTripTooltipText(this.page, expectedText);
+});
+
+When("I hover the item actions menu", async function () {
+  logger.info("Hovering the item-level actions menu");
+  await Cart.hoverItemActionsMenu(this.page);
+});
+
+Then("the item actions menu should show {string}", async function (optionText) {
+  logger.info("Verifying item actions menu option is visible", { optionText });
+  await Cart.verifyItemActionMenuOptionVisible(this.page, optionText);
+});
+
+When("I cancel the first item from the item actions menu", async function () {
+  logger.info("Canceling the first item from its actions menu");
+  await Cart.clickCancelItemFromActionsMenu(this.page, 0);
+});
+
+When("I cancel the second item from the item actions menu", async function () {
+  logger.info("Canceling the second item from its actions menu");
+  await Cart.clickCancelItemFromActionsMenu(this.page, 1);
+});
+
 // ===== FQTV (FREQUENT FLYER) =====
 
 Then("the FQTV should show {string}", async function (expectedText) {
