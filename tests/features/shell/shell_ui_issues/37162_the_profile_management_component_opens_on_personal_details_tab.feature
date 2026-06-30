@@ -17,4 +17,4 @@ Feature: 37162 - The profile management component opens on Personal Details tab
     Given I am logged in as "testim@prof.com" booking a new trip
     And I have added myself as the traveler
     When I open the traveler profile from the traveler name
-    # TODO: Then the Personal Details tab should be active showing the "Title" field label — Profile.verifyPersonalDetailsTabActive(page) / assert label ".name-inputs-container > :nth-child(1) .label" contains "Title"
+    Then the Personal Details tab should be active showing the "Title" field label

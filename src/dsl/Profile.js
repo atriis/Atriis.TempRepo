@@ -1471,6 +1471,42 @@ const Profile = {
     return { dynamicFieldValue: trimmed };
   },
 
+  /**
+   * Verifies the Personal Details tab is the active tab by checking the "Title" field label is visible.
+   */
+  async verifyPersonalDetailsTabActive(page, expectedLabel = 'Title') {
+    if (!page) throw new Error('[Profile.verifyPersonalDetailsTabActive] "page" is required.');
+    if (typeof expectedLabel !== 'string' || !expectedLabel) {
+      throw new Error(
+        `[Profile.verifyPersonalDetailsTabActive] "expectedLabel" must be a non-empty string, got: ${typeof expectedLabel} (${JSON.stringify(expectedLabel)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyPersonalDetailsTabActive] Verifying Personal Details tab is active — expecting field label "${expectedLabel}"`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+    let label;
+
+    try {
+      label = await profilePage.getTitleFieldLabel();
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyPersonalDetailsTabActive] Failed to read the first field label from the Personal Details form: ${err.message}. ` +
+        `The Personal Details tab may not be the active tab when the profile opens.`
+      );
+    }
+
+    if (!label.includes(expectedLabel)) {
+      throw new Error(
+        `[Profile.verifyPersonalDetailsTabActive] Expected the first label in name-inputs-container to contain "${expectedLabel}" but got "${label}". ` +
+        `The Personal Details tab may not be open or the form layout has changed.`
+      );
+    }
+
+    logger.info(`[Profile.verifyPersonalDetailsTabActive] Personal Details tab confirmed active — field label "${label}" contains "${expectedLabel}"`);
+    return { label };
+  },
+
   async openPersonalDetailsTab(page) {
     if (!page) throw new Error('[Profile.openPersonalDetailsTab] "page" is required.');
     logger.debug('[Profile.openPersonalDetailsTab] Clicking Personal Details tab');

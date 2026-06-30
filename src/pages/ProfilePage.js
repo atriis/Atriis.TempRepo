@@ -42,6 +42,10 @@ const SELECTORS = {
   SAVE_PERSONAL_DETAILS_BUTTON: '.personal-details-form-content button:has-text("Save")',
   BACKUP_APPROVER_LABEL: 'Backup approver',
 
+  // Personal Details — name inputs (Title is the first label in the first field)
+  // TODO: replace with data-testid once added to personal-details-form.vue — :nth-child(1) is fragile if field order changes
+  TITLE_FIELD_LABEL: '.name-inputs-container > :nth-child(1) .label',
+
   // Personal Details — dynamic reference fields
   DYNAMIC_FIELD_WARNING: '.reference-fields-container .form-validation-msg',
   DYNAMIC_FIELD_SELECT_VALUE: '.reference-fields-container .el-select__placeholder span',
@@ -718,6 +722,20 @@ class ProfilePage {
       throw new Error(
         `[ProfilePage.waitForPersonalDetailsForm] Personal details form did not appear (selector: ${SELECTORS.PERSONAL_DETAILS_FORM}). ` +
         `The traveler profile may not have opened or is still loading. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getTitleFieldLabel() {
+    try {
+      const label = this.page.locator(SELECTORS.TITLE_FIELD_LABEL).first();
+      await label.waitFor({ state: 'visible', timeout: 10000 });
+      return (await label.textContent() ?? '').trim();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getTitleFieldLabel] Could not read the Title field label ` +
+        `(selector: ${SELECTORS.TITLE_FIELD_LABEL}). The Personal Details form may not be loaded ` +
+        `or the name-inputs-container is not rendered. Original: ${err.message}`
       );
     }
   }

@@ -230,6 +230,11 @@ When("I save the personal details", async function () {
 
 // --- Travel Preferences steps ---
 
+Then("the Personal Details tab should be active showing the {string} field label", async function (fieldName) {
+  logger.info("Verifying Personal Details tab is active with field label", { fieldName });
+  await Profile.verifyPersonalDetailsTabActive(this.page, fieldName);
+});
+
 When("I open the traveler profile from the traveler name", async function () {
   logger.info("Opening traveler profile from traveler name link");
   const newPage = await Profile.openTravelerProfileFromName(this.page);
