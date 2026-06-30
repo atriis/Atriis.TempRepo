@@ -11,7 +11,7 @@ Feature: 65557 Parallel car search - Pick up and drop off locations should be co
     When I search for a round trip flight from "JFK" to "LHR" with parallel car search
     And I add the first result to trip
     And I add the first car to cart
-    Then the car location at airport index 0 should contain "heathrow" on cart
+    Then the car location label at index 0 should contain "heathrow" on cart
 
   @priority:high @tc:77091
   Scenario: TC-11 NYC-MIA outbound FLL-NYC return - Car picks correct Florida airports
@@ -20,5 +20,5 @@ Feature: 65557 Parallel car search - Pick up and drop off locations should be co
     When I search for a multi-city flight with legs "NYC-MIA" and "FLL-NYC" with parallel car search
     And I add the first result to trip
     And I add the first car to cart
-    Then the car location at airport index 0 should contain "miami" on cart
-    And the car location at airport index 1 should contain "fort lauderdale" on cart
+    Then the car location label at index 0 should contain "miami" on cart
+    And the car location label at index 1 should contain "fort lauderdale" on cart

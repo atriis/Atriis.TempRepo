@@ -7,7 +7,7 @@ const { escapeRegex } = require("@utils/text");
 const SELECTORS = {
   // Search results
   STATION_PREVIEW: '.car-vendor-station-list > .preview-container',
-  LOCATION_LABEL: '.location-label',
+  LOCATION_LABEL: ".location-lines .location-address-text",
   CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   FIRST_CAR_PREVIEW: '.car-preview',
   AGREEMENT_ICON_IN_CARD: '.agreements .agreement-img',
@@ -19,8 +19,14 @@ const SELECTORS = {
   CAR_MODEL_SUBTITLE: '.car-model-subtitle',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
   LOCATION_AIRPORT: 'a[href*="maps.google.com"][target="_blank"]',
-  FIRST_LOCATION_LINK: '.pickup-details a[href*="maps.google.com"][target="_blank"]',
-  FIRST_LOCATION_LINK_WRAPPER: '.pickup-details',
+  LOCATION_ADDRESS_TEXT: ".location-address-text",
+  LOCATION_DETAILS_BTN: ".location-details-link",
+  CAR_LOCATION_DETAILS_TOOLTIP: ".car-location-details-tooltip",
+  TOOLTIP_ANY_ADDRESS: ".car-location-details-tooltip .location-address-plain",
+  TOOLTIP_PICKUP_ADDRESS: ".car-location-details-tooltip .pickup-details .location-address-plain",
+  TOOLTIP_DROPOFF_ADDRESS: ".car-location-details-tooltip .dropoff-details .location-address-plain",
+  FIRST_LOCATION_LINK: ".car-location-details-tooltip .pickup-details a[href*=\"maps.google.com\"][target=\"_blank\"]",
+  FIRST_LOCATION_LINK_WRAPPER: ".car-location-details-tooltip .pickup-details",
   GOOGLE_MAPS_LOCATION_TEXT: '.DkEaL',
   GOOGLE_PRIVACY_ACCEPT_ALL: 'button:has-text("Accept all"), button[aria-label*="Accept"]',
   // Filter sidebar
@@ -115,6 +121,46 @@ class CarResultsPage {
   getLocationLabelByIndex(index) {
     const selector = SELECTORS.LOCATION_LABEL;
     return this.page.locator(selector).nth(index);
+  }
+
+  async getLocationAddressTextByIndex(index, { timeout = 60000 } = {}) {
+    const el = this.page.locator(SELECTORS.LOCATION_ADDRESS_TEXT).nth(index);
+    await el.waitFor({ state: "visible", timeout });
+    return (await el.innerText()).trim();
+  }
+
+  async openLocationDetailsTooltipByIndex(index, { timeout = 15000 } = {}) {
+    const btn = this.page.locator(SELECTORS.LOCATION_DETAILS_BTN).nth(index);
+    await btn.waitFor({ state: "visible", timeout });
+    await btn.scrollIntoViewIfNeeded();
+    await btn.click();
+    await this.page.locator(SELECTORS.CAR_LOCATION_DETAILS_TOOLTIP).first().waitFor({ state: "visible", timeout });
+  }
+
+  async getPickupAddressTextFromTooltip({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.TOOLTIP_PICKUP_ADDRESS).first();
+    await el.waitFor({ state: "visible", timeout });
+    return (await el.innerText()).trim();
+  }
+
+  async getAnyAddressTextFromTooltip({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.TOOLTIP_ANY_ADDRESS).first();
+    await el.waitFor({ state: "visible", timeout });
+    return (await el.innerText()).trim();
+  }
+
+  async getDropoffAddressTextFromTooltip({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.TOOLTIP_DROPOFF_ADDRESS).first();
+    await el.waitFor({ state: "visible", timeout });
+    return (await el.innerText()).trim();
+  }
+
+  async closeLocationDetailsTooltip(index = 0) {
+    const btn = this.page.locator(SELECTORS.LOCATION_DETAILS_BTN).nth(index);
+    await btn.click();
+    await this.page.locator(SELECTORS.CAR_LOCATION_DETAILS_TOOLTIP).first()
+      .waitFor({ state: "hidden", timeout: 5000 })
+      .catch(() => {});
   }
 
   getCityCenterAddressByIndex(index) {

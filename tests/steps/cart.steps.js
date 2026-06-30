@@ -927,7 +927,7 @@ Then("the download voucher options for english and french should not be visible 
 
 Then("the car location at airport index {int} should contain {string} on cart", async function (index, expectedAirport) {
   logger.info("Verifying car airport location contains expected airport location on cart", { index, expectedAirport });
-  await Cart.expectAirportLocationOnCartToContain(this.page, index, expectedAirport);
+  await Cart.expectAirportAddressOnCartToContain(this.page, index, expectedAirport);
 });
 
 Then("the car location at city center index {int} should contain {string} on cart", async function (index, expectedLocation) {

@@ -1960,7 +1960,7 @@ const Cart = {
   },
 
   /**
-   * Verifies that a car location at a specific airport index contains the expected airport name.
+   * Verifies that a car address at a specific airport index contains the expected airport name.
    * 
    * @param {import('playwright').Page} page - Playwright page instance
    * @param {number} index - Zero-based index of the airport location element
@@ -1969,7 +1969,7 @@ const Cart = {
    * @returns {Promise<void>}
    */
 
-  async expectAirportLocationOnCartToContain(page, index, expectedAirport) {
+  async expectAirportAddressOnCartToContain(page, index, expectedAirport) {
     if (!page) {
       throw new Error('page is required');
     }
@@ -1983,8 +1983,13 @@ const Cart = {
     }
 
     const cartPage = getPageObject(page, CartPage);
-
-    const text = await cartPage.getLocationByIndexOnCart(index, 'airport').innerText();
+    const tooltipIndex = Math.floor(index / 2);
+    const isDropoff = index % 2 !== 0;
+    await cartPage.openLocationDetailsTooltipByIndex(tooltipIndex);
+    const text = isDropoff
+      ? await cartPage.getDropoffAddressTextFromTooltip()
+      : await cartPage.getPickupAddressTextFromTooltip();
+    await cartPage.closeLocationDetailsTooltip(tooltipIndex);
     expect(text.toLowerCase()).toContain(expectedAirport.toLowerCase());
   },
 
@@ -2011,8 +2016,7 @@ const Cart = {
     }
 
     const cartPage = getPageObject(page, CartPage);
-
-    const text = await cartPage.getLocationByIndexOnCart(index, 'cityCenter').innerText();
+    const text = await cartPage.getLocationAddressTextByIndex(index);
     expect(text.toLowerCase()).toContain(expectedLocation.toLowerCase());
   },
 
@@ -2040,7 +2044,7 @@ const Cart = {
     }
 
     const cartPage = getPageObject(page, CartPage);
-
+    await cartPage.waitForTripOverviewTitle();
     const text = await cartPage.getLocationLabelOnCartByIndex(index).innerText();
     expect(text.toLowerCase()).toContain(expectedLabel.toLowerCase());
   },
@@ -2059,7 +2063,10 @@ const Cart = {
     }
 
     const cartPage = getPageObject(page, CartPage);
-    const text = await cartPage.getCityCenterAddressOnCartByIndex(index).innerText();
+    await cartPage.waitForTripOverviewTitle();
+    await cartPage.openLocationDetailsTooltipByIndex(index);
+    const text = await cartPage.getPickupAddressTextFromTooltip();
+    await cartPage.closeLocationDetailsTooltip(index);
     expect(text.toLowerCase()).toContain(expectedAddress.toLowerCase());
   },
 
