@@ -973,3 +973,17 @@ When('I sort flight results by {string}', async function (label) {
   logger.info('Sorting flight results by', { label });
   await FlightResults.sortBy(this.page, label);
 });
+
+// ========================================
+// AIRPORT FILTER
+// ========================================
+
+When('I filter by {string} airport in the airports filter', async function (airportCode) {
+  logger.info('Filtering by airport code in the airports filter', { airportCode });
+  await FlightResults.filterByAirportCode(this.page, airportCode);
+});
+
+Then('the first flight destination airport should be {string}', async function (airportCode) {
+  logger.info('Verifying first flight destination airport', { airportCode });
+  await FlightResults.verifyFirstFlightDestinationAirport(this.page, airportCode);
+});

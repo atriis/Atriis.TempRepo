@@ -69,6 +69,16 @@ const SELECTORS = {
   COMPARISON_STOP_TYPE: '.stop-type',
   COMPARISON_PRICE_CELL: '.cell-price',
   STOPS_FILTER_CONTAINER: '.stops-filter .filter-container',
+
+  // Airport filter
+  AIRPORTS_FILTER_CONTAINER: '.filter-container',
+  AIRPORTS_FILTER_HEADER: 'h4',
+  FILTER_CHECKBOX_LABEL: 'label.el-checkbox',
+  FILTER_CHECKBOX_INNER: '.el-checkbox__input',
+  AIRPORT_OPTION_TEXT: '.airports-content',
+  FILTER_VIEW_MORE_CONTAINER: '.view-txt-link',
+  FILTER_VIEW_MORE_LABEL: '.view-more-btn',
+  FILTER_VIEW_MORE_BUTTON: 'button',
   BY_SCHEDULE_PRICING_PAGE: '.flight-by-schedule-pricing',
   BY_SCHEDULE_ADD_TO_TRIP_BUTTON: '.flight-by-schedule-pricing .add-btn',
   SEARCH_FLIGHT_FILTER: '[placeholder="Search flight"]',
@@ -1827,6 +1837,85 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     await departureLocationCode.waitFor({ state: 'visible', timeout: 60000 });
 
     return (await departureLocationCode.textContent())?.trim() ?? '';
+  }
+
+  /**
+   * Extracts the arrival (destination) location code from a flight result card.
+   * Returns the code from the last segment's second .loc-code element.
+   *
+   * @param {number} cardIndex - Zero-based index of the flight preview card (default: 0)
+   * @returns {Promise<string>} The arrival location code text, for example "EWR"
+   */
+  async getFlightArrivalLocationCode(cardIndex = 0) {
+    const card = this.page.locator(SELECTORS.FLIGHT_PREVIEW).nth(cardIndex);
+    await card.waitFor({ state: 'visible', timeout: 60000 });
+
+    const lastSegment = card.locator(SELECTORS.FLIGHT_PREVIEW_SEGMENT).last();
+    await lastSegment.waitFor({ state: 'visible', timeout: 60000 });
+
+    const arrivalLocationCode = lastSegment.locator(SELECTORS.FLIGHT_LOCATION_CODE).nth(1);
+    await arrivalLocationCode.waitFor({ state: 'visible', timeout: 60000 });
+
+    return (await arrivalLocationCode.textContent())?.trim() ?? '';
+  }
+
+  async selectAirportOptionByCode(airportCode, timeout = 60000) {
+    if (!airportCode || typeof airportCode !== 'string') {
+      throw new Error(`[FlightResultsPage.selectAirportOptionByCode] airportCode must be a non-empty string, got: ${typeof airportCode}`);
+    }
+
+    const normalizedCode = airportCode.trim().toUpperCase();
+    const container = this.page
+      .locator(SELECTORS.AIRPORTS_FILTER_CONTAINER)
+      .filter({ has: this.page.locator(SELECTORS.AIRPORTS_FILTER_HEADER, { hasText: 'Airports' }) })
+      .first();
+
+    await container.waitFor({ state: 'visible', timeout });
+
+    const getCheckbox = () => container
+      .locator(SELECTORS.FILTER_CHECKBOX_LABEL)
+      .filter({ has: this.page.locator(SELECTORS.AIRPORT_OPTION_TEXT, { hasText: new RegExp(`^${normalizedCode}\\s*-`) }) })
+      .locator(SELECTORS.FILTER_CHECKBOX_INNER)
+      .first();
+
+    let checkbox = getCheckbox();
+
+    if (!(await checkbox.isVisible())) {
+      // Expand every collapsed section in the airports filter. Multiple sections can exist
+      // (e.g. "Amsterdam Airports" and "New York Airports"), each with its own "View more" button.
+      const viewMoreButtons = container
+        .locator(SELECTORS.FILTER_VIEW_MORE_CONTAINER)
+        .filter({ has: this.page.locator(SELECTORS.FILTER_VIEW_MORE_LABEL, { hasText: 'View more' }) });
+
+      const count = await viewMoreButtons.count();
+      for (let i = 0; i < count; i++) {
+        const btn = viewMoreButtons.nth(i).locator(SELECTORS.FILTER_VIEW_MORE_BUTTON).first();
+        if (await btn.isVisible()) {
+          await container.waitFor({ state: 'visible', timeout });
+          await container.scrollIntoViewIfNeeded();
+          await btn.waitFor({ state: 'attached', timeout });
+          await btn.scrollIntoViewIfNeeded();
+          await btn.click();
+        }
+      }
+
+      checkbox = getCheckbox();
+    }
+
+    try {
+      await container.waitFor({ state: 'visible', timeout });
+      await container.scrollIntoViewIfNeeded();
+      await checkbox.waitFor({ state: 'attached', timeout });
+      await checkbox.scrollIntoViewIfNeeded();
+      await checkbox.waitFor({ state: 'visible', timeout });
+      await checkbox.click();
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.selectAirportOptionByCode] Could not click checkbox for airport "${normalizedCode}" — ` +
+        `option not visible in the airports filter. Verify the filter panel is loaded and "${normalizedCode}" ` +
+        `is a valid destination airport for this result set. Original: ${err.message}`
+      );
+    }
   }
 
   /**

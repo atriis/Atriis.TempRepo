@@ -16,6 +16,6 @@ Feature: 32684 Flights - Airport filter working as expected
     Given I am logged in as "testim@prof.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "AMS" to "NYC"
-    And I filter airports for route "Amsterdam to New York" by "EWR" in "New York Airports" and "JFK" in "New York Airports"
-    # TODO: verify selected airport tooltip shows "EWR" — proposed: Then the airport filter should show airport code "EWR" (ResultsPage.waitForAirportOptionTooltip / verify selected option text)
-    # TODO: verify selected airport tooltip shows "JFK" — proposed: Then the airport filter should show airport code "JFK" (ResultsPage.waitForAirportOptionTooltip / verify selected option text)
+    And flight results should be available
+    When I filter by "JFK" airport in the airports filter
+    Then the first flight destination airport should be "JFK"

@@ -2776,6 +2776,70 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     await flightResultsPage.waitForChangeAndCancellationWarningHidden();
   },
+
+  // ===== AIRPORT FILTER =====
+
+  /**
+   * Filters flight results by a single destination airport code by clicking its checkbox
+   * in the airports filter panel. Works for single-leg (one-way) results where no
+   * per-route toggle is rendered.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} airportCode - IATA airport code to filter by (e.g. "EWR")
+   * @returns {Promise<{airportCode: string}>}
+   */
+  async filterByAirportCode(page, airportCode) {
+    if (!page) {
+      throw new Error('[FlightResults.filterByAirportCode] "page" is required');
+    }
+    if (!airportCode || typeof airportCode !== 'string') {
+      throw new Error(`[FlightResults.filterByAirportCode] "airportCode" must be a non-empty string, got: ${typeof airportCode}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    await flightResultsPage.waitForFlightResults();
+    logger.debug('[FlightResults.filterByAirportCode] Selecting airport checkbox', { airportCode });
+
+    await flightResultsPage.selectAirportOptionByCode(airportCode);
+
+    await Promise.any([
+      flightResultsPage.waitForFlightResults(),
+      resultsPage.waitForNoResultsTitle('No results found'),
+    ]);
+
+    return { airportCode };
+  },
+
+  /**
+   * Verifies that the destination airport code of the first flight result matches the expected code.
+   * Reads the arrival loc-code from the last segment of the first result card.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} airportCode - Expected IATA destination code (e.g. "EWR")
+   * @returns {Promise<{actualCode: string, expectedCode: string}>}
+   */
+  async verifyFirstFlightDestinationAirport(page, airportCode) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyFirstFlightDestinationAirport] "page" is required');
+    }
+    if (!airportCode || typeof airportCode !== 'string') {
+      throw new Error(`[FlightResults.verifyFirstFlightDestinationAirport] "airportCode" must be a non-empty string, got: ${typeof airportCode}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const expectedCode = airportCode.trim().toUpperCase();
+    const actualCode = (await flightResultsPage.getFlightArrivalLocationCode(0)).toUpperCase();
+
+    expect(
+      actualCode,
+      `[FlightResults.verifyFirstFlightDestinationAirport] Expected destination airport "${expectedCode}" but got "${actualCode}". ` +
+      `The airport filter may not have applied correctly.`
+    ).toBe(expectedCode);
+
+    return { actualCode, expectedCode };
+  },
 }
 
 module.exports = FlightResults;
