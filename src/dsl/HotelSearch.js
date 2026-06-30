@@ -121,7 +121,11 @@ const HotelSearch = {
     const checkInDate = await hotelSearchPage.getCheckInDateValue();
     const checkOutDate = await hotelSearchPage.getCheckOutDateValue();
 
-    await searchPage.waitAndClickSearchButton();
+    if (options.fromDrawer) {
+      await searchPage.waitAndClickPrimarySearchButtonFromCart();
+    } else {
+      await searchPage.waitAndClickSearchButton();
+    }
 
     // Handle the "Proceed" confirmation modal that may appear before navigation
     // completes (e.g. conflicting trip items). Race it against the URL change so

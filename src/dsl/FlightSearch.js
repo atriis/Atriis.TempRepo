@@ -193,7 +193,7 @@ const FlightSearch = {
 
     logger.info('Clicking the flight search button from cart context');
     const searchPage = getPageObject(page, SearchPage);
-    await searchPage.waitAndClickFlightSearchButtonFromCart();
+    await searchPage.waitAndClickPrimarySearchButtonFromCart();
 
     return { searched: true };
   },

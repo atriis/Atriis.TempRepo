@@ -807,12 +807,11 @@ class SearchPage {
   }
 
   /**
-   * Waits for the primary flight search button (btn--primary.search-btn) to be enabled
-   * and clicks it. Used when navigating from the cart to add a second flight — in that
-   * context multiple .search-btn elements are present (hotel, overview, flight) and the
-   * generic SEARCH_BUTTON selector would fail in strict mode.
+   * Waits for the primary search button (btn--primary.search-btn) to be enabled and clicks it.
+   * Used when searching from the cart drawer — multiple .search-btn elements are present
+   * (hotel, overview, flight) and the generic SEARCH_BUTTON selector would fail in strict mode.
    */
-  async waitAndClickFlightSearchButtonFromCart() {
+  async waitAndClickPrimarySearchButtonFromCart() {
     const searchButton = this.page.locator(SELECTORS.FLIGHT_SEARCH_BUTTON_PRIMARY);
     await searchButton.waitFor({ state: 'visible', timeout: 30000 });
     await this.page.waitForFunction(

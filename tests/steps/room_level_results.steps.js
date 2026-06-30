@@ -21,6 +21,12 @@ When("I add a refundable room to my cart", async function () {
   await Cart.expectHotelToBeRefundableInCart(this.page);
 });
 
+When("I add a refundable room to my cart alongside an existing booked quote", async function () {
+  logger.info("Adding refundable room to cart alongside an existing booked quote");
+  await RoomLevelResults.addRefundableHotelRoomLevelToCart(this.page);
+  await Cart.expectHotelToBeRefundableInCart(this.page);
+});
+
 When("I add the first available room to my cart", async function () {
   logger.info("Adding first available room to cart");
   await RoomLevelResults.addFirstHotelRoomLevelToCart(this.page);
