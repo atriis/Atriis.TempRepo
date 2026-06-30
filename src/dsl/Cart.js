@@ -5101,50 +5101,43 @@ const Cart = {
       );
     }
 
-    logger.info("Uploading file via quote Extras", { filePath });
+    logger.info("Uploading file to trip Related Files tab", { filePath });
     const cartPage = getPageObject(page, CartPage);
 
     try {
-      await cartPage.clickExtrasCollapse();
+      await cartPage.clickRelatedFilesTab();
     } catch (err) {
       throw new Error(
-        `[Cart.uploadRelatedFile] Failed to expand the Extras section — ` +
-          `the collapse may not be visible on the quote card. Original: ${err.message}`,
+        `[Cart.uploadRelatedFile] Failed to navigate to the Related Files tab — ` +
+          `the tab may not be visible on this cart page. Original: ${err.message}`,
+      );
+    }
+
+    let uploadResponsePromise;
+    try {
+      uploadResponsePromise = cartPage.waitForUploadApiResponse();
+      await cartPage.uploadRelatedFilesFileInput(filePath);
+    } catch (err) {
+      throw new Error(
+        `[Cart.uploadRelatedFile] Failed to upload file "${filePath}" to the Related Files panel — ` +
+          `the file input was not available. Original: ${err.message}`,
       );
     }
 
     try {
-      await cartPage.clickAttachFilesViewBtn();
+      await uploadResponsePromise;
     } catch (err) {
       throw new Error(
-        `[Cart.uploadRelatedFile] Failed to click View/Add button on attach files — ` +
-          `the button may not be visible or the user lacks upload permission. Original: ${err.message}`,
+        `[Cart.uploadRelatedFile] Upload API did not respond after uploading "${filePath}" — ` +
+          `the server may not have saved the file. Original: ${err.message}`,
       );
     }
 
     try {
-      await cartPage.uploadAttachFile(filePath);
+      await cartPage.waitForRelatedFileItemVisible();
     } catch (err) {
       throw new Error(
-        `[Cart.uploadRelatedFile] Failed to upload file "${filePath}" — ` +
-          `the file input was not available after opening the attach files card. Original: ${err.message}`,
-      );
-    }
-
-    try {
-      await cartPage.clickAttachFilesSaveBtn();
-    } catch (err) {
-      throw new Error(
-        `[Cart.uploadRelatedFile] Failed to click Save after uploading file — ` +
-          `the Save button may be disabled (no file selected) or not visible. Original: ${err.message}`,
-      );
-    }
-
-    try {
-      await cartPage.waitForAttachFileItemVisible();
-    } catch (err) {
-      throw new Error(
-        `[Cart.uploadRelatedFile] File upload appeared to fail — no file appeared in the attach files list ` +
+        `[Cart.uploadRelatedFile] File upload appeared to fail — no file appeared in the Related Files panel ` +
           `after uploading "${filePath}". The API may have returned an error or the save timed out. ` +
           `Original: ${err.message}`,
       );
@@ -5167,16 +5160,76 @@ const Cart = {
 
     try {
       const cartPage = getPageObject(page, CartPage);
-      await cartPage.isFileNameVisibleInAttachFiles(fileName);
+      await cartPage.isRelatedFileNameVisible(fileName);
     } catch (err) {
       throw new Error(
-        `[Cart.verifyUploadedFileVisible] Failed to verify file "${fileName}" is visible in the trip attach files section. ` +
-          `The file may not have been uploaded or saved correctly. ` +
+        `[Cart.verifyUploadedFileVisible] Failed to verify file "${fileName}" is visible in the Related Files panel. ` +
+          `The file may not have been uploaded correctly or the name does not match. ` +
           `Original: ${err.message}`,
       );
     }
 
     return { verified: true, fileName };
+  },
+
+  async clickRelatedFileByName(page, fileName) {
+    if (!page) {
+      throw new Error('[Cart.clickRelatedFileByName] "page" is required.');
+    }
+    if (!fileName || typeof fileName !== 'string' || !fileName.trim()) {
+      throw new Error(
+        `[Cart.clickRelatedFileByName] "fileName" must be a non-empty string with the file name to click, got: ${typeof fileName} (${JSON.stringify(fileName)})`
+      );
+    }
+
+    logger.info("Clicking related file to trigger download", { fileName });
+
+    let downloadRequest;
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      const requestPromise = cartPage.waitForDownloadRequest();
+      await cartPage.clickRelatedFileByName(fileName);
+      downloadRequest = await requestPromise;
+    } catch (err) {
+      throw new Error(
+        `[Cart.clickRelatedFileByName] Failed to click related file "${fileName}" or detect the download API request. ` +
+        `Ensure the file has been uploaded, is visible, and the file name link triggers a download. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    const downloadUrl = downloadRequest.url();
+    return { clicked: true, fileName, downloadUrl };
+  },
+
+  async verifyFileDownloaded(page, fileName, downloadResult) {
+    if (!page) {
+      throw new Error('[Cart.verifyFileDownloaded] "page" is required.');
+    }
+    if (!fileName || typeof fileName !== 'string' || !fileName.trim()) {
+      throw new Error(
+        `[Cart.verifyFileDownloaded] "fileName" must be a non-empty string, got: ${typeof fileName} (${JSON.stringify(fileName)})`
+      );
+    }
+    if (!downloadResult || typeof downloadResult.downloadUrl !== 'string') {
+      throw new Error(
+        `[Cart.verifyFileDownloaded] "downloadResult" must be the object returned by Cart.clickRelatedFileByName. ` +
+        `Got: ${typeof downloadResult}. Ensure "When I click the related file" step ran before this assertion.`
+      );
+    }
+
+    logger.debug(`[Cart.verifyFileDownloaded] Verifying download was triggered for "${fileName}" (url: ${downloadResult.downloadUrl})`);
+
+    const url = new URL(downloadResult.downloadUrl);
+    const guid = url.searchParams.get('guid');
+    if (!guid || guid === 'undefined' || guid === 'null') {
+      throw new Error(
+        `[Cart.verifyFileDownloaded] Download request for "${fileName}" was made but with an invalid or missing file ID (guid="${guid}"). ` +
+        `The file may not have been saved correctly after upload.`
+      );
+    }
+
+    return { verified: true, fileName, guid };
   },
 
   async verifyQuoteVisibleInCheckoutSummary(page, quoteName) {

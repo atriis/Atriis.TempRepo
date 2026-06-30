@@ -1911,6 +1911,17 @@ Then("the file {string} should be visible in the trip related files section", as
   await Cart.verifyUploadedFileVisible(this.page, fileName);
 });
 
+When("I click the related file {string} to download it", async function (fileName) {
+  logger.info("Clicking related file to trigger download", { fileName });
+  const result = await Cart.clickRelatedFileByName(this.page, fileName);
+  this.lastDownload = result;
+});
+
+Then("the file {string} should have been downloaded", async function (fileName) {
+  logger.info("Verifying file was downloaded", { fileName });
+  await Cart.verifyFileDownloaded(this.page, fileName, this.lastDownload);
+});
+
 // ===== CHECKOUT SUMMARY & QUOTE CARD PRICE VERIFICATION =====
 
 Then("the {string} quote should be visible in the checkout summary", async function (quoteName) {

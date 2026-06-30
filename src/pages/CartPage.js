@@ -436,6 +436,14 @@ const SELECTORS = {
   ATTACH_FILES_SAVE_BTN: '.attach-file-extra button:has-text("Save")',
   ATTACH_FILES_FILE_ITEM: '.attach-file-extra .file-item',
   ATTACH_FILES_FILE_NAME: '.attach-file-extra .file-item p',
+
+  // Trip-level Related Files tab (trip-cart tabs → upload-file component)
+  RELATED_FILES_TAB: '#tab-relatedFiles',
+  RELATED_FILES_BROWSE_BTN: '#pane-relatedFiles label.color-primary',
+  RELATED_FILES_FILE_ITEM: '#pane-relatedFiles .file-item',
+  RELATED_FILES_FILE_NAME: '#pane-relatedFiles .file-item p',
+  // Scoped to the Related Files pane to avoid ambiguity with ATTACH_FILES_UPLOAD_INPUT (#fileUploader appears in multiple upload-file.vue instances)
+  RELATED_FILES_UPLOAD_INPUT: '#pane-relatedFiles #fileUploader',
 };
 
 class CartPage {
@@ -4990,6 +4998,87 @@ class CartPage {
         `Original: ${err.message}`
       );
     }
+  }
+
+  async clickRelatedFilesTab(timeout = 10000) {
+    try {
+      await this.page.locator(SELECTORS.RELATED_FILES_TAB).waitFor({ state: 'visible', timeout });
+      await this.page.locator(SELECTORS.RELATED_FILES_TAB).click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickRelatedFilesTab] Could not click the Related Files tab within ${timeout}ms ` +
+        `(selector: ${SELECTORS.RELATED_FILES_TAB}). The tab may not be visible on this cart page. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async waitForRelatedFileItemVisible(timeout = 20000) {
+    try {
+      await this.page.locator(SELECTORS.RELATED_FILES_FILE_ITEM).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForRelatedFileItemVisible] No file item appeared in the Related Files panel within ${timeout}ms ` +
+        `(selector: ${SELECTORS.RELATED_FILES_FILE_ITEM}). The upload may have failed or the save did not complete. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async isRelatedFileNameVisible(fileName, timeout = 15000) {
+    try {
+      const locator = this.page.locator(SELECTORS.RELATED_FILES_FILE_NAME, { hasText: fileName });
+      await locator.first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch (err) {
+      throw new Error(
+        `[CartPage.isRelatedFileNameVisible] File "${fileName}" was not found in the Related Files panel within ${timeout}ms ` +
+        `(selector: ${SELECTORS.RELATED_FILES_FILE_NAME} with text "${fileName}"). ` +
+        `The upload may have failed or the file name does not match. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickRelatedFileByName(fileName, timeout = 10000) {
+    try {
+      const fileLink = this.page.locator(SELECTORS.RELATED_FILES_FILE_NAME, { hasText: fileName }).first();
+      await fileLink.waitFor({ state: 'visible', timeout });
+      await fileLink.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickRelatedFileByName] Could not click the related file link for "${fileName}" within ${timeout}ms ` +
+        `(selector: ${SELECTORS.RELATED_FILES_FILE_NAME} with text "${fileName}"). ` +
+        `The file may not be visible in the list or the name does not match exactly. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async uploadRelatedFilesFileInput(filePath) {
+    try {
+      await this.page.locator(SELECTORS.RELATED_FILES_UPLOAD_INPUT).setInputFiles(filePath);
+    } catch (err) {
+      throw new Error(
+        `[CartPage.uploadRelatedFilesFileInput] Could not set files on the Related Files upload input ` +
+        `(selector: ${SELECTORS.RELATED_FILES_UPLOAD_INPUT}). The input may not be available in the DOM. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  waitForUploadApiResponse(timeout = 30000) {
+    return this.page.waitForResponse(
+      resp => resp.url().includes('/TripFiles') && resp.request().method() === 'POST',
+      { timeout }
+    );
+  }
+
+  waitForDownloadRequest(timeout = 10000) {
+    return this.page.waitForRequest(
+      req => req.url().includes('/TripsUploadFiles'),
+      { timeout }
+    );
   }
 
   async getQuoteCardPriceByText(cardText, { timeout = 15000 } = {}) {
