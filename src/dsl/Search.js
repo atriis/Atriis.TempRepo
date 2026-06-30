@@ -598,6 +598,43 @@ const Search = {
   },
 
   /**
+   * Asserts that the star icon is visible in the travelers section.
+   * @param {import('playwright').Page} page
+   */
+  async assertStarIconVisible(page) {
+    if (!page) throw new Error('[Search.assertStarIconVisible] "page" is required.');
+
+    logger.debug('[Search.assertStarIconVisible] Checking star icon visibility');
+    const searchPage = getPageObject(page, SearchPage);
+
+    const isVisible = await searchPage.isStarIconVisible();
+    if (!isVisible) {
+      throw new Error(
+        '[Search.assertStarIconVisible] Star icon is not visible in the travelers section. ' +
+        'The traveler may not have been preselected as expected.'
+      );
+    }
+  },
+
+  /**
+   * Verifies that both add-traveler controls are hidden, asserting that adding more travelers is not possible.
+   * Expected when the DisableBookForMultiPax permission is active and a traveler is already selected.
+   * @param {import('playwright').Page} page
+   */
+  async verifyCannotAddMoreTravelers(page) {
+    if (!page) throw new Error('[Search.verifyCannotAddMoreTravelers] "page" is required.');
+
+    logger.debug('[Search.verifyCannotAddMoreTravelers] Verifying add-traveler controls are hidden');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.assertAddTravelerButtonNotVisible();
+    } catch (err) {
+      throw new Error(`[Search.verifyCannotAddMoreTravelers] Adding more travelers should not be possible: ${err.message}`);
+    }
+  },
+
+  /**
    * Adds an empty traveler slot by clicking the add-traveler button and closing
    * the modal without selecting anyone. The slot is preserved in the store because
    * numberOfPassengers was incremented before the modal opened.

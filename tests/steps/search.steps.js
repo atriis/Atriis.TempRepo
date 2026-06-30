@@ -63,6 +63,21 @@ Then("the traveler name {string} should be visible in the travelers list", async
   await Search.verifyTravelerNameVisible(this.page, name);
 });
 
+Then("the selected traveler should be {string} by default", async function (name) {
+  logger.info("Verifying traveler is preselected by default", { name });
+  await Search.verifyTravelerNameVisible(this.page, name);
+});
+
+Then("the star icon should be visible", async function () {
+  logger.info("Verifying star icon is visible in travelers section");
+  await Search.assertStarIconVisible(this.page);
+});
+
+Then("it should not be possible to add more travelers", async function () {
+  logger.info("Verifying add-traveler controls are hidden (DisableBookForMultiPax permission)");
+  await Search.verifyCannotAddMoreTravelers(this.page);
+});
+
 Then("only the empty traveler slot should be highlighted in red", async function () {
   logger.info("Verifying only the empty traveler slot is highlighted and named travelers are not in red");
   await Search.verifyOnlyEmptyTravelerSlotIsRed(this.page);

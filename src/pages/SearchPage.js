@@ -1312,6 +1312,42 @@ class SearchPage {
   }
 
   /**
+   * Asserts that both add-traveler controls are hidden.
+   * Used to verify the DisableBookForMultiPax permission is active.
+   * Both buttons are conditionally rendered via v-if when that permission is set and a traveler is already added.
+   * @param {{ timeout?: number }} options
+   */
+  async assertAddTravelerButtonNotVisible({ timeout = 5000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.TRIP_TRAVELER_TAG).first().waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.assertAddTravelerButtonNotVisible] Traveler tag not visible (${SELECTORS.TRIP_TRAVELER_TAG}). ` +
+        `The search page may not have loaded. Original: ${err.message}`
+      );
+    }
+
+    try {
+      await this.page.locator(SELECTORS.ADD_TRAVELER_BUTTON).waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.assertAddTravelerButtonNotVisible] Add-traveler button is still visible (${SELECTORS.ADD_TRAVELER_BUTTON}). ` +
+        `Expected it to be hidden when DisableBookForMultiPax permission is active and a traveler is already selected. Original: ${err.message}`
+      );
+    }
+
+    try {
+      // Scoped to .travelers-list to avoid matching the .imt-btn in product-carousel-home-page.vue
+      await this.page.locator(`.travelers-list ${SELECTORS.ADD_ME_BUTTON}`).waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.assertAddTravelerButtonNotVisible] "Add me" button is still visible (.travelers-list ${SELECTORS.ADD_ME_BUTTON}). ` +
+        `Expected it to be hidden when DisableBookForMultiPax permission is active and a traveler is already selected. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
    * Checks whether a validation message with the given text is visible anywhere on the search page.
    *
    * The text is matched page-wide (every field, not scoped to one). The message renders synchronously

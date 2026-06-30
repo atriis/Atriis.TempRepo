@@ -16,4 +16,4 @@ Feature: 34347 - When permission "Disable booking for multi passengers" is enabl
     Given I am logged in as "jessicacasellas@disablemultipassanger.com" booking a new trip
     Then the selected traveler should be "Jessica Casellas" by default
     And the star icon should be visible
-    # TODO: assert that adding more passengers is not possible — proposed step "Then it should not be possible to add more travelers" (needs Search DSL method verifying the add traveler control is hidden/disabled). The Testim script does not exercise this action, so it is left as a TODO per the test title.
+    Then it should not be possible to add more travelers
