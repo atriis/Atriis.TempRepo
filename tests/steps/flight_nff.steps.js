@@ -115,3 +115,23 @@ Then("the fares with {string} should show {string} in pricing options", async fu
   const result = await FlightResults.verifyFareShowsFeatureInBrandCard(this.page, fareName, expectedText);
   logger.info("[NewFlightFlow] Brand card feature text verified", result);
 });
+
+When("I select outbound and inbound brands with different cancellation and change rules from pricing options new flight flow", { timeout: 300000 }, async function () {
+  logger.info("[NewFlightFlow] Selecting outbound and inbound brands with different cancellation and change rules");
+  await FlightResults.selectBrandsWithDifferentRulesAcrossLegs(this.page);
+});
+
+When("I select the inbound brand with same cancellation and change rules as outbound from pricing options new flight flow", async function () {
+  logger.info("[NewFlightFlow] Selecting inbound brand with same cancellation and change rules as outbound");
+  await FlightResults.selectInboundBrandMatchingOutboundRules(this.page);
+});
+
+Then("the change and cancellation rules warning is displayed with message {string}", async function (expectedMessage) {
+  logger.info("[NewFlightFlow] Verifying change and cancellation rules warning is displayed", { expectedMessage });
+  await FlightResults.verifyChangeAndCancellationRulesWarningVisible(this.page, expectedMessage);
+});
+
+Then("the change and cancellation rules warning is not displayed", async function () {
+  logger.info("[NewFlightFlow] Verifying change and cancellation rules warning is not displayed");
+  await FlightResults.verifyChangeAndCancellationRulesWarningNotVisible(this.page);
+});

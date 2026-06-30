@@ -2699,6 +2699,83 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     }
     return { fareName, expectedText, featureTexts };
   },
+
+  async selectInboundBrandMatchingOutboundRules(page, timeout = 30000) {
+    if (!page) throw new Error('[FlightResults.selectInboundBrandMatchingOutboundRules] "page" is required.');
+    logger.info('[NewFlightFlow] Selecting inbound brand card with same cancellation and change rules as outbound');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const outboundBrandName = await flightResultsPage.getOutboundSelectedBrandName(timeout);
+    const inboundNames = await flightResultsPage.getInboundBrandCardNames(timeout);
+    const matchIndex = inboundNames.findIndex((n) => n === outboundBrandName);
+    if (matchIndex === -1) {
+      throw new Error(
+        `[FlightResults.selectInboundBrandMatchingOutboundRules] No inbound brand card found with name "${outboundBrandName}". ` +
+        `Available: [${inboundNames.map((n) => `"${n}"`).join(', ')}]`
+      );
+    }
+    await flightResultsPage.clickInboundBrandCardAt(matchIndex, timeout);
+  },
+
+  async selectBrandsWithDifferentRulesAcrossLegs(page, timeout = 30000) {
+    if (!page) throw new Error('[FlightResults.selectBrandsWithDifferentRulesAcrossLegs] "page" is required.');
+    logger.info('[NewFlightFlow] Selecting outbound and inbound brands to produce mixed fare rules');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    const MAX_RESULTS_TO_TRY = 8;
+    for (let resultIndex = 0; resultIndex < MAX_RESULTS_TO_TRY; resultIndex++) {
+      if (resultIndex > 0) {
+        // Current flight has no mixed-rules combination — close the drawer and try the next result.
+        logger.info('[NewFlightFlow] No mixed rules combination found for this result, trying next', { resultIndex });
+        await flightResultsPage.closeNFFDrawer();
+        await flightResultsPage.clickSelectFlightButtonAt(resultIndex, timeout);
+      }
+
+      const outboundNames = await flightResultsPage.getOutboundBrandCardNames(timeout);
+      for (let outboundIndex = 0; outboundIndex < outboundNames.length; outboundIndex++) {
+        const outboundName = outboundNames[outboundIndex];
+        if (!outboundName) continue;
+        await flightResultsPage.clickNewFlightFlowBrandCard(0, outboundIndex);
+        const inboundNames = await flightResultsPage.getInboundBrandCardNames(timeout);
+        for (let inboundIndex = 0; inboundIndex < inboundNames.length; inboundIndex++) {
+          const inboundName = inboundNames[inboundIndex];
+          if (!inboundName) continue;
+          await flightResultsPage.clickInboundBrandCardAt(inboundIndex, timeout);
+          // Brand names alone don't determine fare rules — same-named brands can have different
+          // rules across legs in NDC. Always check the warning after every combination.
+          const warningVisible = await flightResultsPage.isChangeAndCancellationWarningVisible();
+          if (warningVisible) {
+            logger.info('[NewFlightFlow] Found mixed rules combination', { resultIndex, outboundBrand: outboundName, inboundBrand: inboundName });
+            return { outboundBrand: outboundName, inboundBrand: inboundName };
+          }
+        }
+      }
+    }
+
+    throw new Error(
+      `[FlightResults.selectBrandsWithDifferentRulesAcrossLegs] No outbound+inbound combination with different fare rules found in the first ${MAX_RESULTS_TO_TRY} results.`
+    );
+  },
+
+  async verifyChangeAndCancellationRulesWarningVisible(page, expectedMessage) {
+    if (!page) throw new Error('[FlightResults.verifyChangeAndCancellationRulesWarningVisible] "page" is required.');
+    if (!expectedMessage || typeof expectedMessage !== 'string') throw new Error('[FlightResults.verifyChangeAndCancellationRulesWarningVisible] "expectedMessage" must be a non-empty string.');
+    logger.info('[NewFlightFlow] Verifying change and cancellation rules warning is displayed', { expectedMessage });
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const text = await flightResultsPage.getChangeAndCancellationWarningText();
+    if (!text.includes(expectedMessage.trim())) {
+      throw new Error(
+        `[FlightResults.verifyChangeAndCancellationRulesWarningVisible] Warning visible but text does not match. ` +
+        `Expected to include: "${expectedMessage.trim()}" — Got: "${text}"`
+      );
+    }
+  },
+
+  async verifyChangeAndCancellationRulesWarningNotVisible(page) {
+    if (!page) throw new Error('[FlightResults.verifyChangeAndCancellationRulesWarningNotVisible] "page" is required.');
+    logger.info('[NewFlightFlow] Verifying change and cancellation rules warning is not displayed');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForChangeAndCancellationWarningHidden();
+  },
 }
 
 module.exports = FlightResults;

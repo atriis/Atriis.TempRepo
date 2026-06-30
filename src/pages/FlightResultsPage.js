@@ -133,6 +133,10 @@ const SELECTORS = {
   NEW_FLOW_BRAND_CARD_PRICE_DELTA: '[data-testid="flight.flight-selection.brand-card.price-delta"]',
   NEW_FLOW_BRAND_CARD_PRICE_DELTA_PREFIX: '.price-delta-prefix',
   NEW_FLOW_BRAND_CARD_FEATURE_TEXT: '.features-text',
+  NEW_FLOW_BRAND_CARD_SELECTED: '.card.fare-card.is-selected',
+  // Staging strips data-testid in its build, so target the stable component class instead.
+  NEW_FLOW_CHANGE_AND_CANCELLATION_WARNING: '.mixed-rules-warning',
+  NEW_FLOW_NFF_CLOSE_BTN: '.flight-results-select-brand button.p-2',
   // Footer total price per traveller (flight-selection.vue .selection-actions)
   NEW_FLOW_FOOTER_PRICE_SECTION: '.selection-actions .price-section',
   NEW_FLOW_FOOTER_PRICE_AMOUNT: '.selection-actions .price-section .amount',
@@ -2850,6 +2854,95 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       `[FlightResultsPage.getBrandCardFeatureTexts] No brand card found with fare name "${fareName}". ` +
       `Available: [${foundBrandNames.map((n) => `"${n}"`).join(', ')}]`
     );
+  }
+
+  async getOutboundSelectedBrandName(timeout = 30000) {
+    const outboundLeg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(0);
+    const selectedCard = outboundLeg.locator(SELECTORS.NEW_FLOW_BRAND_CARD)
+      .filter({ has: this.page.locator(SELECTORS.NEW_FLOW_BRAND_CARD_SELECTED) }).first();
+    await selectedCard.waitFor({ state: 'visible', timeout });
+    return (await selectedCard.locator(SELECTORS.BRAND_NAME).first().innerText()).trim();
+  }
+
+  async getOutboundBrandCardNames(timeout = 30000) {
+    const outboundLeg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(0);
+    await outboundLeg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first().waitFor({ state: 'visible', timeout });
+    const cards = outboundLeg.locator(SELECTORS.NEW_FLOW_BRAND_CARD);
+    const count = await cards.count();
+    const names = [];
+    for (let i = 0; i < count; i++) {
+      const nameEl = cards.nth(i).locator(SELECTORS.BRAND_NAME);
+      names.push((await nameEl.count()) > 0 ? (await nameEl.first().innerText()).trim() : null);
+    }
+    return names;
+  }
+
+  async getInboundBrandCardNames(timeout = 30000) {
+    const inboundLeg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(1);
+    await inboundLeg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first().waitFor({ state: 'visible', timeout });
+    const cards = inboundLeg.locator(SELECTORS.NEW_FLOW_BRAND_CARD);
+    const count = await cards.count();
+    const names = [];
+    for (let i = 0; i < count; i++) {
+      const nameEl = cards.nth(i).locator(SELECTORS.BRAND_NAME);
+      names.push((await nameEl.count()) > 0 ? (await nameEl.first().innerText()).trim() : null);
+    }
+    return names;
+  }
+
+  async clickInboundBrandCardAt(index, timeout = 30000) {
+    const inboundLeg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(1);
+    const card = inboundLeg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).nth(index);
+    await card.locator(SELECTORS.NEW_FLOW_BRAND_CARD_FARE).first().click({ timeout });
+    await this.page.locator(SELECTORS.NEW_FLOW_FOOTER_PRICE_AMOUNT).waitFor({ state: 'visible', timeout });
+  }
+
+  async isChangeAndCancellationWarningVisible() {
+    try {
+      // The warning uses v-if, so it is only in the DOM when showMixedRulesWarning=true.
+      // Use 'attached' instead of 'visible' to avoid failing on overflow-clipped containers.
+      await this.page.locator(SELECTORS.NEW_FLOW_CHANGE_AND_CANCELLATION_WARNING)
+        .waitFor({ state: 'attached', timeout: 3000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async closeNFFDrawer(timeout = 10000) {
+    const closeBtn = this.page.locator(SELECTORS.NEW_FLOW_NFF_CLOSE_BTN).first();
+    await closeBtn.click({ timeout });
+    await this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).first().waitFor({ state: 'hidden', timeout }).catch(() => {});
+  }
+
+  async clickSelectFlightButtonAt(index, timeout = 15000) {
+    const btn = this.page.locator(SELECTORS.RESULTS_SELECT_BUTTON).nth(index);
+    await btn.scrollIntoViewIfNeeded();
+    await btn.click({ timeout });
+  }
+
+  async getChangeAndCancellationWarningText(timeout = 15000) {
+    const locator = this.page.locator(SELECTORS.NEW_FLOW_CHANGE_AND_CANCELLATION_WARNING);
+    try {
+      await locator.waitFor({ state: 'attached', timeout });
+    } catch {
+      throw new Error(
+        `[FlightResultsPage.getChangeAndCancellationWarningText] Warning element not found in DOM within ${timeout}ms.`
+      );
+    }
+    return (await locator.innerText()).trim();
+  }
+
+  async waitForChangeAndCancellationWarningHidden(timeout = 5000) {
+    const selector = SELECTORS.NEW_FLOW_CHANGE_AND_CANCELLATION_WARNING;
+    try {
+      await this.page.locator(selector).waitFor({ state: 'detached', timeout });
+    } catch (err) {
+      const text = await this.page.locator(selector).innerText().catch(() => '');
+      throw new Error(
+        `[FlightResultsPage.waitForChangeAndCancellationWarningHidden] Warning still visible after ${timeout}ms. Text: "${text.trim()}"`
+      );
+    }
   }
 
   async getAgreementIconCountInLegBrandCards(legIndex = 1, timeout = 30000) {
