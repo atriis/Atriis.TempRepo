@@ -157,6 +157,12 @@ const SELECTORS = {
   NEW_FLOW_LEG_HEADER_NAME: '.flight-brand-leg-header .header-name',
   NEW_FLOW_ADD_TO_CART_BUTTON: '[data-testid="flight.flight-selection.add-to-cart-btn"]',
   NEW_FLOW_SELECT_BUTTON: '[data-testid="flight.flight-selection.select-btn"]',
+  // Footer primary action button ("Add to cart" by-price / "Select" by-schedule).
+  // The flight-selection data-testids above are NOT present on the deployed build, so
+  // target the single primary button in the footer's actions-section structurally
+  // (the "Reset" button is btn--default, not primary). :visible guards against the
+  // hidden mobile-dialog copy of the flight-selection component.
+  NEW_FLOW_FOOTER_ACTION_BUTTON: '.flight-selection .selection-actions .actions-section button.btn--primary:visible',
   NEW_FLOW_BRAND_CARD_STARTING_FROM_LABEL: '.starting-from-label',
   NEW_FLOW_BRAND_CARD_PRICE: '[data-testid="flight.flight-selection.brand-card.price"]',
   NEW_FLOW_BRAND_CARD_PRICE_DELTA: '[data-testid="flight.flight-selection.brand-card.price-delta"]',
@@ -2813,25 +2819,32 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   }
 
   /**
-   * Clicks the "Add to cart" button in the new flight flow footer.
+   * Clicks the primary action button ("Add to cart" by-price / "Select" by-schedule)
+   * in the new flight flow footer.
+   *
+   * Two things made the original testid-based locator fail every run:
+   *  1. The flight-selection data-testids (flight.flight-selection.*) are NOT present
+   *     on the deployed build, so the testid selectors matched zero elements. The
+   *     button IS reliably rendered as the single primary button in the footer's
+   *     actions-section (the "Reset" button is btn--default), so we target it
+   *     structurally via NEW_FLOW_FOOTER_ACTION_BUTTON.
+   *  2. The footer re-prices/re-renders a moment AFTER the final leg's brand card is
+   *     selected, so we waitFor the button instead of a point-in-time isVisible().
    */
   async clickNewFlightFlowAddToCartButton() {
-    const addBtn = this.page.locator(SELECTORS.NEW_FLOW_ADD_TO_CART_BUTTON).first();
-    const selectBtn = this.page.locator(SELECTORS.NEW_FLOW_SELECT_BUTTON).first();
+    const button = this.page.locator(SELECTORS.NEW_FLOW_FOOTER_ACTION_BUTTON).first();
 
-    // The flow shows "Add to cart" or "Select" depending on search type
-    const addVisible = await addBtn.isVisible().catch(() => false);
-    const selectVisible = await selectBtn.isVisible().catch(() => false);
-
-    const button = addVisible ? addBtn : selectVisible ? selectBtn : null;
-    if (!button) {
+    try {
+      await button.waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
       throw new Error(
-        `[FlightResultsPage.clickNewFlightFlowAddToCartButton] Neither "Add to cart" nor "Select" button is visible in the flight-selection footer.`
+        `[FlightResultsPage.clickNewFlightFlowAddToCartButton] The flight-selection footer action button ("Add to cart"/"Select") did not become visible within 30s. ` +
+        `Original: ${err.message}`
       );
     }
 
     try {
-      await button.waitFor({ state: 'visible', timeout: 15000 });
+      // click() auto-waits for the button to become enabled (canProceed = all legs selected).
       await button.click({ timeout: 15000 });
     } catch (err) {
       throw new Error(
