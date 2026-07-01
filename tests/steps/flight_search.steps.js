@@ -331,3 +331,14 @@ When("I search for a round trip flight from {string} to {string} with parallel c
   logger.info('Searching for round trip flight with parallel car search', { from, to });
   await FlightSearch.searchFlightRoundTripWithParallelCar(this.page, { from, to });
 });
+
+// ========================================
+// WHEN STEPS - TIME FRAME SELECTION
+// ========================================
+
+When('I select time frame {string} for both legs', async function (timeFrameName) {
+  const resolved = FlightSearch.resolveTimeFrame(timeFrameName);
+  this.selectedTimeFrame = resolved;
+  logger.info('Selecting time frame for both legs', this.selectedTimeFrame);
+  await FlightSearch.selectTimeFrameForBothLegs(this.page, resolved.label);
+});

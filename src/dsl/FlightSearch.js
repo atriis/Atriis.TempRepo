@@ -1504,6 +1504,63 @@ const FlightSearch = {
   },
 
   /**
+   * Resolves a human-readable time frame name (e.g. "afternoon") to its dropdown label
+   * and hour bounds. Single source of truth shared by step definitions and DSL.
+   *
+   * @param {string} name - Case-insensitive name: "afternoon", "morning", "early", "evening", "night"
+   * @returns {{ name: string, label: string, minHour: number, maxHour: number }}
+   */
+  resolveTimeFrame(name) {
+    if (!name || typeof name !== 'string') {
+      throw new Error(`[FlightSearch.resolveTimeFrame] "name" must be a non-empty string, got: ${typeof name}`);
+    }
+    const TIME_FRAME_MAP = {
+      afternoon: { label: 'Afternoon (11:00-17:00)', minHour: 11, maxHour: 17 },
+      morning:   { label: 'Morning (08:00-12:00)',   minHour: 8,  maxHour: 12 },
+      early:     { label: 'Early (04:00-08:00)',      minHour: 4,  maxHour: 8  },
+      evening:   { label: 'Evening (17:00-21:00)',    minHour: 17, maxHour: 21 },
+      night:     { label: 'Night (21:00-23:59)',      minHour: 21, maxHour: 24 },
+    };
+    const key = name.toLowerCase();
+    const resolved = TIME_FRAME_MAP[key];
+    if (!resolved) {
+      throw new Error(
+        `[FlightSearch.resolveTimeFrame] Unknown time frame "${name}". Supported: ${Object.keys(TIME_FRAME_MAP).join(', ')}`
+      );
+    }
+    return { name: key, ...resolved };
+  },
+
+  /**
+   * Opens advanced search and selects the given time frame for both the outbound
+   * and inbound (return) legs. Intended for round-trip searches where the advanced
+   * panel exposes separate departure/return flight-time dropdowns.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} timeFrame - Exact dropdown label, e.g. "Afternoon (11:00-17:00)"
+   * @returns {Promise<{selected: boolean, timeFrame: string}>}
+   */
+  async selectTimeFrameForBothLegs(page, timeFrame) {
+    if (!page) throw new Error('[FlightSearch.selectTimeFrameForBothLegs] "page" is required.');
+    if (!timeFrame || typeof timeFrame !== 'string') {
+      throw new Error(`[FlightSearch.selectTimeFrameForBothLegs] "timeFrame" must be a non-empty string, got: ${typeof timeFrame}`);
+    }
+
+    logger.info('Selecting time frame for both legs in advanced search', { timeFrame });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+
+    await this.openAdvancedSearch(page);
+    await flightSearchPage.selectDepartureFlightTime(timeFrame);
+    // Both dropdowns share the same El-select popup DOM node — wait for departure panel to
+    // fully close before opening the return dropdown to avoid mid-click detach errors.
+    await flightSearchPage.waitForSelectDropdownToClose();
+    await flightSearchPage.selectReturnFlightTime(timeFrame);
+
+    return { selected: true, timeFrame };
+  },
+
+  /**
    * Removes the last flight leg from the multi-city search form.
    *
    * @param {import('playwright').Page} page

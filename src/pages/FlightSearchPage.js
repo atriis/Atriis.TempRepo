@@ -219,8 +219,16 @@ class FlightSearchPage {
    * Flight time is the second app-select in the return section.
    * @param {string} value - e.g. "Anytime", "Morning", "Afternoon"
    */
+  async waitForSelectDropdownToClose(timeout = 5000) {
+    await this.page.locator('.el-select-dropdown:visible')
+      .waitFor({ state: 'hidden', timeout })
+      .catch(() => {});
+  }
+
   async selectReturnFlightTime(value) {
     await this.page.locator(SELECTORS.RETURN_APP_SELECT).nth(1).click();
+    // Wait for the dropdown list to be fully rendered before clicking the target option
+    await this.page.locator(SELECTORS.VISIBLE_DROPDOWN_ITEMS).first().waitFor({ state: 'visible', timeout: 10000 });
     await this.page.locator(SELECTORS.DROPDOWN_OPTION(value)).click();
   }
 
