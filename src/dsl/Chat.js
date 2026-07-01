@@ -43,6 +43,69 @@ const Chat = {
     }
   },
 
+  async searchConsultant(page, name) {
+    if (!page) throw new Error('[Chat.searchConsultant] page is required');
+    if (!name || typeof name !== 'string') {
+      throw new Error(`[Chat.searchConsultant] "name" must be a non-empty string, got: ${typeof name}`);
+    }
+    const chatPage = getPageObject(page, ChatPage);
+    try {
+      logger.debug(`Searching for consultant "${name}" in the new conversation form`);
+      await chatPage.typeInConsultantSearch(name);
+    } catch (err) {
+      throw new Error(
+        `[Chat.searchConsultant] Failed to search for consultant "${name}". The new conversation form may not be open. Original: ${err.message}`
+      );
+    }
+  },
+
+  async verifyConsultantInDropdown(page, name) {
+    if (!page) throw new Error('[Chat.verifyConsultantInDropdown] page is required');
+    if (!name || typeof name !== 'string') {
+      throw new Error(`[Chat.verifyConsultantInDropdown] "name" must be a non-empty string, got: ${typeof name}`);
+    }
+    const chatPage = getPageObject(page, ChatPage);
+    try {
+      logger.debug(`Verifying consultant "${name}" is the first result in the search dropdown`);
+      await chatPage.waitForConsultantInDropdown(name);
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Chat.verifyConsultantInDropdown] Consultant "${name}" did not appear as the first result in the search dropdown. Original: ${err.message}`
+      );
+    }
+  },
+
+  async selectConsultantFromDropdown(page) {
+    if (!page) throw new Error('[Chat.selectConsultantFromDropdown] page is required');
+    const chatPage = getPageObject(page, ChatPage);
+    try {
+      logger.debug("Selecting the first consultant from the search dropdown");
+      await chatPage.clickFirstConsultantInDropdown();
+    } catch (err) {
+      throw new Error(
+        `[Chat.selectConsultantFromDropdown] Failed to select the first consultant from the search dropdown. The dropdown may not be open. Original: ${err.message}`
+      );
+    }
+  },
+
+  async verifyConsultantInRecipients(page, name) {
+    if (!page) throw new Error('[Chat.verifyConsultantInRecipients] page is required');
+    if (!name || typeof name !== 'string') {
+      throw new Error(`[Chat.verifyConsultantInRecipients] "name" must be a non-empty string, got: ${typeof name}`);
+    }
+    const chatPage = getPageObject(page, ChatPage);
+    try {
+      logger.debug(`Verifying consultant "${name}" appears in the conversation recipients list`);
+      await chatPage.waitForConsultantInRecipients(name);
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Chat.verifyConsultantInRecipients] Consultant "${name}" was not shown in the conversation recipients list. Original: ${err.message}`
+      );
+    }
+  },
+
   async typeMessageInChat(page, message) {
     if (!page) throw new Error('[Chat.typeMessageInChat] page is required');
     if (!message || typeof message !== 'string') {

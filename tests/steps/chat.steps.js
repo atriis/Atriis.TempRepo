@@ -33,9 +33,29 @@ When("I send the chat message", async function () {
   await Chat.sendChatMessage(this.page);
 });
 
+When("I search for consultant {string}", async function (name) {
+  logger.info(`Searching for consultant: "${name}"`);
+  await Chat.searchConsultant(this.page, name);
+});
+
+When("I select the first consultant from the search dropdown", async function () {
+  logger.info("Selecting the first consultant from the search dropdown");
+  await Chat.selectConsultantFromDropdown(this.page);
+});
+
 // ===== THEN STEPS =====
 
 Then("the chat conversation should display the message {string}", async function (message) {
   logger.info(`Verifying chat conversation displays: "${message}"`);
   await Chat.verifyChatMessageDisplayed(this.page, message);
+});
+
+Then("the consultant {string} should appear in the search dropdown", async function (name) {
+  logger.info(`Verifying consultant "${name}" appears in the search dropdown`);
+  await Chat.verifyConsultantInDropdown(this.page, name);
+});
+
+Then("the consultant {string} should be in the recipients list", async function (name) {
+  logger.info(`Verifying consultant "${name}" is in the recipients list`);
+  await Chat.verifyConsultantInRecipients(this.page, name);
 });

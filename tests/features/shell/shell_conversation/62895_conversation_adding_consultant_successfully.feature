@@ -19,11 +19,7 @@ Feature: 62895 Trip conversation - Adding consultant successfully
     And I wait for add to trip text to be visible
     And I open the chat
     And I start a new chat conversation
-    # TODO: type "bruna" in the consultant search input field — Chat.searchConsultant
-    When I search for consultant "bruna"
-    # TODO: verify "Bruna" appears as the first result in the consultant dropdown — Chat.verifyConsultantInDropdown
+    When I search for consultant "bruna conferma"
     Then the consultant "Bruna" should appear in the search dropdown
-    # TODO: click the first result to select the consultant — Chat.selectConsultantFromDropdown
     When I select the first consultant from the search dropdown
-    # TODO: verify "Bruna" is now shown in the conversation recipients list — Chat.verifyConsultantInRecipients
     Then the consultant "Bruna" should be in the recipients list
