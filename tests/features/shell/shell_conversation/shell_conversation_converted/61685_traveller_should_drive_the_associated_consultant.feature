@@ -21,5 +21,4 @@ Feature: 61685 Trip conversation - Traveller should drive the associated consult
     When I open the chat
     And I start a new chat conversation
     And I add an agent to the chat
-    # TODO: verify the consultant pre-filled for the traveler is "Guy Shok Consultant" — Chat.verifyConsultantName
     Then the associated consultant should be "Guy Shok Consultant"

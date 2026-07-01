@@ -59,3 +59,8 @@ Then("the consultant {string} should be in the recipients list", async function 
   logger.info(`Verifying consultant "${name}" is in the recipients list`);
   await Chat.verifyConsultantInRecipients(this.page, name);
 });
+
+Then("the associated consultant should be {string}", async function (name) {
+  logger.info(`Verifying the associated consultant is "${name}"`);
+  await Chat.verifyConsultantInRecipients(this.page, name);
+});

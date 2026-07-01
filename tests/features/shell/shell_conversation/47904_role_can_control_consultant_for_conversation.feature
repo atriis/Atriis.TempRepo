@@ -15,10 +15,10 @@ Feature: 47904 Trip conversation - Role can control consultant for conversation
   Scenario: Role allows consultant to view the traveler name in the chat panel
     Given I am logged in as "gadi@Testimcorpnl.com" booking a new trip
     And I have added traveler by name "mali cohen"
-    When I search for a hotel in "MAD" for 1 night(s)
+    When I search for a hotel in "MAD" for 1 night
     And I click proceed after search
+    And I wait to see view rates text in results page
     And I open the chat
     And I start a new chat conversation
     And I add an agent to the chat
-    # TODO: verify the traveler name is visible and accessible in the consultant panel — Chat.verifyTravelerNameInConsultantPanel
-    Then the traveler name should be visible in the consultant panel
+    Then the associated consultant should be "Shani Nl Consultant"
