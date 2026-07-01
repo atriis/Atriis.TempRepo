@@ -5545,6 +5545,82 @@ const Cart = {
     }
   },
 
+  /**
+   * Opens the Financial Reference details from the trip-level options menu in the
+   * Trip overview (hover the options icon, then pick the "Trip reference form" option).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async openFinancialReferenceDetailsFromTripOverview(page) {
+    if (!page) throw new Error('[Cart.openFinancialReferenceDetailsFromTripOverview] "page" is required.');
+
+    logger.debug('Opening Financial Reference details from the quote actions dropdown in the trip overview');
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      await cartPage.openFinancialReferenceDetailsFromTripOverview();
+    } catch (err) {
+      throw new Error(
+        `[Cart.openFinancialReferenceDetailsFromTripOverview] Failed to open the Financial Reference details ` +
+        `from the trip overview: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies that the Financial Reference field in the trip overview shows the
+   * expected description text (the selected value inside the .financial-section el-select).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Expected field description (e.g. "(Financial Ref)")
+   * @returns {Promise<void>}
+   */
+  async verifyFinancialReferenceFieldDescriptionInTripOverview(page, expectedText) {
+    if (!page) throw new Error('[Cart.verifyFinancialReferenceFieldDescriptionInTripOverview] "page" is required.');
+    if (typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.verifyFinancialReferenceFieldDescriptionInTripOverview] "expectedText" must be a string, got: ${typeof expectedText}`
+      );
+    }
+
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      const actualText = await cartPage.getFinancialReferenceFieldDescription();
+      expect(
+        actualText,
+        `Financial Reference field description in the trip overview did not match. Expected "${expectedText}", got "${actualText}". ` +
+        `This may mean the selected financial reference was not persisted, or its description text changed.`
+      ).toBe(expectedText);
+    } catch (err) {
+      if (err.matcherResult) throw err;
+      throw new Error(
+        `[Cart.verifyFinancialReferenceFieldDescriptionInTripOverview] Failed to verify the Financial Reference ` +
+        `field description "${expectedText}": ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Closes the Financial Reference (reference-fields) dialog in the trip overview.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async closeFinancialReferenceDialogInTripOverview(page) {
+    if (!page) throw new Error('[Cart.closeFinancialReferenceDialogInTripOverview] "page" is required.');
+
+    logger.debug('Closing the Financial Reference dialog in the trip overview');
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      await cartPage.closeFinancialReferenceDialogInTripOverview();
+    } catch (err) {
+      throw new Error(
+        `[Cart.closeFinancialReferenceDialogInTripOverview] Failed to close the Financial Reference dialog ` +
+        `in the trip overview: ${err.message}`
+      );
+    }
+  },
+
 };
 
 

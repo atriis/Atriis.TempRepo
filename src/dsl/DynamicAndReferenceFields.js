@@ -1,3 +1,4 @@
+const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const DynamicAndReferenceFieldsPage = require("@pages/DynamicAndReferenceFieldsPage");
 const { CommonPage } = require("@pages/CommonPage");
@@ -236,6 +237,41 @@ const DynamicAndReferenceFields = {
     }
 
     return { fieldFound: true };
+  },
+
+  /**
+   * Verifies that the Financial Reference modal shows the expected title text
+   * (the .financial-section collapse header in the reference-fields modal).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedTitle - The expected modal title (e.g. "Financial Reference")
+   * @returns {Promise<void>}
+   */
+  async verifyFinancialReferenceModalTitle(page, expectedTitle) {
+    if (!page) {
+      throw new Error('[DynamicAndReferenceFields.verifyFinancialReferenceModalTitle] "page" is required.');
+    }
+    if (!expectedTitle || typeof expectedTitle !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyFinancialReferenceModalTitle] "expectedTitle" must be a non-empty string, got: ${typeof expectedTitle}`
+      );
+    }
+
+    try {
+      const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+      const actualTitle = await dynamicFieldsPage.getFinancialReferenceModalTitle();
+      expect(
+        actualTitle,
+        `Financial Reference modal title mismatch. Expected "${expectedTitle}", got "${actualTitle}". ` +
+        `The financial-reference modal may not have opened after proceed-to-checkout.`
+      ).toBe(expectedTitle);
+    } catch (err) {
+      if (err.matcherResult) throw err;
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyFinancialReferenceModalTitle] Failed to verify the Financial Reference ` +
+        `modal title "${expectedTitle}": ${err.message}`
+      );
+    }
   },
 
   /**

@@ -137,6 +137,18 @@ const SELECTORS = {
   TRIP_OVERVIEW_TITLE: ".payments-title",
   TRIP_OVERVIEW_STATUS_LABEL: 'xpath=//*[contains(@class,"payments-title")]/following-sibling::*[contains(@class,"app-label")][1]',
 
+  // "Trip reference form" option label ($t('cart.extraAction.tripReferenceForm')) in the trip actions
+  // menu — opens the reference-fields dialog holding the financial reference. The menu trigger and item
+  // container are reused from TRIP_ACTIONS_DROPDOWN_ICON + TRIP_ACTION_MENU_OPTION (same .share-popper
+  // menu as "Cancel trip"); this text selects the item, matched by text (not index) since item
+  // visibility is dynamic (approvals/copy/cancel items are conditional).
+  TRIP_REFERENCE_FORM_MENU_TEXT: 'Trip reference form',
+  // Reference-fields dialog (trip-app.vue el-dialog wrapping .ref-container) shown for the financial reference details.
+  REFERENCE_FORM_DIALOG: '.el-dialog:has(.ref-container)',
+  REFERENCE_FORM_DIALOG_CLOSE: '.el-dialog:has(.ref-container) .el-dialog__headerbtn',
+  // Selected financial reference value shown in the (disabled) el-select inside the .financial-section.
+  FINANCIAL_REFERENCE_FIELD_VALUE: '.financial-section .el-select__placeholder span',
+
   // Trip title and destination selectors (cart-info-bar.vue)
   TRIP_TITLE: '.cart-info-bar h4.trip-title',
   TRIP_ID_DISPLAY: '.cart-info-bar p.trip-id',
@@ -580,6 +592,84 @@ class CartPage {
     const locator = page.locator(SELECTORS.TRIP_OVERVIEW_STATUS_LABEL).first();
     await locator.waitFor({ state: 'visible', timeout });
     return (await locator.innerText()).trim();
+  }
+
+  /**
+   * Opens the Financial Reference details from the trip actions menu in the Trip
+   * overview and clicks the "Trip reference form" option, then waits for the
+   * reference-fields dialog. Reuses the retry-hardened trip actions menu helpers
+   * (hoverTripActionsDropdownIconWithRetry / waitForTripActionMenuOptionText); the
+   * "Trip reference form" item lives in the same .share-popper menu as "Cancel trip".
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async openFinancialReferenceDetailsFromTripOverview({ timeout = 15000 } = {}) {
+    try {
+      // The el-dropdown is briefly disabled during backend polling, so a single hover can silently
+      // fail — reuse the retry helper that opens the menu and confirms it rendered.
+      await this.hoverTripActionsDropdownIconWithRetry();
+      await this.waitForTripActionMenuOptionText(SELECTORS.TRIP_REFERENCE_FORM_MENU_TEXT);
+      await this.page
+        .locator(SELECTORS.TRIP_ACTION_MENU_OPTION, { hasText: SELECTORS.TRIP_REFERENCE_FORM_MENU_TEXT })
+        .first()
+        .click();
+
+      await this.page.locator(SELECTORS.REFERENCE_FORM_DIALOG).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.openFinancialReferenceDetailsFromTripOverview] Could not open the Financial Reference details ` +
+        `from the trip actions menu in the trip overview (open menu, click the ` +
+        `"${SELECTORS.TRIP_REFERENCE_FORM_MENU_TEXT}" item). The menu or reference-fields dialog did not appear ` +
+        `within ${timeout}ms — the trip may have no financial reference configured. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the selected Financial Reference description text shown in the
+   * financial-section el-select inside the reference-fields dialog.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>} The trimmed field description text
+   */
+  async getFinancialReferenceFieldDescription({ timeout = 15000 } = {}) {
+    const valueSpan = this.page.locator(SELECTORS.FINANCIAL_REFERENCE_FIELD_VALUE).first();
+    try {
+      await valueSpan.waitFor({ state: 'visible', timeout });
+      return (await valueSpan.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getFinancialReferenceFieldDescription] The Financial Reference field value ` +
+        `(selector: ${SELECTORS.FINANCIAL_REFERENCE_FIELD_VALUE}) was not visible within ${timeout}ms. ` +
+        `The reference-fields dialog may not be open, or no financial reference was selected. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Closes the Financial Reference (reference-fields) dialog in the trip overview
+   * by clicking its dialog close button, then waits for the dialog to disappear.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<void>}
+   */
+  async closeFinancialReferenceDialogInTripOverview({ timeout = 10000 } = {}) {
+    try {
+      const closeBtn = this.page.locator(SELECTORS.REFERENCE_FORM_DIALOG_CLOSE).first();
+      await closeBtn.waitFor({ state: 'visible', timeout });
+      await closeBtn.click({ timeout: 5000 });
+      await this.page.locator(SELECTORS.REFERENCE_FORM_DIALOG).first().waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.closeFinancialReferenceDialogInTripOverview] Could not close the Financial Reference dialog ` +
+        `(close button: ${SELECTORS.REFERENCE_FORM_DIALOG_CLOSE}) within ${timeout}ms — the dialog may already be ` +
+        `closed or its markup changed. Original: ${err.message}`
+      );
+    }
   }
 
   /**

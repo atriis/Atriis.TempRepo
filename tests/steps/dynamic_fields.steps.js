@@ -65,6 +65,11 @@ When("I click proceed on the reference fields popup", async function () {
 
 // ===== FINANCIAL REFERENCE STEPS =====
 
+Then("the financial reference modal title should be {string}", async function (expectedTitle) {
+  logger.info(`Verifying the Financial Reference modal title is "${expectedTitle}"`);
+  await DynamicAndReferenceFields.verifyFinancialReferenceModalTitle(this.page, expectedTitle);
+});
+
 Then("the financial reference dropdown should contain the following options:", async function (dataTable) {
   const expectedOptions = dataTable.raw().map((row) => row[0]);
   logger.info("Verifying financial reference dropdown contains expected options", { expectedOptions });

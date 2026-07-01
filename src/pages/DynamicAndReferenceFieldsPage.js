@@ -20,6 +20,9 @@ const SELECTORS = {
   FINANCIAL_REFERENCE_SECTION: '.financial-reference',
   FINANCIAL_REFERENCE_CARET: '.financial-reference .el-select__caret',
   FINANCIAL_REFERENCE_DROPDOWN_OPTION: '.el-select-dropdown__item:not(.is-disabled)',
+  // Financial Reference section title in the reference-fields modal (trip-app.vue → .financial-section
+  // collapse header). Renders $t('cart.financialReferenceModal.modalTitle') === "Financial Reference".
+  FINANCIAL_REFERENCE_MODAL_TITLE: '.financial-section .el-collapse-item__header .has-text-weight-semibold',
 };
 
 class DynamicAndReferenceFieldsPage {
@@ -355,6 +358,29 @@ class DynamicAndReferenceFieldsPage {
    */
   async closeFinancialReferenceDropdown() {
     await this.page.keyboard.press('Escape');
+  }
+
+  /**
+   * Reads the Financial Reference section title shown in the reference-fields modal
+   * (the .financial-section collapse header). This renders the localized
+   * "Financial Reference" label ($t('cart.financialReferenceModal.modalTitle')).
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>} The trimmed title text
+   */
+  async getFinancialReferenceModalTitle({ timeout = 15000 } = {}) {
+    const title = this.page.locator(SELECTORS.FINANCIAL_REFERENCE_MODAL_TITLE).first();
+    try {
+      await title.waitFor({ state: 'visible', timeout });
+      return (await title.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.getFinancialReferenceModalTitle] The Financial Reference modal title ` +
+        `(selector: ${SELECTORS.FINANCIAL_REFERENCE_MODAL_TITLE}) did not become visible within ${timeout}ms. ` +
+        `Likely the financial-reference modal was not shown after proceed-to-checkout. Original: ${err.message}`
+      );
+    }
   }
 
   /**

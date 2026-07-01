@@ -2013,3 +2013,20 @@ Then("the trip total to pay should not be zero", async function () {
   expect(total, "Trip total to pay should not be zero").toBeGreaterThan(0);
 });
 
+// ===== FINANCIAL REFERENCE (TRIP OVERVIEW) STEPS =====
+
+When("I open the financial reference details from the trip overview", async function () {
+  logger.info("Opening the financial reference details from the quote actions dropdown in the trip overview");
+  await Cart.openFinancialReferenceDetailsFromTripOverview(this.page);
+});
+
+Then("the financial reference field in the trip overview should show {string}", async function (expectedText) {
+  logger.info(`Verifying the financial reference field in the trip overview shows "${expectedText}"`);
+  await Cart.verifyFinancialReferenceFieldDescriptionInTripOverview(this.page, expectedText);
+});
+
+When("I close the financial reference dialog in the trip overview", async function () {
+  logger.info("Closing the financial reference dialog in the trip overview");
+  await Cart.closeFinancialReferenceDialogInTripOverview(this.page);
+});
+

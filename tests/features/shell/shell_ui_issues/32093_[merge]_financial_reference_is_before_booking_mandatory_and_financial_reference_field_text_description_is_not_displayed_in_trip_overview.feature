@@ -21,10 +21,11 @@ Feature: 32093 - Financial Reference is mandatory before booking and its field d
     Then the booking status should be "Pending booking"
     When I accept Terms & Conditions
     And I click the proceed to checkout button
+    Then the financial reference modal title should be "Financial Reference"
     And I select the first available financial reference
-    Then I should see a success notification
+    And I wait for booking details in checkout
+    And "Contact details" should be displayed in the checkout page
     When I complete the booking
-    # TODO: verify the Flight quote is shown in the trip overview -> Then the flight quote should be visible in the trip overview (CartPage QUOTE_TITLE contains "Flight")
-    # TODO: open the financial reference details from the quote actions dropdown in the trip overview -> When I open the financial reference details from the trip overview (CartPage: hover .quote-payment-card .expand-icon, click the 4th .el-dropdown-menu__item)
-    # TODO: verify the financial reference field description text -> Then the financial reference field in the trip overview should show "(Financial Ref)" (assert ".financial-section .el-select__placeholder span" text === "(Financial Ref)")
-    # TODO: close the financial reference dialog -> When I close the financial reference dialog in the trip overview (click .el-dialog__close)
+    And the quote destination should contain "Flight to"
+    When I open the financial reference details from the trip overview
+    Then the financial reference field in the trip overview should show "(Financial Ref)"
