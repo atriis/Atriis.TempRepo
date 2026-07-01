@@ -34,7 +34,19 @@ const SELECTORS = {
   ],
   PHONE_TYPE_DROPDOWN: ".contact-info-container [name='phone-type'] .el-select__wrapper",
   PHONE_TYPE_OPTION: ".el-select-dropdown:visible .el-select-dropdown__item",
-  
+
+  // Guest form — passenger (traveler) type select. app-select renders name on the section wrapper;
+  // options render in the shared app-select popper. Option labels carry age ranges
+  // (e.g. "Child (Ages 2 - 11)"), so callers match by partial passenger-type text.
+  TRAVELER_TYPE_SELECT: "section.app-select[name='traveler-Type'] .el-select",
+  TRAVELER_TYPE_OPTION: ".app-select-popper:visible .el-select-dropdown__item",
+  // Guest email field required-error: the .help message inside the same .control as the email input.
+  GUEST_EMAIL_ERROR: ".control:has([placeholder='Enter email address']) .help",
+  // Non-adult passenger-type tag text (rendered only when travelerType !== 0, so it targets the guest).
+  PASSENGER_TYPE_TAG_TEXT: ".trip-traveler-tag .ptc-text-style",
+  // Request-assistance page — "Who are the travellers?" section heading.
+  REQUEST_ASSISTANCE_TRAVELERS_TITLE: ".travelers-container h6",
+
   // Trip types
   TRIP_TYPE_RADIO_LABELS:
     ":is(.search-options-wrapper, .eu-rail-search-inputs, .amtrak-search-inputs, .uk-rail-search) > :nth-child(1) [role='radiogroup'] .el-radio__label",
@@ -1385,6 +1397,106 @@ class SearchPage {
       }
     }
     return false;
+  }
+
+  /**
+   * Selects a passenger (traveler) type in the guest form by its display name.
+   * Opens the traveler-type app-select and clicks the option whose label contains
+   * the given type — option labels carry age ranges (e.g. "Child (Ages 2 - 11)"),
+   * so the match is by partial text.
+   * @param {string} passengerType - Passenger type as shown in the feature (e.g. "Child", "Lap Infant")
+   */
+  async selectGuestPassengerType(passengerType) {
+    try {
+      const select = this.page.locator(SELECTORS.TRAVELER_TYPE_SELECT).first();
+      await select.waitFor({ state: 'visible', timeout: 10000 });
+      await select.click({ timeout: 10000 });
+
+      const option = this.page
+        .locator(SELECTORS.TRAVELER_TYPE_OPTION)
+        .filter({ hasText: passengerType })
+        .first();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.selectGuestPassengerType] Could not select passenger type "${passengerType}" ` +
+        `(select: ${SELECTORS.TRAVELER_TYPE_SELECT}, option: ${SELECTORS.TRAVELER_TYPE_OPTION}). ` +
+        `The add guest form may not be open or the passenger type is unavailable for this user. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the guest email field. After the date of birth is filled, the DOB calendar
+   * stays open and overlays the centre of the email input, so the click targets the field's
+   * left edge (outside the calendar). This real outside-click dismisses the date picker and
+   * focuses the email field.
+   */
+  async clickGuestEmailField() {
+    try {
+      const email = this.page.locator(SELECTORS.EMAIL_INPUT).first();
+      await email.waitFor({ state: 'visible', timeout: 10000 });
+      await email.click({ position: { x: 10, y: 12 }, timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.clickGuestEmailField] Could not click the guest email field (${SELECTORS.EMAIL_INPUT}). ` +
+        `The add guest form may not be open or the DOB calendar is still overlaying it. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the validation error text shown under the guest email field.
+   * Waits for the error to render (it appears once the form is marked for validation).
+   * @returns {Promise<string>}
+   */
+  async getGuestEmailFieldError() {
+    try {
+      const error = this.page.locator(SELECTORS.GUEST_EMAIL_ERROR).first();
+      await error.waitFor({ state: 'visible', timeout: 10000 });
+      return (await error.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.getGuestEmailFieldError] No validation error rendered under the guest email field ` +
+        `(${SELECTORS.GUEST_EMAIL_ERROR}). Expected a required-field error after the form was validated. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the non-adult passenger-type tag text (e.g. "Child", "Lap Infant").
+   * The .ptc-text-style span renders only for non-adult travelers, so it targets the guest chip.
+   * @returns {Promise<string>}
+   */
+  async getPassengerTypeTagText() {
+    try {
+      const tag = this.page.locator(SELECTORS.PASSENGER_TYPE_TAG_TEXT).first();
+      await tag.waitFor({ state: 'visible', timeout: 10000 });
+      return (await tag.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.getPassengerTypeTagText] Passenger-type tag not visible (${SELECTORS.PASSENGER_TYPE_TAG_TEXT}). ` +
+        `Expected the added guest to show a passenger-type tag. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the "Who are the travellers?" section heading on the request-assistance page.
+   * @returns {Promise<string>}
+   */
+  async getRequestAssistanceTravelersTitle() {
+    try {
+      const title = this.page.locator(SELECTORS.REQUEST_ASSISTANCE_TRAVELERS_TITLE).first();
+      await title.waitFor({ state: 'visible', timeout: 15000 });
+      return (await title.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.getRequestAssistanceTravelersTitle] Travelers section title not visible ` +
+        `(${SELECTORS.REQUEST_ASSISTANCE_TRAVELERS_TITLE}). The request-assistance page may not have loaded. Original: ${err.message}`
+      );
+    }
   }
 
 }

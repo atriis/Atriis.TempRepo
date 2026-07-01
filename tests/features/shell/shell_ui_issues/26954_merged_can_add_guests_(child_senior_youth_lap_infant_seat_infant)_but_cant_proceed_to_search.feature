@@ -25,10 +25,11 @@ Feature: 26954 Shell - Can add non-adult guests but cannot proceed to search
     Then the guest traveler email field should show the error "This field is required"
     When I fill in the guest traveler date of birth "<dateOfBirth>"
     And I fill in the guest traveler email "<email>"
+    # Gender is a mandatory field on the guest form; it must be set before the guest can be added
+    And I select the guest gender "Male"
     And I click the add guest button
     Then the passenger type tag should display "<ptc>"
     And the search should display the message "Online searches are currently available for adults only. For different user types please use"
-    # TODO: html-attr-validation from Testim (request assistance link attribute check) must be converted manually
     When I click the request assistance icon
     Then the travelers section title should display "Who are the travellers?"
     And the passenger type tag should display "<ptc>"

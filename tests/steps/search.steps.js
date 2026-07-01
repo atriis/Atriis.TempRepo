@@ -204,6 +204,82 @@ Then("the user group field should be marked as mandatory for the guest", async f
   await Search.verifyUserGroupMandatory(this.page);
 });
 
+When("I select the passenger type {string} for the guest traveler", async function (passengerType) {
+  logger.info("Selecting passenger type for guest traveler", { passengerType });
+  await Search.selectGuestPassengerType(this.page, passengerType);
+});
+
+When("I fill in the guest traveler first name {string} and last name {string}", async function (firstName, lastName) {
+  logger.info("Filling guest traveler name", { firstName, lastName });
+  await Search.fillGuestName(this.page, firstName, lastName);
+});
+
+When("I fill in the guest traveler date of birth {string}", async function (dateOfBirth) {
+  logger.info("Filling guest traveler date of birth", { dateOfBirth });
+  await Search.fillGuestDateOfBirth(this.page, dateOfBirth);
+});
+
+When("I click the guest traveler email field", async function () {
+  logger.info("Clicking guest traveler email field");
+  await Search.clickGuestEmailField(this.page);
+});
+
+Then("the guest traveler email field should show the error {string}", async function (expectedError) {
+  logger.info("Verifying guest traveler email field error", { expectedError });
+  const actualError = await Search.getGuestEmailFieldError(this.page);
+  expect(
+    actualError,
+    `Guest email field should show the error "${expectedError}", but got "${actualError}"`
+  ).toContain(expectedError);
+});
+
+When("I fill in the guest traveler email {string}", async function (email) {
+  logger.info("Filling guest traveler email", { email });
+  await Search.fillGuestEmail(this.page, email);
+});
+
+When("I select the guest gender {string}", async function (gender) {
+  logger.info("Selecting guest gender", { gender });
+  await Search.selectGuestGender(this.page, gender);
+});
+
+When("I click the add guest button", async function () {
+  logger.info("Clicking the add guest button");
+  await Search.confirmAddGuest(this.page);
+});
+
+Then("the passenger type tag should display {string}", async function (passengerType) {
+  logger.info("Verifying passenger type tag", { passengerType });
+  const actualTag = await Search.getPassengerTypeTag(this.page);
+  expect(
+    actualTag,
+    `Passenger type tag should display "${passengerType}", but got "${actualTag}"`
+  ).toContain(passengerType);
+});
+
+Then("the search should display the message {string}", async function (message) {
+  logger.info("Verifying search message is displayed", { message });
+  const displayed = await Search.isSearchMessageDisplayed(this.page, message);
+  expect(
+    displayed,
+    `Search should display the message "${message}", but it was not visible`
+  ).toBe(true);
+});
+
+When("I click the request assistance icon", async function () {
+  logger.info("Clicking the request assistance icon");
+  await Search.clickRequestAssistanceIcon(this.page);
+});
+
+Then("the travelers section title should display {string}", async function (expectedTitle) {
+  logger.info("Verifying travelers section title", { expectedTitle });
+  const actualTitle = await Search.getTravelersSectionTitle(this.page);
+  expect(
+    actualTitle,
+    `Travelers section title should display "${expectedTitle}", but got "${actualTitle}"`
+  ).toContain(expectedTitle);
+});
+
 Given("I add a third traveler named {string}", async function (travelerName) {
   throw new Error(`TODO: implement 'I add a third traveler named {string}' — add an additional traveler named ${travelerName}`);
 });

@@ -554,6 +554,252 @@ const Search = {
   },
 
   /**
+   * Selects a passenger (traveler) type in the open guest form.
+   * @param {import('playwright').Page} page
+   * @param {string} passengerType - Passenger type as shown in the UI (e.g. "Child", "Senior", "Lap Infant")
+   */
+  async selectGuestPassengerType(page, passengerType) {
+    if (!page) throw new Error('[Search.selectGuestPassengerType] "page" is required.');
+    if (!passengerType || typeof passengerType !== 'string') {
+      throw new Error(`[Search.selectGuestPassengerType] "passengerType" must be a non-empty string, got: ${typeof passengerType}`);
+    }
+
+    logger.debug('[Search.selectGuestPassengerType] Selecting guest passenger type', { passengerType });
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.selectGuestPassengerType(passengerType);
+    } catch (err) {
+      throw new Error(`[Search.selectGuestPassengerType] Failed to select passenger type "${passengerType}" in the guest form: ${err.message}`);
+    }
+  },
+
+  /**
+   * Fills the guest first name and last name in the open guest form.
+   * @param {import('playwright').Page} page
+   * @param {string} firstName
+   * @param {string} lastName
+   */
+  async fillGuestName(page, firstName, lastName) {
+    if (!page) throw new Error('[Search.fillGuestName] "page" is required.');
+    if (!firstName || typeof firstName !== 'string') {
+      throw new Error(`[Search.fillGuestName] "firstName" must be a non-empty string, got: ${typeof firstName}`);
+    }
+    if (!lastName || typeof lastName !== 'string') {
+      throw new Error(`[Search.fillGuestName] "lastName" must be a non-empty string, got: ${typeof lastName}`);
+    }
+
+    logger.debug('[Search.fillGuestName] Filling guest name', { firstName, lastName });
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.fillInRandomFirstName(firstName);
+      await searchPage.fillInRandomLastName(lastName);
+    } catch (err) {
+      throw new Error(`[Search.fillGuestName] Failed to fill guest name "${firstName} ${lastName}": ${err.message}`);
+    }
+  },
+
+  /**
+   * Fills the guest date of birth in the open guest form.
+   * @param {import('playwright').Page} page
+   * @param {string} dateOfBirth - Date in DD/MM/YYYY format
+   */
+  async fillGuestDateOfBirth(page, dateOfBirth) {
+    if (!page) throw new Error('[Search.fillGuestDateOfBirth] "page" is required.');
+    if (!dateOfBirth || typeof dateOfBirth !== 'string') {
+      throw new Error(`[Search.fillGuestDateOfBirth] "dateOfBirth" must be a non-empty string, got: ${typeof dateOfBirth}`);
+    }
+
+    logger.debug('[Search.fillGuestDateOfBirth] Filling guest date of birth', { dateOfBirth });
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.fillInRandomDateOfBirth(dateOfBirth);
+    } catch (err) {
+      throw new Error(`[Search.fillGuestDateOfBirth] Failed to fill guest date of birth "${dateOfBirth}": ${err.message}`);
+    }
+  },
+
+  /**
+   * Fills the guest email in the open guest form.
+   * @param {import('playwright').Page} page
+   * @param {string} email
+   */
+  async fillGuestEmail(page, email) {
+    if (!page) throw new Error('[Search.fillGuestEmail] "page" is required.');
+    if (!email || typeof email !== 'string') {
+      throw new Error(`[Search.fillGuestEmail] "email" must be a non-empty string, got: ${typeof email}`);
+    }
+
+    logger.debug('[Search.fillGuestEmail] Filling guest email', { email });
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      // Clicking the email field first dismisses the DOB calendar that overlays it (and the
+      // fields below), so the fill and the subsequent gender selection are not blocked.
+      await searchPage.clickGuestEmailField();
+      await searchPage.fillInRandomEmail(email);
+    } catch (err) {
+      throw new Error(`[Search.fillGuestEmail] Failed to fill guest email "${email}": ${err.message}`);
+    }
+  },
+
+  /**
+   * Clicks the guest email field, which also blurs the date-of-birth field and triggers
+   * the guest form's validation so required-field errors become visible.
+   * @param {import('playwright').Page} page
+   */
+  async clickGuestEmailField(page) {
+    if (!page) throw new Error('[Search.clickGuestEmailField] "page" is required.');
+
+    logger.debug('[Search.clickGuestEmailField] Clicking guest email field, then triggering form validation');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.clickGuestEmailField();
+      // The guest form only surfaces required-field errors after a submit attempt (the form sets
+      // markFields on submit — clicking a field does not). Attempt to add the guest to trigger
+      // validation; the form is invalid (email empty), so the modal stays open with the
+      // required-email error visible for the assertion that follows.
+      await searchPage.clickAddGuestButtonWithoutWaiting();
+    } catch (err) {
+      throw new Error(`[Search.clickGuestEmailField] Failed to click the guest email field and trigger validation: ${err.message}`);
+    }
+  },
+
+  /**
+   * Selects the guest gender in the open guest form.
+   * @param {import('playwright').Page} page
+   * @param {string} gender - Gender option label as shown in the UI (e.g. "Male", "Female")
+   */
+  async selectGuestGender(page, gender) {
+    if (!page) throw new Error('[Search.selectGuestGender] "page" is required.');
+    if (!gender || typeof gender !== 'string') {
+      throw new Error(`[Search.selectGuestGender] "gender" must be a non-empty string, got: ${typeof gender}`);
+    }
+
+    logger.debug('[Search.selectGuestGender] Selecting guest gender', { gender });
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.selectGenderByName(gender);
+    } catch (err) {
+      throw new Error(`[Search.selectGuestGender] Failed to select guest gender "${gender}": ${err.message}`);
+    }
+  },
+
+  /**
+   * Reads the validation error text shown under the guest email field.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The error message text
+   */
+  async getGuestEmailFieldError(page) {
+    if (!page) throw new Error('[Search.getGuestEmailFieldError] "page" is required.');
+
+    logger.debug('[Search.getGuestEmailFieldError] Reading guest email field error');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      return await searchPage.getGuestEmailFieldError();
+    } catch (err) {
+      throw new Error(`[Search.getGuestEmailFieldError] Failed to read the guest email field error: ${err.message}`);
+    }
+  },
+
+  /**
+   * Submits the guest form by clicking the "Add guest" button and waits for the modal to close.
+   * @param {import('playwright').Page} page
+   */
+  async confirmAddGuest(page) {
+    if (!page) throw new Error('[Search.confirmAddGuest] "page" is required.');
+
+    logger.debug('[Search.confirmAddGuest] Clicking "Add guest" to submit the guest form');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.clickAddGuestButton();
+    } catch (err) {
+      throw new Error(`[Search.confirmAddGuest] Failed to submit the guest form via "Add guest": ${err.message}`);
+    }
+  },
+
+  /**
+   * Reads the non-adult passenger-type tag text shown on the added guest chip.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The tag text (e.g. "Child", "Lap Infant")
+   */
+  async getPassengerTypeTag(page) {
+    if (!page) throw new Error('[Search.getPassengerTypeTag] "page" is required.');
+
+    logger.debug('[Search.getPassengerTypeTag] Reading passenger-type tag text');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      return await searchPage.getPassengerTypeTagText();
+    } catch (err) {
+      throw new Error(`[Search.getPassengerTypeTag] Failed to read the passenger-type tag: ${err.message}`);
+    }
+  },
+
+  /**
+   * Returns whether the given message is displayed on the search page.
+   * @param {import('playwright').Page} page
+   * @param {string} message - Message text to look for
+   * @returns {Promise<boolean>}
+   */
+  async isSearchMessageDisplayed(page, message) {
+    if (!page) throw new Error('[Search.isSearchMessageDisplayed] "page" is required.');
+    if (!message || typeof message !== 'string') {
+      throw new Error(`[Search.isSearchMessageDisplayed] "message" must be a non-empty string, got: ${typeof message}`);
+    }
+
+    logger.debug('[Search.isSearchMessageDisplayed] Checking search message visibility', { message });
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      return await searchPage.isValidationMessageVisible(message);
+    } catch (err) {
+      throw new Error(`[Search.isSearchMessageDisplayed] Failed to check whether the message "${message}" is displayed: ${err.message}`);
+    }
+  },
+
+  /**
+   * Clicks the request assistance ("Travel request") icon/button on the search page.
+   * @param {import('playwright').Page} page
+   */
+  async clickRequestAssistanceIcon(page) {
+    if (!page) throw new Error('[Search.clickRequestAssistanceIcon] "page" is required.');
+
+    logger.debug('[Search.clickRequestAssistanceIcon] Clicking the request assistance icon');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.clickTravelRequestButton();
+    } catch (err) {
+      throw new Error(`[Search.clickRequestAssistanceIcon] Failed to click the request assistance icon: ${err.message}`);
+    }
+  },
+
+  /**
+   * Reads the travelers section title on the request-assistance page.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The section title text
+   */
+  async getTravelersSectionTitle(page) {
+    if (!page) throw new Error('[Search.getTravelersSectionTitle] "page" is required.');
+
+    logger.debug('[Search.getTravelersSectionTitle] Reading travelers section title');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      return await searchPage.getRequestAssistanceTravelersTitle();
+    } catch (err) {
+      throw new Error(`[Search.getTravelersSectionTitle] Failed to read the travelers section title: ${err.message}`);
+    }
+  },
+
+  /**
    * Verifies that a traveler checkbox with the given label text is visible
    * in the edit-traveler dialog.
    * @param {import('playwright').Page} page
