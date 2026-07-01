@@ -21,7 +21,13 @@
  *      labelled INCOMPLETE, so the count reflects reality instead of 0.
  *
  * Inputs (relative to CWD = repo root in the report job):
- *   .github/suites.json                                  - expected suites
+ *   $SUITES_MANIFEST (expected-suites.json)              - expected suites, the
+ *                                                          expanded (per-shard)
+ *                                                          list produced by
+ *                                                          build-matrix.js in the
+ *                                                          setup job. Falls back to
+ *                                                          .github/suites.json for
+ *                                                          local runs.
  *   all-results/<suite_id>-report/cucumber-report.json   - normal results
  *   all-results/<suite_id>-messages/messages.ndjson      - stream (timeout fallback)
  */
@@ -30,7 +36,9 @@ const fs = require('fs');
 const path = require('path');
 
 const RESULTS_DIR = 'all-results';
-const MANIFEST = '.github/suites.json';
+// The generated (expanded) manifest is authoritative: it lists exactly the shards
+// the matrix ran. Fall back to the base suites.json only for local invocations.
+const MANIFEST = process.env.SUITES_MANIFEST || '.github/suites.json';
 
 function appendSummary(md) {
   const file = process.env.GITHUB_STEP_SUMMARY;

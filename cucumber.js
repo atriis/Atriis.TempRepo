@@ -20,6 +20,9 @@ module.exports = {
       'allure-cucumberjs/reporter',
       'rerun:test-results/rerun.txt'
     ],
-    retry: process.env.CI ? parseInt(process.env.RETRY_COUNT || '2', 10) : 0,
+    // CI retries once (was 2): a 3rd attempt rarely converts on the chronically
+    // hard-failing suites and mostly burns wall time toward the step timeout.
+    // Override per-run with RETRY_COUNT if a suite genuinely needs more.
+    retry: process.env.CI ? parseInt(process.env.RETRY_COUNT || '1', 10) : 0,
   }
 };

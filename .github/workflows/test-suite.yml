@@ -25,23 +25,40 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Publishes the suite matrices from .github/suites.json so the matrix below
-  # and the report job's reconciliation step share one source of truth (the
-  # "expected suites" list can never drift from what actually runs).
+  # Builds the job matrices dynamically from .github/suites.json. build-matrix.js
+  # counts the scenarios (Scenario Outline examples expanded) in each suite folder
+  # and computes the shard count automatically (ceil(scenarios / target)), so
+  # shard counts are never hand-tuned and a suite can't outgrow its step timeout.
+  # It also writes expected-suites.json (the expanded suite list) which is uploaded
+  # as an artifact and reconciled against the actual results in the report job, so
+  # the "expected suites" list can never drift from what actually runs.
   setup:
-    name: Load suite matrix
+    name: Build suite matrix
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     outputs:
-      non_booking: ${{ steps.load.outputs.non_booking }}
-      booking: ${{ steps.load.outputs.booking }}
+      non_booking: ${{ steps.build.outputs.non_booking }}
+      booking: ${{ steps.build.outputs.booking }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-      - id: load
-        shell: bash
-        run: |
-          echo "non_booking=$(jq -c '.["non-booking"]' .github/suites.json)" >> "$GITHUB_OUTPUT"
-          echo "booking=$(jq -c '.["booking"]' .github/suites.json)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Build matrix from scenario counts
+        id: build
+        run: node .github/scripts/build-matrix.js
+
+      - name: Upload expected-suites manifest
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: expected-suites
+          path: expected-suites.json
+          if-no-files-found: error
 
   test-non-booking:
     name: '[Non-Booking] ${{ matrix.suite_name }}'
@@ -87,19 +104,35 @@ jobs:
         # GitHub-hosted runner has only 2 vCPUs. Running 4 browsers here starved the
         # CPU and caused random click/visibility timeouts (different step each run).
         # The matrix already fans suites across separate runners for throughput.
-        # When matrix.shards is set, this suite is split by file index (see
-        # .github/scripts/list-shard.js) to stay under the step timeout; otherwise
-        # the whole folder runs.
+        # --shard i/N: cucumber-js splits this suite's scenarios (pickles) across N
+        # shards at the SCENARIO level, so even a heavy Scenario Outline file is
+        # spread evenly. N is computed per suite by build-matrix.js from the
+        # scenario COUNT (target 14, non-booking). Note: this bounds count, not
+        # wall time — a full shard of slow/flaky scenarios (--retry 1) can still
+        # approach this timeout; the step timeout + reconciliation is the real
+        # guard (a timeout goes red, never a silent under-count). Lower the target
+        # in suites.json if a shard trends hot.
         shell: bash
+        # Wrap the run to measure wall time and warn BEFORE a shard actually
+        # times out: if it uses >70% of the step timeout it's trending hot and
+        # its group target in suites.json should be lowered. STEP_TIMEOUT_MIN
+        # must match timeout-minutes above.
         run: |
-          if [ -n "${{ matrix.shards }}" ]; then
-            readarray -t FILES < <(node .github/scripts/list-shard.js "${{ matrix.test_path }}" "${{ matrix.shard }}" "${{ matrix.shards }}")
-            if [ "${#FILES[@]}" -eq 0 ]; then echo "::error::shard ${{ matrix.shard }}/${{ matrix.shards }} produced no feature files"; exit 1; fi
-            echo "Shard ${{ matrix.shard }}/${{ matrix.shards }}: ${#FILES[@]} feature file(s)"
-            npx cucumber-js "${FILES[@]}" --parallel 2 --retry 2
-          else
-            npx cucumber-js "${{ matrix.test_path }}" --parallel 2 --retry 2
+          STEP_TIMEOUT_MIN=60
+          WARN_PCT=70
+          start=$SECONDS
+          set +e
+          npx cucumber-js "${{ matrix.test_path }}" --shard ${{ matrix.shard }}/${{ matrix.shards }} --parallel 2 --retry 1
+          code=$?
+          set -e
+          elapsed=$(( SECONDS - start )); mins=$(( elapsed / 60 ))
+          thresh=$(( STEP_TIMEOUT_MIN * 60 * WARN_PCT / 100 ))
+          echo "Shard wall time: ${mins}m (${elapsed}s) of ${STEP_TIMEOUT_MIN}m step timeout"
+          if [ "$elapsed" -gt "$thresh" ]; then
+            echo "::warning title=Shard approaching timeout::${{ matrix.suite_name }} ran ${mins}m — over ${WARN_PCT}% of the ${STEP_TIMEOUT_MIN}m step timeout. Lower target_scenarios_per_shard / cpu_minutes_per_shard for non-booking in .github/suites.json."
+            echo "⚠️ **${{ matrix.suite_name }}** ran **${mins}m** (>${WARN_PCT}% of ${STEP_TIMEOUT_MIN}m timeout) — shard trending hot; lower the non-booking target in suites.json." >> "$GITHUB_STEP_SUMMARY"
           fi
+          exit $code
         env:
           CI: "true"
 
@@ -197,19 +230,34 @@ jobs:
         # --parallel 1: booking flows are the heaviest (real PNR + cancel) and were
         # the worst hit by CPU contention on the 2-vCPU runner. Run them serially so
         # each browser gets a full core; the matrix still parallelises across suites.
-        # When matrix.shards is set, this suite is split by file index (see
-        # .github/scripts/list-shard.js); otherwise the whole folder runs. No
-        # booking suite is sharded today, but the hook keeps both jobs uniform.
+        # --shard i/N: cucumber-js splits this suite's scenarios across N shards at
+        # the scenario level. N is computed per suite by build-matrix.js from the
+        # scenario COUNT (booking uses a smaller target, 6, since each real-PNR
+        # scenario is slow). Note: this bounds count, not wall time — with --retry 1
+        # and booking's high observed failure rates, a full shard can still run long;
+        # the step timeout + reconciliation is the real guard (a timeout goes red,
+        # never a silent under-count). Lower the target in suites.json if hot.
         shell: bash
+        # Wrap the run to measure wall time and warn BEFORE a shard actually
+        # times out: if it uses >70% of the step timeout it's trending hot and
+        # its group target in suites.json should be lowered. STEP_TIMEOUT_MIN
+        # must match timeout-minutes above.
         run: |
-          if [ -n "${{ matrix.shards }}" ]; then
-            readarray -t FILES < <(node .github/scripts/list-shard.js "${{ matrix.test_path }}" "${{ matrix.shard }}" "${{ matrix.shards }}")
-            if [ "${#FILES[@]}" -eq 0 ]; then echo "::error::shard ${{ matrix.shard }}/${{ matrix.shards }} produced no feature files"; exit 1; fi
-            echo "Shard ${{ matrix.shard }}/${{ matrix.shards }}: ${#FILES[@]} feature file(s)"
-            npx cucumber-js "${FILES[@]}" --parallel 1 --retry 2
-          else
-            npx cucumber-js "${{ matrix.test_path }}" --parallel 1 --retry 2
+          STEP_TIMEOUT_MIN=80
+          WARN_PCT=70
+          start=$SECONDS
+          set +e
+          npx cucumber-js "${{ matrix.test_path }}" --shard ${{ matrix.shard }}/${{ matrix.shards }} --parallel 1 --retry 1
+          code=$?
+          set -e
+          elapsed=$(( SECONDS - start )); mins=$(( elapsed / 60 ))
+          thresh=$(( STEP_TIMEOUT_MIN * 60 * WARN_PCT / 100 ))
+          echo "Shard wall time: ${mins}m (${elapsed}s) of ${STEP_TIMEOUT_MIN}m step timeout"
+          if [ "$elapsed" -gt "$thresh" ]; then
+            echo "::warning title=Shard approaching timeout::${{ matrix.suite_name }} ran ${mins}m — over ${WARN_PCT}% of the ${STEP_TIMEOUT_MIN}m step timeout. Lower target_scenarios_per_shard / cpu_minutes_per_shard for booking in .github/suites.json."
+            echo "⚠️ **${{ matrix.suite_name }}** ran **${mins}m** (>${WARN_PCT}% of ${STEP_TIMEOUT_MIN}m timeout) — shard trending hot; lower the booking target in suites.json." >> "$GITHUB_STEP_SUMMARY"
           fi
+          exit $code
         env:
           CI: "true"
 
@@ -288,14 +336,27 @@ jobs:
           path: all-results
         continue-on-error: true
 
+      # The expanded suite list that setup actually fanned out into (one entry per
+      # shard). Reconciliation compares THIS against the artifacts that arrived, so
+      # the "expected suites" list is exactly what ran — it can't drift.
+      - name: Download expected-suites manifest
+        if: always()
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: expected-suites
+          path: .
+        continue-on-error: true
+
       # Authoritative result: reconcile the suites that were expected to run
-      # (.github/suites.json) against the artifacts that arrived. Recovers
-      # partial counts from the message stream for timed-out suites and FAILS
-      # this job (red run + notification) if any suite produced no results, so
-      # a silent under-count like run #439 can never happen again.
+      # (expected-suites.json from setup) against the artifacts that arrived.
+      # Recovers partial counts from the message stream for timed-out suites and
+      # FAILS this job (red run + notification) if any suite produced no results,
+      # so a silent under-count like run #439 can never happen again.
       - name: Reconcile suite coverage
         if: always()
         run: node .github/scripts/reconcile-suites.js
+        env:
+          SUITES_MANIFEST: expected-suites.json
 
       - name: Download Allure Results
         if: always()
