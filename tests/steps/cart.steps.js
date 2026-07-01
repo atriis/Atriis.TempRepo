@@ -1862,6 +1862,20 @@ Then("the seat icon should be visible in trip overview", async function () {
 });
 
 // ========================================
+// PRODUCT ICONS (CART/TRIP OVERVIEW)
+// ========================================
+
+Then("the flight icon should be visible in the trip overview", async function () {
+  logger.info("Verifying flight icon is visible in the trip overview cart summary");
+  await Cart.verifyFlightIconVisibleInTripOverview(this.page);
+});
+
+Then("the hotel icon should be visible in the quote summary", async function () {
+  logger.info("Verifying hotel icon is visible in the quote summary");
+  await Cart.verifyHotelIconVisibleInQuoteSummary(this.page);
+});
+
+// ========================================
 // PASSENGER INITIALS
 // ========================================
 

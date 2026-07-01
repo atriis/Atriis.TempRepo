@@ -246,6 +246,13 @@ const SELECTORS = {
   // Hotel rooms badge in cart trip summary (.dates-and-rooms from hotel-quote-summary.vue)
   ROOMS_BADGE: '.dates-and-rooms, .dates span',
 
+  // Product icons in the cart trip-summary sidebar (trip-summary.vue > ul.quote-summary-list).
+  // app-product-icon.vue applies the product type as a class on .icon-img itself
+  // ([product]: productTypeName binding), so each icon is identified by its product —
+  // this pinpoints the flight quote's icon vs. the hotel quote's icon rather than by position.
+  FLIGHT_QUOTE_SUMMARY_ICON: '.quote-summary-list .icon-img-wrapper .icon-img.flight',
+  HOTEL_QUOTE_SUMMARY_ICON: '.quote-summary-list .icon-img-wrapper .icon-img.hotel',
+
   // Timed quote badge — appears on quotes with a limited time window
   // (flight-timed-quote.vue / app-timed-quote.vue both render `.timed-quote-badge`)
   TIMED_QUOTE_BADGE: '.timed-quote-badge',
@@ -4366,6 +4373,36 @@ class CartPage {
     const el = this.page.locator(SELECTORS.MEAL_SELECTED_TEXT).first();
     await el.waitFor({ state: 'visible', timeout });
     return (await el.innerText()).trim();
+  }
+
+  // ===== QUOTE SUMMARY PRODUCT ICON =====
+
+  /**
+   * Checks if the flight product icon is visible in the cart trip-summary sidebar.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<boolean>}
+   */
+  async isFlightQuoteSummaryIconVisible(timeout = 10000) {
+    try {
+      await this.page.locator(SELECTORS.FLIGHT_QUOTE_SUMMARY_ICON).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the hotel product icon is visible in the cart trip-summary sidebar.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   * @returns {Promise<boolean>}
+   */
+  async isHotelQuoteSummaryIconVisible(timeout = 10000) {
+    try {
+      await this.page.locator(SELECTORS.HOTEL_QUOTE_SUMMARY_ICON).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   // ===== SEATING ICON =====

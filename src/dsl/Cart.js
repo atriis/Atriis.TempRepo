@@ -4132,6 +4132,28 @@ const Cart = {
   },
 
   /**
+   * Verifies the flight product icon is visible in the cart trip-summary sidebar.
+   * @param {import('playwright').Page} page
+   */
+  async verifyFlightIconVisibleInTripOverview(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const visible = await cartPage.isFlightQuoteSummaryIconVisible();
+    expect(visible, 'Flight icon should be visible in the trip overview cart summary').toBe(true);
+  },
+
+  /**
+   * Verifies the hotel product icon is visible in the cart trip-summary sidebar.
+   * @param {import('playwright').Page} page
+   */
+  async verifyHotelIconVisibleInQuoteSummary(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const visible = await cartPage.isHotelQuoteSummaryIconVisible();
+    expect(visible, 'Hotel icon should be visible in the quote summary').toBe(true);
+  },
+
+  /**
    * Verifies the selected baggage option contains the expected text.
    * @param {import('playwright').Page} page
    * @param {string} expectedOption - Expected baggage option text (e.g. "EXCESS BAGGAGE REQUEST")
