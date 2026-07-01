@@ -2840,6 +2840,198 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     return { actualCode, expectedCode };
   },
+
+  // ===== FILTER / SORT / COMPARISON TABLE =====
+
+  /**
+   * Clears every applied flight-result filter via the "Clear all" link.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{cleared: boolean}>}
+   */
+  async clearAllFilters(page) {
+    if (!page) {
+      throw new Error('[FlightResults.clearAllFilters] "page" is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    logger.debug('[FlightResults.clearAllFilters] Clearing all flight-result filters');
+
+    try {
+      await flightResultsPage.clickClearAllFilters();
+    } catch (err) {
+      throw new Error(
+        `[FlightResults.clearAllFilters] Failed to clear all flight-result filters. ` +
+        `The "Clear all" control may be missing (no filters applied) or the results panel is not loaded. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    // Clearing filters re-runs the search results; wait for the list to settle.
+    await Promise.any([
+      flightResultsPage.waitForFlightResults(),
+      resultsPage.waitForNoResultsTitle('No results found'),
+    ]);
+
+    return { cleared: true };
+  },
+
+  /**
+   * Extracts the numeric price advertised on a quick-sort option (e.g. "Best", "Cheapest").
+   * The quick-sort bar shows, for each sort option, the price of the top result once that
+   * sort is applied — used to assert the first result reflects the selected sort.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} sortLabel - Sort option label (e.g. "Best", "Cheapest")
+   * @returns {Promise<number>} The parsed sort-option price
+   */
+  async extractQuickSortOptionPrice(page, sortLabel) {
+    if (!page) {
+      throw new Error('[FlightResults.extractQuickSortOptionPrice] "page" is required');
+    }
+    if (!sortLabel || typeof sortLabel !== 'string') {
+      throw new Error(`[FlightResults.extractQuickSortOptionPrice] "sortLabel" must be a non-empty string, got: ${typeof sortLabel}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    logger.debug('[FlightResults.extractQuickSortOptionPrice] Extracting quick-sort option price', { sortLabel });
+
+    let price;
+    try {
+      price = await flightResultsPage.getQuickSortOptionPrice(sortLabel);
+    } catch (err) {
+      throw new Error(
+        `[FlightResults.extractQuickSortOptionPrice] Failed to read the "${sortLabel}" quick-sort price. ` +
+        `Verify "${sortLabel}" is an available sort option for the current result set. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    if (typeof price !== 'number' || Number.isNaN(price)) {
+      throw new Error(
+        `[FlightResults.extractQuickSortOptionPrice] Could not parse a numeric price from the "${sortLabel}" quick-sort option, got: ${price}`
+      );
+    }
+
+    return price;
+  },
+
+  /**
+   * Selects a carrier by clicking its logo in the comparison table, which filters results to
+   * that carrier and re-sorts them by cheapest.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} carrierName - Carrier name shown in the logo tooltip (e.g. "Air Europa")
+   * @returns {Promise<{carrierName: string}>}
+   */
+  async selectCarrierLogoFromComparison(page, carrierName) {
+    if (!page) {
+      throw new Error('[FlightResults.selectCarrierLogoFromComparison] "page" is required');
+    }
+    if (!carrierName || typeof carrierName !== 'string') {
+      throw new Error(`[FlightResults.selectCarrierLogoFromComparison] "carrierName" must be a non-empty string, got: ${typeof carrierName}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    logger.debug('[FlightResults.selectCarrierLogoFromComparison] Selecting carrier logo from comparison table', { carrierName });
+
+    try {
+      await flightResultsPage.clickComparisonCarrierLogo(carrierName);
+    } catch (err) {
+      throw new Error(
+        `[FlightResults.selectCarrierLogoFromComparison] Failed to select the "${carrierName}" logo from the comparison table. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    // Selecting a comparison carrier re-filters the results; wait for the list to settle.
+    await Promise.any([
+      flightResultsPage.waitForFlightResults(),
+      resultsPage.waitForNoResultsTitle('No results found'),
+    ]);
+
+    return { carrierName };
+  },
+
+  /**
+   * Verifies that the carriers-filter checkbox for the given airline is checked.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} airlineName - Airline label text (e.g. "Air Europa")
+   * @returns {Promise<{airlineName: string, checked: boolean}>}
+   */
+  async verifyAirlineCheckboxChecked(page, airlineName) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyAirlineCheckboxChecked] "page" is required');
+    }
+    if (!airlineName || typeof airlineName !== 'string') {
+      throw new Error(`[FlightResults.verifyAirlineCheckboxChecked] "airlineName" must be a non-empty string, got: ${typeof airlineName}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const checked = await flightResultsPage.isAirlineCheckboxChecked(airlineName);
+
+    expect(
+      checked,
+      `[FlightResults.verifyAirlineCheckboxChecked] Expected the "${airlineName}" carriers-filter checkbox to be checked after selecting it from the comparison table, but it was not.`
+    ).toBe(true);
+
+    return { airlineName, checked };
+  },
+
+  /**
+   * Extracts the displayed price of the first flight result as a number.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<number>} The first flight result price
+   */
+  async extractFirstFlightResultPrice(page) {
+    if (!page) {
+      throw new Error('[FlightResults.extractFirstFlightResultPrice] "page" is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const price = await flightResultsPage.getFirstFlightResultPriceValue();
+
+    if (typeof price !== 'number' || Number.isNaN(price)) {
+      throw new Error(
+        `[FlightResults.extractFirstFlightResultPrice] Could not parse a numeric price from the first flight result, got: ${price}`
+      );
+    }
+
+    return price;
+  },
+
+  /**
+   * Verifies that the carriers-filter checkbox for the given airline is NOT checked.
+   * Used after clearing filters to prove the previously-applied carrier filter was reset.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} airlineName - Airline label text (e.g. "Air Europa")
+   * @returns {Promise<{airlineName: string, checked: boolean}>}
+   */
+  async verifyAirlineCheckboxNotChecked(page, airlineName) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyAirlineCheckboxNotChecked] "page" is required');
+    }
+    if (!airlineName || typeof airlineName !== 'string') {
+      throw new Error(`[FlightResults.verifyAirlineCheckboxNotChecked] "airlineName" must be a non-empty string, got: ${typeof airlineName}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const unchecked = await flightResultsPage.isAirlineCheckboxUnchecked(airlineName);
+
+    expect(
+      unchecked,
+      `[FlightResults.verifyAirlineCheckboxNotChecked] Expected the "${airlineName}" carriers-filter checkbox to be unchecked after clearing all filters, but it remained checked — "clear all filters" did not reset the applied carrier filter.`
+    ).toBe(true);
+
+    return { airlineName, checked: false };
+  },
 }
 
 module.exports = FlightResults;

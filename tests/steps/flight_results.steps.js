@@ -987,3 +987,59 @@ Then('the first flight destination airport should be {string}', async function (
   logger.info('Verifying first flight destination airport', { airportCode });
   await FlightResults.verifyFirstFlightDestinationAirport(this.page, airportCode);
 });
+
+// ========================================
+// FILTER / SORT / COMPARISON TABLE
+// ========================================
+
+When('I clear all flight result filters', async function () {
+  logger.info('Clearing all flight result filters');
+  await FlightResults.clearAllFilters(this.page);
+});
+
+When('I extract the {string} sort price', async function (sortLabel) {
+  logger.info('Extracting the quick-sort option price', { sortLabel });
+  const price = await FlightResults.extractQuickSortOptionPrice(this.page, sortLabel);
+
+  if (!this.quickSortPrices) this.quickSortPrices = {};
+  this.quickSortPrices[sortLabel] = price;
+
+  logger.info('Extracted quick-sort option price', { sortLabel, price });
+});
+
+When('I select the {string} carrier logo from the comparison table', async function (carrierName) {
+  logger.info('Selecting carrier logo from comparison table', { carrierName });
+  await FlightResults.selectCarrierLogoFromComparison(this.page, carrierName);
+});
+
+Then('the airline checkbox {string} should be checked', async function (airlineName) {
+  logger.info('Verifying airline filter checkbox is checked', { airlineName });
+  await FlightResults.verifyAirlineCheckboxChecked(this.page, airlineName);
+});
+
+Then('the airline checkbox {string} should not be checked', async function (airlineName) {
+  logger.info('Verifying airline filter checkbox is not checked', { airlineName });
+  await FlightResults.verifyAirlineCheckboxNotChecked(this.page, airlineName);
+});
+
+Then('the first flight result price should match the {string} sort price', async function (sortLabel) {
+  const expectedPrice = this.quickSortPrices?.[sortLabel];
+  if (typeof expectedPrice !== 'number') {
+    throw new Error(`No stored "${sortLabel}" sort price. Run 'When I extract the "${sortLabel}" sort price' before this assertion.`);
+  }
+
+  const actualPrice = await FlightResults.extractFirstFlightResultPrice(this.page);
+
+  logger.info('Verifying first flight result price matches the sort option price', {
+    sortLabel,
+    expectedPrice,
+    actualPrice,
+  });
+
+  expectNumbersToBeEqualWithTolerance(
+    actualPrice,
+    expectedPrice,
+    0.02,
+    `first flight result price vs "${sortLabel}" sort price`,
+  );
+});

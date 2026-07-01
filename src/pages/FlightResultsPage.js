@@ -68,7 +68,26 @@ const SELECTORS = {
   COMPARISON_ROW: '.ticket-layout-container .el-table__body-wrapper tbody tr',
   COMPARISON_STOP_TYPE: '.stop-type',
   COMPARISON_PRICE_CELL: '.cell-price',
+  // Carrier logos are the column headers of the comparison table (flight-comparison.vue), each an
+  // <img class="carrier-logo"> (app-img). Matching `img.carrier-logo` excludes the empty stop-type
+  // column header (a <div class="carrier-logo">). Each logo is wrapped in an el-tooltip whose content
+  // is the carrier name, so a specific carrier is found by hovering the logo and reading the tooltip.
+  COMPARISON_CARRIER_LOGO: '.ticket-layout-container img.carrier-logo',
   STOPS_FILTER_CONTAINER: '.stops-filter .filter-container',
+
+  // Clear-all-filters link rendered by the carriers checkbox group (showClearAll) in flight-filter.vue.
+  // Clicking it resets all applied flight-result filters.
+  CLEAR_ALL_FILTERS_BTN: '.clear-all-btn',
+
+  // Quick-sort bar (flight-list-sort.vue). Each sort option (Best / Cheapest / Quickest) renders as a
+  // radio button that displays its resulting top price in a `.price` element.
+  QUICK_SORT_RADIO_BUTTON: '.flight-list-sort .quick-sort .el-radio-button',
+  QUICK_SORT_OPTION_PRICE: '.price',
+
+  // Carriers checkbox filter (flight-filter.vue → .carriers-filter). Element Plus marks a checked
+  // checkbox with the `is-checked` class on its `.el-checkbox__input`.
+  CARRIERS_FILTER_CHECKBOX_LABEL: '.carriers-filter label.el-checkbox',
+  CHECKBOX_CHECKED_INPUT: '.el-checkbox__input.is-checked',
 
   // Airport filter
   AIRPORTS_FILTER_CONTAINER: '.filter-container',
@@ -781,6 +800,152 @@ class FlightResultsPage {
     const row = this.getComparisonRow(stopLabel);
     await row.waitFor({ state: 'visible', timeout: 30000 });
     return await row.locator(SELECTORS.COMPARISON_PRICE_CELL).count();
+  }
+
+  /**
+   * Clicks the "Clear all" filters link that resets every applied flight-result filter.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async clickClearAllFilters(timeout = 30000) {
+    const clearAllButton = this.page.locator(SELECTORS.CLEAR_ALL_FILTERS_BTN).first();
+    await clearAllButton.waitFor({ state: 'visible', timeout });
+    await clearAllButton.click({ timeout });
+  }
+
+  /**
+   * Reads the numeric price shown on a quick-sort option (Best / Cheapest / Quickest).
+   * The quick-sort bar advertises, for each sort option, the price of the top result once
+   * that sort is applied, so this is used to assert the first result reflects the sort.
+   *
+   * @param {string} sortLabel - Sort option label as shown in the UI (e.g. "Best", "Cheapest")
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @returns {Promise<number|null>} The parsed price value for the sort option
+   */
+  async getQuickSortOptionPrice(sortLabel, timeout = 30000) {
+    if (!sortLabel || typeof sortLabel !== 'string') {
+      throw new Error(`sortLabel must be a non-empty string, got: ${typeof sortLabel}`);
+    }
+
+    const sortButton = this.page
+      .locator(SELECTORS.QUICK_SORT_RADIO_BUTTON)
+      .filter({ hasText: new RegExp(`\\b${escapeRegExp(sortLabel)}\\b`, 'i') })
+      .first();
+
+    await sortButton.waitFor({ state: 'visible', timeout });
+
+    const priceElement = sortButton.locator(SELECTORS.QUICK_SORT_OPTION_PRICE).first();
+    await priceElement.waitFor({ state: 'visible', timeout });
+
+    return extractNumber(sortButton, SELECTORS.QUICK_SORT_OPTION_PRICE, 0);
+  }
+
+  /**
+   * Selects a carrier by clicking its logo (column header) in the comparison table.
+   * Carrier logos carry no readable text, so each logo is hovered to reveal its el-tooltip
+   * and the one whose tooltip matches the carrier name is clicked. Clicking a comparison-table
+   * carrier logo filters results to that carrier and re-sorts them by cheapest.
+   *
+   * @param {string} carrierName - Carrier name as shown in the logo tooltip (e.g. "Air Europa")
+   * @param {number} timeout - Max wait time in ms for the comparison table (default: 30000)
+   */
+  async clickComparisonCarrierLogo(carrierName, timeout = 30000) {
+    if (!carrierName || typeof carrierName !== 'string') {
+      throw new Error(`carrierName must be a non-empty string, got: ${typeof carrierName}`);
+    }
+
+    await this.waitForComparisonTable(timeout);
+
+    const logos = this.page.locator(SELECTORS.COMPARISON_CARRIER_LOGO);
+    await logos.first().waitFor({ state: 'visible', timeout });
+
+    const logoCount = await logos.count();
+    for (let i = 0; i < logoCount; i++) {
+      const logo = logos.nth(i);
+      if (!(await logo.isVisible())) {
+        continue;
+      }
+
+      await logo.hover();
+
+      // The first (stop-type) column header has no tooltip, so a short wait that times out
+      // simply means "not this logo" and we move on to the next carrier column.
+      const tooltip = this.page
+        .locator(SELECTORS.EL_POPPER_VISIBLE)
+        .filter({ hasText: carrierName })
+        .first();
+      const matched = await tooltip
+        .waitFor({ state: 'visible', timeout: 2000 })
+        .then(() => true)
+        .catch(() => false);
+
+      if (matched) {
+        await logo.click();
+        return;
+      }
+    }
+
+    throw new Error(
+      `[FlightResultsPage.clickComparisonCarrierLogo] Could not find a comparison-table carrier logo ` +
+      `with tooltip "${carrierName}". Verify the carrier appears as a column in the comparison table for this search.`
+    );
+  }
+
+  /**
+   * Returns whether the carriers-filter checkbox for the given airline is checked.
+   * Element Plus marks a checked checkbox with the `is-checked` class on its input wrapper.
+   *
+   * @param {string} airlineName - Airline label text (e.g. "Air Europa")
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isAirlineCheckboxChecked(airlineName, timeout = 15000) {
+    if (!airlineName || typeof airlineName !== 'string') {
+      throw new Error(`airlineName must be a non-empty string, got: ${typeof airlineName}`);
+    }
+
+    const checkboxLabel = this.page
+      .locator(SELECTORS.CARRIERS_FILTER_CHECKBOX_LABEL, {
+        has: this.page.locator(`p:text-is('${airlineName}')`),
+      })
+      .first();
+
+    await checkboxLabel.waitFor({ state: 'visible', timeout });
+
+    return checkboxLabel
+      .locator(SELECTORS.CHECKBOX_CHECKED_INPUT)
+      .waitFor({ state: 'attached', timeout })
+      .then(() => true)
+      .catch(() => false);
+  }
+
+  /**
+   * Returns whether the carriers-filter checkbox for the given airline has reached the
+   * unchecked state (its `is-checked` input has left the DOM). Used to confirm that clearing
+   * filters actually reset a previously-applied carrier filter.
+   *
+   * @param {string} airlineName - Airline label text (e.g. "Air Europa")
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isAirlineCheckboxUnchecked(airlineName, timeout = 15000) {
+    if (!airlineName || typeof airlineName !== 'string') {
+      throw new Error(`airlineName must be a non-empty string, got: ${typeof airlineName}`);
+    }
+
+    const checkboxLabel = this.page
+      .locator(SELECTORS.CARRIERS_FILTER_CHECKBOX_LABEL, {
+        has: this.page.locator(`p:text-is('${airlineName}')`),
+      })
+      .first();
+
+    await checkboxLabel.waitFor({ state: 'visible', timeout });
+
+    return checkboxLabel
+      .locator(SELECTORS.CHECKBOX_CHECKED_INPUT)
+      .waitFor({ state: 'detached', timeout })
+      .then(() => true)
+      .catch(() => false);
   }
 
   /**
