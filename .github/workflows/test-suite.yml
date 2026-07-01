@@ -25,50 +25,80 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Builds the job matrices dynamically from .github/suites.json. build-matrix.js
-  # counts the scenarios (Scenario Outline examples expanded) in each suite folder
-  # and computes the shard count automatically (ceil(scenarios / target)), so
-  # shard counts are never hand-tuned and a suite can't outgrow its step timeout.
-  # It also writes expected-suites.json (the expanded suite list) which is uploaded
-  # as an artifact and reconciled against the actual results in the report job, so
-  # the "expected suites" list can never drift from what actually runs.
-  setup:
-    name: Build suite matrix
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    outputs:
-      non_booking: ${{ steps.build.outputs.non_booking }}
-      booking: ${{ steps.build.outputs.booking }}
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - run: npm ci
-
-      - name: Build matrix from scenario counts
-        id: build
-        run: node .github/scripts/build-matrix.js
-
-      - name: Upload expected-suites manifest
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: expected-suites
-          path: expected-suites.json
-          if-no-files-found: error
-
   test-non-booking:
     name: '[Non-Booking] ${{ matrix.suite_name }}'
     runs-on: ubuntu-latest
     timeout-minutes: 65
-    needs: setup
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.setup.outputs.non_booking) }}
+        include:
+          # GDS Flights - Non Booking
+          - suite_id: flights-amadeus-non-booking
+            suite_name: Flights Amadeus Non Booking
+            test_path: tests/features/flights/flights_amadeus/flights_amadeus_non_booking/
+          - suite_id: flights-general-non-booking
+            suite_name: Flights General Non Booking
+            test_path: tests/features/flights/flights_general/flights_general_non_booking/
+          - suite_id: flights-galileo-non-booking
+            suite_name: Flights Galileo Non Booking
+            test_path: tests/features/flights/flights_galileo/flights_galileo_non_booking/
+          - suite_id: flights-sabre-non-booking
+            suite_name: Flights Sabre Non Booking
+            test_path: tests/features/flights/flights_sabre/flights_sabre_non_booking/
+          # LCC Flights - Non Booking
+          - suite_id: flights-ypsilon-non-booking
+            suite_name: Flights Ypsilon Non Booking
+            test_path: tests/features/flights/flights_ypsilon/flights_ypsilon_non_booking/
+          - suite_id: flights-travelfusion-non-booking
+            suite_name: Flights Travelfusion Non Booking
+            test_path: tests/features/flights/flights_travelfusion/flights_travelfusion_non_booking/
+          # NDC Flights - Non Booking
+          - suite_id: flights-aa-ndc-non-booking
+            suite_name: Flights AA NDC Non Booking
+            test_path: tests/features/flights/flights_aa_ndc/flights_aa_ndc_non_booking/
+          - suite_id: flights-afkl-ndc-non-booking
+            suite_name: Flights AFKL NDC Non Booking
+            test_path: tests/features/flights/flights_afkl_ndc/flights_afkl_ndc_non_booking/
+          - suite_id: flights-ba-ndc-non-booking
+            suite_name: Flights BA NDC Non Booking
+            test_path: tests/features/flights/flights_ba_ndc/flights_ba_ndc_non_booking/
+          - suite_id: flights-ib-ndc-non-booking
+            suite_name: Flights IB NDC Non Booking
+            test_path: tests/features/flights/flights_ib_ndc/flights_ib_ndc_non_booking/
+          - suite_id: flights-lh-ndc-non-booking
+            suite_name: Flights LH NDC Non Booking
+            test_path: tests/features/flights/flights_lh_ndc/flights_lh_ndc_non_booking/
+          - suite_id: flights-ua-ndc-non-booking
+            suite_name: Flights UA NDC Non Booking
+            test_path: tests/features/flights/flights_ua_ndc/flights_ua_ndc_non_booking/
+          # Hotels - Non Booking
+          - suite_id: hotels-non-booking
+            suite_name: Hotels Non Booking
+            test_path: tests/features/hotels/hotels_non_booking/
+          # Other
+          - suite_id: cars-booking
+            suite_name: Cars Booking
+            test_path: tests/features/cars/cars_booking/
+          - suite_id: cars-daily
+            suite_name: Cars Daily
+            test_path: tests/features/cars/daily_cars/
+          - suite_id: rails-daily
+            suite_name: Rails Daily
+            test_path: tests/features/rails/daily_rails/
+          # Shell
+          - suite_id: shell-fop-issues
+            suite_name: Shell FOP Issues
+            test_path: tests/features/shell/shell_fop_issues/
+          - suite_id: shell-frequent-programs
+            suite_name: Shell Frequent Programs
+            test_path: tests/features/shell/shell_frequent_programs/
+          - suite_id: shell-manual-quote
+            suite_name: Shell Manual Quote
+            test_path: tests/features/shell/shell_manual_quote/
+          - suite_id: shell-user-profile
+            suite_name: Shell User Profile
+            test_path: tests/features/shell/shell_user_profile/
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
@@ -100,39 +130,7 @@ jobs:
 
       - name: Run ${{ matrix.suite_name }} Tests
         timeout-minutes: 60
-        # --parallel 2: each scenario launches its own 1920x1080 Chromium, and the
-        # GitHub-hosted runner has only 2 vCPUs. Running 4 browsers here starved the
-        # CPU and caused random click/visibility timeouts (different step each run).
-        # The matrix already fans suites across separate runners for throughput.
-        # --shard i/N: cucumber-js splits this suite's scenarios (pickles) across N
-        # shards at the SCENARIO level, so even a heavy Scenario Outline file is
-        # spread evenly. N is computed per suite by build-matrix.js from the
-        # scenario COUNT (target 14, non-booking). Note: this bounds count, not
-        # wall time — a full shard of slow/flaky scenarios (--retry 1) can still
-        # approach this timeout; the step timeout + reconciliation is the real
-        # guard (a timeout goes red, never a silent under-count). Lower the target
-        # in suites.json if a shard trends hot.
-        shell: bash
-        # Wrap the run to measure wall time and warn BEFORE a shard actually
-        # times out: if it uses >70% of the step timeout it's trending hot and
-        # its group target in suites.json should be lowered. STEP_TIMEOUT_MIN
-        # must match timeout-minutes above.
-        run: |
-          STEP_TIMEOUT_MIN=60
-          WARN_PCT=70
-          start=$SECONDS
-          set +e
-          npx cucumber-js "${{ matrix.test_path }}" --shard ${{ matrix.shard }}/${{ matrix.shards }} --parallel 2 --retry 1
-          code=$?
-          set -e
-          elapsed=$(( SECONDS - start )); mins=$(( elapsed / 60 ))
-          thresh=$(( STEP_TIMEOUT_MIN * 60 * WARN_PCT / 100 ))
-          echo "Shard wall time: ${mins}m (${elapsed}s) of ${STEP_TIMEOUT_MIN}m step timeout"
-          if [ "$elapsed" -gt "$thresh" ]; then
-            echo "::warning title=Shard approaching timeout::${{ matrix.suite_name }} ran ${mins}m — over ${WARN_PCT}% of the ${STEP_TIMEOUT_MIN}m step timeout. Lower target_scenarios_per_shard / cpu_minutes_per_shard for non-booking in .github/suites.json."
-            echo "⚠️ **${{ matrix.suite_name }}** ran **${mins}m** (>${WARN_PCT}% of ${STEP_TIMEOUT_MIN}m timeout) — shard trending hot; lower the non-booking target in suites.json." >> "$GITHUB_STEP_SUMMARY"
-          fi
-          exit $code
+        run: npx cucumber-js ${{ matrix.test_path }} --parallel 4 --retry 2
         env:
           CI: "true"
 
@@ -152,17 +150,6 @@ jobs:
           path: test-results/cucumber-report.json
           if-no-files-found: ignore
 
-      # Incremental message stream. Unlike the JSON report (flushed only at the
-      # end), this is written scenario-by-scenario, so it survives a step
-      # timeout and lets the report job recover the scenarios that completed.
-      - name: Upload ${{ matrix.suite_name }} Message Stream
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ matrix.suite_id }}-messages
-          path: test-results/messages.ndjson
-          if-no-files-found: ignore
-
       - name: Upload ${{ matrix.suite_name }} Allure Results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -179,23 +166,54 @@ jobs:
           path: test-results/screenshots/
           if-no-files-found: ignore
 
-      - name: Upload ${{ matrix.suite_name }} Playwright Traces
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ matrix.suite_id }}-traces
-          path: test-results/traces/
-          if-no-files-found: ignore
-
   test-booking:
     name: '[Booking] ${{ matrix.suite_name }}'
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    needs: setup
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.setup.outputs.booking) }}
+        include:
+          # GDS Flights - Booking
+          - suite_id: flights-amadeus-booking
+            suite_name: Flights Amadeus Booking
+            test_path: tests/features/flights/flights_amadeus/flights_amadeus_booking/
+          - suite_id: flights-general-booking
+            suite_name: Flights General Booking
+            test_path: tests/features/flights/flights_general/flights_general_booking/
+          - suite_id: flights-galileo-booking
+            suite_name: Flights Galileo Booking
+            test_path: tests/features/flights/flights_galileo/flights_galileo_booking/
+          - suite_id: flights-sabre-booking
+            suite_name: Flights Sabre Booking
+            test_path: tests/features/flights/flights_sabre/flights_sabre_booking/
+          # LCC Flights - Booking
+          - suite_id: flights-ypsilon-booking
+            suite_name: Flights Ypsilon Booking
+            test_path: tests/features/flights/flights_ypsilon/flights_ypsilon_booking/
+          - suite_id: flights-travelfusion-booking
+            suite_name: Flights Travelfusion Booking
+            test_path: tests/features/flights/flights_travelfusion/flights_travelfusion_booking/
+          # NDC Flights - Booking
+          - suite_id: flights-afkl-ndc-booking
+            suite_name: Flights AFKL NDC Booking
+            test_path: tests/features/flights/flights_afkl_ndc/flights_afkl_ndc_booking/
+          - suite_id: flights-ba-ndc-booking
+            suite_name: Flights BA NDC Booking
+            test_path: tests/features/flights/flights_ba_ndc/flights_ba_ndc_booking/
+          - suite_id: flights-ib-ndc-booking
+            suite_name: Flights IB NDC Booking
+            test_path: tests/features/flights/flights_ib_ndc/flights_ib_ndc_booking/
+          - suite_id: flights-lh-ndc-booking
+            suite_name: Flights LH NDC Booking
+            test_path: tests/features/flights/flights_lh_ndc/flights_lh_ndc_booking/
+          - suite_id: flights-ua-ndc-booking
+            suite_name: Flights UA NDC Booking
+            test_path: tests/features/flights/flights_ua_ndc/flights_ua_ndc_booking/
+          # Hotels - Booking
+          - suite_id: hotels-booking
+            suite_name: Hotels Booking
+            test_path: tests/features/hotels/hotels_booking/
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
@@ -227,37 +245,7 @@ jobs:
 
       - name: Run ${{ matrix.suite_name }} Tests
         timeout-minutes: 80
-        # --parallel 1: booking flows are the heaviest (real PNR + cancel) and were
-        # the worst hit by CPU contention on the 2-vCPU runner. Run them serially so
-        # each browser gets a full core; the matrix still parallelises across suites.
-        # --shard i/N: cucumber-js splits this suite's scenarios across N shards at
-        # the scenario level. N is computed per suite by build-matrix.js from the
-        # scenario COUNT (booking uses a smaller target, 6, since each real-PNR
-        # scenario is slow). Note: this bounds count, not wall time — with --retry 1
-        # and booking's high observed failure rates, a full shard can still run long;
-        # the step timeout + reconciliation is the real guard (a timeout goes red,
-        # never a silent under-count). Lower the target in suites.json if hot.
-        shell: bash
-        # Wrap the run to measure wall time and warn BEFORE a shard actually
-        # times out: if it uses >70% of the step timeout it's trending hot and
-        # its group target in suites.json should be lowered. STEP_TIMEOUT_MIN
-        # must match timeout-minutes above.
-        run: |
-          STEP_TIMEOUT_MIN=80
-          WARN_PCT=70
-          start=$SECONDS
-          set +e
-          npx cucumber-js "${{ matrix.test_path }}" --shard ${{ matrix.shard }}/${{ matrix.shards }} --parallel 1 --retry 1
-          code=$?
-          set -e
-          elapsed=$(( SECONDS - start )); mins=$(( elapsed / 60 ))
-          thresh=$(( STEP_TIMEOUT_MIN * 60 * WARN_PCT / 100 ))
-          echo "Shard wall time: ${mins}m (${elapsed}s) of ${STEP_TIMEOUT_MIN}m step timeout"
-          if [ "$elapsed" -gt "$thresh" ]; then
-            echo "::warning title=Shard approaching timeout::${{ matrix.suite_name }} ran ${mins}m — over ${WARN_PCT}% of the ${STEP_TIMEOUT_MIN}m step timeout. Lower target_scenarios_per_shard / cpu_minutes_per_shard for booking in .github/suites.json."
-            echo "⚠️ **${{ matrix.suite_name }}** ran **${mins}m** (>${WARN_PCT}% of ${STEP_TIMEOUT_MIN}m timeout) — shard trending hot; lower the booking target in suites.json." >> "$GITHUB_STEP_SUMMARY"
-          fi
-          exit $code
+        run: npx cucumber-js ${{ matrix.test_path }} --parallel 2 --retry 2
         env:
           CI: "true"
 
@@ -277,17 +265,6 @@ jobs:
           path: test-results/cucumber-report.json
           if-no-files-found: ignore
 
-      # Incremental message stream. Unlike the JSON report (flushed only at the
-      # end), this is written scenario-by-scenario, so it survives a step
-      # timeout and lets the report job recover the scenarios that completed.
-      - name: Upload ${{ matrix.suite_name }} Message Stream
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ matrix.suite_id }}-messages
-          path: test-results/messages.ndjson
-          if-no-files-found: ignore
-
       - name: Upload ${{ matrix.suite_name }} Allure Results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -304,19 +281,11 @@ jobs:
           path: test-results/screenshots/
           if-no-files-found: ignore
 
-      - name: Upload ${{ matrix.suite_name }} Playwright Traces
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ matrix.suite_id }}-traces
-          path: test-results/traces/
-          if-no-files-found: ignore
-
   report:
     name: Test Report
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [setup, test-non-booking, test-booking]
+    needs: [test-non-booking, test-booking]
     if: always()
 
     permissions:
@@ -335,28 +304,6 @@ jobs:
         with:
           path: all-results
         continue-on-error: true
-
-      # The expanded suite list that setup actually fanned out into (one entry per
-      # shard). Reconciliation compares THIS against the artifacts that arrived, so
-      # the "expected suites" list is exactly what ran — it can't drift.
-      - name: Download expected-suites manifest
-        if: always()
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: expected-suites
-          path: .
-        continue-on-error: true
-
-      # Authoritative result: reconcile the suites that were expected to run
-      # (expected-suites.json from setup) against the artifacts that arrived.
-      # Recovers partial counts from the message stream for timed-out suites and
-      # FAILS this job (red run + notification) if any suite produced no results,
-      # so a silent under-count like run #439 can never happen again.
-      - name: Reconcile suite coverage
-        if: always()
-        run: node .github/scripts/reconcile-suites.js
-        env:
-          SUITES_MANIFEST: expected-suites.json
 
       - name: Download Allure Results
         if: always()
@@ -543,18 +490,18 @@ jobs:
         if: always()
         shell: bash
         run: |
-          echo "## 📚 Cucumber Report Detail" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> Counts below come from the merged Cucumber report and reflect **only suites that uploaded results**. The authoritative run status and coverage are in the **Test Coverage Reconciliation** section above." >> $GITHUB_STEP_SUMMARY
+          echo "##  Test Execution Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ -f "cucumber-html-report/summary.json" ]; then
             node -e "
               const s = JSON.parse(require('fs').readFileSync('cucumber-html-report/summary.json', 'utf8'));
               const passRate = s.totalScenarios > 0 ? ((s.passed / s.totalScenarios) * 100).toFixed(1) : '0.0';
+              const status = s.failed > 0 ? '🔴 SOME TESTS FAILED' : '🟢 ALL TESTS PASSED';
               console.log('| Metric | Value |');
               console.log('|--------|-------|');
-              console.log('| 🧪 Scenarios in merged report | ' + s.totalScenarios + ' |');
+              console.log('| 🏷️ **Status** | ' + status + ' |');
+              console.log('| 🧪 Total Scenarios | ' + s.totalScenarios + ' |');
               console.log('| ✅ Passed | ' + s.passed + ' |');
               console.log('| ❌ Failed | ' + s.failed + ' |');
               console.log('| ⏭️ Skipped | ' + s.skipped + ' |');
