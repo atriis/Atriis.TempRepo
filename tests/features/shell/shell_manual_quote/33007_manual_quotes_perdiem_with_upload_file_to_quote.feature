@@ -16,5 +16,5 @@ Feature: 33007 Manual Quote - Per Diem quote with file upload
     And I have added myself as the traveler
     When I add a "Per Diem" other manual quote with comment "3 full days" and base fare 350
     Then the booking status should be "Confirmed"
-    And I upload the file "sample-document.pdf" to the trip related files
-    Then the file "sample-document.pdf" should be visible in the trip related files section
+    And I upload the file "sample-document.pdf" to the quote extras
+    Then the file "sample-document.pdf" should be visible in the quote extras

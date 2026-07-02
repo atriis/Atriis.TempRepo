@@ -463,7 +463,8 @@ const SELECTORS = {
 
   // Quote Extras - Attach Files (per-diem-quote-card → extras-collapse → attach-files-extra)
   ATTACH_FILES_VIEW_BTN: '.attach-file-extra .extra__btns .is-clickable',
-  ATTACH_FILES_UPLOAD_INPUT: '#fileUploader',
+  // Scoped to the attach-files extra to avoid ambiguity with the trip Related Files pane (#fileUploader appears in multiple upload-file.vue instances)
+  ATTACH_FILES_UPLOAD_INPUT: '.attach-file-extra #fileUploader',
   ATTACH_FILES_SAVE_BTN: '.attach-file-extra button:has-text("Save")',
   ATTACH_FILES_FILE_ITEM: '.attach-file-extra .file-item',
   ATTACH_FILES_FILE_NAME: '.attach-file-extra .file-item p',

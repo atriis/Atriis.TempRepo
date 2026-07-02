@@ -1951,6 +1951,20 @@ Then("the trip should not be eligible for copy trip", async function () {
   await Cart.verifyTripCannotBeCopied(this.page);
 });
 
+// ===== QUOTE EXTRAS - ATTACH FILES =====
+
+When("I upload the file {string} to the quote extras", async function (fileName) {
+  const path = require("path");
+  const filePath = path.resolve(__dirname, "../../src/data/fixtures", fileName);
+  logger.info("Uploading file to quote extras", { fileName, filePath });
+  await Cart.uploadQuoteExtrasFile(this.page, filePath);
+});
+
+Then("the file {string} should be visible in the quote extras", async function (fileName) {
+  logger.info("Verifying uploaded file is visible in quote extras", { fileName });
+  await Cart.verifyQuoteExtrasFileVisible(this.page, fileName);
+});
+
 // ===== TRIP RELATED FILES =====
 
 When("I upload the file {string} to the trip related files", async function (fileName) {
