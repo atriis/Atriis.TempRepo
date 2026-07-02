@@ -15,7 +15,5 @@ Feature: 42860 Shell - Joy search defaults on TMC level are applied for corporat
   Scenario: TMC-level joy search defaults are applied on a new trip search
     Given I am logged in as "bruna@testimnongdstmc.com" booking a new trip
     And I have added myself as the traveler
-    # TODO: Create step to verify the "Add Hotel to this trip" parallel option is visible on the flight tab (create ParallelSearch.verifyAddHotelOptionVisible in src/dsl/ParallelSearch.js)
     Then the "Add Hotel to this trip" parallel option should be visible on the flight tab
-    # TODO: Create step to verify the parallel search checkbox is checked by default (create ParallelSearch.verifyParallelSearchCheckboxChecked in src/dsl/ParallelSearch.js)
-    And the parallel search checkbox should be checked by default
+    And the "Add Hotel to this trip" parallel option should be checked by default on the flight tab

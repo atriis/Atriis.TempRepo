@@ -312,6 +312,16 @@ Then("the car search checkbox should be checked by default", async function () {
   await FlightSearch.verifyCarSearchCheckboxChecked(this.page);
 });
 
+Then('the "Add Hotel to this trip" parallel option should be visible on the flight tab', async function () {
+  logger.info('Verifying the "Add Hotel to this trip" parallel option is visible on the flight tab');
+  await FlightSearch.verifyParallelHotelCheckboxVisible(this.page);
+});
+
+Then('the "Add Hotel to this trip" parallel option should be checked by default on the flight tab', async function () {
+  logger.info('Verifying the "Add Hotel to this trip" parallel option is checked by default on the flight tab');
+  await FlightSearch.verifyParallelHotelCheckboxCheckedByDefault(this.page);
+});
+
 Then('the "Allow nearby airports" checkbox in the advanced flight search should be checked', async function () {
   logger.info('Verifying the "Allow nearby airports" checkbox is checked');
   await FlightSearch.verifyAllowNearbyAirportsCheckboxIsChecked(this.page);

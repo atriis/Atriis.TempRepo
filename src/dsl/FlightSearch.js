@@ -1409,6 +1409,71 @@ const FlightSearch = {
   },
 
   /**
+   * Verifies the "Add Hotel to this trip" parallel-search checkbox is visible on the flight search tab.
+   *
+   * The checkbox is a TMC-level joy search default; this asserts it is offered on a new trip search.
+   * Opens the flight tab first (it is the default tab, so this is defensive) and reads visibility.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{parallelHotelCheckboxVisible: boolean}>}
+   */
+  async verifyParallelHotelCheckboxVisible(page) {
+    if (!page) {
+      throw new Error('[FlightSearch.verifyParallelHotelCheckboxVisible] "page" is required, got: ' + typeof page);
+    }
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    logger.debug('Verifying the "Add Hotel to this trip" parallel checkbox is visible on the flight search tab');
+
+    // isHotelParallelCheckboxVisible swallows its own timeout and returns false, so no try/catch is
+    // needed here — a not-visible checkbox falls through to a clean expect() failure below.
+    await flightSearchPage.clickFlightTab();
+    const isVisible = await flightSearchPage.isHotelParallelCheckboxVisible();
+
+    expect(
+      isVisible,
+      'The "Add Hotel to this trip" parallel search checkbox should be visible on the flight search tab per the TMC-level joy search defaults, but it was not found.',
+    ).toBe(true);
+
+    return { parallelHotelCheckboxVisible: isVisible };
+  },
+
+  /**
+   * Verifies the "Add Hotel to this trip" parallel-search checkbox is checked by default on the flight search tab.
+   *
+   * A checked-by-default state reflects the TMC-level joy search defaults being applied for the corporate user.
+   * Opens the flight tab first (it is the default tab, so this is defensive) and reads the checked state.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{parallelHotelCheckboxChecked: boolean}>}
+   */
+  async verifyParallelHotelCheckboxCheckedByDefault(page) {
+    if (!page) {
+      throw new Error('[FlightSearch.verifyParallelHotelCheckboxCheckedByDefault] "page" is required, got: ' + typeof page);
+    }
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    logger.debug('Verifying the "Add Hotel to this trip" parallel checkbox is checked by default on the flight search tab');
+
+    let isChecked;
+    try {
+      await flightSearchPage.clickFlightTab();
+      isChecked = await flightSearchPage.isParallelHotelSearchChecked();
+    } catch (err) {
+      throw new Error(
+        '[FlightSearch.verifyParallelHotelCheckboxCheckedByDefault] Could not read the "Add Hotel to this trip" ' +
+        'checkbox checked state on the flight search tab. The TMC-level joy search defaults may not be applied for ' +
+        `this user, or the checkbox selector needs updating. Original: ${err.message}`
+      );
+    }
+
+    expect(
+      isChecked,
+      'The "Add Hotel to this trip" parallel search checkbox should be checked by default on the flight search tab per the TMC-level joy search defaults, but it was unchecked.',
+    ).toBe(true);
+
+    return { parallelHotelCheckboxChecked: isChecked };
+  },
+
+  /**
    * Clicks the flight tab and disables parallel hotel and car search checkboxes if enabled.
    * @param {import('playwright').Page} page
    */

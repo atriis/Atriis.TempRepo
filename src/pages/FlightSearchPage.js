@@ -389,6 +389,24 @@ class FlightSearchPage {
   }
 
   /**
+   * Checks whether the "Add Hotel to this trip" parallel search checkbox is visible on the flight tab.
+   * Returns false instead of throwing when the checkbox never appears, so callers can assert
+   * visibility with a descriptive message rather than a raw waitFor timeout.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isHotelParallelCheckboxVisible(timeout = 15000) {
+    const checkbox = this.getHotelParallelCheckbox();
+    try {
+      await checkbox.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      // Hotel parallel checkbox not rendered within the timeout — treat as not visible.
+      return false;
+    }
+  }
+
+  /**
    * Checks if the hotel search parallel checkbox is checked.
    * @param {number} timeout - Max wait time in ms (default: 15000)
    * @returns {Promise<boolean>}
