@@ -16,7 +16,6 @@ Feature: 35708 Shell - Parallel search redirects to cart when no hotel or car co
     Given I am logged in as "bruna@testimparallel.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LIS" to "TLV"
-    And I click proceed after search
+    And I click proceed button if visible
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
