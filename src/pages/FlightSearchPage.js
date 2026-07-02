@@ -27,8 +27,9 @@ const SELECTORS = {
   // Advanced search — return leg selectors
   RETURN_APP_SELECT: 'section.return .app-select',
   DROPDOWN_OPTION: (text) => `.el-select-dropdown__item:visible:has-text("${text}")`,
-  // Parallel hotel search checkbox
+  // Parallel hotel search checkbox (shares the class with car, differentiated by "Add Hotel" text)
   PARALLEL_HOTEL_CHECKBOX: '.parallel-search-checkbox',
+  HOTEL_SEARCH_CHECKBOX_TEXT: 'Add Hotel',
   // Parallel car search checkbox (uses same class, differentiated by "Add Car" text)
   CAR_SEARCH_CHECKBOX: '.parallel-search-checkbox',
   CAR_SEARCH_CHECKBOX_TEXT: 'Add Car',
@@ -364,10 +365,22 @@ class FlightSearchPage {
   }
 
   /**
+   * Resolves the hotel parallel-search checkbox. The hotel and car checkboxes
+   * share the `.parallel-search-checkbox` class, so it is scoped by the
+   * "Add Hotel" text to avoid matching the car checkbox.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getHotelParallelCheckbox() {
+    return this.page.locator(SELECTORS.PARALLEL_HOTEL_CHECKBOX)
+      .filter({ hasText: SELECTORS.HOTEL_SEARCH_CHECKBOX_TEXT })
+      .first();
+  }
+
+  /**
    * Checks the "Add hotel to this trip" parallel search checkbox.
    */
   async checkParallelHotelSearch() {
-    const checkbox = this.page.locator(SELECTORS.PARALLEL_HOTEL_CHECKBOX).first();
+    const checkbox = this.getHotelParallelCheckbox();
     await checkbox.waitFor({ state: 'visible', timeout: 10000 });
     const isChecked = await checkbox.locator('input').isChecked();
     if (!isChecked) {
@@ -381,17 +394,24 @@ class FlightSearchPage {
    * @returns {Promise<boolean>}
    */
   async isParallelHotelSearchChecked(timeout = 15000) {
-    const checkbox = this.page.locator(SELECTORS.PARALLEL_HOTEL_CHECKBOX).first();
+    const checkbox = this.getHotelParallelCheckbox();
     await checkbox.waitFor({ state: 'visible', timeout });
     return await checkbox.locator('input').isChecked();
   }
 
   /**
    * Disables the "Add hotel to this trip" parallel search checkbox if enabled.
+   * Tolerates the checkbox being absent (hotel product not accessible for the
+   * user) — there is nothing to uncheck in that case, so it returns quietly.
    */
   async uncheckParallelHotelSearch() {
-    const checkbox = this.page.locator(SELECTORS.PARALLEL_HOTEL_CHECKBOX).first();
-    await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+    const checkbox = this.getHotelParallelCheckbox();
+    try {
+      await checkbox.waitFor({ state: 'visible', timeout: 5000 });
+    } catch {
+      // Hotel parallel checkbox not rendered — hotel product not accessible; nothing to uncheck.
+      return;
+    }
     const isChecked = await checkbox.locator('input').isChecked();
     if (isChecked) {
       await checkbox.click();

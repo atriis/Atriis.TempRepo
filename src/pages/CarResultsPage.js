@@ -5,6 +5,8 @@
 const { escapeRegex } = require("@utils/text");
 
 const SELECTORS = {
+  // Results page breadcrumb — trailing "gray" span shows the current product section (e.g. "Car")
+  RESULTS_BREADCRUMB_CURRENT: '.car-results-container .breadcrumbs span.gray',
   // Search results
   STATION_PREVIEW: '.car-vendor-station-list > .preview-container',
   LOCATION_LABEL: ".location-lines .location-address-text",
@@ -424,6 +426,14 @@ class CarResultsPage {
    */
   getCarModelSubtitle() {
     return this.page.locator(SELECTORS.CAR_MODEL_SUBTITLE).first();
+  }
+
+  getCurrentBreadcrumbSection() {
+    return this.page.locator(SELECTORS.RESULTS_BREADCRUMB_CURRENT).first();
+  }
+
+  async waitForBreadcrumbVisible({ timeout = 60000 } = {}) {
+    await this.getCurrentBreadcrumbSection().waitFor({ state: 'visible', timeout });
   }
 
   async waitForCarModelVisible({ timeout = 60000 } = {}) {

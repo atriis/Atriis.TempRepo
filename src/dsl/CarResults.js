@@ -802,6 +802,34 @@ const CarResults = {
   },
 
   /**
+   * Verifies the car results section is displayed by confirming the results
+   * breadcrumb shows the current product as "Car". In a parallel flight+car
+   * search this is the signal that the app advanced to the car results page
+   * after the flight was added.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   */
+  async expectCarResultsSectionDisplayed(page) {
+    if (!page) throw new Error('page is required');
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+
+    try {
+      await carResultsPage.waitForBreadcrumbVisible();
+    } catch (err) {
+      throw new Error(
+        `[CarResults.expectCarResultsSectionDisplayed] Car results breadcrumb never appeared. `
+        + `The car results section likely did not load after adding the flight. Original: ${err.message}`,
+      );
+    }
+
+    await expect(
+      carResultsPage.getCurrentBreadcrumbSection(),
+      'Car results breadcrumb should show "Car" as the current section, confirming the car results page is displayed',
+    ).toContainText('Car');
+  },
+
+  /**
    * Verifies that a filter with the given title is visible on the car results page.
    * @param {import('playwright').Page} page
    * @param {string} filterTitle - The expected filter title (e.g. "Rental Agency")

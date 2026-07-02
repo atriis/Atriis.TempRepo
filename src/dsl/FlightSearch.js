@@ -1375,13 +1375,15 @@ const FlightSearch = {
       endIndex: SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
     });
 
-    // Enable parallel car search
+    // Enable parallel car search and ensure only car is parallel-searched:
+    // the hotel checkbox may be checked by default, so explicitly uncheck it.
     await flightSearchPage.checkParallelCarSearch();
+    await flightSearchPage.uncheckParallelHotelSearch();
 
     await flightSearchPage.selectCompleteTrip();
     await searchPage.waitAndClickSearchButton();
 
-    return { searched: true, from, to, tripType: 'roundTrip', searchType: 'completeTrip', parallelCar: true };
+    return { searched: true, from, to, tripType: 'roundTrip', searchType: 'completeTrip', parallelCar: true, parallelHotel: false };
   },
 
   /**

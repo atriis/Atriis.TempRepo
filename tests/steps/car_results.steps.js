@@ -126,6 +126,11 @@ Then("the car model should be visible in the results", async function () {
   await CarResults.expectCarModelIsVisible(this.page);
 });
 
+Then("the car results section should be displayed", async function () {
+  logger.info("Verifying car results section is displayed via breadcrumb");
+  await CarResults.expectCarResultsSectionDisplayed(this.page);
+});
+
 Then("the {string} filter should be visible in car results", async function (filterTitle) {
   logger.info("Verifying filter is visible in car results", { filterTitle });
   await CarResults.verifyFilterVisibleOnResults(this.page, filterTitle);
