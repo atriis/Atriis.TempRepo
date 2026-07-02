@@ -15,7 +15,7 @@ Feature: 58325 Amadeus - Booking succeeds with traveler name containing space or
   Scenario: Book and hold flight with traveler name containing space
     Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added a random guest traveler with name "Mary Jane" "De La Cruz"
-    When I search for a one way flight from "PAR" to "DOH" 
+    When I search for a one way flight from "FRA" to "SIN" 
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I add a credit card as payment method
