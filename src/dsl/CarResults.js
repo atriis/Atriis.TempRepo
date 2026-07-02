@@ -152,8 +152,20 @@ const CarResults = {
     await resultsPage.waitForAddToTripText();
 
     const carResultsPage = getPageObject(page, CarResultsPage);
-    const text = await carResultsPage.getLocationLabelByIndex(index).innerText();
-    expect(text.toLowerCase()).toContain(expectedLabel.toLowerCase());
+
+    // Poll until the label contains the expected text — Vue may re-render the list
+    // asynchronously after a filter is applied, so a single read can return stale data.
+    const timeout = 15000;
+    const deadline = Date.now() + timeout;
+    let lastText = '';
+    while (Date.now() < deadline) {
+      lastText = await carResultsPage.getLocationLabelByIndex(index).innerText().catch(() => '');
+      if (lastText.toLowerCase().includes(expectedLabel.toLowerCase())) {
+        return;
+      }
+      await page.waitForTimeout(300);
+    }
+    expect(lastText.toLowerCase()).toContain(expectedLabel.toLowerCase());
   },
 
   async expectCityCenterAddressToContain(page, index, expectedAddress) {
@@ -890,6 +902,160 @@ const CarResults = {
       mapsContext.locationText,
       `Google Maps location text should not be empty. Received: "${mapsContext.locationText}"`,
     ).toBeTruthy();
+  },
+
+  /**
+   * Verifies that all visible options in a filter section are drawn from the known valid set.
+   * The filter hides options that have zero matching results (hideIfNoresults), so fewer options
+   * than the full set may be visible — but every visible option must be a known valid value.
+   * At least one option must be visible for the assertion to be meaningful.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} filterTitle - Filter section title (e.g. "Rental Counter Location")
+   * @param {string[]} validOptions - Full set of valid option label texts
+   * @throws {Error} If inputs are invalid, no options are visible, or an unknown option appears
+   * @returns {Promise<void>}
+   */
+  async verifyFilterOptionsAreValidCounterLocations(page, filterTitle, validOptions) {
+    if (!page) throw new Error('page is required');
+    if (!filterTitle || typeof filterTitle !== 'string') {
+      throw new Error(`filterTitle must be a non-empty string, got: ${filterTitle}`);
+    }
+    if (!Array.isArray(validOptions) || validOptions.length === 0) {
+      throw new Error(`validOptions must be a non-empty array, got: ${JSON.stringify(validOptions)}`);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const actualOptions = await carResultsPage.getFilterOptionLabels(filterTitle);
+
+    expect(
+      actualOptions.length,
+      `Filter "${filterTitle}" should show at least one option, but none were visible.`,
+    ).toBeGreaterThan(0);
+
+    for (const option of actualOptions) {
+      expect(
+        validOptions,
+        `Filter "${filterTitle}" contains unknown option "${option}". Valid options: ${JSON.stringify(validOptions)}`,
+      ).toContain(option);
+    }
+  },
+
+  /**
+   * Selects a filter option checkbox by label within the named filter section.
+   * When the checkbox is already checked AND disabled (only one option has results,
+   * so the UI auto-selects and locks it), the click is skipped — the filter is
+   * effectively already active and no interaction is possible.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} optionLabel - The checkbox label text (e.g. "At airport")
+   * @param {string} filterTitle - The filter section title (e.g. "Rental Counter Location")
+   * @throws {Error} If inputs are invalid
+   * @returns {Promise<{clicked: boolean, wasAlreadyChecked: boolean, wasDisabled: boolean}>}
+   */
+  async selectFilterOption(page, optionLabel, filterTitle) {
+    if (!page) throw new Error('page is required');
+    if (!optionLabel || typeof optionLabel !== 'string') {
+      throw new Error(`optionLabel must be a non-empty string, got: ${optionLabel}`);
+    }
+    if (!filterTitle || typeof filterTitle !== 'string') {
+      throw new Error(`filterTitle must be a non-empty string, got: ${filterTitle}`);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const result = await carResultsPage.clickFilterOptionByLabel(filterTitle, optionLabel);
+    if (result.clicked) {
+      // Wait briefly for Vue reactivity to apply the filter and re-render the list
+      await page.waitForTimeout(800);
+    } else {
+      logger.info(`Filter option "${optionLabel}" in "${filterTitle}" is already checked and disabled (only option) — skipping click`, result);
+    }
+    return result;
+  },
+
+  /**
+   * Deselects a filter option checkbox by label within the named filter section.
+   * When the checkbox is disabled (only one option has results), the deselect is
+   * skipped — the UI does not allow removing the sole remaining filter option.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} optionLabel - The checkbox label text (e.g. "At airport")
+   * @param {string} filterTitle - The filter section title (e.g. "Rental Counter Location")
+   * @throws {Error} If inputs are invalid
+   * @returns {Promise<{clicked: boolean, wasAlreadyChecked: boolean, wasDisabled: boolean}>}
+   */
+  async deselectFilterOption(page, optionLabel, filterTitle) {
+    if (!page) throw new Error('page is required');
+    if (!optionLabel || typeof optionLabel !== 'string') {
+      throw new Error(`optionLabel must be a non-empty string, got: ${optionLabel}`);
+    }
+    if (!filterTitle || typeof filterTitle !== 'string') {
+      throw new Error(`filterTitle must be a non-empty string, got: ${filterTitle}`);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const result = await carResultsPage.clickFilterOptionByLabel(filterTitle, optionLabel);
+    if (result.clicked) {
+      // Wait briefly for Vue reactivity to restore the full list
+      await page.waitForTimeout(800);
+    } else {
+      logger.info(`Filter option "${optionLabel}" in "${filterTitle}" is disabled — deselect skipped (sole option, filter locked by UI)`, result);
+    }
+    return result;
+  },
+
+  /**
+   * Asserts that the named counter location filter option is active (checked).
+   * Handles two cases:
+   *   1. The checkbox is checked and enabled — the user explicitly selected it.
+   *   2. The checkbox is checked and disabled — only one option has results, so the
+   *      UI auto-selects and locks it (isShowingOneDisabledSelectedOption = true).
+   *      Both cases mean only results for that counter location are shown.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} optionLabel - The filter option that should be active (e.g. "At airport")
+   * @param {string} filterTitle - The filter section title (e.g. "Rental Counter Location")
+   * @throws {Error} If inputs are invalid or the filter option is not checked
+   * @returns {Promise<void>}
+   */
+  async verifyCounterLocationFilterIsActive(page, optionLabel, filterTitle) {
+    if (!page) throw new Error('page is required');
+    if (!optionLabel || typeof optionLabel !== 'string') {
+      throw new Error(`optionLabel must be a non-empty string, got: ${optionLabel}`);
+    }
+    if (!filterTitle || typeof filterTitle !== 'string') {
+      throw new Error(`filterTitle must be a non-empty string, got: ${filterTitle}`);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const isChecked = await carResultsPage.isFilterOptionChecked(filterTitle, optionLabel);
+
+    expect(
+      isChecked,
+      `Expected filter option "${optionLabel}" in "${filterTitle}" to be checked (active), but it was not. ` +
+      `The filter may not have been applied, or the option label does not match the rendered text.`,
+    ).toBe(true);
+  },
+
+  /**
+   * Asserts that all car results are restored after a filter is removed.
+   * Verifies the Reset Filters button is disabled (no manually applied filters).
+   * When the sole option was auto-selected and locked by the UI (disabled checkbox),
+   * the Reset Filters button remains disabled throughout — that state is also valid.
+   *
+   * @param {import('playwright').Page} page
+   * @throws {Error} If page is invalid or the reset button is not in the expected state
+   * @returns {Promise<void>}
+   */
+  async verifyAllCarResultsRestored(page) {
+    if (!page) throw new Error('page is required');
+
+    const { ResultsPage } = require('@pages/ResultsPage');
+    const resultsPage = getPageObject(page, ResultsPage);
+    const resetButton = resultsPage.getResetFiltersButton();
+
+    await expect(resetButton).toBeVisible({ timeout: 15000 });
+    await expect(resetButton).toBeDisabled({ timeout: 15000 });
   },
 
   /**

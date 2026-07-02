@@ -32,6 +32,10 @@ const SELECTORS = {
   // Filter sidebar
   CAR_FILTER_CONTAINER: '.car-filter-container',
   FILTER_TITLE: '.car-filter-container h4.filter-title',
+  // Counter Location filter — inside the app-checkbox-group for counterLocations
+  FILTER_SECTION: '.car-filter-container .filter-container',
+  FILTER_CHECKBOX_LABEL: '.car-filter-container .filter-container .el-checkbox__label p',
+  FILTER_CHECKBOX: '.car-filter-container .filter-container .el-checkbox',
   // Payment type label on each car result card (.payment-method <p>)
   PAYMENT_TYPE_LABEL: '.payment-method p',
   PAYMENT_METHOD_TEXT: '.btns-container .payment-method p',
@@ -556,6 +560,119 @@ class CarResultsPage {
     return {
       mapsPage,
     };
+  }
+
+  /**
+   * Gets all visible option labels within a filter section that has the given title.
+   * @param {string} filterTitle - Title of the filter section (e.g. "Rental Counter Location")
+   * @param {number} [timeout=30000]
+   * @returns {Promise<string[]>} Array of option label texts
+   */
+  async getFilterOptionLabels(filterTitle, { timeout = 30000 } = {}) {
+    const section = this.page
+      .locator(SELECTORS.FILTER_SECTION)
+      .filter({ has: this.page.locator('h4.filter-title', { hasText: filterTitle }) });
+    await section.first().waitFor({ state: 'visible', timeout });
+    // Target the label text element only — p.filter-title inside el-checkbox__label.
+    // The sibling p.option-count shows the numeric count and must be excluded.
+    const labels = section.first().locator('.el-checkbox__label p.filter-title');
+    await labels.first().waitFor({ state: 'visible', timeout });
+    const count = await labels.count();
+    const result = [];
+    for (let i = 0; i < count; i++) {
+      result.push(((await labels.nth(i).textContent()) || '').trim());
+    }
+    return result;
+  }
+
+  /**
+   * Clicks a filter option checkbox by its label text within the named filter section.
+   * Returns metadata about the checkbox state so the caller can decide whether the click
+   * was meaningful (e.g. already-checked+disabled when only one option exists).
+   *
+   * @param {string} filterTitle - Filter section title (e.g. "Rental Counter Location")
+   * @param {string} optionLabel - Option label text (e.g. "At airport")
+   * @param {number} [timeout=15000]
+   * @returns {Promise<{clicked: boolean, wasAlreadyChecked: boolean, wasDisabled: boolean}>}
+   */
+  async clickFilterOptionByLabel(filterTitle, optionLabel, { timeout = 15000 } = {}) {
+    const section = this.page
+      .locator(SELECTORS.FILTER_SECTION)
+      .filter({ has: this.page.locator('h4.filter-title', { hasText: filterTitle }) });
+    await section.first().waitFor({ state: 'visible', timeout });
+
+    // Find the el-checkbox whose label p.filter-title exactly matches optionLabel.
+    // Use section-scoped getByText on the label text element so we stay within this filter section
+    // and avoid ambiguous matches from other filter groups on the page.
+    const labelEl = section.first()
+      .locator('.el-checkbox__label p.filter-title')
+      .filter({ hasText: optionLabel })
+      .first();
+    await labelEl.waitFor({ state: 'visible', timeout });
+
+    // Walk up to the parent .el-checkbox to read its state classes (is-checked, is-disabled)
+    const checkbox = labelEl.locator('xpath=ancestor::label[contains(@class,"el-checkbox")][1]');
+    const cls = await checkbox.getAttribute('class').catch(() => '') || '';
+    const wasAlreadyChecked = cls.includes('is-checked');
+    const wasDisabled = cls.includes('is-disabled');
+    if (wasDisabled) {
+      // The checkbox is disabled — cannot be clicked. Return state info to caller.
+      return { clicked: false, wasAlreadyChecked, wasDisabled };
+    }
+
+    // Click the .el-checkbox__inner element — the actual clickable toggle box.
+    // Clicking the outer label wrapper can be intercepted by child elements (the inner <label>
+    // rendered by app-checkbox-group), so we target the checkbox box directly as the Playwright
+    // recording confirmed: label > .el-checkbox__input > .el-checkbox__inner
+    const inner = checkbox.locator('.el-checkbox__inner').first();
+    await inner.waitFor({ state: 'visible', timeout });
+    await inner.scrollIntoViewIfNeeded();
+    await inner.click({ timeout });
+    return { clicked: true, wasAlreadyChecked, wasDisabled };
+  }
+
+  /**
+   * Returns whether a filter option checkbox in the named filter section is checked.
+   * @param {string} filterTitle - Filter section title
+   * @param {string} optionLabel - Option label text
+   * @param {number} [timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async isFilterOptionChecked(filterTitle, optionLabel, { timeout = 15000 } = {}) {
+    const section = this.page
+      .locator(SELECTORS.FILTER_SECTION)
+      .filter({ has: this.page.locator('h4.filter-title', { hasText: filterTitle }) });
+    await section.first().waitFor({ state: 'visible', timeout });
+
+    // Use the same label-text locator strategy as clickFilterOptionByLabel for consistency.
+    const labelEl = section.first()
+      .locator('.el-checkbox__label p.filter-title')
+      .filter({ hasText: optionLabel })
+      .first();
+    await labelEl.waitFor({ state: 'visible', timeout });
+    const checkbox = labelEl.locator('xpath=ancestor::label[contains(@class,"el-checkbox")][1]');
+
+    // Poll for the is-checked class to appear — Vue reactivity may not settle immediately
+    // after a click, so reading the class once can produce a false negative.
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      const cls = await checkbox.getAttribute('class').catch(() => '');
+      if ((cls || '').includes('is-checked')) {
+        return true;
+      }
+      await this.page.waitForTimeout(200);
+    }
+    return false;
+  }
+
+  /**
+   * Returns the count of currently visible car result cards.
+   * @param {number} [timeout=30000]
+   * @returns {Promise<number>}
+   */
+  async getCarResultsCount({ timeout = 30000 } = {}) {
+    await this.page.locator(SELECTORS.FIRST_CAR_PREVIEW).first().waitFor({ state: 'visible', timeout });
+    return this.page.locator(SELECTORS.FIRST_CAR_PREVIEW).count();
   }
 
   async readGoogleMapsContext(mapsPage) {

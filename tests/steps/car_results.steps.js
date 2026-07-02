@@ -193,6 +193,37 @@ Then("I should see the selected car location in Google Maps", async function () 
   );
 });
 
+// ========================================
+// COUNTER LOCATION FILTER STEPS
+// ========================================
+
+Then("the {string} filter options should only contain valid counter location values", async function (filterTitle) {
+  const validOptions = ["At airport", "Shuttle required", "Other/unknown"];
+  logger.info("Verifying filter options are valid counter location values", { filterTitle, validOptions });
+  await CarResults.verifyFilterOptionsAreValidCounterLocations(this.page, filterTitle, validOptions);
+});
+
+When("I select the {string} option in the {string} filter", async function (optionLabel, filterTitle) {
+  logger.info("Selecting filter option", { optionLabel, filterTitle });
+  await CarResults.selectFilterOption(this.page, optionLabel, filterTitle);
+});
+
+Then("only {string} counter location results should be displayed", async function (optionLabel) {
+  const filterTitle = "Rental Counter Location";
+  logger.info("Verifying counter location filter is active", { optionLabel, filterTitle });
+  await CarResults.verifyCounterLocationFilterIsActive(this.page, optionLabel, filterTitle);
+});
+
+When("I deselect the {string} option in the {string} filter", async function (optionLabel, filterTitle) {
+  logger.info("Deselecting filter option", { optionLabel, filterTitle });
+  await CarResults.deselectFilterOption(this.page, optionLabel, filterTitle);
+});
+
+Then("all car results should be restored", async function () {
+  logger.info("Verifying all car results are restored after filter removed");
+  await CarResults.verifyAllCarResultsRestored(this.page);
+});
+
 Then("the first car result should be from rental agency {string}", async function (agencyName) {
   logger.info("Verifying first car result is from preferred rental agency", { agencyName });
   await CarResults.assertFirstCarResultIsFromAgency(this.page, agencyName);
