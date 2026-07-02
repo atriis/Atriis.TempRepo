@@ -23,6 +23,16 @@ When("I add an agent to the chat", async function () {
   await Chat.addAgentToChat(this.page);
 });
 
+When("I select the traveler {string} in the conversation form", async function (traveler) {
+  logger.info(`Selecting the traveler "${traveler}" in the conversation form`);
+  await Chat.selectTravelerInConversation(this.page, traveler);
+});
+
+When("I navigate back from the chat to the trip", async function () {
+  logger.info("Navigating back from the chat to the trip");
+  await Chat.navigateBackFromChat(this.page);
+});
+
 When("I type {string} in the chat message field", async function (message) {
   logger.info(`Typing message in chat: "${message}"`);
   await Chat.typeMessageInChat(this.page, message);
@@ -63,4 +73,9 @@ Then("the consultant {string} should be in the recipients list", async function 
 Then("the associated consultant should be {string}", async function (name) {
   logger.info(`Verifying the associated consultant is "${name}"`);
   await Chat.verifyConsultantInRecipients(this.page, name);
+});
+
+Then("the last message in the trip should be {string}", async function (message) {
+  logger.info(`Verifying the last message in the trip is: "${message}"`);
+  await Chat.verifyLastMessageInTrip(this.page, message);
 });

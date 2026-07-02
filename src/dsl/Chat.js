@@ -106,6 +106,38 @@ const Chat = {
     }
   },
 
+  async selectTravelerInConversation(page, traveler) {
+    if (!page) throw new Error('[Chat.selectTravelerInConversation] page is required');
+    if (!traveler || typeof traveler !== 'string') {
+      throw new Error(`[Chat.selectTravelerInConversation] "traveler" must be a non-empty string (name or email), got: ${typeof traveler}`);
+    }
+    const chatPage = getPageObject(page, ChatPage);
+    try {
+      // The new-chat participant field is the shared user-autocomplete; searching by the
+      // traveler's name/email and picking the first suggestion adds them to the conversation.
+      logger.debug(`Selecting traveler "${traveler}" from the conversation participant search`);
+      await chatPage.typeInConsultantSearch(traveler);
+      await chatPage.clickFirstConsultantInDropdown();
+    } catch (err) {
+      throw new Error(
+        `[Chat.selectTravelerInConversation] Failed to select traveler "${traveler}" in the conversation form. The new conversation form may not be open or the search returned no matching user. Original: ${err.message}`
+      );
+    }
+  },
+
+  async navigateBackFromChat(page) {
+    if (!page) throw new Error('[Chat.navigateBackFromChat] page is required');
+    const chatPage = getPageObject(page, ChatPage);
+    try {
+      logger.debug("Navigating back from the chat conversation to the trip");
+      await chatPage.clickBackFromChat();
+    } catch (err) {
+      throw new Error(
+        `[Chat.navigateBackFromChat] Failed to navigate back from the chat to the trip. The back button may not be visible in the conversation view. Original: ${err.message}`
+      );
+    }
+  },
+
   async typeMessageInChat(page, message) {
     if (!page) throw new Error('[Chat.typeMessageInChat] page is required');
     if (!message || typeof message !== 'string') {
@@ -148,6 +180,22 @@ const Chat = {
       if (err.matcherResult !== undefined) throw err;
       throw new Error(
         `[Chat.verifyChatMessageDisplayed] Message "${message}" was not displayed in the chat conversation. Original: ${err.message}`
+      );
+    }
+  },
+
+  async verifyLastMessageInTrip(page, message) {
+    if (!page) throw new Error('[Chat.verifyLastMessageInTrip] page is required');
+    if (!message || typeof message !== 'string') {
+      throw new Error(`[Chat.verifyLastMessageInTrip] "message" must be a non-empty string, got: ${typeof message}`);
+    }
+    const chatPage = getPageObject(page, ChatPage);
+    try {
+      logger.debug(`Verifying last message in trip conversation list: "${message}"`);
+      await chatPage.waitForLastMessageInTrip(message);
+    } catch (err) {
+      throw new Error(
+        `[Chat.verifyLastMessageInTrip] Last message "${message}" was not shown in the trip conversation list. Original: ${err.message}`
       );
     }
   },

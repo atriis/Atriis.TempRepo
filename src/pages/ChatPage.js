@@ -12,6 +12,10 @@ const SELECTORS = {
   CONSULTANT_DROPDOWN_FIRST_OPTION: ".user-autocomplete-popper .el-autocomplete-suggestion__list li[id*='item-0']",
   // Selected participants (consultants + travelers) shown as trip-traveler-tag chips.
   RECIPIENTS_LIST: ".recipients-list",
+  // Back arrow in the chat header (single-chat/new-chat) that returns to the trip conversation list.
+  BACK_BTN: ".chat-main .back-btn",
+  // Last-message preview shown on each row of the trip conversation list (chat-main.vue).
+  LAST_MESSAGE: ".last-message",
 };
 
 class ChatPage {
@@ -132,20 +136,49 @@ class ChatPage {
     }
   }
 
-  async waitForMessageInConversation(expectedText) {
-    const messageContent = this.page.locator(SELECTORS.MESSAGE_CONTENT);
+  async clickBackFromChat() {
+    const btn = this.page.locator(SELECTORS.BACK_BTN).first();
     try {
-      await messageContent.first().waitFor({ state: "visible", timeout: 20000 });
-      await this.page.waitForFunction(
-        ([selector, text]) => {
-          const elements = document.querySelectorAll(selector);
-          return Array.from(elements).some(
-            (el) => el.textContent.replace(/[\r\n]+/g, "").trim() === text.trim()
-          );
-        },
-        [SELECTORS.MESSAGE_CONTENT, expectedText],
-        { timeout: 20000 }
+      await btn.waitFor({ state: "visible", timeout: 15000 });
+      await btn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ChatPage.clickBackFromChat] Could not click the chat back button (${SELECTORS.BACK_BTN}). The chat conversation view may not be open. Original: ${err.message}`
       );
+    }
+  }
+
+  // Waits until at least one element matching `selector` has text equal to
+  // `expectedText` once line breaks are stripped. Shared by the conversation
+  // message check and the trip last-message check.
+  async waitForTextInElements(selector, expectedText) {
+    const elements = this.page.locator(selector);
+    await elements.first().waitFor({ state: "visible", timeout: 20000 });
+    await this.page.waitForFunction(
+      ([sel, text]) => {
+        const nodes = document.querySelectorAll(sel);
+        return Array.from(nodes).some(
+          (el) => el.textContent.replace(/[\r\n]+/g, "").trim() === text.trim()
+        );
+      },
+      [selector, expectedText],
+      { timeout: 20000 }
+    );
+  }
+
+  async waitForLastMessageInTrip(expectedText) {
+    try {
+      await this.waitForTextInElements(SELECTORS.LAST_MESSAGE, expectedText);
+    } catch (err) {
+      throw new Error(
+        `[ChatPage.waitForLastMessageInTrip] Last message "${expectedText}" was not found in the trip conversation list (${SELECTORS.LAST_MESSAGE}). The conversation may not have been created or the list did not update. Original: ${err.message}`
+      );
+    }
+  }
+
+  async waitForMessageInConversation(expectedText) {
+    try {
+      await this.waitForTextInElements(SELECTORS.MESSAGE_CONTENT, expectedText);
     } catch (err) {
       throw new Error(
         `[ChatPage.waitForMessageInConversation] Message "${expectedText}" was not found in the chat conversation (${SELECTORS.MESSAGE_CONTENT}). The message may not have been sent or the conversation did not update. Original: ${err.message}`
