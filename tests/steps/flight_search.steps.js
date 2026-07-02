@@ -303,6 +303,16 @@ When("I click on the flight tab and uncheck Add hotel to this trip and Add car t
   await FlightSearch.clickFlightTabAndUncheckParallelHotelAndCar(this.page);
 });
 
+When("I search for a round trip flight from {string} to {string} without clicking search button", async function (from, to) {
+  logger.info('Filling round-trip flight search without clicking search', { from, to });
+  await FlightSearch.searchFlightRoundTripWithoutSearch(this.page, { from, to });
+});
+
+When("I edit the parallel hotel destination to {string}", async function (destination) {
+  logger.info('Editing the parallel hotel destination', { destination });
+  await FlightSearch.editParallelHotelDestination(this.page, destination);
+});
+
 // ========================================
 // THEN STEPS - FLIGHT SEARCH VERIFICATION
 // ========================================

@@ -33,11 +33,21 @@ const SELECTORS = {
   // Parallel car search checkbox (uses same class, differentiated by "Add Car" text)
   CAR_SEARCH_CHECKBOX: '.parallel-search-checkbox',
   CAR_SEARCH_CHECKBOX_TEXT: 'Add Car',
+  // Parallel hotel edit block — the hotel checkbox + "Edit"/"Cancel edit" toggle wrapper.
+  // Scoped by `.is-align-flex-start` (only the hotel wrapper carries it) so the car block's
+  // identical toggle button is never matched.
+  PARALLEL_HOTEL_BLOCK: '.parallel-search-container .is-align-flex-start',
+  // Destination field inside the parallel hotel inputs. Shares the placeholder with the main
+  // hotel tab, so it is scoped to the parallel inputs list to avoid matching the hotel-tab field.
+  PARALLEL_HOTEL_DESTINATION_FIELD: ".parallel-search-inputs-list [placeholder='Where would you like to stay?']",
+  // First autocomplete suggestion for the parallel hotel destination (same popper as the hotel tab).
+  PARALLEL_HOTEL_AUTOCOMPLETE_FIRST_OPTION: ".el-autocomplete-suggestion__list li[id*='item-0']",
   // Advanced search — return leg date picker
   ADVANCED_RETURN_DATE_FIELD: 'section.return .flight-date-picker input',
 };
 
 const { escapeRegExp } = require("@utils/text");
+const { pressTab } = require("@utils/dom");
 
 class FlightSearchPage {
   /**
@@ -434,6 +444,67 @@ class FlightSearchPage {
     if (isChecked) {
       await checkbox.click();
     }
+  }
+
+  /**
+   * Resolves the "Edit" toggle button inside the parallel HOTEL block.
+   * The hotel and car parallel blocks each render an identical app-btn that reads
+   * "Edit" when closed and "Cancel edit" when open; scoping to the hotel wrapper
+   * (`PARALLEL_HOTEL_BLOCK`) with an exact name ensures the car block's button and
+   * the open-state "Cancel edit" label are never matched.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getParallelHotelEditButton() {
+    return this.page
+      .locator(SELECTORS.PARALLEL_HOTEL_BLOCK)
+      .getByRole('button', { name: 'Edit', exact: true });
+  }
+
+  /**
+   * Opens the parallel hotel edit inputs (destination / dates / rooms) if not already open.
+   * The toggle shows "Edit" only while the panel is closed, so a missing button means the
+   * panel is already open and nothing needs clicking. Waits for the destination field to
+   * confirm the inputs are ready.
+   */
+  async openParallelHotelEditInputs() {
+    const editButton = this.getParallelHotelEditButton();
+    try {
+      await editButton.waitFor({ state: 'visible', timeout: 5000 });
+      await editButton.click();
+    } catch {
+      // "Edit" not present — the panel is already open ("Cancel edit"); nothing to toggle.
+    }
+    await this.page
+      .locator(SELECTORS.PARALLEL_HOTEL_DESTINATION_FIELD)
+      .waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  /**
+   * Types a destination into the parallel hotel search inputs and confirms the autocomplete
+   * selection. Clicks the first suggestion when it appears, otherwise falls back to TAB to
+   * accept the highlighted match. Scoped to the parallel inputs list so it never types into
+   * the main hotel-tab destination field.
+   * @param {string} where - Hotel destination to search for
+   */
+  async typeParallelHotelDestination(where) {
+    const destinationField = this.page.locator(SELECTORS.PARALLEL_HOTEL_DESTINATION_FIELD);
+    const firstSuggestion = this.page
+      .locator(SELECTORS.PARALLEL_HOTEL_AUTOCOMPLETE_FIRST_OPTION)
+      .first();
+
+    await destinationField.waitFor({ state: 'visible', timeout: 10000 });
+    await destinationField.click();
+    await destinationField.fill(where);
+
+    try {
+      await firstSuggestion.waitFor({ state: 'visible', timeout: 5000 });
+      await firstSuggestion.click();
+    } catch {
+      await pressTab(this.page);
+    }
+
+    // Small wait for the UI to process the blur event and apply the selection.
+    await this.page.waitForTimeout(300);
   }
 
   /**

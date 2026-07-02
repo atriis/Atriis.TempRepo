@@ -67,6 +67,10 @@ const SELECTORS = {
   HOTEL_INFO_BAR_DATES: '.hotel-info-bar .date-room-wrapper p:first-of-type',
   // Hotel info bar destination/location name (e.g. "New York, NY, USA, (NYC)")
   HOTEL_INFO_BAR_DESTINATION: '.hotel-info-bar .loc-name p',
+  // Transient parallel-search loader popup shown after the flight is added to cart while the
+  // parallel hotel search loads (product-search-loader.vue). Its message renders the destination
+  // in bold, e.g. "...Exciting <b>New York hotel</b> offers are coming now...".
+  PARALLEL_SEARCH_LOADER_MESSAGE: '.product-search-loader .loader-msg',
   // Hotel name text inside hotel cards
   HOTEL_NAME: '.hotel-preview .hotel-name h4',
   // Slider runway and thumb for the hotel-level Price filter panel
@@ -717,6 +721,55 @@ class HotelLevelResultsPage {
       );
     }
     return (await destinationElement.textContent()).trim();
+  }
+
+  /**
+   * Waits for and returns the message text of the transient parallel-search loader popup shown
+   * after the flight is added to cart, while the parallel hotel search loads. The message embeds
+   * the destination (e.g. "...Exciting New York hotel offers are coming now...").
+   *
+   * The popup is short-lived (product-search-loader auto-hides after ~5s), and it only appears
+   * once the flight is committed to the cart — which a conflicting-quotes modal can block. This
+   * polls continuously so it (a) proceeds that modal the instant it appears, without the slow
+   * cart-settle wait that would outlast the popup, and (b) captures the loader message the moment
+   * it renders. Mirrors the original Testim flow (add → instant proceed → poll for the text).
+   *
+   * The loader fires only when the app auto-transitions from the flight (added to cart) to the
+   * parallel hotel results — roughly a minute after adding the flight — so the poll window must
+   * span that whole transition, catching the popup within its brief life.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=120000]
+   * @returns {Promise<string>} The loader message text (bold markup flattened)
+   */
+  async waitForParallelSearchLoaderText({ timeout = 120000 } = {}) {
+    const loaderMessage = this.page.locator(SELECTORS.PARALLEL_SEARCH_LOADER_MESSAGE).first();
+    const conflictProceedButton = this.page.locator(RESULTS_SELECTORS.CONFLICT_MODAL_PROCEED).first();
+
+    const deadline = Date.now() + timeout;
+    let conflictProceeded = false;
+
+    while (Date.now() < deadline) {
+      // Proceed a conflicting-quotes modal as soon as it shows (once). This unblocks the add
+      // without waiting for the cart to fully settle, which would outlast the ~5s loader popup.
+      if (!conflictProceeded && (await conflictProceedButton.isVisible().catch(() => false))) {
+        await conflictProceedButton.click({ force: true }).catch(() => {});
+        conflictProceeded = true;
+      }
+
+      if (await loaderMessage.isVisible().catch(() => false)) {
+        return (await loaderMessage.textContent()).replace(/\s+/g, ' ').trim();
+      }
+
+      await this.page.waitForTimeout(250);
+    }
+
+    throw new Error(
+      `[HotelLevelResultsPage.waitForParallelSearchLoaderText] The parallel-search loader popup ` +
+        `(selector: ${SELECTORS.PARALLEL_SEARCH_LOADER_MESSAGE}) did not appear within ${timeout}ms after ` +
+        `adding the flight. The parallel hotel search may not have started, a conflicting-quotes modal may ` +
+        `have blocked the add, or the popup selector needs updating.`,
+    );
   }
 
   /**

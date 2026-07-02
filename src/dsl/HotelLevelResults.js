@@ -673,6 +673,34 @@ const HotelLevelResults = {
   },
 
   /**
+   * Verifies the transient parallel-search loader popup — shown after the flight is added to
+   * cart while the parallel hotel search loads — contains the expected text (e.g. the edited
+   * hotel destination like "New York hotel"). This confirms the parallel hotel search kicked
+   * off for the destination chosen, not the flight destination.
+   *
+   * @param {Object} page - Playwright page
+   * @param {string} text - Expected substring in the loader message (e.g. "New York hotel")
+   */
+  async verifyParallelHotelLoaderContains(page, text) {
+    if (!page) {
+      throw new Error('[HotelLevelResults.verifyParallelHotelLoaderContains] "page" is required, got: ' + typeof page);
+    }
+    if (!text || typeof text !== 'string') {
+      throw new Error(
+        '[HotelLevelResults.verifyParallelHotelLoaderContains] "text" must be a non-empty string, got: ' + typeof text,
+      );
+    }
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const loaderText = await hotelLevelResultsPage.waitForParallelSearchLoaderText();
+    expect(
+      loaderText.toLowerCase(),
+      `Expected the parallel hotel search loader popup to contain "${text}", but it showed "${loaderText}". ` +
+        `The parallel hotel search may not have started for the edited destination.`,
+    ).toContain(text.toLowerCase());
+  },
+
+  /**
    * Verifies that the hotel search check-in date matches the expected date from a flight.
    * Flight dates are in format "EEE, dd MMM" (e.g. "Thu, 11 Dec").
    * Hotel dates are displayed as "MMM dd-MMM dd" (e.g. "Dec 11- Dec 15").

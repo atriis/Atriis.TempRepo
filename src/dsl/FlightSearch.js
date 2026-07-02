@@ -374,6 +374,52 @@ const FlightSearch = {
   },
 
   /**
+   * Fills in a round-trip flight search (tab, trip type, route, dates, complete-trip mode)
+   * WITHOUT clicking the search button, leaving the search form open for further edits
+   * (e.g. editing the parallel hotel destination before submitting).
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string|Object} routeInput - Route key or {from, to} object
+   * @param {Object} [options]
+   * @param {number} [options.departureIndex] - Departure date index (default: from SEARCH_DEFAULTS)
+   * @param {number} [options.returnIndex] - Return date index (default: from SEARCH_DEFAULTS)
+   * @returns {Promise<{from: string, to: string, tripType: string, searchType: string, submitted: boolean}>}
+   */
+  async searchFlightRoundTripWithoutSearch(
+    page,
+    routeInput = flightRoutes.defaultRoute,
+    {
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    } = {},
+  ) {
+    if (!page) {
+      throw new Error('[FlightSearch.searchFlightRoundTripWithoutSearch] "page" is required, got: ' + typeof page);
+    }
+
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
+    logger.info('Filling roundTrip flight search without clicking search', { from, to });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectRoundTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      startIndex: departureIndex,
+      endIndex: returnIndex,
+    });
+
+    await flightSearchPage.selectCompleteTrip();
+
+    return { from, to, tripType: 'roundTrip', searchType: 'completeTrip', submitted: false };
+  },
+
+  /**
    * Round-trip flight search with an advanced-search preferred carrier filter.
    *
    * @param {Object} page - Playwright page object
@@ -1406,6 +1452,54 @@ const FlightSearch = {
     const flightSearchPage = getPageObject(page, FlightSearchPage);
     await flightSearchPage.clickFlightTab();
     await flightSearchPage.checkParallelHotelSearch();
+  },
+
+  /**
+   * Edits the parallel hotel destination on the flight search tab so the parallel hotel
+   * search targets a city other than the flight destination.
+   *
+   * Must run AFTER the flight route has been entered: selecting the flight destination
+   * overwrites the parallel hotel destination with the flight's (see flight-search-inputs
+   * `selectedDestination` → `updateHotelAutocomplete`), so this step overrides it. Ensures
+   * only the hotel is parallel-searched (hotel checkbox checked, car checkbox unchecked).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} destination - Hotel destination city (e.g. "new york")
+   * @returns {Promise<{parallelHotel: boolean, parallelCar: boolean, destination: string}>}
+   */
+  async editParallelHotelDestination(page, destination) {
+    if (!page) {
+      throw new Error('[FlightSearch.editParallelHotelDestination] "page" is required, got: ' + typeof page);
+    }
+    if (!destination || typeof destination !== 'string') {
+      throw new Error(
+        '[FlightSearch.editParallelHotelDestination] "destination" must be a non-empty string, got: ' + typeof destination,
+      );
+    }
+
+    logger.info('Editing the parallel hotel destination', { destination });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+
+    try {
+      await flightSearchPage.clickFlightTab();
+
+      // Ensure only the hotel is parallel-searched: hotel checked, car unchecked.
+      await flightSearchPage.checkParallelHotelSearch();
+      await flightSearchPage.uncheckParallelCarSearch();
+
+      logger.debug('Opening the parallel hotel edit inputs before typing the destination');
+      await flightSearchPage.openParallelHotelEditInputs();
+      await flightSearchPage.typeParallelHotelDestination(destination);
+    } catch (err) {
+      throw new Error(
+        `[FlightSearch.editParallelHotelDestination] Could not edit the parallel hotel destination to "${destination}". ` +
+        'The "Add Hotel to this trip" checkbox, its "Edit" toggle, or the destination autocomplete selector may need updating. ' +
+        `Original: ${err.message}`,
+      );
+    }
+
+    return { parallelHotel: true, parallelCar: false, destination };
   },
 
   /**
