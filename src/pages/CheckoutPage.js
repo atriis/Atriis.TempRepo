@@ -35,6 +35,7 @@ const SELECTORS = {
   EMAIL_INPUT: ".email-input .el-input__inner",
 
   // Contact details (reference-form-contact-details.vue)
+  CONTACT_DETAILS_SECTION: ".reference-form-contact-details",
   CONTACT_DETAILS_CHECKBOX: ".reference-form-contact-details .share-checkbox-container .el-checkbox__inner",
   CONTACT_DETAILS_CHECKBOX_INPUT: ".reference-form-contact-details .share-checkbox-container .el-checkbox__original",
   // Contact phone — redesigned app-phone-input: country dropdown button + area/number text inputs
@@ -328,7 +329,14 @@ class CheckoutPage {
    * @returns {Promise<string>} The email input value
    */
   async getEmailInputValue(timeout = 15000) {
+    // The contact-details section is rendered only after the flight quotes load
+    // (v-if="isQuotesContainFlight"), so wait for the section itself before the
+    // email input to avoid racing the async render on slow supplier responses.
+    const section = this.page.locator(SELECTORS.CONTACT_DETAILS_SECTION).first();
+    await section.waitFor({ state: 'visible', timeout });
+
     const input = this.page.locator(SELECTORS.EMAIL_INPUT).first();
+    await input.scrollIntoViewIfNeeded().catch(() => {});
     await input.waitFor({ state: 'visible', timeout });
     // Poll until value is non-empty (auto-populated asynchronously from guest profile)
     const deadline = Date.now() + timeout;

@@ -291,6 +291,13 @@ const Checkout = {
 
     const { expect } = require("@playwright/test");
     const checkoutPage = getPageObject(page, CheckoutPage);
+
+    // Ensure the checkout page (and its contact-details section) is fully loaded
+    // before reading the email field. The section is rendered only once the flight
+    // quotes finish loading, so reading immediately after proceeding to checkout
+    // races the async render and times out on slow Amadeus responses.
+    await checkoutPage.waitForBookingDetailsText();
+
     const emailValue = await checkoutPage.getEmailInputValue();
     expect(emailValue).toContain(expectedText);
   },
