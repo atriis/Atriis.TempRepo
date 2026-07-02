@@ -649,6 +649,30 @@ const HotelLevelResults = {
   },
 
   /**
+   * Verifies that the destination shown in the hotel info bar (top of the hotel results
+   * page) contains the expected city. Used after a parallel flight search lands on hotel
+   * results to confirm the trip destination carried over (e.g. "New York, NY, USA, (NYC)").
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} city - Expected destination text (e.g. "New York, NY, USA, (NYC)")
+   * @returns {Promise<void>}
+   */
+  async verifyHotelResultsDestination(page, city) {
+    if (!page) throw new Error('page is required');
+    if (!city || typeof city !== 'string') {
+      throw new Error(`city must be a non-empty string, got: ${typeof city}`);
+    }
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const actualDestination = await hotelLevelResultsPage.getHotelInfoBarDestinationText();
+    expect(
+      actualDestination.toLowerCase(),
+      `Expected hotel results destination to contain "${city}", but the info bar showed "${actualDestination}". ` +
+        `The destination may not have carried over from the flight search.`,
+    ).toContain(city.toLowerCase());
+  },
+
+  /**
    * Verifies that the hotel search check-in date matches the expected date from a flight.
    * Flight dates are in format "EEE, dd MMM" (e.g. "Thu, 11 Dec").
    * Hotel dates are displayed as "MMM dd-MMM dd" (e.g. "Dec 11- Dec 15").

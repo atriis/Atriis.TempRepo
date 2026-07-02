@@ -83,6 +83,11 @@ When("I open the first hotel from the map preview in a new browser tab", async f
 // THEN STEPS - ASSERTIONS
 // ========================================
 
+Then("the hotel results destination on top of the page should contain {string}", async function (city) {
+  logger.info("Verifying hotel results destination on top of page contains city", { city });
+  await HotelLevelResults.verifyHotelResultsDestination(this.page, city);
+});
+
 Then("the new browser tab should show the hotel details page", async function () {
   logger.info("Verifying the new browser tab shows the hotel details page");
   const result = await HotelLevelResults.verifyHotelDetailsTabOpened(this.page, this.hotelMapPopupPage);

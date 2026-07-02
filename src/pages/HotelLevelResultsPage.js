@@ -65,6 +65,8 @@ const SELECTORS = {
   SUPPLIER_FILTER_ITEM: (supplierId) => `.hotel-filter .suppliers-filter .el-checkbox:has(img[alt*="${supplierId}"])`,
   // Hotel info bar date text (check-in and check-out displayed as "MMM dd-MMM dd")
   HOTEL_INFO_BAR_DATES: '.hotel-info-bar .date-room-wrapper p:first-of-type',
+  // Hotel info bar destination/location name (e.g. "New York, NY, USA, (NYC)")
+  HOTEL_INFO_BAR_DESTINATION: '.hotel-info-bar .loc-name p',
   // Hotel name text inside hotel cards
   HOTEL_NAME: '.hotel-preview .hotel-name h4',
   // Slider runway and thumb for the hotel-level Price filter panel
@@ -696,6 +698,25 @@ class HotelLevelResultsPage {
     const dateElement = this.page.locator(SELECTORS.HOTEL_INFO_BAR_DATES);
     await dateElement.waitFor({ state: 'visible', timeout: 30000 });
     return (await dateElement.textContent()).trim();
+  }
+
+  /**
+   * Gets the destination/location name shown in the hotel info bar at the top of the
+   * hotel results page (e.g. "New York, NY, USA, (NYC)").
+   * @returns {Promise<string>} The destination text
+   */
+  async getHotelInfoBarDestinationText() {
+    const destinationElement = this.page.locator(SELECTORS.HOTEL_INFO_BAR_DESTINATION).first();
+    try {
+      await destinationElement.waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[HotelLevelResultsPage.getHotelInfoBarDestinationText] Destination not visible in hotel info bar ` +
+          `(selector: ${SELECTORS.HOTEL_INFO_BAR_DESTINATION}). The hotel results page may not have loaded, ` +
+          `or the info bar is not rendered in this flow. Original: ${err.message}`,
+      );
+    }
+    return (await destinationElement.textContent()).trim();
   }
 
   /**
