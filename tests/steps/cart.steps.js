@@ -1014,6 +1014,14 @@ Then("the stored quote PNR codes should match", async function () {
   await Cart.verifyQuotePnrCodesMatch(this.page, this.storedFirstQuotePnrCode, this.storedSecondQuotePnrCode);
 });
 
+Then("the stored quote PNR codes should not match", async function () {
+  logger.info("Verifying stored quote PNR codes do not match", {
+    firstQuotePnrCode: this.storedFirstQuotePnrCode,
+    secondQuotePnrCode: this.storedSecondQuotePnrCode,
+  });
+  await Cart.verifyQuotePnrCodesDoNotMatch(this.page, this.storedFirstQuotePnrCode, this.storedSecondQuotePnrCode);
+});
+
 Then("the trip title should contain {string}", async function (city) {
   logger.info("Verifying trip title contains city", { city });
   await Cart.verifyTripTitle(this.page, city);

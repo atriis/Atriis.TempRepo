@@ -2204,6 +2204,25 @@ const Cart = {
     expect(firstPnrCode, `Expected both quotes to share the same PNR, got "${firstPnrCode}" and "${secondPnrCode}"`).toBe(secondPnrCode);
   },
 
+  /**
+   * Verifies two stored quote PNR codes do not match.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} firstPnrCode
+   * @param {string} secondPnrCode
+   */
+  async verifyQuotePnrCodesDoNotMatch(page, firstPnrCode, secondPnrCode) {
+    if (!page) throw new Error('page is required');
+    if (!firstPnrCode || typeof firstPnrCode !== 'string') {
+      throw new Error(`firstPnrCode must be a non-empty string, got: ${typeof firstPnrCode}`);
+    }
+    if (!secondPnrCode || typeof secondPnrCode !== 'string') {
+      throw new Error(`secondPnrCode must be a non-empty string, got: ${typeof secondPnrCode}`);
+    }
+
+    expect(firstPnrCode, `Expected quotes to have different PNRs, but both were "${firstPnrCode}"`).not.toBe(secondPnrCode);
+  },
+
   async verifyFirstQuoteDestination(page, city) {
     if (!page) throw new Error('page is required');
     if (!city || typeof city !== 'string') throw new Error(`city must be a non-empty string, got: ${typeof city}`);
