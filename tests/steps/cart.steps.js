@@ -1073,6 +1073,16 @@ Then("the last quote destination should contain {string}", async function (city)
   await Cart.verifyLastQuoteDestination(this.page, city);
 });
 
+Then("the flight quote destination should be {string}", async function (expectedTitle) {
+  logger.info("Verifying flight quote destination", { expectedTitle });
+  await Cart.verifyFlightQuoteDestination(this.page, expectedTitle);
+});
+
+Then("the car quote destination should contain {string}", async function (city) {
+  logger.info("Verifying car quote destination contains city", { city });
+  await Cart.verifyCarQuoteDestination(this.page, city);
+});
+
 Then('both outbound and return segments should include location code {string}', async function (locationCode) {
   logger.info('Verifying round-trip cart segments include location code on both legs', { locationCode });
   const result = await Cart.verifyRoundTripSegmentsIncludeLocationCode(this.page, locationCode);

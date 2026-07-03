@@ -163,6 +163,24 @@ const SELECTORS = {
   PNR_CODE: '.pnr-code',
   FLIGHT_QUOTE_NUMBER_TEXT: '.flight-info.cart-format .carrier-container .carrier-name + p',
 
+  // Product-scoped quote destination titles (base-quote-header.vue h6.quote-title). Both the flight
+  // and car quote cards are .quote-payment-card, so in a parallel flight+car trip the generic
+  // QUOTE_TITLE .first() only reads the flight; these scope to the specific product card.
+  FLIGHT_QUOTE_TITLE: '.flight-quote-card h6.quote-title',   // e.g. "Flight to Budapest"
+  CAR_QUOTE_TITLE: '.car-quote-card h6.quote-title',         // e.g. "Car rental in ... Hungary"
+
+  // Flight quote segment times in the trip overview (flight-preview-segment.vue, isCart=true).
+  // Outbound segment carries .not-last-segment; its arrival time is the right-aligned
+  // (.is-align-items-end) .flight-time. The return segment is the last one (NOT .not-last-segment);
+  // its departure time is the first .flight-time inside its .flight-duration.
+  FLIGHT_QUOTE_OUTBOUND_ARRIVAL_TIME: '.flight-quote-card .flight-info.cart-format.not-last-segment .is-align-items-end .flight-time',
+  FLIGHT_QUOTE_RETURN_DEPARTURE_TIME: '.flight-quote-card .flight-info.cart-format:not(.not-last-segment) .flight-duration .flight-time',
+
+  // Car pickup/drop-off date·time label shown in the car quote card body (car-quote-card.ts
+  // formattedPickupDateLabel/formattedDropoffDateLabel), e.g.
+  // "03 Jul 2026 · 14:30 - 05 Jul 2026 · 10:15". Split on " - " to separate pickup from drop-off.
+  CAR_QUOTE_DATE_RANGE: '.car-quote-card .date-range-text',
+
   // OOP Justification selectors
   OOP_JUSTIFICATION_TEXTBOX: "[placeholder='Add your justification']",
   OOP_VIOLATION_LABEL: '.out-of-policy-label', // Violation reason text shown inside .oop-justification (oop-justification.vue)
@@ -3188,6 +3206,82 @@ class CartPage {
     const el = this.page.locator(SELECTORS.LAST_QUOTE_TITLE).first();
     await el.waitFor({ state: 'visible', timeout });
     return (await el.innerText()).trim();
+  }
+
+  /**
+   * Waits for the first element matching `selector` to be visible and returns its trimmed text.
+   * Wraps Playwright timeouts with a WHAT/WHERE/WHY message so a missing trip-overview element
+   * is diagnosable. Shared by the trip-overview quote getters below.
+   * @param {string} selector
+   * @param {string} description - human-readable name of what is being read (for the error)
+   * @param {number} timeout
+   * @returns {Promise<string>}
+   */
+  async _readTripOverviewText(selector, description, timeout) {
+    const el = this.page.locator(selector).first();
+    try {
+      await el.waitFor({ state: 'visible', timeout });
+      return (await el.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage._readTripOverviewText] Could not read ${description} (selector "${selector}") within ${timeout}ms. ` +
+        `The relevant quote may not be in the trip overview yet, or the page has not finished rendering. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Gets the flight quote card title from the trip overview (e.g. "Flight to Budapest").
+   * @param {{ timeout?: number }} [options]
+   * @returns {Promise<string>}
+   */
+  async getFlightQuoteTitleText({ timeout = 10000 } = {}) {
+    return this._readTripOverviewText(SELECTORS.FLIGHT_QUOTE_TITLE, 'the flight quote title', timeout);
+  }
+
+  /**
+   * Gets the car quote card title from the trip overview (e.g. "Car rental in ... Hungary").
+   * @param {{ timeout?: number }} [options]
+   * @returns {Promise<string>}
+   */
+  async getCarQuoteTitleText({ timeout = 10000 } = {}) {
+    return this._readTripOverviewText(SELECTORS.CAR_QUOTE_TITLE, 'the car quote title', timeout);
+  }
+
+  /**
+   * Gets the outbound flight arrival time from the flight quote card (e.g. "14:30").
+   * @param {{ timeout?: number }} [options]
+   * @returns {Promise<string>}
+   */
+  async getFlightQuoteOutboundArrivalTime({ timeout = 15000 } = {}) {
+    return this._readTripOverviewText(
+      SELECTORS.FLIGHT_QUOTE_OUTBOUND_ARRIVAL_TIME,
+      'the outbound flight arrival time (the flight quote may not be a round trip)',
+      timeout,
+    );
+  }
+
+  /**
+   * Gets the return flight departure time from the flight quote card (e.g. "10:15").
+   * @param {{ timeout?: number }} [options]
+   * @returns {Promise<string>}
+   */
+  async getFlightQuoteReturnDepartureTime({ timeout = 15000 } = {}) {
+    return this._readTripOverviewText(
+      SELECTORS.FLIGHT_QUOTE_RETURN_DEPARTURE_TIME,
+      'the return flight departure time (the flight quote may not include a return segment)',
+      timeout,
+    );
+  }
+
+  /**
+   * Gets the car quote pickup/drop-off date·time label from the trip overview,
+   * e.g. "03 Jul 2026 · 14:30 - 05 Jul 2026 · 10:15".
+   * @param {{ timeout?: number }} [options]
+   * @returns {Promise<string>}
+   */
+  async getCarQuotePickupDropoffText({ timeout = 15000 } = {}) {
+    return this._readTripOverviewText(SELECTORS.CAR_QUOTE_DATE_RANGE, 'the car pickup/drop-off date·time label', timeout);
   }
 
   /**

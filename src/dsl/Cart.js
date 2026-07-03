@@ -11,6 +11,7 @@ const config = require("@config/config");
 const BookingErrorHandler = require("@utils/bookingErrorHandler");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const { parseAmountText } = require("@utils/dom");
+const { normalizeText } = require("@utils/text");
 const logger = require("@utils/logger").child("Cart-DSL");
 
 /**
@@ -2144,6 +2145,53 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     const actualTitle = await cartPage.getQuoteTitleText();
     expect(actualTitle.toLowerCase()).toContain(city.toLowerCase());
+  },
+
+  /**
+   * Verifies the flight quote card title in the trip overview matches the expected value exactly.
+   * Scoped to the flight card (.flight-quote-card) so it is unambiguous in a parallel flight+car
+   * trip where several quote cards are present.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedTitle - Full expected title, e.g. "Flight to Budapest"
+   * @returns {Promise<void>}
+   */
+  async verifyFlightQuoteDestination(page, expectedTitle) {
+    if (!page) throw new Error('[Cart.verifyFlightQuoteDestination] "page" is required.');
+    if (!expectedTitle || typeof expectedTitle !== 'string') {
+      throw new Error(`[Cart.verifyFlightQuoteDestination] "expectedTitle" must be a non-empty string, got: ${typeof expectedTitle}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualTitle = await cartPage.getFlightQuoteTitleText();
+    const normalized = normalizeText(actualTitle);
+    expect(
+      normalized.toLowerCase(),
+      `[Cart.verifyFlightQuoteDestination] Expected the flight quote title to be "${expectedTitle}", but the trip overview showed "${actualTitle}".`
+    ).toBe(expectedTitle.toLowerCase());
+  },
+
+  /**
+   * Verifies the car quote card title in the trip overview contains the expected place name.
+   * Scoped to the car card (.car-quote-card); the generic quote-destination check reads the
+   * flight card in a parallel flight+car trip.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} city - Expected place name (e.g. country/city like "Hungary")
+   * @returns {Promise<void>}
+   */
+  async verifyCarQuoteDestination(page, city) {
+    if (!page) throw new Error('[Cart.verifyCarQuoteDestination] "page" is required.');
+    if (!city || typeof city !== 'string') {
+      throw new Error(`[Cart.verifyCarQuoteDestination] "city" must be a non-empty string, got: ${typeof city}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualTitle = await cartPage.getCarQuoteTitleText();
+    expect(
+      actualTitle.toLowerCase(),
+      `[Cart.verifyCarQuoteDestination] Expected the car quote title to contain "${city}", but the trip overview showed "${actualTitle}".`
+    ).toContain(city.toLowerCase());
   },
 
   /**

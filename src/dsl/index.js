@@ -27,6 +27,7 @@ module.exports = {
   HotelLevelResults: require("./HotelLevelResults"),
   HotelSearch: require("./HotelSearch"),
   ManualQuoteSearch: require("./ManualQuoteSearch"),
+  ParallelSearch: require("./ParallelSearch"),
   Profile: require("./Profile"),
   Results: require("./Results"),
   RoomLevelResults: require("./RoomLevelResults"),
