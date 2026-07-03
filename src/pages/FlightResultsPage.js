@@ -275,6 +275,11 @@ const SELECTORS = {
   // Results page breadcrumb — first item links back to the trip search page
   RESULTS_BREADCRUMB_SEARCH_LINK: '.results-breadscrumbs li:first-child a',
 
+  // Flight info bar (flight-info-bar.vue) at the top of results — origin/destination render as
+  // "CityName (Code)" on desktop. First `.ellipsis-txt` in `.origin-info` is the origin, last is
+  // the destination.
+  FLIGHT_INFO_BAR_LOCATION: '.flight-info-bar .origin-info p.ellipsis-txt',
+
   // Sort by dropdown (extended sort options in flight-list-sort component)
   SORT_BY_BUTTON: '.flight-list-sort .sort-by-wrapper',
   SORT_DROPDOWN_ITEM: (label) => `.el-dropdown-menu__item:has-text("${label}")`,
@@ -461,6 +466,46 @@ class FlightResultsPage {
     await active.waitFor({ state: 'visible', timeout: 30000 });
     const title = await active.locator(SELECTORS.FLIGHT_STEPPER_PAGE_TITLE).first().textContent({ timeout: 10000 });
     return (title ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Reads the origin shown in the flight info bar at the top of the results page.
+   * Desktop renders "CityName (Code)" (e.g. "London (LON)"); the first `.ellipsis-txt` in the
+   * `.origin-info` block is the origin.
+   * @returns {Promise<string>} Trimmed origin text (whitespace collapsed)
+   */
+  async getFlightInfoBarOriginText() {
+    const origin = this.page.locator(SELECTORS.FLIGHT_INFO_BAR_LOCATION).first();
+    try {
+      await origin.waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getFlightInfoBarOriginText] Origin not visible in the flight info bar ` +
+        `(selector: ${SELECTORS.FLIGHT_INFO_BAR_LOCATION}). The flight results page may not have loaded, ` +
+        `or the info bar is not rendered in this flow. Original: ${err.message}`
+      );
+    }
+    return ((await origin.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Reads the destination shown in the flight info bar at the top of the results page.
+   * Desktop renders "CityName (Code)" (e.g. "Amsterdam (AMS)"); the last `.ellipsis-txt` in the
+   * `.origin-info` block is the destination.
+   * @returns {Promise<string>} Trimmed destination text (whitespace collapsed)
+   */
+  async getFlightInfoBarDestinationText() {
+    const destination = this.page.locator(SELECTORS.FLIGHT_INFO_BAR_LOCATION).last();
+    try {
+      await destination.waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getFlightInfoBarDestinationText] Destination not visible in the flight info bar ` +
+        `(selector: ${SELECTORS.FLIGHT_INFO_BAR_LOCATION}). The flight results page may not have loaded, ` +
+        `or the info bar is not rendered in this flow. Original: ${err.message}`
+      );
+    }
+    return ((await destination.textContent()) ?? '').replace(/\s+/g, ' ').trim();
   }
 
   /**

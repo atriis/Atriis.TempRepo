@@ -2,6 +2,10 @@ require("module-alias/register");
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { CartPage } = require("@pages/CartPage");
+const FlightSearchPage = require("@pages/FlightSearchPage");
+const { SearchPage } = require("@pages/SearchPage");
+const CarSearchPage = require("@pages/CarSearchPage");
+const FlightSearch = require("./FlightSearch");
 const logger = require("@utils/logger").child("ParallelSearch");
 
 /**
@@ -76,6 +80,158 @@ const ParallelSearch = {
       `[ParallelSearch.verifyCarHoursMatchFlightHours] Expected the car drop-off hour to be the return flight departure (${returnDeparture}) - ${toleranceMinutes}m = ${expectedDropoff}, ` +
       `but the car drop-off label was "${dropoffLabel.trim()}" (full car label: "${carHoursText}").`
     ).toContain(expectedDropoff);
+  },
+
+  /**
+   * Searches for a round-trip flight with BOTH a parallel hotel (whose destination is inherited
+   * from the flight destination) and a parallel car whose pick-up location is edited to a different
+   * city.
+   *
+   * The car location is edited AFTER the flight route is entered, because selecting the flight
+   * destination overwrites the parallel destinations. The entered flight dates and the derived car
+   * pick-up/drop-off dates are captured and returned so later steps can assert they are retained in
+   * the edit-search drawer.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} options
+   * @param {string} options.to - Flight destination code (e.g. "AMS")
+   * @param {string} options.carLocation - Parallel car pick-up location to edit to (e.g. "MAD")
+   * @param {string} [options.from="LON"] - Flight origin code
+   * @returns {Promise<{from: string, to: string, carLocation: string, flightDepartDate: string, flightReturnDate: string, carPickupDate: string, carDropoffDate: string}>}
+   */
+  async searchFlightWithParallelHotelAndEditedCar(page, { to, carLocation, from = 'LON' } = {}) {
+    if (!page) throw new Error('[ParallelSearch.searchFlightWithParallelHotelAndEditedCar] "page" is required.');
+    if (!to || typeof to !== 'string') {
+      throw new Error(`[ParallelSearch.searchFlightWithParallelHotelAndEditedCar] "to" must be a non-empty string, got: ${typeof to}`);
+    }
+    if (!carLocation || typeof carLocation !== 'string') {
+      throw new Error(`[ParallelSearch.searchFlightWithParallelHotelAndEditedCar] "carLocation" must be a non-empty string, got: ${typeof carLocation}`);
+    }
+    if (!from || typeof from !== 'string') {
+      throw new Error(`[ParallelSearch.searchFlightWithParallelHotelAndEditedCar] "from" must be a non-empty string, got: ${typeof from}`);
+    }
+
+    logger.info('Searching flight with parallel hotel and an edited parallel car', { from, to, carLocation });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+    const carSearchPage = getPageObject(page, CarSearchPage);
+
+    // Fill the round-trip flight (tab, trip type, route, dates, complete-trip) WITHOUT submitting,
+    // so the parallel options can be configured before the search runs.
+    await FlightSearch.searchFlightRoundTripWithoutSearch(page, { from, to });
+
+    // Enable BOTH parallel searches: the hotel destination inherits the flight destination
+    // (e.g. Amsterdam), and the car is enabled so its pick-up location can be edited next.
+    await flightSearchPage.checkParallelHotelSearch();
+    await flightSearchPage.checkParallelCarSearch();
+
+    // Edit ONLY the car pick-up location. Must run after the flight route is entered — selecting the
+    // flight destination overwrites the parallel destinations (see FlightSearch.editParallelHotelDestination).
+    logger.debug('Opening the parallel car edit inputs before typing the pick-up location');
+    await flightSearchPage.openParallelCarEditInputs();
+    await flightSearchPage.typeParallelCarDestination(carLocation);
+
+    // Capture the entered flight dates (entered directly, so already settled) so the "dates retained"
+    // checks (after clicking edit search on the flight and on the car results) have ground-truth values.
+    const flightDepartDate = await searchPage.getDepartureDateFieldValue();
+    const flightReturnDate = await searchPage.getReturnDateFieldValue();
+
+    // The parallel car dates are DERIVED from the flight dates via Vue reactivity and settle
+    // asynchronously; reading immediately can capture an empty/stale value. Wait for the car date
+    // inputs to be populated first (best-effort — if they never settle, the downstream
+    // verifyCarDatesRetained non-empty guard surfaces a clear error rather than a raw timeout here).
+    await carSearchPage.waitForPickupDateNonEmpty({ timeout: 10000 }).catch(() => {});
+    await carSearchPage.waitForDropoffDateNonEmpty({ timeout: 10000 }).catch(() => {});
+    const carPickupDate = await carSearchPage.getPickupDateFieldValue();
+    const carDropoffDate = await carSearchPage.getDropoffDateFieldValue();
+
+    logger.info('Captured entered flight and derived car dates', {
+      flightDepartDate,
+      flightReturnDate,
+      carPickupDate,
+      carDropoffDate,
+    });
+
+    await searchPage.waitAndClickSearchButton();
+
+    return { from, to, carLocation, flightDepartDate, flightReturnDate, carPickupDate, carDropoffDate };
+  },
+
+  /**
+   * Verifies the flight departure and return dates shown in the (already-open) edit-search drawer
+   * match the dates entered during the parallel search. Whitespace is normalized before comparison.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} expected
+   * @param {string} expected.expectedDepartureDate - Departure date entered during the search
+   * @param {string} expected.expectedReturnDate - Return date entered during the search
+   * @returns {Promise<{expectedDepartureDate: string, expectedReturnDate: string, actualDepartureDate: string, actualReturnDate: string}>}
+   */
+  async verifyFlightDatesRetained(page, { expectedDepartureDate, expectedReturnDate } = {}) {
+    if (!page) throw new Error('[ParallelSearch.verifyFlightDatesRetained] "page" is required.');
+    if (!expectedDepartureDate || typeof expectedDepartureDate !== 'string') {
+      throw new Error(`[ParallelSearch.verifyFlightDatesRetained] "expectedDepartureDate" must be a non-empty string, got: ${typeof expectedDepartureDate}. Ensure the parallel search step captured the entered dates first.`);
+    }
+    if (!expectedReturnDate || typeof expectedReturnDate !== 'string') {
+      throw new Error(`[ParallelSearch.verifyFlightDatesRetained] "expectedReturnDate" must be a non-empty string, got: ${typeof expectedReturnDate}. Ensure the parallel search step captured the entered dates first.`);
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+    const normalize = (value) => value.replace(/\s+/g, ' ').trim();
+
+    const actualDepartureDate = await searchPage.getDepartureDateFieldValue();
+    const actualReturnDate = await searchPage.getReturnDateFieldValue();
+
+    expect(
+      normalize(actualDepartureDate),
+      `[ParallelSearch.verifyFlightDatesRetained] Expected the flight departure date in the edit search to stay the entered "${expectedDepartureDate}", but it showed "${actualDepartureDate}".`,
+    ).toBe(normalize(expectedDepartureDate));
+
+    expect(
+      normalize(actualReturnDate),
+      `[ParallelSearch.verifyFlightDatesRetained] Expected the flight return date in the edit search to stay the entered "${expectedReturnDate}", but it showed "${actualReturnDate}".`,
+    ).toBe(normalize(expectedReturnDate));
+
+    return { expectedDepartureDate, expectedReturnDate, actualDepartureDate, actualReturnDate };
+  },
+
+  /**
+   * Verifies the car pick-up and drop-off dates shown in the (already-open) edit-search drawer match
+   * the dates derived during the parallel search. Whitespace is normalized before comparison.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} expected
+   * @param {string} expected.expectedPickupDate - Pick-up date derived during the search
+   * @param {string} expected.expectedDropoffDate - Drop-off date derived during the search
+   * @returns {Promise<{expectedPickupDate: string, expectedDropoffDate: string, actualPickupDate: string, actualDropoffDate: string}>}
+   */
+  async verifyCarDatesRetained(page, { expectedPickupDate, expectedDropoffDate } = {}) {
+    if (!page) throw new Error('[ParallelSearch.verifyCarDatesRetained] "page" is required.');
+    if (!expectedPickupDate || typeof expectedPickupDate !== 'string') {
+      throw new Error(`[ParallelSearch.verifyCarDatesRetained] "expectedPickupDate" must be a non-empty string, got: ${typeof expectedPickupDate}. Ensure the parallel search step captured the entered dates first.`);
+    }
+    if (!expectedDropoffDate || typeof expectedDropoffDate !== 'string') {
+      throw new Error(`[ParallelSearch.verifyCarDatesRetained] "expectedDropoffDate" must be a non-empty string, got: ${typeof expectedDropoffDate}. Ensure the parallel search step captured the entered dates first.`);
+    }
+
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    const normalize = (value) => value.replace(/\s+/g, ' ').trim();
+
+    const actualPickupDate = await carSearchPage.getPickupDateFieldValue();
+    const actualDropoffDate = await carSearchPage.getDropoffDateFieldValue();
+
+    expect(
+      normalize(actualPickupDate),
+      `[ParallelSearch.verifyCarDatesRetained] Expected the car pick-up date in the edit search to stay the entered "${expectedPickupDate}", but it showed "${actualPickupDate}".`,
+    ).toBe(normalize(expectedPickupDate));
+
+    expect(
+      normalize(actualDropoffDate),
+      `[ParallelSearch.verifyCarDatesRetained] Expected the car drop-off date in the edit search to stay the entered "${expectedDropoffDate}", but it showed "${actualDropoffDate}".`,
+    ).toBe(normalize(expectedDropoffDate));
+
+    return { expectedPickupDate, expectedDropoffDate, actualPickupDate, actualDropoffDate };
   },
 };
 

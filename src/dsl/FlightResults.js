@@ -373,6 +373,62 @@ const FlightResults = {
   },
 
   /**
+   * Verifies the origin shown in the flight info bar at the top of the results page contains the
+   * expected origin (e.g. "London (LON)"). Whitespace is normalized so a spacing difference in the
+   * feature text does not cause a false mismatch.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedOrigin - Expected origin text (e.g. "London (LON)")
+   * @returns {Promise<{expectedOrigin: string, actualOrigin: string}>}
+   */
+  async verifyFlightResultsOrigin(page, expectedOrigin) {
+    if (!page) throw new Error('page is required');
+    if (!expectedOrigin || typeof expectedOrigin !== 'string') {
+      throw new Error(`expectedOrigin must be a non-empty string, got: ${typeof expectedOrigin}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const actualOrigin = await flightResultsPage.getFlightInfoBarOriginText();
+    const normalizedExpected = expectedOrigin.replace(/\s+/g, ' ').trim();
+
+    expect(
+      actualOrigin.toLowerCase(),
+      `Expected the flight results origin to show "${expectedOrigin}", but the info bar showed "${actualOrigin}". ` +
+        `The origin may not have carried over to the results header.`,
+    ).toContain(normalizedExpected.toLowerCase());
+
+    return { expectedOrigin, actualOrigin };
+  },
+
+  /**
+   * Verifies the destination shown in the flight info bar at the top of the results page contains
+   * the expected destination (e.g. "Amsterdam (AMS)"). Whitespace is normalized so a spacing
+   * difference in the feature text does not cause a false mismatch.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedDestination - Expected destination text (e.g. "Amsterdam (AMS)")
+   * @returns {Promise<{expectedDestination: string, actualDestination: string}>}
+   */
+  async verifyFlightResultsDestination(page, expectedDestination) {
+    if (!page) throw new Error('page is required');
+    if (!expectedDestination || typeof expectedDestination !== 'string') {
+      throw new Error(`expectedDestination must be a non-empty string, got: ${typeof expectedDestination}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const actualDestination = await flightResultsPage.getFlightInfoBarDestinationText();
+    const normalizedExpected = expectedDestination.replace(/\s+/g, ' ').trim();
+
+    expect(
+      actualDestination.toLowerCase(),
+      `Expected the flight results destination to show "${expectedDestination}", but the info bar showed "${actualDestination}". ` +
+        `The destination may not have carried over to the results header.`,
+    ).toContain(normalizedExpected.toLowerCase());
+
+    return { expectedDestination, actualDestination };
+  },
+
+  /**
    * Verifies that the first flight result highlights the expected airport codes.
    *
    * @param {import('playwright').Page} page - Playwright page instance

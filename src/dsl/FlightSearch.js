@@ -953,7 +953,12 @@ const FlightSearch = {
   },
 
   /**
-   * Opens the edit-search form from flight results and waits for the form to be ready for input.
+   * Opens the edit-search form from a results page and waits for the form to be ready for input.
+   *
+   * Product-agnostic: this backs the generic "I click edit search" step, which is used on both
+   * flight and car results pages. Flight edit drawers expose an airport autocomplete field; car
+   * edit drawers expose a "Pick-up Date" field instead — waitForEditSearchDrawerReady waits for
+   * whichever appears so the same step works in both contexts.
    *
    * @param {Object} page - Playwright page object
    */
@@ -966,9 +971,29 @@ const FlightSearch = {
     const searchPage = getPageObject(page, SearchPage);
 
     await resultsPage.clickEditButton();
-    await searchPage.waitForFromFieldVisible();
+    await searchPage.waitForEditSearchDrawerReady();
 
     return { opened: true };
+  },
+
+  /**
+   * Closes the edit-search drawer opened from the results page (e.g. after verifying the retained
+   * dates). Waits for the drawer to disappear so the next step acts on the results page behind it.
+   *
+   * @param {Object} page - Playwright page object
+   * @returns {Promise<{closed: boolean}>}
+   */
+  async closeEditSearch(page) {
+    if (!page) throw new Error('page is required');
+
+    logger.info('Closing the edit search drawer');
+
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.closeEditSearchDrawer();
+    // The drawer animates out; tolerate it being already gone rather than fail the step.
+    await searchPage.getEditSearchDrawer().waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+
+    return { closed: true };
   },
 
   /**

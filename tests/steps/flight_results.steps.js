@@ -570,6 +570,16 @@ Then("flight results should be available", async function () {
   expect(isDisplayed).toBe(true);
 });
 
+Then("the flight origin should show {string}", async function (expectedOrigin) {
+  logger.info("Verifying the flight origin on the results header", { expectedOrigin });
+  await FlightResults.verifyFlightResultsOrigin(this.page, expectedOrigin);
+});
+
+Then("the flight destination should show {string}", async function (expectedDestination) {
+  logger.info("Verifying the flight destination on the results header", { expectedDestination });
+  await FlightResults.verifyFlightResultsDestination(this.page, expectedDestination);
+});
+
 Then('the alert {string} should be displayed', async function (expectedText) {
   logger.info('Verifying alert is displayed', { expectedText });
   await FlightResults.verifyAlertTextDisplayed(this.page, expectedText);

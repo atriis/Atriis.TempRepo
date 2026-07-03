@@ -131,6 +131,11 @@ Then("the car results section should be displayed", async function () {
   await CarResults.expectCarResultsSectionDisplayed(this.page);
 });
 
+Then("the parallel car location should be {string}", async function (expectedLocation) {
+  logger.info("Verifying the parallel car location on the results header", { expectedLocation });
+  await CarResults.verifyCarResultsLocation(this.page, expectedLocation);
+});
+
 Then("the {string} filter should be visible in car results", async function (filterTitle) {
   logger.info("Verifying filter is visible in car results", { filterTitle });
   await CarResults.verifyFilterVisibleOnResults(this.page, filterTitle);

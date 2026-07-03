@@ -88,9 +88,9 @@ Then("the hotel results destination on top of the page should contain {string}",
   await HotelLevelResults.verifyHotelResultsDestination(this.page, city);
 });
 
-Then("the parallel hotel modal should contain {string}", { timeout: 140000 }, async function (text) {
-  logger.info("Verifying the parallel hotel search loader popup contains text", { text });
-  await HotelLevelResults.verifyParallelHotelLoaderContains(this.page, text);
+Then("the parallel {word} modal should contain {string}", { timeout: 140000 }, async function (product, text) {
+  logger.info("Verifying the parallel search loader popup contains text", { product, text });
+  await HotelLevelResults.verifyParallelSearchLoaderContains(this.page, text);
 });
 
 Then("the new browser tab should show the hotel details page", async function () {

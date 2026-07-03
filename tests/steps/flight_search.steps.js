@@ -106,6 +106,11 @@ When('I click edit search', async function () {
   await FlightSearch.clickEditSearch(this.page);
 });
 
+When('I close the edit search drawer', async function () {
+  logger.info('Closing the edit search drawer');
+  await FlightSearch.closeEditSearch(this.page);
+});
+
 When('I change the search type to {string} in the edit flight search', async function (searchMode) {
   logger.info('Changing edit flight search mode', { searchMode });
   await FlightSearch.changeSearchTypeInEditFlightSearch(this.page, searchMode);

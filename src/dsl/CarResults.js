@@ -830,6 +830,35 @@ const CarResults = {
   },
 
   /**
+   * Verifies the pick-up location shown in the car info bar at the top of the results page contains
+   * the expected location (e.g. "Madrid,Spain,(MAD)"). In a parallel flight+car search this confirms
+   * the edited car destination carried over. Whitespace is normalized so spacing differences do not
+   * cause a false mismatch.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedLocation - Expected pick-up location text (e.g. "Madrid,Spain,(MAD)")
+   * @returns {Promise<{expectedLocation: string, actualLocation: string}>}
+   */
+  async verifyCarResultsLocation(page, expectedLocation) {
+    if (!page) throw new Error('page is required');
+    if (!expectedLocation || typeof expectedLocation !== 'string') {
+      throw new Error(`expectedLocation must be a non-empty string, got: ${typeof expectedLocation}`);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const actualLocation = await carResultsPage.getCarInfoBarLocationText();
+    const normalizedExpected = expectedLocation.replace(/\s+/g, ' ').trim();
+
+    expect(
+      actualLocation.toLowerCase(),
+      `Expected the parallel car location to be "${expectedLocation}", but the car info bar showed "${actualLocation}". ` +
+        `The edited car destination may not have carried over to the results header.`,
+    ).toContain(normalizedExpected.toLowerCase());
+
+    return { expectedLocation, actualLocation };
+  },
+
+  /**
    * Verifies that a filter with the given title is visible on the car results page.
    * @param {import('playwright').Page} page
    * @param {string} filterTitle - The expected filter title (e.g. "Rental Agency")

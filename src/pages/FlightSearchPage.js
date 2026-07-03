@@ -42,6 +42,12 @@ const SELECTORS = {
   PARALLEL_HOTEL_DESTINATION_FIELD: ".parallel-search-inputs-list [placeholder='Where would you like to stay?']",
   // First autocomplete suggestion for the parallel hotel destination (same popper as the hotel tab).
   PARALLEL_HOTEL_AUTOCOMPLETE_FIRST_OPTION: ".el-autocomplete-suggestion__list li[id*='item-0']",
+  // Pick-up location field inside the parallel car inputs. The car-autocomplete carries the
+  // `.app-search-input.pick-up` classes; it is scoped to the parallel inputs list so it never
+  // matches the main car-tab pick-up field.
+  PARALLEL_CAR_PICKUP_FIELD: ".parallel-search-inputs-list .app-search-input.pick-up input",
+  // First autocomplete suggestion for the parallel car pick-up location (shared el-autocomplete popper).
+  PARALLEL_CAR_AUTOCOMPLETE_FIRST_OPTION: ".el-autocomplete-suggestion__list li[id*='item-0']",
   // Advanced search — return leg date picker
   ADVANCED_RETURN_DATE_FIELD: 'section.return .flight-date-picker input',
   // Flight-time field validation message shown when the time frame is required but empty
@@ -633,6 +639,69 @@ class FlightSearchPage {
     if (isChecked) {
       await checkbox.click();
     }
+  }
+
+  /**
+   * Resolves the "Edit" toggle button inside the parallel CAR block.
+   * Unlike the hotel block (scoped by `.is-align-flex-start`), the car block has no unique wrapper
+   * class, so the button is resolved as the sibling of the "Add Car" checkbox: scoping to that
+   * checkbox's parent with an exact name ensures the hotel block's identical toggle and the
+   * open-state "Cancel edit" label are never matched.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getParallelCarEditButton() {
+    return this.page
+      .locator(SELECTORS.CAR_SEARCH_CHECKBOX)
+      .filter({ hasText: SELECTORS.CAR_SEARCH_CHECKBOX_TEXT })
+      .first()
+      .locator('xpath=..')
+      .getByRole('button', { name: 'Edit', exact: true });
+  }
+
+  /**
+   * Opens the parallel car edit inputs (pick-up location / dates) if not already open.
+   * The toggle shows "Edit" only while the panel is closed, so a missing button means the panel is
+   * already open and nothing needs clicking. Waits for the pick-up field to confirm the inputs are ready.
+   */
+  async openParallelCarEditInputs() {
+    const editButton = this.getParallelCarEditButton();
+    try {
+      await editButton.waitFor({ state: 'visible', timeout: 5000 });
+      await editButton.click();
+    } catch {
+      // "Edit" not present — the panel is already open ("Cancel edit"); nothing to toggle.
+    }
+    await this.page
+      .locator(SELECTORS.PARALLEL_CAR_PICKUP_FIELD)
+      .waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  /**
+   * Types a pick-up location into the parallel car search inputs and confirms the autocomplete
+   * selection. Clicks the first suggestion when it appears, otherwise falls back to TAB to accept
+   * the highlighted match. Scoped to the parallel inputs list so it never types into the main
+   * car-tab pick-up field.
+   * @param {string} where - Car pick-up location to search for
+   */
+  async typeParallelCarDestination(where) {
+    const pickupField = this.page.locator(SELECTORS.PARALLEL_CAR_PICKUP_FIELD);
+    const firstSuggestion = this.page
+      .locator(SELECTORS.PARALLEL_CAR_AUTOCOMPLETE_FIRST_OPTION)
+      .first();
+
+    await pickupField.waitFor({ state: 'visible', timeout: 10000 });
+    await pickupField.click();
+    await pickupField.fill(where);
+
+    try {
+      await firstSuggestion.waitFor({ state: 'visible', timeout: 5000 });
+      await firstSuggestion.click();
+    } catch {
+      await pressTab(this.page);
+    }
+
+    // Small wait for the UI to process the blur event and apply the selection.
+    await this.page.waitForTimeout(300);
   }
 
   /**

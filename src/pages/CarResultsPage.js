@@ -7,6 +7,9 @@ const { escapeRegex } = require("@utils/text");
 const SELECTORS = {
   // Results page breadcrumb — trailing "gray" span shows the current product section (e.g. "Car")
   RESULTS_BREADCRUMB_CURRENT: '.car-results-container .breadcrumbs span.gray',
+  // Car info bar (car-info-bar.vue) at the top of results — the first `.ellipsis-txt` in
+  // `.locations` is the pick-up location name (e.g. "Madrid,Spain,(MAD)").
+  CAR_INFO_BAR_LOCATION: '.car-info-bar .locations .ellipsis-txt',
   // Search results
   STATION_PREVIEW: '.car-vendor-station-list > .preview-container',
   LOCATION_LABEL: ".location-lines .location-address-text",
@@ -430,6 +433,25 @@ class CarResultsPage {
 
   getCurrentBreadcrumbSection() {
     return this.page.locator(SELECTORS.RESULTS_BREADCRUMB_CURRENT).first();
+  }
+
+  /**
+   * Reads the pick-up location shown in the car info bar at the top of the results page
+   * (e.g. "Madrid,Spain,(MAD)"). The first `.ellipsis-txt` in `.locations` is the pick-up name.
+   * @returns {Promise<string>} Trimmed location text (whitespace collapsed)
+   */
+  async getCarInfoBarLocationText() {
+    const location = this.page.locator(SELECTORS.CAR_INFO_BAR_LOCATION).first();
+    try {
+      await location.waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.getCarInfoBarLocationText] Pick-up location not visible in the car info bar ` +
+        `(selector: ${SELECTORS.CAR_INFO_BAR_LOCATION}). The car results page may not have loaded, ` +
+        `or the info bar is not rendered in this flow. Original: ${err.message}`
+      );
+    }
+    return ((await location.textContent()) ?? '').replace(/\s+/g, ' ').trim();
   }
 
   async waitForBreadcrumbVisible({ timeout = 60000 } = {}) {

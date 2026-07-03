@@ -113,6 +113,9 @@ const SELECTORS = {
   // Precise positional selectors for editing pre-filled airport fields
   // inside the edit-search drawer.
   EDIT_AIRPORT_AUTOCOMPLETE: '.airport-autocomplete input',
+  // Car edit-search drawers have no airport autocomplete — the "Pick-up Date" field is the
+  // equivalent readiness signal (see waitForEditSearchDrawerReady).
+  EDIT_CAR_PICKUP_DATE: "[placeholder='Pick-up Date']",
 
   // Location inputs (fallbacks for different suppliers)
   FROM_PLACEHOLDER: [
@@ -611,6 +614,23 @@ class SearchPage {
   async waitForFromFieldVisible() {
     const input = this.getEditAirportInput(0);
     await input.waitFor({ state: 'visible', timeout: 15000 });
+  }
+
+  /**
+   * Waits for the edit-search drawer to be open and ready for input, regardless of product.
+   * Flight edit drawers expose an airport autocomplete field; car edit drawers expose a
+   * "Pick-up Date" field instead. Waiting for whichever appears first keeps the generic
+   * "I click edit search" action working on both flight and car results pages.
+   *
+   * @param {number} [timeout=15000]
+   */
+  async waitForEditSearchDrawerReady(timeout = 15000) {
+    const drawer = this.getEditSearchDrawer();
+    await drawer
+      .locator(SELECTORS.EDIT_AIRPORT_AUTOCOMPLETE)
+      .or(drawer.locator(SELECTORS.EDIT_CAR_PICKUP_DATE))
+      .first()
+      .waitFor({ state: 'visible', timeout });
   }
 
   async editAirportField(index, value) {

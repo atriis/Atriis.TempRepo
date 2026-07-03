@@ -673,21 +673,21 @@ const HotelLevelResults = {
   },
 
   /**
-   * Verifies the transient parallel-search loader popup — shown after the flight is added to
-   * cart while the parallel hotel search loads — contains the expected text (e.g. the edited
-   * hotel destination like "New York hotel"). This confirms the parallel hotel search kicked
-   * off for the destination chosen, not the flight destination.
+   * Verifies the transient parallel-search loader popup — shown after the flight is added to cart
+   * while the parallel product (hotel or car) search loads — contains the expected text (e.g.
+   * "Amsterdam hotel" or "Madrid car hire"). The loader (product-search-loader.vue) is
+   * product-generic, so this backs both the parallel hotel and parallel car modal assertions.
    *
    * @param {Object} page - Playwright page
-   * @param {string} text - Expected substring in the loader message (e.g. "New York hotel")
+   * @param {string} text - Expected substring in the loader message (e.g. "Amsterdam hotel")
    */
-  async verifyParallelHotelLoaderContains(page, text) {
+  async verifyParallelSearchLoaderContains(page, text) {
     if (!page) {
-      throw new Error('[HotelLevelResults.verifyParallelHotelLoaderContains] "page" is required, got: ' + typeof page);
+      throw new Error('[HotelLevelResults.verifyParallelSearchLoaderContains] "page" is required, got: ' + typeof page);
     }
     if (!text || typeof text !== 'string') {
       throw new Error(
-        '[HotelLevelResults.verifyParallelHotelLoaderContains] "text" must be a non-empty string, got: ' + typeof text,
+        '[HotelLevelResults.verifyParallelSearchLoaderContains] "text" must be a non-empty string, got: ' + typeof text,
       );
     }
 
@@ -695,8 +695,8 @@ const HotelLevelResults = {
     const loaderText = await hotelLevelResultsPage.waitForParallelSearchLoaderText();
     expect(
       loaderText.toLowerCase(),
-      `Expected the parallel hotel search loader popup to contain "${text}", but it showed "${loaderText}". ` +
-        `The parallel hotel search may not have started for the edited destination.`,
+      `Expected the parallel search loader popup to contain "${text}", but it showed "${loaderText}". ` +
+        `The parallel search may not have started for the edited destination.`,
     ).toContain(text.toLowerCase());
   },
 
