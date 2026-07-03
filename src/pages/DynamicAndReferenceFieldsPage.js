@@ -186,7 +186,14 @@ class DynamicAndReferenceFieldsPage {
   async isFieldLabelVisible(labelText, { timeout = 10000 } = {}) {
     if (!labelText) throw new Error('labelText is required');
 
-    const label = this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: labelText }).first();
+    // Prefer a label that matches labelText EXACTLY (ignoring the "*" mandatory marker and "info"
+    // icon text the label concatenates) so an exact label like "Location" is not shadowed by a
+    // longer label that contains it as a substring (e.g. "Location travel policy"). Fall back to a
+    // substring match when no exact label exists (preserves partial-label callers).
+    const exactMatches = this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: exactFieldLabelRegex(labelText) });
+    const label = (await exactMatches.count()) > 0
+      ? exactMatches.first()
+      : this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: labelText }).first();
     try {
       await label.waitFor({ state: 'attached', timeout });
       await label.scrollIntoViewIfNeeded();
@@ -198,6 +205,26 @@ class DynamicAndReferenceFieldsPage {
   }
 
   /**
+   * Resolves the reference-field container for a label, preferring a container whose label matches
+   * labelText EXACTLY (ignoring the "*" mandatory marker and "info" icon text) over a mere substring
+   * match. This keeps an exact label like "Location" from resolving to a longer label that contains
+   * it as a substring (e.g. "Location travel policy", which renders earlier in the DOM). Falls back
+   * to the first substring match when no exact label exists, preserving partial-label callers.
+   *
+   * @param {string} labelText - The label text of the field
+   * @returns {Promise<import('playwright').Locator>}
+   */
+  async fieldContainerByLabel(labelText) {
+    const exactMatches = this.page.locator(SELECTORS.FIELD_CONTAINER).filter({
+      has: this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: exactFieldLabelRegex(labelText) }),
+    });
+    if ((await exactMatches.count()) > 0) {
+      return exactMatches.first();
+    }
+    return this.page.locator(SELECTORS.FIELD_CONTAINER).filter({ hasText: labelText }).first();
+  }
+
+  /**
    * Checks if a dropdown or input field identified by label text is disabled.
    * Looks for the el-select or el-input inside the same field container.
    * @param {string} labelText - The label text of the field
@@ -206,7 +233,7 @@ class DynamicAndReferenceFieldsPage {
    * @returns {Promise<boolean>} True if the field is disabled
    */
   async isFieldDisabled(labelText, { timeout = 5000 } = {}) {
-    const fieldContainer = this.page.locator(SELECTORS.FIELD_CONTAINER).filter({ hasText: labelText }).first();
+    const fieldContainer = await this.fieldContainerByLabel(labelText);
     await fieldContainer.waitFor({ state: 'visible', timeout });
     // Check for disabled dropdown (Element Plus 1.x: .is-disabled, 2.x: is-disabled class on wrapper)
     const disabledDropdown = fieldContainer.locator(SELECTORS.DROPDOWN_DISABLED);
@@ -238,7 +265,7 @@ class DynamicAndReferenceFieldsPage {
    * @returns {Promise<string>} The field value
    */
   async getFieldValueByLabel(labelText, { timeout = 5000 } = {}) {
-    const fieldContainer = this.page.locator(SELECTORS.FIELD_CONTAINER).filter({ hasText: labelText }).first();
+    const fieldContainer = await this.fieldContainerByLabel(labelText);
     await fieldContainer.waitFor({ state: 'visible', timeout });
     // Try dropdown: get the visible text from the el-select's control area
     const selectWrapper = fieldContainer.locator('.el-select').first();
@@ -403,6 +430,21 @@ class DynamicAndReferenceFieldsPage {
     }
   }
 
+}
+
+/**
+ * Builds a case-insensitive regex that matches a reference-field label EXACTLY, tolerating the
+ * leading "*" mandatory marker and the trailing "info" icon text the label concatenates
+ * (e.g. the field label "Location" renders as "Locationinfo" and "Location travel policy" renders
+ * as "*Location travel policyinfo"). Anchoring the match is what lets an exact label like "Location"
+ * be told apart from a longer label that merely contains it as a substring.
+ *
+ * @param {string} labelText
+ * @returns {RegExp}
+ */
+function exactFieldLabelRegex(labelText) {
+  const escaped = labelText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp('^\\s*\\*?\\s*' + escaped + '\\s*(?:info)?\\s*$', 'i');
 }
 
 module.exports = DynamicAndReferenceFieldsPage;

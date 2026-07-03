@@ -385,6 +385,66 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Selects the FIRST available option from a reference field dropdown WITHOUT clicking Proceed.
+   * Use for a mandatory reference field whose configured options vary per corporate profile — the
+   * test just needs to fill it with a valid value to proceed, so it takes the first option rather
+   * than a hard-coded label that may not exist for a given booker. Follow with
+   * "I click proceed on the reference fields popup".
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} fieldName - Visible label of the dropdown field (e.g. "Soort reis/Type of trip")
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<{selectedOption: string}>}
+   */
+  async selectFirstReferenceFieldOption(page, fieldName, { timeout = 10000 } = {}) {
+    if (!page) throw new Error('page is required');
+    if (!fieldName || typeof fieldName !== 'string') throw new Error('fieldName must be a non-empty string, got: ' + typeof fieldName);
+
+    const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Anchor the label match so "Location" does NOT also match "Location travel policy" (same
+    // reasoning as selectReferenceFieldDropdownOnly). The question text is in its own <span>.
+    const labelRegex = new RegExp('^\\s*' + escape(fieldName) + '\\s*$', 'i');
+
+    const fieldContainer = page
+      .locator('.input-dropdown')
+      .filter({ has: page.locator('label span', { hasText: labelRegex }) })
+      .first();
+    try {
+      await fieldContainer.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectFirstReferenceFieldOption] Field "${fieldName}" did not appear within ${timeout}ms. ` +
+        `Reference fields popup may not have opened. Original: ${err.message}`
+      );
+    }
+
+    try {
+      await fieldContainer.scrollIntoViewIfNeeded({ timeout: 5000 });
+      const selectWrapper = fieldContainer.locator('.el-select').first();
+      await selectWrapper.click({ timeout: 5000 });
+
+      // From the freshly opened, unfiltered list, ArrowDown highlights the first option and Enter
+      // commits it — acting on the active dropdown without needing to locate an option element
+      // (which could collide with another field's dropdown popper). Mirrors the commit keys used by
+      // selectReferenceFieldDropdownOnly.
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+
+      // Give the popper time to finish its close animation before the next interaction.
+      await page.waitForTimeout(300);
+
+      const selectedOption = ((await selectWrapper.innerText()) || '').trim();
+      return { selectedOption };
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectFirstReferenceFieldOption] Field "${fieldName}" was visible ` +
+        `but selecting its first option failed — the dropdown may have had no selectable options. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Verifies that all specified field labels are visible in the reference fields popup.
    * @param {import('playwright').Page} page
    * @param {string[]} labels - Array of label texts to check

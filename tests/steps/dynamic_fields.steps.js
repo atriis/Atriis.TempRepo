@@ -137,6 +137,15 @@ When("I select the {string} reference field as {string}", async function (fieldN
   await DynamicAndReferenceFields.selectReferenceFieldDropdownOnly(this.page, fieldName, optionText);
 });
 
+// Selects the first available option for a mandatory reference field WITHOUT clicking Proceed.
+// Use when the field's configured options vary per corporate profile and the test only needs a
+// valid value to proceed. Follow with "I click proceed on the reference fields popup".
+When("I select the first available option for the {string} reference field", async function (fieldName) {
+  logger.info(`Selecting the first available option for reference field "${fieldName}" (no proceed)`);
+  const result = await DynamicAndReferenceFields.selectFirstReferenceFieldOption(this.page, fieldName);
+  logger.info(`Selected reference field option`, { fieldName, selectedOption: result?.selectedOption });
+});
+
 Then("clicking proceed should show a mandatory field validation error", async function () {
   logger.info("Clicking proceed to verify mandatory field validation error");
   const errorVisible = await DynamicAndReferenceFields.clickProceedAndVerifyMandatoryError(this.page);

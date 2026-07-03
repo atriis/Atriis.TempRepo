@@ -5,6 +5,7 @@ const { CartPage } = require("@pages/CartPage");
 const FlightSearchPage = require("@pages/FlightSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const CarSearchPage = require("@pages/CarSearchPage");
+const FlightResultsPage = require("@pages/FlightResultsPage");
 const FlightSearch = require("./FlightSearch");
 const logger = require("@utils/logger").child("ParallelSearch");
 
@@ -112,50 +113,38 @@ const ParallelSearch = {
     }
 
     logger.info('Searching flight with parallel hotel and an edited parallel car', { from, to, carLocation });
+    return searchFlightWithEditedParallelCar(page, { from, to, carLocation, includeParallelHotel: true });
+  },
 
-    const flightSearchPage = getPageObject(page, FlightSearchPage);
-    const searchPage = getPageObject(page, SearchPage);
-    const carSearchPage = getPageObject(page, CarSearchPage);
+  /**
+   * Searches for a round-trip flight with a parallel car whose pick-up location is edited to a
+   * different city — WITHOUT a parallel hotel. Sibling of searchFlightWithParallelHotelAndEditedCar
+   * for flows (e.g. an NL-government booker) that pair a flight with a car only.
+   *
+   * Returns the same shape as searchFlightWithParallelHotelAndEditedCar so the shared
+   * "dates retained" steps work against either search.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} options
+   * @param {string} options.to - Flight destination code (e.g. "TLV")
+   * @param {string} options.carLocation - Parallel car pick-up location to edit to (e.g. "MAD")
+   * @param {string} [options.from="LON"] - Flight origin code
+   * @returns {Promise<{from: string, to: string, carLocation: string, flightDepartDate: string, flightReturnDate: string, carPickupDate: string, carDropoffDate: string}>}
+   */
+  async searchFlightAndEditCar(page, { to, carLocation, from = 'LON' } = {}) {
+    if (!page) throw new Error('[ParallelSearch.searchFlightAndEditCar] "page" is required.');
+    if (!to || typeof to !== 'string') {
+      throw new Error(`[ParallelSearch.searchFlightAndEditCar] "to" must be a non-empty string, got: ${typeof to}`);
+    }
+    if (!carLocation || typeof carLocation !== 'string') {
+      throw new Error(`[ParallelSearch.searchFlightAndEditCar] "carLocation" must be a non-empty string, got: ${typeof carLocation}`);
+    }
+    if (!from || typeof from !== 'string') {
+      throw new Error(`[ParallelSearch.searchFlightAndEditCar] "from" must be a non-empty string, got: ${typeof from}`);
+    }
 
-    // Fill the round-trip flight (tab, trip type, route, dates, complete-trip) WITHOUT submitting,
-    // so the parallel options can be configured before the search runs.
-    await FlightSearch.searchFlightRoundTripWithoutSearch(page, { from, to });
-
-    // Enable BOTH parallel searches: the hotel destination inherits the flight destination
-    // (e.g. Amsterdam), and the car is enabled so its pick-up location can be edited next.
-    await flightSearchPage.checkParallelHotelSearch();
-    await flightSearchPage.checkParallelCarSearch();
-
-    // Edit ONLY the car pick-up location. Must run after the flight route is entered — selecting the
-    // flight destination overwrites the parallel destinations (see FlightSearch.editParallelHotelDestination).
-    logger.debug('Opening the parallel car edit inputs before typing the pick-up location');
-    await flightSearchPage.openParallelCarEditInputs();
-    await flightSearchPage.typeParallelCarDestination(carLocation);
-
-    // Capture the entered flight dates (entered directly, so already settled) so the "dates retained"
-    // checks (after clicking edit search on the flight and on the car results) have ground-truth values.
-    const flightDepartDate = await searchPage.getDepartureDateFieldValue();
-    const flightReturnDate = await searchPage.getReturnDateFieldValue();
-
-    // The parallel car dates are DERIVED from the flight dates via Vue reactivity and settle
-    // asynchronously; reading immediately can capture an empty/stale value. Wait for the car date
-    // inputs to be populated first (best-effort — if they never settle, the downstream
-    // verifyCarDatesRetained non-empty guard surfaces a clear error rather than a raw timeout here).
-    await carSearchPage.waitForPickupDateNonEmpty({ timeout: 10000 }).catch(() => {});
-    await carSearchPage.waitForDropoffDateNonEmpty({ timeout: 10000 }).catch(() => {});
-    const carPickupDate = await carSearchPage.getPickupDateFieldValue();
-    const carDropoffDate = await carSearchPage.getDropoffDateFieldValue();
-
-    logger.info('Captured entered flight and derived car dates', {
-      flightDepartDate,
-      flightReturnDate,
-      carPickupDate,
-      carDropoffDate,
-    });
-
-    await searchPage.waitAndClickSearchButton();
-
-    return { from, to, carLocation, flightDepartDate, flightReturnDate, carPickupDate, carDropoffDate };
+    logger.info('Searching flight with an edited parallel car (no parallel hotel)', { from, to, carLocation });
+    return searchFlightWithEditedParallelCar(page, { from, to, carLocation, includeParallelHotel: false });
   },
 
   /**
@@ -233,7 +222,104 @@ const ParallelSearch = {
 
     return { expectedPickupDate, expectedDropoffDate, actualPickupDate, actualDropoffDate };
   },
+
+  /**
+   * Verifies the "Best" sort explanation tooltip on the flight results page. Hovers the info icon
+   * next to the "Best" quick-sort option and asserts the revealed tooltip explains how the ranking
+   * is calculated (price, travel time, stops, and preferred airlines reflecting corporate preferences).
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000] - Max wait for the tooltip trigger and popper
+   * @returns {Promise<{expectedExplanation: string, actualTooltip: string}>}
+   */
+  async verifyBestSortingExplanation(page, { timeout = 30000 } = {}) {
+    if (!page) throw new Error('[ParallelSearch.verifyBestSortingExplanation] "page" is required.');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const normalize = (value) => value.replace(/\s+/g, ' ').trim();
+    const expectedExplanation =
+      'Best calculates the most suitable option for you based on specified settings for price, ' +
+      'travel time, number of stops, and preferred airlines, which reflect your corporate preferences.';
+
+    logger.debug('Hovering the "Best" sort explanation info icon to reveal its tooltip');
+    await flightResultsPage.hoverBestSortTooltip({ timeout });
+    const actualTooltip = await flightResultsPage.getVisibleTooltipText({ timeout });
+
+    logger.info('Best sorting explanation tooltip', { actualTooltip });
+
+    expect(
+      normalize(actualTooltip),
+      `[ParallelSearch.verifyBestSortingExplanation] Expected the "Best" sort tooltip to explain the ranking ` +
+      `("${expectedExplanation}"), but the visible tooltip showed "${actualTooltip}".`,
+    ).toContain(normalize(expectedExplanation));
+
+    return { expectedExplanation, actualTooltip };
+  },
 };
+
+/**
+ * Shared flow for the two edited-parallel-car searches: fills a round-trip flight WITHOUT submitting,
+ * enables the parallel car (and optionally a parallel hotel whose destination inherits the flight
+ * destination), edits the car pick-up location, captures the entered flight dates and the
+ * Vue-derived car dates, then submits. The car location must be edited AFTER the flight route is
+ * entered — selecting the flight destination overwrites the parallel destinations.
+ *
+ * @param {import('playwright').Page} page
+ * @param {object} options
+ * @param {string} options.from - Flight origin code
+ * @param {string} options.to - Flight destination code
+ * @param {string} options.carLocation - Parallel car pick-up location to edit to
+ * @param {boolean} options.includeParallelHotel - also enable a parallel hotel search
+ * @returns {Promise<{from: string, to: string, carLocation: string, flightDepartDate: string, flightReturnDate: string, carPickupDate: string, carDropoffDate: string}>}
+ */
+async function searchFlightWithEditedParallelCar(page, { from, to, carLocation, includeParallelHotel }) {
+  const flightSearchPage = getPageObject(page, FlightSearchPage);
+  const searchPage = getPageObject(page, SearchPage);
+  const carSearchPage = getPageObject(page, CarSearchPage);
+
+  // Fill the round-trip flight (tab, trip type, route, dates, complete-trip) WITHOUT submitting,
+  // so the parallel options can be configured before the search runs.
+  await FlightSearch.searchFlightRoundTripWithoutSearch(page, { from, to });
+
+  // Enable the parallel product(s). When present, the hotel destination inherits the flight
+  // destination; the car is always enabled so its pick-up location can be edited next.
+  if (includeParallelHotel) {
+    await flightSearchPage.checkParallelHotelSearch();
+  }
+  await flightSearchPage.checkParallelCarSearch();
+
+  // Edit ONLY the car pick-up location. Must run after the flight route is entered — selecting the
+  // flight destination overwrites the parallel destinations (see FlightSearch.editParallelHotelDestination).
+  logger.debug('Opening the parallel car edit inputs before typing the pick-up location');
+  await flightSearchPage.openParallelCarEditInputs();
+  await flightSearchPage.typeParallelCarDestination(carLocation);
+
+  // Capture the entered flight dates (entered directly, so already settled) so the "dates retained"
+  // checks (after clicking edit search on the flight and on the car results) have ground-truth values.
+  const flightDepartDate = await searchPage.getDepartureDateFieldValue();
+  const flightReturnDate = await searchPage.getReturnDateFieldValue();
+
+  // The parallel car dates are DERIVED from the flight dates via Vue reactivity and settle
+  // asynchronously; reading immediately can capture an empty/stale value. Wait for the car date
+  // inputs to be populated first (best-effort — if they never settle, the downstream
+  // verifyCarDatesRetained non-empty guard surfaces a clear error rather than a raw timeout here).
+  await carSearchPage.waitForPickupDateNonEmpty({ timeout: 10000 }).catch(() => {});
+  await carSearchPage.waitForDropoffDateNonEmpty({ timeout: 10000 }).catch(() => {});
+  const carPickupDate = await carSearchPage.getPickupDateFieldValue();
+  const carDropoffDate = await carSearchPage.getDropoffDateFieldValue();
+
+  logger.info('Captured entered flight and derived car dates', {
+    flightDepartDate,
+    flightReturnDate,
+    carPickupDate,
+    carDropoffDate,
+  });
+
+  await searchPage.waitAndClickSearchButton();
+
+  return { from, to, carLocation, flightDepartDate, flightReturnDate, carPickupDate, carDropoffDate };
+}
 
 /**
  * Extracts the first time token from a flight-time string and normalizes it to a zero-padded

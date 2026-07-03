@@ -283,6 +283,12 @@ const SELECTORS = {
   // Sort by dropdown (extended sort options in flight-list-sort component)
   SORT_BY_BUTTON: '.flight-list-sort .sort-by-wrapper',
   SORT_DROPDOWN_ITEM: (label) => `.el-dropdown-menu__item:has-text("${label}")`,
+
+  // "Best" sort explanation info icon (flight-list-sort.vue) — the only `.tooltip-img` inside the
+  // quick-sort bar, rendered next to the "Best" sort option. Hovering it surfaces the Element Plus
+  // tooltip that explains how the "Best" ranking is calculated. Scoped to `.quick-sort` so it does
+  // not collide with the in-policy `.tooltip-img` that lives in the actions bar of the same section.
+  BEST_SORT_TOOLTIP_TRIGGER: '.flight-list-sort .quick-sort .tooltip-img',
 };
 
 class FlightResultsPage {
@@ -556,6 +562,28 @@ class FlightResultsPage {
     const tooltip = this.page.locator(SELECTORS.EL_POPPER_VISIBLE).first();
     await tooltip.waitFor({ state: 'visible', timeout });
     return (await tooltip.textContent())?.replace(/\s+/g, ' ').trim() ?? '';
+  }
+
+  /**
+   * Hovers the "Best" sort explanation info icon in the quick-sort bar so its Element Plus
+   * tooltip becomes visible. Pair with getVisibleTooltipText() to read the explanation text.
+   *
+   * @param {{ timeout?: number }} [options]
+   * @returns {Promise<void>}
+   */
+  async hoverBestSortTooltip({ timeout = 30000 } = {}) {
+    const trigger = this.page.locator(SELECTORS.BEST_SORT_TOOLTIP_TRIGGER).first();
+    try {
+      await trigger.waitFor({ state: 'visible', timeout });
+      await trigger.scrollIntoViewIfNeeded();
+      await trigger.hover({ force: true });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.hoverBestSortTooltip] Could not hover the "Best" sort explanation info icon ` +
+        `(selector: ${SELECTORS.BEST_SORT_TOOLTIP_TRIGGER}) within ${timeout}ms. The quick-sort bar may not ` +
+        `have rendered yet, or the "Best" sort option that carries the tooltip is absent. Original: ${err.message}`
+      );
+    }
   }
 
   /**

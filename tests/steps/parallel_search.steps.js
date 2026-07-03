@@ -14,6 +14,11 @@ Then("the rental car hours should match the flight hours", async function () {
   await ParallelSearch.verifyCarHoursMatchFlightHours(this.page);
 });
 
+Then("the best sorting explanation tooltip should be displayed", async function () {
+  logger.info("Verifying the best sorting explanation tooltip on flight results");
+  await ParallelSearch.verifyBestSortingExplanation(this.page);
+});
+
 // ========================================
 // WHEN STEPS - PARALLEL SEARCH
 // ========================================
@@ -21,6 +26,15 @@ Then("the rental car hours should match the flight hours", async function () {
 When("I search for a flight to {string} with a parallel hotel and an edited car in {string}", async function (destination, carLocation) {
   logger.info("Searching for a flight with a parallel hotel and an edited parallel car", { destination, carLocation });
   this.parallelSearch = await ParallelSearch.searchFlightWithParallelHotelAndEditedCar(this.page, {
+    to: destination,
+    carLocation,
+  });
+});
+
+When("I search for a flight from {string} to {string} with an edited car in {string}", async function (origin, destination, carLocation) {
+  logger.info("Searching for a flight with an edited parallel car (no hotel)", { origin, destination, carLocation });
+  this.parallelSearch = await ParallelSearch.searchFlightAndEditCar(this.page, {
+    from: origin,
     to: destination,
     carLocation,
   });
