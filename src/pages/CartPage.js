@@ -2709,9 +2709,9 @@ class CartPage {
   async getCartTotalPrice() {
     const totalEl = this.page.locator(SELECTORS.CART_TOTAL_PRICE).first();
     await totalEl.waitFor({ state: 'visible', timeout: 15000 });
-    const text = await totalEl.innerText();
-    const match = text.replace(/[^0-9.,]/g, '').replace(',', '.');
-    return parseFloat(match) || null;
+    const text = (await totalEl.innerText()).trim();
+    if (!text) return null;
+    return parseAmountText(text, 'cart total price');
   }
 
   /**

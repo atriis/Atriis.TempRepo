@@ -1,5 +1,6 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const FlightPricingPage = require("@pages/FlightPricingPage");
+const FlightResultsPage = require("@pages/FlightResultsPage");
 const { CartPage } = require("@pages/CartPage");
 const Results = require("./Results");
 const { expect } = require("@playwright/test");
@@ -258,6 +259,64 @@ const FlightPricing = {
   },
 
   /**
+   * Opens the pricing options of the first flight result whose flightPricing response contains
+   * a published fare (markup > 0), matched by the markup in the response rather than by airline.
+   * Leaves that result's modal open and returns the captured response promise and result index.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {object} [options]
+   * @param {number} [options.maxResults=6] - Max number of results to open before giving up.
+   * @returns {Promise<{responsePromise: Promise<import('@playwright/test').Response>, resultIndex: number, attempts: Array}>}
+   */
+  async openFirstResultWithPublishedFare(page, { maxResults = 6 } = {}) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+
+    await flightResultsPage.waitForFlightResults(90000);
+    await flightResultsPage.waitForPricingOptionsButton(0, 90000);
+
+    const buttonCount = await flightResultsPage.getPricingOptionsButtonCount();
+    const limit = Math.min(maxResults, buttonCount);
+    if (limit === 0) {
+      throw new Error('No "Pricing Options" buttons found in the flight results');
+    }
+
+    const attempts = [];
+    for (let i = 0; i < limit; i += 1) {
+      // Arm the response wait before the click that triggers it (avoids a race).
+      const responsePromise = flightPricingPage.capturePricingApiResponse();
+      await flightResultsPage.clickPricingOptionsButton(i);
+
+      let body = null;
+      try {
+        body = await flightPricingPage.readPricingApiResponseBody(responsePromise);
+      } catch (err) {
+        logger.warn('No flightPricing response captured for result', { index: i, error: err.message });
+      }
+
+      const results = body && Array.isArray(body.results) ? body.results : [];
+      const hasPublished = results.some((r) => Number(r.markup) > 0);
+      attempts.push({ index: i, resultCount: results.length, hasPublished });
+      logger.info('Scanned result for a published (MU) fare', { index: i, resultCount: results.length, hasPublished });
+
+      if (hasPublished) {
+        return { responsePromise, resultIndex: i, attempts };
+      }
+
+      // No published fare here — close and try the next result.
+      await flightResultsPage.clickXToClosePricingOptionsModal();
+      await flightResultsPage.waitForPricingOptionsOverlayHidden().catch(() => {});
+    }
+
+    throw new Error(
+      `No result with a published fare (markup > 0) found in the first ${limit} result(s). ` +
+      `The origin-destination MU should apply to a published UK->US fare. Scanned: ${JSON.stringify(attempts)}`,
+    );
+  },
+
+  /**
    * Validates the markup value in a captured flightPricing API response.
    *
    * The markup is configured in the admin panel in a specific currency (typically USD).
@@ -378,6 +437,73 @@ const FlightPricing = {
       currencyRate,
     });
     return { markup: expected, currency: configuredCurrency };
+  },
+
+  /**
+   * Validates the origin-destination markup (MU) on the published fare (the result with markup > 0):
+   * asserts markup equals the given percentage of the base fare, and wholePrice + markup equals the
+   * displayed per-pax price. Returns the MU-inclusive per-pax amount for fare selection and cart checks.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {Promise<import('@playwright/test').Response>} responsePromise - from startCapturingPricingResponse.
+   * @param {string} markupPercent - Expected MU as a percentage of the base fare (e.g. "50").
+   * @returns {Promise<{muInclusivePerPax: number, markup: number, basePrice: number, wholePrice: number, currency: string}>}
+   */
+  async validateOriginDestinationMarkup(page, responsePromise, markupPercent) {
+    if (!page) throw new Error('page is required');
+    if (!responsePromise) throw new Error('responsePromise is required — call startCapturingPricingResponse before the pricing action');
+    if (typeof markupPercent !== 'string') throw new Error(`markupPercent must be a string, got: ${typeof markupPercent}`);
+
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+    const body = await flightPricingPage.readPricingApiResponseBody(responsePromise);
+
+    const results = body && Array.isArray(body.results) ? body.results : Array.isArray(body) ? body : null;
+    if (!results || results.length === 0) {
+      throw new Error('flightPricing response body has no results array');
+    }
+
+    // Pick the first result with a non-zero markup (the published fare).
+    const published = results.find((r) => Number(r.markup) > 0);
+    if (!published) {
+      throw new Error(
+        `No published fare with a markup was found in the flightPricing response (got ${results.length} result(s), all markup=0). ` +
+        'The origin-destination MU should have been applied to the published rate.',
+      );
+    }
+
+    const markup = Number(published.markup);
+    const basePrice = Number(published.basePrice);
+    const wholePrice = Number(published.wholePrice);
+    const muInclusivePerPax = Number(published.avgPricePerPersonDisplayCurrency);
+    const percent = Number(markupPercent);
+    const expectedMarkup = basePrice * (percent / 100);
+    // Tolerances for rounding: markup within 1% of expected (min 1), sum within 2 cents.
+    const markupTolerance = Math.max(expectedMarkup * 0.01, 1);
+    const sumTolerance = 0.02;
+
+    logger.info('Validating origin-destination MU on published fare', {
+      markup,
+      basePrice,
+      wholePrice,
+      muInclusivePerPax,
+      expectedMarkup,
+      percent,
+      currency: published.currency,
+      officeId: published.officeId,
+      sourceSystem: published.sourceSystem,
+    });
+
+    expect(
+      Math.abs(markup - expectedMarkup) <= markupTolerance,
+      `Markup ${markup} should be ${percent}% of the base fare ${basePrice} (= ${expectedMarkup}) within ${markupTolerance}`,
+    ).toBe(true);
+
+    expect(
+      Math.abs((wholePrice + markup) - muInclusivePerPax) <= sumTolerance,
+      `wholePrice (${wholePrice}) + markup (${markup}) should equal avgPricePerPersonDisplayCurrency (${muInclusivePerPax}) within ${sumTolerance}`,
+    ).toBe(true);
+
+    return { muInclusivePerPax, markup, basePrice, wholePrice, currency: published.currency };
   },
 
 };

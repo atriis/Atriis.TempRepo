@@ -318,6 +318,15 @@ When('I select the first option from pricing options', async function () {
   await FlightResults.selectFirstPricingOptionInModal(this.page);
 });
 
+// Requires publishedMuInclusivePrice (set by the "origin-destination markup" step).
+When('I select the published fare from pricing options', async function () {
+  if (typeof this.publishedMuInclusivePrice !== 'number') {
+    throw new Error('publishedMuInclusivePrice is not set — run "the origin-destination markup should be ... on the published fare" step before selecting the published fare.');
+  }
+  logger.info('Selecting the published fare from pricing options', { price: this.publishedMuInclusivePrice });
+  await FlightResults.selectPricingOptionByPrice(this.page, this.publishedMuInclusivePrice);
+});
+
 When("I click to open the second fare rules from pricing options modal", async function () {
   logger.info("Clicking to open the second fare rules from pricing options modal");
   await FlightResults.clickToOpenSecondFareRulesFromPricingOptions(this.page);

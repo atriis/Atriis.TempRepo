@@ -110,6 +110,14 @@ When('I start intercepting the flight pricing response', function () {
   this.flightPricingResponsePromise = FlightPricing.startCapturingPricingResponse(this.page);
 });
 
+// Side effect: stores the winning flightPricing response for the markup/select/cart steps.
+When('I open pricing options for the first result with a published fare', async function () {
+  const { responsePromise, resultIndex, attempts } = await FlightPricing.openFirstResultWithPublishedFare(this.page);
+  this.lastInterceptedResponsePromise = responsePromise;
+  this.flightPricingResponsePromise = responsePromise;
+  logger.info('Opened pricing options for the first result with a published fare', { resultIndex, attempts });
+});
+
 Then('the markup in the flight pricing response should be {string} per pax configured in {string}', async function (expectedMarkup, configuredCurrency) {
   logger.info('Validating markup in flightPricing response against configured currency', { expectedMarkup, configuredCurrency });
   const result = await FlightPricing.validatePricingResponseMarkup(
@@ -132,6 +140,16 @@ Then('the markup in the flight pricing response should be {string}', async funct
     this.page, this.lastInterceptedResponsePromise ?? this.flightPricingResponsePromise, expectedMarkup, null
   );
   logger.info('Markup validation complete', result);
+});
+
+// Side effect: stores publishedMuInclusivePrice for the fare-selection and cart steps.
+Then('the origin-destination markup should be {string} percent of the base fare on the published fare', async function (percent) {
+  logger.info('Validating origin-destination MU on the published fare', { percent });
+  const result = await FlightPricing.validateOriginDestinationMarkup(
+    this.page, this.lastInterceptedResponsePromise ?? this.flightPricingResponsePromise, percent
+  );
+  this.publishedMuInclusivePrice = result.muInclusivePerPax;
+  logger.info('Origin-destination MU validated on published fare', result);
 });
 
 // NOTE: Total price consistency (totalPriceDisplayCurrency == wholePrice + markup) is now validated

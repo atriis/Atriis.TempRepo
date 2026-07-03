@@ -125,6 +125,7 @@ const SELECTORS = {
   PRICING_OPTIONS_BUTTON: '.btn.pricing-options',
   PRICING_OPTIONS_DRAWER: '.el-drawer__body',
   PRICING_OPTIONS_CARD: '.leg-pricing-option',
+  PRICING_OPTIONS_CARD_PRICE: '.price-wrapper .price', // main displayed per-pax price within a card (scope under PRICING_OPTIONS_CARD)
   PRICING_OPTIONS_ITEM: '.leg-pricing-option',
   PRICING_OPTIONS_SELECT_BUTTON: '.select-btn',
   PRICING_OPTIONS_SELECT_BUTTON_NAME: 'Select',
@@ -1002,6 +1003,14 @@ class FlightResultsPage {
   }
 
   /**
+   * Returns the count of "Pricing Options" buttons in the results list, used to bound iteration across results.
+   * @returns {Promise<number>}
+   */
+  async getPricingOptionsButtonCount() {
+    return this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).count();
+  }
+
+  /**
    * Clicks a pricing option item/row to select it.
    * This selects the pricing tier (e.g., Basic, Standard, Premium).
    *
@@ -1075,6 +1084,31 @@ class FlightResultsPage {
   }
 
   /**
+   * Returns the displayed per-pax price of each pricing-option card on the current leg, in order.
+   * Reads the main price only, not the leg-to-leg diff shown on later legs. Unparseable prices are null.
+   * @returns {Promise<Array<number|null>>}
+   */
+  async getPricingOptionCardPrices() {
+    const overlay = this.getPricingOptionsOverlay();
+    const cards = overlay.locator(SELECTORS.PRICING_OPTIONS_CARD);
+    await cards.first().waitFor({ state: 'visible', timeout: 120000 });
+
+    const count = await cards.count();
+    const prices = [];
+    for (let i = 0; i < count; i += 1) {
+      const priceText = (await cards.nth(i).locator(SELECTORS.PRICING_OPTIONS_CARD_PRICE).first().innerText().catch(() => '')).trim();
+      let value = null;
+      try {
+        value = priceText ? parseAmountText(priceText, 'pricing option card price') : null;
+      } catch {
+        value = null;
+      }
+      prices.push(value);
+    }
+    return prices;
+  }
+
+  /**
    * Waits for the select button with "Select to share" text to be visible.
    * This is the initial state before selecting an option.
    *
@@ -1145,6 +1179,14 @@ class FlightResultsPage {
   // TODO: Locator needs to be created
   async clickXToClosePricingOptionsModal(index = 2) {
     await this.page.locator(SELECTORS.PRICING_OPTIONS_CLOSE_MODAL).nth(index).click();
+  }
+
+  /**
+   * Waits for the pricing-options drawer overlay to be hidden.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   */
+  async waitForPricingOptionsOverlayHidden(timeout = 15000) {
+    await this.getPricingOptionsOverlay().waitFor({ state: 'hidden', timeout });
   }
 
   // TODO: Locator needs to be created

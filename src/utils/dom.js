@@ -90,8 +90,24 @@ async function extractNumber(context, selector, index = 0) {
  * @returns {number}
  */
 function parseAmountText(text, label) {
-  const normalized = (text ?? '').replace(/[^\d.,-]/g, '').replace(/,/g, '.');
-  const amount = Number.parseFloat(normalized);
+  // Resolve the decimal separator so both US ("12,637.50") and European ("12.637,50") formats
+  // parse correctly: when both separators are present the rightmost is the decimal; a lone comma
+  // is decimal only when followed by 1-2 digits, otherwise it is a thousands separator.
+  let s = (text ?? '').replace(/[^\d.,-]/g, '');
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+
+  if (lastComma !== -1 && lastDot !== -1) {
+    s = lastComma > lastDot
+      ? s.replace(/\./g, '').replace(',', '.') // 12.637,50 -> 12637.50
+      : s.replace(/,/g, ''); // 12,637.50 -> 12637.50
+  } else if (lastComma !== -1) {
+    // Only comma(s): decimal when followed by 1-2 digits, else thousands.
+    s = /,\d{1,2}$/.test(s) ? s.replace(',', '.') : s.replace(/,/g, '');
+  }
+  // Only dots or plain digits: the dot is already the decimal separator.
+
+  const amount = Number.parseFloat(s);
 
   if (Number.isNaN(amount)) {
     throw new Error(`Could not parse ${label} from text: "${text}"`);

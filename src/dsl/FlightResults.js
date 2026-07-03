@@ -1295,14 +1295,47 @@ const FlightResults = {
     if (!page) {
       throw new Error('page is required');
     }
-    
+
     const flightResultsPage = getPageObject(page, FlightResultsPage);
-    
+
     // Click "Select" button for first pricing option
     await flightResultsPage.waitForSelectButtonInPricingOptionsModal();
     await flightResultsPage.clickSelectButtonInPricingOptionsModal();
-    
+
     return { selected: true };
+  },
+
+  /**
+   * Selects the pricing option on the current leg whose displayed per-pax price matches the
+   * target amount, and returns the matched price and card index.
+   * @param {import('playwright').Page} page
+   * @param {number} targetPrice - Per-pax price to match (from the flightPricing response).
+   * @returns {Promise<{ selected: true, selectedPrice: number, index: number }>}
+   */
+  async selectPricingOptionByPrice(page, targetPrice) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (typeof targetPrice !== 'number' || !Number.isFinite(targetPrice)) {
+      throw new Error(`targetPrice must be a finite number, got: ${targetPrice}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    // Displayed prices can round differently from the API value in the display currency.
+    const PRICE_MATCH_TOLERANCE = 1;
+    const prices = await flightResultsPage.getPricingOptionCardPrices();
+    const index = prices.findIndex((p) => p !== null && Math.abs(p - targetPrice) <= PRICE_MATCH_TOLERANCE);
+    if (index === -1) {
+      throw new Error(
+        `No pricing-option card matches price ${targetPrice} (±${PRICE_MATCH_TOLERANCE}). Prices shown: ${JSON.stringify(prices)}`,
+      );
+    }
+
+    logger.info('Selecting pricing option by displayed price', { targetPrice, index, prices });
+    await flightResultsPage.clickSelectButtonInPricingOptionsModal(index);
+
+    return { selected: true, selectedPrice: prices[index], index };
   },
 
   /**
