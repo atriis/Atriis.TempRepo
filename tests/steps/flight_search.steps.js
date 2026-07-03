@@ -362,3 +362,23 @@ When('I select time frame {string} for both legs', async function (timeFrameName
   logger.info('Selecting time frame for both legs', this.selectedTimeFrame);
   await FlightSearch.selectTimeFrameForBothLegs(this.page, resolved.label);
 });
+
+When('I set the time frame for both legs and search', async function () {
+  // Anytime is restricted for this user, so pick a specific valid frame before searching.
+  const resolved = FlightSearch.resolveTimeFrame('afternoon');
+  this.selectedTimeFrame = resolved;
+  logger.info('Setting the time frame for both legs and searching', { timeFrame: resolved.label });
+  await FlightSearch.setTimeFrameForBothLegsAndSearch(this.page, resolved.label);
+});
+
+Then('both departures time frame fields display message {string} and verifying Anytime is restricted', async function (message) {
+  logger.info('Verifying both legs show the time-frame required message and Anytime is restricted', { message });
+  await FlightSearch.verifyBothLegsFlightTimeRequired(this.page, message);
+});
+
+Then('the Anytime time-frame restriction is shown for the both legs', async function () {
+  // After editing the search the chosen frame is restored, so the restriction manifests as the
+  // "Anytime" option being absent from both legs' time-frame dropdowns.
+  logger.info('Verifying the Anytime time-frame restriction is shown for both legs');
+  await FlightSearch.verifyAnytimeRestrictedForBothLegs(this.page);
+});

@@ -193,6 +193,19 @@ class SearchPage {
     return this.page.locator(SELECTORS.DATE_PICKER_PANEL);
   }
 
+  /**
+   * Waits for any open date picker panel to close. Element Plus single-date pickers
+   * (per-leg advanced search fields) close on selection; use this before opening the
+   * next leg's calendar so the two panels never overlap.
+   *
+   * @param {number} [timeout=5000]
+   */
+  async waitForDatePickerToClose(timeout = 5000) {
+    await this.getDatePickerPanel()
+      .waitFor({ state: 'hidden', timeout })
+      .catch(() => {});
+  }
+
   getEditTravelerModal() {
     return this.page.locator(SELECTORS.EDIT_TRAVELER_MODAL).last();
   }

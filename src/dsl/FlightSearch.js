@@ -68,8 +68,13 @@ const FlightSearch = {
         startIndex: departureIndex,
         endIndex: null,
       });
+    } else if (await flightSearchPage.isAdvancedSearchExpanded()) {
+      // Advanced layout (e.g. users restricted from the Anytime frame have advanced search
+      // force-enabled): dates are split into separate outbound/return fields, so the basic
+      // single range-calendar path leaves the outbound date empty. Fill each leg on its own.
+      await this._selectAdvancedRoundTripDates(page, departureIndex, returnIndex);
     } else {
-      // Round-trip: calendar may open automatically with round-trip selection
+      // Basic layout: round-trip auto-opens a single range calendar.
       await searchPage.clickCalendarNextArrow();
 
       // Select departure + return in one call
@@ -89,6 +94,33 @@ const FlightSearch = {
     await searchPage.waitAndClickSearchButton();
 
     return { searched: true, from, to, tripType, searchType };
+  },
+
+  /**
+   * Fills the outbound and return dates for an advanced (per-leg) round-trip search,
+   * where the calendar is split into separate departure/return date fields. Shared by
+   * searchFlight's advanced-layout branch and searchRoundTripAdvanced. Relies on the
+   * page objects' built-in panel-visible/hidden waits rather than fixed delays.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} departureIndex - Nth available day to pick for the outbound leg
+   * @param {number} returnIndex - Nth available day to pick for the return leg
+   */
+  async _selectAdvancedRoundTripDates(page, departureIndex, returnIndex) {
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    // Outbound leg — clickDepartureDateField waits for its calendar panel to open.
+    await searchPage.clickDepartureDateField();
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, { startIndex: departureIndex, endIndex: null });
+
+    // The single-date picker closes on selection; ensure it is gone before opening the return one.
+    await searchPage.waitForDatePickerToClose();
+
+    // Return leg — clickAdvancedReturnDateField waits for its calendar panel to open.
+    await flightSearchPage.clickAdvancedReturnDateField();
+    await selectDatesByNthAvailable(page, { startIndex: returnIndex, endIndex: null });
   },
 
   /**
@@ -804,27 +836,8 @@ const FlightSearch = {
     // Autocomplete popper must fully close before clicking date fields; no dismiss event available
     await page.waitForTimeout(1000);
 
-    // Select departure date
-    await searchPage.clickDepartureDateField();
-    // Wait for calendar panel open animation to settle
-    await page.waitForTimeout(500);
-    await searchPage.clickCalendarNextArrow();
-    await selectDatesByNthAvailable(page, {
-      startIndex: departureIndex,
-      endIndex: null,
-    });
-
-    // Wait for departure calendar close animation before opening return calendar
-    await page.waitForTimeout(500);
-
-    // Select return date (use advanced-specific return date field)
-    await flightSearchPage.clickAdvancedReturnDateField();
-    // Wait for return calendar panel open animation to settle
-    await page.waitForTimeout(500);
-    await selectDatesByNthAvailable(page, {
-      startIndex: returnIndex,
-      endIndex: null,
-    });
+    // Select outbound + return dates (per-leg advanced calendar).
+    await this._selectAdvancedRoundTripDates(page, departureIndex, returnIndex);
 
     // Change departure date type if specified
     if (departureDateType) {
@@ -1719,6 +1732,92 @@ const FlightSearch = {
     await flightSearchPage.selectReturnFlightTime(timeFrame);
 
     return { selected: true, timeFrame };
+  },
+
+  /**
+   * Selects the given time frame for both legs, then submits the search. Used by
+   * Anytime-restricted flows where a specific time frame must be chosen before the
+   * search can proceed.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} timeFrame - Exact dropdown label, e.g. "Afternoon (11:00-17:00)"
+   * @returns {Promise<{searched: boolean, timeFrame: string}>}
+   */
+  async setTimeFrameForBothLegsAndSearch(page, timeFrame) {
+    if (!page) throw new Error('[FlightSearch.setTimeFrameForBothLegsAndSearch] "page" is required.');
+    if (!timeFrame || typeof timeFrame !== 'string') {
+      throw new Error(`[FlightSearch.setTimeFrameForBothLegsAndSearch] "timeFrame" must be a non-empty string, got: ${typeof timeFrame}`);
+    }
+
+    logger.info('Setting the time frame for both legs, then submitting the search', { timeFrame });
+
+    await this.selectTimeFrameForBothLegs(page, timeFrame);
+    await this.clickSearchButton(page);
+
+    return { searched: true, timeFrame };
+  },
+
+  /**
+   * Verifies both legs' flight-time fields display the given validation message,
+   * confirming the Anytime time frame is restricted (the field is required and empty).
+   * Assumes a search was just submitted with empty time frames so the messages render.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMessage - Expected validation text, e.g. "This field is required"
+   * @returns {Promise<{departureMessage: string, returnMessage: string}>}
+   */
+  async verifyBothLegsFlightTimeRequired(page, expectedMessage) {
+    if (!page) throw new Error('[FlightSearch.verifyBothLegsFlightTimeRequired] "page" is required.');
+    if (!expectedMessage || typeof expectedMessage !== 'string') {
+      throw new Error(`[FlightSearch.verifyBothLegsFlightTimeRequired] "expectedMessage" must be a non-empty string, got: ${typeof expectedMessage}`);
+    }
+
+    logger.debug('Verifying both legs display the flight-time required validation', { expectedMessage });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const departureMessage = await flightSearchPage.getDepartureFlightTimeValidationMessage();
+    const returnMessage = await flightSearchPage.getReturnFlightTimeValidationMessage();
+
+    expect(
+      departureMessage,
+      `Departure-leg time-frame field should display "${expectedMessage}" (proving the Anytime frame is restricted), but got "${departureMessage}". The field may not be required, or the search was not submitted with an empty time frame.`,
+    ).toBe(expectedMessage);
+    expect(
+      returnMessage,
+      `Return-leg time-frame field should display "${expectedMessage}" (proving the Anytime frame is restricted), but got "${returnMessage}". The field may not be required, or the search was not submitted with an empty time frame.`,
+    ).toBe(expectedMessage);
+
+    return { departureMessage, returnMessage };
+  },
+
+  /**
+   * Verifies the Anytime time-frame restriction is applied to both legs by confirming
+   * the "Anytime" option is absent from each leg's flight-time dropdown. This is how the
+   * dontAllowAnytime preference manifests once a valid frame is already selected (e.g. after
+   * editing the search from the results page, where the chosen frame is restored).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{departureOffersAnytime: boolean, returnOffersAnytime: boolean}>}
+   */
+  async verifyAnytimeRestrictedForBothLegs(page) {
+    if (!page) throw new Error('[FlightSearch.verifyAnytimeRestrictedForBothLegs] "page" is required.');
+
+    logger.debug('Verifying the Anytime option is restricted for both legs');
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const departureOffersAnytime = await flightSearchPage.isAnytimeFlightTimeOffered('departure');
+    const returnOffersAnytime = await flightSearchPage.isAnytimeFlightTimeOffered('return');
+
+    expect(
+      departureOffersAnytime,
+      'Departure-leg time-frame dropdown should NOT offer the "Anytime" option for a user restricted from it, but the option was present.',
+    ).toBe(false);
+    expect(
+      returnOffersAnytime,
+      'Return-leg time-frame dropdown should NOT offer the "Anytime" option for a user restricted from it, but the option was present.',
+    ).toBe(false);
+
+    return { departureOffersAnytime, returnOffersAnytime };
   },
 
   /**

@@ -44,6 +44,11 @@ const SELECTORS = {
   PARALLEL_HOTEL_AUTOCOMPLETE_FIRST_OPTION: ".el-autocomplete-suggestion__list li[id*='item-0']",
   // Advanced search — return leg date picker
   ADVANCED_RETURN_DATE_FIELD: 'section.return .flight-date-picker input',
+  // Flight-time field validation message shown when the time frame is required but empty
+  // (e.g. a user restricted from the Anytime frame). Scoped per leg — in that flow the
+  // flight-time field is the only invalid one in its section, so its message is the one rendered.
+  DEPARTURE_FLIGHT_TIME_VALIDATION: 'section.departure .form-validation-msg .help',
+  RETURN_FLIGHT_TIME_VALIDATION: 'section.return .form-validation-msg .help',
 };
 
 const { escapeRegExp } = require("@utils/text");
@@ -241,6 +246,76 @@ class FlightSearchPage {
     // Wait for the dropdown list to be fully rendered before clicking the target option
     await this.page.locator(SELECTORS.VISIBLE_DROPDOWN_ITEMS).first().waitFor({ state: 'visible', timeout: 10000 });
     await this.page.locator(SELECTORS.DROPDOWN_OPTION(value)).click();
+  }
+
+  /**
+   * Reads the validation message shown under the departure-leg flight-time field in
+   * advanced search. The message only renders after a search is submitted with the
+   * field empty and the time frame is required (Anytime-restricted user).
+   *
+   * @param {number} timeout - Max wait for the message to appear (default: 10000)
+   * @returns {Promise<string>} Trimmed message text, or '' if none is shown.
+   */
+  async getDepartureFlightTimeValidationMessage(timeout = 10000) {
+    const message = this.page.locator(SELECTORS.DEPARTURE_FLIGHT_TIME_VALIDATION).first();
+    const appeared = await message
+      .waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false);
+    if (!appeared) return '';
+    return ((await message.textContent()) ?? '').trim();
+  }
+
+  /**
+   * Reads the validation message shown under the return-leg flight-time field in
+   * advanced search. See {@link FlightSearchPage#getDepartureFlightTimeValidationMessage}.
+   *
+   * @param {number} timeout - Max wait for the message to appear (default: 10000)
+   * @returns {Promise<string>} Trimmed message text, or '' if none is shown.
+   */
+  async getReturnFlightTimeValidationMessage(timeout = 10000) {
+    const message = this.page.locator(SELECTORS.RETURN_FLIGHT_TIME_VALIDATION).first();
+    const appeared = await message
+      .waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false);
+    if (!appeared) return '';
+    return ((await message.textContent()) ?? '').trim();
+  }
+
+  /**
+   * Opens the given leg's flight-time dropdown and reports whether an "Anytime"
+   * option is offered. A user restricted from the Anytime frame (dontAllowAnytime)
+   * should never see it in the option list. Leaves the dropdown closed afterwards.
+   *
+   * Flight time is the 2nd app-select in each leg section (date-type is the 1st) —
+   * matching the departure/return time selectors used elsewhere in this page.
+   *
+   * @param {'departure'|'return'} leg
+   * @returns {Promise<boolean>} true if an "Anytime" option is present, false otherwise.
+   */
+  async isAnytimeFlightTimeOffered(leg) {
+    if (leg !== 'departure' && leg !== 'return') {
+      throw new Error(`[FlightSearchPage.isAnytimeFlightTimeOffered] "leg" must be "departure" or "return", got: ${leg}`);
+    }
+
+    const sectionSelector = leg === 'departure' ? SELECTORS.DEPARTURE_APP_SELECT : SELECTORS.RETURN_APP_SELECT;
+    const timeSelect = this.page.locator(sectionSelector).nth(1);
+
+    try {
+      await timeSelect.click({ timeout: 15000 });
+      await this.page.locator(SELECTORS.VISIBLE_DROPDOWN_ITEMS).first().waitFor({ state: 'visible', timeout: 10000 });
+      const anytimeOptionCount = await this.page.locator(SELECTORS.DROPDOWN_OPTION('Anytime')).count();
+      // Close the dropdown so the next leg's read starts from a clean state.
+      await timeSelect.click();
+      await this.waitForSelectDropdownToClose();
+      return anytimeOptionCount > 0;
+    } catch (err) {
+      throw new Error(
+        `[FlightSearchPage.isAnytimeFlightTimeOffered] Could not read the "${leg}" leg flight-time options. ` +
+        `The advanced search panel may not be open or the time dropdown selector needs updating. Original: ${err.message}`
+      );
+    }
   }
 
   /**
