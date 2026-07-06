@@ -967,12 +967,11 @@ class SearchPage {
 
   /**
    * Selects the "Multi City" trip type.
+   * Matches by label text (like selectRoundTrip/selectOneWayTrip) rather than a positional
+   * index, so it is resilient to changes in the trip-type control's structure/order.
    */
   async selectMultiCityTrip() {
-    const labels = this.page.locator(SELECTORS.TRIP_TYPE_RADIO_LABELS);
-    const target = labels.nth(2);
-    await target.waitFor({ state: 'visible', timeout: 60000 });
-    await target.click();
+    await this.clickTripType(/multi.?city/i);
   }
 
   /**

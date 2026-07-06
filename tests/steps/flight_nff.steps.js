@@ -13,6 +13,13 @@ When("I select the first flight result in new flight flow", async function () {
   await FlightResults.selectFirstFlightResultNFF(this.page);
 });
 
+// Selects the first result that is a separated-ticket itinerary (the first card with the
+// "Separated Tickets" tag) — the first result overall may be a single ticket.
+When("I select the first flight result with separated tickets in new flight flow", async function () {
+  logger.info("[NewFlightFlow] Selecting the first separated-ticket flight result");
+  await FlightResults.selectFirstSeparatedTicketFlightResultNFF(this.page);
+});
+
 When("I select the outbound first option from pricing options new flight flow", async function () {
   logger.info("[NewFlightFlow] Selecting first outbound brand card");
   await FlightResults.selectOutboundFirstBrandCardNewFlightFlow(this.page);

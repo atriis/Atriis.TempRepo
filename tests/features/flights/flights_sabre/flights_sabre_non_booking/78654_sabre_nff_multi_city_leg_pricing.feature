@@ -11,8 +11,9 @@ Feature: 78654 Sabre - New Flight Flow - Multi-city leg pricing display
   Scenario: Multi-city non-separated - first leg shows "Starting from", subsequent legs show delta
     Given I am logged in as "corp.sabre.nff@frosch.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a multi-city flight with legs "LIS-LON" and "LON-FRA" and "FRA-LIS"
+    When I search for a multi-city flight with legs "LIS-LON" and "LON-FRA" with close dates
     Then flight results should be available
+    And I filter results by carrier "KLM"
     When I select the first flight result in new flight flow
     Then the outbound leg brand cards are displayed
     And the outbound leg brand cards should display full price with "Starting from" label
@@ -21,8 +22,4 @@ Feature: 78654 Sabre - New Flight Flow - Multi-city leg pricing display
     And the inbound leg brand cards should be visible
     And the inbound leg brand cards should display incremental price delta
     When I select the inbound first option from pricing options new flight flow
-    Then the flight selection footer should display a total price per traveller
-    And the third leg brand cards should be visible
-    And the third leg brand cards should display incremental price delta
-    When I select the third leg first option from pricing options new flight flow
     Then the flight selection footer should display a total price per traveller

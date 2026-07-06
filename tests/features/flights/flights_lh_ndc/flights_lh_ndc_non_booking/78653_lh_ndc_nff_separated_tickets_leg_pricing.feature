@@ -13,9 +13,9 @@ Feature: 78653 Lufthansa NDC - New Flight Flow - Leg pricing display for separat
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "FRA"
     Then flight results should be available
-    When I select the first flight result in new flight flow
+    And I filter airline results by "Multi carrier" checkbox
+    When I select the first flight result with separated tickets in new flight flow
     Then the outbound leg brand cards are displayed
-    And the separated tickets indication is displayed in pricing options view
     And the outbound leg brand cards should display full price with "Starting from" label
     When I select the outbound first option from pricing options new flight flow
     Then the flight selection footer should display a total price per traveller
@@ -23,3 +23,4 @@ Feature: 78653 Lufthansa NDC - New Flight Flow - Leg pricing display for separat
     And the inbound leg brand cards should display incremental price delta
     When I select the inbound first option from pricing options new flight flow
     Then the flight selection footer should display a total price per traveller
+    And the separated tickets indication is displayed in pricing options view

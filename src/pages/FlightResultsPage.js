@@ -190,6 +190,10 @@ const SELECTORS = {
   // Flight preview card
   FLIGHT_PREVIEW: '.flight-list .flight-preview',
   FLIGHT_PREVIEW_SEGMENT: '.flight-info-container',
+  // "Select flight" primary button inside a result card (same button class as ResultsPage.getSelectButton);
+  // scope to the card first, then filter by the button text.
+  SELECT_FLIGHT_BUTTON: '.btn.btn--primary',
+  SELECT_FLIGHT_BUTTON_TEXT: 'Select',
   RESULT_SEGMENT_CARRIER_NAME: '.carrier-container .carrier-name',
   RESULT_SEGMENT_FLIGHT_NUMBER_TEXT: '.carrier-container .carrier-name + p',
   FLIGHT_TIME: '.flight-time',
@@ -2416,6 +2420,29 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Selects the first flight result that is a separated-ticket itinerary — the first result card
+   * carrying the "Separated Tickets" tag — by clicking its "Select flight" button. Needed when a
+   * test requires a separated-ticket result specifically (the first result may be a single ticket).
+   * @param {number} timeout - Max wait time in ms (default: 90000)
+   */
+  async clickSelectFlightForFirstSeparatedTicketResult(timeout = 90000) {
+    // Match by the visible "Separated Tickets" text: on desktop the results-list tag renders as a
+    // plain <p> WITHOUT the `separated-tickets-tag` class (that class is mobile-only in flight-preview.vue),
+    // so a text filter is reliable across viewports.
+    const card = this.page
+      .locator(SELECTORS.FLIGHT_PREVIEW)
+      .filter({ hasText: SELECTORS.SEPARATED_TICKETS_TEXT })
+      .first();
+    await card.waitFor({ state: 'visible', timeout });
+    const selectButton = card
+      .locator(SELECTORS.SELECT_FLIGHT_BUTTON)
+      .filter({ hasText: SELECTORS.SELECT_FLIGHT_BUTTON_TEXT })
+      .first();
+    await selectButton.scrollIntoViewIfNeeded();
+    await selectButton.click({ timeout: 10000 });
   }
 
   /**

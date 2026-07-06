@@ -2548,6 +2548,20 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Selects the first separated-ticket flight result (new flight flow) — the first result card
+   * carrying the "Separated Tickets" tag — rather than blindly the first result.
+   * @param {import('playwright').Page} page
+   */
+  async selectFirstSeparatedTicketFlightResultNFF(page) {
+    if (!page) {
+      throw new Error('[FlightResults.selectFirstSeparatedTicketFlightResultNFF] "page" is required.');
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickSelectFlightForFirstSeparatedTicketResult();
+    return { selected: true, separatedTicket: true };
+  },
+
+  /**
    * Selects the first pricing option (brand card) for the outbound leg in the new flight flow.
    */
   async selectOutboundFirstBrandCardNewFlightFlow(page) {

@@ -235,6 +235,19 @@ When("I search for a multi-city flight with legs {string} and {string}", async f
   await FlightSearch.searchFlightMultiCity(this.page, legs);
 });
 
+// Compact-dates variant: legs a few days apart (near-term) instead of the default wider spread,
+// so short-haul multi-city routes return bookable results.
+When("I search for a multi-city flight with legs {string} and {string} with close dates", async function (leg1, leg2) {
+  const parseLeg = (leg) => {
+    const parts = leg.toUpperCase().split('-');
+    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
+    return { from: parts[0], to: parts[1] };
+  };
+  const legs = [leg1, leg2].map(parseLeg);
+  logger.info('Searching for multi-city flight with close leg dates', { legs });
+  await FlightSearch.searchFlightMultiCityWithCloseDates(this.page, legs);
+});
+
 When("I search for a multi-city flight with legs {string} and {string} with parallel car search", async function (leg1, leg2) {
   const parseLeg = (leg) => {
     const parts = leg.toUpperCase().split('-');

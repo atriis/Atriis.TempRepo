@@ -707,6 +707,69 @@ const FlightSearch = {
   },
 
   /**
+   * Multi-city flight search with legs placed a few days apart (near-term) instead of the default
+   * wider month-apart spread. Short-haul multi-city itineraries whose legs are spread months apart
+   * can return "No results"; this keeps them bookable by advancing one month for the first leg and
+   * then placing each later leg a couple of available days after the previous.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Array<{from: string, to: string}>} legs - At least 2 leg objects
+   * @param {Object} options
+   * @param {number} options.departureIndex - Starting available-day index for the first leg (default: SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX)
+   * @param {string} options.searchType - 'completeTrip' (default) or 'bySchedule'
+   * @returns {Promise<{searched: boolean, legs: Array, tripType: string, searchType: string}>}
+   */
+  async searchFlightMultiCityWithCloseDates(
+    page,
+    legs,
+    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX, searchType = 'completeTrip' } = {},
+  ) {
+    if (!Array.isArray(legs) || legs.length < 2) {
+      throw new Error('legs must be an array of at least 2 {from, to} objects, got: ' + JSON.stringify(legs));
+    }
+    if (searchType !== 'completeTrip' && searchType !== 'bySchedule') {
+      throw new Error(`searchType must be 'completeTrip' or 'bySchedule', got: ${searchType}`);
+    }
+
+    logger.info('Starting multi-city flight search with close leg dates', { legs, searchType });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectMultiCityTrip();
+    await searchPage.waitForMultiCitySection();
+
+    const currentRows = await page.locator('.multi-city-line').count();
+    for (let i = currentRows; i < legs.length; i++) {
+      await searchPage.clickAddFlightRowButton();
+    }
+
+    for (let i = 0; i < legs.length; i++) {
+      const { from, to } = legs[i];
+      await searchPage.fillMultiCityLeg(from, to, i);
+      await searchPage.openMultiCityDatePickerAtIndex(i);
+      // Advance one month for the first leg, then place each later leg a couple of available days
+      // after the previous one so the legs stay near-term and only a few days apart.
+      if (i === 0) {
+        await searchPage.clickCalendarNextArrow();
+        await selectDatesByNthAvailable(page, { startIndex: departureIndex, endIndex: null });
+      } else {
+        await selectDatesByNthAvailable(page, { startIndex: 2, endIndex: null });
+      }
+    }
+
+    if (searchType === 'bySchedule') {
+      await flightSearchPage.selectBySchedule();
+    } else {
+      await flightSearchPage.selectCompleteTrip();
+    }
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, legs, tripType: 'multiCity', searchType };
+  },
+
+  /**
    * Multi-city flight search with parallel car search enabled.
    * Parses legs (array of {from, to}), sets up multi-city search,
    * enables the parallel car checkbox, then submits.
