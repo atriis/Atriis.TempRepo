@@ -26,6 +26,14 @@ const SELECTORS = {
   ONE_WAY_APP_SELECT: '.inputs-wrapper .app-select',
   // Advanced search — return leg selectors
   RETURN_APP_SELECT: 'section.return .app-select',
+  // Advanced search — per-leg cabin class (the icon-bearing .class-input select in each section)
+  DEPARTURE_CLASS_FIELD: 'section.departure .class-input .app-select',
+  RETURN_CLASS_FIELD: 'section.return .class-input .app-select',
+  // Advanced-search "Via" (add-connection) checkbox. Scoped to the advanced-search container
+  // (like ALLOW_NEARBY_AIRPORTS_CHECKBOX) and matched by its exact label text. Rendered only
+  // when advanced search is expanded.
+  VIA_CHECKBOX: '.advanced-search-container .el-checkbox',
+  VIA_CHECKBOX_LABEL: 'Via',
   DROPDOWN_OPTION: (text) => `.el-select-dropdown__item:visible:has-text("${text}")`,
   // Parallel hotel search checkbox (shares the class with car, differentiated by "Add Hotel" text)
   PARALLEL_HOTEL_CHECKBOX: '.parallel-search-checkbox',
@@ -224,6 +232,94 @@ class FlightSearchPage {
         `The advanced search panel may not be open, the time option is unavailable, or the selector needs updating. Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Enables the advanced-search "Via" (add-connection) checkbox if not already checked,
+   * so the per-leg connection airport fields render. Idempotent — clicking an already-checked
+   * box would disable it, so the checked state is read first.
+   */
+  async enableViaConnection() {
+    const viaCheckbox = this.page
+      .locator(SELECTORS.VIA_CHECKBOX)
+      .filter({ hasText: new RegExp(`^\\s*${SELECTORS.VIA_CHECKBOX_LABEL}\\s*$`) })
+      .first();
+    try {
+      await viaCheckbox.waitFor({ state: 'visible', timeout: 10000 });
+      // Read the checked state from the .el-checkbox__input wrapper (same convention as
+      // isAllowNearbyAirportsCheckboxChecked) — the root label may not carry is-checked.
+      const inputClass = (await viaCheckbox.locator('.el-checkbox__input').getAttribute('class')) || '';
+      if (!inputClass.includes('is-checked')) {
+        await viaCheckbox.click();
+      }
+    } catch (err) {
+      throw new Error(
+        `[FlightSearchPage.enableViaConnection] Could not enable the "Via" connection checkbox. ` +
+        `The advanced-search panel may not be open (the checkbox renders only when it is). ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Selects the cabin class for the departure (outbound) leg in advanced round-trip search.
+   * @param {string} value - Cabin label, e.g. "Business", "Economy"
+   */
+  async selectDepartureFlightClass(value) {
+    if (!value || typeof value !== 'string') {
+      throw new Error(`[FlightSearchPage.selectDepartureFlightClass] "value" must be a non-empty string, got: ${typeof value}`);
+    }
+    try {
+      const field = this.page.locator(SELECTORS.DEPARTURE_CLASS_FIELD).first();
+      await field.waitFor({ state: 'visible', timeout: 10000 });
+      await field.click();
+      // Match the option by EXACT text — a substring match would resolve "Economy" to both
+      // "Economy" and "Premium Economy" and throw a strict-mode violation.
+      await this._clickDropdownOptionExact(value);
+      await field.getByText(value, { exact: true }).first().waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightSearchPage.selectDepartureFlightClass] Could not select departure cabin "${value}". ` +
+        `The advanced round-trip panel may not be open or the cabin option is unavailable. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Selects the cabin class for the return (inbound) leg in advanced round-trip search.
+   * @param {string} value - Cabin label, e.g. "Business", "Economy"
+   */
+  async selectReturnFlightClass(value) {
+    if (!value || typeof value !== 'string') {
+      throw new Error(`[FlightSearchPage.selectReturnFlightClass] "value" must be a non-empty string, got: ${typeof value}`);
+    }
+    try {
+      const field = this.page.locator(SELECTORS.RETURN_CLASS_FIELD).first();
+      await field.waitFor({ state: 'visible', timeout: 10000 });
+      await field.click();
+      // Exact-match the option (see selectDepartureFlightClass) to avoid "Economy" also
+      // matching "Premium Economy".
+      await this._clickDropdownOptionExact(value);
+      await field.getByText(value, { exact: true }).first().waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightSearchPage.selectReturnFlightClass] Could not select return cabin "${value}". ` +
+        `The advanced round-trip panel may not be open or the cabin option is unavailable. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the visible El-Plus select-dropdown option whose text is EXACTLY `value`.
+   * Avoids the substring match of DROPDOWN_OPTION (e.g. "Economy" matching "Premium Economy").
+   * @param {string} value - Exact option label
+   */
+  async _clickDropdownOptionExact(value) {
+    await this.page
+      .locator('.el-select-dropdown__item:visible')
+      .filter({ hasText: new RegExp(`^\\s*${escapeRegExp(value)}\\s*$`) })
+      .first()
+      .click();
   }
 
   /**

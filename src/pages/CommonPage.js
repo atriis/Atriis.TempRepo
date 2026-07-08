@@ -310,6 +310,26 @@ class CommonPage {
   }
 
   /**
+   * Clicks the Save button if it becomes visible within timeout.
+   * Does nothing and returns false if the button never appears (mirrors
+   * clickProceedButtonIfVisible — used for optional modals like the Trip Reference Form).
+   * @param {number} timeout - Max ms to wait for the button (default: 10000)
+   * @returns {Promise<boolean>} True if clicked, false if not displayed
+   */
+  async clickSaveButtonIfVisible(timeout = 10000) {
+    const button = this.getSaveButton().first();
+    const isVisible = await button.isVisible();
+
+    if (!isVisible) {
+      const appeared = await button.waitFor({ state: 'visible', timeout }).then(() => true, () => false);
+      if (!appeared) return false;
+    }
+
+    await button.click();
+    return true;
+  }
+
+  /**
    * Clicks 'Go back' button on the Flight Capacity Restriction pop-up.
    */
   async clickGoBackOnFlightCapacityRestrictionPopUp() {

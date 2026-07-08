@@ -10,8 +10,10 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { SearchPage } = require("@pages/SearchPage");
+const FlightSearchPage = require("@pages/FlightSearchPage");
 const { TravelRequestPage } = require("@pages/TravelRequestPage");
 const { CommonPage } = require("@pages/CommonPage");
+const logger = require("@utils/logger").child("TravelRequest");
 
 const TravelRequest = {
   /**
@@ -61,6 +63,193 @@ const TravelRequest = {
     } catch {
       // No reference form appeared — continue
     }
+  },
+
+  /**
+   * Opens the advanced round-trip flight search inside the request assistance form.
+   * - Clicks the "Flight" service button to render the flight-search-inputs form
+   * - Ensures the trip type is "Round trip" (separate outbound/return legs)
+   * - Expands the advanced-search options panel (reveals per-leg date-type/time/cabin fields
+   *   and the preferred-airline selector)
+   * - Enables the "Via" checkbox so a connection (stopover) airport can be entered
+   *
+   * The flight form here is the same component the main search uses, so the advanced-search
+   * page methods apply unchanged.
+   *
+   * @param {import('@playwright/test').Page} page
+   */
+  async openAdvancedFlightSearch(page) {
+    if (!page) throw new Error('[TravelRequest.openAdvancedFlightSearch] "page" is required.');
+
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    const searchPage = getPageObject(page, SearchPage);
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+
+    try {
+      await travelRequestPage.clickFlightButton();
+      await travelRequestPage.waitForFlightSearchInputs();
+      // The flight form initializes asynchronously (loads carriers, re-renders). That late
+      // re-render resets the advanced toggle back to collapsed, so let it settle BEFORE opening
+      // advanced — otherwise the panel opens and then silently closes a moment later.
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+      await searchPage.selectRoundTrip();
+      await page.waitForTimeout(800);
+
+      // Open advanced (splits into departure + return sections and reveals the Via checkbox +
+      // preferred-airline selector). The toggle can still be reset by a late re-render, so click
+      // and confirm the panel STAYS open; retry if it collapsed.
+      let advancedOpen = false;
+      for (let attempt = 0; attempt < 3 && !advancedOpen; attempt++) {
+        await flightSearchPage.clickAdvancedSearchButton();
+        await page.waitForTimeout(800);
+        advancedOpen = await flightSearchPage.isAdvancedSearchExpanded();
+      }
+      if (!advancedOpen) {
+        throw new Error('the advanced-search panel did not stay expanded after 3 attempts (a late form re-render keeps resetting it)');
+      }
+
+      // Enable Via, then confirm the connection field actually rendered — this proves Via is on
+      // AND advanced stayed open.
+      await flightSearchPage.enableViaConnection();
+      await searchPage.waitForViaConnectionField();
+    } catch (err) {
+      throw new Error(
+        '[TravelRequest.openAdvancedFlightSearch] Could not open the advanced round-trip flight ' +
+        'search in the request assistance form. The "Flight" service button may not have rendered the ' +
+        'flight-search-inputs form, the Round trip trip type was unavailable, the advanced-search panel ' +
+        `did not expand, or the Via checkbox was missing. Original: ${err.message}`
+      );
+    }
+
+    return { opened: true };
+  },
+
+  /**
+   * Fills and sends an advanced round-trip flight travel request (with a Via stopover) so the
+   * agent can view the detailed criteria. Every value comes from the caller — nothing about the
+   * route is hard-coded here.
+   * - Fills origin, destination, and the Via connection airport
+   * - Selects outbound and return departure dates
+   * - Sets each leg's date-type, time frame, and cabin class (outbound + return)
+   * - Selects the preferred airline (carrier) in the already-open advanced-options panel
+   * - Clicks "Send request" (the Trip Reference Form popup, if any, is left for the caller to
+   *   dismiss via saveReferenceFieldIfPresent — this method does not dismiss it)
+   *
+   * Requires the advanced round-trip form to already be open (see openAdvancedFlightSearch).
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {Object} request
+   * @param {string} request.from - Origin city/airport, e.g. "London"
+   * @param {string} request.to - Destination city/airport, e.g. "Tel Aviv"
+   * @param {string} request.via - Connection (stopover) city/airport, e.g. "Rome"
+   * @param {string} request.preferredAirline - Preferred carrier label, e.g. "British Airways"
+   * @param {{dateType: string, time: string, cabin: string}} request.outbound - Outbound leg criteria
+   * @param {{dateType: string, time: string, cabin: string}} request.inbound - Return leg criteria
+   */
+  async sendAdvancedFlightSearchTravelRequest(page, request) {
+    if (!page) throw new Error('[TravelRequest.sendAdvancedFlightSearchTravelRequest] "page" is required.');
+    if (!request || typeof request !== 'object') {
+      throw new Error(
+        '[TravelRequest.sendAdvancedFlightSearchTravelRequest] "request" must be an object, got: ' + typeof request
+      );
+    }
+    const { from, to, via, preferredAirline, outbound, inbound } = request;
+    [['from', from], ['to', to], ['via', via], ['preferredAirline', preferredAirline]].forEach(([name, val]) => {
+      if (!val || typeof val !== 'string') {
+        throw new Error(
+          `[TravelRequest.sendAdvancedFlightSearchTravelRequest] "${name}" must be a non-empty string, got: ${typeof val}`
+        );
+      }
+    });
+    [['outbound', outbound], ['inbound', inbound]].forEach(([name, leg]) => {
+      if (!leg || typeof leg !== 'object') {
+        throw new Error(
+          `[TravelRequest.sendAdvancedFlightSearchTravelRequest] "${name}" must be a {dateType, time, cabin} object, got: ${typeof leg}`
+        );
+      }
+      ['dateType', 'time', 'cabin'].forEach((field) => {
+        if (!leg[field] || typeof leg[field] !== 'string') {
+          throw new Error(
+            `[TravelRequest.sendAdvancedFlightSearchTravelRequest] "${name}.${field}" must be a non-empty string, got: ${typeof leg[field]}`
+          );
+        }
+      });
+    });
+
+    logger.debug('Sending advanced round-trip flight travel request', { from, to, via, preferredAirline, outbound, inbound });
+
+    const searchPage = getPageObject(page, SearchPage);
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+
+    try {
+      // Route: origin (departure section), destination (return section), and the Via connection.
+      await searchPage.fillInFromField(from);
+      await searchPage.fillInToField(to);
+      await searchPage.fillViaConnection(via);
+      // Autocomplete popper must fully close before clicking date fields (no dismiss event exists).
+      await page.waitForTimeout(1000);
+
+      // Outbound + return departure dates (advanced round trip uses separate date fields).
+      await searchPage.clickDepartureDateField();
+      await searchPage.clickCalendarNextArrow();
+      await selectDatesByNthAvailable(page, { startIndex: SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX, endIndex: null });
+      await searchPage.waitForDatePickerToClose();
+      await flightSearchPage.clickAdvancedReturnDateField();
+      await selectDatesByNthAvailable(page, { startIndex: SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX, endIndex: null });
+      await searchPage.waitForDatePickerToClose();
+
+      // Outbound leg criteria: date-type, time frame, cabin. Wait for each dropdown to close
+      // before opening the next — the leg selects share the El-Plus dropdown DOM node.
+      await flightSearchPage.selectDepartureDateType(outbound.dateType);
+      await flightSearchPage.waitForSelectDropdownToClose();
+      await flightSearchPage.selectDepartureFlightTime(outbound.time);
+      await flightSearchPage.waitForSelectDropdownToClose();
+      await flightSearchPage.selectDepartureFlightClass(outbound.cabin);
+      await flightSearchPage.waitForSelectDropdownToClose();
+
+      // Return leg criteria.
+      await flightSearchPage.selectReturnDateType(inbound.dateType);
+      await flightSearchPage.waitForSelectDropdownToClose();
+      await flightSearchPage.selectReturnFlightTime(inbound.time);
+      await flightSearchPage.waitForSelectDropdownToClose();
+      await flightSearchPage.selectReturnFlightClass(inbound.cabin);
+      await flightSearchPage.waitForSelectDropdownToClose();
+
+      // Preferred airline lives in the already-open advanced-options panel.
+      await flightSearchPage.selectPreferredCarrier(preferredAirline);
+
+      // Submit — clickSendRequestButton confirms the submit registered and leaves any
+      // Trip Reference Form popup open for saveReferenceFieldIfPresent to handle.
+      await travelRequestPage.clickSendRequestButton();
+    } catch (err) {
+      throw new Error(
+        '[TravelRequest.sendAdvancedFlightSearchTravelRequest] Could not send the advanced round-trip ' +
+        `flight travel request from "${from}" to "${to}" via "${via}" with preferred airline ` +
+        `"${preferredAirline}". A route field, date, date-type/time/cabin selection, or the ` +
+        `preferred-airline option may not have been available. Original: ${err.message}`
+      );
+    }
+
+    return { sent: true, from, to, via, preferredAirline, outbound, inbound };
+  },
+
+  /**
+   * Saves the Trip Reference Form popup if it is displayed, otherwise continues.
+   * Travellers with mandatory reference questions see this modal after "Send request";
+   * others go straight to the "Sent to agent" confirmation. The Save button is optional,
+   * so its absence within the short wait is not an error.
+   *
+   * @param {import('@playwright/test').Page} page
+   */
+  async saveReferenceFieldIfPresent(page) {
+    if (!page) throw new Error('[TravelRequest.saveReferenceFieldIfPresent] "page" is required.');
+
+    // The Trip Reference Form popup is optional — clickSaveButtonIfVisible saves it if present
+    // and no-ops otherwise (mirrors the existing CommonPage.clickProceedButtonIfVisible pattern).
+    const commonPage = getPageObject(page, CommonPage);
+    const saved = await commonPage.clickSaveButtonIfVisible();
+    return { saved };
   },
 
   /**

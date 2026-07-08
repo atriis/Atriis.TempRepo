@@ -16,14 +16,13 @@ Feature: 62723 - Advanced flight search details can be viewed by Agent
     Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I click the request assistance icon
-    # TODO: I open the advanced flight search in the request assistance form (TravelRequest.openAdvancedFlightSearch in tests/steps/travel_request.steps.js)
     And I open the advanced flight search in the request assistance form
-    # TODO: I send an advanced flight search travel request with preferred airline "British Airways" (TravelRequest.sendAdvancedFlightSearchTravelRequest in tests/steps/travel_request.steps.js) - enters origins/destinations/dates/times/cabin classes for London / Rome / Tel Aviv
-    And I send an advanced flight search travel request with preferred airline "British Airways"
-    # TODO: I save the reference field popup if displayed (TravelRequest.saveReferenceFieldIfPresent in tests/steps/travel_request.steps.js)
+    And I send an advanced flight search travel request from "London" to "Tel Aviv" with a stop in "Rome" and preferred airline "British Airways"
+      | direction | dateType  | time     | cabin    |
+      | outbound  | Departure | Midnight | Business |
+      | return    | Arrival   | Morning  | Business |
     And I save the reference field popup if displayed
     Then the "Sent to agent" confirmation should be displayed
     And go to trip text is visible
     When I click go to trip button
-    Then the travel requested items should be visible in the trip
-    # TODO (manual): assert the requested advanced flight is shown in the trip — source getText(".trip-title") had no expected value; reuse the existing step "the trip title should contain {string}" (Cart.verifyTripTitle) once a value is chosen
+    Then the travel requested item should be visible in the trip with the title containing "Requested flight to Ben Gurion APT, IL (TLV)" text

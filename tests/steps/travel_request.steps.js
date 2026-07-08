@@ -18,6 +18,35 @@ When("I navigate to the trip from the travel request", async function () {
   await TravelRequest.navigateToTravelRequestTrip(this.page);
 });
 
+When("I open the advanced flight search in the request assistance form", async function () {
+  logger.info("Opening advanced flight search in the request assistance form");
+  await TravelRequest.openAdvancedFlightSearch(this.page);
+});
+
+When(
+  "I send an advanced flight search travel request from {string} to {string} with a stop in {string} and preferred airline {string}",
+  async function (from, to, via, preferredAirline, dataTable) {
+    // The data table carries one row per direction: | direction | dateType | time | cabin |
+    const rows = dataTable.hashes();
+    const outbound = rows.find((r) => r.direction === "outbound");
+    const inbound = rows.find((r) => r.direction === "return");
+    logger.info("Sending advanced flight search travel request", { from, to, via, preferredAirline, outbound, inbound });
+    await TravelRequest.sendAdvancedFlightSearchTravelRequest(this.page, {
+      from,
+      to,
+      via,
+      preferredAirline,
+      outbound,
+      inbound,
+    });
+  }
+);
+
+When("I save the reference field popup if displayed", async function () {
+  logger.info("Saving the reference field popup if displayed");
+  await TravelRequest.saveReferenceFieldIfPresent(this.page);
+});
+
 // ===== THEN STEPS =====
 
 Then("the {string} confirmation should be displayed", async function (expectedText) {

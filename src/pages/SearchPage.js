@@ -103,6 +103,10 @@ const SELECTORS = {
   MULTI_CITY_CABIN_CLASS_FIELD: '.class-input .app-select',
   MULTI_CITY_REMOVE_BTN: '.remove-btn .material-symbols-outlined',
 
+  // Advanced-search "Via" connection airport field (revealed by the Via checkbox). Shares the
+  // airport-autocomplete component with From/To but is distinguished by its own placeholder.
+  VIA_CONNECTION_INPUT: 'input[placeholder="Via... Destination"]',
+
   // Tabs
   GENERAL_RAIL_TAB: "#tab-rails",
 
@@ -1093,6 +1097,48 @@ class SearchPage {
       throw new Error(
         `[SearchPage.selectFlightClassForLeg] Could not select cabin class "${cabinClass}" for leg ${legIndex}. ` +
         `The multi-city form may not be open or the cabin class option is unavailable. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the advanced-search "Via" connection field to be visible — the signal that the
+   * Via checkbox is enabled (and the advanced panel is still open).
+   */
+  async waitForViaConnectionField() {
+    await this.page
+      .locator(SELECTORS.VIA_CONNECTION_INPUT)
+      .first()
+      .waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  /**
+   * Fills the advanced-search "Via" connection airport field and commits the first suggestion.
+   * The Via checkbox must already be enabled so the field is rendered. Mirrors fillInFromField:
+   * type, wait for the autocomplete list, then Tab to commit (Tab before the dropdown renders
+   * would blur with nothing selected and leave the field empty/invalid).
+   *
+   * @param {string} via - Connection city/airport text, e.g. "Rome"
+   */
+  async fillViaConnection(via) {
+    if (!via || typeof via !== 'string') {
+      throw new Error(`[SearchPage.fillViaConnection] "via" must be a non-empty string, got: ${typeof via}`);
+    }
+    try {
+      const viaInput = this.page.locator(SELECTORS.VIA_CONNECTION_INPUT).first();
+      await viaInput.waitFor({ state: 'visible', timeout: 10000 });
+      await viaInput.click();
+      await viaInput.fill(via);
+
+      const suggestions = this.page.locator(SELECTORS.AUTOCOMPLETE_LIST).first();
+      await suggestions.waitFor({ state: 'visible', timeout: 15000 });
+      await pressTab(this.page);
+      await this.page.waitForTimeout(100);
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.fillViaConnection] Could not set the Via connection to "${via}". The Via checkbox ` +
+        `may not be enabled (the field renders only when it is), or the airport autocomplete never ` +
+        `offered a suggestion to commit. Original: ${err.message}`
       );
     }
   }
