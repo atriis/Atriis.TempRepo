@@ -25,6 +25,11 @@ const SELECTORS = {
   FINANCIAL_REFERENCE_MODAL_TITLE: '.financial-section .el-collapse-item__header .has-text-weight-semibold',
   // Open reference-fields dialog (trip-app.vue el-dialog) used to scope field counts.
   REFERENCE_DIALOG: '.el-dialog:visible',
+  // Collapsible section inside the reference-fields popup (e.g. "Financial Reference"). Some
+  // reference "fields" render as a collapse section (title + its own el-select) rather than a
+  // `label.label` / `.input-*` container, so label lookups fall back to these when no field matches.
+  COLLAPSE_SECTION_HEADER: '.el-collapse-item__header',
+  COLLAPSE_SECTION_ITEM: '.el-collapse-item',
 };
 
 class DynamicAndReferenceFieldsPage {
@@ -193,9 +198,18 @@ class DynamicAndReferenceFieldsPage {
     // longer label that contains it as a substring (e.g. "Location travel policy"). Fall back to a
     // substring match when no exact label exists (preserves partial-label callers).
     const exactMatches = this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: exactFieldLabelRegex(labelText) });
-    const label = (await exactMatches.count()) > 0
-      ? exactMatches.first()
-      : this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: labelText }).first();
+    const substringMatches = this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: labelText });
+    let label;
+    if ((await exactMatches.count()) > 0) {
+      label = exactMatches.first();
+    } else if ((await substringMatches.count()) > 0) {
+      label = substringMatches.first();
+    } else {
+      // Some reference "fields" render as a collapsible SECTION header rather than a `label.label`
+      // (e.g. "Financial Reference"), so no field-label match exists. Fall back to the section
+      // header so its title is still recognized as a visible label.
+      label = this.page.locator(SELECTORS.COLLAPSE_SECTION_HEADER).filter({ hasText: labelText }).first();
+    }
     try {
       await label.waitFor({ state: 'attached', timeout });
       await label.scrollIntoViewIfNeeded();
@@ -223,7 +237,16 @@ class DynamicAndReferenceFieldsPage {
     if ((await exactMatches.count()) > 0) {
       return exactMatches.first();
     }
-    return this.page.locator(SELECTORS.FIELD_CONTAINER).filter({ hasText: labelText }).first();
+    const substringMatches = this.page.locator(SELECTORS.FIELD_CONTAINER).filter({ hasText: labelText });
+    if ((await substringMatches.count()) > 0) {
+      return substringMatches.first();
+    }
+    // Some reference "fields" render as a collapsible SECTION (e.g. "Financial Reference") rather
+    // than a `.input-*` container, so no field container matches. Fall back to the collapse section
+    // whose header matches the label — its el-select/control still carries the field value.
+    return this.page.locator(SELECTORS.COLLAPSE_SECTION_ITEM).filter({
+      has: this.page.locator(SELECTORS.COLLAPSE_SECTION_HEADER).filter({ hasText: labelText }),
+    }).first();
   }
 
   /**
@@ -365,14 +388,32 @@ class DynamicAndReferenceFieldsPage {
     await this.waitForFinancialReferenceDropdown({ timeout });
     await this.openFinancialReferenceDropdown();
     try {
-      const optionLocator = this.page.locator(SELECTORS.FINANCIAL_REFERENCE_DROPDOWN_OPTION);
+      // Scope to the OPEN dropdown panel: the reference popup renders several el-selects (Type of
+      // Trip, Type of Traveller, Location travel policy, …) whose option panels stay in the DOM but
+      // hidden. A global `.el-select-dropdown__item` would let `.first()` resolve to a hidden item
+      // from a closed panel and time out, so only read items in the visible (open) dropdown.
+      const panel = this.page.locator('.el-select-dropdown:visible').first();
+      const optionLocator = panel.locator(SELECTORS.FINANCIAL_REFERENCE_DROPDOWN_OPTION);
       await optionLocator.first().waitFor({ state: 'visible', timeout: 10000 });
-      const count = await optionLocator.count();
-      const texts = [];
-      for (let i = 0; i < count; i++) {
-        texts.push(((await optionLocator.nth(i).innerText()) || '').trim());
+
+      // The option list is clipped to a max-height with its own scrollbar, so options past the fold
+      // are not returned by a single read. Scroll the dropdown's scroll container to the bottom in
+      // steps, accumulating option texts until no new ones appear (order-preserving via a Set).
+      const scroller = panel.locator('.el-scrollbar__wrap, .el-select-dropdown__wrap').first();
+      const hasScroller = (await scroller.count()) > 0;
+      const collected = new Set();
+      let stableRounds = 0;
+      for (let round = 0; round < 40 && stableRounds < 3; round++) {
+        const before = collected.size;
+        for (const t of await optionLocator.allInnerTexts()) {
+          const trimmed = (t || '').trim();
+          if (trimmed) collected.add(trimmed);
+        }
+        stableRounds = collected.size === before ? stableRounds + 1 : 0;
+        if (!hasScroller) break;
+        await scroller.evaluate((el) => { el.scrollTop = Math.min(el.scrollTop + el.clientHeight, el.scrollHeight); });
       }
-      return texts;
+      return Array.from(collected);
     } catch (err) {
       throw new Error(
         `[DynamicAndReferenceFieldsPage.getFinancialReferenceDropdownOptionTexts] Could not read options from ` +
@@ -449,13 +490,43 @@ class DynamicAndReferenceFieldsPage {
       // `label.label`, whereas the container wrapper class varies by field type (dropdown, textbox,
       // checkbox, autocomplete, textarea, basic, ...), so a fixed container list under-counts.
       await dialog.locator(SELECTORS.FIELD_LABEL).first().waitFor({ state: 'visible', timeout });
-      return await dialog.locator(SELECTORS.FIELD_LABEL).count();
+      const labelledCount = await dialog.locator(SELECTORS.FIELD_LABEL).count();
+      // The Financial Reference field renders as a collapse section with its own el-select and no
+      // `label.label`, so add it in to reflect the true reference/dynamic field total.
+      const financialCount = await dialog.locator(SELECTORS.FINANCIAL_REFERENCE_SECTION).count();
+      return labelledCount + financialCount;
     } catch (err) {
       throw new Error(
         `[DynamicAndReferenceFieldsPage.getReferenceFieldCount] Could not read the reference/dynamic field ` +
         `labels (selector: ${SELECTORS.FIELD_LABEL}) inside the open reference dialog ` +
         `(${SELECTORS.REFERENCE_DIALOG}) within ${timeout}ms. The travel-request popup may not have opened, ` +
         `or no reference fields rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Submits the reference-fields popup. The cart-checkout flow renders a "Proceed" button, whereas
+   * the request-assistance "Trip Reference Form" submits via a dialog-footer "Save". Clicks whichever
+   * is present (preferring Proceed) so a single step works for both flows.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async submitReferenceFieldsPopup({ timeout = 15000 } = {}) {
+    // The submit button lives in the open dialog's `.app-footer` (trip-app.vue) and reads "Proceed"
+    // (cart/checkout) or "Save" (request-assistance Trip Reference Form) depending on config, so match
+    // either. Scoping to the visible dialog's footer avoids the per-field/financial sub-component Save.
+    const dialog = this.page.locator(SELECTORS.REFERENCE_DIALOG).first();
+    const submit = dialog.locator('.app-footer button').filter({ hasText: /^\s*(Proceed|Save)\s*$/ }).first();
+    try {
+      await submit.waitFor({ state: 'visible', timeout });
+      await submit.click({ timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.submitReferenceFieldsPopup] Could not find/click the reference-popup ` +
+        `submit button ("Proceed" or "Save") in the open dialog's .app-footer within ${timeout}ms. ` +
+        `The reference-fields popup may not be open. Original: ${err.message}`
       );
     }
   }

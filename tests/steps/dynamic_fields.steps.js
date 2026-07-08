@@ -65,6 +65,15 @@ When("I click proceed on the reference fields popup", async function () {
 
 // ===== FINANCIAL REFERENCE STEPS =====
 
+// Opens (readies) the Financial Reference dropdown in the travel-request popup.
+// The actual open/read/close is done by the following assertion step
+// ("the financial reference dropdown should contain the following options") — this step only
+// ensures the dropdown has rendered so that assertion can act on it.
+When("I open the financial reference dropdown in the travel request popup", async function () {
+  logger.info("Opening the financial reference dropdown in the travel request popup");
+  await DynamicAndReferenceFields.openFinancialReferenceDropdown(this.page);
+});
+
 Then("the financial reference modal title should be {string}", async function (expectedTitle) {
   logger.info(`Verifying the Financial Reference modal title is "${expectedTitle}"`);
   await DynamicAndReferenceFields.verifyFinancialReferenceModalTitle(this.page, expectedTitle);
@@ -77,6 +86,11 @@ Then("the financial reference dropdown should contain the following options:", a
 });
 
 // ===== REFERENCE FIELD VALIDATION STEPS =====
+
+Then("the travel request popup should show a reference section for traveler {string}", async function (travelerName) {
+  logger.info(`Verifying the travel request popup shows a reference section for traveler "${travelerName}"`);
+  await DynamicAndReferenceFields.verifyTravelerSectionHeader(this.page, travelerName);
+});
 
 Then("the reference fields popup should show the following labels:", async function (dataTable) {
   const labels = dataTable.raw().map(row => row[0]);

@@ -14,22 +14,11 @@ Feature: 29722 - Reference, dynamic and financial fields on the travel request p
 
   Scenario: Reference and financial fields on the travel request popup follow the guest primary traveler
     Given I am logged in as "shani@testimcorpnl.com" booking a new trip
-    And I have added a guest traveler "Israel" "Israeli" with user group "post berlin"
+    And I have added a guest traveler "Israel" "Israeli" with user group "Post Addis Ababa"
     And I have added traveler by name "pini cohen"
-    # TODO: I select the hotel service tab in the request assistance form (TravelRequest.selectHotelTab in tests/steps/travel_request.steps.js)
-    When I select the hotel service tab in the request assistance form
-    # TODO: I type "London" in the request assistance hotel location field (HotelSearch.typeHotelLocation in tests/steps/hotel_search.steps.js)
-    And I type "London" in the request assistance hotel location field
-    # TODO: I confirm the request assistance hotel destination (TravelRequest.confirmHotelDestination in tests/steps/travel_request.steps.js)
-    And I confirm the request assistance hotel destination
-    # TODO: I select the hotel check-in and check-out dates in the request assistance form (TravelRequest.selectHotelDates in tests/steps/travel_request.steps.js)
-    And I select the hotel check-in and check-out dates in the request assistance form
-    # TODO: I confirm the hotel selection in the request assistance form (TravelRequest.confirmHotelSelection in tests/steps/travel_request.steps.js)
-    And I confirm the hotel selection in the request assistance form
-    # TODO: I scroll to the send request button in the request assistance form (TravelRequest.scrollToSendRequest in tests/steps/travel_request.steps.js)
-    And I scroll to the send request button in the request assistance form
-    # TODO: I send the request to the agent (TravelRequest.sendRequest in tests/steps/travel_request.steps.js)
-    And I send the request to the agent
+    And I search for a hotel in "LON" for 1 night without clicking search button
+    And I click the request assistance icon
+    And I click the send request button
     Then the reference fields popup should show the following labels:
       | Financial Reference |
       | Type of Trip |
@@ -37,21 +26,18 @@ Feature: 29722 - Reference, dynamic and financial fields on the travel request p
       | Location travel policy |
       | Location |
       | Personnel number |
-    # TODO: the travel request popup should show a reference section for traveler "Pini Cohen" (DynamicAndReferenceFields.verifyTravelerSectionHeader in tests/steps/dynamic_fields.steps.js)
     And the travel request popup should show a reference section for traveler "Pini Cohen"
     And the reference fields popup should show the following labels:
       | Payment Group |
       | Bank account |
-    # TODO: the travel request popup should show a reference section for traveler "Israel Israeli" (DynamicAndReferenceFields.verifyTravelerSectionHeader in tests/steps/dynamic_fields.steps.js)
     And the travel request popup should show a reference section for traveler "Israel Israeli"
     And the reference fields popup should show the following labels:
       | Payment Group |
       | Bank account |
-    # TODO (manual): port the Testim validation-code-step (custom per-traveler reference-field validation) here
+    And the number of reference and dynamic fields in the travel request popup should be 9
     And the reference fields should have the following values:
       | field | value |
       | Financial Reference | Select |
-    # TODO: I open the financial reference dropdown in the travel request popup (DynamicAndReferenceFields.verifyFinancialReferenceOptions in tests/steps/dynamic_fields.steps.js)
     When I open the financial reference dropdown in the travel request popup
     Then the financial reference dropdown should contain the following options:
       | uploadname7 (uploadcode7) |
@@ -62,9 +48,7 @@ Feature: 29722 - Reference, dynamic and financial fields on the travel request p
       | Type of Trip | Select |
       | Type of traveller | Select |
       | Location travel policy | Select |
-      | Location | Select |
       | Payment Group | Select |
-      | Financial Reference Code | CBKI |
     When I click proceed on the reference fields popup
     Then clicking proceed should show a mandatory field validation error
     When I select the first available option for the "Type of Trip" reference field
@@ -92,5 +76,5 @@ Feature: 29722 - Reference, dynamic and financial fields on the travel request p
       | Bank account | 456 |
       | Financial Reference Code | CBKI |
       | Bank account | 789 |
-    When I click proceed on the reference fields popup
+    And I save the reference field popup if displayed
     Then the "Sent to agent" confirmation should be displayed

@@ -314,6 +314,62 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Verifies that a per-traveler reference section for the given traveler is shown in the
+   * travel-request (reference-fields) popup, by asserting the traveler's name is visible
+   * inside the traveller section. Used to confirm each added traveler gets their own
+   * reference section driven by the primary traveler's configuration.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} travelerName - Full traveler name as shown in the section header (e.g. "Pini Cohen")
+   * @returns {Promise<void>}
+   */
+  async verifyTravelerSectionHeader(page, travelerName) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyTravelerSectionHeader] "page" is required.');
+    if (!travelerName || typeof travelerName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyTravelerSectionHeader] "travelerName" must be a non-empty string, got: ${typeof travelerName}`
+      );
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const visible = await dynamicFieldsPage.isTravelerNameVisible(travelerName);
+
+    expect(
+      visible,
+      `[DynamicAndReferenceFields.verifyTravelerSectionHeader] Expected a reference section for traveler ` +
+      `"${travelerName}" in the travel-request popup, but the traveler name was not visible inside the ` +
+      `traveller section. The primary traveler's reference configuration may not have rendered this ` +
+      `traveler's section, or the name display form differs from what was entered.`
+    ).toBe(true);
+  },
+
+  /**
+   * Ensures the Financial Reference dropdown in the travel-request popup is rendered and ready.
+   *
+   * NOTE: this intentionally does NOT click the dropdown open. The immediately-following assertion
+   * step ("the financial reference dropdown should contain the following options") calls
+   * verifyFinancialReferenceOptions, which opens, reads, and Escape-closes the dropdown itself.
+   * Clicking the caret here would toggle the el-select closed and break that read.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async openFinancialReferenceDropdown(page) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.openFinancialReferenceDropdown] "page" is required.');
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    try {
+      await dynamicFieldsPage.waitForFinancialReferenceDropdown();
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.openFinancialReferenceDropdown] The Financial Reference dropdown was not ` +
+        `ready in the travel-request popup. Likely the reference-fields popup has not rendered the ` +
+        `financial-reference section yet. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Selects an option from a reference field dropdown WITHOUT clicking Proceed.
    * Use when filling multiple fields before proceeding (i.e. follow with
    * "I click proceed on the reference fields popup").
@@ -568,11 +624,10 @@ const DynamicAndReferenceFields = {
   async clickProceedAndVerifyMandatoryError(page) {
     if (!page) throw new Error('page is required');
 
-    const commonPage = getPageObject(page, CommonPage);
     const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
 
-    await commonPage.getProceedButton().waitFor({ state: 'visible', timeout: 10000 });
-    await commonPage.clickProceedButton();
+    // Submit via Proceed (cart flow) or Save (request-assistance Trip Reference Form) — whichever exists.
+    await dynamicFieldsPage.submitReferenceFieldsPopup();
 
     // Wait briefly for validation to trigger
     await page.waitForTimeout(1000);
@@ -590,9 +645,9 @@ const DynamicAndReferenceFields = {
   async proceedThroughReferenceFieldsPopup(page) {
     if (!page) throw new Error('page is required');
 
-    const commonPage = getPageObject(page, CommonPage);
-    await commonPage.getProceedButton().waitFor({ state: 'visible', timeout: 15000 });
-    await commonPage.clickProceedButton();
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    // Submit via Proceed (cart flow) or Save (request-assistance Trip Reference Form) — whichever exists.
+    await dynamicFieldsPage.submitReferenceFieldsPopup();
   },
 
   /**
