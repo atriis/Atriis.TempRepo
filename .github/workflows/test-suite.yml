@@ -178,7 +178,7 @@ jobs:
   test-booking:
     name: '[Booking] ${{ matrix.suite_name }}'
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: ${{ matrix.job_timeout_minutes || 90 }}
     strategy:
       fail-fast: false
       matrix:
@@ -220,9 +220,12 @@ jobs:
             suite_name: Flights UA NDC Booking
             test_path: tests/features/flights/flights_ua_ndc/flights_ua_ndc_booking/
           # Hotels - Booking
+          # Runs close to the shared 80/90 min limits (measured 76-81 min); given extra headroom to avoid mid-run kills.
           - suite_id: hotels-booking
             suite_name: Hotels Booking
             test_path: tests/features/hotels/hotels_booking/
+            job_timeout_minutes: 110
+            step_timeout_minutes: 100
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
@@ -253,7 +256,7 @@ jobs:
           env-file-content: ${{ secrets.ENV }}
 
       - name: Run ${{ matrix.suite_name }} Tests
-        timeout-minutes: 80
+        timeout-minutes: ${{ matrix.step_timeout_minutes || 80 }}
         run: npx cucumber-js ${{ matrix.test_path }} --parallel 2 --retry 2
         env:
           CI: "true"
@@ -535,6 +538,71 @@ jobs:
           echo "|-------------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Non-Booking Suites | \`${{ needs.test-non-booking.result }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Booking Suites | \`${{ needs.test-booking.result }}\` |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Reconcile Expected Suites
+        if: always()
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+
+            // Must match the suite_id values in the test-non-booking and test-booking matrices above.
+            const expectedSuites = [
+              'flights-amadeus-non-booking','flights-general-non-booking','flights-galileo-non-booking','flights-sabre-non-booking',
+              'flights-ypsilon-non-booking','flights-travelfusion-non-booking',
+              'flights-aa-ndc-non-booking','flights-afkl-ndc-non-booking','flights-ba-ndc-non-booking',
+              'flights-ib-ndc-non-booking','flights-lh-ndc-non-booking','flights-ua-ndc-non-booking',
+              'hotels-non-booking','cars-booking','cars-daily','rails-daily',
+              'shell-conversation','shell-fop-issues','shell-frequent-programs','shell-joy-search-defaults',
+              'shell-manual-quote','shell-ui-issues','shell-user-profile',
+              'flights-amadeus-booking','flights-general-booking','flights-galileo-booking','flights-sabre-booking',
+              'flights-ypsilon-booking','flights-travelfusion-booking',
+              'flights-afkl-ndc-booking','flights-ba-ndc-booking','flights-ib-ndc-booking',
+              'flights-lh-ndc-booking','flights-ua-ndc-booking','hotels-booking'
+            ];
+
+            const missing = [];
+            for (const suiteId of expectedSuites) {
+              const reportPath = path.join('all-results', suiteId + '-report', 'cucumber-report.json');
+              let reason = null;
+              if (!fs.existsSync(reportPath)) {
+                reason = 'no report artifact found';
+              } else {
+                const raw = fs.readFileSync(reportPath, 'utf8');
+                if (raw.trim().length === 0) {
+                  reason = 'empty report file (job likely hit its step timeout mid-run)';
+                } else {
+                  try {
+                    const data = JSON.parse(raw);
+                    const features = Array.isArray(data) ? data : [data];
+                    const scenarioCount = features.reduce((sum, f) => sum + (f.elements || []).filter(e => e.type === 'scenario').length, 0);
+                    if (scenarioCount === 0) reason = 'report contains no scenarios';
+                  } catch (e) {
+                    reason = 'invalid JSON (' + e.message + ')';
+                  }
+                }
+              }
+              if (reason) missing.push({ suiteId, reason });
+            }
+
+            const lines = ['', '###  Suite Reconciliation', ''];
+            if (missing.length === 0) {
+              lines.push(' All ' + expectedSuites.length + ' expected suites produced results.');
+            } else {
+              lines.push(' ' + missing.length + ' of ' + expectedSuites.length + ' expected suites produced NO results  the scenario totals above are UNDERCOUNTED:');
+              lines.push('');
+              lines.push('| Suite | Reason |');
+              lines.push('|-------|--------|');
+              for (const m of missing) lines.push('| ' + m.suiteId + ' | ' + m.reason + ' |');
+            }
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+
+            if (missing.length > 0) {
+              console.log('::error::' + missing.length + ' suite(s) produced no results: ' + missing.map(m => m.suiteId).join(', '));
+              process.exit(1);
+            }
+          "
 
       - name: Parse JUnit Results into Summary
         if: always()
