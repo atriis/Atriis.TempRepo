@@ -7,11 +7,12 @@
  */
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
-const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const { selectDatesByNthAvailable, clickNextVisibleMonth } = require("@utils/calendar.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { SearchPage } = require("@pages/SearchPage");
 const FlightSearchPage = require("@pages/FlightSearchPage");
 const { TravelRequestPage } = require("@pages/TravelRequestPage");
+const DynamicAndReferenceFieldsPage = require("@pages/DynamicAndReferenceFieldsPage");
 const { CommonPage } = require("@pages/CommonPage");
 const { normalizeText } = require("@utils/text");
 const logger = require("@utils/logger").child("TravelRequest");
@@ -492,6 +493,276 @@ const TravelRequest = {
     if (!page) throw new Error('[TravelRequest.clickSendRequest] "page" is required.');
     const travelRequestPage = getPageObject(page, TravelRequestPage);
     await travelRequestPage.clickSendRequestButton();
+  },
+
+  // ===== Hotel request item =====
+
+  /**
+   * Verifies the request-assistance hotel destination CONTAINS the expected substring (the field is
+   * pre-populated from the hotel search, e.g. "London, United Kingdom ..." contains "London").
+   * Polls because the parallel hotel value settles reactively after the form renders.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expectedSubstring - Text the hotel destination must contain (e.g. "London")
+   */
+  async verifyRequestAssistanceHotelDestination(page, expectedSubstring) {
+    if (!page) throw new Error('[TravelRequest.verifyRequestAssistanceHotelDestination] "page" is required.');
+    if (!expectedSubstring || typeof expectedSubstring !== 'string') {
+      throw new Error(
+        `[TravelRequest.verifyRequestAssistanceHotelDestination] "expectedSubstring" must be a non-empty string, got: ${typeof expectedSubstring}`
+      );
+    }
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    const normalizedExpected = normalizeText(expectedSubstring).toLowerCase();
+    await expect
+      .poll(async () => normalizeText(await travelRequestPage.getRequestFieldValue('hotelDestination')).toLowerCase(), {
+        timeout: 30000,
+        message: `[TravelRequest.verifyRequestAssistanceHotelDestination] Expected the request-assistance hotel destination to contain "${expectedSubstring}".`,
+      })
+      .toContain(normalizedExpected);
+  },
+
+  /**
+   * Adds a comment to the request-assistance hotel item.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} comment
+   */
+  async addHotelRequestComment(page, comment) {
+    if (!page) throw new Error('[TravelRequest.addHotelRequestComment] "page" is required.');
+    if (!comment || typeof comment !== 'string') {
+      throw new Error(`[TravelRequest.addHotelRequestComment] "comment" must be a non-empty string, got: ${typeof comment}`);
+    }
+    logger.debug('Adding hotel request-assistance comment', { comment });
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    try {
+      await travelRequestPage.fillItemComment('hotel', comment);
+    } catch (err) {
+      throw new Error(
+        `[TravelRequest.addHotelRequestComment] Could not add the comment "${comment}" to the hotel request item. ` +
+        `The hotel item's comment textarea may not have rendered. Original: ${err.message}`
+      );
+    }
+  },
+
+  // ===== Car request item (combined) =====
+
+  /**
+   * Adds a car item to the request assistance and fills it end to end: pick-up location (autocomplete),
+   * pick-up and drop-off dates (next month), and the item comment. Pick-up/drop-off times are left at
+   * the form's valid defaults (10:00) and are not asserted downstream; the location and comment carry
+   * the meaningful test data.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {Object} request
+   * @param {string} request.location - Pick-up location query, e.g. "madrid"
+   * @param {string} request.comment - Comment for the car item, e.g. "carrr 3"
+   */
+  async addCarToRequestAssistance(page, request) {
+    if (!page) throw new Error('[TravelRequest.addCarToRequestAssistance] "page" is required.');
+    if (!request || typeof request !== 'object') {
+      throw new Error(`[TravelRequest.addCarToRequestAssistance] "request" must be an object, got: ${typeof request}`);
+    }
+    const { location, comment } = request;
+    if (!location || typeof location !== 'string') {
+      throw new Error(`[TravelRequest.addCarToRequestAssistance] "location" must be a non-empty string, got: ${typeof location}`);
+    }
+    if (!comment || typeof comment !== 'string') {
+      throw new Error(`[TravelRequest.addCarToRequestAssistance] "comment" must be a non-empty string, got: ${typeof comment}`);
+    }
+    logger.debug('Adding car to request assistance', { location, comment });
+
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    const searchPage = getPageObject(page, SearchPage);
+    try {
+      await travelRequestPage.clickAddServiceButton('Car');
+      await travelRequestPage.waitForProductSearchInputs('car');
+
+      // Pick-up location via autocomplete (shared app-autocomplete-popper).
+      await travelRequestPage.fillCarPickUpLocation(location);
+
+      // Pick-up date — next month, first available day. Times stay at the form default (10:00).
+      await travelRequestPage.openCarPickUpDatePicker();
+      await clickNextVisibleMonth(page);
+      await selectDatesByNthAvailable(page, { startIndex: 0 });
+      await searchPage.waitForDatePickerToClose();
+
+      // Drop-off date — next month, a few days after pick-up so it is valid.
+      await travelRequestPage.openCarDropOffDatePicker();
+      await clickNextVisibleMonth(page);
+      await selectDatesByNthAvailable(page, { startIndex: 3 });
+      await searchPage.waitForDatePickerToClose();
+
+      // Comment.
+      await travelRequestPage.fillItemComment('car', comment);
+    } catch (err) {
+      throw new Error(
+        `[TravelRequest.addCarToRequestAssistance] Could not add the car request item for pick-up "${location}" with ` +
+        `comment "${comment}". A form field (location autocomplete, pick-up/drop-off date or time, or the comment) may ` +
+        `not have been available. Original: ${err.message}`
+      );
+    }
+    return { added: true, location, comment };
+  },
+
+  // ===== Rail request item (combined) =====
+
+  /**
+   * Adds an EU rail journey to the request assistance and fills it end to end: origin and destination
+   * stations (autocomplete), departure and return dates (next month), and the item comment. Dates are
+   * not asserted downstream; the origin/destination and comment carry the meaningful test data.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {Object} request
+   * @param {string} request.origin - Origin station query, e.g. "bruss"
+   * @param {string} request.destination - Destination station query, e.g. "paris"
+   * @param {string} request.comment - Comment for the rail item, e.g. "railll4"
+   */
+  async addRailToRequestAssistance(page, request) {
+    if (!page) throw new Error('[TravelRequest.addRailToRequestAssistance] "page" is required.');
+    if (!request || typeof request !== 'object') {
+      throw new Error(`[TravelRequest.addRailToRequestAssistance] "request" must be an object, got: ${typeof request}`);
+    }
+    const { origin, destination, comment } = request;
+    [['origin', origin], ['destination', destination], ['comment', comment]].forEach(([name, val]) => {
+      if (!val || typeof val !== 'string') {
+        throw new Error(`[TravelRequest.addRailToRequestAssistance] "${name}" must be a non-empty string, got: ${typeof val}`);
+      }
+    });
+    logger.debug('Adding rail journey to request assistance', { origin, destination, comment });
+
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    const searchPage = getPageObject(page, SearchPage);
+    try {
+      await travelRequestPage.clickAddServiceButton('Rail');
+      await travelRequestPage.waitForProductSearchInputs('rail');
+
+      // Origin + destination stations via the rail autocomplete (boxed-autocomplete-popper).
+      await travelRequestPage.fillRailOrigin(origin);
+      await travelRequestPage.fillRailDestination(destination);
+
+      // Departure date — next month, first available day.
+      await travelRequestPage.openRailDepartureDatePicker();
+      await clickNextVisibleMonth(page);
+      await selectDatesByNthAvailable(page, { startIndex: 0 });
+      await searchPage.waitForDatePickerToClose();
+
+      // Return date — next month, a few days after departure.
+      await travelRequestPage.openRailReturnDatePicker();
+      await clickNextVisibleMonth(page);
+      await selectDatesByNthAvailable(page, { startIndex: 3 });
+      await searchPage.waitForDatePickerToClose();
+
+      // Comment.
+      await travelRequestPage.fillItemComment('rail', comment);
+    } catch (err) {
+      throw new Error(
+        `[TravelRequest.addRailToRequestAssistance] Could not add the rail request item from "${origin}" to ` +
+        `"${destination}" with comment "${comment}". A station autocomplete, the departure/return date, or the ` +
+        `comment may not have been available. Original: ${err.message}`
+      );
+    }
+    return { added: true, origin, destination, comment };
+  },
+
+  // ===== Review popup verifications =====
+
+  /**
+   * Verifies a reference/dynamic field label is shown in the travel-request review popup.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} label - Field label text (e.g. "Payment Group")
+   */
+  async verifyReviewFieldLabel(page, label) {
+    if (!page) throw new Error('[TravelRequest.verifyReviewFieldLabel] "page" is required.');
+    if (!label || typeof label !== 'string') {
+      throw new Error(`[TravelRequest.verifyReviewFieldLabel] "label" must be a non-empty string, got: ${typeof label}`);
+    }
+    const refPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const visible = await refPage.isFieldLabelVisible(label, { timeout: 30000 });
+    expect(
+      visible,
+      `[TravelRequest.verifyReviewFieldLabel] Expected the travel-request review popup to display the field label "${label}".`
+    ).toBe(true);
+  },
+
+  /**
+   * Verifies the traveler name is shown in the travel-request review popup.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} name - Traveler full name (e.g. "Ofira Refer")
+   */
+  async verifyReviewTravelerName(page, name) {
+    if (!page) throw new Error('[TravelRequest.verifyReviewTravelerName] "page" is required.');
+    if (!name || typeof name !== 'string') {
+      throw new Error(`[TravelRequest.verifyReviewTravelerName] "name" must be a non-empty string, got: ${typeof name}`);
+    }
+    const refPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const visible = await refPage.isTravelerNameVisible(name, { timeout: 30000 });
+    expect(
+      visible,
+      `[TravelRequest.verifyReviewTravelerName] Expected the travel-request review popup to display the traveler name "${name}".`
+    ).toBe(true);
+  },
+
+  /**
+   * Verifies the Financial Reference field is NOT displayed in the travel-request popup — expected
+   * for a user not assigned to the financial-reference group.
+   * @param {import('@playwright/test').Page} page
+   */
+  async verifyFinancialReferenceNotDisplayed(page) {
+    if (!page) throw new Error('[TravelRequest.verifyFinancialReferenceNotDisplayed] "page" is required.');
+    const refPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const present = await refPage.isFinancialReferenceSectionPresent();
+    expect(
+      present,
+      `[TravelRequest.verifyFinancialReferenceNotDisplayed] Expected the Financial Reference field to be ABSENT from ` +
+      `the travel-request popup (the user is not assigned to the financial-reference group), but it was present.`
+    ).toBe(false);
+  },
+
+  /**
+   * Verifies the number of reference/dynamic fields shown in the travel-request review popup.
+   * @param {import('@playwright/test').Page} page
+   * @param {number} expectedCount - Expected number of reference/dynamic fields (e.g. 6)
+   */
+  async verifyReviewFieldCount(page, expectedCount) {
+    if (!page) throw new Error('[TravelRequest.verifyReviewFieldCount] "page" is required.');
+    if (!Number.isInteger(expectedCount) || expectedCount < 0) {
+      throw new Error(`[TravelRequest.verifyReviewFieldCount] "expectedCount" must be a non-negative integer, got: ${expectedCount}`);
+    }
+    const refPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const actual = await refPage.getReferenceFieldCount();
+    expect(
+      actual,
+      `[TravelRequest.verifyReviewFieldCount] Expected the travel-request popup to show ${expectedCount} reference/dynamic fields, but found ${actual}.`
+    ).toBe(expectedCount);
+  },
+
+  // ===== Trip requested-item comment =====
+
+  /**
+   * Verifies a requested item's comment is displayed in the trip Requests tab. Comments are unique
+   * per product in this flow, so matching by comment text reliably targets the right item.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} product - Product noun for the error message (e.g. "hotel", "car", "rail")
+   * @param {string} expectedComment - The comment text expected on the requested item
+   */
+  async verifyRequestedItemComment(page, product, expectedComment) {
+    if (!page) throw new Error('[TravelRequest.verifyRequestedItemComment] "page" is required.');
+    if (!expectedComment || typeof expectedComment !== 'string') {
+      throw new Error(`[TravelRequest.verifyRequestedItemComment] "expectedComment" must be a non-empty string, got: ${typeof expectedComment}`);
+    }
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    try {
+      const commentLocator = travelRequestPage.getRequestedItemComment(expectedComment).first();
+      await expect(
+        commentLocator,
+        `[TravelRequest.verifyRequestedItemComment] Expected the requested ${product} item to show the comment "${expectedComment}" in the trip.`
+      ).toBeVisible({ timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[TravelRequest.verifyRequestedItemComment] Could not confirm the requested ${product} item comment "${expectedComment}" in the trip. ` +
+        `The Requests tab may not have loaded, or the comment was not saved on the requested item. Original: ${err.message}`
+      );
+    }
   },
 
 };

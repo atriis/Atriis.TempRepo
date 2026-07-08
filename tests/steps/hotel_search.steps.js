@@ -54,6 +54,13 @@ When("I wait for hotel results to load", async function () {
   await HotelSearch.waitForHotelResults(this.page);
 });
 
+// Fills the hotel search form but does NOT click Search — the parameters are carried into a
+// following flow (e.g. request assistance, which pre-populates its hotel item from the search).
+When("I search for a hotel in {string} for {int} night(s) without clicking search button", async function (location, nights) {
+  logger.info("Filling hotel search without clicking search", { location, nights });
+  this.hotelSearch = await HotelSearch.fillHotelSearchWithoutSearching(this.page, { where: location, nights });
+});
+
 // ========================================
 // THEN STEPS - HOTEL SEARCH
 // ========================================

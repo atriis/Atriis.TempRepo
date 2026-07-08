@@ -47,6 +47,46 @@ const SELECTORS = {
   HOTEL_DESTINATION_INPUT: ".request-assistance-main .hotel-search-inputs .hotel-autocomplete-wrapper input",
   HOTEL_CHECK_IN_INPUT: ".request-assistance-main .hotel-search-inputs [placeholder='Check in']",
   HOTEL_CHECK_OUT_INPUT: ".request-assistance-main .hotel-search-inputs [placeholder='Check out']",
+
+  // ===== Per-item comment textarea (request-assistance.vue L69-75) =====
+  // Each request-assistance item (.search-inputs-container) renders its own always-visible
+  // el-input.product-textarea. Scoped per product via the item's *-search-inputs child class.
+  ITEM_COMMENT_TEXTAREA: ".product-textarea textarea",
+
+  // ===== Car request item (car-search-inputs.vue) =====
+  // uniqueClass="pick-up" is applied to the autocomplete input; placeholders come from i18n
+  // car.pickUpDate/dropOffDate and are stable across releases.
+  CAR_PICKUP_LOCATION_INPUT: ".car-search-inputs .pick-up input",
+  CAR_PICKUP_DATE_INPUT: ".car-search-inputs [placeholder='Pick-up Date']",
+  CAR_DROPOFF_DATE_INPUT: ".car-search-inputs [placeholder='Drop-off Date']",
+  // Pick-up/drop-off times are left at the form's valid defaults (10:00), so no time-input
+  // selectors are needed here.
+
+  // ===== Rail request item (eu-rail-search-inputs.vue — its own root class is eu-rail-search-inputs) =====
+  RAIL_ORIGIN_INPUT: ".eu-rail-search-inputs [placeholder='From... Station or Location']",
+  RAIL_DESTINATION_INPUT: ".eu-rail-search-inputs [placeholder='To... Station or Location']",
+  RAIL_DEPARTURE_DATE_INPUT: ".eu-rail-search-inputs [placeholder='Departure']",
+  RAIL_RETURN_DATE_INPUT: ".eu-rail-search-inputs [placeholder='Return']",
+
+  // ===== Autocomplete suggestion poppers (app-autocomplete.vue) =====
+  // Car uses the shared app-autocomplete-popper; rail adds boxed-autocomplete-popper. Each
+  // suggestion row renders as .autocomplete-result. Only one popper is open at a time here.
+  AUTOCOMPLETE_POPPER: ".app-autocomplete-popper",
+  RAIL_AUTOCOMPLETE_POPPER: ".boxed-autocomplete-popper",
+  AUTOCOMPLETE_RESULT_ITEM: ".autocomplete-result",
+
+  // ===== Requested-item comment on the trip Requests tab (general-product-card.vue L138-143) =====
+  // The traveller comment renders in .traveler-comment p (its text is the entered comment, or a
+  // "No special request" fallback when empty). Comments in this scenario are unique per product.
+  REQUESTED_ITEM_COMMENT: ".traveler-comment p",
+};
+
+// Maps a request-assistance product noun to the stable root class of its search-inputs child, so
+// the per-item comment textarea can be scoped to the correct item.
+const PRODUCT_SEARCH_INPUTS_CLASS = {
+  hotel: "hotel-search-inputs",
+  car: "car-search-inputs",
+  rail: "eu-rail-search-inputs",
 };
 
 // Maps a request-assistance field key to its selector. One entry per readable field so the getters
@@ -74,10 +114,7 @@ class TravelRequestPage {
    * This renders the flight-search-inputs form.
    */
   async clickFlightButton() {
-    await this.page
-      .locator(SELECTORS.FLIGHT_SERVICE_BUTTON)
-      .filter({ hasText: 'Flight' })
-      .click();
+    await this.clickAddServiceButton('Flight');
   }
 
   /**
@@ -281,6 +318,175 @@ class TravelRequestPage {
     const field = this.getRequestFieldLocator(fieldKey);
     await field.scrollIntoViewIfNeeded().catch(() => {});
     return (await field.inputValue().catch(() => "")).trim();
+  }
+
+  // ===== "Add more services" =====
+
+  /**
+   * Clicks an "Add more services" product button (e.g. "Car", "Rail") to append that product's
+   * request-assistance item. Same .product-btn control the Flight button uses.
+   * @param {string} label - Product label the button must contain (e.g. "Car", "Rail")
+   */
+  async clickAddServiceButton(label) {
+    if (!label || typeof label !== "string") {
+      throw new Error(`label must be a non-empty string, got: ${typeof label}`);
+    }
+    await this.page
+      .locator(SELECTORS.FLIGHT_SERVICE_BUTTON)
+      .filter({ hasText: label })
+      .first()
+      .click({ timeout: 15000 });
+  }
+
+  /**
+   * Waits for a product's search-inputs form to be visible after adding the item.
+   * @param {"hotel"|"car"|"rail"} product
+   */
+  async waitForProductSearchInputs(product) {
+    const cssClass = PRODUCT_SEARCH_INPUTS_CLASS[product];
+    if (!cssClass) {
+      throw new Error(`Unknown product "${product}". Known: ${Object.keys(PRODUCT_SEARCH_INPUTS_CLASS).join(", ")}.`);
+    }
+    await this.page.locator(`.${cssClass}`).first().waitFor({ state: "visible", timeout: 15000 });
+  }
+
+  // ===== Per-item comment =====
+
+  /**
+   * Gets the comment textarea for a given request-assistance item, scoped to that product's
+   * search-inputs container so hotel/car/rail comments never cross-target.
+   * @param {"hotel"|"car"|"rail"} product
+   * @returns {import('@playwright/test').Locator}
+   */
+  getItemCommentTextarea(product) {
+    const cssClass = PRODUCT_SEARCH_INPUTS_CLASS[product];
+    if (!cssClass) {
+      throw new Error(`Unknown product "${product}". Known: ${Object.keys(PRODUCT_SEARCH_INPUTS_CLASS).join(", ")}.`);
+    }
+    return this.page
+      .locator(`.search-inputs-container:has(.${cssClass})`)
+      .locator(SELECTORS.ITEM_COMMENT_TEXTAREA)
+      .first();
+  }
+
+  /**
+   * Fills the comment textarea of a request-assistance item.
+   * @param {"hotel"|"car"|"rail"} product
+   * @param {string} comment
+   */
+  async fillItemComment(product, comment) {
+    const box = this.getItemCommentTextarea(product);
+    await box.scrollIntoViewIfNeeded().catch(() => {});
+    await box.waitFor({ state: "visible", timeout: 10000 });
+    await box.fill(comment);
+  }
+
+  // ===== Autocomplete (internal building block) =====
+
+  /**
+   * Fills an autocomplete input and selects its first suggestion, then waits for the suggestion
+   * popper to close. Scopes to the VISIBLE popper so a hidden, stale popper left by a previous
+   * field (e.g. rail origin's popper while filling the destination) is never matched.
+   * @param {string} inputSelector - CSS for the autocomplete input
+   * @param {string} value - Text to type
+   * @param {string} popperSelector - CSS for the suggestion popper (e.g. AUTOCOMPLETE_POPPER)
+   */
+  async fillAutocompleteAndSelectFirst(inputSelector, value, popperSelector) {
+    const input = this.page.locator(inputSelector).first();
+    await input.waitFor({ state: "visible", timeout: 15000 });
+    await input.click();
+    await input.fill(value);
+
+    const visiblePopper = `${popperSelector}:visible`;
+    const firstResult = this.page.locator(`${visiblePopper} ${SELECTORS.AUTOCOMPLETE_RESULT_ITEM}`).first();
+    await firstResult.waitFor({ state: "visible", timeout: 15000 });
+    await firstResult.click();
+    // Wait for the popper to close (selection committed) before the next field is touched, rather
+    // than a fixed sleep.
+    await this.page.locator(visiblePopper).first().waitFor({ state: "hidden", timeout: 10000 }).catch(() => {});
+  }
+
+  // ===== Car location + date pickers =====
+
+  /** Fills the car pick-up location autocomplete and selects the first suggestion. */
+  async fillCarPickUpLocation(value) {
+    await this.fillAutocompleteAndSelectFirst(
+      SELECTORS.CAR_PICKUP_LOCATION_INPUT,
+      value,
+      SELECTORS.AUTOCOMPLETE_POPPER
+    );
+  }
+
+  /** Opens the car pick-up date picker. */
+  async openCarPickUpDatePicker() {
+    await this._openDatePicker(SELECTORS.CAR_PICKUP_DATE_INPUT);
+  }
+
+  /** Opens the car drop-off date picker. */
+  async openCarDropOffDatePicker() {
+    await this._openDatePicker(SELECTORS.CAR_DROPOFF_DATE_INPUT);
+  }
+
+  // ===== Rail stations + date pickers =====
+
+  /** Fills the rail origin-station autocomplete and selects the first suggestion. */
+  async fillRailOrigin(value) {
+    await this.fillAutocompleteAndSelectFirst(
+      SELECTORS.RAIL_ORIGIN_INPUT,
+      value,
+      SELECTORS.RAIL_AUTOCOMPLETE_POPPER
+    );
+  }
+
+  /** Fills the rail destination-station autocomplete and selects the first suggestion. */
+  async fillRailDestination(value) {
+    await this.fillAutocompleteAndSelectFirst(
+      SELECTORS.RAIL_DESTINATION_INPUT,
+      value,
+      SELECTORS.RAIL_AUTOCOMPLETE_POPPER
+    );
+  }
+
+  /** Opens the rail departure date picker. */
+  async openRailDepartureDatePicker() {
+    await this._openDatePicker(SELECTORS.RAIL_DEPARTURE_DATE_INPUT);
+  }
+
+  /** Opens the rail return date picker. */
+  async openRailReturnDatePicker() {
+    await this._openDatePicker(SELECTORS.RAIL_RETURN_DATE_INPUT);
+  }
+
+  /**
+   * Opens a date picker by clicking its input and waiting for the visible panel. Internal helper:
+   * a hidden, stale range-picker from the earlier hotel search can linger in the DOM, so it scopes
+   * to `.el-picker-panel:visible` rather than an unscoped first-match.
+   * @param {string} inputSelector
+   */
+  async _openDatePicker(inputSelector) {
+    const field = this.page.locator(inputSelector).first();
+    await field.scrollIntoViewIfNeeded().catch(() => {});
+    await field.waitFor({ state: "visible", timeout: 10000 });
+    await field.click();
+    await this.page.locator(".el-picker-panel:visible").first().waitFor({ state: "visible", timeout: 10000 });
+    // Brief settle for Popper.js to finish repositioning the floating panel before day cells are
+    // clicked (mirrors SearchPage.clickDepartureDateField).
+    await this.page.waitForTimeout(400);
+  }
+
+  // ===== Requested-item comment (trip Requests tab) =====
+
+  /**
+   * Gets the requested-item comment paragraph filtered by its text. Comments are unique per product
+   * in this flow, so matching by text reliably targets the right item's comment.
+   * @param {string} text - The exact comment text to match
+   * @returns {import('@playwright/test').Locator}
+   */
+  getRequestedItemComment(text) {
+    if (!text || typeof text !== "string") {
+      throw new Error(`text must be a non-empty string, got: ${typeof text}`);
+    }
+    return this.page.locator(SELECTORS.REQUESTED_ITEM_COMMENT).filter({ hasText: text });
   }
 }
 

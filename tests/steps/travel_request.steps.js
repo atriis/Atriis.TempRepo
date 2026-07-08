@@ -141,6 +141,66 @@ When("I click the send request button", async function () {
   await TravelRequest.clickSendRequest(this.page);
 });
 
+// ===== Request-assistance hotel/car/rail items + comments =====
+
+Then("the request assistance hotel destination should contain {string}", async function (expected) {
+  logger.info("Verifying request-assistance hotel destination contains text", { expected });
+  await TravelRequest.verifyRequestAssistanceHotelDestination(this.page, expected);
+});
+
+When("I add the comment {string} to the request assistance hotel item", async function (comment) {
+  logger.info("Adding comment to request-assistance hotel item", { comment });
+  await TravelRequest.addHotelRequestComment(this.page, comment);
+});
+
+When("I add a car to the request assistance picking up in {string} with comment {string}", async function (location, comment) {
+  logger.info("Adding car to request assistance", { location, comment });
+  await TravelRequest.addCarToRequestAssistance(this.page, { location, comment });
+});
+
+When(
+  "I add a rail journey to the request assistance from {string} to {string} with comment {string}",
+  async function (origin, destination, comment) {
+    logger.info("Adding rail journey to request assistance", { origin, destination, comment });
+    await TravelRequest.addRailToRequestAssistance(this.page, { origin, destination, comment });
+  }
+);
+
+// ===== Review popup =====
+
+Then("the travel request review should display the field label {string}", async function (label) {
+  logger.info("Verifying travel request review field label", { label });
+  await TravelRequest.verifyReviewFieldLabel(this.page, label);
+});
+
+Then("the travel request review should display the traveler name {string}", async function (name) {
+  logger.info("Verifying travel request review traveler name", { name });
+  await TravelRequest.verifyReviewTravelerName(this.page, name);
+});
+
+Then("the financial reference field should not be displayed in the travel request popup", async function () {
+  logger.info("Verifying financial reference field is not displayed in the travel request popup");
+  await TravelRequest.verifyFinancialReferenceNotDisplayed(this.page);
+});
+
+Then("the number of reference and dynamic fields in the travel request popup should be {int}", async function (count) {
+  logger.info("Verifying number of reference and dynamic fields in the travel request popup", { count });
+  await TravelRequest.verifyReviewFieldCount(this.page, count);
+});
+
+// ===== Trip requested items =====
+
+Then("the requested {word} item should be displayed in the trip", async function (product) {
+  logger.info("Verifying requested item is displayed in the trip", { product });
+  const titleMap = { hotel: "Hotel", car: "Car", rail: "Rail" };
+  await TravelRequest.verifyRequestedItemTitleContains(this.page, titleMap[product] || product);
+});
+
+Then("the requested {word} item comment should be {string}", async function (product, comment) {
+  logger.info("Verifying requested item comment in the trip", { product, comment });
+  await TravelRequest.verifyRequestedItemComment(this.page, product, comment);
+});
+
 /**
  * Returns the dates captured by "I extract departure and return dates", failing with a clear
  * message if that step did not run first (the date verifies depend on the shared World state).

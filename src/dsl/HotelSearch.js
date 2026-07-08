@@ -222,7 +222,28 @@ const HotelSearch = {
    * @returns {Promise<{where: string, nights: number}>}
    */
   async initiateHotelSearch(page, whereInput, options = {}) {
-    if (!page) throw new Error('page is required');
+    // Same form-fill as fillHotelSearchWithoutSearching, then click Search (but don't wait for the
+    // results URL — a post-search popup may need handling first). Delegating keeps the two in sync.
+    const result = await this.fillHotelSearchWithoutSearching(page, whereInput, options);
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.waitAndClickSearchButton();
+    return result;
+  },
+
+  /**
+   * Fills the hotel search form (destination + check-in/check-out dates) but does NOT click the
+   * Search button. Use when the search parameters must be carried into another flow — e.g. opening
+   * the request-assistance form, which pre-populates its hotel item from the unsubmitted search.
+   * Contrast with `initiateHotelSearch`, which clicks Search (without waiting for results).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string|object} whereInput - Destination or { where, nights }
+   * @param {object} [options]
+   * @param {number} [options.nights] - Number of nights
+   * @returns {Promise<{where: string, nights: number, checkInDate: string, checkOutDate: string}>}
+   */
+  async fillHotelSearchWithoutSearching(page, whereInput, options = {}) {
+    if (!page) throw new Error('[HotelSearch.fillHotelSearchWithoutSearching] "page" is required.');
 
     let where, nights;
     if (typeof whereInput === 'object' && whereInput !== null && (whereInput.where || whereInput.destination)) {
@@ -232,21 +253,28 @@ const HotelSearch = {
       where = resolveLocation(whereInput, ['where', 'destination'], hotelLocations);
       nights = options.nights || SEARCH_DEFAULTS.HOTEL.NIGHTS;
     }
+    if (nights < 1) throw new Error(`[HotelSearch.fillHotelSearchWithoutSearching] "nights" must be >= 1, got: ${nights}`);
 
     const hotelSearchPage = getPageObject(page, HotelSearchPage);
     const searchPage = getPageObject(page, SearchPage);
 
-    await hotelSearchPage.clickHotelTab();
-    await hotelSearchPage.waitForBookAndStayAtYourHotelText();
-    await hotelSearchPage.typeHotelDestination(where);
-    await hotelSearchPage.clickCheckInField();
-    await searchPage.clickCalendarNextArrow();
-    await selectDatesByNthAvailable(page, { startIndex: 0, endIndex: nights });
-    const checkInDate = await hotelSearchPage.getCheckInDateValue();
-    const checkOutDate = await hotelSearchPage.getCheckOutDateValue();
-    await searchPage.waitAndClickSearchButton();
-
-    return { where, nights, checkInDate, checkOutDate };
+    try {
+      await hotelSearchPage.clickHotelTab();
+      await hotelSearchPage.waitForBookAndStayAtYourHotelText();
+      await hotelSearchPage.typeHotelDestination(where);
+      await hotelSearchPage.clickCheckInField();
+      await searchPage.clickCalendarNextArrow();
+      await selectDatesByNthAvailable(page, { startIndex: 0, endIndex: nights });
+      const checkInDate = await hotelSearchPage.getCheckInDateValue();
+      const checkOutDate = await hotelSearchPage.getCheckOutDateValue();
+      // Intentionally NO search click — the caller carries these params into the next flow.
+      return { where, nights, checkInDate, checkOutDate };
+    } catch (err) {
+      throw new Error(
+        `[HotelSearch.fillHotelSearchWithoutSearching] Could not fill the hotel search for "${where}" (${nights} night(s)) ` +
+        `without searching. The hotel tab, destination autocomplete, or calendar may not have been ready. Original: ${err.message}`
+      );
+    }
   },
 
   /**

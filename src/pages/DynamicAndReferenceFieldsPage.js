@@ -23,6 +23,8 @@ const SELECTORS = {
   // Financial Reference section title in the reference-fields modal (trip-app.vue → .financial-section
   // collapse header). Renders $t('cart.financialReferenceModal.modalTitle') === "Financial Reference".
   FINANCIAL_REFERENCE_MODAL_TITLE: '.financial-section .el-collapse-item__header .has-text-weight-semibold',
+  // Open reference-fields dialog (trip-app.vue el-dialog) used to scope field counts.
+  REFERENCE_DIALOG: '.el-dialog:visible',
 };
 
 class DynamicAndReferenceFieldsPage {
@@ -427,6 +429,72 @@ class DynamicAndReferenceFieldsPage {
         `"Proceed" button (role=button name="Proceed" exact) within ${timeout}ms — likely an unrelated validation ` +
         `error in the Financial Reference modal blocked submission, or the modal already closed. Original: ${err.message}`
       );
+    }
+  }
+
+  /**
+   * Waits for the reference-fields dialog to render at least one field, then counts the
+   * reference/dynamic field containers inside it. Used to assert the exact number of
+   * reference + dynamic fields shown on the travel-request popup.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=20000]
+   * @returns {Promise<number>} Number of reference/dynamic field containers in the open dialog
+   */
+  async getReferenceFieldCount({ timeout = 20000 } = {}) {
+    const dialog = this.page.locator(SELECTORS.REFERENCE_DIALOG).first();
+    try {
+      await dialog.waitFor({ state: 'visible', timeout });
+      // Count field labels rather than field containers: each reference/dynamic field renders one
+      // `label.label`, whereas the container wrapper class varies by field type (dropdown, textbox,
+      // checkbox, autocomplete, textarea, basic, ...), so a fixed container list under-counts.
+      await dialog.locator(SELECTORS.FIELD_LABEL).first().waitFor({ state: 'visible', timeout });
+      return await dialog.locator(SELECTORS.FIELD_LABEL).count();
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.getReferenceFieldCount] Could not read the reference/dynamic field ` +
+        `labels (selector: ${SELECTORS.FIELD_LABEL}) inside the open reference dialog ` +
+        `(${SELECTORS.REFERENCE_DIALOG}) within ${timeout}ms. The travel-request popup may not have opened, ` +
+        `or no reference fields rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns true if the Financial Reference section is present on the page (in the open popup).
+   * A count of zero means it is not displayed — used to assert the field is hidden for users not
+   * assigned to the financial-reference group.
+   *
+   * @returns {Promise<boolean>}
+   */
+  async isFinancialReferenceSectionPresent() {
+    return (await this.page.locator(SELECTORS.FINANCIAL_REFERENCE_SECTION).count()) > 0;
+  }
+
+  /**
+   * Returns true if a traveler name is visible inside the reference popup's traveller section.
+   * Matching uses Playwright's whitespace-normalizing text match, so a name entered with extra
+   * spaces still matches its capitalized display form.
+   *
+   * @param {string} name - Traveler full name (e.g. "Ofira Refer")
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async isTravelerNameVisible(name, { timeout = 15000 } = {}) {
+    if (!name || typeof name !== 'string') {
+      throw new Error(`name must be a non-empty string, got: ${typeof name}`);
+    }
+    const normalized = name.replace(/\s+/g, ' ').trim();
+    const node = this.page
+      .locator(SELECTORS.TRAVELER_FIELD_SECTION)
+      .getByText(normalized, { exact: false })
+      .first();
+    try {
+      await node.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
     }
   }
 
