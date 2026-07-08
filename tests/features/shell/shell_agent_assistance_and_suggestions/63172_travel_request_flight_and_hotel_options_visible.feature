@@ -17,11 +17,8 @@ Feature: 63172 - When searching a flight and checking 'Add hotel to this trip', 
     Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "NYC" without clicking search button
-    # TODO: I check the Add hotel to this trip option (FlightSearchPage.checkParallelHotelSearch in tests/steps/flight_search.steps.js)
-    And I check the Add hotel to this trip option
+    And I click on the flight tab and check Add hotel to this trip
     And I click the request assistance icon
-    # TODO: the {string} product should be visible in the travel request (TravelRequest.verifyProductVisibleInRequest in tests/steps/travel_request.steps.js)
-    Then the "Flight" product should be visible in the travel request
-    And the "Hotel" product should be visible in the travel request
-    # TODO: the hotel search options should be visible in the travel request (TravelRequest.verifyHotelSearchOptionsVisible in tests/steps/travel_request.steps.js)
-    And the hotel search options should be visible in the travel request
+    And the travel request travelers section title should display "Who are the travellers?"
+    Then the travel request form should show product "Flight"
+    And the travel request form should show product "Hotel"
