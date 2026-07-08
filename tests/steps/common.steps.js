@@ -365,3 +365,12 @@ When("I click proceed button if visible", async function () {
   const commonPage = getPageObject(this.page, CommonPage);
   await commonPage.clickProceedButtonIfVisible();
 });
+
+// Scrolls the travel-request form to the bottom to reveal content below the fold (e.g. the hotel
+// section). The subsequent verifies also scroll their targets into view, so exact offset is not
+// critical here.
+When("I scroll down the travel request form", async function () {
+  logger.info("Scrolling down the travel request form");
+  const commonPage = getPageObject(this.page, CommonPage);
+  await commonPage.scrollTo();
+});

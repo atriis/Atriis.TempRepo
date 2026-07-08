@@ -563,6 +563,21 @@ class CommonPage {
   }
 
   /**
+   * Scrolls the window to the given coordinates. When `y` is omitted, scrolls to the bottom of the
+   * page (document height) — used to reveal content below the fold, e.g. the hotel section of the
+   * travel-request form. Ported from the Testim `scrollTo(page, x, y)` helper.
+   *
+   * @param {number} [x=0] - Horizontal scroll position in pixels
+   * @param {number|null} [y=null] - Vertical scroll position in pixels; null = scroll to bottom
+   */
+  async scrollTo(x = 0, y = null) {
+    await this.page.evaluate(
+      ({ x, y }) => window.scrollTo(x, y == null ? document.body.scrollHeight : y),
+      { x, y }
+    );
+  }
+
+  /**
    * Gets the first heading element containing the given text.
    * @param {string} text - Partial text content of the heading
    * @returns {Locator} Playwright locator for the heading

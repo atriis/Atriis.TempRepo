@@ -22,6 +22,43 @@ const SELECTORS = {
   // TODO: identical to CommonPage.SAVE_BUTTON ("button:has-text('Save')") which the DSL already
   // clicks via CommonPage.getSaveButton() — consolidate to one shared source of truth.
   REFERENCE_FORM_SAVE_BUTTON: "button:has-text('Save')",
+
+  // ===== Request-assistance review form (request-assistance.vue) =====
+  // Root container of the travel-request review form.
+  REQUEST_ASSISTANCE_MAIN: ".request-assistance-main",
+  // "Who are the travellers?" section heading (.travelers-container h6).
+  TRAVELERS_TITLE: ".request-assistance-main .travelers-container h6",
+  // Per-product item title, e.g. "Flight" / "Hotel" (h4.product-name inside each search-inputs item).
+  PRODUCT_NAME: ".request-assistance-main .search-inputs-container h4.product-name",
+
+  // Flight item — the flight-search-inputs component renders inside the flight request item.
+  // Origin/destination are airport-autocomplete inputs (value = airport Name); the round-trip
+  // basic layout renders an app-daterange whose two el-range-inputs carry the Depart/Return
+  // placeholders. Placeholders come from i18n (autocomplete.fromFlightDeparture / .toFlightDestination,
+  // flight.departDate / flight.returnDate) and are stable across releases.
+  FLIGHT_ORIGIN_INPUT: ".request-assistance-main .flight-search-inputs [placeholder='From... Departure']",
+  FLIGHT_DESTINATION_INPUT: ".request-assistance-main .flight-search-inputs [placeholder='To... Destination']",
+  FLIGHT_DEPART_DATE_INPUT: ".request-assistance-main .flight-search-inputs [placeholder='Depart Date']",
+  FLIGHT_RETURN_DATE_INPUT: ".request-assistance-main .flight-search-inputs [placeholder='Return Date']",
+
+  // Hotel item — the hotel-search-inputs component renders inside the hotel request item.
+  // Destination is a hotel-autocomplete input (value = destination Name); check-in/check-out are
+  // the app-daterange el-range-inputs carrying the hotel.checkIn / hotel.checkOut placeholders.
+  HOTEL_DESTINATION_INPUT: ".request-assistance-main .hotel-search-inputs .hotel-autocomplete-wrapper input",
+  HOTEL_CHECK_IN_INPUT: ".request-assistance-main .hotel-search-inputs [placeholder='Check in']",
+  HOTEL_CHECK_OUT_INPUT: ".request-assistance-main .hotel-search-inputs [placeholder='Check out']",
+};
+
+// Maps a request-assistance field key to its selector. One entry per readable field so the getters
+// are a single map-driven pair instead of seven near-identical wrappers.
+const REQUEST_FIELD_SELECTORS = {
+  flightOrigin: SELECTORS.FLIGHT_ORIGIN_INPUT,
+  flightDestination: SELECTORS.FLIGHT_DESTINATION_INPUT,
+  flightDepartDate: SELECTORS.FLIGHT_DEPART_DATE_INPUT,
+  flightReturnDate: SELECTORS.FLIGHT_RETURN_DATE_INPUT,
+  hotelDestination: SELECTORS.HOTEL_DESTINATION_INPUT,
+  hotelCheckIn: SELECTORS.HOTEL_CHECK_IN_INPUT,
+  hotelCheckOut: SELECTORS.HOTEL_CHECK_OUT_INPUT,
 };
 
 class TravelRequestPage {
@@ -181,6 +218,69 @@ class TravelRequestPage {
       throw new Error(`text must be a non-empty string, got: ${typeof text}`);
     }
     return this.page.locator(SELECTORS.REQUESTED_ITEM_CARD_TITLE).filter({ hasText: text });
+  }
+
+  // ===== Request-assistance review form getters =====
+
+  /**
+   * Gets the "Who are the travellers?" section-title locator in the request-assistance form.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getTravelersSectionTitle() {
+    return this.page.locator(SELECTORS.TRAVELERS_TITLE);
+  }
+
+  /**
+   * Gets the product-title locator (e.g. "Flight" / "Hotel") for a product in the request-assistance
+   * form, filtered by the product label.
+   * @param {string} product - Product label the title must contain (e.g. "Flight")
+   * @returns {import('@playwright/test').Locator}
+   */
+  getProductTitle(product) {
+    if (!product || typeof product !== "string") {
+      throw new Error(`product must be a non-empty string, got: ${typeof product}`);
+    }
+    return this.page.locator(SELECTORS.PRODUCT_NAME, { hasText: product });
+  }
+
+  /**
+   * Resolves the selector for a request-assistance field key, throwing on an unknown key so a typo
+   * fails loudly rather than silently reading nothing.
+   * @param {string} fieldKey - One of the keys in REQUEST_FIELD_SELECTORS (e.g. "flightOrigin")
+   * @returns {string}
+   */
+  _requestFieldSelector(fieldKey) {
+    const selector = REQUEST_FIELD_SELECTORS[fieldKey];
+    if (!selector) {
+      throw new Error(
+        `[TravelRequestPage] Unknown request-assistance field key "${fieldKey}". Known keys: ${Object.keys(REQUEST_FIELD_SELECTORS).join(", ")}.`
+      );
+    }
+    return selector;
+  }
+
+  /**
+   * Gets the locator for a request-assistance field, so callers can check presence (count) to tell
+   * "field never rendered" apart from "field has the wrong value".
+   * @param {string} fieldKey - One of the keys in REQUEST_FIELD_SELECTORS
+   * @returns {import('@playwright/test').Locator}
+   */
+  getRequestFieldLocator(fieldKey) {
+    return this.page.locator(this._requestFieldSelector(fieldKey)).first();
+  }
+
+  /**
+   * Reads a request-assistance field value after scrolling it into view (the hotel item sits below
+   * the fold). Best-effort: the DSL polls this, so a not-yet-rendered field or a value still settling
+   * (e.g. the parallel hotel destination inherited reactively from the flight) returns "" here and
+   * the poll retries rather than failing on the first read.
+   * @param {string} fieldKey - One of the keys in REQUEST_FIELD_SELECTORS
+   * @returns {Promise<string>}
+   */
+  async getRequestFieldValue(fieldKey) {
+    const field = this.getRequestFieldLocator(fieldKey);
+    await field.scrollIntoViewIfNeeded().catch(() => {});
+    return (await field.inputValue().catch(() => "")).trim();
   }
 }
 

@@ -13,6 +13,7 @@ const { SearchPage } = require("@pages/SearchPage");
 const FlightSearchPage = require("@pages/FlightSearchPage");
 const { TravelRequestPage } = require("@pages/TravelRequestPage");
 const { CommonPage } = require("@pages/CommonPage");
+const { normalizeText } = require("@utils/text");
 const logger = require("@utils/logger").child("TravelRequest");
 
 const TravelRequest = {
@@ -349,6 +350,194 @@ const TravelRequest = {
     await page.goto(currentUrl.href, { waitUntil: 'domcontentloaded' });
   },
 
+  // ===== Request-assistance review-form actions =====
+
+  /**
+   * Captures the departure and return dates entered in the flight SEARCH form (before opening the
+   * request-assistance review). These are the ground-truth values the later request-assistance
+   * verifies compare against: the flight depart/return dates and the parallel hotel check-in/check-out
+   * all mirror these same two dates. Reuses SearchPage's proven date-field getters.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @returns {Promise<{departureDate: string, returnDate: string}>}
+   */
+  async captureRoundTripDates(page) {
+    if (!page) throw new Error('[TravelRequest.captureRoundTripDates] "page" is required.');
+    const searchPage = getPageObject(page, SearchPage);
+
+    const departureDate = await searchPage.getDepartureDateFieldValue();
+    const returnDate = await searchPage.getReturnDateFieldValue();
+
+    if (!departureDate) {
+      throw new Error('[TravelRequest.captureRoundTripDates] The flight search departure date was empty — the round-trip dates must be entered before extracting them.');
+    }
+    if (!returnDate) {
+      throw new Error('[TravelRequest.captureRoundTripDates] The flight search return date was empty — the round-trip dates must be entered before extracting them.');
+    }
+
+    logger.info('Captured round-trip dates for travel-request verification', { departureDate, returnDate });
+    return { departureDate, returnDate };
+  },
+
+  /**
+   * Verifies the request-assistance "Who are the travellers?" section title.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expected - Expected section-title text
+   */
+  async verifyTravelersSectionTitle(page, expected) {
+    if (!page) throw new Error('[TravelRequest.verifyTravelersSectionTitle] "page" is required.');
+    if (!expected || typeof expected !== 'string') {
+      throw new Error(`[TravelRequest.verifyTravelersSectionTitle] "expected" must be a non-empty string, got: ${typeof expected}`);
+    }
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    const title = travelRequestPage.getTravelersSectionTitle().first();
+    // Poll (matches the field-verify pattern) so a title that renders just after the form mounts is
+    // retried rather than failing on a first read.
+    await expect
+      .poll(async () => normalizeText(await title.textContent().catch(() => "")), {
+        timeout: 30000,
+        message: `[TravelRequest.verifyTravelersSectionTitle] Expected the travellers section title to read "${expected}".`,
+      })
+      .toBe(normalizeText(expected));
+  },
+
+  /**
+   * Verifies a product item (e.g. "Flight" / "Hotel") is shown in the request-assistance form.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} product - Product label expected in the form
+   */
+  async verifyProductInRequestForm(page, product) {
+    if (!page) throw new Error('[TravelRequest.verifyProductInRequestForm] "page" is required.');
+    if (!product || typeof product !== 'string') {
+      throw new Error(`[TravelRequest.verifyProductInRequestForm] "product" must be a non-empty string, got: ${typeof product}`);
+    }
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    await expect(
+      travelRequestPage.getProductTitle(product).first(),
+      `[TravelRequest.verifyProductInRequestForm] Expected the "${product}" product to be shown in the request-assistance form.`
+    ).toBeVisible({ timeout: 30000 });
+  },
+
+  /**
+   * Verifies the flight origin shown in the request-assistance form.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expected - Expected origin value (e.g. "London, United Kingdom - All airports (LON)")
+   */
+  async verifyRequestFlightOrigin(page, expected) {
+    await assertRequestFieldValue(page, expected, 'flightOrigin', 'flight origin');
+  },
+
+  /**
+   * Verifies the flight destination shown in the request-assistance form.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expected - Expected destination value (e.g. "Madrid, Spain (MAD)")
+   */
+  async verifyRequestFlightDestination(page, expected) {
+    await assertRequestFieldValue(page, expected, 'flightDestination', 'flight destination');
+  },
+
+  /**
+   * Verifies the flight depart date shown in the request-assistance form matches the extracted date.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expected - Extracted departure date captured from the search form
+   */
+  async verifyRequestFlightDepartDate(page, expected) {
+    await assertRequestFieldValue(page, expected, 'flightDepartDate', 'flight depart date');
+  },
+
+  /**
+   * Verifies the flight return date shown in the request-assistance form matches the extracted date.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expected - Extracted return date captured from the search form
+   */
+  async verifyRequestFlightReturnDate(page, expected) {
+    await assertRequestFieldValue(page, expected, 'flightReturnDate', 'flight return date');
+  },
+
+  /**
+   * Verifies the hotel destination shown in the request-assistance form.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expected - Expected hotel destination value (e.g. "Madrid,Spain,(MAD)")
+   */
+  async verifyRequestHotelDestination(page, expected) {
+    await assertRequestFieldValue(page, expected, 'hotelDestination', 'hotel destination');
+  },
+
+  /**
+   * Verifies the hotel check-in date shown in the request-assistance form matches the extracted
+   * flight departure date (the parallel hotel inherits the flight dates).
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expected - Extracted flight departure date captured from the search form
+   */
+  async verifyRequestHotelCheckInDate(page, expected) {
+    await assertRequestFieldValue(page, expected, 'hotelCheckIn', 'hotel check-in date');
+  },
+
+  /**
+   * Verifies the hotel check-out date shown in the request-assistance form matches the extracted
+   * flight return date (the parallel hotel inherits the flight dates).
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expected - Extracted flight return date captured from the search form
+   */
+  async verifyRequestHotelCheckOutDate(page, expected) {
+    await assertRequestFieldValue(page, expected, 'hotelCheckOut', 'hotel check-out date');
+  },
+
+  /**
+   * Clicks the "Send request" button on the request-assistance form. The Trip Reference Form popup,
+   * if any, is left for the caller to dismiss via saveReferenceFieldIfPresent.
+   * @param {import('@playwright/test').Page} page
+   */
+  async clickSendRequest(page) {
+    if (!page) throw new Error('[TravelRequest.clickSendRequest] "page" is required.');
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    await travelRequestPage.clickSendRequestButton();
+  },
+
 };
+
+/**
+ * Reads a request-assistance form field (by key) and asserts it equals the expected value
+ * (whitespace-normalized). Centralizes the guard + poll + assertion shared by every field verify.
+ * On failure it distinguishes "the field never rendered" (selector matched nothing) from "the field
+ * showed the wrong value", so a stale selector isn't misdiagnosed as a value mismatch.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} expected - Expected field value
+ * @param {string} fieldKey - Request-assistance field key (see REQUEST_FIELD_SELECTORS)
+ * @param {string} fieldLabel - Human-readable field name for error messages
+ */
+async function assertRequestFieldValue(page, expected, fieldKey, fieldLabel) {
+  if (!page) throw new Error(`[TravelRequest] "page" is required to verify the ${fieldLabel}.`);
+  if (!expected || typeof expected !== 'string') {
+    throw new Error(
+      `[TravelRequest] Expected ${fieldLabel} value must be a non-empty string, got: ${typeof expected}. ` +
+      `For date fields, ensure "I extract departure and return dates" ran first to capture them.`
+    );
+  }
+  const travelRequestPage = getPageObject(page, TravelRequestPage);
+  // Poll: request-assistance field values can settle after render (notably the parallel hotel
+  // destination, inherited reactively from the flight). Retrying mirrors the Testim waitForText the
+  // original test used, so a still-loading value doesn't fail on the first read.
+  try {
+    await expect
+      .poll(async () => normalizeText(await travelRequestPage.getRequestFieldValue(fieldKey)), {
+        timeout: 30000,
+        message: `[TravelRequest] Expected the request-assistance ${fieldLabel} to show "${expected}".`,
+      })
+      .toBe(normalizeText(expected));
+  } catch (err) {
+    // Disambiguate a stale/missing selector (0 matches) from a genuine value mismatch — the poll
+    // reads an empty string in both cases, so without this a "field not found" reads as "wrong value".
+    const count = await travelRequestPage.getRequestFieldLocator(fieldKey).count().catch(() => 0);
+    if (count === 0) {
+      throw new Error(
+        `[TravelRequest] The request-assistance ${fieldLabel} field never rendered — its selector matched 0 elements. ` +
+        `Expected "${expected}". The field may be missing from the form or its selector may be stale.`
+      );
+    }
+    throw err;
+  }
+}
 
 module.exports = TravelRequest;
