@@ -564,7 +564,25 @@ class SearchPage {
       0,
     );
 
-    // Commit the value (blur the field)
+    const suggestions = this.page
+      .locator(SELECTORS.AUTOCOMPLETE_LIST)
+      .first();
+
+    // Wait until autocomplete suggestions are shown before committing.
+    // Mirrors fillInToField: pressing TAB before the airport dropdown renders
+    // would blur the field with no suggestion selected, so the origin never
+    // commits and the From field reports "This field is required".
+    try {
+      await suggestions.waitFor({ state: "visible", timeout: 15000 });
+    } catch (error) {
+      throw new Error(
+        `[SearchPage.fillInFromField] Airport autocomplete dropdown never rendered for "${from}" ` +
+          `(selector ${SELECTORS.AUTOCOMPLETE_LIST}) within 15000ms, so the From field could not commit ` +
+          `a suggestion. The field likely stays empty/invalid. Original: ${error.message}`
+      );
+    }
+
+    // Commit the value (blur the field, triggers autocomplete selection)
     await pressTab(this.page);
 
     // Small wait for UI to process the blur event and autocomplete selection

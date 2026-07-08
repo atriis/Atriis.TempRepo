@@ -17,6 +17,6 @@ Feature: 46255 - Allow Request Assistance when Can Use Request Assistance and Lo
     Given I am logged in as "caroline.silva@carolineprivileges.com" booking a new trip
     When I send a flight travel request from "LIS" to "TLV"
     Then the "Sent to agent" confirmation should be displayed
-    When I navigate to the trip from the travel request
-    Then the travel requested items should be visible in the trip
+    And I click go to trip button
+    Then the travel requested item should be visible in the trip with the title containing "Requested" text
     And I successfully cancel the trip

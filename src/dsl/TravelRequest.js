@@ -5,6 +5,7 @@
  *
  * Exposes business-level methods for sending a flight travel request.
  */
+const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
@@ -113,6 +114,35 @@ const TravelRequest = {
    */
   async verifyRequestedItemsVisible(page) {
     await page.getByText('Travel request items').waitFor({ state: 'visible', timeout: 30000 });
+  },
+
+  /**
+   * Verifies that a travel requested item card is visible in the trip with a title
+   * containing the given text (e.g. "Requested"). Reads the requested-item card title
+   * from the travel request page (general-product-card.vue) and asserts it is visible.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} text - Text the requested item title must contain (e.g. "Requested")
+   */
+  async verifyRequestedItemTitleContains(page, text) {
+    if (!page) throw new Error('page is required');
+    if (!text || typeof text !== 'string') {
+      throw new Error('text must be a non-empty string, got: ' + typeof text);
+    }
+
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    try {
+      const titleLocator = travelRequestPage.getRequestedItemCardTitle(text).first();
+      await expect(
+        titleLocator,
+        `[TravelRequest.verifyRequestedItemTitleContains] Expected a travel requested item card title containing "${text}" to be visible in the trip.`
+      ).toBeVisible({ timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[TravelRequest.verifyRequestedItemTitleContains] Could not confirm a travel requested item title containing "${text}" in the trip. ` +
+        `The Requests tab may not have loaded, or the requested item was not created for the agent. Original: ${err.message}`
+      );
+    }
   },
 
   /**

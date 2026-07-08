@@ -34,6 +34,14 @@ Then("the travel requested items should be visible in the trip", async function 
   await TravelRequest.verifyRequestedItemsVisible(this.page);
 });
 
+Then(
+  "the travel requested item should be visible in the trip with the title containing {string} text",
+  async function (text) {
+    logger.info("Verifying travel requested item title contains text", { text });
+    await TravelRequest.verifyRequestedItemTitleContains(this.page, text);
+  }
+);
+
 When("I navigate to the trip cart", async function () {
   logger.info("Navigating to trip cart via shopping cart icon");
   await TravelRequest.navigateToTripCart(this.page);
