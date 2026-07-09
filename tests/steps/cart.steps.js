@@ -879,6 +879,18 @@ Then("the baggage green icon should be visible", async function () {
   await expect(icon).toBeVisible({ timeout: 30000 });
 });
 
+Then("the visible baggage green icon should be visible", async function () {
+  logger.info("Verifying the visible baggage green icon is displayed");
+  const cartPage = getPageObject(this.page, CartPage);
+  await cartPage.waitForGreenIconAfterSave(() => cartPage.getVisibleBaggageGreenIcon());
+});
+
+Then("the optional services green icon should be visible", async function () {
+  logger.info("Verifying optional services green icon is visible");
+  const cartPage = getPageObject(this.page, CartPage);
+  await cartPage.waitForGreenIconAfterSave(() => cartPage.getOptionalServicesGreenIcon());
+});
+
 Then("the paid baggage should be displayed in flight details", async function () {
   if (!this.baggageOptionText) {
     throw new Error("No stored baggage option label found. Run 'I extract the selected baggage option label' before this step.");
@@ -1438,6 +1450,11 @@ Then("the optional services extras section should be visible", async function ()
 When("I click optional services in extras", async function () {
   logger.info("Clicking optional services section in extras");
   await Cart.clickOptionalServicesInExtras(this.page);
+});
+
+When("I select a random optional service", async function () {
+  logger.info("Selecting a random optional service");
+  await Cart.selectRandomOptionalService(this.page);
 });
 
 Then("the optional services unavailable message should be visible", async function () {

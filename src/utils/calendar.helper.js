@@ -193,6 +193,70 @@ async function advanceCalendarUntilMonthVisible(page, targetDate, maxMonthAdvanc
   );
 }
 
+/**
+ * Reads the visible month/year for a single-month date picker whose header renders the
+ * year and month as separate elements (e.g. two `.el-date-picker__header-label` spans,
+ * one for year and one for month, rather than one combined "Month Year" label).
+ *
+ * @param {Object} page - Playwright page instance
+ * @returns {Promise<{monthIndex: number, year: number}>}
+ */
+async function getVisibleSinglePickerMonthAndYear(page) {
+  const panel = page.locator(SELECTORS.DATE_PICKER_PANEL).last();
+  await panel.waitFor({ state: "visible", timeout: 10000 });
+
+  const headerLabels = panel.locator(SELECTORS.DATE_PICKER_HEADER_LABEL);
+  const headerTexts = (await headerLabels.allTextContents())
+    .map((text) => text.trim())
+    .filter((text) => text.length > 0);
+
+  if (headerTexts.length === 0) {
+    throw new Error("Could not read visible single date picker header label");
+  }
+
+  const combinedHeaderText = headerTexts.join(" ");
+  const yearMatch = combinedHeaderText.match(/\d{4}/);
+  if (!yearMatch) {
+    throw new Error(`Could not find a 4-digit year in header text: "${combinedHeaderText}"`);
+  }
+
+  const monthToken = headerTexts.find((text) => /^[A-Za-z]{3,9}\.?$/.test(text));
+  if (!monthToken) {
+    throw new Error(`Could not find a month name in header text: "${combinedHeaderText}"`);
+  }
+
+  return { monthIndex: getMonthIndex(monthToken), year: Number(yearMatch[0]) };
+}
+
+/**
+ * Advances a single-month date picker (forward arrow) until the target month/year is visible.
+ * Use this instead of advanceCalendarUntilMonthVisible when the picker's header splits the
+ * year and month into separate elements.
+ *
+ * @param {Object} page - Playwright page instance
+ * @param {Date} targetDate
+ * @param {number} [maxMonthAdvances=24]
+ * @returns {Promise<number>} monthTableIndex (always 0 for a single-month picker)
+ */
+async function advanceSinglePickerCalendarUntilMonthVisible(page, targetDate, maxMonthAdvances = 24) {
+  for (let attempt = 0; attempt <= maxMonthAdvances; attempt++) {
+    const visible = await getVisibleSinglePickerMonthAndYear(page);
+    if (visible.year === targetDate.getFullYear() && visible.monthIndex === targetDate.getMonth()) {
+      return 0;
+    }
+
+    if (attempt === maxMonthAdvances) {
+      break;
+    }
+
+    await clickNextVisibleMonth(page);
+  }
+
+  throw new Error(
+    `Target month ${targetDate.getMonth() + 1}/${targetDate.getFullYear()} was not visible after ${maxMonthAdvances} calendar advances.`,
+  );
+}
+
 async function clickDayInVisibleMonth(page, targetDate, monthTableIndex) {
   const panel = page.locator(SELECTORS.DATE_PICKER_PANEL).last();
   const monthTable = panel.locator(SELECTORS.DATE_PICKER_MONTH_TABLE).nth(monthTableIndex);
@@ -203,6 +267,42 @@ async function clickDayInVisibleMonth(page, targetDate, monthTableIndex) {
 
   await dayCell.waitFor({ state: "visible", timeout: 10000 });
   await dayCell.click();
+}
+
+/**
+ * Computes the next calendar date, starting from a given offset in days from today,
+ * that does NOT fall on the excluded weekdays (e.g. avoid Friday/Saturday departures
+ * for Sabre GDS fares that spike on weekend travel, or airlines like El Al that do not
+ * operate over the Israeli Sabbath).
+ *
+ * This only computes the target date; it does not touch the DOM.
+ *
+ * @param {Object} [opts]
+ * @param {number} [opts.startOffsetDays=1] - how many days from today to start searching
+ * @param {string[]} [opts.excludeDaysOfWeek=["friday","saturday"]] - weekday names to avoid
+ * @returns {Date} first matching date
+ */
+function getNextDateExcludingWeekdays(
+  { startOffsetDays = 1, excludeDaysOfWeek = ["friday", "saturday"] } = {},
+) {
+  const dayMap = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+  const excludedDayNumbers = excludeDaysOfWeek.map((dayName) => {
+    const dayNumber = dayMap[dayName.toLowerCase()];
+    if (dayNumber === undefined) {
+      throw new Error(`Invalid weekday name "${dayName}". Use: ${Object.keys(dayMap).join(', ')}`);
+    }
+    return dayNumber;
+  });
+
+  const today = new Date();
+  for (let offset = startOffsetDays; offset < startOffsetDays + 14; offset++) {
+    const candidate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
+    if (!excludedDayNumbers.includes(candidate.getDay())) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`Could not find a date outside ${excludeDaysOfWeek.join(', ')} within 14 days of offset ${startOffsetDays}`);
 }
 
 /**
@@ -658,4 +758,8 @@ module.exports = {
   selectRoundTripDatesOnNthWeekday,
   clickNextVisibleMonth,
   selectDateAfterAdvancingMonths,
+  getNextDateExcludingWeekdays,
+  advanceCalendarUntilMonthVisible,
+  advanceSinglePickerCalendarUntilMonthVisible,
+  clickDayInVisibleMonth,
 };

@@ -3366,6 +3366,7 @@ const Cart = {
     if (!page) throw new Error('page is required');
 
     const cartPage = getPageObject(page, CartPage);
+    await cartPage.ensureExtrasExpanded();
     await cartPage.clickEditBaggageExtrasButton();
   },
 
@@ -4536,6 +4537,18 @@ const Cart = {
 
     await cartPage.clickEditOptionalServicesButton();
     logger.info('Clicked optional services in extras');
+  },
+
+  /**
+   * Selects a random selectable optional service in the expanded optional services panel.
+   * @param {import('playwright').Page} page
+   */
+  async selectRandomOptionalService(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const selectedIndex = await cartPage.selectRandomOptionalService();
+    logger.info('Selected random optional service', { selectedIndex });
   },
 
   /**

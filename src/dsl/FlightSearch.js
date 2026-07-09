@@ -10,6 +10,9 @@ const {
   selectNthWeekdayFromNextMonth,
   selectRoundTripDatesOnNthWeekday,
   selectTodayFromVisibleCalendar,
+  getNextDateExcludingWeekdays,
+  advanceSinglePickerCalendarUntilMonthVisible,
+  clickDayInVisibleMonth,
 } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
@@ -158,6 +161,46 @@ const FlightSearch = {
     await searchPage.waitAndClickSearchButton();
 
     return { searched: true, from, to, tripType: 'oneWay', dayOfWeek, nth };
+  },
+
+  /**
+   * Search a one-way flight on the first upcoming date that does not fall on any of the
+   * given weekdays (e.g. avoid Friday/Saturday for El Al, which does not operate over
+   * the Israeli Sabbath).
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} from - Origin airport code
+   * @param {string} to - Destination airport code
+   * @param {string[]} [excludeDaysOfWeek=["friday","saturday"]] - Weekday names to avoid
+   */
+  async searchOneWayAvoidingWeekdays(page, from, to, excludeDaysOfWeek = ["friday", "saturday"]) {
+    if (!page) throw new Error('page is required');
+    if (!from || typeof from !== 'string') throw new Error('from must be a non-empty string');
+    if (!to || typeof to !== 'string') throw new Error('to must be a non-empty string');
+    if (!Array.isArray(excludeDaysOfWeek) || excludeDaysOfWeek.length === 0) {
+      throw new Error('excludeDaysOfWeek must be a non-empty array of weekday names');
+    }
+
+    logger.info('Starting oneWay flight search avoiding weekdays', { from, to, excludeDaysOfWeek });
+
+    const targetDate = getNextDateExcludingWeekdays({ excludeDaysOfWeek });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectOneWayTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+
+    await searchPage.clickDepartureDateField();
+    const monthTableIndex = await advanceSinglePickerCalendarUntilMonthVisible(page, targetDate);
+    await clickDayInVisibleMonth(page, targetDate, monthTableIndex);
+
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'oneWay', excludeDaysOfWeek, departureDate: targetDate };
   },
 
   /**

@@ -192,10 +192,14 @@ const SELECTORS = {
   EDIT_EXTRAS_BUTTON: ".extra__btns", //All edit buttons in extras section have the same class, so we will use nth(index) to click the right one when needed
   EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span', // The field that shows selected extra option
   EXTRAS_ARROW_BUTTON: '.px-4.ticket-bottom.py-4 .el-icon.el-collapse-item__arrow', // Arrow button to expand/collapse extras information
+  EXTRAS_COLLAPSE_HEADER: '.px-4.ticket-bottom.py-4 .el-collapse-item__header', // Clickable header row for the extras collapse; aria-expanded reflects true open/closed state
   FLIGHT_OPTIONAL_SERVICES_TITLE: '.flight-optional-services .card-title', // "Optional Services" title in the extras section (flight-optional-services.vue)
   FLIGHT_OPTIONAL_SERVICES_EDIT_BUTTON: '.flight-optional-services .extra__btns', // Edit/Add button in the optional services extras row (flight-optional-services.vue)
   FLIGHT_OPTIONAL_SERVICES_MESSAGE: '.flight-optional-services .el-tab-pane span', // Message text inside the optional services tab content (flight-optional-services.vue)
   FLIGHT_OPTIONAL_SERVICES_OPTION_TITLE: '.flight-optional-services .service-option .option-title', // Each available service option title inside the expanded optional services panel
+  FLIGHT_OPTIONAL_SERVICES_OPTION_CHECKBOX: '.flight-optional-services .el-tab-pane:visible .service-option .el-checkbox:not(.is-disabled)', // Selectable (non-disabled) service checkboxes scoped to the active traveler tab
+  FLIGHT_OPTIONAL_SERVICES_SAVE_BUTTON: '.flight-optional-services .no-border', // Save button scoped to the optional services panel (disambiguates from other simultaneously-open extras panels)
+  FLIGHT_OPTIONAL_SERVICES_SUCCESS_ICON: '.flight-optional-services .material-symbols-outlined.filled.success-icon.green:visible', // Green checkmark after successful save (extras-layout.vue), scoped to the visible instance (hidden duplicates can exist, e.g. responsive layouts)
   // Flight Ancillary Services (flight-ancillary-services.vue)
   FLIGHT_ANCILLARY_SERVICES_EDIT_BUTTON: '.flight-ancillary-services .extra__btns', // Edit/Add button in the ancillary services extras row
   FLIGHT_ANCILLARY_SERVICES_CARRIER_NAME: '.flight-ancillary-services .carrier-name', // Carrier name in ancillary services segment
@@ -232,6 +236,7 @@ const SELECTORS = {
   BAGGAGE_SAVE_BUTTON: '.flight-baggage .no-border',
   BAGGAGE_TRAVELER_TAB: '.flight-baggage .flight-cart-tabs .el-tabs__item:visible',
   GREEN_ICON_BAGGAGE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green",  // Green icon next to added baggage
+  GREEN_ICON_BAGGAGE_VISIBLE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green:visible", // Same icon, scoped to the currently visible instance (multiple hidden duplicates can exist, e.g. responsive layouts)
   BAGGAGE_SELECTED_TAG: '.flight-baggage .el-tab-pane:visible .el-tag',
   BAGGAGE_SELECTED_OPTION: '.flight-baggage .el-select__selected-item span', // Selected baggage option text inside the flight-baggage section
   BAGGAGE_EXTRAS_CARD: '.flight-baggage .extras-card:visible', // Visible only when the baggage panel is expanded
@@ -977,6 +982,18 @@ class CartPage {
    */
   getBaggageGreenIcon() {
     return this.page.locator(SELECTORS.GREEN_ICON_BAGGAGE);
+  }
+
+  /**
+   * Gets the baggage green icon locator, scoped to the currently visible instance.
+   * Use this instead of getBaggageGreenIcon() when hidden duplicate icons may exist
+   * (e.g. responsive layouts), which would otherwise make the plain locator resolve
+   * to a hidden element first.
+   *
+   * @returns {Locator} Playwright locator for the visible baggage success icon
+   */
+  getVisibleBaggageGreenIcon() {
+    return this.page.locator(SELECTORS.GREEN_ICON_BAGGAGE_VISIBLE).first();
   }
 
   /**
@@ -2119,6 +2136,60 @@ class CartPage {
   }
 
   /**
+   * Re-opens the extras accordion after a save, only if it is not already expanded.
+   * Saving an individual extra (baggage, optional services, etc.) collapses the outer
+   * extras accordion back to its summary row, so this must be called before checking
+   * anything inside it (e.g. a green success icon).
+   *
+   * Uses the `aria-expanded` attribute on the collapse header as the source of truth —
+   * the arrow icon's `is-active` class (see isExtrasExpanded) can be stale immediately
+   * after a save, still reporting "active" while the content is actually collapsed
+   * (`aria-hidden="true"`, `display: none`).
+   */
+  async reopenExtrasAfterSave() {
+    const header = this.page.locator(SELECTORS.EXTRAS_COLLAPSE_HEADER).first();
+    const maxAttempts = 6;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const isExpanded = (await header.getAttribute('aria-expanded').catch(() => null)) === 'true';
+      if (isExpanded) return;
+
+      await header.click();
+      // The save request can still be settling (loading spinner) right after the save
+      // button click returns; a re-render during that window can silently re-collapse
+      // the accordion right after we open it. Give it a moment, then re-check.
+      await this.page.waitForTimeout(1000);
+    }
+
+    throw new Error(
+      `Extras accordion kept re-collapsing after save (still not expanded after ${maxAttempts} attempts).`
+    );
+  }
+
+  /**
+   * Waits for a green success icon to be visible inside the extras panel, re-opening
+   * the extras accordion as needed. The accordion appears to auto-collapse repeatedly
+   * (not just once right after save — e.g. a periodic background refresh), so a single
+   * reopen-then-wait is not reliable; this retries the reopen+check cycle instead.
+   *
+   * @param {() => import('@playwright/test').Locator} getIconLocator - Returns the icon locator to check
+   * @param {number} [maxAttempts=10]
+   */
+  async waitForGreenIconAfterSave(getIconLocator, maxAttempts = 10) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      await this.reopenExtrasAfterSave();
+
+      const becameVisible = await getIconLocator()
+        .waitFor({ state: 'visible', timeout: 3000 })
+        .then(() => true)
+        .catch(() => false);
+      if (becameVisible) return;
+    }
+
+    throw new Error(`Green success icon did not become visible after ${maxAttempts} reopen attempts.`);
+  }
+
+  /**
    * Returns true when the extras collapse is currently expanded.
    * Element Plus adds `is-active` class to the arrow icon when the collapse-item is open.
    * @returns {Promise<boolean>}
@@ -2127,6 +2198,17 @@ class CartPage {
     const arrow = this.page.locator(SELECTORS.EXTRAS_ARROW_BUTTON).first();
     const classAttr = await arrow.getAttribute('class').catch(() => '');
     return classAttr.includes('is-active');
+  }
+
+  /**
+   * Expands the extras collapse only if it is not already expanded.
+   * Unlike clickArrowButtonExtras (a plain toggle), this is idempotent and safe to call
+   * regardless of the panel's current state.
+   */
+  async ensureExtrasExpanded() {
+    if (!(await this.isExtrasExpanded())) {
+      await this.clickArrowButtonExtras();
+    }
   }
 
   /**
@@ -2326,6 +2408,42 @@ class CartPage {
       .locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_OPTION_TITLE)
       .filter({ hasText: optionText })
       .first();
+  }
+
+  /**
+   * Returns the locator for all selectable (non-disabled) optional service checkboxes
+   * inside the expanded optional services panel.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getOptionalServicesCheckboxes() {
+    return this.page.locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_OPTION_CHECKBOX);
+  }
+
+  /**
+   * Clicks a random selectable optional service checkbox in the expanded optional services panel.
+   * @returns {Promise<number>} The index of the option that was clicked
+   */
+  async selectRandomOptionalService() {
+    const checkboxes = this.getOptionalServicesCheckboxes();
+    await checkboxes.first().waitFor({ state: 'visible', timeout: 15000 });
+
+    const count = await checkboxes.count();
+    if (count === 0) {
+      throw new Error('No selectable optional service checkboxes found');
+    }
+
+    const randomIndex = Math.floor(Math.random() * count);
+    await checkboxes.nth(randomIndex).click();
+    return randomIndex;
+  }
+
+  /**
+   * Gets the optional services green success icon locator.
+   * Used to verify the optional service selection was successfully saved.
+   * @returns {Locator} Playwright locator for the optional services success icon
+   */
+  getOptionalServicesGreenIcon() {
+    return this.page.locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_SUCCESS_ICON).first();
   }
 
   // --- Ancillary Services (flight-ancillary-services.vue) ---
