@@ -580,6 +580,27 @@ class HotelLevelResultsPage {
   }
 
   /**
+   * Returns the 0-based index of the first hotel card that does NOT have the given agreement label,
+   * or -1 if every visible card has it.
+   * @param {string} labelText - Agreement label text (e.g. "My corporate")
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<number>}
+   */
+  async findHotelMissingAgreementLabel(labelText, { timeout = 10000 } = {}) {
+    if (!labelText || typeof labelText !== 'string') throw new Error('labelText must be a non-empty string');
+    const cards = this.page.locator(SELECTORS.HOTEL_CARD);
+    await cards.first().waitFor({ state: 'visible', timeout });
+    const count = await cards.count();
+    for (let i = 0; i < count; i++) {
+      const label = cards.nth(i).locator(`.ticket-agreement:has-text("${labelText}")`);
+      const isVisible = await label.isVisible().catch(() => false);
+      if (!isVisible) return i;
+    }
+    return -1;
+  }
+
+  /**
    * Checks if any agreement badge (handshake icon) is visible in hotel level results.
    * @param {object} [options]
    * @param {number} [options.timeout=10000]

@@ -193,6 +193,11 @@ Then("the {string} filter tag should be visible in hotel results", async functio
   await HotelLevelResults.verifyHotelFilterTag(this.page, tagText);
 });
 
+Then("all hotels have the {string} agreement tag", async function (tagText) {
+  logger.info("Verifying all hotels have the agreement tag", { tagText });
+  await HotelLevelResults.verifyAgreementTagOnAllHotels(this.page, tagText);
+});
+
 Then(/^"[Hh]otel [Ww]asn't [Ff]ound" error message is not displayed$/, async function () {
   logger.info('Verifying hotel results are displayed without "Hotel wasn\'t found" message');
   await HotelLevelResults.verifyHotelWasntFoundMessageNotDisplayed(this.page);
