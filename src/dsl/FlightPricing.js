@@ -506,6 +506,35 @@ const FlightPricing = {
     return { muInclusivePerPax, markup, basePrice, wholePrice, currency: published.currency };
   },
 
+  /**
+   * Reads the fare basis headline on the currently-open (first) tab, clicks the second
+   * leg tab, waits for its content, reads that headline, then asserts the two are different.
+   *
+   * Use this on a round-trip by-schedule result where outbound and return have separate
+   * fare basis codes — e.g. when Standard was selected for outbound and Flex for return.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{tab0: string, tab1: string}>}
+   */
+  async verifyFareBasisCodesAreDifferentAcrossTabs(page) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    await flightResultsPage.waitForFareRulesMainHeadline();
+    const tab0Text = await flightResultsPage.getFareRulesMainHeadlineText();
+
+    await flightResultsPage.waitForFareRulesLegTab(1);
+    await flightResultsPage.clickFareRulesLegTab(1);
+    await flightResultsPage.waitForFareRulesNote();
+    await flightResultsPage.waitForFareRulesMainHeadline();
+    const tab1Text = await flightResultsPage.getFareRulesMainHeadlineText();
+
+    expect(tab0Text).not.toBe(tab1Text);
+
+    return { tab0: tab0Text, tab1: tab1Text };
+  },
+
 };
 
 module.exports = FlightPricing;

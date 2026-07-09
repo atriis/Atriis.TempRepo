@@ -156,3 +156,9 @@ Then('the origin-destination markup should be {string} percent of the base fare 
 // via the generic step in common.steps.js:
 //   Then the "totalPriceDisplayCurrency" in the intercepted response should equal "wholePrice" plus "markup"
 //   Then the "totalPriceDisplayCurrency" in the intercepted response should equal "wholePrice" plus "flightPricing.DisplayMarkup"
+
+Then("the fare basis codes on the first and second tabs should differ", async function () {
+  logger.info("Verifying fare basis codes differ between the first and second fare rules tabs");
+  const result = await FlightPricing.verifyFareBasisCodesAreDifferentAcrossTabs(this.page);
+  logger.info("Fare basis codes confirmed different across tabs", result);
+});
