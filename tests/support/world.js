@@ -26,6 +26,10 @@ class CustomWorld extends World {
       viewport: { width: 1920, height: 1080 },
       screen: { width: 1920, height: 1080 },
       ignoreHTTPSErrors: true,
+      // Grant clipboard access so features that copy via navigator.clipboard.write
+      // (e.g. the Share dialog "Copy to clipboard" action) resolve their success
+      // state instead of silently rejecting. Additive — no effect on other tests.
+      permissions: ["clipboard-read", "clipboard-write"],
     });
 
     this.page = await this.context.newPage();

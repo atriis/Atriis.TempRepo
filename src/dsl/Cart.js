@@ -756,6 +756,23 @@ const Cart = {
   },
 
   /**
+   * Clicks the "Copy to clipboard" button in the open share dialog footer.
+   * The share dialog must already be open (via clickShareItineraryAndWaitForSubjectField
+   * or clickShareQuoteAndWaitForSubjectField).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async clickCopyToClipboardInShareDialog(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickCopyToClipboardButton();
+  },
+
+  /**
    * Sends a quote or itinerary email and waits for success notification.
    * Used after opening the share dialog with clickShareQuoteAndWaitForSubjectField.
    *

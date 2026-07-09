@@ -191,6 +191,29 @@ When("I click the share itinerary button", async function () {
   await Cart.clickShareItineraryAndWaitForSubjectField(this.page);
 });
 
+When("I click the copy to clipboard button in the share dialog", async function () {
+  logger.info("Clicking copy to clipboard button in share dialog");
+  // Snapshot the URL before the copy action so a later step can assert the page did not
+  // navigate. Test 32088 guards against "Copy to clipboard" redirecting to a broken link.
+  this.urlBeforeShareCopy = this.page.url();
+  await Cart.clickCopyToClipboardInShareDialog(this.page);
+});
+
+Then("I should not be redirected to another page", async function () {
+  logger.info("Verifying the user was not redirected to another page after copy to clipboard");
+  if (!this.urlBeforeShareCopy) {
+    throw new Error(
+      '[cart.steps] Cannot verify no-redirect: no URL was captured before the copy action. ' +
+        'Ensure "I click the copy to clipboard button in the share dialog" ran first.'
+    );
+  }
+  const currentUrl = this.page.url();
+  expect(
+    currentUrl,
+    `Expected to remain on "${this.urlBeforeShareCopy}" after "Copy to clipboard" but the page navigated to "${currentUrl}"`
+  ).toBe(this.urlBeforeShareCopy);
+});
+
 When('I switch the share email preview to detailed view', async function () {
   logger.info('Switching the share email preview to detailed view');
   await Cart.switchSharePreviewToDetailedView(this.page);

@@ -1549,6 +1549,34 @@ class CartPage {
     return this.getSendEmailButton().isVisible().catch(() => false);
   }
 
+  /**
+   * Locator for the share dialog's "Copy to clipboard" footer button.
+   *
+   * Scoped to the visible dialog for the same reason as getSendEmailButton: a
+   * page-wide match could resolve to a stale/hidden dialog. Matches the pre-copy
+   * label "Copy to clipboard"; after a successful copy the button re-renders as
+   * "Copied to clipboard", so this locator intentionally stops matching then.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCopyToClipboardButton() {
+    return this.page
+      .locator(".el-dialog")
+      .filter({ visible: true })
+      .getByRole("button", { name: "Copy to clipboard" })
+      .filter({ visible: true });
+  }
+
+  /**
+   * Clicks the "Copy to clipboard" button in the share dialog footer.
+   */
+  async clickCopyToClipboardButton() {
+    const button = this.getCopyToClipboardButton();
+    await button.waitFor({ state: "visible", timeout: 30_000 });
+    await button.scrollIntoViewIfNeeded();
+    await button.click();
+  }
+
   // ===== OOP JUSTIFICATION =====
 
   /**
