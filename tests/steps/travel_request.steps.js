@@ -107,6 +107,26 @@ Then("the travel request flight destination should show {string}", async functio
   await TravelRequest.verifyRequestFlightDestination(this.page, expected);
 });
 
+Then("the travel request flight origin should contain {string}", async function (expected) {
+  logger.info("Verifying travel request flight origin contains text", { expected });
+  await TravelRequest.verifyRequestFlightOriginContains(this.page, expected);
+});
+
+Then("the travel request flight destination should contain {string}", async function (expected) {
+  logger.info("Verifying travel request flight destination contains text", { expected });
+  await TravelRequest.verifyRequestFlightDestinationContains(this.page, expected);
+});
+
+Then("the travel request flight cabin class should show {string}", async function (expected) {
+  logger.info("Verifying travel request flight cabin class", { expected });
+  await TravelRequest.verifyRequestFlightCabinClass(this.page, expected);
+});
+
+Then("the number of travelers in the travel request should be {int}", async function (count) {
+  logger.info("Verifying number of travelers in the travel request", { count });
+  await TravelRequest.verifyTravelersCount(this.page, count);
+});
+
 Then("the travel request flight depart date should show the extracted departure date", async function () {
   const dates = requireExtractedDates(this);
   logger.info("Verifying travel request flight depart date matches extracted date", { expected: dates.departureDate });

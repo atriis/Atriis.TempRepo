@@ -331,6 +331,11 @@ When("I search for a round trip flight from {string} to {string} without clickin
   await FlightSearch.searchFlightRoundTripWithoutSearch(this.page, { from, to });
 });
 
+When("I fill in a round trip {string} class flight from {string} to {string} without clicking search button", async function (cabinClass, from, to) {
+  logger.info('Filling round-trip flight search with cabin class without clicking search', { cabinClass, from, to });
+  await FlightSearch.searchFlightRoundTripWithCabinClassWithoutSearch(this.page, { from, to }, cabinClass);
+});
+
 When("I edit the parallel hotel destination to {string}", async function (destination) {
   logger.info('Editing the parallel hotel destination', { destination });
   await FlightSearch.editParallelHotelDestination(this.page, destination);

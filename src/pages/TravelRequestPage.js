@@ -40,6 +40,17 @@ const SELECTORS = {
   FLIGHT_DESTINATION_INPUT: ".request-assistance-main .flight-search-inputs [placeholder='To... Destination']",
   FLIGHT_DEPART_DATE_INPUT: ".request-assistance-main .flight-search-inputs [placeholder='Depart Date']",
   FLIGHT_RETURN_DATE_INPUT: ".request-assistance-main .flight-search-inputs [placeholder='Return Date']",
+  // Cabin-class selector (flight-search-inputs.vue .class-input app-select bound to flightRows[0].class).
+  // It renders even in requestAssistance mode (only the travelers-count/search-for selects are gated out),
+  // so the entered cabin class carries into the request form. The el-select shows the selected label in
+  // .el-select__selection (Element Plus 2.x).
+  FLIGHT_CABIN_CLASS: ".request-assistance-main .flight-search-inputs .class-input .el-select__selection",
+
+  // Travellers section (request-assistance.vue .travelers-container → trip-travelers-list → one
+  // trip-traveler-tag per traveler). Named (non-empty) travellers carry .traveler-name.black, while an
+  // empty "Select traveller" slot uses .traveler-name.has-text-weight-semibold — count only the named ones.
+  TRAVELERS_CONTAINER: ".request-assistance-main .travelers-container",
+  TRAVELER_TAG_NAMED: ".request-assistance-main .travelers-container .trip-traveler-tag .traveler-name.black",
 
   // Hotel item — the hotel-search-inputs component renders inside the hotel request item.
   // Destination is a hotel-autocomplete input (value = destination Name); check-in/check-out are
@@ -318,6 +329,40 @@ class TravelRequestPage {
     const field = this.getRequestFieldLocator(fieldKey);
     await field.scrollIntoViewIfNeeded().catch(() => {});
     return (await field.inputValue().catch(() => "")).trim();
+  }
+
+  /**
+   * Reads the cabin-class value shown in the request-assistance flight item. Unlike the origin/date
+   * inputs this is an el-select whose selected label lives in .el-select__selection (not an input
+   * value), so it's read via innerText. Best-effort: returns "" if not yet rendered so the DSL poll
+   * can retry.
+   * @returns {Promise<string>}
+   */
+  async getRequestFlightCabinClass() {
+    const field = this.page.locator(SELECTORS.FLIGHT_CABIN_CLASS).first();
+    await field.scrollIntoViewIfNeeded().catch(() => {});
+    return (await field.innerText().catch(() => "")).trim();
+  }
+
+  /**
+   * Counts the named (non-empty) travellers shown in the request-assistance travellers section.
+   * Waits for at least one named traveller tag so the count isn't read before the list renders.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<number>}
+   */
+  async getTravelersCount({ timeout = 15000 } = {}) {
+    const namedTravelers = this.page.locator(SELECTORS.TRAVELER_TAG_NAMED);
+    try {
+      await namedTravelers.first().waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[TravelRequestPage.getTravelersCount] No named travellers rendered in the request-assistance ` +
+        `travellers section (selector: ${SELECTORS.TRAVELER_TAG_NAMED}) within ${timeout}ms. The travellers ` +
+        `list may not have loaded. Original: ${err.message}`
+      );
+    }
+    return namedTravelers.count();
   }
 
   // ===== "Add more services" =====

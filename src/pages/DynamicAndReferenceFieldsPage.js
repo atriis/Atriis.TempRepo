@@ -23,6 +23,9 @@ const SELECTORS = {
   // Financial Reference section title in the reference-fields modal (trip-app.vue → .financial-section
   // collapse header). Renders $t('cart.financialReferenceModal.modalTitle') === "Financial Reference".
   FINANCIAL_REFERENCE_MODAL_TITLE: '.financial-section .el-collapse-item__header .has-text-weight-semibold',
+  // Mandatory "*" marker on the Financial Reference collapse header (trip-app.vue:
+  // <span class="ml-2 has-text-danger mr-1">*</span>). Its presence marks the section as required.
+  FINANCIAL_REFERENCE_MANDATORY_MARKER: '.financial-section span.has-text-danger',
   // Open reference-fields dialog (trip-app.vue el-dialog) used to scope field counts.
   REFERENCE_DIALOG: '.el-dialog:visible',
   // Collapsible section inside the reference-fields popup (e.g. "Financial Reference"). Some
@@ -298,7 +301,14 @@ class DynamicAndReferenceFieldsPage {
       const text = await selectWrapper.innerText();
       if (text) return text.trim();
     }
-    // Try text input (for input-textbox fields)
+    // Try text/number input (input-textbox fields): the value is the input's `value`, NOT its
+    // innerText — reading `.control` innerText returns "" for inputs, so read the value directly.
+    const input = fieldContainer.locator('input.el-input__inner, input').first();
+    if (await input.count() > 0) {
+      const val = (await input.inputValue().catch(() => '')).trim();
+      if (val) return val;
+    }
+    // Fallback: rendered text in the control area (non-input display fields).
     const controlDiv = fieldContainer.locator('.control').first();
     if (await controlDiv.count() > 0) {
       const text = await controlDiv.innerText();
@@ -428,6 +438,61 @@ class DynamicAndReferenceFieldsPage {
    */
   async closeFinancialReferenceDropdown() {
     await this.page.keyboard.press('Escape');
+  }
+
+  /**
+   * Returns true if the Financial Reference collapse header shows its mandatory "*" marker
+   * (the <span class="ml-2 has-text-danger mr-1">*</span> in trip-app.vue), i.e. the section is
+   * required. Returns false if the marker never becomes visible within the timeout.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async isFinancialReferenceMandatoryMarkerVisible({ timeout = 15000 } = {}) {
+    const marker = this.page.locator(SELECTORS.FINANCIAL_REFERENCE_MANDATORY_MARKER).first();
+    try {
+      await marker.waitFor({ state: 'visible', timeout });
+      const text = (await marker.innerText().catch(() => '')).trim();
+      return text.includes('*');
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Opens the financial-reference dropdown and selects the option whose label matches optionText
+   * (case-insensitive partial match), e.g. "uploadname4 (uploadcode4)". Used when a SPECIFIC financial
+   * reference code must be chosen (selectFirstFinancialReferenceOption picks the first regardless).
+   * @param {string} optionText - The financial reference option label to select
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async selectFinancialReferenceOptionByText(optionText, { timeout = 15000 } = {}) {
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error('[DynamicAndReferenceFieldsPage.selectFinancialReferenceOptionByText] "optionText" must be a non-empty string, got: ' + typeof optionText);
+    }
+    await this.waitForFinancialReferenceDropdown({ timeout });
+    await this.openFinancialReferenceDropdown();
+
+    const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const optionRegex = new RegExp(escape(optionText), 'i');
+    // Scope to the OPEN dropdown panel so a hidden option panel from another el-select isn't matched.
+    // Use the enabled-option selector (matches the error message below) so a disabled item can't be clicked.
+    const panel = this.page.locator('.el-select-dropdown:visible').first();
+    const option = panel.locator(SELECTORS.FINANCIAL_REFERENCE_DROPDOWN_OPTION).filter({ hasText: optionRegex }).first();
+    try {
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click({ timeout: 5000 });
+      // Wait for the dropdown popper to close (selection committed) before the caller proceeds/saves,
+      // rather than a fixed sleep.
+      await this.page.locator('.el-select-dropdown:visible').first().waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.selectFinancialReferenceOptionByText] Could not select financial reference ` +
+        `option "${optionText}" — it was not present/visible in the open dropdown ` +
+        `(${SELECTORS.FINANCIAL_REFERENCE_DROPDOWN_OPTION}). Original: ${err.message}`
+      );
+    }
   }
 
   /**

@@ -79,6 +79,11 @@ Then("the financial reference modal title should be {string}", async function (e
   await DynamicAndReferenceFields.verifyFinancialReferenceModalTitle(this.page, expectedTitle);
 });
 
+Then("the financial reference section should show a mandatory marker", async function () {
+  logger.info("Verifying the Financial Reference section shows a mandatory marker");
+  await DynamicAndReferenceFields.verifyFinancialReferenceMandatoryMarker(this.page);
+});
+
 Then("the financial reference dropdown should contain the following options:", async function (dataTable) {
   const expectedOptions = dataTable.raw().map((row) => row[0]);
   logger.info("Verifying financial reference dropdown contains expected options", { expectedOptions });

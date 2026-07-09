@@ -456,6 +456,76 @@ const TravelRequest = {
   },
 
   /**
+   * Verifies the flight origin shown in the request-assistance form CONTAINS the expected text.
+   * The origin input carries the full airport label (e.g. "London, United Kingdom - All airports
+   * (LON)"), so a contains-check on the city ("London") is robust to label formatting. Polls because
+   * the value settles reactively after the form renders (see verifyRequestAssistanceHotelDestination).
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expectedSubstring - Text the flight origin must contain (e.g. "London")
+   */
+  async verifyRequestFlightOriginContains(page, expectedSubstring) {
+    await assertRequestFieldContains(page, expectedSubstring, 'flightOrigin', 'flight origin');
+  },
+
+  /**
+   * Verifies the flight destination shown in the request-assistance form CONTAINS the expected text
+   * (e.g. "Tel Aviv"). Same contains + poll rationale as verifyRequestFlightOriginContains.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expectedSubstring - Text the flight destination must contain (e.g. "Tel Aviv")
+   */
+  async verifyRequestFlightDestinationContains(page, expectedSubstring) {
+    await assertRequestFieldContains(page, expectedSubstring, 'flightDestination', 'flight destination');
+  },
+
+  /**
+   * Verifies the cabin class shown in the request-assistance flight item (e.g. "Premium Economy").
+   * The cabin selector is an el-select whose selected label carries into the request form; polls so a
+   * value still settling after render doesn't fail on the first read.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expected - Expected cabin class (e.g. "Premium Economy")
+   */
+  async verifyRequestFlightCabinClass(page, expected) {
+    if (!page) throw new Error('[TravelRequest.verifyRequestFlightCabinClass] "page" is required.');
+    if (!expected || typeof expected !== 'string') {
+      throw new Error(`[TravelRequest.verifyRequestFlightCabinClass] "expected" must be a non-empty string, got: ${typeof expected}`);
+    }
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    await expect
+      .poll(async () => normalizeText(await travelRequestPage.getRequestFlightCabinClass()), {
+        timeout: 30000,
+        message: `[TravelRequest.verifyRequestFlightCabinClass] Expected the request-assistance flight cabin class to show "${expected}".`,
+      })
+      .toBe(normalizeText(expected));
+  },
+
+  /**
+   * Verifies the number of (named) travellers shown in the request-assistance travellers section.
+   * @param {import('@playwright/test').Page} page
+   * @param {number} expectedCount - Expected number of travellers (e.g. 2)
+   */
+  async verifyTravelersCount(page, expectedCount) {
+    if (!page) throw new Error('[TravelRequest.verifyTravelersCount] "page" is required.');
+    if (!Number.isInteger(expectedCount) || expectedCount < 0) {
+      throw new Error(`[TravelRequest.verifyTravelersCount] "expectedCount" must be a non-negative integer, got: ${expectedCount}`);
+    }
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    // Poll: the travellers list renders reactively, so tags can mount one after another — a single
+    // read can catch it mid-render and undercount. Retry until the count settles at the expected value.
+    await expect
+      .poll(async () => {
+        try {
+          return await travelRequestPage.getTravelersCount({ timeout: 3000 });
+        } catch {
+          return 0;
+        }
+      }, {
+        timeout: 30000,
+        message: `[TravelRequest.verifyTravelersCount] Expected the request-assistance travellers section to show ${expectedCount} travellers.`,
+      })
+      .toBe(expectedCount);
+  },
+
+  /**
    * Verifies the hotel destination shown in the request-assistance form.
    * @param {import('@playwright/test').Page} page
    * @param {string} expected - Expected hotel destination value (e.g. "Madrid,Spain,(MAD)")
@@ -506,20 +576,7 @@ const TravelRequest = {
    * @param {string} expectedSubstring - Text the hotel destination must contain (e.g. "London")
    */
   async verifyRequestAssistanceHotelDestination(page, expectedSubstring) {
-    if (!page) throw new Error('[TravelRequest.verifyRequestAssistanceHotelDestination] "page" is required.');
-    if (!expectedSubstring || typeof expectedSubstring !== 'string') {
-      throw new Error(
-        `[TravelRequest.verifyRequestAssistanceHotelDestination] "expectedSubstring" must be a non-empty string, got: ${typeof expectedSubstring}`
-      );
-    }
-    const travelRequestPage = getPageObject(page, TravelRequestPage);
-    const normalizedExpected = normalizeText(expectedSubstring).toLowerCase();
-    await expect
-      .poll(async () => normalizeText(await travelRequestPage.getRequestFieldValue('hotelDestination')).toLowerCase(), {
-        timeout: 30000,
-        message: `[TravelRequest.verifyRequestAssistanceHotelDestination] Expected the request-assistance hotel destination to contain "${expectedSubstring}".`,
-      })
-      .toContain(normalizedExpected);
+    await assertRequestFieldContains(page, expectedSubstring, 'hotelDestination', 'hotel destination');
   },
 
   /**
@@ -805,6 +862,48 @@ async function assertRequestFieldValue(page, expected, fieldKey, fieldLabel) {
       throw new Error(
         `[TravelRequest] The request-assistance ${fieldLabel} field never rendered — its selector matched 0 elements. ` +
         `Expected "${expected}". The field may be missing from the form or its selector may be stale.`
+      );
+    }
+    throw err;
+  }
+}
+
+/**
+ * Reads a request-assistance form field (by key) and asserts it CONTAINS the expected substring
+ * (whitespace-normalized, case-insensitive). Used for fields that carry a fuller label than the value
+ * under test — e.g. the flight origin/destination inputs hold the full airport string, of which the
+ * test only pins the city. Mirrors assertRequestFieldValue's guard + poll + missing-selector
+ * disambiguation.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} expectedSubstring - Text the field value must contain
+ * @param {string} fieldKey - Request-assistance field key (see REQUEST_FIELD_SELECTORS)
+ * @param {string} fieldLabel - Human-readable field name for error messages
+ */
+async function assertRequestFieldContains(page, expectedSubstring, fieldKey, fieldLabel) {
+  if (!page) throw new Error(`[TravelRequest] "page" is required to verify the ${fieldLabel}.`);
+  if (!expectedSubstring || typeof expectedSubstring !== 'string') {
+    throw new Error(
+      `[TravelRequest] Expected ${fieldLabel} substring must be a non-empty string, got: ${typeof expectedSubstring}.`
+    );
+  }
+  const travelRequestPage = getPageObject(page, TravelRequestPage);
+  const normalizedExpected = normalizeText(expectedSubstring).toLowerCase();
+  try {
+    await expect
+      .poll(async () => normalizeText(await travelRequestPage.getRequestFieldValue(fieldKey)).toLowerCase(), {
+        timeout: 30000,
+        message: `[TravelRequest] Expected the request-assistance ${fieldLabel} to contain "${expectedSubstring}".`,
+      })
+      .toContain(normalizedExpected);
+  } catch (err) {
+    // Disambiguate a stale/missing selector (0 matches) from a genuine mismatch, same as
+    // assertRequestFieldValue — the poll reads "" in both cases otherwise.
+    const count = await travelRequestPage.getRequestFieldLocator(fieldKey).count().catch(() => 0);
+    if (count === 0) {
+      throw new Error(
+        `[TravelRequest] The request-assistance ${fieldLabel} field never rendered — its selector matched 0 elements. ` +
+        `Expected it to contain "${expectedSubstring}". The field may be missing from the form or its selector may be stale.`
       );
     }
     throw err;

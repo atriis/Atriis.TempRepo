@@ -275,6 +275,26 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Verifies the Financial Reference section shows its mandatory "*" marker in the reference-fields
+   * popup (i.e. the section is required). Reads the marker via the page object.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyFinancialReferenceMandatoryMarker(page) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyFinancialReferenceMandatoryMarker] "page" is required.');
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const visible = await dynamicFieldsPage.isFinancialReferenceMandatoryMarkerVisible();
+    expect(
+      visible,
+      `[DynamicAndReferenceFields.verifyFinancialReferenceMandatoryMarker] Expected the Financial Reference ` +
+      `section to show a mandatory "*" marker in the reference-fields popup, but it was not visible. The ` +
+      `financial-reference section may not have rendered, or it is not configured as mandatory for this user.`
+    ).toBe(true);
+  },
+
+  /**
    * Opens the financial-reference dropdown, verifies that each expected option
    * is present (case-insensitive partial match), then closes the dropdown.
    *
@@ -385,6 +405,16 @@ const DynamicAndReferenceFields = {
     if (!page) throw new Error('page is required');
     if (!fieldName || typeof fieldName !== 'string') throw new Error('fieldName must be a non-empty string');
     if (!optionText || typeof optionText !== 'string') throw new Error('optionText must be a non-empty string');
+
+    // The Financial Reference field renders as a collapse-section el-select (financial-reference.vue),
+    // NOT a `.input-dropdown` with a label span, so it can't be located the generic way. Route it to
+    // the dedicated financial-reference selector. Anchor the match so the distinct "Financial Reference
+    // Code" NL-gov field is NOT swept into this branch.
+    if (/^\s*financial\s*reference\s*$/i.test(fieldName)) {
+      const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+      await dynamicFieldsPage.selectFinancialReferenceOptionByText(optionText, { timeout: Math.max(timeout, 15000) });
+      return;
+    }
 
     const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     // Anchor the label match so "Location" does NOT also match "Location travel policy".

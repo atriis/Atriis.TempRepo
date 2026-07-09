@@ -466,6 +466,7 @@ const FlightSearch = {
     {
       departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
       returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      cabinClass = null,
     } = {},
   ) {
     if (!page) {
@@ -473,7 +474,7 @@ const FlightSearch = {
     }
 
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
-    logger.info('Filling roundTrip flight search without clicking search', { from, to });
+    logger.info('Filling roundTrip flight search without clicking search', { from, to, cabinClass });
 
     const flightSearchPage = getPageObject(page, FlightSearchPage);
     const searchPage = getPageObject(page, SearchPage);
@@ -489,9 +490,38 @@ const FlightSearch = {
       endIndex: returnIndex,
     });
 
+    // Optional cabin-class selection (e.g. "Premium Economy") before completing the trip setup.
+    if (cabinClass) {
+      await flightSearchPage.selectFlightClass(cabinClass);
+    }
+
     await flightSearchPage.selectCompleteTrip();
 
-    return { from, to, tripType: 'roundTrip', searchType: 'completeTrip', submitted: false };
+    return { from, to, tripType: 'roundTrip', searchType: 'completeTrip', cabinClass, submitted: false };
+  },
+
+  /**
+   * Fills in a round-trip flight search WITH a requested cabin class but WITHOUT clicking the search
+   * button (e.g. to then open request assistance and verify the parameters were carried into the
+   * travel-request form). Thin wrapper over searchFlightRoundTripWithoutSearch with a mandatory
+   * cabin class, so the fill sequence lives in one place.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string|Object} routeInput - Route key or {from, to} object
+   * @param {string} cabinClass - Cabin class to select in the search form (e.g. "Premium Economy")
+   * @param {Object} [options]
+   * @param {number} [options.departureIndex] - Departure date index (default: from SEARCH_DEFAULTS)
+   * @param {number} [options.returnIndex] - Return date index (default: from SEARCH_DEFAULTS)
+   * @returns {Promise<{from: string, to: string, tripType: string, searchType: string, cabinClass: string, submitted: boolean}>}
+   */
+  async searchFlightRoundTripWithCabinClassWithoutSearch(page, routeInput = flightRoutes.defaultRoute, cabinClass, options = {}) {
+    if (!page) {
+      throw new Error('[FlightSearch.searchFlightRoundTripWithCabinClassWithoutSearch] "page" is required, got: ' + typeof page);
+    }
+    if (!cabinClass || typeof cabinClass !== 'string') {
+      throw new Error('[FlightSearch.searchFlightRoundTripWithCabinClassWithoutSearch] "cabinClass" must be a non-empty string, got: ' + typeof cabinClass);
+    }
+    return this.searchFlightRoundTripWithoutSearch(page, routeInput, { ...options, cabinClass });
   },
 
   /**
