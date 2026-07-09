@@ -7,7 +7,7 @@
 # Updated: 2024-02-11T07:01:43Z
 
 @regression @shell @lcc
-Feature: Share Low-cost flight from results page
+Feature: 26966 Share Low-cost flight from results page
 
   As a travel agent
   I want to share a low-cost flight quote directly from the search results page
