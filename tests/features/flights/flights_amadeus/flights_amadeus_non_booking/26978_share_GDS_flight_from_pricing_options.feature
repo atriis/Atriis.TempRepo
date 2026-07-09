@@ -1,5 +1,5 @@
 @share-flight @flights @pricing-options
-Feature: Share flight from pricing options
+Feature: 26978 Share flight from pricing options
   As a corporate traveler
   I want to share flight offers selected from pricing options
   So the price in the shared offer matches the prices selected from pricing options

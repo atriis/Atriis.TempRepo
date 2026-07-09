@@ -1,5 +1,5 @@
 @share-flight @flights
-Feature: Share flight price offer
+Feature: 36579 Share flight price offer
   As a corporate traveler
   I want to share 2 price offers from results for different carriers for any GDS supplier
   So the price in results and in the share offer should be the same
