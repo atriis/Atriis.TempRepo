@@ -876,6 +876,46 @@ const HotelLevelResults = {
       throw new Error(`[HotelLevelResults.filterHotelsByMaxPrice] Failed to apply max price filter of ${maxPrice}. ${err.message}`);
     }
   },
+
+  /**
+   * Verifies the first hotel's address text contains the expected text (case-insensitive).
+   * @param {import('playwright').Page} page
+   * @param {string} text - Expected text to find in the address
+   * @throws {Error} If page is not provided, text is not a non-empty string, or address does not contain text
+   */
+  async verifyFirstHotelAddress(page, text) {
+    if (!page) throw new Error('[HotelLevelResults.verifyFirstHotelAddress] page is required');
+    if (!text || typeof text !== 'string') {
+      throw new Error(`[HotelLevelResults.verifyFirstHotelAddress] "text" must be a non-empty string, got: ${typeof text} (${JSON.stringify(text)})`);
+    }
+    logger.debug('Verifying first hotel address contains text', { text });
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const actualAddress = await hotelLevelResultsPage.getFirstHotelAddressText();
+    if (!actualAddress.toLowerCase().includes(text.toLowerCase())) {
+      throw new Error(
+        `[HotelLevelResults.verifyFirstHotelAddress] Expected first hotel address to contain "${text}", ` +
+        `but actual address was "${actualAddress}". The hotel results may be for a different location.`
+      );
+    }
+  },
+
+  /**
+   * Verifies the Reset Filters button is displayed in the hotel filter summary bar.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If page is not provided or the button is not visible
+   */
+  async verifyResetFiltersButtonDisplayed(page) {
+    if (!page) throw new Error('[HotelLevelResults.verifyResetFiltersButtonDisplayed] page is required');
+    logger.debug('Verifying Reset Filters button is displayed in hotel filter summary');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const isVisible = await hotelLevelResultsPage.isResetFiltersButtonVisible();
+    if (!isVisible) {
+      throw new Error(
+        '[HotelLevelResults.verifyResetFiltersButtonDisplayed] Reset Filters button is not visible in the hotel filter summary bar. ' +
+        'No active filters may be applied, or the filter summary bar is not rendered.'
+      );
+    }
+  },
 };
 
 module.exports = HotelLevelResults;

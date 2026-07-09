@@ -288,3 +288,13 @@ When("I filter hotel results by max price {int}", async function (maxPrice) {
   logger.info("Filtering hotel results by max price", { maxPrice });
   await HotelLevelResults.filterHotelsByMaxPrice(this.page, maxPrice);
 });
+
+Then("the first hotel has the text {string} on the address", async function (text) {
+  logger.info("Verifying first hotel address contains text", { text });
+  await HotelLevelResults.verifyFirstHotelAddress(this.page, text);
+});
+
+Then("Reset Filters button is displayed in hotel filter summary", async function () {
+  logger.info("Verifying Reset Filters button is displayed in hotel filter summary");
+  await HotelLevelResults.verifyResetFiltersButtonDisplayed(this.page);
+});

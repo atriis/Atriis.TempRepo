@@ -1,5 +1,5 @@
-﻿# Test Name: 37211 [Merge] Hotels - After editing search parameters, hotels from the new location are displayed correctly and there is a scroll bar on the filters
-# Description: 
+# Test Name: 37211 [Merge] Hotels - After editing search parameters, hotels from the new location are displayed correctly and there is a scroll bar on the filters
+# Description:
 # Status: Active
 # Labels: Hotel,merge,Filters,search,Regression,v3,2026 plan 1
 # Owner: Bruna Santos
@@ -17,6 +17,11 @@ Feature: 37211 General - Edit hotel search parameters
     Given I am logged in as "natalia@expediacorpamsalem.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
+    And I wait to see view rates text in results page
     When I edit the hotel search location to "BCN"
+    And I wait to see view rates text in results page
+    And I apply hotel level filter "Amenities" with option "Air condition"
+    And I scroll through hotel filters
     Then the hotel results should be for the new location "BCN"
-    When I scroll through hotel filters
+    Then the first hotel has the text "Barcelona" on the address
+    Then Reset Filters button is displayed in hotel filter summary

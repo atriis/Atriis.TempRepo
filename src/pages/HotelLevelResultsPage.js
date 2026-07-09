@@ -76,6 +76,10 @@ const SELECTORS = {
   // Slider runway and thumb for the hotel-level Price filter panel
   HOTEL_PRICE_SLIDER_RUNWAY: '.hotel-filter .price-slider .el-slider__runway',
   HOTEL_PRICE_SLIDER_THUMB: '.hotel-filter .price-slider .el-slider__button-wrapper',
+  // Hotel card address/distance text
+  HOTEL_ADDRESS: '.hotel-preview .address-distance p',
+  // Reset Filters (clear all) button in the hotel filter summary bar
+  RESET_FILTERS_BUTTON: '.hotel-filter-summary .clear-all',
 };
 
 class HotelLevelResultsPage {
@@ -827,6 +831,39 @@ class HotelLevelResultsPage {
     const checkbox = this.page.locator(SELECTORS.SUPPLIER_FILTER_ITEM(supplierId)).first();
     await checkbox.waitFor({ state: 'visible', timeout: 15000 });
     await checkbox.click();
+  }
+
+  /**
+   * Gets the address/distance text from the first hotel card.
+   * @returns {Promise<string>} The address text
+   */
+  async getFirstHotelAddressText() {
+    const address = this.page.locator(SELECTORS.HOTEL_ADDRESS).first();
+    try {
+      await address.waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[HotelLevelResultsPage.getFirstHotelAddressText] Address text not visible in first hotel card ` +
+        `(selector: ${SELECTORS.HOTEL_ADDRESS}). The hotel results may still be loading or the address element is not rendered. Original: ${err.message}`
+      );
+    }
+    return (await address.textContent() ?? '').trim();
+  }
+
+  /**
+   * Checks if the Reset Filters (clear all) button is visible in the hotel filter summary bar.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>} True if the reset filters button is visible
+   */
+  async isResetFiltersButtonVisible({ timeout = 10000 } = {}) {
+    const button = this.page.locator(SELECTORS.RESET_FILTERS_BUTTON).first();
+    try {
+      await button.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
