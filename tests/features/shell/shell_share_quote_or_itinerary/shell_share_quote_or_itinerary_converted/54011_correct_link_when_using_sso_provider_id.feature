@@ -23,9 +23,9 @@ Feature: 54011 - correct link when using SSO provider id
     # TODO: source captures the on-page trip id via getText(page, ".trip-id") and is marked "//TODO Please add an assertion here"; the value feeds the email-link checks below. No catalog phrase stores the trip id from the ".trip-id" element ("I extract the trip number from the current URL" reads the URL, not this element).
     When I store the trip id for later email link validation
     And I click the share itinerary button
-    # TODO: source types a recipient email (global "emailAddress" - value lost in the Testim export) then clicks ".group-user-warper" to pick the group user before sending. "I send the share" (sendQuoteAndWaitForSuccess) only clicks send + waits for success; no catalog phrase fills the share recipient.
+    # TODO: source types a recipient email (global "emailAddress" - value lost in the Testim export) then clicks ".group-user-warper" to pick the group user before sending. "I send the share and see success notification" (sendQuoteAndWaitForSuccess) only clicks send + waits for success; no catalog phrase fills the share recipient.
     And I add the share recipient email and select the group user
-    And I send the share
+    And I send the share and see success notification
     # TODO: core SSO check - source "validate_link_in_manual_send_itinerary_email" wraps an unconverted manual "email-validation-step" (empty body). Verify the link inside the manually-sent itinerary email uses the correct SSO provider id.
     Then the manually-sent itinerary email link should use the correct SSO provider id
     When I proceed to checkout

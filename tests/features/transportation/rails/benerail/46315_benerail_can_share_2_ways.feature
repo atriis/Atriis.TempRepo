@@ -27,4 +27,4 @@ Feature: 46315 Benerail - Can share price offer after selecting 2 ways in result
     # TODO: create step "Then the Include in price offer option should be visible" in benerail_results.steps.js
     # covers: waitForText("[class^='mb']...", 'Include in price offer')
     Then the Include in price offer option should be visible
-    And I send the share
+    And I send the share and see success notification

@@ -30,10 +30,10 @@ Feature: 35111 Benerail - Send price offer mail and share quote and itinerary fr
     # TODO: create step "Then the traveler name should appear in the share quote email preview" in benerail_results.steps.js
     # covers: waitForText on email body — 'Traveller(s) name: Shani Cohen'
     Then the traveler name should appear in the share quote email preview
-    And I send the share
+    And I send the share and see success notification
     When I click the share itinerary button
     # TODO: create step "Then the EU Rail label should appear in the share itinerary email preview" in benerail_results.steps.js
     # covers: waitForText on email body — 'EU Rail'
     Then the EU Rail label should appear in the share itinerary email preview
-    And I send the share
+    And I send the share and see success notification
     Then I successfully cancel the trip

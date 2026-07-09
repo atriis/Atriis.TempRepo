@@ -21,5 +21,5 @@ Feature: 59213 - Travel Plan - Travel plan is sent when aircraft model is missin
     And I add the first result to trip
     Then the booking status should be "Pending booking"
     When I click the share itinerary button
-    And I send the share
+    And I send the share and see success notification
     Then I should see a success notification

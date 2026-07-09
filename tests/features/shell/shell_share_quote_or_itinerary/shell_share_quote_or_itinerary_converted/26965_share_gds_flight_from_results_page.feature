@@ -7,7 +7,7 @@
 # Updated: 2024-02-11T07:01:52Z
 
 @regression @shell @gds
-Feature: Share GDS flight from results page
+Feature: 26965 Share GDS flight from results page
 
   As a travel agent
   I want to share a GDS flight quote directly from the search results page
@@ -21,4 +21,4 @@ Feature: Share GDS flight from results page
     And I click on the 1 share button in results page
     And I click on the "Share" button to open the share dialog
     Then I wait to see "Include in price offer" field in share dialog
-    When I send the share
+    And I send the share and see success notification

@@ -28,9 +28,9 @@ Feature: 60544 Amtrak - Cart page share and validations
     # covers: isVisible(".app-columns .material-symbols-outlined") + hover on ".timed-quote-badge" — counter()
     Then the Amtrak trip timer badge should be visible in cart
     When I click the share quote button
-    And I send the share
+    And I send the share and see success notification
     When I click the share itinerary button
-    And I send the share
+    And I send the share and see success notification
     # TODO: create step "Then the required extras notice should be visible in cart" in amtrak.steps.js
     # covers: waitForText("[class^='px']...", 'Please add the required extras')
     Then the required extras notice should be visible in cart

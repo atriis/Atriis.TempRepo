@@ -108,7 +108,7 @@ The output must follow this **exact format**:
 - `When I close price breakdown modal`
 - `When I click the share quote button`
 - `When I click the share itinerary button`
-- `When I send the share`
+- `When I send the share and see success notification`
 - `Then the booking status should be {string}` — e.g. "Pending booking", "onHold"
 - `Then I successfully cancel the trip`
 - `Then the out of policy indicator should be visible in cart`

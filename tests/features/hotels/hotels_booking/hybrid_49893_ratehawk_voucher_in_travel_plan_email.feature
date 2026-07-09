@@ -27,7 +27,6 @@ Feature: 49893 Ratehawk - Travel plan email contains Ratehawk voucher, not Atrii
     Then the booking status should be "Confirmed"
     Then the download voucher button should be visible in the trip overview
     When I click the share itinerary button
-    And I send the email
-    Then I should see a success notification
+    And I send the email and see success notification
     Then I successfully cancel the trip
 

@@ -21,4 +21,4 @@ Feature: Share Low-cost flight from results page
     And I click on the 1 share button in results page
     And I click on the "Share" button to open the share dialog
     Then I wait to see "Include in price offer" field in share dialog
-    When I send the share
+    When I send the share and see success notification

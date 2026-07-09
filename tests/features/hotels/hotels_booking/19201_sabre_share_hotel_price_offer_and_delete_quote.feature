@@ -22,7 +22,7 @@ Feature: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
     And I select the first hotel result
     And I add a refundable room to my cart
     When I click the share quote button
-    And I send the share
+    And I send the share and see success notification
     When I proceed to checkout
     And I complete the booking
     Then the hotel should appear as refundable in cart

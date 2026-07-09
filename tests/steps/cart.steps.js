@@ -196,7 +196,7 @@ When('I switch the share email preview to detailed view', async function () {
   await Cart.switchSharePreviewToDetailedView(this.page);
 });
 
-When("I send the share", async function () {
+When("I send the share and see success notification", async function () {
   logger.info("Sending share with success notification");
   await Cart.sendQuoteAndWaitForSuccess(this.page);
 });
@@ -948,7 +948,7 @@ Then("the special request should be truncated to {int} characters", async functi
   await Cart.verifySpecialRequestTruncatedTo(this.page, maxLength);
 });
 
-When("I send the email", async function () {
+When("I send the email and see success notification", async function () {
   logger.info("Sending email and waiting for success notification");
   await Cart.sendQuoteAndWaitForSuccess(this.page);
 });

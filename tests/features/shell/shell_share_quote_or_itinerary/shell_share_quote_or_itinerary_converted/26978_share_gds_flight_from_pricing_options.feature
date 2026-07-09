@@ -32,5 +32,5 @@ Feature: Share GDS flight from pricing options
     # TODO: no exact catalog phrase — source clicks the focused quote checkbox in the share dialog (.is-focus .el-checkbox__inner)
     And I check the quote include checkbox in the share dialog
     Then I wait to see "Include in price offer" field in share dialog
-    When I send the share
+    When I send the share and see success notification
     Then I should see a success notification

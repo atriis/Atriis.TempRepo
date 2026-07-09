@@ -22,7 +22,7 @@ Feature: Share quote combined with add to cart - flight
     And I click on the 1 share button in results page
     And I click on the "Share" button to open the share dialog
     Then the share quote preview should show "Price Offer - Summary"
-    When I send the share
+    When I send the share and see success notification
     And I navigate to the trip cart
     # TODO: the cart quantity badge should equal "1" - the key "combined with add to cart" assertion (share also adds the flight to cart). No catalog phrase exists for the cart item-count badge.
     Then the cart badge should show "1" item

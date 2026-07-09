@@ -22,6 +22,6 @@ Feature: Share quote combined with add to cart - hotel
     And I select the first hotel result
     # TODO: no catalog phrase for sharing a hotel room price offer by email from room-level results (select the room share button, open the share bar email option, and wait for the "Price Offer - Summary" email dialog)
     And I share the hotel room price offer by email from room level results
-    And I send the share
+    And I send the share and see success notification
     When I handle conflicting quotes if visible
     Then the cart status should be Pending booking

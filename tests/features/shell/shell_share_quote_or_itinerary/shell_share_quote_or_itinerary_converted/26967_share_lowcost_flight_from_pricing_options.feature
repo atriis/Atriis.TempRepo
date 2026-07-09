@@ -29,5 +29,5 @@ Feature: Share Low-Cost flight from pricing options
     # TODO: toggle the focused quote's include-in-price-offer checkbox in the share dialog (source clicks ".is-focus .el-checkbox__inner"); no catalog phrase covers this. Needs a new DSL method, e.g. includeFocusedQuoteInPriceOffer.
     And I include the focused quote in the price offer
     Then I wait to see "Include in price offer" field in share dialog
-    When I send the share
+    When I send the share and see success notification
     Then I should see a success notification

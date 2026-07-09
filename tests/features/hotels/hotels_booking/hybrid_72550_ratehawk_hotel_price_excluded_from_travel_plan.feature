@@ -25,7 +25,7 @@ Feature: 72550 Ratehawk - Hotel price is excluded from the travel plan email
     Then the booking status should be "Pending booking"
     When I click the share itinerary button
     Then the travel plan email should not include the hotel price
-    And I send the share
+    And I send the share and see success notification
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"

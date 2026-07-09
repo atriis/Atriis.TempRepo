@@ -32,11 +32,11 @@ Feature: Send hotel price offer and itinerary from cart with GDS hotel notificat
     # TODO: no catalog phrase for marking notifications as read and closing the notification center
     When I mark the notifications as read and close the notification center
     And I click the share quote button
-    And I send the share
+    And I send the share and see success notification
     Then the cart status should be Pending booking
     And the hotel should appear as refundable in cart
     When I click the share itinerary button
-    And I send the share
+    And I send the share and see success notification
     And I proceed to checkout
     # TODO: no catalog phrase for opening the financial reference dropdown on the checkout page
     And I open the financial reference dropdown at checkout
