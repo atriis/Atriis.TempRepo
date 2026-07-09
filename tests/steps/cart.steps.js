@@ -1279,6 +1279,15 @@ Then("{string} should be displayed for the {word} quote in the share email previ
   await Cart.verifySharePreviewQuoteContainsText(this.page, quoteOrdinal, text);
 });
 
+Then("the frequent flyer numbers for all travelers appear in the travel plan preview", async function () {
+  const travelerCount = this.selectedTravelerCount;
+  if (!travelerCount) {
+    throw new Error("No traveler count found on world state. Add travelers before this step.");
+  }
+  logger.info("Verifying frequent flyer numbers for all travelers appear in the travel plan preview", { travelerCount });
+  await Cart.verifyFqtvNumbersInSharePreview(this.page, travelerCount);
+});
+
 Then("the travel plan email should not include the hotel price", async function () {
   logger.info("Verifying travel plan email does not include hotel price");
   await Cart.verifySharePreviewDoesNotContainPrice(this.page);

@@ -3975,6 +3975,34 @@ class CartPage {
   }
 
   /**
+   * Extracts masked frequent flyer number tokens (e.g. "***3150") from the share
+   * email/itinerary preview text. The preview masks frequent flyer numbers as
+   * asterisks followed by the last few alphanumeric characters, one token per
+   * passenger row in the "Frequent Flyer" column.
+   * @returns {Promise<string[]>} Masked frequent flyer tokens found in the preview
+   */
+  async getSharePreviewFrequentFlyerValues({ timeout = 30000 } = {}) {
+    const deadline = Date.now() + timeout;
+    const pattern = /\*{2,4}[A-Za-z0-9]{2,8}/g;
+
+    await this._waitForShareIframeSrcdoc(timeout);
+    let text = await this.getSharePreviewTextContent();
+    let hasColumn = text.includes('Frequent Flyer');
+    let matches = hasColumn ? (text.match(pattern) || []) : [];
+    while (matches.length === 0 && Date.now() < deadline) {
+      await this.scrollSharePreviewDown();
+      await this.page.waitForTimeout(1000);
+      text = await this.getSharePreviewTextContent();
+      hasColumn = text.includes('Frequent Flyer');
+      matches = hasColumn ? (text.match(pattern) || []) : [];
+    }
+
+    // Without a "Frequent Flyer" column present, any masked-token matches would be
+    // unrelated fields (e.g. masked payment/ticket references) — don't report those.
+    return hasColumn ? matches : [];
+  }
+
+  /**
    * Extracts equipment values from the share email preview HTML.
    * Parses "Equipment: {value}" labels from the srcdoc HTML.
    * @returns {Promise<string[]>} Equipment values (e.g., ["High-Speed Train", "320"])

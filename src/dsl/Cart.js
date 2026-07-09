@@ -4485,6 +4485,28 @@ const Cart = {
   },
 
   /**
+   * Verifies that the shared travel plan preview displays a masked frequent flyer
+   * number (e.g. "***3150") for every traveler on the trip.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} expectedTravelerCount - Number of travelers expected to have a frequent flyer number shown
+   * @returns {Promise<void>}
+   */
+  async verifyFqtvNumbersInSharePreview(page, expectedTravelerCount) {
+    if (!page) throw new Error('page is required');
+    if (!Number.isInteger(expectedTravelerCount) || expectedTravelerCount < 1) {
+      throw new Error(`expectedTravelerCount must be a positive integer, got: ${expectedTravelerCount}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const fqtvValues = await cartPage.getSharePreviewFrequentFlyerValues();
+
+    expect(
+      fqtvValues.length,
+      `Expected ${expectedTravelerCount} frequent flyer number(s) in the travel plan preview but found ${fqtvValues.length}: ${JSON.stringify(fqtvValues)}`
+    ).toBeGreaterThanOrEqual(expectedTravelerCount);
+  },
+
+  /**
    * Verifies that the flight Frequent Flyer (FQTV) section has no details filled in.
    * Expected when the traveler has no FQTV configured (e.g. Fusion pax without saved FQTVs)
    * — the green success icon is absent because no valid FQTV entry has been submitted.
