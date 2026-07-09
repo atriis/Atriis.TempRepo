@@ -493,6 +493,20 @@ const HotelLevelResults = {
   },
 
   /**
+   * Verifies that every visible hotel card in the results has the given agreement label.
+   * @param {import('playwright').Page} page
+   * @param {string} tagText - Agreement label text to look for on each card (e.g. "My corporate")
+   * @throws {Error} If any hotel card is missing the agreement label
+   */
+  async verifyAgreementTagOnAllHotels(page, tagText) {
+    if (!page) throw new Error('page is required');
+    if (!tagText || typeof tagText !== 'string') throw new Error(`tagText must be a non-empty string, got: ${typeof tagText}`);
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const missingIndex = await hotelLevelResultsPage.findHotelMissingAgreementLabel(tagText);
+    if (missingIndex !== -1) throw new Error(`Hotel at index ${missingIndex} is missing the "${tagText}" agreement tag`);
+  },
+
+  /**
    * Verifies that an agreement label (e.g. "Corporate rate") is visible on the first hotel result.
    * @param {import('playwright').Page} page
    * @param {string} labelText - The agreement label text to look for (e.g. "Corporate rate")
