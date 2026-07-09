@@ -1509,13 +1509,44 @@ class CartPage {
 
   // This can be used when sharing quotes or itinerary from Results page as well
   /**
-   * Clicks the "Send" button.
+   * Locator for the share dialog's "Send" button.
+   *
+   * Scoped to the visible share dialog: a page-wide match risked resolving to a
+   * stale/hidden dialog's button (strict-mode failure) or clicking the wrong element,
+   * which left the dialog open and the send never firing.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getSendEmailButton() {
+    return this.page
+      .locator(".el-dialog")
+      .filter({ visible: true })
+      .getByRole("button", { name: "Send" })
+      .filter({ visible: true });
+  }
+
+  /**
+   * Clicks the "Send" button in the share dialog.
    */
   async clickSendEmailButton() {
-    const sendButton = this.page.getByRole("button", { name: "Send" });
+    const sendButton = this.getSendEmailButton();
 
-    await sendButton.waitFor({ state: "visible" });
+    await sendButton.waitFor({ state: "visible", timeout: 30_000 });
+    await sendButton.scrollIntoViewIfNeeded();
+    // The button is enabled only once the recipient/preview finish loading. click()
+    // auto-waits for enabled, but assert it so a stuck-disabled state fails loudly
+    // instead of silently waiting out the timeout.
+    await expect(sendButton).toBeEnabled({ timeout: 15_000 });
     await sendButton.click();
+  }
+
+  /**
+   * Whether the share dialog's "Send" button is currently visible (i.e. the dialog is
+   * still open). Used to decide whether a re-click is needed after a dropped click.
+   * @returns {Promise<boolean>}
+   */
+  async isSendEmailButtonVisible() {
+    return this.getSendEmailButton().isVisible().catch(() => false);
   }
 
   // ===== OOP JUSTIFICATION =====

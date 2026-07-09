@@ -19,7 +19,7 @@ Feature: 59213 - Travel Plan - Travel plan is sent when aircraft model is missin
     When I search for a round trip flight from "DUB" to "CDG"
     And I filter results by carrier "Aer Lingus"
     And I add the first result to trip
-    And I handle conflicting quotes if visible
-    Then the cart status should be Pending booking
+    Then the booking status should be "Pending booking"
     When I click the share itinerary button
     And I send the share
+    Then I should see a success notification

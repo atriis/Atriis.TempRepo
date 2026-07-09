@@ -769,9 +769,32 @@ const Cart = {
     
     const cartPage = getPageObject(page, CartPage);
     const commonPage = getPageObject(page, CommonPage);
+    const successNotification = commonPage.getSuccessNotification();
 
-    await cartPage.clickSendEmailButton();
-    await commonPage.getSuccessNotification().waitFor({ state: "visible" });
+    // The share dialog's Send button occasionally drops its first click while the dialog's
+    // open animation is still settling, leaving the dialog open with no success toast. Click,
+    // confirm the toast; if it doesn't show but the Send button is still there, the click
+    // didn't register — click again. If the button is gone, the send is already in flight,
+    // so just wait the toast out rather than re-clicking.
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (attempt === 1 || (await cartPage.isSendEmailButtonVisible())) {
+        await cartPage.clickSendEmailButton();
+      }
+
+      const sent = await successNotification
+        .waitFor({ state: "visible", timeout: 20_000 })
+        .then(() => true)
+        .catch(() => false);
+
+      if (sent) {
+        return { sent: true };
+      }
+    }
+
+    throw new Error(
+      "Share was not sent: success notification did not appear after clicking Send."
+    );
   },
 
   // ===== OUT OF POLICY (OOP) VALIDATION =====
