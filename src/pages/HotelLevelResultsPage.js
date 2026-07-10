@@ -41,8 +41,11 @@ const SELECTORS = {
   AGREEMENT_LABEL_SPAN: (text) => `.hotel-preview .ticket-agreement span:text-is("${text}")`,
   // Tooltip content shown on hover over agreement label (Element Plus renders popper at body level)
   AGREEMENT_TOOLTIP_DESCRIPTION: '.el-popper.is-light .agreement-tooltip__description',
-  // "Hotel wasn't found" no-results section
-  HOTEL_NO_RESULTS: '.hotel-no-results',
+  // "No results found" empty state (app-no-results-search) rendered on the results page
+  // when the search returns zero bookable hotels. NOTE: the hotel-no-results.vue component
+  // (class .hotel-no-results) is NOT used on this page, so we match .app-no-results here,
+  // consistent with ResultsPage.NO_RESULTS_CONTAINER.
+  HOTEL_NO_RESULTS: '.app-no-results',
   // Hotel details drawer amenities section
   HOTEL_AMENITIES: '.hotel-amenities',
   // More details button inside a hotel card
@@ -114,7 +117,7 @@ class HotelLevelResultsPage {
     // Wait for results page to be ready before looking for buttons (map button signals results loaded)
     await this.waitForResultsPageReady();
 
-    // Race the expected button against the "Hotel wasn't found" empty state so we throw a
+    // Race the expected button against the "No results found" empty state so we throw a
     // descriptive error in CI instead of a generic 180s timeout when the supplier returns
     // zero hotels for the search criteria.
     const buttonPromise = viewRatesButton
@@ -128,8 +131,8 @@ class HotelLevelResultsPage {
 
     if (winner === 'no-results') {
       throw new Error(
-        `No hotels found on results page. The "Hotel wasn't found" empty state was displayed ` +
-        `instead of bookable hotels; expected "View rates" button never appeared. ` +
+        `No results found on results page. The "No results found" empty state was displayed ` +
+        `instead of bookable results; expected "View rates" button never appeared. ` +
         `This is typically a data/availability issue (supplier returned zero hotels for the search criteria), ` +
         `not a test bug.`
       );
@@ -621,7 +624,7 @@ class HotelLevelResultsPage {
   }
 
   /**
-   * Checks whether the "Hotel wasn't found" no-results section is visible.
+   * Checks whether the "No results found" empty state (.app-no-results) is visible.
    * @returns {Promise<boolean>} True if the no-results section is visible
    */
   async isHotelNotFoundMessageVisible() {
