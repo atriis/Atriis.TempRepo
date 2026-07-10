@@ -250,6 +250,22 @@ class CheckoutPage {
   }
 
   /**
+   * Extracts the "supplier:" line from the booking error dialog (name plus any
+   * trailing message text on the same line), for concise logging. Unlike
+   * getBookingErrorSupplierName(), this does not stop at the first closing
+   * asterisk pair, so it captures messages like "**AVIS**THIS AWD NOT AVAILABLE...".
+   *
+   * @returns {Promise<string|null>}
+   */
+  async getBookingErrorSupplierMessage() {
+    const errorDialog = this.getBookingErrorDialog();
+    const errorText = await errorDialog.innerText();
+
+    const match = errorText.match(/supplier:\s*([^\n]+)/i);
+    return match ? match[1].trim() : null;
+  }
+
+  /**
    * Gets the full booking error dialog text for resilient known-error matching.
    *
    * @returns {Promise<string>}

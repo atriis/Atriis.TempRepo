@@ -463,6 +463,7 @@ const Cart = {
     const resolveBookingErrorResult = async () => {
       const supplier = await checkoutPage.getBookingErrorSupplierName();
       const bookingErrorText = await checkoutPage.getBookingErrorDialogText();
+      const supplierMessage = await checkoutPage.getBookingErrorSupplierMessage();
       const knownBySupplier = supplier
         ? BookingErrorHandler.isKnownBookingError(bookingContext.product, bookingContext.subProduct, supplier)
         : false;
@@ -474,12 +475,10 @@ const Cart = {
         ? BookingErrorHandler.getSkipOnErrorConfig(bookingContext.product, bookingContext.subProduct)
         : false;
 
-      // Pass the value that actually matched so the log level (WARN vs ERROR) is
-      // consistent with knownBookingError. Using `supplier` when it didn't match
-      // would cause handleBookingError to log ERROR even for known errors.
-      const errorLogValue = (knownBySupplier && supplier) ? supplier
-        : (knownByMessage && bookingErrorText) ? bookingErrorText
-        : (supplier || bookingErrorText || 'UNKNOWN');
+      // Always prefer the concise "supplier:" line over the full dialog text and
+      // over the bare supplier token (extracted with an asterisk-bounded regex
+      // that isn't reliably present) - logged whether or not the error is known.
+      const errorLogValue = supplierMessage || bookingErrorText || supplier || 'UNKNOWN';
       BookingErrorHandler.handleBookingError(bookingContext.product, errorLogValue, bookingContext.subProduct);
 
       return {
@@ -1330,6 +1329,7 @@ const Cart = {
     const resolveBookingErrorResult = async () => {
       const supplier = await checkoutPage.getBookingErrorSupplierName();
       const bookingErrorText = await checkoutPage.getBookingErrorDialogText();
+      const supplierMessage = await checkoutPage.getBookingErrorSupplierMessage();
       const knownBySupplier = supplier
         ? BookingErrorHandler.isKnownBookingError(bookingContext.product, bookingContext.subProduct, supplier)
         : false;
@@ -1341,11 +1341,10 @@ const Cart = {
         ? BookingErrorHandler.getSkipOnErrorConfig(bookingContext.product, bookingContext.subProduct)
         : false;
 
-      // Pass the value that actually matched so the log level (WARN vs ERROR) is
-      // consistent with knownBookingError.
-      const holdErrorLogValue = (knownBySupplier && supplier) ? supplier
-        : (knownByMessage && bookingErrorText) ? bookingErrorText
-        : (supplier || bookingErrorText || 'UNKNOWN');
+      // Always prefer the concise "supplier:" line over the full dialog text and
+      // over the bare supplier token (extracted with an asterisk-bounded regex
+      // that isn't reliably present) - logged whether or not the error is known.
+      const holdErrorLogValue = supplierMessage || bookingErrorText || supplier || 'UNKNOWN';
       BookingErrorHandler.handleBookingError(
         bookingContext.product,
         holdErrorLogValue,
