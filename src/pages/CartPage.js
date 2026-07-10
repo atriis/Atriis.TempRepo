@@ -4246,6 +4246,9 @@ class CartPage {
    * Clicks the Check Availability button on an expired quote.
    */
   async clickCheckAvailabilityButton() {
+    // The CookieHub (ch2) consent banner can overlay the button and intercept the
+    // click's pointer events; dismiss it first (best-effort, never throws).
+    await this.dismissCookieBannerIfPresent();
     const btn = this.page.locator(SELECTORS.CHECK_AVAILABILITY_BUTTON).first();
     await btn.waitFor({ state: 'visible', timeout: 15000 });
     await btn.click();
