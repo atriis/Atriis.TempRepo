@@ -228,6 +228,11 @@ When("I share the hotel price offer by email from results", async function () {
   await HotelLevelResults.shareHotelPriceOfferByEmail(this.page);
 });
 
+When("I enter share mode on hotel results", async function () {
+  logger.info("Entering share mode on hotel-level results page");
+  await HotelLevelResults.enterShareMode(this.page);
+});
+
 Then("there should be {int} supplier(s) in the supplier filters", async function (expectedCount) {
   logger.info("Verifying supplier filter count", { expectedCount });
   await HotelLevelResults.verifySupplierFilterCount(this.page, expectedCount);

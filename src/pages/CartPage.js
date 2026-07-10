@@ -4017,6 +4017,60 @@ class CartPage {
   }
 
   /**
+   * Checks whether the trip number rendered in the share email preview is a hyperlink.
+   *
+   * The preview is backend-generated HTML shown inside the `.email-content-container`
+   * iframe, and its structure changes over time, so this does not rely on a fixed
+   * structural path. Instead it locates the trip-number value in the rendered preview
+   * and reports whether that value is wrapped in an anchor (`<a>`) — i.e. rendered as a
+   * clickable link rather than plain text. The same check works for both the price-offer
+   * (quote) and itinerary templates.
+   *
+   * @param {string} tripNumber - The trip number to look for in the preview
+   * @returns {Promise<{isHyperlink: boolean, snippet: string}>} Whether it is a hyperlink and an HTML snippet for diagnostics
+   */
+  async isTripNumberHyperlinkInSharePreview(tripNumber) {
+    if (!tripNumber || typeof tripNumber !== 'string') {
+      throw new Error(
+        `[CartPage.isTripNumberHyperlinkInSharePreview] tripNumber must be a non-empty string, got: ${typeof tripNumber}`
+      );
+    }
+
+    // Ensure the preview iframe has finished rendering its srcdoc before querying it.
+    const srcdoc = await this._waitForShareIframeSrcdoc();
+    if (srcdoc.trim().length === 0) {
+      throw new Error(
+        '[CartPage.isTripNumberHyperlinkInSharePreview] Share email preview iframe had no srcdoc content. ' +
+          'The preview may not have finished rendering, or the share dialog is not open.'
+      );
+    }
+
+    const frame = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first().contentFrame();
+
+    // The trip number must actually appear in the preview, otherwise there is nothing to assert.
+    const visibleCount = await frame.getByText(tripNumber).count().catch(() => 0);
+    if (visibleCount === 0 && !srcdoc.includes(tripNumber)) {
+      throw new Error(
+        `[CartPage.isTripNumberHyperlinkInSharePreview] Trip number "${tripNumber}" was not found in the share email preview. ` +
+          'It may be shown in a different format, or the wrong trip number was passed.'
+      );
+    }
+
+    // It is a hyperlink if any anchor in the preview contains the trip number as its text.
+    const anchorWithTripNumber = frame.locator('a', { hasText: tripNumber });
+    const anchorCount = await anchorWithTripNumber.count().catch(() => 0);
+    const snippet =
+      anchorCount > 0
+        ? (await anchorWithTripNumber
+            .first()
+            .evaluate((node) => (node.outerHTML || '').slice(0, 200))
+            .catch(() => '')) || ''
+        : '';
+
+    return { isHyperlink: anchorCount > 0, snippet };
+  }
+
+  /**
    * Extracts the flight offer total price shown in the share email preview.
    *
    * The price-offer email renders each offer's total inside a blue price box

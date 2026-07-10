@@ -3110,6 +3110,39 @@ const Cart = {
   },
 
   /**
+   * Verifies the trip number in the share email preview is plain text, not a hyperlink.
+   * The share dialog must already be open on the given template.
+   *
+   * @param {import('playwright').Page} page
+   * @param {'quote'|'itinerary'} previewType - Which email template is open (used for messaging)
+   * @param {string} tripNumber - The trip number shown in the preview
+   */
+  async verifyTripNumberIsNotHyperlinkInSharePreview(page, previewType, tripNumber) {
+    if (!page) throw new Error('page is required');
+    if (previewType !== 'quote' && previewType !== 'itinerary') {
+      throw new Error(`previewType must be "quote" or "itinerary", got: ${previewType}`);
+    }
+    if (!tripNumber || typeof tripNumber !== 'string') {
+      throw new Error(`tripNumber must be a non-empty string, got: ${typeof tripNumber}`);
+    }
+
+    logger.debug('Verifying trip number is not a hyperlink in share preview', { previewType, tripNumber });
+
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      const { isHyperlink, snippet } = await cartPage.isTripNumberHyperlinkInSharePreview(tripNumber);
+      expect(
+        isHyperlink,
+        `Expected the trip number "${tripNumber}" in the ${previewType} share email preview to be plain text, but it is rendered as a hyperlink. Element: "${snippet}"`
+      ).toBe(false);
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyTripNumberIsNotHyperlinkInSharePreview] Failed to verify the trip number is not a hyperlink in the ${previewType} share email preview. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Verifies that the share email preview does NOT contain the hotel price.
    * Extracts the hotel price from the cart and checks it's absent from the preview.
    * The share dialog must already be open.

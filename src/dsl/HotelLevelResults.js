@@ -592,6 +592,20 @@ const HotelLevelResults = {
     await hotelLevelResultsPage.scrollToAndClickLastHotelViewRates();
   },
   /**
+   * Enters hotel share mode by clicking the share toggle in the hotel-level results
+   * header (hotel-list-sort). Share mode is a global flag that persists when navigating
+   * into a hotel's rooms, so the per-room share buttons become available at room level.
+   * Must be called from the hotel-level results page (before selecting a hotel).
+   * @param {import('playwright').Page} page
+   */
+  async enterShareMode(page) {
+    if (!page) throw new Error('page is required');
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.clickShareModeButton();
+  },
+
+  /**
    * Enters share mode, selects the first hotel for sharing, opens the email dialog.
    * Must be called from hotel-level results page (before navigating to room level).
    * @param {import('playwright').Page} page

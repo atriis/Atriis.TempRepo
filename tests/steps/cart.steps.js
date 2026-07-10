@@ -1337,6 +1337,17 @@ Then("{string} should be displayed in the share email preview", async function (
   await Cart.verifySharePreviewContainsText(this.page, text);
 });
 
+Then("the trip number in the share {word} email preview should not be a hyperlink", async function (previewType) {
+  if (!this.tripId) {
+    throw new Error(
+      "No trip number on the World. The trip id must be captured during 'I am logged in ... booking a new trip' before this step."
+    );
+  }
+  const tripNumber = String(this.tripId);
+  logger.info("Verifying trip number is not a hyperlink in the share email preview", { previewType, tripNumber });
+  await Cart.verifyTripNumberIsNotHyperlinkInSharePreview(this.page, previewType, tripNumber);
+});
+
 When("I extract the cancellation and change terms from the price offer email summary", async function () {
   logger.info("Extracting cancellation and change terms from the price offer email summary");
   this.priceOfferSummaryTerms = await Cart.extractPriceOfferEmailSummaryTerms(this.page);
