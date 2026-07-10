@@ -79,6 +79,11 @@ When("I send booking for approval", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async
   await Checkout.sendForApprovalAndFinalize(this.page);
 });
 
+When("I click the submit for approval button", async function () {
+  logger.info("Clicking the submit for approval button");
+  await Checkout.clickSendForApprovalButton(this.page);
+});
+
 Then("a booking error message should be displayed", async function () {
   logger.info("Verifying booking error message is displayed");
   await Checkout.verifyBookingErrorMessage(this.page);

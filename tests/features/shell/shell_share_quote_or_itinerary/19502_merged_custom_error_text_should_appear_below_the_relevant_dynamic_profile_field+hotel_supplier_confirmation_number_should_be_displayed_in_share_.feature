@@ -17,27 +17,23 @@ Feature: 19502 Custom error on dynamic profile field and hotel supplier confirma
   Scenario: Custom error below the dynamic profile field and supplier confirmation number in the share itinerary
     Given I am logged in as "Ami@leshin.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "denver" for 1 night
+    When I search for a hotel in "lhr" for 1 night
     And I click proceed button if visible
     And I select the first hotel result
     And I add a refundable room to my cart
     And I accept Terms & Conditions
-    And I proceed to checkout
+    And I click the proceed to checkout button
     And I select the first available financial reference
+    And I wait for booking details in checkout
     And I fill in the "Bank account" reference field with "123456789"
-    # TODO: no catalog phrase for the custom validation error below a dynamic profile field. Propose keyword=Then, step="the custom error {string} should be displayed below the {string} reference field", dsl=DynamicAndReferenceFields.verifyReferenceFieldCustomError, file=tests/steps/dynamic_fields.steps.js
     Then the custom error "max length is 8" should be displayed below the "Bank account" reference field
-    And clicking proceed should show a mandatory field validation error
+    When I click the submit for approval button
     When I fill in the "Bank account" reference field with "123456"
-    And I click proceed on the reference fields popup
-    Then go to trip text is visible
-    When I click go to trip button
+    And I send booking for approval
     Then the booking status should be "Confirmed"
     And the hotel booking should display a confirmation number
-    # TODO: no catalog phrase to capture the supplier confirmation number for later comparison. Propose keyword=When, step="I extract the hotel supplier confirmation number", dsl=Cart.extractSupplierConfirmationNumber, file=tests/steps/cart.steps.js
     When I extract the hotel supplier confirmation number
     And I click the share itinerary button
-    # TODO: no catalog phrase asserting the supplier confirmation number in the share itinerary preview. Propose keyword=Then, step="the share itinerary email preview should contain the extracted hotel supplier confirmation number", dsl=Cart.verifyShareEmailContainsSupplierConfirmationNumber, file=tests/steps/cart.steps.js
     Then the share itinerary email preview should contain the extracted hotel supplier confirmation number
-    And the trip status should be "Confirmed"
+    Then the booking status should be "Confirmed"
     Then I successfully cancel the trip

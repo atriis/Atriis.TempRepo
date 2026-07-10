@@ -165,6 +165,11 @@ When("I select the first available option for the {string} reference field", asy
   logger.info(`Selected reference field option`, { fieldName, selectedOption: result?.selectedOption });
 });
 
+Then("the custom error {string} should be displayed below the {string} reference field", async function (expectedError, fieldName) {
+  logger.info(`Verifying custom error "${expectedError}" is displayed below the "${fieldName}" reference field`);
+  await DynamicAndReferenceFields.verifyReferenceFieldCustomError(this.page, expectedError, fieldName);
+});
+
 Then("clicking proceed should show a mandatory field validation error", async function () {
   logger.info("Clicking proceed to verify mandatory field validation error");
   const errorVisible = await DynamicAndReferenceFields.clickProceedAndVerifyMandatoryError(this.page);

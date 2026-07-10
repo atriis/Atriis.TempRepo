@@ -140,9 +140,12 @@ const Cart = {
     
     const cartPage = getPageObject(page, CartPage);
 
-    // Wait for page network activity to settle before attempting the cancellation dropdown.
-    // The el-dropdown is disabled while the page is loading; skipping this causes flaky hover failures.
-    await page.waitForLoadState('networkidle', { timeout: 30000 });
+    // Best-effort wait for page network activity to settle before attempting the cancellation
+    // dropdown (the el-dropdown is disabled while the page is loading, causing flaky hover failures).
+    // Non-fatal: an in-approval trip polls its approval status continuously, so 'networkidle' may
+    // never settle — the waitForTripOverviewTitle + dropdown-menu waits below provide the real
+    // synchronization. Mirrors ensureCartReadyForStatusCheck's networkidle handling above.
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
 
     // Confirm correct page state
     await cartPage.waitForTripOverviewTitle();
@@ -2805,6 +2808,29 @@ const Cart = {
   },
 
   /**
+   * Extracts the hotel supplier confirmation number from the cart booking-confirm section.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>}
+   */
+  async extractSupplierConfirmationNumber(page) {
+    if (!page) throw new Error('page is required');
+
+    logger.debug('Extracting hotel supplier confirmation number from cart');
+    const cartPage = getPageObject(page, CartPage);
+    const confirmationNumber = await cartPage.getSupplierConfirmationNumberFromCart();
+
+    if (typeof confirmationNumber !== 'string' || !confirmationNumber.trim()) {
+      throw new Error(
+        `[Cart.extractSupplierConfirmationNumber] Extracted an empty hotel supplier confirmation number from the ` +
+        `cart booking-confirm section. The booking may not be confirmed, or the supplier returned no confirmation ` +
+        `number. Got: "${confirmationNumber}"`
+      );
+    }
+
+    return confirmationNumber.trim();
+  },
+
+  /**
    * Closes the share dialog (quote or itinerary).
    * @param {import('playwright').Page} page
    */
@@ -2831,6 +2857,27 @@ const Cart = {
     const previewText = await cartPage.getSharePreviewTextContent();
     expect(previewText, 'Share email preview text should not be empty').toBeTruthy();
     expect(previewText.toLowerCase()).toContain(expectedHotelName.toLowerCase());
+  },
+
+  /**
+   * Verifies that the share itinerary email preview iframe contains the extracted hotel supplier
+   * confirmation number. The share dialog must already be open. Reads the iframe srcdoc text
+   * (via getSharePreviewTextContent), NOT the visible DOM.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedNumber - The expected hotel supplier confirmation number
+   */
+  async verifyShareEmailContainsSupplierConfirmationNumber(page, expectedNumber) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedNumber !== 'string' || !expectedNumber.trim()) {
+      throw new Error(`expectedNumber must be a non-empty string, got: ${typeof expectedNumber} (${expectedNumber})`);
+    }
+    const cartPage = getPageObject(page, CartPage);
+    const previewText = await cartPage.getSharePreviewTextContent();
+    expect(previewText, 'Share itinerary email preview text should not be empty').toBeTruthy();
+    expect(
+      previewText,
+      `Share itinerary email preview should contain the hotel supplier confirmation number "${expectedNumber}", but it was not found in the preview text`
+    ).toContain(expectedNumber);
   },
 
   /**

@@ -375,8 +375,10 @@ const SELECTORS = {
   MORE_DETAILS_DRAWER_CONTAINER: ".cart-more-details-drawer",
   // Skeleton placeholders rendered inside the More Details drawer while content loads.
   MORE_DETAILS_DRAWER_SKELETON: ".el-skeleton, .el-skeleton__item",
-  // Share dialog close button
-  SHARE_DIALOG_CLOSE: '.el-dialog__header [fill="currentColor"], .el-dialog__headerbtn',
+  // Share dialog close button. Scope to :visible — multiple el-dialogs can linger hidden in
+  // the DOM, and an unscoped .first() would resolve to a stale hidden dialog's close button
+  // instead of the currently open share dialog.
+  SHARE_DIALOG_CLOSE: '.el-dialog__header [fill="currentColor"]:visible, .el-dialog__headerbtn:visible',
   // Share dialog language dropdown
   SHARE_LANGUAGE_DROPDOWN: '.app-share-quotes .app-select .el-select',
   SHARE_LANGUAGE_OPTION: (text) => `.app-select-popper .el-select-dropdown__item:has-text("${text}")`,
@@ -456,6 +458,9 @@ const SELECTORS = {
   // eHotel supplier details in cart (hotel-quote-card.vue → booking-confirm section)
   EHOTEL_PIN_CODE: '.booking-confirm p:has-text("Pincode:")',
   EHOTEL_CONFIRMATION_NUMBER: '.booking-confirm p:has-text("Confirmation Number:")',
+  // Bare confirmation-number value span, scoped within EHOTEL_CONFIRMATION_NUMBER (avoids the
+  // label text and the separate Pincode <p> whose span reuses this same class).
+  EHOTEL_CONFIRMATION_NUMBER_VALUE: 'span.confirmation-number',
   EHOTEL_CONTACT_PHONE: '.booking-confirm p:has-text("Contact phone")',
 
   // Flight passenger info section (flight-passenger-info.vue)
@@ -4762,6 +4767,41 @@ class CartPage {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Reads the hotel supplier confirmation number VALUE from the cart booking-confirm section
+   * (hotel-quote-card.vue → <span class="confirmation-number">). Reuses EHOTEL_CONFIRMATION_NUMBER to
+   * scope to the "Confirmation Number:" <p> — so the separate Pincode <p> (whose span reuses the same
+   * class) is not read — then returns the bare value from its inner value span. Falls back to the <p>
+   * text with the "Confirmation Number:" label prefix stripped when the value span is absent.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<string>} The trimmed confirmation number value (no label, no pincode)
+   */
+  async getSupplierConfirmationNumberFromCart({ timeout = 30000 } = {}) {
+    try {
+      const confirmationParagraph = this.page.locator(SELECTORS.EHOTEL_CONFIRMATION_NUMBER).first();
+      await confirmationParagraph.waitFor({ state: 'visible', timeout });
+
+      // Bare value lives in the inner <span class="confirmation-number">, avoiding the label text and
+      // the separate Pincode span (which reuses the same class in a different <p>).
+      const valueSpan = confirmationParagraph.locator(SELECTORS.EHOTEL_CONFIRMATION_NUMBER_VALUE).first();
+      if ((await valueSpan.count()) > 0) {
+        return ((await valueSpan.textContent()) ?? '').trim();
+      }
+
+      // Fallback: no value span — read the whole <p> and strip the "Confirmation Number:" label prefix.
+      const paragraphText = ((await confirmationParagraph.textContent()) ?? '').trim();
+      return paragraphText.replace(/^\s*Confirmation Number:\s*/i, '').trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getSupplierConfirmationNumberFromCart] Could not read the hotel supplier confirmation number ` +
+        `(selector: ${SELECTORS.EHOTEL_CONFIRMATION_NUMBER}) from the cart booking-confirm section within ${timeout}ms. ` +
+        `The booking may not be confirmed yet, or the supplier returned no confirmation number. Original: ${err.message}`
+      );
     }
   }
 

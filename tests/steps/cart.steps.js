@@ -186,6 +186,14 @@ When("I extract the hotel name to compare with share quote email preview", async
   });
 });
 
+When("I extract the hotel supplier confirmation number", async function () {
+  logger.info("Extracting hotel supplier confirmation number for share itinerary preview comparison");
+  this.extractedSupplierConfirmationNumber = await Cart.extractSupplierConfirmationNumber(this.page);
+  logger.info("Stored extracted hotel supplier confirmation number", {
+    extractedSupplierConfirmationNumber: this.extractedSupplierConfirmationNumber,
+  });
+});
+
 When("I click the share itinerary button", async function () {
   logger.info("Clicking share itinerary button");
   await Cart.clickShareItineraryAndWaitForSubjectField(this.page);
@@ -1277,6 +1285,20 @@ Then("the share quote email preview should contain the extracted hotel name", as
     extractedHotelName: this.extractedHotelName,
   });
   await Cart.verifyShareEmailContainsHotelName(this.page, this.extractedHotelName);
+});
+
+Then("the share itinerary email preview should contain the extracted hotel supplier confirmation number", async function () {
+  if (typeof this.extractedSupplierConfirmationNumber !== 'string' || !this.extractedSupplierConfirmationNumber.trim()) {
+    throw new Error("No extracted hotel supplier confirmation number found. Run 'I extract the hotel supplier confirmation number' before this step.");
+  }
+
+  logger.info("Verifying share itinerary email preview contains extracted hotel supplier confirmation number", {
+    extractedSupplierConfirmationNumber: this.extractedSupplierConfirmationNumber,
+  });
+  await Cart.verifyShareEmailContainsSupplierConfirmationNumber(this.page, this.extractedSupplierConfirmationNumber);
+
+  logger.info("Closing the share itinerary dialog");
+  await Cart.closeShareDialog(this.page);
 });
 
 Then("the share quote email preview should contain a hotel picture", async function () {

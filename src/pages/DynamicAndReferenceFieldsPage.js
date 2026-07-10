@@ -318,6 +318,39 @@ class DynamicAndReferenceFieldsPage {
   }
 
   /**
+   * Reads the custom validation error text rendered below a reference/dynamic field, identified by
+   * its label. Custom errors render (ReferenceField input-textbox.vue) inside
+   * <form-validation-msg type="error"> as <p class="help">{{ question.errorField }}</p> — read via
+   * the shared VALIDATION_ERROR selector scoped to the field's OWN container (fieldContainerByLabel)
+   * so a different field's error is not returned.
+   *
+   * @param {string} labelText - The label text of the field (e.g. "Bank account")
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<string>} The trimmed custom error text shown under the field
+   */
+  async getReferenceFieldCustomError(labelText, { timeout = 10000 } = {}) {
+    if (!labelText || typeof labelText !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.getReferenceFieldCustomError] "labelText" must be a non-empty string, got: ${typeof labelText} (${labelText})`
+      );
+    }
+    try {
+      const fieldContainer = await this.fieldContainerByLabel(labelText);
+      const error = fieldContainer.locator(SELECTORS.VALIDATION_ERROR).first();
+      await error.waitFor({ state: 'visible', timeout });
+      return (await error.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.getReferenceFieldCustomError] Could not read the custom validation error ` +
+        `(selector: ${SELECTORS.VALIDATION_ERROR}) below the "${labelText}" reference field within ${timeout}ms. ` +
+        `Likely no validation error is rendered for that field, or the label did not resolve to a field container. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
    * Checks if any validation error message is visible on the page.
    * @returns {Promise<boolean>}
    */

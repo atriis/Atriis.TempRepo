@@ -4,6 +4,7 @@ const DynamicAndReferenceFieldsPage = require("@pages/DynamicAndReferenceFieldsP
 const { CommonPage } = require("@pages/CommonPage");
 const { CheckoutPage } = require("@pages/CheckoutPage");
 const { TravelRequestPage } = require("@pages/TravelRequestPage");
+const logger = require("@utils/logger").child("DynamicAndReferenceFields-DSL");
 
 /**
  * DynamicAndReferenceFields DSL
@@ -662,6 +663,34 @@ const DynamicAndReferenceFields = {
     // Wait briefly for validation to trigger
     await page.waitForTimeout(1000);
     return dynamicFieldsPage.isValidationErrorVisible();
+  },
+
+  /**
+   * Verifies that a custom validation error is displayed below a specific reference/dynamic field.
+   * Param order matches the Gherkin: expected error text first, field label second.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedError - The expected custom error text (e.g. "max length is 8")
+   * @param {string} fieldName - The label of the reference field (e.g. "Bank account")
+   * @returns {Promise<void>}
+   */
+  async verifyReferenceFieldCustomError(page, expectedError, fieldName) {
+    if (!page) throw new Error('page is required');
+    if (!expectedError || typeof expectedError !== 'string') {
+      throw new Error(`expectedError must be a non-empty string, got: ${typeof expectedError} (${expectedError})`);
+    }
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(`fieldName must be a non-empty string, got: ${typeof fieldName} (${fieldName})`);
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+
+    logger.debug('Reading custom validation error below reference field', { fieldName, expectedError });
+    const actualError = await dynamicFieldsPage.getReferenceFieldCustomError(fieldName);
+
+    expect(
+      actualError,
+      `Expected the custom error below the "${fieldName}" reference field to contain "${expectedError}", but got "${actualError}"`
+    ).toContain(expectedError);
   },
 
   /**

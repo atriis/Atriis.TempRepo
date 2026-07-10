@@ -513,6 +513,30 @@ const Checkout = {
     return { sentForApproval: true };
   },
 
+  /**
+   * Clicks the "Submit for Approval" / "Send for approval" button WITHOUT waiting for the
+   * approval success page. Use when the click is expected to be blocked by a field-level
+   * validation error (e.g. an invalid reference value), so the page stays on Booking details.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async clickSendForApprovalButton(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    try {
+      await checkoutPage.waitForSendForApprovalButton();
+      await checkoutPage.clickSendForApprovalButton();
+    } catch (err) {
+      throw new Error(
+        `[Checkout.clickSendForApprovalButton] Failed to click the "Submit for Approval" button on the ` +
+        `Booking details page. The button may be missing or disabled (checkout not reached). ` +
+        `Original: ${err.message}`
+      );
+    }
+  },
+
   // ========================================
   // BOOKING SUCCESS — STEP-BY-STEP FLOW
   // ========================================
