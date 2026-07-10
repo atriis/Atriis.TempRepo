@@ -231,6 +231,35 @@ class FlightSearchPage {
   }
 
   /**
+   * Waits until the "Allow nearby airports" checkbox reports checked.
+   *
+   * The checkbox renders immediately, but its state is applied reactively from the
+   * administration configuration a beat after the flight tab loads — so a single
+   * read can observe the pre-config (unchecked) state. Polls the `is-checked` class
+   * on the same (first) checkbox input the instant reader targets until it appears.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>} true if it became checked within the timeout
+   */
+  async waitForAllowNearbyAirportsChecked(timeout = 15000) {
+    const selector = SELECTORS.ALLOW_NEARBY_AIRPORTS_CHECKBOX_INPUT;
+    try {
+      await this.page.locator(selector).first().waitFor({ state: 'visible', timeout });
+      await this.page.waitForFunction(
+        (sel) => {
+          const el = document.querySelector(sel);
+          return !!el && el.classList.contains('is-checked');
+        },
+        selector,
+        { timeout },
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Selects a value from the departure leg date type dropdown in advanced search.
    * Date type is the first app-select in the departure section.
    * @param {string} value - "Departure" or "Arrival"

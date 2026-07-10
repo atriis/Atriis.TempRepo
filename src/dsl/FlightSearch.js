@@ -1654,7 +1654,9 @@ const FlightSearch = {
     logger.info('Verifying the "Allow nearby airports" checkbox is checked');
 
     const flightSearchPage = getPageObject(page, FlightSearchPage);
-    const isChecked = await flightSearchPage.isAllowNearbyAirportsCheckboxChecked();
+    // Poll for the checked state: the box is set reactively from the administration
+    // configuration shortly after the flight tab loads, so a single read can race it.
+    const isChecked = await flightSearchPage.waitForAllowNearbyAirportsChecked();
 
     expect(
       isChecked,
