@@ -16,6 +16,10 @@ Feature: 34460 - Share quotes email is sent when email display name is set
     Given I am logged in as "sharequote@club.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "SFO" to "LAX"
+    And I click on the "Share" button
+    And I click on the 1 share button in results page
+    And I click on the 2 share button in results page
+    And I click on the "Share" button to open the share dialog
     # TODO: no catalog phrase matches selecting specific quote share buttons from results (closest phrase adds a safety-text assertion this test does not perform)
     And I select two quotes to share from the results page
     # TODO: no catalog phrase matches emailing the selected quotes to a specific recipient/traveler from the results page
