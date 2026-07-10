@@ -720,8 +720,10 @@ class FlightSearchPage {
     const field = this.page.locator(SELECTORS.ADVANCED_RETURN_DATE_FIELD);
     await field.waitFor({ state: 'visible', timeout: 10000 });
     await field.click();
-    // Wait for the date picker panel to be visible
-    await this.page.locator('.el-picker-panel:visible').waitFor({ state: 'visible', timeout: 10000 });
+    // Wait for the date picker panel to be visible. Scope to .first(): the departure
+    // panel may still be visible while the return one opens, and matching two panels
+    // would throw a strict-mode violation.
+    await this.page.locator('.el-picker-panel:visible').first().waitFor({ state: 'visible', timeout: 10000 });
   }
 
   /**

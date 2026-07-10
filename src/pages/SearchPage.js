@@ -773,8 +773,10 @@ class SearchPage {
       .nth(1)
       .click();
 
-    // Wait until the date picker panel is visible
-    await this.getDatePickerPanel().waitFor({ state: "visible" });
+    // Wait until the date picker panel is visible. Advanced round-trip renders separate
+    // departure/return poppers, so a previous panel can still be visible while this one
+    // opens — scope to .first() to avoid a strict-mode violation on two matches.
+    await this.getDatePickerPanel().first().waitFor({ state: "visible" });
   }
 
   /**
@@ -789,8 +791,9 @@ class SearchPage {
       .locator(SELECTORS.RETURN_PLACEHOLDER)
       .click();
 
-    // Wait until the date picker panel is visible
-    await this.getDatePickerPanel().waitFor({ state: "visible" });
+    // Wait until the date picker panel is visible. Scope to .first() so a still-visible
+    // sibling popper (e.g. the departure panel closing) does not trip strict mode.
+    await this.getDatePickerPanel().first().waitFor({ state: "visible" });
   }
 
   /**
@@ -1062,7 +1065,9 @@ class SearchPage {
    * @param {number} legIndex - Zero-based leg row index
    */
   async openMultiCityDatePickerAtIndex(legIndex) {
-    const panel = this.getDatePickerPanel();
+    // Scope to .first(): more than one picker popper can be present across legs, and
+    // isVisible()/waitFor() throw a strict-mode violation when the locator matches many.
+    const panel = this.getDatePickerPanel().first();
     const alreadyOpen = await panel.isVisible();
     if (!alreadyOpen) {
       const row = this.page.locator(SELECTORS.MULTI_CITY_LINE).nth(legIndex);

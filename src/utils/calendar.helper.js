@@ -357,6 +357,10 @@ async function selectDatesByNthAvailable(
     endIndex === null ? startIndex : Math.max(startIndex, endIndex);
 
   const monthTables = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE);
+  // Element Plus mounts the picker popper before the month table paints, so a bare
+  // count() can observe zero tables during that render gap and throw spuriously.
+  // Wait (bounded) for the first table to appear before treating an empty set as a failure.
+  await monthTables.first().waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
   const tableCount = await monthTables.count();
 
   if (tableCount === 0) {
@@ -614,6 +618,9 @@ async function selectTodayFromVisibleCalendar(
   const pickers = page.locator(SELECTORS.DATE_PICKER_PANEL);
   const picker = pickerPosition === "last" ? pickers.last() : pickers.first();
   const monthTables = picker.locator(SELECTORS.DATE_PICKER_MONTH_TABLE);
+  // The picker popper can mount before its month table paints; wait (bounded) for the
+  // first table so a render-gap count of zero does not throw spuriously.
+  await monthTables.first().waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
   const tableCount = await monthTables.count();
 
   if (tableCount === 0) {
