@@ -16,7 +16,7 @@ Feature: 47904 Trip conversation - Role can control consultant for conversation
     Given I am logged in as "gadi@Testimcorpnl.com" booking a new trip
     And I have added traveler by name "mali cohen"
     When I search for a hotel in "MAD" for 1 night
-    And I click proceed after search
+    And I click proceed button if visible
     And I wait to see view rates text in results page
     And I open the chat
     And I start a new chat conversation

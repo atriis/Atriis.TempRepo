@@ -7,7 +7,7 @@
 # Updated: 2025-09-11T12:24:29Z
 
 @regression @shell @hotels @dynamic_fields @full-purchase
-Feature: Custom error on dynamic profile field and hotel supplier confirmation number in share itinerary
+Feature: 19502 Custom error on dynamic profile field and hotel supplier confirmation number in share itinerary
 
   As a corporate traveler completing a hotel booking
   I want a custom validation error to appear below the relevant dynamic profile field at checkout
@@ -18,9 +18,9 @@ Feature: Custom error on dynamic profile field and hotel supplier confirmation n
     Given I am logged in as "Ami@leshin.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "denver" for 1 night
-    And I click proceed after search
+    And I click proceed button if visible
     And I select the first hotel result
-    And I add the first available room to my cart
+    And I add a refundable room to my cart
     And I accept Terms & Conditions
     And I proceed to checkout
     And I select the first available financial reference

@@ -6,7 +6,7 @@ Feature: 55133 - Galileo - Dynamic fields sent as remark with traveler connectio
     And I add myself as a traveler
     And I add a second traveler named "rafi din"
     When I search for a car at "LHR"
-    And I click proceed after search
+    And I click proceed button if visible
     And I add the first car from results to cart
     And I fill the mandatory dynamic fields in cart
     And I accept Terms & Conditions

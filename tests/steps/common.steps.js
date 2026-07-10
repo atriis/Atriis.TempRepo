@@ -134,15 +134,6 @@ When("I refresh the page", async function () {
   await App.refreshPage(this.page);
 });
 
-When("I click proceed after search", async function () {
-  logger.info("Waiting for search to settle (proceed after search)");
-  try {
-    await this.page.waitForLoadState("networkidle", { timeout: 30000 });
-  } catch (err) {
-    logger.warn("networkidle did not settle within 30s, continuing", { error: err.message });
-  }
-});
-
 When("I close tab {int}", async function (tabNumber) {
   logger.info("Closing tab for scenario", { tabNumber });
 
