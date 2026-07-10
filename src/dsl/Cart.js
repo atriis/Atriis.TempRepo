@@ -3165,6 +3165,54 @@ const Cart = {
     return cartPage.getCartTotalPrice();
   },
 
+  /**
+   * Verifies the flight offer price shown in the share email preview matches the
+   * cart price (within tolerance), proving the price is not duplicated (doubled)
+   * for multiple travellers. The share dialog must already be open.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} cartPrice - The flight quote price previously extracted from the cart
+   * @param {object} [options]
+   * @param {number} [options.tolerance=0.09] - Allowed absolute difference (from the original test)
+   * @returns {Promise<{cartPrice: number, previewPrice: number}>}
+   */
+  async verifyFlightSharePreviewPriceMatchesCartPrice(page, cartPrice, { tolerance = 0.09 } = {}) {
+    if (!page) throw new Error('[Cart.verifyFlightSharePreviewPriceMatchesCartPrice] "page" is required.');
+    if (typeof cartPrice !== 'number' || Number.isNaN(cartPrice)) {
+      throw new Error(
+        `[Cart.verifyFlightSharePreviewPriceMatchesCartPrice] "cartPrice" must be a valid number, got: ${typeof cartPrice} (${JSON.stringify(cartPrice)}). ` +
+          'Run "When I extract the flight quote price from cart" before this step.'
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    let previewPrice;
+    try {
+      previewPrice = await cartPage.getSharePreviewFlightOfferPrice();
+    } catch (err) {
+      throw new Error(
+        '[Cart.verifyFlightSharePreviewPriceMatchesCartPrice] Could not read the flight offer price from the share email preview. ' +
+          `The blue "#1C73FF" price box may not have rendered, or its layout changed. Original: ${err.message}`
+      );
+    }
+
+    logger.info('Comparing share email preview flight price with cart price', {
+      cartPrice,
+      previewPrice,
+      tolerance,
+    });
+
+    expectNumbersToBeEqualWithTolerance(
+      previewPrice,
+      cartPrice,
+      tolerance,
+      `Share email preview flight price (${previewPrice}) vs cart price (${cartPrice}) — price must not be duplicated for multiple travellers`,
+    );
+
+    return { cartPrice, previewPrice };
+  },
+
   // ===== LOYALTY NUMBER EXTRAS =====
 
   /**

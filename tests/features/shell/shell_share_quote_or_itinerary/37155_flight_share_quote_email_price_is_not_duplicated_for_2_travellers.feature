@@ -19,12 +19,8 @@ Feature: 37155 - Flight - Share quote email price is not duplicated for 2 travel
     And I have added traveler by name "Rui Mendes"
     When I search for a round trip flight from "LON" to "ORD"
     And I add the first result to trip
-    And I handle conflicting quotes if visible
-    Then the cart status should be Pending booking
-    # TODO: extract the flight quote total price from the cart and store it for later comparison (no catalog phrase; only a hotel equivalent exists: "I extract the hotel quote price from cart")
+    Then the booking status should be "Pending booking"
     When I extract the flight quote price from cart
     And I click the share quote button
     Then "Flight Offer # 1 Pending Booking" should be displayed in the share email preview
-    # TODO: assert the flight price shown in the share email preview equals the stored cart price (Testim compared priceCart vs priceShareQuote within a 0.09 tolerance to prove the price is not duplicated for 2 travellers); no catalog phrase compares the share-email price to the cart price
     And the flight quote price in the share email preview should match the cart price
-    Then I successfully cancel the trip

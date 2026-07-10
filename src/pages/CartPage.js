@@ -389,6 +389,10 @@ const SELECTORS = {
 
   // Share email preview — hotel name and image (inside iframe srcdoc)
   SHARE_EMAIL_HOTEL_IMAGE: 'img',
+  // Share email preview — flight/price offer blue price box (inside iframe srcdoc).
+  // The bgcolor anchor is the email template's price box, carried over from the
+  // original Testim recording; the email HTML is backend-generated (not in OBT source).
+  SHARE_EMAIL_PRICE_OFFER_BOX: "[bgcolor='#1C73FF']",
   SHARE_EMAIL_QUOTE_CANCELLATION_TEXT: (quoteIndex) => ({
     1: 'body > table > tbody > tr > td > table > tbody > tr:nth-child(2) > td > table > tbody > tr > td.em_side_space > table > tbody:nth-child(2) > tr:nth-child(7)',
     2: 'body > table > tbody > tr > td > table > tbody > tr:nth-child(2) > td > table > tbody > tr > td.em_side_space > table > tbody:nth-child(2) > tr:nth-child(10)',
@@ -4010,6 +4014,68 @@ class CartPage {
    */
   async getSharePreviewRawHtml() {
     return await this._waitForShareIframeSrcdoc();
+  }
+
+  /**
+   * Extracts the flight offer total price shown in the share email preview.
+   *
+   * The price-offer email renders each offer's total inside a blue price box
+   * (bgcolor="#1C73FF"). Reads that box from the live iframe DOM (falling back to
+   * parsing the raw srcdoc HTML for the same box), then returns the largest
+   * monetary amount found — the headline offer total. Returning the total is what
+   * lets a caller detect the "price duplicated for 2 travellers" regression: a
+   * doubled total is the largest number in the box and will not match the cart total.
+   *
+   * @returns {Promise<number>} The flight offer total price shown in the preview
+   */
+  async getSharePreviewFlightOfferPrice() {
+    const srcdoc = await this._waitForShareIframeSrcdoc();
+    if (srcdoc.trim().length === 0) {
+      throw new Error(
+        '[CartPage.getSharePreviewFlightOfferPrice] Share email preview iframe had no srcdoc content. ' +
+          'The preview may not have finished rendering, or the share dialog is not open.'
+      );
+    }
+
+    // Prefer the live iframe DOM (respects rendered text); fall back to parsing the
+    // raw srcdoc HTML for the same blue price box.
+    let boxText = '';
+    const iframeLocator = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first();
+    const box = iframeLocator.contentFrame().locator(SELECTORS.SHARE_EMAIL_PRICE_OFFER_BOX).first();
+    if (await box.count().catch(() => 0)) {
+      boxText = (await box.textContent({ timeout: 8000 }).catch(() => '')) ?? '';
+    }
+
+    if (this.normalizeSharePreviewText(boxText).length === 0) {
+      const boxMatch = srcdoc.match(/bgcolor=["']#1C73FF["'][\s\S]*?<\/table>/i);
+      boxText = boxMatch ? boxMatch[0].replace(/<[^>]+>/g, ' ') : '';
+    }
+
+    const normalized = this.normalizeSharePreviewText(boxText);
+
+    // Extract every number-like token, then keep the ones that parse to a real amount.
+    const parsed = (normalized.match(/\d[\d.,]*/g) || [])
+      .map((raw) => {
+        try {
+          return { raw, value: parseAmountText(raw, 'share preview flight offer price') };
+        } catch {
+          return null;
+        }
+      })
+      .filter((p) => p && !Number.isNaN(p.value));
+
+    if (parsed.length === 0) {
+      throw new Error(
+        `[CartPage.getSharePreviewFlightOfferPrice] No monetary amount found in the share email price box. ` +
+          `Box text: "${normalized.slice(0, 300)}"`
+      );
+    }
+
+    // Prefer decimal-bearing tokens (real prices like "1,234.56") over bare integers
+    // (flight numbers, counts) that can also appear in the price box.
+    const decimalPriced = parsed.filter((p) => /[.,]\d{2}(?!\d)/.test(p.raw));
+    const pool = decimalPriced.length ? decimalPriced : parsed;
+    return Math.max(...pool.map((p) => p.value));
   }
 
   /**

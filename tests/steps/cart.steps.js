@@ -1385,6 +1385,31 @@ When("I extract the hotel quote price from cart", async function () {
   logger.info("Stored cart hotel quote price", { cartHotelPrice: this.cartHotelPrice });
 });
 
+When("I extract the flight quote price from cart", async function () {
+  logger.info("Extracting flight quote price from cart");
+  // Single flight quote in the trip → the cart grand total is the flight quote price.
+  this.flightCartQuotePrice = await Cart.extractCartTotalPrice(this.page);
+  if (typeof this.flightCartQuotePrice !== "number" || Number.isNaN(this.flightCartQuotePrice)) {
+    throw new Error(
+      `Failed to extract a numeric flight quote price from the cart, got: ${JSON.stringify(this.flightCartQuotePrice)}`
+    );
+  }
+  logger.info("Stored flight quote price from cart", { flightCartQuotePrice: this.flightCartQuotePrice });
+});
+
+Then("the flight quote price in the share email preview should match the cart price", async function () {
+  if (typeof this.flightCartQuotePrice !== "number") {
+    throw new Error(
+      "No flight cart price stored. Run 'When I extract the flight quote price from cart' before this step."
+    );
+  }
+  logger.info("Verifying share email preview flight price matches the cart price", {
+    flightCartQuotePrice: this.flightCartQuotePrice,
+  });
+  const result = await Cart.verifyFlightSharePreviewPriceMatchesCartPrice(this.page, this.flightCartQuotePrice);
+  logger.info("Share email preview flight price matches cart price", result);
+});
+
 Then("the price in cart should match the room level price", async function () {
   if (this.roomLevelPrice === undefined) {
     throw new Error("No room level price stored. Run 'When I extract the price from room level results' before this step.");
