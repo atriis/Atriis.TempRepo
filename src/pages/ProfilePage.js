@@ -1,3 +1,5 @@
+const { expect } = require("@playwright/test");
+
 const SELECTORS = {
   // Navigation to profile
   PASSENGER_AVATAR: '.app-header .passenger-avatar',
@@ -1111,6 +1113,19 @@ class ProfilePage {
     } catch (err) {
       throw new Error(
         `[ProfilePage.getCardPreviewCount] Could not count card previews. Original: ${err.message}`
+      );
+    }
+  }
+
+  async waitForCardCountToSettle(expectedCount, timeout = 15000) {
+    try {
+      // Card removal is async (BE delete + profile reload) — auto-retry until the row leaves the DOM.
+      await expect(this.page.locator(SELECTORS.FOP_CARD_PREVIEW)).toHaveCount(expectedCount, { timeout });
+    } catch (err) {
+      const actual = await this.page.locator(SELECTORS.FOP_CARD_PREVIEW).count();
+      throw new Error(
+        `[ProfilePage.waitForCardCountToSettle] Card list did not settle to ${expectedCount} card(s) ` +
+        `within ${timeout}ms (still ${actual}). The delete request may not have completed. Original: ${err.message}`
       );
     }
   }

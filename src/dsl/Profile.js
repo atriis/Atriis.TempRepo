@@ -782,6 +782,9 @@ const Profile = {
     try {
       await profilePage.clickDeleteOnLastCard();
       await profilePage.confirmRemoveFopCard();
+      // Removal is async (BE delete + profile reload) — wait for the row to actually leave the DOM,
+      // instead of relying on getCardPreviewCount's blind 1s timer. Mirrors the FQTV removeFqtvEntry flow.
+      await profilePage.waitForCardCountToSettle(countBefore - 1);
     } catch (err) {
       throw new Error(`[Profile.deleteCreditCard] Failed to delete credit card: ${err.message}`);
     }
@@ -819,6 +822,9 @@ const Profile = {
       try {
         await profilePage.clickDeleteOnLastCard();
         await profilePage.confirmRemoveFopCard();
+        // Same async-removal gate as deleteCreditCard — wait for the row to leave the DOM before
+        // re-counting, so a slow BE delete can't make the loop double-fire on a row mid-removal.
+        await profilePage.waitForCardCountToSettle(remaining - 1);
       } catch (err) {
         throw new Error(`[Profile.deleteAllCreditCards] Failed to delete a card: ${err.message}`);
       }
