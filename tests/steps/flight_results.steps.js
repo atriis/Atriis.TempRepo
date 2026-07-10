@@ -217,6 +217,12 @@ When("I click to open first pricing options", async function () {
   this.firstPricingOptionPriceData = undefined;
 });
 
+When("I click to open second pricing options", async function () {
+  logger.info("Clicking to open second pricing options");
+  await FlightResults.clickToOpenPricingOptions(this.page, 1);
+  this.firstPricingOptionPriceData = undefined;
+});
+
 When('I click to open pricing options for the first NDC direct rate result', async function () {
   logger.info('Clicking to open pricing options for the first NDC direct rate result');
   await FlightResults.clickPricingOptionsForFirstNdcResult(this.page);

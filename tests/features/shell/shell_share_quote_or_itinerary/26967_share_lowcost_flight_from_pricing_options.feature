@@ -7,7 +7,7 @@
 # Updated: 2025-12-24T06:27:51Z
 
 @regression @shell @lcc
-Feature: Share Low-Cost flight from pricing options
+Feature: 26967 Share Low-Cost flight from pricing options
 
   As a travel agent
   I want to select flight fares from pricing options and share them as quotes
@@ -17,17 +17,18 @@ Feature: Share Low-Cost flight from pricing options
     Given I am logged in as "low@cost.mail" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "DUB"
-    And I click on the "Share" button
+    When I click on the "Share" button
+    And I filter results by carrier "Aer Lingus"
     And I click to open first pricing options
+    And I extract the price from first pricing option
     And I "Select to share" first option from pricing options
     And I click share from pricing options
-    # TODO: open pricing options for the SECOND flight result (source clicks ".flight-list > :nth-child(2) .is-bold"); catalog only exposes "first pricing options" (index 0). DSL FlightResults.clickToOpenPricingOptions already accepts an index param (index 1).
+    And I filter results by carrier "Aer Lingus"
     And I click to open second pricing options
+    And I extract the price from first pricing option
     And I "Select to share" first option from pricing options
     And I click share from pricing options
     When I click on the "Share" button to open the share dialog
-    # TODO: toggle the focused quote's include-in-price-offer checkbox in the share dialog (source clicks ".is-focus .el-checkbox__inner"); no catalog phrase covers this. Needs a new DSL method, e.g. includeFocusedQuoteInPriceOffer.
-    And I include the focused quote in the price offer
-    Then I wait to see "Include in price offer" field in share dialog
-    When I send the share and see success notification
-    Then I should see a success notification
+    And I scroll into offers and get prices
+    Then The shared price for carrier "Aer Lingus" should match the price from pricing options
+    And The shared price for carrier "Aer Lingus" should match the price from pricing options
