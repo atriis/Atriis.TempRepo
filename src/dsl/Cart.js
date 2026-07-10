@@ -3012,6 +3012,86 @@ const Cart = {
   },
 
   /**
+   * Extracts the refundability status of the cancellation and change policies
+   * shown in the price offer email summary (the default share preview render).
+   * The share dialog must already be open on the summary view. The returned
+   * object is stored by the caller and later compared against the detailed/body
+   * render — refundability is the term shown consistently in both views.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{ cancellation: string[], changes: string[] }>}
+   */
+  async extractPriceOfferEmailSummaryTerms(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('Extracting cancellation and change terms from the price offer email summary');
+
+    let terms;
+    try {
+      terms = await cartPage.getSharePreviewOfferChangeTerms();
+    } catch (err) {
+      throw new Error(
+        `[Cart.extractPriceOfferEmailSummaryTerms] Could not read the cancellation/change terms from the price offer email summary. ` +
+          `The share preview may not have finished rendering the offer terms. Original: ${err.message}`
+      );
+    }
+
+    if (!terms.cancellation.length || !terms.changes.length) {
+      throw new Error(
+        `[Cart.extractPriceOfferEmailSummaryTerms] Expected a refundability status for both the cancellation and change policies in the price offer email summary, ` +
+          `got cancellation=${JSON.stringify(terms.cancellation)} changes=${JSON.stringify(terms.changes)}. ` +
+          `The email template may have changed or the preview did not fully load.`
+      );
+    }
+
+    return terms;
+  },
+
+  /**
+   * Verifies the cancellation and change refundability shown in the price offer
+   * email detailed (body) view match those captured earlier from the summary
+   * view. The share dialog must already be switched to the detailed view.
+   * @param {import('playwright').Page} page
+   * @param {{ cancellation: string[], changes: string[] }} summaryTerms - terms from extractPriceOfferEmailSummaryTerms
+   */
+  async verifyPriceOfferEmailDetailedTermsMatchSummary(page, summaryTerms) {
+    if (!page) throw new Error('page is required');
+    if (!summaryTerms || !Array.isArray(summaryTerms.cancellation) || !Array.isArray(summaryTerms.changes)) {
+      throw new Error(
+        `[Cart.verifyPriceOfferEmailDetailedTermsMatchSummary] summaryTerms must be an object with "cancellation" and "changes" arrays, ` +
+          `got: ${JSON.stringify(summaryTerms)}. Run the summary extraction step before this verification.`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('Extracting cancellation and change terms from the price offer email detailed view');
+
+    let detailedTerms;
+    try {
+      detailedTerms = await cartPage.getSharePreviewOfferChangeTerms();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyPriceOfferEmailDetailedTermsMatchSummary] Could not read the cancellation/change terms from the price offer email detailed view. ` +
+          `The detailed preview may not have finished rendering. Original: ${err.message}`
+      );
+    }
+
+    // The two renders lay the policy out differently (the summary condenses it,
+    // the detailed view breaks it into a fee table), but the refundability
+    // status must match between them for cancellation and for change.
+    expect(
+      detailedTerms.cancellation,
+      `Cancellation refundability differs between the price offer email summary and detailed view. ` +
+        `Summary: ${JSON.stringify(summaryTerms.cancellation)} Detailed: ${JSON.stringify(detailedTerms.cancellation)}`
+    ).toEqual(summaryTerms.cancellation);
+
+    expect(
+      detailedTerms.changes,
+      `Change refundability differs between the price offer email summary and detailed view. ` +
+        `Summary: ${JSON.stringify(summaryTerms.changes)} Detailed: ${JSON.stringify(detailedTerms.changes)}`
+    ).toEqual(summaryTerms.changes);
+  },
+
+  /**
    * Verifies that the share email preview does NOT contain the specified text.
    * The share dialog must already be open.
    *

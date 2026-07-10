@@ -1337,6 +1337,22 @@ Then("{string} should be displayed in the share email preview", async function (
   await Cart.verifySharePreviewContainsText(this.page, text);
 });
 
+When("I extract the cancellation and change terms from the price offer email summary", async function () {
+  logger.info("Extracting cancellation and change terms from the price offer email summary");
+  this.priceOfferSummaryTerms = await Cart.extractPriceOfferEmailSummaryTerms(this.page);
+  logger.info("Stored price offer summary terms", { terms: this.priceOfferSummaryTerms });
+});
+
+Then("the cancellation and change terms in the price offer email detailed view should match the summary", async function () {
+  if (!this.priceOfferSummaryTerms) {
+    throw new Error(
+      'No price offer summary terms stored. Run "When I extract the cancellation and change terms from the price offer email summary" before this step.'
+    );
+  }
+  logger.info("Verifying detailed-view cancellation and change terms match the summary", { summary: this.priceOfferSummaryTerms });
+  await Cart.verifyPriceOfferEmailDetailedTermsMatchSummary(this.page, this.priceOfferSummaryTerms);
+});
+
 Then("{string} should be displayed for the {word} quote in the share email preview", async function (text, quoteOrdinal) {
   logger.info("Verifying share email preview contains text for quote", { text, quoteOrdinal });
   await Cart.verifySharePreviewQuoteContainsText(this.page, quoteOrdinal, text);

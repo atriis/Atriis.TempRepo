@@ -4299,6 +4299,60 @@ class CartPage {
     return false;
   }
 
+  /**
+   * Extracts the refundability status of the cancellation and change policies
+   * from the currently rendered share email (price offer) preview. Works for
+   * both the summary render (condensed "Cancellation Anytime / Non-Refundable")
+   * and the detailed/body render (a "Cancellation fee" breakdown with a per-leg
+   * refundability value) — the refundability status is the term shown in both
+   * views, so it is the value that must match between them. Statuses are
+   * de-duplicated (a round trip lists one value per leg in the detailed view).
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<{ cancellation: string[], changes: string[] }>} de-duped, sorted refundability statuses per policy
+   */
+  async getSharePreviewOfferChangeTerms({ timeout = 30000 } = {}) {
+    const srcDoc = await this._waitForShareIframeSrcdoc(timeout);
+    if (!srcDoc || srcDoc.trim().length === 0) {
+      throw new Error(
+        '[CartPage.getSharePreviewOfferChangeTerms] Share email preview iframe had no srcdoc content. ' +
+          'The preview likely did not finish rendering. Ensure the share dialog is open and the preview has loaded.'
+      );
+    }
+
+    const iframeLocator = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first();
+    return await iframeLocator.evaluate((iframe) => {
+      const html = iframe.getAttribute('srcdoc') || '';
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const REFUND = /(?:(?:non|partially|fully)[-\s]*)?refundable/gi;
+
+      // The policy label ("Cancellation" / "Changes") is embedded in the term
+      // text itself, not in a separate label cell, and the two views lay the
+      // policy out differently. Anchor on the innermost element that names the
+      // policy, climb to the block that also carries its refundability line,
+      // then pull the refundability status(es) out of that isolated block.
+      const refundStatusFor = (labelPattern) => {
+        const matches = Array.from(doc.querySelectorAll('*'))
+          .filter((el) => labelPattern.test(el.textContent || ''));
+        if (!matches.length) return [];
+        matches.sort((a, b) => (a.textContent || '').length - (b.textContent || '').length);
+        let node = matches[0];
+        for (let hops = 0; hops < 5 && node.parentElement; hops++) {
+          if (/refundable/i.test(node.textContent || '')) break;
+          node = node.parentElement;
+        }
+        const found = (node.textContent || '').match(REFUND) || [];
+        const normalized = found.map((s) => s.toLowerCase().replace(/[-\s]+/g, '-'));
+        return Array.from(new Set(normalized)).sort();
+      };
+
+      return {
+        cancellation: refundStatusFor(/\bcancellation\b/i),
+        changes: refundStatusFor(/\bchanges?\b/i),
+      };
+    });
+  }
+
   async scrollSharePreviewDown() {
     const container = this.page.locator(SELECTORS.SHARE_EMAIL_CONTAINER).first();
     if (await container.count()) {
