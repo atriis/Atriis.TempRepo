@@ -161,6 +161,11 @@ When('I search for a {string} class flight by schedule from {string} to {string}
   await FlightSearch.searchFlightByScheduleWithCabinClass(this.page, { from, to }, cabinClass);
 });
 
+When('I search for a round trip flight by schedule from {string} to {string} with outbound cabin {string} and return cabin {string}', async function (from, to, outboundCabin, returnCabin) {
+  logger.info('Searching for by-schedule round trip with per-leg cabins', { from, to, outboundCabin, returnCabin });
+  await FlightSearch.searchFlightByScheduleRoundTripWithCabins(this.page, from, to, outboundCabin, returnCabin);
+});
+
 When('I search for a flight by schedule from {string} to {string} with preferred carrier {string} in the edit flight search', async function (from, to, carrier) {
   logger.info('Searching from edit flight search by schedule with preferred carrier', { from, to, carrier });
   await FlightSearch.searchFlightByScheduleWithPreferredCarrierInEditSearch(this.page, from, to, carrier);
@@ -205,6 +210,17 @@ When("I search for a multi-city flight with legs {string} and {string} and {stri
   const legs = [leg1, leg2, leg3].map(parseLeg);
   logger.info('Searching for multi-city flight', { legs });
   await FlightSearch.searchFlightMultiCity(this.page, legs);
+});
+
+When("I search for a multi-city flight with legs {string} and {string} and {string} with a longer stay after the first leg", async function (leg1, leg2, leg3) {
+  const parseLeg = (leg) => {
+    const parts = leg.toUpperCase().split('-');
+    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
+    return { from: parts[0], to: parts[1] };
+  };
+  const legs = [leg1, leg2, leg3].map(parseLeg);
+  logger.info('Searching for multi-city flight with a longer stay after the first leg', { legs });
+  await FlightSearch.searchFlightMultiCityWithLongerFirstStay(this.page, legs);
 });
 
 When("I search for a multi-city by-schedule flight with legs {string} and {string} and {string}", async function (leg1, leg2, leg3) {

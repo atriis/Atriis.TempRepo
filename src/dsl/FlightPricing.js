@@ -474,6 +474,9 @@ const FlightPricing = {
     const markup = Number(published.markup);
     const basePrice = Number(published.basePrice);
     const wholePrice = Number(published.wholePrice);
+    // Check the sum in the fare currency (avgPricePerPerson), not the display currency, so it holds when
+    // fare currency != display currency; the display-currency value is returned for cart reconciliation.
+    const avgPricePerPerson = Number(published.avgPricePerPerson);
     const muInclusivePerPax = Number(published.avgPricePerPersonDisplayCurrency);
     const percent = Number(markupPercent);
     const expectedMarkup = basePrice * (percent / 100);
@@ -485,6 +488,7 @@ const FlightPricing = {
       markup,
       basePrice,
       wholePrice,
+      avgPricePerPerson,
       muInclusivePerPax,
       expectedMarkup,
       percent,
@@ -499,8 +503,70 @@ const FlightPricing = {
     ).toBe(true);
 
     expect(
-      Math.abs((wholePrice + markup) - muInclusivePerPax) <= sumTolerance,
-      `wholePrice (${wholePrice}) + markup (${markup}) should equal avgPricePerPersonDisplayCurrency (${muInclusivePerPax}) within ${sumTolerance}`,
+      Math.abs((wholePrice + markup) - avgPricePerPerson) <= sumTolerance,
+      `wholePrice (${wholePrice}) + markup (${markup}) should equal avgPricePerPerson (${avgPricePerPerson}) in ${published.currency} within ${sumTolerance}`,
+    ).toBe(true);
+
+    return { muInclusivePerPax, markup, basePrice, wholePrice, currency: published.currency };
+  },
+
+  /**
+   * Verifies the published fare (result with markup > 0) carries a markup folded into the displayed per-pax
+   * price (markup > 0 and wholePrice + markup == per-pax), WITHOUT asserting a percentage. On a complete trip
+   * the response is trip-level and the per-segment base isn't exposed, so "X% of the qualifying segment"
+   * can't be checked here. Returns the MU-inclusive per-pax amount for cart checks.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {Promise<import('@playwright/test').Response>} responsePromise - from startCapturingPricingResponse.
+   */
+  async validateMarkupIncludedOnPublishedFare(page, responsePromise) {
+    if (!page) throw new Error('page is required');
+    if (!responsePromise) throw new Error('responsePromise is required — call startCapturingPricingResponse before the pricing action');
+
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+    const body = await flightPricingPage.readPricingApiResponseBody(responsePromise);
+
+    const results = body && Array.isArray(body.results) ? body.results : Array.isArray(body) ? body : null;
+    if (!results || results.length === 0) {
+      throw new Error('flightPricing response body has no results array');
+    }
+
+    const published = results.find((r) => Number(r.markup) > 0);
+    if (!published) {
+      throw new Error(
+        `No published fare with a markup was found in the flightPricing response (got ${results.length} result(s), all markup=0). ` +
+        'The origin-destination MU should have been applied to the published rate.',
+      );
+    }
+
+    const markup = Number(published.markup);
+    const basePrice = Number(published.basePrice);
+    const wholePrice = Number(published.wholePrice);
+    // Sum relationship is checked in the fare currency (avgPricePerPerson); the display-currency value
+    // (avgPricePerPersonDisplayCurrency) is returned for cart reconciliation. See validateOriginDestinationMarkup.
+    const avgPricePerPerson = Number(published.avgPricePerPerson);
+    const muInclusivePerPax = Number(published.avgPricePerPersonDisplayCurrency);
+    const sumTolerance = 0.02;
+
+    logger.info('Validating markup is included on published fare (no percentage assertion)', {
+      markup,
+      basePrice,
+      wholePrice,
+      avgPricePerPerson,
+      muInclusivePerPax,
+      currency: published.currency,
+      officeId: published.officeId,
+      sourceSystem: published.sourceSystem,
+    });
+
+    expect(
+      markup > 0,
+      `A management markup should be present on the published fare, but markup was ${markup}`,
+    ).toBe(true);
+
+    expect(
+      Math.abs((wholePrice + markup) - avgPricePerPerson) <= sumTolerance,
+      `wholePrice (${wholePrice}) + markup (${markup}) should equal avgPricePerPerson (${avgPricePerPerson}) in ${published.currency} within ${sumTolerance}`,
     ).toBe(true);
 
     return { muInclusivePerPax, markup, basePrice, wholePrice, currency: published.currency };

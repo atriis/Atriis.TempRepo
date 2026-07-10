@@ -152,6 +152,16 @@ Then('the origin-destination markup should be {string} percent of the base fare 
   logger.info('Origin-destination MU validated on published fare', result);
 });
 
+// Side effect: stores publishedMuInclusivePrice for the fare-selection and cart steps.
+Then('the published fare price should include the management markup', async function () {
+  logger.info('Validating the management markup is included on the published fare');
+  const result = await FlightPricing.validateMarkupIncludedOnPublishedFare(
+    this.page, this.lastInterceptedResponsePromise ?? this.flightPricingResponsePromise
+  );
+  this.publishedMuInclusivePrice = result.muInclusivePerPax;
+  logger.info('Markup inclusion validated on published fare', result);
+});
+
 // NOTE: Total price consistency (totalPriceDisplayCurrency == wholePrice + markup) is now validated
 // via the generic step in common.steps.js:
 //   Then the "totalPriceDisplayCurrency" in the intercepted response should equal "wholePrice" plus "markup"

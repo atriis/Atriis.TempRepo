@@ -720,6 +720,57 @@ const FlightSearch = {
   },
 
   /**
+   * By-schedule round-trip search with a different cabin per leg (e.g. Economy outbound, Business return).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} from - Origin airport code
+   * @param {string} to - Destination airport/metro code
+   * @param {string} outboundCabin - Cabin for the outbound leg
+   * @param {string} returnCabin - Cabin for the return leg
+   * @param {Object} [options]
+   */
+  async searchFlightByScheduleRoundTripWithCabins(
+    page,
+    from,
+    to,
+    outboundCabin,
+    returnCabin,
+    {
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    } = {},
+  ) {
+    if (!page) throw new Error('page is required');
+    if (!from || typeof from !== 'string') throw new Error('from must be a non-empty string, got: ' + from);
+    if (!to || typeof to !== 'string') throw new Error('to must be a non-empty string, got: ' + to);
+    if (!outboundCabin || typeof outboundCabin !== 'string') throw new Error('outboundCabin must be a non-empty string, got: ' + outboundCabin);
+    if (!returnCabin || typeof returnCabin !== 'string') throw new Error('returnCabin must be a non-empty string, got: ' + returnCabin);
+
+    logger.info('Starting by-schedule round-trip search with per-leg cabins', { from, to, outboundCabin, returnCabin });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectRoundTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      startIndex: departureIndex,
+      endIndex: returnIndex,
+    });
+    // Advanced search (in by-schedule) exposes a cabin field per leg: index 0 = outbound, 1 = return.
+    await flightSearchPage.selectBySchedule();
+    await this.openAdvancedSearch(page);
+    await flightSearchPage.selectFlightClassByIndex(outboundCabin, 0);
+    await flightSearchPage.selectFlightClassByIndex(returnCabin, 1);
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'roundTrip', searchType: 'bySchedule', outboundCabin, returnCabin };
+  },
+
+  /**
    * Multi-city flight search: completePTrip + multiCity + multiple legs
    *
    * @param {Object} page - Playwright page object
@@ -767,6 +818,81 @@ const FlightSearch = {
         startIndex: departureIndex + i * 3,
         endIndex: null,
       });
+    }
+
+    if (searchType === 'bySchedule') {
+      await flightSearchPage.selectBySchedule();
+    } else {
+      await flightSearchPage.selectCompleteTrip();
+    }
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, legs, tripType: 'multiCity', searchType };
+  },
+
+  /**
+   * Multi-city search that leaves a longer stay in the first destination. Each leg's date picker opens on
+   * the previous leg's date, so later legs are placed `stayDayGaps` available-days after the previous one
+   * (default [10, 2]: ~2 weeks then ~2 days) rather than advancing whole months (which compounds).
+   *
+   * @param {import('playwright').Page} page
+   * @param {Array<{from: string, to: string}>} legs - At least 2 {from, to} legs
+   * @param {Object} [options] - departureIndex, firstLegMonthsAhead, stayDayGaps, searchType
+   */
+  async searchFlightMultiCityWithLongerFirstStay(
+    page,
+    legs,
+    {
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      firstLegMonthsAhead = 3,
+      stayDayGaps = [10, 2],
+      searchType = 'completeTrip',
+    } = {},
+  ) {
+    if (!Array.isArray(legs) || legs.length < 2) {
+      throw new Error('legs must be an array of at least 2 {from, to} objects, got: ' + JSON.stringify(legs));
+    }
+    if (!Number.isInteger(firstLegMonthsAhead) || firstLegMonthsAhead < 0) {
+      throw new Error(`firstLegMonthsAhead must be an integer >= 0, got: ${firstLegMonthsAhead}`);
+    }
+    if (!Array.isArray(stayDayGaps) || stayDayGaps.length === 0 || !stayDayGaps.every((g) => Number.isInteger(g) && g >= 0)) {
+      throw new Error('stayDayGaps must be a non-empty array of non-negative integers, got: ' + JSON.stringify(stayDayGaps));
+    }
+    if (searchType !== 'completeTrip' && searchType !== 'bySchedule') {
+      throw new Error(`searchType must be 'completeTrip' or 'bySchedule', got: ${searchType}`);
+    }
+
+    logger.info('Starting multi-city flight search with a longer first-destination stay', {
+      legs,
+      searchType,
+      firstLegMonthsAhead,
+      stayDayGaps,
+    });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectMultiCityTrip();
+    await searchPage.waitForMultiCitySection();
+
+    const currentRows = await page.locator('.multi-city-line').count();
+    for (let i = currentRows; i < legs.length; i++) {
+      await searchPage.clickAddFlightRowButton();
+    }
+
+    for (let i = 0; i < legs.length; i++) {
+      const { from, to } = legs[i];
+      await searchPage.fillMultiCityLeg(from, to, i);
+      await searchPage.openMultiCityDatePickerAtIndex(i);
+      if (i === 0) {
+        await searchPage.clickCalendarNextArrow(firstLegMonthsAhead);
+        await selectDatesByNthAvailable(page, { startIndex: departureIndex, endIndex: null });
+      } else {
+        // Later legs: don't advance months (picker opens on the previous leg's date); pick a day `gap` later.
+        const gap = stayDayGaps[Math.min(i - 1, stayDayGaps.length - 1)];
+        await selectDatesByNthAvailable(page, { startIndex: gap, endIndex: null });
+      }
     }
 
     if (searchType === 'bySchedule') {

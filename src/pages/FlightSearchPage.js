@@ -137,6 +137,35 @@ class FlightSearchPage {
   }
 
   /**
+   * Selects a cabin class for a specific leg's cabin dropdown by index.
+   * On a round trip the form shows two cabin fields: index 0 = outbound, index 1 = return.
+   *
+   * @param {string} value - Cabin class label, e.g. "Economy", "Business"
+   * @param {number} index - Zero-based cabin-field index (0 = outbound, 1 = return)
+   */
+  async selectFlightClassByIndex(value, index) {
+    if (!value || typeof value !== 'string') {
+      throw new Error('value must be a non-empty string');
+    }
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(`index must be a non-negative integer, got: ${index}`);
+    }
+
+    const classField = this.page.locator(SELECTORS.FLIGHT_CLASS_FIELD).nth(index);
+    await classField.waitFor({ state: 'visible', timeout: 10000 });
+    await classField.click();
+    // Exact text so "Economy" does not also match "Premium Economy"; .last() = the popper that just opened.
+    const option = this.page
+      .locator(SELECTORS.VISIBLE_DROPDOWN_ITEMS)
+      .filter({ hasText: new RegExp(`^\\s*${value}\\s*$`) })
+      .last();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    await option.scrollIntoViewIfNeeded().catch(() => {});
+    await option.click({ force: true });
+    await classField.getByText(value, { exact: true }).first().waitFor({ state: 'visible', timeout: 10000 });
+  }
+
+  /**
    * Waits for a search mode option to be visible in the search form.
    *
    * @param {string} searchMode

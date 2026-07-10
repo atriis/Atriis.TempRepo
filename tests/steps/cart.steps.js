@@ -762,6 +762,46 @@ Then('the cart total price should be the last extracted price multiplied by the 
   );
 });
 
+// Percentage-tolerance variant for SEPARATED tickets: two currency-converted tickets combine into one
+// rounded per-pax, so per-pax x travelers can drift a fraction of a percent from the cart total.
+Then('the cart total price should be the last extracted price multiplied by the number of selected travelers within {float} percent', async function (percent) {
+  if (!Array.isArray(this.extractedPrices) || this.extractedPrices.length === 0) {
+    throw new Error('No extracted price stored. Run a price-extraction step before comparing with cart total price.');
+  }
+
+  // selectedTravelerCount (read from the UI at setup) can under-read due to a render race in the shared
+  // add-guest step; derive it reliably as primary (1) + tracked guests, keeping the higher of the two.
+  const trackedCount = 1 + (this.guestTravelerCount ?? 0);
+  const travelerCount = Math.max(Number(this.selectedTravelerCount) || 0, trackedCount);
+  if (!Number.isInteger(travelerCount) || travelerCount < 1) {
+    throw new Error(
+      `Could not determine a valid traveler count — make sure the traveler-adding steps ran first ` +
+      `(selectedTravelerCount=${this.selectedTravelerCount}, guestTravelerCount=${this.guestTravelerCount}).`,
+    );
+  }
+
+  const extractedPrice = this.extractedPrices[this.extractedPrices.length - 1];
+  const expectedPrice = extractedPrice * travelerCount;
+  const cartTotalPrice = await Cart.extractCartTotalPrice(this.page);
+  const tolerance = Math.max(expectedPrice * (percent / 100), 1);
+
+  logger.info('Comparing cart total price with extracted price x travelers (percentage tolerance)', {
+    extractedPrice,
+    travelerCount,
+    expectedPrice,
+    cartTotalPrice,
+    percent,
+    tolerance,
+  });
+
+  expectNumbersToBeEqualWithTolerance(
+    cartTotalPrice,
+    expectedPrice,
+    tolerance,
+    `Cart total price vs extracted price x ${travelerCount} (selected travelers) within ${percent}%`,
+  );
+});
+
 // Verifies: cart total = published per-pax price x number of selected travelers.
 Then('the cart total price should equal the published fare price multiplied by the number of selected travelers', async function () {
   if (typeof this.publishedMuInclusivePrice !== 'number') {
