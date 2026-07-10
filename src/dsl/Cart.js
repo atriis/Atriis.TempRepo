@@ -2457,6 +2457,137 @@ const Cart = {
   },
 
   /**
+   * Waits for and verifies the trip-bar cart-count badge (shown on results/product pages).
+   * Polls so the asynchronous add-to-cart commit and the reactive badge update have time to
+   * settle before asserting — this is the signal that a shared quote has been added to the trip,
+   * and gates navigation to the cart so we never land on a cart that fetched before the commit.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount - Expected badge count
+   * @returns {Promise<void>}
+   */
+  async verifyCartBadgeCount(page, expectedCount) {
+    if (!page) throw new Error('[Cart.verifyCartBadgeCount] "page" is required.');
+    if (!Number.isInteger(expectedCount) || expectedCount < 0) {
+      throw new Error(`[Cart.verifyCartBadgeCount] "expectedCount" must be a non-negative integer, got: ${expectedCount}`);
+    }
+
+    const commonPage = getPageObject(page, CommonPage);
+    logger.debug('[Cart.verifyCartBadgeCount] Waiting for cart badge to reflect the added quote', { expectedCount });
+
+    await expect
+      .poll(async () => commonPage.getCartBadgeText(), {
+        timeout: 30000,
+        message:
+          `[Cart.verifyCartBadgeCount] Expected the trip-bar cart badge to show ${expectedCount} after sharing the quote, ` +
+          `but it never did. The shared flight may not have been added to the trip.`,
+      })
+      .toBe(String(expectedCount));
+  },
+
+  /**
+   * Verifies the number of flight quote cards present in the cart.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount - Expected number of flight quote cards
+   * @returns {Promise<void>}
+   */
+  async verifyFlightQuoteCount(page, expectedCount) {
+    if (!page) throw new Error('[Cart.verifyFlightQuoteCount] "page" is required.');
+    if (!Number.isInteger(expectedCount) || expectedCount < 0) {
+      throw new Error(`[Cart.verifyFlightQuoteCount] "expectedCount" must be a non-negative integer, got: ${expectedCount}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('[Cart.verifyFlightQuoteCount] Counting flight quote cards in cart', { expectedCount });
+
+    let actualCount;
+    try {
+      actualCount = await cartPage.getFlightQuoteCardCount();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyFlightQuoteCount] Could not read flight quote cards from the cart. ` +
+        `The cart may not have loaded or holds no flight quotes. Original: ${err.message}`,
+      );
+    }
+
+    expect(
+      actualCount,
+      `[Cart.verifyFlightQuoteCount] Expected the cart to contain ${expectedCount} flight quote(s), but found ${actualCount}.`,
+    ).toBe(expectedCount);
+  },
+
+  /**
+   * Verifies the outbound departure airport code of the flight in the cart.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedCode - Expected departure airport code (e.g. "MAD")
+   * @returns {Promise<void>}
+   */
+  async verifyCartFlightDepartureCode(page, expectedCode) {
+    if (!page) throw new Error('[Cart.verifyCartFlightDepartureCode] "page" is required.');
+    if (!expectedCode || typeof expectedCode !== 'string') {
+      throw new Error(`[Cart.verifyCartFlightDepartureCode] "expectedCode" must be a non-empty string, got: ${typeof expectedCode}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('[Cart.verifyCartFlightDepartureCode] Reading cart flight location codes', { expectedCode });
+
+    let codes;
+    try {
+      codes = await cartPage.getVisibleFlightQuoteLocationCodes();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyCartFlightDepartureCode] Could not read flight location codes from the cart quote. ` +
+        `The flight quote may not have loaded. Original: ${err.message}`,
+      );
+    }
+
+    const normalizedExpected = expectedCode.trim().toUpperCase();
+    const actual = (codes[0] ?? '').toUpperCase();
+    expect(
+      actual,
+      `[Cart.verifyCartFlightDepartureCode] Expected the cart flight to depart from ${normalizedExpected}, ` +
+      `but the outbound departure code was "${codes[0] ?? '(none)'}". Visible codes: ${codes.join(', ')}`,
+    ).toBe(normalizedExpected);
+  },
+
+  /**
+   * Verifies the outbound arrival airport code of the flight in the cart.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedCode - Expected arrival airport code (e.g. "LIS")
+   * @returns {Promise<void>}
+   */
+  async verifyCartFlightArrivalCode(page, expectedCode) {
+    if (!page) throw new Error('[Cart.verifyCartFlightArrivalCode] "page" is required.');
+    if (!expectedCode || typeof expectedCode !== 'string') {
+      throw new Error(`[Cart.verifyCartFlightArrivalCode] "expectedCode" must be a non-empty string, got: ${typeof expectedCode}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('[Cart.verifyCartFlightArrivalCode] Reading cart flight location codes', { expectedCode });
+
+    let codes;
+    try {
+      codes = await cartPage.getVisibleFlightQuoteLocationCodes();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyCartFlightArrivalCode] Could not read flight location codes from the cart quote. ` +
+        `The flight quote may not have loaded. Original: ${err.message}`,
+      );
+    }
+
+    const normalizedExpected = expectedCode.trim().toUpperCase();
+    const actual = (codes[1] ?? '').toUpperCase();
+    expect(
+      actual,
+      `[Cart.verifyCartFlightArrivalCode] Expected the cart flight to arrive at ${normalizedExpected}, ` +
+      `but the outbound arrival code was "${codes[1] ?? '(none)'}". Visible codes: ${codes.join(', ')}`,
+    ).toBe(normalizedExpected);
+  },
+
+  /**
    * Verifies that the destination text in the cart info bar (top of page) contains the expected city.
    *
    * @param {import('playwright').Page} page

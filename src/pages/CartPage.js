@@ -3520,6 +3520,19 @@ class CartPage {
   }
 
   /**
+   * Counts the flight quote cards currently rendered in the cart.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<number>}
+   */
+  async getFlightQuoteCardCount({ timeout = 15000 } = {}) {
+    const quoteCards = this.page.locator(SELECTORS.FLIGHT_QUOTE_CARD);
+    await quoteCards.first().waitFor({ state: 'visible', timeout });
+
+    return quoteCards.count();
+  }
+
+  /**
    * Gets all visible flight route location codes rendered in the cart quote segments.
    *
    * @param {{ timeout?: number }} options

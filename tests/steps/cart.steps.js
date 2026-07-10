@@ -1178,6 +1178,26 @@ Then('both outbound and return segments should be present in the trip', async fu
   logger.info('Round-trip segments are present in the trip', result);
 });
 
+Then("the cart badge should show {string} item", async function (expectedCount) {
+  logger.info("Verifying trip-bar cart badge count", { expectedCount });
+  await Cart.verifyCartBadgeCount(this.page, Number(expectedCount));
+});
+
+Then("the cart should contain {int} flight quote(s)", async function (expectedCount) {
+  logger.info("Verifying cart flight quote count", { expectedCount });
+  await Cart.verifyFlightQuoteCount(this.page, expectedCount);
+});
+
+Then("the cart flight should depart from {string}", async function (departureCode) {
+  logger.info("Verifying cart flight departure code", { departureCode });
+  await Cart.verifyCartFlightDepartureCode(this.page, departureCode);
+});
+
+Then("the cart flight should arrive at {string}", async function (arrivalCode) {
+  logger.info("Verifying cart flight arrival code", { arrivalCode });
+  await Cart.verifyCartFlightArrivalCode(this.page, arrivalCode);
+});
+
 Then("the trip destination on top of the page should contain {string}", async function (city) {
   logger.info("Verifying trip destination on top of page contains city", { city });
   await Cart.verifyTripDestinationTopPage(this.page, city);

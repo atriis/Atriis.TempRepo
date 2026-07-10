@@ -49,6 +49,10 @@ const SELECTORS = {
 
   // Shopping cart icon
   SHOPPING_CART_ICON: 'span:has-text("shopping_cart")',
+
+  // Cart-count badge on the trip-bar cart button (trip-bar.vue → el-badge :value="quotesLengthToShow").
+  // Scoped by the shopping_cart icon so it never matches the unused-tickets or chat badges that also use .cart-btn/.el-badge.
+  CART_BADGE_COUNT: '.cart-btn:has(span:has-text("shopping_cart")) .el-badge__content',
 };
 
 /**
@@ -100,6 +104,22 @@ class CommonPage {
 
   getShoppingCartIcon() {
     return this.page.locator(SELECTORS.SHOPPING_CART_ICON);
+  }
+
+  /**
+   * Reads the trip-bar cart-count badge text (e.g. "1"), or null when no badge is shown.
+   * The badge reflects the number of quotes on the trip and updates reactively, so it is
+   * the signal that a shared/added quote has actually committed to the cart.
+   *
+   * @returns {Promise<string|null>}
+   */
+  async getCartBadgeText() {
+    const badge = this.page.locator(SELECTORS.CART_BADGE_COUNT).first();
+    if (!(await badge.count())) {
+      return null;
+    }
+    const text = await badge.textContent().catch(() => null);
+    return text ? text.trim() : null;
   }
 
   /**
