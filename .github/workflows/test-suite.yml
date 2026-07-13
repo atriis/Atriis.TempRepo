@@ -328,7 +328,7 @@ jobs:
 
       - name: Download previous Allure history
         if: always()
-        uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
+        uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151 # v21
         with:
           name: allure-history
           path: previous-history
@@ -715,11 +715,19 @@ jobs:
 
       - name: Publish Cucumber Test Results
         if: always()
-        uses: dorny/test-reporter@d61b558e8df85cb60d09ca3e5b09653b4477cea7 # v1
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         with:
           name: Cucumber Tests - Run ${{ github.run_number }}
           reporter: java-junit
           path: 'all-results/**/cucumber-junit.xml'
+          # With ~35 suites and 1000+ scenarios, listing every passing test overflows
+          # GitHub's 65535-byte check-run limit ("summary exceeded limit ... will be
+          # trimmed"). Show only failed suites/tests — that is what needs attention.
+          list-suites: failed
+          list-tests: failed
+          # Preserve v1 behaviour: create the check run only. The job summary is already
+          # composed by the custom steps above; v3 would otherwise append a duplicate.
+          use-actions-summary: false
           fail-on-error: false
           fail-on-empty: false
         continue-on-error: true
