@@ -321,6 +321,40 @@ class CartPayment {
   }
 
   /**
+   * Verifies the "Request Billback" checkbox is displayed and checked by default.
+   * The billback checkbox renders the localized "Request Billback" title, so its visibility
+   * confirms the label text is displayed; the checked state confirms it is pre-selected
+   * without any user interaction.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async verifyBillbackRequestDisplayedAndChecked(page) {
+    if (!page) {
+      throw new Error('[CartPayment.verifyBillbackRequestDisplayedAndChecked] "page" is required.');
+    }
+
+    const paymentPage = getPageObject(page, CartPaymentPage);
+
+    const isDisplayed = await paymentPage.isBillbackCheckboxVisible();
+    expect(
+      isDisplayed,
+      '[CartPayment.verifyBillbackRequestDisplayedAndChecked] Expected the "Request Billback" checkbox to be displayed in the cart, but it was not found. The billback panel may not have opened.',
+    ).toBe(true);
+
+    let isChecked;
+    try {
+      isChecked = await paymentPage.isBillbackCheckboxChecked();
+    } catch (err) {
+      throw new Error(
+        `[CartPayment.verifyBillbackRequestDisplayedAndChecked] Failed to read the "Request Billback" checkbox state. The billback checkbox may have disappeared after opening. Original: ${err.message}`,
+      );
+    }
+    expect(
+      isChecked,
+      'Expected the "Request Billback" checkbox to be checked by default, but it was unchecked',
+    ).toBe(true);
+  }
+
+  /**
    * Verifies that specific payment method options are visible (e.g., "Pay on departure", "Pre-paid").
    * @param {import('@playwright/test').Page} page
    * @param {string[]} options - Array of payment option texts to verify

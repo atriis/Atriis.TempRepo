@@ -139,6 +139,11 @@ Then("the card {string} checkbox should be checked", async function (cardName) {
   await CartPayment.verifyCardCheckboxChecked(this.page, cardName);
 });
 
+Then("the request billback text should be displayed with checkbox checked by default", async function () {
+  logger.info("Verifying 'Request Billback' text is displayed with checkbox checked by default");
+  await CartPayment.verifyBillbackRequestDisplayedAndChecked(this.page);
+});
+
 Then("add credit card details option should not be visible", async function () {
   logger.info("Verifying add credit card details option is not visible");
   await CartPayment.verifyNoOtherCCPrivilege(this.page);

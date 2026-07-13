@@ -16,7 +16,7 @@ Feature: 37287 Hotel - System should not show an option to pay with other credit
   Scenario: System should not show an option to pay with other credit card in case user doesn't have privileges; if there's billback checkbox must be checked by default
     Given I am logged in as "lilyaldrin@billback.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Lon" for 1 night
+    When I search for a hotel in "AMS" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
@@ -24,4 +24,5 @@ Feature: 37287 Hotel - System should not show an option to pay with other credit
     Then the card "billback" should be visible
     Then payment restriction text should be visible
     Then the card "billback" checkbox should be checked
+    Then the request billback text should be displayed with checkbox checked by default
     Then add credit card details option should not be visible
