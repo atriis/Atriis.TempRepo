@@ -37,6 +37,18 @@ const SELECTORS = {
   BASE_FARE_FIELD: "[name=\"base-fare\"]",
   ADD_QUOTE_BUTTON: "button.add-quote-btn",
 
+  // ===== FLIGHT ROUND TRIP (multi-segment) =====
+  // manual-quote-flight.vue renders one <manual-quote-flight-segment> per leg with a
+  // fall-through data-flight-index (0 = outbound, 1 = inbound). "Add another flight"
+  // appends the return-leg segment.
+  ADD_ANOTHER_FLIGHT_BUTTON: ".manual-quote-flight .add-another-flight .product-btn",
+  FLIGHT_SEGMENT: (index) => `.manual-quote-flight-segment[data-flight-index="${index}"]`,
+  SEGMENT_ARRIVING_DATE_INPUT: "input[name=\"arriving-date\"]",
+  // Element-Plus date-picker popup (teleported to <body>) — scope to the visible one, then
+  // its selectable day cells.
+  DATE_PICKER_PANEL_VISIBLE: ".el-picker-panel:visible",
+  DATE_PICKER_AVAILABLE_DAY: "td.available .el-date-table-cell__text",
+
   // ===== HOTEL MANUAL QUOTE =====
   // Sub-tab inside the manual-quote-page (Element-Plus el-tabs, the Hotel pane label)
   HOTEL_SUBTAB: ".manual-quote-page .el-tabs__item:has-text(\"Hotel\")",
@@ -328,8 +340,13 @@ class ManualQuoteSearchPage {
    * @param {string} carrierName - Exact carrier name to select from dropdown
    */
   async clickCarrierDropdownOption(carrierName) {
+    // Element-Plus keeps closed dropdowns in the DOM (see the VISIBLE_DROPDOWN_ITEM note above),
+    // so a multi-segment round trip has the same carrier option present in more than one panel.
+    // Scope to the visible panel to avoid a strict-mode multi-match or clicking a hidden option.
     await this.page
       .locator(SELECTORS.CARRIER_DROPDOWN_OPTION(carrierName))
+      .locator("visible=true")
+      .first()
       .click();
   }
 
@@ -371,6 +388,167 @@ class ManualQuoteSearchPage {
     const addQuoteBtn = this.page.locator(SELECTORS.ADD_QUOTE_BUTTON).first();
     await addQuoteBtn.scrollIntoViewIfNeeded();
     await addQuoteBtn.click();
+  }
+
+  // ===== FLIGHT ROUND TRIP (multi-segment) =====
+
+  /**
+   * Clicks "Add another flight" to append a return-leg segment, then waits for the
+   * new segment (index 1) to render.
+   */
+  async clickAddAnotherFlight() {
+    const btn = this.page.locator(SELECTORS.ADD_ANOTHER_FLIGHT_BUTTON).first();
+    await btn.scrollIntoViewIfNeeded();
+    await btn.click();
+    await this.page
+      .locator(SELECTORS.FLIGHT_SEGMENT(1))
+      .first()
+      .waitFor({ state: "visible", timeout: 10000 });
+  }
+
+  /**
+   * Fills the "Departing From" airport for a specific flight segment, committing
+   * the value with TAB (same as the single-segment fillInDepartingFromField).
+   * @param {number} segmentIndex - 0 = outbound, 1 = inbound
+   * @param {string} from - Origin airport text
+   */
+  async fillSegmentDepartingFromField(segmentIndex, from) {
+    const scoped = `${SELECTORS.FLIGHT_SEGMENT(segmentIndex)} ${SELECTORS.DEPARTING_FROM_INPUT}`;
+    await typeIntoNthAvailableInput(this.page, from, [scoped], 0);
+    await pressTab(this.page);
+    await this.page.waitForTimeout(100);
+  }
+
+  /**
+   * Fills the "Arriving To" airport for a specific flight segment, committing the
+   * value with TAB (same as the single-segment fillInArrivingToField).
+   * @param {number} segmentIndex - 0 = outbound, 1 = inbound
+   * @param {string} to - Destination airport text
+   */
+  async fillSegmentArrivingToField(segmentIndex, to) {
+    const scoped = `${SELECTORS.FLIGHT_SEGMENT(segmentIndex)} ${SELECTORS.ARRIVING_TO_INPUT}`;
+    await typeIntoNthAvailableInput(this.page, to, [scoped], 0);
+    await pressTab(this.page);
+    await this.page.waitForTimeout(100);
+  }
+
+  /**
+   * Fills the flight number for a specific segment.
+   * @param {number} segmentIndex
+   * @param {string} flightNumber
+   */
+  async typeSegmentFlightNumber(segmentIndex, flightNumber) {
+    await this.page
+      .locator(`${SELECTORS.FLIGHT_SEGMENT(segmentIndex)} ${SELECTORS.FLIGHT_NUMBER_FIELD}`)
+      .first()
+      .fill(flightNumber);
+  }
+
+  /**
+   * Returns a segment leg's date <input> locator.
+   * @param {number} segmentIndex - 0 = outbound, 1 = inbound
+   * @param {"departing"|"arriving"} kind
+   * @returns {import('@playwright/test').Locator}
+   */
+  getSegmentDateInput(segmentIndex, kind) {
+    const nameSelector =
+      kind === "arriving" ? SELECTORS.SEGMENT_ARRIVING_DATE_INPUT : SELECTORS.DEPARTING_DATE_INPUT;
+    return this.page.locator(`${SELECTORS.FLIGHT_SEGMENT(segmentIndex)} ${nameSelector}`).first();
+  }
+
+  /**
+   * Opens a segment leg's date picker.
+   * @param {number} segmentIndex
+   * @param {"departing"|"arriving"} kind
+   */
+  async clickSegmentDate(segmentIndex, kind) {
+    const input = this.getSegmentDateInput(segmentIndex, kind);
+    await input.scrollIntoViewIfNeeded().catch(() => {});
+    await input.click();
+  }
+
+  /**
+   * Reads a segment leg's currently-displayed date value (e.g. "Wed, Aug 19").
+   * @param {number} segmentIndex
+   * @param {"departing"|"arriving"} kind
+   * @returns {Promise<string>}
+   */
+  async getSegmentDateValue(segmentIndex, kind) {
+    return this.getSegmentDateInput(segmentIndex, kind).inputValue().catch(() => "");
+  }
+
+  /**
+   * Fills the carrier locator (airline code) for a specific segment.
+   * @param {number} segmentIndex
+   * @param {string} carrierLocator
+   */
+  async typeSegmentCarrierLocator(segmentIndex, carrierLocator) {
+    await this.page
+      .locator(`${SELECTORS.FLIGHT_SEGMENT(segmentIndex)} ${SELECTORS.CARRIER_LOCATOR_FIELD}`)
+      .first()
+      .fill(carrierLocator);
+  }
+
+  /**
+   * Types into the carrier field for a specific segment to trigger the autocomplete
+   * dropdown. The dropdown itself is teleported to <body>; select the option with the
+   * shared clickCarrierDropdownOption.
+   * @param {number} segmentIndex
+   * @param {string} carrierName
+   */
+  async typeSegmentCarrierName(segmentIndex, carrierName) {
+    const input = this.page
+      .locator(`${SELECTORS.FLIGHT_SEGMENT(segmentIndex)} ${SELECTORS.CARRIER_INPUT}`)
+      .first();
+    await input.click();
+    await input.fill(carrierName);
+  }
+
+  /**
+   * Clicks a segment's time picker then blurs it by clicking the segment's flight-number
+   * field, mirroring the single-segment clickStartTime/clickEndTime trick that commits
+   * the value and triggers time validation.
+   * @param {number} segmentIndex
+   * @param {number} timeIndex - 0 = departing hour, 1 = arriving hour
+   */
+  async clickSegmentTime(segmentIndex, timeIndex) {
+    const seg = SELECTORS.FLIGHT_SEGMENT(segmentIndex);
+    await this.page.locator(`${seg} ${SELECTORS.TIME_PICKER_INPUTS}`).nth(timeIndex).click();
+    await this.page.locator(`${seg} ${SELECTORS.FLIGHT_NUMBER_FIELD}`).first().click();
+  }
+
+  /**
+   * Force-clicks a specific day number in the currently-open Element-Plus date picker.
+   * The picker for a lower flight segment can report a transient "not stable/visible" state
+   * during its open animation/repositioning; a forced click on the resolved day cell avoids
+   * the flaky actionability wait. Assumes the target month is already visible.
+   * @param {number|string} dayNumber - Day of month to select (e.g. 19)
+   */
+  async clickDayInOpenPicker(dayNumber) {
+    const panel = this.page.locator(SELECTORS.DATE_PICKER_PANEL_VISIBLE).last();
+    await panel.waitFor({ state: "visible", timeout: 10000 });
+    const cell = panel
+      .locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY)
+      .filter({ hasText: new RegExp(`^${dayNumber}$`) })
+      .first();
+    await cell.waitFor({ state: "attached", timeout: 10000 });
+    await cell.scrollIntoViewIfNeeded().catch(() => {});
+    await cell.click({ force: true });
+  }
+
+  /**
+   * Closes any open Element-Plus date-picker popup. EP can leave a single-date picker open
+   * after selection; its overlay then blocks the next field and leaves an ambiguous visible
+   * panel. Press Escape and wait (best-effort) for the visible panel to disappear. Safe no-op
+   * when no picker is open.
+   */
+  async closeOpenDatePicker() {
+    await this.page.keyboard.press("Escape");
+    await this.page
+      .locator(SELECTORS.DATE_PICKER_PANEL_VISIBLE)
+      .first()
+      .waitFor({ state: "hidden", timeout: 5000 })
+      .catch(() => {});
   }
 
   // ===== HOTEL MANUAL QUOTE =====

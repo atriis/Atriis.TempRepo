@@ -3,7 +3,7 @@ const ManualQuoteSearchPage = require("@pages/ManualQuoteSearchPage");
 const FlightSearchPage = require("@pages/FlightSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const flightRoutes = require("@data/flights.json");
-const { selectDatesByNthAvailable, selectDateAfterAdvancingMonths } = require("@utils/calendar.helper");
+const { selectDatesByNthAvailable, selectDateAfterAdvancingMonths, advanceSinglePickerCalendarUntilMonthVisible } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const logger = require("@utils/logger").child("ManualQuoteSearch-DSL");
@@ -75,6 +75,108 @@ const ManualQuoteSearch = {
     await manualQuoteSearchPage.clickEndTime();
 
     // Enter pricing and add quote to cart
+    await manualQuoteSearchPage.typeBaseFare("10");
+    await manualQuoteSearchPage.clickAddQuoteButton();
+  },
+
+  /**
+   * Performs a complete ROUND-TRIP manual quote flight search.
+   *
+   * The manual-quote flight form is multi-segment (manual-quote-flight.vue): a round trip
+   * is built by filling the outbound leg on segment 0, clicking "Add another flight" to
+   * append segment 1, then filling the inbound (return) leg. Contrast with the one-way
+   * {@link searchAndAddFlightManualQuote}, which fills a single segment.
+   *
+   * Each leg departs and ARRIVES on the same calendar day (a realistic same-day flight, not
+   * a multi-day gap), and the return leg departs exactly one week after the outbound.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string|Object} routeInput - Route identifier or inline { from, to }
+   */
+  async searchAndAddFlightManualQuoteRoundTrip(page, routeInput = flightRoutes.defaultRoute) {
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
+
+    // Exact dates (not "nth available"): outbound ~a month out, arriving the same day; the
+    // return leg one week later, also same-day. This keeps each flight's duration realistic
+    // instead of the arrival landing weeks after departure.
+    const toIsoDate = (d) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const outboundDay = new Date();
+    outboundDay.setDate(outboundDay.getDate() + 30);
+    const returnDay = new Date(outboundDay);
+    returnDay.setDate(returnDay.getDate() + 7);
+    const outboundDate = toIsoDate(outboundDay);
+    const returnDate = toIsoDate(returnDay);
+
+    logger.info("Starting round-trip manual quote flight search", { from, to, outboundDate, returnDate });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
+
+    // Sets a segment leg's date to an exact day. The picker's header splits year/month, so we
+    // navigate with the single-month helper and force-click the day; then we read the field back
+    // and retry — the app pre-fills segment dates from the previous leg and the lower picker can
+    // drop a click, so verification is what keeps the legs same-day and one week apart.
+    const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const setSegmentDate = async (segmentIndex, kind, dateObj) => {
+      const day = dateObj.getDate();
+      const monthAbbr = MONTH_ABBR[dateObj.getMonth()];
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        await manualQuoteSearchPage.clickSegmentDate(segmentIndex, kind);
+        await advanceSinglePickerCalendarUntilMonthVisible(page, dateObj);
+        await manualQuoteSearchPage.clickDayInOpenPicker(day);
+        await manualQuoteSearchPage.closeOpenDatePicker();
+
+        const value = await manualQuoteSearchPage.getSegmentDateValue(segmentIndex, kind);
+        if (value.includes(monthAbbr) && new RegExp(`\\b${day}\\b`).test(value)) {
+          return;
+        }
+        logger.debug("Segment date did not stick; retrying", {
+          segmentIndex, kind, want: `${monthAbbr} ${day}`, got: value, attempt,
+        });
+      }
+      throw new Error(
+        `[ManualQuoteSearch.searchAndAddFlightManualQuoteRoundTrip] Could not set segment ${segmentIndex} ` +
+        `${kind} date to "${monthAbbr} ${day}" after 3 attempts — the app may be re-syncing segment dates.`,
+      );
+    };
+
+    // Navigate to the manual quote flight tab
+    await manualQuoteSearchPage.clickManualQuoteTab();
+    await manualQuoteSearchPage.waitForEnterAirportLocationPlaceholderVisible();
+    await flightSearchPage.clickFlightTab();
+
+    // ===== Segment 0 — outbound leg (from -> to), same-day =====
+    await manualQuoteSearchPage.fillInDepartingFromField(from);
+    await manualQuoteSearchPage.fillInArrivingToField(to);
+    await manualQuoteSearchPage.typeFlightNumber("765");
+
+    await setSegmentDate(0, "departing", outboundDay);
+    await setSegmentDate(0, "arriving", outboundDay);
+
+    await manualQuoteSearchPage.typeCarrierLocator("TP");
+    await manualQuoteSearchPage.typeCarrierName("TAP Air Portugal (TP)");
+    await manualQuoteSearchPage.clickCarrierDropdownOption("TAP Air Portugal (TP)");
+    await manualQuoteSearchPage.clickStartTime();
+    await manualQuoteSearchPage.clickEndTime();
+
+    // ===== Segment 1 — inbound leg (to -> from), same-day, one week later =====
+    await manualQuoteSearchPage.clickAddAnotherFlight();
+
+    await manualQuoteSearchPage.fillSegmentDepartingFromField(1, to);
+    await manualQuoteSearchPage.fillSegmentArrivingToField(1, from);
+    await manualQuoteSearchPage.typeSegmentFlightNumber(1, "766");
+
+    await setSegmentDate(1, "departing", returnDay);
+    await setSegmentDate(1, "arriving", returnDay);
+
+    await manualQuoteSearchPage.typeSegmentCarrierLocator(1, "TP");
+    await manualQuoteSearchPage.typeSegmentCarrierName(1, "TAP Air Portugal (TP)");
+    await manualQuoteSearchPage.clickCarrierDropdownOption("TAP Air Portugal (TP)");
+    await manualQuoteSearchPage.clickSegmentTime(1, 0);
+    await manualQuoteSearchPage.clickSegmentTime(1, 1);
+
+    // ===== Price + submit =====
     await manualQuoteSearchPage.typeBaseFare("10");
     await manualQuoteSearchPage.clickAddQuoteButton();
   },

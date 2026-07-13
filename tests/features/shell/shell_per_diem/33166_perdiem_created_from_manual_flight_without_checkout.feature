@@ -15,13 +15,9 @@ Feature: 33166 - Per-Diem quote created from a manual round-trip flight without 
   Scenario: A manual round-trip flight creates an On-hold Per-Diem quote that can then be cancelled
     Given I am logged in as "uri@pidi.com" booking a new trip
     And I have added myself as the traveler
-    # NOTE: the existing manual flight quote step takes only from/to; the Testim source builds a full round trip (LON->MAD outbound + MAD->LON inbound) with specific carriers/times/flight numbers ("el al", "british", 123/456). Verify ManualQuoteSearch DSL creates a round trip; extend it if it only produces a one-way quote.
-    When I add a flight manual quote from "lon" to "mad"
-    Then the last quote status should be "On hold"
-    # TODO: verify the trip has a Per Diem quote (create Cart.verifyTripContainsPerDiemQuote in src/dsl/Cart.js; Testim waited for ".quote-info > :nth-child(1) .muliSemiBold" to contain "Per diem")
+    When I add a flight manual quote from "lon" to "mad" round trip
+    And I should see a quote with status "On hold"
     And the trip should contain a Per Diem quote
-    # TODO: verify the per-diem quote is for the destination (create Cart.verifyPerDiemQuoteDisplayedFor in src/dsl/Cart.js; Testim waited for ".center-title" and ".per-diem-quote-card .has-text-weight-semibold" to contain "Per-Diem for Madrid")
     And a Per-Diem quote should be displayed for "Madrid"
-    # TODO: verify the per-diem quote status (create Cart.verifyPerDiemQuoteStatus in src/dsl/Cart.js; Testim waited for ".per-diem-quote-card [class^='ml']" to contain "Confirmed")
     And the Per-Diem quote status should be "Confirmed"
     Then I successfully cancel the trip

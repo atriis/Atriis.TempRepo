@@ -588,6 +588,123 @@ const Cart = {
     expect(actualStatus.toLowerCase()).toContain(expectedText.toLowerCase());
   },
 
+  /**
+   * Verifies the trip contains a Per-Diem quote by asserting the quote card's
+   * "Type" value reads "Per diem".
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{typeText: string}>}
+   */
+  async verifyTripContainsPerDiemQuote(page) {
+    if (!page) throw new Error('[Cart.verifyTripContainsPerDiemQuote] "page" is required.');
+
+    logger.info('Verifying the trip contains a Per-Diem quote');
+
+    const cartPage = getPageObject(page, CartPage);
+    const typeValue = cartPage.getPerDiemQuoteTypeValue();
+
+    try {
+      await typeValue.waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyTripContainsPerDiemQuote] The Per-Diem quote card "Type" value was not visible within 60s. ` +
+        `The trip likely does not contain an auto-created Per-Diem quote, or the quote card did not render. Original: ${err.message}`,
+      );
+    }
+
+    const typeText = (await typeValue.innerText()).trim();
+    expect(
+      typeText,
+      `Expected the trip to contain a Per-Diem quote (card "Type" value should read "Per diem"), but it read "${typeText}".`,
+    ).toMatch(/per\s*diem/i);
+
+    return { typeText };
+  },
+
+  /**
+   * Verifies a Per-Diem quote is displayed for the given destination by asserting
+   * the quote card title reads "Per-Diem for {destination}".
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} destination - Destination city shown in the quote title, e.g. "Madrid"
+   * @returns {Promise<{destination: string, titleText: string}>}
+   */
+  async verifyPerDiemQuoteDisplayedFor(page, destination) {
+    if (!page) throw new Error('[Cart.verifyPerDiemQuoteDisplayedFor] "page" is required.');
+    if (!destination || typeof destination !== 'string') {
+      throw new Error(
+        `[Cart.verifyPerDiemQuoteDisplayedFor] "destination" must be a non-empty string, got: ${typeof destination} (${JSON.stringify(destination)})`,
+      );
+    }
+
+    logger.info('Verifying the Per-Diem quote is displayed for a destination', { destination });
+
+    const cartPage = getPageObject(page, CartPage);
+    const title = cartPage.getPerDiemQuoteTitle();
+
+    try {
+      await title.waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyPerDiemQuoteDisplayedFor] The Per-Diem quote card title was not visible within 60s. ` +
+        `The Per-Diem quote may not have been created for "${destination}", or the card did not render. Original: ${err.message}`,
+      );
+    }
+
+    const titleText = (await title.innerText()).trim();
+    const normalizedTitle = titleText.toLowerCase();
+    // Tolerate the "Per-Diem"/"Per Diem" hyphen-vs-space and casing; still require both the
+    // per-diem phrase and the destination so a wrong/empty title is caught.
+    expect(
+      normalizedTitle,
+      `Expected a Per-Diem quote title (e.g. "Per-Diem for ${destination}"), but the card title read "${titleText}".`,
+    ).toMatch(/per[\s-]?diem for/);
+    expect(
+      normalizedTitle,
+      `Expected the Per-Diem quote title to reference destination "${destination}", but it read "${titleText}".`,
+    ).toContain(destination.toLowerCase());
+
+    return { destination, titleText };
+  },
+
+  /**
+   * Verifies the Per-Diem quote status label matches the expected status.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedStatus - Expected status text, e.g. "Confirmed"
+   * @returns {Promise<{expectedStatus: string, actualStatus: string}>}
+   */
+  async verifyPerDiemQuoteStatus(page, expectedStatus) {
+    if (!page) throw new Error('[Cart.verifyPerDiemQuoteStatus] "page" is required.');
+    if (!expectedStatus || typeof expectedStatus !== 'string') {
+      throw new Error(
+        `[Cart.verifyPerDiemQuoteStatus] "expectedStatus" must be a non-empty string, got: ${typeof expectedStatus} (${JSON.stringify(expectedStatus)})`,
+      );
+    }
+
+    logger.info('Verifying the Per-Diem quote status', { expectedStatus });
+
+    const cartPage = getPageObject(page, CartPage);
+    const statusLabel = cartPage.getPerDiemQuoteStatusLabel();
+
+    try {
+      await statusLabel.waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyPerDiemQuoteStatus] The Per-Diem quote status label was not visible within 60s. ` +
+        `The Per-Diem quote card may not have rendered a status badge. Original: ${err.message}`,
+      );
+    }
+
+    const actualStatus = (await statusLabel.innerText()).trim();
+    expect(
+      actualStatus.toLowerCase(),
+      `Expected the Per-Diem quote status to be "${expectedStatus}", but it read "${actualStatus}".`,
+    ).toContain(expectedStatus.toLowerCase());
+
+    return { expectedStatus, actualStatus };
+  },
+
   async verifyFlightSegmentDetails(page, expectedSegments) {
     if (!page) {
       throw new Error('page is required');

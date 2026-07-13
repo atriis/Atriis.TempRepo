@@ -21,6 +21,13 @@ const SELECTORS = {
   QUOTE_STATUS_LABEL: ".app-label--quote",
   QUOTE_CARD_STATUS_LABEL: '.quote-payment-card .app-label--quote',
   QUOTE_PAYMENT_CARD: '.quote-payment-card',
+
+  // Per-Diem quote card (trip overview) — per-diem-quote-card.vue wraps base-quote-card/header.
+  // The card root carries both `.quote-payment-card` and `.per-diem-quote-card` classes; the
+  // status badge (`.app-label--quote`) is rendered by the nested base-quote-header.
+  PER_DIEM_QUOTE_TYPE_VALUE: '.per-diem-quote-card .quote-info > p:first-child .muliSemiBold',
+  PER_DIEM_QUOTE_TITLE: '.per-diem-quote-card h5.center-title',
+  PER_DIEM_QUOTE_STATUS_LABEL: '.per-diem-quote-card .app-label--quote',
   QUOTE_CARD_PRICE_AMOUNT: '.price-wrapper .amount, .product-extra-info .amount',
   ANY_STATUS_LABEL: '.app-label, .app-label--quote',
   HOLD_BUTTON: ".btn--default.mt-2",
@@ -965,6 +972,30 @@ class CartPage {
     return this.page.locator("h5.center-title", {
       hasText: "Requested",
     });
+  }
+
+  /**
+   * Gets the Per-Diem quote card "Type" value locator (should read "Per diem").
+   * @returns {Locator} Playwright locator for the per-diem quote type value.
+   */
+  getPerDiemQuoteTypeValue() {
+    return this.page.locator(SELECTORS.PER_DIEM_QUOTE_TYPE_VALUE).first();
+  }
+
+  /**
+   * Gets the Per-Diem quote card title locator (e.g. "Per-Diem for Madrid").
+   * @returns {Locator} Playwright locator for the per-diem quote title.
+   */
+  getPerDiemQuoteTitle() {
+    return this.page.locator(SELECTORS.PER_DIEM_QUOTE_TITLE).first();
+  }
+
+  /**
+   * Gets the Per-Diem quote card status label locator (e.g. "Confirmed").
+   * @returns {Locator} Playwright locator for the per-diem quote status badge.
+   */
+  getPerDiemQuoteStatusLabel() {
+    return this.page.locator(SELECTORS.PER_DIEM_QUOTE_STATUS_LABEL).first();
   }
 
   /**

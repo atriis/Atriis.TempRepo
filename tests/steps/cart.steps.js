@@ -605,6 +605,21 @@ Then("I successfully cancel the trip with 60 seconds wait", async function () {
   expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
 });
 
+Then("the trip should contain a Per Diem quote", async function () {
+  logger.info("Verifying the trip contains a Per-Diem quote");
+  await Cart.verifyTripContainsPerDiemQuote(this.page);
+});
+
+Then("a Per-Diem quote should be displayed for {string}", async function (destination) {
+  logger.info("Verifying a Per-Diem quote is displayed for a destination", { destination });
+  await Cart.verifyPerDiemQuoteDisplayedFor(this.page, destination);
+});
+
+Then("the Per-Diem quote status should be {string}", async function (status) {
+  logger.info("Verifying the Per-Diem quote status", { status });
+  await Cart.verifyPerDiemQuoteStatus(this.page, status);
+});
+
 Then("the car date in cart should not be {string}", async function (unwantedDate) {
   logger.info("Verifying car date in cart is not the broken default value", { unwantedDate });
   await Cart.verifyCarDateInCartIsNot(this.page, unwantedDate);
