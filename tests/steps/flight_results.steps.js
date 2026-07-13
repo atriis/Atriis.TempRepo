@@ -1068,3 +1068,8 @@ Then('the first flight result price should match the {string} sort price', async
     `first flight result price vs "${sortLabel}" sort price`,
   );
 });
+
+Then('the flight search response should have no {string} result from source system {string}', async function (carrier, source) {
+  logger.info(`Verifying no "${carrier}" result comes from the "${source}" source system in the flightSearch response`);
+  await FlightResults.verifyNoResultForCarrierFromSource(this.page, this.lastInterceptedResponsePromise, carrier, source);
+});

@@ -17,6 +17,7 @@ const { expect } = require("@playwright/test");
 const App = require("@dsl/App");
 const FlightPricing = require("@dsl/FlightPricing");
 const Cart = require("@dsl/Cart");
+const FlightResults = require("@dsl/FlightResults");
 const logger = require("@utils/logger").child("Common");
 
 setDefaultTimeout(120000);
@@ -28,6 +29,7 @@ setDefaultTimeout(120000);
 const SUPPORTED_APIS = {
   flightPricing: (page) => FlightPricing.startCapturingPricingResponse(page),
   quotes: (page) => Cart.startCapturingQuotesResponse(page),
+  flightSearch: (page) => FlightResults.startCapturingSearchResponse(page),
 };
 
 /**
@@ -35,7 +37,7 @@ const SUPPORTED_APIS = {
  * Stores the promise in this.lastInterceptedResponsePromise.
  * Also sets the legacy-named variable (e.g. this.flightPricingResponsePromise) for backward compat.
  *
- * Supported API names: flightPricing, quotes
+ * Supported API names: flightPricing, quotes, flightSearch
  */
 When('I start intercepting the {string} API response', function (apiName) {
   if (!SUPPORTED_APIS[apiName]) {

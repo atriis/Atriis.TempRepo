@@ -84,6 +84,10 @@ const config = {
     return getOptionalEnv("FLIGHT_PRICING_API_PATH", "/api/v3/flightPricing");
   },
 
+  get flightSearchApiPath() {
+    return getOptionalEnv("FLIGHT_SEARCH_API_PATH", "/flightSearch");
+  },
+
   payloadValidation: {
     get enabled() {
       return getOptionalBooleanEnv("PAYLOAD_VALIDATION_ENABLED", true);

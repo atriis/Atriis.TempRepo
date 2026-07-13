@@ -3135,6 +3135,76 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     return { airlineName, checked: false };
   },
+
+  // Starts waiting for the flightSearch API response; wired into the generic intercept step
+  // ("I start intercepting the \"flightSearch\" API response"). Call BEFORE the search.
+  startCapturingSearchResponse(page) {
+    return getPageObject(page, FlightResultsPage).captureSearchApiResponse();
+  },
+
+  /**
+   * Asserts no flightSearch result flown by {carrier} (IATA code) came from the {source} source system —
+   * a Joy "Carrier + Source System -> Hide Result" rule (79345: EI from YPSILON / office "Ypsilon Club" must
+   * be hidden while EI from other sources remains). Fails if NO {carrier} result exists, so it never passes vacuously.
+   */
+  async verifyNoResultForCarrierFromSource(page, responsePromise, carrier, source) {
+    if (!responsePromise) {
+      throw new Error('[FlightResults.verifyNoResultForCarrierFromSource] no intercepted response — call the flightSearch intercept step before searching');
+    }
+    const wanted = String(carrier).toUpperCase();
+    const forbidden = String(source).toUpperCase();
+
+    const raw = await getPageObject(page, FlightResultsPage).readSearchApiResponseBody(responsePromise);
+    const body = Array.isArray(raw) ? raw[0] : raw;
+    const results = Array.isArray(body?.results) ? body.results : [];
+
+    const resultHasCarrier = (result) =>
+      (Array.isArray(result?.segments) ? result.segments : []).some((seg) =>
+        (Array.isArray(seg?.flights) ? seg.flights : []).some(
+          (f) => String(f?.carrier ?? '').toUpperCase() === wanted
+        )
+      );
+    const sourceOf = (result) => ({
+      sourceSystem: String(result?.sourceSystem ?? '').toUpperCase(),
+      officeId: String(result?.officeId ?? '').toUpperCase(),
+    });
+    const isFromForbidden = (result) => {
+      const { sourceSystem, officeId } = sourceOf(result);
+      return sourceSystem.includes(forbidden) || officeId.includes(forbidden);
+    };
+
+    const matching = results.filter(resultHasCarrier);
+    const fromForbidden = matching.filter(isFromForbidden);
+
+    // Distinct "sourceSystem / officeId" combos for the matched carrier, with counts
+    const sourceBreakdown = {};
+    for (const r of matching) {
+      const { sourceSystem, officeId } = sourceOf(r);
+      const key = `${sourceSystem} / ${officeId}`;
+      sourceBreakdown[key] = (sourceBreakdown[key] || 0) + 1;
+    }
+
+    logger.info('Checked carrier/source display rule on flightSearch response', {
+      totalResults: results.length,
+      carrier: wanted,
+      matchingCarrier: matching.length,
+      forbiddenSource: forbidden,
+      matchingFromForbidden: fromForbidden.length,
+      sourceBreakdown,
+    });
+
+    expect(
+      matching.length,
+      `[FlightResults.verifyNoResultForCarrierFromSource] Expected at least one "${wanted}" result in the flightSearch response to verify its source, but found none (total results: ${results.length}). Cannot confirm the "${wanted}" hide-from-"${forbidden}" rule.`
+    ).toBeGreaterThan(0);
+
+    expect(
+      fromForbidden.length,
+      `[FlightResults.verifyNoResultForCarrierFromSource] Display-rule breach: ${fromForbidden.length} "${wanted}" result(s) came from the "${forbidden}" source and should be hidden. "${wanted}" source breakdown: ${JSON.stringify(sourceBreakdown)}.`
+    ).toBe(0);
+
+    return { totalResults: results.length, matchingCarrier: matching.length, matchingFromForbidden: 0 };
+  },
 }
 
 module.exports = FlightResults;

@@ -2,6 +2,7 @@ const { expect } = require("@playwright/test");
 const { waitForText } = require("@utils/wait");
 const { extractNumber, parseAmountText } = require("@utils/dom");
 const { escapeRegExp } = require("@utils/text");
+const config = require("@config/config");
 
 function parseDurationToMinutes(value) {
   if (!value || typeof value !== 'string') {
@@ -3368,6 +3369,23 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       }
     }
     return { agreementCardIndices };
+  }
+
+  // Starts waiting for the flightSearch API response (call BEFORE triggering the search).
+  // Matches the exact path so /flightSearchDefault is not picked up by mistake.
+  captureSearchApiResponse() {
+    return this.page.waitForResponse((response) => {
+      try {
+        return new URL(response.url()).pathname.endsWith(config.flightSearchApiPath);
+      } catch {
+        return false;
+      }
+    }, { timeout: 120000 });
+  }
+
+  async readSearchApiResponseBody(responsePromise) {
+    const response = await responsePromise;
+    return response.json();
   }
 }
 module.exports = FlightResultsPage;
