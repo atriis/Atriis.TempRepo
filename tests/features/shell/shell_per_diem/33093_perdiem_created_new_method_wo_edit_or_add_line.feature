@@ -22,11 +22,9 @@ Feature: 33093 - Per-Diem quote created after issuing a flight (new method), lin
     And I add the first flight to cart
     When I proceed to checkout
     And I complete the booking
-    # TODO: expand the per-diem quote breakdown (create Cart.expandPerDiemQuoteBreakdown in src/dsl/Cart.js; Testim scrolled to and clicked "#el-collapse-head-9019 > i" then "[id='el-collapse-content-9709'] .is-clickable")
-    When I expand the Per-Diem quote breakdown
-    # TODO: verify the per-diem breakdown is shown (create Cart.verifyPerDiemQuoteBreakdownDisplayed in src/dsl/Cart.js; Testim waited for ".per-diem-quote-card .card-title" to contain "Breakdown")
-    Then the Per-Diem quote breakdown should be displayed
-    # TODO: negative validation - the per-diem line cannot be edited (create Cart.verifyPerDiemQuoteNotEditable in src/dsl/Cart.js; Testim exported this as a manual 'negative-element-validation' step)
+    And the Per-Diem quote status should be "Confirmed"
     And the Per-Diem quote should not be editable
-    # TODO: negative validation - a per-diem line cannot be added (create Cart.verifyPerDiemLineCannotBeAdded in src/dsl/Cart.js; Testim exported this as a manual 'negative-element-validation' step)
+    When I expand the Per-Diem quote breakdown
+    Then the Per-Diem quote breakdown should be displayed
+    And the Per-Diem breakdown should not be editable
     And it should not be possible to add a Per-Diem line

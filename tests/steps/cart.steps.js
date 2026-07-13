@@ -625,6 +625,26 @@ Then("the Per-Diem quote should not be editable", async function () {
   await Cart.verifyPerDiemQuoteNotEditable(this.page);
 });
 
+When("I expand the Per-Diem quote breakdown", async function () {
+  logger.info("Expanding the Per-Diem quote breakdown");
+  await Cart.expandPerDiemQuoteBreakdown(this.page);
+});
+
+Then("the Per-Diem quote breakdown should be displayed", async function () {
+  logger.info("Verifying the Per-Diem quote breakdown is displayed");
+  await Cart.verifyPerDiemQuoteBreakdownDisplayed(this.page);
+});
+
+Then("the Per-Diem breakdown should not be editable", async function () {
+  logger.info("Verifying the Per-Diem breakdown is not editable");
+  await Cart.verifyPerDiemBreakdownNotEditable(this.page);
+});
+
+Then("it should not be possible to add a Per-Diem line", async function () {
+  logger.info("Verifying a Per-Diem line cannot be added");
+  await Cart.verifyPerDiemLineCannotBeAdded(this.page);
+});
+
 Then("the car date in cart should not be {string}", async function (unwantedDate) {
   logger.info("Verifying car date in cart is not the broken default value", { unwantedDate });
   await Cart.verifyCarDateInCartIsNot(this.page, unwantedDate);

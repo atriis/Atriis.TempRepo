@@ -750,6 +750,148 @@ const Cart = {
     ).toHaveCount(0, { timeout: 10000 });
   },
 
+  /**
+   * Expands the Per-Diem quote breakdown so its table and actions become visible. Mirrors the
+   * attach-files extra flow: open the quote card's extras collapse, then click the breakdown's
+   * "View" toggle (the breakdown is wrapped in the shared extras-layout). Leaves verification of
+   * the opened breakdown to `verifyPerDiemQuoteBreakdownDisplayed`.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async expandPerDiemQuoteBreakdown(page) {
+    if (!page) throw new Error('[Cart.expandPerDiemQuoteBreakdown] "page" is required.');
+
+    logger.info('Expanding the Per-Diem quote breakdown');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    logger.debug('Opening the per-diem quote card extras collapse, then the breakdown view toggle');
+    try {
+      await cartPage.clickPerDiemExtrasCollapse();
+      await cartPage.clickPerDiemBreakdownViewBtn();
+    } catch (err) {
+      throw new Error(
+        `[Cart.expandPerDiemQuoteBreakdown] Could not expand the Per-Diem breakdown. ` +
+        `The quote card extras section or the breakdown "View" toggle did not open — the trip may ` +
+        `not contain a per-diem breakdown, or the card did not render. Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
+   * Verifies the Per-Diem quote breakdown is displayed by asserting the expanded breakdown card
+   * title ("Per diem breakdown") is visible. Assumes the breakdown was expanded first
+   * (see `expandPerDiemQuoteBreakdown`).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{titleText: string}>}
+   */
+  async verifyPerDiemQuoteBreakdownDisplayed(page) {
+    if (!page) throw new Error('[Cart.verifyPerDiemQuoteBreakdownDisplayed] "page" is required.');
+
+    logger.info('Verifying the Per-Diem quote breakdown is displayed');
+
+    const cartPage = getPageObject(page, CartPage);
+    const title = cartPage.getPerDiemBreakdownCardTitle();
+
+    try {
+      await title.waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyPerDiemQuoteBreakdownDisplayed] The Per-Diem breakdown card title was not visible within 60s. ` +
+        `The breakdown may not have been expanded, or the quote has no breakdown data. Original: ${err.message}`,
+      );
+    }
+
+    const titleText = (await title.innerText()).trim();
+    expect(
+      titleText.toLowerCase(),
+      `Expected the expanded Per-Diem breakdown title to read "Per diem breakdown", but it read "${titleText}".`,
+    ).toContain('breakdown');
+
+    return { titleText };
+  },
+
+  /**
+   * Verifies the Per-Diem *breakdown* is NOT editable by asserting the breakdown's "Edit" button
+   * is absent. That button is gated behind `v-if="canEditTable"` in per-diem-breakdown.vue, so it
+   * is removed from the DOM for a locked breakdown (auto-created after issuing a flight).
+   *
+   * This is breakdown-level editability, distinct from `verifyPerDiemQuoteNotEditable` (which
+   * covers only the quote card's "Edit details" control). The breakdown must be expanded first.
+   *
+   * The breakdown card title is confirmed visible first, so an absent Edit button reflects a
+   * locked breakdown — not one that simply has not opened yet (which would pass falsely).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyPerDiemBreakdownNotEditable(page) {
+    if (!page) throw new Error('[Cart.verifyPerDiemBreakdownNotEditable] "page" is required.');
+
+    logger.info('Verifying the Per-Diem breakdown is not editable (no Edit button present)');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // Gate on the breakdown having opened; otherwise an unopened breakdown would trivially
+    // (and wrongly) satisfy the "no Edit button" assertion below.
+    const title = cartPage.getPerDiemBreakdownCardTitle();
+    try {
+      await title.waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyPerDiemBreakdownNotEditable] The Per-Diem breakdown did not open within 60s, ` +
+        `so its editability could not be verified. Original: ${err.message}`,
+      );
+    }
+
+    const editControls = cartPage.getPerDiemBreakdownEditControls();
+    await expect(
+      editControls,
+      `Expected the Per-Diem breakdown to be locked (no "Edit" button in the breakdown actions), ` +
+      `but an "Edit" button was present — the breakdown appears editable.`,
+    ).toHaveCount(0, { timeout: 10000 });
+  },
+
+  /**
+   * Verifies a Per-Diem breakdown line cannot be added by asserting the breakdown's "Add line"
+   * button is absent. That button is gated behind `v-if="canEditTable"` in per-diem-breakdown.vue,
+   * so it is removed from the DOM for a locked breakdown. The breakdown must be expanded first.
+   *
+   * The breakdown card title is confirmed visible first, so an absent "Add line" button reflects a
+   * locked breakdown — not one that simply has not opened yet (which would pass falsely).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyPerDiemLineCannotBeAdded(page) {
+    if (!page) throw new Error('[Cart.verifyPerDiemLineCannotBeAdded] "page" is required.');
+
+    logger.info('Verifying a Per-Diem line cannot be added (no "Add line" button present)');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // Gate on the breakdown having opened; otherwise an unopened breakdown would trivially
+    // (and wrongly) satisfy the "no Add line button" assertion below.
+    const title = cartPage.getPerDiemBreakdownCardTitle();
+    try {
+      await title.waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyPerDiemLineCannotBeAdded] The Per-Diem breakdown did not open within 60s, ` +
+        `so the add-line affordance could not be verified. Original: ${err.message}`,
+      );
+    }
+
+    const addLineControls = cartPage.getPerDiemBreakdownAddLineControls();
+    await expect(
+      addLineControls,
+      `Expected the Per-Diem breakdown to be locked (no "Add line" button in the breakdown actions), ` +
+      `but an "Add line" button was present — a per-diem line could be added.`,
+    ).toHaveCount(0, { timeout: 10000 });
+  },
+
   async verifyFlightSegmentDetails(page, expectedSegments) {
     if (!page) {
       throw new Error('page is required');

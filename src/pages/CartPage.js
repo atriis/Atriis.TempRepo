@@ -36,6 +36,31 @@ const SELECTORS = {
   // *any element child* (not a localized label or a specific tag) keeps the negative "not
   // editable" check from silently passing under a different locale or a changed button render.
   PER_DIEM_QUOTE_EDIT_CONTROLS: '.per-diem-quote-card .box-center .btns > *',
+
+  // Per-Diem breakdown (per-diem-breakdown.vue, rendered inside the quote card's extras section).
+  // The component wraps its table in the shared `extras-layout`, so it opens in two steps like the
+  // attach-files extra: expand the quote-card extras collapse, then click the "View" toggle.
+  // IMPORTANT: every quote card renders its OWN `.extras-collapse-container`, so the per-diem
+  // collapse header is scoped to `.per-diem-quote-card` — otherwise a flight card's extras (added
+  // in the same trip) would be opened instead. All breakdown selectors below carry `:visible`
+  // because the cart renders hidden responsive duplicates, and a bare `.first()` can otherwise
+  // resolve to a permanently-hidden copy (observed: 24 hidden "View" spans → click timeout).
+  PER_DIEM_EXTRAS_COLLAPSE_HEADER: '.per-diem-quote-card .extras-collapse-container .el-collapse-item__header:visible',
+  PER_DIEM_BREAKDOWN: '.per-diem-breakdown',
+  PER_DIEM_BREAKDOWN_VIEW_BTN: '.per-diem-breakdown .extra__btns .is-clickable:visible',
+  // Title inside the OPEN breakdown card (`el-card.extras-card`), reads "Per diem breakdown". The
+  // collapsed extras-layout renders its own `.card-title`, so scoping to `.extras-card` makes this
+  // a true "breakdown expanded" anchor rather than matching the still-collapsed header.
+  PER_DIEM_BREAKDOWN_CARD_TITLE: '.per-diem-breakdown .extras-card .card-title:visible',
+  // Edit / Add-line buttons in the open breakdown's actions row. Both are gated behind
+  // `v-if="canEditTable"` in per-diem-breakdown.vue, so they are absent from the DOM when the
+  // breakdown is locked (auto-created after issuing a flight). Scoped to `button` inside the open
+  // `.extras-card` so they never match the collapsed extras-layout's `.is-clickable` <span>s, and
+  // matched by their English labels (the only way these sibling buttons differ — Export/Close are
+  // not gated). Runs are English-locale (Testim asserted the literal "Breakdown"/"Add line" text).
+  PER_DIEM_BREAKDOWN_EDIT_BTN: '.per-diem-breakdown .extras-card button:has-text("Edit"):visible',
+  PER_DIEM_BREAKDOWN_ADD_LINE_BTN: '.per-diem-breakdown .extras-card button:has-text("Add line"):visible',
+
   QUOTE_CARD_PRICE_AMOUNT: '.price-wrapper .amount, .product-extra-info .amount',
   ANY_STATUS_LABEL: '.app-label, .app-label--quote',
   HOLD_BUTTON: ".btn--default.mt-2",
@@ -1023,6 +1048,77 @@ class CartPage {
    */
   getPerDiemQuoteEditControls() {
     return this.page.locator(SELECTORS.PER_DIEM_QUOTE_EDIT_CONTROLS);
+  }
+
+  /**
+   * Clicks the Per-Diem quote card's own extras collapse header to expand its extras section.
+   * Scoped to `.per-diem-quote-card` so a flight (or other) quote card's extras — which render an
+   * identical `.extras-collapse-container` on the same trip — are never opened by mistake.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async clickPerDiemExtrasCollapse(timeout = 10000) {
+    const header = this.page.locator(SELECTORS.PER_DIEM_EXTRAS_COLLAPSE_HEADER).first();
+    try {
+      await header.waitFor({ state: 'visible', timeout });
+      await header.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickPerDiemExtrasCollapse] Could not click the Per-Diem quote card's extras collapse header ` +
+        `(selector: ${SELECTORS.PER_DIEM_EXTRAS_COLLAPSE_HEADER}). The header was not visible within ${timeout}ms — ` +
+        `likely the per-diem quote card did not render or has no extras section. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Clicks the "View" toggle on the Per-Diem breakdown extras-layout to open the breakdown table.
+   * Assumes the per-diem quote card's extras collapse is already expanded (see `clickPerDiemExtrasCollapse`).
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async clickPerDiemBreakdownViewBtn(timeout = 10000) {
+    const btn = this.page.locator(SELECTORS.PER_DIEM_BREAKDOWN_VIEW_BTN).first();
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      await btn.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickPerDiemBreakdownViewBtn] Could not click the Per-Diem breakdown "View" toggle ` +
+        `(selector: ${SELECTORS.PER_DIEM_BREAKDOWN_VIEW_BTN}). The toggle was not visible within ${timeout}ms — ` +
+        `likely the quote card extras section is not expanded, or the quote has no per-diem breakdown. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Gets the Per-Diem breakdown card title locator (reads "Per diem breakdown"), present only
+   * once the breakdown is expanded. Used as the "breakdown displayed" anchor.
+   * @returns {Locator} Playwright locator for the open breakdown card title.
+   */
+  getPerDiemBreakdownCardTitle() {
+    return this.page.locator(SELECTORS.PER_DIEM_BREAKDOWN_CARD_TITLE).first();
+  }
+
+  /**
+   * Gets the Per-Diem breakdown "Edit" button(s). Empty when the breakdown is locked
+   * (`canEditTable` false → button removed via v-if). Un-scoped to `.first()` so a count
+   * reflects the true match count for a negative (not-editable) assertion.
+   * @returns {Locator} Playwright locator for the breakdown edit button.
+   */
+  getPerDiemBreakdownEditControls() {
+    return this.page.locator(SELECTORS.PER_DIEM_BREAKDOWN_EDIT_BTN);
+  }
+
+  /**
+   * Gets the Per-Diem breakdown "Add line" button(s). Empty when the breakdown is locked
+   * (`canEditTable` false → button removed via v-if). Un-scoped to `.first()` so a count
+   * reflects the true match count for a negative (cannot-add-line) assertion.
+   * @returns {Locator} Playwright locator for the breakdown add-line button.
+   */
+  getPerDiemBreakdownAddLineControls() {
+    return this.page.locator(SELECTORS.PER_DIEM_BREAKDOWN_ADD_LINE_BTN);
   }
 
   /**
