@@ -44,6 +44,11 @@ When("I search for a round trip flight from {string} to {string}", async functio
   await FlightSearch.searchFlightRoundTrip(this.page, { from, to });
 });
 
+When("I search for a round trip flight from {string} to {string} with outbound in {int} days and return in {int} days", async function (from, to, departureDaysFromNow, returnDaysFromNow) {
+  logger.info('Searching for round trip flight with explicit days-from-now dates', { from, to, departureDaysFromNow, returnDaysFromNow });
+  await FlightSearch.searchFlightRoundTripWithDaysFromNow(this.page, { from, to }, { departureDaysFromNow, returnDaysFromNow });
+});
+
 When("I search for a round trip flight from {string} to {string} with outbound on a {string} and inbound the next day", async function (from, to, dayOfWeek) {
   logger.info('Searching for round trip flight on Nth weekday with next-day return', { from, to, dayOfWeek });
   await FlightSearch.searchRoundTripOnNthWeekday(this.page, from, to, dayOfWeek, 1);

@@ -449,6 +449,62 @@ const FlightSearch = {
   },
 
   /**
+   * Round-trip flight search with explicit near-term dates, given as an offset in days
+   * from today, instead of the default "nth available date" index. Routes whose default
+   * (month-out) date spread returns no availability for a given carrier can be retried
+   * with closer dates using this method.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string|Object} routeInput - Route key or {from, to} object
+   * @param {Object} options
+   * @param {number} options.departureDaysFromNow - Days from today for the outbound leg
+   * @param {number} options.returnDaysFromNow - Days from today for the return leg
+   * @returns {Promise<{searched: boolean, from: string, to: string, tripType: string, searchType: string, departureDate: string, returnDate: string}>}
+   */
+  async searchFlightRoundTripWithDaysFromNow(page, routeInput, { departureDaysFromNow, returnDaysFromNow } = {}) {
+    if (!page) {
+      throw new Error('[FlightSearch.searchFlightRoundTripWithDaysFromNow] "page" is required.');
+    }
+    if (!Number.isInteger(departureDaysFromNow) || departureDaysFromNow < 0) {
+      throw new Error('departureDaysFromNow must be a non-negative integer, got: ' + departureDaysFromNow);
+    }
+    if (!Number.isInteger(returnDaysFromNow) || returnDaysFromNow <= departureDaysFromNow) {
+      throw new Error('returnDaysFromNow must be an integer greater than departureDaysFromNow, got: ' + returnDaysFromNow);
+    }
+
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
+
+    const toDateInputValue = (daysFromNow) => {
+      const date = new Date();
+      date.setDate(date.getDate() + daysFromNow);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+    const departureDate = toDateInputValue(departureDaysFromNow);
+    const returnDate = toDateInputValue(returnDaysFromNow);
+
+    logger.info('Starting roundTrip flight search with explicit days-from-now dates', { from, to, departureDate, returnDate });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectRoundTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+
+    await searchPage.clickDepartureDateField();
+    await selectDatesByInputValues(page, {
+      startDateValue: departureDate,
+      endDateValue: returnDate,
+    });
+
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'roundTrip', searchType: 'completeTrip', departureDate, returnDate };
+  },
+
+  /**
    * Fills in a round-trip flight search (tab, trip type, route, dates, complete-trip mode)
    * WITHOUT clicking the search button, leaving the search form open for further edits
    * (e.g. editing the parallel hotel destination before submitting).
