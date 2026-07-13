@@ -645,6 +645,16 @@ Then("it should not be possible to add a Per-Diem line", async function () {
   await Cart.verifyPerDiemLineCannotBeAdded(this.page);
 });
 
+When("I edit the Per-Diem breakdown line adding a {string} deduction", async function (deduction) {
+  logger.info("Editing the Per-Diem breakdown line to add a deduction", { deduction });
+  await Cart.editPerDiemBreakdownLineDeduction(this.page, deduction);
+});
+
+Then("the Per-Diem breakdown should contain {string}", async function (text) {
+  logger.info("Verifying the Per-Diem breakdown contains text", { text });
+  await Cart.verifyPerDiemBreakdownContains(this.page, text);
+});
+
 Then("the car date in cart should not be {string}", async function (unwantedDate) {
   logger.info("Verifying car date in cart is not the broken default value", { unwantedDate });
   await Cart.verifyCarDateInCartIsNot(this.page, unwantedDate);

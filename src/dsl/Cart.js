@@ -892,6 +892,89 @@ const Cart = {
     ).toHaveCount(0, { timeout: 10000 });
   },
 
+  /**
+   * Edits the first Per-Diem breakdown line to record a meal deduction, then saves. Only works on an
+   * editable ("new method") breakdown, where the breakdown "Edit" button is present. Enters edit
+   * mode, selects the given deduction on the first data row, adds the mandatory comment (the app
+   * blocks Save on a deduction with no comment — see saveUpdatedBreakdown in per-diem-breakdown.ts),
+   * and saves. The breakdown must be expanded first (see `expandPerDiemQuoteBreakdown`).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} deduction - Deduction option label text to select (e.g. "mini bar").
+   * @returns {Promise<void>}
+   */
+  async editPerDiemBreakdownLineDeduction(page, deduction) {
+    if (!page) throw new Error('[Cart.editPerDiemBreakdownLineDeduction] "page" is required.');
+    if (typeof deduction !== 'string' || !deduction.trim()) {
+      throw new Error(
+        `[Cart.editPerDiemBreakdownLineDeduction] "deduction" must be a non-empty string, got: ${typeof deduction} (${JSON.stringify(deduction)})`,
+      );
+    }
+
+    logger.info('Editing the first Per-Diem breakdown line to add a deduction', { deduction });
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // A comment is mandatory whenever a deduction is set — the breakdown's Save is blocked otherwise.
+    // The scenario asserts only the deduction, so the comment value is an internal, fixed marker.
+    const DEDUCTION_COMMENT = 'Added by automated test';
+
+    logger.debug('Entering breakdown edit mode, then setting the deduction and comment on the first line');
+    try {
+      await cartPage.clickPerDiemBreakdownEditBtn();
+      await cartPage.setPerDiemBreakdownRowDeduction(0, deduction);
+      await cartPage.fillPerDiemBreakdownRowComment(0, DEDUCTION_COMMENT);
+      await cartPage.clickPerDiemBreakdownSaveBtn();
+    } catch (err) {
+      throw new Error(
+        `[Cart.editPerDiemBreakdownLineDeduction] Could not edit the Per-Diem breakdown line with the "${deduction}" deduction. ` +
+        `The breakdown may not be editable (no "Edit" button), the deduction option may not exist, or Save was blocked. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
+   * Verifies the Per-Diem breakdown shows the given text in a deduction cell. Polls the read-only
+   * breakdown deduction column (the Save persists asynchronously and the quote re-renders),
+   * asserting a cell contains `expectedText` (case-insensitive). Use after
+   * `editPerDiemBreakdownLineDeduction`.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Text expected in a breakdown deduction cell (e.g. "mini bar").
+   * @returns {Promise<void>}
+   */
+  async verifyPerDiemBreakdownContains(page, expectedText) {
+    if (!page) throw new Error('[Cart.verifyPerDiemBreakdownContains] "page" is required.');
+    if (typeof expectedText !== 'string' || !expectedText.trim()) {
+      throw new Error(
+        `[Cart.verifyPerDiemBreakdownContains] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`,
+      );
+    }
+
+    logger.info('Verifying the Per-Diem breakdown contains the given deduction text', { expectedText });
+
+    const cartPage = getPageObject(page, CartPage);
+    const cells = cartPage.getPerDiemBreakdownDeductionCells();
+    const needle = expectedText.trim().toLowerCase();
+
+    // The Save persists asynchronously and the quote re-renders, so poll rather than read once.
+    await expect
+      .poll(
+        async () => {
+          const texts = await cells.allInnerTexts().catch(() => []);
+          return texts.some((t) => t.toLowerCase().includes(needle));
+        },
+        {
+          message:
+            `Expected a Per-Diem breakdown deduction cell to contain "${expectedText}" within 60s, but none did. ` +
+            `The line edit may not have saved, or the breakdown did not refresh.`,
+          timeout: 60000,
+        },
+      )
+      .toBe(true);
+  },
+
   async verifyFlightSegmentDetails(page, expectedSegments) {
     if (!page) {
       throw new Error('page is required');

@@ -60,6 +60,19 @@ const SELECTORS = {
   // not gated). Runs are English-locale (Testim asserted the literal "Breakdown"/"Add line" text).
   PER_DIEM_BREAKDOWN_EDIT_BTN: '.per-diem-breakdown .extras-card button:has-text("Edit"):visible',
   PER_DIEM_BREAKDOWN_ADD_LINE_BTN: '.per-diem-breakdown .extras-card button:has-text("Add line"):visible',
+  // Per-Diem breakdown EDIT flow (33094 "new method" — an editable breakdown, `canEditTable` true).
+  // Data rows exclude the header row (`.muliSemiBold`); `:visible` avoids the cart's hidden
+  // responsive duplicate tables (see the breakdown-selector note above).
+  PER_DIEM_BREAKDOWN_DATA_ROW: '.per-diem-breakdown .extras-card .breakdown-table .table-row:not(.muliSemiBold):visible',
+  // Sub-selectors applied RELATIVE to a data row (see setPerDiemBreakdownRowDeduction / …Comment).
+  // In edit mode the deduction cell holds an app-select (el-select) and the comment cell an el-input.
+  PER_DIEM_BREAKDOWN_ROW_DEDUCTION_TRIGGER: '.deduction .el-select__wrapper',
+  PER_DIEM_BREAKDOWN_ROW_COMMENT_INPUT: '.comment-text input',
+  // Save button inside the breakdown edit form's actions row (`.btns`), present only in edit mode.
+  PER_DIEM_BREAKDOWN_SAVE_BTN: '.per-diem-breakdown .extras-card .btns button:has-text("Save"):visible',
+  // Deduction cells of the READ-ONLY breakdown rows (post-save `<p>` view) — the anchor for the
+  // saved-deduction assertion. Excludes the header row and hidden responsive duplicates.
+  PER_DIEM_BREAKDOWN_DEDUCTION_CELL: '.per-diem-breakdown .extras-card .breakdown-table .table-row:not(.muliSemiBold) .deduction p:visible',
 
   QUOTE_CARD_PRICE_AMOUNT: '.price-wrapper .amount, .product-extra-info .amount',
   ANY_STATUS_LABEL: '.app-label, .app-label--quote',
@@ -1119,6 +1132,130 @@ class CartPage {
    */
   getPerDiemBreakdownAddLineControls() {
     return this.page.locator(SELECTORS.PER_DIEM_BREAKDOWN_ADD_LINE_BTN);
+  }
+
+  /**
+   * Clicks the "Edit" button in the open Per-Diem breakdown to enter edit mode. The button is gated
+   * behind `v-if="canEditTable"` in per-diem-breakdown.vue, so it is only present for an editable
+   * ("new method") breakdown. The breakdown must be expanded first (see `clickPerDiemBreakdownViewBtn`).
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async clickPerDiemBreakdownEditBtn(timeout = 10000) {
+    const btn = this.page.locator(SELECTORS.PER_DIEM_BREAKDOWN_EDIT_BTN).first();
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      await btn.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickPerDiemBreakdownEditBtn] Could not click the Per-Diem breakdown "Edit" button ` +
+        `(selector: ${SELECTORS.PER_DIEM_BREAKDOWN_EDIT_BTN}). The button was not visible within ${timeout}ms — ` +
+        `likely the breakdown is not expanded, or is locked (not editable). Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Selects a deduction on a Per-Diem breakdown data row (0-based) while in edit mode. Opens the
+   * row's deduction `app-select` (el-select), then clicks the option whose label contains
+   * `deductionText` (case-insensitive) in the open dropdown panel. Enter edit mode first via
+   * `clickPerDiemBreakdownEditBtn`.
+   * @param {number} rowIndex - 0-based index of the breakdown data row.
+   * @param {string} deductionText - Text contained in the deduction option label (e.g. "mini bar").
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async setPerDiemBreakdownRowDeduction(rowIndex, deductionText, timeout = 10000) {
+    if (!Number.isInteger(rowIndex) || rowIndex < 0) {
+      throw new Error(
+        `[CartPage.setPerDiemBreakdownRowDeduction] "rowIndex" must be a non-negative integer, got: ${rowIndex}`,
+      );
+    }
+    if (typeof deductionText !== 'string' || !deductionText.trim()) {
+      throw new Error(
+        `[CartPage.setPerDiemBreakdownRowDeduction] "deductionText" must be a non-empty string, got: ${typeof deductionText}`,
+      );
+    }
+    const row = this.page.locator(SELECTORS.PER_DIEM_BREAKDOWN_DATA_ROW).nth(rowIndex);
+    const trigger = row.locator(SELECTORS.PER_DIEM_BREAKDOWN_ROW_DEDUCTION_TRIGGER).first();
+    try {
+      await trigger.waitFor({ state: 'visible', timeout });
+      await trigger.click();
+      const option = this.page
+        .locator(SELECTORS.EL_SELECT_VISIBLE_DROPDOWN_ITEM, { hasText: deductionText })
+        .first();
+      await option.waitFor({ state: 'visible', timeout });
+      await option.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.setPerDiemBreakdownRowDeduction] Could not select the "${deductionText}" deduction on breakdown row ${rowIndex}. ` +
+        `The row's deduction dropdown or the matching option did not appear within ${timeout}ms — the breakdown may not be in ` +
+        `edit mode, or no deduction option matches "${deductionText}". Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Fills the comment field on a Per-Diem breakdown data row (0-based) while in edit mode. A comment
+   * is mandatory once a deduction is set — the app blocks Save otherwise. Enter edit mode and set the
+   * deduction first.
+   * @param {number} rowIndex - 0-based index of the breakdown data row.
+   * @param {string} comment - Comment text to enter.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async fillPerDiemBreakdownRowComment(rowIndex, comment, timeout = 10000) {
+    if (!Number.isInteger(rowIndex) || rowIndex < 0) {
+      throw new Error(
+        `[CartPage.fillPerDiemBreakdownRowComment] "rowIndex" must be a non-negative integer, got: ${rowIndex}`,
+      );
+    }
+    if (typeof comment !== 'string' || !comment.trim()) {
+      throw new Error(
+        `[CartPage.fillPerDiemBreakdownRowComment] "comment" must be a non-empty string, got: ${typeof comment}`,
+      );
+    }
+    const row = this.page.locator(SELECTORS.PER_DIEM_BREAKDOWN_DATA_ROW).nth(rowIndex);
+    const input = row.locator(SELECTORS.PER_DIEM_BREAKDOWN_ROW_COMMENT_INPUT).first();
+    try {
+      await input.waitFor({ state: 'visible', timeout });
+      await input.fill(comment);
+    } catch (err) {
+      throw new Error(
+        `[CartPage.fillPerDiemBreakdownRowComment] Could not fill the comment on breakdown row ${rowIndex} ` +
+        `(selector: ${SELECTORS.PER_DIEM_BREAKDOWN_ROW_COMMENT_INPUT}). The input was not visible within ${timeout}ms — ` +
+        `the breakdown may not be in edit mode. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Clicks the "Save" button in the open Per-Diem breakdown edit form to persist the edited line.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async clickPerDiemBreakdownSaveBtn(timeout = 10000) {
+    const btn = this.page.locator(SELECTORS.PER_DIEM_BREAKDOWN_SAVE_BTN).first();
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      await btn.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickPerDiemBreakdownSaveBtn] Could not click the Per-Diem breakdown "Save" button ` +
+        `(selector: ${SELECTORS.PER_DIEM_BREAKDOWN_SAVE_BTN}). The button was not visible within ${timeout}ms — ` +
+        `the breakdown may not be in edit mode. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Gets the deduction-column cells of the Per-Diem breakdown data rows (read-only `<p>` view). Used
+   * to assert a saved deduction label is shown in the breakdown. Excludes the header row and hidden
+   * responsive duplicates.
+   * @returns {Locator} Playwright locator for the breakdown deduction cells.
+   */
+  getPerDiemBreakdownDeductionCells() {
+    return this.page.locator(SELECTORS.PER_DIEM_BREAKDOWN_DEDUCTION_CELL);
   }
 
   /**
