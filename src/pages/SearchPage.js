@@ -994,9 +994,13 @@ class SearchPage {
    * Selects the "Multi City" trip type.
    * Matches by label text (like selectRoundTrip/selectOneWayTrip) rather than a positional
    * index, so it is resilient to changes in the trip-type control's structure/order.
+   *
+   * The radio label is localized (`$t('flight.multiCity')`), so the regex covers both the
+   * English ("Multicity" / "Multi city") and Portuguese ("Multicidade" / "Multicidades")
+   * labels — the two locales exercised by multi-city scenarios (e.g. 58671 pt-PT).
    */
   async selectMultiCityTrip() {
-    await this.clickTripType(/multi.?city/i);
+    await this.clickTripType(/multi.?(?:city|cidade)/i);
   }
 
   /**
