@@ -28,6 +28,14 @@ const SELECTORS = {
   PER_DIEM_QUOTE_TYPE_VALUE: '.per-diem-quote-card .quote-info > p:first-child .muliSemiBold',
   PER_DIEM_QUOTE_TITLE: '.per-diem-quote-card h5.center-title',
   PER_DIEM_QUOTE_STATUS_LABEL: '.per-diem-quote-card .app-label--quote',
+  // Card root — a data/locale-independent "card rendered" anchor for per-diem verifications.
+  PER_DIEM_QUOTE_CARD: '.per-diem-quote-card',
+  // Edit affordance(s) in the per-diem card's read-only actions container (`.box-center .btns`).
+  // Per per-diem-quote-card.vue that container holds ONLY the "Edit details" button, gated by
+  // `v-if="canEditPerDiem"` — empty for a locked quote, populated for an editable one. Matching
+  // *any element child* (not a localized label or a specific tag) keeps the negative "not
+  // editable" check from silently passing under a different locale or a changed button render.
+  PER_DIEM_QUOTE_EDIT_CONTROLS: '.per-diem-quote-card .box-center .btns > *',
   QUOTE_CARD_PRICE_AMOUNT: '.price-wrapper .amount, .product-extra-info .amount',
   ANY_STATUS_LABEL: '.app-label, .app-label--quote',
   HOLD_BUTTON: ".btn--default.mt-2",
@@ -996,6 +1004,25 @@ class CartPage {
    */
   getPerDiemQuoteStatusLabel() {
     return this.page.locator(SELECTORS.PER_DIEM_QUOTE_STATUS_LABEL).first();
+  }
+
+  /**
+   * Gets the Per-Diem quote card root locator. Used as a data/locale-independent
+   * "card rendered" gate before asserting the presence/absence of edit controls.
+   * @returns {Locator} Playwright locator for the per-diem quote card root.
+   */
+  getPerDiemQuoteCard() {
+    return this.page.locator(SELECTORS.PER_DIEM_QUOTE_CARD).first();
+  }
+
+  /**
+   * Gets the per-diem card's read-only edit affordances (children of `.box-center .btns`).
+   * Empty when the quote is locked (`canEditPerDiem` false → edit button removed via v-if),
+   * populated when editable. Un-scoped to `.first()` so a count reflects the true match count.
+   * @returns {Locator} Playwright locator for the per-diem quote edit controls.
+   */
+  getPerDiemQuoteEditControls() {
+    return this.page.locator(SELECTORS.PER_DIEM_QUOTE_EDIT_CONTROLS);
   }
 
   /**

@@ -705,6 +705,51 @@ const Cart = {
     return { expectedStatus, actualStatus };
   },
 
+  /**
+   * Verifies the Per-Diem quote card is NOT editable by asserting its read-only actions
+   * container exposes no edit control. Quotes auto-created after issuing a flight (old method)
+   * are locked: the "Edit details" button is the sole child of the card's `.box-center .btns`
+   * and is gated behind `v-if="canEditPerDiem"` in per-diem-quote-card.vue, so it is absent
+   * from the DOM when editing is not allowed.
+   *
+   * The card root is confirmed to have rendered first, so an empty actions container reflects
+   * a locked quote — not a card that simply has not loaded yet (which would pass falsely).
+   *
+   * Scope: this covers quote-level editability (the card's edit control). It does NOT assert
+   * the per-diem *breakdown* table's "add line"/edit affordances — those live in a separate
+   * component (per-diem-breakdown.vue) and warrant their own assertion when a scenario needs
+   * it (e.g. 33093's new-method breakdown), since they are distinguished only by localized text.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyPerDiemQuoteNotEditable(page) {
+    if (!page) throw new Error('[Cart.verifyPerDiemQuoteNotEditable] "page" is required.');
+
+    logger.info('Verifying the Per-Diem quote is not editable (no edit control present)');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // Gate on the card rendering first; otherwise a not-yet-loaded card would trivially
+    // (and wrongly) satisfy the "no edit control" assertion below.
+    const card = cartPage.getPerDiemQuoteCard();
+    try {
+      await card.waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyPerDiemQuoteNotEditable] The Per-Diem quote card did not render within 60s, ` +
+        `so its editability could not be verified. Original: ${err.message}`,
+      );
+    }
+
+    const editControls = cartPage.getPerDiemQuoteEditControls();
+    await expect(
+      editControls,
+      `Expected the Per-Diem quote to be locked (no edit control in the card's actions), ` +
+      `but an edit control was present — the quote appears editable.`,
+    ).toHaveCount(0, { timeout: 10000 });
+  },
+
   async verifyFlightSegmentDetails(page, expectedSegments) {
     if (!page) {
       throw new Error('page is required');

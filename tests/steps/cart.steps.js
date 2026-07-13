@@ -620,6 +620,11 @@ Then("the Per-Diem quote status should be {string}", async function (status) {
   await Cart.verifyPerDiemQuoteStatus(this.page, status);
 });
 
+Then("the Per-Diem quote should not be editable", async function () {
+  logger.info("Verifying the Per-Diem quote is not editable");
+  await Cart.verifyPerDiemQuoteNotEditable(this.page);
+});
+
 Then("the car date in cart should not be {string}", async function (unwantedDate) {
   logger.info("Verifying car date in cart is not the broken default value", { unwantedDate });
   await Cart.verifyCarDateInCartIsNot(this.page, unwantedDate);

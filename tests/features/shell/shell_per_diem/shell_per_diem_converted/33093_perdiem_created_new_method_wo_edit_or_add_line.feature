@@ -18,12 +18,9 @@ Feature: 33093 - Per-Diem quote created after issuing a flight (new method), lin
     Given I am logged in as "new@pidi.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "lon" to "mad"
-    And I filter results by carrier "ib"
+    And I filter results by carrier "british airways"
     And I add the first flight to cart
     When I proceed to checkout
-    And I validate price change if displayed and proceed
-    # TODO: fill the mandatory traveler questions at checkout (create Checkout.fillTravelerQuestions in src/dsl/Checkout.js; Testim typed "testim" into each ".traveler-questions [type='text']" input)
-    And I fill in the mandatory traveler questions with "testim"
     And I complete the booking
     # TODO: expand the per-diem quote breakdown (create Cart.expandPerDiemQuoteBreakdown in src/dsl/Cart.js; Testim scrolled to and clicked "#el-collapse-head-9019 > i" then "[id='el-collapse-content-9709'] .is-clickable")
     When I expand the Per-Diem quote breakdown

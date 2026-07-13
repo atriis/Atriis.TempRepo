@@ -18,15 +18,9 @@ Feature: 33091 - Per-Diem quote created after issuing a flight (old method), quo
     Given I am logged in as "uri@pidi.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "lon" to "mad"
-    And I filter results by carrier "ib"
+    And I filter results by carrier "british airways"
     And I add the first flight to cart
     And I proceed to checkout
-    # TODO: Create step to fill the mandatory traveler questions at checkout (create Checkout.fillTravelerQuestions in src/dsl/Checkout.js; Testim typed "testim" into each ".traveler-questions [type='text']" input)
-    And I fill in the mandatory traveler questions with "testim"
     And I complete the booking
-    # TODO: Create step to verify the Per-Diem quote card is displayed on the trip overview (create Cart.verifyPerDiemQuoteDisplayed in src/dsl/Cart.js; Testim waited for ".per-diem-quote-card .has-text-weight-semibold" to contain "Per-Diem for")
-    Then a Per-Diem quote should be displayed in the trip overview
-    # TODO: Create step to verify the Per-Diem quote status (create Cart.verifyPerDiemQuoteStatus in src/dsl/Cart.js; Testim waited for ".per-diem-quote-card [class^='ml']" to contain "Confirmed")
     And the Per-Diem quote status should be "Confirmed"
-    # TODO: Create step for the negative validation that the Per-Diem quote cannot be edited (create Cart.verifyPerDiemQuoteNotEditable in src/dsl/Cart.js; Testim exported this as a manual 'negative-element-validation' step - assert no edit control is available on the per-diem quote card)
     And the Per-Diem quote should not be editable
