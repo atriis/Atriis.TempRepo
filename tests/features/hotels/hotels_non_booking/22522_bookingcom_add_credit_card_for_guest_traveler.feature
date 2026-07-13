@@ -22,4 +22,5 @@ Feature: 22522 Booking.com - Add credit card for guest traveler
     Then the booking status should be "Pending booking"
     When I add a credit card as payment method
     Then the payment type should be "Paid by Traveller"
+    And the payment method should be added
 
