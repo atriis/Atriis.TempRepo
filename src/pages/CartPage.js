@@ -30,6 +30,10 @@ const SELECTORS = {
   PER_DIEM_QUOTE_STATUS_LABEL: '.per-diem-quote-card .app-label--quote',
   // Card root — a data/locale-independent "card rendered" anchor for per-diem verifications.
   PER_DIEM_QUOTE_CARD: '.per-diem-quote-card',
+  // The "N Personal days deducted" span on the per-diem quote card (35726). It is gated by
+  // `v-if="quote.vacationDays > 0"` in per-diem-quote-card.vue, so it renders ONLY once days off
+  // were deducted (persisted after proceeding through booking); its text is "{N} Personal days deducted".
+  PER_DIEM_QUOTE_VACATION: '.per-diem-quote-card .vacation',
   // Edit affordance(s) in the per-diem card's read-only actions container (`.box-center .btns`).
   // Per per-diem-quote-card.vue that container holds ONLY the "Edit details" button, gated by
   // `v-if="canEditPerDiem"` — empty for a locked quote, populated for an editable one. Matching
@@ -1105,6 +1109,15 @@ class CartPage {
    */
   getPerDiemQuoteCard() {
     return this.page.locator(SELECTORS.PER_DIEM_QUOTE_CARD).first();
+  }
+
+  /**
+   * Gets the per-diem quote card's "N Personal days deducted" span locator (35726). Present only
+   * when `quote.vacationDays > 0`, so its visibility alone signals days off were deducted.
+   * @returns {Locator} Playwright locator for the per-diem quote vacation span.
+   */
+  getPerDiemQuoteVacation() {
+    return this.page.locator(SELECTORS.PER_DIEM_QUOTE_VACATION).first();
   }
 
   /**

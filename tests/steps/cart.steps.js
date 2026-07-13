@@ -695,6 +695,11 @@ Then("the per-diem days off summary should be displayed", async function () {
   await Cart.verifyPerDiemDaysOffSummary(this.page);
 });
 
+Then("the Per-Diem quote should show personal days deducted", async function () {
+  logger.info("Verifying the Per-Diem quote shows personal days deducted");
+  await Cart.verifyPerDiemPersonalDaysDeducted(this.page);
+});
+
 Then("the car date in cart should not be {string}", async function (unwantedDate) {
   logger.info("Verifying car date in cart is not the broken default value", { unwantedDate });
   await Cart.verifyCarDateInCartIsNot(this.page, unwantedDate);

@@ -15,16 +15,13 @@ Feature: 35726 - Per-Diem days off (old method) quote after booking
   Scenario: Selecting days off shows personal days deducted on the Per-Diem quote
     Given I am logged in as "per@hasus.off" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "lis" to "gru"
+    When I search for a round trip flight from "lis" to "auh"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
-    # TODO: enable per-diem days off (create Cart.enablePerDiemDaysOff in src/dsl/Cart.js; Testim waited for ".per-diem-days-off-container .el-checkbox__label" to contain "I have days off" and clicked ".per-diem-days-off-container .el-checkbox__inner")
     And I enable per-diem days off
-    # TODO: set the per-diem days off dates (create Cart.setPerDiemDaysOffDates in src/dsl/Cart.js; Testim picked a start/end date range from the days-off date-pickers)
     And I set the per-diem days off dates
-    # TODO: confirm days off and proceed (create Cart.confirmPerDiemDaysOff in src/dsl/Cart.js; Testim clicked ".is-hidden-mobile")
-    And I confirm the per-diem days off and proceed to the trip
-    And I click go to trip button
-    # TODO: verify personal days deducted (create Cart.verifyPerDiemPersonalDaysDeducted in src/dsl/Cart.js; Testim waited for ".vacation" to contain "Personal days deducted")
+    And I add another per-diem days off range
+    And I complete the booking
+    And the Per-Diem quote status should be "Confirmed"
     Then the Per-Diem quote should show personal days deducted

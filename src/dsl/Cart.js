@@ -1306,6 +1306,58 @@ const Cart = {
     ).toContain('per diem');
   },
 
+  /**
+   * Verifies the per-diem quote shows that personal days were deducted after booking (35726). The
+   * "{N} Personal days deducted" span (`.vacation`) is gated by `v-if="quote.vacationDays > 0"` in
+   * per-diem-quote-card.vue, so it renders ONLY once days off were deducted — and, unlike the 35694
+   * "counter" scenario (see `verifyPerDiemDaysOffSummary`), that count persists here because 35726
+   * proceeds through booking (trip-reference-form.vue calls saveDaysOffForm on continue). Waits for
+   * the quote card, then asserts the span is visible and its text contains "Personal days deducted"
+   * (matching the Testim wait). Polls, as the count settles after the confirmed quote re-renders.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyPerDiemPersonalDaysDeducted(page) {
+    if (!page) throw new Error('[Cart.verifyPerDiemPersonalDaysDeducted] "page" is required.');
+
+    logger.info('Verifying the per-diem quote shows personal days deducted');
+
+    const cartPage = getPageObject(page, CartPage);
+    const card = cartPage.getPerDiemQuoteCard();
+
+    try {
+      await card.waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyPerDiemPersonalDaysDeducted] The per-diem quote card was not visible within 60s. ` +
+        `The trip may not contain a per-diem quote, or the cart did not render. Original: ${err.message}`,
+      );
+    }
+
+    const vacation = cartPage.getPerDiemQuoteVacation();
+    try {
+      await vacation.waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyPerDiemPersonalDaysDeducted] The per-diem quote's "Personal days deducted" span (.vacation) ` +
+        `was not visible within 30s. It only renders once vacationDays > 0, which requires the days-off form to ` +
+        `have been saved by proceeding through booking. Original: ${err.message}`,
+      );
+    }
+
+    // The span text is "{N} Personal days deducted" (per-diem-quote-card.vue). Poll, as the count
+    // settles after the confirmed quote re-renders.
+    await expect
+      .poll(async () => ((await vacation.innerText().catch(() => '')) || '').trim().toLowerCase(), {
+        message:
+          `Expected the per-diem quote to show "Personal days deducted" within 30s, ` +
+          `confirming the traveller's days off were applied to the trip.`,
+        timeout: 30000,
+      })
+      .toContain('personal days deducted');
+  },
+
   async verifyFlightSegmentDetails(page, expectedSegments) {
     if (!page) {
       throw new Error('page is required');
