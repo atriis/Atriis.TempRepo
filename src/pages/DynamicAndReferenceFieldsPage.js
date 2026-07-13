@@ -202,19 +202,37 @@ class DynamicAndReferenceFieldsPage {
     // substring match when no exact label exists (preserves partial-label callers).
     const exactMatches = this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: exactFieldLabelRegex(labelText) });
     const substringMatches = this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: labelText });
+    // Some reference "fields" render as a collapsible SECTION header rather than a `label.label`
+    // (e.g. "Financial Reference"), so no field-label match exists — fall back to the section header.
+    const sectionHeader = this.page.locator(SELECTORS.COLLAPSE_SECTION_HEADER).filter({ hasText: labelText });
+
+    // The reference-fields form renders asynchronously AFTER the "Booking details" heading, so the
+    // requested label may not exist yet when this check starts. Wait for ANY candidate to attach
+    // before deciding which locator to assert on — a non-waiting count() snapshot taken on the
+    // not-yet-rendered form reports 0 matches, locks onto the section-header fallback, and times
+    // out even though the label appears moments later (the next label then passes).
+    // exactMatches is a subset of substringMatches (an exact label also contains the substring),
+    // so substringMatches already covers both label kinds; union it with the section-header fallback.
+    const anyCandidate = substringMatches.or(sectionHeader);
+    try {
+      await anyCandidate.first().waitFor({ state: 'attached', timeout });
+    } catch {
+      return false;
+    }
+
+    // Prefer a label that matches labelText EXACTLY (ignoring the "*" mandatory marker and "info"
+    // icon text the label concatenates) so an exact label like "Location" is not shadowed by a
+    // longer label that contains it as a substring (e.g. "Location travel policy"). Fall back to a
+    // substring match, then the section header, when no exact label exists.
     let label;
     if ((await exactMatches.count()) > 0) {
       label = exactMatches.first();
     } else if ((await substringMatches.count()) > 0) {
       label = substringMatches.first();
     } else {
-      // Some reference "fields" render as a collapsible SECTION header rather than a `label.label`
-      // (e.g. "Financial Reference"), so no field-label match exists. Fall back to the section
-      // header so its title is still recognized as a visible label.
-      label = this.page.locator(SELECTORS.COLLAPSE_SECTION_HEADER).filter({ hasText: labelText }).first();
+      label = sectionHeader.first();
     }
     try {
-      await label.waitFor({ state: 'attached', timeout });
       await label.scrollIntoViewIfNeeded();
       await label.waitFor({ state: 'visible', timeout });
       return true;
