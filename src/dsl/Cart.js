@@ -1150,6 +1150,162 @@ const Cart = {
     return { verified: true, suggestedFilename, filePath, sizeBytes };
   },
 
+  /**
+   * Enables the checkout "I have days off in the trip" per-diem checkbox, revealing the days-off
+   * date-range inputs (35694). Runs at checkout of a per-diem trip.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async enablePerDiemDaysOff(page) {
+    if (!page) throw new Error('[Cart.enablePerDiemDaysOff] "page" is required.');
+
+    logger.info('Enabling per-diem days off at checkout');
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.enablePerDiemDaysOff();
+    } catch (err) {
+      throw new Error(
+        `[Cart.enablePerDiemDaysOff] Could not enable per-diem days off. The days-off section may not ` +
+        `have rendered — the trip may not be per-diem, or checkout did not show it. Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
+   * Sets the first per-diem days-off range's start and end dates (35694). Picks the first selectable
+   * day for both start and end, producing a same-day (1-day) range → counter "1". Requires the
+   * days-off checkbox to be enabled first (see `enablePerDiemDaysOff`).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async setPerDiemDaysOffDates(page) {
+    if (!page) throw new Error('[Cart.setPerDiemDaysOffDates] "page" is required.');
+
+    logger.info('Setting the first per-diem days-off range dates (1-day range)');
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      // Range 0: 1st available start → 1st available end (same day) = 1 day off.
+      await cartPage.pickPerDiemDaysOffRangeDates(0, 0, 0);
+    } catch (err) {
+      throw new Error(
+        `[Cart.setPerDiemDaysOffDates] Could not set the per-diem days-off dates. The date pickers may ` +
+        `not have opened, or the days-off checkbox is not enabled. Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
+   * Adds a second per-diem days-off range and sets its dates (35694). Clicks "More days off in the
+   * trip", then picks the 2nd available start day and the following day as the end, producing a
+   * 2-day range → counter "2". Requires the first range to exist (see `setPerDiemDaysOffDates`).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async addPerDiemDaysOffRange(page) {
+    if (!page) throw new Error('[Cart.addPerDiemDaysOffRange] "page" is required.');
+
+    logger.info('Adding a second per-diem days-off range and setting its dates (2-day range)');
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.clickAddPerDiemDaysOffRange();
+      // Range 1: 2nd available start → next selectable day as end (two consecutive days) = 2 days off.
+      await cartPage.pickPerDiemDaysOffRangeDates(1, 1, 1);
+    } catch (err) {
+      throw new Error(
+        `[Cart.addPerDiemDaysOffRange] Could not add a second per-diem days-off range. The "More days off" ` +
+        `button or the new range's date pickers did not appear. Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
+   * Verifies a per-diem days-off range counter reads `expectedCount` (35694). `ordinal` selects the
+   * range ("first" → range 0, "second" → range 1). The counter shows the range length
+   * (calendar-diff(end,start)+1); a 1-day range reads "1", a 2-day range "2". Polls, as the value
+   * settles after the end date is picked.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} ordinal - Which range's counter to check: "first" or "second".
+   * @param {string} expectedCount - Expected counter value (e.g. "1").
+   * @returns {Promise<void>}
+   */
+  async verifyPerDiemDaysOffCounter(page, ordinal, expectedCount) {
+    if (!page) throw new Error('[Cart.verifyPerDiemDaysOffCounter] "page" is required.');
+    if (typeof expectedCount !== 'string' || !expectedCount.trim()) {
+      throw new Error(
+        `[Cart.verifyPerDiemDaysOffCounter] "expectedCount" must be a non-empty string, got: ${typeof expectedCount} (${JSON.stringify(expectedCount)})`,
+      );
+    }
+    const rangeIndexByOrdinal = { first: 0, second: 1, third: 2 };
+    const rangeIndex = rangeIndexByOrdinal[String(ordinal).trim().toLowerCase()];
+    if (rangeIndex === undefined) {
+      throw new Error(
+        `[Cart.verifyPerDiemDaysOffCounter] "ordinal" must be one of ${Object.keys(rangeIndexByOrdinal).join(', ')}, got: ${JSON.stringify(ordinal)}`,
+      );
+    }
+
+    logger.info('Verifying the per-diem days-off counter', { ordinal, rangeIndex, expectedCount });
+
+    const cartPage = getPageObject(page, CartPage);
+    const counter = cartPage.getPerDiemDaysOffRangeCounter(rangeIndex);
+    const expected = expectedCount.trim();
+
+    // The counter is a read-only <p> (per-diem-days-off.vue), so read its text, not an input value.
+    await expect
+      .poll(async () => (await counter.first().innerText().catch(() => '')).trim(), {
+        message:
+          `Expected the ${ordinal} per-diem days-off counter (range ${rangeIndex}) to read "${expected}" within 30s. ` +
+          `The range's dates may not have been picked, or the day count did not recalculate.`,
+        timeout: 30000,
+      })
+      .toBe(expected);
+  },
+
+  /**
+   * Verifies the per-diem days-off summary is displayed in the cart after checkout (35694). Asserts
+   * the trip's per-diem quote card ("Per-Diem for {traveller}") is shown — the per-diem summary for
+   * the days-off trip, distinct from the flight quote. NOTE: the per-diem quote's deducted-days count
+   * ("N Personal days deducted") is NOT asserted here: it only persists once the booking-details step
+   * is proceeded through (trip-reference-form.vue calls saveDaysOffForm on continue), whereas this
+   * "counter" scenario navigates back to cart without proceeding, so vacationDays stays 0. Polls, as
+   * the cart re-renders after navigating back from checkout.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyPerDiemDaysOffSummary(page) {
+    if (!page) throw new Error('[Cart.verifyPerDiemDaysOffSummary] "page" is required.');
+
+    logger.info('Verifying the per-diem quote (days-off) summary card is displayed');
+
+    const cartPage = getPageObject(page, CartPage);
+    const card = cartPage.getPerDiemQuoteCard();
+
+    try {
+      await card.waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyPerDiemDaysOffSummary] The per-diem quote card was not visible within 60s after returning ` +
+        `to cart. The trip may not contain a per-diem quote, or the cart did not render. Original: ${err.message}`,
+      );
+    }
+
+    const title = cartPage.getPerDiemQuoteTitle();
+    const titleText = ((await title.innerText().catch(() => '')) || '').trim();
+    // Tolerate the "Per-Diem"/"Per Diem" hyphen-vs-space and casing.
+    expect(
+      titleText.toLowerCase().replace(/[-\s]+/g, ' '),
+      `Expected the per-diem quote card title (e.g. "Per-Diem for {traveller}") to be displayed in the cart, ` +
+      `but the card title read "${titleText}".`,
+    ).toContain('per diem');
+  },
+
   async verifyFlightSegmentDetails(page, expectedSegments) {
     if (!page) {
       throw new Error('page is required');

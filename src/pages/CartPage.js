@@ -94,6 +94,8 @@ const SELECTORS = {
   // Element-Plus date-picker panel (teleported to <body>) + its selectable day cells.
   DATE_PICKER_PANEL_VISIBLE: '.el-picker-panel:visible',
   DATE_PICKER_AVAILABLE_DAY: 'td.available .el-date-table-cell__text',
+  // The selectable day CELL (parent of the text span) — a stable, sized click target.
+  DATE_PICKER_AVAILABLE_DAY_CELL: 'td.available',
 
   // Per-Diem breakdown EXPORT-TO-EXCEL flow (33096). The "Export to excel" button lives in the same
   // open-breakdown actions row (`.btns`) as Edit/Save/Close, but is NOT gated behind `canEditTable`
@@ -105,6 +107,26 @@ const SELECTORS = {
   EXCEL_CURRENCY_DIALOG: '.el-dialog.app-confirm:visible',
   // The primary "Yes" button in that dialog's footer (`.app-footer`), which fires the export/download.
   EXCEL_CURRENCY_DIALOG_CONFIRM_BTN: '.app-confirm .app-footer .btn--primary:visible',
+
+  // Per-Diem DAYS OFF at checkout (35694 — per-diem-days-off.vue). The section renders in checkout
+  // for a per-diem trip. `:visible` guards the cart/checkout's hidden responsive duplicates.
+  PER_DIEM_DAYS_OFF_SECTION: '.per-diem-days-off',
+  // The "I have days off in the trip" checkbox that reveals the date-range inputs. Its label is the
+  // "days off exists" anchor (Testim waited for it to contain "I have days off"); clicking the
+  // el-checkbox root (a <label>) toggles it.
+  PER_DIEM_DAYS_OFF_CHECKBOX_LABEL: '.per-diem-days-off .el-checkbox__label:visible',
+  PER_DIEM_DAYS_OFF_CHECKBOX: '.per-diem-days-off .days-off-inputs-container .el-checkbox:visible',
+  // One wrapper per days-off range (vacation): index 0 = first range, 1 = second, etc. Each holds a
+  // start app-datepicker, an end app-datepicker, and the read-only day counter.
+  PER_DIEM_DAYS_OFF_RANGE_WRAPPER: '.per-diem-days-off .days-off-inputs-wrapper:visible',
+  // The two app-datepicker inputs inside a range wrapper (start then end). Applied RELATIVE to a wrapper.
+  PER_DIEM_DAYS_OFF_DATE_INPUT: '.days-off-date-input input',
+  // Read-only "days off" counter inside a range wrapper (days = calendar-diff(end,start)+1). Applied
+  // RELATIVE to a wrapper.
+  PER_DIEM_DAYS_OFF_SUM_INPUT: '.sum-days-readonly-input',
+  // The "More days off in the trip" add button — its material-symbols icon reads exactly "add"
+  // (the per-range remove icon reads "close"), so :text-is("add") targets only the add control.
+  PER_DIEM_DAYS_OFF_ADD_RANGE_ICON: '.per-diem-days-off .add-icon:text-is("add"):visible',
 
   QUOTE_CARD_PRICE_AMOUNT: '.price-wrapper .amount, .product-extra-info .amount',
   ANY_STATUS_LABEL: '.app-label, .app-label--quote',
@@ -1468,6 +1490,134 @@ class CartPage {
         `likely the breakdown is not expanded, or is in edit/add-line mode. Original: ${err.message}`,
       );
     }
+  }
+
+  /**
+   * Enables the checkout "I have days off in the trip" per-diem checkbox, revealing the date-range
+   * inputs (35694). Waits for the checkbox label (the "days off exists" anchor) before clicking the
+   * el-checkbox root. The per-diem days-off section must be present (checkout of a per-diem trip).
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async enablePerDiemDaysOff(timeout = 10000) {
+    const label = this.page
+      .locator(SELECTORS.PER_DIEM_DAYS_OFF_CHECKBOX_LABEL, { hasText: 'days off' })
+      .first();
+    try {
+      await label.waitFor({ state: 'visible', timeout });
+      const checkbox = this.page.locator(SELECTORS.PER_DIEM_DAYS_OFF_CHECKBOX).first();
+      await checkbox.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.enablePerDiemDaysOff] Could not enable the per-diem days-off checkbox ` +
+        `(label: ${SELECTORS.PER_DIEM_DAYS_OFF_CHECKBOX_LABEL}). The days-off section may not have rendered ` +
+        `within ${timeout}ms — the trip may not be per-diem, or the checkout did not show the section. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Picks the start and end dates of the days-off range at `rangeIndex` (0-based) by selecting the
+   * `startDayIndex`-th and `endDayIndex`-th selectable days in the respective app-datepicker panels.
+   * The end picker's minimum is the chosen start day, so `endDayIndex` counts from the start day: 0 =
+   * same day (a 1-day range), 1 = the next day (a 2-day range), etc. The days-off checkbox must be
+   * enabled first (see `enablePerDiemDaysOff`).
+   * @param {number} rangeIndex - 0-based index of the days-off range wrapper.
+   * @param {number} startDayIndex - 0-based index of the selectable start day in the start panel.
+   * @param {number} endDayIndex - 0-based index of the selectable end day in the end panel (counts from the start day).
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async pickPerDiemDaysOffRangeDates(rangeIndex, startDayIndex = 0, endDayIndex = 0, timeout = 10000) {
+    for (const [name, value] of [['rangeIndex', rangeIndex], ['startDayIndex', startDayIndex], ['endDayIndex', endDayIndex]]) {
+      if (!Number.isInteger(value) || value < 0) {
+        throw new Error(
+          `[CartPage.pickPerDiemDaysOffRangeDates] "${name}" must be a non-negative integer, got: ${value}`,
+        );
+      }
+    }
+    const wrapper = this.page.locator(SELECTORS.PER_DIEM_DAYS_OFF_RANGE_WRAPPER).nth(rangeIndex);
+    try {
+      await wrapper.waitFor({ state: 'visible', timeout });
+      // The checkout page lazy-loads sections (contact details, reference questions) after the
+      // days-off section renders; the reflow keeps repositioning the teleported datepicker popper,
+      // making its day cells "not stable" to click. Let the page settle first (best-effort).
+      await this.page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+      const dateInputs = wrapper.locator(SELECTORS.PER_DIEM_DAYS_OFF_DATE_INPUT);
+      await this.pickAvailableDayInDatepicker(dateInputs.nth(0), startDayIndex, timeout);
+      await this.pickAvailableDayInDatepicker(dateInputs.nth(1), endDayIndex, timeout);
+    } catch (err) {
+      throw new Error(
+        `[CartPage.pickPerDiemDaysOffRangeDates] Could not set the dates for days-off range ${rangeIndex} ` +
+        `(start day #${startDayIndex}, end day #${endDayIndex}; wrapper: ${SELECTORS.PER_DIEM_DAYS_OFF_RANGE_WRAPPER}). ` +
+        `The range or its date pickers did not appear within ${timeout}ms. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Opens a readonly app-datepicker input and clicks the `dayIndex`-th selectable (`td.available`) day
+   * in the teleported EP panel. Shared by the per-diem days-off date pickers.
+   * @param {import('@playwright/test').Locator} inputLocator - The datepicker's readonly input.
+   * @param {number} dayIndex - 0-based index of the selectable day to click.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async pickAvailableDayInDatepicker(inputLocator, dayIndex = 0, timeout = 10000) {
+    await inputLocator.scrollIntoViewIfNeeded().catch(() => {});
+    await inputLocator.waitFor({ state: 'visible', timeout });
+    await inputLocator.click();
+    const panel = this.page.locator(SELECTORS.DATE_PICKER_PANEL_VISIBLE).last();
+    await panel.waitFor({ state: 'visible', timeout });
+    // Click the selectable cell itself (a stable, sized target) rather than its inner text span.
+    const day = panel.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY_CELL).nth(dayIndex);
+    await day.waitFor({ state: 'visible', timeout });
+    try {
+      await day.click({ timeout: 5000 });
+    } catch {
+      // Residual popper jitter (page still reflowing): force the click on the already-validated cell.
+      await day.click({ force: true });
+    }
+  }
+
+  /**
+   * Clicks the "More days off in the trip" button to append an additional days-off range. Targeted by
+   * the add material-symbol (`add-icon` reading exactly "add"), never the per-range remove icon
+   * (which reads "close"). The days-off checkbox must be enabled first.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async clickAddPerDiemDaysOffRange(timeout = 10000) {
+    const icon = this.page.locator(SELECTORS.PER_DIEM_DAYS_OFF_ADD_RANGE_ICON).first();
+    try {
+      await icon.waitFor({ state: 'visible', timeout });
+      await icon.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickAddPerDiemDaysOffRange] Could not click the "More days off" add button ` +
+        `(selector: ${SELECTORS.PER_DIEM_DAYS_OFF_ADD_RANGE_ICON}). The button was not visible within ${timeout}ms — ` +
+        `the days-off checkbox may not be enabled. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Gets the read-only day counter of the days-off range at `rangeIndex` (0-based). The value reflects
+   * the picked range length (calendar-diff(end,start)+1), or 0 for an unset range.
+   * @param {number} rangeIndex - 0-based index of the days-off range wrapper.
+   * @returns {import('@playwright/test').Locator} Locator for that range's counter input.
+   */
+  getPerDiemDaysOffRangeCounter(rangeIndex) {
+    if (!Number.isInteger(rangeIndex) || rangeIndex < 0) {
+      throw new Error(
+        `[CartPage.getPerDiemDaysOffRangeCounter] "rangeIndex" must be a non-negative integer, got: ${rangeIndex}`,
+      );
+    }
+    return this.page
+      .locator(SELECTORS.PER_DIEM_DAYS_OFF_RANGE_WRAPPER)
+      .nth(rangeIndex)
+      .locator(SELECTORS.PER_DIEM_DAYS_OFF_SUM_INPUT);
   }
 
   /**

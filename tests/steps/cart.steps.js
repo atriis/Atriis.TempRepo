@@ -670,6 +670,31 @@ Then("the Per-Diem quote Excel file should be downloaded", async function () {
   await Cart.verifyPerDiemExcelDownloaded(this.page, this.perDiemExcelDownload);
 });
 
+When("I enable per-diem days off", async function () {
+  logger.info("Enabling per-diem days off at checkout");
+  await Cart.enablePerDiemDaysOff(this.page);
+});
+
+When("I set the per-diem days off dates", async function () {
+  logger.info("Setting the per-diem days off dates");
+  await Cart.setPerDiemDaysOffDates(this.page);
+});
+
+When("I add another per-diem days off range", async function () {
+  logger.info("Adding another per-diem days off range");
+  await Cart.addPerDiemDaysOffRange(this.page);
+});
+
+Then("the {word} per-diem days off counter should be {string}", async function (ordinal, expectedCount) {
+  logger.info("Verifying the per-diem days off counter", { ordinal, expectedCount });
+  await Cart.verifyPerDiemDaysOffCounter(this.page, ordinal, expectedCount);
+});
+
+Then("the per-diem days off summary should be displayed", async function () {
+  logger.info("Verifying the per-diem days off summary is displayed");
+  await Cart.verifyPerDiemDaysOffSummary(this.page);
+});
+
 Then("the car date in cart should not be {string}", async function (unwantedDate) {
   logger.info("Verifying car date in cart is not the broken default value", { unwantedDate });
   await Cart.verifyCarDateInCartIsNot(this.page, unwantedDate);
