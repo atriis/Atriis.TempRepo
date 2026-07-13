@@ -1,3 +1,4 @@
+require("module-alias/register");
 const { When, Then } = require("@cucumber/cucumber");
 const { Profile } = require("@dsl");
 const logger = require("@utils/logger").child("Profile");

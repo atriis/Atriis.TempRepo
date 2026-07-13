@@ -1,3 +1,4 @@
+require('module-alias/register');
 const { When, Then } = require('@cucumber/cucumber');
 const UnusedTickets = require('@dsl/UnusedTickets');
 const logger = require('@utils/logger');
