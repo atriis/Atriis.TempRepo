@@ -650,6 +650,11 @@ When("I edit the Per-Diem breakdown line adding a {string} deduction", async fun
   await Cart.editPerDiemBreakdownLineDeduction(this.page, deduction);
 });
 
+When("I add a line to the Per-Diem breakdown for destination {string} with comment {string} and deduction {string}", async function (destination, comment, deduction) {
+  logger.info("Adding a line to the Per-Diem breakdown", { destination, comment, deduction });
+  await Cart.addPerDiemBreakdownLine(this.page, destination, comment, deduction);
+});
+
 Then("the Per-Diem breakdown should contain {string}", async function (text) {
   logger.info("Verifying the Per-Diem breakdown contains text", { text });
   await Cart.verifyPerDiemBreakdownContains(this.page, text);

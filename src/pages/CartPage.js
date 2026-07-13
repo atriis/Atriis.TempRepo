@@ -73,6 +73,27 @@ const SELECTORS = {
   // Deduction cells of the READ-ONLY breakdown rows (post-save `<p>` view) — the anchor for the
   // saved-deduction assertion. Excludes the header row and hidden responsive duplicates.
   PER_DIEM_BREAKDOWN_DEDUCTION_CELL: '.per-diem-breakdown .extras-card .breakdown-table .table-row:not(.muliSemiBold) .deduction p:visible',
+  // Per-Diem breakdown ADD-LINE flow (33095 "new method" — the inline `.add-line` form shown via
+  // `showLineToAdd`, gated behind `canEditTable`). Per per-diem-breakdown.vue the form holds a
+  // datepicker, an airport-autocomplete destination, a deduction app-select, a percent input and a
+  // comment input. `:visible` guards against the cart's hidden responsive duplicates (see note above).
+  // Readonly datepicker input; click to open the teleported EP panel, then pick an available day. A
+  // date is mandatory (vuelidate `required`) and, with the destination, triggers the async price calc.
+  PER_DIEM_ADD_LINE_DATE_INPUT: '.per-diem-breakdown .add-line .per-diem-date-picker input:visible',
+  // Destination airport-autocomplete: type ≥3 chars to trigger the airport search, then click a
+  // result in the shared `boxed-autocomplete-popper`. Selecting the destination triggers the calc.
+  PER_DIEM_ADD_LINE_DEST_INPUT: '.per-diem-breakdown .add-line .destination-autocomplete input:visible',
+  PER_DIEM_ADD_LINE_DEST_OPTION: '.boxed-autocomplete-popper:visible .autocomplete-result',
+  // The deduction is the ONLY app-select in the add-line form (date/dest/percent/comment are not).
+  PER_DIEM_ADD_LINE_DEDUCTION_TRIGGER: '.per-diem-breakdown .add-line .app-select .el-select__wrapper:visible',
+  PER_DIEM_ADD_LINE_COMMENT_INPUT: ".per-diem-breakdown .add-line input[placeholder='Comment']",
+  // The add-line form (`v-if="showLineToAdd"`) is removed from the DOM once the line is saved
+  // (addLine → setShowLineToAdd(false)); its detachment is the "save accepted" signal. No `:visible`
+  // here so a detached-state wait is meaningful.
+  PER_DIEM_ADD_LINE_FORM_ANY: '.per-diem-breakdown .add-line',
+  // Element-Plus date-picker panel (teleported to <body>) + its selectable day cells.
+  DATE_PICKER_PANEL_VISIBLE: '.el-picker-panel:visible',
+  DATE_PICKER_AVAILABLE_DAY: 'td.available .el-date-table-cell__text',
 
   QUOTE_CARD_PRICE_AMOUNT: '.price-wrapper .amount, .product-extra-info .amount',
   ANY_STATUS_LABEL: '.app-label, .app-label--quote',
@@ -1256,6 +1277,165 @@ class CartPage {
    */
   getPerDiemBreakdownDeductionCells() {
     return this.page.locator(SELECTORS.PER_DIEM_BREAKDOWN_DEDUCTION_CELL);
+  }
+
+  /**
+   * Clicks the "Add line" button in the open Per-Diem breakdown to reveal the inline add-line form.
+   * Gated behind `v-if="canEditTable"` in per-diem-breakdown.vue (editable "new method" breakdown),
+   * so it is absent for a locked breakdown. The breakdown must be expanded first
+   * (see `clickPerDiemBreakdownViewBtn`).
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async clickPerDiemBreakdownAddLineBtn(timeout = 10000) {
+    const btn = this.page.locator(SELECTORS.PER_DIEM_BREAKDOWN_ADD_LINE_BTN).first();
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      await btn.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickPerDiemBreakdownAddLineBtn] Could not click the Per-Diem breakdown "Add line" button ` +
+        `(selector: ${SELECTORS.PER_DIEM_BREAKDOWN_ADD_LINE_BTN}). The button was not visible within ${timeout}ms — ` +
+        `likely the breakdown is not expanded, or is locked (not editable). Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Picks the first available day in the Per-Diem add-line datepicker. Opens the readonly picker
+   * input, waits for the teleported EP panel, and clicks the first selectable (`td.available`) day.
+   * A date is mandatory to add a line (vuelidate `required`) and, with the destination, triggers the
+   * async price calc. The add-line form must be shown first (see `clickPerDiemBreakdownAddLineBtn`).
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async pickPerDiemAddLineFirstAvailableDate(timeout = 10000) {
+    const input = this.page.locator(SELECTORS.PER_DIEM_ADD_LINE_DATE_INPUT).first();
+    try {
+      await input.waitFor({ state: 'visible', timeout });
+      await input.click();
+      const panel = this.page.locator(SELECTORS.DATE_PICKER_PANEL_VISIBLE).last();
+      await panel.waitFor({ state: 'visible', timeout });
+      const day = panel.locator(SELECTORS.DATE_PICKER_AVAILABLE_DAY).first();
+      await day.waitFor({ state: 'visible', timeout });
+      await day.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.pickPerDiemAddLineFirstAvailableDate] Could not select a date in the Per-Diem add-line datepicker ` +
+        `(input: ${SELECTORS.PER_DIEM_ADD_LINE_DATE_INPUT}). The picker or an available day did not appear within ${timeout}ms — ` +
+        `the add-line form may not be shown. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Fills the Per-Diem add-line destination airport-autocomplete and selects the first result. Types
+   * the term (≥3 chars triggers the airport search), then clicks the first popper result. Selecting
+   * the destination triggers the async price calc. The add-line form must be shown first.
+   * @param {string} destination - Destination search term (e.g. "bkk").
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async fillPerDiemAddLineDestination(destination, timeout = 10000) {
+    if (typeof destination !== 'string' || !destination.trim()) {
+      throw new Error(
+        `[CartPage.fillPerDiemAddLineDestination] "destination" must be a non-empty string, got: ${typeof destination}`,
+      );
+    }
+    const input = this.page.locator(SELECTORS.PER_DIEM_ADD_LINE_DEST_INPUT).first();
+    try {
+      await input.waitFor({ state: 'visible', timeout });
+      await input.click();
+      await input.fill('');
+      await input.pressSequentially(destination, { delay: 50 });
+      const option = this.page.locator(SELECTORS.PER_DIEM_ADD_LINE_DEST_OPTION).first();
+      await option.waitFor({ state: 'visible', timeout });
+      await option.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.fillPerDiemAddLineDestination] Could not select destination "${destination}" in the Per-Diem add-line form ` +
+        `(input: ${SELECTORS.PER_DIEM_ADD_LINE_DEST_INPUT}). The input or an autocomplete result did not appear within ${timeout}ms. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Waits for the Per-Diem add-line form to close after Save. The form is removed via
+   * `v-if="showLineToAdd"` only once `addLine()` accepts the save, so its detachment confirms the
+   * line was persisted (if the save is blocked, the form stays open and this times out). The quote
+   * then re-renders (refreshQuotes), collapsing the breakdown — callers should re-expand afterwards.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async waitForPerDiemAddLineFormClosed(timeout = 30000) {
+    const form = this.page.locator(SELECTORS.PER_DIEM_ADD_LINE_FORM_ANY).first();
+    try {
+      await form.waitFor({ state: 'detached', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForPerDiemAddLineFormClosed] The Per-Diem add-line form did not close within ${timeout}ms after Save ` +
+        `(selector: ${SELECTORS.PER_DIEM_ADD_LINE_FORM_ANY}). The save may have been blocked (e.g. the price calc failed) or did not persist. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Selects a deduction in the Per-Diem add-line form (the only app-select in the form). Opens the
+   * dropdown and clicks the option whose label contains `deductionText` (case-insensitive).
+   * @param {string} deductionText - Text contained in the deduction option label (e.g. "limo").
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async selectPerDiemAddLineDeduction(deductionText, timeout = 10000) {
+    if (typeof deductionText !== 'string' || !deductionText.trim()) {
+      throw new Error(
+        `[CartPage.selectPerDiemAddLineDeduction] "deductionText" must be a non-empty string, got: ${typeof deductionText}`,
+      );
+    }
+    const trigger = this.page.locator(SELECTORS.PER_DIEM_ADD_LINE_DEDUCTION_TRIGGER).first();
+    try {
+      await trigger.waitFor({ state: 'visible', timeout });
+      await trigger.click();
+      const option = this.page
+        .locator(SELECTORS.EL_SELECT_VISIBLE_DROPDOWN_ITEM, { hasText: deductionText })
+        .first();
+      await option.waitFor({ state: 'visible', timeout });
+      await option.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.selectPerDiemAddLineDeduction] Could not select the "${deductionText}" deduction in the Per-Diem add-line form. ` +
+        `The dropdown or a matching option did not appear within ${timeout}ms — no deduction option may match "${deductionText}". ` +
+        `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Fills the comment field in the Per-Diem add-line form. A comment is mandatory (vuelidate
+   * `required`) — the app blocks Save otherwise.
+   * @param {string} comment - Comment text to enter.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async fillPerDiemAddLineComment(comment, timeout = 10000) {
+    if (typeof comment !== 'string' || !comment.trim()) {
+      throw new Error(
+        `[CartPage.fillPerDiemAddLineComment] "comment" must be a non-empty string, got: ${typeof comment}`,
+      );
+    }
+    const input = this.page.locator(SELECTORS.PER_DIEM_ADD_LINE_COMMENT_INPUT).first();
+    try {
+      await input.waitFor({ state: 'visible', timeout });
+      await input.fill(comment);
+    } catch (err) {
+      throw new Error(
+        `[CartPage.fillPerDiemAddLineComment] Could not fill the comment in the Per-Diem add-line form ` +
+        `(selector: ${SELECTORS.PER_DIEM_ADD_LINE_COMMENT_INPUT}). The input was not visible within ${timeout}ms. ` +
+        `Original: ${err.message}`,
+      );
+    }
   }
 
   /**

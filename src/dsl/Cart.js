@@ -935,6 +935,68 @@ const Cart = {
   },
 
   /**
+   * Adds a new line to the Per-Diem breakdown, then saves. Only works on an editable ("new method")
+   * breakdown, where the breakdown "Add line" button is present. Reveals the inline add-line form
+   * and fills it in the manual/Testim order: picks the first available date, selects the destination
+   * (an airport-autocomplete result, which triggers the app's async price calc), selects the
+   * deduction, adds the mandatory comment (Save is blocked without it), and saves. It then waits for
+   * the add-line form to close — confirming the save was accepted — and for the quote re-render to
+   * settle. The save collapses the breakdown (refreshQuotes), so the caller must re-expand it before
+   * verifying the new line. The breakdown must be expanded first (see `expandPerDiemQuoteBreakdown`).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} destination - Destination search term for the airport-autocomplete (e.g. "bkk").
+   * @param {string} comment - Comment for the new line (mandatory).
+   * @param {string} deduction - Deduction option label text to select (e.g. "limo").
+   * @returns {Promise<void>}
+   */
+  async addPerDiemBreakdownLine(page, destination, comment, deduction) {
+    if (!page) throw new Error('[Cart.addPerDiemBreakdownLine] "page" is required.');
+    if (typeof destination !== 'string' || !destination.trim()) {
+      throw new Error(
+        `[Cart.addPerDiemBreakdownLine] "destination" must be a non-empty string, got: ${typeof destination} (${JSON.stringify(destination)})`,
+      );
+    }
+    if (typeof comment !== 'string' || !comment.trim()) {
+      throw new Error(
+        `[Cart.addPerDiemBreakdownLine] "comment" must be a non-empty string, got: ${typeof comment} (${JSON.stringify(comment)})`,
+      );
+    }
+    if (typeof deduction !== 'string' || !deduction.trim()) {
+      throw new Error(
+        `[Cart.addPerDiemBreakdownLine] "deduction" must be a non-empty string, got: ${typeof deduction} (${JSON.stringify(deduction)})`,
+      );
+    }
+
+    logger.info('Adding a new Per-Diem breakdown line', { destination, comment, deduction });
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // Order mirrors the manual/Testim flow: date → destination → deduction → comment → save. The
+    // save collapses the breakdown (the quote re-renders via refreshQuotes), so the caller must
+    // re-expand the breakdown before verifying the new line (see the feature's re-expand step).
+    logger.debug('Revealing the add-line form, then filling date, destination, deduction and comment');
+    try {
+      await cartPage.clickPerDiemBreakdownAddLineBtn();
+      await cartPage.pickPerDiemAddLineFirstAvailableDate();
+      await cartPage.fillPerDiemAddLineDestination(destination);
+      await cartPage.selectPerDiemAddLineDeduction(deduction);
+      await cartPage.fillPerDiemAddLineComment(comment);
+      await cartPage.clickPerDiemBreakdownSaveBtn();
+      // Gate on the save being accepted (form closes) and the quote re-render settling, so a
+      // subsequent re-expand acts on a stable DOM rather than racing refreshQuotes.
+      await cartPage.waitForPerDiemAddLineFormClosed();
+      await page.waitForLoadState('networkidle').catch(() => {});
+    } catch (err) {
+      throw new Error(
+        `[Cart.addPerDiemBreakdownLine] Could not add a Per-Diem breakdown line (destination "${destination}", deduction "${deduction}"). ` +
+        `The breakdown may not be editable (no "Add line" button), the destination/deduction option may not exist, the price calc may have failed, or Save was blocked. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
    * Verifies the Per-Diem breakdown shows the given text in a deduction cell. Polls the read-only
    * breakdown deduction column (the Save persists asynchronously and the quote re-renders),
    * asserting a cell contains `expectedText` (case-insensitive). Use after
