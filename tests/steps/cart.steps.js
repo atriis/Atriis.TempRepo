@@ -660,6 +660,16 @@ Then("the Per-Diem breakdown should contain {string}", async function (text) {
   await Cart.verifyPerDiemBreakdownContains(this.page, text);
 });
 
+When("I export the Per-Diem quote to Excel", async function () {
+  logger.info("Exporting the Per-Diem quote to Excel");
+  this.perDiemExcelDownload = await Cart.exportPerDiemQuoteToExcel(this.page);
+});
+
+Then("the Per-Diem quote Excel file should be downloaded", async function () {
+  logger.info("Verifying the Per-Diem quote Excel file was downloaded");
+  await Cart.verifyPerDiemExcelDownloaded(this.page, this.perDiemExcelDownload);
+});
+
 Then("the car date in cart should not be {string}", async function (unwantedDate) {
   logger.info("Verifying car date in cart is not the broken default value", { unwantedDate });
   await Cart.verifyCarDateInCartIsNot(this.page, unwantedDate);

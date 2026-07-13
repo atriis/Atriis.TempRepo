@@ -1,3 +1,4 @@
+const fs = require("fs");
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { CartPage, SELECTORS: CART_SELECTORS, CANCELLATION_CONFIRMED_TEXT } = require("@pages/CartPage");
@@ -1035,6 +1036,118 @@ const Cart = {
         },
       )
       .toBe(true);
+  },
+
+  /**
+   * Exports the open Per-Diem quote breakdown to Excel and captures the resulting download (33096).
+   * Clicks "Export to excel", waits for the "Additional currency" confirm dialog, then confirms.
+   * The app fetches the file and synchronously clicks a hidden `<a download>`, which Playwright
+   * surfaces as a download EVENT — so the download wait MUST be armed BEFORE the confirm click,
+   * otherwise the event is missed. The breakdown must be expanded first (see
+   * `expandPerDiemQuoteBreakdown`).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{ exported: boolean, suggestedFilename: string, download: import('@playwright/test').Download }>}
+   */
+  async exportPerDiemQuoteToExcel(page) {
+    if (!page) throw new Error('[Cart.exportPerDiemQuoteToExcel] "page" is required.');
+
+    logger.info('Exporting the Per-Diem quote breakdown to Excel');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    logger.debug('Clicking "Export to excel", awaiting the currency dialog, then confirming (download armed first)');
+    try {
+      await cartPage.clickPerDiemBreakdownExportBtn();
+      await cartPage.waitForExcelCurrencyDialog();
+      // Arm the download wait BEFORE confirming — the confirm handler fires link.click() and the
+      // download event would be missed if we armed it afterwards.
+      const downloadPromise = cartPage.waitForExcelDownload();
+      await cartPage.clickExcelCurrencyDialogConfirm();
+      const download = await downloadPromise;
+      return { exported: true, suggestedFilename: download.suggestedFilename(), download };
+    } catch (err) {
+      throw new Error(
+        `[Cart.exportPerDiemQuoteToExcel] Could not export the Per-Diem quote to Excel. ` +
+        `The breakdown may not be expanded, the "Additional currency" dialog may not have opened, or the file download was not triggered. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
+   * Verifies the Per-Diem Excel export produced a real, downloaded `.xlsx` file. Asserts on the
+   * download captured by `exportPerDiemQuoteToExcel` — the app names it `Per Diem {tripId} - {paxName}.xlsx`.
+   * Beyond the file name, this confirms the download actually COMPLETED and the file reached disk with
+   * content: `waitForEvent('download')` only proves the browser STARTED a download, so we additionally
+   * assert `download.failure()` is null and the saved file (`download.path()`) is non-empty on disk.
+   * This is a client-side blob download, distinct from the related-files download (which asserts a
+   * /TripsUploadFiles request + guid), so it must NOT be verified with `Cart.verifyFileDownloaded`.
+   *
+   * @param {import('playwright').Page} page
+   * @param {{ suggestedFilename: string, download: import('@playwright/test').Download }} downloadResult - the object returned by `exportPerDiemQuoteToExcel`.
+   * @returns {Promise<{ verified: boolean, suggestedFilename: string, filePath: string, sizeBytes: number }>}
+   */
+  async verifyPerDiemExcelDownloaded(page, downloadResult) {
+    if (!page) throw new Error('[Cart.verifyPerDiemExcelDownloaded] "page" is required.');
+    if (!downloadResult || typeof downloadResult.suggestedFilename !== 'string' || !downloadResult.download) {
+      throw new Error(
+        `[Cart.verifyPerDiemExcelDownloaded] "downloadResult" must be the object returned by Cart.exportPerDiemQuoteToExcel ` +
+        `(with a "suggestedFilename" string and a Playwright "download" object), got: ${typeof downloadResult}. ` +
+        `Ensure the "When I export the Per-Diem quote to Excel" step ran before this assertion.`,
+      );
+    }
+
+    const { suggestedFilename, download } = downloadResult;
+    logger.debug(`[Cart.verifyPerDiemExcelDownloaded] Verifying exported Excel file: "${suggestedFilename}"`);
+
+    expect(
+      suggestedFilename && suggestedFilename.trim().length > 0,
+      `Expected the Per-Diem Excel export to produce a non-empty download file name, but got: "${suggestedFilename}". ` +
+      `The export may not have triggered a real file download.`,
+    ).toBe(true);
+
+    expect(
+      suggestedFilename.toLowerCase().endsWith('.xlsx'),
+      `Expected the exported Per-Diem file name to end with ".xlsx" (app names it "Per Diem {tripId} - {paxName}.xlsx"), ` +
+      `but got: "${suggestedFilename}". A wrong extension means the export did not produce an Excel file.`,
+    ).toBe(true);
+
+    // Confirm the file actually reached disk with real content. waitForEvent('download') only proves the
+    // browser STARTED the download; failure()/path() resolve after it completes (or reports an error).
+    let failure;
+    let filePath;
+    try {
+      failure = await download.failure();
+      filePath = await download.path();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyPerDiemExcelDownloaded] Could not resolve the downloaded Excel file "${suggestedFilename}" on disk. ` +
+        `The download may not have completed, or downloads may be disabled in this browser context. Original: ${err.message}`,
+      );
+    }
+
+    expect(
+      failure,
+      `Expected the Per-Diem Excel download "${suggestedFilename}" to complete successfully, ` +
+      `but Playwright reported a download failure: "${failure}".`,
+    ).toBeNull();
+
+    expect(
+      typeof filePath === 'string' && filePath.length > 0,
+      `Expected the Per-Diem Excel export "${suggestedFilename}" to be saved to disk, but no file path was returned. ` +
+      `The download did not produce a file.`,
+    ).toBe(true);
+
+    const sizeBytes = fs.statSync(filePath).size;
+    expect(
+      sizeBytes > 0,
+      `Expected the downloaded Per-Diem Excel file "${suggestedFilename}" (${filePath}) to contain data, ` +
+      `but it was empty (0 bytes). The export service may have returned an empty file.`,
+    ).toBe(true);
+
+    logger.info(`[Cart.verifyPerDiemExcelDownloaded] Per-Diem Excel file verified on disk`, { suggestedFilename, sizeBytes });
+    return { verified: true, suggestedFilename, filePath, sizeBytes };
   },
 
   async verifyFlightSegmentDetails(page, expectedSegments) {

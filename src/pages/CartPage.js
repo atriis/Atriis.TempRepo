@@ -95,6 +95,17 @@ const SELECTORS = {
   DATE_PICKER_PANEL_VISIBLE: '.el-picker-panel:visible',
   DATE_PICKER_AVAILABLE_DAY: 'td.available .el-date-table-cell__text',
 
+  // Per-Diem breakdown EXPORT-TO-EXCEL flow (33096). The "Export to excel" button lives in the same
+  // open-breakdown actions row (`.btns`) as Edit/Save/Close, but is NOT gated behind `canEditTable`
+  // (per per-diem-breakdown.vue it renders whenever the breakdown is not in edit/add-line mode).
+  // Matched by its English label; `:visible` guards against the cart's hidden responsive duplicates.
+  PER_DIEM_BREAKDOWN_EXPORT_BTN: '.per-diem-breakdown .extras-card .btns button:has-text("Export to excel"):visible',
+  // The "Additional currency" confirm popup (app-confirm.vue → el-dialog with class `app-confirm`).
+  // It is appended to <body> (append-to-body), so it is NOT scoped to `.per-diem-breakdown`.
+  EXCEL_CURRENCY_DIALOG: '.el-dialog.app-confirm:visible',
+  // The primary "Yes" button in that dialog's footer (`.app-footer`), which fires the export/download.
+  EXCEL_CURRENCY_DIALOG_CONFIRM_BTN: '.app-confirm .app-footer .btn--primary:visible',
+
   QUOTE_CARD_PRICE_AMOUNT: '.price-wrapper .amount, .product-extra-info .amount',
   ANY_STATUS_LABEL: '.app-label, .app-label--quote',
   HOLD_BUTTON: ".btn--default.mt-2",
@@ -1436,6 +1447,84 @@ class CartPage {
         `Original: ${err.message}`,
       );
     }
+  }
+
+  /**
+   * Clicks the "Export to excel" button in the open Per-Diem breakdown. This opens the "Additional
+   * currency" confirm dialog (it does NOT download directly). The breakdown must be expanded first
+   * (see `clickPerDiemBreakdownViewBtn`).
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async clickPerDiemBreakdownExportBtn(timeout = 10000) {
+    const btn = this.page.locator(SELECTORS.PER_DIEM_BREAKDOWN_EXPORT_BTN).first();
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      await btn.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickPerDiemBreakdownExportBtn] Could not click the Per-Diem breakdown "Export to excel" button ` +
+        `(selector: ${SELECTORS.PER_DIEM_BREAKDOWN_EXPORT_BTN}). The button was not visible within ${timeout}ms — ` +
+        `likely the breakdown is not expanded, or is in edit/add-line mode. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Waits for the "Additional currency" confirm dialog (app-confirm) to become visible after clicking
+   * "Export to excel". The dialog is appended to <body>, so it is not scoped to the breakdown.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async waitForExcelCurrencyDialog(timeout = 10000) {
+    const dialog = this.page.locator(SELECTORS.EXCEL_CURRENCY_DIALOG).first();
+    try {
+      await dialog.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForExcelCurrencyDialog] The "Additional currency" export dialog did not become visible within ${timeout}ms ` +
+        `(selector: ${SELECTORS.EXCEL_CURRENCY_DIALOG}). Likely the "Export to excel" button was not clicked, or the dialog failed to open. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Clicks the primary "Yes" button in the "Additional currency" dialog, which triggers the Excel
+   * export. The app fetches the file, then synchronously clicks a hidden `<a download>` — surfacing
+   * as a Playwright download event (arm `waitForExcelDownload` BEFORE calling this).
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async clickExcelCurrencyDialogConfirm(timeout = 10000) {
+    const btn = this.page.locator(SELECTORS.EXCEL_CURRENCY_DIALOG_CONFIRM_BTN).first();
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      await btn.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickExcelCurrencyDialogConfirm] Could not click the "Yes" confirm button in the "Additional currency" export dialog ` +
+        `(selector: ${SELECTORS.EXCEL_CURRENCY_DIALOG_CONFIRM_BTN}). The button was not visible within ${timeout}ms — ` +
+        `likely the export dialog is not open. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Returns a promise that resolves with the Playwright download event fired by the Excel export
+   * (a client-side blob `<a download='...xlsx'>` click). Call this to ARM the wait BEFORE clicking
+   * the dialog's confirm button, then await the returned promise afterwards.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<import('@playwright/test').Download>}
+   */
+  waitForExcelDownload(timeout = 30000) {
+    return this.page.waitForEvent('download', { timeout }).catch((err) => {
+      throw new Error(
+        `[CartPage.waitForExcelDownload] No Excel file download was triggered within ${timeout}ms after confirming the export ` +
+        `(waited for a Playwright 'download' event). Likely the export service call failed, or the "Yes" confirm button was not clicked. ` +
+        `Original: ${err.message}`,
+      );
+    });
   }
 
   /**
