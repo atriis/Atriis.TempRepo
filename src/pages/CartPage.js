@@ -34,6 +34,9 @@ const SELECTORS = {
   // `v-if="quote.vacationDays > 0"` in per-diem-quote-card.vue, so it renders ONLY once days off
   // were deducted (persisted after proceeding through booking); its text is "{N} Personal days deducted".
   PER_DIEM_QUOTE_VACATION: '.per-diem-quote-card .vacation',
+  // Total-price amount shown on the per-diem quote card (base-quote-card header → app-price →
+  // `.amount`). Its text is the numeric total with no currency symbol inside `.amount`, e.g. "3000.00".
+  PER_DIEM_QUOTE_AMOUNT: '.per-diem-quote-card .amount',
   // Edit affordance(s) in the per-diem card's read-only actions container (`.box-center .btns`).
   // Per per-diem-quote-card.vue that container holds ONLY the "Edit details" button, gated by
   // `v-if="canEditPerDiem"` — empty for a locked quote, populated for an editable one. Matching
@@ -1118,6 +1121,15 @@ class CartPage {
    */
   getPerDiemQuoteVacation() {
     return this.page.locator(SELECTORS.PER_DIEM_QUOTE_VACATION).first();
+  }
+
+  /**
+   * Gets the per-diem quote card's total-price amount locator (base-quote-card header → app-price →
+   * `.amount`). Its text is the numeric total, e.g. "3000.00". Used to verify the quote amount (35703).
+   * @returns {Locator} Playwright locator for the per-diem quote amount.
+   */
+  getPerDiemQuoteAmount() {
+    return this.page.locator(SELECTORS.PER_DIEM_QUOTE_AMOUNT).first();
   }
 
   /**

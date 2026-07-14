@@ -1199,6 +1199,41 @@ const Cart = {
   },
 
   /**
+   * Sets a single per-diem days-off range spanning `dayCount` calendar days (35703). Picks the first
+   * selectable start day and the `(dayCount-1)`-th following day as the end, so `dayCount` 2 selects the
+   * first and second available dates → an inclusive 2-day range → counter "2". Unlike combining
+   * `setPerDiemDaysOffDates` + `addPerDiemDaysOffRange` (two separate 1-day ranges), this keeps it to
+   * one range so the *first* counter reflects the full span. Requires the days-off checkbox enabled first
+   * (see `enablePerDiemDaysOff`).
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} dayCount - Number of inclusive calendar days the range should span (>= 1).
+   * @returns {Promise<void>}
+   */
+  async setPerDiemDaysOffDatesSpanning(page, dayCount) {
+    if (!page) throw new Error('[Cart.setPerDiemDaysOffDatesSpanning] "page" is required.');
+    if (!Number.isInteger(dayCount) || dayCount < 1) {
+      throw new Error(
+        `[Cart.setPerDiemDaysOffDatesSpanning] "dayCount" must be an integer >= 1, got: ${JSON.stringify(dayCount)}`,
+      );
+    }
+
+    logger.info('Setting a single per-diem days-off range', { dayCount });
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      // Range 0: 1st available start → the (dayCount-1)-th following day as end (endDayIndex counts
+      // from the start day), producing an inclusive dayCount-day range → counter "dayCount".
+      await cartPage.pickPerDiemDaysOffRangeDates(0, 0, dayCount - 1);
+    } catch (err) {
+      throw new Error(
+        `[Cart.setPerDiemDaysOffDatesSpanning] Could not set a ${dayCount}-day per-diem days-off range. ` +
+        `The date pickers may not have opened, or the days-off checkbox is not enabled. Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
    * Adds a second per-diem days-off range and sets its dates (35694). Clicks "More days off in the
    * trip", then picks the 2nd available start day and the following day as the end, producing a
    * 2-day range → counter "2". Requires the first range to exist (see `setPerDiemDaysOffDates`).
@@ -1356,6 +1391,56 @@ const Cart = {
         timeout: 30000,
       })
       .toContain('personal days deducted');
+  },
+
+  /**
+   * Verifies the per-diem quote card's total amount equals `expectedAmount` (35703). Waits for the
+   * quote card, then polls the header amount (`.per-diem-quote-card .amount`) until its numeric core
+   * equals the expected value — the amount recalculates after days off are deducted at booking, so it
+   * settles asynchronously once the confirmed quote re-renders. The actual text is reduced to digits
+   * and the decimal point before comparing, so a currency symbol or thousands grouping rendered
+   * alongside the number is tolerated while still catching a genuinely different total like "13000.00"
+   * (mirrors the Testim exact wait on `.per-diem-quote-card .amount` for "3000.00").
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedAmount - Expected quote amount text (e.g. "3000.00").
+   * @returns {Promise<void>}
+   */
+  async verifyPerDiemQuoteAmount(page, expectedAmount) {
+    if (!page) throw new Error('[Cart.verifyPerDiemQuoteAmount] "page" is required.');
+    if (typeof expectedAmount !== 'string' || !expectedAmount.trim()) {
+      throw new Error(
+        `[Cart.verifyPerDiemQuoteAmount] "expectedAmount" must be a non-empty string, got: ${typeof expectedAmount} (${JSON.stringify(expectedAmount)})`,
+      );
+    }
+
+    logger.info('Verifying the per-diem quote amount', { expectedAmount });
+
+    const cartPage = getPageObject(page, CartPage);
+    const card = cartPage.getPerDiemQuoteCard();
+
+    try {
+      await card.waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyPerDiemQuoteAmount] The per-diem quote card was not visible within 60s. ` +
+        `The trip may not contain a per-diem quote, or the cart did not render. Original: ${err.message}`,
+      );
+    }
+
+    const amount = cartPage.getPerDiemQuoteAmount();
+    const expected = expectedAmount.trim();
+
+    // Reduce the rendered text to digits and the decimal point (dropping any currency symbol or
+    // thousands separators) so the compared value is the bare number, then require an exact match.
+    await expect
+      .poll(async () => ((await amount.innerText().catch(() => '')) || '').replace(/[^\d.]/g, ''), {
+        message:
+          `Expected the per-diem quote amount to be "${expected}" within 30s. The amount may not have ` +
+          `recalculated after the days-off deduction, or the quote card did not render its total.`,
+        timeout: 30000,
+      })
+      .toBe(expected);
   },
 
   async verifyFlightSegmentDetails(page, expectedSegments) {

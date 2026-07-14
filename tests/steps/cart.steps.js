@@ -620,6 +620,11 @@ Then("the Per-Diem quote status should be {string}", async function (status) {
   await Cart.verifyPerDiemQuoteStatus(this.page, status);
 });
 
+Then("the Per-Diem quote amount should be {string}", async function (expectedAmount) {
+  logger.info("Verifying the Per-Diem quote amount", { expectedAmount });
+  await Cart.verifyPerDiemQuoteAmount(this.page, expectedAmount);
+});
+
 Then("the Per-Diem quote should not be editable", async function () {
   logger.info("Verifying the Per-Diem quote is not editable");
   await Cart.verifyPerDiemQuoteNotEditable(this.page);
@@ -678,6 +683,11 @@ When("I enable per-diem days off", async function () {
 When("I set the per-diem days off dates", async function () {
   logger.info("Setting the per-diem days off dates");
   await Cart.setPerDiemDaysOffDates(this.page);
+});
+
+When("I set the per-diem days off dates spanning {int} days", async function (dayCount) {
+  logger.info("Setting a single per-diem days off range", { dayCount });
+  await Cart.setPerDiemDaysOffDatesSpanning(this.page, dayCount);
 });
 
 When("I add another per-diem days off range", async function () {

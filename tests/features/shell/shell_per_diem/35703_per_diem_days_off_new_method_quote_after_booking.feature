@@ -19,12 +19,9 @@ Feature: 35703 - Per-Diem days off (new method) quote after booking
     And I filter results by carrier "BA"
     And I add the first flight to cart
     When I proceed to checkout
-    # TODO: enable per-diem days off (create Cart.enablePerDiemDaysOff in src/dsl/Cart.js; Testim waited for ".per-diem-days-off-container .el-checkbox__label" to contain "I have days off" and clicked ".per-diem-days-off-container .el-checkbox__inner")
     And I enable per-diem days off
-    # TODO: set the per-diem days off dates (create Cart.setPerDiemDaysOffDates in src/dsl/Cart.js; Testim picked a start/end date range from the days-off date-pickers)
-    And I set the per-diem days off dates
-    # TODO: confirm days off and proceed (create Cart.confirmPerDiemDaysOff in src/dsl/Cart.js; Testim clicked ".is-hidden-mobile")
-    And I confirm the per-diem days off and proceed to the trip
-    And I click go to trip button
-    # TODO: verify the per-diem quote amount (create Cart.verifyPerDiemQuoteAmount in src/dsl/Cart.js; Testim waited for ".per-diem-quote-card .amount" to contain "3000.00")
+    And I set the per-diem days off dates spanning 2 days
+    Then the first per-diem days off counter should be "2"
+    And I complete the booking
+    And the Per-Diem quote status should be "Confirmed"
     Then the Per-Diem quote amount should be "3000.00"
