@@ -16,9 +16,8 @@ Feature: 35168 - Optional reference fields can be bypassed
   Scenario: Proceed past an optional reference field without filling it
     Given I am logged in as "carolinaferreira@joysettings.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip business flight from "LHR" to "BCN"
-    # TODO: implement step - verify the optional reference field label is displayed
-    Then the reference field "Is this field optional?" is displayed
-    When I click proceed on the reference fields popup
-    # TODO: implement step - verify the flight results are displayed (optional field bypassed)
-    Then the flight search results are displayed
+    When I search for a round trip "Business" class flight from "LHR" to "BCN"
+    Then the following checkout reference fields should be visible:
+    | Is this field optional? |
+    And I click proceed button if visible
+    Then flight results should be available
