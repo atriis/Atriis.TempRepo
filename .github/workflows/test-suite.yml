@@ -87,6 +87,9 @@ jobs:
             suite_name: Rails Daily
             test_path: tests/features/rails/daily_rails/
           # Shell
+          - suite_id: shell-agent-assistance-and-suggestions
+            suite_name: Shell Agent Assistance And Suggestions
+            test_path: tests/features/shell/shell_agent_assistance_and_suggestions/
           - suite_id: shell-conversation
             suite_name: Shell Conversation
             test_path: tests/features/shell/shell_conversation/
@@ -102,6 +105,15 @@ jobs:
           - suite_id: shell-manual-quote
             suite_name: Shell Manual Quote
             test_path: tests/features/shell/shell_manual_quote/
+          - suite_id: shell-per-diem
+            suite_name: Shell Per Diem
+            test_path: tests/features/shell/shell_per_diem/
+          - suite_id: shell-share-quote-or-itinerary
+            suite_name: Shell Share Quote Or Itinerary
+            test_path: tests/features/shell/shell_share_quote_or_itinerary/
+          - suite_id: shell-travel-policy
+            suite_name: Shell Travel Policy
+            test_path: tests/features/shell/shell_travel_policy/
           - suite_id: shell-ui-issues
             suite_name: Shell UI Issues
             test_path: tests/features/shell/shell_ui_issues/
@@ -554,8 +566,10 @@ jobs:
               'flights-aa-ndc-non-booking','flights-afkl-ndc-non-booking','flights-ba-ndc-non-booking',
               'flights-ib-ndc-non-booking','flights-lh-ndc-non-booking','flights-ua-ndc-non-booking',
               'hotels-non-booking','cars-booking','cars-daily','rails-daily',
-              'shell-conversation','shell-fop-issues','shell-frequent-programs','shell-joy-search-defaults',
-              'shell-manual-quote','shell-ui-issues','shell-user-profile',
+              'shell-agent-assistance-and-suggestions','shell-conversation','shell-fop-issues',
+              'shell-frequent-programs','shell-joy-search-defaults','shell-manual-quote',
+              'shell-per-diem','shell-share-quote-or-itinerary','shell-travel-policy',
+              'shell-ui-issues','shell-user-profile',
               'flights-amadeus-booking','flights-general-booking','flights-galileo-booking','flights-sabre-booking',
               'flights-ypsilon-booking','flights-travelfusion-booking',
               'flights-afkl-ndc-booking','flights-ba-ndc-booking','flights-ib-ndc-booking',
