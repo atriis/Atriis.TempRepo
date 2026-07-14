@@ -177,3 +177,12 @@ Then("clicking proceed should show a mandatory field validation error", async fu
     throw new Error("Expected a mandatory field validation error after clicking Proceed, but none was shown");
   }
 });
+
+Then("the dynamic profile field {string} is displayed for {string} travellers", async function (fieldName, travellerCount) {
+  const expectedCount = Number.parseInt(travellerCount, 10);
+  if (!Number.isInteger(expectedCount) || expectedCount < 1) {
+    throw new Error(`Traveller count must be a positive integer, got: "${travellerCount}"`);
+  }
+  logger.info("Verifying dynamic profile field is displayed for travellers at checkout", { fieldName, expectedCount });
+  await DynamicAndReferenceFields.verifyDynamicProfileFieldDisplayedForTravelers(this.page, fieldName, expectedCount);
+});

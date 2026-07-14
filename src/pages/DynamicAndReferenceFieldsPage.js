@@ -33,6 +33,10 @@ const SELECTORS = {
   // `label.label` / `.input-*` container, so label lookups fall back to these when no field matches.
   COLLAPSE_SECTION_HEADER: '.el-collapse-item__header',
   COLLAPSE_SECTION_ITEM: '.el-collapse-item',
+  // Per-traveller dynamic/reference question block at checkout (traveler-reference-field.vue renders
+  // one `section.traveler-questions` inside each passenger's collapse-item under `section.traveler-section`).
+  // Counting these blocks that contain a given field label yields how many travellers show that field.
+  TRAVELER_QUESTIONS: '.traveler-section .traveler-questions',
 };
 
 class DynamicAndReferenceFieldsPage {
@@ -683,6 +687,33 @@ class DynamicAndReferenceFieldsPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Counts how many per-traveller question blocks at checkout show a dynamic profile field with the
+   * given label. Each traveller renders exactly one `section.traveler-questions` (traveler-reference-field.vue),
+   * and a field label appears at most once inside it, so the count of blocks containing that label
+   * equals the number of travellers the field is displayed for. Returns immediately (no wait) so the
+   * caller can poll while the traveller sections finish rendering after "Booking details".
+   *
+   * @param {string} fieldName - The dynamic profile field label (e.g. "DYNA PROF TST")
+   * @returns {Promise<number>} Number of traveller question blocks showing the field
+   */
+  async countTravelerSectionsShowingDynamicField(fieldName) {
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.countTravelerSectionsShowingDynamicField] "fieldName" must be a ` +
+        `non-empty string, got: ${typeof fieldName} (${fieldName})`
+      );
+    }
+    // Case-insensitive substring match: the label concatenates a "*" mandatory marker and "info" icon
+    // text around the field name, and CSS `is-capitalized` does not change the underlying text.
+    const escaped = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const labelRegex = new RegExp(escaped, 'i');
+    return this.page
+      .locator(SELECTORS.TRAVELER_QUESTIONS)
+      .filter({ has: this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: labelRegex }) })
+      .count();
   }
 
 }

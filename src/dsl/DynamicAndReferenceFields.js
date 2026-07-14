@@ -135,6 +135,52 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Verifies that a dynamic profile field is displayed for exactly the expected number of travellers
+   * at checkout. Each guest/traveller renders their own `traveler-questions` block, so the assertion
+   * counts how many blocks show the field and compares to the expected count. Polls while the
+   * per-traveller sections finish rendering after the "Booking details" heading appears, so a second
+   * traveller's section that renders a beat later is not missed.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} fieldName - The dynamic profile field label (e.g. "DYNA PROF TST")
+   * @param {number} expectedCount - How many travellers should show the field (>= 1)
+   * @returns {Promise<void>}
+   */
+  async verifyDynamicProfileFieldDisplayedForTravelers(page, fieldName, expectedCount) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyDynamicProfileFieldDisplayedForTravelers] "page" is required.');
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyDynamicProfileFieldDisplayedForTravelers] "fieldName" must be a ` +
+        `non-empty string, got: ${typeof fieldName} (${fieldName})`
+      );
+    }
+    if (!Number.isInteger(expectedCount) || expectedCount < 1) {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyDynamicProfileFieldDisplayedForTravelers] "expectedCount" must be an ` +
+        `integer >= 1, got: ${typeof expectedCount} (${expectedCount})`
+      );
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const checkoutPage = getPageObject(page, CheckoutPage);
+
+    // Ensure the checkout "Booking details" region is present before polling for traveller sections.
+    await checkoutPage.waitForBookingDetailsText();
+
+    logger.debug('Verifying dynamic profile field displayed for travellers at checkout', { fieldName, expectedCount });
+
+    await expect
+      .poll(async () => dynamicFieldsPage.countTravelerSectionsShowingDynamicField(fieldName), {
+        timeout: 20000,
+        message:
+          `Expected the dynamic profile field "${fieldName}" to be displayed for ${expectedCount} traveller(s) ` +
+          `at checkout, but the number of per-traveller question blocks showing it did not reach ${expectedCount}. ` +
+          `The field may not be inherited for every guest, or the traveller sections did not render.`,
+      })
+      .toBe(expectedCount);
+  },
+
+  /**
    * Fills in a checkout reference field identified by its label text with a given value.
    *
    * @param {import('playwright').Page} page - Playwright page instance

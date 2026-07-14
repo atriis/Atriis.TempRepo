@@ -16,15 +16,13 @@ Feature: 59595 - Multi-pax dynamic profile fields are displayed for both guest t
   Scenario: Dynamic profile fields are displayed for both guest travellers at checkout
     Given I am logged in as "caroldynamics@club.com" booking a new trip
     And I have added a random guest traveler
-    # TODO: implement step - add a second random guest traveller
-    And I have added a second random guest traveler
+    And I have added a random guest traveler
     When I search for a one way flight from "LON" to "MIA"
     When I add the first flight to cart
     When I proceed to checkout
-    # TODO: implement step - verify the checkout booking details page is displayed
-    Then the checkout booking details are displayed
-    # TODO: implement step - verify the dynamic profile fields are displayed for both guest travellers
-    And the dynamic profile field "DYNA PROF TST" is displayed for both guest travellers
-    And the dynamic profile field "DYNAMIC PROFILE FIELDS TESTIM" is displayed for both guest travellers
-    When I open the cart
-    Then I successfully cancel the trip
+    And I wait for booking details in checkout
+    And the dynamic profile field "DYNA PROF TST" is displayed for "2" travellers
+    And the dynamic profile field "DYNAMIC PROFILE FIELDS TESTIM" is displayed for "2" travellers
+    And I navigate to cart from checkout
+    Then the booking status should be "On hold"
+    And I successfully cancel the trip
