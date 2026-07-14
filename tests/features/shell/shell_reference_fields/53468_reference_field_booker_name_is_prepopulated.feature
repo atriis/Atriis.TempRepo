@@ -16,14 +16,14 @@ Feature: 53468 - "Booker Name" reference field is prepopulated
   Scenario: Booker Name reference field is prepopulated at checkout
     Given I am logged in as "jaque@specifictest.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one night hotel in "LON"
-    When I add the first hotel room to cart
-    # TODO: implement step - fill the free-text justification in the cart if the item is out of policy
-    When I fill the free text justification in the cart if needed
+    When I search for a hotel in "LHR" for 1 night
+    And I select the first hotel result
+    And I add a refundable room to my cart
+    And I fill in the OOP justification text "abc"
     When I proceed to checkout
-    # TODO: implement step - verify the "Booker Name" reference field is displayed
-    Then the reference field "Booker Name" is displayed
-    # TODO: implement step - verify the "Booker Name" reference field is prepopulated with the booker's name
-    Then the reference field "Booker Name" shows the value "Jaque Guerreiro"
-    When I open the cart
-    Then I successfully cancel the trip
+    And I wait for booking details in checkout
+    Then the reference fields should have the following values:
+      | field       | value           |
+      | Booker Name | Jaque Guerreiro |
+    And I navigate to cart from checkout
+    And I successfully cancel the trip

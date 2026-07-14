@@ -259,13 +259,17 @@ class DynamicAndReferenceFieldsPage {
    * @returns {Promise<import('playwright').Locator>}
    */
   async fieldContainerByLabel(labelText) {
+    // Scope every match to VISIBLE containers: the reference-field layout renders hidden responsive
+    // duplicates (mobile/desktop), so an unscoped .first() can return an invisible node — the caller's
+    // subsequent waitFor({state:'visible'}) then times out. See per-diem-breakdown-expand-scoping.
     const exactMatches = this.page.locator(SELECTORS.FIELD_CONTAINER).filter({
       has: this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: exactFieldLabelRegex(labelText) }),
+      visible: true,
     });
     if ((await exactMatches.count()) > 0) {
       return exactMatches.first();
     }
-    const substringMatches = this.page.locator(SELECTORS.FIELD_CONTAINER).filter({ hasText: labelText });
+    const substringMatches = this.page.locator(SELECTORS.FIELD_CONTAINER).filter({ hasText: labelText, visible: true });
     if ((await substringMatches.count()) > 0) {
       return substringMatches.first();
     }
@@ -274,6 +278,7 @@ class DynamicAndReferenceFieldsPage {
     // whose header matches the label — its el-select/control still carries the field value.
     return this.page.locator(SELECTORS.COLLAPSE_SECTION_ITEM).filter({
       has: this.page.locator(SELECTORS.COLLAPSE_SECTION_HEADER).filter({ hasText: labelText }),
+      visible: true,
     }).first();
   }
 
@@ -318,6 +323,16 @@ class DynamicAndReferenceFieldsPage {
    * @returns {Promise<string>} The field value
    */
   async getFieldValueByLabel(labelText, { timeout = 5000 } = {}) {
+    // The checkout "General Reference Questions" section mounts a beat AFTER the booking-details
+    // heading, so the field container may not exist yet when this reader runs. Wait for a VISIBLE
+    // container carrying this label to render first — otherwise fieldContainerByLabel snapshots 0
+    // matches and falls through to a fallback locator that never appears (5s visible-timeout).
+    await this.page
+      .locator(SELECTORS.FIELD_CONTAINER)
+      .filter({ hasText: labelText, visible: true })
+      .first()
+      .waitFor({ state: 'visible', timeout: Math.max(timeout, 15000) })
+      .catch(() => {});
     const fieldContainer = await this.fieldContainerByLabel(labelText);
     await fieldContainer.waitFor({ state: 'visible', timeout });
     // Try dropdown: get the visible text from the el-select's control area
