@@ -16,17 +16,13 @@ Feature: 61480 - Multi-pax mandatory free-text dynamic profile field is displaye
   Scenario: Mandatory free-text dynamic profile field is displayed for all three guest travellers
     Given I am logged in as "wiz@dynamictestim.com" booking a new trip
     And I have added a random guest traveler
-    And I have added a second random guest traveler
-    # TODO: implement step - add a third random guest traveller
-    And I have added a third random guest traveler
+    And I have added a random guest traveler
+    And I have added a random guest traveler
     When I search for a one way flight from "LON" to "MIA"
     When I add the first flight to cart
     When I proceed to checkout
-    # TODO: implement step - accept the price change prompt if displayed
-    When I accept the price change prompt if displayed
-    # TODO: implement step - verify the checkout booking details page is displayed
-    Then the checkout booking details are displayed
-    # TODO: implement step - verify the mandatory free-text dynamic profile field is prefilled for all guest travellers
-    And the dynamic profile field shows the value "testim test dont touch" for all guest travellers
-    When I open the cart
-    Then I successfully cancel the trip
+    And I wait for booking details in checkout
+    And the dynamic profile field "testim test dont touch" is displayed for "3" travellers
+    And I navigate to cart from checkout
+    Then the booking status should be "On hold"
+    And I successfully cancel the trip
