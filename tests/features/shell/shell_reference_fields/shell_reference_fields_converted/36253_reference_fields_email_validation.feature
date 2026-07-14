@@ -1,0 +1,37 @@
+# Test Name: 36253 New UI - reference fields - Email validation
+# Description: Fails if office id set to IsTest
+# Status: Active
+# Labels: CR7,Reference Fields,Regression,2026 plan 1
+# Owner: Bruna Santos
+# Created: 2023-09-25T07:36:26Z
+# Updated: 2026-02-17T06:52:15Z
+
+@shell @reference_fields @regression @checkout
+Feature: 36253 - Reference field email validation
+
+  As a booker
+  I want the email reference field to reject invalid emails and accept valid ones
+  So that only well-formed email addresses are stored
+
+  Scenario: Email reference field rejects an invalid email and accepts a valid one
+    Given I am logged in as "email@test.nl" booking a new trip
+    And I have added myself as the traveler
+    When I search for a car in "CPT"
+    When I add the first car to cart
+    When I proceed to checkout
+    # TODO: implement step - verify the "Booker email" reference field is displayed
+    Then the reference field "Booker email" is displayed
+    # TODO: implement step - fill the booker email reference field with an invalid email
+    When I fill the booker email reference field with "email test"
+    # TODO: implement step - attempt to complete the booking to trigger validation
+    When I click the complete booking button
+    # TODO: implement step - verify the email validation error is displayed
+    Then the error "Please use a valid email address" is displayed
+    # TODO: implement step - fill the booker email reference field with a valid email
+    When I fill the booker email reference field with "test.email@gov.nl"
+    # TODO: implement step - was a Testim negative-element-validation; verify the email validation error is no longer displayed
+    Then the email validation error is no longer displayed
+    When I open the cart
+    # TODO: implement step - verify the cart shows the "To pay" amount
+    Then the cart shows the total to pay
+    Then I successfully cancel the trip
