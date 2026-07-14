@@ -172,25 +172,26 @@ class DynamicAndReferenceFieldsPage {
     if (!labelText) throw new Error('labelText is required');
     if (value === undefined || value === null) throw new Error('value is required');
 
-    // Find the label element containing the field name
-    const label = this.page.locator(`text=${labelText}`).first();
-    await label.waitFor({ state: 'visible', timeout });
+    // The checkout reference-field form mounts a beat AFTER "Booking details" and renders hidden
+    // responsive duplicates (mobile/desktop). The old `text=<label>`.first() could lock onto a
+    // not-yet-rendered or invisible copy and then time out waiting for it to become visible — an
+    // intermittent flake. Wait for a VISIBLE container carrying this label to render first, then
+    // resolve the field via the hardened, visible-scoped fieldContainerByLabel (exact-label-first
+    // with substring fallback) — the same approach getFieldValueByLabel / isFieldDisabled use.
+    await this.page
+      .locator(SELECTORS.FIELD_CONTAINER)
+      .filter({ hasText: labelText, visible: true })
+      .first()
+      .waitFor({ state: 'visible', timeout: Math.max(timeout, 15000) })
+      .catch(() => {});
 
-    // Find the closest ancestor article that contains both the label and input
-    const fieldContainer = label.locator('xpath=ancestor::article[1]');
+    const fieldContainer = await this.fieldContainerByLabel(labelText);
+    await fieldContainer.waitFor({ state: 'visible', timeout });
+
+    // Text reference fields render an el-input (.el-input__inner) inside the field container.
     const input = fieldContainer.locator(SELECTORS.INPUT_INNER).first();
-
-    // If no input found in article, try the next sibling approach
-    const inputExists = await input.count();
-    if (inputExists > 0) {
-      await input.scrollIntoViewIfNeeded();
-      await input.fill(value);
-    } else {
-      // Fallback: find input near the label
-      const nearbyInput = label.locator('..').locator(SELECTORS.INPUT_INNER).first();
-      await nearbyInput.scrollIntoViewIfNeeded();
-      await nearbyInput.fill(value);
-    }
+    await input.scrollIntoViewIfNeeded();
+    await input.fill(value);
   }
 
   /**
