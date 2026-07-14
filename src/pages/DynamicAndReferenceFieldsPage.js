@@ -28,6 +28,9 @@ const SELECTORS = {
   FINANCIAL_REFERENCE_MANDATORY_MARKER: '.financial-section span.has-text-danger',
   // Open reference-fields dialog (trip-app.vue el-dialog) used to scope field counts.
   REFERENCE_DIALOG: '.el-dialog:visible',
+  // Footer buttons inside the open reference-fields dialog (trip-app.vue `.app-footer`), e.g.
+  // "Proceed"/"Save" (submit) or "Back"/"Close" (dismiss). Scope by button text at the call site.
+  REFERENCE_DIALOG_FOOTER_BUTTON: '.app-footer button',
   // Collapsible section inside the reference-fields popup (e.g. "Financial Reference"). Some
   // reference "fields" render as a collapse section (title + its own el-select) rather than a
   // `label.label` / `.input-*` container, so label lookups fall back to these when no field matches.
@@ -638,7 +641,7 @@ class DynamicAndReferenceFieldsPage {
     // (cart/checkout) or "Save" (request-assistance Trip Reference Form) depending on config, so match
     // either. Scoping to the visible dialog's footer avoids the per-field/financial sub-component Save.
     const dialog = this.page.locator(SELECTORS.REFERENCE_DIALOG).first();
-    const submit = dialog.locator('.app-footer button').filter({ hasText: /^\s*(Proceed|Save)\s*$/ }).first();
+    const submit = dialog.locator(SELECTORS.REFERENCE_DIALOG_FOOTER_BUTTON).filter({ hasText: /^\s*(Proceed|Save)\s*$/ }).first();
     try {
       await submit.waitFor({ state: 'visible', timeout });
       await submit.click({ timeout });
@@ -649,6 +652,36 @@ class DynamicAndReferenceFieldsPage {
         `The reference-fields popup may not be open. Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Dismisses the open reference-fields popup via its footer Back/Close button, returning to the
+   * previous page (e.g. the new-trip page) WITHOUT proceeding forward. The dismiss button reads
+   * "Close" (trip-app.vue NEW REF footer, shown when `refFieldsOption.isShowBackClose`) or "Back"
+   * (OLD REF footer), so match either. Scoping to the visible dialog's `.app-footer` avoids the
+   * "Proceed"/"Save" submit and any page-level buttons.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async closeReferenceFieldsPopup({ timeout = 15000 } = {}) {
+    const dialog = this.page.locator(SELECTORS.REFERENCE_DIALOG).first();
+    const backButton = dialog
+      .locator(SELECTORS.REFERENCE_DIALOG_FOOTER_BUTTON)
+      .filter({ hasText: /^\s*(Back|Close)\s*$/ })
+      .first();
+    try {
+      await backButton.waitFor({ state: 'visible', timeout });
+      await backButton.click({ timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.closeReferenceFieldsPopup] Could not find/click the reference-popup ` +
+        `Back/Close button in the open dialog's .app-footer within ${timeout}ms. The reference-fields popup ` +
+        `may not be open. Original: ${err.message}`
+      );
+    }
+    // Confirm the dialog dismisses so the underlying new-trip page is interactable for the next action.
+    await dialog.waitFor({ state: 'hidden', timeout }).catch(() => {});
   }
 
   /**

@@ -578,6 +578,20 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Dismisses the open reference-fields popup via its Back/Close button, returning to the new-trip
+   * page without proceeding. Used when the traveller set must be changed (e.g. adding a guest) before
+   * re-running the search. Follow with an "add traveller" step and a fresh search.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async closeReferenceFieldsPopup(page) {
+    if (!page) throw new Error('page is required');
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    await dynamicFieldsPage.closeReferenceFieldsPopup();
+  },
+
+  /**
    * Verifies that all specified field labels are visible in the reference fields popup.
    * @param {import('playwright').Page} page
    * @param {string[]} labels - Array of label texts to check

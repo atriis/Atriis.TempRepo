@@ -56,6 +56,15 @@ When("I add an empty traveler slot", async function () {
   await Search.addEmptyTravelerSlot(this.page);
 });
 
+// Waits for BOTH traveller names to render on the search form before re-searching. After adding a
+// guest the trip has two travellers (self + guest); the Search button stays enabled from the prior
+// search, so it must not be clicked until the newly added (randomly named) guest is committed —
+// otherwise the search runs without that traveller and its reference fields never load.
+When("I wait for the traveler name to be displayed", async function () {
+  logger.info("Waiting for both traveler names to be displayed on the search form");
+  await Search.waitForTravelerNameDisplayed(this.page, 2);
+});
+
 // ===== THEN STEPS =====
 
 Then("the traveler name {string} should be visible in the travelers list", async function (name) {

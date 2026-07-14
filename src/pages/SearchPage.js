@@ -69,7 +69,10 @@ const SELECTORS = {
   FIRST_TRAVELER_OPTION: "[id*='item-0']",
   TRIP_TRAVELER_TAG: ".trip-traveler-tag",
   SELECTED_TRAVELER_NAME: '.trip-traveler-tag .traveler-name.black',
-  EDIT_TRAVELER_MODAL: '.el-dialog.app-dialog',
+  // Scope to the VISIBLE app-dialog: the reference-fields popup (trip-app.vue, append-to-body
+  // `.el-dialog.app-dialog`) lingers HIDDEN in the DOM after being dismissed, and being appended
+  // last it would otherwise win `.last()` over the actually-open add-traveller dialog.
+  EDIT_TRAVELER_MODAL: '.el-dialog.app-dialog:visible',
   EDIT_TRAVELER_MODAL_CLOSE_BUTTON: '.el-dialog__headerbtn',
   EDIT_TRAVELER_DIALOG: '.edit-traveler',
   ADD_GUEST_TRAVELER_BUTTON: '.edit-traveler .add-guest-btn',
@@ -291,6 +294,39 @@ class SearchPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Waits until at least `minCount` traveller name chips are rendered with non-empty text. The
+   * Search button stays enabled from a prior search, so it can be clicked before a freshly added
+   * (randomly named) traveller is committed to the search form — searching without that traveller.
+   * Checking only the last chip is not enough: a previously added traveller's chip already satisfies
+   * it, so the wait must assert the expected NUMBER of named travellers before the next search.
+   * Names are random, so this only checks that names are present, not their values.
+   *
+   * @param {number} minCount - Minimum number of named traveller chips to wait for.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async waitForTravelerNamesDisplayed(minCount, { timeout = 15000 } = {}) {
+    if (!Number.isInteger(minCount) || minCount < 1) {
+      throw new Error(`minCount must be a positive integer, got: ${minCount}`);
+    }
+    await this.page.locator(SELECTORS.SELECTED_TRAVELER_NAME).first().waitFor({ state: 'visible', timeout });
+    await this.page.waitForFunction(
+      ({ selector, expected }) => {
+        // Count only VISIBLE named chips: the app renders hidden responsive-duplicate chips, and a
+        // hidden duplicate of an earlier traveller must not satisfy the count (display:none => no
+        // client rects), or the wait would pass before the newly added traveller actually renders.
+        const named = Array.from(document.querySelectorAll(selector)).filter(
+          (n) => n.getClientRects().length > 0 && n.textContent && n.textContent.trim().length > 0
+        );
+        return named.length >= expected;
+      },
+      { selector: SELECTORS.SELECTED_TRAVELER_NAME, expected: minCount },
+      { timeout }
+    );
   }
 
   /**

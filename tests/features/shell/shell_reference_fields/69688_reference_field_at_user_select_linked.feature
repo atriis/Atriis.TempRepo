@@ -17,12 +17,12 @@ Feature: 69688 - "At User Select" linked reference field
     Given I am logged in as "Pini@tlgtest.im" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "lon" to "mad"
-    # TODO: implement step - verify the linked reference field for the profiled traveller is displayed
-    Then the reference field "Reference Field - At User Select- par exist" is displayed
-    When I click proceed on the reference fields popup
-    # TODO: implement step - add a guest traveller with full personal and contact details
-    When I add a guest traveller "Israel Yakov Israeli"
-    # TODO: implement step - run the flight search again after adding the guest
-    When I search for the flight again
-    # TODO: implement step - verify the linked reference field for the guest traveller is displayed
-    Then the reference field "Reference Field - At User Select- par not exist" is displayed
+    Then the following checkout reference fields should be visible:
+    | Reference Field - At User Select- par exist |
+    When I click the back button
+    And I have added a random guest traveler
+    And I wait for the traveler name to be displayed
+    And I search for a one way flight from "lon" to "mad"
+    Then the following checkout reference fields should be visible:
+    | Reference Field - At User Select- par exist |
+    | Reference Field - At User Select- par not exist |

@@ -18,6 +18,7 @@ const App = require("@dsl/App");
 const FlightPricing = require("@dsl/FlightPricing");
 const Cart = require("@dsl/Cart");
 const FlightResults = require("@dsl/FlightResults");
+const DynamicAndReferenceFields = require("@dsl/DynamicAndReferenceFields");
 const logger = require("@utils/logger").child("Common");
 
 setDefaultTimeout(120000);
@@ -357,6 +358,13 @@ When("I click proceed button if visible", async function () {
   logger.info("Attempting to click Proceed button if visible");
   const commonPage = getPageObject(this.page, CommonPage);
   await commonPage.clickProceedButtonIfVisible();
+});
+
+// Dismisses the open reference-fields popup via its Back/Close button, returning to the new-trip page
+// without proceeding. Use when the traveller set must change (e.g. adding a guest) before re-searching.
+When("I click the back button", async function () {
+  logger.info("Clicking the back button to dismiss the reference fields popup");
+  await DynamicAndReferenceFields.closeReferenceFieldsPopup(this.page);
 });
 
 // Scrolls the travel-request form to the bottom to reveal content below the fold (e.g. the hotel

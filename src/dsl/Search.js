@@ -193,6 +193,22 @@ const Search = {
   },
 
   /**
+   * Waits for at least `minCount` traveller names to be displayed on the search form. Use before
+   * re-running a search after adding a traveller: the Search button stays enabled from the prior
+   * search, so clicking it too early searches without the new (randomly named) traveller. Pass the
+   * total expected traveller count (e.g. 2 for self + one guest) so the wait gates on the NEW one.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {number} [minCount=1] - Total number of named travellers expected before searching.
+   * @returns {Promise<void>}
+   */
+  async waitForTravelerNameDisplayed(page, minCount = 1) {
+    if (!page) throw new Error('page is required');
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.waitForTravelerNamesDisplayed(minCount);
+  },
+
+  /**
    * Validates that the search title contains specific text.
    * @param {Object} page - Playwright page instance
    * @param {string} text - Expected text in search title
