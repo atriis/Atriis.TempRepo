@@ -32,6 +32,16 @@ class CustomWorld extends World {
       permissions: ["clipboard-read", "clipboard-write"],
     });
 
+    // Start tracing so the After hook's tracing.stop() has something to flush.
+    // A trace is recorded by the browser process and survives a hung/crashed
+    // renderer, so it's the debugging artifact that works even when the
+    // failure screenshot times out. Gated on CI to match the CI-only
+    // tracing.stop() in the After hook — locally it would only ever be
+    // recorded and discarded.
+    if (process.env.CI) {
+      await this.context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+    }
+
     this.page = await this.context.newPage();
   }
 

@@ -66,7 +66,15 @@ After(async function (scenario) {
   const failed = scenario.result?.status === Status.FAILED;
 
   try {
-    const screenshot = await this.page.screenshot({ fullPage: true });
+    // Viewport-only (not fullPage): fullPage forces a resize-to-full-height
+    // rasterization that stalls past the 30s default in headless CI, especially
+    // on tall results pages or when the scenario failed mid-load. animations:
+    // "disabled" cancels running spinners so the capture can settle; the short
+    // timeout fails fast instead of blocking teardown for 30s.
+    const screenshot = await this.page.screenshot({
+      animations: "disabled",
+      timeout: 10000,
+    });
     const screenshotsDir = path.join("test-results", "screenshots");
     if (!fs.existsSync(screenshotsDir)) {
       fs.mkdirSync(screenshotsDir, { recursive: true });
