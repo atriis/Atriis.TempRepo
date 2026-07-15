@@ -1873,6 +1873,38 @@ const Cart = {
   },
 
   /**
+   * Opens the OOP justification dropdown, selects the first available option, and saves.
+   * Business-level action for OOP flows where the justification is a dropdown whose
+   * options are defined per policy/environment. The specific option text is not
+   * asserted — the flow only needs a valid justification selected so checkout can
+   * proceed (mirrors the original guest-booking flow, which picks the first option).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{selectedOption: string}>}
+   */
+  async selectFirstOOPJustificationOptionAndSave(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForJustificationDropdownVisible();
+
+    const dropdown = cartPage.getJustificationDropdown();
+    await dropdown.scrollIntoViewIfNeeded({ timeout: 10000 });
+    await cartPage.openJustificationDropdown();
+
+    const options = cartPage.getAllVisibleJustificationOptions();
+    await options.first().waitFor({ state: 'visible', timeout: 10000 });
+
+    const selectedOption = await cartPage.selectFirstVisibleJustificationOption();
+    await cartPage.saveOOPJustificationText();
+    await cartPage.waitForSaveJustificationButtonHidden();
+
+    return { selectedOption };
+  },
+
+  /**
    * Opens the OOP justification dropdown and verifies the number of available options.
    *
    * @param {import('playwright').Page} page

@@ -247,6 +247,12 @@ When("I select OOP justification option {string} from the open dropdown", async 
   await Cart.selectOpenOOPJustificationDropdownOptionAndSave(this.page, option);
 });
 
+When("I select the first OOP justification option and save", async function () {
+  logger.info("Selecting the first OOP justification option and saving");
+  const { selectedOption } = await Cart.selectFirstOOPJustificationOptionAndSave(this.page);
+  logger.info("Saved OOP justification option", { selectedOption });
+});
+
 When("I open the OOP justification dropdown and verify there are {int} options", async function (count) {
   logger.info("Opening OOP justification dropdown and verifying option count", { count });
   await Cart.openJustificationDropdownAndVerifyCount(this.page, count);

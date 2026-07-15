@@ -17,17 +17,16 @@ Feature: 31006 - Dynamic profile fields are not shown for a guest without the TM
     Given I am logged in as "brunajuliana@sabretlcfaketest.com" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "LON" to "DOH"
-    # TODO: implement step - answer the reference fields and proceed
-    When I answer the guest reference fields and proceed
+    And I select the trip purpose as "BILLABLE" and proceed
     When I add the first flight to cart
-    # TODO: implement step - select the dropdown justification in the cart if the item is out of policy
-    When I select the justification in the cart if needed
+    And the booking status should be "Pending booking"
+    And I select the first OOP justification option and save
     When I proceed to checkout
-    # TODO: implement step - verify the checkout booking details page is displayed
-    Then the checkout booking details are displayed
-    # TODO: implement step - was a Testim negative-element-validation; verify the dynamic profile fields are not shown for the guest
-    And the dynamic profile fields are not displayed for the guest
-    When I open the cart
-    # TODO: implement step - verify the quote status is "On hold"
-    Then the quote status is "On hold"
-    Then I successfully cancel the trip
+    And I wait for booking details in checkout
+    Then the following checkout reference fields should not be visible:
+    | DYN Checkout Sabre General Rm Corp |
+    | DYN Profile Sabre General Rm Corp |
+    | Employee ID |
+    And I navigate to cart from checkout
+    Then the booking status should be "On hold"
+    And I successfully cancel the trip

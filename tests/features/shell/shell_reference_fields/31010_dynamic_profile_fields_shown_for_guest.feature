@@ -18,14 +18,12 @@ Feature: 31010 - Dynamic profile fields are shown for a guest when the TMC has t
     And I have added a random guest traveler
     When I search for a one way flight from "LIS" to "NYC"
     When I add the first flight to cart
+    And the booking status should be "Pending booking"
     When I proceed to checkout
-    # TODO: implement step - verify the "Travellers Reference Questions" section is displayed
-    Then the "Travellers Reference Questions" reference section is displayed
-    # TODO: implement step - verify the guest dynamic profile fields are displayed at checkout
-    And the dynamic profile field "DYNA PROF TST" is displayed
-    And the dynamic profile field "DYNAMIC PROFILE FIELDS TESTIM" is displayed
-    When I open the cart
-    # TODO: implement step - verify the quote status is "On hold"
-    Then the quote status is "On hold"
-    # TODO: implement step - cancel the quote from the cart after checkout
-    Then I cancel the quote from the cart
+    And I wait for booking details in checkout
+    Then the following checkout reference fields should be visible:
+    | DYNA PROF TST |
+    | DYNAMIC PROFILE FIELDS TESTIM |
+    And I navigate to cart from checkout
+    Then the booking status should be "On hold"
+    And I successfully cancel the trip
