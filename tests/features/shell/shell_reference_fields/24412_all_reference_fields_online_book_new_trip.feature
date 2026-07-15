@@ -15,14 +15,9 @@ Feature: 24412 - All reference fields on the new-trip stage during online bookin
 
   Scenario: Reference and dynamic fields are displayed on the new-trip reference popup
     Given I am logged in as "Rf@testim.nl" booking a new trip
-    # TODO: implement step - verify the new trip is ready to search (star icon visible)
-    Then the new trip is ready to search
-    # TODO: implement step - search for a one night hotel stay in the given destination
-    When I search for a one night hotel in "London, UK"
-    # TODO: implement step - verify the reference field label is displayed on the new-trip reference popup
-    Then the reference field "New trip rf" is displayed
-    # TODO: implement step - verify the dynamic field label is displayed on the new-trip reference popup
-    And the dynamic field "search dyn" is displayed
-    When I click proceed on the reference fields popup
-    # TODO: implement step - verify the hotel search results are displayed (Sort by)
-    Then the hotel search results are displayed
+    When I initiate a hotel search in "London" for 1 night
+    Then the reference fields popup should show the following labels:
+    | New Trip Rf |
+    | Search dyn |
+    And I click proceed on the reference fields popup
+    And I wait to see view rates text in results page
