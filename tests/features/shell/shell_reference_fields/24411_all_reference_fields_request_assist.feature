@@ -15,11 +15,8 @@ Feature: 24411 - All reference fields in the request assistance stage
 
   Scenario: All reference fields are displayed during a hotel request assistance
     Given I am logged in as "Rf@testim.nl" booking a new trip
-    # TODO: implement step - open hotel request-assistance tab, enter destination, pick check-in/out dates, search
-    When I request assistance for a hotel in "London,United Kingdom,(LON)"
-    # TODO: implement step - click the primary submit/continue button that opens the request-assistance reference-fields stage
-    And I submit the request assistance
-    # TODO: implement step - was a Testim html-attr-validation (not exportable); assert every configured reference field is present (poll; values settle after render)
-    Then all reference fields are displayed in the request assistance stage
-    # TODO: implement step - close the request assistance dialog
-    And I close the request assistance dialog
+    And I search for a hotel in "LON" for 1 night without clicking search button
+    And I click the request assistance icon
+    And I click the send request button
+    Then the reference fields popup should show the following labels:
+    | New Trip Rf |
