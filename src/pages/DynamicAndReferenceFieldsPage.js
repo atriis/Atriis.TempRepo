@@ -40,6 +40,10 @@ const SELECTORS = {
   // one `section.traveler-questions` inside each passenger's collapse-item under `section.traveler-section`).
   // Counting these blocks that contain a given field label yields how many travellers show that field.
   TRAVELER_QUESTIONS: '.traveler-section .traveler-questions',
+  // One field label per configured general reference field, in admin-configured order: the
+  // general-reference-field component renders `.general-questions` with one `<article>` per field
+  // (v-for over generalQuestions), each carrying a single `label.label` (FIELD_LABEL).
+  GENERAL_QUESTIONS_LABEL: '.general-questions article label.label',
 };
 
 class DynamicAndReferenceFieldsPage {
@@ -791,6 +795,27 @@ class DynamicAndReferenceFieldsPage {
       .count();
   }
 
+  /**
+   * Reads the general reference-field question labels shown in the request-assistance reference-fields
+   * popup, in DOM (admin-configured) order. The general-reference-field component renders the
+   * `.general-questions` section with one `<article>` per configured field (v-for over generalQuestions),
+   * so article order IS the admin-configured order. Every field type (textbox/checkbox/dropdown/
+   * autocomplete/textarea) renders exactly one `label.label` per article, so one label per article is
+   * read reliably. Scopes to VISIBLE labels to skip the hidden responsive duplicate the reference-fields
+   * layout renders. Each label's leading "*" mandatory marker and trailing "info" tooltip-icon text are
+   * stripped so the returned labels are the clean question texts.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<string[]>} Clean field labels in display order
+   */
+  async getGeneralReferenceFieldLabelsInOrder({ timeout = 30000 } = {}) {
+    const labels = this.page.locator(SELECTORS.GENERAL_QUESTIONS_LABEL).filter({ visible: true });
+    await labels.first().waitFor({ state: 'visible', timeout });
+    const rawTexts = await labels.allInnerTexts();
+    return rawTexts.map((t) => cleanReferenceLabelText(t)).filter((t) => t.length > 0);
+  }
+
 }
 
 /**
@@ -806,6 +831,26 @@ class DynamicAndReferenceFieldsPage {
 function exactFieldLabelRegex(labelText) {
   const escaped = labelText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp('^\\s*\\*?\\s*' + escaped + '\\s*(?:info)?\\s*$', 'i');
+}
+
+/**
+ * Cleans the raw innerText of a reference-field `label.label` for order comparison: collapses
+ * newlines/whitespace, strips the leading "*" mandatory marker, and strips the trailing "info"
+ * tooltip-icon text the label concatenates (see input-checkbox.vue). Returns the bare question text.
+ *
+ * @param {string} text - Raw label innerText (e.g. "*\nDo you need a check in bag?\ninfo")
+ * @returns {string} Clean question text (e.g. "Do you need a check in bag?")
+ */
+function cleanReferenceLabelText(text) {
+  // Mirrors exactFieldLabelRegex's marker handling: strip the leading "*" mandatory marker and the
+  // trailing "info" tooltip-icon glyph the label concatenates. The DSL comparison is contains-based,
+  // so this strip is cosmetic (cleaner returned labels + error messages) — a label genuinely ending
+  // in the word "info" would over-strip, matching the accepted repo-wide convention for this quirk.
+  return (text || '')
+    .replace(/\s+/g, ' ')
+    .replace(/^\s*\*\s*/, '')
+    .replace(/\s*info\s*$/i, '')
+    .trim();
 }
 
 module.exports = DynamicAndReferenceFieldsPage;

@@ -793,6 +793,74 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Verifies that the request-assistance reference fields are displayed in the given order, matching
+   * the admin-configured field order. Reads the general-questions field labels in DOM order (which is
+   * the configured order) and asserts each expected label appears at its expected position. Polls
+   * because the labels settle a beat after the reference-fields popup opens. Uses a case-insensitive
+   * contains match per position so a trailing tooltip marker or minor punctuation does not cause a
+   * false order failure; missing/reordered fields still fail with a full expected-vs-actual listing.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string[]} expectedLabels - Field labels in the expected (admin-configured) order
+   * @returns {Promise<void>}
+   */
+  async verifyReferenceFieldOrder(page, expectedLabels) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyReferenceFieldOrder] "page" is required.');
+    if (!Array.isArray(expectedLabels) || expectedLabels.length === 0) {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyReferenceFieldOrder] "expectedLabels" must be a non-empty array, got: ${typeof expectedLabels}`
+      );
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+
+    logger.debug('Verifying request-assistance reference-field order', { expectedLabels });
+
+    // The general-questions articles render in configured order, but their labels settle a beat after
+    // the reference-fields popup opens — poll until at least the expected number of labels rendered.
+    await expect
+      .poll(async () => (await dynamicFieldsPage.getGeneralReferenceFieldLabelsInOrder().catch(() => [])).length, {
+        timeout: 30000,
+        message:
+          `[DynamicAndReferenceFields.verifyReferenceFieldOrder] Expected at least ${expectedLabels.length} ` +
+          `reference field(s) to render in the request-assistance popup, but fewer appeared. The popup may not ` +
+          `have opened after sending the request, or the reference fields did not render.`,
+      })
+      .toBeGreaterThanOrEqual(expectedLabels.length);
+
+    const actualOrder = await dynamicFieldsPage.getGeneralReferenceFieldLabelsInOrder();
+
+    const expectedList = expectedLabels.map((l, i) => `  ${i + 1}. ${l}`).join('\n');
+    const actualList = actualOrder.map((l, i) => `  ${i + 1}. ${l}`).join('\n');
+
+    // Strict count: the popup must show EXACTLY the expected fields. Without this, an extra field
+    // appended AFTER the last expected position would slip past the position-by-position check below
+    // (which only inspects positions 1..N). A field removed BEFORE position N is already caught by the
+    // poll above never reaching N.
+    expect(
+      actualOrder.length,
+      `[DynamicAndReferenceFields.verifyReferenceFieldOrder] Expected exactly ${expectedLabels.length} ` +
+      `request-assistance reference field(s), but found ${actualOrder.length}.\n` +
+      `Expected order:\n${expectedList}\nActual order:\n${actualList}`
+    ).toBe(expectedLabels.length);
+
+    const normalize = (s) => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const mismatches = [];
+    expectedLabels.forEach((expected, i) => {
+      const actual = actualOrder[i] || '';
+      if (!normalize(actual).includes(normalize(expected))) {
+        mismatches.push(`  position ${i + 1}: expected "${expected}", got "${actual || '(missing)'}"`);
+      }
+    });
+
+    expect(
+      mismatches.length,
+      `[DynamicAndReferenceFields.verifyReferenceFieldOrder] Request-assistance reference fields are not in the ` +
+      `admin-configured order.\nExpected order:\n${expectedList}\nActual order:\n${actualList}\nMismatches:\n${mismatches.join('\n')}`
+    ).toBe(0);
+  },
+
+  /**
    * Selects the first available Financial Reference code from the modal
    * (cart.financialReferenceModal) that appears after clicking "Proceed to checkout"
    * when the user has financialReferenceCodes configured.

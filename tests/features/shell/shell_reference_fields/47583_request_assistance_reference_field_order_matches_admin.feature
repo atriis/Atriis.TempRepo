@@ -16,11 +16,7 @@ Feature: 47583 - Request assistance reference field order matches admin configur
   Scenario: Reference fields are displayed in the admin-configured order in request assistance
     Given I am logged in as "brunaref@reffields.com" booking a new trip
     And I have added myself as the traveler
-    # TODO: implement step - open the request assistance form
-    When I open the request assistance form
-    # TODO: implement step - fill and send the request assistance form (origin, destination, trip type, dates)
-    When I fill and send the request assistance form from "lisbon" to "tlv"
-    # TODO: implement step - verify the reference fields appear in the admin-configured order
+    When I send a flight travel request from "LIS" to "TLV"
     Then the request assistance reference fields are displayed in the following order:
       | Cost Centre |
       | Region Code |

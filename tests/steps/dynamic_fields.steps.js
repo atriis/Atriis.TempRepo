@@ -107,6 +107,12 @@ Then("the reference fields popup should show the following labels:", async funct
   }
 });
 
+Then("the request assistance reference fields are displayed in the following order:", async function (dataTable) {
+  const expectedOrder = dataTable.raw().map(row => row[0]);
+  logger.info("Verifying request-assistance reference fields display order", { expectedOrder });
+  await DynamicAndReferenceFields.verifyReferenceFieldOrder(this.page, expectedOrder);
+});
+
 Then("the following checkout reference fields should be visible:", async function (dataTable) {
   const labels = dataTable.raw().map(row => row[0]);
   logger.info("Verifying checkout reference field labels are visible", { labels });
