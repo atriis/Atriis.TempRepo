@@ -151,7 +151,7 @@ jobs:
 
       - name: Run ${{ matrix.suite_name }} Tests
         timeout-minutes: 60
-        run: npx cucumber-js ${{ matrix.test_path }} --parallel 4 --retry 2
+        run: npx cucumber-js ${{ matrix.test_path }} --profile ci --parallel 4 --retry 2
         env:
           CI: "true"
 
@@ -269,7 +269,7 @@ jobs:
 
       - name: Run ${{ matrix.suite_name }} Tests
         timeout-minutes: ${{ matrix.step_timeout_minutes || 80 }}
-        run: npx cucumber-js ${{ matrix.test_path }} --parallel 2 --retry 2
+        run: npx cucumber-js ${{ matrix.test_path }} --profile ci --parallel 2 --retry 2
         env:
           CI: "true"
 
