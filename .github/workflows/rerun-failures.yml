@@ -1,0 +1,141 @@
+name: Rerun Failed Tests
+
+# Automatically re-runs ONLY the scenarios that failed in a scheduled "Test Suite"
+# run, 5 minutes after that run completes. The failing scenarios come from the
+# per-suite rerun.txt files (Cucumber's `rerun` formatter, configured in
+# cucumber.js) that Test Suite uploads as `<suite_id>-rerun` artifacts. rerun.txt
+# lists only scenarios that failed EVERY attempt, so the in-run `--retry 2` has
+# already filtered out transient flakes — this pass is a clean, isolated retry.
+
+on:
+  workflow_run:
+    workflows: ["Test Suite"]
+    types: [completed]
+
+# Need actions:read to download artifacts from the triggering run, and
+# checks:write so the rerun's own results can be published later if desired.
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+# Keep reruns for the same source run from stacking up.
+concurrency:
+  group: rerun-failures-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  rerun-failures:
+    name: Rerun Failed Scenarios
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    # Only after a SCHEDULED Test Suite run that actually FAILED (i.e. there are
+    # failures worth rerunning). Manual (workflow_dispatch) runs are ignored.
+    if: >
+      github.event.workflow_run.event == 'schedule' &&
+      github.event.workflow_run.conclusion == 'failure'
+    steps:
+      - name: Wait 5 minutes before rerun
+        run: sleep 300
+
+      # Check out the EXACT commit the scheduled run used so the feature:line
+      # references in rerun.txt still point at the right scenarios.
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: mkdir -p test-results test-results/screenshots
+
+      - name: Load environment variables
+        uses: ./.github/actions/load-env-from-secret
+        with:
+          env-file-content: ${{ secrets.ENV }}
+
+      # Pull the per-suite rerun.txt artifacts produced by the failed run.
+      - name: Download rerun files from the failed run
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: '*-rerun'
+          path: rerun-artifacts
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      # Merge every suite's rerun.txt into one list. `awk 1` normalises trailing
+      # newlines so two files never splice a `feature:3` + `feature:5` together;
+      # the sed drops blank lines left by suites that had no failures.
+      - name: Build combined rerun list
+        id: combine
+        shell: bash
+        run: |
+          mkdir -p test-results
+          : > test-results/rerun-combined.txt
+          if [ -d rerun-artifacts ]; then
+            find rerun-artifacts -name 'rerun.txt' -type f -exec awk 1 {} + \
+              | sed '/^[[:space:]]*$/d' > test-results/rerun-combined.txt || true
+          fi
+          count=$(grep -c . test-results/rerun-combined.txt || true)
+          echo "count=${count:-0}" >> "$GITHUB_OUTPUT"
+          echo "Found ${count:-0} failed scenario(s) to rerun:"
+          cat test-results/rerun-combined.txt || true
+
+      - name: Rerun failed scenarios
+        if: steps.combine.outputs.count != '0'
+        run: npx cucumber-js @test-results/rerun-combined.txt --profile ci --parallel 2 --retry 1
+        env:
+          CI: "true"
+
+      - name: Nothing to rerun
+        if: steps.combine.outputs.count == '0'
+        run: echo "No failed-scenario rerun files found in the source run — nothing to rerun."
+
+      - name: Upload Rerun JUnit Results
+        if: always() && steps.combine.outputs.count != '0'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rerun-results
+          path: test-results/cucumber-junit.xml
+          if-no-files-found: ignore
+
+      - name: Upload Rerun Cucumber Report
+        if: always() && steps.combine.outputs.count != '0'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rerun-report
+          path: test-results/cucumber-report.json
+          if-no-files-found: ignore
+
+      - name: Upload Rerun Screenshots
+        if: always() && steps.combine.outputs.count != '0'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rerun-screenshots
+          path: test-results/screenshots/
+          if-no-files-found: ignore
+
+      - name: Post Rerun Summary
+        if: always()
+        shell: bash
+        run: |
+          echo "## 🔁 Failure Rerun" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Triggered by Test Suite run [#${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }}) (\`${{ github.event.workflow_run.conclusion }}\`)." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Failed scenarios rerun: **${{ steps.combine.outputs.count }}**" >> "$GITHUB_STEP_SUMMARY"

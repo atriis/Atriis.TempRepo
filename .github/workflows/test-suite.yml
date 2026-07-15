@@ -163,6 +163,16 @@ jobs:
           path: test-results/cucumber-junit.xml
           if-no-files-found: ignore
 
+      # rerun.txt lists scenarios that failed EVERY attempt (respects --retry).
+      # Consumed by rerun-failures.yml to auto-run only the failures 5 min later.
+      - name: Upload ${{ matrix.suite_name }} Rerun File
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.suite_id }}-rerun
+          path: test-results/rerun.txt
+          if-no-files-found: ignore
+
       - name: Upload ${{ matrix.suite_name }} Cucumber Report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -279,6 +289,16 @@ jobs:
         with:
           name: ${{ matrix.suite_id }}-results
           path: test-results/cucumber-junit.xml
+          if-no-files-found: ignore
+
+      # rerun.txt lists scenarios that failed EVERY attempt (respects --retry).
+      # Consumed by rerun-failures.yml to auto-run only the failures 5 min later.
+      - name: Upload ${{ matrix.suite_name }} Rerun File
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.suite_id }}-rerun
+          path: test-results/rerun.txt
           if-no-files-found: ignore
 
       - name: Upload ${{ matrix.suite_name }} Cucumber Report
