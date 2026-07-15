@@ -170,6 +170,11 @@ Then("the custom error {string} should be displayed below the {string} reference
   await DynamicAndReferenceFields.verifyReferenceFieldCustomError(this.page, expectedError, fieldName);
 });
 
+Then("no validation error is triggered for the reference field", async function () {
+  logger.info("Verifying no validation error is triggered for the reference field");
+  await DynamicAndReferenceFields.verifyNoReferenceFieldValidationError(this.page);
+});
+
 Then("clicking proceed should show a mandatory field validation error", async function () {
   logger.info("Clicking proceed to verify mandatory field validation error");
   const errorVisible = await DynamicAndReferenceFields.clickProceedAndVerifyMandatoryError(this.page);

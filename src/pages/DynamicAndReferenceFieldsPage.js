@@ -401,6 +401,32 @@ class DynamicAndReferenceFieldsPage {
   }
 
   /**
+   * Collects the text of every VALIDATION_ERROR message ('.form-validation-msg .help') currently
+   * VISIBLE on the page. This is the negative-assertion counterpart to isValidationErrorVisible(),
+   * which only inspects .first() — a hidden responsive duplicate rendered first can make that method
+   * report "not visible" while a real error shows further down, the wrong basis for a "no error"
+   * check. Reference/dynamic fields render <form-validation-msg type="error"> under a v-if that is
+   * only true while the field is invalid (see input-textbox.vue), so an empty result means no field
+   * is in an error state. The empty-text guard drops any icon-only/placeholder node defensively.
+   *
+   * @param {object} [options]
+   * @param {number} [options.settleMs=1000] - Grace period to let any late-rendering validation
+   *   surface before snapshotting, so a negative assertion does not pass prematurely.
+   * @returns {Promise<string[]>} Trimmed text of each visible validation error (empty if none)
+   */
+  async getVisibleValidationErrors({ settleMs = 1000 } = {}) {
+    if (settleMs > 0) await this.page.waitForTimeout(settleMs);
+    const errors = this.page.locator(SELECTORS.VALIDATION_ERROR).filter({ visible: true });
+    const count = await errors.count();
+    const texts = [];
+    for (let i = 0; i < count; i++) {
+      const text = (await errors.nth(i).innerText()).trim();
+      if (text) texts.push(text);
+    }
+    return texts;
+  }
+
+  /**
    * Waits for the financial-reference el-select to be visible.
    * @param {object} [options]
    * @param {number} [options.timeout=15000]

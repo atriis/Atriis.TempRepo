@@ -19,14 +19,9 @@ Feature: 55092 - Reference field does not error when text contains spaces
     When I search for a one way flight from "LIS" to "MIA"
     When I add the first flight to cart
     When I proceed to checkout
-    # TODO: implement step - verify the business reference field is displayed at checkout
-    Then the reference field "business" is displayed
-    # TODO: implement step - fill the reference field with a value containing spaces
-    When I fill the reference field with "test with spaces"
-    # TODO: implement step - was a Testim negative-element-validation; verify no validation error is triggered for text with spaces
+    And I wait for booking details in checkout
+    And I fill in the "Add Business Reason Or Customer Name" reference field with "test with spaces"
     Then no validation error is triggered for the reference field
-    When I open the cart
-    # TODO: implement step - verify the quote status is "On hold"
-    Then the quote status is "On hold"
-    # TODO: implement step - cancel the quote from the cart after checkout
-    Then I cancel the quote from the cart
+    And I navigate to cart from checkout
+    Then the booking status should be "On hold"
+    And I successfully cancel the trip

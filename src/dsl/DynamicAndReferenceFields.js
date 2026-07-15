@@ -754,6 +754,29 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Verifies that NO validation error is triggered for the reference field after a value is entered.
+   * Regression guard for test 55092: reference-field text that contains spaces must not raise a
+   * false "This field is required" error. Fails, listing the offending message(s), if any validation
+   * error is visible.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async verifyNoReferenceFieldValidationError(page) {
+    if (!page) throw new Error('page is required');
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const errors = await dynamicFieldsPage.getVisibleValidationErrors();
+
+    logger.debug('Checked for reference-field validation errors', { errors });
+    expect(
+      errors,
+      `Expected no validation error to be triggered for the reference field after entering text, ` +
+      `but found: ${errors.join(' | ')}`
+    ).toHaveLength(0);
+  },
+
+  /**
    * Waits for the reference fields popup Proceed button to be visible and clicks it.
    * Use when the popup appears and all required fields are already pre-filled,
    * so no field selection is needed — just dismiss the popup to continue.
