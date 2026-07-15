@@ -44,6 +44,15 @@ const SELECTORS = {
   // general-reference-field component renders `.general-questions` with one `<article>` per field
   // (v-for over generalQuestions), each carrying a single `label.label` (FIELD_LABEL).
   GENERAL_QUESTIONS_LABEL: '.general-questions article label.label',
+  // Filterable reference-field dropdown (input-dropdown.vue renders an `.el-select` with `filterable`).
+  // Used by the "dropdown is filterable by typing" flow: open the dropdown, type to narrow the list,
+  // then read/select the matching item from the OPEN dropdown panel.
+  FIELD_DROPDOWN_CONTAINER: '.input-dropdown',
+  EL_SELECT: '.el-select',
+  // The currently OPEN el-select option panel. Scope option reads to this so a hidden option panel
+  // from another el-select on the page (its popper stays in the DOM) is not matched.
+  OPEN_DROPDOWN_PANEL: '.el-select-dropdown:visible',
+  DROPDOWN_ITEM: '.el-select-dropdown__item',
 };
 
 class DynamicAndReferenceFieldsPage {
@@ -814,6 +823,122 @@ class DynamicAndReferenceFieldsPage {
     await labels.first().waitFor({ state: 'visible', timeout });
     const rawTexts = await labels.allInnerTexts();
     return rawTexts.map((t) => cleanReferenceLabelText(t)).filter((t) => t.length > 0);
+  }
+
+  /**
+   * Opens the first VISIBLE reference-field dropdown (a `.input-dropdown` container holding an
+   * `.el-select`) and types filterText into it to narrow the option list. The el-select is filterable
+   * (input-dropdown.vue sets `filterable`), so typing shows only options whose label matches — the
+   * behaviour the "dropdown is filterable by typing" test exercises. Leaves the dropdown OPEN so the
+   * following assert/select steps can act on the filtered list.
+   *
+   * Scenarios that use this drive a single reference-field dropdown ("THE reference field dropdown"
+   * — no field name in the step), so the first visible dropdown container is the field under test.
+   *
+   * @param {string} filterText - Text to type to filter the dropdown options (e.g. "dulux")
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async filterReferenceFieldDropdown(filterText, { timeout = 15000 } = {}) {
+    if (!filterText || typeof filterText !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.filterReferenceFieldDropdown] "filterText" must be a non-empty string, got: ${typeof filterText} (${filterText})`
+      );
+    }
+    const container = this.page
+      .locator(SELECTORS.FIELD_DROPDOWN_CONTAINER)
+      .filter({ has: this.page.locator(SELECTORS.EL_SELECT), visible: true })
+      .first();
+    try {
+      await container.waitFor({ state: 'visible', timeout });
+      await container.scrollIntoViewIfNeeded();
+      await container.locator(SELECTORS.EL_SELECT).first().click({ timeout: 5000 });
+      // Element Plus focuses the filter input when a filterable el-select opens, so keyboard input
+      // types into it and narrows the list — mirrors selectReferenceFieldDropdownOnly's filter flow.
+      await this.page.keyboard.type(filterText, { delay: 30 });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.filterReferenceFieldDropdown] Could not open a reference-field dropdown ` +
+        `(selector: ${SELECTORS.FIELD_DROPDOWN_CONTAINER}) and type "${filterText}" to filter it. No visible ` +
+        `filterable dropdown was found, or it did not open. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns a locator for an option in the currently OPEN el-select dropdown panel whose text matches
+   * optionText (case-insensitive, partial). Scoped to the visible panel so a hidden option panel from
+   * another el-select on the page is not matched.
+   *
+   * @param {string} optionText - Option label to match (e.g. "DULUX 6102030120")
+   * @returns {import('playwright').Locator}
+   */
+  getOpenDropdownOption(optionText) {
+    const escaped = optionText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const optionRegex = new RegExp(escaped, 'i');
+    return this.page
+      .locator(SELECTORS.OPEN_DROPDOWN_PANEL)
+      .first()
+      .locator(SELECTORS.DROPDOWN_ITEM)
+      .filter({ hasText: optionRegex })
+      .first();
+  }
+
+  /**
+   * Returns true if an option matching optionText becomes visible in the open dropdown panel within
+   * the timeout (i.e. the filter narrowed the list to the expected option).
+   *
+   * @param {string} optionText - Option label to look for
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isDropdownOptionVisible(optionText, { timeout = 10000 } = {}) {
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.isDropdownOptionVisible] "optionText" must be a non-empty string, got: ${typeof optionText} (${optionText})`
+      );
+    }
+    try {
+      await this.getOpenDropdownOption(optionText).waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Clicks the option matching optionText in the open dropdown panel and waits for the panel to close
+   * (selection committed) before returning, so the next interaction is not raced by the closing popper.
+   *
+   * @param {string} optionText - Option label to select
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<void>}
+   */
+  async selectOpenDropdownOption(optionText, { timeout = 10000 } = {}) {
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.selectOpenDropdownOption] "optionText" must be a non-empty string, got: ${typeof optionText} (${optionText})`
+      );
+    }
+    const option = this.getOpenDropdownOption(optionText);
+    try {
+      await option.waitFor({ state: 'visible', timeout });
+      await option.click({ timeout: 5000 });
+      await this.page
+        .locator(SELECTORS.OPEN_DROPDOWN_PANEL)
+        .first()
+        .waitFor({ state: 'hidden', timeout: 5000 })
+        .catch(() => {});
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.selectOpenDropdownOption] Could not select option "${optionText}" from the ` +
+        `open dropdown panel (${SELECTORS.OPEN_DROPDOWN_PANEL} ${SELECTORS.DROPDOWN_ITEM}). It was not visible ` +
+        `within ${timeout}ms — the dropdown may not be open or the option label differs. Original: ${err.message}`
+      );
+    }
   }
 
 }

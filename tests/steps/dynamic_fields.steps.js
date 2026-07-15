@@ -189,6 +189,24 @@ Then("clicking proceed should show a mandatory field validation error", async fu
   }
 });
 
+// Opens the reference-field dropdown under test and types text to filter its options, leaving the
+// dropdown open. Follow with the "... option {string} is displayed" and "I select the reference field
+// dropdown option {string}" steps. Used by the "dropdown is filterable by typing" flow (test 57324).
+When("I filter the reference field dropdown by typing {string}", async function (filterText) {
+  logger.info(`Filtering the reference field dropdown by typing "${filterText}"`);
+  await DynamicAndReferenceFields.filterReferenceFieldDropdownByTyping(this.page, filterText);
+});
+
+Then("the reference field dropdown option {string} is displayed", async function (optionText) {
+  logger.info(`Verifying reference field dropdown option "${optionText}" is displayed`);
+  await DynamicAndReferenceFields.verifyReferenceFieldDropdownOptionDisplayed(this.page, optionText);
+});
+
+When("I select the reference field dropdown option {string}", async function (optionText) {
+  logger.info(`Selecting reference field dropdown option "${optionText}"`);
+  await DynamicAndReferenceFields.selectReferenceFieldDropdownOption(this.page, optionText);
+});
+
 Then("the dynamic profile field {string} is displayed for {string} travellers", async function (fieldName, travellerCount) {
   const expectedCount = Number.parseInt(travellerCount, 10);
   if (!Number.isInteger(expectedCount) || expectedCount < 1) {

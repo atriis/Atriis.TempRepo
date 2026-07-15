@@ -19,15 +19,13 @@ Feature: 57324 - Reference field dropdown is filterable by typing
     When I search for a one way flight from "PAR" to "GRU"
     When I add the first flight to cart
     When I proceed to checkout
-    # TODO: implement step - verify the "Travellers Reference Questions" section is displayed
-    Then the "Travellers Reference Questions" reference section is displayed
-    # TODO: implement step - filter the reference field dropdown by typing
+    And I wait for booking details in checkout
     When I filter the reference field dropdown by typing "dulux"
-    # TODO: implement step - verify the filtered option is displayed
     Then the reference field dropdown option "DULUX 6102030120" is displayed
-    # TODO: implement step - select the filtered reference field option
     When I select the reference field dropdown option "DULUX 6102030120"
-    # TODO: implement step - verify the reference field shows the selected value
-    Then the reference field shows the value "DULUX 6102030120"
-    When I open the cart
-    Then I successfully cancel the trip
+    Then the reference fields should have the following values:
+      | field       | value           |
+      | COST CENTRE TEST 1 | DULUX 6102030120 |
+    And I navigate to cart from checkout
+    Then the booking status should be "On hold"
+    And I successfully cancel the trip

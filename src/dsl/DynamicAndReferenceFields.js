@@ -903,6 +903,74 @@ const DynamicAndReferenceFields = {
     }
   },
 
+  /**
+   * Opens the reference-field dropdown under test and types filterText to narrow its options,
+   * leaving the dropdown OPEN so the following steps can assert the filtered option is shown and
+   * select it. Drives the "reference field dropdown is filterable by typing" flow (test 57324),
+   * where the step carries no field name \u2014 the first visible dropdown is the field under test.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} filterText - Text to type to filter the dropdown (e.g. "dulux")
+   * @returns {Promise<void>}
+   */
+  async filterReferenceFieldDropdownByTyping(page, filterText) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.filterReferenceFieldDropdownByTyping] "page" is required.');
+    if (!filterText || typeof filterText !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.filterReferenceFieldDropdownByTyping] "filterText" must be a non-empty ` +
+        `string, got: ${typeof filterText} (${filterText})`
+      );
+    }
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    await dynamicFieldsPage.filterReferenceFieldDropdown(filterText);
+  },
+
+  /**
+   * Verifies that an option matching optionText is displayed in the open reference-field dropdown
+   * after filtering by typing \u2014 i.e. the filter narrowed the list to the expected option.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} optionText - The expected option label (e.g. "DULUX 6102030120")
+   * @returns {Promise<void>}
+   */
+  async verifyReferenceFieldDropdownOptionDisplayed(page, optionText) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyReferenceFieldDropdownOptionDisplayed] "page" is required.');
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyReferenceFieldDropdownOptionDisplayed] "optionText" must be a ` +
+        `non-empty string, got: ${typeof optionText} (${optionText})`
+      );
+    }
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const visible = await dynamicFieldsPage.isDropdownOptionVisible(optionText);
+    expect(
+      visible,
+      `[DynamicAndReferenceFields.verifyReferenceFieldDropdownOptionDisplayed] Expected the filtered ` +
+      `reference-field dropdown option "${optionText}" to be displayed after typing, but it was not visible. ` +
+      `The dropdown may not be open, the typed filter text may not match this option, or the option label differs.`
+    ).toBe(true);
+  },
+
+  /**
+   * Selects the option matching optionText from the open reference-field dropdown (after it was
+   * filtered by typing). Commits the selection into the field.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} optionText - The option label to select (e.g. "DULUX 6102030120")
+   * @returns {Promise<void>}
+   */
+  async selectReferenceFieldDropdownOption(page, optionText) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.selectReferenceFieldDropdownOption] "page" is required.');
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectReferenceFieldDropdownOption] "optionText" must be a non-empty ` +
+        `string, got: ${typeof optionText} (${optionText})`
+      );
+    }
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    await dynamicFieldsPage.selectOpenDropdownOption(optionText);
+  },
+
 };
 
 // Export DynamicAndReferenceFields DSL for use in tests
