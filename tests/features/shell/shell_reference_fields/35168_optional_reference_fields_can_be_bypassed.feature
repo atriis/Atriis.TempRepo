@@ -17,7 +17,7 @@ Feature: 35168 - Optional reference fields can be bypassed
     Given I am logged in as "carolinaferreira@joysettings.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip "Business" class flight from "LHR" to "BCN"
-    Then the following checkout reference fields should be visible:
+    Then the reference fields popup should show the following labels:
     | Is this field optional? |
     And I click proceed button if visible
     Then flight results should be available
