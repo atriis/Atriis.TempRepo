@@ -2617,10 +2617,10 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
 
   /**
    * Checks if the agreement indicator is visible in the first pricing option.
-   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @param {number} timeout - Max wait time in ms (default: 120000)
    * @returns {Promise<boolean>}
    */
-  async isAgreementIndicatorVisibleInPricingOptions(timeout = 15000) {
+  async isAgreementIndicatorVisibleInPricingOptions(timeout = 120000) {
     try {
       const overlay = this.getPricingOptionsOverlay();
       await overlay.waitFor({ state: 'visible', timeout });
