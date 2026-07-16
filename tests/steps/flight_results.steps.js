@@ -878,6 +878,11 @@ Then('all flight results should be from airline {string}', async function (airli
   await FlightResults.verifyAllResultsFromAirline(this.page, airlineName);
 });
 
+Then('all flight results should show the unused tickets eligibility tag', async function () {
+  logger.info('Verifying all flight results show the unused tickets eligibility tag');
+  await FlightResults.verifyAllResultsShowUnusedTicketTag(this.page);
+});
+
 Then('airport codes {string} and {string} should be marked in the first flight result', async function (firstAirportCode, secondAirportCode) {
   logger.info('Verifying airport codes are marked in the first flight result', {
     airportCodes: [firstAirportCode, secondAirportCode],

@@ -249,6 +249,10 @@ const SELECTORS = {
   SEPARATED_TICKETS_TEXT: 'Separated Tickets',
   AGREEMENT_ICON: '.agreement-icon',
 
+  // Unused ticket eligibility tag on a flight result card (flight-preview.vue). No data-testid,
+  // so matched by the translated label text ($t('flight.unusedTicketsAvailable')).
+  UNUSED_TICKET_TAG_TEXT: 'Unused ticket available',
+
   // Marine Fare icon (flight-preview.vue / flight-by-schedule-pricing-option.vue)
   // Uses anchor material icon + "Marine fare" text — no data-testid available
   MARINE_FARE_ANCHOR_ICON: 'span.material-symbols-outlined:has-text("anchor")',
@@ -2652,6 +2656,22 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       names.push(text.trim());
     }
     return names;
+  }
+
+  /**
+   * Whether each flight result card shows the unused ticket eligibility tag.
+   * @returns {Promise<boolean[]>} one entry per result card (true = tag present)
+   */
+  async getUnusedTicketTagStatusPerResult({ timeout = 30000 } = {}) {
+    await this.waitForFlightResults(timeout);
+    const cards = this.page.locator(SELECTORS.FLIGHT_PREVIEW);
+    const count = await cards.count();
+    const statuses = [];
+    for (let i = 0; i < count; i++) {
+      const tag = cards.nth(i).getByText(SELECTORS.UNUSED_TICKET_TAG_TEXT, { exact: false });
+      statuses.push((await tag.count()) > 0);
+    }
+    return statuses;
   }
 
   // ===== ADVISORY ICONS =====

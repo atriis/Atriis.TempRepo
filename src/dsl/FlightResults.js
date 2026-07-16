@@ -2193,6 +2193,22 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     }
   },
 
+  // Regression guard: every filtered result must show the eligibility tag.
+  async verifyAllResultsShowUnusedTicketTag(page) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const statuses = await flightResultsPage.getUnusedTicketTagStatusPerResult();
+
+    expect(statuses.length, 'Expected at least one flight result to be present').toBeGreaterThan(0);
+
+    const missing = statuses.filter((hasTag) => !hasTag).length;
+    expect(
+      missing,
+      `${missing} of ${statuses.length} flight results are missing the unused ticket eligibility tag`,
+    ).toBe(0);
+  },
+
   // ===== ADVISORY VERIFICATION =====
 
   /**

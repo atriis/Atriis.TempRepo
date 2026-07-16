@@ -2,12 +2,17 @@ const SELECTORS = {
   // Unused tickets icon - search page (airplane_ticket span next to traveler name in trip-traveler-tag)
   UNUSED_TICKETS_BTN_SEARCH: '.unused-tickets-btn',
 
-  // Unused tickets icon - results page header (next to traveler initials)
-  UNUSED_TICKETS_ICON_RESULTS: '.unused-ticket-container .unused-tickets-icon.is-clickable',
+  // Unused tickets icon - results page trip bar (trip-bar.vue / cart-info-bar.vue).
+  // '.is-clickable' renders for a single traveler ('.is-unclickable' when more than one).
+  UNUSED_TICKETS_ICON_RESULTS: '.unused-tickets-icon.is-clickable',
 
   // Unused tickets modal/dialog
   UNUSED_TICKETS_DIALOG: '.app-dialog .app-unused-tickets',
+  // El-dialog root wrapping the unused-tickets body — scopes the header close button (a body sibling).
+  UNUSED_TICKETS_DIALOG_ROOT: '.app-dialog:has(.app-unused-tickets)',
   UNUSED_TICKETS_CONTAINER: '.app-unused-tickets .unused-tickets-container',
+  // Element Plus dialog header close button (X)
+  DIALOG_HEADER_CLOSE_BTN: '.el-dialog__headerbtn',
 
   // Unused tickets banner on results page
   UNUSED_TICKETS_BANNER: '.stay-safe-banner',
@@ -40,6 +45,15 @@ class UnusedTicketsPage {
     await icon.click();
   }
 
+  async isResultsUnusedTicketsIconVisible({ timeout = DEFAULT_TIMEOUT } = {}) {
+    try {
+      await this.page.locator(SELECTORS.UNUSED_TICKETS_ICON_RESULTS).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async waitForUnusedTicketsModal({ timeout = DEFAULT_TIMEOUT } = {}) {
     await this.page.locator(SELECTORS.UNUSED_TICKETS_CONTAINER).last().waitFor({ state: 'visible', timeout });
   }
@@ -69,11 +83,9 @@ class UnusedTicketsPage {
   }
 
   async closeUnusedTicketsModal({ timeout = 10000 } = {}) {
-    // Scope the close button to the unused-tickets dialog so we never accidentally
-    // close another Element Plus dialog that may be open on the page.
-    const dialog = this.page.locator(SELECTORS.UNUSED_TICKETS_DIALOG).last();
+    const dialog = this.page.locator(SELECTORS.UNUSED_TICKETS_DIALOG_ROOT).last();
     await dialog.waitFor({ state: 'visible', timeout });
-    const closeBtn = dialog.locator('.el-dialog__headerbtn').first();
+    const closeBtn = dialog.locator(SELECTORS.DIALOG_HEADER_CLOSE_BTN).first();
     await closeBtn.waitFor({ state: 'visible', timeout });
     await closeBtn.click();
     await this.page.locator(SELECTORS.UNUSED_TICKETS_CONTAINER).last().waitFor({ state: 'hidden', timeout });

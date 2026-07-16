@@ -1,5 +1,6 @@
 const { getPageObject } = require('@utils/pageObjectCache');
 const { UnusedTicketsPage } = require('@pages/UnusedTicketsPage');
+const App = require('@dsl/App');
 const logger = require('@utils/logger');
 
 function assertNoMco(content, where) {
@@ -25,6 +26,24 @@ const UnusedTickets = {
     logger.info('Opening unused tickets modal via airplane icon in results header');
 
     const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+
+    // Unused-ticket data loads only on a FULL results-page load (not via in-app navigation from
+    // search), with variable latency — so reload and wait for the icon, retrying a few times.
+    const maxAttempts = 3;
+    let iconVisible = false;
+    for (let attempt = 1; attempt <= maxAttempts && !iconVisible; attempt++) {
+      logger.info('Reloading results page to load unused-tickets data', { attempt, maxAttempts });
+      await App.refreshPage(page);
+      iconVisible = await unusedTicketsPage.isResultsUnusedTicketsIconVisible({ timeout: 30000 });
+    }
+
+    if (!iconVisible) {
+      throw new Error(
+        'Unused-tickets airplane icon did not appear on the results page after reloads — ' +
+        'the traveler may have no unused tickets or the eligibility data failed to load.'
+      );
+    }
+
     await unusedTicketsPage.clickUnusedTicketsIconOnResults();
     await unusedTicketsPage.waitForUnusedTicketsModal();
   },
@@ -36,6 +55,27 @@ const UnusedTickets = {
     const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
     await unusedTicketsPage.clickViewDetailsOnBanner();
     await unusedTicketsPage.waitForUnusedTicketsModal();
+  },
+
+  async verifyUnusedTicketForCarrier(page, carrier) {
+    if (!page) throw new Error('page parameter is required');
+    if (!carrier || typeof carrier !== 'string') {
+      throw new Error(`carrier must be a non-empty string, got: ${typeof carrier}`);
+    }
+    logger.info('Verifying the unused tickets list includes a ticket for carrier', { carrier });
+
+    const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+    const content = await unusedTicketsPage.getUnusedTicketsModalContent();
+
+    if (!content.toLowerCase().includes(carrier.toLowerCase())) {
+      throw new Error(
+        `Expected the unused tickets list to include a ticket for carrier "${carrier}", ` +
+        `but none was found. Modal content: "${content.substring(0, 300)}..."`
+      );
+    }
+
+    logger.info('Verified: unused tickets list includes a ticket for carrier', { carrier });
+    return { content };
   },
 
   async verifyMcoUnusedTicketsHidden(page) {

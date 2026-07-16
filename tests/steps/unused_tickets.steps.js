@@ -18,6 +18,11 @@ When('I click "View details" on the unused tickets banner', async function () {
   await UnusedTickets.openUnusedTicketsFromBannerViewDetails(this.page);
 });
 
+Then('the unused tickets list should include a ticket for carrier {string}', async function (carrier) {
+  logger.info('Verifying the unused tickets list includes a ticket for carrier', { carrier });
+  await UnusedTickets.verifyUnusedTicketForCarrier(this.page, carrier);
+});
+
 Then('MCO unused tickets should be hidden', async function () {
   logger.info('Verifying MCO unused tickets are hidden');
   await UnusedTickets.verifyMcoUnusedTicketsHidden(this.page);
