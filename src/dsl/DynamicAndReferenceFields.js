@@ -1275,6 +1275,91 @@ const DynamicAndReferenceFields = {
     }
   },
 
+  /**
+   * Clicks the hyperlink embedded in a reference-field description in the open reference-fields popup.
+   * The link opens the linked page in a NEW browser tab; returns that tab so the caller (step) can store
+   * it on the World for a later "opens the linked page" step to verify (test 73097).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<import('playwright').Page>} The newly opened tab
+   */
+  async clickReferenceFieldHyperlink(page) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.clickReferenceFieldHyperlink] "page" is required.');
+    logger.debug('Clicking the reference-field hyperlink in the reference-fields popup');
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    try {
+      return await dynamicFieldsPage.clickReferenceFieldHyperlink();
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.clickReferenceFieldHyperlink] Could not open the reference-field hyperlink. ` +
+        `The reference-fields popup may not be showing a linked field. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies that a previously-opened tab (captured when a hyperlink was clicked) landed on that link's
+   * target page. Reference-field, push-note and cart-notification hyperlinks each open an external URL
+   * that is admin-configured and varies per surface/profile (a Google search, a sports site, etc.), so
+   * verification keys off the clicked link's OWN href — never a hardcoded site. Matches on the
+   * registrable host (leading "www." stripped) so a http→https upgrade, trailing slash, or path/query on
+   * the opened tab still counts as "opened the linked page". Polls to absorb the about:blank → target
+   * navigation. Shared by every "... opens the linked page" step (test 73097).
+   *
+   * @param {import('playwright').Page} linkedPage - The tab opened by the hyperlink click
+   * @param {string} expectedHref - The href of the clicked link (captured before the click)
+   * @param {import('playwright').Page} [mainPage] - The app page to return focus to after verifying
+   * @returns {Promise<void>}
+   */
+  async verifyLinkedPageOpened(linkedPage, expectedHref, mainPage) {
+    if (!linkedPage) {
+      throw new Error(
+        '[DynamicAndReferenceFields.verifyLinkedPageOpened] "linkedPage" is required — no opened tab was stored. ' +
+        'Ensure the hyperlink-click step ran first.'
+      );
+    }
+    let expectedHost = null;
+    if (expectedHref && typeof expectedHref === 'string') {
+      try {
+        expectedHost = new URL(expectedHref).hostname.replace(/^www\./i, '').toLowerCase();
+      } catch {
+        expectedHost = null;
+      }
+    }
+    logger.debug('Verifying the hyperlink opened the linked page', { expectedHref, expectedHost });
+    try {
+      if (expectedHost) {
+        await expect
+          .poll(() => linkedPage.url().toLowerCase(), {
+            timeout: 30000,
+            message:
+              `Expected the hyperlink to open its linked page (host "${expectedHost}", from href "${expectedHref}") ` +
+              `in a new tab, but the opened tab URL never matched.`,
+          })
+          .toContain(expectedHost);
+      } else {
+        // No parseable href was captured — fall back to asserting the tab navigated to a real external
+        // page (i.e. it left about:blank for an http(s) URL), which still proves the hyperlink opened.
+        await expect
+          .poll(() => linkedPage.url(), {
+            timeout: 30000,
+            message:
+              `Expected the hyperlink to open an external linked page in a new tab, but the opened tab never ` +
+              `navigated to an http(s) URL (captured href was "${expectedHref}").`,
+          })
+          .toMatch(/^https?:\/\/.+/);
+      }
+    } finally {
+      // Close the linked tab and return focus to the app page. A target="_blank" click leaves the new
+      // tab in the foreground; if it stays open, the next action runs against a backgrounded app page,
+      // which can throttle the app and swallow interactions (e.g. Proceed then fails to dismiss a popup).
+      await linkedPage.close().catch(() => {});
+      if (mainPage) {
+        await mainPage.bringToFront().catch(() => {});
+      }
+    }
+  },
+
 };
 
 // Export DynamicAndReferenceFields DSL for use in tests

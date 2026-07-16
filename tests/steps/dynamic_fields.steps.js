@@ -288,3 +288,21 @@ Then("the reference field values are updated to {string} and {string}", async fu
   logger.info("Verifying reference field textbox values were updated at checkout", { value1, value2 });
   await DynamicAndReferenceFields.verifyReferenceFieldTextValuesUpdated(this.page, [value1, value2]);
 });
+
+// ===== HYPERLINKS IN REFERENCE FIELDS (test 73097) =====
+
+// Clicks the hyperlink embedded in a reference field inside the reference-fields popup. The link opens
+// the linked page in a NEW browser tab, stored on the World for the following "opens the linked page"
+// step to verify.
+When("I click the reference field hyperlink", async function () {
+  logger.info("Clicking the reference field hyperlink in the reference-fields popup");
+  const opened = await DynamicAndReferenceFields.clickReferenceFieldHyperlink(this.page);
+  this.newTabPage = opened.page;
+  this.linkedHyperlinkHref = opened.href;
+});
+
+Then("the reference field hyperlink opens the linked page", async function () {
+  logger.info("Verifying the reference field hyperlink opened the linked page");
+  await DynamicAndReferenceFields.verifyLinkedPageOpened(this.newTabPage, this.linkedHyperlinkHref, this.page);
+  this.newTabPage = null;
+});

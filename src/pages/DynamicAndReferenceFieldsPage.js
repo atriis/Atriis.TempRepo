@@ -69,6 +69,11 @@ const SELECTORS = {
   // message is configured — custom-regex fields have none — so these field-state markers, not the error
   // text node, are what signal a rejected field.
   FIELD_ERROR_STATE: '.el-input.is-danger, .form-validation-msg',
+  // Hyperlink embedded in a reference-field description inside the open reference-fields popup. A
+  // reference field can carry a URL in its text, which injectHyperlinks (util.service.ts) renders as
+  // `<a target="_blank" rel="noopener noreferrer">`, so clicking it opens the linked page in a NEW
+  // browser tab. Scoped to the visible dialog so only the open reference popup's link is matched (test 73097).
+  REFERENCE_FIELD_HYPERLINK: '.el-dialog:visible a[target="_blank"]',
 };
 
 class DynamicAndReferenceFieldsPage {
@@ -936,6 +941,51 @@ class DynamicAndReferenceFieldsPage {
     }
     // Confirm the dialog dismisses so the underlying new-trip page is interactable for the next action.
     await dialog.waitFor({ state: 'hidden', timeout }).catch(() => {});
+  }
+
+  /**
+   * Clicks the hyperlink embedded in a reference-field description inside the open reference-fields
+   * popup. The link carries target="_blank", so the click opens the linked page in a NEW browser tab.
+   * Registers the context 'page' listener BEFORE clicking to avoid a race, and returns the newly
+   * opened tab so the caller can verify it.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<import('playwright').Page>} The newly opened tab
+   */
+  async clickReferenceFieldHyperlink({ timeout = 15000 } = {}) {
+    const link = this.page.locator(SELECTORS.REFERENCE_FIELD_HYPERLINK).first();
+    try {
+      await link.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.clickReferenceFieldHyperlink] No hyperlink (a[target="_blank"]) was ` +
+        `visible inside the open reference-fields popup within ${timeout}ms. The popup may not be open, or the ` +
+        `reference field has no embedded link. Original: ${err.message}`
+      );
+    }
+
+    // Capture the link's target BEFORE clicking so the verify step can confirm the new tab navigated to
+    // THIS link's page. The configured URL varies per profile (e.g. a Google search or a sports site),
+    // so the verification must key off the actual href, never a hardcoded site.
+    const href = await link.getAttribute('href');
+    const context = this.page.context();
+    const newPagePromise = context.waitForEvent('page', { timeout });
+    await link.click({ timeout });
+
+    let newPage;
+    try {
+      newPage = await newPagePromise;
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.clickReferenceFieldHyperlink] Clicking the reference-field hyperlink did ` +
+        `not open a new tab within ${timeout}ms. Expected the target="_blank" link to open the linked page in a ` +
+        `new browser tab. Original: ${err.message}`
+      );
+    }
+
+    await newPage.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {});
+    return { page: newPage, href };
   }
 
   /**

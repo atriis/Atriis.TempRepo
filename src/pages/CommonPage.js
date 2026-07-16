@@ -53,6 +53,27 @@ const SELECTORS = {
   // Cart-count badge on the trip-bar cart button (trip-bar.vue → el-badge :value="quotesLengthToShow").
   // Scoped by the shopping_cart icon so it never matches the unused-tickets or chat badges that also use .cart-btn/.el-badge.
   CART_BADGE_COUNT: '.cart-btn:has(span:has-text("shopping_cart")) .el-badge__content',
+
+  // Hyperlink inside the mandatory-notifications reminder popup (app-reminder-popup.vue): the reminder
+  // text is rendered via injectHyperlinks as `<a target="_blank" rel="noopener noreferrer">`, so
+  // clicking it opens the linked page in a NEW browser tab. Scoped to the reminder dialog container.
+  REMINDER_POPUP_HYPERLINK: '.el-dialog.app-dialog a[target="_blank"]',
+
+  // Header notification bell button (cart-info-bar.vue) — an app-btn.chat-btn holding the
+  // "assignment_turned_in" material icon (the sibling chat button holds "question_answer"). Clicking it
+  // toggles the notification panel (app-notification.vue) open.
+  NOTIFICATION_BELL_BUTTON: '.chat-btn:has(.material-symbols-outlined:has-text("assignment_turned_in"))',
+
+  // Notification panel root (app-notification.vue) and the hyperlink inside a notification message.
+  // The message body is rendered via injectHyperlinks, so an embedded URL becomes an
+  // `<a target="_blank">` that opens the linked page in a NEW browser tab.
+  NOTIFICATION_PANEL: '.app-notification',
+  NOTIFICATION_MESSAGE_HYPERLINK: '.app-notification .notification-message a[target="_blank"]',
+
+  // Title of the mandatory-notifications reminder popup (app-reminder-popup.vue → $t('common.mandatoryNotification')).
+  // Both the reference-fields popup and this reminder popup render as `.el-dialog.app-dialog`, so the
+  // reminder popup MUST be identified by its title — never by the generic dialog class.
+  MANDATORY_NOTIFICATIONS_TITLE: 'Mandatory Notifications',
 };
 
 /**
@@ -558,6 +579,194 @@ class CommonPage {
     await closeBtn.waitFor({ state: 'visible', timeout });
     await closeBtn.click();
     await dialog.waitFor({ state: 'hidden', timeout: 10000 });
+  }
+
+  /**
+   * Clicks the hyperlink embedded in the mandatory-notifications reminder popup (app-reminder-popup.vue).
+   * The link carries target="_blank", so the click opens the linked page in a NEW browser tab. Registers
+   * the context 'page' listener before clicking and returns the newly opened tab.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<import('playwright').Page>} The newly opened tab
+   */
+  /**
+   * Returns a locator for the mandatory-notifications reminder dialog (app-reminder-popup.vue),
+   * identified by its title. Both the reference-fields popup and this reminder popup render as
+   * `.el-dialog.app-dialog`, so scoping by title is the only reliable way to target THIS dialog and not
+   * the reference-fields popup that may still be closing.
+   * @returns {import('playwright').Locator}
+   */
+  getMandatoryNotificationsDialog() {
+    return this.page
+      .locator('.el-dialog')
+      .filter({ has: this.page.locator('.el-dialog__title', { hasText: SELECTORS.MANDATORY_NOTIFICATIONS_TITLE }) })
+      .first();
+  }
+
+  /**
+   * Returns true if the mandatory-notifications popup (titled "Mandatory Notifications") is visible.
+   * Unlike isReminderPopupVisible (which matches any dialog title), this is specific to the reminder
+   * popup so it never gives a false positive on the reference-fields popup.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async isMandatoryNotificationsPopupVisible({ timeout = 15000 } = {}) {
+    try {
+      await this.getMandatoryNotificationsDialog().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Returns the titles of all currently-visible dialogs — used to build actionable error messages when
+   * an expected dialog is not the one on screen.
+   * @returns {Promise<string[]>}
+   */
+  async getVisibleDialogTitles() {
+    return this.page.evaluate(() => {
+      const vis = (el) => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length));
+      return Array.from(document.querySelectorAll('.el-dialog'))
+        .filter(vis)
+        .map((d) => {
+          const t = d.querySelector('.el-dialog__title');
+          return t ? t.textContent.replace(/\s+/g, ' ').trim() : '(untitled)';
+        });
+    });
+  }
+
+  /**
+   * Clicks the hyperlink embedded in the mandatory-notifications reminder popup (app-reminder-popup.vue),
+   * scoped to the "Mandatory Notifications" dialog so it never hits the reference-fields popup's links.
+   * The link carries target="_blank", so the click opens the linked page in a NEW browser tab. Registers
+   * the context 'page' listener before clicking and returns the newly opened tab plus its href.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<{page: import('playwright').Page, href: string}>} The newly opened tab and the link href
+   */
+  async clickReminderPopupHyperlink({ timeout = 15000 } = {}) {
+    const dialog = this.getMandatoryNotificationsDialog();
+    const link = dialog.locator('a[target="_blank"]').first();
+    try {
+      await link.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CommonPage.clickReminderPopupHyperlink] No hyperlink (a[target="_blank"]) was visible inside the ` +
+        `"Mandatory Notifications" popup within ${timeout}ms. The popup may not be open, or the notification has no ` +
+        `embedded link. Original: ${err.message}`
+      );
+    }
+
+    // Capture the link's target BEFORE clicking so the verify step can confirm the new tab navigated to
+    // THIS link's page (the configured URL varies per profile — do not assume a specific site).
+    const href = await link.getAttribute('href');
+    const context = this.page.context();
+    const newPagePromise = context.waitForEvent('page', { timeout });
+    await link.click({ timeout });
+
+    let newPage;
+    try {
+      newPage = await newPagePromise;
+    } catch (err) {
+      throw new Error(
+        `[CommonPage.clickReminderPopupHyperlink] Clicking the notification hyperlink did not open a new tab ` +
+        `within ${timeout}ms. Expected the target="_blank" link to open the linked page in a new tab. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    await newPage.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {});
+    return { page: newPage, href };
+  }
+
+  /**
+   * Acknowledges the mandatory-notifications popup by checking its "Got it" box and clicking "close",
+   * scoped to the "Mandatory Notifications" dialog. Marks the reminders as read and waits for the dialog
+   * to close.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async acknowledgeMandatoryNotificationsPopup({ timeout = 15000 } = {}) {
+    const dialog = this.getMandatoryNotificationsDialog();
+    await dialog.waitFor({ state: 'visible', timeout });
+    const checkbox = dialog.locator(SELECTORS.REMINDER_POPUP_CHECKBOX).first();
+    await checkbox.waitFor({ state: 'visible', timeout });
+    await checkbox.click();
+    const closeBtn = dialog.locator(SELECTORS.REMINDER_POPUP_CLOSE_BUTTON).first();
+    await closeBtn.waitFor({ state: 'visible', timeout });
+    await closeBtn.click();
+    await dialog.waitFor({ state: 'hidden', timeout: 10000 });
+  }
+
+  /**
+   * Opens the header notification panel (app-notification.vue) by clicking the bell button in the cart
+   * info bar, and waits for the panel to render.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async openNotificationPanel({ timeout = 15000 } = {}) {
+    const bell = this.page.locator(SELECTORS.NOTIFICATION_BELL_BUTTON).first();
+    try {
+      await bell.waitFor({ state: 'visible', timeout });
+      await bell.click({ timeout });
+    } catch (err) {
+      throw new Error(
+        `[CommonPage.openNotificationPanel] Could not find/click the notification bell button in the cart info ` +
+        `bar within ${timeout}ms. The cart may not be loaded, or no notifications exist for this trip. ` +
+        `Original: ${err.message}`
+      );
+    }
+    const panel = this.page.locator(SELECTORS.NOTIFICATION_PANEL).first();
+    await panel.waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Clicks the hyperlink inside the first notification message in the open notification panel
+   * (app-notification.vue). The message body is rendered via injectHyperlinks, so an embedded URL is an
+   * `<a target="_blank">` that opens the linked page in a NEW browser tab. Registers the context 'page'
+   * listener before clicking and returns the newly opened tab.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<import('playwright').Page>} The newly opened tab
+   */
+  async clickNotificationPanelHyperlink({ timeout = 15000 } = {}) {
+    const link = this.page.locator(SELECTORS.NOTIFICATION_MESSAGE_HYPERLINK).first();
+    try {
+      await link.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CommonPage.clickNotificationPanelHyperlink] No hyperlink (a[target="_blank"]) was visible inside a ` +
+        `notification message in the open notification panel within ${timeout}ms. The panel may not be open, or ` +
+        `no notification carries an embedded link. Original: ${err.message}`
+      );
+    }
+
+    // Capture the link's target BEFORE clicking so the verify step can confirm the new tab navigated to
+    // THIS link's page (the configured URL varies per profile — do not assume a specific site).
+    const href = await link.getAttribute('href');
+    const context = this.page.context();
+    const newPagePromise = context.waitForEvent('page', { timeout });
+    await link.click({ timeout });
+
+    let newPage;
+    try {
+      newPage = await newPagePromise;
+    } catch (err) {
+      throw new Error(
+        `[CommonPage.clickNotificationPanelHyperlink] Clicking the notification hyperlink did not open a new tab ` +
+        `within ${timeout}ms. Expected the target="_blank" link to open the linked page in a new tab. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    await newPage.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {});
+    return { page: newPage, href };
   }
 
   /**

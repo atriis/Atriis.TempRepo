@@ -4,6 +4,7 @@ const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const Cart = require("@dsl/Cart");
 const Checkout = require("@dsl/Checkout");
+const DynamicAndReferenceFields = require("@dsl/DynamicAndReferenceFields");
 const { CartPage } = require("@pages/CartPage");
 const { CheckoutPage } = require("@pages/CheckoutPage");
 const { getPageObject } = require("@utils/pageObjectCache");
@@ -1352,6 +1353,52 @@ Then("all quotes should have PNR codes", async function () {
 Then("a push notification should be displayed", async function () {
   logger.info("Verifying push notification badge is visible in header");
   await Cart.verifyPushNotificationDisplayed(this.page);
+});
+
+// ===== HYPERLINKS IN PUSH NOTIFICATIONS (test 73097) =====
+
+// Non-dismissing assertion that the mandatory-notifications popup is displayed. Unlike "a push
+// notification should be displayed" (which dismisses the reminder popup), this leaves the popup open so
+// the following steps can click its hyperlink and acknowledge it.
+Then("the mandatory notifications popup should be displayed", async function () {
+  logger.info("Verifying the mandatory notifications popup is displayed (without dismissing it)");
+  await Cart.verifyMandatoryNotificationsPopupDisplayed(this.page);
+});
+
+// Clicks the hyperlink inside the mandatory-notifications popup; the link opens the linked page in a
+// NEW browser tab, stored on the World for the following "opens the linked page" step.
+When("I click the push notification hyperlink", async function () {
+  logger.info("Clicking the push notification hyperlink in the mandatory-notifications popup");
+  const opened = await Cart.clickPushNotificationHyperlink(this.page);
+  this.newTabPage = opened.page;
+  this.linkedHyperlinkHref = opened.href;
+});
+
+Then("the push notification hyperlink opens the linked page", async function () {
+  logger.info("Verifying the push notification hyperlink opened the linked page");
+  await DynamicAndReferenceFields.verifyLinkedPageOpened(this.newTabPage, this.linkedHyperlinkHref, this.page);
+  this.newTabPage = null;
+});
+
+// Acknowledges the mandatory notification (checks "Got it" + closes), marking the reminder as read.
+When("I acknowledge the push notification", async function () {
+  logger.info("Acknowledging the mandatory push notification");
+  await Cart.acknowledgePushNotification(this.page);
+});
+
+// Opens the cart notification panel (header bell) and clicks the hyperlink inside a notification
+// message; the link opens the linked page in a NEW browser tab, stored on the World.
+When("I click the cart push note hyperlink", async function () {
+  logger.info("Clicking the cart push note hyperlink in the notification panel");
+  const opened = await Cart.clickCartPushNoteHyperlink(this.page);
+  this.newTabPage = opened.page;
+  this.linkedHyperlinkHref = opened.href;
+});
+
+Then("the cart push note hyperlink opens the linked page", async function () {
+  logger.info("Verifying the cart push note hyperlink opened the linked page");
+  await DynamicAndReferenceFields.verifyLinkedPageOpened(this.newTabPage, this.linkedHyperlinkHref, this.page);
+  this.newTabPage = null;
 });
 
 // ========================================

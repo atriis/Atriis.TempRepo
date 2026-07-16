@@ -3579,6 +3579,95 @@ const Cart = {
     }
   },
 
+  /**
+   * Verifies the mandatory-notifications popup (app-reminder-popup.vue, titled "Mandatory
+   * Notifications") is displayed, WITHOUT dismissing it. Unlike verifyPushNotificationDisplayed — which
+   * dismisses the reminder popup on sight — this assertion leaves the popup open so a following step can
+   * click its hyperlink and acknowledge it (test 73097).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyMandatoryNotificationsPopupDisplayed(page) {
+    if (!page) throw new Error('[Cart.verifyMandatoryNotificationsPopupDisplayed] "page" is required.');
+    const commonPage = getPageObject(page, CommonPage);
+    const visible = await commonPage.isMandatoryNotificationsPopupVisible({ timeout: 15000 });
+    if (!visible) {
+      const openTitles = await commonPage.getVisibleDialogTitles().catch(() => []);
+      throw new Error(
+        `[Cart.verifyMandatoryNotificationsPopupDisplayed] Expected the "Mandatory Notifications" popup to be ` +
+        `displayed after proceeding, but it was not visible. Visible dialog(s): ` +
+        `${openTitles.length ? openTitles.join(', ') : 'none'}. (If a reference-fields popup is still open, the ` +
+        `preceding Proceed did not dismiss it — often because a linked tab kept the app page backgrounded.)`
+      );
+    }
+  },
+
+  /**
+   * Clicks the hyperlink inside the mandatory-notifications popup and returns the tab it opens in a new
+   * window, so the caller can store it and verify the linked page (test 73097).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<import('playwright').Page>} The newly opened tab
+   */
+  async clickPushNotificationHyperlink(page) {
+    if (!page) throw new Error('[Cart.clickPushNotificationHyperlink] "page" is required.');
+    logger.debug('Clicking the hyperlink inside the mandatory-notifications popup');
+    const commonPage = getPageObject(page, CommonPage);
+    try {
+      return await commonPage.clickReminderPopupHyperlink();
+    } catch (err) {
+      throw new Error(
+        `[Cart.clickPushNotificationHyperlink] Could not open the push-notification hyperlink. The ` +
+        `mandatory-notifications popup may not be open. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Acknowledges the mandatory-notifications popup by checking its "Got it" box and closing it, which
+   * marks the reminders as read (test 73097). Fails if the popup is not open.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async acknowledgePushNotification(page) {
+    if (!page) throw new Error('[Cart.acknowledgePushNotification] "page" is required.');
+    logger.debug('Acknowledging the mandatory-notifications popup');
+    const commonPage = getPageObject(page, CommonPage);
+    try {
+      await commonPage.acknowledgeMandatoryNotificationsPopup();
+    } catch (err) {
+      throw new Error(
+        `[Cart.acknowledgePushNotification] Could not acknowledge the mandatory-notifications popup ` +
+        `(check "Got it" + close). The popup may not be open. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Opens the cart notification panel (header bell) and clicks the hyperlink inside a notification
+   * message, returning the tab it opens in a new window so the caller can verify the linked page
+   * (test 73097).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<import('playwright').Page>} The newly opened tab
+   */
+  async clickCartPushNoteHyperlink(page) {
+    if (!page) throw new Error('[Cart.clickCartPushNoteHyperlink] "page" is required.');
+    logger.debug('Opening the cart notification panel and clicking the push-note hyperlink');
+    const commonPage = getPageObject(page, CommonPage);
+    try {
+      await commonPage.openNotificationPanel();
+      return await commonPage.clickNotificationPanelHyperlink();
+    } catch (err) {
+      throw new Error(
+        `[Cart.clickCartPushNoteHyperlink] Could not open the cart push-note hyperlink. The notification ` +
+        `panel may not have opened, or no notification carries a link. Original: ${err.message}`
+      );
+    }
+  },
+
   // ========================================
   // Passenger Title (Travelodge extras)
   // ========================================
