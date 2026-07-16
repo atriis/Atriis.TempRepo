@@ -812,6 +812,93 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Fills a TEXT reference field in the reference-fields popup, identified by its label, with the given
+   * value. Distinct from fillCheckoutReferenceField (checkout form): this targets the search-gating /
+   * "At User Select" popup and blurs after filling so the field's custom-regex validation fires on entry.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} fieldName - The field label as written in the feature (may include a leading "* ")
+   * @param {string} value - The value to enter
+   * @returns {Promise<void>}
+   */
+  async fillPopupReferenceField(page, fieldName, value) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.fillPopupReferenceField] "page" is required.');
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.fillPopupReferenceField] "fieldName" must be a non-empty string, got: ${typeof fieldName} (${fieldName})`
+      );
+    }
+    if (value === undefined || value === null) {
+      throw new Error('[DynamicAndReferenceFields.fillPopupReferenceField] "value" is required.');
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    logger.debug('Filling reference field in the popup', { fieldName, value });
+    await dynamicFieldsPage.fillPopupReferenceFieldByLabel(fieldName, String(value));
+  },
+
+  /**
+   * Verifies that a validation error is displayed on the Nth reference field in the reference-fields
+   * popup (1-based index, matching the field order in the feature). Fails if no error is visible on that
+   * field — e.g. the custom regular-expression validation did not reject the entered value.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string|number} index - 1-based position of the reference field (e.g. "1", "2")
+   * @returns {Promise<void>}
+   */
+  async verifyValidationErrorOnPopupReferenceField(page, index) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyValidationErrorOnPopupReferenceField] "page" is required.');
+    const parsed = Number.parseInt(index, 10);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyValidationErrorOnPopupReferenceField] "index" must be a 1-based positive ` +
+        `integer, got: ${typeof index} (${index})`
+      );
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    logger.debug('Verifying validation error on popup reference field by index', { index: parsed });
+    const visible = await dynamicFieldsPage.isValidationErrorVisibleOnPopupFieldByIndex(parsed);
+
+    expect(
+      visible,
+      `[DynamicAndReferenceFields.verifyValidationErrorOnPopupReferenceField] Expected a validation error to be ` +
+      `displayed on reference field #${parsed} in the popup after entering an invalid-format value, but none was ` +
+      `visible. The field's custom regular-expression validation may not have rejected the value, or the field ` +
+      `did not render.`
+    ).toBe(true);
+  },
+
+  /**
+   * Verifies that a message is displayed inside the reference-fields popup — e.g. the "Please fill in the
+   * required information in order to proceed" instruction that remains shown after clicking Proceed with
+   * invalid/missing values (i.e. the popup did not proceed).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} message - The expected message text
+   * @returns {Promise<void>}
+   */
+  async verifyPopupReferenceFieldMessage(page, message) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyPopupReferenceFieldMessage] "page" is required.');
+    if (!message || typeof message !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyPopupReferenceFieldMessage] "message" must be a non-empty string, got: ${typeof message} (${message})`
+      );
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    logger.debug('Verifying message displayed in reference-fields popup', { message });
+    const visible = await dynamicFieldsPage.isPopupMessageDisplayed(message);
+
+    expect(
+      visible,
+      `[DynamicAndReferenceFields.verifyPopupReferenceFieldMessage] Expected the message "${message}" to be displayed ` +
+      `in the reference-fields popup, but it was not visible. The popup may have proceeded/closed, or the message ` +
+      `text differs.`
+    ).toBe(true);
+  },
+
+  /**
    * Waits for the reference fields popup Proceed button to be visible and clicks it.
    * Use when the popup appears and all required fields are already pre-filled,
    * so no field selection is needed — just dismiss the popup to continue.

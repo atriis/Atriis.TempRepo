@@ -63,6 +63,12 @@ const SELECTORS = {
   // form of TRAVELER_QUESTIONS (which is prefixed with `.traveler-section`) so it can be chained off a
   // single passenger's `.el-collapse-item` to scope field reads to that traveller only.
   TRAVELER_QUESTIONS_BLOCK: '.traveler-questions',
+  // A reference/dynamic field in an ERROR state: input-textbox.vue puts `is-danger` on the `.el-input`
+  // and renders a `.form-validation-msg` under the same v-if (input.$invalid && $dirty, or markFields &&
+  // $invalid). The inner `<p class="help">` (VALIDATION_ERROR) only appears when an errorField/required
+  // message is configured — custom-regex fields have none — so these field-state markers, not the error
+  // text node, are what signal a rejected field.
+  FIELD_ERROR_STATE: '.el-input.is-danger, .form-validation-msg',
 };
 
 class DynamicAndReferenceFieldsPage {
@@ -215,6 +221,64 @@ class DynamicAndReferenceFieldsPage {
     const input = fieldContainer.locator(SELECTORS.INPUT_INNER).first();
     await input.scrollIntoViewIfNeeded();
     await input.fill(value);
+  }
+
+  /**
+   * Fills a TEXT reference field in the reference-fields popup, identified by its label, then blurs to
+   * commit the value and trigger the field's validation. Distinct from fillReferenceFieldByLabel (which
+   * targets the checkout form and does NOT blur): the popup custom-regex test needs validation to fire
+   * on entry so an invalid value surfaces its error BEFORE Proceed (input-textbox.vue shows the error
+   * when `input.$invalid && input.$dirty`, and the Vuelidate `$model` write done by fill() sets $dirty).
+   *
+   * The feature label carries the leading "*" mandatory marker (e.g. "* Custom Regular Expression 1");
+   * it is stripped so the label resolves via fieldContainerByLabel's exact-label matcher, which tolerates
+   * the marker in the DOM but not in the query string.
+   *
+   * @param {string} labelText - The field label as written in the feature (may include a leading "* ")
+   * @param {string} value - The value to enter
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async fillPopupReferenceFieldByLabel(labelText, value, { timeout = 15000 } = {}) {
+    if (!labelText || typeof labelText !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.fillPopupReferenceFieldByLabel] "labelText" must be a non-empty string, got: ${typeof labelText} (${labelText})`
+      );
+    }
+    if (value === undefined || value === null) {
+      throw new Error('[DynamicAndReferenceFieldsPage.fillPopupReferenceFieldByLabel] "value" is required.');
+    }
+
+    // Strip the leading "*" mandatory marker the feature label includes so the exact-label matcher resolves it.
+    const cleaned = labelText.replace(/^\s*\*\s*/, '').trim();
+
+    try {
+      // The reference-fields popup renders its fields (and hidden responsive duplicates) a beat after it
+      // opens, so wait for a VISIBLE container carrying this label before resolving — otherwise
+      // fieldContainerByLabel can snapshot 0 matches and fall through to a fallback that never appears.
+      await this.page
+        .locator(SELECTORS.FIELD_CONTAINER)
+        .filter({ hasText: cleaned, visible: true })
+        .first()
+        .waitFor({ state: 'visible', timeout: Math.max(timeout, 15000) })
+        .catch(() => {});
+
+      const fieldContainer = await this.fieldContainerByLabel(cleaned);
+      await fieldContainer.waitFor({ state: 'visible', timeout });
+
+      const input = fieldContainer.locator(SELECTORS.INPUT_INNER).first();
+      await input.scrollIntoViewIfNeeded();
+      await input.fill(String(value));
+      // Blur so the field commits its value and runs validation, mirroring a real user tabbing out.
+      await input.blur().catch(() => {});
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.fillPopupReferenceFieldByLabel] Could not fill the "${cleaned}" reference ` +
+        `field in the popup with "${value}". The reference-fields popup may not be open, or the label did not ` +
+        `resolve to a text field. Original: ${err.message}`
+      );
+    }
   }
 
   /**
@@ -512,6 +576,66 @@ class DynamicAndReferenceFieldsPage {
       if (text) texts.push(text);
     }
     return texts;
+  }
+
+  /**
+   * Returns true if a validation error is displayed on the Nth reference field in the open reference-fields
+   * popup (1-based). Scopes to the visible dialog, indexes the VISIBLE field containers in DOM order (so
+   * hidden responsive duplicates are skipped), and checks that field for an error-STATE marker
+   * (FIELD_ERROR_STATE: `.el-input.is-danger` / `.form-validation-msg`) — proving the field's
+   * custom-regex/mandatory validation rejected its value. The error text node (VALIDATION_ERROR) is NOT
+   * used: custom-regex fields render no errorField/required message, so the `<p class="help">` is absent
+   * even while the field is flagged. Uses `attached`: the markers reflect the validation state directly,
+   * and the (often empty) message container can have zero height.
+   *
+   * @param {number} index - 1-based position of the reference field in the popup
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isValidationErrorVisibleOnPopupFieldByIndex(index, { timeout = 10000 } = {}) {
+    if (!Number.isInteger(index) || index < 1) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.isValidationErrorVisibleOnPopupFieldByIndex] "index" must be a 1-based ` +
+        `positive integer, got: ${typeof index} (${index})`
+      );
+    }
+    const dialog = this.page.locator(SELECTORS.REFERENCE_DIALOG).first();
+    const field = dialog.locator(SELECTORS.FIELD_CONTAINER).filter({ visible: true }).nth(index - 1);
+    const errorMarker = field.locator(SELECTORS.FIELD_ERROR_STATE).first();
+    try {
+      await errorMarker.waitFor({ state: 'attached', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Returns true if the given message text is visible inside the open reference-fields popup. Used to
+   * assert the static instruction (e.g. "Please fill in the required information in order to proceed",
+   * trip-app.vue `.ref-container`) is still shown after clicking Proceed with invalid/missing values —
+   * i.e. the popup did not proceed. Scoped to the visible dialog so page-behind text is not matched.
+   *
+   * @param {string} message - The message text to look for (case-insensitive substring)
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isPopupMessageDisplayed(message, { timeout = 10000 } = {}) {
+    if (!message || typeof message !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.isPopupMessageDisplayed] "message" must be a non-empty string, got: ${typeof message} (${message})`
+      );
+    }
+    const dialog = this.page.locator(SELECTORS.REFERENCE_DIALOG).first();
+    const node = dialog.getByText(message, { exact: false }).first();
+    try {
+      await node.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**

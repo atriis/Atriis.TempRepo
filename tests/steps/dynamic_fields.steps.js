@@ -185,6 +185,28 @@ When("I select the first available option for the {string} reference field", asy
   logger.info(`Selected reference field option`, { fieldName, selectedOption: result?.selectedOption });
 });
 
+// Fills a TEXT reference field in the search-gating reference-fields popup by its label (as written in
+// the feature, e.g. "* Custom Regular Expression 1"). Blurs after filling so a custom-regex validation
+// fires on entry. Follow with the validation-error / message assertion steps below.
+When("I fill {string} reference field pop up with {string}", async function (fieldName, value) {
+  logger.info(`Filling reference field "${fieldName}" in the popup with "${value}"`);
+  await DynamicAndReferenceFields.fillPopupReferenceField(this.page, fieldName, value);
+});
+
+// Verifies a validation error is shown on the Nth reference field (1-based) in the popup — e.g. the
+// custom regular-expression validation rejected the entered value.
+Then("a validation error is displayed on the {string} pop up reference field", async function (index) {
+  logger.info(`Verifying a validation error is displayed on popup reference field "${index}"`);
+  await DynamicAndReferenceFields.verifyValidationErrorOnPopupReferenceField(this.page, index);
+});
+
+// Verifies a message is displayed in the reference-fields popup — e.g. the mandatory-information
+// instruction that stays visible after clicking Proceed with invalid/missing values.
+Then("the message {string} is displayed in the pop up reference field", async function (message) {
+  logger.info(`Verifying the message "${message}" is displayed in the reference-fields popup`);
+  await DynamicAndReferenceFields.verifyPopupReferenceFieldMessage(this.page, message);
+});
+
 Then("the custom error {string} should be displayed below the {string} reference field", async function (expectedError, fieldName) {
   logger.info(`Verifying custom error "${expectedError}" is displayed below the "${fieldName}" reference field`);
   await DynamicAndReferenceFields.verifyReferenceFieldCustomError(this.page, expectedError, fieldName);
