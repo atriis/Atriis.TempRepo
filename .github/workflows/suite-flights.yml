@@ -1,7 +1,9 @@
 name: Suite - Flights
 
 # HEAD of the stable domain chain: Flights → Hotels → Shell → Transportation.
-# Manually dispatched (no schedule yet). When this run completes it triggers
+# Dispatched daily at 21:00 Portugal time by suite-scheduler.yml (the schedule
+# lives there so decoy DST cron slots can't trigger the downstream chain), and
+# manually dispatchable here. When this run completes it triggers
 # "Suite - Hotels" via workflow_run; Hotels waits 5 min, then runs, and so on.
 #
 # Stability levers vs. the legacy Test Suite:

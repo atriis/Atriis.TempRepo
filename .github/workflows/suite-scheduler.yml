@@ -1,0 +1,59 @@
+name: Suite Scheduler
+
+# Starts the stable domain chain (Flights → Hotels → Shell → Transportation)
+# every day at 21:00 Portugal time (Europe/Lisbon).
+#
+# GitHub cron is UTC-only and Lisbon alternates between UTC+0 (winter, WET)
+# and UTC+1 (summer, WEST), so BOTH candidate slots are scheduled and a guard
+# dispatches only from the slot that is 21:00 local:
+#   - '0 20 * * *' is the right slot while Lisbon is UTC+1 (late Mar → late Oct)
+#   - '0 21 * * *' is the right slot while Lisbon is UTC+0
+# The other slot exits without doing anything.
+#
+# The schedule lives HERE (a dispatcher) instead of on suite-flights.yml on
+# purpose: a schedule+guard directly on "Suite - Flights" would still produce
+# a completed (all-jobs-skipped) run on the decoy slot, and that completion
+# would trigger "Suite - Hotels" via workflow_run — running 3 of the 4 domains
+# at the wrong hour. Nothing listens to this workflow, so its decoy runs are
+# inert.
+
+on:
+  schedule:
+    - cron: '0 20 * * *' # 21:00 Lisbon during summer time (WEST)
+    - cron: '0 21 * * *' # 21:00 Lisbon during winter time (WET)
+  workflow_dispatch: # manual: starts the chain immediately, no time guard
+
+permissions:
+  actions: write # gh workflow run needs to dispatch suite-flights.yml
+
+concurrency:
+  group: suite-scheduler
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    name: Dispatch Suite - Flights at 21:00 Lisbon
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Start the domain chain if this slot is 21:00 in Lisbon
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FIRED_CRON: ${{ github.event.schedule }}
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            # Pick the correct slot from the CURRENT Lisbon UTC offset instead
+            # of the current hour, so a delayed runner start can't misjudge.
+            offset=$(TZ=Europe/Lisbon date +%z)
+            if [ "$offset" = "+0100" ]; then
+              want='0 20 * * *'
+            else
+              want='0 21 * * *'
+            fi
+            if [ "$FIRED_CRON" != "$want" ]; then
+              echo "Decoy slot ($FIRED_CRON; Lisbon offset $offset) — nothing to do."
+              exit 0
+            fi
+          fi
+          echo "Dispatching Suite - Flights (chain: Flights → Hotels → Shell → Transportation)"
+          gh workflow run suite-flights.yml --ref main --repo "$GITHUB_REPOSITORY"
