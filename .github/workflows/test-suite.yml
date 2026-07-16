@@ -1,25 +1,23 @@
 name: Test Suite
 
-# LEGACY SUITE FULLY DISABLED 2026-07-16 while validating the new per-domain
-# suite chain (Suite - Flights → Hotels → Shell → Transportation). BOTH triggers
-# are commented so the old ~200-scenario booking suite cannot run — neither on a
-# schedule NOR by an accidental manual dispatch — and compete with the new runs
-# for test accounts / real bookings. The file is intentionally left in place.
+# LEGACY SUITE DISABLED 2026-07-16 while validating the new per-domain suite
+# chain (Suite - Flights → Hotels → Shell → Transportation). The old ~200-scenario
+# booking suite must not run automatically and compete with the new runs for test
+# accounts / real bookings. The file is intentionally left in place.
 #
-# GitHub will show this workflow as having "no event triggers defined" — that is
-# the intended (disabled) state, not an error, and it does not affect the new
-# suites. To bring the legacy suite back:
-#   * manual only     → un-comment `workflow_dispatch:`
-#   * every-other-day → also un-comment the two `schedule` lines
+# It is set to `workflow_dispatch` ONLY: it never fires on push, pull_request, or
+# schedule — it runs solely if someone deliberately clicks "Run workflow".
+#
+# ⚠️ Do NOT "disable" this with an empty `on: {}`. GitHub treats an empty trigger
+# map as INVALID and emits a red startup-failure run (0 jobs, no tests executed)
+# on EVERY push to ANY branch — that is what littered the Actions tab. A lone
+# `workflow_dispatch:` is the correct "present but off" state.
+#
+# To bring the legacy suite back on a cadence, un-comment the schedule lines.
 on:
-  # push:
-  #  branches: [ main ]
-  # pull_request:
-  #  branches: [ main ]
+  workflow_dispatch:
   # schedule:
   #   - cron: '30 18 */2 * *'  # Run every other day at 18:30 UTC
-  # workflow_dispatch:
-  {}
 
 # Structured logging configuration for all jobs
 env:
