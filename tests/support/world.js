@@ -38,8 +38,15 @@ class CustomWorld extends World {
     // failure screenshot times out. Gated on CI to match the CI-only
     // tracing.stop() in the After hook — locally it would only ever be
     // recorded and discarded.
+    //
+    // Low fidelity on purpose: snapshots give the interactive DOM time-travel
+    // that makes a trace worth keeping. screenshots (a rasterized image on
+    // EVERY action) and sources are dropped — with 4 parallel Chromiums on the
+    // 2-vCPU runner, per-action rasterization starved actionability waits and
+    // caused random step timeouts. The per-scenario failure screenshot lives in
+    // the After hook (this.page.screenshot), independent of the trace.
     if (process.env.CI) {
-      await this.context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+      await this.context.tracing.start({ screenshots: false, snapshots: true, sources: false });
     }
 
     this.page = await this.context.newPage();

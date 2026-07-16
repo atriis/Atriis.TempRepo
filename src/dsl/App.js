@@ -79,8 +79,15 @@ const App = {
     // In CI, record a Playwright trace for the whole session (covers login, the
     // new-trip tab, and every step). The After hook exports it on failure so we
     // can see exactly which step got stuck instead of guessing from a screenshot.
+    //
+    // Low fidelity on purpose: snapshots give the interactive DOM time-travel
+    // that makes a trace worth keeping. screenshots (a rasterized image on EVERY
+    // action) and sources are dropped — with 4 parallel Chromiums on the 2-vCPU
+    // runner, per-action rasterization starved actionability waits and caused
+    // random step timeouts. The per-scenario failure screenshot lives in the
+    // After hook (this.page.screenshot), independent of the trace.
     if (process.env.CI) {
-      await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+      await context.tracing.start({ screenshots: false, snapshots: true, sources: false });
     }
 
     const page = await context.newPage();

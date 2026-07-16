@@ -1,7 +1,7 @@
 name: Rerun Failed Tests
 
-# Automatically re-runs ONLY the scenarios that failed in a scheduled "Test Suite"
-# run, 5 minutes after that run completes. The failing scenarios come from the
+# Automatically re-runs ONLY the scenarios that failed in a scheduled or manually
+# dispatched "Test Suite" run, 5 minutes after that run completes. The failing scenarios come from the
 # per-suite rerun.txt files (Cucumber's `rerun` formatter, configured in
 # cucumber.js) that Test Suite uploads as `<suite_id>-rerun` artifacts. rerun.txt
 # lists only scenarios that failed EVERY attempt, so the in-run `--retry 2` has
@@ -35,10 +35,12 @@ jobs:
     name: Rerun Failed Scenarios
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    # Only after a SCHEDULED Test Suite run that actually FAILED (i.e. there are
-    # failures worth rerunning). Manual (workflow_dispatch) runs are ignored.
+    # Only after a scheduled OR manually-dispatched Test Suite run that actually
+    # FAILED (i.e. there are failures worth rerunning). Other trigger events (e.g.
+    # push/pull_request, if ever enabled) are ignored.
     if: >
-      github.event.workflow_run.event == 'schedule' &&
+      (github.event.workflow_run.event == 'schedule' ||
+       github.event.workflow_run.event == 'workflow_dispatch') &&
       github.event.workflow_run.conclusion == 'failure'
     steps:
       - name: Wait 5 minutes before rerun
@@ -104,7 +106,20 @@ jobs:
 
       - name: Rerun failed scenarios
         if: steps.combine.outputs.count != '0'
-        run: npx cucumber-js @test-results/rerun-combined.txt --profile ci --parallel 2 --retry 1
+        shell: bash
+        # cucumber-js 12 dropped the `@file` args-from-file syntax: `cucumber-js
+        # @rerun.txt` is treated as a literal (non-matching) path and SILENTLY runs
+        # 0 scenarios — so the auto-rerun was a no-op every time. Expand the list
+        # into explicit `path:line` args instead (proven to match). The empty guard
+        # is critical: with zero path args cucumber-js would run the ENTIRE default
+        # suite — real bookings against staging. (The step `if` already gates on
+        # count != 0; this is belt-and-suspenders.)
+        run: |
+          mapfile -t SCENARIOS < test-results/rerun-combined.txt
+          if [ ${#SCENARIOS[@]} -eq 0 ]; then
+            echo "Rerun list is empty — refusing to run the full suite."; exit 0
+          fi
+          npx cucumber-js "${SCENARIOS[@]}" --profile ci --parallel 2 --retry 1
         env:
           CI: "true"
 
