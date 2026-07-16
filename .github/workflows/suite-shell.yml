@@ -1,0 +1,63 @@
+name: Suite - Shell
+
+# 3rd in the chain. Auto-triggered 5 min after "Suite - Hotels" completes, and
+# also manually dispatchable on its own.
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Suite - Hotels"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+concurrency:
+  group: suite-shell
+  cancel-in-progress: false
+
+jobs:
+  cooldown:
+    name: Cooldown (5 min chain gap)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success' ||
+      github.event.workflow_run.conclusion == 'failure'
+    steps:
+      - name: Wait 5 minutes after the previous domain
+        if: github.event_name == 'workflow_run'
+        run: sleep 300
+
+  suite:
+    needs: cooldown
+    uses: ./.github/workflows/suite-runner.yml
+    secrets: inherit
+    with:
+      domain: Shell
+      history-workflow: suite-shell.yml
+      rerun-timeout-minutes: 120
+      expected-suites: >-
+        shell-agent-assistance-and-suggestions shell-conversation shell-fop-issues
+        shell-frequent-programs shell-joy-search-defaults shell-manual-quote
+        shell-per-diem shell-share-quote-or-itinerary shell-travel-policy
+        shell-ui-issues shell-user-profile
+      matrix: |
+        {
+          "include": [
+            { "suite_id": "shell-agent-assistance-and-suggestions", "suite_name": "Shell Agent Assistance And Suggestions", "test_path": "tests/features/shell/shell_agent_assistance_and_suggestions/", "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "shell-conversation",                     "suite_name": "Shell Conversation",                     "test_path": "tests/features/shell/shell_conversation/",                     "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "shell-fop-issues",                       "suite_name": "Shell FOP Issues",                       "test_path": "tests/features/shell/shell_fop_issues/",                       "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "shell-frequent-programs",                "suite_name": "Shell Frequent Programs",                "test_path": "tests/features/shell/shell_frequent_programs/",                "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "shell-joy-search-defaults",              "suite_name": "Shell Joy Search Defaults",              "test_path": "tests/features/shell/shell_joy_search_defaults/",              "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "shell-manual-quote",                     "suite_name": "Shell Manual Quote",                     "test_path": "tests/features/shell/shell_manual_quote/",                     "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "shell-per-diem",                         "suite_name": "Shell Per Diem",                         "test_path": "tests/features/shell/shell_per_diem/",                         "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "shell-share-quote-or-itinerary",         "suite_name": "Shell Share Quote Or Itinerary",         "test_path": "tests/features/shell/shell_share_quote_or_itinerary/",         "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "shell-travel-policy",                    "suite_name": "Shell Travel Policy",                    "test_path": "tests/features/shell/shell_travel_policy/",                    "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "shell-ui-issues",                        "suite_name": "Shell UI Issues",                        "test_path": "tests/features/shell/shell_ui_issues/",                        "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "shell-user-profile",                     "suite_name": "Shell User Profile",                     "test_path": "tests/features/shell/shell_user_profile/",                     "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 }
+          ]
+        }

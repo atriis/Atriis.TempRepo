@@ -1,0 +1,55 @@
+name: Suite - Hotels
+
+# 2nd in the chain. Auto-triggered 5 min after "Suite - Flights" completes
+# (pass OR fail — domains are independent), and also manually dispatchable on
+# its own. The 5-min gap is a cooldown between domains to avoid overlapping load
+# on staging; it is skipped on manual dispatch.
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Suite - Flights"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+concurrency:
+  group: suite-hotels
+  cancel-in-progress: false
+
+jobs:
+  cooldown:
+    name: Cooldown (5 min chain gap)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Continue the chain on success or failure of the previous domain; stop only
+    # if it was cancelled/skipped. Manual dispatch always proceeds.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success' ||
+      github.event.workflow_run.conclusion == 'failure'
+    steps:
+      - name: Wait 5 minutes after the previous domain
+        if: github.event_name == 'workflow_run'
+        run: sleep 300
+
+  suite:
+    needs: cooldown
+    uses: ./.github/workflows/suite-runner.yml
+    secrets: inherit
+    with:
+      domain: Hotels
+      history-workflow: suite-hotels.yml
+      rerun-timeout-minutes: 180
+      expected-suites: >-
+        hotels-non-booking hotels-booking
+      matrix: |
+        {
+          "include": [
+            { "suite_id": "hotels-non-booking", "suite_name": "Hotels Non Booking", "test_path": "tests/features/hotels/hotels_non_booking/", "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "hotels-booking",     "suite_name": "Hotels Booking",     "test_path": "tests/features/hotels/hotels_booking/",     "parallel": 1, "retry": 3, "job_timeout_minutes": 240, "step_timeout_minutes": 230 }
+          ]
+        }

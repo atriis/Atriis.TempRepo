@@ -30,11 +30,21 @@ concurrency:
   group: rerun-failures-${{ github.event.workflow_run.id }}
   cancel-in-progress: false
 
+# If more scenarios failed every attempt than this, the rerun is SKIPPED: that
+# volume is a systemic failure (env/auth/deploy outage), not flakes, and a rerun
+# would only burn hours before hitting the job timeout and being cancelled —
+# exactly the failure mode observed on run #29486403584 (180 scenarios, killed
+# at 90 min). A rerun is for a handful of transient flakes.
+env:
+  MAX_RERUN_SCENARIOS: 40
+
 jobs:
   rerun-failures:
     name: Rerun Failed Scenarios
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # Bounded by MAX_RERUN_SCENARIOS above; 180 min gives headroom for a
+    # legitimate (<=cap) flake batch that includes slow booking scenarios.
+    timeout-minutes: 180
     # Only after a scheduled OR manually-dispatched Test Suite run that actually
     # FAILED (i.e. there are failures worth rerunning). Other trigger events (e.g.
     # push/pull_request, if ever enabled) are ignored.
@@ -100,12 +110,19 @@ jobs:
               | sed '/^[[:space:]]*$/d' > test-results/rerun-combined.txt || true
           fi
           count=$(grep -c . test-results/rerun-combined.txt || true)
-          echo "count=${count:-0}" >> "$GITHUB_OUTPUT"
-          echo "Found ${count:-0} failed scenario(s) to rerun:"
+          count=${count:-0}
+          echo "count=${count}" >> "$GITHUB_OUTPUT"
+          echo "Found ${count} failed scenario(s) to rerun:"
           cat test-results/rerun-combined.txt || true
+          if [ "${count}" -gt "${MAX_RERUN_SCENARIOS}" ]; then
+            echo "over_cap=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::${count} failed scenarios exceeds the rerun cap (${MAX_RERUN_SCENARIOS}). This is a systemic failure, not flakes — skipping the rerun. Investigate the source run directly."
+          else
+            echo "over_cap=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Rerun failed scenarios
-        if: steps.combine.outputs.count != '0'
+        if: steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         shell: bash
         # cucumber-js 12 dropped the `@file` args-from-file syntax: `cucumber-js
         # @rerun.txt` is treated as a literal (non-matching) path and SILENTLY runs
@@ -127,10 +144,15 @@ jobs:
         if: steps.combine.outputs.count == '0'
         run: echo "No failed-scenario rerun files found in the source run — nothing to rerun."
 
+      - name: Skipped — too many failures to rerun
+        if: steps.combine.outputs.over_cap == 'true'
+        run: |
+          echo "::warning::Skipped rerun of ${{ steps.combine.outputs.count }} failed scenarios (cap is ${MAX_RERUN_SCENARIOS}). This many failures indicates a systemic problem, not flakes — a rerun would just time out. Investigate the source run directly."
+
       # ---- Raw result artifacts (mirror the per-suite uploads in test-suite.yml) ----
 
       - name: Upload Rerun JUnit Results
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rerun-results
@@ -138,7 +160,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Rerun Cucumber Report
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rerun-report
@@ -146,7 +168,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Rerun Allure Results
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rerun-allure-results
@@ -154,7 +176,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Rerun Screenshots
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rerun-screenshots
@@ -162,7 +184,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Rerun Traces
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rerun-traces
@@ -174,7 +196,7 @@ jobs:
       # Pull this rerun workflow's OWN previous Allure history so the report shows
       # a trend line across reruns (kept separate from the Test Suite history).
       - name: Download previous Allure history
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         uses: dawidd6/action-download-artifact@b6e2e70617bc3265edd6dab6c906732b2f1ae151 # v21
         with:
           name: rerun-allure-history
@@ -184,7 +206,7 @@ jobs:
           if_no_artifact_found: ignore
 
       - name: Copy history into Allure results
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         shell: bash
         run: |
           if [ -d "previous-history" ]; then
@@ -197,11 +219,11 @@ jobs:
           fi
 
       - name: Install Allure CLI
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         run: npm install allure@3
 
       - name: Generate Allure Report
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         shell: bash
         run: |
           if [ -d "allure-results" ] && [ "$(find allure-results -name '*.json' -type f 2>/dev/null | wc -l)" -gt 0 ]; then
@@ -218,7 +240,7 @@ jobs:
           fi
 
       - name: Generate Cucumber HTML Report
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         shell: bash
         run: |
           echo "Merging Cucumber JSON reports..."
@@ -299,7 +321,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Cucumber HTML Report
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rerun-cucumber-html-report
@@ -308,7 +330,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Allure Report
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rerun-allure-report
@@ -317,7 +339,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Allure History
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rerun-allure-history
@@ -327,7 +349,7 @@ jobs:
           overwrite: true
 
       - name: Publish Rerun Test Results
-        if: always() && steps.combine.outputs.count != '0'
+        if: always() && steps.combine.outputs.count != '0' && steps.combine.outputs.over_cap != 'true'
         uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         with:
           name: Cucumber Rerun - Run ${{ github.run_number }}
@@ -348,8 +370,13 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Triggered by Test Suite run [#${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }}) (\`${{ github.event.workflow_run.conclusion }}\`)." >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Failed scenarios rerun: **${{ steps.combine.outputs.count }}**" >> "$GITHUB_STEP_SUMMARY"
+          echo "Failed scenarios detected: **${{ steps.combine.outputs.count }}**" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ steps.combine.outputs.over_cap }}" = "true" ]; then
+            echo "⚠️ **Rerun skipped** — exceeded the cap of ${MAX_RERUN_SCENARIOS} scenarios. This many failures is a systemic problem (env/auth/deploy), not flakes; a rerun would only time out. Investigate the source run directly." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
           if [ -f "cucumber-html-report/summary.json" ]; then
             node -e "

@@ -1,0 +1,42 @@
+name: Setup Test Environment
+description: >
+  Install Node, project dependencies and Playwright (Chromium), create the
+  test-results dirs, and export the app config from the ENV secret. Shared by
+  every domain suite so the setup is defined once and stays identical.
+
+inputs:
+  env-file-content:
+    description: Dotenv-style content from the ENV secret (passed by the caller job).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      with:
+        node-version: 20
+        cache: 'npm'
+
+    - run: npm ci
+      shell: bash
+
+    - name: Cache Playwright browsers
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+        restore-keys: |
+          playwright-${{ runner.os }}-
+
+    - run: npx playwright install --with-deps chromium
+      shell: bash
+
+    - run: mkdir -p test-results test-results/screenshots
+      shell: bash
+
+    # ENV secret contains only app config: AUTOMATION_APP_BASEURL, GENERAL_PASSWORD,
+    # AUTOMATION_* vars. User emails are written directly in feature files.
+    - name: Load environment variables
+      uses: ./.github/actions/load-env-from-secret
+      with:
+        env-file-content: ${{ inputs.env-file-content }}

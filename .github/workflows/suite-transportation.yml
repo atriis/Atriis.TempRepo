@@ -1,0 +1,52 @@
+name: Suite - Transportation
+
+# LAST in the chain (Cars + Rails). Auto-triggered 5 min after "Suite - Shell"
+# completes, and also manually dispatchable on its own.
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Suite - Shell"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+concurrency:
+  group: suite-transportation
+  cancel-in-progress: false
+
+jobs:
+  cooldown:
+    name: Cooldown (5 min chain gap)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success' ||
+      github.event.workflow_run.conclusion == 'failure'
+    steps:
+      - name: Wait 5 minutes after the previous domain
+        if: github.event_name == 'workflow_run'
+        run: sleep 300
+
+  suite:
+    needs: cooldown
+    uses: ./.github/workflows/suite-runner.yml
+    secrets: inherit
+    with:
+      domain: Transportation
+      history-workflow: suite-transportation.yml
+      rerun-timeout-minutes: 120
+      expected-suites: >-
+        cars-booking cars-daily rails-daily
+      matrix: |
+        {
+          "include": [
+            { "suite_id": "cars-booking", "suite_name": "Cars Booking", "test_path": "tests/features/cars/cars_booking/", "parallel": 1, "retry": 3, "job_timeout_minutes": 120, "step_timeout_minutes": 110 },
+            { "suite_id": "cars-daily",   "suite_name": "Cars Daily",   "test_path": "tests/features/cars/daily_cars/",   "parallel": 2, "retry": 3, "job_timeout_minutes": 90,  "step_timeout_minutes": 85 },
+            { "suite_id": "rails-daily",  "suite_name": "Rails Daily",  "test_path": "tests/features/rails/daily_rails/", "parallel": 2, "retry": 3, "job_timeout_minutes": 90,  "step_timeout_minutes": 85 }
+          ]
+        }
