@@ -30,6 +30,14 @@ When("I add a hotel manual quote in {string} for {int} room(s)", async function 
   await ManualQuoteSearch.addHotelManualQuote(this.page, city, { numberOfRooms });
 });
 
+// Adds a hotel manual quote pinned to a single room. Some bookers (e.g. will@mref.com) only offer
+// "1 Room" in the manual-quote Number Of Rooms dropdown, so the default step's 4 rooms has no option
+// to select and times out — this variant selects the single available room (test 37964).
+When("I add a hotel manual quote in {string} for a single room", async function (city) {
+  logger.info("Adding single-room hotel manual quote", { city });
+  await ManualQuoteSearch.addHotelManualQuote(this.page, city, { numberOfRooms: 1 });
+});
+
 When("I navigate to the manual quote search page", async function () {
   logger.info("Navigating to the manual quote search page");
   await ManualQuoteSearch.openManualQuotePage(this.page);

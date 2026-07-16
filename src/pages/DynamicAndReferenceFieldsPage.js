@@ -53,6 +53,11 @@ const SELECTORS = {
   // from another el-select on the page (its popper stays in the DOM) is not matched.
   OPEN_DROPDOWN_PANEL: '.el-select-dropdown:visible',
   DROPDOWN_ITEM: '.el-select-dropdown__item',
+  // Autocomplete reference field (input-autocomplete.vue → el-autocomplete). Its matches load into a
+  // body-appended popper (popper-class "app-autocomplete-popper ref-autocomplete") as <li> items, and
+  // ONLY after typing (trigger-on-focus is false). Used by dependent fields that autocomplete (test
+  // 37964). Scoped to the visible popper so a hidden mobile-dialog popper is not matched.
+  AUTOCOMPLETE_SUGGESTION: '.app-autocomplete-popper:visible li',
   // Per-traveller reference/dynamic field containers at checkout: input-basic renders one per field
   // inside each passenger's `.traveler-questions`. A dropdown field (e.g. "Payment Group") shows its
   // selected value as the el-select's text; a free-text field (e.g. "Bank account") holds its value in
@@ -1186,6 +1191,115 @@ class DynamicAndReferenceFieldsPage {
         `[DynamicAndReferenceFieldsPage.selectOpenDropdownOption] Could not select option "${optionText}" from the ` +
         `open dropdown panel (${SELECTORS.OPEN_DROPDOWN_PANEL} ${SELECTORS.DROPDOWN_ITEM}). It was not visible ` +
         `within ${timeout}ms — the dropdown may not be open or the option label differs. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Resolves a reference field by its label and reports which widget it renders as: an el-select
+   * "dropdown" (input-dropdown.vue), an "autocomplete" text field (input-autocomplete.vue), or
+   * "other". Waits for the field to become visible first, which also absorbs the render lag of a
+   * DEPENDENT field that only appears once its parent field is set (test 37964). Lets the DSL route a
+   * "type ... select first option" step to the correct driver.
+   *
+   * @param {string} fieldName - Visible field label / question text
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<'autocomplete'|'dropdown'|'other'>}
+   */
+  async resolveReferenceFieldWidget(fieldName, { timeout = 15000 } = {}) {
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.resolveReferenceFieldWidget] "fieldName" must be a non-empty string, got: ${typeof fieldName} (${fieldName})`
+      );
+    }
+    // Wait for a VISIBLE field container carrying this label to render before snapshotting it: checkout
+    // reference fields mount a beat after the booking-details heading, and a DEPENDENT field renders
+    // later still (only once its parent is set). Without this live wait, fieldContainerByLabel snapshots
+    // 0 matches and falls through to the collapse-section fallback that never becomes visible. Mirrors
+    // getFieldValueByLabel's guard.
+    const rendered = await this.page
+      .locator(SELECTORS.FIELD_CONTAINER)
+      .filter({ hasText: fieldName, visible: true })
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false);
+    if (!rendered) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.resolveReferenceFieldWidget] Reference field "${fieldName}" did not become ` +
+        `visible within ${timeout}ms. If it is a dependent field, its parent field may not have been set, so it ` +
+        `never rendered.`
+      );
+    }
+    const container = await this.fieldContainerByLabel(fieldName);
+    const className = (await container.getAttribute('class')) || '';
+    if (className.includes('input-autocomplete')) return 'autocomplete';
+    if (className.includes('input-dropdown')) return 'dropdown';
+    return 'other';
+  }
+
+  /**
+   * Types text into an autocomplete reference field (input-autocomplete.vue → el-autocomplete) found by
+   * its label, waits for the fetched suggestions, and clicks the FIRST one. trigger-on-focus is false,
+   * so suggestions load only after typing; results render as <li> items in the body-appended popper
+   * (.app-autocomplete-popper). Used for dependent fields that autocomplete (e.g. "MATTER CODE CLIENT
+   * TRAVEL", test 37964).
+   *
+   * @param {string} fieldName - Visible field label / question text
+   * @param {string} text - Text to type to fetch suggestions (e.g. "33")
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async typeAndSelectFirstAutocompleteOption(fieldName, text, { timeout = 15000 } = {}) {
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.typeAndSelectFirstAutocompleteOption] "fieldName" must be a non-empty string, got: ${typeof fieldName} (${fieldName})`
+      );
+    }
+    if (!text || typeof text !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.typeAndSelectFirstAutocompleteOption] "text" must be a non-empty string, got: ${typeof text} (${text})`
+      );
+    }
+
+    // Ensure the (possibly dependent) field has rendered before snapshotting it — see
+    // resolveReferenceFieldWidget for why a live wait must precede fieldContainerByLabel.
+    await this.page
+      .locator(SELECTORS.FIELD_CONTAINER)
+      .filter({ hasText: fieldName, visible: true })
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .catch(() => {});
+    const container = await this.fieldContainerByLabel(fieldName);
+    await container.waitFor({ state: 'visible', timeout: 5000 });
+    await container.scrollIntoViewIfNeeded({ timeout: 5000 });
+
+    const input = container.locator(SELECTORS.INPUT_INNER).first();
+    try {
+      await input.click({ timeout: 5000 });
+      // Clear any residual text, then type char-by-char so el-autocomplete's fetch-suggestions fires
+      // (trigger-on-focus is false — focus alone loads nothing).
+      await input.fill('');
+      await this.page.keyboard.type(text, { delay: 40 });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.typeAndSelectFirstAutocompleteOption] Could not type "${text}" into the ` +
+        `autocomplete reference field "${fieldName}" — its input was not interactable. Original: ${err.message}`
+      );
+    }
+
+    const firstSuggestion = this.page.locator(SELECTORS.AUTOCOMPLETE_SUGGESTION).first();
+    try {
+      await firstSuggestion.waitFor({ state: 'visible', timeout: 10000 });
+      await firstSuggestion.click({ timeout: 5000 });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.typeAndSelectFirstAutocompleteOption] Typed "${text}" into autocomplete ` +
+        `reference field "${fieldName}" but no suggestion became available to select within 10s ` +
+        `(${SELECTORS.AUTOCOMPLETE_SUGGESTION}). The typed text may match no option, or suggestions did not load. ` +
+        `Original: ${err.message}`
       );
     }
   }

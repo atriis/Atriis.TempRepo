@@ -243,6 +243,32 @@ When("I select the reference field dropdown option {string}", async function (op
   await DynamicAndReferenceFields.selectReferenceFieldDropdownOption(this.page, optionText);
 });
 
+// Types text into a reference field (identified by its label) and commits the FIRST resulting option.
+// Handles both reference-field widgets — an el-select dropdown (type-to-filter → first filtered item)
+// and an autocomplete text field (type → first fetched suggestion) — so it drives the parent dropdown
+// "BILLABLE OR NON BILLABLE" and the dependent autocomplete "MATTER CODE CLIENT TRAVEL" that appears
+// after it, i.e. the autocomplete + dependency flow of test 37964.
+When("I type {string} in reference field {string} to select the first dropdown option", async function (typedText, fieldName) {
+  logger.info(`Typing "${typedText}" in reference field "${fieldName}" to select the first dropdown option`);
+  await DynamicAndReferenceFields.typeAndSelectFirstReferenceFieldOption(this.page, fieldName, typedText);
+});
+
+// Asserts a single reference field's current value contains the given substring (case-insensitive).
+// Used to verify an autocompleted/dependent field resolved to the expected value (test 37964). Reuses
+// the same value reader as the "should have the following values" table assertion, passing one pair.
+Then("reference field {string} should contain {string}", async function (fieldName, expectedSubstring) {
+  logger.info(`Verifying reference field "${fieldName}" contains "${expectedSubstring}"`);
+  const result = await DynamicAndReferenceFields.verifyReferenceFieldValues(this.page, [
+    { label: fieldName, expectedValue: expectedSubstring },
+  ]);
+  const mismatch = result.results.find((r) => !r.match);
+  if (mismatch) {
+    throw new Error(
+      `Reference field "${mismatch.label}" should contain "${mismatch.expected}", but its value was "${mismatch.actual}".`
+    );
+  }
+});
+
 Then("the dynamic profile field {string} is displayed for {string} travellers", async function (fieldName, travellerCount) {
   const expectedCount = Number.parseInt(travellerCount, 10);
   if (!Number.isInteger(expectedCount) || expectedCount < 1) {

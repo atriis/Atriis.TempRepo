@@ -1345,6 +1345,14 @@ Then("I should see a quote with status {string}", async function (expectedStatus
   await Cart.verifyQuoteWithStatusVisible(this.page, expectedStatus);
 });
 
+// Verifies the just-added quote (e.g. a manual hotel quote) shows the expected status in the trip/cart.
+// Scans all status badges (manual quotes lack the .quote-payment-card wrapper) and polls, so it holds
+// while the trip page renders the new quote card after the manual-quote form closes (test 37964).
+Then("the quote status is {string}", async function (expectedStatus) {
+  logger.info("Verifying the quote status", { expectedStatus });
+  await Cart.verifyQuoteWithStatusVisible(this.page, expectedStatus);
+});
+
 Then("all quotes should have PNR codes", async function () {
   logger.info("Verifying all quotes have PNR codes");
   await Cart.verifyAllQuotesHavePnrCodes(this.page);

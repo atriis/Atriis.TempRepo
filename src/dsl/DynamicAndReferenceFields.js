@@ -518,6 +518,45 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Types text into a reference field found by its label and selects the FIRST resulting option,
+   * handling BOTH reference-field widgets: an el-select "dropdown" (type-to-filter → first filtered
+   * item) and an "autocomplete" text field (type → first fetched suggestion). Routes by detecting the
+   * field's rendered widget, so one "type ... select first dropdown option" step works for a simple
+   * dropdown (e.g. "BILLABLE OR NON BILLABLE") and a dependent autocomplete field that only appears
+   * after the parent is set (e.g. "MATTER CODE CLIENT TRAVEL") — the autocomplete + dependency flow of
+   * test 37964.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} fieldName - Visible label of the reference field
+   * @param {string} text - Text to type to filter/fetch options (e.g. "YES", "33")
+   * @returns {Promise<void>}
+   */
+  async typeAndSelectFirstReferenceFieldOption(page, fieldName, text) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.typeAndSelectFirstReferenceFieldOption] "page" is required.');
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.typeAndSelectFirstReferenceFieldOption] "fieldName" must be a non-empty string, got: ${typeof fieldName} (${fieldName})`
+      );
+    }
+    if (!text || typeof text !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.typeAndSelectFirstReferenceFieldOption] "text" must be a non-empty string, got: ${typeof text} (${text})`
+      );
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    logger.debug('Typing in reference field to select the first option', { fieldName, text });
+
+    const widget = await dynamicFieldsPage.resolveReferenceFieldWidget(fieldName);
+    if (widget === 'autocomplete') {
+      await dynamicFieldsPage.typeAndSelectFirstAutocompleteOption(fieldName, text);
+      return;
+    }
+    // el-select dropdown (or a collapse-section select): reuse the filter-then-commit-first flow.
+    await this.selectReferenceFieldDropdownOnly(page, fieldName, text);
+  },
+
+  /**
    * Selects the FIRST available option from a reference field dropdown WITHOUT clicking Proceed.
    * Use for a mandatory reference field whose configured options vary per corporate profile — the
    * test just needs to fill it with a valid value to proceed, so it takes the first option rather
