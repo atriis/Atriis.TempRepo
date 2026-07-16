@@ -123,6 +123,20 @@ Then("the following checkout reference fields should be visible:", async functio
   }
 });
 
+// Opens a checkout reference-field dropdown by its label and asserts it offers the given option
+// display values — for tests verifying a field "displays value from Option, not the GDS output code"
+// (test 54444). These are dropdown OPTIONS, not field labels or selected values, so the label/value
+// verifiers above cannot find them.
+Then("the checkout reference field dropdown {string} contains the options:", async function (fieldName, dataTable) {
+  const options = dataTable.raw().map(row => row[0]);
+  logger.info("Verifying checkout reference field dropdown options", { fieldName, options });
+  const result = await DynamicAndReferenceFields.verifyCheckoutReferenceFieldDropdownOptions(this.page, fieldName, options);
+  const missing = result.results.filter(r => !r.present).map(r => r.option);
+  if (missing.length > 0) {
+    throw new Error(`Dropdown "${fieldName}" is missing expected options: ${missing.join(', ')}`);
+  }
+});
+
 Then("the following checkout reference fields should not be visible:", async function (dataTable) {
   const labels = dataTable.raw().map(row => row[0]);
   logger.info("Verifying checkout reference field labels are hidden", { labels });

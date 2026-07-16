@@ -707,6 +707,41 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Opens the named checkout reference-field dropdown and verifies it offers the expected option
+   * display values, then closes it. Used to assert a dynamic field "displays value from Option, not
+   * the GDS output code": the option labels shown are the Option display values — e.g. test 54444,
+   * where opening the "Can Edit" dropdown reveals Alabama / Colorado / Louisiana. These are dropdown
+   * options, not field labels or selected values, so the label/value verifiers cannot find them.
+   * @param {import('playwright').Page} page
+   * @param {string} fieldName - Visible dropdown label / question text (e.g. "Can Edit")
+   * @param {string[]} expectedOptions
+   * @returns {Promise<{results: Array<{option: string, present: boolean}>}>}
+   */
+  async verifyCheckoutReferenceFieldDropdownOptions(page, fieldName, expectedOptions) {
+    if (!page) throw new Error('page is required');
+    if (!fieldName || typeof fieldName !== 'string') throw new Error('fieldName must be a non-empty string, got: ' + typeof fieldName);
+    if (!Array.isArray(expectedOptions)) throw new Error('expectedOptions must be an array, got: ' + typeof expectedOptions);
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+
+    await checkoutPage.waitForBookingDetailsText();
+    await dynamicFieldsPage.openReferenceFieldDropdownByLabel(fieldName);
+
+    // Read the whole option list in one pass, then close the panel so a lingering popper doesn't
+    // overlay later steps (cancellation, navigation). Comparing in memory avoids a per-option wait
+    // (a missing option would otherwise cost a full visibility timeout each).
+    const actualOptions = await dynamicFieldsPage.getOpenDropdownOptionTexts();
+    await dynamicFieldsPage.closeOpenDropdown();
+
+    const results = expectedOptions.map((option) => ({
+      option,
+      present: actualOptions.some((actual) => actual.toLowerCase().includes(option.toLowerCase())),
+    }));
+    return { results };
+  },
+
+  /**
    * Clicks the Proceed button and verifies that a validation error appears.
    * Used to verify that mandatory fields are enforced.
    * @param {import('playwright').Page} page

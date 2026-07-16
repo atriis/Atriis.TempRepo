@@ -284,6 +284,11 @@ Then("the dynamic profile field should show value {string}", async function (exp
   await Profile.verifyDynamicFieldValue(this.page, expectedValue);
 });
 
+Then("the dynamic profile field is not editable in the profile", async function () {
+  logger.info("Verifying dynamic profile field is not editable in the profile");
+  await Profile.verifyDynamicFieldNotEditable(this.page);
+});
+
 When("I open the personal details tab in my profile", async function () {
   logger.info("Opening personal details tab in profile");
   await Profile.openPersonalDetailsTab(this.page);

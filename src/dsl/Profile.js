@@ -1478,6 +1478,35 @@ const Profile = {
   },
 
   /**
+   * Verifies the dynamic profile field is not editable (disabled) in the profile.
+   * A field configured as "Editable = Nowhere" only displays its option value and
+   * cannot be changed — it renders as a disabled dropdown.
+   */
+  async verifyDynamicFieldNotEditable(page) {
+    if (!page) throw new Error('[Profile.verifyDynamicFieldNotEditable] "page" is required.');
+
+    logger.debug('[Profile.verifyDynamicFieldNotEditable] Verifying dynamic profile field is not editable');
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let editable;
+    try {
+      editable = await profilePage.isDynamicFieldEditable();
+    } catch (err) {
+      throw new Error(`[Profile.verifyDynamicFieldNotEditable] Failed to read dynamic field editability: ${err.message}`);
+    }
+
+    if (editable) {
+      throw new Error(
+        '[Profile.verifyDynamicFieldNotEditable] The dynamic profile field is editable, but it was expected to be ' +
+        'non-editable ("Editable = Nowhere"). The field dropdown is enabled — verify the field configuration for this user.'
+      );
+    }
+
+    logger.info('[Profile.verifyDynamicFieldNotEditable] Dynamic profile field confirmed not editable');
+  },
+
+  /**
    * Verifies the Personal Details tab is the active tab by checking the "Title" field label is visible.
    */
   async verifyPersonalDetailsTabActive(page, expectedLabel = 'Title') {

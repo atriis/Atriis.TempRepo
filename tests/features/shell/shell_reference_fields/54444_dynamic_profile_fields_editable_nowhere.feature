@@ -15,23 +15,20 @@ Feature: 54444 - Dynamic profile field is not editable when Editable = Nowhere
 
   Scenario: Dynamic profile field is not editable in profile and displays option values at checkout
     Given I am logged in as "noedit@dynamic.nl"
-    # TODO: implement step - open the user profile settings
-    When I open my profile settings
-    # TODO: implement step - was a Testim html-attr-validation; verify the dynamic profile field is not editable in the profile
+    When I navigate to my user profile
     Then the dynamic profile field is not editable in the profile
-    # TODO: implement step - close the profile tab and return to the booking context
-    When I close the profile tab
-    # TODO: implement step - start booking a new trip
-    When I start booking a new trip
+    When I close tab 2
+    And I book a new trip
     And I have added a random guest traveler
-    When I search for a one way flight from "SFO" to "SEA"
-    When I add the first flight to cart
+    And I search for a one way flight from "SFO" to "SEA"
+    And I add the first flight to cart
+    And the booking status should be "Pending booking"
     When I proceed to checkout
-    # TODO: implement step - verify the "Travellers Reference Questions" section is displayed
-    Then the "Travellers Reference Questions" reference section is displayed
-    # TODO: implement step - verify the dynamic profile field displays the option values (not the GDS output values)
-    And the dynamic profile field shows the values:
+    And I wait for booking details in checkout
+    Then the checkout reference field dropdown "Can Edit" contains the options:
       | Alabama |
       | Colorado |
       | Louisiana |
-    Then I successfully cancel the trip
+    And I navigate to cart from checkout
+    Then the booking status should be "On hold"
+    And I successfully cancel the trip

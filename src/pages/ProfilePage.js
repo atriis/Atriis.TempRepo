@@ -1,4 +1,5 @@
 const { expect } = require("@playwright/test");
+const { EL_SELECT_DISABLED_INNER } = require("@utils/elementPlus");
 
 const SELECTORS = {
   // Navigation to profile
@@ -49,6 +50,7 @@ const SELECTORS = {
   TITLE_FIELD_LABEL: '.name-inputs-container > :nth-child(1) .label',
 
   // Personal Details — dynamic reference fields
+  DYNAMIC_FIELD_CONTAINER: '.reference-fields-container',
   DYNAMIC_FIELD_WARNING: '.reference-fields-container .form-validation-msg',
   DYNAMIC_FIELD_SELECT_VALUE: '.reference-fields-container .el-select__placeholder span',
   DYNAMIC_FIELD_LABEL: '.reference-fields-container > :nth-child(2) .label',
@@ -350,6 +352,52 @@ class ProfilePage {
         `The field may not be rendered or the reference-fields-container is missing. Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Determines whether the dynamic reference field in the profile is editable.
+   * A field configured as "Editable = Nowhere" renders as a disabled el-select
+   * (the Vue template binds :disabled="!isEditable" and sets a title when not editable),
+   * so it only displays its option value and cannot be changed.
+   * Mirrors the disabled-detection in DynamicAndReferenceFieldsPage.isFieldDisabled.
+   * @returns {Promise<boolean>} True if the dynamic field is editable (enabled).
+   */
+  async isDynamicFieldEditable() {
+    const container = this.page.locator(SELECTORS.DYNAMIC_FIELD_CONTAINER).first();
+    try {
+      await container.waitFor({ state: 'visible', timeout: 10000 });
+      await container.scrollIntoViewIfNeeded();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.isDynamicFieldEditable] The dynamic reference fields section did not appear ` +
+        `(selector: ${SELECTORS.DYNAMIC_FIELD_CONTAINER}). Ensure the Personal Details tab is open and the ` +
+        `logged-in user has a dynamic profile field configured. Original: ${err.message}`
+      );
+    }
+
+    // Scope to the field's OWN el-select rather than the whole container, so a second, editable field
+    // in the section can't mask a disabled one (or vice-versa). The step asserts a single field.
+    const select = container.locator('.el-select').first();
+    try {
+      await select.waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.isDynamicFieldEditable] No dynamic reference field dropdown (.el-select) rendered inside ` +
+        `${SELECTORS.DYNAMIC_FIELD_CONTAINER}. The field may not be a dropdown or the section is empty. Original: ${err.message}`
+      );
+    }
+
+    // Element Plus puts `is-disabled` on the el-select ROOT itself (a self class)...
+    const rootClass = (await select.getAttribute('class')) || '';
+    if (/\bis-disabled\b/.test(rootClass)) return false;
+    // ...and mirrors the disabled state on inner nodes (wrapper is-disabled/aria-disabled, input is-disabled).
+    if ((await select.locator(EL_SELECT_DISABLED_INNER).count()) > 0) return false;
+
+    // Fallback: the Vue template sets a non-empty title on the select when !isEditable.
+    const title = await select.getAttribute('title');
+    if (title && title.length > 0) return false;
+
+    return true;
   }
 
   async clickPersonalDetailsTab() {

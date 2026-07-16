@@ -3,6 +3,8 @@
  * Contains only UI-level interactions.
  */
 
+const { EL_SELECT_DISABLED_INNER } = require("@utils/elementPlus");
+
 const SELECTORS = {
   REFERENCE_FIELD_SECTION: '.general-section',
   TRAVELER_FIELD_SECTION: '.traveler-section',
@@ -11,8 +13,6 @@ const SELECTORS = {
   SAVE_BUTTON_MODAL: '.el-dialog__footer button:has-text("Save")',
   FIELD_LABEL: 'label.label',
   FIELD_CONTAINER: '.input-dropdown, .input-textbox, .input-checkbox, .input-autocomplete, .input-textarea',
-  DROPDOWN_DISABLED: '.el-select.is-disabled',
-  INPUT_DISABLED: '.el-input.is-disabled',
   VALIDATION_ERROR: '.form-validation-msg .help',
   MANDATORY_MARKER: 'span.has-text-danger',
   // Financial reference modal (cart.financialReferenceModal) — el-select rendered
@@ -307,18 +307,12 @@ class DynamicAndReferenceFieldsPage {
   async isFieldDisabled(labelText, { timeout = 5000 } = {}) {
     const fieldContainer = await this.fieldContainerByLabel(labelText);
     await fieldContainer.waitFor({ state: 'visible', timeout });
-    // Check for disabled dropdown (Element Plus 1.x: .is-disabled, 2.x: is-disabled class on wrapper)
-    const disabledDropdown = fieldContainer.locator(SELECTORS.DROPDOWN_DISABLED);
-    if (await disabledDropdown.count() > 0) return true;
-    // Check for disabled input
-    const disabledInput = fieldContainer.locator(SELECTORS.INPUT_DISABLED);
-    if (await disabledInput.count() > 0) return true;
-    // Check for disabled attribute on select wrapper (.el-select__wrapper)
-    const selectWrapper = fieldContainer.locator('.el-select__wrapper.is-disabled, .el-select[disabled]').first();
-    if (await selectWrapper.count() > 0) return true;
-    // Check aria-disabled on the select wrapper
-    const ariaDisabled = fieldContainer.locator('.el-select__wrapper[aria-disabled="true"]').first();
-    if (await ariaDisabled.count() > 0) return true;
+    // Element Plus flags a disabled select via `is-disabled` on the .el-select root or its inner
+    // nodes (wrapper is-disabled/aria-disabled, or a disabled .el-input). All are descendants of the
+    // field container, so one combined count covers them. Inner signals come from the shared
+    // EL_SELECT_DISABLED_INNER constant (kept in sync with ProfilePage.isDynamicFieldEditable).
+    const disabled = fieldContainer.locator('.el-select.is-disabled, ' + EL_SELECT_DISABLED_INNER);
+    if (await disabled.count() > 0) return true;
     // Fallback: check if title attribute is set (Vue sets title when !isEditable)
     const selectEl = fieldContainer.locator('.el-select').first();
     if (await selectEl.count() > 0) {
@@ -369,6 +363,77 @@ class DynamicAndReferenceFieldsPage {
       if (text) return text.trim();
     }
     return '';
+  }
+
+  /**
+   * Opens a reference-field dropdown identified by its visible label (the question text) and leaves it
+   * OPEN so the option list can be read. Mirrors the open logic of the DSL selectReferenceFieldDropdownOnly
+   * flow: locate the `.input-dropdown` container whose label span matches the field name (anchored so
+   * "Location" is not shadowed by "Location travel policy"), then click its `.el-select`.
+   *
+   * @param {string} fieldName - Visible field label / question text (e.g. "Can Edit")
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async openReferenceFieldDropdownByLabel(fieldName, { timeout = 15000 } = {}) {
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.openReferenceFieldDropdownByLabel] "fieldName" must be a non-empty string, got: ${typeof fieldName} (${fieldName})`
+      );
+    }
+    const escaped = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const labelRegex = new RegExp('^\\s*' + escaped + '\\s*$', 'i');
+
+    // Scope to a VISIBLE `.input-dropdown` whose label span matches exactly — the checkout form renders
+    // hidden responsive duplicates, so an unscoped match can lock onto an invisible copy that never opens.
+    const container = this.page
+      .locator(SELECTORS.FIELD_DROPDOWN_CONTAINER)
+      .filter({ has: this.page.locator('label span', { hasText: labelRegex }), visible: true })
+      .first();
+
+    try {
+      await container.waitFor({ state: 'visible', timeout });
+      await container.scrollIntoViewIfNeeded();
+      await container.locator(SELECTORS.EL_SELECT).first().click({ timeout: 5000 });
+      // Confirm the option panel actually opened before the caller reads options.
+      await this.page.locator(SELECTORS.OPEN_DROPDOWN_PANEL).first().waitFor({ state: 'visible', timeout: 5000 });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.openReferenceFieldDropdownByLabel] Could not open the "${fieldName}" ` +
+        `reference-field dropdown (${SELECTORS.FIELD_DROPDOWN_CONTAINER} with label "${fieldName}"). The field may ` +
+        `not be visible, its label may differ, or it is disabled and cannot be opened. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Closes the currently open el-select option panel (Escape) and waits for it to hide, so a lingering
+   * popper doesn't overlay/steal focus from the next step.
+   * @returns {Promise<void>}
+   */
+  async closeOpenDropdown() {
+    await this.page.keyboard.press('Escape').catch(() => {});
+    await this.page
+      .locator(SELECTORS.OPEN_DROPDOWN_PANEL)
+      .first()
+      .waitFor({ state: 'hidden', timeout: 3000 })
+      .catch(() => {});
+  }
+
+  /**
+   * Reads every option label from the currently OPEN el-select panel in one DOM round-trip. Lets a
+   * caller assert a set of expected options in memory instead of waiting per-option (a missing option
+   * otherwise costs a full visibility timeout each).
+   * @param {object} [options]
+   * @param {number} [options.timeout=5000]
+   * @returns {Promise<string[]>} Trimmed, non-empty option labels in DOM order.
+   */
+  async getOpenDropdownOptionTexts({ timeout = 5000 } = {}) {
+    const panel = this.page.locator(SELECTORS.OPEN_DROPDOWN_PANEL).first();
+    await panel.waitFor({ state: 'visible', timeout }).catch(() => {});
+    const texts = await panel.locator(SELECTORS.DROPDOWN_ITEM).allInnerTexts();
+    return texts.map((t) => t.trim()).filter(Boolean);
   }
 
   /**
