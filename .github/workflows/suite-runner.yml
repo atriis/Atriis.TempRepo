@@ -6,10 +6,13 @@ name: Domain Suite (reusable)
 #
 #   test   - the matrix of cucumber runs (per-leg parallelism/retry/timeout)
 #   report - one per-domain report (Allure + Cucumber HTML + dorny check-run +
-#            reconciliation) built from THIS run's artifacts only
+#            reconciliation) built from THIS run's artifacts only; the job
+#            summary lists every failed scenario with its error
 #   rerun  - 5 min after test, reruns ONLY this domain's failed scenarios, in a
 #            bounded job (per-domain scope + a hard scenario cap) so it can never
-#            run away the way the monolithic Test Suite rerun did
+#            run away the way the monolithic Test Suite rerun did; its summary
+#            names the failed scenarios (even when the cap skips the rerun) and,
+#            after a rerun, the ones still failing
 #
 # Keeping the logic here means a fix or tweak lands once, not four times.
 
@@ -213,6 +216,7 @@ jobs:
         shell: bash
         env:
           DOMAIN: ${{ inputs.domain }}
+          EXPECTED_SUITES: ${{ inputs.expected-suites }}
         run: |
           echo "Merging Cucumber JSON reports..."
           mkdir -p cucumber-html-report
@@ -223,10 +227,21 @@ jobs:
               .toString().trim().split('\n').filter(Boolean);
             if (files.length === 0) { console.log('No cucumber JSON files found'); process.exit(0); }
             let merged = [];
+            // Only expected suite reports feed the domain numbers. On a report
+            // job RE-RUN the rerun job has already uploaded rerun-report, which
+            // the unfiltered artifact download drops into all-results/ too —
+            // without this filter it would merge in as phantom suite 'rerun'.
+            const expected = new Set((process.env.EXPECTED_SUITES || '').split(/\s+/).filter(Boolean));
             for (const file of files) {
+              const suiteMatch = file.match(/all-results\/([^/]+)-report\//);
+              const suiteId = suiteMatch ? suiteMatch[1] : '';
+              if (expected.size > 0 && !expected.has(suiteId)) { console.log('Skipping non-suite report: ' + file); continue; }
               try {
                 const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-                merged = merged.concat(Array.isArray(data) ? data : [data]);
+                for (const feature of (Array.isArray(data) ? data : [data])) {
+                  feature.suiteId = suiteId;
+                  merged.push(feature);
+                }
               } catch(e) { console.log('Skipping invalid JSON: ' + file); }
             }
             fs.writeFileSync('cucumber-html-report/merged-report.json', JSON.stringify(merged, null, 2));
@@ -234,6 +249,11 @@ jobs:
 
             let totalScenarios = 0, passed = 0, failed = 0, skipped = 0;
             const suiteRows = [];
+            const failedScenarios = [];
+            // pending/undefined/ambiguous fail the cucumber run (strict mode)
+            // and land in rerun.txt + JUnit failures — count them as failed
+            // here too, or the summary over-reports passes.
+            const FAIL_STATUSES = { failed: 1, ambiguous: 1, pending: 1, undefined: 1 };
             for (const feature of merged) {
               const name = feature.name || 'Unknown';
               let fp = 0, ff = 0, fsk = 0;
@@ -241,15 +261,25 @@ jobs:
                 if (el.type !== 'scenario') continue;
                 totalScenarios++;
                 const steps = el.steps || [];
-                const hasFail = steps.some(s => s.result && s.result.status === 'failed');
-                const allSkip = steps.every(s => !s.result || s.result.status === 'skipped' || s.result.status === 'undefined');
-                if (hasFail) { failed++; ff++; }
+                const failStep = steps.find(s => s.result && FAIL_STATUSES[s.result.status]);
+                const allSkip = steps.every(s => !s.result || s.result.status === 'skipped');
+                if (failStep) {
+                  failed++; ff++;
+                  const rawErr = ((failStep.result && failStep.result.error_message) || '').split('\n')[0];
+                  failedScenarios.push({
+                    suite: feature.suiteId || '',
+                    feature: name,
+                    scenario: el.name || '',
+                    location: (feature.uri || '') + ':' + (el.line || ''),
+                    error: (rawErr || (failStep.result.status + ' step: ' + ((failStep.keyword || '') + (failStep.name || '')).trim())).slice(0, 300)
+                  });
+                }
                 else if (allSkip) { skipped++; fsk++; }
                 else { passed++; fp++; }
               }
               if (fp + ff + fsk > 0) suiteRows.push({ name, passed: fp, failed: ff, skipped: fsk });
             }
-            fs.writeFileSync('cucumber-html-report/summary.json', JSON.stringify({ totalScenarios, passed, failed, skipped, suiteRows }));
+            fs.writeFileSync('cucumber-html-report/summary.json', JSON.stringify({ totalScenarios, passed, failed, skipped, suiteRows, failedScenarios }));
 
             const passRate = totalScenarios > 0 ? ((passed / totalScenarios) * 100).toFixed(1) : '0.0';
             const rows = suiteRows.map(r =>
@@ -337,6 +367,25 @@ jobs:
               console.log('| ❌ Failed | ' + s.failed + ' |');
               console.log('| ⏭️ Skipped | ' + s.skipped + ' |');
               console.log('| 📊 Pass Rate | **' + passRate + '%** |');
+              // Markdown-table-safe cell text: pipes/angle brackets swapped for
+              // lookalikes so a scenario name can never break the table layout.
+              const esc = t => String(t || '').slice(0, 220).split('\n').join(' ').split('|').join('¦').split('<').join('&lt;').split('>').join('&gt;');
+              const failedList = s.failedScenarios || [];
+              if (failedList.length > 0) {
+                console.log('');
+                console.log('### ❌ Failed Scenarios (' + failedList.length + ')');
+                console.log('');
+                console.log('| Suite | Scenario | Location | Error (last attempt) |');
+                console.log('|-------|----------|----------|----------------------|');
+                const MAX_ROWS = 100;
+                for (const f of failedList.slice(0, MAX_ROWS)) {
+                  console.log('| ' + esc(f.suite) + ' | ' + esc(f.scenario) + ' | ' + esc(f.location) + ' | ' + esc(f.error) + ' |');
+                }
+                if (failedList.length > MAX_ROWS) {
+                  console.log('');
+                  console.log('…and ' + (failedList.length - MAX_ROWS) + ' more — download the cucumber-html-report artifact for the full list.');
+                }
+              }
             " >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No Cucumber results summary available" >> "$GITHUB_STEP_SUMMARY"
@@ -430,6 +479,24 @@ jobs:
           path: rerun-artifacts
         continue-on-error: true
 
+      # The suite JSON reports let the rerun summary show scenario NAMES, not
+      # just path:line. gh per suite id (not download-artifact pattern
+      # '*-report') because that glob would also drag in cucumber-html-report
+      # and the full allure-report once the report job finishes uploading.
+      - name: Download this run's suite reports
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EXPECTED_SUITES: ${{ inputs.expected-suites }}
+        run: |
+          mkdir -p source-reports
+          for suite in ${EXPECTED_SUITES}; do
+            gh run download "${GITHUB_RUN_ID}" -n "${suite}-report" -D "source-reports/${suite}" \
+              || echo "No report artifact for ${suite}"
+          done
+        continue-on-error: true
+
       - name: Build combined rerun list
         id: combine
         shell: bash
@@ -440,9 +507,14 @@ jobs:
           : > test-results/rerun-combined.txt
           if [ -d rerun-artifacts ]; then
             # `awk 1` normalises trailing newlines so two files never splice a
-            # `feature:3` + `feature:5` together; sed drops blank lines.
+            # `feature:3` + `feature:5` together; sed drops blank lines. The
+            # rerun formatter packs multiple scenarios of one feature onto a
+            # single `path:l1:l2:l3` line — the final awk expands those to one
+            # `path:line` per line so the count (and the cap) is per SCENARIO.
             find rerun-artifacts -name 'rerun.txt' -type f -exec awk 1 {} + \
-              | sed '/^[[:space:]]*$/d' > test-results/rerun-combined.txt || true
+              | sed '/^[[:space:]]*$/d' \
+              | awk -F: '{ if (NF < 2) { print $0 } else { for (i = 2; i <= NF; i++) print $1 ":" $i } }' \
+              > test-results/rerun-combined.txt || true
           fi
           count=$(grep -c . test-results/rerun-combined.txt || true)
           count=${count:-0}
@@ -533,30 +605,109 @@ jobs:
         run: |
           echo "## 🔁 ${DOMAIN} — Failure Rerun" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Failed scenarios detected: **${COUNT}**" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          if [ "${OVER_CAP}" = "true" ]; then
-            echo "⚠️ Exceeded the rerun cap of **${MAX_RERUN}** — rerun skipped (systemic failure, not flakes). Investigate the source run directly." >> "$GITHUB_STEP_SUMMARY"
-          elif [ "${COUNT}" = "0" ]; then
-            echo "Nothing to rerun." >> "$GITHUB_STEP_SUMMARY"
-          elif [ -f "test-results/cucumber-report.json" ]; then
+          # List WHICH scenarios failed the main run (names mapped from the
+          # suite reports downloaded above; falls back to path:line only).
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            // COUNT is '' (not '0') when the combine step never ran — saying
+            // 'Nothing to rerun' there would falsely claim the failures healed.
+            const count = process.env.COUNT || '';
+            const overCap = process.env.OVER_CAP === 'true';
+            const out = [];
+            if (count === '') {
+              out.push('⚠️ The rerun job failed before evaluating failures — no rerun information available. Check the rerun job log and the source run.');
+            } else {
+            out.push('Failed scenarios detected: **' + count + '**');
+            out.push('');
+            if (overCap) {
+              out.push('⚠️ Exceeded the rerun cap of **' + (process.env.MAX_RERUN || '') + '** — rerun skipped (systemic failure, not flakes). Investigate the failures below in the source run.');
+              out.push('');
+            }
+            if (count === '0') {
+              out.push('Nothing to rerun.');
+            } else {
+              const map = {};
+              if (fs.existsSync('source-reports')) {
+                for (const suite of fs.readdirSync('source-reports')) {
+                  const p = path.join('source-reports', suite, 'cucumber-report.json');
+                  if (!fs.existsSync(p)) continue;
+                  try {
+                    const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+                    for (const f of (Array.isArray(data) ? data : [data]))
+                      for (const el of (f.elements || []))
+                        if (el.type === 'scenario')
+                          map[(f.uri || '') + ':' + el.line] = { suite, scenario: el.name || '' };
+                  } catch (e) {}
+                }
+              }
+              const esc = t => String(t || '').slice(0, 220).split('\n').join(' ').split('|').join('¦').split('<').join('&lt;').split('>').join('&gt;');
+              let entries = [];
+              try {
+                entries = fs.readFileSync('test-results/rerun-combined.txt', 'utf8').split('\n').map(l => l.trim()).filter(Boolean);
+              } catch (e) {}
+              out.push('### ❌ Scenarios that failed every attempt in the main run');
+              out.push('');
+              out.push('| Suite | Scenario | Location |');
+              out.push('|-------|----------|----------|');
+              const MAX_ROWS = 100;
+              for (const entry of entries.slice(0, MAX_ROWS)) {
+                const m = map[entry] || {};
+                out.push('| ' + esc(m.suite || '?') + ' | ' + esc(m.scenario || '?') + ' | ' + esc(entry) + ' |');
+              }
+              if (entries.length > MAX_ROWS) {
+                out.push('');
+                out.push('…and ' + (entries.length - MAX_ROWS) + ' more — see the rerun job log for the full list.');
+              }
+            }
+            }
+            console.log(out.join('\n'));
+          " >> "$GITHUB_STEP_SUMMARY"
+          # If the rerun actually executed, show its outcome plus the scenarios
+          # that STILL failed after the clean retry — those are the real bugs.
+          if [ "${OVER_CAP}" = "false" ] && [ "${COUNT:-0}" != "0" ] && [ -f "test-results/cucumber-report.json" ]; then
             node -e "
               const fs = require('fs');
               let merged;
               try { merged = JSON.parse(fs.readFileSync('test-results/cucumber-report.json','utf8')); } catch(e){ merged = []; }
               const features = Array.isArray(merged) ? merged : [merged];
+              const esc = t => String(t || '').slice(0, 220).split('\n').join(' ').split('|').join('¦').split('<').join('&lt;').split('>').join('&gt;');
               let total=0, passed=0, failed=0;
+              const stillFailing = [];
+              const FAIL_STATUSES = { failed: 1, ambiguous: 1, pending: 1, undefined: 1 };
               for (const f of features) for (const el of (f.elements||[])) {
                 if (el.type!=='scenario') continue; total++;
                 const steps=el.steps||[];
-                if (steps.some(s=>s.result&&s.result.status==='failed')) failed++; else passed++;
+                const failStep = steps.find(s=>s.result&&FAIL_STATUSES[s.result.status]);
+                if (failStep) {
+                  failed++;
+                  const rawErr = ((failStep.result && failStep.result.error_message) || '').split('\n')[0];
+                  stillFailing.push({
+                    scenario: el.name || '',
+                    location: (f.uri || '') + ':' + (el.line || ''),
+                    error: rawErr || (failStep.result.status + ' step: ' + ((failStep.keyword || '') + (failStep.name || '')).trim())
+                  });
+                } else passed++;
               }
-              const status = failed>0 ? '🔴 SOME RERUNS STILL FAILED' : '🟢 ALL RERUNS PASSED';
+              // A rerun that was killed mid-run (job timeout) leaves an empty/
+              // truncated report — 0 scenarios is NOT a green result.
+              const status = total === 0 ? '⚠️ RERUN PRODUCED NO RESULTS (empty report — the rerun likely timed out)' : failed>0 ? '🔴 SOME RERUNS STILL FAILED' : '🟢 ALL RERUNS PASSED';
+              console.log('');
+              console.log('### Rerun outcome');
+              console.log('');
               console.log('| Metric | Value |');
               console.log('|--------|-------|');
               console.log('| 🏷️ **Status** | ' + status + ' |');
               console.log('| 🧪 Rerun Scenarios | ' + total + ' |');
               console.log('| ✅ Passed | ' + passed + ' |');
               console.log('| ❌ Failed | ' + failed + ' |');
+              if (stillFailing.length > 0) {
+                console.log('');
+                console.log('### ❌ Still failing after the rerun');
+                console.log('');
+                console.log('| Scenario | Location | Error (last attempt) |');
+                console.log('|----------|----------|----------------------|');
+                for (const f of stillFailing) console.log('| ' + esc(f.scenario) + ' | ' + esc(f.location) + ' | ' + esc(f.error) + ' |');
+              }
             " >> "$GITHUB_STEP_SUMMARY"
           fi
