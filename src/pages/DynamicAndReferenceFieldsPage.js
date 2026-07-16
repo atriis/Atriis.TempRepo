@@ -53,6 +53,16 @@ const SELECTORS = {
   // from another el-select on the page (its popper stays in the DOM) is not matched.
   OPEN_DROPDOWN_PANEL: '.el-select-dropdown:visible',
   DROPDOWN_ITEM: '.el-select-dropdown__item',
+  // Per-traveller reference/dynamic field containers at checkout: input-basic renders one per field
+  // inside each passenger's `.traveler-questions`. A dropdown field (e.g. "Payment Group") shows its
+  // selected value as the el-select's text; a free-text field (e.g. "Bank account") holds its value in
+  // an `<input>`. Used to read selected/entered values and to edit the editable textbox fields.
+  INPUT_DROPDOWN: '.input-dropdown',
+  INPUT_TEXTBOX: '.input-textbox',
+  // The `.traveler-questions` block relative to a passenger's own collapse item. This is the unscoped
+  // form of TRAVELER_QUESTIONS (which is prefixed with `.traveler-section`) so it can be chained off a
+  // single passenger's `.el-collapse-item` to scope field reads to that traveller only.
+  TRAVELER_QUESTIONS_BLOCK: '.traveler-questions',
 };
 
 class DynamicAndReferenceFieldsPage {
@@ -1006,6 +1016,179 @@ class DynamicAndReferenceFieldsPage {
     }
   }
 
+  /**
+   * Returns true if the Travellers Reference Questions section header shows the given title. The
+   * section (traveler-reference-field.vue) renders `.traveler-section` with an outer el-collapse whose
+   * header title is $t('referenceField.travellerRefQuests') === "Travellers Reference Questions"; the
+   * nested passenger headers carry traveller names, so filtering the header by the title text uniquely
+   * matches the section header (a passenger name never equals the section title).
+   *
+   * @param {string} title - The expected section title (e.g. "Travellers Reference Questions")
+   * @param {object} [options]
+   * @param {number} [options.timeout=20000]
+   * @returns {Promise<boolean>}
+   */
+  async isReferenceSectionTitleDisplayed(title, { timeout = 20000 } = {}) {
+    if (!title || typeof title !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.isReferenceSectionTitleDisplayed] "title" must be a non-empty string, got: ${typeof title} (${title})`
+      );
+    }
+    const header = this.page
+      .locator(SELECTORS.TRAVELER_FIELD_SECTION)
+      .locator(SELECTORS.COLLAPSE_SECTION_HEADER)
+      .filter({ hasText: title })
+      .first();
+    try {
+      await header.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks, for the passenger whose collapse header matches travellerName, whether each of the given
+   * field labels renders inside that traveller's `.traveler-questions` block. Scopes to the one
+   * passenger `.el-collapse-item` (resolved via its own header, so the outer "Travellers Reference
+   * Questions" item — whose title never matches a name — is never picked). Uses `attached` (not
+   * `visible`) so a passenger section collapsed by the accordion still resolves its labels, mirroring
+   * the original Testim textContent check.
+   *
+   * @param {string} travellerName - Traveller full name as shown in the passenger header (e.g. "Gadi Cohen")
+   * @param {string[]} labels - Field labels to look for (e.g. ["Payment Group", "Bank account"])
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<Array<{label: string, present: boolean}>>}
+   */
+  async travellerSectionFieldLabelPresence(travellerName, labels, { timeout = 15000 } = {}) {
+    if (!travellerName || typeof travellerName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.travellerSectionFieldLabelPresence] "travellerName" must be a non-empty string, got: ${typeof travellerName} (${travellerName})`
+      );
+    }
+    if (!Array.isArray(labels) || labels.length === 0) {
+      throw new Error('[DynamicAndReferenceFieldsPage.travellerSectionFieldLabelPresence] "labels" must be a non-empty array.');
+    }
+
+    const nameRegex = nameContainsRegex(travellerName);
+    const header = this.page
+      .locator(SELECTORS.TRAVELER_FIELD_SECTION)
+      .locator(SELECTORS.COLLAPSE_SECTION_HEADER)
+      .filter({ hasText: nameRegex })
+      .first();
+    // Wait for the passenger header to render before scoping to its collapse item.
+    await header.waitFor({ state: 'attached', timeout });
+    // The header's parent is the passenger's `.el-collapse-item`; its `.traveler-questions` content
+    // holds this traveller's field labels only. ('..' is auto-detected as xpath by Playwright.)
+    const item = header.locator('..');
+
+    const results = [];
+    for (const label of labels) {
+      const labelRegex = new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      const labelLoc = item
+        .locator(SELECTORS.TRAVELER_QUESTIONS_BLOCK)
+        .locator(SELECTORS.FIELD_LABEL)
+        .filter({ hasText: labelRegex })
+        .first();
+      let present;
+      try {
+        await labelLoc.waitFor({ state: 'attached', timeout: 10000 });
+        present = true;
+      } catch {
+        present = false;
+      }
+      results.push({ label, present });
+    }
+    return results;
+  }
+
+  /**
+   * Reads every value shown in the Travellers Reference Questions section at checkout: the selected
+   * text of each dropdown field (e.g. "Payment Group" → "ACC") and the entered value of each free-text
+   * field (e.g. "Bank account" → "456"). Scoped to VISIBLE controls so hidden responsive duplicates
+   * are not double-counted. Empty values are dropped.
+   *
+   * @returns {Promise<string[]>} Trimmed, non-empty field values in DOM order (dropdowns then textboxes)
+   */
+  async getAllTravellerReferenceFieldValues() {
+    const section = this.page.locator(SELECTORS.TRAVELER_FIELD_SECTION);
+    const values = [];
+
+    const dropdowns = section.locator(`${SELECTORS.INPUT_DROPDOWN} ${SELECTORS.EL_SELECT}`).filter({ visible: true });
+    const dropdownCount = await dropdowns.count();
+    for (let i = 0; i < dropdownCount; i++) {
+      const text = (await dropdowns.nth(i).innerText().catch(() => '')).trim();
+      if (text) values.push(text);
+    }
+
+    const inputs = section.locator(`${SELECTORS.INPUT_TEXTBOX} input`).filter({ visible: true });
+    const inputCount = await inputs.count();
+    for (let i = 0; i < inputCount; i++) {
+      const value = (await inputs.nth(i).inputValue().catch(() => '')).trim();
+      if (value) values.push(value);
+    }
+
+    return values;
+  }
+
+  /**
+   * Fills the editable free-text (`.input-textbox`) reference fields in the Travellers Reference
+   * Questions section with the given values, in DOM order (e.g. the two "Bank account" fields, one per
+   * traveller). Uses fill() so any existing value is replaced with exactly the new value, then blurs to
+   * commit and trigger validation. Scoped to VISIBLE inputs so hidden responsive duplicates are skipped.
+   *
+   * @param {string[]} values - New values to enter, one per textbox in DOM order
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async fillTravellerReferenceTextboxes(values, { timeout = 15000 } = {}) {
+    if (!Array.isArray(values) || values.length === 0) {
+      throw new Error('[DynamicAndReferenceFieldsPage.fillTravellerReferenceTextboxes] "values" must be a non-empty array.');
+    }
+    const inputs = this.page
+      .locator(`${SELECTORS.TRAVELER_FIELD_SECTION} ${SELECTORS.INPUT_TEXTBOX} input`)
+      .filter({ visible: true });
+    await inputs.first().waitFor({ state: 'visible', timeout });
+
+    const count = await inputs.count();
+    if (count < values.length) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.fillTravellerReferenceTextboxes] Expected at least ${values.length} editable ` +
+        `textbox reference field(s) in the Travellers Reference Questions section, but found ${count}. The traveller ` +
+        `sections may not have rendered, or these fields are not free-text/editable for this configuration.`
+      );
+    }
+
+    for (let i = 0; i < values.length; i++) {
+      const input = inputs.nth(i);
+      await input.scrollIntoViewIfNeeded();
+      await input.fill(String(values[i]));
+      // Blur so the field commits its value and runs validation, mirroring a real user tabbing out.
+      await input.blur().catch(() => {});
+    }
+  }
+
+  /**
+   * Reads the current values of the editable free-text (`.input-textbox`) reference fields in the
+   * Travellers Reference Questions section, in DOM order. Counterpart to fillTravellerReferenceTextboxes
+   * for verifying edited values persisted. Scoped to VISIBLE inputs.
+   *
+   * @returns {Promise<string[]>} Trimmed textbox values in DOM order
+   */
+  async getTravellerReferenceTextboxValues() {
+    const inputs = this.page
+      .locator(`${SELECTORS.TRAVELER_FIELD_SECTION} ${SELECTORS.INPUT_TEXTBOX} input`)
+      .filter({ visible: true });
+    const count = await inputs.count();
+    const values = [];
+    for (let i = 0; i < count; i++) {
+      values.push((await inputs.nth(i).inputValue().catch(() => '')).trim());
+    }
+    return values;
+  }
+
 }
 
 /**
@@ -1021,6 +1204,19 @@ class DynamicAndReferenceFieldsPage {
 function exactFieldLabelRegex(labelText) {
   const escaped = labelText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp('^\\s*\\*?\\s*' + escaped + '\\s*(?:info)?\\s*$', 'i');
+}
+
+/**
+ * Builds a case-insensitive, whitespace-tolerant regex that matches a traveller name as a substring.
+ * The reference popup capitalizes and can double-space names (e.g. the step "Gadi Cohen" renders as
+ * "Gadi  Cohen"), so each run of whitespace in the name becomes `\s+` and matching is case-insensitive.
+ *
+ * @param {string} name - Traveller name (e.g. "Gadi Cohen")
+ * @returns {RegExp}
+ */
+function nameContainsRegex(name) {
+  const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+  return new RegExp(escaped, 'i');
 }
 
 /**

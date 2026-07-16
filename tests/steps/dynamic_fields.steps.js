@@ -229,3 +229,40 @@ Then("the dynamic profile field {string} is displayed for {string} travellers", 
   logger.info("Verifying dynamic profile field is displayed for travellers at checkout", { fieldName, expectedCount });
   await DynamicAndReferenceFields.verifyDynamicProfileFieldDisplayedForTravelers(this.page, fieldName, expectedCount);
 });
+
+// ===== TRAVELLERS REFERENCE QUESTIONS (per-traveller dynamic fields at checkout) =====
+
+// Verifies the reference-questions section header is displayed at checkout (e.g. "Travellers
+// Reference Questions"), which groups each traveller's dynamic/reference fields.
+Then("the {string} reference section is displayed", async function (sectionTitle) {
+  logger.info("Verifying reference section is displayed at checkout", { sectionTitle });
+  await DynamicAndReferenceFields.verifyReferenceSectionDisplayed(this.page, sectionTitle);
+});
+
+// Verifies a specific traveller's block in the Travellers Reference Questions section shows the two
+// named dynamic fields (e.g. "Payment Group" dropdown and "Bank account" textbox).
+Then("the reference fields for traveller {string} show {string} and {string}", async function (travellerName, field1, field2) {
+  logger.info("Verifying per-traveller reference fields at checkout", { travellerName, field1, field2 });
+  await DynamicAndReferenceFields.verifyTravellerReferenceFieldsShown(this.page, travellerName, [field1, field2]);
+});
+
+// Verifies every value in the table appears among the reference field values shown at checkout
+// (dropdown selected values + free-text field values), as an unordered set across all travellers.
+Then("the reference field values are:", async function (dataTable) {
+  const expectedValues = dataTable.raw().map((row) => row[0]);
+  logger.info("Verifying reference field values at checkout", { expectedValues });
+  await DynamicAndReferenceFields.verifyReferenceFieldValuesPresent(this.page, expectedValues);
+});
+
+// Edits the editable free-text reference fields (the "Bank account" textboxes, one per traveller) in
+// DOM order to prove they accept new values at checkout.
+When("I edit the reference field values to {string} and {string}", async function (value1, value2) {
+  logger.info("Editing reference field textbox values at checkout", { value1, value2 });
+  await DynamicAndReferenceFields.editReferenceFieldTextValues(this.page, [value1, value2]);
+});
+
+// Verifies the edited free-text reference field values persisted, matched positionally in DOM order.
+Then("the reference field values are updated to {string} and {string}", async function (value1, value2) {
+  logger.info("Verifying reference field textbox values were updated at checkout", { value1, value2 });
+  await DynamicAndReferenceFields.verifyReferenceFieldTextValuesUpdated(this.page, [value1, value2]);
+});

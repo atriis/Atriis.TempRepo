@@ -16,28 +16,25 @@ Feature: 46730 - Dynamic fields at checkout for two corporate users
   Scenario: Dynamic reference fields are shown, valued and editable for two corporate users at checkout
     Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added myself as the traveler
-    # TODO: implement step - add a second profiled traveller by name
-    And I have added the traveller "Gadi cohen"
-    When I search for a one night hotel in "LON"
-    When I fill in NL reference fields education and courses
-    When I add the first hotel room to cart
-    # TODO: implement step - fill the free-text justification in the cart if the item is out of policy
-    When I fill the free text justification in the cart if needed
-    When I proceed to checkout
+    And I have added traveler by name "Gadi cohen"
+    When I initiate a hotel search in "Amsterdam" for 1 night
+    And I select the "Soort reis/Type of trip" reference field as "Medical leave" and proceed
+    And I select the first hotel result
+    And I add a refundable room to my cart
+    And I fill in the OOP justification text "abc"
+    And I accept Terms & Conditions
+    And I click the proceed to checkout button
     When I select the first available financial reference
-    # TODO: implement step - verify the "Travellers Reference Questions" section is displayed
+    And I wait for booking details in checkout
+    And the dynamic profile field "Payment Group" is displayed for "2" travellers
+    And the dynamic profile field "Bank Account" is displayed for "2" travellers
     Then the "Travellers Reference Questions" reference section is displayed
-    # TODO: implement step - verify the dynamic reference fields are displayed for the first corporate user
     And the reference fields for traveller "Gadi Cohen" show "Payment Group" and "Bank account"
-    # TODO: implement step - verify the dynamic reference fields are displayed for the second corporate user
     And the reference fields for traveller "Shani Cohen" show "Payment Group" and "Bank account"
-    # TODO: implement step - verify the dynamic reference field values
     Then the reference field values are:
       | ACC |
       | 456 |
       | ADD |
-    # TODO: implement step - was a Testim html-attr-validation; verify the reference fields are editable and accept new values
+      | 11  |
     When I edit the reference field values to "111" and "222"
-    # TODO: implement step - verify the edited reference field values are updated
     Then the reference field values are updated to "111" and "222"
-    Then I successfully cancel the trip

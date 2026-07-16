@@ -1006,6 +1006,188 @@ const DynamicAndReferenceFields = {
     await dynamicFieldsPage.selectOpenDropdownOption(optionText);
   },
 
+  /**
+   * Verifies that a reference-questions section with the given title is displayed at checkout — e.g.
+   * the "Travellers Reference Questions" section that groups each traveller's dynamic/reference fields.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} sectionTitle - The section header text (e.g. "Travellers Reference Questions")
+   * @returns {Promise<void>}
+   */
+  async verifyReferenceSectionDisplayed(page, sectionTitle) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyReferenceSectionDisplayed] "page" is required.');
+    if (!sectionTitle || typeof sectionTitle !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyReferenceSectionDisplayed] "sectionTitle" must be a non-empty string, got: ${typeof sectionTitle} (${sectionTitle})`
+      );
+    }
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+
+    await checkoutPage.waitForBookingDetailsText();
+
+    logger.debug('Verifying reference section is displayed at checkout', { sectionTitle });
+    const visible = await dynamicFieldsPage.isReferenceSectionTitleDisplayed(sectionTitle);
+    expect(
+      visible,
+      `[DynamicAndReferenceFields.verifyReferenceSectionDisplayed] Expected the "${sectionTitle}" reference section ` +
+      `to be displayed at checkout, but its header was not visible. The per-traveller reference-questions section ` +
+      `may not have rendered, or the title text differs from "${sectionTitle}".`
+    ).toBe(true);
+  },
+
+  /**
+   * Verifies that the given field labels are shown for a specific traveller in the Travellers Reference
+   * Questions section at checkout (e.g. traveller "Gadi Cohen" shows "Payment Group" and "Bank account").
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} travellerName - Traveller full name as shown in the passenger header
+   * @param {string[]} fields - Field labels expected in that traveller's section
+   * @returns {Promise<void>}
+   */
+  async verifyTravellerReferenceFieldsShown(page, travellerName, fields) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyTravellerReferenceFieldsShown] "page" is required.');
+    if (!travellerName || typeof travellerName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyTravellerReferenceFieldsShown] "travellerName" must be a non-empty string, got: ${typeof travellerName} (${travellerName})`
+      );
+    }
+    if (!Array.isArray(fields) || fields.length === 0) {
+      throw new Error('[DynamicAndReferenceFields.verifyTravellerReferenceFieldsShown] "fields" must be a non-empty array.');
+    }
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+
+    await checkoutPage.waitForBookingDetailsText();
+
+    logger.debug('Verifying per-traveller reference fields at checkout', { travellerName, fields });
+    const results = await dynamicFieldsPage.travellerSectionFieldLabelPresence(travellerName, fields);
+    const missing = results.filter((r) => !r.present).map((r) => r.label);
+
+    expect(
+      missing,
+      `[DynamicAndReferenceFields.verifyTravellerReferenceFieldsShown] The Travellers Reference Questions for ` +
+      `"${travellerName}" should show fields [${fields.join(', ')}], but these were not found: [${missing.join(', ')}]. ` +
+      `The traveller's section may not have rendered these dynamic fields, or the label text differs.`
+    ).toHaveLength(0);
+  },
+
+  /**
+   * Verifies that every expected value appears among the reference field values shown in the Travellers
+   * Reference Questions section at checkout (dropdown selected values + free-text field values). The
+   * expected values are an unordered set — e.g. ACC/ADD (Payment Group dropdowns) and 456/11 (Bank
+   * account textboxes) across two travellers. Polls because dropdown values load asynchronously from
+   * each traveller's profile after the section renders.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string[]} expectedValues - Values that must all be present in the section
+   * @returns {Promise<void>}
+   */
+  async verifyReferenceFieldValuesPresent(page, expectedValues) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyReferenceFieldValuesPresent] "page" is required.');
+    if (!Array.isArray(expectedValues) || expectedValues.length === 0) {
+      throw new Error('[DynamicAndReferenceFields.verifyReferenceFieldValuesPresent] "expectedValues" must be a non-empty array.');
+    }
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+
+    await checkoutPage.waitForBookingDetailsText();
+
+    logger.debug('Verifying reference field values at checkout', { expectedValues });
+
+    const isPresent = (actualValues, expected) =>
+      actualValues.some((actual) => actual.toLowerCase().includes(String(expected).toLowerCase()));
+
+    let actualValues = [];
+    try {
+      await expect
+        .poll(
+          async () => {
+            actualValues = await dynamicFieldsPage.getAllTravellerReferenceFieldValues();
+            return expectedValues.filter((ev) => isPresent(actualValues, ev)).length;
+          },
+          {
+            timeout: 25000,
+            message:
+              `[DynamicAndReferenceFields.verifyReferenceFieldValuesPresent] Expected all reference field values ` +
+              `[${expectedValues.join(', ')}] to appear in the Travellers Reference Questions section at checkout.`,
+          }
+        )
+        .toBe(expectedValues.length);
+    } catch {
+      const missing = expectedValues.filter((ev) => !isPresent(actualValues, ev));
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyReferenceFieldValuesPresent] Reference field values mismatch at checkout. ` +
+        `Expected all of [${expectedValues.join(', ')}] to be present; missing [${missing.join(', ')}]. ` +
+        `Actual values found: [${actualValues.join(', ')}].`
+      );
+    }
+  },
+
+  /**
+   * Edits the editable free-text reference field values in the Travellers Reference Questions section
+   * at checkout, in order (e.g. sets the two "Bank account" fields — one per traveller — to new values).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string[]} values - New values, one per editable textbox field in DOM order
+   * @returns {Promise<void>}
+   */
+  async editReferenceFieldTextValues(page, values) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.editReferenceFieldTextValues] "page" is required.');
+    if (!Array.isArray(values) || values.length === 0) {
+      throw new Error('[DynamicAndReferenceFields.editReferenceFieldTextValues] "values" must be a non-empty array.');
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    logger.debug('Editing reference field textbox values at checkout', { values });
+    await dynamicFieldsPage.fillTravellerReferenceTextboxes(values);
+  },
+
+  /**
+   * Verifies that the editable free-text reference fields in the Travellers Reference Questions section
+   * were updated to the expected values, matched positionally in DOM order.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string[]} expectedValues - Expected values, one per editable textbox field in DOM order
+   * @returns {Promise<void>}
+   */
+  async verifyReferenceFieldTextValuesUpdated(page, expectedValues) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyReferenceFieldTextValuesUpdated] "page" is required.');
+    if (!Array.isArray(expectedValues) || expectedValues.length === 0) {
+      throw new Error('[DynamicAndReferenceFields.verifyReferenceFieldTextValuesUpdated] "expectedValues" must be a non-empty array.');
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    logger.debug('Verifying reference field textbox values updated at checkout', { expectedValues });
+
+    let actualValues = [];
+    try {
+      await expect
+        .poll(
+          async () => {
+            actualValues = await dynamicFieldsPage.getTravellerReferenceTextboxValues();
+            return expectedValues.every((ev, idx) => (actualValues[idx] || '') === String(ev));
+          },
+          {
+            timeout: 10000,
+            message:
+              `[DynamicAndReferenceFields.verifyReferenceFieldTextValuesUpdated] Expected the edited reference field ` +
+              `values to become [${expectedValues.join(', ')}].`,
+          }
+        )
+        .toBe(true);
+    } catch {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyReferenceFieldTextValuesUpdated] Reference field values were not updated as ` +
+        `expected. Expected [${expectedValues.join(', ')}], got [${actualValues.join(', ')}]. The edit may not have ` +
+        `committed, or a validation error blocked the new value.`
+      );
+    }
+  },
+
 };
 
 // Export DynamicAndReferenceFields DSL for use in tests
