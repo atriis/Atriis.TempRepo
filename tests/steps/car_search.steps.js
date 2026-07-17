@@ -1,5 +1,5 @@
 require("module-alias/register");
-const { When, setDefaultTimeout } = require("@cucumber/cucumber");
+const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { CarSearch } = require("../../src/dsl");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { getPageObject } = require("@utils/pageObjectCache");
@@ -73,4 +73,28 @@ When("I search for a car at {string} with rental agency {string} no results shou
   await CarSearch.searchCarByPlaceAndRentalAgency(this.page, location, agency, 3, { maxRetries: 0 });
   const resultsPage = getPageObject(this.page, ResultsPage);
   await resultsPage.waitForNoResults();
+});
+
+// ========================================
+// SUGGESTED CAR SEARCH (cross-sell from trip overview)
+// ========================================
+
+Then("the suggested car rental cross-sell should be displayed", async function () {
+  logger.info("Verifying the suggested car rental cross-sell is displayed on the trip overview");
+  await CarSearch.verifySuggestedCarCrossSellDisplayed(this.page);
+});
+
+When("I open the suggested car search form", async function () {
+  logger.info("Opening the suggested car search form from the cross-sell");
+  await CarSearch.openSuggestedCarSearchForm(this.page);
+});
+
+Then("the car search form should be displayed", async function () {
+  logger.info("Verifying the car search form is displayed");
+  await CarSearch.verifyCarSearchFormDisplayed(this.page);
+});
+
+Then("the car search form destination should be {string}", async function (expectedDestination) {
+  logger.info("Verifying the car search form destination", { expectedDestination });
+  this.carSearchFormDestination = await CarSearch.verifyCarSearchFormDestination(this.page, expectedDestination);
 });

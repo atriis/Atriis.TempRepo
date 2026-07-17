@@ -1,6 +1,8 @@
+const { expect } = require("@playwright/test");
 const CarSearchPage = require("@pages/CarSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const { ResultsPage } = require("@pages/ResultsPage");
+const { CartPage } = require("@pages/CartPage");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveLocation } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
@@ -480,6 +482,112 @@ const CarSearch = {
     await searchPage.waitAndClickSearchButton();
 
     return { searched: true, pickupPlace, dropoffPlace, monthsAhead, pickupIndex, dropoffIndex };
+  },
+
+  // ===== SUGGESTED CAR SEARCH (cross-sell from trip overview) =====
+
+  /**
+   * Verifies the car-rental cross-sell suggestion is displayed on the trip overview after a
+   * flight is added. The suggestion card is identified by its car product icon (language-
+   * independent) and its title should read "Add car rental in <city>".
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is not provided
+   * @returns {Promise<void>}
+   */
+  async verifySuggestedCarCrossSellDisplayed(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await expect(
+      cartPage.getCarCrossSellSuggestion(),
+      'The car-rental cross-sell suggestion should be displayed on the trip overview after adding a flight.',
+    ).toBeVisible({ timeout: 15000 });
+
+    await expect(
+      cartPage.getCarCrossSellSuggestionTitle(),
+      'The car cross-sell suggestion title should read "Add car rental in <city>".',
+    ).toContainText('Add car rental in', { timeout: 15000 });
+  },
+
+  /**
+   * Opens the pre-filled car search form by clicking the cross-sell suggestion action, then
+   * waits for the trip edit-search drawer to become visible.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is not provided
+   * @returns {Promise<void>}
+   */
+  async openSuggestedCarSearchForm(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await cartPage.clickCarCrossSellSuggestionAction();
+    await searchPage.waitForEditSearchDrawerVisible();
+  },
+
+  /**
+   * Verifies the car search form is displayed inside the edit-search drawer, confirming its
+   * distinguishing "Drop-off at a different location" option is present.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is not provided
+   * @returns {Promise<void>}
+   */
+  async verifyCarSearchFormDisplayed(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const carSearchPage = getPageObject(page, CarSearchPage);
+
+    await expect(
+      carSearchPage.getCarSearchForm(),
+      'The car search form (.car-search-inputs) should be displayed after opening the cross-sell suggestion.',
+    ).toBeVisible({ timeout: 15000 });
+
+    await expect(
+      carSearchPage.getDropoffDifferentLocationLabel(),
+      'The car search form should show the "Drop-off at a different location" option.',
+    ).toBeVisible({ timeout: 15000 });
+  },
+
+  /**
+   * Verifies the car search form destination (pre-filled pick-up location) contains the expected
+   * city. The field is pre-filled with the flight's arrival city; the displayed value is the
+   * location's name (e.g. "Manchester"), so the match is a case-insensitive substring check.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedDestination - Expected destination text (city name or code, e.g. "MAN")
+   * @throws {Error} If page or expectedDestination are invalid
+   * @returns {Promise<{expectedDestination: string, actualDestination: string}>}
+   */
+  async verifyCarSearchFormDestination(page, expectedDestination) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!expectedDestination || typeof expectedDestination !== 'string') {
+      throw new Error(`expectedDestination must be a non-empty string, got: ${typeof expectedDestination}`);
+    }
+
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    const actualDestination = await carSearchPage.getCarSearchFormDestinationValue();
+
+    expect(
+      actualDestination.toLowerCase(),
+      `Expected the car search form destination to contain "${expectedDestination}", but the pick-up field showed "${actualDestination}". ` +
+        `The flight's arrival city may not have pre-filled the car search.`,
+    ).toContain(expectedDestination.toLowerCase());
+
+    return { expectedDestination, actualDestination };
   },
 };
 

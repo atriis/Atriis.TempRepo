@@ -18,13 +18,8 @@ Feature: 66658 Shell - Suggested car search form is displayed after a flight is 
     When I search for a one way flight from "LON" to "MAN"
     And I click proceed button if visible
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
-    # TODO: verify the "Add car rental in <city>" cross-sell suggestion is shown on the trip overview — CarSearch.verifySuggestedCarCrossSellDisplayed
     Then the suggested car rental cross-sell should be displayed
-    # TODO: click the cross-sell suggestion action to open the pre-filled car search form — CarSearch.openSuggestedCarSearchForm
     When I open the suggested car search form
-    # TODO: verify the car search drawer/form is displayed (has the "Drop-off at a different location" option) — CarSearch.verifyCarSearchFormDisplayed
     Then the car search form should be displayed
-    # TODO: verify the car search form destination is pre-filled with the flight destination — CarSearch.verifyCarSearchFormDestination
     Then the car search form destination should be "MAN"

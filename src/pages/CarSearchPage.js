@@ -15,6 +15,17 @@ const SELECTORS = {
   DATE_RANGE_HEADER_LABEL: ".el-date-range-picker__header div",
   DATE_PICKER_HEADER_LABEL: ".el-date-picker__header-label",
   DROPOFF_DIFFERENT_LOCATION_CHECKBOX: ".car-form .el-checkbox__inner",
+  // Label text of the "Drop-off at a different location" checkbox (car.dropDifferentLoc i18n key).
+  // Present only in the car search form, so it doubles as the form's distinguishing marker.
+  DROPOFF_DIFFERENT_LOCATION_LABEL: ".car-form .el-checkbox__label",
+
+  // Car search form rendered inside the trip edit-search drawer (car-search-inputs.vue).
+  // `.car-search-inputs` is the component's root <section>; used as the "form displayed" anchor.
+  CAR_SEARCH_FORM: ".car-search-inputs",
+  // Pre-filled pick-up location input. car-autocomplete passes uniqueClass="pick-up" through to the
+  // rendered <input> (input-class), so the input carries the `pick-up` class and holds the
+  // destination's display name as its value.
+  CAR_SEARCH_FORM_DESTINATION_INPUT: ".car-search-inputs .pick-up input",
 
   // XPath used due to complex dropdown structure
   RENTAL_AGENCY_DROPDOWN_FIELD:
@@ -325,6 +336,52 @@ class CarSearchPage {
     await this.page
       .locator(SELECTORS.RENTAL_AGENCY_DROPDOWN_OPTION(agencyName))
       .click();
+  }
+
+  // ===== CAR SEARCH FORM IN CROSS-SELL / EDIT-SEARCH DRAWER =====
+
+  /**
+   * Car search form section rendered inside the trip edit-search drawer.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCarSearchForm() {
+    return this.page.locator(SELECTORS.CAR_SEARCH_FORM).first();
+  }
+
+  /**
+   * "Drop-off at a different location" checkbox label — the marker that the car search
+   * form (rather than another product's form) is displayed.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getDropoffDifferentLocationLabel() {
+    return this.page
+      .locator(SELECTORS.DROPOFF_DIFFERENT_LOCATION_LABEL)
+      .filter({ hasText: "Drop-off at a different location" })
+      .first();
+  }
+
+  /**
+   * Reads the pre-filled destination (pick-up location) value from the car search form.
+   * The value is populated asynchronously from the cross-sell suggestion (Vue reactivity),
+   * so this polls until the input settles to a non-empty value before reading.
+   * @param {number} [timeout=15000]
+   * @returns {Promise<string>}
+   */
+  async getCarSearchFormDestinationValue(timeout = 15000) {
+    const selector = SELECTORS.CAR_SEARCH_FORM_DESTINATION_INPUT;
+    const input = this.page.locator(selector).first();
+    await input.waitFor({ state: "visible", timeout });
+    await this.page
+      .waitForFunction(
+        (sel) => {
+          const el = document.querySelector(sel);
+          return el && el.value && el.value.trim().length > 0;
+        },
+        selector,
+        { timeout },
+      )
+      .catch(() => {});
+    return (await input.inputValue()).trim();
   }
 }
 

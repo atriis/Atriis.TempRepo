@@ -440,6 +440,18 @@ const SELECTORS = {
   ADD_HOTEL_SEARCH_DRAWER: '.app-drawer.atrs-edit-search-drawer',
   MANUAL_QUOTE_PAGE_CONTAINER: '.manual-quote-page',
 
+  // Cross-sell suggestions on the trip overview (cross-sell-suggestions.vue). After a product is
+  // added, the backend /suggestion endpoint returns complementary products; each renders as a
+  // `.suggestion-container` inside `section.cross-sell-suggestions`. The car card is identified
+  // language-independently by its product icon (app-product-icon -> `.material-symbols-outlined.car`).
+  // Its title reads "Add car rental in <city>" and the desktop action opens the edit-search drawer
+  // pre-filled with the flight's arrival city.
+  CROSS_SELL_CAR_SUGGESTION: 'section.cross-sell-suggestions .suggestion-container:has(.material-symbols-outlined.car)',
+  CROSS_SELL_SUGGESTION_TITLE: '.suggestion-title',
+  // Older builds rendered the action as `.action span`; current builds use an app-btn `.search-btn`.
+  // Match either so the click works against both the deployed staging and the latest source.
+  CROSS_SELL_SUGGESTION_ACTION: '.search-btn, .action span',
+
   // Seat map segment tabs (flight-deck.vue el-tabs)
   SEAT_MAP_SEGMENT_TAB: '.flights-tabs .el-tabs__item', // Tab items for outbound/inbound segments
   SEAT_MAP_ACTIVE_SEGMENT_TAB: '.flights-tabs .el-tabs__item.is-active',
@@ -3967,6 +3979,38 @@ class CartPage {
     await btn.waitFor({ state: 'visible', timeout });
     await btn.click();
     await this.page.locator(SELECTORS.ADD_HOTEL_SEARCH_DRAWER).waitFor({ state: 'visible', timeout });
+  }
+
+  // ===== CAR CROSS-SELL SUGGESTION (trip overview) =====
+
+  /**
+   * The car-rental cross-sell suggestion card on the trip overview, scoped by its car product icon.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCarCrossSellSuggestion() {
+    return this.page.locator(SELECTORS.CROSS_SELL_CAR_SUGGESTION).first();
+  }
+
+  /**
+   * Title of the car cross-sell suggestion (e.g. "Add car rental in Manchester").
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCarCrossSellSuggestionTitle() {
+    return this.getCarCrossSellSuggestion()
+      .locator(SELECTORS.CROSS_SELL_SUGGESTION_TITLE)
+      .first();
+  }
+
+  /**
+   * Clicks the car cross-sell suggestion's action to open the pre-filled car search drawer.
+   * @param {number} [timeout=15000]
+   */
+  async clickCarCrossSellSuggestionAction(timeout = 15000) {
+    const action = this.getCarCrossSellSuggestion()
+      .locator(SELECTORS.CROSS_SELL_SUGGESTION_ACTION)
+      .first();
+    await action.waitFor({ state: 'visible', timeout });
+    await action.click();
   }
 
   /**
