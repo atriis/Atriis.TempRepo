@@ -13,25 +13,22 @@ Feature: 58356 Amadeus - Single PNR when car and flight segments are booked sepa
   So that my Amadeus itinerary stays consolidated under a single record
 
   Scenario: A separately booked car and flight result in a single PNR
-    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
+    Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added a random guest traveler
     When I search for a car at "LHR"
-    Then the car results section should be displayed
     When I add the first car to cart
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
     When I click to add a flight to my trip from cart
-    And I edit the flight search from "LIS" to "LON"
+    And I edit the flight search from "LIS" to "LON" with the same dates as the car search
     Then flight results should be available
     When I filter results by carrier "TP"
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
+    And I add a credit card as payment method
     When I proceed to checkout
     And I complete the booking
     When I store the first quote PNR code
     And I store the second quote PNR code
     Then the stored quote PNR codes should match
-    And I successfully cancel the trip

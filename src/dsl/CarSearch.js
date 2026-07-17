@@ -130,6 +130,7 @@ const CarSearch = {
    * @param {Object} options - Search configuration
    * @param {number} options.pickupIndex - Pickup date index (>= 0)
    * @param {number} options.dropoffIndex - Drop-off date index (>= 0)
+   * @returns {Promise<{searched: boolean, place: string, monthsAhead: number, pickupIndex: number, dropoffIndex: number, pickupDate: string, dropoffDate: string, noResultsRetry: Object}>} Search result including the selected pickup/drop-off date field values
    * @throws {Error} If pickupIndex or dropoffIndex are negative
    */
   async searchCarByPlace(
@@ -183,6 +184,12 @@ const CarSearch = {
       endIndex: null,
     });
 
+    // Capture the selected pickup/drop-off dates while the search form is still open and
+    // the inputs are visible/populated. Exposed on the return so callers (e.g. a follow-on
+    // flight search in a single-PNR trip) can align the flight dates to the car rental.
+    const pickupDate = await carSearchPage.getPickupDateFieldValue();
+    const dropoffDate = await carSearchPage.getDropoffDateFieldValue();
+
     await searchPage.waitAndClickSearchButton();
 
     const retryResult = await retryCarSearchByChangingDatesOnNoResults(page, {
@@ -191,7 +198,7 @@ const CarSearch = {
       maxRetries,
     });
 
-    return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex, noResultsRetry: retryResult };
+    return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex, pickupDate, dropoffDate, noResultsRetry: retryResult };
   },
 
   /**

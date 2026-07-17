@@ -17,7 +17,7 @@ When("I search for a car at {string} with {int} months ahead", async function (p
 });
 When("I search for a car at {string}", async function (place) {
   logger.info("Searching for car", { place });
-  await CarSearch.searchCarByPlace(this.page, place);
+  this.carSearch = await CarSearch.searchCarByPlace(this.page, place);
 });
 
 When("I submit a car search at {string} without waiting for results", async function (place) {

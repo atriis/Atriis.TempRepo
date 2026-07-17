@@ -106,6 +106,23 @@ When("I edit the flight search from {string} to {string} with the same dates as 
   });
 });
 
+When("I edit the flight search from {string} to {string} with the same dates as the car search", async function (from, to) {
+  logger.info('Editing flight search in modal with car search dates', {
+    from,
+    to,
+    carSearch: this.carSearch,
+  });
+
+  if (!this.carSearch?.pickupDate || !this.carSearch?.dropoffDate) {
+    throw new Error('carSearch.pickupDate and carSearch.dropoffDate must be set before editing flight search with car dates');
+  }
+
+  this.editedFlightSearch = await FlightSearch.editFlightSearch(this.page, from, to, {
+    departureDate: this.carSearch.pickupDate,
+    returnDate: this.carSearch.dropoffDate,
+  });
+});
+
 When('I click edit search and wait for the {string} search mode option', async function (searchMode) {
   logger.info('Opening edit flight search', { searchMode });
   await FlightSearch.clickEditSearchAndWaitForSearchMode(this.page, searchMode);
