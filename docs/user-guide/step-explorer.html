@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Step Explorer — QA Automation User Guide</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<header class="app-header">
+  <a class="brand" href="step-explorer.html">
+    <span class="mark" aria-hidden="true">▤</span>
+    <span data-i18n="brand">QA Automation — Step Explorer</span>
+  </a>
+  <nav aria-label="Guide utilities">
+    <div class="lang-switch">
+      <label for="langSelect" class="visually-hidden">Language</label>
+      <select id="langSelect">
+        <option value="en">English</option>
+        <option value="he">עברית</option>
+        <option value="pt">Português</option>
+      </select>
+    </div>
+    <button type="button" id="stepExplorerBtn" data-i18n="stepExplorer" aria-current="page">Step Explorer</button>
+  </nav>
+</header>
+
+<main class="explorer-main">
+  <h1>Step Explorer</h1>
+  <p class="explorer-intro">
+    Every reusable step defined across <code>tests/steps/</code>. Search the wording, or filter by
+    type, product, and the DSL (Workflow) it drives, to check whether a step already exists before writing a new one.
+  </p>
+
+  <div class="explorer-filters">
+    <div class="filter-field filter-search">
+      <label for="searchInput">Search step text</label>
+      <input type="search" id="searchInput" placeholder="e.g. search for a hotel" autocomplete="off">
+    </div>
+    <div class="filter-field">
+      <label for="typeFilter">Type</label>
+      <select id="typeFilter">
+        <option value="">All types</option>
+        <option value="Given">Given</option>
+        <option value="When">When</option>
+        <option value="Then">Then</option>
+      </select>
+    </div>
+    <div class="filter-field">
+      <label for="productFilter">Product</label>
+      <select id="productFilter"><option value="">All products</option></select>
+    </div>
+    <div class="filter-field">
+      <label for="dslFilter">DSL / Workflow</label>
+      <select id="dslFilter"><option value="">All DSLs</option></select>
+    </div>
+  </div>
+
+  <div class="explorer-toolbar">
+    <span class="result-count" id="resultCount"></span>
+    <button type="button" class="clear-filters" id="clearFilters">Clear filters</button>
+  </div>
+
+  <div class="explorer-table-wrap">
+    <table class="explorer-table">
+      <thead>
+        <tr>
+          <th scope="col" style="width:90px">Type</th>
+          <th scope="col">Step text</th>
+          <th scope="col" style="width:130px">Product</th>
+          <th scope="col" style="width:220px">DSL / Workflow</th>
+          <th scope="col" style="width:210px">Step file</th>
+        </tr>
+      </thead>
+      <tbody id="stepRows"></tbody>
+    </table>
+    <div class="explorer-empty" id="emptyState" hidden>No steps match these filters.</div>
+  </div>
+</main>
+
+<script src="assets/step-data.js"></script>
+<script src="assets/step-explorer.js"></script>
+<script src="assets/scripts.js"></script>
+<script src="assets/i18n.js"></script>
+</body>
+</html>
