@@ -1,15 +1,13 @@
 name: Suite - Hotels
 
-# 2nd in the chain. Auto-triggered 5 min after "Suite - Flights" completes
-# (pass OR fail — domains are independent), and also manually dispatchable on
-# its own. The 5-min gap is a cooldown between domains to avoid overlapping load
-# on staging; it is skipped on manual dispatch.
+# 2nd in the chain. Started by the previous domain's `chain-next` job (Flights
+# dispatches this ~5 min after it finishes), and also manually dispatchable on
+# its own. When this run finishes, its own `chain-next` job waits 5 min and
+# dispatches "Suite - Shell". The chain self-dispatches instead of using the
+# workflow_run event — see suite-scheduler.yml header for why.
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Suite - Flights"]
-    types: [completed]
 
 permissions:
   contents: read
@@ -21,23 +19,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  cooldown:
-    name: Cooldown (5 min chain gap)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # Continue the chain on success or failure of the previous domain; stop only
-    # if it was cancelled/skipped. Manual dispatch always proceeds.
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success' ||
-      github.event.workflow_run.conclusion == 'failure'
-    steps:
-      - name: Wait 5 minutes after the previous domain
-        if: github.event_name == 'workflow_run'
-        run: sleep 300
-
   suite:
-    needs: cooldown
     uses: ./.github/workflows/suite-runner.yml
     secrets: inherit
     with:
@@ -53,3 +35,23 @@ jobs:
             { "suite_id": "hotels-booking",     "suite_name": "Hotels Booking",     "test_path": "tests/features/hotels/hotels_booking/",     "parallel": 1, "retry": 3, "job_timeout_minutes": 240, "step_timeout_minutes": 230 }
           ]
         }
+
+  # Advance the chain: 5 min after this domain finishes, dispatch Shell. Runs on
+  # success OR failure; skipped only if cancelled. See suite-flights.yml for the
+  # rationale (workflow_dispatch is allowed for github.token; workflow_run isn't).
+  chain-next:
+    name: Start next domain (Shell)
+    needs: suite
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+    steps:
+      - name: Wait 5 min, then dispatch Suite - Shell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Cooldown 5 min before starting the next domain (Shell)…"
+          sleep 300
+          gh workflow run suite-shell.yml --ref main --repo "$GITHUB_REPOSITORY"

@@ -1,13 +1,12 @@
 name: Suite - Transportation
 
-# LAST in the chain (Cars + Rails). Auto-triggered 5 min after "Suite - Shell"
-# completes, and also manually dispatchable on its own.
+# LAST in the chain (Cars + Rails). Started by the previous domain's
+# `chain-next` job (Shell dispatches this ~5 min after it finishes), and also
+# manually dispatchable on its own. Being last, it has no `chain-next` job — the
+# chain ends here.
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Suite - Shell"]
-    types: [completed]
 
 permissions:
   contents: read
@@ -19,21 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  cooldown:
-    name: Cooldown (5 min chain gap)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success' ||
-      github.event.workflow_run.conclusion == 'failure'
-    steps:
-      - name: Wait 5 minutes after the previous domain
-        if: github.event_name == 'workflow_run'
-        run: sleep 300
-
   suite:
-    needs: cooldown
     uses: ./.github/workflows/suite-runner.yml
     secrets: inherit
     with:

@@ -2,9 +2,12 @@ name: Suite - Flights
 
 # HEAD of the stable domain chain: Flights → Hotels → Shell → Transportation.
 # Dispatched daily at 21:00 Portugal time by suite-scheduler.yml (the schedule
-# lives there so decoy DST cron slots can't trigger the downstream chain), and
-# manually dispatchable here. When this run completes it triggers
-# "Suite - Hotels" via workflow_run; Hotels waits 5 min, then runs, and so on.
+# lives there so decoy DST cron slots can't start the downstream chain), and
+# manually dispatchable here. When this run finishes, the `chain-next` job waits
+# 5 min and dispatches "Suite - Hotels" (which does the same for Shell, and so
+# on). The chain advances by self-dispatch, NOT the workflow_run event, because
+# the built-in GITHUB_TOKEN can't trigger workflow_run cascades — see
+# suite-scheduler.yml header for the full rationale.
 #
 # Stability levers vs. the legacy Test Suite:
 #   - lower parallelism (non-booking 4→2, booking 2→1) to cut contention flakes
@@ -68,3 +71,24 @@ jobs:
             { "suite_id": "flights-ua-ndc-booking",          "suite_name": "Flights UA NDC Booking",          "test_path": "tests/features/flights/flights_ua_ndc/flights_ua_ndc_booking/",               "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 }
           ]
         }
+
+  # Advance the chain: after this whole domain run (tests + rerun) finishes,
+  # wait 5 min and dispatch the next domain. Runs on success OR failure (domains
+  # are independent); skipped only if this run was cancelled. `gh workflow run`
+  # is a workflow_dispatch, which github.token is allowed to trigger.
+  chain-next:
+    name: Start next domain (Hotels)
+    needs: suite
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+    steps:
+      - name: Wait 5 min, then dispatch Suite - Hotels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Cooldown 5 min before starting the next domain (Hotels)…"
+          sleep 300
+          gh workflow run suite-hotels.yml --ref main --repo "$GITHUB_REPOSITORY"

@@ -11,11 +11,19 @@ name: Suite Scheduler
 # The other slot exits without doing anything.
 #
 # The schedule lives HERE (a dispatcher) instead of on suite-flights.yml on
-# purpose: a schedule+guard directly on "Suite - Flights" would still produce
-# a completed (all-jobs-skipped) run on the decoy slot, and that completion
-# would trigger "Suite - Hotels" via workflow_run — running 3 of the 4 domains
-# at the wrong hour. Nothing listens to this workflow, so its decoy runs are
-# inert.
+# purpose: a schedule+guard directly on "Suite - Flights" would still produce a
+# run on the decoy slot whose completion would start the chain at the wrong
+# hour. Nothing chains off this dispatcher, so its decoy runs are inert.
+#
+# How the chain advances (no PAT needed): each suite dispatches the NEXT one
+# itself at the end of its run (see the `chain-next` job in suite-flights.yml,
+# suite-hotels.yml and suite-shell.yml) via `gh workflow run`. That is a
+# workflow_dispatch, which the built-in GITHUB_TOKEN IS allowed to trigger — so
+# both this scheduler and the whole chain run on github.token, no secret needed.
+# We deliberately do NOT chain via the `workflow_run` event: GitHub suppresses
+# workflow_run cascades from runs created by GITHUB_TOKEN (recursion prevention),
+# which silently killed the chain after Flights on the first scheduled run
+# (2026-07-16).
 
 on:
   schedule:

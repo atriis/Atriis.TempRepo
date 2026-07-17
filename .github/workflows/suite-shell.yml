@@ -1,13 +1,13 @@
 name: Suite - Shell
 
-# 3rd in the chain. Auto-triggered 5 min after "Suite - Hotels" completes, and
-# also manually dispatchable on its own.
+# 3rd in the chain. Started by the previous domain's `chain-next` job (Hotels
+# dispatches this ~5 min after it finishes), and also manually dispatchable on
+# its own. When this run finishes, its own `chain-next` job waits 5 min and
+# dispatches "Suite - Transportation". The chain self-dispatches instead of
+# using the workflow_run event — see suite-scheduler.yml header for why.
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Suite - Hotels"]
-    types: [completed]
 
 permissions:
   contents: read
@@ -19,21 +19,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  cooldown:
-    name: Cooldown (5 min chain gap)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success' ||
-      github.event.workflow_run.conclusion == 'failure'
-    steps:
-      - name: Wait 5 minutes after the previous domain
-        if: github.event_name == 'workflow_run'
-        run: sleep 300
-
   suite:
-    needs: cooldown
     uses: ./.github/workflows/suite-runner.yml
     secrets: inherit
     with:
@@ -61,3 +47,22 @@ jobs:
             { "suite_id": "shell-user-profile",                     "suite_name": "Shell User Profile",                     "test_path": "tests/features/shell/shell_user_profile/",                     "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 }
           ]
         }
+
+  # Advance the chain: 5 min after this domain finishes, dispatch Transportation
+  # (the last domain). Runs on success OR failure; skipped only if cancelled.
+  chain-next:
+    name: Start next domain (Transportation)
+    needs: suite
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+    steps:
+      - name: Wait 5 min, then dispatch Suite - Transportation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Cooldown 5 min before starting the next domain (Transportation)…"
+          sleep 300
+          gh workflow run suite-transportation.yml --ref main --repo "$GITHUB_REPOSITORY"
