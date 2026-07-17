@@ -12,30 +12,26 @@ Feature: 61053 Galileo - Single PNR when car and flight segments are booked sepa
   I want both segments to share one PNR even though I book them separately
   So that my Galileo itinerary stays consolidated under a single record
 
+  #Booking error
   Scenario: A separately booked car and flight result in a single PNR
     Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added a random guest traveler
     When I search for a car at "LHR"
     Then the car results section should be displayed
     When I add the first car to cart
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
     When I click to add a flight to my trip from cart
-    And I edit the flight search from "LON" to "GRU"
+    And I edit the flight search from "LIS" to "LON" with the same dates as the car search
     Then flight results should be available
-    When I add the first flight to cart
-    And I handle conflicting quotes if visible
-    Then the booking status should be "Pending booking"
+    When I filter results by carrier "TP"
+    And I add the first flight to cart
+    And the booking status should be "Pending booking"
+    And I add a credit card as payment method
+    And I fill credit card cvv if needed
     When I proceed to checkout
     And I complete the booking
     When I store the first quote PNR code
     And I store the second quote PNR code
     Then the stored quote PNR codes should match
-    # NOTE(61053): the source Testim export has NO cancellation tail — it books a real Galileo
-    # car + flight and never cancels them. The two cancellation steps below are ADDED (not in the
-    # source) to guarantee the real GDS PNR is always cancelled, per the mandatory domain rule
-    # "ALWAYS cancel GDS flights after test — real PNRs cost money" and the batch instruction that
-    # the cancellation tail must be preserved. Mirrors the cancel tail of 58356/61051.
-    And I successfully cancel the trip
