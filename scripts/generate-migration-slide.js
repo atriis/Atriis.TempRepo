@@ -91,8 +91,8 @@ ly += 0.3;
 slide.addChart(pptx.ChartType.line, [
   {
     name: 'Migration %',
-    labels: ['Sprint 9', 'Sprint 10', 'Sprint 11', 'Sprint 12', 'Sprint 13'],
-    values: [45, 53, 63, 63, 68],
+    labels: ['Sprint 9', 'Sprint 10', 'Sprint 11', 'Sprint 12', 'Sprint 13', 'Sprint 14'],
+    values: [45, 53, 63, 63, 68, 74],
   },
 ], {
   x: LX, y: ly, w: 4.2, h: 2.2,
@@ -129,11 +129,11 @@ slide.addText('Overall Migration', {
   x: CX, y: 1.42, w: 3.7, h: 0.3,
   fontSize: 12, bold: true, color: COLORS.ink, align: 'center', fontFace: 'Calibri',
 });
-slide.addText('68%', {
+slide.addText('74%', {
   x: CX, y: 1.7, w: 3.7, h: 0.95,
   fontSize: 64, bold: true, color: COLORS.green, align: 'center', fontFace: 'Calibri',
 });
-slide.addText('499 / 739 tests migrated', {
+slide.addText('550 / 739 tests migrated', {
   x: CX, y: 2.65, w: 3.7, h: 0.35,
   fontSize: 13, color: COLORS.ink, align: 'center', fontFace: 'Calibri',
 });
@@ -148,7 +148,7 @@ const domains = [
   { name: 'Hotels',         total: 133, done: 121, pct: 91,  color: COLORS.yellow },
   { name: 'Flights',        total: 254, done: 254, pct: 100, color: COLORS.green  },
   { name: 'Transportation', total: 148, done: 22,   pct: 15,   color: COLORS.yellow },
-  { name: 'Shell',          total: 204, done: 102,  pct: 50,  color: COLORS.yellow },
+  { name: 'Shell',          total: 204, done: 153,  pct: 75,  color: COLORS.yellow },
 ];
 
 const barX = CX;
@@ -191,7 +191,7 @@ domains.forEach((d, i) => {
 
 // Blocked tests note
 const blockedY = barY0 + domains.length * rowH + 0.1;
-slide.addText('\uD83D\uDEA7 33 tests blocked (supplier errors / known bugs / require review)', {
+slide.addText('\uD83D\uDEA7 42 tests blocked (supplier errors / known bugs / require review)', {
   x: barX, y: blockedY, w: barW, h: 0.35,
   fontSize: 9, italic: true, color: COLORS.yellow, fontFace: 'Calibri',
 });
