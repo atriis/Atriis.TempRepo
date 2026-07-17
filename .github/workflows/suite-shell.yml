@@ -29,8 +29,9 @@ jobs:
       expected-suites: >-
         shell-agent-assistance-and-suggestions shell-conversation shell-fop-issues
         shell-frequent-programs shell-joy-search-defaults shell-manual-quote
-        shell-per-diem shell-share-quote-or-itinerary shell-travel-policy
-        shell-ui-issues shell-user-profile
+        shell-multiproducts shell-per-diem shell-reference-fields
+        shell-share-quote-or-itinerary shell-travel-policy shell-ui-issues
+        shell-user-profile
       matrix: |
         {
           "include": [
@@ -40,7 +41,9 @@ jobs:
             { "suite_id": "shell-frequent-programs",                "suite_name": "Shell Frequent Programs",                "test_path": "tests/features/shell/shell_frequent_programs/",                "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
             { "suite_id": "shell-joy-search-defaults",              "suite_name": "Shell Joy Search Defaults",              "test_path": "tests/features/shell/shell_joy_search_defaults/",              "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
             { "suite_id": "shell-manual-quote",                     "suite_name": "Shell Manual Quote",                     "test_path": "tests/features/shell/shell_manual_quote/",                     "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "shell-multiproducts",                    "suite_name": "Shell Multiproducts",                    "test_path": "tests/features/shell/shell_multiproducts/",                    "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
             { "suite_id": "shell-per-diem",                         "suite_name": "Shell Per Diem",                         "test_path": "tests/features/shell/shell_per_diem/",                         "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "shell-reference-fields",                 "suite_name": "Shell Reference Fields",                 "test_path": "tests/features/shell/shell_reference_fields/",                 "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
             { "suite_id": "shell-share-quote-or-itinerary",         "suite_name": "Shell Share Quote Or Itinerary",         "test_path": "tests/features/shell/shell_share_quote_or_itinerary/",         "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
             { "suite_id": "shell-travel-policy",                    "suite_name": "Shell Travel Policy",                    "test_path": "tests/features/shell/shell_travel_policy/",                    "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
             { "suite_id": "shell-ui-issues",                        "suite_name": "Shell UI Issues",                        "test_path": "tests/features/shell/shell_ui_issues/",                        "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
