@@ -91,7 +91,7 @@ ly += 0.3;
 slide.addChart(pptx.ChartType.line, [
   {
     name: 'Migration %',
-    labels: ['Sprint 9', 'Sprint 10', 'Sprint 11', 'Sprint 12', 'Sprint 13', 'Sprint 14'],
+    labels: ['9', '10', '11', '12', '13', '14'],
     values: [45, 53, 63, 63, 68, 74],
   },
 ], {
@@ -191,13 +191,13 @@ domains.forEach((d, i) => {
 
 // Blocked tests note
 const blockedY = barY0 + domains.length * rowH + 0.1;
-slide.addText('\uD83D\uDEA7 42 tests blocked (supplier errors / known bugs / require review)', {
-  x: barX, y: blockedY, w: barW, h: 0.35,
+slide.addText('\uD83D\uDEA7 42 tests blocked (supplier errors / known bugs / require review) \u2014 not included in the overall migration count above', {
+  x: barX, y: blockedY, w: barW, h: 0.5,
   fontSize: 9, italic: true, color: COLORS.yellow, fontFace: 'Calibri',
 });
 
 // Legend
-const legY = blockedY + 0.35;
+const legY = blockedY + 0.55;
 const legendItems = [
   { label: 'Completed', color: COLORS.green },
   { label: 'In progress', color: COLORS.yellow },
@@ -231,16 +231,16 @@ slide.addText('Daily Stability Run', {
   fontSize: 14, bold: true, color: COLORS.accent, fontFace: 'Calibri',
 });
 slide.addText(
-  'Passing rate depends on supplier availability, environment speed, and administration \u2014 reviewed regularly to stay reliable and grow coverage.',
+  'Mostly migrated tests, with new tests continuously being added to grow coverage. Passing rate depends on supplier availability, environment speed, and administration \u2014 reviewed regularly to stay reliable.',
   {
-    x: RX + 0.2, y: 2.0, w: 3.8, h: 0.5,
+    x: RX + 0.2, y: 1.85, w: 3.8, h: 0.72,
     fontSize: 9, color: COLORS.sub, fontFace: 'Calibri',
   }
 );
 
 // KPI tiles
 const tiles = [
-  { label: 'Tests running daily',   value: '455',         color: COLORS.accent },
+  { label: 'Tests running daily',   value: '555',         color: COLORS.accent },
   { label: 'Avg passing rate',      value: '75%',      color: COLORS.green  },
   { label: 'Avg total duration',    value: '1h20min',      color: COLORS.ink    },
 ];
@@ -268,10 +268,10 @@ slide.addText('Composition', {
 });
 
 const comp = [
-  { name: 'Flights', value: 277 },
-  { name: 'Hotels',  value: 110 },
-  { name: 'Transportation',    value: 30  },
-  { name: 'Shell',   value: 38  },
+  { name: 'Flights', value: 270 },
+  { name: 'Hotels',  value: 109 },
+  { name: 'Transportation',    value: 26  },
+  { name: 'Shell',   value: 150 },
 ];
 const compTotal = comp.reduce((a, b) => a + b.value, 0);
 comp.forEach((c, i) => {
