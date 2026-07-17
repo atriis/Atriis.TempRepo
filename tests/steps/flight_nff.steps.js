@@ -142,3 +142,20 @@ Then("the change and cancellation rules warning is not displayed", async functio
   logger.info("[NewFlightFlow] Verifying change and cancellation rules warning is not displayed");
   await FlightResults.verifyChangeAndCancellationRulesWarningNotVisible(this.page);
 });
+
+When("I start intercepting the flight pricing selection response", function () {
+  logger.info("[NewFlightFlow] Starting FlightPricingSelection API response capture");
+  this.flightPricingSelectionResponsePromise = FlightResults.startCapturingPricingSelectionResponse(this.page);
+});
+
+Then("the change and cancellation rules for each brand card leg should match that leg's fare rules in the intercepted pricing response", async function () {
+  logger.info("[NewFlightFlow] Verifying per-leg change/cancellation rules match the intercepted FlightPricingSelection response");
+  const result = await FlightResults.verifyPerLegFareRulesMatchPricingResponse(
+    this.page,
+    this.flightPricingSelectionResponsePromise
+  );
+  logger.info("[NewFlightFlow] Per-leg fare rules verified against response", {
+    legsChecked: result.legsChecked,
+    cardsChecked: result.cardsChecked,
+  });
+});

@@ -6,6 +6,7 @@ const { ResultsPage } = require("@pages/ResultsPage");
 const Results = require("./Results");
 const { CommonPage } = require("@src/pages/CommonPage");
 const { getPageObject } = require("@utils/pageObjectCache");
+const { readJson } = require("@utils/networkInterceptor");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const {
   extractCurrencySymbol,
@@ -27,6 +28,127 @@ function extractDayToken(dateText) {
   }
 
   return match[1];
+}
+
+// Per-leg fare-rule cross-check helpers (bug 79393). These mirror the app's own mapping
+// (extractRefundFeature / extractChangeFeature in _flight-brand-builder.logic.ts) so the test can
+// assert each brand card's change/cancellation badge reflects that leg's fare rules from the
+// FlightPricingSelection response and never falls back to "check fare rules" when it is conclusive.
+
+// FareRulesStatus enum (flight-selection/models/consts.ts).
+const FARE_RULES_STATUS = { OFFERED: 0, NOT_OFFERED: 1, CHARGEABLE: 2, NO_INFO: 3 };
+
+// Normalized rule categories — the observable outcome, independent of price/currency formatting.
+const RULE_CATEGORY = {
+  REFUND_NON_REFUNDABLE: 'refund:non-refundable',
+  REFUND_FULLY_REFUNDABLE: 'refund:fully-refundable',
+  REFUND_WITH_AMOUNT: 'refund:with-amount',
+  REFUND_CHECK_FARE_RULES: 'refund:check-fare-rules',
+  CHANGE_NOT_ALLOWED: 'change:not-allowed',
+  CHANGE_FARE_DIFFERENCE_ONLY: 'change:fare-difference-only',
+  CHANGE_WITH_AMOUNT: 'change:with-amount',
+  CHANGE_CHECK_FARE_RULES: 'change:check-fare-rules',
+  UNKNOWN: 'unknown',
+};
+
+// The FlightPricingSelection API returns PascalCase keys. Read them case-tolerantly so the
+// cross-check does not silently break if the wire format is normalized in future.
+function pick(obj, ...names) {
+  if (!obj) return undefined;
+  for (const n of names) {
+    if (obj[n] !== undefined) return obj[n];
+  }
+  return undefined;
+}
+
+/**
+ * Returns the fare rules that apply to a given leg of a pricing-option package,
+ * mirroring getApplicableFareRulesForLeg (_flight-fare-rules.logic.ts): use the
+ * segment-level fare rules when they carry any rule data, otherwise fall back to
+ * the package-level fare rules.
+ */
+function getApplicableFareRulesForLeg(pkg, legIndex) {
+  if (!pkg) return undefined;
+  const segments = pick(pkg, 'Segments', 'segments') || [];
+  const segmentFareRules = pick(segments[legIndex] || {}, 'FareRules', 'fareRules');
+  const hasData =
+    segmentFareRules &&
+    (pick(segmentFareRules, 'RefundabilityStatus', 'refundabilityStatus') !== undefined ||
+      pick(segmentFareRules, 'ChangeabilityStatus', 'changeabilityStatus') !== undefined ||
+      pick(segmentFareRules, 'CancellationFee', 'cancellationFee') !== undefined ||
+      pick(segmentFareRules, 'ChangeFee', 'changeFee') !== undefined);
+  return hasData ? segmentFareRules : pick(pkg, 'FareRules', 'fareRules');
+}
+
+/** Maps a leg's fare rules to the expected refund badge category (mirrors extractRefundFeature). */
+function expectedRefundCategory(fareRules) {
+  const status = pick(fareRules, 'RefundabilityStatus', 'refundabilityStatus');
+  const amount = pick(pick(fareRules, 'CancellationFee', 'cancellationFee') || {}, 'Amount', 'amount');
+  if (status === FARE_RULES_STATUS.NOT_OFFERED) return RULE_CATEGORY.REFUND_NON_REFUNDABLE;
+  if (status === FARE_RULES_STATUS.OFFERED) return RULE_CATEGORY.REFUND_FULLY_REFUNDABLE;
+  if (status === FARE_RULES_STATUS.CHARGEABLE) {
+    return amount !== undefined && amount > 0
+      ? RULE_CATEGORY.REFUND_WITH_AMOUNT
+      : RULE_CATEGORY.REFUND_CHECK_FARE_RULES;
+  }
+  return RULE_CATEGORY.REFUND_CHECK_FARE_RULES; // NoInfo / missing
+}
+
+/** Maps a leg's fare rules to the expected change badge category (mirrors extractChangeFeature). */
+function expectedChangeCategory(fareRules) {
+  const status = pick(fareRules, 'ChangeabilityStatus', 'changeabilityStatus');
+  const amount = pick(pick(fareRules, 'ChangeFee', 'changeFee') || {}, 'Amount', 'amount');
+  if (status === FARE_RULES_STATUS.NOT_OFFERED) return RULE_CATEGORY.CHANGE_NOT_ALLOWED;
+  if (status === FARE_RULES_STATUS.OFFERED) return RULE_CATEGORY.CHANGE_FARE_DIFFERENCE_ONLY;
+  if (status === FARE_RULES_STATUS.CHARGEABLE) {
+    return amount !== undefined && amount > 0
+      ? RULE_CATEGORY.CHANGE_WITH_AMOUNT
+      : RULE_CATEGORY.CHANGE_CHECK_FARE_RULES;
+  }
+  return RULE_CATEGORY.CHANGE_CHECK_FARE_RULES; // NoInfo / missing
+}
+
+// The four labels below are the only refund/change texts extractRefundFeature/extractChangeFeature
+// can emit, so the classifiers match exactly those and treat anything else as UNKNOWN.
+
+/** Classifies a rendered refund badge text into a category. */
+function classifyRefundText(text) {
+  const t = (text || '').trim();
+  if (/^Non-refundable$/i.test(t)) return RULE_CATEGORY.REFUND_NON_REFUNDABLE;
+  if (/^Cancellation - fully refundable$/i.test(t)) return RULE_CATEGORY.REFUND_FULLY_REFUNDABLE;
+  if (/^Cancellation - check fare rules$/i.test(t)) return RULE_CATEGORY.REFUND_CHECK_FARE_RULES;
+  if (/^Cancellation - /i.test(t)) return RULE_CATEGORY.REFUND_WITH_AMOUNT;
+  return RULE_CATEGORY.UNKNOWN;
+}
+
+/** Classifies a rendered change badge text into a category. */
+function classifyChangeText(text) {
+  const t = (text || '').trim();
+  if (/^Changes not allowed$/i.test(t)) return RULE_CATEGORY.CHANGE_NOT_ALLOWED;
+  if (/^Changes - fare difference only$/i.test(t)) return RULE_CATEGORY.CHANGE_FARE_DIFFERENCE_ONLY;
+  if (/^Changes - check fare rules$/i.test(t)) return RULE_CATEGORY.CHANGE_CHECK_FARE_RULES;
+  if (/^Change - .*fare difference/i.test(t)) return RULE_CATEGORY.CHANGE_WITH_AMOUNT;
+  return RULE_CATEGORY.UNKNOWN;
+}
+
+/** Picks the refund badge and change badge texts out of a brand card's feature texts. */
+function splitFeatureTexts(featureTexts) {
+  let refundText = null;
+  let changeText = null;
+  for (const raw of featureTexts || []) {
+    const t = (raw || '').trim();
+    if (refundText === null && (/^Non-refundable$/i.test(t) || /^Cancellation\b/i.test(t))) {
+      refundText = t;
+    } else if (changeText === null && /^Changes?\b/i.test(t)) {
+      changeText = t;
+    }
+  }
+  return { refundText, changeText };
+}
+
+/** Normalizes a brand name for matching UI cards to response segments (case/space/dashes tolerant). */
+function normalizeBrandName(name) {
+  return (name || '').toString().trim().toUpperCase().replace(/\s+/g, ' ');
 }
 
 /**
@@ -2896,6 +3018,155 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     await flightResultsPage.waitForChangeAndCancellationWarningHidden();
   },
 
+  /**
+   * Starts capturing the next FlightPricingSelection API response (New Flight Flow brand-selection
+   * pricing call). Call this BEFORE entering the brand cards. Returns the response promise for the
+   * per-leg fare-rules cross-check.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<import('@playwright/test').Response>}
+   */
+  startCapturingPricingSelectionResponse(page) {
+    if (!page) throw new Error('[FlightResults.startCapturingPricingSelectionResponse] "page" is required.');
+    logger.info('[FareRulesPerLeg] Setting up FlightPricingSelection API response capture');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    return flightResultsPage.capturePricingSelectionApiResponse();
+  },
+
+  /**
+   * Verifies that, in the new-flight-flow brand cards, every leg's change and cancellation
+   * badges reflect that leg's fare rules from the intercepted flightPricing response — i.e.
+   * they are parsed per leg and never fall back to the generic "check fare rules" text when
+   * the supplier response carries a conclusive rule for that leg (bug 79393).
+   *
+   * For each rendered brand card it matches the card to the response package with the same
+   * per-leg brand name, computes the expected change/refund category from that package's
+   * per-leg fare rules (segment-level, falling back to package-level exactly as the app does),
+   * and asserts the rendered badge category matches.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Promise<import('@playwright/test').Response>} responsePromise - from startCapturingPricingSelectionResponse.
+   * @returns {Promise<{legsChecked: number, cardsChecked: number, comparisons: Array<Object>}>}
+   */
+  async verifyPerLegFareRulesMatchPricingResponse(page, responsePromise) {
+    if (!page) throw new Error('[FlightResults.verifyPerLegFareRulesMatchPricingResponse] "page" is required.');
+    if (!responsePromise) {
+      throw new Error('[FlightResults.verifyPerLegFareRulesMatchPricingResponse] "responsePromise" is required — call "I start intercepting the flight pricing selection response" before entering the brand cards.');
+    }
+
+    const body = await readJson(responsePromise);
+    const results = pick(body, 'results', 'Results');
+    if (!Array.isArray(results) || results.length === 0) {
+      throw new Error('[FlightResults.verifyPerLegFareRulesMatchPricingResponse] FlightPricingSelection response body has no results array.');
+    }
+
+    // Build the set of allowed change/refund category pairs per (leg, brand) from the response.
+    // A brand can appear across packages with different per-leg fare rules, so we collect ALL
+    // combinations the supplier actually returns for that brand on that leg — the rendered badge
+    // must be one of them. legBrand[legIndex] = Map<normalizedBrandName, Set<"refundCat|changeCat">>.
+    const legBrand = [];
+    for (const pkg of results) {
+      const segments = pick(pkg, 'Segments', 'segments') || [];
+      for (let legIndex = 0; legIndex < segments.length; legIndex++) {
+        const flights = pick(segments[legIndex] || {}, 'Flights', 'flights') || [];
+        const brandName = pick(flights[0] || {}, 'BrandName', 'brandName') ?? null;
+        if (!brandName) continue;
+        const fareRules = getApplicableFareRulesForLeg(pkg, legIndex);
+        const pair = `${expectedRefundCategory(fareRules)}|${expectedChangeCategory(fareRules)}`;
+        if (!legBrand[legIndex]) legBrand[legIndex] = new Map();
+        const key = normalizeBrandName(brandName);
+        if (!legBrand[legIndex].has(key)) legBrand[legIndex].set(key, new Set());
+        legBrand[legIndex].get(key).add(pair);
+      }
+    }
+
+    const uiCards = await getPageObject(page, FlightResultsPage).getPerLegBrandCardFeatureTexts();
+    if (uiCards.length === 0) {
+      throw new Error('[FlightResults.verifyPerLegFareRulesMatchPricingResponse] No brand cards were read from the UI.');
+    }
+
+    logger.info('[FareRulesPerLeg] Cross-checking brand-card rules against FlightPricingSelection response', {
+      responsePackages: results.length,
+      uiCards: uiCards.length,
+      legsInResponse: legBrand.length,
+    });
+
+    const comparisons = [];
+    const mismatches = [];
+    const legsSeen = new Set();
+    let checkedCards = 0;
+
+    for (const card of uiCards) {
+      const { refundText, changeText } = splitFeatureTexts(card.featureTexts);
+      const observedRefund = classifyRefundText(refundText);
+      const observedChange = classifyChangeText(changeText);
+      const observedPair = `${observedRefund}|${observedChange}`;
+      const allowedForBrand = legBrand[card.legIndex]
+        ? legBrand[card.legIndex].get(normalizeBrandName(card.brandName))
+        : undefined;
+
+      const record = {
+        legIndex: card.legIndex,
+        cardIndex: card.cardIndex,
+        brandName: card.brandName,
+        refundText,
+        changeText,
+        observedRefund,
+        observedChange,
+        allowed: allowedForBrand ? [...allowedForBrand] : null,
+      };
+      comparisons.push(record);
+      legsSeen.add(card.legIndex);
+
+      // A rendered badge must never be the generic fallback — the supplier response for this flow
+      // is conclusive, so "check fare rules" on a leg is exactly the bug 79393 defect.
+      if (observedRefund === RULE_CATEGORY.REFUND_CHECK_FARE_RULES || observedChange === RULE_CATEGORY.CHANGE_CHECK_FARE_RULES) {
+        mismatches.push(
+          `Leg ${card.legIndex} brand "${card.brandName}": rendered the generic "check fare rules" fallback ` +
+          `(cancellation "${refundText}", change "${changeText}") — the per-leg fare rules were not parsed.`
+        );
+        continue;
+      }
+
+      if (!allowedForBrand) {
+        logger.warn('[FareRulesPerLeg] UI brand card has no matching brand in the response for its leg — skipping cross-check', {
+          legIndex: card.legIndex,
+          brandName: card.brandName,
+          responseBrandsForLeg: legBrand[card.legIndex] ? [...legBrand[card.legIndex].keys()] : [],
+        });
+        continue;
+      }
+
+      checkedCards++;
+      if (!allowedForBrand.has(observedPair)) {
+        mismatches.push(
+          `Leg ${card.legIndex} brand "${card.brandName}": rendered rules { cancellation: "${refundText}" (${observedRefund}), ` +
+          `change: "${changeText}" (${observedChange}) } do not match any per-leg fare rule the response returns for this brand ` +
+          `(allowed: ${[...allowedForBrand].join(' , ')}).`
+        );
+      }
+    }
+
+    if (checkedCards === 0 && mismatches.length === 0) {
+      throw new Error(
+        '[FlightResults.verifyPerLegFareRulesMatchPricingResponse] No UI brand card could be matched to a response brand by name — cannot verify per-leg fare rules. ' +
+        `UI brands: [${uiCards.map((c) => `L${c.legIndex}:${c.brandName}`).join(', ')}]`
+      );
+    }
+
+    expect(
+      mismatches.length,
+      `Per-leg change/cancellation rules must reflect that leg's fare rules from the supplier response:\n${mismatches.join('\n')}`
+    ).toBe(0);
+
+    logger.info('[FareRulesPerLeg] All rendered brand cards reflect their per-leg fare rules', {
+      legsChecked: legsSeen.size,
+      cardsChecked: checkedCards,
+    });
+
+    return { legsChecked: legsSeen.size, cardsChecked: checkedCards, comparisons };
+  },
+
   // ===== AIRPORT FILTER =====
 
   /**
@@ -3170,7 +3441,7 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     const wanted = String(carrier).toUpperCase();
     const forbidden = String(source).toUpperCase();
 
-    const raw = await getPageObject(page, FlightResultsPage).readSearchApiResponseBody(responsePromise);
+    const raw = await readJson(responsePromise);
     const body = Array.isArray(raw) ? raw[0] : raw;
     const results = Array.isArray(body?.results) ? body.results : [];
 

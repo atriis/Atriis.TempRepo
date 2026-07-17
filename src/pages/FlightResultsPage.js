@@ -2,6 +2,7 @@ const { expect } = require("@playwright/test");
 const { waitForText } = require("@utils/wait");
 const { extractNumber, parseAmountText } = require("@utils/dom");
 const { escapeRegExp } = require("@utils/text");
+const { getNetworkInterceptor } = require("@utils/networkInterceptor");
 const config = require("@config/config");
 
 function parseDurationToMinutes(value) {
@@ -3327,6 +3328,82 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     await this.page.locator(SELECTORS.NEW_FLOW_FOOTER_PRICE_AMOUNT).waitFor({ state: 'visible', timeout });
   }
 
+  /**
+   * Sets up a listener for the next FlightPricingSelection API response (the New Flight Flow
+   * brand-selection pricing call that carries per-leg fare rules). Must be called BEFORE the
+   * action that triggers it (entering the brand-cards view). Returns an unresolved Promise
+   * that resolves when the response arrives.
+   *
+   * @returns {Promise<import('@playwright/test').Response>}
+   */
+  capturePricingSelectionApiResponse() {
+    // The New Flight Flow may emit more than one FlightPricingSelection POST (e.g. an initial
+    // pending/empty response before the priced one). Wait for the first response that actually
+    // carries a non-empty results array so downstream parsing has data. The endpoint casing can
+    // vary on the wire, so match the URL case-insensitively.
+    return getNetworkInterceptor(this.page).waitForResponse({
+      urlIncludes: config.flightPricingSelectionApiPath,
+      method: 'POST',
+      caseInsensitive: true,
+      predicate: async (response) => {
+        const body = await response.json();
+        const results = body?.results ?? body?.Results;
+        return Array.isArray(results) && results.length > 0;
+      },
+    });
+  }
+
+  /**
+   * Reads every brand card across all legs in the new-flight-flow brand-selection view.
+   * For each card it returns the leg index (0 = outbound, 1 = inbound, ...), the card index
+   * within that leg, the brand name, and the raw feature-badge texts (the baggage / change /
+   * refund / seat labels rendered under the brand name as `.features-text`).
+   *
+   * Consumers classify the feature texts into change/refund rules — this method only reads
+   * the DOM, it holds no business logic.
+   *
+   * @param {number} [timeout] - Max wait for the first brand card to appear.
+   * @returns {Promise<Array<{legIndex: number, cardIndex: number, brandName: string|null, featureTexts: string[]}>>}
+   */
+  async getPerLegBrandCardFeatureTexts(timeout = 30000) {
+    const legs = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG);
+    try {
+      // Wait for any brand card anywhere in the view — after an outbound brand is selected the
+      // outbound leg may collapse and only the inbound leg keeps rendering cards.
+      await this.page.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first()
+        .waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getPerLegBrandCardFeatureTexts] No brand cards visible in the new-flight-flow view. Original: ${err.message}`
+      );
+    }
+
+    const legCount = await legs.count();
+    const cardsByLeg = [];
+
+    for (let legIndex = 0; legIndex < legCount; legIndex++) {
+      const cards = legs.nth(legIndex).locator(SELECTORS.NEW_FLOW_BRAND_CARD);
+      const cardCount = await cards.count();
+
+      for (let cardIndex = 0; cardIndex < cardCount; cardIndex++) {
+        const card = cards.nth(cardIndex);
+        const nameEl = card.locator(SELECTORS.BRAND_NAME);
+        const brandName = (await nameEl.count()) > 0
+          ? (await nameEl.first().innerText()).trim()
+          : null;
+        const rawFeatureTexts = await card.locator(SELECTORS.NEW_FLOW_BRAND_CARD_FEATURE_TEXT).allInnerTexts();
+        cardsByLeg.push({
+          legIndex,
+          cardIndex,
+          brandName,
+          featureTexts: rawFeatureTexts.map((t) => t.trim()).filter((t) => t.length > 0),
+        });
+      }
+    }
+
+    return cardsByLeg;
+  }
+
   async isChangeAndCancellationWarningVisible() {
     try {
       // The warning uses v-if, so it is only in the DOM when showMixedRulesWarning=true.
@@ -3393,19 +3470,11 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
 
   // Starts waiting for the flightSearch API response (call BEFORE triggering the search).
   // Matches the exact path so /flightSearchDefault is not picked up by mistake.
+  // Read the body with readJson (from @utils/networkInterceptor).
   captureSearchApiResponse() {
-    return this.page.waitForResponse((response) => {
-      try {
-        return new URL(response.url()).pathname.endsWith(config.flightSearchApiPath);
-      } catch {
-        return false;
-      }
-    }, { timeout: 120000 });
-  }
-
-  async readSearchApiResponseBody(responsePromise) {
-    const response = await responsePromise;
-    return response.json();
+    return getNetworkInterceptor(this.page).waitForResponse({
+      pathnameEndsWith: config.flightSearchApiPath,
+    });
   }
 }
 module.exports = FlightResultsPage;

@@ -1,4 +1,5 @@
 const { getPageObject } = require("@utils/pageObjectCache");
+const { readJson } = require("@utils/networkInterceptor");
 const FlightPricingPage = require("@pages/FlightPricingPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
 const { CartPage } = require("@pages/CartPage");
@@ -291,7 +292,7 @@ const FlightPricing = {
 
       let body = null;
       try {
-        body = await flightPricingPage.readPricingApiResponseBody(responsePromise);
+        body = await readJson(responsePromise);
       } catch (err) {
         logger.warn('No flightPricing response captured for result', { index: i, error: err.message });
       }
@@ -346,8 +347,7 @@ const FlightPricing = {
       throw new Error(`carrierCode must be a non-empty string or null, got: ${carrierCode}`);
     }
 
-    const flightPricingPage = getPageObject(page, FlightPricingPage);
-    const body = await flightPricingPage.readPricingApiResponseBody(responsePromise);
+    const body = await readJson(responsePromise);
 
     // Response shape: { results: [...], comparisonTable, cityAirportNameDictionary, ... }
     // Each result has its own markup, currency, currencyRate, officeId, sourceSystem.
@@ -454,8 +454,7 @@ const FlightPricing = {
     if (!responsePromise) throw new Error('responsePromise is required — call startCapturingPricingResponse before the pricing action');
     if (typeof markupPercent !== 'string') throw new Error(`markupPercent must be a string, got: ${typeof markupPercent}`);
 
-    const flightPricingPage = getPageObject(page, FlightPricingPage);
-    const body = await flightPricingPage.readPricingApiResponseBody(responsePromise);
+    const body = await readJson(responsePromise);
 
     const results = body && Array.isArray(body.results) ? body.results : Array.isArray(body) ? body : null;
     if (!results || results.length === 0) {
@@ -523,8 +522,7 @@ const FlightPricing = {
     if (!page) throw new Error('page is required');
     if (!responsePromise) throw new Error('responsePromise is required — call startCapturingPricingResponse before the pricing action');
 
-    const flightPricingPage = getPageObject(page, FlightPricingPage);
-    const body = await flightPricingPage.readPricingApiResponseBody(responsePromise);
+    const body = await readJson(responsePromise);
 
     const results = body && Array.isArray(body.results) ? body.results : Array.isArray(body) ? body : null;
     if (!results || results.length === 0) {

@@ -84,8 +84,22 @@ const config = {
     return getOptionalEnv("FLIGHT_PRICING_API_PATH", "/api/v3/flightPricing");
   },
 
+  // New Flight Flow brand-selection pricing endpoint (per-leg fare rules live here).
+  get flightPricingSelectionApiPath() {
+    return getOptionalEnv("FLIGHT_PRICING_SELECTION_API_PATH", "/api/v3/FlightPricingSelection");
+  },
+
   get flightSearchApiPath() {
     return getOptionalEnv("FLIGHT_SEARCH_API_PATH", "/flightSearch");
+  },
+
+  // Trip related-files upload response endpoint and download request endpoint.
+  get tripFilesUploadApiPath() {
+    return getOptionalEnv("TRIP_FILES_UPLOAD_API_PATH", "/TripFiles");
+  },
+
+  get tripFilesDownloadApiPath() {
+    return getOptionalEnv("TRIP_FILES_DOWNLOAD_API_PATH", "/TripsUploadFiles");
   },
 
   payloadValidation: {

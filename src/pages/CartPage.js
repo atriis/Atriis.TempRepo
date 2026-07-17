@@ -1,6 +1,7 @@
 const { expect } = require("@playwright/test");
 const { waitForText } = require("@utils/wait");
 const { parseAmountText } = require("@utils/dom");
+const { getNetworkInterceptor } = require("@utils/networkInterceptor");
 const config = require("@config/config");
 
 /**
@@ -6511,15 +6512,15 @@ class CartPage {
   }
 
   waitForUploadApiResponse(timeout = 30000) {
-    return this.page.waitForResponse(
-      resp => resp.url().includes('/TripFiles') && resp.request().method() === 'POST',
+    return getNetworkInterceptor(this.page).waitForResponse(
+      { urlIncludes: config.tripFilesUploadApiPath, method: 'POST' },
       { timeout }
     );
   }
 
   waitForDownloadRequest(timeout = 10000) {
-    return this.page.waitForRequest(
-      req => req.url().includes('/TripsUploadFiles'),
+    return getNetworkInterceptor(this.page).waitForRequest(
+      { urlIncludes: config.tripFilesDownloadApiPath },
       { timeout }
     );
   }
@@ -6703,13 +6704,10 @@ class CartPage {
    * @returns {Promise<import('@playwright/test').Response>}
    */
   captureQuotesApiResponse() {
-    return this.page.waitForResponse(
-      response =>
-        response.url().includes(config.quotesApiPath) &&
-        response.url().includes('tripId') &&
-        response.request().method() === 'GET',
-      { timeout: 120000 }
-    );
+    return getNetworkInterceptor(this.page).waitForResponse({
+      urlIncludes: [config.quotesApiPath, 'tripId'],
+      method: 'GET',
+    });
   }
 }
 

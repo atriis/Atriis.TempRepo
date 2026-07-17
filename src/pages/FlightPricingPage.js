@@ -1,6 +1,7 @@
 const { extractNumber } = require("@utils/dom");
 const { waitForText } = require("@utils/wait");
 const { escapeRegExp } = require("@utils/text");
+const { getNetworkInterceptor } = require("@utils/networkInterceptor");
 const config = require("@config/config");
 
 /**
@@ -303,26 +304,15 @@ class FlightPricingPage {
    * Must be called BEFORE the action that triggers the API call.
    * Returns an unresolved Promise that resolves when the response arrives.
    *
+   * Read the body with readJson (from @utils/networkInterceptor).
+   *
    * @returns {Promise<import('@playwright/test').Response>}
    */
   capturePricingApiResponse() {
-    return this.page.waitForResponse(
-      response =>
-        response.url().includes(config.flightPricingApiPath) &&
-        response.request().method() === 'POST',
-      { timeout: 120000 }
-    );
-  }
-
-  /**
-   * Awaits a captured pricing response and returns its parsed JSON body.
-   *
-   * @param {Promise<import('@playwright/test').Response>} responsePromise
-   * @returns {Promise<Object>}
-   */
-  async readPricingApiResponseBody(responsePromise) {
-    const response = await responsePromise;
-    return response.json();
+    return getNetworkInterceptor(this.page).waitForResponse({
+      urlIncludes: config.flightPricingApiPath,
+      method: 'POST',
+    });
   }
 }
 
