@@ -254,10 +254,16 @@ const CarSearch = {
     await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
     await selectDatesByNthAvailable(page, { startIndex: dropoffIndex, endIndex: null });
 
+    // Capture the selected pickup/drop-off dates while the form is still open, before the
+    // search click. Mirrors searchCarByPlace so single-PNR scenarios can align a follow-on
+    // flight search to the car rental dates even when the car search doesn't wait for results.
+    const pickupDate = await carSearchPage.getPickupDateFieldValue();
+    const dropoffDate = await carSearchPage.getDropoffDateFieldValue();
+
     // Submit — do NOT wait for results; the search is expected to be blocked by validation.
     await searchPage.waitAndClickSearchButton();
 
-    return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex };
+    return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex, pickupDate, dropoffDate };
   },
 
   /**

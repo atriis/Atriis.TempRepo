@@ -13,25 +13,27 @@ Feature: 61051 Sabre - Single PNR when car and flight segments are booked separa
   So that my Sabre itinerary stays consolidated under a single record
 
   Scenario: A separately booked car and flight result in a single PNR
-    Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
+    Given I am logged in as "brunajuliana@sabretlcfaketest.com" booking a new trip
     And I have added a random guest traveler
-    When I search for a car at "LHR"
-    Then the car results section should be displayed
+    When I submit a car search at "LHR" without waiting for results
+    And I select the trip purpose as "BILLABLE" and proceed
     When I add the first car to cart
-    And I handle conflicting quotes if visible
-    Then the booking status should be "Pending booking"
-    When I proceed to checkout
+    And the booking status should be "Pending booking"
+    And I accept Terms & Conditions
+    And I click the proceed to checkout button
+    And I wait for booking details in checkout
+    When I type "2" in reference field "Only For Guest" to select the first dropdown option
     And I complete the booking
     When I click to add a flight to my trip from cart
-    And I edit the flight search from "LIS" to "LON"
+    And I edit the flight search from "LIS" to "LON" with the same dates as the car search
     Then flight results should be available
     When I filter results by carrier "TP"
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
-    Then the booking status should be "Pending booking"
-    When I proceed to checkout
+    And  the booking status should be "Pending booking"
+    And I accept Terms & Conditions
+    And I click the proceed to checkout button
+    And I wait for booking details in checkout
     And I complete the booking
     When I store the first quote PNR code
     And I store the second quote PNR code
     Then the stored quote PNR codes should match
-    And I successfully cancel the trip
