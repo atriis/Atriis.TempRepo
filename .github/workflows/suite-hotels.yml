@@ -25,7 +25,6 @@ jobs:
     with:
       domain: Hotels
       history-workflow: suite-hotels.yml
-      rerun-timeout-minutes: 180
       expected-suites: >-
         hotels-non-booking hotels-booking
       matrix: |

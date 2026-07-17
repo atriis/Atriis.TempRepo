@@ -24,7 +24,6 @@ jobs:
     with:
       domain: Transportation
       history-workflow: suite-transportation.yml
-      rerun-timeout-minutes: 120
       expected-suites: >-
         cars-booking cars-daily rails-daily
       matrix: |

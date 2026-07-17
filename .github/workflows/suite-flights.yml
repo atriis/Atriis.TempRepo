@@ -11,8 +11,8 @@ name: Suite - Flights
 #
 # Stability levers vs. the legacy Test Suite:
 #   - lower parallelism (non-booking 4→2, booking 2→1) to cut contention flakes
-#   - --retry 3 (one more attempt than before)
-#   - a bounded, per-domain failure rerun (see suite-runner.yml)
+#   - --retry 3 (one more attempt than before); flakes are absorbed in-run, so
+#     there is no separate cross-job rerun
 
 on:
   workflow_dispatch:
@@ -33,7 +33,6 @@ jobs:
     with:
       domain: Flights
       history-workflow: suite-flights.yml
-      rerun-timeout-minutes: 180
       expected-suites: >-
         flights-amadeus-non-booking flights-general-non-booking flights-galileo-non-booking
         flights-sabre-non-booking flights-ypsilon-non-booking flights-travelfusion-non-booking
@@ -72,7 +71,7 @@ jobs:
           ]
         }
 
-  # Advance the chain: after this whole domain run (tests + rerun) finishes,
+  # Advance the chain: after this whole domain run (test + report) finishes,
   # wait 5 min and dispatch the next domain. Runs on success OR failure (domains
   # are independent); skipped only if this run was cancelled. `gh workflow run`
   # is a workflow_dispatch, which github.token is allowed to trigger.

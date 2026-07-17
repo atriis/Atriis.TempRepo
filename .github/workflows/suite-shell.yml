@@ -25,7 +25,6 @@ jobs:
     with:
       domain: Shell
       history-workflow: suite-shell.yml
-      rerun-timeout-minutes: 120
       expected-suites: >-
         shell-agent-assistance-and-suggestions shell-conversation shell-fop-issues
         shell-frequent-programs shell-joy-search-defaults shell-manual-quote
