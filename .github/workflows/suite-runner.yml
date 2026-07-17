@@ -634,10 +634,16 @@ jobs:
                   if (!fs.existsSync(p)) continue;
                   try {
                     const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+                    // pending/undefined/ambiguous also fail the run (strict mode)
+                    const FAIL = { failed: 1, ambiguous: 1, pending: 1, undefined: 1 };
                     for (const f of (Array.isArray(data) ? data : [data]))
-                      for (const el of (f.elements || []))
-                        if (el.type === 'scenario')
-                          map[(f.uri || '') + ':' + el.line] = { suite, scenario: el.name || '' };
+                      for (const el of (f.elements || [])) {
+                        if (el.type !== 'scenario') continue;
+                        const failStep = (el.steps || []).find(s => s.result && FAIL[s.result.status]);
+                        const rawErr = failStep ? ((failStep.result && failStep.result.error_message) || '').split('\n')[0] : '';
+                        const error = rawErr || (failStep ? (failStep.result.status + ' step: ' + ((failStep.keyword || '') + (failStep.name || '')).trim()) : '');
+                        map[(f.uri || '') + ':' + el.line] = { suite, scenario: el.name || '', error };
+                      }
                   } catch (e) {}
                 }
               }
@@ -648,12 +654,12 @@ jobs:
               } catch (e) {}
               out.push('### ❌ Scenarios that failed every attempt in the main run');
               out.push('');
-              out.push('| Suite | Scenario | Location |');
-              out.push('|-------|----------|----------|');
+              out.push('| Suite | Scenario | Location | Error (main run) |');
+              out.push('|-------|----------|----------|------------------|');
               const MAX_ROWS = 100;
               for (const entry of entries.slice(0, MAX_ROWS)) {
                 const m = map[entry] || {};
-                out.push('| ' + esc(m.suite || '?') + ' | ' + esc(m.scenario || '?') + ' | ' + esc(entry) + ' |');
+                out.push('| ' + esc(m.suite || '?') + ' | ' + esc(m.scenario || '?') + ' | ' + esc(entry) + ' | ' + esc(m.error || '?') + ' |');
               }
               if (entries.length > MAX_ROWS) {
                 out.push('');
