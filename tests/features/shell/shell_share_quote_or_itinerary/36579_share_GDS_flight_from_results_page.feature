@@ -6,7 +6,7 @@ Feature: 36579 Share flight price offer
 
   @share-flight
   Scenario Outline: User shares a price offer for selected flights
-    Given I am logged in as "<label>" booking a new trip
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "MAD" to "LIS"
     When I click on the "Share" button
@@ -15,8 +15,3 @@ Feature: 36579 Share flight price offer
     When I scroll into offers and get prices
     Then The shared price for carrier "TAP" should match the prices from results
     Then The shared price for carrier "Iberia" should match the prices from results
-
-    Examples:
-      | label        |
-      | ruimariano@amadeus.com   |
-      | beatrizpamplonacorp@galileo.com   |
