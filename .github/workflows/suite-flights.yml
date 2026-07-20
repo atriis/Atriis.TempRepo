@@ -90,4 +90,14 @@ jobs:
         run: |
           echo "Cooldown 5 min before starting the next domain (Hotels)…"
           sleep 300
-          gh workflow run suite-hotels.yml --ref main --repo "$GITHUB_REPOSITORY"
+          # Retry: transient GitHub API 5xx must not break the chain (run #29709388523 died on a one-off HTTP 503).
+          for attempt in 1 2 3 4 5; do
+            if gh workflow run suite-hotels.yml --ref main --repo "$GITHUB_REPOSITORY"; then
+              echo "Dispatched Suite - Hotels (attempt $attempt)."
+              exit 0
+            fi
+            echo "Dispatch attempt $attempt failed; retrying in 30s…"
+            sleep 30
+          done
+          echo "::error::Failed to dispatch Suite - Hotels after 5 attempts."
+          exit 1
