@@ -1,5 +1,5 @@
-@regression @provider:ehotel @ado-61033
-Feature: 61033 eHotel — Supplier details (PIN code, Confirmation Number, Contact Phone) visible in cart
+@regression @provider:ehotel @ado-75354
+Feature: 75354 eHotel — Supplier details (PIN code, Confirmation Number, Contact Phone) visible in cart
 
   As an online corporate traveler
   I want to see the eHotel supplier details in the cart after booking
