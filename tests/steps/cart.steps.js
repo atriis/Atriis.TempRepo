@@ -282,6 +282,11 @@ When("I click seating in extras", async function () {
   await cartPage.clickEditSeatingExtrasButton();
 });
 
+Then("the seating extras should not show a pending status", async function () {
+  logger.info("Verifying the seating extras row shows no pending status indicator");
+  await Cart.verifyNoSeatingPendingIndicator(this.page);
+});
+
 When("I click to edit the meal extras section", async function () {
   logger.info("Clicking to edit the meal extras section");
   const cartPage = getPageObject(this.page, CartPage);

@@ -2730,6 +2730,75 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Selects the first fare for the OUTBOUND leg in the classic Pricing Options
+   * drawer (pricing-options.vue) — the leg-by-leg "Select fare" flow that renders
+   * for non-New-Flight-Flow accounts. This is DISTINCT from
+   * selectOutboundFirstBrandCardNewFlightFlow, which targets the NFF
+   * flight-selection brand cards (.flight-brand-leg / .flight-brand-card) that do
+   * not exist on this drawer. Selecting the outbound fare advances the drawer to
+   * the inbound leg.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{selected: boolean, leg: string}>}
+   */
+  async selectOutboundFirstOptionFromPricingOptions(page) {
+    if (!page) {
+      throw new Error('[FlightResults.selectOutboundFirstOptionFromPricingOptions] "page" is required.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionsDrawerLeg();
+    await flightResultsPage.selectFirstFareInCurrentPricingLeg();
+    await flightResultsPage.waitForPricingOptionsLegSelected(0);
+
+    return { selected: true, leg: 'outbound' };
+  },
+
+  /**
+   * Selects the first fare for the INBOUND leg in the classic Pricing Options
+   * drawer. Called after selectOutboundFirstOptionFromPricingOptions, once the
+   * drawer has advanced to (and reloaded the fares for) the inbound leg.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{selected: boolean, leg: string}>}
+   */
+  async selectInboundFirstOptionFromPricingOptions(page) {
+    if (!page) {
+      throw new Error('[FlightResults.selectInboundFirstOptionFromPricingOptions] "page" is required.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionsDrawerLeg();
+    await flightResultsPage.selectFirstFareInCurrentPricingLeg();
+    await flightResultsPage.waitForPricingOptionsLegSelected(1);
+
+    return { selected: true, leg: 'inbound' };
+  },
+
+  /**
+   * Adds the fares selected across all legs to the cart via the "Add to trip"
+   * button in the classic Pricing Options drawer footer, handles any conflict
+   * quote modal, and waits until the cart shows "Pending booking".
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{added: boolean}>}
+   */
+  async addToCartFromPricingOptions(page) {
+    if (!page) {
+      throw new Error('[FlightResults.addToCartFromPricingOptions] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    await flightResultsPage.clickPricingOptionsAddToTrip();
+    await Results.clickProceedConflictQuoteModal(page);
+    await cartPage.waitForPendingBookingText({ timeout: 90000 });
+
+    return { added: true };
+  },
+
+  /**
    * Verifies the inbound leg heading in the new flight flow contains the expected text.
    * The heading format is e.g., "London To Lisbon".
    * @param {import('playwright').Page} page

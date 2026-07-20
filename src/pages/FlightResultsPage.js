@@ -175,6 +175,15 @@ const SELECTORS = {
   // Staging strips data-testid in its build, so target the stable component class instead.
   NEW_FLOW_CHANGE_AND_CANCELLATION_WARNING: '.mixed-rules-warning',
   NEW_FLOW_NFF_CLOSE_BTN: '.flight-results-select-brand button.p-2',
+
+  // Classic Pricing Options drawer (pricing-options.vue) — leg-by-leg "Select fare" flow.
+  // This renders for non-New-Flight-Flow accounts and is DISTINCT from the NFF brand
+  // cards above (.flight-brand-leg / .flight-brand-card). Each leg tab exposes fare
+  // cards (leg-pricing-option) with a "Select" button; the footer holds "Add to trip".
+  PRICING_OPTIONS_LEG_SELECT_BTN: '.pricing-options .leg-pricing-option .select-btn',
+  PRICING_OPTIONS_TAB: '.pricing-options .pricing-options-tabs .el-tabs__item',
+  PRICING_OPTIONS_TAB_SELECTED_ICON: '.material-symbols-outlined.green',
+  PRICING_OPTIONS_ADD_TO_TRIP_BTN: '.pricing-options .app-footer .add-btn',
   // Footer total price per traveller (flight-selection.vue .selection-actions)
   NEW_FLOW_FOOTER_PRICE_SECTION: '.selection-actions .price-section',
   NEW_FLOW_FOOTER_PRICE_AMOUNT: '.selection-actions .price-section .amount',
@@ -2961,6 +2970,83 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     }
     // Brief pause to allow the UI to animate the card selection and load the next leg
     await this.page.waitForTimeout(1000);
+  }
+
+  // ===== CLASSIC PRICING OPTIONS DRAWER (pricing-options.vue) =====
+
+  /**
+   * Waits for the fare cards of the currently-active leg in the classic Pricing
+   * Options drawer to appear (the "Select" buttons inside leg-pricing-option).
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async waitForPricingOptionsDrawerLeg(timeout = 60000) {
+    try {
+      await this.page.locator(SELECTORS.PRICING_OPTIONS_LEG_SELECT_BTN).first()
+        .waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.waitForPricingOptionsDrawerLeg] Pricing options fare cards did not appear within ${timeout}ms. ` +
+        `The pricing-options drawer may not have opened or the leg's fares did not load. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the first fare's "Select" button in the currently-active leg tab of the
+   * classic Pricing Options drawer. The drawer renders only the active leg's fares,
+   * so the first "Select" button belongs to that leg.
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async selectFirstFareInCurrentPricingLeg(timeout = 60000) {
+    const btn = this.page.locator(SELECTORS.PRICING_OPTIONS_LEG_SELECT_BTN).first();
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      await btn.scrollIntoViewIfNeeded();
+      await btn.click({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.selectFirstFareInCurrentPricingLeg] Could not click the first fare "Select" button ` +
+        `in the pricing options drawer. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits until the given leg tab shows its selected (green check_circle) state,
+   * confirming the fare selection registered before acting on the next leg.
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async waitForPricingOptionsLegSelected(legIndex = 0, timeout = 60000) {
+    const tab = this.page.locator(SELECTORS.PRICING_OPTIONS_TAB).nth(legIndex);
+    try {
+      await tab.locator(SELECTORS.PRICING_OPTIONS_TAB_SELECTED_ICON)
+        .first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.waitForPricingOptionsLegSelected] Leg ${legIndex} did not show a selected (green check) ` +
+        `state within ${timeout}ms. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the "Add to trip" primary button in the classic Pricing Options drawer
+   * footer, which adds the fares selected across all legs to the cart.
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async clickPricingOptionsAddToTrip(timeout = 60000) {
+    const btn = this.page.locator(SELECTORS.PRICING_OPTIONS_ADD_TO_TRIP_BTN).first();
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      await btn.scrollIntoViewIfNeeded();
+      await btn.click({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.clickPricingOptionsAddToTrip] Could not click "Add to trip" in the pricing options ` +
+        `drawer footer. Original: ${err.message}`
+      );
+    }
   }
 
   /**

@@ -40,6 +40,25 @@ When("I add to cart from pricing options new flight flow", async function () {
   await FlightResults.addToCartNewFlightFlow(this.page);
 });
 
+// ===== CLASSIC PRICING OPTIONS DRAWER (pricing-options.vue) =====
+// The leg-by-leg "Select fare" drawer that renders for non-New-Flight-Flow
+// accounts. Distinct from the NFF brand-card steps above — see FlightResults DSL.
+
+When("I select the outbound first option from pricing options page", async function () {
+  logger.info("[PricingOptions] Selecting first outbound fare from the classic pricing options drawer");
+  await FlightResults.selectOutboundFirstOptionFromPricingOptions(this.page);
+});
+
+When("I select the inbound first option from pricing options page", async function () {
+  logger.info("[PricingOptions] Selecting first inbound fare from the classic pricing options drawer");
+  await FlightResults.selectInboundFirstOptionFromPricingOptions(this.page);
+});
+
+When("I add to cart from pricing options page", async function () {
+  logger.info("[PricingOptions] Adding selected fares to cart from the classic pricing options drawer");
+  await FlightResults.addToCartFromPricingOptions(this.page);
+});
+
 Then("the outbound leg brand cards are displayed", async function () {
   logger.info("[NewFlightFlow] Verifying outbound leg brand cards are visible");
   const result = await FlightResults.verifyOutboundLegBrandCardsVisible(this.page);
