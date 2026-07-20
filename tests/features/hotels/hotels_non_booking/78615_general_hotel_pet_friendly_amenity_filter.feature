@@ -6,7 +6,7 @@
 # Owner: Yael
 
 @regression @hotel @amenities
-Feature: 78227 General - Hotel results can be filtered by Pet Friendly amenity
+Feature: 78615 General - Hotel results can be filtered by Pet Friendly amenity
   As a corporate traveler
   I want to filter hotel search results by the Pet Friendly amenity
   So that only pet-friendly hotels are shown in the results list
