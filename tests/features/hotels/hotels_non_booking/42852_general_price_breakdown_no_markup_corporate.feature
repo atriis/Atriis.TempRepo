@@ -16,7 +16,9 @@ Feature: 42852 General - Price breakdown shows no markup for corporate
   Scenario: Price breakdown shows no markup for corporate account
     Given I am logged in as "mark@sunhot.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "MAD" for 1 night
+    When I search for a hotel in "Paris France" for 1 night
+    And I wait to see view rates text in results page
+    When I sort hotel results by "Price"
     And I select the first hotel result
     When I click the first price breakdown button
     And I extract prices from the price breakdown
