@@ -14,9 +14,9 @@ Feature: 62150 Booking.com - Book hotel for 2 travelers 2 nights
 
   @priority:critical
   Scenario: 2 travelers booked in hotel for 2 nights
-    Given I am logged in as "rebecca@cardin.com" booking a new trip
+    Given I am logged in as "rebecca@kom.com" booking a new trip
     And I have added myself as the traveler
-    And I have added a random guest traveler
+    And I have added traveler by name "Rita Hok"
     When I search for a hotel in "Amsterdam" for 2 nights
     And I wait to see view rates text in results page
     When I sort hotel results by "Price"
