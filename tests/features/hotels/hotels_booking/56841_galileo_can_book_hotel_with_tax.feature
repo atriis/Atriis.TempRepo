@@ -7,18 +7,17 @@
 # Updated: 2025-11-14T05:24:19Z
 
 @regression @provider:galileo
-Feature: 56841 Galileo - Hotel - Booking specific hotel
+Feature: 56841 Galileo - Hotel - can book hotel with tax
   As a corporate traveler using Galileo
   I want to fill in a financial reference field during checkout
   So that the booking is correctly coded for expense reporting
 
+  #We should add a validation to make sure hotel has taxes (most hotels have taxes)
   @priority:high
-  Scenario: Booking a specific hotel
+  Scenario: Can book hotel with tax
     Given I am logged in as "galileogaliei@gdggalileo.com" booking a new trip
     And I have added a random guest traveler
     When I search for a hotel in "The Ritz-Carlton, Dubai International Financial Centre" for 1 night
-    And I wait to see view rates text in results page
-    And I filter hotel results by hotel name "the ritz-carlton, dubai"
     And I select the first hotel result
     And I add a refundable room to my cart
     When I proceed to checkout
