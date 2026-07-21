@@ -7,7 +7,7 @@
 # Updated: 2026-01-15T08:33:43Z
 
 @regression @provider:ratehawk
-Feature: 72550 Ratehawk - Hotel price is excluded from the travel plan email
+Feature: 72550 HYBRID Ratehawk - Hotel price is excluded from the travel plan email
   As a corporate traveler
   I want the hotel price to be excluded from the shared travel plan email
   So that recipients only see itinerary details without pricing information

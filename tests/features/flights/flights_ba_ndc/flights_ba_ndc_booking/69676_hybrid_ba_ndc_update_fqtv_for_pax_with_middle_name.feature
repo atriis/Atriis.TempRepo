@@ -7,7 +7,7 @@
 # Updated: 2025-11-02T11:25:21Z
 
 @regression @flights @ndc @ba @fqtv
-Feature: Hybrid for 69676 BA NDC - Update FQTV for traveler with middle name
+Feature: 69676 HYBRID BA NDC - Update FQTV for traveler with middle name
 
   As a corporate traveler with a middle name
   I want to add a frequent flyer loyalty number to a BA NDC held booking

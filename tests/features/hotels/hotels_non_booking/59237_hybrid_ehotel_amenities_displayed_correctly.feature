@@ -7,7 +7,7 @@
 # Updated: 2025-07-13T10:57:36Z
 
 @regression @provider:ehotel
-Feature: 59237 eHotel - Hotel amenities displayed correctly according to supplier data
+Feature: 59237 HYBRID eHotel - Hotel amenities displayed correctly according to supplier data
   As a corporate traveler using eHotel
   I want to see the correct amenities for each hotel in search results
   So that hotels with gym are shown with the gym amenity and hotels without are not

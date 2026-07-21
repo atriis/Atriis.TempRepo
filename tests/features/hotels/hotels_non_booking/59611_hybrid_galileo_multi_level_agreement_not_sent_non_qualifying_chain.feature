@@ -7,7 +7,7 @@
 # Updated: 2025-11-10T11:17:18Z
 
 @regression @provider:galileo
-Feature: 59611 Galileo - Multi-level agreement not sent in room level for non-qualifying hotel chains
+Feature: 59611 HYBRID Galileo - Multi-level agreement not sent in room level for non-qualifying hotel chains
   As a corporate traveler using Galileo with multi-level agreement configuration
   I want to verify that multi-level agreement is only sent for hotels from the configured chain list
   So that agreement rates are only applied to qualifying hotel chains

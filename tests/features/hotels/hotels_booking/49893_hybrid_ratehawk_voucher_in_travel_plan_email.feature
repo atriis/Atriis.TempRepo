@@ -7,7 +7,7 @@
 # Updated: 2025-07-10T04:11:35Z
 
 @regression @provider:ratehawk
-Feature: 49893 Ratehawk - Travel plan email contains Ratehawk voucher, not Atriis-generated voucher
+Feature: 49893 HYBRID Ratehawk - Travel plan email contains Ratehawk voucher, not Atriis-generated voucher
   As a corporate traveler using Ratehawk
   I want the shared itinerary email to include the Ratehawk-provided voucher
   So that travelers receive the authentic supplier voucher, not a platform-generated substitute

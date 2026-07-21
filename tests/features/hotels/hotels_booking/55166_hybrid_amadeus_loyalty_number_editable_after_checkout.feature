@@ -7,7 +7,7 @@
 # Updated: 2025-09-17T12:25:52Z
 
 @regression @provider:amadeus
-Feature: 55166 Amadeus - Loyalty number can be edited after hotel checkout
+Feature: 55166 HYBRID Amadeus - Loyalty number can be edited after hotel checkout
   As a corporate traveler
   I want to add or edit my loyalty number after completing an Amadeus hotel checkout
   So that my loyalty points are tracked even if I enter the number after booking

@@ -7,7 +7,7 @@
 # Updated: 2026-02-15T01:48:09Z
 
 @regression @provider:expedia
-Feature: HYBRID for 73878 Email adress is sent according to the web confirmation - specific email address
+Feature: 73878 HYBRID Email adress is sent according to the web confirmation - specific email address
   As a corporate traveler with a web confirmation specific email configured
   I want to book a hotel and verify the confirmation email is sent to the correct address
   So that web confirmation emails reach the right recipient

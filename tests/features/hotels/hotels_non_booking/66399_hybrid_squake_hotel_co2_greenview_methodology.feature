@@ -7,7 +7,7 @@
 # Updated: 2026-01-25T06:18:45Z
 
 @regression @provider:general
-Feature: 66399 SQUAKE - Hotel CO2 calculation uses Greenview methodology
+Feature: 66399 HYBRID Squake - Hotel CO2 calculation uses Greenview methodology
   As a corporate traveler
   I want the hotel CO2 calculation to use the Greenview methodology from SQUAKE
   So that sustainability metrics are accurate and use the correct calculation standard

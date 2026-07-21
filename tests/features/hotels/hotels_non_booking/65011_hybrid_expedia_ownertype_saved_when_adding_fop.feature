@@ -7,7 +7,7 @@
 # Updated: 2025-12-08T08:57:39Z
 
 @regression @provider:expedia
-Feature: 65011 Expedia - OwnerType is saved correctly when adding FOP in cart
+Feature: 65011 HYBRID Expedia - OwnerType is saved correctly when adding FOP in cart
   As a corporate traveler using Expedia with no pre-configured FOP
   I want to add a credit card in cart and verify the OwnerType is saved correctly
   So that back-end FOP records reflect the correct owner type for billing

@@ -7,7 +7,7 @@
 # Updated: 2026-02-15T01:35:44Z
 
 @regression @provider:ehotel
-Feature: HYBRID for 73877 Email adress is sent according to the web confirmation - exception with traveler
+Feature: 73877 HYBRID Email adress is sent according to the web confirmation - exception with traveler
   As a corporate traveler where a traveler-specific email exception is configured
   I want to book a hotel and confirm the email is sent according to the exception rule
   So that confirmation emails are routed correctly for specific travelers

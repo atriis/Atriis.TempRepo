@@ -7,7 +7,7 @@
 # Updated: 2025-05-27T09:02:57Z
 
 @regression @provider:ratehawk
-Feature: 60144 Ratehawk - Special request information is sent to supplier
+Feature: 60144 HYBRID Ratehawk - Special request information is sent to supplier
   As a corporate traveler using Ratehawk
   I want to add a special request to my hotel booking
   So that the special request information is transmitted to the hotel supplier
