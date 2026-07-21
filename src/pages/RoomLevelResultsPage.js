@@ -60,6 +60,11 @@ const SELECTORS = {
   PRICE_BREAKDOWN_NIGHT_PRICE: '.room-price-details tbody td',
   PRICE_BREAKDOWN_SUBTOTAL: '.price-details .price-details-row:first-child .amount',
   PRICE_BREAKDOWN_TOTAL: '.price-details .price-details-row:has-text("Total") .amount',
+  // "Taxes and Fees" row inside the price details dialog (label + amount live in the same row)
+  TAXES_AND_FEES_ROW: '.room-price-details .price-details-row:has(p:has-text("Taxes and Fees"))',
+  // The el-dialog wrapper that hosts the price details breakdown, and its header close (X) button
+  PRICE_DETAILS_DIALOG_ROOT: '.el-dialog:has(.room-price-details), .app-dialog:has(.room-price-details)',
+  DIALOG_CLOSE_BUTTON: '.el-dialog__headerbtn',
   BREADCRUMB_LINK: (text) => `nav.breadcrumb a:has-text("${text}")`,
   // Slider runway and thumb for the room-level Price filter panel
   ROOM_PRICE_SLIDER_RUNWAY: '.room-filter .price-slider .el-slider__runway',
@@ -516,6 +521,45 @@ class RoomLevelResultsPage {
     const tooltip = this.page.locator(SELECTORS.TOOLTIP_POPPER).filter({ hasText: "Paid at the hotel" });
     await tooltip.first().waitFor({ state: "visible", timeout: 5000 });
     return (await tooltip.first().textContent()).trim();
+  }
+
+  /**
+   * Gets the full text of the "Taxes and Fees" row in the price details dialog.
+   * The row contains the label and the amount (with its currency symbol), or the
+   * word "Included" when the supplier bundles tax into the price.
+   * @returns {Promise<string>} Trimmed text content of the taxes and fees row
+   */
+  async getTaxesAndFeesRowText() {
+    const dialog = this.page.locator(SELECTORS.PRICE_DETAILS_DIALOG).first();
+    await dialog.waitFor({ state: "visible", timeout: 10000 });
+
+    const row = this.page.locator(SELECTORS.TAXES_AND_FEES_ROW).first();
+    await row.waitFor({ state: "visible", timeout: 10000 });
+    return (await row.textContent())?.trim() ?? "";
+  }
+
+  /**
+   * Closes the price details dialog via its header close button, falling back to
+   * the Escape key, then waits until the dialog is dismissed so the next step is
+   * not blocked by the overlay.
+   */
+  async closePriceDetailsDialog() {
+    const dialog = this.page.locator(SELECTORS.PRICE_DETAILS_DIALOG).first();
+    await dialog.waitFor({ state: "visible", timeout: 10000 });
+
+    const closeButton = this.page
+      .locator(SELECTORS.PRICE_DETAILS_DIALOG_ROOT)
+      .locator(SELECTORS.DIALOG_CLOSE_BUTTON)
+      .first();
+
+    try {
+      await closeButton.waitFor({ state: "visible", timeout: 5000 });
+      await closeButton.click();
+    } catch {
+      await this.page.keyboard.press("Escape");
+    }
+
+    await dialog.waitFor({ state: "hidden", timeout: 10000 });
   }
 
   async isSupplierLogoVisible(supplierId, { timeout = 15000 } = {}) {

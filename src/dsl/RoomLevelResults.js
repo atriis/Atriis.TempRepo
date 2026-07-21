@@ -294,6 +294,28 @@ const RoomLevelResults = {
   },
 
   /**
+   * Reads the "Taxes and Fees" row text from the price details dialog.
+   * Returns the raw text (label + amount, or "Included") so the step can assert on it.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} Trimmed text content of the taxes and fees row
+   */
+  async getTaxesAndFeesRowText(page) {
+    if (!page) throw new Error('page parameter is required');
+    const p = getPageObject(page, RoomLevelResultsPage);
+    return p.getTaxesAndFeesRowText();
+  },
+
+  /**
+   * Closes the price details dialog opened in room level results.
+   * @param {import('playwright').Page} page
+   */
+  async closePriceDetailsDialog(page) {
+    if (!page) throw new Error('page parameter is required');
+    const p = getPageObject(page, RoomLevelResultsPage);
+    await p.closePriceDetailsDialog();
+  },
+
+  /**
    * Verifies that a specific supplier logo is visible in room level results.
    * @param {import('playwright').Page} page
    * @param {string} supplierName - Common name of the supplier (e.g. "Expedia", "hCorpo")

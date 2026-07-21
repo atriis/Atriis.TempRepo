@@ -287,6 +287,18 @@ When("I click on price details button in room level results", async function () 
   await roomLevelResultsPage.clickPriceDetailsButton();
 });
 
+Then("I see {string} in taxes and fees row", async function (currencySymbol) {
+  logger.info("Verifying currency symbol in taxes and fees row", { currencySymbol });
+  const rowText = await RoomLevelResults.getTaxesAndFeesRowText(this.page);
+  logger.info("Taxes and fees row text", { rowText });
+  expect(rowText).toContain(currencySymbol);
+});
+
+When("I close price details dialog", async function () {
+  logger.info("Closing price details dialog");
+  await RoomLevelResults.closePriceDetailsDialog(this.page);
+});
+
 When("I hover over info icon next to taxes and fees", async function () {
   logger.info("Hovering over info icon next to taxes and fees");
   const roomLevelResultsPage = getPageObject(this.page, RoomLevelResultsPage);
