@@ -423,7 +423,14 @@ jobs:
           path: 'all-results/**/cucumber-junit.xml'
           list-suites: failed
           list-tests: failed
-          use-actions-summary: false
+          # Render dorny's rich pass/fail report (shield badge + per-suite table
+          # + expandable failed tests) directly in this run's Summary tab, so the
+          # "Cucumber Tests" report is visible without opening the separate
+          # check-run. The custom "Post Reports Summary" / "Reconcile" steps above
+          # stay — they add the failed-scenario error list and undercount
+          # reconciliation that dorny does not provide, so the two complement
+          # rather than duplicate each other.
+          use-actions-summary: true
           fail-on-error: false
           fail-on-empty: false
         continue-on-error: true
