@@ -1,13 +1,13 @@
 name: Suite Scheduler
 
 # Starts the stable domain chain (Flights → Hotels → Shell → Transportation)
-# every day at 21:00 Portugal time (Europe/Lisbon).
+# every day at 20:00 Portugal time (Europe/Lisbon).
 #
 # GitHub cron is UTC-only and Lisbon alternates between UTC+0 (winter, WET)
 # and UTC+1 (summer, WEST), so BOTH candidate slots are scheduled and a guard
-# dispatches only from the slot that is 21:00 local:
-#   - '0 20 * * *' is the right slot while Lisbon is UTC+1 (late Mar → late Oct)
-#   - '0 21 * * *' is the right slot while Lisbon is UTC+0
+# dispatches only from the slot that is 20:00 local:
+#   - '0 19 * * *' is the right slot while Lisbon is UTC+1 (late Mar → late Oct)
+#   - '0 20 * * *' is the right slot while Lisbon is UTC+0
 # The other slot exits without doing anything.
 #
 # The schedule lives HERE (a dispatcher) instead of on suite-flights.yml on
@@ -27,8 +27,8 @@ name: Suite Scheduler
 
 on:
   schedule:
-    - cron: '0 20 * * *' # 21:00 Lisbon during summer time (WEST)
-    - cron: '0 21 * * *' # 21:00 Lisbon during winter time (WET)
+    - cron: '0 19 * * *' # 20:00 Lisbon during summer time (WEST)
+    - cron: '0 20 * * *' # 20:00 Lisbon during winter time (WET)
   workflow_dispatch: # manual: starts the chain immediately, no time guard
 
 permissions:
@@ -40,11 +40,11 @@ concurrency:
 
 jobs:
   dispatch:
-    name: Dispatch Suite - Flights at 21:00 Lisbon
+    name: Dispatch Suite - Flights at 20:00 Lisbon
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Start the domain chain if this slot is 21:00 in Lisbon
+      - name: Start the domain chain if this slot is 20:00 in Lisbon
         env:
           GH_TOKEN: ${{ github.token }}
           FIRED_CRON: ${{ github.event.schedule }}
@@ -54,9 +54,9 @@ jobs:
             # of the current hour, so a delayed runner start can't misjudge.
             offset=$(TZ=Europe/Lisbon date +%z)
             if [ "$offset" = "+0100" ]; then
-              want='0 20 * * *'
+              want='0 19 * * *'
             else
-              want='0 21 * * *'
+              want='0 20 * * *'
             fi
             if [ "$FIRED_CRON" != "$want" ]; then
               echo "Decoy slot ($FIRED_CRON; Lisbon offset $offset) — nothing to do."
