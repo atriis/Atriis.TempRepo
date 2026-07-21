@@ -12,11 +12,12 @@ Feature: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
   I want to share a hotel price offer and then book and delete the quote
   So that I can manage hotel quotes from search to completion
 
+ #We need to fix the share quote (it should be from results, not cart)
   @priority:high
   Scenario: Share hotel price offer from results, book and delete quote
     Given I am logged in as "sabrin@orly.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Denver" for 1 night
+    When I search for a hotel in "Vienna Austria" for 1 night
     And I wait to see view rates text in results page
     When I sort hotel results by "Price"
     And I select the first hotel result
