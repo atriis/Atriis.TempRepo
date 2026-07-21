@@ -12,7 +12,6 @@ Feature: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
   I want to share a hotel price offer and then book and delete the quote
   So that I can manage hotel quotes from search to completion
 
- #We need to fix the share quote (it should be from results, not cart)
   @priority:high
   Scenario: Share hotel price offer from results, book and delete quote
     Given I am logged in as "sabrin@orly.com" booking a new trip
@@ -20,10 +19,14 @@ Feature: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
     When I search for a hotel in "Vienna Austria" for 1 night
     And I wait to see view rates text in results page
     When I sort hotel results by "Price"
+    And I enter share mode on hotel results
     And I select the first hotel result
-    And I add a refundable room to my cart
-    When I click the share quote button
+    And I click on the 1 share button in results page
+    And I click on the "Share" button to open the share dialog
+    And I wait to see "Subject" field in share dialog
     And I send the share and see success notification
+    And I exit share mode
+    And I add a refundable room to my cart
     When I proceed to checkout
     And I complete the booking
     Then the hotel should appear as refundable in cart
