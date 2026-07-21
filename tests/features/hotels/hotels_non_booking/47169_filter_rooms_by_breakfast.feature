@@ -6,8 +6,8 @@
 # Created: 2024-06-04T09:44:16Z
 # Updated: 2024-07-30T02:29:11Z
 
-@regression @provider:amadeus
-Feature: 47169 Amadeus - Filter hotel room results by breakfast
+@regression
+Feature: 47169 Hotels - Filter hotel room results by breakfast
   As a corporate traveler
   I want to filter room level results to show only rooms with breakfast
   So that I can easily find rooms that include my preferred meal plan
