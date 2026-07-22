@@ -115,6 +115,25 @@ const Trips = {
       );
     }
   },
+
+  async verifyMyTripsOnlyCheckboxChecked(page) {
+    if (!page) throw new Error('[Trips.verifyMyTripsOnlyCheckboxChecked] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying "My trips only" filter checkbox is checked');
+      const locator = await tripsPage.getMyTripsOnlyCheckbox({ timeout: 30000 });
+      // Element Plus marks a checked el-checkbox by adding the "is-checked" class
+      // to the root <label class="el-checkbox">; it renders no aria-checked, so
+      // the class is the authoritative checked-state marker.
+      await expect(locator, '[Trips.verifyMyTripsOnlyCheckboxChecked] "My trips only" filter was expected to be checked by default, but the el-checkbox is missing the "is-checked" class')
+        .toHaveClass(/is-checked/, { timeout: 10000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        '[Trips.verifyMyTripsOnlyCheckboxChecked] Failed to verify the "My trips only" checkbox checked state. Original: ' + err.message
+      );
+    }
+  },
 };
 
 module.exports = Trips;

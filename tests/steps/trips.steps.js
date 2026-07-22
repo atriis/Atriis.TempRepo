@@ -34,3 +34,8 @@ Then('the {string} filter checkbox should be visible on the trips page', async f
   logger.debug(`Verifying filter checkbox "${checkboxLabel}" is visible on the trips page`);
   await Trips.verifyMyTripsOnlyCheckboxVisible(this.page);
 });
+
+Then('the {string} filter should be checked on the trips page', async function (checkboxLabel) {
+  logger.debug(`Verifying filter checkbox "${checkboxLabel}" is checked on the trips page`);
+  await Trips.verifyMyTripsOnlyCheckboxChecked(this.page);
+});

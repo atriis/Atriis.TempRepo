@@ -1,7 +1,7 @@
 require("module-alias/register");
 
 const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
-const { App } = require("@dsl");
+const { App, Homepage } = require("@dsl");
 const logger = require("@utils/logger").child("App");
 const { expect } = require("@playwright/test");
 
@@ -111,12 +111,17 @@ Then("the welcome heading should contain {string}", async function (expectedText
 
 When("I hover over the quick link product card on the homepage", async function () {
   logger.info("Hovering over quick link product card on homepage");
-  await App.hoverQuickLinkProductCard(this.page);
+  await Homepage.hoverQuickLinkProductCard(this.page);
+});
+
+When("I click the all trips button on the homepage", async function () {
+  logger.info('Clicking the "All trips" button on the homepage');
+  await Homepage.clickAllTripsFromHomepage(this.page);
 });
 
 Then("the default product picture should be displayed on the quick link card", async function () {
   logger.info("Verifying default picture is displayed on quick link card");
-  const src = await App.getQuickLinkCardImageSrc(this.page);
+  const src = await Homepage.getQuickLinkCardImageSrc(this.page);
   // Vite inlines the no-qlink.svg as a data URI; an external configured image would be an http(s) URL
   expect(
     src,

@@ -14,8 +14,6 @@ Feature: 66025 - Upcoming trips for bookers
 
   Scenario: Viewing all trips and the "My trips only" filter as a booker
     Given I am logged in as "we@s.com"
-    # TODO: implement 'I click the all trips button on the upcoming trips panel' — click the "All trips" button inside the upcoming-trips pane
-    When I click the all trips button on the upcoming trips panel
+    When I click the all trips button on the homepage
     Then the "My trips only" filter checkbox should be visible on the trips page
-    # TODO: implement 'the {string} filter should be checked on the trips page' — assert the named filter checkbox is checked (source Testim left the assertion unimplemented)
     And the "My trips only" filter should be checked on the trips page
