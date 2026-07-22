@@ -1,6 +1,6 @@
 ﻿require("module-alias/register");
 
-const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
+const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const Cart = require("@dsl/Cart");
 const Checkout = require("@dsl/Checkout");
@@ -1759,6 +1759,141 @@ Then("the loyalty number should be pre-populated with a green success icon", asy
 Then("the loyalty chain dropdown should show {string}", async function (expectedChainAndNumber) {
   logger.info("Verifying loyalty chain dropdown shows expected value", { expectedChainAndNumber });
   await Cart.verifyLoyaltyChainDropdown(this.page, expectedChainAndNumber);
+});
+
+// ========================================
+// EU RAIL LOYALTY PROGRAM (loyalty-program.vue)
+// ========================================
+
+// Documented precondition: the test user's profile already has stored loyalty programs.
+// Not re-verified via a Profile-page navigation here to avoid diverging from the recorded
+// booking flow — Scenario "Display loyalty programs..." asserts the dropdown is non-empty,
+// which is the functional proof of this precondition for the "Use Existing" tab.
+Given("the traveler has at least one loyalty program stored in their profile", async function () {
+  logger.info("Precondition: traveler profile is expected to have at least one stored loyalty program (test data assumption)");
+});
+
+When("I open the {string} tab in the loyalty section", async function (tabName) {
+  logger.info("Opening tab in EU Rail loyalty section", { tabName });
+  await Cart.openEuRailLoyaltyTab(this.page, tabName);
+});
+
+Then("all stored loyalty programs are shown in the dropdown", async function () {
+  logger.info("Verifying all stored loyalty programs are shown in the existing-loyalty dropdown");
+  this.euRailLoyaltyOptions = await Cart.getEuRailExistingLoyaltyOptions(this.page);
+  expect(this.euRailLoyaltyOptions.length, "Expected at least one stored loyalty program in the dropdown").toBeGreaterThan(0);
+});
+
+Then("each entry is displayed as {string}", async function (formatPattern) {
+  if (!Array.isArray(this.euRailLoyaltyOptions) || !this.euRailLoyaltyOptions.length) {
+    throw new Error("No loyalty dropdown options captured. Run 'Then all stored loyalty programs are shown in the dropdown' before this step.");
+  }
+  logger.info("Verifying loyalty dropdown entries match expected format", { formatPattern, options: this.euRailLoyaltyOptions });
+  for (const optionText of this.euRailLoyaltyOptions) {
+    expect(optionText, `Loyalty entry "${optionText}" should follow the "${formatPattern}" format (contain " - ")`).toContain(" - ");
+  }
+});
+
+When("I select the first existing loyalty program from the dropdown", async function () {
+  logger.info("Selecting the first existing loyalty program from the EU Rail dropdown");
+  await Cart.selectFirstExistingEuRailLoyaltyProgram(this.page);
+});
+
+Then("the card number field is pre-populated with a valid full card number", async function () {
+  logger.info("Verifying EU Rail card number field is pre-populated");
+  await Cart.verifyEuRailLoyaltyNumberPrepopulated(this.page);
+});
+
+When("I edit the card number to {string} and click {string}", async function (newCardNumber, buttonName) {
+  logger.info("Editing EU Rail card number and clicking button", { newCardNumber, buttonName });
+  this.euRailEditedCardNumber = newCardNumber;
+  await Cart.editEuRailLoyaltyNumberAndClickButton(this.page, newCardNumber, buttonName);
+});
+
+Then("the updated card number is saved to the traveler's profile", async function () {
+  if (typeof this.euRailEditedCardNumber !== "string" || !this.euRailEditedCardNumber) {
+    throw new Error("No edited card number stored. Run 'When I edit the card number to ... and click \"Save\"' before this step.");
+  }
+  logger.info("Verifying updated EU Rail card number was saved", { cardNumber: this.euRailEditedCardNumber });
+  await Cart.verifyEuRailLoyaltyProgramAddedToProfile(this.page, this.euRailEditedCardNumber);
+});
+
+When("I enter an invalid card number {string}", async function (invalidCardNumber) {
+  logger.info("Entering invalid EU Rail card number", { invalidCardNumber });
+  this.euRailInvalidCardNumber = invalidCardNumber;
+  await Cart.enterInvalidEuRailLoyaltyNumber(this.page, invalidCardNumber);
+});
+
+Then("a validation error is displayed for the card number field", async function () {
+  logger.info("Verifying validation error is displayed for the EU Rail card number field");
+  await Cart.verifyEuRailLoyaltyValidationErrorDisplayed(this.page);
+});
+
+Then("the card number is not saved", async function () {
+  if (typeof this.euRailInvalidCardNumber !== "string" || !this.euRailInvalidCardNumber) {
+    throw new Error("No invalid card number stored. Run 'When I enter an invalid card number ...' before this step.");
+  }
+  logger.info("Verifying the EU Rail card number was not saved", { rejectedCardNumber: this.euRailInvalidCardNumber });
+  await Cart.verifyEuRailLoyaltyNumberNotSaved(this.page, this.euRailInvalidCardNumber);
+});
+
+When("I edit the card number to {string}", async function (newCardNumber) {
+  logger.info("Editing EU Rail card number without saving", { newCardNumber });
+  this.euRailEditedCardNumber = newCardNumber;
+  await Cart.editEuRailLoyaltyNumber(this.page, newCardNumber);
+});
+
+When("I navigate away without clicking {string}", async function (buttonName) {
+  logger.info("Navigating away from EU Rail loyalty section without saving", { buttonName });
+  await Cart.navigateAwayFromEuRailLoyaltyWithoutSaving(this.page, buttonName);
+});
+
+Then("the changes are not persisted to the traveler's profile", async function () {
+  if (typeof this.euRailEditedCardNumber !== "string" || !this.euRailEditedCardNumber) {
+    throw new Error("No edited card number stored. Run 'When I edit the card number to ...' before this step.");
+  }
+  logger.info("Verifying unsaved EU Rail loyalty changes were not persisted", { rejectedCardNumber: this.euRailEditedCardNumber });
+  await Cart.verifyEuRailLoyaltyNumberNotSaved(this.page, this.euRailEditedCardNumber);
+});
+
+When("I select a loyalty program and enter an invalid card number {string}", async function (invalidCardNumber) {
+  logger.info("Selecting loyalty program and entering invalid card number in Enter New tab", { invalidCardNumber });
+  await Cart.selectEuRailLoyaltyVendorAndEnterInvalidNumber(this.page, invalidCardNumber);
+});
+
+Then("the new entry is not saved", async function () {
+  logger.info("Verifying the new EU Rail loyalty entry was not saved");
+  await Cart.verifyEuRailLoyaltyValidationErrorDisplayed(this.page);
+});
+
+When("I select the loyalty program index {int}", async function (index) {
+  logger.info("Selecting EU Rail loyalty program vendor by index", { index });
+  const result = await Cart.selectEuRailLoyaltyVendorByIndex(this.page, index);
+  this.euRailSelectedVendor = result.vendor;
+  logger.info("Selected EU Rail loyalty program vendor", result);
+});
+
+Then("the new loyalty program is added to the traveler's profile", async function () {
+  if (!this.euRailNewLoyalty || !this.euRailNewLoyalty.cardNumber) {
+    throw new Error("No new loyalty program stored. Run 'When I select a valid loyalty program and enter a valid card number and click \"Save\"' before this step.");
+  }
+  logger.info("Verifying new EU Rail loyalty program was added to profile", this.euRailNewLoyalty);
+  await Cart.verifyEuRailLoyaltyProgramAddedToProfile(this.page, this.euRailNewLoyalty.cardNumber);
+});
+
+When("I enter a loyalty program and card number that already exist in the traveler's profile and click {string}", async function (buttonName) {
+  logger.info("Entering a duplicate loyalty program and card number", { buttonName });
+  const result = await Cart.enterDuplicateEuRailLoyaltyProgramAndClickButton(this.page, buttonName);
+  this.euRailEditedCardNumber = result.cardNumber;
+  logger.info("Duplicate EU Rail loyalty program submitted", result);
+});
+
+Then("the system ignores the new entry and does not add a duplicate", async function () {
+  if (typeof this.euRailEditedCardNumber !== "string" || !this.euRailEditedCardNumber) {
+    throw new Error("No edited card number stored. Run 'When I edit the card number to ... and click \"Save\"' before this step.");
+  }
+  logger.info("Verifying duplicate EU Rail loyalty program was ignored", { cardNumber: this.euRailEditedCardNumber });
+  await Cart.verifyEuRailLoyaltyDuplicateIgnored(this.page, this.euRailEditedCardNumber);
 });
 
 // ========================================

@@ -50,8 +50,8 @@ const BenerailSearch = {
     await searchPage.selectOneWayTrip();
 
     // Route selection
-    await searchPage.fillInOrField(from, 1);
-    await searchPage.fillInOrField(to, 2);
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
 
     // Calendar flow: select the Nth available date for departure
     await searchPage.clickCalendarNextArrow();
@@ -94,7 +94,7 @@ const BenerailSearch = {
     // Provider + trip type
     await BenerailSearch.selectBenerailSearch(page);
     await searchPage.selectRoundTrip();
-    await searchPage.fillInOrField(from, 1);
+    await searchPage.fillInFromField(from);
     await searchPage.clickCalendarNextArrow();
 
     // Calendar flow: select Nth available date for departure
@@ -104,7 +104,7 @@ const BenerailSearch = {
     });
 
     // Route selection for return
-    await searchPage.fillInOrField(to, 2);
+    await searchPage.fillInToField(to);
 
     // Calendar flow: select Nth available date for return
     await selectDatesByNthAvailable(page, {

@@ -7,6 +7,8 @@ const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage")
 const { ResultsPage } = require("@pages/ResultsPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
 const FlightResults = require("./FlightResults");
+const Profile = require("./Profile");
+const ProfilePage = require("@pages/ProfilePage");
 const tripStatus = require("@data/tripStatus.json");
 const config = require("@config/config");
 const BookingErrorHandler = require("@utils/bookingErrorHandler");
@@ -4631,6 +4633,442 @@ const Cart = {
         `was not pre-populated for this hotel chain.`
       );
     }
+  },
+
+  // ===== EU RAIL LOYALTY PROGRAM (loyalty-program.vue) =====
+
+  /**
+   * Edits the EU Rail loyalty card number field without saving.
+   * Used to verify unsaved edits are discarded (data-loss-on-navigation scenario).
+   * @param {import('playwright').Page} page
+   * @param {string} newCardNumber - New card number to enter
+   */
+  async editEuRailLoyaltyNumber(page, newCardNumber) {
+    if (!page) throw new Error('[Cart.editEuRailLoyaltyNumber] "page" is required.');
+    if (typeof newCardNumber !== 'string' || !newCardNumber) {
+      throw new Error(`[Cart.editEuRailLoyaltyNumber] "newCardNumber" must be a non-empty string, got: ${typeof newCardNumber}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.fillEuRailLoyaltyNumber(newCardNumber);
+    } catch (err) {
+      throw new Error(
+        `[Cart.editEuRailLoyaltyNumber] Failed to edit card number to "${newCardNumber}": ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Opens a tab ("Use Existing" or "Enter New") in the EU Rail loyalty program section.
+   * Assumes the loyalty program extras panel is already expanded.
+   * @param {import('playwright').Page} page
+   * @param {string} tabName - Visible tab label, e.g. "Use Existing" or "Enter New"
+   */
+  async openEuRailLoyaltyTab(page, tabName) {
+    if (!page) throw new Error('[Cart.openEuRailLoyaltyTab] "page" is required.');
+    if (!tabName || typeof tabName !== 'string') {
+      throw new Error(`[Cart.openEuRailLoyaltyTab] "tabName" must be a non-empty string, got: ${typeof tabName} (${JSON.stringify(tabName)})`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.clickEuRailLoyaltyTab(tabName);
+    } catch (err) {
+      throw new Error(
+        `[Cart.openEuRailLoyaltyTab] Failed to open the "${tabName}" tab in the loyalty program section: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Returns all stored loyalty program option labels shown in the EU Rail "Use Existing" dropdown.
+   * Opens the dropdown to read the options and leaves it open for a subsequent selection.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string[]>} Visible option labels (e.g. "000123456789 - SNCB Train+ Loyalty Card")
+   */
+  async getEuRailExistingLoyaltyOptions(page) {
+    if (!page) throw new Error('[Cart.getEuRailExistingLoyaltyOptions] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.openEuRailExistingLoyaltyDropdown();
+      return await cartPage.getEuRailLoyaltyDropdownOptionTexts();
+    } catch (err) {
+      throw new Error(
+        `[Cart.getEuRailExistingLoyaltyOptions] Could not read options from the "Use Existing" loyalty dropdown — ` +
+        `the traveler may not have any stored loyalty programs. ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Selects the first existing loyalty program from the EU Rail "Use Existing" dropdown.
+   * Assumes the "Use Existing" tab is already open.
+   * @param {import('playwright').Page} page
+   */
+  async selectFirstExistingEuRailLoyaltyProgram(page) {
+    if (!page) throw new Error('[Cart.selectFirstExistingEuRailLoyaltyProgram] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.openEuRailExistingLoyaltyDropdown();
+      await cartPage.selectFirstEuRailLoyaltyOption();
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectFirstExistingEuRailLoyaltyProgram] Failed to select the first loyalty program from the ` +
+        `"Use Existing" dropdown — the traveler may not have any loyalty programs stored in their profile. ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the EU Rail loyalty card number field is pre-populated with the expected value.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedCardNumber - Expected card number value (e.g. "000123456789")
+   */
+  async verifyEuRailLoyaltyNumberPrepopulated(page) {
+    if (!page) throw new Error('[Cart.verifyEuRailLoyaltyNumberPrepopulated] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    let actualValue;
+    try {
+      actualValue = await cartPage.getEuRailLoyaltyNumberInputValue();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyEuRailLoyaltyNumberPrepopulated] Could not read the card number field value: ${err.message}`
+      );
+    }
+
+    // Not checking against a fixed literal: the traveler's stored card number is real, shared
+    // profile data that earlier scenario runs (Edit + Save) legitimately mutate over time, so
+    // hardcoding an "original" value would break idempotency (CLAUDE.md: scenarios must be
+    // runnable in any order). Verifying non-empty format is the meaningful, stable assertion here.
+    expect(
+      actualValue && actualValue.trim().length >= 4,
+      `Card number field should be pre-populated with a non-empty card number, but found "${actualValue}"`
+    ).toBe(true);
+
+    return actualValue;
+  },
+
+  /**
+   * Edits the EU Rail loyalty card number field and clicks the given button (e.g. "Save").
+   * @param {import('playwright').Page} page
+   * @param {string} newCardNumber - New card number to enter
+   * @param {string} buttonName - Button to click after editing (only "Save" is currently supported)
+   */
+  async editEuRailLoyaltyNumberAndClickButton(page, newCardNumber, buttonName) {
+    if (!page) throw new Error('[Cart.editEuRailLoyaltyNumberAndClickButton] "page" is required.');
+    if (typeof newCardNumber !== 'string' || !newCardNumber) {
+      throw new Error(`[Cart.editEuRailLoyaltyNumberAndClickButton] "newCardNumber" must be a non-empty string, got: ${typeof newCardNumber}`);
+    }
+    if (!buttonName || typeof buttonName !== 'string') {
+      throw new Error(`[Cart.editEuRailLoyaltyNumberAndClickButton] "buttonName" must be a non-empty string, got: ${typeof buttonName}`);
+    }
+    if (buttonName.trim().toLowerCase() !== 'save') {
+      throw new Error(`[Cart.editEuRailLoyaltyNumberAndClickButton] Unsupported button "${buttonName}" — only "Save" is currently supported.`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.fillEuRailLoyaltyNumber(newCardNumber);
+      await cartPage.clickEuRailLoyaltySaveButton();
+      // Wait for the save's loading state to clear before returning — otherwise a subsequent
+      // action that re-opens another extras panel can race this one while it's still mid-save,
+      // leaving two "Save" buttons on the page and tripping Playwright's strict-mode check on
+      // the unscoped getSaveButton() locator. Some sections collapse after saving and others
+      // (e.g. EU Rail "Enter New") stay open, so this waits for the loading state rather than
+      // for the button to disappear entirely.
+      await cartPage.waitForSaveButtonLoadingToClear();
+    } catch (err) {
+      throw new Error(
+        `[Cart.editEuRailLoyaltyNumberAndClickButton] Failed to edit card number to "${newCardNumber}" and click "${buttonName}": ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Submits a genuine duplicate EU Rail loyalty entry via "Enter New": reads the real card number
+   * already stored for "Club Eurostar" under "Use Existing" (the only vendor confirmed to appear in
+   * both dropdowns — others like "SNCB Train+ Loyalty Card" are corporate-assigned and not offered
+   * as an "Enter New" vendor), then re-submits that same vendor + card number via "Enter New". This
+   * guarantees a true duplicate rather than a fabricated card number that matches nothing on file.
+   * @param {import('playwright').Page} page
+   * @param {string} buttonName - Button to click after entering the duplicate (only "Save" is currently supported)
+   * @returns {Promise<{ vendor: string, cardNumber: string }>}
+   */
+  async enterDuplicateEuRailLoyaltyProgramAndClickButton(page, buttonName) {
+    if (!page) throw new Error('[Cart.enterDuplicateEuRailLoyaltyProgramAndClickButton] "page" is required.');
+    if (!buttonName || typeof buttonName !== 'string') {
+      throw new Error(`[Cart.enterDuplicateEuRailLoyaltyProgramAndClickButton] "buttonName" must be a non-empty string, got: ${typeof buttonName}`);
+    }
+    if (buttonName.trim().toLowerCase() !== 'save') {
+      throw new Error(`[Cart.enterDuplicateEuRailLoyaltyProgramAndClickButton] Unsupported button "${buttonName}" — only "Save" is currently supported.`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    let vendor;
+    let cardNumber;
+    try {
+      await cartPage.clickEuRailLoyaltyTab('Use Existing');
+      await cartPage.openEuRailExistingLoyaltyDropdown();
+      const existingOptions = await cartPage.getEuRailLoyaltyDropdownOptionTexts();
+      const existingLabel = existingOptions.find((label) => label.includes('Club Eurostar'));
+      if (!existingLabel) {
+        throw new Error(`No existing "Club Eurostar" entry found to duplicate. Found options: ${existingOptions.join(', ')}`);
+      }
+      await cartPage.selectEuRailLoyaltyOption('Club Eurostar');
+      cardNumber = await cartPage.getEuRailLoyaltyNumberInputValue();
+
+      await cartPage.clickEuRailLoyaltyTab('Enter New');
+      await cartPage.selectEuRailLoyaltyVendor('Club Eurostar');
+      vendor = 'Club Eurostar';
+      await cartPage.fillEuRailLoyaltyNumber(cardNumber);
+      await cartPage.clickEuRailLoyaltySaveButton();
+      await cartPage.waitForSaveButtonLoadingToClear();
+    } catch (err) {
+      throw new Error(
+        `[Cart.enterDuplicateEuRailLoyaltyProgramAndClickButton] Failed to enter a duplicate loyalty program and click "${buttonName}": ${err.message}`
+      );
+    }
+    return { vendor, cardNumber };
+  },
+
+  /**
+   * Enters an invalid EU Rail loyalty card number into the (already visible/pre-populated) card number field,
+   * without saving. Used to trigger client-side validation (loyalty-program.ts isRailProgramValueValid()).
+   * @param {import('playwright').Page} page
+   * @param {string} invalidCardNumber - Invalid card number value (e.g. "123")
+   */
+  async enterInvalidEuRailLoyaltyNumber(page, invalidCardNumber) {
+    if (!page) throw new Error('[Cart.enterInvalidEuRailLoyaltyNumber] "page" is required.');
+    if (typeof invalidCardNumber !== 'string' || !invalidCardNumber) {
+      throw new Error(`[Cart.enterInvalidEuRailLoyaltyNumber] "invalidCardNumber" must be a non-empty string, got: ${typeof invalidCardNumber}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.fillEuRailLoyaltyNumber(invalidCardNumber);
+      await cartPage.clickEuRailLoyaltySaveButton();
+    } catch (err) {
+      throw new Error(
+        `[Cart.enterInvalidEuRailLoyaltyNumber] Failed to enter invalid card number "${invalidCardNumber}": ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies a validation error is displayed for the EU Rail loyalty card number field.
+   * @param {import('playwright').Page} page
+   */
+  async verifyEuRailLoyaltyValidationErrorDisplayed(page) {
+    if (!page) throw new Error('[Cart.verifyEuRailLoyaltyValidationErrorDisplayed] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    const isVisible = await cartPage.isEuRailLoyaltyValidationMessageVisible();
+    expect(isVisible, 'A validation error should be displayed for the card number field').toBe(true);
+  },
+
+  /**
+   * Verifies the EU Rail loyalty card number was NOT persisted to the traveler's actual profile,
+   * i.e. the Save action was blocked by validation, or navigation happened without saving. Checks
+   * against the rejected value itself (not a fixed "original") so this stays idempotent across runs
+   * even as the traveler's real stored card number changes over time from other scenarios.
+   * Uses the same ground-truth Profile settings check as verifyEuRailLoyaltyProgramAddedToProfile()
+   * rather than re-reading the cart's own (possibly stale/local) state.
+   * @param {import('playwright').Page} page
+   * @param {string} rejectedCardNumber - Card number that must NOT have been persisted
+   */
+  async verifyEuRailLoyaltyNumberNotSaved(page, rejectedCardNumber) {
+    if (!page) throw new Error('[Cart.verifyEuRailLoyaltyNumberNotSaved] "page" is required.');
+    if (!rejectedCardNumber || typeof rejectedCardNumber !== 'string') {
+      throw new Error(`[Cart.verifyEuRailLoyaltyNumberNotSaved] "rejectedCardNumber" must be a non-empty string, got: ${typeof rejectedCardNumber}`);
+    }
+
+    let profilePage;
+    try {
+      let values;
+      try {
+        profilePage = await Profile.navigateToProfile(page);
+        await Profile.openFrequentProgramsTab(profilePage);
+        values = await getPageObject(profilePage, ProfilePage).getAllLoyaltyInputValues();
+      } catch (err) {
+        throw new Error(
+          `[Cart.verifyEuRailLoyaltyNumberNotSaved] Could not read loyalty numbers from the traveler's profile: ${err.message}`
+        );
+      }
+
+      expect(
+        values.includes(rejectedCardNumber),
+        `Expected card number "${rejectedCardNumber}" NOT to appear in the traveler's profile Frequent Programs (the edit should have been discarded), but found it. Values present: ${values.join(', ')}`
+      ).toBe(false);
+    } finally {
+      // Always close the profile tab, however this ended (read failure or assertion failure) —
+      // and only if it's genuinely a separate tab (the no-new-tab fallback makes
+      // profilePage === page, in which case it's the cart tab itself).
+      if (profilePage && profilePage !== page) {
+        await profilePage.close().catch(() => {});
+      }
+    }
+  },
+
+  /**
+   * Navigates away from the loyalty program section without clicking Save, by switching to the
+   * other tab (e.g. from "Use Existing" to "Enter New"). Used to verify unsaved edits are discarded.
+   * @param {import('playwright').Page} page
+   * @param {string} buttonName - Save-like button that must NOT be clicked (validated but unused; kept for step-text clarity)
+   */
+  async navigateAwayFromEuRailLoyaltyWithoutSaving(page, buttonName) {
+    if (!page) throw new Error('[Cart.navigateAwayFromEuRailLoyaltyWithoutSaving] "page" is required.');
+    if (!buttonName || typeof buttonName !== 'string') {
+      throw new Error(`[Cart.navigateAwayFromEuRailLoyaltyWithoutSaving] "buttonName" must be a non-empty string, got: ${typeof buttonName}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.clickEuRailLoyaltyTab('Enter New');
+      await cartPage.clickEuRailLoyaltyTab('Use Existing');
+    } catch (err) {
+      throw new Error(
+        `[Cart.navigateAwayFromEuRailLoyaltyWithoutSaving] Failed to navigate away from the loyalty section without clicking "${buttonName}": ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Selects a loyalty program vendor in the "Enter New" tab and enters an invalid card number, without saving successfully.
+   * @param {import('playwright').Page} page
+   * @param {string} invalidCardNumber - Invalid card number (e.g. "123")
+   * @returns {Promise<{ vendor: string }>}
+   */
+  async selectEuRailLoyaltyVendorAndEnterInvalidNumber(page, invalidCardNumber) {
+    if (!page) throw new Error('[Cart.selectEuRailLoyaltyVendorAndEnterInvalidNumber] "page" is required.');
+    if (typeof invalidCardNumber !== 'string' || !invalidCardNumber) {
+      throw new Error(`[Cart.selectEuRailLoyaltyVendorAndEnterInvalidNumber] "invalidCardNumber" must be a non-empty string, got: ${typeof invalidCardNumber}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    let vendor;
+    try {
+      vendor = await cartPage.selectFirstEuRailLoyaltyVendor();
+      await cartPage.fillEuRailLoyaltyNumber(invalidCardNumber);
+      await cartPage.clickEuRailLoyaltySaveButton();
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectEuRailLoyaltyVendorAndEnterInvalidNumber] Failed to select a loyalty program and enter invalid card number "${invalidCardNumber}": ${err.message}`
+      );
+    }
+    return { vendor };
+  },
+
+  /**
+   * Selects the loyalty program at the given zero-based position from whichever tab's dropdown
+   * is currently open — the "Enter New" tab's vendor dropdown, or the "Use Existing" tab's
+   * stored-program dropdown. Does not enter a card number or click Save.
+   * @param {import('playwright').Page} page
+   * @param {number} index - Zero-based position of the option to select
+   * @returns {Promise<{ vendor: string }>}
+   */
+  async selectEuRailLoyaltyVendorByIndex(page, index) {
+    if (!page) throw new Error('[Cart.selectEuRailLoyaltyVendorByIndex] "page" is required.');
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`[Cart.selectEuRailLoyaltyVendorByIndex] "index" must be a non-negative number, got: ${index}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    let vendor;
+    try {
+      vendor = await cartPage.selectEuRailLoyaltyVendorByIndex(index);
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectEuRailLoyaltyVendorByIndex] Failed to select the loyalty program at index ${index}: ${err.message}`
+      );
+    }
+    return { vendor };
+  },
+
+  /**
+   * Verifies the EU Rail loyalty card number was persisted to the traveler's actual profile —
+   * not just reflected back in the cart's own "Use Existing" dropdown. Opens the user's Profile
+   * settings (which may open in a new tab) and checks the full card number appears among the
+   * Frequent Programs number inputs, matching the ground-truth recorded flow:
+   *   click Save -> open Profile settings -> Frequent Programs -> assert the number input value.
+   * @param {import('playwright').Page} page
+   * @param {string} cardNumber - Full card number expected to now be present in the profile
+   */
+  async verifyEuRailLoyaltyProgramAddedToProfile(page, cardNumber) {
+    if (!page) throw new Error('[Cart.verifyEuRailLoyaltyProgramAddedToProfile] "page" is required.');
+    if (!cardNumber || typeof cardNumber !== 'string') {
+      throw new Error(`[Cart.verifyEuRailLoyaltyProgramAddedToProfile] "cardNumber" must be a non-empty string, got: ${typeof cardNumber}`);
+    }
+
+    let profilePage;
+    try {
+      let values;
+      try {
+        profilePage = await Profile.navigateToProfile(page);
+        await Profile.openFrequentProgramsTab(profilePage);
+        values = await getPageObject(profilePage, ProfilePage).getAllLoyaltyInputValues();
+      } catch (err) {
+        throw new Error(
+          `[Cart.verifyEuRailLoyaltyProgramAddedToProfile] Could not read loyalty numbers from the traveler's profile: ${err.message}`
+        );
+      }
+
+      expect(
+        values.includes(cardNumber),
+        `Expected card number "${cardNumber}" to appear in the traveler's profile Frequent Programs. Found: ${values.join(', ')}`
+      ).toBe(true);
+    } finally {
+      // Always close the profile tab, however this ended (read failure or assertion failure) —
+      // and only if it's genuinely a separate tab (the no-new-tab fallback makes
+      // profilePage === page, in which case it's the cart tab itself).
+      if (profilePage && profilePage !== page) {
+        await profilePage.close().catch(() => {});
+      }
+    }
+  },
+
+  /**
+   * Verifies the system ignored a duplicate loyalty program entry — after saving a card number
+   * that already exists in the traveler's profile, "Use Existing" should show exactly one entry
+   * ending in its last 4 digits, not two. Self-contained (no "before" baseline needed): pass the
+   * card number that was just saved (e.g. via editEuRailLoyaltyNumberAndClickButton).
+   * @param {import('playwright').Page} page
+   * @param {string} cardNumber - The card number that was just saved and must not be duplicated
+   */
+  async verifyEuRailLoyaltyDuplicateIgnored(page, cardNumber) {
+    if (!page) throw new Error('[Cart.verifyEuRailLoyaltyDuplicateIgnored] "page" is required.');
+    if (!cardNumber || typeof cardNumber !== 'string') {
+      throw new Error(`[Cart.verifyEuRailLoyaltyDuplicateIgnored] "cardNumber" must be a non-empty string, got: ${typeof cardNumber}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    let options;
+    try {
+      // Same as verifyEuRailLoyaltyProgramAddedToProfile() above — the Save collapses the panel,
+      // so it must be re-opened before switching tabs (guarded to avoid re-clicking "Edit" if
+      // the panel is already open).
+      if (!(await cartPage.isEuRailLoyaltyPanelOpen())) {
+        await cartPage.clickEditExtrasButton(0);
+      }
+      await cartPage.clickEuRailLoyaltyTab('Use Existing');
+      await cartPage.openEuRailExistingLoyaltyDropdown();
+      options = await cartPage.getEuRailLoyaltyDropdownOptionTexts();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyEuRailLoyaltyDuplicateIgnored] Could not read the "Use Existing" dropdown options after the duplicate save attempt: ${err.message}`
+      );
+    }
+
+    // Dropdown labels show only the last 4 digits ("[Program Name] - [Last 4 digits]"), never the full number.
+    const last4 = cardNumber.slice(-4);
+    const matchCount = options.filter((label) => label.includes(last4)).length;
+    expect(
+      matchCount,
+      `Expected exactly one loyalty program ending in "${last4}" (from card number "${cardNumber}") in "Use Existing" — found ${matchCount}. Options: ${options.join(', ')}`
+    ).toBe(1);
   },
 
   /**

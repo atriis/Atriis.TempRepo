@@ -48,8 +48,11 @@ const SELECTORS = {
   REQUEST_ASSISTANCE_TRAVELERS_TITLE: ".travelers-container h6",
 
   // Trip types
+  // ':visible' excludes other product tabs' search widgets (e.g. Flight's own trip-type radios),
+  // which stay mounted-but-hidden in the DOM when a different tab (e.g. Rail) is active and would
+  // otherwise be matched first by DOM order, causing clickTripType/selectMultiCityTrip to hang on a hidden element.
   TRIP_TYPE_RADIO_LABELS:
-    ":is(.search-options-wrapper, .eu-rail-search-inputs, .amtrak-search-inputs, .uk-rail-search) > :nth-child(1) [role='radiogroup'] .el-radio__label",
+    ":is(.search-options-wrapper, .eu-rail-search-inputs, .amtrak-search-inputs, .uk-rail-search) > :nth-child(1) [role='radiogroup'] .el-radio__label:visible",
 
   // Calendar (date picker)
   DATE_PICKER_PANEL: ".el-picker-panel:visible",

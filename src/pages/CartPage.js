@@ -553,6 +553,20 @@ const SELECTORS = {
   LOYALTY_CARD: '.quote-extras--loyalty-number .extras-card, .car-driver-loyalty, .quote-extras--container .extras-card:has-text("Loyalty ID")',
   LOYALTY_CHAIN_SELECTED_TEXT: '.quote-extras--loyalty-number .select-container .select-element:first-child .el-select .el-select__placeholder',
 
+  // EU Rail loyalty program extras (loyalty-program.vue) — <section class="loyalty-program">, no data-testid.
+  // Tabs are <el-tabs>/<el-tab-pane> with values from LoyaltyTabs enum ('0' = New, '1' = Existing);
+  // labels are "Use Existing" / "Enter New" (en.json euRail.loyaltyNumber.useExisting/enterNew).
+  EURAIL_LOYALTY_SECTION: '.loyalty-program',
+  EURAIL_LOYALTY_TAB: '.loyalty-program .tabs-container .el-tabs__item:visible',
+  EURAIL_LOYALTY_EXISTING_SELECT: '.loyalty-program .loyalty-existing .app-select .el-select',
+  EURAIL_LOYALTY_EXISTING_SELECT_TEXT: '.loyalty-program .loyalty-existing .app-select .el-select__placeholder',
+  EURAIL_LOYALTY_VENDOR_SELECT: '.loyalty-program .loyalty-new .field:first-child .app-select .el-select',
+  // Not scoped to .loyalty-new: on the deployed app the card-number input renders inline
+  // under whichever tab ("Use Existing" or "Enter New") is currently active, not only under
+  // a .loyalty-new pane. ':visible' selects the one actually rendered for the active tab.
+  EURAIL_LOYALTY_NUMBER_INPUT: '.loyalty-program .loyalty-number-input .el-input__inner:visible',
+  EURAIL_LOYALTY_VALIDATION_MSG: '.loyalty-program .validation-msg:visible',
+
   // Premier Inn extras - breakfast visibility (premier-inn.vue)
   PREMIER_INN_PAYMENT_LABEL: '.quote-extras--premier-inn .extras-card label.label',
   PREMIER_INN_BREAKFAST_LABEL: '.quote-extras--premier-inn .extras-card label.label:has-text("Breakfast")',
@@ -2858,6 +2872,17 @@ class CartPage {
    */
   async waitForSaveButton() {
     await this.getSaveButton().waitFor({ state: 'visible' });
+  }
+
+  /**
+   * Waits for a just-clicked Save button's loading state to clear. Whether the button then
+   * disappears entirely (panel collapses) or stays visible (panel remains open, e.g. showing
+   * the newly saved entry) varies by section, so this only waits for the loading state itself —
+   * not for the button to vanish — to avoid hanging on sections that keep the panel open.
+   */
+  async waitForSaveButtonLoadingToClear() {
+    const loadingSaveButton = this.page.locator('button.is-loading').filter({ hasText: 'Save' });
+    await loadingSaveButton.waitFor({ state: 'hidden', timeout: 15000 });
   }
 
   /**
@@ -5516,6 +5541,183 @@ class CartPage {
     const dropdown = this.page.locator(SELECTORS.LOYALTY_EXISTING_DROPDOWN_TEXT).first();
     await dropdown.waitFor({ state: 'visible', timeout: 10000 });
     return (await dropdown.textContent()).trim();
+  }
+
+  // ========================================
+  // EU RAIL LOYALTY PROGRAM (loyalty-program.vue)
+  // ========================================
+
+  /**
+   * Clicks a tab by its visible label inside the EU Rail loyalty program section
+   * (e.g. "Use Existing" or "Enter New").
+   * @param {string} tabLabel - Visible tab label text
+   */
+  async clickEuRailLoyaltyTab(tabLabel) {
+    if (!tabLabel || typeof tabLabel !== 'string') throw new Error('tabLabel must be a non-empty string');
+    const tab = this.page.locator(SELECTORS.EURAIL_LOYALTY_TAB).filter({ hasText: tabLabel }).first();
+    await tab.waitFor({ state: 'visible', timeout: 10000 });
+    await tab.click();
+  }
+
+  /**
+   * Returns whether the EU Rail loyalty program panel is currently expanded (its tabs are rendered).
+   * @returns {Promise<boolean>}
+   */
+  async isEuRailLoyaltyPanelOpen() {
+    return this.page.locator(SELECTORS.EURAIL_LOYALTY_TAB).first().isVisible();
+  }
+
+  /**
+   * Opens the "Use Existing" dropdown (app-select) in the EU Rail loyalty program section.
+   */
+  async openEuRailExistingLoyaltyDropdown() {
+    const select = this.page.locator(SELECTORS.EURAIL_LOYALTY_EXISTING_SELECT);
+    await select.waitFor({ state: 'visible', timeout: 10000 });
+    await select.click();
+  }
+
+  /**
+   * Returns the list of visible option labels from the currently open EU Rail loyalty dropdown.
+   * @returns {Promise<string[]>}
+   */
+  async getEuRailLoyaltyDropdownOptionTexts() {
+    const options = this.page.locator(SELECTORS.EL_SELECT_VISIBLE_DROPDOWN_ITEM);
+    await options.first().waitFor({ state: 'visible', timeout: 10000 });
+    return options.allTextContents();
+  }
+
+  /**
+   * Selects the first option from the currently open EU Rail existing-loyalty dropdown.
+   */
+  async selectFirstEuRailLoyaltyOption() {
+    const option = this.page.locator(SELECTORS.EL_SELECT_VISIBLE_DROPDOWN_ITEM).first();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    await option.click();
+  }
+
+  /**
+   * Selects an option from the currently open EU Rail existing-loyalty dropdown by visible label text.
+   * @param {string} optionText - Text to match in the dropdown option (e.g. a vendor/program name)
+   */
+  async selectEuRailLoyaltyOption(optionText) {
+    if (!optionText || typeof optionText !== 'string') throw new Error('optionText must be a non-empty string');
+    const option = this.page.locator(SELECTORS.EL_SELECT_VISIBLE_DROPDOWN_ITEM).filter({ hasText: optionText }).first();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    // force: true — see selectFirstEuRailLoyaltyVendor() above re: hover-tracking instability
+    await option.click({ force: true });
+  }
+
+  /**
+   * Gets the current value shown in the EU Rail card number input
+   * (shared by both "Use Existing" pre-fill and "Enter New" tabs).
+   * @returns {Promise<string>}
+   */
+  async getEuRailLoyaltyNumberInputValue() {
+    const input = this.page.locator(SELECTORS.EURAIL_LOYALTY_NUMBER_INPUT);
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    return input.inputValue();
+  }
+
+  /**
+   * Fills the EU Rail loyalty card number input.
+   * @param {string} cardNumber - Card number to enter
+   */
+  async fillEuRailLoyaltyNumber(cardNumber) {
+    if (typeof cardNumber !== 'string') throw new Error('cardNumber must be a string, got: ' + typeof cardNumber);
+    const input = this.page.locator(SELECTORS.EURAIL_LOYALTY_NUMBER_INPUT);
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.fill(cardNumber);
+  }
+
+  /**
+   * Selects a vendor/loyalty program from the "Enter New" tab vendor dropdown by visible label text.
+   * @param {string} vendorText - Text to match in the dropdown option
+   */
+  async selectEuRailLoyaltyVendor(vendorText) {
+    if (!vendorText || typeof vendorText !== 'string') throw new Error('vendorText must be a non-empty string');
+    const select = this.page.locator(SELECTORS.EURAIL_LOYALTY_VENDOR_SELECT);
+    await select.waitFor({ state: 'visible', timeout: 10000 });
+    await select.click();
+    const option = this.page.locator(SELECTORS.EL_SELECT_VISIBLE_DROPDOWN_ITEM).filter({ hasText: vendorText }).first();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    await option.click();
+  }
+
+  /**
+   * Selects the first vendor/loyalty program from the "Enter New" tab vendor dropdown.
+   * @returns {Promise<string>} The text of the selected vendor option
+   */
+  async selectFirstEuRailLoyaltyVendor() {
+    const select = this.page.locator(SELECTORS.EURAIL_LOYALTY_VENDOR_SELECT);
+    await select.waitFor({ state: 'visible', timeout: 10000 });
+    await select.click();
+    const option = this.page.locator(SELECTORS.EL_SELECT_VISIBLE_DROPDOWN_ITEM).first();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    const text = (await option.textContent()).trim();
+    // force: true — Element UI's hover-tracking class on this option keeps re-triggering on
+    // Playwright's own actionability re-checks, making the element permanently report as "not
+    // stable" (never a real animation, just a hover-highlight loop); force bypasses that check.
+    await option.click({ force: true });
+    return text;
+  }
+
+  /**
+   * Selects the loyalty program at the given zero-based position from whichever EU Rail loyalty
+   * dropdown is currently visible — the "Enter New" tab's vendor dropdown, or the "Use Existing"
+   * tab's stored-program dropdown — so the same step works regardless of which tab is active.
+   * @param {number} index - Zero-based position of the option to select
+   * @returns {Promise<string>} The text of the selected option
+   */
+  async selectEuRailLoyaltyVendorByIndex(index) {
+    if (typeof index !== 'number' || index < 0) throw new Error('index must be a non-negative number');
+    const vendorSelect = this.page.locator(SELECTORS.EURAIL_LOYALTY_VENDOR_SELECT);
+    const existingSelect = this.page.locator(SELECTORS.EURAIL_LOYALTY_EXISTING_SELECT);
+    const select = (await vendorSelect.isVisible()) ? vendorSelect : existingSelect;
+    await select.waitFor({ state: 'visible', timeout: 10000 });
+    await select.click();
+    const option = this.page.locator(SELECTORS.EL_SELECT_VISIBLE_DROPDOWN_ITEM).nth(index);
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    const text = (await option.textContent()).trim();
+    // force: true — see selectFirstEuRailLoyaltyVendor() above re: hover-tracking instability
+    await option.click({ force: true });
+    return text;
+  }
+
+  /**
+   * Clicks the Save button in the EU Rail loyalty program section.
+   * Role-based (not CSS class) because the deployed button markup does not
+   * reliably expose a stable class (verified against the live app).
+   */
+  async clickEuRailLoyaltySaveButton() {
+    const btn = this.page
+      .locator(SELECTORS.EURAIL_LOYALTY_SECTION)
+      .getByRole('button', { name: 'Save', exact: true });
+    await btn.waitFor({ state: 'visible', timeout: 10000 });
+    await btn.click();
+  }
+
+  /**
+   * Gets the validation message text shown under the EU Rail loyalty card number input.
+   * @returns {Promise<string>}
+   */
+  async getEuRailLoyaltyValidationMessageText() {
+    const msg = this.page.locator(SELECTORS.EURAIL_LOYALTY_VALIDATION_MSG);
+    await msg.waitFor({ state: 'visible', timeout: 10000 });
+    return (await msg.textContent()).trim();
+  }
+
+  /**
+   * Checks whether the EU Rail loyalty card number validation message is visible.
+   * @param {number} [timeout=5000]
+   * @returns {Promise<boolean>}
+   */
+  async isEuRailLoyaltyValidationMessageVisible(timeout = 5000) {
+    try {
+      await this.page.locator(SELECTORS.EURAIL_LOYALTY_VALIDATION_MSG).waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   // ========================================
