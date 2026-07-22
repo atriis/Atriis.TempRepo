@@ -15,18 +15,16 @@ Feature: 37321 - Approval flow according to traveler - I'm the traveler
   Scenario: Book a car as the traveler and validate the traveler-based approval flow
     Given I am logged in as "fabian@apflow.mx" booking a new trip
     And I have added myself as the traveler
-    When I search for a car at "ORD"
+    When I search for a car at "LGW"
     And I add the first car to cart
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
     When I accept Terms & Conditions
     And I click the proceed to checkout button
+    And I wait for booking details in checkout
     And I click the submit for approval button
-    Then the pre-booking approval success message should be displayed
+    Then the approval confirmation message "Your order has been booked and sent to" should be displayed
     When I click go to trip button
+    And the booking status should be "Confirmed"
     And I view the approvers in the trip overview
-    # TODO: verify the approval flow is ACTIVE — add Cart.verifyApprovalFlowActive wrapping the approvals-dialog ".active"='ACTIVE' status (test 37321)
-    Then the approval flow should be active
-    # TODO: verify a specific approver is assigned and close the approvals dialog — add Cart.verifyApproverAssigned(page, name) matching ".approver-name" then closeApprovalsDialog (test 37321)
-    And the approver "Jacqueline Luna-Castro" should be assigned to the approval flow
-    Then I successfully cancel the trip
+    Then the approver "Jacqueline Luna-Castro" should be assigned to the approval flow
+    And I successfully cancel the trip

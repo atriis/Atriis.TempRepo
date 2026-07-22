@@ -26,8 +26,6 @@ Feature: 46043 - Send for approval button has the correct text and approval mess
     Then the send for approval button should display the text "Send For Approvals"
     When I fill in the "Employee Number" reference field with "123456"
     And I click the submit for approval button
-    # The approval success screen injects the approver's name into the subtitle
-    # ("...sent to <ApproverName> for approval"), so assert the invariant leading text.
     Then the approval confirmation message "Your order has been booked and sent to" should be displayed
     And the approval confirmation message "We will keep you up to date with the approval progress" should be displayed
     When I click go to trip button
