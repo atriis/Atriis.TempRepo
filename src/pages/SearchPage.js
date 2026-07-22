@@ -1258,6 +1258,29 @@ class SearchPage {
     await checkbox.click();
   }
 
+  /**
+   * Unchecks the "Use as primary traveller" checkbox in the add-traveler dialog so
+   * the guest is added without becoming the primary traveller. The checkbox is
+   * checked by default; this is idempotent — it only clicks when currently checked
+   * (el-checkbox marks the checked state with the `is-checked` class). Must be called
+   * before opening the guest form (the guest form inherits isPrimary from here).
+   */
+  async uncheckPrimaryTravelerCheckbox() {
+    const checkbox = this.page.locator(SELECTORS.PRIMARY_TRAVELER_CHECKBOX).first();
+    await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+    const classes = (await checkbox.getAttribute('class')) || '';
+    if (classes.includes('is-checked')) {
+      await checkbox.click();
+    }
+    try {
+      await checkbox.locator('.el-checkbox__input.is-checked').waitFor({ state: 'detached', timeout: 5000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.uncheckPrimaryTravelerCheckbox] Primary-traveller checkbox is still checked after clicking (${SELECTORS.PRIMARY_TRAVELER_CHECKBOX}). Original: ${err.message}`
+      );
+    }
+  }
+
   async clickDobInput() {
     try {
       const dobInput = this.page.locator(SELECTORS.DATE_OF_BIRTH_INPUT).first();

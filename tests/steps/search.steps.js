@@ -193,6 +193,14 @@ Given("I have added a guest traveler {string} {string} with user group {string}"
   this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
+Given("I have added a random guest traveler not as primary with copying settings from the user group {string}", async function (userGroupName) {
+  logger.info("Adding a random guest traveler (not primary) copying settings from the user group", { userGroupName });
+  const result = await Search.addRandomGuestCopyingSettingsFromUserGroup(this.page, userGroupName);
+  expect(result.added, "Random guest traveler should be added copying settings from user group").toBe(true);
+  this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
+  this.selectedTravelerCount = result.selectedTravelerCount;
+});
+
 When("I select {string} as the copy settings for the guest", async function (settingsType) {
   logger.info("Selecting copy settings for guest traveler", { settingsType });
   await Search.selectGuestCopySettings(this.page, settingsType);

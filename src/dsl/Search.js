@@ -333,6 +333,59 @@ const Search = {
   },
 
   /**
+   * Adds a random guest traveler, NOT as the primary traveler, whose settings are
+   * copied from a named user group. Unchecks the "Use as primary traveller" checkbox
+   * first (checked by default) so the booker stays primary and the approval flow is
+   * driven by the booker's user group, then selects "Users Group", picks the given
+   * group by name, and fills auto-generated personal/contact details before
+   * submitting. Used by approval-flow tests (test 37327).
+   *
+   * The primary checkbox must be unchecked BEFORE opening the guest form: the guest
+   * form inherits isPrimary from the edit-traveler dialog, and the checkbox is no
+   * longer rendered once guest mode is active.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} userGroupName - Visible label of the user group (e.g. "Jalisco")
+   * @returns {Promise<{added: boolean, starIconVisible: boolean, selectedTravelerCount: number, guestData: Object}>}
+   */
+  async addRandomGuestCopyingSettingsFromUserGroup(page, userGroupName) {
+    if (!page) throw new Error('[Search.addRandomGuestCopyingSettingsFromUserGroup] "page" is required.');
+    if (!userGroupName || typeof userGroupName !== 'string') {
+      throw new Error('[Search.addRandomGuestCopyingSettingsFromUserGroup] "userGroupName" must be a non-empty string');
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+    const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
+
+    try {
+      await searchPage.clickAddTravelerButton();
+      await searchPage.uncheckPrimaryTravelerCheckbox();
+      await searchPage.clickAddGuestTravelerButton();
+      await searchPage.selectCopySettingsFromUsersGroup();
+      await searchPage.selectUserGroupByName(userGroupName);
+      await searchPage.fillInRandomFirstName(firstName);
+      await searchPage.fillInRandomLastName(lastName);
+      await searchPage.selectGenderMale();
+      await searchPage.fillInRandomDateOfBirth(dateOfBirth);
+      await searchPage.fillInRandomEmail(email);
+      await searchPage.fillInRandomPhone(phone);
+      await searchPage.clickAddGuestButton();
+    } catch (err) {
+      throw new Error(`[Search.addRandomGuestCopyingSettingsFromUserGroup] Failed to add random guest copying settings from user group "${userGroupName}": ${err.message}`);
+    }
+
+    const starIconVisible = await searchPage.isStarIconVisible();
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
+
+    return {
+      added: true,
+      starIconVisible,
+      selectedTravelerCount,
+      guestData: { firstName, lastName, dateOfBirth, email, phone },
+    };
+  },
+
+  /**
    * Adds a random guest traveler whose first name is padded with leading and
    * trailing spaces. Used to verify that the booking flow trims whitespace
    * from names before sending them to the supplier (e.g. Fusion ProcessTerms).
