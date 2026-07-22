@@ -771,6 +771,109 @@ const Checkout = {
     ).toHaveCount(0);
   },
 
+  // ========================================
+  // RECALCULATE APPROVAL FLOW BY REFERENCE FIELDS (test 54558)
+  // ========================================
+
+  /**
+   * Verifies the checkout shows the "Recalculate Approval Flow" reference field in the General
+   * Reference Questions section (general-reference-field.vue `.general-section`). This is the
+   * controlling dropdown whose value recalculates the approval flow — selecting an approval-triggering
+   * option flips the finalize button to "Submit for Approval".
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyRecalculateApprovalFlowSectionDisplayed(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    await checkoutPage.waitForBookingDetailsText();
+
+    const label = checkoutPage.getGeneralSectionLabelByExactText('Recalculate Approval Flow');
+    await expect(
+      label,
+      '[Checkout.verifyRecalculateApprovalFlowSectionDisplayed] Expected the "Recalculate Approval Flow" ' +
+      'reference field to be displayed in the General Reference Questions section at checkout, but its label ' +
+      'was not visible. The reference-fields section may not have rendered, or the field is not configured ' +
+      'for this user.',
+    ).toBeVisible({ timeout: 30000 });
+
+    logger.info('"Recalculate Approval Flow" reference field is displayed at checkout');
+  },
+
+  /**
+   * Verifies the checkout finalize CTA button reads the expected label (test 54558). The label is
+   * backend-driven (cart.checkoutBtn.*) and recalculates asynchronously after a reference-field change,
+   * so this polls the button text against the accepted variant set:
+   *   - "Book and Finalize"  -> matches "Book and Finalize" OR "Finalize"
+   *   - "Submit for Approval" -> matches "Submit for Approval" OR "Send For Approvals"
+   * The expected string names the logical intent; both wording variants are treated as a pass.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - "Book and Finalize" or "Submit for Approval"
+   * @returns {Promise<void>}
+   */
+  async verifyFinalizeButtonText(page, expectedText) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedText !== 'string' || !expectedText.trim())
+      throw new Error(`"expectedText" must be a non-empty string, got: ${typeof expectedText}`);
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    await checkoutPage.waitForBookingDetailsText();
+
+    // Approval-required intent vs. direct-booking intent -> the set of button labels that satisfy it.
+    const wantsApproval = /submit for approval|send for approval/i.test(expectedText);
+    const acceptedRegex = wantsApproval
+      ? /(submit for approval)|(send for approvals)/i
+      : /(book and finalize)|(finalize)/i;
+
+    try {
+      await expect
+        .poll(async () => checkoutPage.getCheckoutFinalizeButtonText(), {
+          timeout: 30000,
+          message:
+            `[Checkout.verifyFinalizeButtonText] Expected the checkout finalize button to read "${expectedText}" ` +
+            `(accepted: ${acceptedRegex}), but its text never matched after the approval flow recalculated.`,
+        })
+        .toMatch(acceptedRegex);
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Checkout.verifyFinalizeButtonText] Failed to verify the finalize button text "${expectedText}". ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    logger.info('Checkout finalize button text verified', { expectedText });
+  },
+
+  /**
+   * Verifies that a reference field described as "linked to Recalculate Approval Flow" is displayed at
+   * checkout (test 54558). Once an approval-flow value is selected, the dependent/linked field surfaces
+   * with this label. Matched by exact text so it is not confused with the controlling
+   * "Recalculate Approval Flow" field.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyReferenceFieldLinkedToRecalculateApprovalFlow(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    await checkoutPage.waitForBookingDetailsText();
+
+    const label = checkoutPage.getGeneralSectionLabelByExactText('linked to Recalculate Approval Flow');
+    await expect(
+      label,
+      '[Checkout.verifyReferenceFieldLinkedToRecalculateApprovalFlow] Expected a reference field labelled ' +
+      '"linked to Recalculate Approval Flow" to be displayed at checkout, but it was not visible. The linked ' +
+      'field may not have surfaced after selecting an approval-flow value.',
+    ).toBeVisible({ timeout: 30000 });
+
+    logger.info('"linked to Recalculate Approval Flow" reference field is displayed at checkout');
+  },
+
 };
 
 module.exports = Checkout;

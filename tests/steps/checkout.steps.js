@@ -203,3 +203,20 @@ Then('"Yay! No additional details are required..." should not be displayed anywh
   logger.info('Verifying "Yay! No additional details are required..." message is not displayed on checkout');
   await Checkout.verifyYayMessageNotVisible(this.page);
 });
+
+// ===== RECALCULATE APPROVAL FLOW BY REFERENCE FIELDS (test 54558) =====
+
+Then("the checkout should display the Recalculate Approval Flow section", async function () {
+  logger.info("Verifying the Recalculate Approval Flow reference field is displayed at checkout");
+  await Checkout.verifyRecalculateApprovalFlowSectionDisplayed(this.page);
+});
+
+Then("the finalize button should read {string}", async function (expectedText) {
+  logger.info("Verifying the checkout finalize button text", { expectedText });
+  await Checkout.verifyFinalizeButtonText(this.page, expectedText);
+});
+
+Then("the reference field should be linked to Recalculate Approval Flow", async function () {
+  logger.info("Verifying a reference field linked to Recalculate Approval Flow is displayed at checkout");
+  await Checkout.verifyReferenceFieldLinkedToRecalculateApprovalFlow(this.page);
+});

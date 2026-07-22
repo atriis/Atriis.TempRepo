@@ -79,6 +79,20 @@ const SELECTORS = {
   // Booking-success page — product details line (booking-success.vue .quote-result card)
   BOOKING_SUCCESS_PRODUCT_LINE: '.quote-result .quote-results__wrapper',
   BOOKING_SUCCESS_PRODUCT_STATUS: '.quote-results__status.app-label--quote',
+
+  // Checkout (Booking details) finalize CTA — trip-reference-form.vue renders it via app-btn with a
+  // stable data-testid (desktop + mobile variants; only one is visible per viewport). Its label is
+  // backend-driven (cart.checkoutBtn.*) so the text toggles between "Finalize"/"Book and Finalize" and
+  // "Submit for Approval"/"Send For Approvals" as the approval flow recalculates. The class fallback
+  // (.btn--width-100.btn--primary, the is-fit-width primary button) covers staging builds that may lag
+  // the source data-testids.
+  CHECKOUT_FINALIZE_BTN:
+    "[data-testid='trip.reference-form.checkout-btn-desktop'], " +
+    "[data-testid='trip.reference-form.checkout-btn-mobile'], " +
+    ".btn--width-100.btn--primary",
+  // General Reference Questions section (general-reference-field.vue) — reference-field question
+  // labels render inside `.general-section`.
+  GENERAL_SECTION: '.general-section',
 };
 
 class CheckoutPage {
@@ -682,6 +696,43 @@ class CheckoutPage {
    */
   getBookingSuccessProductStatus() {
     return this.page.locator(SELECTORS.BOOKING_SUCCESS_PRODUCT_STATUS).first();
+  }
+
+  /**
+   * Gets the visible checkout finalize CTA button (label toggles with the approval flow).
+   * Scopes to the visible instance so the hidden responsive (desktop/mobile) duplicate is skipped.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCheckoutFinalizeButton() {
+    return this.page.locator(SELECTORS.CHECKOUT_FINALIZE_BTN).filter({ visible: true }).first();
+  }
+
+  /**
+   * Returns the normalized visible text of the checkout finalize CTA button.
+   * @param {number} timeout - Max wait for the button to be visible (default 30000)
+   * @returns {Promise<string>} button text, whitespace collapsed and trimmed
+   */
+  async getCheckoutFinalizeButtonText(timeout = 30000) {
+    const button = this.getCheckoutFinalizeButton();
+    await button.waitFor({ state: 'visible', timeout });
+    const text = await button.innerText();
+    return text.replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Gets a reference-field label in the General Reference Questions section whose text exactly matches
+   * the given text (scoped to `.general-section`, visible only). Exact match distinguishes the
+   * "Recalculate Approval Flow" controlling field from the "linked to Recalculate Approval Flow"
+   * dependent field, whose text merely contains the former.
+   * @param {string} text - Exact label text
+   * @returns {import('@playwright/test').Locator}
+   */
+  getGeneralSectionLabelByExactText(text) {
+    return this.page
+      .locator(SELECTORS.GENERAL_SECTION)
+      .getByText(text, { exact: true })
+      .filter({ visible: true })
+      .first();
   }
 
   async verifyQuoteVisibleInCheckoutSummary(quoteName, { timeout = 15000 } = {}) {
