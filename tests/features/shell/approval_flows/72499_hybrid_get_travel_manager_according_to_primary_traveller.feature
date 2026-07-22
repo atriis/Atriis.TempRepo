@@ -10,17 +10,18 @@
 # Updated: 2026-01-12T09:09:57Z
 
 @regression @shell @approval_flow @cars @manual_quote
-Feature: 72499 - Get Travel Manager according to primary traveller
+Feature: 72499 HYBRID Get Travel Manager according to primary traveller
   As a travel booker
   I want to book a trip for another primary traveller with a car manual quote
   So that the travel manager is selected according to the primary traveller
 
   Scenario: Book a car manual quote for a named primary traveller
     Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
-    When I add a traveler by name "liko@kiko.com" from the search autocomplete
-    # TODO: add a detailed CAR manual quote (vendor avis, PDX->SFO cities, pick-up/drop-off dates & times, mileage "no limitation", confirmation 966231A, day/hour rates 60/24) via ManualQuote.addDetailedCarManualQuote
-    When I add a detailed car manual quote from "PDX" to "SFO"
+    When I have added traveler by name "Liko Kikoo"
+    And I navigate to the manual quote search page
+    And I add a car manual quote with pick up in "Portland" and drop off in "San Francisco"
+    And the booking status should be "On hold"
     And I click the proceed to checkout button
-    # TODO: fill the required checkout reference field (#el-id-108-3269) with the given value via Checkout.fillRequiredReferenceField
-    And I fill the required checkout reference field with "1"
+    And I wait for booking details in checkout
+    And I fill in the "ORDER NUMBER" reference field with "1111"
     And I complete the booking

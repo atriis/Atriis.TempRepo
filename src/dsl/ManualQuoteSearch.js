@@ -988,11 +988,15 @@ const ManualQuoteSearch = {
       logger.debug("[ManualQuoteSearch.addCarManualQuote] Pickup date already filled, skipping", { pickupDateValue });
     }
 
-    // Set pickup time to PM (only if AM/PM mode is active — metric users have 24h format)
+    // Set pickup time — required field. Selecting an explicit hour:minute works in
+    // both 24h and 12h modes; leaving it empty silently blocks "Add Quote".
     try {
-      await manualQuoteSearchPage.clickCarPickupTimePM();
+      await manualQuoteSearchPage.setCarPickupTime();
     } catch (err) {
-      logger.debug("[ManualQuoteSearch.addCarManualQuote] Could not set pickup time PM — may be 24h format, skipping", { error: err.message });
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to set pickup time — ` +
+          `the required time field could not be filled. Original: ${err.message}`,
+      );
     }
 
     // Select dropoff date — only if the field is empty (app may auto-fill from trip dates)
@@ -1013,11 +1017,14 @@ const ManualQuoteSearch = {
       logger.debug("[ManualQuoteSearch.addCarManualQuote] Dropoff date already filled, skipping", { dropoffDateValue });
     }
 
-    // Set dropoff time to PM (only if AM/PM mode is active — metric users have 24h format)
+    // Set dropoff time — required field (see pickup time note above).
     try {
-      await manualQuoteSearchPage.clickCarDropoffTimePM();
+      await manualQuoteSearchPage.setCarDropoffTime();
     } catch (err) {
-      logger.debug("[ManualQuoteSearch.addCarManualQuote] Could not set dropoff time PM — may be 24h format, skipping", { error: err.message });
+      throw new Error(
+        `[ManualQuoteSearch.addCarManualQuote] Failed to set dropoff time — ` +
+          `the required time field could not be filled. Original: ${err.message}`,
+      );
     }
 
     // Select car class

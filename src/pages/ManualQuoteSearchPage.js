@@ -109,7 +109,13 @@ const SELECTORS = {
   CAR_PICKUP_DATE_INPUT: ".manual-quote-car input[name=\"date-pick-up\"]",
   CAR_PICKUP_TIME_INPUT: ".manual-quote-car .app-columns:nth-child(1) input.app-timepicker-input",
   CAR_TIME_SELECTOR_POPPER: ".time-selector-popper:visible",
-  CAR_TIME_PM_BUTTON: ".section-ampm .time-part:last-child",
+  // Hours/minutes el-selects inside the time popper — present in BOTH 12h and 24h
+  // formats (the .section-ampm PM button only renders when isAmPm is true).
+  CAR_TIME_HOURS_TRIGGER: ".section-time-select .app-column:nth-child(1) .el-select__wrapper",
+  CAR_TIME_MINUTES_TRIGGER: ".section-time-select .app-column:nth-child(2) .el-select__wrapper",
+  // Neutral, inert element to click to blur/commit the time popper (Escape does not
+  // commit the value). Focusing the Comment textarea reliably collapses the picker.
+  CAR_COMMIT_BLUR_TARGET: ".manual-quote-car textarea",
   CAR_DROPOFF_LOCATION_INPUT: ".manual-quote-car input[name=\"car-autocomplete-drop-off\"]",
   CAR_DROPOFF_CITY_INPUT: ".manual-quote-car input[name=\"hotel-autocomplete-drop-off\"]",
   CAR_DROPOFF_DATE_INPUT: ".manual-quote-car .app-columns:nth-of-type(2) .app-datepicker input",
@@ -926,40 +932,103 @@ class ManualQuoteSearchPage {
     }
   }
 
-  async clickCarPickupTimePM() {
-    try {
-      const input = this.page.locator(SELECTORS.CAR_PICKUP_TIME_INPUT).first();
+  /**
+   * Opens a car time-picker's popper and returns the visible popper locator.
+   * Each timepicker teleports its own .time-selector-popper to <body>, and a
+   * just-closed one (e.g. pickup's) can still be transitioning out when the next
+   * (dropoff's) opens — so target the LAST visible popper. Retries the open once
+   * in case the click's popper closes mid-transition.
+   */
+  async _openCarTimePopper(input, triggerSelector) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
       await input.click({ timeout: 10000 });
-      const popper = this.page.locator(SELECTORS.CAR_TIME_SELECTOR_POPPER).first();
-      await popper.waitFor({ state: "visible", timeout: 5000 });
-      await popper.locator(SELECTORS.CAR_TIME_PM_BUTTON).click({ timeout: 5000 });
-      await this.page.keyboard.press("Escape");
+      await this.page.waitForTimeout(400); // let the open animation settle
+      const popper = this.page.locator(SELECTORS.CAR_TIME_SELECTOR_POPPER).last();
+      try {
+        await popper.waitFor({ state: "visible", timeout: 5000 });
+        await popper.locator(triggerSelector).waitFor({ state: "visible", timeout: 5000 });
+        return popper;
+      } catch (openErr) {
+        if (attempt === 2) throw openErr;
+        await this.page.waitForTimeout(400);
+      }
+    }
+  }
+
+  /**
+   * Sets a car time-picker to an explicit hour:minute by selecting from the two
+   * el-select dropdowns inside the time popper. The time input is readonly, so it
+   * can only be set through the popper. Works in BOTH 24-hour ("00:00") and 12-hour
+   * ("hh:mm a") display modes — unlike clicking the AM/PM toggle, which only exists
+   * in 12-hour mode. Leaving the field empty fails required-field validation and
+   * silently blocks "Add Quote".
+   *
+   * Both hour AND minute must be set, and the value only commits when the picker
+   * loses focus — Escape does not commit — so we blur by clicking the Comment box.
+   * After picking the hour the popper may collapse, so if it's no longer open the
+   * minute is set in a fresh open of the same picker (the prior hour selection
+   * persists via modelValue).
+   *
+   * @param {string} timeInputSelector - locator for the readonly time input
+   * @param {string} label - method name for error messages
+   * @param {object} [opts]
+   * @param {string} [opts.hour="10"] - hour option text (24h "10" / 12h "10" both valid)
+   * @param {string} [opts.minute="00"] - minute option text
+   */
+  async _setCarTime(timeInputSelector, label, { hour = "10", minute = "00" } = {}) {
+    try {
+      const input = this.page.locator(timeInputSelector).first();
+
+      // --- Hour ---
+      let popper = await this._openCarTimePopper(input, SELECTORS.CAR_TIME_HOURS_TRIGGER);
+      await popper.locator(SELECTORS.CAR_TIME_HOURS_TRIGGER).click({ timeout: 5000 });
+      await this.page
+        .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM, { hasText: new RegExp(`^\\s*${hour}\\s*$`) })
+        .first()
+        .click({ timeout: 5000 });
+      await this.page.waitForTimeout(400);
+
+      // --- Minute --- (popper collapses after the hour pick; reopen if needed)
+      popper = this.page.locator(SELECTORS.CAR_TIME_SELECTOR_POPPER).last();
+      const stillOpen = await popper
+        .locator(SELECTORS.CAR_TIME_MINUTES_TRIGGER)
+        .isVisible()
+        .catch(() => false);
+      if (!stillOpen) {
+        popper = await this._openCarTimePopper(input, SELECTORS.CAR_TIME_MINUTES_TRIGGER);
+      }
+      await popper.locator(SELECTORS.CAR_TIME_MINUTES_TRIGGER).click({ timeout: 5000 });
+      await this.page
+        .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM, { hasText: new RegExp(`^\\s*${minute}\\s*$`) })
+        .first()
+        .click({ timeout: 5000 });
+
+      // --- Commit --- blur the picker by focusing a neutral field (Escape won't commit).
+      await this.page.locator(SELECTORS.CAR_COMMIT_BLUR_TARGET).first().click({ timeout: 5000 });
       await this.page.waitForTimeout(300);
+
+      // Verify the value actually committed — closing an unset picker finalizes to
+      // "00:00" (the value that fails validation), so assert the chosen hour stuck
+      // rather than merely non-empty. Both "10:00" (24h) and "10:00 AM" (12h) match.
+      const value = (await input.inputValue()).trim();
+      if (!value || !value.includes(hour)) {
+        throw new Error(`the time input reads "${value}" after selecting ${hour}:${minute}`);
+      }
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearchPage.clickCarPickupTimePM] Could not set pickup time to PM. ` +
-        `The time picker popper (class: time-selector-popper) or the PM button was not available. ` +
-        `Original: ${err.message}`
+        `[ManualQuoteSearchPage.${label}] Could not set the time to ${hour}:${minute}. ` +
+        `The time picker popper (class: time-selector-popper) or its hours/minutes ` +
+        `el-select was not available. Original: ${err.message}`
       );
     }
   }
 
-  async clickCarDropoffTimePM() {
-    try {
-      const input = this.page.locator(SELECTORS.CAR_DROPOFF_TIME_INPUT).first();
-      await input.click({ timeout: 10000 });
-      const popper = this.page.locator(SELECTORS.CAR_TIME_SELECTOR_POPPER).first();
-      await popper.waitFor({ state: "visible", timeout: 5000 });
-      await popper.locator(SELECTORS.CAR_TIME_PM_BUTTON).click({ timeout: 5000 });
-      await this.page.keyboard.press("Escape");
-      await this.page.waitForTimeout(300);
-    } catch (err) {
-      throw new Error(
-        `[ManualQuoteSearchPage.clickCarDropoffTimePM] Could not set dropoff time to PM. ` +
-        `The time picker popper (class: time-selector-popper) or the PM button was not available. ` +
-        `Original: ${err.message}`
-      );
-    }
+  async setCarPickupTime(opts) {
+    await this._setCarTime(SELECTORS.CAR_PICKUP_TIME_INPUT, "setCarPickupTime", opts);
+  }
+
+  async setCarDropoffTime(opts) {
+    await this._setCarTime(SELECTORS.CAR_DROPOFF_TIME_INPUT, "setCarDropoffTime", opts);
   }
 
   async selectCarClass(carClass) {
