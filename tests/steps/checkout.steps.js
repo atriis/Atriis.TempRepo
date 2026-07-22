@@ -94,6 +94,16 @@ Then("a booking error message should be displayed", async function () {
   await Checkout.verifyBookingErrorMessage(this.page);
 });
 
+Then("the send for approval button should display the text {string}", async function (expectedText) {
+  logger.info("Verifying the send for approval button text", { expectedText });
+  await Checkout.verifySendForApprovalButtonText(this.page, expectedText);
+});
+
+Then("the approval confirmation message {string} should be displayed", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function (message) {
+  logger.info("Verifying the approval confirmation message is displayed", { message });
+  await Checkout.verifyApprovalConfirmationMessage(this.page, message);
+});
+
 Then('I should see "Book and Finalize" button enabled', async function () {
   logger.info('Verifying "Book and Finalize" button is visible and enabled');
   await Checkout.verifyBookAndFinalizeButtonEnabledAndVisible(this.page);

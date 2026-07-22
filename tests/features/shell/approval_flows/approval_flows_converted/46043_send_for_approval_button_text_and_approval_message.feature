@@ -15,17 +15,20 @@ Feature: 46043 - Send for approval button has the correct text and approval mess
   Scenario: Sending a flight trip for approval shows the correct button text and approval confirmation message
     Given I am logged in as "victor@approvalflow.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "LON" to "NYC"
+    When I search for a one way flight from "LIS" to "IST"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I add a credit card as payment method
     And I accept Terms & Conditions
     And I click the proceed to checkout button
-    # TODO: verify the send-for-approval button text; implement Checkout.verifySendForApprovalButtonText(this.page, expected) asserting the ".is-hidden-mobile" button reads the given text
+    And I validate price change if displayed and proceed
+    And I wait for booking details in checkout
     Then the send for approval button should display the text "Send For Approvals"
-    When I click the submit for approval button
-    Then the pre-booking approval success message should be displayed
-    # TODO: verify the approval-progress email line; implement Checkout.verifyApprovalProgressEmailMessageDisplayed(this.page) asserting ".success-message__email" reads "We will keep you up to date with the approval progress"
-    And the approval progress email message should be displayed
+    When I fill in the "Employee Number" reference field with "123456"
+    And I click the submit for approval button
+    # The approval success screen injects the approver's name into the subtitle
+    # ("...sent to <ApproverName> for approval"), so assert the invariant leading text.
+    Then the approval confirmation message "Your order has been booked and sent to" should be displayed
+    And the approval confirmation message "We will keep you up to date with the approval progress" should be displayed
     When I click go to trip button
     Then I successfully cancel the trip

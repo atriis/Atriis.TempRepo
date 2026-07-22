@@ -566,6 +566,61 @@ const Checkout = {
     return { displayed: true, titleText };
   },
 
+  /**
+   * Verifies the checkout send-for-approval button displays the expected text (test 46043).
+   * The button label is backend-driven via the cart.checkoutBtn.* i18n namespace — for a checkout
+   * approval flow it reads "Send For Approvals". Asserts an exact match (case-insensitive, with
+   * whitespace normalized on both sides) so the test genuinely pins the button's correct label.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - text the button is expected to display
+   * @returns {Promise<{ text: string }>}
+   */
+  async verifySendForApprovalButtonText(page, expectedText) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedText !== 'string' || !expectedText.trim())
+      throw new Error(`"expectedText" must be a non-empty string, got: ${typeof expectedText}`);
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const actual = await checkoutPage.getSendForApprovalButtonText();
+    const expectedNormalized = expectedText.replace(/\s+/g, ' ').trim();
+    if (actual.toLowerCase() !== expectedNormalized.toLowerCase()) {
+      throw new Error(
+        `[Checkout.verifySendForApprovalButtonText] Expected the send-for-approval button to display ` +
+        `"${expectedNormalized}", but it read "${actual}".`
+      );
+    }
+    logger.info('Send-for-approval button text verified', { expected: expectedNormalized, actual });
+    return { text: actual };
+  },
+
+  /**
+   * Verifies an approval confirmation message is displayed on the booking-success screen after
+   * submitting for approval (test 46043). Delegates to the page object, which matches the text as a
+   * case-insensitive substring scoped to the booking-success container — so the caller can pass the
+   * invariant leading text of a subtitle that interpolates the approver's name.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} message - text (or invariant substring) expected to be displayed
+   * @returns {Promise<void>}
+   */
+  async verifyApprovalConfirmationMessage(page, message) {
+    if (!page) throw new Error('page is required');
+    if (typeof message !== 'string' || !message.trim())
+      throw new Error(`"message" must be a non-empty string, got: ${typeof message}`);
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    try {
+      await checkoutPage.waitForApprovalConfirmationMessageVisible(message);
+    } catch (err) {
+      throw new Error(
+        `[Checkout.verifyApprovalConfirmationMessage] Approval confirmation message "${message}" was not ` +
+        `displayed on the booking-success screen. Original: ${err.message}`
+      );
+    }
+    logger.info('Approval confirmation message displayed', { message });
+  },
+
   // ========================================
   // BOOKING SUCCESS — STEP-BY-STEP FLOW
   // ========================================

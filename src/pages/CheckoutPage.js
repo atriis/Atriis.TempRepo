@@ -33,6 +33,9 @@ const SELECTORS = {
   YPSILON_3DS_ACCEPT_BUTTON: "#submit_accept",
   // "Send for approval" = standard approval flow; "Submit for Approval" = OOP/justification flow
   SEND_FOR_APPROVAL_BUTTON: "button:has-text('Send for approval'), button:has-text('Submit for Approval')",
+  // Booking-success screen root (booking-success.vue). The approval confirmation lines render
+  // inside it as .success-message__description (subtitle) and .success-message__email (label).
+  BOOKING_SUCCESS_CONTAINER: ".booking-success",
   APPROVAL_SUCCESS_TITLE: "text=Trip Submitted for Approval",
   APPROVAL_SUCCESS_MESSAGE: "text=/Your order has been booked and sent to your approver for approval/i",
   // Pre-booking approval success page (booking-success.vue, successType 'preBooking'):
@@ -193,6 +196,41 @@ class CheckoutPage {
    */
   async clickSendForApprovalButton() {
     await this.page.locator(SELECTORS.SEND_FOR_APPROVAL_BUTTON).first().click();
+  }
+
+  /**
+   * Returns the visible text of the checkout send-for-approval button.
+   * The label is backend-driven (cart.checkoutBtn.* i18n) — e.g. "Send For Approvals" — so this
+   * reads the rendered text for the caller to assert against.
+   * @returns {Promise<string>} normalized button text (whitespace collapsed, trimmed)
+   */
+  async getSendForApprovalButtonText() {
+    // Scope to the visible instance: the booking-details page renders the CTA in a sticky cart
+    // panel and can carry hidden responsive duplicates, so an unscoped .first() could lock onto a
+    // hidden copy and time out.
+    const button = this.page
+      .locator(SELECTORS.SEND_FOR_APPROVAL_BUTTON)
+      .filter({ visible: true })
+      .first();
+    await button.waitFor({ state: "visible", timeout: 30000 });
+    const text = await button.innerText();
+    return text.replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Waits until the given approval confirmation message is visible on the booking-success screen.
+   * Matches case-insensitively as a substring (getByText default), scoped to the booking-success
+   * container so the interpolated approver name in the subtitle does not need to be matched.
+   * @param {string} message - text (or invariant substring) expected to be displayed
+   * @param {number} timeout - max wait in ms (default 120000, covers the booking round-trip)
+   */
+  async waitForApprovalConfirmationMessageVisible(message, timeout = 120000) {
+    const locator = this.page
+      .locator(SELECTORS.BOOKING_SUCCESS_CONTAINER)
+      .getByText(message)
+      .filter({ visible: true })
+      .first();
+    await locator.waitFor({ state: "visible", timeout });
   }
 
   /**
