@@ -89,3 +89,6 @@ Thumbs.db
 # Allure
 allure-results/
 allure-report/
+
+# Claude AI
+.claude/

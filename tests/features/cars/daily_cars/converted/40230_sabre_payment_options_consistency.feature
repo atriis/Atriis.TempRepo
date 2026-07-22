@@ -6,7 +6,7 @@
 # Created: 2023-12-19T11:33:39Z
 # Updated: 2025-07-30T03:29:56Z
 
-@transportation @cars @regression @provider:sabre
+@transportation @cars @regression @provider:sabre @ado:40230 @booking
 Feature: 40230 - Sabre Cars - Prepaid or Pay on Departure Display
 
   Scenario: Is Prepaid = true on TMC agreement shows Pre paid on results and cart

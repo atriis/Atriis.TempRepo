@@ -5,14 +5,15 @@
 # Owner: Bruna Santos
 # Created: 2023-12-29T04:21:39Z
 # Updated: 2025-07-30T03:23:50Z
+# ADO Test Case: #30463 - [Merge] Amadeus - Agreement text is displayed in the tooltip, book car and validate that the Terms & Conditions are displayed
 
-@transportation @cars @regression @provider:amadeus
+@transportation @cars @regression @provider:amadeus @ado:30463 @booking
 Feature: 30463 - Amadeus Car - Agreement Text and Terms Conditions Displayed
 
   Scenario: User can view agreement text in tooltip and terms and conditions on booking
     Given I am logged in as "testim@amadeus.am" booking a new trip
     And I have added myself as the traveler
-    When I search for a car at "LON" with rental agency "AVIS" and 1 months ahead
+    When I search for a car at "LON" with rental agency "Enterprise" and 1 months ahead
     And I select the first city center pickup location
     Then the agreement text should be displayed in the car results tooltip
     When I click on the terms and conditions link in the car results tooltip

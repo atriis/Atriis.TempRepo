@@ -3,7 +3,7 @@
 # Verifies that the Rental Counter Location filter is visible in car search results,
 # has the correct options, and correctly filters and restores results when applied/removed.
 
-@transportation @cars @regression @daily_cars @provider:amadeus @priority:high
+@transportation @cars @regression @daily_cars @provider:amadeus @priority:high @ado:66941
 Feature: 66941 Cars - Rental Counter Location Filter
   As a corporate traveler using Amadeus
   I want to filter car search results by rental counter location

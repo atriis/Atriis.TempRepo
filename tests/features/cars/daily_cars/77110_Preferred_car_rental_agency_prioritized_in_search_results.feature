@@ -5,8 +5,9 @@
 # Domain: transportation (Sabre Cars)
 # Staging User: support@lake.com (USER_SUPPORTLAKE)
 # Location: LHR
+# ADO Test Case: #77110 - [Cars][Sabre] Preferred car rental agency prioritized in search results
 
-@daily_cars @provider:sabre @regression @priority:high
+@daily_cars @provider:sabre @regression @priority:high @ado:77110
 Feature: 76501 Preferred car rental agency prioritized in search results
 
   As a traveler with a configured preferred rental agency policy (Avis Compact)
@@ -14,7 +15,7 @@ Feature: 76501 Preferred car rental agency prioritized in search results
   So that the in-policy vendor is correctly prioritized
 
   Background:
-    Given I am logged in as "carpriority" booking a new trip
+    Given I am logged in as "car@priority.com" booking a new trip
     And I have added myself as the traveler
 
   @priority:high @tc:77110

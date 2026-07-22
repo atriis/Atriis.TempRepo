@@ -5,8 +5,9 @@
 # Owner: Bruna Santos
 # Created: 2023-06-05T03:14:38Z
 # Updated: 2025-09-11T01:33:31Z
+# ADO Test Case: #31334 - GDG: Galileo - Specific car search without errors
 
-@transportation @cars @regression @provider:galileo
+@transportation @cars @regression @provider:galileo @booking @ado:31334
 Feature: 31334 - Galileo - Specific Car Search Without Errors
 
   Scenario: Search for cars at specific locations with Galileo and verify results

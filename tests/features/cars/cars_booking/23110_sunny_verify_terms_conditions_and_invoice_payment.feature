@@ -1,4 +1,13 @@
-@transportation @cars @regression @provider:sunny
+# Test Name: 23110 [Merge] Sunny Car - Verify that the terms and conditions are loading, invoice payment works correctly and validate is displayed
+# Description: 
+# Status: Active
+# Labels: Cars,merge,Full Purchase,SunnyCars Regression,Pre Prod,FOP,Invoice,Terms and Conditions,Daily Transportation,progress page,Regression,Transportation,2026 plan 1
+# Owner: Bruna Santos
+# Created: 2023-12-26T04:04:28Z
+# Updated: 2026-02-11T05:31:31Z
+# ADO Test Case: #23110 - [Merge] Sunny Car - Verify that the terms and conditions are loading, invoice payment works correctly and validate is displayed
+
+@transportation @cars @regression @provider:sunny @ado:23110 @booking
 Feature: 23110 - Sunny Car - Verify Terms and Conditions and Invoice Payment
 
   Scenario: User can view terms and conditions and complete booking with invoice payment

@@ -1,4 +1,6 @@
-﻿@transportation @cars @regression @daily_cars @provider:amadeus
+﻿#ADO Test Case: #41168 - Search Amadeus Car in City Center
+
+@transportation @cars @regression @daily_cars @provider:amadeus @ado:41168
 Feature: 41168 Search Amadeus Car in City Center 
   As a corporate traveler using Amadeus
   I want to search for cars in city center locations

@@ -207,10 +207,12 @@ const Results = {
     if (!page) {
       throw new Error('page is required');
     }
-    
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForCarResultsOrNoResults();
+
     const commonPage = getPageObject(page, CommonPage);
-    await commonPage.waitForOOPNotVisible();
-    return await page.locator(SELECTORS.OOP_INFO).first().isHidden();
+    return await commonPage.isOOPHiddenEverywhere();
   },
 
   // ===== FLIGHT CAPACITY RESTRICTION MODAL =====

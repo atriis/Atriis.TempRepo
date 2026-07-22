@@ -1,4 +1,6 @@
-﻿@transportation @cars @regression @daily_cars @provider:amadeus
+﻿# ADO Test Case: #59775 - Cars - Different drop off and pick up - Location is updated correctly after edit search
+
+@transportation @cars @regression @daily_cars @provider:amadeus @ado:59775
 Feature: 59775 Cars - Different drop off and pick up - Location is updated correctly after edit search
   As a corporate traveler using Amadeus
   I want to search for a car with different pickup and dropoff locations

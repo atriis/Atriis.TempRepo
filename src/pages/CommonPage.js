@@ -159,6 +159,26 @@ class CommonPage {
   }
 
   /**
+   * Checks that every OOP indicator currently on the page is hidden.
+   * Unlike waitForOOPNotVisible(), this does not wait for a visible->hidden
+   * transition (which requires .waitFor() to resolve a single element and
+   * breaks strict mode when multiple result cards each render their own
+   * .app-out-of-policy section). Callers must first wait for the page
+   * (results/cart) to finish loading so absence isn't misread as "hidden".
+   * @returns {Promise<boolean>}
+   */
+  async isOOPHiddenEverywhere() {
+    const indicators = this.getOOPInfo();
+    const count = await indicators.count();
+    for (let i = 0; i < count; i++) {
+      if (await indicators.nth(i).isVisible()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
    * Hovers over the Out of Policy info icon to reveal tooltip.
    * TODO: Move this to ResultsPage - this is specific to results page.
    */

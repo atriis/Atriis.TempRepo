@@ -3,8 +3,9 @@
 # Owner: Bruna Santos
 # Created: 2025-03-13T08:19:03Z
 # Updated: 2025-03-13T08:37:35Z
+# ADO Test Case: #33157 - Restricted Car Rental Agency Should Not Appear in Results
 
-@transportation @cars @regression @provider:amadeus
+@transportation @cars @regression @provider:amadeus @ado:33157 @booking
 Feature: 33157 - Restricted Car Rental Agency Should Not Appear in Results
 
   Scenario: Verify restricted rental agencies do not appear in search results

@@ -1,4 +1,6 @@
-@transportation @cars @regression @provider:amadeus @priority:high
+# ADO Test Case: #24067 - Amadeus Car - Validate Google Maps and Car Loyalty Field
+
+@transportation @cars @regression @provider:amadeus @priority:high @ado:24067
 Feature: 24067 - Amadeus Car - Validate Google Maps and Car Loyalty Field
 
   Scenario Outline: User can view car location on Google Maps and loyalty is not populated
