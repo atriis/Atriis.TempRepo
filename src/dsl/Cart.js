@@ -2069,6 +2069,25 @@ const Cart = {
   },
 
   /**
+   * Clicks the cart's "Send For Approvals" button. For pre-booking-approval users the cart CTA
+   * is relabelled from "Proceed to Checkout" to "Send For Approvals" (trip-cart.vue:
+   * isPreBookingNeeded) and submits the trip for approval directly from the cart. Terms &
+   * Conditions are expected to have been accepted by a preceding step.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async clickSendForApproval(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForSendForApproval();
+    await cartPage.clickSendForApproval();
+    return { sentForApproval: true };
+  },
+
+  /**
    *
    * @param {import('playwright').Page} page - Playwright page instance
    * @param {number} index - Zero-based index of the fare rules button (default: 0)

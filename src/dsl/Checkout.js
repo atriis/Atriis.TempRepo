@@ -537,6 +537,35 @@ const Checkout = {
     }
   },
 
+  /**
+   * Verifies the pre-booking approval success page is displayed after sending a trip for approval
+   * from the cart (test 22986). A pre-booking-approval user's cart CTA reads "Send For Approvals";
+   * clicking it routes to the booking-success page with successType 'preBooking', whose title
+   * renders common.sentForApproval ("Sent for Approval"). Wraps
+   * CheckoutPage.getPreBookingApprovalSuccessTitleText (PRE_BOOKING_APPROVAL_SUCCESS_TITLE).
+   *
+   * Note: this is a different screen from the checkout-page "Trip Submitted for Approval" flow
+   * used by sendForApprovalAndFinalize.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyApprovalSuccessMessageDisplayed(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+
+    const titleText = await checkoutPage.getPreBookingApprovalSuccessTitleText();
+    // App copy is "Sent for Approval"; match case-insensitively so a casing tweak doesn't break it.
+    if (!titleText.trim().toLowerCase().includes('sent for approval')) {
+      throw new Error(
+        `[Checkout.verifyApprovalSuccessMessageDisplayed] Pre-booking approval success page loaded but ` +
+        `the title did not match. Expected it to contain "Sent for Approval", got: "${titleText}"`
+      );
+    }
+    return { displayed: true, titleText };
+  },
+
   // ========================================
   // BOOKING SUCCESS — STEP-BY-STEP FLOW
   // ========================================

@@ -5,6 +5,11 @@ const { waitForText } = require("@utils/wait");
  * Contains only UI-level interactions.
  */
 
+// Generic booking-success page title (booking-success.vue `.success-message__title`). The rendered
+// text varies by screen — Fusion 3DS "verification needed" vs. pre-booking approval "Sent for
+// Approval" (successType 'preBooking') — but it is the same element, so both keys share one source.
+const BOOKING_SUCCESS_TITLE_SELECTOR = ".booking-success .success-message__title";
+
 const SELECTORS = {
   BOOKING_DETAILS_HEADING: "h1.mb-5",
   FINALIZE_BUTTON: "button:has-text('Finalize')",
@@ -14,7 +19,7 @@ const SELECTORS = {
   FALLBACK_BUTTON: ".btn-container button",
   GO_TO_TRIP_BUTTON: ".btn-container > :nth-child(1)",
   GO_TO_TRIP_BUTTON_NAME: "Go to trip",
-  FUSION_VERIFICATION_TITLE: ".booking-success .success-message__title",
+  FUSION_VERIFICATION_TITLE: BOOKING_SUCCESS_TITLE_SELECTOR,
   FUSION_VERIFY_NOW_BUTTON: ".success-message__email span",
   FUSION_3DS_DIALOG_CONTAINER: ".app-dialog",
   FUSION_3DS_DIALOG_CLOSE_BUTTON: ".app-dialog .el-dialog__headerbtn",
@@ -30,6 +35,11 @@ const SELECTORS = {
   SEND_FOR_APPROVAL_BUTTON: "button:has-text('Send for approval'), button:has-text('Submit for Approval')",
   APPROVAL_SUCCESS_TITLE: "text=Trip Submitted for Approval",
   APPROVAL_SUCCESS_MESSAGE: "text=/Your order has been booked and sent to your approver for approval/i",
+  // Pre-booking approval success page (booking-success.vue, successType 'preBooking'):
+  // title renders common.sentForApproval ("Sent for Approval"). Same element as
+  // FUSION_VERIFICATION_TITLE (shared const); distinct from the checkout-page
+  // APPROVAL_SUCCESS_TITLE screen above.
+  PRE_BOOKING_APPROVAL_SUCCESS_TITLE: BOOKING_SUCCESS_TITLE_SELECTOR,
   BOOKING_ERROR_DIALOG: ".booking-error-dialog, .el-dialog.app-dialog.app-confirm:has(.booking-response-errors), .el-dialog:has-text('Checkout notification'):has-text('Booking error')",
   BACK_TO_TRIP_BUTTON: ".back-to-trip-btn, .app-footer .btn--primary:has-text('Back to trip'), button:has-text('Back to trip')",
   EMAIL_INPUT: ".email-input .el-input__inner",
@@ -199,6 +209,17 @@ class CheckoutPage {
     const messageLocator = this.page.locator(SELECTORS.APPROVAL_SUCCESS_MESSAGE).first();
     await messageLocator.waitFor({ state: 'visible', timeout: 60000 });
     return await messageLocator.innerText();
+  }
+
+  /**
+   * Waits for the pre-booking approval success page and returns its title text
+   * (booking-success.vue preBooking type — expected to read "Sent for Approval").
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async getPreBookingApprovalSuccessTitleText(timeout = 60000) {
+    const titleLocator = this.page.locator(SELECTORS.PRE_BOOKING_APPROVAL_SUCCESS_TITLE).first();
+    await titleLocator.waitFor({ state: 'visible', timeout });
+    return await titleLocator.innerText();
   }
 
   /**

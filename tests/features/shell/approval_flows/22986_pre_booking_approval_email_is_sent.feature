@@ -15,10 +15,8 @@ Feature: 22986 - Pre-booking approval email is sent
   Scenario: Submitting a flight trip for pre-booking approval sends the approval email
     Given I am logged in as "pre@booking.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "lon" to "mad"
+    When I search for a round trip flight from "lon" to "doh"
     And I add the first flight to cart
-    And I handle conflicting quotes if visible
     And I accept Terms & Conditions
-    And I click the proceed to checkout button
-    # TODO: verify the pre-booking approval success message is displayed (collapses the two Testim clicks on ".success-message__title"); implement Checkout.verifyApprovalSuccessMessageDisplayed wrapping CheckoutPage.getApprovalSuccessMessageText / APPROVAL_SUCCESS_MESSAGE
-    Then the pre-booking approval success message should be displayed
+    And I click the send for approval button
+    Then the "Sent For Approval" message should be displayed

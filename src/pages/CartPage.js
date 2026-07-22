@@ -19,6 +19,9 @@ const SELECTORS = {
   TERMS_CHECKBOX: ".quote-terms-checkbox .el-checkbox__inner",
   TERMS_CHECKBOX_INPUT: ".quote-terms-checkbox .el-checkbox__input",
   PROCEED_TO_CHECKOUT_BUTTON: ".btn-container:has-text('Proceed to Checkout')",
+  // Same cart CTA as Proceed to Checkout, but relabelled "Send For Approvals" when the
+  // user's trip requires pre-booking approval (trip-cart.vue: isPreBookingNeeded).
+  SEND_FOR_APPROVAL_BUTTON: ".btn-container:has-text('Send For Approvals')",
   QUOTE_STATUS_LABEL: ".app-label--quote",
   QUOTE_CARD_STATUS_LABEL: '.quote-payment-card .app-label--quote',
   QUOTE_PAYMENT_CARD: '.quote-payment-card',
@@ -1836,6 +1839,25 @@ class CartPage {
   async clickProceedToCheckout() {
     // Click the specific button container that has "Proceed to Checkout" text
     await this.page.locator(SELECTORS.PROCEED_TO_CHECKOUT_BUTTON).click();
+  }
+
+  /**
+   * Waits until the "Send For Approvals" cart button is ready.
+   * Shown in place of "Proceed to Checkout" when the trip requires pre-booking approval.
+   */
+  async waitForSendForApproval() {
+    await this.page.locator(SELECTORS.SEND_FOR_APPROVAL_BUTTON).waitFor({
+      state: 'visible',
+      timeout: 10000
+    });
+  }
+
+  /**
+   * Clicks the "Send For Approvals" cart button.
+   * Uses text-based selector to ensure correct button.
+   */
+  async clickSendForApproval() {
+    await this.page.locator(SELECTORS.SEND_FOR_APPROVAL_BUTTON).click();
   }
 
   /**

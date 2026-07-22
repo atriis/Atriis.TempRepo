@@ -72,6 +72,11 @@ When("I click the proceed to checkout button", async function () {
   await cartPage.clickProceedToCheckout();
 });
 
+When("I click the send for approval button", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
+  logger.info("Clicking the send for approval button in the cart");
+  await Cart.clickSendForApproval(this.page);
+});
+
 When("I hold the trip", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
   logger.info("Holding the trip");
   const scenarioTags = Array.isArray(this.scenarioTags) ? this.scenarioTags : [];
