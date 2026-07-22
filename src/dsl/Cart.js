@@ -7369,6 +7369,36 @@ const Cart = {
   },
 
   /**
+   * Verifies a specific approver is assigned in the open approvals dialog,
+   * then closes the dialog. The dialog must already be open (see
+   * viewApproversInTripOverview).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} approverName - Exact approver name expected in the flow
+   */
+  async verifyApproverAssigned(page, approverName) {
+    if (!page) throw new Error('[Cart.verifyApproverAssigned] "page" is required.');
+    if (typeof approverName !== 'string' || approverName.trim().length === 0) {
+      throw new Error(`[Cart.verifyApproverAssigned] "approverName" must be a non-empty string, got: ${approverName}`);
+    }
+
+    const expected = approverName.trim();
+    logger.debug('[Cart.verifyApproverAssigned] Verifying approver is assigned', { expected });
+    const cartPage = getPageObject(page, CartPage);
+    const approvers = await cartPage.getApproverNames();
+
+    if (!approvers.includes(expected)) {
+      await cartPage.closeApprovalsDialog().catch(() => {});
+      throw new Error(
+        `[Cart.verifyApproverAssigned] Approver "${expected}" is not assigned to the approval flow. ` +
+        `Approvers found: [${approvers.join(', ')}]. Check the approval flow configuration for this trip's traveler.`
+      );
+    }
+
+    await cartPage.closeApprovalsDialog();
+  },
+
+  /**
    * Starts capturing the next /api/v3/quotes?tripId=... GET response.
    * Must be called BEFORE the action that navigates to / refreshes the cart.
    * Returns an unresolved Promise — do NOT await in the calling step.

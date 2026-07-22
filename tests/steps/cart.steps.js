@@ -179,6 +179,11 @@ Then("the trip overview should show {int} approvers", async function (expectedCo
   await Cart.verifyApproverCount(this.page, expectedCount);
 });
 
+Then("the approver {string} should be assigned to the approval flow", async function (approverName) {
+  logger.info("Verifying approver is assigned to the approval flow", { approverName });
+  await Cart.verifyApproverAssigned(this.page, approverName);
+});
+
 When("I click the share quote button", async function () {
   logger.info("Clicking share quote button");
   await Cart.clickShareQuoteAndWaitForSubjectField(this.page);

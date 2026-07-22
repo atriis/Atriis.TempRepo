@@ -2168,21 +2168,14 @@ class CartPage {
   }
 
   /**
-   * Clicks the options (more_vert) button and waits for its dropdown menu to appear.
-   * The options menu contains items like "View approvals", "Cancel trip", etc.
+   * Opens the trip-level options (more_vert) dropdown and waits for its menu.
+   * The menu is HOVER-triggered on desktop (`:trigger="isMobile ? 'click' : 'hover'"`)
+   * and its el-dropdown is briefly disabled while the trip polls the backend, so a
+   * single click silently fails — reuse the proven hover-with-retry opener. The menu
+   * contains "View approvals", "Cancel trip", etc.
    */
   async clickOptionsButton() {
-    const optionsButton = this.page.locator(SELECTORS.OPTIONS_BUTTON);
-    try {
-      await optionsButton.waitFor({ state: 'visible', timeout: 30000 });
-      await optionsButton.click();
-      await this.getVisibleShareMenu().waitFor({ state: 'visible', timeout: 30000 });
-    } catch (err) {
-      throw new Error(
-        `[CartPage.clickOptionsButton] Could not open options dropdown (${SELECTORS.OPTIONS_BUTTON}). ` +
-        `Button may not be visible or trip has no options available. Original: ${err.message}`
-      );
-    }
+    await this.hoverTripActionsDropdownIconWithRetry();
   }
 
   /**
@@ -2216,31 +2209,55 @@ class CartPage {
   }
 
   /**
+   * Waits for the approvals dialog and its first approver name to render, then
+   * returns the approver-name locator. The dialog shows a skeleton while
+   * isLoading=true, so callers must wait for real data before reading it.
+   * @param {string} caller - Calling method name, for error context
+   * @param {number} timeout - Max wait for the first approver name (ms)
+   * @returns {Promise<import('playwright').Locator>}
+   */
+  async waitForApproverNamesReady(caller, timeout) {
+    const dialog = this.page.locator(SELECTORS.APPROVALS_DIALOG);
+    try {
+      await dialog.waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.${caller}] Approvals dialog not visible (${SELECTORS.APPROVALS_DIALOG}). Original: ${err.message}`
+      );
+    }
+    const approverNames = this.page.locator(SELECTORS.APPROVALS_DIALOG_APPROVER_NAME);
+    try {
+      await approverNames.first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.${caller}] No approver names appeared in the approvals dialog after ${timeout}ms (${SELECTORS.APPROVALS_DIALOG_APPROVER_NAME}). ` +
+        `The trip may have no approval flow or data failed to load. Original: ${err.message}`
+      );
+    }
+    return approverNames;
+  }
+
+  /**
    * Counts the approver name elements inside the approvals dialog.
    * Waits for the first approver to appear (dialog has a loading state before data renders).
    * @param {number} [timeout=15000]
    * @returns {Promise<number>}
    */
   async getApproverCount({ timeout = 15000 } = {}) {
-    const dialog = this.page.locator(SELECTORS.APPROVALS_DIALOG);
-    try {
-      await dialog.waitFor({ state: 'visible', timeout: 10000 });
-    } catch (err) {
-      throw new Error(
-        `[CartPage.getApproverCount] Approvals dialog not visible (${SELECTORS.APPROVALS_DIALOG}). Original: ${err.message}`
-      );
-    }
-    // Wait for at least one approver name — the component shows a skeleton while isLoading=true
-    const firstApprover = this.page.locator(SELECTORS.APPROVALS_DIALOG_APPROVER_NAME).first();
-    try {
-      await firstApprover.waitFor({ state: 'visible', timeout });
-    } catch (err) {
-      throw new Error(
-        `[CartPage.getApproverCount] No approver names appeared in the approvals dialog after ${timeout}ms (${SELECTORS.APPROVALS_DIALOG_APPROVER_NAME}). ` +
-        `The trip may have no approval flow or data failed to load. Original: ${err.message}`
-      );
-    }
-    return this.page.locator(SELECTORS.APPROVALS_DIALOG_APPROVER_NAME).count();
+    const approverNames = await this.waitForApproverNamesReady('getApproverCount', timeout);
+    return approverNames.count();
+  }
+
+  /**
+   * Reads the trimmed approver names listed in the open approvals dialog.
+   * Waits for the first approver to render (dialog shows a skeleton while isLoading=true).
+   * @param {number} [timeout=15000]
+   * @returns {Promise<string[]>}
+   */
+  async getApproverNames({ timeout = 15000 } = {}) {
+    const approverNames = await this.waitForApproverNamesReady('getApproverNames', timeout);
+    const names = await approverNames.allInnerTexts();
+    return names.map((name) => name.trim()).filter((name) => name.length > 0);
   }
 
   /**

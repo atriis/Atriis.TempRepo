@@ -180,9 +180,11 @@ class CheckoutPage {
    * Waits until the "Send for approval" button is visible.
    */
   async waitForSendForApprovalButton() {
+    // 30s (not 10s): after a hotel booking finalizes, the Booking details page
+    // needs time to render the approval CTA; 10s failed ~2/3 of live runs.
     await this.page.waitForSelector(
       SELECTORS.SEND_FOR_APPROVAL_BUTTON,
-      { timeout: 10000 },
+      { timeout: 30000 },
     );
   }
 
