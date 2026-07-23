@@ -198,3 +198,12 @@ Then("the more products button should be visible on the homepage", async functio
     'Expected the "more products" (more_horiz) button to be visible on the homepage for a user with more than five products'
   ).toBe(true);
 });
+
+Then("I see the list of trips under my upcoming trips in homepage", async function () {
+  logger.info('Verifying the upcoming-trips list is shown on the homepage');
+  const count = await Homepage.getUpcomingTripsCount(this.page);
+  expect(
+    count,
+    'Expected at least one trip to be listed under the "My upcoming trips" tab on the homepage'
+  ).toBeGreaterThan(0);
+});

@@ -13,6 +13,5 @@ Feature: 65552 - Upcoming trips per persona
   So that I can review the trips relevant to my persona
 
   Scenario: Opening the upcoming trips tab on the homepage
-    Given I am logged in as "NEW@UPCMING.COM"
-    # TODO: implement 'I open the upcoming trips tab' — click the upcoming-trips tab header on the homepage
-    When I open the upcoming trips tab
+    Given I am logged in as "ruimariano@amadeus.com"
+    Then I see the list of trips under my upcoming trips in homepage

@@ -32,6 +32,18 @@ const SELECTORS = {
   // Side-nav "Home Page" link — its icon is the material-symbols "home" glyph (class trips-icon).
   HOME_NAV_LINK:
     '.app-side-nav a:has(.material-symbols-outlined.trips-icon), .app-side-nav a:has(.material-symbols-outlined:text-is("home"))',
+
+  // Homepage trip-monitor panel (home-page.vue): an el-tabs listing the user's trips across
+  // "My upcoming trips", "My bookings" and "Awaiting my approval". Only tabs with trips are shown.
+  // The "My upcoming trips" tab header. el-tabs renders each pane's `name` as the item id, so the
+  // upcoming pane (name "upcoming-trips") is #tab-upcoming-trips — locale-independent and consistent
+  // with the #tab-<name> convention used for product tabs (see isProductTabActive).
+  UPCOMING_TRIPS_TAB: '#tab-upcoming-trips',
+  // A single trip card in the active tab's list (trip-list-home → trip-preview-home). Scoped to
+  // .trip-tabs-container — the DESKTOP trip-monitor layout (mobile uses a tab-less .trips-mobile
+  // stack); this suite runs desktop headless. :visible restricts the count to the active pane, as
+  // el-tabs keeps inactive panes in the DOM but hidden.
+  TRIP_CARD: '.trip-tabs-container .trip-list-home .trip-preview-home:visible',
 };
 
 /**
@@ -285,6 +297,52 @@ class HomePage {
           `visible within ${timeout}ms. Navigation back to the homepage may have failed. Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Selects the "My upcoming trips" tab on the homepage trip-monitor panel, if present. The tab is
+   * only rendered when the account has upcoming trips, so absence is a valid "empty" state, not an
+   * error — returns whether the tab was found (and selected). Clicking is harmless when it is
+   * already the active tab (the default when the account has no trips awaiting approval).
+   * @param {number} [timeout=15000]
+   * @returns {Promise<boolean>} true if the tab was present and selected
+   */
+  async selectUpcomingTripsTab(timeout = 15000) {
+    const tab = this.page.locator(SELECTORS.UPCOMING_TRIPS_TAB).first();
+    try {
+      await tab.waitFor({ state: "visible", timeout });
+    } catch {
+      // Tab not rendered — the account has no upcoming trips. Let the caller treat this as empty.
+      return false;
+    }
+    try {
+      await tab.click({ timeout: 10000 });
+      return true;
+    } catch (err) {
+      throw new Error(
+        `[HomePage.selectUpcomingTripsTab] Found the "My upcoming trips" tab but could not click it ` +
+          `(${SELECTORS.UPCOMING_TRIPS_TAB}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Counts the trip cards currently visible in the active trip-monitor tab. Returns 0 when no card
+   * renders within the timeout (empty list) instead of throwing, so the calling step owns the
+   * empty-vs-populated assertion and can surface its own message. The first card is awaited as a
+   * page-ready check.
+   * @param {number} [timeout=15000]
+   * @returns {Promise<number>}
+   */
+  async getVisibleTripCardCount(timeout = 15000) {
+    const cards = this.page.locator(SELECTORS.TRIP_CARD);
+    try {
+      await cards.first().waitFor({ state: "visible", timeout });
+    } catch {
+      // No card became visible — the active tab's list is empty.
+      return 0;
+    }
+    return cards.count();
   }
 
   /**

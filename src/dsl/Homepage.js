@@ -256,6 +256,37 @@ const Homepage = {
   },
 
   /**
+   * Counts the trips listed under the homepage "My upcoming trips" tab.
+   *
+   * Selects the upcoming-trips tab first (the trip monitor may default to another tab, e.g. when
+   * the account has approvals awaiting), then counts the visible trip cards. The business assertion
+   * (expect at least one trip) is made by the calling step.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>}
+   */
+  async getUpcomingTripsCount(page) {
+    if (!page) throw new Error('[Homepage.getUpcomingTripsCount] page is required');
+    logger.info('Counting trips under the homepage "My upcoming trips" list');
+    const loginPage = getPageObject(page, LoginPage);
+    const homePage = getPageObject(page, HomePage);
+    try {
+      // Cookie banner can re-appear on the post-login homepage and intercept the tab click.
+      await loginPage.acceptCookiesIfPresent(5000);
+      // No upcoming-trips tab means the account has no upcoming trips — an empty list (count 0),
+      // which the calling step asserts against, not a page failure.
+      const tabPresent = await homePage.selectUpcomingTripsTab();
+      if (!tabPresent) return 0;
+      return await homePage.getVisibleTripCardCount();
+    } catch (err) {
+      throw new Error(
+        `[Homepage.getUpcomingTripsCount] Failed to read the upcoming-trips list on the homepage. ` +
+        `The trip-monitor tabs may not have rendered for this user. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Reads the image src from the quick link product card tooltip.
    * @param {import('playwright').Page} page
    * @returns {Promise<string|null>}
