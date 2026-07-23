@@ -17,5 +17,4 @@ Feature: 66531 - Trip opens in a new tab when user has 'Booker' privileges
     When I navigate to the trips page
     And I click active trips tab
     And I click the first trip from the trip list
-    # TODO: assert the trip Overview tab/page is displayed (waitForText "#tab-overview > div" == "Overview") — back with Trips.verifyOverviewTabDisplayed
     Then the trip overview tab should be displayed
