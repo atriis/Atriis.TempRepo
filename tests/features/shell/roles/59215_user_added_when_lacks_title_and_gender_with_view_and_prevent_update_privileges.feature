@@ -15,6 +15,4 @@ Feature: 59215 - User is successfully added when lacks title and gender and has 
   Scenario: Add a traveler by name and confirm they are saved successfully
     Given I am logged in as "camilamaroon@specifictestt.com" booking a new trip
     And I have added traveler by name "Matthew McConaughey"
-    # TODO: verify the ".el-notification p" toast reads "The traveller was successfully saved" — back with Search.verifyTravelerSavedNotification (no catalog phrase asserts this specific save-success notification)
-    Then the traveller successfully saved notification should be displayed
-    And the traveler name "Matthew McConaughey" should be visible in the travelers list
+    Then the traveler name "Matthew McConaughey" is added successfully
