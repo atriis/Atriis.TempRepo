@@ -443,7 +443,7 @@ The test-generator-pipeline will:
 
    > If `state.recording.exists = true`, this check is skipped entirely — the recording already provides full context.
 
-1. Load the step catalog from `c:\DEV\Atriis.Test.Automation\tests\steps\*.steps.js`
+1. Load the step catalog from `C:\dev\github\Atriis.Test.Automation\tests\steps\*.steps.js`
 2. **If `state.recording.exists = true`**: Iterate `state.recording.scenarios` in array order — **each element is exactly one Gherkin scenario**. For each element:
    - Read the file at `element.path` (e.g. `records/{workItemId}_1.js`) — use `element.scenarioId` to build the filename, not the array index
    - Parse the sequence of actions (navigations, clicks, fills, assertions) in order
@@ -648,8 +648,8 @@ Generate a comprehensive report:
 ```
 
 Save report to:
-- `c:\DEV\Atriis.Test.Automation\test-results\{workItemId}-e2e-report.md`
-- `c:\DEV\Atriis.Test.Automation\test-results\` (JSON/XML)
+- `C:\dev\github\Atriis.Test.Automation\test-results\{workItemId}-e2e-report.md`
+- `C:\dev\github\Atriis.Test.Automation\test-results\` (JSON/XML)
 
 **Receives**: `state.report`
 
@@ -747,7 +747,7 @@ On success, also set `state.adoTestCase.created = true`, `testCaseId = adoTcId`,
 This phase posts a structured QA automation summary to the parent work item and attaches screenshots **only to child bugs**. Screenshots are failure evidence and belong on the bug, not the user story. It runs **every time** — even when all tests pass — to provide traceability.
 
 **5.75a. Collect screenshots**
-1. Scan `c:\DEV\Atriis.Test.Automation\test-results\screenshots\` for screenshots captured during test execution
+1. Scan `C:\dev\github\Atriis.Test.Automation\test-results\screenshots\` for screenshots captured during test execution
 2. Match each screenshot to its scenario by filename pattern (Cucumber names screenshots after the scenario)
 3. If no screenshots exist (all scenarios passed without failure captures), skip upload but still post the text summary
 
