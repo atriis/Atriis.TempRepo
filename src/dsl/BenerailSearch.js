@@ -49,18 +49,19 @@ const BenerailSearch = {
     await BenerailSearch.selectBenerailSearch(page);
     await searchPage.selectOneWayTrip();
 
-    // Route selection
+    // Route selection — both fields assert their value committed before returning.
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
 
-    // Calendar flow: select the Nth available date for departure
+    // Calendar flow: explicitly open the departure calendar, then select the Nth available date.
+    await searchPage.clickRailDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
       endIndex: null,
     });
 
-    await searchPage.clickSearchButton();
+    await searchPage.waitAndClickSearchButton();
 
     return { searched: true, routeInput, from, to, departureIndex };
   },
@@ -94,7 +95,13 @@ const BenerailSearch = {
     // Provider + trip type
     await BenerailSearch.selectBenerailSearch(page);
     await searchPage.selectRoundTrip();
+
     await searchPage.fillInFromField(from);
+
+    // Route is confirmed (fillInFromField already asserted the value committed) — now move to the
+    // departure date field. This must be an explicit click: the calendar panel does not open on its
+    // own, it previously opened only as a side effect of Tab shifting focus onto this field.
+    await searchPage.clickRailDepartureDateField();
     await searchPage.clickCalendarNextArrow();
 
     // Calendar flow: select Nth available date for departure
@@ -106,13 +113,19 @@ const BenerailSearch = {
     // Route selection for return
     await searchPage.fillInToField(to);
 
+    // Same as departure: explicitly open the return calendar rather than relying on focus order.
+    // No further month advance here — the return picker already continues from the departure
+    // month (it can't show return dates before the chosen departure date), so re-advancing 3 more
+    // months here pushed the return date ~3 months past departure and produced no availability.
+    await searchPage.clickRailReturnDateField();
+
     // Calendar flow: select Nth available date for return
     await selectDatesByNthAvailable(page, {
       startIndex: returnIndex,
       endIndex: null,
     });
 
-    await searchPage.clickSearchButton();
+    await searchPage.waitAndClickSearchButton();
 
     return {
       searched: true,

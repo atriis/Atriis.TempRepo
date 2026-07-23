@@ -653,6 +653,14 @@ const SELECTORS = {
   RENTAL_PERIOD_TERMS_MODAL: ':has(> :text("Terms & Conditions")), .app-dialog, .el-dialog, .terms-modal, [role="dialog"]',
   TERMS_MODAL_CLOSE_BUTTON: '[aria-label="Close this dialog"], .el-dialog__close, .close-btn, button:has-text("Close")',
 
+  // Rail (EU Rail / Benerail) quote-card Fare Rules dialog — same `.app-dialog` el-dialog used for
+  // Terms & Conditions/Journey Details on the quote card, scoped to the body for content text.
+  RAIL_FARE_RULES_DIALOG_BODY: '.el-dialog.app-dialog .el-dialog__body',
+  // Close button scoped to the same `.el-dialog.app-dialog` — the generic TERMS_MODAL_CLOSE_BUTTON
+  // is unscoped and can resolve to an unrelated dialog's close button elsewhere in the DOM, leaving
+  // this dialog open.
+  RAIL_FARE_RULES_DIALOG_CLOSE_BUTTON: '.el-dialog.app-dialog [aria-label="Close this dialog"], .el-dialog.app-dialog .el-dialog__close, .el-dialog.app-dialog .el-dialog__headerbtn',
+
   // Quote Extras - Attach Files (per-diem-quote-card → extras-collapse → attach-files-extra)
   ATTACH_FILES_VIEW_BTN: '.attach-file-extra .extra__btns .is-clickable',
   // Scoped to the attach-files extra to avoid ambiguity with the trip Related Files pane (#fileUploader appears in multiple upload-file.vue instances)
@@ -5254,6 +5262,56 @@ class CartPage {
     const button = this.page.locator(SELECTORS.CHECK_PRICE_FARE_RULES_BUTTON).first();
     await button.waitFor({ state: 'visible', timeout: 15000 });
     await button.click();
+  }
+
+  /**
+   * Clicks the Fare Rules button for a rail quote-card segment (0 = outbound, 1 = return) in the
+   * trip overview. Works whether the quote is active or cancelled — validates AB#79184, which
+   * removed the cancelled-state disabled attribute on this button.
+   * @param {number} segmentIndex - Zero-based segment/leg index.
+   */
+  async clickRailFareRulesButton(segmentIndex = 0) {
+    if (!Number.isInteger(segmentIndex) || segmentIndex < 0) {
+      throw new Error(`[CartPage.clickRailFareRulesButton] "segmentIndex" must be a non-negative integer, got: ${segmentIndex}`);
+    }
+    const button = this.page.getByRole('button', { name: 'Fare Rules' }).nth(segmentIndex);
+    await button.waitFor({ state: 'visible', timeout: 15000 });
+    await button.click();
+  }
+
+  /**
+   * Reads the text content of the open rail Fare Rules dialog body.
+   * @returns {Promise<string>}
+   */
+  async getRailFareRulesDialogText() {
+    const body = this.page.locator(SELECTORS.RAIL_FARE_RULES_DIALOG_BODY).first();
+    await body.waitFor({ state: 'visible', timeout: 15000 });
+    return body.innerText();
+  }
+
+  /**
+   * Closes the rail Fare Rules dialog and confirms it actually closed. Unlike the generic
+   * closeTermsModal() — whose close-button selector is unscoped and can match an unrelated
+   * dialog's close button elsewhere in the DOM, leaving this one open — this scopes the close
+   * button to this dialog (`.el-dialog.app-dialog`) and waits for its body to detach/hide,
+   * so a silently-failed close surfaces here instead of breaking the next segment's check.
+   */
+  async closeRailFareRulesDialog() {
+    const body = this.page.locator(SELECTORS.RAIL_FARE_RULES_DIALOG_BODY).first();
+    const closeButton = this.page.locator(SELECTORS.RAIL_FARE_RULES_DIALOG_CLOSE_BUTTON).first();
+
+    await closeButton.waitFor({ state: 'visible', timeout: 10000 });
+    await closeButton.click();
+
+    try {
+      await body.waitFor({ state: 'hidden', timeout: 10000 });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.closeRailFareRulesDialog] The Fare Rules dialog (${SELECTORS.RAIL_FARE_RULES_DIALOG_BODY}) ` +
+          `was still visible ${10000}ms after clicking its close button (${SELECTORS.RAIL_FARE_RULES_DIALOG_CLOSE_BUTTON}). ` +
+          `Original: ${error.message}`,
+      );
+    }
   }
 
   /**

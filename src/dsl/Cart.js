@@ -4077,6 +4077,53 @@ const Cart = {
   },
 
   /**
+   * Verifies that a rail quote-card's Fare Rules dialogs remain accessible with correct
+   * information after the quote has been cancelled. Opens each segment's Fare Rules dialog in
+   * turn (0 = outbound, 1 = return) and asserts each contains real travel-conditions content.
+   *
+   * Regression coverage for AB#79184 / ADO #81304: the Fare Rules button used to be disabled
+   * once a quote's status became Cancelled; the fix removed that restriction so fare rules
+   * captured at selection time remain accessible after cancellation.
+   *
+   * Preconditions: the quote must already be cancelled and its trip overview/cart visible.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} segmentCount - Number of rail segments/legs to check (1 = one way, 2 = round trip)
+   * @returns {Promise<{segmentTexts: string[]}>}
+   */
+  async verifyRailFareRulesAccessibleAfterCancellation(page, segmentCount = 2) {
+    if (!page) {
+      throw new Error('[Cart.verifyRailFareRulesAccessibleAfterCancellation] "page" is required.');
+    }
+    if (!Number.isInteger(segmentCount) || segmentCount < 1) {
+      throw new Error(
+        `[Cart.verifyRailFareRulesAccessibleAfterCancellation] "segmentCount" must be a positive integer, got: ${segmentCount}`,
+      );
+    }
+
+    logger.debug('[Cart.verifyRailFareRulesAccessibleAfterCancellation] Checking Fare Rules dialogs on a cancelled rail quote', { segmentCount });
+
+    const cartPage = getPageObject(page, CartPage);
+    const segmentTexts = [];
+
+    for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex++) {
+      await cartPage.clickRailFareRulesButton(segmentIndex);
+      const text = await cartPage.getRailFareRulesDialogText();
+
+      expect(
+        text,
+        `[Cart.verifyRailFareRulesAccessibleAfterCancellation] Fare Rules dialog for segment ${segmentIndex} should contain ` +
+        `"TRAVEL CONDITIONS" after the quote was cancelled, but got: "${text}"`,
+      ).toContain('TRAVEL CONDITIONS');
+
+      segmentTexts.push(text);
+      await cartPage.closeRailFareRulesDialog();
+    }
+
+    return { segmentTexts };
+  },
+
+  /**
    * Opens the More Details drawer and verifies the hotel address contains the expected text.
    * Closes the drawer after verification.
    * @param {import('playwright').Page} page

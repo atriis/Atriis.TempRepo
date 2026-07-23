@@ -77,7 +77,10 @@ const FlightSearch = {
       // single range-calendar path leaves the outbound date empty. Fill each leg on its own.
       await this._selectAdvancedRoundTripDates(page, departureIndex, returnIndex);
     } else {
-      // Basic layout: round-trip auto-opens a single range calendar.
+      // Basic layout: round-trip uses a single range calendar. Must be opened explicitly —
+      // it does not open on its own, and previously opened only as a side effect of Tab
+      // shifting focus onto the departure field after committing the To field.
+      await searchPage.clickDepartureDateField();
       await searchPage.clickCalendarNextArrow();
 
       // Select departure + return in one call
@@ -540,6 +543,7 @@ const FlightSearch = {
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
 
+    await searchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
@@ -613,6 +617,7 @@ const FlightSearch = {
     await searchPage.selectRoundTrip();
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
+    await searchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
@@ -757,6 +762,7 @@ const FlightSearch = {
     await searchPage.selectRoundTrip();
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
+    await searchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
@@ -811,6 +817,7 @@ const FlightSearch = {
     await searchPage.selectRoundTrip();
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
+    await searchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
@@ -1606,6 +1613,7 @@ const FlightSearch = {
     await searchPage.selectRoundTrip();
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
+    await searchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
@@ -1773,6 +1781,7 @@ const FlightSearch = {
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
 
+    await searchPage.clickDepartureDateField();
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,

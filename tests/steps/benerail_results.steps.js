@@ -1,7 +1,7 @@
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
-const { BenerailResults } = require("@dsl");
+const { BenerailResults, Cart } = require("@dsl");
 const logger = require("@utils/logger").child("BenerailResults");
 
 setDefaultTimeout(120000);
@@ -48,6 +48,11 @@ Then("the fare rules should be visible in the Benerail share quote email", async
 
 Then("the fare rules should be visible in the Benerail share itinerary email", async function () {
   throw new Error("TODO: implement 'the fare rules should be visible in the Benerail share itinerary email' — share itinerary, open email preview, assert fare rules content is included (see test 59289)");
+});
+
+Then("the fare rules should remain accessible with correct information after the Benerail quote is cancelled", async function () {
+  logger.info("Verifying Benerail fare rules remain accessible with correct information after cancellation");
+  await Cart.verifyRailFareRulesAccessibleAfterCancellation(this.page, 2);
 });
 
 // --- Policy / OOP ---

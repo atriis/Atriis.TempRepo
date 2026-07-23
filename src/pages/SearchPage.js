@@ -153,6 +153,13 @@ const SELECTORS = {
   RETURN_PLACEHOLDER: "input[placeholder*='Return']",
   PICK_UP_DATE_INPUT: "[placeholder='Pick-up Date']", //Same locator used for Cars and GroundScope/Transferz
 
+  // Rail (eu-rail-search-inputs.vue) date fields, scoped to the Rail form's own root class.
+  // DEPARTURE_PLACEHOLDER/RETURN_PLACEHOLDER below are unscoped and can resolve to another
+  // product's hidden field (e.g. Flight's "Depart Date") depending on DOM order, so Rail flows
+  // must use these instead.
+  RAIL_DEPARTURE_DATE_INPUT: ".eu-rail-search-inputs [placeholder='Departure']",
+  RAIL_RETURN_DATE_INPUT: ".eu-rail-search-inputs [placeholder='Return']",
+
   // Traveler slot validation state (.is-danger applied when search is attempted with an empty slot)
   TRAVELER_SLOT_DANGER: '.trip-traveler-tag.is-danger',
 };
@@ -590,35 +597,33 @@ class SearchPage {
   }
 
   /**
- * Fills the "From" field.
- *
- * Uses a shared helper that supports multiple supplier UIs by targeting the
- * first available input that matches the "From" placeholder selector.
- * After typing, it commits the value by pressing TAB and waits until the field
- * loses focus to ensure the UI applied the input (blur/validation/autocomplete).
- *
- * @param {string} from - Origin text to type into the "From" field
- */
+   * Fills the "From" field.
+   *
+   * Uses a shared helper that supports multiple supplier UIs by targeting the
+   * first available input that matches the "From" placeholder selector.
+   * After typing, it commits the value by clicking the autocomplete suggestion,
+   * then confirms the input actually holds a value before returning.
+   *
+   * @param {string} from - Origin text to type into the "From" field
+   */
   async fillInFromField(from) {
-    const fromInput = this.page
-      .locator(SELECTORS.FROM_PLACEHOLDER)
-      .first();
-
-    await typeIntoNthAvailableInput(
+    const usedSelector = await typeIntoNthAvailableInput(
       this.page,
       from,
       SELECTORS.FROM_PLACEHOLDER,
       0,
     );
+    // Resolve the confirmation check against the exact selector typeIntoNthAvailableInput used —
+    // FROM_PLACEHOLDER has multiple fallback patterns, and passing the whole array to .locator()
+    // (as before) coerces it into a combined "sel1,sel2,sel3" selector matched in DOM order, which
+    // can resolve to a different (e.g. hidden Flight-tab) input than the one actually typed into.
+    const fromInput = this.page.locator(usedSelector).nth(0);
 
     const suggestions = this.page
       .locator(SELECTORS.AUTOCOMPLETE_LIST)
       .first();
 
-    // Wait until autocomplete suggestions are shown before committing.
-    // Mirrors fillInToField: pressing TAB before the airport dropdown renders
-    // would blur the field with no suggestion selected, so the origin never
-    // commits and the From field reports "This field is required".
+    // Wait until autocomplete suggestions are shown before selecting one.
     try {
       await suggestions.waitFor({ state: "visible", timeout: 15000 });
     } catch (error) {
@@ -629,34 +634,35 @@ class SearchPage {
       );
     }
 
-    // Commit the value (blur the field, triggers autocomplete selection)
-    await pressTab(this.page);
+    // Click the suggestion to commit it. Tab only blurs the field — el-autocomplete requires the
+    // suggestion to be clicked (or arrowed-to + Enter) to actually register a selection, so a Tab-only
+    // blur can leave the field empty/uncommitted while looking like it succeeded.
+    await suggestions.click();
 
-    // Small wait for UI to process the blur event and autocomplete selection
-    await this.page.waitForTimeout(100);
+    // Confirm the selection actually committed before moving on — an uncommitted From field surfaces
+    // here instead of as a confusing timeout/page-closure later in the calendar or search-button step.
+    await this.assertFieldValueCommitted(fromInput, "SearchPage.fillInFromField", "From");
   }
 
   /**
- * Fills the "To" field and confirms the first autocomplete suggestion.
- *
- * The method types into the "To" input, waits for the autocomplete list
- * to appear, and commits the first suggestion by pressing TAB.
- * It then waits until the field loses focus, ensuring the selection
- * has been applied by the UI before continuing.
- *
- * @param {string} to - Destination text to type into the "To" field
- */
+   * Fills the "To" field and confirms the first autocomplete suggestion.
+   *
+   * The method types into the "To" input, waits for the autocomplete list
+   * to appear, and commits the first suggestion by clicking it. It then
+   * confirms the input actually holds a value before continuing.
+   *
+   * @param {string} to - Destination text to type into the "To" field
+   */
   async fillInToField(to) {
-    const toInput = this.page
-      .locator(SELECTORS.TO_PLACEHOLDER)
-      .first();
-
-    await typeIntoNthAvailableInput(
+    const usedSelector = await typeIntoNthAvailableInput(
       this.page,
       to,
       SELECTORS.TO_PLACEHOLDER,
       0,
     );
+    // See fillInFromField for why this must use the selector typeIntoNthAvailableInput actually used
+    // rather than the raw TO_PLACEHOLDER array.
+    const toInput = this.page.locator(usedSelector).nth(0);
 
     const suggestions = this.page
       .locator(SELECTORS.AUTOCOMPLETE_LIST)
@@ -665,11 +671,35 @@ class SearchPage {
     // Wait until autocomplete suggestions are shown
     await suggestions.waitFor({ state: "visible" });
 
-    // Confirm first suggestion (triggers blur + selection)
-    await pressTab(this.page);
+    // Click the suggestion to commit it — see fillInFromField for why Tab alone is unreliable here.
+    await suggestions.click();
 
-    // Small wait for UI to process the blur event and autocomplete selection
-    await this.page.waitForTimeout(100);
+    // Confirm the selection actually committed before moving on.
+    await this.assertFieldValueCommitted(toInput, "SearchPage.fillInToField", "To");
+  }
+
+  /**
+   * Confirms an airport-autocomplete field actually committed a value after a suggestion was
+   * clicked, before the caller moves on to calendar/date selection. el-autocomplete resets the
+   * input to empty if a selection doesn't register, so checking here surfaces a broken commit
+   * immediately instead of as an unrelated timeout further down the search flow.
+   * @param {import('playwright').Locator} inputLocator
+   * @param {string} caller - Calling method name, used in the thrown error message
+   * @param {string} label - Human-readable field label ("From"/"To"), used in the thrown error message
+   */
+  async assertFieldValueCommitted(inputLocator, caller, label) {
+    try {
+      await this.page.waitForFunction(
+        (el) => !!el && el.value.trim().length > 0,
+        await inputLocator.elementHandle(),
+        { timeout: 5000 },
+      );
+    } catch (error) {
+      throw new Error(
+        `[${caller}] The ${label} field is empty after clicking the autocomplete suggestion — the ` +
+          `route selection did not commit. Original: ${error.message}`,
+      );
+    }
   }
 
   /**
@@ -836,6 +866,31 @@ class SearchPage {
 
     // Wait until the date picker panel is visible. Scope to .first() so a still-visible
     // sibling popper (e.g. the departure panel closing) does not trip strict mode.
+    await this.getDatePickerPanel().first().waitFor({ state: "visible" });
+  }
+
+  /**
+   * Opens the Rail (EU Rail) departure date calendar.
+   *
+   * Scoped to `.eu-rail-search-inputs` — the unscoped DEPARTURE_PLACEHOLDER selector used by
+   * clickDepartureDateField() can resolve to another product's hidden field (e.g. Flight's
+   * "Depart Date") depending on DOM order, so Rail flows must click this scoped field instead.
+   */
+  async clickRailDepartureDateField() {
+    const field = this.page.locator(SELECTORS.RAIL_DEPARTURE_DATE_INPUT).first();
+    await field.waitFor({ state: "visible", timeout: 10000 });
+    await field.click();
+    await this.getDatePickerPanel().first().waitFor({ state: "visible" });
+  }
+
+  /**
+   * Opens the Rail (EU Rail) return date calendar. See clickRailDepartureDateField for why this
+   * must be scoped to `.eu-rail-search-inputs` rather than the unscoped RETURN_PLACEHOLDER.
+   */
+  async clickRailReturnDateField() {
+    const field = this.page.locator(SELECTORS.RAIL_RETURN_DATE_INPUT).first();
+    await field.waitFor({ state: "visible", timeout: 10000 });
+    await field.click();
     await this.getDatePickerPanel().first().waitFor({ state: "visible" });
   }
 
