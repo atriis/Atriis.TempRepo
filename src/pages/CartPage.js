@@ -668,6 +668,8 @@ const SELECTORS = {
   RELATED_FILES_FILE_NAME: '#pane-relatedFiles .file-item p',
   // Scoped to the Related Files pane to avoid ambiguity with ATTACH_FILES_UPLOAD_INPUT (#fileUploader appears in multiple upload-file.vue instances)
   RELATED_FILES_UPLOAD_INPUT: '#pane-relatedFiles #fileUploader',
+  // "Include in itinerary email" checkbox label — renders per uploaded file inside the Related Files pane
+  RELATED_FILES_ITINERARY_EMAIL_LABEL: "#pane-relatedFiles .el-checkbox__label",
 };
 
 class CartPage {
@@ -6897,6 +6899,19 @@ class CartPage {
         `[CartPage.clickRelatedFileByName] Could not click the related file link for "${fileName}" within ${timeout}ms ` +
         `(selector: ${SELECTORS.RELATED_FILES_FILE_NAME} with text "${fileName}"). ` +
         `The file may not be visible in the list or the name does not match exactly. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  async waitForIncludeInItineraryEmailVisible(timeout = 15000) {
+    try {
+      await this.page.locator(SELECTORS.RELATED_FILES_ITINERARY_EMAIL_LABEL).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForIncludeInItineraryEmailVisible] The "include in itinerary email" checkbox label was not visible ` +
+        `within ${timeout}ms (selector: ${SELECTORS.RELATED_FILES_ITINERARY_EMAIL_LABEL}). ` +
+        `Note this checkbox only renders next to an uploaded file, so a file must be present in the Related Files pane. ` +
         `Original: ${err.message}`
       );
     }

@@ -2593,6 +2593,16 @@ Then("the file {string} should be visible in the quote extras", async function (
 
 // ===== TRIP RELATED FILES =====
 
+When("I open the trip related files tab", async function () {
+  logger.info("Opening the trip related files tab");
+  await Cart.openRelatedFilesTab(this.page);
+});
+
+Then("the include in itinerary email option should be visible in the trip related files", async function () {
+  logger.info("Verifying the include in itinerary email option is visible");
+  await Cart.verifyIncludeInItineraryEmailOptionVisible(this.page);
+});
+
 When("I upload the file {string} to the trip related files", async function (fileName) {
   const path = require("path");
   const filePath = path.resolve(__dirname, "../../src/data/fixtures", fileName);

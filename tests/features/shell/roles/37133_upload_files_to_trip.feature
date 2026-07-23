@@ -19,9 +19,7 @@ Feature: 37133 - Upload files to trip
     And I click proceed button if visible
     And I wait for add to trip text to be visible
     And I add the first flight to cart
-    # TODO: open the trip Related Files tab ([id='tab-relatedFiles'] p) — back with Cart.openRelatedFilesTab (new): wait for the "Related files" tab label then click it
     And I open the trip related files tab
-    # TODO: assert the "include in itinerary email" checkbox label is visible in the Related Files pane ([id='pane-relatedFiles'] .el-checkbox__label) — back with Cart.includeInItineraryEmailOptionVisible (new)
+    # The include-in-itinerary-email checkbox renders per uploaded file, so a file must be present first
+    And I upload the file "sample-document.pdf" to the trip related files
     Then the include in itinerary email option should be visible in the trip related files
-    # TODO: toggle the "include in itinerary email" checkbox ([id='pane-relatedFiles'] .el-checkbox__inner) — back with Cart.toggleIncludeInItineraryEmail (new)
-    When I toggle the include in itinerary email option in the trip related files

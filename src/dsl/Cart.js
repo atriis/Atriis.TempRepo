@@ -7307,6 +7307,47 @@ const Cart = {
     return { verified: true, fileName };
   },
 
+  async openRelatedFilesTab(page) {
+    if (!page) {
+      throw new Error('[Cart.openRelatedFilesTab] "page" is required.');
+    }
+
+    logger.info("Opening the trip Related Files tab");
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickRelatedFilesTab();
+    } catch (err) {
+      throw new Error(
+        `[Cart.openRelatedFilesTab] Failed to open the Related Files tab — ` +
+          `the tab may not be visible on this cart page (the user may lack the upload-files-to-trip privilege). ` +
+          `Original: ${err.message}`,
+      );
+    }
+
+    return { opened: true };
+  },
+
+  async verifyIncludeInItineraryEmailOptionVisible(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyIncludeInItineraryEmailOptionVisible] "page" is required.');
+    }
+
+    logger.debug("[Cart.verifyIncludeInItineraryEmailOptionVisible] Verifying the include-in-itinerary-email option is visible");
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.waitForIncludeInItineraryEmailVisible();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyIncludeInItineraryEmailOptionVisible] The "include in itinerary email" option is not visible in the ` +
+          `Related Files pane. This checkbox only renders next to an uploaded file. Original: ${err.message}`,
+      );
+    }
+
+    return { visible: true };
+  },
+
   // ===== QUOTE EXTRAS - ATTACH FILES (file attached to a quote card, not the trip-level Related Files tab) =====
 
   async uploadQuoteExtrasFile(page, filePath) {
