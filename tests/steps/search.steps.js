@@ -171,6 +171,11 @@ When("I open the add guest traveler form", async function () {
   await Search.openAddGuestTravelerForm(this.page);
 });
 
+Then("the only available guest traveller type should be {string}", async function (expectedType) {
+  logger.info("Verifying the guest form offers only one traveller type", { expectedType });
+  await Search.verifyOnlyGuestPassengerType(this.page, expectedType);
+});
+
 When("I open the date of birth picker for the guest traveler", async function () {
   logger.info("Opening DOB picker in guest traveler form");
   await Search.openGuestDobPicker(this.page);

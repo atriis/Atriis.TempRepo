@@ -15,5 +15,4 @@ Feature: 27010 - Only "Adult" is displayed as traveller type
   Scenario: Guest traveler form exposes only Adult as the traveller type
     Given I am logged in as "olgay@amsalem.com" booking a new trip
     When I open the add guest traveler form
-    # TODO: open the guest form traveller-type dropdown and assert it offers exactly one option, "Adult (Ages 18+)" — back with Search.verifyOnlyGuestPassengerType (open SELECTORS.TRAVELER_TYPE_SELECT, count visible SELECTORS.TRAVELER_TYPE_OPTION items === 1 and that its label contains the given text)
     Then the only available guest traveller type should be "Adult (Ages 18+)"

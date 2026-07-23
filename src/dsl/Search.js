@@ -685,6 +685,27 @@ const Search = {
   },
 
   /**
+   * Verifies the open guest form offers exactly one traveller type matching the expected label.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedType - Expected sole option label (partial match, e.g. "Adult (Ages 18+)")
+   */
+  async verifyOnlyGuestPassengerType(page, expectedType) {
+    if (!page) throw new Error('[Search.verifyOnlyGuestPassengerType] "page" is required.');
+    if (!expectedType || typeof expectedType !== 'string') {
+      throw new Error(`[Search.verifyOnlyGuestPassengerType] "expectedType" must be a non-empty string, got: ${typeof expectedType}`);
+    }
+
+    logger.info('[Search.verifyOnlyGuestPassengerType] Verifying the guest form offers only one traveller type', { expectedType });
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.verifyOnlyGuestPassengerType(expectedType);
+    } catch (err) {
+      throw new Error(`[Search.verifyOnlyGuestPassengerType] ${err.message}`);
+    }
+  },
+
+  /**
    * Fills the guest first name and last name in the open guest form.
    * @param {import('playwright').Page} page
    * @param {string} firstName

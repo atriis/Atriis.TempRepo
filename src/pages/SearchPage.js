@@ -1599,6 +1599,59 @@ class SearchPage {
   }
 
   /**
+   * Verifies the guest traveler-type select offers exactly one option and that its label
+   * contains the expected type. Opens the app-select, snapshots every rendered option's
+   * visibility + text in one pass, then asserts exactly one VISIBLE option remains and it
+   * matches. Used for role-restricted users who may only add adults.
+   * @param {string} expectedType - Expected sole option label (partial match, e.g. "Adult (Ages 18+)")
+   */
+  async verifyOnlyGuestPassengerType(expectedType) {
+    try {
+      const select = this.page.locator(SELECTORS.TRAVELER_TYPE_SELECT).first();
+      await select.waitFor({ state: 'visible', timeout: 10000 });
+      await select.click({ timeout: 10000 });
+
+      const options = this.page.locator(SELECTORS.TRAVELER_TYPE_OPTION);
+      await options.first().waitFor({ state: 'visible', timeout: 10000 });
+
+      // Read visibility + label of every rendered option in one snapshot — the popper can hold
+      // responsive/hidden duplicates, so filter to the visible ones before counting.
+      const visibleLabels = (
+        await options.evaluateAll((nodes) =>
+          nodes.map((node) => {
+            const style = window.getComputedStyle(node);
+            const visible =
+              style.display !== 'none' &&
+              style.visibility !== 'hidden' &&
+              node.offsetParent !== null;
+            return { visible, text: (node.textContent || '').replace(/\s+/g, ' ').trim() };
+          })
+        )
+      )
+        .filter((o) => o.visible)
+        .map((o) => o.text);
+
+      if (visibleLabels.length !== 1) {
+        throw new Error(
+          `Expected exactly 1 available guest traveller type, but found ${visibleLabels.length}: ` +
+          `[${visibleLabels.join(', ')}]. The role should restrict the guest form to "Adult" only.`
+        );
+      }
+      if (!visibleLabels[0].includes(expectedType)) {
+        throw new Error(
+          `The sole guest traveller type is "${visibleLabels[0]}", expected it to contain "${expectedType}".`
+        );
+      }
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.verifyOnlyGuestPassengerType] Could not verify the guest traveller type is only "${expectedType}" ` +
+        `(select: ${SELECTORS.TRAVELER_TYPE_SELECT}, option: ${SELECTORS.TRAVELER_TYPE_OPTION}). ` +
+        `The add guest form may not be open. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
    * Clicks the guest email field. After the date of birth is filled, the DOB calendar
    * stays open and overlays the centre of the email input, so the click targets the field's
    * left edge (outside the calendar). This real outside-click dismisses the date picker and
