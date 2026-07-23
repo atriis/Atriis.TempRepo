@@ -85,6 +85,10 @@ const SELECTORS = {
   // Edit traveler dialog — autocomplete input for searching traveler
   EDIT_TRAVELER_NAME_FIELD: ".edit-traveler [placeholder='Search by name, user group, username or email']",
   EDIT_TRAVELER_OPTION: '.user-autocomplete-popper li',
+  // Traveler autocomplete result rows. The el-autocomplete has NO "no data" element — when a typed
+  // name matches no bookable user, the popper simply renders no result rows (see user-autocomplete.vue).
+  // :visible so a stale hidden popper is never matched.
+  TRAVELER_AUTOCOMPLETE_RESULT: '.user-autocomplete-popper:visible .user-autocomplete-result',
 
   // Guest form — copy settings from users group
   COPY_SETTINGS_USERS_GROUP_RADIO: ".copy-settings-container .el-radio:nth-child(2) .el-radio__inner",
@@ -1646,6 +1650,50 @@ class SearchPage {
         `[SearchPage.getPassengerTypeTagText] Passenger-type tag not visible (${SELECTORS.PASSENGER_TYPE_TAG_TEXT}). ` +
         `Expected the added guest to show a passenger-type tag. Original: ${err.message}`
       );
+    }
+  }
+
+  /**
+   * Waits for any open add-traveller dialog to finish closing. After selecting a traveller the
+   * dialog auto-closes with an animation; opening a fresh dialog while it is still animating out
+   * races the shared close helper (it catches the dialog :visible then the header button detaches
+   * mid-close). Settling first makes the next open clean.
+   * @param {number} [timeout=10000]
+   */
+  async waitForEditTravelerModalHidden(timeout = 10000) {
+    await this.page
+      .locator(SELECTORS.EDIT_TRAVELER_MODAL)
+      .waitFor({ state: 'hidden', timeout })
+      .catch(() => {});
+  }
+
+  /**
+   * Returns whether a traveler matching `name` is offered in the add-traveller autocomplete.
+   *
+   * The autocomplete debounces (~300ms) and renders no "no results" element, so absence is the
+   * signal: type the name first (via fillInTravelerName), then call this. It waits up to `timeout`
+   * for a result row containing the name to appear — returning false when none does within that
+   * window (the traveller is not available to add).
+   *
+   * @param {string} name - Traveler name typed into the autocomplete
+   * @param {number} [timeout=4000] - Window allowed for a matching result to surface
+   * @returns {Promise<boolean>}
+   */
+  async hasVisibleTravelerOption(name, timeout = 4000) {
+    if (!name || typeof name !== 'string') {
+      throw new Error(
+        `[SearchPage.hasVisibleTravelerOption] "name" must be a non-empty string, got: ${typeof name}`
+      );
+    }
+    const option = this.page
+      .locator(SELECTORS.TRAVELER_AUTOCOMPLETE_RESULT)
+      .filter({ hasText: name })
+      .first();
+    try {
+      await option.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
     }
   }
 

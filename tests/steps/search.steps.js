@@ -26,6 +26,15 @@ When("I add a traveler by name {string} from the search autocomplete", async fun
   await Search.selectTravelerFromAutocomplete(this.page, name);
 });
 
+Then("the traveler {string} should not be available to add", async function (travelerName) {
+  logger.info("Verifying traveler is not available to add", { travelerName });
+  const available = await Search.isTravelerAvailableToAdd(this.page, travelerName);
+  expect(
+    available,
+    `Expected traveler "${travelerName}" to NOT be available to add (outside the booker's permitted user group)`
+  ).toBe(false);
+});
+
 Given("I have added traveler by name {string}", async function (travelerName) {
   logger.info("Adding traveler by name", { travelerName });
   const result = await Search.addTravelerByName(this.page, travelerName);

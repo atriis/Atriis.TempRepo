@@ -137,3 +137,40 @@ Then("the default product picture should be displayed on the quick link card", a
     `Quick link card should display the default inline SVG (data:image/svg+xml) when no external image is configured. Got: "${src}"`
   ).toMatch(/^data:image\/svg\+xml/);
 });
+
+Then("the {string} product should be visible on the homepage", async function (productName) {
+  logger.info("Verifying product is visible on the homepage", { productName });
+  const visible = await Homepage.isProductVisibleOnHomepage(this.page, productName);
+  expect(
+    visible,
+    `Expected the "${productName}" product tile to be visible on the homepage product carousel`
+  ).toBe(true);
+});
+
+When("I open the {string} product from the homepage", async function (productName) {
+  logger.info("Opening product from the homepage", { productName });
+  await Homepage.openProductFromHomepage(this.page, productName);
+});
+
+Then("the {string} search page should be displayed", async function (productName) {
+  logger.info("Verifying product search page is displayed", { productName });
+  const displayed = await Homepage.isSearchPageDisplayed(this.page, productName);
+  expect(
+    displayed,
+    `Expected the "${productName}" search page to be displayed after opening the product from the homepage`
+  ).toBe(true);
+});
+
+When("I go back to the homepage", async function () {
+  logger.info("Navigating back to the homepage");
+  await Homepage.navigateBackToHomepage(this.page);
+});
+
+Then("the more products button should be visible on the homepage", async function () {
+  logger.info("Verifying the more products button is visible on the homepage");
+  const visible = await Homepage.isMoreProductsButtonVisible(this.page);
+  expect(
+    visible,
+    'Expected the "more products" (more_horiz) button to be visible on the homepage for a user with more than five products'
+  ).toBe(true);
+});

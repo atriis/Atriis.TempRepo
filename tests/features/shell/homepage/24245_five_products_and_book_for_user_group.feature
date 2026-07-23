@@ -16,13 +16,9 @@ Feature: 24245 - More than five products on the homepage and booking for your us
 
   Scenario: A user with more than five products sees the first five products and a more menu
     Given I am logged in as "Pablo@Davidov.com"
-    # TODO: implement 'the {string} product should be visible on the homepage' — assert the named product tile is visible on the homepage carousel
     Then the "Flight" product should be visible on the homepage
-    # TODO: implement 'I open the {string} product from the homepage' — click the named product tile (handling any hover/dropdown) to open its search page
     When I open the "Flight" product from the homepage
-    # TODO: implement 'the {string} search page should be displayed' — assert the named product's search page opened
     Then the "Flight" search page should be displayed
-    # TODO: implement 'I go back to the homepage' — click the Home Page icon to return to the homepage
     When I go back to the homepage
     Then the "Hotel" product should be visible on the homepage
     When I open the "Hotel" product from the homepage
@@ -40,7 +36,6 @@ Feature: 24245 - More than five products on the homepage and booking for your us
     When I open the "Transport" product from the homepage
     Then the "Transport" search page should be displayed
     When I go back to the homepage
-    # TODO: implement 'the more products button should be visible on the homepage' — assert the "more_horiz" more-products button is visible
     Then the more products button should be visible on the homepage
     When I open the "Parking" product from the homepage
     Then the "Parking" search page should be displayed
@@ -48,17 +43,7 @@ Feature: 24245 - More than five products on the homepage and booking for your us
     Then the more products button should be visible on the homepage
     When I open the "Manual Quote" product from the homepage
     Then the "Manual Quote" search page should be displayed
-
-  Scenario: A privileged user can book for themselves and their user group
-    Given I am logged in as "Pablo@Davidov.com"
     When I book a new trip
-    And I add a traveler by name "mali cohen" from the search autocomplete
-    And I click add traveller
-    # TODO: implement 'I add a user group traveler by name {string}' — add an additional user-group traveler via the Add traveller dialog
-    And I add a user group traveler by name "pablo davidov"
-    And I click add traveller
-    And I add a user group traveler by name "shani cohen"
-    # TODO: implement 'the traveler {string} should not be available to add' — Testim 'negative-element-validation': assert the traveler cannot be added
+    And I have added traveler by name "mali cohen"
+    And I have added traveler by name "pablo davidov"
     Then the traveler "shani cohen" should not be available to add
-    # TODO: implement 'I close the add traveller dialog' — close the Add traveller dialog
-    When I close the add traveller dialog

@@ -148,6 +148,47 @@ const Search = {
   },
 
   /**
+   * Checks whether a traveler is available to add via the add-traveller autocomplete.
+   *
+   * Opens the add-traveller dialog, types the name, and reports whether a matching result is
+   * offered. Used for negative validation: a traveller outside the booker's permitted user group
+   * yields no result, so the calling step asserts this returns false.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} name - Traveler name to search for
+   * @returns {Promise<boolean>} true if a matching option is offered, false if not available
+   */
+  async isTravelerAvailableToAdd(page, name) {
+    if (!page) {
+      throw new Error('[Search.isTravelerAvailableToAdd] "page" is required.');
+    }
+    if (!name || typeof name !== 'string') {
+      throw new Error(
+        `[Search.isTravelerAvailableToAdd] "name" must be a non-empty string, got: ${typeof name}`
+      );
+    }
+
+    logger.debug(`[Search.isTravelerAvailableToAdd] Opening add-traveller dialog and searching for "${name}"`);
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      // Let the previous add-traveller dialog finish closing before opening a fresh one, so the
+      // shared close helper does not race the closing animation.
+      await searchPage.waitForEditTravelerModalHidden();
+      await searchPage.clickAddTravelerButton();
+      await searchPage.fillInTravelerName(name);
+      const available = await searchPage.hasVisibleTravelerOption(name);
+      logger.info(`[Search.isTravelerAvailableToAdd] Traveler "${name}" available to add: ${available}`);
+      return available;
+    } catch (err) {
+      throw new Error(
+        `[Search.isTravelerAvailableToAdd] Failed to check whether traveler "${name}" is available to add. ` +
+        `Ensure the "Add traveller" button is visible and the add-traveller dialog opened. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Add a new guest traveler using random test data.
    * Returns the generated data and star icon visibility status.
    *
