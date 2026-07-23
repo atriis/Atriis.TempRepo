@@ -92,3 +92,6 @@ allure-report/
 
 # Claude AI
 .claude/
+
+# Records
+records/

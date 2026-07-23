@@ -12,5 +12,6 @@ module.exports = defineConfig({
     viewport: ACTIVE_VIEWPORT,
     screen: ACTIVE_VIEWPORT,
     ignoreHTTPSErrors: true,
+    testIdAttribute: 'data-testid',
   },
 });
