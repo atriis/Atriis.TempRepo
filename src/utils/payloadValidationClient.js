@@ -382,7 +382,13 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
       }
     }
 
-    const entries = Array.isArray(rawEntries) ? rawEntries : [];
+    const entries = Array.isArray(rawEntries)
+      ? rawEntries
+      : Array.isArray(rawEntries?.entries)
+        ? rawEntries.entries
+        : Array.isArray(rawEntries?.Entries)
+          ? rawEntries.Entries
+          : [];
     const queryEntriesResult = [];
     for (const rawEntry of entries) {
       const entry = normalizeEntry(rawEntry, tripIdString);

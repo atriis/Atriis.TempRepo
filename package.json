@@ -4,6 +4,7 @@
   "description": "Playwright end-to-end automation framework",
   "scripts": {
     "env:sync": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/sync-env-from-1password.ps1",
+    "payload:check": "node scripts/check-payload-api.js",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
