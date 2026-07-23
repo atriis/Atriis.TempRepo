@@ -72,6 +72,71 @@ const Administration = {
   },
 
   /**
+   * Verifies that a named administration section is visible in the admin left menu.
+   * Throws with context if the section is not visible — e.g. the user's role does not grant it.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} sectionName - The section name (e.g. "Users", "Point of Interest")
+   */
+  async verifyAdminSectionVisible(adminPage, sectionName) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyAdminSectionVisible] "adminPage" is required.');
+    }
+    if (!sectionName || typeof sectionName !== 'string') {
+      throw new Error(
+        `[Administration.verifyAdminSectionVisible] "sectionName" must be a non-empty string, got: ${typeof sectionName} (${JSON.stringify(sectionName)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyAdminSectionVisible] Verifying admin section "${sectionName}" is visible`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const visible = await page.isAdminSectionVisible(sectionName);
+
+    if (!visible) {
+      throw new Error(
+        `[Administration.verifyAdminSectionVisible] The administration section "${sectionName}" is not visible in ` +
+        `the admin menu (selector [title='${sectionName}']). The logged-in user's role may not grant access to it.`
+      );
+    }
+
+    logger.info(`[Administration.verifyAdminSectionVisible] Admin section "${sectionName}" is visible`);
+  },
+
+  /**
+   * Verifies that exactly the expected number of administration sections are displayed in the admin
+   * left menu. Used to assert a limited-admin role sees only its permitted sections and no more.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {number} expectedCount - The exact number of sections that should be visible
+   */
+  async verifyAdminSectionCount(adminPage, expectedCount) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyAdminSectionCount] "adminPage" is required.');
+    }
+    if (!Number.isInteger(expectedCount) || expectedCount < 0) {
+      throw new Error(
+        `[Administration.verifyAdminSectionCount] "expectedCount" must be a non-negative integer, got: ${typeof expectedCount} (${JSON.stringify(expectedCount)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyAdminSectionCount] Verifying exactly ${expectedCount} admin sections are displayed`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const actualCount = await page.countAdminSections();
+
+    if (actualCount !== expectedCount) {
+      throw new Error(
+        `[Administration.verifyAdminSectionCount] Expected exactly ${expectedCount} administration section(s) to be ` +
+        `displayed for this role, but found ${actualCount}. Either the role's permitted sections changed, or the ` +
+        `section-menu selector (AdministrationPage.ADMIN_SECTION_MENU_ITEM) needs adjustment against the live admin DOM.`
+      );
+    }
+
+    logger.info(`[Administration.verifyAdminSectionCount] Confirmed ${actualCount} admin sections displayed`);
+  },
+
+  /**
    * Searches for a user in the administration Users list and opens their record.
    *
    * @param {import('playwright').Page} adminPage - The administration page

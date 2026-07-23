@@ -14,29 +14,22 @@ Feature: 22924 - Mandatory non-editable dynamic field, limited admin, and start 
 
   Scenario: A user with two products or less sees the "Start New Trip" button on the homepage
     Given I am logged in as "dina@Testimcorpnl.com"
-    # TODO: implement 'the start new trip button should be visible on the homepage' — assert the ".imt-btn" Start New Trip button is visible for low-product users
     Then the start new trip button should be visible on the homepage
-
-  Scenario: Cannot proceed when a mandatory, empty and non-editable dynamic field is on search
-    Given I am logged in as "dina@Testimcorpnl.com"
-    # TODO: implement 'I click the start new trip button' — click the ".imt-btn" Start New Trip button on the homepage
-    When I click the start new trip button
-    Then the search title should contain "Book and stay at your hotel"
-    Given I have added myself as the traveler
-    When I search for a hotel in "London" for 1 night
+    And I book a new trip
+    And I have added myself as the traveler
+    When I initiate a hotel search in "London" for 1 night
     Then the message "This field is mandatory and blocked from editing. Please contact your administrator for assistance" is displayed in the pop up reference field
-    # TODO: implement 'I select the mandatory reference field option in the popup' — open the collapse section and select the option in the reference fields popup
     When I select the mandatory reference field option in the popup
     And I click proceed on the reference fields popup
+    Then the message "This field is mandatory and blocked from editing. Please contact your administrator for assistance" is displayed in the pop up reference field
+    And I fill in NL reference fields education and courses
     Then the message "This field is mandatory and blocked from editing. Please contact your administrator for assistance" is displayed in the pop up reference field
 
   Scenario: A limited admin user can access only the permitted administration sections
     Given I am logged in as "dina@Testimcorpnl.com"
     When I navigate to the administration page
-    # TODO: implement 'the admin section {string} should be visible' — assert the named administration section is visible
     Then the admin section "Users" should be visible
     And the admin section "Point of Interest" should be visible
     And the admin section "Preferred Hotels" should be visible
     And the admin section "Quick Links" should be visible
-    # TODO: implement 'the limited admin permissions should be validated manually' — Testim 'validation-code-step' (limit_admin) must be converted manually
-    And the limited admin permissions should be validated manually
+    Then only "4" sections are displayed in admin

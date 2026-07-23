@@ -11,6 +11,10 @@ const SELECTORS = {
   // :visible on each branch avoids the hidden responsive-layout duplicate.
   ALL_TRIPS_BUTTON:
     '[data-testid="trip.home.all-trips-btn"]:visible, button.btn:has-text("All trips"):visible',
+  // "Start New Trip" primary button shown on the homepage for low-product users (2 products or
+  // fewer). The class .imt-btn is reused by other primary buttons (e.g. "Add me"), so callers must
+  // filter by the "Start New Trip" text to target this one specifically.
+  START_NEW_TRIP_BUTTON: '.imt-btn',
 };
 
 class HomePage {
@@ -31,6 +35,27 @@ class HomePage {
       throw new Error(
         `[HomePage.clickAllTripsButton] Could not click the "All trips" button on the homepage upcoming-trips panel (${SELECTORS.ALL_TRIPS_BUTTON}). The panel may not have rendered or the account lacks an upcoming-trips widget. Original: ${err.message}`
       );
+    }
+  }
+
+  /**
+   * Returns whether the "Start New Trip" button is visible on the homepage.
+   * Filters the shared .imt-btn class by its "Start New Trip" text so it does not match other
+   * primary buttons (e.g. "Add me").
+   *
+   * @param {number} [timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async isStartNewTripButtonVisible(timeout = 15000) {
+    const button = this.page
+      .locator(SELECTORS.START_NEW_TRIP_BUTTON)
+      .filter({ hasText: "Start New Trip" })
+      .first();
+    try {
+      await button.waitFor({ state: "visible", timeout });
+      return true;
+    } catch {
+      return false;
     }
   }
 }

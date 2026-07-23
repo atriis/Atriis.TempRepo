@@ -71,6 +71,25 @@ const Homepage = {
   },
 
   /**
+   * Checks whether the "Start New Trip" button is visible on the homepage. Shown for low-product
+   * users (2 products or fewer) as the primary booking entry point instead of the product carousel.
+   * The business assertion (expect visible) is made by the calling step.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<boolean>}
+   */
+  async isStartNewTripButtonVisible(page) {
+    if (!page) throw new Error('[Homepage.isStartNewTripButtonVisible] page is required');
+    logger.info('Checking the "Start New Trip" button is visible on the homepage');
+    const loginPage = getPageObject(page, LoginPage);
+    const homePage = getPageObject(page, HomePage);
+    // Cookie banner can re-appear on the post-login homepage and intercept pointer events — dismiss
+    // it so it does not overlay the button and skew the visibility check.
+    await loginPage.acceptCookiesIfPresent(5000);
+    return homePage.isStartNewTripButtonVisible();
+  },
+
+  /**
    * Reads the image src from the quick link product card tooltip.
    * @param {import('playwright').Page} page
    * @returns {Promise<string|null>}

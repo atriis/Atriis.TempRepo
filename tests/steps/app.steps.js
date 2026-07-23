@@ -109,6 +109,15 @@ Then("the welcome heading should contain {string}", async function (expectedText
   expect(isVisible).toBe(true);
 });
 
+Then("the start new trip button should be visible on the homepage", async function () {
+  logger.info('Verifying the "Start New Trip" button is visible on the homepage');
+  const visible = await Homepage.isStartNewTripButtonVisible(this.page);
+  expect(
+    visible,
+    'Expected the "Start New Trip" button (.imt-btn) to be visible on the homepage for a low-product user (2 products or fewer)'
+  ).toBe(true);
+});
+
 When("I hover over the quick link product card on the homepage", async function () {
   logger.info("Hovering over quick link product card on homepage");
   await Homepage.hoverQuickLinkProductCard(this.page);

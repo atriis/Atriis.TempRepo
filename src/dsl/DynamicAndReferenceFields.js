@@ -938,6 +938,26 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Attempts to select the mandatory reference field's option in the open reference-fields popup —
+   * expanding any collapse-section first, then committing the first option of its el-select. When the
+   * field is configured "mandatory and blocked from editing" the dropdown is disabled and nothing is
+   * selected (the caller then asserts the blocked message persists); when it is an ordinary selectable
+   * field the option is committed so the popup can proceed. Best-effort by design: a blocked/absent
+   * field returns without throwing.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{ selected: boolean, reason?: string }>}
+   */
+  async selectMandatoryReferenceFieldOptionInPopup(page) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.selectMandatoryReferenceFieldOptionInPopup] "page" is required.');
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    logger.debug('Selecting the mandatory reference field option in the reference-fields popup');
+    const result = await dynamicFieldsPage.selectMandatoryReferenceFieldOption();
+    logger.info('Mandatory reference field option selection attempted', result);
+    return result;
+  },
+
+  /**
    * Waits for the reference fields popup Proceed button to be visible and clicks it.
    * Use when the popup appears and all required fields are already pre-filled,
    * so no field selection is needed — just dismiss the popup to continue.

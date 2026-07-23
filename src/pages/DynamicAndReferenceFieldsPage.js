@@ -649,6 +649,65 @@ class DynamicAndReferenceFieldsPage {
   }
 
   /**
+   * Attempts to select the mandatory reference field's option inside the open reference-fields popup.
+   *
+   * The mandatory reference field renders as an el-select, sometimes inside a collapsible section, so
+   * this first expands any collapsed collapse-section, then opens the first el-select in the popup and
+   * commits its first option (ArrowDown + Enter).
+   *
+   * Blocked-field tolerance: when the field is configured "mandatory and blocked from editing", the
+   * el-select renders disabled and cannot be satisfied — by design the caller then asserts the blocked
+   * message persists. So a disabled select, or no select at all, returns `{ selected: false }` WITHOUT
+   * throwing. When the select IS enabled (the ordinary flow), the option is committed and
+   * `{ selected: true }` is returned.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<{ selected: boolean, reason?: string }>}
+   */
+  async selectMandatoryReferenceFieldOption({ timeout = 15000 } = {}) {
+    const dialog = this.page.locator(SELECTORS.REFERENCE_DIALOG).first();
+    await dialog.waitFor({ state: 'visible', timeout });
+
+    // Expand any collapsed collapse-section so its inner field/select becomes interactable.
+    const collapsedHeaders = dialog.locator(`${SELECTORS.COLLAPSE_SECTION_HEADER}:not(.is-active)`);
+    const headerCount = await collapsedHeaders.count();
+    for (let i = 0; i < headerCount; i++) {
+      const header = collapsedHeaders.nth(i);
+      if (await header.isVisible().catch(() => false)) {
+        await header.click({ timeout: 5000 }).catch(() => {});
+      }
+    }
+
+    // Locate the first el-select in the popup. If none is present, the mandatory field is not a
+    // dropdown we can satisfy here — return without throwing (blocked/unsupported field).
+    const select = dialog.locator(SELECTORS.EL_SELECT).first();
+    if ((await select.count()) === 0 || !(await select.isVisible().catch(() => false))) {
+      return { selected: false, reason: 'no-select' };
+    }
+
+    // A blocked/non-editable field renders a disabled el-select — selecting is a no-op by design.
+    if ((await select.locator(EL_SELECT_DISABLED_INNER).count()) > 0) {
+      return { selected: false, reason: 'blocked' };
+    }
+
+    try {
+      await select.scrollIntoViewIfNeeded({ timeout: 5000 });
+      await select.click({ timeout: 5000 });
+      await this.page.keyboard.press('ArrowDown');
+      await this.page.keyboard.press('Enter');
+      // Let the popper finish closing before the following proceed/assert step.
+      await this.page.waitForTimeout(300);
+      return { selected: true };
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.selectMandatoryReferenceFieldOption] The mandatory reference field ` +
+        `dropdown was enabled but selecting its first option failed. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
    * Waits for the financial-reference el-select to be visible.
    * @param {object} [options]
    * @param {number} [options.timeout=15000]

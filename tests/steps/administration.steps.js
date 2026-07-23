@@ -22,6 +22,26 @@ When("I switch to the administration page", async function () {
   await this.adminPage.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
 });
 
+Then("the admin section {string} should be visible", async function (sectionName) {
+  logger.info("Verifying admin section is visible", { sectionName });
+  if (!this.adminPage) {
+    throw new Error('[administration.steps] No admin page stored — call "I navigate to the administration page" first.');
+  }
+  await Administration.verifyAdminSectionVisible(this.adminPage, sectionName);
+});
+
+Then("only {string} sections are displayed in admin", async function (expectedCount) {
+  const count = Number.parseInt(expectedCount, 10);
+  if (!Number.isInteger(count) || count < 0) {
+    throw new Error(`[administration.steps] Section count must be a non-negative integer, got: "${expectedCount}"`);
+  }
+  logger.info("Verifying the number of admin sections displayed", { expectedCount: count });
+  if (!this.adminPage) {
+    throw new Error('[administration.steps] No admin page stored — call "I navigate to the administration page" first.');
+  }
+  await Administration.verifyAdminSectionCount(this.adminPage, count);
+});
+
 When("I search for user {string} in the administration", async function (userName) {
   logger.info("Searching for user in administration", { userName });
   await Administration.searchUserInAdmin(this.adminPage, userName);

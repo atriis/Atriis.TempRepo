@@ -2,8 +2,12 @@ const SELECTORS = {
   // OBT side-nav — admin settings icon (material icon text is "settings")
   ADMIN_SETTINGS_ICON: '.app-side-nav .material-symbols-outlined',
 
-  // Administration app (AngularJS) — page-ready indicator
+  // Administration app (AngularJS) — page-ready indicators. A full admin lands on a page carrying
+  // [name='settingsForm']; a LIMITED admin (e.g. dina@Testimcorpnl.com) lands directly on the section
+  // list (CorporateUsers) WITHOUT a settingsForm, so readiness must also accept the section-menu tree
+  // links (a.navigatable). Either present means the admin app has rendered.
   SETTINGS_FORM: "[name='settingsForm']",
+  ADMIN_READY: "[name='settingsForm'], a.navigatable",
 
   // Navigation tabs inside the admin app
   USERS_TAB: "[title='Users']",
@@ -54,6 +58,13 @@ const SELECTORS = {
 
   // Save button in the admin contact info form
   ADMIN_SAVE_CONTACT_BTN: "[data-ng-click='onSaveClicked()']",
+
+  // Administration left-menu section links. Each permitted section renders as an AngularJS tree link
+  // `<a class="ng-binding navigatable" title="Users">` — the `.navigatable` class marks a section entry
+  // and the `title` attribute holds the section name (confirmed against the live limited-admin DOM).
+  // Counting the distinct visible section links yields how many sections the role exposes; the only
+  // other titled element on the page is a hidden `<span title="Settings">`, which this excludes.
+  ADMIN_SECTION_MENU_ITEM: "a.navigatable[title]",
 };
 
 class AdministrationPage {
@@ -85,7 +96,8 @@ class AdministrationPage {
   async waitForAdminPageReady() {
     try {
       await this.page.waitForLoadState('domcontentloaded', { timeout: 30000 });
-      await this.page.locator(SELECTORS.SETTINGS_FORM).waitFor({ state: 'attached', timeout: 30000 });
+      // Wait for EITHER the full-admin settings form OR the limited-admin section-menu tree links.
+      await this.page.locator(SELECTORS.ADMIN_READY).first().waitFor({ state: 'attached', timeout: 30000 });
       // Wait until the URL contains the Corporation ID — the admin SPA sets this after initial load.
       // Without this, clickUsersTab runs before the hash route is ready and falls back to clicking
       // the Users tab element, which may not be visible yet.
@@ -96,11 +108,66 @@ class AdministrationPage {
     } catch (err) {
       throw new Error(
         `[AdministrationPage.waitForAdminPageReady] Administration page did not finish loading ` +
-        `(selector: ${SELECTORS.SETTINGS_FORM}). ` +
+        `(selector: ${SELECTORS.ADMIN_READY}). ` +
         `The admin settings URL may be incorrect or the user lacks admin privileges. ` +
         `Original: ${err.message}`
       );
     }
+  }
+
+  // --- Administration sections (left-menu) ---
+
+  /**
+   * Returns whether the named administration section link is visible in the admin left menu.
+   * Prefers an exact [title='name'] match (the Testim-proven selector); falls back to a contains
+   * match so a section whose displayed title extends the feature's name still resolves.
+   *
+   * @param {string} sectionName - The section name (e.g. "Users", "Point of Interest")
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async isAdminSectionVisible(sectionName, { timeout = 15000 } = {}) {
+    const escaped = String(sectionName).replace(/'/g, "\\'");
+    const exact = this.page.locator(`[title='${escaped}']`).first();
+    try {
+      await exact.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      // fall through to a contains match
+    }
+    const partial = this.page.locator(`[title*='${escaped}']`).first();
+    try {
+      await partial.waitFor({ state: 'visible', timeout: 3000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Counts the distinct visible administration section links in the admin left menu. Dedupes by the
+   * link's title text so a hidden/responsive duplicate or repeated node does not inflate the count.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<number>}
+   */
+  async countAdminSections({ timeout = 15000 } = {}) {
+    // Gate on the section links themselves so the count runs as soon as the menu has rendered.
+    // (SETTINGS_FORM is absent for a limited admin, so waiting on it would burn the full timeout.)
+    await this.page.locator(SELECTORS.ADMIN_SECTION_MENU_ITEM).first().waitFor({ state: 'visible', timeout }).catch(() => {});
+
+    const links = this.page.locator(SELECTORS.ADMIN_SECTION_MENU_ITEM);
+    const total = await links.count();
+    const titles = new Set();
+    for (let i = 0; i < total; i++) {
+      const link = links.nth(i);
+      if (!(await link.isVisible().catch(() => false))) continue;
+      const title = (await link.getAttribute('title').catch(() => null))?.trim();
+      if (title) titles.add(title);
+    }
+    return titles.size;
   }
 
   // --- Users tab ---

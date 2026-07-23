@@ -55,6 +55,15 @@ When("I select the {string} reference field as {string} and proceed", async func
   }
 });
 
+// Selects the mandatory reference field's option in the open reference-fields popup (expands its
+// collapse-section, then commits the first el-select option). Best-effort: a "mandatory and blocked
+// from editing" field is disabled, so nothing is selected and the following message assertion verifies
+// the block persists (test 22924); an ordinary field is selected so Proceed advances (test 22928).
+When("I select the mandatory reference field option in the popup", async function () {
+  logger.info("Selecting the mandatory reference field option in the reference-fields popup");
+  await DynamicAndReferenceFields.selectMandatoryReferenceFieldOptionInPopup(this.page);
+});
+
 // Expects the reference fields popup to be present — waits up to 15s and FAILS if it never appears.
 // Use this when the popup is guaranteed to show (e.g., after adding to cart with mandatory reference fields).
 // For an optional/soft click that won't fail, use: "I click proceed button if visible" (common.steps.js)
