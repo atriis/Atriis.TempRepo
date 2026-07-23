@@ -81,6 +81,14 @@ Then("the traveler name {string} should be visible in the travelers list", async
   await Search.verifyTravelerNameVisible(this.page, name);
 });
 
+// Asserts the name shown next to the passenger icon on the traveler chip is accurate.
+// The chip's name node (.trip-traveler-tag .traveler-name.black) is the name beside the icon,
+// so reusing verifyTravelerNameVisible confirms the added traveler is exactly this name.
+Then("the traveler name {string} is added successfully", async function (name) {
+  logger.info("Verifying traveler name next to the passenger icon is accurate", { name });
+  await Search.verifyTravelerNameVisible(this.page, name);
+});
+
 Then("the selected traveler should be {string} by default", async function (name) {
   logger.info("Verifying traveler is preselected by default", { name });
   await Search.verifyTravelerNameVisible(this.page, name);

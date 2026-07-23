@@ -15,4 +15,4 @@ Feature: 37986 - "Can book for self and for user group" is working as expected
   Scenario: Book for a user in my group by adding them as the traveler
     Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added traveler by name "Ian Somerhalder"
-    Then the traveler name "Ian Somerhalder" should be visible in the travelers list
+    Then the traveler name "Ian Somerhalder" is added successfully
