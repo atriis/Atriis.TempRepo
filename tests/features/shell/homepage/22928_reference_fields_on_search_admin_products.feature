@@ -15,18 +15,14 @@ Feature: 22928 - Reference fields on search, admin access, and homepage products
   I want reference fields to appear on search, admin access, and the correct products on my homepage
   So that policy references are captured and my role sees the right tools and products
 
-  Scenario: A user with three to five products sees all products on the homepage
+  Scenario: A user with three to five products sees all products and reference fields appear on hotel search
     Given I am logged in as "rafi@testim.com"
-    # TODO: implement 'the {string} product should be visible on the homepage' — assert the named product tile is visible on the homepage carousel
     Then the "Hotel" product should be visible on the homepage
     And the "Car" product should be visible on the homepage
     And the "Rail" product should be visible on the homepage
     And the "Parking" product should be visible on the homepage
-    # TODO: implement 'I open the {string} product from the homepage' — click the named product tile (handling any hover/dropdown) to open its search page
     When I open the "Hotel" product from the homepage
-    # TODO: implement 'the {string} search page should be displayed' — assert the named product's search page opened
     Then the "Hotel" search page should be displayed
-    # TODO: implement 'I go back to the homepage' — click the Home Page icon to return to the homepage
     When I go back to the homepage
     And I open the "Car" product from the homepage
     Then the "Car" search page should be displayed
@@ -34,26 +30,14 @@ Feature: 22928 - Reference fields on search, admin access, and homepage products
     Then the "Rail" search page should be displayed
     When I open the "Parking" product from the homepage
     Then the "Parking" search page should be displayed
-
-  Scenario: Reference fields appear on search even when there are no dynamic fields to show
-    Given I am logged in as "rafi@testim.com"
     When I book a new trip
     And I have added myself as the traveler
-    And I search for a hotel in "London" for 1 night
-    # TODO: implement 'I handle the reference fields validation code step manually' — Testim 'validation-code-step' must be converted manually
-    And I handle the reference fields validation code step manually
-    # TODO: implement 'the reference field label {string} is displayed' — assert the named reference field label appears in the popup
-    Then the reference field label "type of trip" is displayed
-    # TODO: implement 'the reference field dropdown shows {string}' — assert the reference field dropdown shows the given placeholder/value
-    And the reference field dropdown shows "Select"
-    # TODO: implement 'I select the mandatory reference field option in the popup' — open the collapse section and select the option in the reference fields popup
-    When I select the mandatory reference field option in the popup
-    And I click proceed on the reference fields popup
-    # TODO: implement 'the distance filter should be displayed on the results page' — assert the Distance filter is displayed once results load
-    Then the distance filter should be displayed on the results page
+    And I initiate a hotel search in "London" for 1 night
+    Then the number of reference and dynamic fields in the travel request popup should be 1
+    And I select the "Type of trip" reference field as "b" and proceed
+    Then I wait to see view rates text in results page
 
   Scenario: The user can access the administration area
     Given I am logged in as "rafi@testim.com"
     When I navigate to the administration page
-    # TODO: implement 'the admin section {string} should be visible' — assert the named administration section is visible
     Then the admin section "Justifications" should be visible

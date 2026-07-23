@@ -71,6 +71,17 @@ Given("I am logged in as {string} booking a new trip", async function (user) {
  */
 When("I book a new trip", async function () {
   logger.info("Starting new trip booking flow");
+  // If products were opened from the homepage in this scenario (booker new-tab flow), close the
+  // leftover product tab and return to the live homepage tab before booking. Guarded on
+  // this.homepageTab so this shared step is unchanged for single-tab scenarios.
+  if (this.homepageTab) {
+    if (this.productSearchTab && this.productSearchTab !== this.homepageTab) {
+      await this.productSearchTab.close().catch(() => {});
+      this.productSearchTab = null;
+    }
+    await this.homepageTab.bringToFront().catch(() => {});
+    this.page = this.homepageTab;
+  }
   this.page = await App.bookANewTrip(this.page);
   logger.debug("New trip page opened");
 });
@@ -149,12 +160,22 @@ Then("the {string} product should be visible on the homepage", async function (p
 
 When("I open the {string} product from the homepage", async function (productName) {
   logger.info("Opening product from the homepage", { productName });
-  await Homepage.openProductFromHomepage(this.page, productName);
+  // Remember the persistent homepage tab: booker users open each product in a NEW tab while this
+  // tab stays on the homepage, so successive products are all opened from it.
+  if (!this.homepageTab) this.homepageTab = this.page;
+  // Close any previously-opened product tab so tabs don't accumulate across the loop.
+  if (this.productSearchTab && this.productSearchTab !== this.homepageTab) {
+    await this.productSearchTab.close().catch(() => {});
+    this.productSearchTab = null;
+  }
+  this.productSearchTab = await Homepage.openProductFromHomepage(this.homepageTab, productName);
+  // Keep this.page on the live homepage tab for later steps (e.g. "I book a new trip").
+  this.page = this.homepageTab;
 });
 
 Then("the {string} search page should be displayed", async function (productName) {
   logger.info("Verifying product search page is displayed", { productName });
-  const displayed = await Homepage.isSearchPageDisplayed(this.page, productName);
+  const displayed = await Homepage.isSearchPageDisplayed(this.productSearchTab || this.page, productName);
   expect(
     displayed,
     `Expected the "${productName}" search page to be displayed after opening the product from the homepage`
@@ -163,7 +184,10 @@ Then("the {string} search page should be displayed", async function (productName
 
 When("I go back to the homepage", async function () {
   logger.info("Navigating back to the homepage");
-  await Homepage.navigateBackToHomepage(this.page);
+  const homepageTab = this.homepageTab || this.page;
+  await Homepage.navigateBackToHomepage(homepageTab, this.productSearchTab);
+  this.productSearchTab = null;
+  this.page = homepageTab;
 });
 
 Then("the more products button should be visible on the homepage", async function () {

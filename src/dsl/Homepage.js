@@ -120,8 +120,14 @@ const Homepage = {
    *
    * Confirmation: waits for the trip URL (all products open under /trips/<id>/...).
    *
-   * @param {import('playwright').Page} page
+   * New-tab behaviour: booker / no-corporation users open each product in a NEW browser tab
+   * (app: trip.service.createNewTrip → utilService.openNewWindow → window.open), leaving this
+   * homepage tab in place; other users navigate in the same tab. Both cases are handled and the
+   * page the product opened on is returned so callers can assert / act on it.
+   *
+   * @param {import('playwright').Page} page - the homepage tab
    * @param {string} productName
+   * @returns {Promise<import('playwright').Page>} the tab the product's search page opened on
    */
   async openProductFromHomepage(page, productName) {
     if (!page) throw new Error('[Homepage.openProductFromHomepage] page is required');
@@ -132,9 +138,15 @@ const Homepage = {
     const loginPage = getPageObject(page, LoginPage);
     const homePage = getPageObject(page, HomePage);
     const config = homePage.getProductConfig(productName);
+    const context = page.context();
 
     try {
+      // Keep the homepage focused: successive products are all opened from this same tab.
+      await page.bringToFront();
       await loginPage.acceptCookiesIfPresent(5000);
+
+      // Arm new-tab detection BEFORE the click so the booker (new tab) case is never missed.
+      const newPagePromise = context.waitForEvent('page', { timeout: 15000 }).catch(() => null);
 
       if (config.isRail) {
         await homePage.openRailProduct();
@@ -145,8 +157,25 @@ const Homepage = {
         await homePage.clickMoreMenuProduct(productName);
       }
 
-      // Every product opens a trip page under /trips/<id>/<product> (Manual Quote too).
+      // Every product opens a trip page under /trips/<id>/<product> (Manual Quote too). Detect
+      // whichever settles first: a new tab (booker) OR same-tab navigation (non-booker), so the
+      // same-tab path does not pay the full new-tab event timeout.
+      const newTab = await Promise.race([
+        newPagePromise,
+        page.waitForURL(/\/trips\/\d+/, { timeout: 30000 }).then(() => null).catch(() => null),
+      ]);
+      if (newTab) {
+        logger.info('Product opened in a new tab', { productName });
+        await newTab.waitForURL(/\/trips\/\d+/, { timeout: 30000 });
+        await newTab.waitForLoadState('networkidle', { timeout: 60000 }).catch(() => {});
+        await getPageObject(newTab, LoginPage).acceptCookiesIfPresent(5000);
+        return newTab;
+      }
+
+      // No new tab — the product opened in the current tab.
+      logger.info('Product opened in the current tab', { productName });
       await page.waitForURL(/\/trips\/\d+/, { timeout: 30000 });
+      return page;
     } catch (err) {
       throw new Error(
         `[Homepage.openProductFromHomepage] Failed to open the "${productName}" product from the homepage and reach its ` +
@@ -180,16 +209,26 @@ const Homepage = {
   },
 
   /**
-   * Returns to the homepage by clicking the side-nav "Home Page" link and waiting for the
-   * product carousel to render.
+   * Returns to the homepage and waits for the product carousel to render.
    *
-   * @param {import('playwright').Page} page
+   * When a product opened in a separate tab (booker flow), the homepage tab never left the
+   * homepage — close the product tab and bring the homepage back to the front. Otherwise
+   * (same-tab flow) click the side-nav "Home Page" link.
+   *
+   * @param {import('playwright').Page} page - the homepage tab
+   * @param {import('playwright').Page} [productTab] - the tab a product opened on, if separate
    */
-  async navigateBackToHomepage(page) {
+  async navigateBackToHomepage(page, productTab) {
     if (!page) throw new Error('[Homepage.navigateBackToHomepage] page is required');
     logger.info('Navigating back to the homepage');
     const homePage = getPageObject(page, HomePage);
     try {
+      if (productTab && productTab !== page) {
+        await productTab.close().catch(() => {});
+        await page.bringToFront();
+        await homePage.waitForHomepageReady();
+        return;
+      }
       await homePage.clickHomeNavIcon();
       await homePage.waitForHomepageReady();
     } catch (err) {

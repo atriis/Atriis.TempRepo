@@ -242,8 +242,10 @@ const DynamicAndReferenceFields = {
       const selectWrapper = label.locator('..').locator('.el-select').first();
       await selectWrapper.click({ timeout: 5000 });
 
-      // Select the option by case-insensitive partial text match in the dropdown popup
-      const option = page.locator('.el-select-dropdown__item').filter({ hasText: optionRegex }).first();
+      // Select the option by case-insensitive partial text match, scoped to the VISIBLE dropdown
+      // popper — the DOM holds hidden el-select poppers from other closed dropdowns, so an unscoped
+      // match resolves to a hidden <li> and never becomes clickable.
+      const option = page.locator('.el-select-dropdown:visible .el-select-dropdown__item').filter({ hasText: optionRegex }).first();
       await option.waitFor({ state: 'visible', timeout: 5000 });
       await option.click({ timeout: 5000 });
     } catch (err) {
