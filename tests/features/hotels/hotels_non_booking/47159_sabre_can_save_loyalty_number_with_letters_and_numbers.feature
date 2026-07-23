@@ -7,13 +7,13 @@
 # Updated: 2025-09-14T09:18:19Z
 
 @regression @provider:sabre
-Feature: 47159 Sabre - Reference fields required and loyalty number saved after booking
+Feature: 47159 Sabre - can save loyalty number with letters and numbers
   As a corporate traveler using Sabre
-  I want to fill in reference fields and save my loyalty number during checkout
-  So that my booking is properly coded and loyalty points are tracked
+  I want to be able to save loyalty number that includes numbers and letters
+  So that the loyalty number would be saved successfully
 
   @priority:high
-  Scenario: Reference fields are filled and loyalty number is saved to profile
+  Scenario: Can save loyalty number with letters and numbers
     Given I am logged in as "tree@tree.com" booking a new trip
     And I have added myself as the traveler
     When I initiate a hotel search in "MCO" for 1 night

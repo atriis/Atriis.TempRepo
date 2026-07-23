@@ -1,5 +1,4 @@
-﻿# Test Name: 22074 MERGED Hotel search - OOP shown when policy violated +travel policy determined by the primary passenger (2 users, second is the primary) + reference and dynamic on search are taken from the primary traveler (user group different from the booker)
-# Description: travel policy determined by the primary passenger - 2 users, second is the primary. for NL GOV
+﻿# Test Name: 22074 MERGED MERGED travel policy determined by the primary passenger (2 users, second is the primary) + reference and dynamic on search are taken from the primary traveler (user group different from the booker)
 # Status: Active
 # Labels: Regression,Hotel,NL government,Travel policy,performance,No Amadeus Hotel Book,OOP,Dynamic fields,Reference Fields,Corp RF,2026 plan 1
 # Owner: Shani Hadar
@@ -7,13 +6,14 @@
 # Updated: 2026-02-16T12:55:41Z
 
 @regression @provider:general
-Feature: 22074 General - OOP policy displayed in hotel and room level results for multiple travelers
-  As a corporate traveler with out-of-policy hotel search
-  I want to see OOP indicators in hotel and room level results
-  So that I understand which hotels are outside of company policy
+Feature: 22074 Reference and dynamic fields and travel policy are taken from the primary traveler, case with corporate user 
+  As a corporate user that add corporate traveler from different user group
+  I want to see the reference fields according to the primary traveler administration
+  I want to see the dynamic fields according to the primary traveler administration
+  I want to see the travel policy according to the primary traveler administration
 
   @priority:high
-  Scenario: OOP policy is displayed in hotel and room level for multiple travelers
+  Scenario: Reference, dynamic and travel policy are taken from the primary traveler, case with corporate user
     Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "olga cohen"
     And I have added "gadi cohen" as primary traveler

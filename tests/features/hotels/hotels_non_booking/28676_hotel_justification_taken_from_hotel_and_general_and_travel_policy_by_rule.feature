@@ -1,19 +1,21 @@
-﻿# Test Name: 28676 MERGED hotel justification appears in cart + justification is sent to the approvers (and not the value) + justification list taken from hotel and general +travel policy by rule (using dynamic and reference fields)
+﻿# Test Name: 28676 MERGED hotel justification appears in cart and taken from hotel and general +travel policy by rule (using dynamic and reference fields)
 # Description: 
 # Status: Active
-# Labels: Travel policy,justification,Email,Hotel,Approval flow,Financial Reference Code,NL government,Full Purchase,OOP,Regression,Amadeus Value hotel,Dynamic fields,Reference Fields,Daily Hotels,2026 plan 1
+# Labels: Travel policy,justification,Hotel,NL government,OOP,Regression,Amadeus Value hotel,Dynamic fields,Reference Fields,Daily Hotels,2026 plan 1
 # Owner: Shani Hadar
 # Created: 2023-12-21T06:49:20Z
 # Updated: 2025-11-10T12:47:08Z
 
 @regression @provider:general
-Feature: 28676 General - OOP hotel booking with justification and cancel
+Feature: 28676 - Hotel justifications are taken hotel justification and general justification and travel policy determined by rule
   As a corporate traveler who selects an out-of-policy hotel
-  I want to provide an OOP justification and proceed with booking
-  So that I can complete out-of-policy hotel bookings with proper approval workflow
+  I see justifications in cart according to the hotel justifications and the general justifications from administration
+  I can't continue to book without filling justification
+  As a corporate user with travel policy by rule (using dynamic and reference fields) in the administration 
+  I see the correct travel policy
 
   @priority:critical
-  Scenario: OOP hotel requires justification in hotel, room, and cart levels
+  Scenario: OOP hotel justifications are taken correctly from the administration, and mandatory, and travel policy is according to the rule
     Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "justin ruly"
     When I initiate a hotel search in "london" for 1 night
