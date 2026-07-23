@@ -51,3 +51,8 @@ Then("the trip overview tab should be displayed", async function () {
   logger.info("Verifying the trip Overview tab is displayed");
   await Trips.verifyOverviewTabDisplayed(this.page);
 });
+
+Then("the trip should open in the same tab showing the trip overview page", async function () {
+  logger.info("Verifying the trip opened in the same tab showing the trip overview");
+  await Trips.verifyTripOpensInSameTab(this.page);
+});

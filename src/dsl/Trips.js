@@ -141,6 +141,43 @@ const Trips = {
     }
   },
 
+  /**
+   * Verifies a trip opened in the SAME browser tab (no popup / new page) and that
+   * the trip overview is rendered on it.
+   *
+   * A traveler-privileged user's trip link is target="_self", so opening it
+   * navigates the current tab in place — unlike bookers/no-corp users whose link
+   * is target="_blank" and spawns a second page (see clickFirstTrip). The context
+   * should therefore still hold exactly one page.
+   *
+   * @param {import('@playwright/test').Page} page
+   */
+  async verifyTripOpensInSameTab(page) {
+    if (!page) throw new Error('[Trips.verifyTripOpensInSameTab] page is required');
+    const context = page.context();
+    if (!context) throw new Error('[Trips.verifyTripOpensInSameTab] page context is null — cannot verify tab behavior');
+
+    try {
+      logger.debug('Verifying the trip opened in the same tab (no new browser tab)');
+
+      // No popup/new tab: a same-tab (traveler) open leaves the context with the
+      // single original page (the scenario starts with one page: login + navigate
+      // reuse it). A new tab (booker/no-corp) would make this 2.
+      const openPages = context.pages().length;
+      expect(openPages, `[Trips.verifyTripOpensInSameTab] Expected the trip to open in the SAME browser tab (exactly one page in the context), but found ${openPages}. More than one page indicates a new tab was spawned (booker/no-corp behavior).`)
+        .toBe(1);
+
+      // And the trip overview must be rendered on that same tab — reuse the
+      // existing overview-tab verification instead of re-implementing it.
+      await this.verifyOverviewTabDisplayed(page);
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifyTripOpensInSameTab] Failed to verify the trip opened in the same tab. Original: ${err.message}`
+      );
+    }
+  },
+
   async verifyUserGroupLabelVisibleOnFirstTrip(page) {
     if (!page) throw new Error('"page" is required, got: ' + typeof page);
     const trips = getPageObject(page, TripsPage);
