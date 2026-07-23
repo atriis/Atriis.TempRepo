@@ -24,6 +24,12 @@ When("I filter hotel results by hotel name {string} or skip if unavailable", asy
   }
 });
 
+When("I filter hotel results by hotel name {string} or {string}", async function (primaryName, fallbackName) {
+  logger.info("Filtering hotel results by hotel name with fallback", { primaryName, fallbackName });
+  const { usedName } = await HotelLevelResults.filterByHotelNameWithFallback(this.page, primaryName, fallbackName);
+  logger.info("Hotel name filter applied", { usedName });
+});
+
 When("I select the first hotel result", async function () {
   logger.info("Selecting first hotel option");
   await HotelLevelResults.clickFirstHotelOption(this.page);

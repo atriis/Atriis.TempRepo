@@ -700,6 +700,31 @@ class RoomLevelResultsPage {
   }
 
   /**
+   * ADO 77842 — adds the room whose name/description matches the given text to the trip.
+   * Locates the room card in the room list containing the room name, scrolls to it, and
+   * clicks its "Add to trip" button. Used for fixture rooms identified by exact name.
+   * @param {string} roomName - Exact room name/description shown on the room card
+   */
+  async clickAddToTripOnRoomByName(roomName) {
+    if (!roomName || typeof roomName !== 'string') {
+      throw new Error(`roomName must be a non-empty string, got: ${typeof roomName}`);
+    }
+    const roomCard = this.page
+      .locator('.room-list__cards > div')
+      .filter({ hasText: roomName })
+      .first();
+    await roomCard.waitFor({ state: 'visible', timeout: 30000 });
+    await roomCard.scrollIntoViewIfNeeded();
+
+    const addButton = roomCard
+      .locator('button')
+      .filter({ hasText: /add to trip/i })
+      .first();
+    await addButton.waitFor({ state: 'visible', timeout: 15000 });
+    await addButton.click();
+  }
+
+  /**
    * Checks if an active filter badge tag is visible in the room-filter summary bar.
    * @param {string} text - Tag text (e.g. "TMC", "My Corporate")
    * @param {object} [options]

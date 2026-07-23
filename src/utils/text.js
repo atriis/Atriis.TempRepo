@@ -103,6 +103,21 @@ function buildFlexibleAddressRegex(address) {
   return new RegExp(pattern, 'i');
 }
 
+/**
+ * Extracts comparable date tokens ("<day> <mon>", e.g. "16 jul") from a formatted
+ * date or date-range string, ignoring surrounding formatting. Useful for comparing
+ * dates rendered in different formats (e.g. "Wed, 16 Jul" vs "16 Jul 2026"). Returns
+ * an empty array when nothing matches.
+ *
+ * @param {string} text - Formatted date or date-range string
+ * @returns {string[]} Lowercased "<day> <mon>" tokens
+ */
+function extractDateTokens(text) {
+  const normalized = (text ?? "").toLowerCase();
+  const tokens = normalized.match(/\b\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/g);
+  return tokens ? tokens.map((token) => token.replace(/\s+/g, " ").trim()) : [];
+}
+
 // escapeRegExp is an alias for escapeRegex (used by page objects)
 const escapeRegExp = escapeRegex;
 
@@ -114,4 +129,5 @@ module.exports = {
   tokenizeAddress,
   buildFlexibleAddressRegex,
   caseInsensitiveContains,
+  extractDateTokens,
 };

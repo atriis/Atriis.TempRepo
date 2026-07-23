@@ -348,6 +348,22 @@ const SELECTORS = {
   CART_TOTAL_PRICE: '.price-total .amount', // Grand total in the cart summary sidebar (trip-summary.vue)
   PRICE_CHANGE_PREV_PRICE: '.booking-response-errors .prev-price', // Previous price in the price-change modal
   PRICE_CHANGE_UPDATED_PRICE: '.booking-response-errors .updated-price', // New price in the price-change modal
+  // ADO 77842 — "Checkout notification" price-change modal. The modal body is
+  // trip-booking-response-errors.vue (.booking-response-errors); each changed item is a
+  // booking-response-preview.vue card. Rendered inside an app-confirm el-dialog.
+  PRICE_CHANGE_DIALOG: ".el-dialog:has(.booking-response-errors)",
+  PRICE_CHANGE_TITLE: ".booking-response-errors h5.muliBold", // section title ("Price change")
+  PRICE_CHANGE_BODY_TEXT: ".booking-response-errors p.muliRegular", // body copy under the title
+  PRICE_CHANGE_PREVIEW: ".booking-response-errors .preview-container",
+  PRICE_CHANGE_HOTEL_NAME: ".booking-response-errors .preview-container .quote-results__name",
+  PRICE_CHANGE_DATES: ".booking-response-errors .preview-container .quote-results__dates",
+  PRICE_CHANGE_STATUS_LABEL: ".booking-response-errors .preview-container .app-label--quote",
+  PRICE_CHANGE_ALL_PRICES: ".booking-response-errors .preview-container .prev-price, .booking-response-errors .preview-container .updated-price",
+  // Footer action buttons of the dialog, excluding the header close (X) button. NOTE: confirm
+  // this scope on the first live run — app-confirm's footer markup may need tightening.
+  PRICE_CHANGE_FOOTER_BUTTON: ".el-dialog:has(.booking-response-errors) .el-dialog__footer button, .el-dialog:has(.booking-response-errors) button:not(.el-dialog__headerbtn):not(.el-dialog__close)",
+  // Cart hotel quote card stay dates (hotel-preview.vue, cart context — "<checkIn> - <checkOut>")
+  HOTEL_PREVIEW_DATES: "section.hotel-preview .dates",
   NUMBER_OF_BAGGAGE_DROPDOWN_FIELD: "//span[normalize-space()='Number of baggage']", // XPath used due to complex dropdown structure - TODO: adjust when we have a data-test-id selector.
   DROPDOWN_OPTION: 'li.el-select-dropdown__item', // Dropdown option selector (used with hasText filter for partial matching)
   BAGGAGE_CLICKABLE: '.flight-baggage .is-clickable',
@@ -2507,6 +2523,98 @@ class CartPage {
     const oldText = await this.page.locator(SELECTORS.PRICE_CHANGE_PREV_PRICE).first().textContent().catch(() => '');
     const newText = await this.page.locator(SELECTORS.PRICE_CHANGE_UPDATED_PRICE).first().textContent().catch(() => '');
     return { oldPrice: parsePrice(oldText), newPrice: parsePrice(newText), oldText, newText };
+  }
+
+  // ===== ADO 77842 — "Checkout notification" price-change modal accessors =====
+
+  /** @returns {import('playwright').Locator} the price-change dialog wrapper */
+  getPriceChangeDialog() {
+    return this.page.locator(SELECTORS.PRICE_CHANGE_DIALOG).first();
+  }
+
+  /** Waits for the price-change modal to be present (its "Proceed with change" button is visible). */
+  async waitForPriceChangeDialog(timeout = process.env.CI ? 60000 : 45000) {
+    await this.getProceedWithChangeButton().waitFor({ state: 'visible', timeout });
+  }
+
+  /** @returns {Promise<string>} the full visible text of the price-change dialog */
+  async getPriceChangeDialogText() {
+    return (await this.getPriceChangeDialog().innerText().catch(() => '')) ?? '';
+  }
+
+  async getPriceChangeTitleText() {
+    const el = this.page.locator(SELECTORS.PRICE_CHANGE_TITLE).first();
+    await el.waitFor({ state: 'visible', timeout: 15000 });
+    return ((await el.innerText()) ?? '').trim();
+  }
+
+  async getPriceChangeBodyText() {
+    const el = this.page.locator(SELECTORS.PRICE_CHANGE_BODY_TEXT).first();
+    await el.waitFor({ state: 'visible', timeout: 15000 });
+    return ((await el.innerText()) ?? '').trim();
+  }
+
+  async getPriceChangeHotelNameText() {
+    const el = this.page.locator(SELECTORS.PRICE_CHANGE_HOTEL_NAME).first();
+    await el.waitFor({ state: 'visible', timeout: 15000 });
+    return ((await el.innerText()) ?? '').trim();
+  }
+
+  async getPriceChangeDatesText() {
+    const el = this.page.locator(SELECTORS.PRICE_CHANGE_DATES).first();
+    await el.waitFor({ state: 'visible', timeout: 15000 });
+    return ((await el.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  async getPriceChangeStatusText() {
+    const el = this.page.locator(SELECTORS.PRICE_CHANGE_STATUS_LABEL).first();
+    await el.waitFor({ state: 'visible', timeout: 15000 });
+    return ((await el.innerText()) ?? '').trim();
+  }
+
+  /** @returns {Promise<number>} number of price elements shown in the popup (old + new) */
+  async getPriceChangePriceCount() {
+    return this.page.locator(SELECTORS.PRICE_CHANGE_ALL_PRICES).count();
+  }
+
+  /** @returns {Promise<boolean>} true if the old (prev) price is rendered with a strikethrough */
+  async isPriceChangePrevPriceStrikethrough() {
+    const el = this.page.locator(SELECTORS.PRICE_CHANGE_PREV_PRICE).first();
+    await el.waitFor({ state: 'visible', timeout: 15000 });
+    return el.evaluate((node) => window.getComputedStyle(node).textDecorationLine.includes('line-through'));
+  }
+
+  /** @returns {Promise<boolean>} true if the new (updated) price is rendered with a strikethrough */
+  async isPriceChangeUpdatedPriceStrikethrough() {
+    const el = this.page.locator(SELECTORS.PRICE_CHANGE_UPDATED_PRICE).first();
+    await el.waitFor({ state: 'visible', timeout: 15000 });
+    return el.evaluate((node) => window.getComputedStyle(node).textDecorationLine.includes('line-through'));
+  }
+
+  /** @returns {Promise<string[]>} the visible text of each footer action button in the popup */
+  async getPriceChangeFooterButtonNames() {
+    const buttons = this.page.locator(SELECTORS.PRICE_CHANGE_FOOTER_BUTTON);
+    const count = await buttons.count();
+    const names = [];
+    for (let i = 0; i < count; i++) {
+      const text = ((await buttons.nth(i).innerText()) ?? '').replace(/\s+/g, ' ').trim();
+      if (text) names.push(text);
+    }
+    return names;
+  }
+
+  /** @returns {Promise<string>} the hotel name shown on the cart hotel quote card */
+  async getHotelPreviewNameText() {
+    const el = this.page.locator(SELECTORS.HOTEL_PREVIEW_NAME).first();
+    await el.waitFor({ state: 'visible', timeout: 30000 });
+    return ((await el.innerText()) ?? '').trim();
+  }
+
+  /** @returns {Promise<string>} the stay dates shown on the cart hotel quote card */
+  async getHotelPreviewDatesText() {
+    const el = this.page.locator(SELECTORS.HOTEL_PREVIEW_DATES).first();
+    await el.waitFor({ state: 'visible', timeout: 30000 });
+    return ((await el.innerText()) ?? '').replace(/\s+/g, ' ').trim();
   }
 
   /**

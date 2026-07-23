@@ -14,7 +14,7 @@ const config = require("@config/config");
 const BookingErrorHandler = require("@utils/bookingErrorHandler");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const { parseAmountText } = require("@utils/dom");
-const { normalizeText } = require("@utils/text");
+const { normalizeText, extractDateTokens } = require("@utils/text");
 const logger = require("@utils/logger").child("Cart-DSL");
 
 /**
@@ -122,6 +122,166 @@ const Cart = {
     await proceedBtn.click();
     const nearIdentical = Math.abs(oldPrice - newPrice) <= 1.00;
     return { priceChangeShown: true, oldPrice, newPrice, nearIdentical, oldText, newText };
+  },
+
+  /**
+   * ADO 77842 — clicks "Proceed to Checkout" and STOPS at the "Checkout notification"
+   * price-change modal without dismissing it, so the caller can validate the popup.
+   * (The generic `acceptTermsAndConditionsAndProceedToCheckout` auto-clicks
+   * "Proceed with change", which would destroy the popup before it can be asserted.)
+   * @param {import('playwright').Page} page
+   */
+  async proceedToCheckoutExpectingPriceChange(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.acceptTermsAndConditions();
+    await cartPage.waitForProceedToCheckout();
+    await cartPage.clickProceedToCheckout();
+    // Wait for the modal to appear but do NOT dismiss it — the caller validates it.
+    await cartPage.waitForPriceChangeDialog();
+  },
+
+  /**
+   * ADO 77842 — strict validation of the GoGlobal "Checkout notification" price-change
+   * modal shown when the cart price increases at checkout. Asserts the dialog header,
+   * title, and body text; that the popup refers to the same hotel and dates captured
+   * from the cart; the quote status; that exactly two prices are shown (old crossed-out
+   * and equal to the extracted cart price, new not crossed-out and larger); and that
+   * exactly the three expected action buttons are present.
+   *
+   * @param {import('playwright').Page} page
+   * @param {{extractedCartPrice:number, expectedHotelName?:string, expectedDates?:string}} ctx
+   * @returns {Promise<{oldPrice:number, newPrice:number}>}
+   */
+  async validateCheckoutPriceChangeNotification(page, { extractedCartPrice, expectedHotelName, expectedDates } = {}) {
+    if (!page) throw new Error('page is required');
+    if (typeof extractedCartPrice !== 'number' || Number.isNaN(extractedCartPrice)) {
+      throw new Error(`extractedCartPrice must be a number, got: ${extractedCartPrice}`);
+    }
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForPriceChangeDialog();
+
+    // Case-insensitive normalize — some labels (e.g. the status badge) render uppercase via CSS
+    // text-transform, which innerText() returns as-is, so all copy comparisons must ignore case.
+    const ci = (s) => normalizeText(s).toLowerCase();
+
+    // Dialog header ("Checkout notification") + section title ("Price change") + body text.
+    const dialogText = await cartPage.getPriceChangeDialogText();
+    expect(ci(dialogText), 'Price-change modal should be the "Checkout notification" dialog')
+      .toContain(ci('Checkout notification'));
+
+    const title = await cartPage.getPriceChangeTitleText();
+    expect(ci(title), 'Price-change modal title should read "Price change"')
+      .toContain(ci('Price change'));
+
+    const body = await cartPage.getPriceChangeBodyText();
+    expect(ci(body), 'Price-change modal body text mismatch').toContain(
+      ci('Price for the following items has changed. We updated the price in the cart accordingly.'),
+    );
+
+    // The popup must refer to the same hotel and dates captured from the cart.
+    if (expectedHotelName) {
+      const popupHotel = await cartPage.getPriceChangeHotelNameText();
+      expect(ci(popupHotel), 'Price-change popup hotel name should match the cart')
+        .toContain(ci(expectedHotelName));
+    }
+    if (expectedDates) {
+      const popupDates = await cartPage.getPriceChangeDatesText();
+      const expectedTokens = extractDateTokens(expectedDates);
+      const popupTokens = extractDateTokens(popupDates);
+      for (const token of expectedTokens) {
+        expect(popupTokens, `Price-change popup dates "${popupDates}" should include "${token}" from cart dates "${expectedDates}"`)
+          .toContain(token);
+      }
+    }
+
+    // Quote status behind the popup should be "Pending booking".
+    const status = await cartPage.getPriceChangeStatusText();
+    expect(ci(status), 'Price-change quote status should be "Pending booking"')
+      .toContain(ci('Pending booking'));
+
+    // Exactly two prices — old and new.
+    const priceCount = await cartPage.getPriceChangePriceCount();
+    expect(priceCount, 'Price-change popup should show exactly two prices').toBe(2);
+
+    const { oldPrice, newPrice } = await cartPage.getPriceChangeValues();
+
+    // Old (left) price is crossed out and equals the extracted cart price.
+    expect(await cartPage.isPriceChangePrevPriceStrikethrough(), 'Old (left) price should be crossed out').toBe(true);
+    expectNumbersToBeEqualWithTolerance(oldPrice, extractedCartPrice, 1,
+      'Old (left) price should equal the extracted cart price');
+
+    // New (right) price is not crossed out and is larger than the old price.
+    expect(await cartPage.isPriceChangeUpdatedPriceStrikethrough(), 'New (right) price should not be crossed out').toBe(false);
+    expect(newPrice, `New (right) price ${newPrice} should be larger than old price ${oldPrice}`).toBeGreaterThan(oldPrice);
+
+    // Exactly the three expected action buttons.
+    const buttonNames = await cartPage.getPriceChangeFooterButtonNames();
+    expect(buttonNames.length, `Price-change popup should show exactly 3 buttons, found: ${JSON.stringify(buttonNames)}`).toBe(3);
+    const normalizedButtons = buttonNames.map(ci);
+    for (const expectedLabel of ['back to trip', 'search new hotel', 'proceed with change']) {
+      expect(
+        normalizedButtons.some((n) => n.includes(ci(expectedLabel))),
+        `Price-change popup should include a "${expectedLabel}" button, found: ${JSON.stringify(buttonNames)}`,
+      ).toBe(true);
+    }
+
+    logger.info('Price-change notification validated', { oldPrice, newPrice, buttonNames });
+    return { oldPrice, newPrice };
+  },
+
+  /**
+   * ADO 77842 — reads the new (right-hand, non-crossed) price from the price-change popup.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>}
+   */
+  async extractNewPriceFromPriceChange(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForPriceChangeDialog();
+    const { newPrice } = await cartPage.getPriceChangeValues();
+    if (!newPrice) {
+      throw new Error('Could not read the new price from the price-change popup');
+    }
+    return newPrice;
+  },
+
+  /**
+   * ADO 77842 — clicks "Proceed with change" in the price-change popup and waits for
+   * the checkout page to render (proceeding with the change navigates to checkout).
+   * @param {import('playwright').Page} page
+   */
+  async proceedWithPriceChange(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const clicked = await cartPage.clickProceedWithChangeIfVisible();
+    if (!clicked) {
+      throw new Error('The "Proceed with change" button did not appear in the price-change popup');
+    }
+    const checkoutHeading = page.locator(CheckoutSelectors.BOOKING_DETAILS_HEADING);
+    await checkoutHeading.waitFor({ state: 'visible', timeout: process.env.CI ? 60000 : 45000 }).catch(() => {});
+  },
+
+  /**
+   * ADO 77842 — reads the hotel name currently shown in the cart hotel quote card.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>}
+   */
+  async extractHotelNameFromCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    return cartPage.getHotelPreviewNameText();
+  },
+
+  /**
+   * ADO 77842 — reads the stay dates currently shown in the cart hotel quote card.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>}
+   */
+  async extractDatesFromCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    return cartPage.getHotelPreviewDatesText();
   },
 
   /**

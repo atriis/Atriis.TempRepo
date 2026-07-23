@@ -517,6 +517,29 @@ const RoomLevelResults = {
   },
 
   /**
+   * ADO 77842 — adds a specific room (matched by its exact room name) to the cart,
+   * handling the optional cancellation-terms dialog and conflict-quote modal the same
+   * way the other add-to-cart flows do. Used for fixture rooms that force a specific
+   * behaviour (e.g. "FAKE -STANDARD- Valuation Price Increase").
+   * @param {import('playwright').Page} page
+   * @param {string} roomName - Exact room name shown on the room card
+   */
+  async addRoomByNameToCart(page, roomName) {
+    if (!page) throw new Error('page parameter is required');
+    if (!roomName || typeof roomName !== 'string') {
+      throw new Error(`roomName must be a non-empty string, got: ${typeof roomName}`);
+    }
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    await roomLevelResultsPage.waitForViewHotelOnMapText();
+    await resultsPage.waitForAddToTripText();
+    await roomLevelResultsPage.clickAddToTripOnRoomByName(roomName);
+    await roomLevelResultsPage.handleCancellationTermsDialogIfVisible();
+    await Results.clickProceedConflictQuoteModal(page);
+  },
+
+  /**
    * Verifies the "Provided by" label is visible in room level results.
    * @param {import('playwright').Page} page
    * @throws {Error} If the label is not visible

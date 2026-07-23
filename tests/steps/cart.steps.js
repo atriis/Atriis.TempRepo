@@ -15,6 +15,7 @@ const {
   expectNumbersToBeEqualWithTolerance,
   expectSumToBeEqualWithTolerance,
 } = require("../../src/assertions/numberAssertions");
+const { extractPriceFromLocation } = require("@utils/priceExtraction");
 
 setDefaultTimeout(120000);
 
@@ -49,6 +50,73 @@ When("I accept all Terms & Conditions on the page", async function () {
 When("I proceed to checkout", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
   logger.info("Proceeding to checkout");
   await Cart.acceptTermsAndConditionsAndProceedToCheckout(this.page);
+});
+
+// ===== ADO 77842 — GoGlobal checkout price-change flow =====
+
+When("I extract the hotel name from cart", async function () {
+  this.extractedCartHotelName = await Cart.extractHotelNameFromCart(this.page);
+  logger.info("Stored cart hotel name", { hotelName: this.extractedCartHotelName });
+});
+
+When("I extract the dates from cart", async function () {
+  this.extractedCartDates = await Cart.extractDatesFromCart(this.page);
+  logger.info("Stored cart dates", { dates: this.extractedCartDates });
+});
+
+When("I proceed to checkout expecting a price change notification", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
+  logger.info("Proceeding to checkout, expecting the price-change notification");
+  await Cart.proceedToCheckoutExpectingPriceChange(this.page);
+});
+
+Then("the checkout price change notification should be valid and show an increase from the extracted cart price", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
+  if (!this.extractedPrices || this.extractedPrices.length === 0) {
+    throw new Error('No extracted cart price found. Run \'I extract the price at index 0 from "cart"\' before this step.');
+  }
+  const extractedCartPrice = this.extractedPrices[0];
+  logger.info("Validating checkout price-change notification", {
+    extractedCartPrice,
+    expectedHotelName: this.extractedCartHotelName,
+    expectedDates: this.extractedCartDates,
+  });
+  const { newPrice } = await Cart.validateCheckoutPriceChangeNotification(this.page, {
+    extractedCartPrice,
+    expectedHotelName: this.extractedCartHotelName,
+    expectedDates: this.extractedCartDates,
+  });
+  this.priceChangeNewPrice = newPrice;
+});
+
+When("I extract the new price from the checkout price change notification", async function () {
+  this.priceChangeNewPrice = await Cart.extractNewPriceFromPriceChange(this.page);
+  logger.info("Stored price-change new price", { newPrice: this.priceChangeNewPrice });
+});
+
+When("I proceed with the price change", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
+  logger.info("Proceeding with the price change");
+  await Cart.proceedWithPriceChange(this.page);
+});
+
+Then("the checkout total should match the extracted new price", async function () {
+  if (this.priceChangeNewPrice === undefined) {
+    throw new Error("No price-change new price stored. Run the price-change validation/extraction step before this step.");
+  }
+  const checkoutPage = getPageObject(this.page, CheckoutPage);
+  const checkoutTotal = await checkoutPage.getCheckoutTotalPrice();
+  if (checkoutTotal === null) {
+    throw new Error("Checkout total price is not visible");
+  }
+  logger.info("Comparing checkout total with extracted new price", { checkoutTotal, newPrice: this.priceChangeNewPrice });
+  expectNumbersToBeEqualWithTolerance(checkoutTotal, this.priceChangeNewPrice, 1, "Checkout total should match the new price from the price-change popup");
+});
+
+Then("the price at index 0 from cart should match the extracted new price", async function () {
+  if (this.priceChangeNewPrice === undefined) {
+    throw new Error("No price-change new price stored. Run 'I extract the new price from the checkout price change notification' before this step.");
+  }
+  const cartPrice = await extractPriceFromLocation(this.page, 0, "cart");
+  logger.info("Comparing cart price index 0 with extracted new price", { cartPrice, newPrice: this.priceChangeNewPrice });
+  expectNumbersToBeEqualWithTolerance(cartPrice, this.priceChangeNewPrice, 1, "Cart price should match the new price from the price-change popup");
 });
 
 async function clickTermsAndConditionsLinkFromCartStep(contextLabel) {

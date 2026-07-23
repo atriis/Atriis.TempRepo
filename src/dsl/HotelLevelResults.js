@@ -364,6 +364,40 @@ const HotelLevelResults = {
   },
 
   /**
+   * ADO 77842 — filters hotel results by a primary hotel name; if that yields no results,
+   * clears the filter and retries with a fallback name. Used when the preferred test hotel
+   * may be unavailable and a known alternative should be used instead.
+   * @param {import('playwright').Page} page
+   * @param {string} primaryName - Preferred hotel name to filter by first
+   * @param {string} fallbackName - Alternative hotel name if the primary yields no results
+   * @returns {Promise<{usedName: string}>} The hotel name that produced results
+   */
+  async filterByHotelNameWithFallback(page, primaryName, fallbackName) {
+    if (!page) throw new Error('page is required');
+    if (!primaryName || typeof primaryName !== 'string') {
+      throw new Error(`primaryName must be a non-empty string, got: ${typeof primaryName}`);
+    }
+    if (!fallbackName || typeof fallbackName !== 'string') {
+      throw new Error(`fallbackName must be a non-empty string, got: ${typeof fallbackName}`);
+    }
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+
+    await hotelLevelResultsPage.filterByHotelName(primaryName);
+    if (await hotelLevelResultsPage.getVisibleHotelCardCount() > 0) {
+      return { usedName: primaryName };
+    }
+
+    logger.warn(`No hotels found for "${primaryName}", clearing filter and retrying with "${fallbackName}"`);
+    await hotelLevelResultsPage.clearHotelNameFilter();
+    await hotelLevelResultsPage.filterByHotelName(fallbackName);
+    if (await hotelLevelResultsPage.getVisibleHotelCardCount() > 0) {
+      return { usedName: fallbackName };
+    }
+
+    throw new Error(`No hotels found for either "${primaryName}" or "${fallbackName}"`);
+  },
+
+  /**
    * Drags the hotel results map in a given direction.
    * @param {import('playwright').Page} page
    * @param {'left'|'right'|'up'|'down'} direction

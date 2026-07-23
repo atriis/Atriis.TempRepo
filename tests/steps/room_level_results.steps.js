@@ -32,6 +32,12 @@ When("I add the first available room to my cart", async function () {
   await RoomLevelResults.addFirstHotelRoomLevelToCart(this.page);
 });
 
+When("I add room called {string} to cart", async function (roomName) {
+  logger.info("Adding room to cart by name", { roomName });
+  await RoomLevelResults.addRoomByNameToCart(this.page, roomName);
+  await Cart.expectBookingStatusToBe("Pending booking", { page: this.page });
+});
+
 When("I wait for the first add to trip button to be visible in room level results", async function () {
   logger.info("Waiting for first add to trip button to be visible in room level results");
   const roomLevelResultsPage = getPageObject(this.page, RoomLevelResultsPage);

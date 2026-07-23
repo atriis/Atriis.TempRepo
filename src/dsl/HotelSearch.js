@@ -4,7 +4,7 @@ const HotelSearchPage = require("@pages/HotelSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const { CommonPage } = require("@pages/CommonPage");
 const { ResultsPage } = require("@pages/ResultsPage");
-const { selectDatesByNthAvailable, selectDatesByNthAvailableFromNextVisibleMonth } = require("@utils/calendar.helper");
+const { selectDatesByNthAvailable, selectDatesByNthAvailableFromNextVisibleMonth, advanceCalendarUntilMonthVisible, clickDayInVisibleMonth } = require("@utils/calendar.helper");
 const { resolveLocation } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const hotelLocations = require("@data/hotels.json");
@@ -130,6 +130,83 @@ const HotelSearch = {
     // Handle the "Proceed" confirmation modal that may appear before navigation
     // completes (e.g. conflicting trip items). Race it against the URL change so
     // tests without the modal are not delayed.
+    const commonPage = getPageObject(page, CommonPage);
+    await Promise.race([
+      page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 }),
+      commonPage.clickProceedButtonIfVisible(5000),
+    ]);
+    await page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 });
+    await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
+
+    return { searched: true, where, nights, checkInDate, checkOutDate };
+  },
+
+  /**
+   * ADO 77842 — same as searchHotelByNights but selects near-term ("close") dates:
+   * check-in CLOSE_CHECKIN_OFFSET_DAYS (43) days from today and check-out check-in + nights
+   * (so "1 night" → 44 days from today). Some supplier fixtures (e.g. the GoGlobal
+   * price-change hotels) only surface for near-term stays, so this variant targets a specific
+   * close date rather than a month-ahead nth-available day. Does NOT modify searchHotelByNights.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string|object} whereInput - Destination string or object with { where, nights }
+   * @param {object} [options]
+   * @param {number} [options.nights] - Number of nights (when whereInput is a string)
+   * @returns {Promise<{searched: boolean, where: string, nights: number, checkInDate: string, checkOutDate: string}>}
+   */
+  async searchHotelByCloseDates(
+    page,
+    whereInput = hotelLocations.defaultLocation,
+    options = {},
+  ) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    let where, nights;
+    if (
+      typeof whereInput === "object" &&
+      whereInput !== null &&
+      (whereInput.where || whereInput.destination) &&
+      whereInput.nights !== undefined
+    ) {
+      where = resolveLocation(whereInput, ["where", "destination"], hotelLocations);
+      nights = whereInput.nights || SEARCH_DEFAULTS.HOTEL.NIGHTS;
+    } else {
+      where = resolveLocation(whereInput, ["where", "destination"], hotelLocations);
+      nights = options.nights || SEARCH_DEFAULTS.HOTEL.NIGHTS;
+    }
+
+    if (nights < 1) {
+      throw new Error(`"nights" must be >= 1. Got ${nights}`);
+    }
+
+    // Check-in 43 days from today; check-out check-in + nights (1 night → 44 days out).
+    const CLOSE_CHECKIN_OFFSET_DAYS = 43;
+    const today = new Date();
+    const checkIn = new Date(today.getFullYear(), today.getMonth(), today.getDate() + CLOSE_CHECKIN_OFFSET_DAYS);
+    const checkOut = new Date(today.getFullYear(), today.getMonth(), today.getDate() + CLOSE_CHECKIN_OFFSET_DAYS + nights);
+
+    const hotelSearchPage = getPageObject(page, HotelSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await hotelSearchPage.clickHotelTab();
+    await hotelSearchPage.waitForBookAndStayAtYourHotelText();
+    await hotelSearchPage.typeHotelDestination(where);
+
+    // Calendar flow — advance to and click the specific close-in dates.
+    await hotelSearchPage.clickCheckInField();
+    const checkInTableIndex = await advanceCalendarUntilMonthVisible(page, checkIn);
+    await clickDayInVisibleMonth(page, checkIn, checkInTableIndex);
+    const checkOutTableIndex = await advanceCalendarUntilMonthVisible(page, checkOut);
+    await clickDayInVisibleMonth(page, checkOut, checkOutTableIndex);
+
+    const checkInDate = await hotelSearchPage.getCheckInDateValue();
+    const checkOutDate = await hotelSearchPage.getCheckOutDateValue();
+
+    await searchPage.waitAndClickSearchButton();
+
+    // Handle the optional "Proceed" confirmation modal, racing it against navigation.
     const commonPage = getPageObject(page, CommonPage);
     await Promise.race([
       page.waitForURL(/\/products\/hotels\/results/, { timeout: 60000 }),
