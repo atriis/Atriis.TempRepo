@@ -21,5 +21,7 @@ Feature: 55473 Premier Inn - Can't change payment method for extras
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
     When I click to edit extras at index 0
-    Then the payment method for extras should not be changeable
+    And I open the payment method dropdown for extras
+    Then the first payment method option is "Pay On Departure"
+    And the payment method for extras should not be changeable
 

@@ -3213,14 +3213,48 @@ const Cart = {
   },
 
   /**
+   * Opens the payment method dropdown in the Premier Inn extras panel.
+   * The extras panel must already be open (see clickEditExtrasButton / addPremierInnExtras).
+   * @param {import('playwright').Page} page
+   */
+  async openExtrasPaymentMethodDropdown(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickPremierInnPaymentMethodDropdown();
+  },
+
+  /**
+   * Verifies the first option in the (already open) Premier Inn extras payment method
+   * dropdown matches the expected label, case-insensitively.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedOption - Expected first option label (e.g. "Pay On Departure")
+   */
+  async verifyFirstExtrasPaymentOption(page, expectedOption) {
+    if (!page) throw new Error('page is required');
+    if (!expectedOption || typeof expectedOption !== 'string') {
+      throw new Error(`expectedOption must be a non-empty string, got: ${typeof expectedOption}`);
+    }
+    const cartPage = getPageObject(page, CartPage);
+    const options = await cartPage.getPremierInnPaymentOptions();
+    if (options.length === 0) {
+      throw new Error('Payment method dropdown has no visible options — open it before this check.');
+    }
+    expect(options[0].toLowerCase()).toContain(expectedOption.toLowerCase());
+  },
+
+  /**
    * Verifies that the payment method for Premier Inn extras cannot be changed
    * by asserting the payment method dropdown exposes exactly 1 option.
+   * Opens the dropdown only if it is not already open, so this works both
+   * standalone and after an explicit "open payment method dropdown" step.
    * @param {import('playwright').Page} page
    */
   async verifyExtrasPaymentNotChangeable(page) {
     if (!page) throw new Error('page is required');
     const cartPage = getPageObject(page, CartPage);
-    await cartPage.clickPremierInnPaymentMethodDropdown();
+    if ((await cartPage.getPremierInnPaymentOptionCount()) === 0) {
+      await cartPage.clickPremierInnPaymentMethodDropdown();
+    }
     const count = await cartPage.getPremierInnPaymentOptionCount();
     expect(count).toBe(1);
   },

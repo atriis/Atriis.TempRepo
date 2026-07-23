@@ -4054,13 +4054,15 @@ class CartPage {
   }
 
   /**
-   * Counts payment method options in the Premier Inn extras dropdown after it is opened.
-   * Traverses ancestor chain to skip items inside poppers that are display:none (closed dropdowns).
-   * @returns {Promise<number>} Number of options in the currently open dropdown
+   * Returns the trimmed text of every payment method option visible in the currently
+   * open Premier Inn extras dropdown, in DOM order.
+   * Traverses each item's ancestor chain to skip options inside poppers that are
+   * display:none (closed dropdowns), so only the open dropdown's options are returned.
+   * @returns {Promise<string[]>} Visible option texts (empty if the dropdown is closed)
    */
-  async getPremierInnPaymentOptionCount() {
+  async getPremierInnPaymentOptions() {
     return await this.page.evaluate((selector) => {
-      let count = 0;
+      const texts = [];
       for (const item of document.querySelectorAll(selector)) {
         let visible = true;
         let node = item.parentElement;
@@ -4071,10 +4073,18 @@ class CartPage {
           }
           node = node.parentElement;
         }
-        if (visible) count++;
+        if (visible) texts.push(item.textContent.replace(/\s+/g, ' ').trim());
       }
-      return count;
+      return texts;
     }, SELECTORS.DROPDOWN_OPTION);
+  }
+
+  /**
+   * Counts payment method options in the Premier Inn extras dropdown after it is opened.
+   * @returns {Promise<number>} Number of options in the currently open dropdown
+   */
+  async getPremierInnPaymentOptionCount() {
+    return (await this.getPremierInnPaymentOptions()).length;
   }
 
     /**

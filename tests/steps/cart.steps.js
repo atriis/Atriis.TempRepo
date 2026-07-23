@@ -354,6 +354,16 @@ When("I click to edit extras at index {int}", async function (index) {
   await cartPage.clickEditExtrasButton(index);
 });
 
+When("I open the payment method dropdown for extras", async function () {
+  logger.info("Opening the payment method dropdown in Premier Inn extras");
+  await Cart.openExtrasPaymentMethodDropdown(this.page);
+});
+
+Then('the first payment method option is "Pay On Departure"', async function () {
+  logger.info("Verifying the first extras payment method option is Pay On Departure");
+  await Cart.verifyFirstExtrasPaymentOption(this.page, "Pay On Departure");
+});
+
 When("I click seating in extras", async function () {
   logger.info("Clicking seating section in extras");
   const cartPage = getPageObject(this.page, CartPage);
