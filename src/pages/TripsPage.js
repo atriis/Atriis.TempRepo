@@ -17,6 +17,20 @@ const SELECTORS = {
 
   MY_TRIPS_ONLY_CHECKBOX:
     '.trip-monitor-filter .el-checkbox:has-text("My trips only")',
+
+  // Clickable link on a trip card (trip-preview.vue → router-link.more-details-link)
+  // that opens the trip. Its target is "_blank" for bookers/no-corp users and
+  // "_self" for travelers, so opening a trip may spawn a new browser tab.
+  // The trips page (my-trips.vue) keeps every el-tab-pane in the DOM and Element
+  // Plus hides the inactive panes with display:none, so scope to :visible to hit
+  // the first card in the ACTIVE tab rather than a hidden card in another pane.
+  FIRST_TRIP_LINK:
+    '.trip-preview .more-details-link:visible',
+
+  // Overview tab header in the trip cart (trip-cart.vue → el-tab-pane name="overview").
+  // Element Plus renders the tab header as <div id="tab-overview" class="el-tabs__item">.
+  OVERVIEW_TAB:
+    '#tab-overview',
 };
 
 class TripsPage {
@@ -65,6 +79,43 @@ class TripsPage {
     } catch (err) {
       throw new Error(
         `[TripsPage.getFirstTripUserGroupContainer] Could not find the user group container (${SELECTORS.FIRST_TRIP_USER_GROUP_CONTAINER}) on the first trip. The trip may have no UserGroupName or the active trips tab was not switched. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the first trip card's details link to open the trip.
+   *
+   * The link is an <a> with a dynamic target ("_blank" for bookers, "_self" for
+   * travelers), so the caller is responsible for detecting whether a new tab was
+   * spawned. This method only performs the click.
+   */
+  async clickFirstTripLink() {
+    const link = this.page.locator(SELECTORS.FIRST_TRIP_LINK).first();
+    try {
+      await link.waitFor({ state: "visible", timeout: 15000 });
+      await link.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.clickFirstTripLink] Could not click the first trip's details link (${SELECTORS.FIRST_TRIP_LINK}). The trip list may be empty or not loaded. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the trip Overview tab header locator once it is visible.
+   *
+   * @param {object} options
+   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
+   */
+  async getOverviewTab({ timeout = 30000 } = {}) {
+    const tab = this.page.locator(SELECTORS.OVERVIEW_TAB).first();
+    try {
+      await tab.waitFor({ state: "visible", timeout });
+      return tab;
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.getOverviewTab] The trip Overview tab (${SELECTORS.OVERVIEW_TAB}) was not visible within ${timeout}ms. The trip cart may not have finished loading. Original: ${err.message}`
       );
     }
   }

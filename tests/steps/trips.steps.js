@@ -18,6 +18,13 @@ When("I click active trips tab", async function () {
   await Trips.switchToInTravelTripsTab(this.page);
 });
 
+When("I click the first trip from the trip list", async function () {
+  logger.info("Clicking the first trip from the trip list");
+  // A trip opens in a new tab for bookers/no-corp users and in the same tab for
+  // travelers — reassign this.page to whichever tab now shows the trip.
+  this.page = await Trips.clickFirstTrip(this.page);
+});
+
 // ===== THEN STEPS =====
 
 Then("the trips page should be loaded", async function () {
@@ -38,4 +45,9 @@ Then('the {string} filter checkbox should be visible on the trips page', async f
 Then('the {string} filter should be checked on the trips page', async function (checkboxLabel) {
   logger.debug(`Verifying filter checkbox "${checkboxLabel}" is checked on the trips page`);
   await Trips.verifyMyTripsOnlyCheckboxChecked(this.page);
+});
+
+Then("the trip overview tab should be displayed", async function () {
+  logger.info("Verifying the trip Overview tab is displayed");
+  await Trips.verifyOverviewTabDisplayed(this.page);
 });

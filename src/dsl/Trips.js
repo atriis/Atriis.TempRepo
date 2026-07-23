@@ -71,6 +71,76 @@ const Trips = {
     }
   },
 
+  /**
+   * Clicks the first trip in the trip list to open it.
+   *
+   * A trip opens in a NEW browser tab for bookers and no-corporation users
+   * (trip-preview router-link target="_blank"), or in the SAME tab for travelers
+   * (target="_self"). This method arms a new-page listener before the click and
+   * returns whichever page now shows the trip, so the caller can reassign
+   * `this.page` and run subsequent steps against the correct tab.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @returns {Promise<import('@playwright/test').Page>} the page showing the opened trip
+   */
+  async clickFirstTrip(page) {
+    if (!page) throw new Error('[Trips.clickFirstTrip] page is required');
+    const context = page.context();
+    if (!context) throw new Error('[Trips.clickFirstTrip] page context is null — cannot detect a new tab');
+
+    const tripsPage = getPageObject(page, TripsPage);
+    const loginPage = getPageObject(page, LoginPage);
+
+    try {
+      // Cookie consent banner can intercept the click.
+      await loginPage.acceptCookiesIfPresent(5000);
+
+      // Arm the new-page listener BEFORE the click; fall back to same-tab nav.
+      const newTabPromise = context.waitForEvent('page', { timeout: 15000 }).catch(() => null);
+      await tripsPage.clickFirstTripLink();
+      const newTab = await newTabPromise;
+
+      if (newTab) {
+        await newTab.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {});
+        logger.info('[Trips.clickFirstTrip] Trip opened in a new browser tab');
+        return newTab;
+      }
+
+      // No new tab observed: either a traveler/same-tab (target="_self") open, or
+      // a booker new tab whose 'page' event was missed. Warn so the latter — which
+      // would leave us on the trips list and later look like "cart didn't load" —
+      // is distinguishable in triage. Then settle the current page and return it.
+      logger.warn('[Trips.clickFirstTrip] No new browser tab detected — assuming same-tab open (traveler) or a missed booker tab');
+      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+      return page;
+    } catch (err) {
+      throw new Error(
+        `[Trips.clickFirstTrip] Failed to click the first trip from the trip list. The trip list may be empty or the trip card link was not clickable. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the trip Overview tab is displayed on the trip cart page.
+   *
+   * @param {import('@playwright/test').Page} page
+   */
+  async verifyOverviewTabDisplayed(page) {
+    if (!page) throw new Error('[Trips.verifyOverviewTabDisplayed] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying trip Overview tab is displayed');
+      const tab = await tripsPage.getOverviewTab({ timeout: 30000 });
+      await expect(tab, '[Trips.verifyOverviewTabDisplayed] Expected the trip Overview tab to be displayed with label "Overview". The trip cart may not have loaded or the tab did not render.')
+        .toContainText('Overview', { timeout: 10000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifyOverviewTabDisplayed] Failed to verify the trip Overview tab. Original: ${err.message}`
+      );
+    }
+  },
+
   async verifyUserGroupLabelVisibleOnFirstTrip(page) {
     if (!page) throw new Error('"page" is required, got: ' + typeof page);
     const trips = getPageObject(page, TripsPage);
