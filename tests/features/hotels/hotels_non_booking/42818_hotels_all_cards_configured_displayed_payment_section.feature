@@ -22,4 +22,9 @@ Feature: 42818 Hotels - All cards that were configured are displayed in payment 
     Then the booking status should be "Pending booking"
     When I click add payment method button
     Then 3 payment cards should be visible in the FOP panel
+    And the card "vcc hotels no billback" should be visible
+    And the card "vcc hotels billback" should be visible
+    And the card "tmc cc" should be visible
+
+
 
