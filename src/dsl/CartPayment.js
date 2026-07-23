@@ -460,6 +460,31 @@ class CartPayment {
   }
 
   /**
+   * Verifies the checkout payment form shows the given role-restriction message in the
+   * `.form-payment-err` element. For a look-but-not-book role the cart renders
+   * validation.canLookButNotBookMessage prefixed by a "*" danger marker (trip-cart.vue), so the
+   * comparison normalizes whitespace and asserts the actual text contains the expected message.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expectedMessage - Expected message text (may include the leading "*")
+   */
+  static async verifyRoleRestrictionMessage(page, expectedMessage) {
+    if (!page) throw new Error("page is required");
+    if (!expectedMessage || typeof expectedMessage !== "string") {
+      throw new Error(`expectedMessage must be a non-empty string, got: ${expectedMessage}`);
+    }
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const actual = await paymentPage.getFormPaymentErrorText();
+    // The "*" danger marker is a separate span from the message text, so the rendered textContent
+    // can be "* Your role..." while the feature passes "*Your role...". Collapse whitespace and drop
+    // the leading "*" from both sides so the comparison keys on the message itself.
+    const normalize = (s) => (s || "").replace(/\s+/g, " ").replace(/^\s*\*\s*/, "").trim();
+    expect(
+      normalize(actual),
+      `Expected checkout to display role-restriction message "${expectedMessage}", got: "${actual}"`
+    ).toContain(normalize(expectedMessage));
+  }
+
+  /**
    * Verifies the missing card details form shows "Missing details" title and expected labels.
    * Optionally checks card display name and masked digits.
    * @param {import('@playwright/test').Page} page

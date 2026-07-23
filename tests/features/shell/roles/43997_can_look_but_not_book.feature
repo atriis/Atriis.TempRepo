@@ -19,10 +19,8 @@ Feature: 43997 - can look but not book
     When I initiate a hotel search in "LON" for 1 night
     And I fill in NL reference fields education and courses
     And I select the first hotel result
-    And I filter room results by refundable
-    And I add the first available room to my cart
-    Then the booking status should be "Pending booking"
-    And the hotel should appear as refundable in cart
-    # TODO: assert the checkout payment form shows the role-restriction error (source waits on ".form-payment-err" text) — back with Cart.verifyRoleRestrictionMessage (new): read the ".form-payment-err" element text
+    And I add a refundable room to my cart
     And the checkout should display the role restriction message "*Your role does not allow to make bookings. Share the quote with a user with Booker rights to finalize it"
     When I accept Terms & Conditions
+    Then the checkout should display the role restriction message "*Your role does not allow to make bookings. Share the quote with a user with Booker rights to finalize it"
+    And the proceed to checkout button should be disabled

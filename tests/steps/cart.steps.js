@@ -3,6 +3,7 @@
 const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const Cart = require("@dsl/Cart");
+const CartPayment = require("@dsl/CartPayment");
 const Checkout = require("@dsl/Checkout");
 const DynamicAndReferenceFields = require("@dsl/DynamicAndReferenceFields");
 const { CartPage } = require("@pages/CartPage");
@@ -2284,6 +2285,16 @@ Then("the cancel trip button should be disabled", async function () {
 Then("the hold flight button should be disabled", async function () {
   logger.info("Verifying hold flight button is disabled");
   await Cart.verifyHoldFlightButtonIsDisabled(this.page);
+});
+
+Then("the proceed to checkout button should be disabled", async function () {
+  logger.info("Verifying proceed to checkout button is disabled");
+  await Cart.verifyProceedToCheckoutButtonDisabled(this.page);
+});
+
+Then("the checkout should display the role restriction message {string}", async function (message) {
+  logger.info("Verifying checkout role-restriction message", { message });
+  await CartPayment.verifyRoleRestrictionMessage(this.page, message);
 });
 
 When("I hover the trip actions menu", async function () {

@@ -6456,6 +6456,23 @@ const Cart = {
   },
 
   /**
+   * Verifies the cart's "Proceed to Checkout" button is disabled — e.g. for a look-but-not-book
+   * role, whose isCheckoutDisabled flag both surfaces the role-restriction message and disables
+   * the CTA (trip-cart.vue). Also covers other checkout-blocking states (e.g. missing mandatory
+   * information) that disable the same button.
+   * @param {import('playwright').Page} page
+   */
+  async verifyProceedToCheckoutButtonDisabled(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const isDisabled = await cartPage.isProceedToCheckoutButtonDisabled();
+    expect(isDisabled, 'Proceed to Checkout button should be disabled').toBe(true);
+  },
+
+  /**
    * Verifies the FQTV displayed in the cart extras matches expected text.
    * Clicks the FQTV section to expand it, then checks the selected value.
    *

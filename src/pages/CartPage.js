@@ -19,6 +19,10 @@ const SELECTORS = {
   TERMS_CHECKBOX: ".quote-terms-checkbox .el-checkbox__inner",
   TERMS_CHECKBOX_INPUT: ".quote-terms-checkbox .el-checkbox__input",
   PROCEED_TO_CHECKOUT_BUTTON: ".btn-container:has-text('Proceed to Checkout')",
+  // The native <button class="btn"> rendered by app-btn behind the cart CTA (trip-summary #btn
+  // slot). Used for the disabled-state check: app-btn binds `:disabled="isCheckoutDisabled"`, so
+  // for a look-but-not-book role the element carries the native `disabled` attribute.
+  PROCEED_TO_CHECKOUT_NATIVE_BTN: "button.btn:has-text('Proceed to Checkout')",
   // Same cart CTA as Proceed to Checkout, but relabelled "Send For Approvals" when the
   // user's trip requires pre-booking approval (trip-cart.vue: isPreBookingNeeded).
   SEND_FOR_APPROVAL_BUTTON: ".btn-container:has-text('Send For Approvals')",
@@ -2668,6 +2672,28 @@ class CartPage {
    */
   async isHoldButtonDisabled() {
     return this.page.locator(SELECTORS.HOLD_BUTTON).isDisabled();
+  }
+
+  /**
+   * Reports whether the cart's "Proceed to Checkout" CTA is disabled. app-btn renders a native
+   * <button class="btn" :disabled="isCheckoutDisabled">, so the native disabled state is the
+   * source of truth (true for a look-but-not-book role — trip-cart.vue). A `.disabled`/`.is-disabled`
+   * class check is kept as a fallback for deployed staging DOM that can lag the Atriis.App source.
+   * @returns {Promise<boolean>}
+   */
+  async isProceedToCheckoutButtonDisabled() {
+    const button = this.page.locator(SELECTORS.PROCEED_TO_CHECKOUT_NATIVE_BTN).first();
+    await button.waitFor({ state: "visible", timeout: 15000 });
+    if (await button.isDisabled()) return true;
+    return button.evaluate((el) => {
+      const container = el.closest(".btn-container") || el;
+      return (
+        el.classList.contains("disabled") ||
+        el.classList.contains("is-disabled") ||
+        container.classList.contains("disabled") ||
+        container.classList.contains("is-disabled")
+      );
+    });
   }
 
   /**

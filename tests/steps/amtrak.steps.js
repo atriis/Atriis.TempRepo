@@ -102,10 +102,6 @@ Then("the phone number fields should be empty in cart", async function () {
   throw new Error("TODO: Implement verifying the three phone number input fields (country code, area code, number) are empty in the Amtrak cart extras.");
 });
 
-Then("the proceed to checkout button should be disabled", async function () {
-  throw new Error("TODO: Implement verifying '.disabled span' contains 'Proceed to Checkout' text indicating the button is disabled.");
-});
-
 Then("the mandatory information validation error should be displayed", async function () {
   throw new Error("TODO: Implement verifying '.form-payment-err' shows '*In order to proceed, please add all required information'.");
 });
