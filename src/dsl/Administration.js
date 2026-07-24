@@ -747,13 +747,17 @@ const Administration = {
     logger.debug(`[Administration.verifyAdminToast] Verifying toast "${expectedText}" is displayed`);
 
     const page = getPageObject(adminPage, AdministrationPage);
-    const actualText = await page.getAdminToastText();
 
-    if (!actualText.includes(expectedText)) {
+    // Poll (do not read once): the result toast arrives ~0.5s after the action and can briefly coexist
+    // with a lingering earlier toast, so a single immediate read races that window and can grab the
+    // stale toast. waitForAdminToast throws a context-rich error (listing the toasts it saw) on timeout.
+    let actualText;
+    try {
+      actualText = await page.waitForAdminToast(expectedText);
+    } catch (err) {
       throw new Error(
         `[Administration.verifyAdminToast] Confirmation toast mismatch. ` +
-        `Expected to contain "${expectedText}" but toast showed "${actualText}". ` +
-        `The save may not have succeeded.`
+        `Expected a toast containing "${expectedText}". ${err.message}`
       );
     }
 
@@ -1497,6 +1501,10 @@ const Administration = {
 
     try {
       await page.clickAdminSectionByTitle('Per Diem Settings');
+      // Part A leaves the role edit form with unsaved changes (the blocked deletion), so navigating
+      // away raises the "unsaved items" navigation guard. Confirm it to proceed, otherwise the detail
+      // panel keeps showing the role's "Users" group instead of the per diem. No-op when absent.
+      await page.dismissUnsavedItemsDialogIfPresent();
     } catch (err) {
       throw new Error(
         `[Administration.openPerDiemSettingsSection] Failed to open the Per Diem Settings section: ${err.message}`

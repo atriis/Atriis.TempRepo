@@ -122,15 +122,17 @@ const SELECTORS = {
   ADD_NEW_ROLE_BTN: "[data-ng-click='onAddNewRoleClicked()'] span",
   // Role name input on the role edit form
   ROLE_NAME_INPUT: "[data-ng-model='role.Name']",
-  // Privileges dual-list: select-all checkbox, then the move-to-selected (">>") control
+  // Privileges dual-list: select-all checkbox, then the move-to-selected (">>") control. Use the EXACT
+  // add-direction ng-click — a dual-list also has a "<<" remove button (addItemToList(selectedItems,
+  // unselectedItems,false)); a contains-match could hit the wrong direction and silently move nothing.
   ROLE_SELECT_ALL_PRIVILEGES: ".role-edit-container [ng-checked='model.selectAllUnSelected']",
-  ROLE_MOVE_TO_SELECTED: ".role-edit-container [data-ng-click*='addItemToList']",
+  ROLE_MOVE_TO_SELECTED: ".role-edit-container [data-ng-click='addItemToList(unselectedItems, selectedItems,true)']",
   // Users dual-list (scoped by the is-edit-users directive): filter input, select-all, move-to-selected.
   // The filter input must NOT be matched by .ng-dirty — AngularJS only adds that class AFTER the field
   // is typed into, so it is absent on first render. Match the text input by type instead.
   ROLE_USERS_FILTER: "[is-edit-users='isEditUsers'] input:not([type='checkbox']):not([type='radio'])",
   ROLE_USERS_SELECT_ALL: "[is-edit-users='isEditUsers'] [ng-checked='model.selectAllUnSelected']",
-  ROLE_USERS_MOVE_TO_SELECTED: "[is-edit-users='isEditUsers'] [data-ng-click*='addItemToList']",
+  ROLE_USERS_MOVE_TO_SELECTED: "[is-edit-users='isEditUsers'] [data-ng-click='addItemToList(unselectedItems, selectedItems,true)']",
   // Save button on the role edit form (shares the onSaveClicked handler)
   ROLE_SAVE_BTN: "[data-ng-click='onSaveClicked()']",
   // Role search input in the roles list
@@ -845,15 +847,39 @@ class AdministrationPage {
 
   // --- Toast ---
 
-  async getAdminToastText({ timeout = 15000 } = {}) {
+  /**
+   * Polls until ANY visible toast title contains the expected text, then returns the matched text.
+   *
+   * A single read of `.first()` is unreliable for admin toasts: the result toast (e.g. "Save failed")
+   * arrives asynchronously ~0.5s after the action, and it can briefly coexist with a lingering earlier
+   * toast (e.g. the previous "Save succeeded"). Reading once, immediately, races that window and grabs
+   * the stale toast. This mirrors the Testim recording, which polled `.toast-title` until it matched.
+   *
+   * @param {string} expectedText - The toast text to wait for (substring match)
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>} The matched toast text
+   */
+  async waitForAdminToast(expectedText, { timeout = 15000 } = {}) {
     try {
-      const toast = this.page.locator(SELECTORS.ADMIN_TOAST_TITLE).first();
-      await toast.waitFor({ state: 'visible', timeout });
-      return (await toast.textContent() ?? '').replace(/\s+/g, ' ').trim();
+      await this.page.waitForFunction(
+        ({ selector, txt }) =>
+          Array.from(document.querySelectorAll(selector)).some(
+            (el) => (el.textContent || '').replace(/\s+/g, ' ').trim().includes(txt)
+          ),
+        { selector: SELECTORS.ADMIN_TOAST_TITLE, txt: expectedText },
+        { timeout }
+      );
+      const titles = (await this.page.locator(SELECTORS.ADMIN_TOAST_TITLE).allTextContents())
+        .map((t) => t.replace(/\s+/g, ' ').trim());
+      return titles.find((t) => t.includes(expectedText)) ?? expectedText;
     } catch (err) {
+      const seen = (await this.page.locator(SELECTORS.ADMIN_TOAST_TITLE).allTextContents().catch(() => []))
+        .map((t) => t.replace(/\s+/g, ' ').trim());
       throw new Error(
-        `[AdministrationPage.getAdminToastText] No confirmation toast appeared ` +
-        `(selector: ${SELECTORS.ADMIN_TOAST_TITLE}). Original: ${err.message}`
+        `[AdministrationPage.waitForAdminToast] No confirmation toast containing "${expectedText}" appeared within ${timeout}ms ` +
+        `(selector: ${SELECTORS.ADMIN_TOAST_TITLE}). Toasts seen: ${JSON.stringify(seen)}. ` +
+        `The save may not have produced the expected result. Original: ${err.message}`
       );
     }
   }
@@ -1362,6 +1388,12 @@ class AdministrationPage {
       const moveBtn = this.page.locator(SELECTORS.ROLE_USERS_MOVE_TO_SELECTED).first();
       await moveBtn.waitFor({ state: 'visible', timeout: 15000 });
       await moveBtn.click({ timeout: 10000 });
+
+      // Click outside the users dual-list so AngularJS commits the moved selection to role.Users and
+      // enables Save. Without this blur the role saves with an EMPTY user list, which then lets the
+      // role be deleted (the test relies on the assigned user blocking deletion). The role name input
+      // is a safe neutral target that moves focus off the widget.
+      await this.page.locator(SELECTORS.ROLE_NAME_INPUT).first().click({ timeout: 5000 }).catch(() => {});
     } catch (err) {
       throw new Error(
         `[AdministrationPage.addUserToRole] Could not add user "${userName}" to the role ` +
@@ -1512,6 +1544,17 @@ class AdministrationPage {
     try {
       const header = this.page.locator(SELECTORS.PERDIEM_GENERAL_INFO_HEADER).first();
       await header.waitFor({ state: 'visible', timeout: 15000 });
+      // The per diem detail panel replaces the previous section's content asynchronously, so poll until
+      // the header stops reading the prior panel (e.g. the role's "Users" group) and shows the per diem
+      // group. Tolerate a timeout — the caller asserts the final text and reports a rich mismatch.
+      await this.page.waitForFunction(
+        (selector) => {
+          const el = document.querySelector(selector);
+          return el && (el.textContent || '').replace(/\s+/g, ' ').trim() === 'General information';
+        },
+        SELECTORS.PERDIEM_GENERAL_INFO_HEADER,
+        { timeout: 15000 }
+      ).catch(() => {});
       return (await header.textContent() ?? '').replace(/\s+/g, ' ').trim();
     } catch (err) {
       throw new Error(
@@ -1546,11 +1589,13 @@ class AdministrationPage {
    * @returns {import('playwright').Locator}
    */
   perDiemDestinationRow() {
-    // Nearest ancestor of the daily-sum input that also contains at least one select2 trigger.
+    // Nearest ancestor of the daily-sum input that wraps BOTH row select2 triggers (destination +
+    // currency). Requiring >=2 climbs past the inner cell/div that holds only the destination widget
+    // up to the destination row itself, so nth(0)=destination and nth(1)=currency resolve correctly.
     return this.page
       .locator(SELECTORS.PERDIEM_DAILY_SUM)
       .first()
-      .locator(`xpath=ancestor::*[.//a[contains(@class,'select2-choice')]][1]`);
+      .locator(`xpath=ancestor::*[count(.//a[contains(@class,'select2-choice')])>=2][1]`);
   }
 
   /**
