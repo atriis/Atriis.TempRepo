@@ -69,6 +69,9 @@ const SELECTORS = {
   // `<a target="_blank">` that opens the linked page in a NEW browser tab.
   NOTIFICATION_PANEL: '.app-notification',
   NOTIFICATION_MESSAGE_HYPERLINK: '.app-notification .notification-message a[target="_blank"]',
+  // Message body text inside each notification row (app-notification.vue → .notification-text). Long
+  // messages render truncated (item.ShortText), so callers must substring-match, never compare exact.
+  NOTIFICATION_MESSAGE_TEXT: '.notification-message .notification-text',
 
   // Title of the mandatory-notifications reminder popup (app-reminder-popup.vue → $t('common.mandatoryNotification')).
   // Both the reference-fields popup and this reminder popup render as `.el-dialog.app-dialog`, so the
@@ -538,6 +541,24 @@ class CommonPage {
   }
 
   /**
+   * Reads the text of every notification message in the currently open, VISIBLE notification panel
+   * (app-notification.vue). Scoped to the visible panel so the app's hidden responsive duplicates are
+   * not double-counted. Long messages are rendered truncated (item.ShortText), so callers must
+   * substring-match rather than compare exact text. Whitespace is collapsed to a single space.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000] Max time to wait for the panel to populate with messages.
+   * @returns {Promise<string[]>} Trimmed message texts, in DOM order.
+   */
+  async getVisibleNotificationMessageTexts({ timeout = 10000 } = {}) {
+    const messages = this.page.locator(`${SELECTORS.NOTIFICATION_PANEL}:visible ${SELECTORS.NOTIFICATION_MESSAGE_TEXT}`);
+    // Wait for the panel to lazy-render its messages, but tolerate a genuinely empty notification
+    // center (no messages) instead of failing — callers assert on the returned contents.
+    await messages.first().waitFor({ state: 'visible', timeout }).catch(() => {});
+    const texts = await messages.allInnerTexts();
+    return texts.map((t) => (t || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+  }
+
+  /**
    * Checks if the push notification badge (bell icon count) is visible in the header.
    * @param {object} [options]
    * @param {number} [options.timeout=15000]
@@ -621,6 +642,10 @@ class CommonPage {
     return this.page
       .locator('.el-dialog')
       .filter({ has: this.page.locator('.el-dialog__title', { hasText: SELECTORS.MANDATORY_NOTIFICATIONS_TITLE }) })
+      // The app renders hidden responsive duplicates of the dialog; a bare .first() can resolve to a
+      // hidden copy and make waitFor({ state: 'visible' }) time out even though the popup IS on screen.
+      // Scope to the visible instance so every caller (visibility check, hyperlink, acknowledge) targets it.
+      .filter({ visible: true })
       .first();
   }
 

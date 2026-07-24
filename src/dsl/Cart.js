@@ -3883,6 +3883,67 @@ const Cart = {
     }
   },
 
+  /**
+   * Opens the notification center (the header bell panel, app-notification.vue).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async openNotificationCenter(page) {
+    if (!page) throw new Error('[Cart.openNotificationCenter] "page" is required.');
+    logger.debug('Opening the notification center (header bell panel)');
+    const commonPage = getPageObject(page, CommonPage);
+    await commonPage.openNotificationPanel();
+  },
+
+  /**
+   * Closes the notification center panel.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async closeNotificationCenter(page) {
+    if (!page) throw new Error('[Cart.closeNotificationCenter] "page" is required.');
+    logger.debug('Closing the notification center');
+    const commonPage = getPageObject(page, CommonPage);
+    await commonPage.closeNotificationPanel();
+  },
+
+  /**
+   * Verifies the open notification center displays each expected message. The panel truncates long
+   * messages to ShortText, so each expected value is treated as a SUBSTRING (feature values end in
+   * "…"): every expected row must be contained (case-insensitive) in at least one visible message.
+   * Existence-per-row — not a count — because each unread message renders in BOTH the "new" and "all"
+   * sections of the panel, which would make a count double-match.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string[]} expectedMessages
+   * @returns {Promise<void>}
+   */
+  async verifyNotificationCenterMessages(page, expectedMessages) {
+    if (!page) throw new Error('[Cart.verifyNotificationCenterMessages] "page" is required.');
+    if (!Array.isArray(expectedMessages) || expectedMessages.length === 0) {
+      throw new Error('[Cart.verifyNotificationCenterMessages] "expectedMessages" must be a non-empty array.');
+    }
+    const commonPage = getPageObject(page, CommonPage);
+    const actual = await commonPage.getVisibleNotificationMessageTexts();
+    const normalize = (s) => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    // An ellipsis ("..." or "…") in an expected value marks where the UI truncated the message, so
+    // match on the stable text BEFORE the first ellipsis — whether trailing ("foo ...") or mid-string.
+    const toNeedle = (s) => normalize(s).split(/\s*(?:\.{3}|…)/)[0].trim();
+    const actualNorm = actual.map(normalize);
+    const missing = expectedMessages.filter((expected) => {
+      const needle = toNeedle(expected);
+      return needle && !actualNorm.some((a) => a.includes(needle));
+    });
+    if (missing.length > 0) {
+      throw new Error(
+        `[Cart.verifyNotificationCenterMessages] Notification center is missing expected message(s): ` +
+        `[${missing.join(' | ')}]. Actual messages found: [${actual.join(' | ')}]`
+      );
+    }
+  },
+
   // ========================================
   // Passenger Title (Travelodge extras)
   // ========================================

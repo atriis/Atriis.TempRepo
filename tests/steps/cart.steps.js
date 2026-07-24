@@ -1503,6 +1503,26 @@ Then("the cart push note hyperlink opens the linked page", async function () {
   this.newTabPage = null;
 });
 
+// Opens the notification center (header bell panel, app-notification.vue).
+When("I open the notification center", async function () {
+  logger.info("Opening the notification center");
+  await Cart.openNotificationCenter(this.page);
+});
+
+// Closes the notification center panel.
+When("I close the notification center", async function () {
+  logger.info("Closing the notification center");
+  await Cart.closeNotificationCenter(this.page);
+});
+
+// Verifies the open notification center lists each expected message. Values are substring-matched
+// because the panel truncates long messages (feature values end in "…").
+Then("the notification center should display the following notifications:", async function (dataTable) {
+  const expectedMessages = dataTable.raw().map((row) => row[0]);
+  logger.info("Verifying the notification center displays the expected notifications", { expectedMessages });
+  await Cart.verifyNotificationCenterMessages(this.page, expectedMessages);
+});
+
 // ========================================
 // PASSENGER TITLE (Travelodge extras)
 // ========================================

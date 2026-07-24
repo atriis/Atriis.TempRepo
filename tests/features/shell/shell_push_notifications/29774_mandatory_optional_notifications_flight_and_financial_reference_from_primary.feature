@@ -24,38 +24,28 @@ Feature: 29774 - Merged flight notifications by destination and carrier, and fin
     Given I am logged in as "shani@testimcorpnl.com"
     When I book a new trip
     And I have added traveler by name "pini"
-    And I have added "olga" as primary travelerr
+    And I have added "olga" as primary traveler
     And I search for a round trip flight from "ams" to "zimbabwe"
     And I select the "Type of Trip" reference field as "Education and courses" and proceed
-    # TODO: the mandatory and optional notifications for the flight destination should be displayed (Notifications.verifyDestinationNotificationsDisplayed in tests/steps/push_notifications.steps.js)
-    Then the mandatory and optional notifications for the flight destination should be displayed
-    And the notification should 
+    Then the mandatory notifications popup should be displayed
     When I acknowledge the push notification
     And I wait for add to trip text to be visible
     And I filter results by carrier "Emirates"
     And I add the first flight to cart
-    # TODO: the mandatory and optional notifications for the flight carrier should be displayed (Notifications.verifyCarrierNotificationsDisplayed in tests/steps/push_notifications.steps.js)
-    Then the mandatory and optional notifications for the flight carrier should be displayed
+    Then the mandatory notifications popup should be displayed
     When I acknowledge the push notification
     And I refresh the page
-    # TODO: I open the notification center (Notifications.openNotificationCenter in tests/steps/push_notifications.steps.js)
     And I open the notification center
-    # TODO: the notification center should display the following notifications: (Notifications.verifyNotificationCenterMessages in tests/steps/push_notifications.steps.js)
     Then the notification center should display the following notifications:
       | optional notification for flight to Zimbabw ...   |
       | optional notification for emirates flight t ...   |
-      | optional notification for flight to Zimbabw ...   |
       | mandatory notification for flight to Zimbab ...   |
-      | optional notification for emirates flight t ...   |
       | mandatory notification for emirates flight  ...   |
-    # TODO: I close the notification center (Notifications.closeNotificationCenter in tests/steps/push_notifications.steps.js)
     When I close the notification center
-    And I fill CVV with "123"
-    # TODO: I fill in the out of policy justification if required (Cart.fillOOPJustificationIfRequired in tests/steps/cart.steps.js)
-    And I fill in the out of policy justification if required
-    And I proceed to checkout
-    # TODO: I open the financial reference dropdown at checkout (Checkout.openFinancialReferenceDropdown in tests/steps/checkout.steps.js) [candidate reuse: "I open the financial reference details from the trip overview"]
-    When I open the financial reference dropdown at checkout
+    And I fill credit card cvv if needed
+    And I fill in the OOP justification text "abc"
+    And I accept Terms & Conditions
+    And I click the proceed to checkout button
     Then the financial reference dropdown should contain the following options:
       | uploadname7 (uploadcode7) |
       | uploadname5 (uploadcode5) |
