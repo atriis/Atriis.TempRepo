@@ -91,7 +91,7 @@ allure-results/
 allure-report/
 
 # Claude AI
-.claude/
+.claude/*.json
 
 # Records
 records/
