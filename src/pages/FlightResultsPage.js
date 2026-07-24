@@ -75,6 +75,7 @@ const SELECTORS = {
   // column header (a <div class="carrier-logo">). Each logo is wrapped in an el-tooltip whose content
   // is the carrier name, so a specific carrier is found by hovering the logo and reading the tooltip.
   COMPARISON_CARRIER_LOGO: '.ticket-layout-container img.carrier-logo',
+  STOPS_FILTER: '.stops-filter',
   STOPS_FILTER_CONTAINER: '.stops-filter .filter-container',
 
   // Clear-all-filters link rendered by the carriers checkbox group (showClearAll) in flight-filter.vue.
@@ -90,6 +91,10 @@ const SELECTORS = {
   // checkbox with the `is-checked` class on its `.el-checkbox__input`.
   CARRIERS_FILTER_CHECKBOX_LABEL: '.carriers-filter label.el-checkbox',
   CHECKBOX_CHECKED_INPUT: '.el-checkbox__input.is-checked',
+  // State-modifier class Element Plus stamps on a checked el-checkbox label/input.
+  CHECKBOX_CHECKED_CLASS: 'is-checked',
+  // The visible clickable box of an el-checkbox (distinct from the `.el-checkbox__input` wrapper).
+  CHECKBOX_VISIBLE_BOX: '.el-checkbox__inner',
 
   // Airport filter
   AIRPORTS_FILTER_CONTAINER: '.filter-container',
@@ -1060,6 +1065,36 @@ class FlightResultsPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Ticks the "No stops" filter checkbox. The Element Plus el-checkbox wraps a nested <label> that
+   * swallows a label click, so click the visible box (.el-checkbox__inner) once, then wait for the
+   * is-checked state.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async applyNoStopsFilter(timeout = 30000) {
+    const group = this.page.locator(SELECTORS.STOPS_FILTER).first();
+    await group.waitFor({ state: 'visible', timeout });
+    const label = group
+      .locator(SELECTORS.FILTER_CHECKBOX_LABEL)
+      .filter({ hasText: /no\s*stops?/i })
+      .first();
+    await label.waitFor({ state: 'visible', timeout });
+    await label.scrollIntoViewIfNeeded();
+
+    const alreadyChecked = ((await label.getAttribute('class')) || '').includes(SELECTORS.CHECKBOX_CHECKED_CLASS);
+    if (!alreadyChecked) {
+      await label.locator(SELECTORS.CHECKBOX_VISIBLE_BOX).first().click({ force: true });
+    }
+    // Anchor the wait to the checked state Element Plus stamps on the label (no arbitrary sleep);
+    // this throws on timeout if the click did not toggle the filter on.
+    await group
+      .locator(`${SELECTORS.FILTER_CHECKBOX_LABEL}.${SELECTORS.CHECKBOX_CHECKED_CLASS}`)
+      .filter({ hasText: /no\s*stops?/i })
+      .first()
+      .waitFor({ state: 'attached', timeout });
   }
 
   // ===== PRICING OPTIONS MODAL =====

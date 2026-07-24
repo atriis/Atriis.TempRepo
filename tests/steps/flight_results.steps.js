@@ -115,6 +115,11 @@ When("I filter results by carrier {string}", async function (carrier) {
   await applyResultsSearchFilter(this, carrier);
 });
 
+When("I filter results to non-stop flights only", async function () {
+  logger.info("Filtering results to non-stop flights only");
+  await FlightResults.filterByNoStops(this.page);
+});
+
 When("I filter results by the stored flight number", async function () {
   const storedFlightNumbers = Array.isArray(this.storedFlightNumbers)
     ? this.storedFlightNumbers.filter((flightNumber) => typeof flightNumber === 'string' && flightNumber.trim())

@@ -454,21 +454,8 @@ const FlightPricing = {
     if (!responsePromise) throw new Error('responsePromise is required — call startCapturingPricingResponse before the pricing action');
     if (typeof markupPercent !== 'string') throw new Error(`markupPercent must be a string, got: ${typeof markupPercent}`);
 
-    const body = await readJson(responsePromise);
-
-    const results = body && Array.isArray(body.results) ? body.results : Array.isArray(body) ? body : null;
-    if (!results || results.length === 0) {
-      throw new Error('flightPricing response body has no results array');
-    }
-
     // Pick the first result with a non-zero markup (the published fare).
-    const published = results.find((r) => Number(r.markup) > 0);
-    if (!published) {
-      throw new Error(
-        `No published fare with a markup was found in the flightPricing response (got ${results.length} result(s), all markup=0). ` +
-        'The origin-destination MU should have been applied to the published rate.',
-      );
-    }
+    const published = await this.findPublishedFare(responsePromise);
 
     const markup = Number(published.markup);
     const basePrice = Number(published.basePrice);
@@ -522,20 +509,7 @@ const FlightPricing = {
     if (!page) throw new Error('page is required');
     if (!responsePromise) throw new Error('responsePromise is required — call startCapturingPricingResponse before the pricing action');
 
-    const body = await readJson(responsePromise);
-
-    const results = body && Array.isArray(body.results) ? body.results : Array.isArray(body) ? body : null;
-    if (!results || results.length === 0) {
-      throw new Error('flightPricing response body has no results array');
-    }
-
-    const published = results.find((r) => Number(r.markup) > 0);
-    if (!published) {
-      throw new Error(
-        `No published fare with a markup was found in the flightPricing response (got ${results.length} result(s), all markup=0). ` +
-        'The origin-destination MU should have been applied to the published rate.',
-      );
-    }
+    const published = await this.findPublishedFare(responsePromise);
 
     const markup = Number(published.markup);
     const basePrice = Number(published.basePrice);
@@ -568,6 +542,86 @@ const FlightPricing = {
     ).toBe(true);
 
     return { muInclusivePerPax, markup, basePrice, wholePrice, currency: published.currency };
+  },
+
+  /**
+   * Asserts a management markup is applied on the published fare, and optionally that it equals
+   * expectedPercentOfBase% of the base fare. Makes no wholePrice/markup/avgPrice sum assumption —
+   * UAPIGALILEO folds the markup into wholePrice, unlike Sabre/Amadeus. The percentage is only
+   * meaningful when every priced segment qualifies (e.g. a pure-Lufthansa itinerary). Returns the
+   * MU-inclusive per-pax display price for fare selection and cart reconciliation.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {Promise<import('@playwright/test').Response>} responsePromise - from startCapturingPricingResponse.
+   * @param {object} [options]
+   * @param {string|number|null} [options.expectedPercentOfBase=null] - assert markup ≈ this % of base (±2%, min 1).
+   */
+  async validateMarkupApplied(page, responsePromise, { expectedPercentOfBase = null } = {}) {
+    if (!page) throw new Error('page is required');
+    if (!responsePromise) throw new Error('responsePromise is required — call startCapturingPricingResponse before the pricing action');
+
+    const published = await this.findPublishedFare(responsePromise);
+
+    const markup = Number(published.markup);
+    const basePrice = Number(published.basePrice);
+    const wholePrice = Number(published.wholePrice);
+    const muInclusivePerPax = Number(published.avgPricePerPersonDisplayCurrency);
+
+    logger.info('Validating a management markup is applied on the published fare', {
+      markup,
+      basePrice,
+      wholePrice,
+      muInclusivePerPax,
+      expectedPercentOfBase,
+      currency: published.currency,
+      displayCurrency: published.displayCurrency,
+      officeId: published.officeId,
+      sourceSystem: published.sourceSystem,
+    });
+
+    expect(
+      markup > 0,
+      `A management markup should be applied on the published fare, but markup was ${markup}`,
+    ).toBe(true);
+
+    if (expectedPercentOfBase != null) {
+      const percent = Number(expectedPercentOfBase);
+      const expectedMarkup = basePrice * (percent / 100);
+      const tolerance = Math.max(expectedMarkup * 0.02, 1);
+      expect(
+        Math.abs(markup - expectedMarkup) <= tolerance,
+        `Markup ${markup} should be ${percent}% of the base fare ${basePrice} (= ${expectedMarkup.toFixed(2)}) within ${tolerance.toFixed(2)} ${published.currency}`,
+      ).toBe(true);
+    }
+
+    if (!Number.isFinite(muInclusivePerPax) || muInclusivePerPax <= 0) {
+      throw new Error(`avgPricePerPersonDisplayCurrency is missing or invalid (${published.avgPricePerPersonDisplayCurrency}) — cannot reconcile the cart total.`);
+    }
+
+    return { muInclusivePerPax, markup, basePrice, wholePrice, currency: published.currency };
+  },
+
+  /**
+   * Returns the first result carrying a management markup (markup > 0) — the published fare. Shared by
+   * the markup-validation methods so the response-shape guard lives in one place.
+   *
+   * @param {Promise<import('@playwright/test').Response>} responsePromise - from startCapturingPricingResponse.
+   */
+  async findPublishedFare(responsePromise) {
+    if (!responsePromise) throw new Error('responsePromise is required — call startCapturingPricingResponse before the pricing action');
+    const body = await readJson(responsePromise);
+    const results = body && Array.isArray(body.results) ? body.results : Array.isArray(body) ? body : null;
+    if (!results || results.length === 0) {
+      throw new Error('flightPricing response body has no results array');
+    }
+    const published = results.find((r) => Number(r.markup) > 0);
+    if (!published) {
+      throw new Error(
+        `No fare with a management markup was found in the flightPricing response (got ${results.length} result(s), all markup=0). ` +
+        'The management markup should have been applied to the qualifying (e.g. Lufthansa) fare.',
+      );
+    }
+    return published;
   },
 
   /**

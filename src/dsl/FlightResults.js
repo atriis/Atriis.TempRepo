@@ -495,6 +495,24 @@ const FlightResults = {
   },
 
   /**
+   * Restricts results to non-stop flights via the "No stops" filter; settles on results or "No results
+   * found". Combine with a carrier filter to isolate one carrier's non-stop itineraries.
+   * @param {import('playwright').Page} page
+   */
+  async filterByNoStops(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+    await flightResultsPage.waitForFlightResults();
+    await flightResultsPage.applyNoStopsFilter();
+    await Promise.any([
+      flightResultsPage.waitForFlightResults(),
+      resultsPage.waitForNoResultsTitle('No results found'),
+    ]);
+    return { applied: true };
+  },
+
+  /**
    * Verifies the origin shown in the flight info bar at the top of the results page contains the
    * expected origin (e.g. "London (LON)"). Whitespace is normalized so a spacing difference in the
    * feature text does not cause a false mismatch.

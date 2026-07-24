@@ -152,6 +152,17 @@ Then('the origin-destination markup should be {string} percent of the base fare 
   logger.info('Origin-destination MU validated on published fare', result);
 });
 
+// Percent-of-base check on the published fare (Galileo-safe: no wholePrice/markup sum assumption);
+// valid only on a single-qualifying-carrier itinerary. Stores publishedMuInclusivePrice for the cart.
+Then('the management markup on the published fare should be {string} percent of the base fare', async function (percent) {
+  logger.info('Validating the management markup is a percentage of the base fare on the published fare', { percent });
+  const result = await FlightPricing.validateMarkupApplied(
+    this.page, this.lastInterceptedResponsePromise ?? this.flightPricingResponsePromise, { expectedPercentOfBase: percent }
+  );
+  this.publishedMuInclusivePrice = result.muInclusivePerPax;
+  logger.info('Management markup percentage validated on published fare', result);
+});
+
 // Side effect: stores publishedMuInclusivePrice for the fare-selection and cart steps.
 Then('the published fare price should include the management markup', async function () {
   logger.info('Validating the management markup is included on the published fare');
