@@ -903,6 +903,847 @@ const Administration = {
 
     logger.info(`[Administration.verifyOnlyActiveUsersListed] All ${statuses.length} listed users are active`);
   },
+
+  // --- Per Diem removal flow (test 18418) ---
+
+  /**
+   * Opens the Users tab/list in the administration portal.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async openUsersTab(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.openUsersTab] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.openUsersTab] Opening the Users tab in administration');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickUsersTab();
+    } catch (err) {
+      throw new Error(
+        `[Administration.openUsersTab] Failed to open the Users tab in administration: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.openUsersTab] Users tab opened');
+  },
+
+  /**
+   * Verifies the administration users list (datatable) is displayed.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async verifyUsersListDisplayed(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyUsersListDisplayed] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.verifyUsersListDisplayed] Verifying the users list is displayed');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const displayed = await page.isUsersListDisplayed();
+
+    if (!displayed) {
+      throw new Error(
+        `[Administration.verifyUsersListDisplayed] The administration users list is not displayed. ` +
+        `The Users tab may not be open or the datatable did not render.`
+      );
+    }
+
+    logger.info('[Administration.verifyUsersListDisplayed] Administration users list is displayed');
+  },
+
+  /**
+   * Opens the first user in the administration users list.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async openFirstUserInAdmin(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.openFirstUserInAdmin] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.openFirstUserInAdmin] Opening the first user in the administration users list');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickFirstUserRow();
+    } catch (err) {
+      throw new Error(
+        `[Administration.openFirstUserInAdmin] Failed to open the first user in the administration users list: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.openFirstUserInAdmin] First user record opened');
+  },
+
+  /**
+   * Verifies the administration user detail form is shown (its first field reads "First Name:").
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async verifyUserDetailFormDisplayed(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyUserDetailFormDisplayed] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.verifyUserDetailFormDisplayed] Verifying the user detail form is displayed');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const label = await page.getUserDetailFirstFieldLabel();
+
+    if (!label.includes('First Name')) {
+      throw new Error(
+        `[Administration.verifyUserDetailFormDisplayed] User detail form first field label mismatch. ` +
+        `Expected to contain "First Name" but found "${label}". ` +
+        `The user record may not have opened.`
+      );
+    }
+
+    logger.info(`[Administration.verifyUserDetailFormDisplayed] User detail form displayed ("${label}")`);
+  },
+
+  /**
+   * Verifies the Per Diem section is displayed on the user detail form.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async verifyPerDiemSectionDisplayed(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyPerDiemSectionDisplayed] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.verifyPerDiemSectionDisplayed] Verifying the Per Diem section is displayed');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const header = await page.getPerDiemSectionHeaderText();
+
+    if (!header.includes('Per Diem')) {
+      throw new Error(
+        `[Administration.verifyPerDiemSectionDisplayed] Per Diem section header mismatch. ` +
+        `Expected to contain "Per Diem" but found "${header}". ` +
+        `The user detail form may not expose a Per Diem section.`
+      );
+    }
+
+    logger.info(`[Administration.verifyPerDiemSectionDisplayed] Per Diem section displayed ("${header}")`);
+  },
+
+  /**
+   * Sets a user-level per diem: switches off inheritance if needed, opens the per-diem select2, and
+   * picks the option matching the given value.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} perDiemValue - The per diem option to select (e.g. "per diem for user")
+   */
+  async setPerDiemSetting(adminPage, perDiemValue) {
+    if (!adminPage) {
+      throw new Error('[Administration.setPerDiemSetting] "adminPage" is required.');
+    }
+    if (!perDiemValue || typeof perDiemValue !== 'string') {
+      throw new Error(
+        `[Administration.setPerDiemSetting] "perDiemValue" must be a non-empty string, got: ${typeof perDiemValue} (${JSON.stringify(perDiemValue)})`
+      );
+    }
+
+    logger.debug(`[Administration.setPerDiemSetting] Setting user-level per diem to "${perDiemValue}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.ensureUserLevelPerDiemEnabled();
+    } catch (err) {
+      throw new Error(
+        `[Administration.setPerDiemSetting] Failed to switch the per diem to user level before selecting "${perDiemValue}": ${err.message}`
+      );
+    }
+
+    try {
+      await page.openPerDiemSelect2();
+    } catch (err) {
+      throw new Error(
+        `[Administration.setPerDiemSetting] Failed to open the per diem select2 dropdown: ${err.message}`
+      );
+    }
+
+    try {
+      await page.selectPerDiemOption(perDiemValue);
+    } catch (err) {
+      throw new Error(
+        `[Administration.setPerDiemSetting] Failed to select per diem option "${perDiemValue}": ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.setPerDiemSetting] User-level per diem set to "${perDiemValue}"`);
+  },
+
+  /**
+   * Verifies the per diem setting currently displayed equals the expected value. Reads the user-level
+   * select2 chosen value when set, or the inherited group hint when the per diem was removed.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} expectedValue - The per diem value expected to be shown
+   */
+  async verifyPerDiemSettingShows(adminPage, expectedValue) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyPerDiemSettingShows] "adminPage" is required.');
+    }
+    if (!expectedValue || typeof expectedValue !== 'string') {
+      throw new Error(
+        `[Administration.verifyPerDiemSettingShows] "expectedValue" must be a non-empty string, got: ${typeof expectedValue} (${JSON.stringify(expectedValue)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyPerDiemSettingShows] Verifying per diem shows "${expectedValue}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const actual = await page.getDisplayedPerDiemValue();
+
+    // Exact match (whitespace-normalised): "per diem for user" and "per diem for user group" are
+    // distinct entities, and a substring check would let one satisfy the other — masking whether the
+    // user-level per diem was actually set vs the group value being inherited.
+    const normalize = (s) => s.replace(/\s+/g, ' ').trim();
+    if (normalize(actual) !== normalize(expectedValue)) {
+      throw new Error(
+        `[Administration.verifyPerDiemSettingShows] Per diem value mismatch. ` +
+        `Expected exactly "${expectedValue}" but the form shows "${actual}". ` +
+        `The per diem may not have been set or removed as expected.`
+      );
+    }
+
+    logger.info(`[Administration.verifyPerDiemSettingShows] Per diem shows "${actual}"`);
+  },
+
+  /**
+   * Reopens a user by the name held in the users-list row's 5th cell.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} userName - The user display name to match in the row's 5th cell
+   */
+  async reopenUserByName(adminPage, userName) {
+    if (!adminPage) {
+      throw new Error('[Administration.reopenUserByName] "adminPage" is required.');
+    }
+    if (!userName || typeof userName !== 'string') {
+      throw new Error(
+        `[Administration.reopenUserByName] "userName" must be a non-empty string, got: ${typeof userName} (${JSON.stringify(userName)})`
+      );
+    }
+
+    logger.debug(`[Administration.reopenUserByName] Reopening user "${userName}" from the users list`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.reopenUserByFifthCell(userName);
+    } catch (err) {
+      throw new Error(
+        `[Administration.reopenUserByName] Failed to reopen user "${userName}" from the administration users list: ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.reopenUserByName] User "${userName}" reopened`);
+  },
+
+  // --- Roles admin section (test 40136) ---
+
+  /**
+   * Opens the Roles section in the administration and waits for the roles list to render.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async openRolesSection(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.openRolesSection] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.openRolesSection] Opening the Roles section in administration');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickAdminSectionByTitle('Roles');
+      await page.waitForRolesListReady();
+    } catch (err) {
+      throw new Error(
+        `[Administration.openRolesSection] Failed to open the Roles section in administration: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.openRolesSection] Roles section opened');
+  },
+
+  /**
+   * Clicks "Add new role" to open the role edit form.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async addNewRole(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.addNewRole] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.addNewRole] Clicking Add new role');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickAddNewRole();
+    } catch (err) {
+      throw new Error(
+        `[Administration.addNewRole] Failed to open the new role form: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.addNewRole] New role form opened');
+  },
+
+  /**
+   * Generates a unique role name in code (never hardcoded) and types it into the role name input.
+   * Returns the generated name so the caller can store it for later search/verification.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @returns {Promise<string>} The generated role name
+   */
+  async enterRandomRoleName(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.enterRandomRoleName] "adminPage" is required.');
+    }
+
+    const roleName = `role-${faker.string.alphanumeric(6)}`;
+
+    logger.debug(`[Administration.enterRandomRoleName] Entering random role name "${roleName}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.fillRoleName(roleName);
+    } catch (err) {
+      throw new Error(
+        `[Administration.enterRandomRoleName] Failed to enter random role name "${roleName}": ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.enterRandomRoleName] Random role name "${roleName}" entered`);
+    return roleName;
+  },
+
+  /**
+   * Selects all privileges for the role in the privilege dual-list.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async selectAllRolePrivileges(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.selectAllRolePrivileges] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.selectAllRolePrivileges] Selecting all privileges for the role');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.selectAllRolePrivileges();
+    } catch (err) {
+      throw new Error(
+        `[Administration.selectAllRolePrivileges] Failed to select all privileges for the role: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.selectAllRolePrivileges] All privileges selected for the role');
+  },
+
+  /**
+   * Adds a user to the role via the users dual-list.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} userName - The user name to filter and add to the role
+   */
+  async addUserToRole(adminPage, userName) {
+    if (!adminPage) {
+      throw new Error('[Administration.addUserToRole] "adminPage" is required.');
+    }
+    if (!userName || typeof userName !== 'string') {
+      throw new Error(
+        `[Administration.addUserToRole] "userName" must be a non-empty string, got: ${typeof userName} (${JSON.stringify(userName)})`
+      );
+    }
+
+    logger.debug(`[Administration.addUserToRole] Adding user "${userName}" to the role`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.addUserToRole(userName);
+    } catch (err) {
+      throw new Error(
+        `[Administration.addUserToRole] Failed to add user "${userName}" to the role: ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.addUserToRole] User "${userName}" added to the role`);
+  },
+
+  /**
+   * Saves the role edit form.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async saveRole(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.saveRole] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.saveRole] Saving the role');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickSaveRole();
+    } catch (err) {
+      throw new Error(
+        `[Administration.saveRole] Failed to save the role: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.saveRole] Role saved');
+  },
+
+  /**
+   * Searches the roles list for the given role name so the created role can be located.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} roleName - The role name to search for (the stored generated name)
+   */
+  async searchCreatedRole(adminPage, roleName) {
+    if (!adminPage) {
+      throw new Error('[Administration.searchCreatedRole] "adminPage" is required.');
+    }
+    if (!roleName || typeof roleName !== 'string') {
+      throw new Error(
+        `[Administration.searchCreatedRole] "roleName" must be a non-empty string, got: ${typeof roleName} (${JSON.stringify(roleName)}). ` +
+        `Ensure the "I enter a random role name" step stored the name before searching.`
+      );
+    }
+
+    logger.debug(`[Administration.searchCreatedRole] Searching for created role "${roleName}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.fillRoleSearch(roleName);
+    } catch (err) {
+      throw new Error(
+        `[Administration.searchCreatedRole] Failed to search for created role "${roleName}": ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.searchCreatedRole] Searched for created role "${roleName}"`);
+  },
+
+  /**
+   * Verifies the first role in the filtered list matches the expected (created) role name.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} expectedRoleName - The role name expected to be listed
+   */
+  async verifyCreatedRoleListed(adminPage, expectedRoleName) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyCreatedRoleListed] "adminPage" is required.');
+    }
+    if (!expectedRoleName || typeof expectedRoleName !== 'string') {
+      throw new Error(
+        `[Administration.verifyCreatedRoleListed] "expectedRoleName" must be a non-empty string, got: ${typeof expectedRoleName} (${JSON.stringify(expectedRoleName)}). ` +
+        `Ensure the "I enter a random role name" step stored the name before verifying.`
+      );
+    }
+
+    logger.debug(`[Administration.verifyCreatedRoleListed] Verifying created role "${expectedRoleName}" is listed`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const actual = await page.getFirstRoleRowName();
+
+    if (actual !== expectedRoleName) {
+      throw new Error(
+        `[Administration.verifyCreatedRoleListed] Created role not listed as expected. ` +
+        `Expected the first role row to read "${expectedRoleName}" but it read "${actual}". ` +
+        `The role may not have been saved, or the search did not narrow the list to the created role.`
+      );
+    }
+
+    logger.info(`[Administration.verifyCreatedRoleListed] Created role "${actual}" is listed`);
+  },
+
+  /**
+   * Verifies the delete-role button is visible for the selected role.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async verifyDeleteRoleButtonVisible(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyDeleteRoleButtonVisible] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.verifyDeleteRoleButtonVisible] Verifying the delete-role button is visible');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const visible = await page.isDeleteRoleBtnVisible();
+
+    if (!visible) {
+      throw new Error(
+        `[Administration.verifyDeleteRoleButtonVisible] The delete-role button is not visible for the selected role. ` +
+        `The created role may not be selected in the list.`
+      );
+    }
+
+    logger.info('[Administration.verifyDeleteRoleButtonVisible] Delete-role button is visible');
+  },
+
+  /**
+   * Clicks the delete-role button to open the deletion confirmation dialog.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async clickDeleteRole(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.clickDeleteRole] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.clickDeleteRole] Clicking the delete-role button');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickDeleteRoleBtn();
+    } catch (err) {
+      throw new Error(
+        `[Administration.clickDeleteRole] Failed to click the delete-role button: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.clickDeleteRole] Delete-role button clicked');
+  },
+
+  /**
+   * Verifies the delete-role confirmation dialog is displayed (its title reads "Delete Role").
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async verifyDeleteRoleDialogDisplayed(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyDeleteRoleDialogDisplayed] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.verifyDeleteRoleDialogDisplayed] Verifying the delete-role dialog is displayed');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const title = await page.getDeleteRoleDialogTitle();
+
+    if (!title.includes('Delete Role')) {
+      throw new Error(
+        `[Administration.verifyDeleteRoleDialogDisplayed] Delete-role dialog title mismatch. ` +
+        `Expected to contain "Delete Role" but found "${title}". ` +
+        `The confirmation dialog may not have opened.`
+      );
+    }
+
+    logger.info(`[Administration.verifyDeleteRoleDialogDisplayed] Delete-role dialog displayed ("${title}")`);
+  },
+
+  /**
+   * Confirms role deletion by accepting the confirmation dialog.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async confirmRoleDeletion(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.confirmRoleDeletion] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.confirmRoleDeletion] Confirming role deletion');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.confirmRoleDeletion();
+    } catch (err) {
+      throw new Error(
+        `[Administration.confirmRoleDeletion] Failed to confirm role deletion: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.confirmRoleDeletion] Role deletion confirmed');
+  },
+
+  // --- Per Diem Settings admin section (test 40136) ---
+
+  /**
+   * Opens the Per Diem Settings section in the administration.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async openPerDiemSettingsSection(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.openPerDiemSettingsSection] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.openPerDiemSettingsSection] Opening the Per Diem Settings section');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickAdminSectionByTitle('Per Diem Settings');
+    } catch (err) {
+      throw new Error(
+        `[Administration.openPerDiemSettingsSection] Failed to open the Per Diem Settings section: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.openPerDiemSettingsSection] Per Diem Settings section opened');
+  },
+
+  /**
+   * Opens a specific per diem by its name (title attribute).
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} perDiemName - The per diem name to open
+   */
+  async openNamedPerDiem(adminPage, perDiemName) {
+    if (!adminPage) {
+      throw new Error('[Administration.openNamedPerDiem] "adminPage" is required.');
+    }
+    if (!perDiemName || typeof perDiemName !== 'string') {
+      throw new Error(
+        `[Administration.openNamedPerDiem] "perDiemName" must be a non-empty string, got: ${typeof perDiemName} (${JSON.stringify(perDiemName)})`
+      );
+    }
+
+    logger.debug(`[Administration.openNamedPerDiem] Opening per diem "${perDiemName}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickAdminSectionByTitle(perDiemName);
+    } catch (err) {
+      throw new Error(
+        `[Administration.openNamedPerDiem] Failed to open per diem "${perDiemName}": ${err.message}. ` +
+        `The per diem fixture may not exist in this environment.`
+      );
+    }
+
+    logger.info(`[Administration.openNamedPerDiem] Per diem "${perDiemName}" opened`);
+  },
+
+  /**
+   * Verifies the per diem detail panel opened by asserting its general-information header.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async verifyPerDiemGeneralInfoDisplayed(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyPerDiemGeneralInfoDisplayed] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.verifyPerDiemGeneralInfoDisplayed] Verifying per diem general information is displayed');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const header = await page.getPerDiemGeneralInfoHeader();
+
+    if (!header.includes('General information')) {
+      throw new Error(
+        `[Administration.verifyPerDiemGeneralInfoDisplayed] Per diem general-information header mismatch. ` +
+        `Expected to contain "General information" but found "${header}". ` +
+        `The per diem detail panel may not have opened.`
+      );
+    }
+
+    logger.info(`[Administration.verifyPerDiemGeneralInfoDisplayed] Per diem general information displayed ("${header}")`);
+  },
+
+  /**
+   * Adds a new destination row to the per diem.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async addPerDiemDestination(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.addPerDiemDestination] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.addPerDiemDestination] Adding a per diem destination');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickAddPerDiemDestination();
+    } catch (err) {
+      throw new Error(
+        `[Administration.addPerDiemDestination] Failed to add a per diem destination: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.addPerDiemDestination] Per diem destination added');
+  },
+
+  /**
+   * Selects the first destination in the newly added destination row.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async selectFirstDestination(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.selectFirstDestination] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.selectFirstDestination] Selecting the first destination');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.selectFirstDestinationOption();
+    } catch (err) {
+      throw new Error(
+        `[Administration.selectFirstDestination] Failed to select the first destination: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.selectFirstDestination] First destination selected');
+  },
+
+  /**
+   * Sets the per diem daily sum for the destination row.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} value - The daily sum value (e.g. "10")
+   */
+  async setPerDiemDailySum(adminPage, value) {
+    if (!adminPage) {
+      throw new Error('[Administration.setPerDiemDailySum] "adminPage" is required.');
+    }
+    if (!value || typeof value !== 'string') {
+      throw new Error(
+        `[Administration.setPerDiemDailySum] "value" must be a non-empty string, got: ${typeof value} (${JSON.stringify(value)})`
+      );
+    }
+
+    logger.debug(`[Administration.setPerDiemDailySum] Setting per diem daily sum to "${value}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.fillDailySum(value);
+    } catch (err) {
+      throw new Error(
+        `[Administration.setPerDiemDailySum] Failed to set per diem daily sum to "${value}": ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.setPerDiemDailySum] Per diem daily sum set to "${value}"`);
+  },
+
+  /**
+   * Selects the first per diem currency in the destination row.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async selectFirstPerDiemCurrency(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.selectFirstPerDiemCurrency] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.selectFirstPerDiemCurrency] Selecting the first per diem currency');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.selectFirstCurrencyOption();
+    } catch (err) {
+      throw new Error(
+        `[Administration.selectFirstPerDiemCurrency] Failed to select the first per diem currency: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.selectFirstPerDiemCurrency] First per diem currency selected');
+  },
+
+  /**
+   * Saves the per diem detail form.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async savePerDiem(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.savePerDiem] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.savePerDiem] Saving the per diem');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickSavePerDiem();
+    } catch (err) {
+      throw new Error(
+        `[Administration.savePerDiem] Failed to save the per diem: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.savePerDiem] Per diem saved');
+  },
+
+  /**
+   * Removes the destination from the per diem.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async removePerDiemDestination(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.removePerDiemDestination] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.removePerDiemDestination] Removing the per diem destination');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickRemovePerDiemDestination();
+    } catch (err) {
+      throw new Error(
+        `[Administration.removePerDiemDestination] Failed to remove the per diem destination: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.removePerDiemDestination] Per diem destination removed');
+  },
+
+  /**
+   * Verifies the removed destination is no longer listed (no destination row remains).
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async verifyDestinationNoLongerListed(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyDestinationNoLongerListed] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.verifyDestinationNoLongerListed] Verifying the destination is no longer listed');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const present = await page.isDestinationRowPresent();
+
+    if (present) {
+      throw new Error(
+        `[Administration.verifyDestinationNoLongerListed] A destination row is still present after removal + save, ` +
+        `but the removed destination should no longer be listed in the per diem destinations table.`
+      );
+    }
+
+    logger.info('[Administration.verifyDestinationNoLongerListed] No destination row remains — removal confirmed');
+  },
 };
 
 module.exports = Administration;

@@ -85,6 +85,79 @@ const SELECTORS = {
   // Corporate-users list rows; the 9th cell of each row is the status column ("Active"/"Inactive")
   ADMIN_USER_ROWS: ".user-scroll-corporate tbody > tr",
   ADMIN_USER_STATUS_CELL: ":nth-child(9)",
+
+  // --- Per Diem removal flow (test 18418) ---
+  // Users datatable body — its visibility proves the Users list rendered
+  ADMIN_USERS_LIST_BODY: ".body-container tbody",
+  // First user row's name cell (row 1, 2nd cell) — click target to open the first user record
+  ADMIN_FIRST_USER_ROW_NAME_CELL: ".body-container tbody > :nth-child(1) > :nth-child(2)",
+  // All datatable rows (used to find a row by its 5th cell value when reopening a user)
+  ADMIN_USERS_LIST_ROWS: ".body-container tbody > tr",
+  // 5th cell of a user row (holds the display name matched when reopening a user)
+  ADMIN_USER_ROW_FIFTH_CELL: ":nth-child(5)",
+  // First field label on the user detail form — reads "First Name:" when the record is open
+  ADMIN_USER_DETAIL_FORM_FIRST_LABEL: "[user='selectedUser'] > :nth-child(1) > :nth-child(1) label",
+  // Per Diem section header label — reads "Per Diem"
+  PER_DIEM_SECTION_LABEL: "[on='settings.isDisplayCorporatePerdiemIdInherited'] label",
+  // Per Diem section container — scopes the select2 widget below (avoids fragile #s2id_autogen* ids)
+  PER_DIEM_CONTAINER: "[on='settings.isDisplayCorporatePerdiemIdInherited']",
+  // Toggle that switches per diem from inherited to a user-level value
+  PER_DIEM_SET_USER_LEVEL_TOGGLE: "[data-ng-click='settings.isDisplayCorporatePerdiemIdInherited=false']",
+  // Hint shown when the per diem is inherited from the user group (data-ng-hide) — reads the group value
+  PER_DIEM_INHERITED_HINT: "[data-ng-hide='!settings.isDisplayCorporatePerdiemIdInherited']",
+  // select2 widget parts inside the per diem container (scoped, not by autogen id)
+  PER_DIEM_SELECT2_TRIGGER: "[on='settings.isDisplayCorporatePerdiemIdInherited'] .select2-choice",
+  PER_DIEM_SELECT2_ARROW: "[on='settings.isDisplayCorporatePerdiemIdInherited'] .select2-arrow",
+  PER_DIEM_SELECT2_CHOSEN: "[on='settings.isDisplayCorporatePerdiemIdInherited'] .select2-chosen",
+  // select2 open dropdown (rendered at body level) — options list
+  PER_DIEM_SELECT2_DROPDOWN: ".select2-drop:visible",
+  PER_DIEM_SELECT2_OPTION: ".select2-drop:visible .select2-results .select2-result-selectable > div",
+  // jQuery UI modal backdrop — present when an "unsaved items" navigation-guard dialog is open
+  ADMIN_MODAL_OVERLAY: ".ui-widget-overlay",
+
+  // --- Roles admin section (test 40136) ---
+  // First column header of the roles datatable — reads "Role" once the Roles list has rendered
+  ROLES_DATATABLE_HEADER: ".datatable-header tr > :nth-child(1)",
+  // "Add new role" button (click target is its inner span, mirroring the add-user button)
+  ADD_NEW_ROLE_BTN: "[data-ng-click='onAddNewRoleClicked()'] span",
+  // Role name input on the role edit form
+  ROLE_NAME_INPUT: "[data-ng-model='role.Name']",
+  // Privileges dual-list: select-all checkbox, then the move-to-selected (">>") control
+  ROLE_SELECT_ALL_PRIVILEGES: ".role-edit-container [ng-checked='model.selectAllUnSelected']",
+  ROLE_MOVE_TO_SELECTED: ".role-edit-container [data-ng-click*='addItemToList']",
+  // Users dual-list (scoped by the is-edit-users directive): filter input, select-all, move-to-selected.
+  // The filter input must NOT be matched by .ng-dirty — AngularJS only adds that class AFTER the field
+  // is typed into, so it is absent on first render. Match the text input by type instead.
+  ROLE_USERS_FILTER: "[is-edit-users='isEditUsers'] input:not([type='checkbox']):not([type='radio'])",
+  ROLE_USERS_SELECT_ALL: "[is-edit-users='isEditUsers'] [ng-checked='model.selectAllUnSelected']",
+  ROLE_USERS_MOVE_TO_SELECTED: "[is-edit-users='isEditUsers'] [data-ng-click*='addItemToList']",
+  // Save button on the role edit form (shares the onSaveClicked handler)
+  ROLE_SAVE_BTN: "[data-ng-click='onSaveClicked()']",
+  // Role search input in the roles list
+  ROLE_SEARCH_INPUT: "[placeholder='Search role name or privileges']",
+  // First role row's name binding in the filtered roles list
+  ROLE_FIRST_ROW_NAME: "[data-ng-repeat='role in roles | filter:roleSearchText'] > :nth-child(1) .ng-binding",
+  // Delete (secondary) button on the selected role
+  ROLE_DELETE_BTN: ".button-secondary",
+  // jQuery UI delete-confirmation dialog title — reads "Delete Role"
+  DELETE_ROLE_DIALOG_TITLE: "#ui-id-2",
+
+  // --- Per Diem Settings admin section (test 40136) ---
+  // Detail-panel header of the opened per diem — reads "General information"
+  PERDIEM_GENERAL_INFO_HEADER: ".selected-details-container > :nth-child(1) .admin-field-group-header",
+  // "Add destination" link
+  PERDIEM_ADD_DESTINATION: "[ng-click='onNewDestinationClicked()'] a",
+  // Daily sum input on a destination row
+  PERDIEM_DAILY_SUM: "[data-ng-model='destination.DailySum']",
+  // select2 (v3) trigger anchor inside a destination row (scoped by row ancestor, NOT #s2id_autogen ids)
+  PERDIEM_ROW_SELECT2_TRIGGER: "a.select2-choice",
+  // Open select2 dropdown (rendered at body level) and its first result label
+  PERDIEM_SELECT2_DROPDOWN: ".select2-drop:visible",
+  PERDIEM_SELECT2_FIRST_RESULT: ".select2-drop:visible .select2-results > li:nth-of-type(1) .select2-result-label",
+  // Save button on the per diem detail form
+  PERDIEM_SAVE_BTN: ".button-primary",
+  // Remove-destination control on a destination row
+  PERDIEM_REMOVE_DESTINATION: "[ng-click='onRemoveDestenation($index)']",
 };
 
 class AdministrationPage {
@@ -873,6 +946,720 @@ class AdministrationPage {
       throw new Error(
         `[AdministrationPage.getUserRowStatuses] Could not read user row status cells ` +
         `(selector: ${SELECTORS.ADMIN_USER_ROWS}, 9th cell). Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Per Diem removal flow (test 18418) ---
+
+  /**
+   * Returns whether the Users datatable body has rendered, proving the Users list is displayed.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async isUsersListDisplayed({ timeout = 15000 } = {}) {
+    try {
+      const body = this.page.locator(SELECTORS.ADMIN_USERS_LIST_BODY).first();
+      await body.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.isUsersListDisplayed] The administration users datatable did not render ` +
+        `(selector: ${SELECTORS.ADMIN_USERS_LIST_BODY}). ` +
+        `The Users tab may not be open. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the first user row's name cell to open that user's detail record, then waits for the
+   * detail form (First Name: label) to appear.
+   */
+  async clickFirstUserRow() {
+    try {
+      const nameCell = this.page.locator(SELECTORS.ADMIN_FIRST_USER_ROW_NAME_CELL).first();
+      await nameCell.waitFor({ state: 'visible', timeout: 30000 });
+      await nameCell.click({ timeout: 10000 });
+      await this.page
+        .locator(SELECTORS.ADMIN_USER_DETAIL_FORM_FIRST_LABEL)
+        .first()
+        .waitFor({ state: 'visible', timeout: 20000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickFirstUserRow] Could not open the first user in the Users list ` +
+        `(selector: ${SELECTORS.ADMIN_FIRST_USER_ROW_NAME_CELL}). ` +
+        `The Users list may not have rendered any rows. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the first field label on the open user detail form (expected to read "First Name:").
+   *
+   * @returns {Promise<string>}
+   */
+  async getUserDetailFirstFieldLabel() {
+    try {
+      const label = this.page.locator(SELECTORS.ADMIN_USER_DETAIL_FORM_FIRST_LABEL).first();
+      await label.waitFor({ state: 'visible', timeout: 15000 });
+      return (await label.textContent() ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getUserDetailFirstFieldLabel] Could not read the first field label on the user detail form ` +
+        `(selector: ${SELECTORS.ADMIN_USER_DETAIL_FORM_FIRST_LABEL}). ` +
+        `The user record may not have opened. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Scrolls the Per Diem section into view and reads its header label (expected to read "Per Diem").
+   *
+   * @returns {Promise<string>}
+   */
+  async getPerDiemSectionHeaderText() {
+    try {
+      const header = this.page.locator(SELECTORS.PER_DIEM_SECTION_LABEL).first();
+      await header.waitFor({ state: 'attached', timeout: 15000 });
+      await header.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+      await header.waitFor({ state: 'visible', timeout: 10000 });
+      return (await header.textContent() ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getPerDiemSectionHeaderText] Could not read the Per Diem section header ` +
+        `(selector: ${SELECTORS.PER_DIEM_SECTION_LABEL}). ` +
+        `The user detail form may not expose a Per Diem section for this user. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Ensures a user-level per diem is editable: if the setting is currently inherited (the "set
+   * user-level" toggle is present), clicks it so the per-diem select2 becomes available. No-op when
+   * the user level is already active.
+   */
+  /**
+   * Dismisses a blocking jQuery UI modal (the "unsaved items" navigation guard) if its overlay is
+   * present, by confirming via the dialog's primary button so the underlying controls become
+   * interactable again. No-op when no overlay is showing.
+   *
+   * @returns {Promise<boolean>} true if a modal was dismissed, false if none was present
+   */
+  async dismissBlockingModalIfPresent() {
+    try {
+      const overlay = this.page.locator(SELECTORS.ADMIN_MODAL_OVERLAY).first();
+      if (!(await overlay.isVisible().catch(() => false))) {
+        return false;
+      }
+      const confirmBtn = this.page.locator(SELECTORS.DIALOG_CONFIRM_BTN).first();
+      await confirmBtn.waitFor({ state: 'visible', timeout: 5000 });
+      await confirmBtn.click({ timeout: 5000 });
+      await overlay.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+      return true;
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.dismissBlockingModalIfPresent] A blocking modal overlay was present ` +
+        `(selector: ${SELECTORS.ADMIN_MODAL_OVERLAY}) but could not be dismissed via its primary button ` +
+        `(${SELECTORS.DIALOG_CONFIRM_BTN}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async ensureUserLevelPerDiemEnabled() {
+    try {
+      // A prior save + reopen can leave the AngularJS "unsaved items" guard dialog open, whose modal
+      // overlay intercepts clicks on the per-diem controls. Clear it first (no-op when absent).
+      await this.dismissBlockingModalIfPresent();
+
+      // The pencil (edit) button needs two clicks before the AngularJS ng-switch reliably swaps in
+      // the editable select2 (the first click may only focus/activate the control). The second click
+      // is best-effort: if the pencil is already gone because the first click worked, ignore it.
+      const toggle = this.page.locator(SELECTORS.PER_DIEM_SET_USER_LEVEL_TOGGLE).first();
+      const select2Trigger = this.page.locator(SELECTORS.PER_DIEM_SELECT2_TRIGGER).first();
+      if (await toggle.isVisible().catch(() => false)) {
+        await toggle.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+        await toggle.click({ timeout: 10000 });
+        // Second click — tolerated failure (pencil may already be replaced by the select2)
+        await toggle.click({ timeout: 3000 }).catch(() => {});
+      }
+      // Confirm the user-level select2 trigger is now available before returning
+      await select2Trigger.waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.ensureUserLevelPerDiemEnabled] Could not switch the per diem setting to user level ` +
+        `(toggle: ${SELECTORS.PER_DIEM_SET_USER_LEVEL_TOGGLE}, select2 trigger: ${SELECTORS.PER_DIEM_SELECT2_TRIGGER}). ` +
+        `The Per Diem section may not have rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Opens the per-diem select2 dropdown (scoped to the per-diem container, not a fragile autogen id).
+   */
+  async openPerDiemSelect2() {
+    try {
+      const arrow = this.page.locator(SELECTORS.PER_DIEM_SELECT2_ARROW).first();
+      await arrow.waitFor({ state: 'visible', timeout: 15000 });
+      await arrow.click({ timeout: 10000 });
+      await this.page
+        .locator(SELECTORS.PER_DIEM_SELECT2_DROPDOWN)
+        .first()
+        .waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.openPerDiemSelect2] Could not open the per diem select2 dropdown ` +
+        `(arrow: ${SELECTORS.PER_DIEM_SELECT2_ARROW}). ` +
+        `The user-level per diem control may not be enabled. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Selects the per-diem option whose text matches the given value from the open select2 dropdown.
+   *
+   * @param {string} optionText - The per diem option to pick (e.g. "per diem for user")
+   */
+  async selectPerDiemOption(optionText) {
+    try {
+      // Match the option text EXACTLY — a substring match would let "per diem for user" select
+      // "per diem for user group" (a distinct entity), silently choosing the wrong per diem.
+      const escaped = String(optionText).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const option = this.page
+        .locator(SELECTORS.PER_DIEM_SELECT2_OPTION)
+        .filter({ hasText: new RegExp(`^\\s*${escaped}\\s*$`) })
+        .first();
+      await option.waitFor({ state: 'visible', timeout: 15000 });
+      await option.click({ timeout: 10000 });
+      // Second click — tolerated failure (the dropdown usually closes once the first click lands,
+      // but when it doesn't, the second click commits the selection)
+      await option.click({ timeout: 3000 }).catch(() => {});
+      // The dropdown closes once an option is picked
+      await this.page
+        .locator(SELECTORS.PER_DIEM_SELECT2_DROPDOWN)
+        .first()
+        .waitFor({ state: 'hidden', timeout: 10000 })
+        .catch(() => {});
+      // Click outside the field (the Per Diem section label is a neutral target) so the select2
+      // loses focus and AngularJS commits the change — required for the Save button to enable.
+      await this.page
+        .locator(SELECTORS.PER_DIEM_SECTION_LABEL)
+        .first()
+        .click({ timeout: 5000 })
+        .catch(() => {});
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.selectPerDiemOption] Could not select per diem option "${optionText}" ` +
+        `(selector: ${SELECTORS.PER_DIEM_SELECT2_OPTION}). ` +
+        `The option may not exist in the per diem list. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the per diem value currently displayed for the user. When a user-level per diem is set the
+   * value comes from the select2 chosen span; when the per diem is inherited it comes from the group
+   * hint. Returns whichever element is visible.
+   *
+   * @returns {Promise<string>}
+   */
+  async getDisplayedPerDiemValue() {
+    try {
+      const chosen = this.page.locator(SELECTORS.PER_DIEM_SELECT2_CHOSEN).first();
+      const inheritedHint = this.page.locator(SELECTORS.PER_DIEM_INHERITED_HINT).first();
+
+      // The Per Diem section re-renders asynchronously after a reopen, so wait for either the
+      // user-level select2 value OR the inherited group display to become visible before reading.
+      await Promise.race([
+        chosen.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {}),
+        inheritedHint.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {}),
+      ]);
+
+      if (await chosen.isVisible().catch(() => false)) {
+        return (await chosen.textContent() ?? '').replace(/\s+/g, ' ').trim();
+      }
+      if (await inheritedHint.isVisible().catch(() => false)) {
+        return (await inheritedHint.textContent() ?? '').replace(/\s+/g, ' ').trim();
+      }
+      throw new Error(
+        `Neither the user-level per diem value (${SELECTORS.PER_DIEM_SELECT2_CHOSEN}) nor the inherited ` +
+        `group display (${SELECTORS.PER_DIEM_INHERITED_HINT}) became visible within 15s.`
+      );
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getDisplayedPerDiemValue] Could not read the displayed per diem value. ` +
+        `The Per Diem section may not have rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Scrolls the users list to the top, finds the row whose 5th cell equals the given name, clicks it
+   * to reopen the user, and waits for the detail form (First Name: label).
+   *
+   * @param {string} userName - The user display name held in the row's 5th cell
+   */
+  async reopenUserByFifthCell(userName) {
+    try {
+      await this.page.evaluate(() => window.scrollTo(0, 0));
+
+      const rows = this.page.locator(SELECTORS.ADMIN_USERS_LIST_ROWS);
+      await rows.first().waitFor({ state: 'visible', timeout: 30000 });
+
+      const target = rows
+        .filter({
+          has: this.page
+            .locator(SELECTORS.ADMIN_USER_ROW_FIFTH_CELL)
+            .filter({ hasText: userName }),
+        })
+        .first();
+
+      await target.waitFor({ state: 'visible', timeout: 15000 });
+      await target.locator(SELECTORS.ADMIN_USER_ROW_FIFTH_CELL).first().click({ timeout: 10000 });
+
+      await this.page
+        .locator(SELECTORS.ADMIN_USER_DETAIL_FORM_FIRST_LABEL)
+        .first()
+        .waitFor({ state: 'visible', timeout: 20000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.reopenUserByFifthCell] Could not reopen user "${userName}" from the users list ` +
+        `(row selector: ${SELECTORS.ADMIN_USERS_LIST_ROWS}, 5th cell: ${SELECTORS.ADMIN_USER_ROW_FIFTH_CELL}). ` +
+        `No row's 5th cell matched the name, or the detail form did not open. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Admin section navigation (test 40136) ---
+
+  /**
+   * Clicks an administration left-menu section link by its title attribute (e.g. "Roles",
+   * "Per Diem Settings"). The admin left menu renders each section as `[title='<name>']`.
+   *
+   * @param {string} title - The section title attribute value to click
+   */
+  async clickAdminSectionByTitle(title) {
+    try {
+      const escaped = String(title).replace(/'/g, "\\'");
+      const link = this.page.locator(`[title='${escaped}']`).first();
+      await link.waitFor({ state: 'visible', timeout: 15000 });
+      await link.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickAdminSectionByTitle] Could not open the administration section "${title}" ` +
+        `(selector: [title='${title}']). The logged-in user's role may not grant access to this section, or the ` +
+        `admin menu did not render. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Roles admin section (test 40136) ---
+
+  /**
+   * Waits for the roles datatable to render by asserting its first column header reads "Role".
+   */
+  async waitForRolesListReady() {
+    try {
+      const header = this.page.locator(SELECTORS.ROLES_DATATABLE_HEADER).first();
+      await header.waitFor({ state: 'visible', timeout: 20000 });
+      const text = (await header.textContent() ?? '').replace(/\s+/g, ' ').trim();
+      if (!text.includes('Role')) {
+        throw new Error(
+          `The roles datatable header read "${text}" instead of "Role", so the Roles list did not render as expected.`
+        );
+      }
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.waitForRolesListReady] The Roles datatable did not render ` +
+        `(header selector: ${SELECTORS.ROLES_DATATABLE_HEADER}). ` +
+        `The Roles section may not have opened. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickAddNewRole() {
+    try {
+      const btn = this.page.locator(SELECTORS.ADD_NEW_ROLE_BTN).first();
+      await btn.waitFor({ state: 'visible', timeout: 15000 });
+      await btn.click({ timeout: 10000 });
+      // Confirm the role edit form opened (name input present)
+      await this.page.locator(SELECTORS.ROLE_NAME_INPUT).first().waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickAddNewRole] Could not click the "Add new role" button ` +
+        `(selector: ${SELECTORS.ADD_NEW_ROLE_BTN}). ` +
+        `The Roles list must be open and the role must permit adding roles. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Types a role name into the role name input. Uses pressSequentially so the AngularJS ng-model
+   * $watch/$dirty cycle fires (fill() alone does not reliably dirty AngularJS 1.x forms).
+   *
+   * @param {string} name - The role name to type
+   */
+  async fillRoleName(name) {
+    try {
+      const input = this.page.locator(SELECTORS.ROLE_NAME_INPUT).first();
+      await input.waitFor({ state: 'visible', timeout: 15000 });
+      await input.click({ timeout: 5000 });
+      await input.fill('', { timeout: 5000 });
+      await input.pressSequentially(name, { delay: 40 });
+      await input.press('Tab');
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.fillRoleName] Could not type role name "${name}" into the role name input ` +
+        `(selector: ${SELECTORS.ROLE_NAME_INPUT}). ` +
+        `The role edit form may not be open. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Selects all privileges in the role's privilege dual-list: ticks the select-all checkbox, then
+   * clicks the move-to-selected control to move every unselected privilege into the selected list.
+   */
+  async selectAllRolePrivileges() {
+    try {
+      const selectAll = this.page.locator(SELECTORS.ROLE_SELECT_ALL_PRIVILEGES).first();
+      await selectAll.waitFor({ state: 'visible', timeout: 15000 });
+      await selectAll.click({ timeout: 10000 });
+
+      const moveBtn = this.page.locator(SELECTORS.ROLE_MOVE_TO_SELECTED).first();
+      await moveBtn.waitFor({ state: 'visible', timeout: 15000 });
+      await moveBtn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.selectAllRolePrivileges] Could not select all privileges for the role ` +
+        `(select-all: ${SELECTORS.ROLE_SELECT_ALL_PRIVILEGES}, move-to-selected: ${SELECTORS.ROLE_MOVE_TO_SELECTED}). ` +
+        `The privileges dual-list may not have rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Adds a user to the role via its users dual-list: filters by the user name, ticks the select-all
+   * checkbox, then moves the matched user(s) into the selected list.
+   *
+   * @param {string} userName - The user name to filter and add
+   */
+  async addUserToRole(userName) {
+    try {
+      const filter = this.page.locator(SELECTORS.ROLE_USERS_FILTER).first();
+      await filter.waitFor({ state: 'visible', timeout: 15000 });
+      await filter.click({ timeout: 5000 });
+      await filter.fill('', { timeout: 5000 });
+      await filter.pressSequentially(userName, { delay: 50 });
+      // Let AngularJS filter the users list
+      await this.page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+
+      const selectAll = this.page.locator(SELECTORS.ROLE_USERS_SELECT_ALL).first();
+      await selectAll.waitFor({ state: 'visible', timeout: 15000 });
+      await selectAll.click({ timeout: 10000 });
+
+      const moveBtn = this.page.locator(SELECTORS.ROLE_USERS_MOVE_TO_SELECTED).first();
+      await moveBtn.waitFor({ state: 'visible', timeout: 15000 });
+      await moveBtn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.addUserToRole] Could not add user "${userName}" to the role ` +
+        `(filter: ${SELECTORS.ROLE_USERS_FILTER}, select-all: ${SELECTORS.ROLE_USERS_SELECT_ALL}, ` +
+        `move-to-selected: ${SELECTORS.ROLE_USERS_MOVE_TO_SELECTED}). ` +
+        `The users filter may have returned no rows. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickSaveRole() {
+    try {
+      const saveBtn = this.page.locator(SELECTORS.ROLE_SAVE_BTN).first();
+      await saveBtn.waitFor({ state: 'visible', timeout: 15000 });
+      await saveBtn.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+      await saveBtn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickSaveRole] Could not click the Save button on the role edit form ` +
+        `(selector: ${SELECTORS.ROLE_SAVE_BTN}). ` +
+        `A role name and privileges must be set so the form is valid. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Types a role name into the roles-list search box so the list narrows to that role.
+   *
+   * @param {string} roleName - The role name to search for
+   */
+  async fillRoleSearch(roleName) {
+    try {
+      const input = this.page.locator(SELECTORS.ROLE_SEARCH_INPUT).first();
+      await input.waitFor({ state: 'visible', timeout: 15000 });
+      await input.click({ timeout: 5000 });
+      await input.fill('', { timeout: 5000 });
+      await input.pressSequentially(roleName, { delay: 50 });
+      await this.page.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {});
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.fillRoleSearch] Could not search for role "${roleName}" ` +
+        `(selector: ${SELECTORS.ROLE_SEARCH_INPUT}). ` +
+        `The Roles list may not be open. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the first role row's name from the filtered roles list.
+   *
+   * @returns {Promise<string>}
+   */
+  async getFirstRoleRowName() {
+    try {
+      const cell = this.page.locator(SELECTORS.ROLE_FIRST_ROW_NAME).first();
+      await cell.waitFor({ state: 'visible', timeout: 15000 });
+      return (await cell.textContent() ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getFirstRoleRowName] Could not read the first role row name ` +
+        `(selector: ${SELECTORS.ROLE_FIRST_ROW_NAME}). ` +
+        `The role search may have returned no rows. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns whether the delete-role (secondary) button is visible for the selected role.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async isDeleteRoleBtnVisible({ timeout = 15000 } = {}) {
+    try {
+      const btn = this.page.locator(SELECTORS.ROLE_DELETE_BTN).first();
+      await btn.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.isDeleteRoleBtnVisible] The delete-role button did not become visible ` +
+        `(selector: ${SELECTORS.ROLE_DELETE_BTN}). ` +
+        `The role may not be selected. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickDeleteRoleBtn() {
+    try {
+      const btn = this.page.locator(SELECTORS.ROLE_DELETE_BTN).first();
+      await btn.waitFor({ state: 'visible', timeout: 15000 });
+      await btn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickDeleteRoleBtn] Could not click the delete-role button ` +
+        `(selector: ${SELECTORS.ROLE_DELETE_BTN}). ` +
+        `The role must be selected. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the title of the delete-role confirmation dialog (expected to read "Delete Role").
+   *
+   * @returns {Promise<string>}
+   */
+  async getDeleteRoleDialogTitle() {
+    try {
+      const title = this.page.locator(SELECTORS.DELETE_ROLE_DIALOG_TITLE).first();
+      await title.waitFor({ state: 'visible', timeout: 15000 });
+      return (await title.textContent() ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getDeleteRoleDialogTitle] Could not read the delete-role dialog title ` +
+        `(selector: ${SELECTORS.DELETE_ROLE_DIALOG_TITLE}). ` +
+        `The confirmation dialog may not have opened. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Confirms role deletion by clicking the primary button of the jQuery UI confirmation dialog
+   * (reuses the shared DIALOG_CONFIRM_BTN selector).
+   */
+  async confirmRoleDeletion() {
+    try {
+      const confirmBtn = this.page.locator(SELECTORS.DIALOG_CONFIRM_BTN).first();
+      await confirmBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await confirmBtn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.confirmRoleDeletion] Could not click the confirm button in the delete-role dialog ` +
+        `(selector: ${SELECTORS.DIALOG_CONFIRM_BTN}). ` +
+        `The jQuery UI dialog may not have appeared. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Per Diem Settings admin section (test 40136) ---
+
+  /**
+   * Reads the general-information header of the opened per diem detail panel
+   * (expected to read "General information").
+   *
+   * @returns {Promise<string>}
+   */
+  async getPerDiemGeneralInfoHeader() {
+    try {
+      const header = this.page.locator(SELECTORS.PERDIEM_GENERAL_INFO_HEADER).first();
+      await header.waitFor({ state: 'visible', timeout: 15000 });
+      return (await header.textContent() ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getPerDiemGeneralInfoHeader] Could not read the per diem general-information header ` +
+        `(selector: ${SELECTORS.PERDIEM_GENERAL_INFO_HEADER}). ` +
+        `The per diem detail panel may not have opened. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickAddPerDiemDestination() {
+    try {
+      const link = this.page.locator(SELECTORS.PERDIEM_ADD_DESTINATION).first();
+      await link.waitFor({ state: 'visible', timeout: 15000 });
+      await link.click({ timeout: 10000 });
+      // Confirm a destination row rendered (its daily-sum input appears)
+      await this.page.locator(SELECTORS.PERDIEM_DAILY_SUM).first().waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickAddPerDiemDestination] Could not add a destination row ` +
+        `(selector: ${SELECTORS.PERDIEM_ADD_DESTINATION}). ` +
+        `The per diem detail panel must be open. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Locates the destination row that contains the daily-sum input. The destination and currency
+   * select2 widgets both live in this row, so scoping to it lets us pick them by DOM order instead
+   * of the fragile #s2id_autogen* ids Testim recorded.
+   *
+   * @returns {import('playwright').Locator}
+   */
+  perDiemDestinationRow() {
+    // Nearest ancestor of the daily-sum input that also contains at least one select2 trigger.
+    return this.page
+      .locator(SELECTORS.PERDIEM_DAILY_SUM)
+      .first()
+      .locator(`xpath=ancestor::*[.//a[contains(@class,'select2-choice')]][1]`);
+  }
+
+  /**
+   * Opens the Nth select2 trigger within the destination row and picks its first result.
+   *
+   * @param {number} index - Zero-based select2 index in the row (0 = destination, 1 = currency)
+   * @param {string} label - Human label for error context ("destination" / "currency")
+   */
+  async selectFirstRowSelect2Option(index, label) {
+    try {
+      const row = this.perDiemDestinationRow();
+      const trigger = row.locator(SELECTORS.PERDIEM_ROW_SELECT2_TRIGGER).nth(index);
+      await trigger.waitFor({ state: 'visible', timeout: 15000 });
+      await trigger.click({ timeout: 10000 });
+
+      await this.page.locator(SELECTORS.PERDIEM_SELECT2_DROPDOWN).first().waitFor({ state: 'visible', timeout: 15000 });
+
+      const firstResult = this.page.locator(SELECTORS.PERDIEM_SELECT2_FIRST_RESULT).first();
+      await firstResult.waitFor({ state: 'visible', timeout: 15000 });
+      await firstResult.click({ timeout: 10000 });
+
+      // Dropdown closes once a result is picked
+      await this.page.locator(SELECTORS.PERDIEM_SELECT2_DROPDOWN).first().waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.selectFirstRowSelect2Option] Could not pick the first ${label} option ` +
+        `(row select2 index ${index}, trigger: ${SELECTORS.PERDIEM_ROW_SELECT2_TRIGGER}, ` +
+        `result: ${SELECTORS.PERDIEM_SELECT2_FIRST_RESULT}). ` +
+        `The destination row or its select2 dropdown may not have rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  async selectFirstDestinationOption() {
+    return this.selectFirstRowSelect2Option(0, 'destination');
+  }
+
+  async selectFirstCurrencyOption() {
+    return this.selectFirstRowSelect2Option(1, 'currency');
+  }
+
+  /**
+   * Types the daily sum into the destination row's daily-sum input.
+   *
+   * @param {string} value - The daily sum to enter (e.g. "10")
+   */
+  async fillDailySum(value) {
+    try {
+      const input = this.page.locator(SELECTORS.PERDIEM_DAILY_SUM).first();
+      await input.waitFor({ state: 'visible', timeout: 15000 });
+      await input.click({ timeout: 5000 });
+      await input.fill('', { timeout: 5000 });
+      await input.pressSequentially(value, { delay: 40 });
+      await input.press('Tab');
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.fillDailySum] Could not type daily sum "${value}" ` +
+        `(selector: ${SELECTORS.PERDIEM_DAILY_SUM}). ` +
+        `The destination row may not have rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickSavePerDiem() {
+    try {
+      const saveBtn = this.page.locator(SELECTORS.PERDIEM_SAVE_BTN).first();
+      await saveBtn.waitFor({ state: 'visible', timeout: 15000 });
+      await saveBtn.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+      await saveBtn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickSavePerDiem] Could not click the Save button on the per diem detail form ` +
+        `(selector: ${SELECTORS.PERDIEM_SAVE_BTN}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async clickRemovePerDiemDestination() {
+    try {
+      const btn = this.page.locator(SELECTORS.PERDIEM_REMOVE_DESTINATION).first();
+      await btn.waitFor({ state: 'visible', timeout: 15000 });
+      await btn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickRemovePerDiemDestination] Could not click the remove-destination control ` +
+        `(selector: ${SELECTORS.PERDIEM_REMOVE_DESTINATION}). ` +
+        `There may be no destination row to remove. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns whether any destination row is still present, by counting the daily-sum inputs.
+   * Used for the negative assertion that a removed destination no longer appears.
+   *
+   * @param {object} [options]
+   * @param {number} [options.settleTimeout=5000] - Grace period for AngularJS to remove the row
+   * @returns {Promise<boolean>}
+   */
+  async isDestinationRowPresent({ settleTimeout = 5000 } = {}) {
+    try {
+      const rows = this.page.locator(SELECTORS.PERDIEM_DAILY_SUM);
+      // Give AngularJS a moment to drop the row from the DOM after removal + save
+      await rows.first().waitFor({ state: 'hidden', timeout: settleTimeout }).catch(() => {});
+      return (await rows.count()) > 0;
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.isDestinationRowPresent] Could not determine whether a destination row is present ` +
+        `(selector: ${SELECTORS.PERDIEM_DAILY_SUM}). Original: ${err.message}`
       );
     }
   }

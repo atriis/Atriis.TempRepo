@@ -148,3 +148,166 @@ Then("the mobile field should show country code {string} area code {string} and 
   logger.info("Verifying mobile values in administration", { countryCode, areaCode, number });
   await Administration.verifyMobileInAdmin(this.adminPage, { countryCode, areaCode, number });
 });
+
+// --- Per Diem removal flow (test 18418) ---
+
+When("I open the Users tab in the administration", async function () {
+  logger.info("Opening the Users tab in administration");
+  await Administration.openUsersTab(this.adminPage);
+});
+
+Then("the administration users list should be displayed", async function () {
+  logger.info("Verifying the administration users list is displayed");
+  await Administration.verifyUsersListDisplayed(this.adminPage);
+});
+
+When("I open the first user in the administration users list", async function () {
+  logger.info("Opening the first user in the administration users list");
+  await Administration.openFirstUserInAdmin(this.adminPage);
+});
+
+Then("the user detail form should be displayed in the administration", async function () {
+  logger.info("Verifying the user detail form is displayed in administration");
+  await Administration.verifyUserDetailFormDisplayed(this.adminPage);
+});
+
+Then("the Per Diem section should be displayed in the administration", async function () {
+  logger.info("Verifying the Per Diem section is displayed in administration");
+  await Administration.verifyPerDiemSectionDisplayed(this.adminPage);
+});
+
+When("I set the per diem setting to {string} for the administration user", async function (perDiemValue) {
+  logger.info("Setting the per diem setting for the administration user", { perDiemValue });
+  await Administration.setPerDiemSetting(this.adminPage, perDiemValue);
+});
+
+Then("the per diem setting should show {string}", async function (expectedValue) {
+  logger.info("Verifying the per diem setting shown in administration", { expectedValue });
+  await Administration.verifyPerDiemSettingShows(this.adminPage, expectedValue);
+});
+
+When("I reopen the user {string} from the administration users list", async function (userName) {
+  logger.info("Reopening user from the administration users list", { userName });
+  await Administration.reopenUserByName(this.adminPage, userName);
+});
+
+// --- Roles admin section (test 40136) ---
+
+When("I open the Roles section in the administration", async function () {
+  logger.info("Opening the Roles section in administration");
+  await Administration.openRolesSection(this.adminPage);
+});
+
+When("I click add new role in the administration", async function () {
+  logger.info("Clicking Add new role in administration");
+  await Administration.addNewRole(this.adminPage);
+});
+
+When("I enter a random role name in the administration", async function () {
+  logger.info("Entering a random role name in administration");
+  this.createdRoleName = await Administration.enterRandomRoleName(this.adminPage);
+  logger.info("Stored created role name on the world", { createdRoleName: this.createdRoleName });
+});
+
+When("I select all privileges for the role in the administration", async function () {
+  logger.info("Selecting all privileges for the role in administration");
+  await Administration.selectAllRolePrivileges(this.adminPage);
+});
+
+When("I add the user {string} to the role in the administration", async function (userName) {
+  logger.info("Adding user to the role in administration", { userName });
+  await Administration.addUserToRole(this.adminPage, userName);
+});
+
+When("I save the role in the administration", async function () {
+  logger.info("Saving the role in administration");
+  await Administration.saveRole(this.adminPage);
+});
+
+When("I search for the created role in the administration", async function () {
+  if (!this.createdRoleName) {
+    throw new Error('[administration.steps] No created role name stored — call "I enter a random role name in the administration" first.');
+  }
+  logger.info("Searching for the created role in administration", { roleName: this.createdRoleName });
+  await Administration.searchCreatedRole(this.adminPage, this.createdRoleName);
+});
+
+Then("the created role should be listed in the administration", async function () {
+  if (!this.createdRoleName) {
+    throw new Error('[administration.steps] No created role name stored — call "I enter a random role name in the administration" first.');
+  }
+  logger.info("Verifying the created role is listed in administration", { roleName: this.createdRoleName });
+  await Administration.verifyCreatedRoleListed(this.adminPage, this.createdRoleName);
+});
+
+Then("the delete role button should be visible in the administration", async function () {
+  logger.info("Verifying the delete role button is visible in administration");
+  await Administration.verifyDeleteRoleButtonVisible(this.adminPage);
+});
+
+When("I click the delete role button in the administration", async function () {
+  logger.info("Clicking the delete role button in administration");
+  await Administration.clickDeleteRole(this.adminPage);
+});
+
+Then("the delete role dialog should be displayed in the administration", async function () {
+  logger.info("Verifying the delete role dialog is displayed in administration");
+  await Administration.verifyDeleteRoleDialogDisplayed(this.adminPage);
+});
+
+When("I confirm the role deletion in the administration", async function () {
+  logger.info("Confirming the role deletion in administration");
+  await Administration.confirmRoleDeletion(this.adminPage);
+});
+
+// --- Per Diem Settings admin section (test 40136) ---
+
+When("I open the Per Diem Settings section in the administration", async function () {
+  logger.info("Opening the Per Diem Settings section in administration");
+  await Administration.openPerDiemSettingsSection(this.adminPage);
+});
+
+When("I open the {string} per diem in the administration", async function (perDiemName) {
+  logger.info("Opening a named per diem in administration", { perDiemName });
+  await Administration.openNamedPerDiem(this.adminPage, perDiemName);
+});
+
+Then("the per diem general information should be displayed in the administration", async function () {
+  logger.info("Verifying the per diem general information is displayed in administration");
+  await Administration.verifyPerDiemGeneralInfoDisplayed(this.adminPage);
+});
+
+When("I add a new destination to the per diem in the administration", async function () {
+  logger.info("Adding a new destination to the per diem in administration");
+  await Administration.addPerDiemDestination(this.adminPage);
+});
+
+When("I select the first destination in the per diem in the administration", async function () {
+  logger.info("Selecting the first destination in the per diem in administration");
+  await Administration.selectFirstDestination(this.adminPage);
+});
+
+When("I set the per diem daily sum to {string} in the administration", async function (value) {
+  logger.info("Setting the per diem daily sum in administration", { value });
+  await Administration.setPerDiemDailySum(this.adminPage, value);
+});
+
+When("I select the first per diem currency in the administration", async function () {
+  logger.info("Selecting the first per diem currency in administration");
+  await Administration.selectFirstPerDiemCurrency(this.adminPage);
+});
+
+When("I save the per diem in the administration", async function () {
+  logger.info("Saving the per diem in administration");
+  await Administration.savePerDiem(this.adminPage);
+});
+
+When("I remove the destination from the per diem in the administration", async function () {
+  logger.info("Removing the destination from the per diem in administration");
+  await Administration.removePerDiemDestination(this.adminPage);
+});
+
+Then("the destination should no longer be listed in the per diem in the administration", async function () {
+  logger.info("Verifying the destination is no longer listed in the per diem in administration");
+  await Administration.verifyDestinationNoLongerListed(this.adminPage);
+});
