@@ -65,6 +65,33 @@ After(async function (scenario) {
   const artifactBase = `${workItemPrefix}${scenarioName}_attempt${attemptNumber}`;
   const failed = scenario.result?.status === Status.FAILED;
 
+  // Surface every trip number this scenario touched into the Cucumber report so
+  // the CI summary table can show a "Trip #" column. Sources, deduped: ids
+  // recorded during steps (this.tripIds), well-known world fields, and a live
+  // scan of every open tab URL — the last one catches multi-trip / multi-tab
+  // scenarios where a second trip was opened but never stored on the world.
+  // Gather BEFORE closing the context below, or the page URLs are gone.
+  try {
+    const tripIds = new Set(Array.isArray(this.tripIds) ? this.tripIds.map(String) : []);
+    for (const id of [this.tripId, this.currentTripId, this.createdTripId, this.storedConflictingTripId]) {
+      if (id !== null && id !== undefined && String(id).trim()) tripIds.add(String(id).trim());
+    }
+    const pages = this.context ? this.context.pages() : this.page ? [this.page] : [];
+    for (const p of pages) {
+      try {
+        const match = String(p.url() || "").match(/\/trips\/(\d+)(?:[/?#]|$)/i);
+        if (match) tripIds.add(match[1]);
+      } catch {
+        // Page may already be closed — skip it.
+      }
+    }
+    if (tripIds.size > 0) {
+      this.attach("TRIP_IDS:" + [...tripIds].join(","), "text/plain");
+    }
+  } catch (error) {
+    logger.warn("Failed to attach trip ids to report", { error: error.message });
+  }
+
   try {
     // Viewport-only (not fullPage): fullPage forces a resize-to-full-height
     // rasterization that stalls past the 30s default in headless CI, especially

@@ -14,6 +14,23 @@ class CustomWorld extends World {
     this.browser = null;
     this.context = null;
     this.page = null;
+    // Every trip number touched during the scenario, first-seen order and
+    // de-duplicated. Surfaced into the CI summary table by the After hook.
+    this.tripIds = [];
+  }
+
+  /**
+   * Record a trip number encountered during the scenario. Kept de-duplicated
+   * and order-preserving so a multi-trip scenario reports all of its trips.
+   * @param {string|number|null|undefined} id
+   */
+  recordTripId(id) {
+    if (id === null || id === undefined) return;
+    const value = String(id).trim();
+    if (!value) return;
+    if (!this.tripIds.includes(value)) {
+      this.tripIds.push(value);
+    }
   }
 
   /**

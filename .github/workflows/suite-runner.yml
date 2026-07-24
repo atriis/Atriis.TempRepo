@@ -229,6 +229,27 @@ jobs:
             // and land in rerun.txt + JUnit failures — count them as failed
             // here too, or the summary over-reports passes.
             const FAIL_STATUSES = { failed: 1, ambiguous: 1, pending: 1, undefined: 1 };
+            // Trip numbers are attached by the After hook as a 'TRIP_IDS:...'
+            // text embedding (see tests/support/hooks.js). Scan a scenario's
+            // step embeddings for that marker; text attachments come through raw
+            // while some are base64-encoded, so try both. Returns 'a, b' or ''.
+            const extractTripIds = (el) => {
+              const ids = new Set();
+              for (const step of (el.steps || [])) {
+                for (const emb of (step.embeddings || [])) {
+                  if (!emb || !emb.data) continue;
+                  const mt = emb.mime_type || emb.media_type || '';
+                  if (mt && mt.indexOf('text') === -1 && mt.indexOf('json') === -1) continue;
+                  let text = String(emb.data);
+                  if (text.indexOf('TRIP_IDS:') === -1) {
+                    try { text = Buffer.from(emb.data, 'base64').toString('utf8'); } catch (e) { /* not base64 */ }
+                  }
+                  const m = text.match(/TRIP_IDS:([0-9,\s]+)/);
+                  if (m) m[1].split(',').map(s => s.trim()).filter(Boolean).forEach(id => ids.add(id));
+                }
+              }
+              return [...ids].join(', ');
+            };
             for (const feature of merged) {
               const name = feature.name || 'Unknown';
               let fp = 0, ff = 0, fsk = 0;
@@ -246,6 +267,7 @@ jobs:
                     feature: name,
                     scenario: el.name || '',
                     location: (feature.uri || '') + ':' + (el.line || ''),
+                    tripNumbers: extractTripIds(el),
                     error: (rawErr || (failStep.result.status + ' step: ' + ((failStep.keyword || '') + (failStep.name || '')).trim())).slice(0, 300)
                   });
                 }
@@ -350,11 +372,11 @@ jobs:
                 console.log('');
                 console.log('### ❌ Failed Scenarios (' + failedList.length + ')');
                 console.log('');
-                console.log('| Suite | Scenario | Location | Error (last attempt) |');
-                console.log('|-------|----------|----------|----------------------|');
+                console.log('| Suite | Scenario | Location | Trip # | Error (last attempt) |');
+                console.log('|-------|----------|----------|--------|----------------------|');
                 const MAX_ROWS = 100;
                 for (const f of failedList.slice(0, MAX_ROWS)) {
-                  console.log('| ' + esc(f.suite) + ' | ' + esc(f.scenario) + ' | ' + esc(f.location) + ' | ' + esc(f.error) + ' |');
+                  console.log('| ' + esc(f.suite) + ' | ' + esc(f.scenario) + ' | ' + esc(f.location) + ' | ' + esc(f.tripNumbers || '—') + ' | ' + esc(f.error) + ' |');
                 }
                 if (failedList.length > MAX_ROWS) {
                   console.log('');

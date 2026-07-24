@@ -58,6 +58,7 @@ Given("I am logged in as {string} booking a new trip", async function (user) {
     this.tripId = tripId;
     this.currentTripId = tripId;
     this.createdTripId = tripId;
+    this.recordTripId(tripId);
     logger.info("Trip id captured from booking flow", { tripId });
   } else {
     logger.warn("Trip id was not available immediately after opening a new trip");
