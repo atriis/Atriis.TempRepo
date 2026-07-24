@@ -225,8 +225,8 @@ jobs:
             let totalScenarios = 0, passed = 0, failed = 0, skipped = 0;
             const suiteRows = [];
             const failedScenarios = [];
-            // Passed scenarios that created a trip — booked trips still need
-            // their trip number checked/cancelled, so they get their own table.
+            // Every passed scenario, with any trip number it booked (— if none)
+            // so real bookings can be verified/cancelled after the run.
             const passedScenarios = [];
             // pending/undefined/ambiguous fail the cucumber run (strict mode)
             // and land in rerun.txt + JUnit failures — count them as failed
@@ -277,16 +277,13 @@ jobs:
                 else if (allSkip) { skipped++; fsk++; }
                 else {
                   passed++; fp++;
-                  const tripNumbers = extractTripIds(el);
-                  if (tripNumbers) {
-                    passedScenarios.push({
-                      suite: feature.suiteId || '',
-                      feature: name,
-                      scenario: el.name || '',
-                      location: (feature.uri || '') + ':' + (el.line || ''),
-                      tripNumbers
-                    });
-                  }
+                  passedScenarios.push({
+                    suite: feature.suiteId || '',
+                    feature: name,
+                    scenario: el.name || '',
+                    location: (feature.uri || '') + ':' + (el.line || ''),
+                    tripNumbers: extractTripIds(el)
+                  });
                 }
               }
               if (fp + ff + fsk > 0) suiteRows.push({ name, passed: fp, failed: ff, skipped: fsk });
@@ -398,12 +395,12 @@ jobs:
                   console.log('…and ' + (failedList.length - MAX_ROWS) + ' more — download the cucumber-html-report artifact for the full list.');
                 }
               }
-              // Passed scenarios that booked a trip — trip numbers listed so
-              // real bookings can be verified/cancelled after the run.
+              // All passed scenarios, with any trip number booked (— if none)
+              // so real bookings can be verified/cancelled after the run.
               const passedList = s.passedScenarios || [];
               if (passedList.length > 0) {
                 console.log('');
-                console.log('### ✅ Passed Scenarios with Trip Numbers (' + passedList.length + ')');
+                console.log('### ✅ Passed Scenarios (' + passedList.length + ')');
                 console.log('');
                 console.log('| Suite | Scenario | Location | Trip # |');
                 console.log('|-------|----------|----------|--------|');
