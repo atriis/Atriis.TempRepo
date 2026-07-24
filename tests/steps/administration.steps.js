@@ -311,3 +311,85 @@ Then("the destination should no longer be listed in the per diem in the administ
   logger.info("Verifying the destination is no longer listed in the per diem in administration");
   await Administration.verifyDestinationNoLongerListed(this.adminPage);
 });
+
+// --- Deactivate user with dependencies (test 37921) ---
+
+Then("the administration users table should display the {string} column header", async function (expectedHeader) {
+  logger.info("Verifying administration users table column header", { expectedHeader });
+  await Administration.verifyUsersTableColumnHeader(this.adminPage, expectedHeader);
+});
+
+When("I filter the administration users by {string}", async function (userName) {
+  logger.info("Filtering administration users", { userName });
+  await Administration.filterUsersInAdmin(this.adminPage, userName);
+});
+
+Then("the administration user results should contain {string}", async function (expectedText) {
+  logger.info("Verifying administration user results contain text", { expectedText });
+  await Administration.verifyFirstUserResultContains(this.adminPage, expectedText);
+});
+
+When("I select the first user in the administration results", async function () {
+  logger.info("Selecting the first user in the administration results");
+  await Administration.selectFirstUserInResults(this.adminPage);
+});
+
+When("I click the deactivate user button in the administration", async function () {
+  logger.info("Clicking the deactivate user button in administration");
+  await Administration.clickDeactivateUser(this.adminPage);
+});
+
+Then("the deactivation dependencies popup should state {string}", async function (expectedText) {
+  logger.info("Verifying deactivation dependencies popup statement", { expectedText });
+  await Administration.verifyDeactivationPopupStatement(this.adminPage, expectedText);
+});
+
+Then("the deactivation dependencies popup should list the dependency {string}", async function (expectedDependency) {
+  logger.info("Verifying deactivation dependencies popup lists dependency", { expectedDependency });
+  await Administration.verifyDeactivationPopupDependency(this.adminPage, expectedDependency);
+});
+
+When("I confirm the user deactivation in the popup", async function () {
+  logger.info("Confirming the user deactivation in the popup");
+  await Administration.confirmUserDeactivation(this.adminPage);
+});
+
+Then("I manually verify the deactivated user is no longer listed as a dependency", async function () {
+  logger.info("Verifying the deactivated user is no longer listed as an active dependency");
+  await Administration.verifyUserNotListedAsDependency(this.adminPage);
+});
+
+When("I show inactive users in the administration", async function () {
+  logger.info("Showing inactive users in administration");
+  await Administration.showInactiveUsers(this.adminPage);
+});
+
+Then("the administration user status should be {string}", async function (expectedStatus) {
+  logger.info("Verifying administration user status", { expectedStatus });
+  await Administration.verifyUserStatusBadge(this.adminPage, expectedStatus);
+});
+
+Then("the approval flow dependency should display {string}", async function (expectedValue) {
+  logger.info("Verifying approval flow dependency value", { expectedValue });
+  await Administration.verifyApprovalFlowDependency(this.adminPage, expectedValue);
+});
+
+When("I open the first dependency link in the deactivation popup", async function () {
+  logger.info("Opening the first dependency link in the deactivation popup");
+  this.linkedDependencyTab = await Administration.openFirstDependencyLink(this.adminPage);
+});
+
+Then("the linked dependency page should display the name {string}", async function (expectedName) {
+  logger.info("Verifying linked dependency page name", { expectedName });
+  await Administration.verifyLinkedDependencyName(this.linkedDependencyTab, expectedName);
+});
+
+When("I close the deactivation dependencies popup", async function () {
+  logger.info("Closing the deactivation dependencies popup");
+  await Administration.closeDeactivationPopup(this.adminPage);
+});
+
+When("I activate the first user in the administration", async function () {
+  logger.info("Reactivating the first user in the administration");
+  await Administration.activateFirstUser(this.adminPage);
+});

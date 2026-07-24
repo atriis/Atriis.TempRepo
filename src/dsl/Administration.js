@@ -1752,6 +1752,494 @@ const Administration = {
 
     logger.info('[Administration.verifyDestinationNoLongerListed] No destination row remains — removal confirmed');
   },
+
+  // --- Deactivate user with dependencies (test 37921) ---
+
+  /**
+   * Verifies the administration users table displays the expected column header.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} expectedHeader - The expected column header text (e.g. "First Name")
+   */
+  async verifyUsersTableColumnHeader(adminPage, expectedHeader) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyUsersTableColumnHeader] "adminPage" is required.');
+    }
+    if (!expectedHeader || typeof expectedHeader !== 'string') {
+      throw new Error(
+        `[Administration.verifyUsersTableColumnHeader] "expectedHeader" must be a non-empty string, got: ${typeof expectedHeader} (${JSON.stringify(expectedHeader)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyUsersTableColumnHeader] Verifying users table shows column header "${expectedHeader}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const actual = await page.getUsersTableColumnHeader();
+
+    if (!actual.includes(expectedHeader)) {
+      throw new Error(
+        `[Administration.verifyUsersTableColumnHeader] Users table column header mismatch. ` +
+        `Expected to contain "${expectedHeader}" but found "${actual}". ` +
+        `The Users list may not have rendered or its column layout changed.`
+      );
+    }
+
+    logger.info(`[Administration.verifyUsersTableColumnHeader] Users table displays column header "${actual}"`);
+  },
+
+  /**
+   * Filters the administration users list by typing into the search box. Unlike searchUserInAdmin,
+   * this only narrows the list — it does NOT open the matched record.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} userName - The text to filter the users list by
+   */
+  async filterUsersInAdmin(adminPage, userName) {
+    if (!adminPage) {
+      throw new Error('[Administration.filterUsersInAdmin] "adminPage" is required.');
+    }
+    if (!userName || typeof userName !== 'string') {
+      throw new Error(
+        `[Administration.filterUsersInAdmin] "userName" must be a non-empty string, got: ${typeof userName} (${JSON.stringify(userName)})`
+      );
+    }
+
+    logger.debug(`[Administration.filterUsersInAdmin] Filtering users by "${userName}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.fillUserSearch(userName);
+    } catch (err) {
+      throw new Error(
+        `[Administration.filterUsersInAdmin] Failed to filter the users list by "${userName}": ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.filterUsersInAdmin] Users list filtered by "${userName}"`);
+  },
+
+  /**
+   * Verifies the first filtered user result contains the expected text (case-insensitive).
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} expectedText - The text the first result's name should contain
+   */
+  async verifyFirstUserResultContains(adminPage, expectedText) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyFirstUserResultContains] "adminPage" is required.');
+    }
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Administration.verifyFirstUserResultContains] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyFirstUserResultContains] Verifying first user result contains "${expectedText}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const actual = await page.getFirstUserResultName();
+
+    if (!actual.toLowerCase().includes(expectedText.toLowerCase())) {
+      throw new Error(
+        `[Administration.verifyFirstUserResultContains] First filtered user result mismatch. ` +
+        `Expected the first result name to contain "${expectedText}" (case-insensitive) but found "${actual}". ` +
+        `The filter may have returned a different user or no rows.`
+      );
+    }
+
+    logger.info(`[Administration.verifyFirstUserResultContains] First user result "${actual}" contains "${expectedText}"`);
+  },
+
+  /**
+   * Selects the first user in the filtered administration results (checks its row checkbox).
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async selectFirstUserInResults(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.selectFirstUserInResults] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.selectFirstUserInResults] Selecting the first user in the results');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.checkFirstUserRow();
+    } catch (err) {
+      throw new Error(
+        `[Administration.selectFirstUserInResults] Failed to select the first user in the results: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.selectFirstUserInResults] First user selected');
+  },
+
+  /**
+   * Clicks the deactivate-user button, opening the dependencies popup.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async clickDeactivateUser(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.clickDeactivateUser] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.clickDeactivateUser] Clicking the deactivate-user button');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickDeactivateUserButton();
+    } catch (err) {
+      throw new Error(
+        `[Administration.clickDeactivateUser] Failed to open the deactivation dependencies popup: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.clickDeactivateUser] Deactivation dependencies popup opened');
+  },
+
+  /**
+   * Verifies the deactivation dependencies popup states the given sentence (substring match).
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} expectedText - The sentence expected in the popup body
+   */
+  async verifyDeactivationPopupStatement(adminPage, expectedText) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyDeactivationPopupStatement] "adminPage" is required.');
+    }
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Administration.verifyDeactivationPopupStatement] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyDeactivationPopupStatement] Verifying popup states "${expectedText}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.waitForPopupTextVisible(expectedText);
+    } catch (err) {
+      throw new Error(
+        `[Administration.verifyDeactivationPopupStatement] The deactivation dependencies popup did not state the expected sentence "${expectedText}": ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.verifyDeactivationPopupStatement] Popup states "${expectedText}"`);
+  },
+
+  /**
+   * Verifies the deactivation dependencies popup lists the given dependency (substring match, so
+   * partial fixture names like "specific approver1" resolve).
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} expectedDependency - The dependency line expected in the popup
+   */
+  async verifyDeactivationPopupDependency(adminPage, expectedDependency) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyDeactivationPopupDependency] "adminPage" is required.');
+    }
+    if (!expectedDependency || typeof expectedDependency !== 'string') {
+      throw new Error(
+        `[Administration.verifyDeactivationPopupDependency] "expectedDependency" must be a non-empty string, got: ${typeof expectedDependency} (${JSON.stringify(expectedDependency)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyDeactivationPopupDependency] Verifying popup lists dependency "${expectedDependency}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.waitForPopupTextVisible(expectedDependency);
+    } catch (err) {
+      throw new Error(
+        `[Administration.verifyDeactivationPopupDependency] The deactivation dependencies popup did not list the dependency "${expectedDependency}": ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.verifyDeactivationPopupDependency] Popup lists dependency "${expectedDependency}"`);
+  },
+
+  /**
+   * Confirms the user deactivation in the popup.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async confirmUserDeactivation(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.confirmUserDeactivation] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.confirmUserDeactivation] Confirming the user deactivation');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.confirmDeactivationPopup();
+    } catch (err) {
+      throw new Error(
+        `[Administration.confirmUserDeactivation] Failed to confirm the user deactivation: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.confirmUserDeactivation] User deactivation confirmed');
+  },
+
+  /**
+   * Verifies the deactivation was submitted by confirming the dependencies popup has dismissed. The
+   * deeper "no longer an ACTIVE dependency" assertion is flagged manual in the Testim source; this is
+   * the strongest observable automated post-condition.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async verifyUserNotListedAsDependency(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyUserNotListedAsDependency] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.verifyUserNotListedAsDependency] Verifying the deactivation completed (popup dismissed)');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const closed = await page.isDeactivationPopupClosed();
+
+    if (!closed) {
+      throw new Error(
+        `[Administration.verifyUserNotListedAsDependency] The deactivation dependencies popup is still open after confirming, ` +
+        `so the deactivation was not submitted. (The deeper "no longer an active dependency" check is flagged manual in the Testim source.)`
+      );
+    }
+
+    logger.info('[Administration.verifyUserNotListedAsDependency] Deactivation submitted — dependencies popup dismissed');
+  },
+
+  /**
+   * Enables the "show inactive users" filter so deactivated users appear in the list.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async showInactiveUsers(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.showInactiveUsers] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.showInactiveUsers] Enabling the show-inactive-users filter');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.checkShowInactive();
+    } catch (err) {
+      throw new Error(
+        `[Administration.showInactiveUsers] Failed to enable the show-inactive-users filter: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.showInactiveUsers] Inactive users are now shown');
+  },
+
+  /**
+   * Verifies the first user row's status badge equals the expected status (e.g. "Active"/"Inactive").
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} expectedStatus - The expected status text
+   */
+  async verifyUserStatusBadge(adminPage, expectedStatus) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyUserStatusBadge] "adminPage" is required.');
+    }
+    if (!expectedStatus || typeof expectedStatus !== 'string') {
+      throw new Error(
+        `[Administration.verifyUserStatusBadge] "expectedStatus" must be a non-empty string, got: ${typeof expectedStatus} (${JSON.stringify(expectedStatus)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyUserStatusBadge] Verifying user status badge is "${expectedStatus}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    // Poll (do not read once): the row status updates asynchronously after a deactivate/activate
+    // action, so a single read can catch the stale prior status. Leading-token exact match — "Active"
+    // is a substring of "Inactive", so a contains check would let one satisfy the other.
+    let actual;
+    try {
+      actual = await page.waitForFirstUserStatus(expectedStatus);
+    } catch (err) {
+      throw new Error(
+        `[Administration.verifyUserStatusBadge] User status mismatch. ` +
+        `Expected "${expectedStatus}". ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.verifyUserStatusBadge] User status badge reads "${actual}"`);
+  },
+
+  /**
+   * Verifies the open approver record's approval-flow section lists a dependency containing the given
+   * value (case-insensitive) — used to confirm a deactivated user still appears on the approver.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} expectedValue - The dependency value expected in the approval-flow choices
+   */
+  async verifyApprovalFlowDependency(adminPage, expectedValue) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyApprovalFlowDependency] "adminPage" is required.');
+    }
+    if (!expectedValue || typeof expectedValue !== 'string') {
+      throw new Error(
+        `[Administration.verifyApprovalFlowDependency] "expectedValue" must be a non-empty string, got: ${typeof expectedValue} (${JSON.stringify(expectedValue)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyApprovalFlowDependency] Verifying approval-flow dependency shows "${expectedValue}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const values = await page.getApprovalFlowChoiceValues();
+    const found = values.some((v) => v.toLowerCase().includes(expectedValue.toLowerCase()));
+
+    if (!found) {
+      throw new Error(
+        `[Administration.verifyApprovalFlowDependency] Approval-flow dependency not found. ` +
+        `Expected a value containing "${expectedValue}" but the approver's approval-flow choices were: ${JSON.stringify(values)}. ` +
+        `The deactivated user may no longer be listed on the approver's record.`
+      );
+    }
+
+    logger.info(`[Administration.verifyApprovalFlowDependency] Approval-flow dependency shows "${expectedValue}"`);
+  },
+
+  /**
+   * Opens the first dependency link in the popup and returns the new tab it opens.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @returns {Promise<import('playwright').Page>} The linked-dependency tab
+   */
+  async openFirstDependencyLink(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.openFirstDependencyLink] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.openFirstDependencyLink] Opening the first dependency link from the popup');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    let linkedTab;
+    try {
+      linkedTab = await page.clickFirstDependencyLink();
+    } catch (err) {
+      throw new Error(
+        `[Administration.openFirstDependencyLink] Failed to open the first dependency link: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.openFirstDependencyLink] First dependency link opened in a new tab');
+    return linkedTab;
+  },
+
+  /**
+   * Verifies the linked dependency page's Name field equals the expected name, then closes the linked
+   * tab so it does not leak into later steps.
+   *
+   * @param {import('playwright').Page} linkedTab - The tab opened by openFirstDependencyLink
+   * @param {string} expectedName - The expected entity name
+   */
+  async verifyLinkedDependencyName(linkedTab, expectedName) {
+    if (!linkedTab) {
+      throw new Error(
+        '[Administration.verifyLinkedDependencyName] "linkedTab" is required — the dependency-link step must run first and store the opened tab.'
+      );
+    }
+    if (!expectedName || typeof expectedName !== 'string') {
+      throw new Error(
+        `[Administration.verifyLinkedDependencyName] "expectedName" must be a non-empty string, got: ${typeof expectedName} (${JSON.stringify(expectedName)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyLinkedDependencyName] Verifying linked dependency page name is "${expectedName}"`);
+
+    const page = getPageObject(linkedTab, AdministrationPage);
+
+    let actual;
+    try {
+      actual = await page.getEntityNameFieldValue();
+    } catch (err) {
+      // Close the linked tab before re-throwing so it does not leak into later steps
+      await linkedTab.close().catch(() => {});
+      throw new Error(
+        `[Administration.verifyLinkedDependencyName] Failed to read the linked dependency page name: ${err.message}`
+      );
+    }
+
+    const normalize = (s) => s.replace(/\s+/g, ' ').trim();
+    if (normalize(actual) !== normalize(expectedName)) {
+      await linkedTab.close().catch(() => {});
+      throw new Error(
+        `[Administration.verifyLinkedDependencyName] Linked dependency page name mismatch. ` +
+        `Expected "${expectedName}" but the linked page's Name field reads "${actual}". ` +
+        `The popup link may point to a different entity.`
+      );
+    }
+
+    // Clean up the linked tab so subsequent admin-page steps are not left on a background tab
+    await linkedTab.close().catch(() => {});
+    logger.info(`[Administration.verifyLinkedDependencyName] Linked dependency page name is "${actual}"`);
+  },
+
+  /**
+   * Closes the deactivation dependencies popup, bringing the admin tab back to the front first (a
+   * dependency link opened earlier may have backgrounded it).
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async closeDeactivationPopup(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.closeDeactivationPopup] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.closeDeactivationPopup] Closing the deactivation dependencies popup');
+
+    await adminPage.bringToFront().catch(() => {});
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.closeDeactivationPopup();
+    } catch (err) {
+      throw new Error(
+        `[Administration.closeDeactivationPopup] Failed to close the deactivation dependencies popup: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.closeDeactivationPopup] Deactivation dependencies popup closed');
+  },
+
+  /**
+   * Reactivates the selected (deactivated) user, restoring it for the next run.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async activateFirstUser(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.activateFirstUser] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.activateFirstUser] Reactivating the selected user');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickActivateUser();
+    } catch (err) {
+      throw new Error(
+        `[Administration.activateFirstUser] Failed to reactivate the selected user: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.activateFirstUser] Selected user reactivated');
+  },
 };
 
 module.exports = Administration;

@@ -160,6 +160,31 @@ const SELECTORS = {
   PERDIEM_SAVE_BTN: ".button-primary",
   // Remove-destination control on a destination row
   PERDIEM_REMOVE_DESTINATION: "[ng-click='onRemoveDestenation($index)']",
+
+  // --- Deactivate user with dependencies (test 37921) ---
+  // 2nd column header of the Users datatable — reads "First Name"
+  USERS_TABLE_COL2_HEADER: ".datatable-header tr > th:nth-of-type(2) span",
+  // Name cell (2nd cell) of the first filtered user result row
+  USER_RESULT_FIRST_NAME: "[data-ng-repeat*='user in users'] > td:nth-of-type(2) .ng-binding",
+  // Row selection checkbox in a user row
+  USER_ROW_CHECKBOX: "[ng-model='user.IsChecked']",
+  // Deactivate-user button (click target is its inner span) — opens the dependencies popup
+  DEACTIVATE_USER_BTN: "[data-ng-click='openDeactivateUserPopup(selectedUsers)'] span",
+  // Confirm (proceed) button inside the deactivation dependencies popup. Uses ng-click (NOT
+  // data-ng-click like ADMIN_SAVE_USER_BTN), so it is a distinct control from the record Save.
+  DEACTIVATION_CONFIRM_BTN: "[ng-click='onSaveClicked()']",
+  // Close (X) button of the deactivation dependencies popup (same custom popup shell as add-user)
+  DEACTIVATION_POPUP_CLOSE: "#popUpCloseBtn > div",
+  // First dependency link inside the deactivation popup (opens the linked entity in a new tab).
+  // Scoped to the popup's dependency list — a bare a[target='_blank'] also matches the page-footer
+  // atriis.com link, which sits BEHIND the modal backdrop and cannot be clicked.
+  DEPENDENCY_POPUP_LINK: "[ng-show='dependantUsers.length == 1'] ul > li:nth-of-type(1) [target='_blank']",
+  // Approval-flow dependency chosen values on an approver's record (select2 "choices" list)
+  APPROVAL_FLOW_CHOICES: "[class$='choices'] .ng-binding",
+  // Name field on a linked dependency entity page (opened from the popup link)
+  LINKED_ENTITY_NAME: "[name='Name']",
+  // Activate-user button (click target is its inner span) — reactivates the selected user
+  ACTIVATE_USER_BTN: "[data-ng-click='onActivateOrDeactivateClicked(true)'] span",
 };
 
 class AdministrationPage {
@@ -1705,6 +1730,384 @@ class AdministrationPage {
       throw new Error(
         `[AdministrationPage.isDestinationRowPresent] Could not determine whether a destination row is present ` +
         `(selector: ${SELECTORS.PERDIEM_DAILY_SUM}). Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Deactivate user with dependencies (test 37921) ---
+
+  /**
+   * Reads the 2nd column header of the Users datatable (expected to read "First Name").
+   *
+   * @returns {Promise<string>}
+   */
+  async getUsersTableColumnHeader() {
+    try {
+      const header = this.page.locator(SELECTORS.USERS_TABLE_COL2_HEADER).first();
+      await header.waitFor({ state: 'visible', timeout: 15000 });
+      return (await header.textContent() ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getUsersTableColumnHeader] Could not read the Users table column header ` +
+        `(selector: ${SELECTORS.USERS_TABLE_COL2_HEADER}). ` +
+        `The Users list datatable may not have rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the name cell of the first filtered user result.
+   *
+   * @returns {Promise<string>}
+   */
+  async getFirstUserResultName() {
+    try {
+      const cell = this.page.locator(SELECTORS.USER_RESULT_FIRST_NAME).first();
+      await cell.waitFor({ state: 'visible', timeout: 20000 });
+      return (await cell.textContent() ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getFirstUserResultName] Could not read the first filtered user result name ` +
+        `(selector: ${SELECTORS.USER_RESULT_FIRST_NAME}). ` +
+        `The user filter may have returned no rows. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Selects (checks) the first user row's selection checkbox.
+   */
+  async checkFirstUserRow() {
+    try {
+      const checkbox = this.page.locator(SELECTORS.USER_ROW_CHECKBOX).first();
+      await checkbox.waitFor({ state: 'visible', timeout: 15000 });
+      await checkbox.check({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.checkFirstUserRow] Could not select the first user row checkbox ` +
+        `(selector: ${SELECTORS.USER_ROW_CHECKBOX}). ` +
+        `The filtered users list may not have rendered a row. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the deactivate-user button to open the dependencies popup.
+   */
+  async clickDeactivateUserButton() {
+    try {
+      const btn = this.page.locator(SELECTORS.DEACTIVATE_USER_BTN).first();
+      await btn.waitFor({ state: 'visible', timeout: 15000 });
+      await btn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickDeactivateUserButton] Could not click the deactivate-user button ` +
+        `(selector: ${SELECTORS.DEACTIVATE_USER_BTN}). ` +
+        `A user must be selected first. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits until the deactivation dependencies popup shows the given text (substring, whitespace-
+   * normalised). Scoped by visibility of the text node rather than the `length == 1` popup variant,
+   * so both the single-dependency (Part A) and many-dependency (Part B) popups satisfy the same
+   * assertion. The dependency sentences and labels are long/unique enough that a visible text match
+   * is unambiguous against the rest of the page.
+   *
+   * @param {string} expectedText - The sentence or dependency line expected in the popup
+   * @returns {Promise<boolean>}
+   */
+  async waitForPopupTextVisible(expectedText, { timeout = 15000 } = {}) {
+    try {
+      // The popup renders single-dependency (ng-show="dependantUsers.length == 1") and multi-dependency
+      // layouts as sibling blocks; only one is shown, but BOTH carry a copy of each dependency line, so a
+      // plain match can resolve to a hidden copy. Wait until a VISIBLE node carries the text — display:none
+      // on the hidden block propagates to its children, so checkVisibility rules those copies out.
+      await this.page.waitForFunction(
+        (txt) => {
+          const norm = (s) => (s || '').replace(/\s+/g, ' ').trim();
+          const target = norm(txt);
+          if (!target) return false;
+          return Array.from(document.querySelectorAll('a, li, span, td, p, label, div')).some((el) => {
+            if (!norm(el.textContent).includes(target)) return false;
+            return typeof el.checkVisibility === 'function'
+              ? el.checkVisibility()
+              : !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+          });
+        },
+        expectedText,
+        { timeout }
+      );
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.waitForPopupTextVisible] The deactivation dependencies popup did not display ` +
+        `a visible occurrence of "${expectedText}" within ${timeout}ms. The popup may not be open, or the ` +
+        `wording/dependency line differs. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Confirms the deactivation by clicking the popup's proceed button, then waits for the popup to close.
+   */
+  async confirmDeactivationPopup() {
+    try {
+      const btn = this.page.locator(SELECTORS.DEACTIVATION_CONFIRM_BTN).first();
+      await btn.waitFor({ state: 'visible', timeout: 15000 });
+      await btn.click({ timeout: 10000 });
+      await this.page.locator(SELECTORS.DEACTIVATION_POPUP_CLOSE).first()
+        .waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.confirmDeactivationPopup] Could not confirm the user deactivation ` +
+        `(selector: ${SELECTORS.DEACTIVATION_CONFIRM_BTN}). ` +
+        `The dependencies popup may not be open. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns whether the deactivation dependencies popup has closed — the observable post-condition of
+   * a submitted deactivation. (The Testim source flagged the deeper "no longer an ACTIVE dependency"
+   * check as manual; this verifies the deactivation action itself went through.)
+   *
+   * @param {object} [options]
+   * @param {number} [options.settleTimeout=8000]
+   * @returns {Promise<boolean>}
+   */
+  async isDeactivationPopupClosed({ settleTimeout = 8000 } = {}) {
+    try {
+      const closeBtn = this.page.locator(SELECTORS.DEACTIVATION_POPUP_CLOSE).first();
+      await closeBtn.waitFor({ state: 'hidden', timeout: settleTimeout }).catch(() => {});
+      return !(await closeBtn.isVisible().catch(() => false));
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.isDeactivationPopupClosed] Could not determine whether the deactivation popup closed ` +
+        `(selector: ${SELECTORS.DEACTIVATION_POPUP_CLOSE}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Enables the "show inactive users" filter so deactivated users appear in the list.
+   */
+  async checkShowInactive() {
+    try {
+      const box = this.page.locator(SELECTORS.ADMIN_SHOW_INACTIVE_CHECKBOX).first();
+      await box.waitFor({ state: 'visible', timeout: 15000 });
+      await box.check({ timeout: 10000 });
+      await this.page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.checkShowInactive] Could not enable the "show inactive users" filter ` +
+        `(selector: ${SELECTORS.ADMIN_SHOW_INACTIVE_CHECKBOX}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the status of the first visible user row (expected "Active" / "Inactive"). Uses the users-
+   * list status column (9th cell) rather than the row's ng-hide "Active" label: an ng-hide element
+   * keeps its text in the DOM when hidden, so reading it would always return "Active" regardless of
+   * the real status. The status cell also carries a trailing action label (e.g. "Active Deleted"), so
+   * the leading token is returned.
+   *
+   * @returns {Promise<string>}
+   */
+  async getUserStatusBadge() {
+    try {
+      const rows = this.page.locator(SELECTORS.ADMIN_USER_ROWS);
+      await rows.first().waitFor({ state: 'visible', timeout: 20000 });
+      const count = await rows.count();
+      for (let i = 0; i < count; i++) {
+        const row = rows.nth(i);
+        if (!(await row.isVisible().catch(() => false))) continue;
+        const cell = row.locator(SELECTORS.ADMIN_USER_STATUS_CELL).first();
+        if ((await cell.count()) === 0) continue;
+        const text = (await cell.textContent().catch(() => '') ?? '').replace(/\s+/g, ' ').trim();
+        if (text) return text.split(/\s+/)[0];
+      }
+      throw new Error('no visible user row with a status cell was found after filtering.');
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getUserStatusBadge] Could not read the user status ` +
+        `(rows: ${SELECTORS.ADMIN_USER_ROWS}, status cell: ${SELECTORS.ADMIN_USER_STATUS_CELL}). ` +
+        `The filtered user row may not have rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Polls the first visible user row's status until it equals the expected value (case-insensitive).
+   * The row's status updates asynchronously after a deactivate/activate action, so a single read races
+   * the update and can return the stale prior status — this waits for it to settle, mirroring the
+   * Testim waitForText poll.
+   *
+   * @param {string} expectedStatus - The status to wait for (e.g. "Active" / "Inactive")
+   * @param {object} [options]
+   * @param {number} [options.timeout=20000]
+   * @returns {Promise<string>} The settled status token
+   */
+  async waitForFirstUserStatus(expectedStatus, { timeout = 20000 } = {}) {
+    const want = expectedStatus.replace(/\s+/g, ' ').trim().toLowerCase();
+    try {
+      // The row status updates asynchronously after a deactivate/activate action — wait for the first
+      // VISIBLE row's status (9th-cell leading token) to settle on the expected value before reading it.
+      await this.page.waitForFunction(
+        ({ rowsSel, target }) => {
+          const rows = document.querySelectorAll(rowsSel);
+          for (const row of rows) {
+            const visible = typeof row.checkVisibility === 'function'
+              ? row.checkVisibility()
+              : !!(row.offsetWidth || row.offsetHeight || row.getClientRects().length);
+            if (!visible) continue;
+            const cell = row.querySelector(':nth-child(9)');
+            if (!cell) continue;
+            const text = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+            if (text) return text.split(/\s+/)[0].toLowerCase() === target;
+          }
+          return false;
+        },
+        { rowsSel: SELECTORS.ADMIN_USER_ROWS, target: want },
+        { timeout }
+      );
+    } catch (err) {
+      const last = await this.getUserStatusBadge().catch(() => '');
+      throw new Error(
+        `[AdministrationPage.waitForFirstUserStatus] The first filtered user's status did not become "${expectedStatus}" ` +
+        `within ${timeout}ms (last read: "${last}"). The deactivation/reactivation may not have applied, or inactive ` +
+        `users are not shown. Original: ${err.message}`
+      );
+    }
+    // Settled — read the actual token to return for logging
+    return this.getUserStatusBadge();
+  }
+
+  /**
+   * Reads all approval-flow dependency chosen values on the currently open approver record. Scrolls
+   * the form first so the lazily-rendered approval-flow section is present before reading.
+   *
+   * @returns {Promise<string[]>}
+   */
+  async getApprovalFlowChoiceValues() {
+    try {
+      await this.scrollAdminFormToBottom();
+      const choices = this.page.locator(SELECTORS.APPROVAL_FLOW_CHOICES);
+      await choices.first().waitFor({ state: 'attached', timeout: 15000 });
+      return (await choices.allTextContents())
+        .map((t) => t.replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getApprovalFlowChoiceValues] Could not read the approval-flow dependency values ` +
+        `(selector: ${SELECTORS.APPROVAL_FLOW_CHOICES}). ` +
+        `The approver record or its approval-flow section may not have rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the first dependency link in the popup and returns the new browser tab it opens.
+   *
+   * @returns {Promise<import('playwright').Page>}
+   */
+  async clickFirstDependencyLink() {
+    try {
+      const context = this.page.context();
+      if (!context) {
+        throw new Error('page context is null — cannot detect the linked tab.');
+      }
+      // Hidden template/responsive copies of the dependency anchors precede the shown ones in the DOM,
+      // so .first() can be hidden — pick the first VISIBLE target="_blank" link instead.
+      const links = this.page.locator(SELECTORS.DEPENDENCY_POPUP_LINK);
+      await links.first().waitFor({ state: 'attached', timeout: 15000 });
+      const linkCount = await links.count();
+      let link = null;
+      for (let i = 0; i < linkCount; i++) {
+        const candidate = links.nth(i);
+        if (await candidate.isVisible().catch(() => false)) {
+          link = candidate;
+          break;
+        }
+      }
+      if (!link) {
+        throw new Error(
+          `no VISIBLE dependency link among ${linkCount} target="_blank" anchor(s) — the popup may not be open ` +
+          `or all links are hidden template copies.`
+        );
+      }
+      const newPagePromise = context.waitForEvent('page', { timeout: 20000 }).catch(() => null);
+      await link.click({ timeout: 10000 });
+      const newTab = await newPagePromise;
+      if (!newTab) {
+        throw new Error('no new tab opened after clicking the dependency link (target="_blank" expected).');
+      }
+      await newTab.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
+      return newTab;
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickFirstDependencyLink] Could not open the first dependency link from the popup ` +
+        `(selector: ${SELECTORS.DEPENDENCY_POPUP_LINK}). ` +
+        `The popup may not list a linked dependency. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the Name field value on a linked dependency entity page (this page object must be bound to
+   * the linked tab, not the admin tab).
+   *
+   * @returns {Promise<string>}
+   */
+  async getEntityNameFieldValue() {
+    try {
+      const field = this.page.locator(SELECTORS.LINKED_ENTITY_NAME).first();
+      await field.waitFor({ state: 'visible', timeout: 15000 });
+      const tag = await field.evaluate((el) => el.tagName.toLowerCase());
+      if (tag === 'input' || tag === 'textarea') {
+        return (await field.inputValue()).trim();
+      }
+      return (await field.textContent() ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getEntityNameFieldValue] Could not read the Name field on the linked dependency page ` +
+        `(selector: ${SELECTORS.LINKED_ENTITY_NAME}). ` +
+        `The linked entity page may not have loaded. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Closes the deactivation dependencies popup.
+   */
+  async closeDeactivationPopup() {
+    try {
+      const closeBtn = this.page.locator(SELECTORS.DEACTIVATION_POPUP_CLOSE).first();
+      await closeBtn.waitFor({ state: 'visible', timeout: 15000 });
+      await closeBtn.click({ timeout: 10000 });
+      await closeBtn.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.closeDeactivationPopup] Could not close the deactivation dependencies popup ` +
+        `(selector: ${SELECTORS.DEACTIVATION_POPUP_CLOSE}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reactivates the selected user by clicking the activate button.
+   */
+  async clickActivateUser() {
+    try {
+      const btn = this.page.locator(SELECTORS.ACTIVATE_USER_BTN).first();
+      await btn.waitFor({ state: 'visible', timeout: 15000 });
+      await btn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickActivateUser] Could not click the activate-user button ` +
+        `(selector: ${SELECTORS.ACTIVATE_USER_BTN}). ` +
+        `A user must be selected first. Original: ${err.message}`
       );
     }
   }
