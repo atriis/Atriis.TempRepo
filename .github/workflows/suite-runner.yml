@@ -225,6 +225,9 @@ jobs:
             let totalScenarios = 0, passed = 0, failed = 0, skipped = 0;
             const suiteRows = [];
             const failedScenarios = [];
+            // Passed scenarios that created a trip — booked trips still need
+            // their trip number checked/cancelled, so they get their own table.
+            const passedScenarios = [];
             // pending/undefined/ambiguous fail the cucumber run (strict mode)
             // and land in rerun.txt + JUnit failures — count them as failed
             // here too, or the summary over-reports passes.
@@ -272,11 +275,23 @@ jobs:
                   });
                 }
                 else if (allSkip) { skipped++; fsk++; }
-                else { passed++; fp++; }
+                else {
+                  passed++; fp++;
+                  const tripNumbers = extractTripIds(el);
+                  if (tripNumbers) {
+                    passedScenarios.push({
+                      suite: feature.suiteId || '',
+                      feature: name,
+                      scenario: el.name || '',
+                      location: (feature.uri || '') + ':' + (el.line || ''),
+                      tripNumbers
+                    });
+                  }
+                }
               }
               if (fp + ff + fsk > 0) suiteRows.push({ name, passed: fp, failed: ff, skipped: fsk });
             }
-            fs.writeFileSync('cucumber-html-report/summary.json', JSON.stringify({ totalScenarios, passed, failed, skipped, suiteRows, failedScenarios }));
+            fs.writeFileSync('cucumber-html-report/summary.json', JSON.stringify({ totalScenarios, passed, failed, skipped, suiteRows, failedScenarios, passedScenarios }));
 
             const passRate = totalScenarios > 0 ? ((passed / totalScenarios) * 100).toFixed(1) : '0.0';
             const rows = suiteRows.map(r =>
@@ -381,6 +396,24 @@ jobs:
                 if (failedList.length > MAX_ROWS) {
                   console.log('');
                   console.log('…and ' + (failedList.length - MAX_ROWS) + ' more — download the cucumber-html-report artifact for the full list.');
+                }
+              }
+              // Passed scenarios that booked a trip — trip numbers listed so
+              // real bookings can be verified/cancelled after the run.
+              const passedList = s.passedScenarios || [];
+              if (passedList.length > 0) {
+                console.log('');
+                console.log('### ✅ Passed Scenarios with Trip Numbers (' + passedList.length + ')');
+                console.log('');
+                console.log('| Suite | Scenario | Location | Trip # |');
+                console.log('|-------|----------|----------|--------|');
+                const MAX_PASS_ROWS = 200;
+                for (const p of passedList.slice(0, MAX_PASS_ROWS)) {
+                  console.log('| ' + esc(p.suite) + ' | ' + esc(p.scenario) + ' | ' + esc(p.location) + ' | ' + esc(p.tripNumbers || '—') + ' |');
+                }
+                if (passedList.length > MAX_PASS_ROWS) {
+                  console.log('');
+                  console.log('…and ' + (passedList.length - MAX_PASS_ROWS) + ' more — download the cucumber-html-report artifact for the full list.');
                 }
               }
             " >> "$GITHUB_STEP_SUMMARY"
