@@ -241,6 +241,236 @@ const Trips = {
       );
     }
   },
+
+  /**
+   * Types a term into the trip-monitor free-text search input, opening the
+   * suggestions dropdown. Does not submit — callers either expand the search or
+   * submit it explicitly.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} term
+   */
+  async searchTripsPage(page, term) {
+    if (!page) throw new Error('[Trips.searchTripsPage] page is required');
+    if (typeof term !== 'string' || term.length === 0) {
+      throw new Error('[Trips.searchTripsPage] "term" must be a non-empty string, got: ' + typeof term);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Typing into the trips search input', { term });
+      await tripsPage.fillTripsSearch(term);
+    } catch (err) {
+      throw new Error(
+        `[Trips.searchTripsPage] Failed to search the trips page for "${term}". Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the search suggestions dropdown offers the "expand your search"
+   * option.
+   *
+   * @param {import('@playwright/test').Page} page
+   */
+  async verifyTripsSearchOffersExpand(page) {
+    if (!page) throw new Error('[Trips.verifyTripsSearchOffersExpand] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying the trips search offers to expand');
+      const item = await tripsPage.getSearchExpandItem({ timeout: 15000 });
+      await expect(item, '[Trips.verifyTripsSearchOffersExpand] Expected the "Click here to expand your search" option to be shown in the suggestions dropdown, but it was not visible.')
+        .toBeVisible({ timeout: 10000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifyTripsSearchOffersExpand] Failed to verify the expand-search option. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Clicks the "expand your search" option to open the full search results.
+   *
+   * @param {import('@playwright/test').Page} page
+   */
+  async expandTripsSearch(page) {
+    if (!page) throw new Error('[Trips.expandTripsSearch] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Expanding the trips search');
+      await tripsPage.clickSearchExpandItem();
+    } catch (err) {
+      throw new Error(
+        `[Trips.expandTripsSearch] Failed to expand the trips search. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the search-results header contains the expected text.
+   *
+   * The header renders as "Found" + a bold count + a status word ("Trip"/"Trips")
+   * across separate inline nodes, so whitespace/casing around them is not
+   * reliable. Both the actual and expected text are stripped of all whitespace and
+   * lower-cased before the contains check.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expectedText
+   */
+  async verifyTripsSearchResultsHeaderContains(page, expectedText) {
+    if (!page) throw new Error('[Trips.verifyTripsSearchResultsHeaderContains] page is required');
+    if (typeof expectedText !== 'string' || expectedText.length === 0) {
+      throw new Error('[Trips.verifyTripsSearchResultsHeaderContains] "expectedText" must be a non-empty string, got: ' + typeof expectedText);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    const normalize = (s) => (s || '').replace(/\s+/g, '').toLowerCase();
+    try {
+      logger.debug('Verifying trips search results header', { expectedText });
+      const header = await tripsPage.getSearchResultsHeader({ timeout: 30000 });
+      await expect
+        .poll(async () => normalize(await header.textContent()), {
+          message: `[Trips.verifyTripsSearchResultsHeaderContains] Expected the search-results header to contain "${expectedText}".`,
+          timeout: 15000,
+        })
+        .toContain(normalize(expectedText));
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifyTripsSearchResultsHeaderContains] Failed to verify the search-results header. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Clears all trip status filters (unticks every status checkbox), which leaves
+   * the search results with no matching status.
+   *
+   * @param {import('@playwright/test').Page} page
+   */
+  async clearAllTripsFilters(page) {
+    if (!page) throw new Error('[Trips.clearAllTripsFilters] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Clearing all trips filters');
+      await tripsPage.clickStatusFilterClearAll();
+    } catch (err) {
+      throw new Error(
+        `[Trips.clearAllTripsFilters] Failed to clear all trips filters. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the search results show the no-results message.
+   *
+   * @param {import('@playwright/test').Page} page
+   */
+  async verifyTripsSearchNoResults(page) {
+    if (!page) throw new Error('[Trips.verifyTripsSearchNoResults] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying trips search displays no results');
+      const noResults = await tripsPage.getSearchNoResults({ timeout: 30000 });
+      await expect(noResults, '[Trips.verifyTripsSearchNoResults] Expected the search results to show the "No results found" message after clearing the status filters, but it was not visible.')
+        .toBeVisible({ timeout: 10000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifyTripsSearchNoResults] Failed to verify the no-results message. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Reveals the Trip Status filter (scrolls it into view) so a status option can
+   * be ticked.
+   *
+   * @param {import('@playwright/test').Page} page
+   */
+  async openTripStatusFilter(page) {
+    if (!page) throw new Error('[Trips.openTripStatusFilter] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Opening the trip status filter');
+      await tripsPage.revealStatusFilter({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[Trips.openTripStatusFilter] Failed to open the trip status filter. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Ticks the named trip status in the Trip Status filter.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} status - visible status label, e.g. "Declined"
+   */
+  async filterTripsByStatus(page, status) {
+    if (!page) throw new Error('[Trips.filterTripsByStatus] page is required');
+    if (typeof status !== 'string' || status.length === 0) {
+      throw new Error('[Trips.filterTripsByStatus] "status" must be a non-empty string, got: ' + typeof status);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Filtering search results by trip status', { status });
+      await tripsPage.checkStatusFilterOption(status);
+    } catch (err) {
+      throw new Error(
+        `[Trips.filterTripsByStatus] Failed to filter by trip status "${status}". Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies a trip status label is displayed on a search-results trip.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} status - visible status label, e.g. "Declined"
+   */
+  async verifyTripStatusLabelDisplayed(page, status) {
+    if (!page) throw new Error('[Trips.verifyTripStatusLabelDisplayed] page is required');
+    if (typeof status !== 'string' || status.length === 0) {
+      throw new Error('[Trips.verifyTripStatusLabelDisplayed] "status" must be a non-empty string, got: ' + typeof status);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying trip status label is displayed', { status });
+      const label = await tripsPage.getResultStatusLabel(status, { timeout: 30000 });
+      await expect(label, `[Trips.verifyTripStatusLabelDisplayed] Expected a search-results trip to display the "${status}" status label, but it was not visible.`)
+        .toBeVisible({ timeout: 10000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifyTripStatusLabelDisplayed] Failed to verify the "${status}" status label. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies a trip with the given id is displayed in the search results.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} tripId
+   */
+  async verifyTripDisplayedById(page, tripId) {
+    if (!page) throw new Error('[Trips.verifyTripDisplayedById] page is required');
+    if (typeof tripId !== 'string' || tripId.length === 0) {
+      throw new Error('[Trips.verifyTripDisplayedById] "tripId" must be a non-empty string, got: ' + typeof tripId);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying trip id is displayed in results', { tripId });
+      const id = await tripsPage.getResultTripId(tripId, { timeout: 30000 });
+      await expect(id, `[Trips.verifyTripDisplayedById] Expected a search-results trip to show the id "${tripId}", but it was not visible.`)
+        .toBeVisible({ timeout: 10000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifyTripDisplayedById] Failed to verify the trip id "${tripId}" in the results. Original: ${err.message}`
+      );
+    }
+  },
 };
 
 module.exports = Trips;

@@ -62,7 +62,7 @@ Then("the trip should open in the same tab showing the trip overview page", asyn
 
 When("I search the trips page for {string}", async function (term) {
   logger.info("Searching the trips page", { term });
-  throw new Error(`TODO: implement 'I search the trips page for {string}' — type "${term}" into the trips search input`);
+  await Trips.searchTripsPage(this.page, term);
 });
 
 When("I search the past trips for {string}", async function (term) {
@@ -77,7 +77,7 @@ When("I submit the trips search", async function () {
 
 When("I expand the trips search", async function () {
   logger.info("Expanding the trips search");
-  throw new Error("TODO: implement 'I expand the trips search' — click the 'expand your search' option to open the full search results");
+  await Trips.expandTripsSearch(this.page);
 });
 
 When("I check the {string} filter on the trips page", async function (filterLabel) {
@@ -97,17 +97,17 @@ When("I click the {string} trips tab", async function (tabName) {
 
 When("I clear all trips filters", async function () {
   logger.info("Clearing all trips filters");
-  throw new Error("TODO: implement 'I clear all trips filters' — click the clear-all filters control on the search results");
+  await Trips.clearAllTripsFilters(this.page);
 });
 
 When("I open the trip status filter", async function () {
   logger.info("Opening the trip status filter");
-  throw new Error("TODO: implement 'I open the trip status filter' — open the trip status filter on the search results");
+  await Trips.openTripStatusFilter(this.page);
 });
 
 When("I filter the search results by trip status {string}", async function (status) {
   logger.info("Filtering search results by trip status", { status });
-  throw new Error(`TODO: implement 'I filter the search results by trip status {string}' — tick the "${status}" status checkbox`);
+  await Trips.filterTripsByStatus(this.page, status);
 });
 
 Then("the trips search suggestions dropdown should be displayed", async function () {
@@ -117,7 +117,7 @@ Then("the trips search suggestions dropdown should be displayed", async function
 
 Then("the trips search should offer to expand the search", async function () {
   logger.info("Verifying trips search offers to expand the search");
-  throw new Error("TODO: implement 'the trips search should offer to expand the search' — assert the 'Click here to expand your search' option is shown");
+  await Trips.verifyTripsSearchOffersExpand(this.page);
 });
 
 Then("a search results tab should be displayed", async function () {
@@ -157,12 +157,12 @@ Then("the first past trip should display the {string} label", async function (la
 
 Then("the trips search results header should contain {string}", async function (expectedText) {
   logger.info("Verifying trips search results header", { expectedText });
-  throw new Error(`TODO: implement 'the trips search results header should contain {string}' — assert the search-results header contains "${expectedText}"`);
+  await Trips.verifyTripsSearchResultsHeaderContains(this.page, expectedText);
 });
 
 Then("the trips search should display no results", async function () {
   logger.info("Verifying trips search displays no results");
-  throw new Error("TODO: implement 'the trips search should display no results' — assert the search-results no-results message is shown");
+  await Trips.verifyTripsSearchNoResults(this.page);
 });
 
 Then("the traveller name should be displayed as {string} with tooltip {string}", async function (displayName, tooltip) {
@@ -172,10 +172,10 @@ Then("the traveller name should be displayed as {string} with tooltip {string}",
 
 Then("the trip status label {string} should be displayed", async function (status) {
   logger.info("Verifying trip status label is displayed", { status });
-  throw new Error(`TODO: implement 'the trip status label {string} should be displayed' — assert the "${status}" status label is displayed on the result`);
+  await Trips.verifyTripStatusLabelDisplayed(this.page, status);
 });
 
 Then("the trip with id {string} should be displayed in the results", async function (tripId) {
   logger.info("Verifying trip id is displayed in results", { tripId });
-  throw new Error(`TODO: implement 'the trip with id {string} should be displayed in the results' — assert a result trip shows trip id "${tripId}"`);
+  await Trips.verifyTripDisplayedById(this.page, tripId);
 });
