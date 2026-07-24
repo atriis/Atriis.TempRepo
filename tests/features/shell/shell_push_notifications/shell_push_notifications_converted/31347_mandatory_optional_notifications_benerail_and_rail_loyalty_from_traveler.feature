@@ -32,7 +32,7 @@ Feature: 31347 - Merged Benerail notifications by origin and destination, and ra
     And I proceed past the reference fields popup after search
     # TODO: the mandatory and optional notifications for the Benerail origin and destination should be displayed (Notifications.verifyBenerailNotificationsDisplayed in tests/steps/push_notifications.steps.js)
     Then the mandatory and optional notifications for the Benerail origin and destination should be displayed
-    When I close the mandatory notification banner if visible
+    When I acknowledge the push notification
     And I add a Benerail round trip to the trip
     # TODO: the Fare Rules link should be visible for the Benerail quote in cart (candidate reuse: "the fare rules link should be visible in the Benerail trip overview" in tests/steps/benerail_results.steps.js)
     Then the Fare Rules link should be visible for the Benerail quote in cart

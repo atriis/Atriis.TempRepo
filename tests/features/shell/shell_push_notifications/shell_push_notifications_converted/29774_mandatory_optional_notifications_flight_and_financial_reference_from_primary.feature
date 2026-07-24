@@ -23,22 +23,20 @@ Feature: 29774 - Merged flight notifications by destination and carrier, and fin
   Scenario: Destination and carrier notifications appear and merge in the notification center, with financial codes from the primary traveler
     Given I am logged in as "shani@testimcorpnl.com"
     When I book a new trip
-    And I add a traveler by name "pini" from the search autocomplete
-    # TODO: I add a traveler by name "olga" from the search autocomplete as the primary traveler (Search.addTravelerAsPrimary in tests/steps/search.steps.js)
-    And I add a traveler by name "olga" from the search autocomplete as the primary traveler
-    And I search for a round trip flight from "tlv" to "zimbabwe"
+    And I have added traveler by name "pini"
+    And I have added "olga" as primary travelerr
+    And I search for a round trip flight from "ams" to "zimbabwe"
     And I select the "Type of Trip" reference field as "Education and courses" and proceed
     # TODO: the mandatory and optional notifications for the flight destination should be displayed (Notifications.verifyDestinationNotificationsDisplayed in tests/steps/push_notifications.steps.js)
     Then the mandatory and optional notifications for the flight destination should be displayed
-    # TODO: I acknowledge the mandatory notification (Notifications.acknowledgeMandatoryNotification in tests/steps/push_notifications.steps.js)
-    When I acknowledge the mandatory notification
+    And the notification should 
+    When I acknowledge the push notification
     And I wait for add to trip text to be visible
     And I filter results by carrier "Emirates"
     And I add the first flight to cart
     # TODO: the mandatory and optional notifications for the flight carrier should be displayed (Notifications.verifyCarrierNotificationsDisplayed in tests/steps/push_notifications.steps.js)
     Then the mandatory and optional notifications for the flight carrier should be displayed
-    # TODO: I acknowledge the mandatory notification (Notifications.acknowledgeMandatoryNotification in tests/steps/push_notifications.steps.js)
-    When I acknowledge the mandatory notification
+    When I acknowledge the push notification
     And I refresh the page
     # TODO: I open the notification center (Notifications.openNotificationCenter in tests/steps/push_notifications.steps.js)
     And I open the notification center
