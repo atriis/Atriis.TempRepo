@@ -1,3 +1,4 @@
+const { faker } = require("@faker-js/faker");
 const { getPageObject } = require("@utils/pageObjectCache");
 const AdministrationPage = require("@src/pages/AdministrationPage");
 const LoginPage = require("@src/pages/LoginPage");
@@ -584,6 +585,323 @@ const Administration = {
 
     logger.info(`[Administration.verifyMobileInAdmin] Mobile verified in admin: ${actual.countryCode}-${actual.areaCode}-${actual.number}`);
     return actual;
+  },
+
+  /**
+   * Clicks the "Add new user" button in the administration Users list.
+   * Proves a limited-admin role is permitted to add corporate users.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async clickAddNewUser(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.clickAddNewUser] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.clickAddNewUser] Clicking the Add new user button');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickAddNewUser();
+    } catch (err) {
+      throw new Error(
+        `[Administration.clickAddNewUser] Failed to click the Add new user button: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.clickAddNewUser] Add new user popup opened');
+  },
+
+  /**
+   * Verifies the new corporate user form's first field displays the expected label
+   * (e.g. "First Name:"), confirming the add-user form rendered for a limited admin.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} expectedLabel - The expected field label (e.g. "First Name:")
+   */
+  async verifyNewUserFormField(adminPage, expectedLabel) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyNewUserFormField] "adminPage" is required.');
+    }
+    if (!expectedLabel || typeof expectedLabel !== 'string') {
+      throw new Error(
+        `[Administration.verifyNewUserFormField] "expectedLabel" must be a non-empty string, got: ${typeof expectedLabel} (${JSON.stringify(expectedLabel)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyNewUserFormField] Verifying new user form shows label "${expectedLabel}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const actualLabel = await page.getNewUserFormFirstFieldLabel();
+
+    if (!actualLabel.includes(expectedLabel)) {
+      throw new Error(
+        `[Administration.verifyNewUserFormField] New corporate user form field label mismatch. ` +
+        `Expected to contain "${expectedLabel}" but found "${actualLabel}". ` +
+        `The add-new-user form may not have rendered or its layout changed.`
+      );
+    }
+
+    logger.info(`[Administration.verifyNewUserFormField] New user form displays label "${actualLabel}"`);
+  },
+
+  /**
+   * Closes the add-new-user popup to return to the Users list.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async closeAddNewUserPopup(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.closeAddNewUserPopup] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.closeAddNewUserPopup] Closing the add-new-user popup');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.closeAddNewUserPopup();
+    } catch (err) {
+      throw new Error(
+        `[Administration.closeAddNewUserPopup] Failed to close the add-new-user popup: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.closeAddNewUserPopup] Add-new-user popup closed');
+  },
+
+  /**
+   * Fills the first mandatory dynamic user question with a generated random value so the record
+   * can be saved. The value is generated in code (never hardcoded) to keep runs repeatable, and
+   * the field is located dynamically (first mandatory question) rather than by a fixed question id.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @returns {Promise<string>} The random value that was entered
+   */
+  async fillFirstMandatoryUserFieldWithRandomValue(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.fillFirstMandatoryUserFieldWithRandomValue] "adminPage" is required.');
+    }
+
+    // Generate an 8-character alphanumeric value in code (Testim random-value-generator equivalent)
+    const randomValue = faker.string.alphanumeric(8);
+
+    logger.debug(`[Administration.fillFirstMandatoryUserFieldWithRandomValue] Filling first mandatory question with "${randomValue}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.fillFirstMandatoryUserField(randomValue);
+    } catch (err) {
+      throw new Error(
+        `[Administration.fillFirstMandatoryUserFieldWithRandomValue] Failed to fill the first mandatory user field: ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.fillFirstMandatoryUserFieldWithRandomValue] First mandatory user field filled with random value`);
+    return randomValue;
+  },
+
+  /**
+   * Clicks Save on the currently open user record.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async saveUserRecordInAdmin(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.saveUserRecordInAdmin] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.saveUserRecordInAdmin] Saving the user record');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickSaveUserRecord();
+    } catch (err) {
+      throw new Error(
+        `[Administration.saveUserRecordInAdmin] Failed to save the user record: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.saveUserRecordInAdmin] User record saved');
+  },
+
+  /**
+   * Verifies the expected confirmation toast (e.g. "Save succeeded") is displayed.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} expectedText - The expected toast title text
+   */
+  async verifyAdminToast(adminPage, expectedText) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyAdminToast] "adminPage" is required.');
+    }
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Administration.verifyAdminToast] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyAdminToast] Verifying toast "${expectedText}" is displayed`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const actualText = await page.getAdminToastText();
+
+    if (!actualText.includes(expectedText)) {
+      throw new Error(
+        `[Administration.verifyAdminToast] Confirmation toast mismatch. ` +
+        `Expected to contain "${expectedText}" but toast showed "${actualText}". ` +
+        `The save may not have succeeded.`
+      );
+    }
+
+    logger.info(`[Administration.verifyAdminToast] Toast "${actualText}" displayed`);
+  },
+
+  /**
+   * Verifies the expected filter chip (e.g. "Active") is visible in the admin user search bar.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} expectedFilter - The expected filter chip text (e.g. "Active")
+   */
+  async verifyAdminSearchBarFilter(adminPage, expectedFilter) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyAdminSearchBarFilter] "adminPage" is required.');
+    }
+    if (!expectedFilter || typeof expectedFilter !== 'string') {
+      throw new Error(
+        `[Administration.verifyAdminSearchBarFilter] "expectedFilter" must be a non-empty string, got: ${typeof expectedFilter} (${JSON.stringify(expectedFilter)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyAdminSearchBarFilter] Verifying search-bar filter "${expectedFilter}" is visible`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const actualFilter = await page.getSearchBarFilterText();
+
+    if (!actualFilter.includes(expectedFilter)) {
+      throw new Error(
+        `[Administration.verifyAdminSearchBarFilter] Admin search-bar filter mismatch. ` +
+        `Expected to contain "${expectedFilter}" but found "${actualFilter}".`
+      );
+    }
+
+    logger.info(`[Administration.verifyAdminSearchBarFilter] Search-bar filter "${actualFilter}" is visible`);
+  },
+
+  /**
+   * Clears the user search box so the Users list returns to its default (active-only) view.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async clearUserSearchInAdmin(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.clearUserSearchInAdmin] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.clearUserSearchInAdmin] Clearing the user search box');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clearUserSearch();
+    } catch (err) {
+      throw new Error(
+        `[Administration.clearUserSearchInAdmin] Failed to clear the user search box: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.clearUserSearchInAdmin] User search box cleared');
+  },
+
+  /**
+   * Verifies the "Inactive" users filter checkbox is unchecked (default state).
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async verifyInactiveUsersFilterUnchecked(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyInactiveUsersFilterUnchecked] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.verifyInactiveUsersFilterUnchecked] Verifying the Inactive filter is unchecked');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const checked = await page.isInactiveFilterChecked();
+
+    if (checked) {
+      throw new Error(
+        `[Administration.verifyInactiveUsersFilterUnchecked] The "Inactive" users filter is checked, but it should be ` +
+        `unchecked by default so only active users are listed.`
+      );
+    }
+
+    logger.info('[Administration.verifyInactiveUsersFilterUnchecked] Inactive users filter is unchecked');
+  },
+
+  /**
+   * Verifies the "Active" users filter checkbox is checked (default state).
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async verifyActiveUsersFilterChecked(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyActiveUsersFilterChecked] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.verifyActiveUsersFilterChecked] Verifying the Active filter is checked');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const checked = await page.isActiveFilterChecked();
+
+    if (!checked) {
+      throw new Error(
+        `[Administration.verifyActiveUsersFilterChecked] The "Active" users filter is unchecked, but it should be ` +
+        `checked by default so active users are listed.`
+      );
+    }
+
+    logger.info('[Administration.verifyActiveUsersFilterChecked] Active users filter is checked');
+  },
+
+  /**
+   * Verifies only active users are listed — every user row's status column reads "Active".
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async verifyOnlyActiveUsersListed(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyOnlyActiveUsersListed] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.verifyOnlyActiveUsersListed] Verifying only active users are listed');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const statuses = await page.getUserRowStatuses();
+
+    if (statuses.length === 0) {
+      throw new Error(
+        `[Administration.verifyOnlyActiveUsersListed] No user rows were found in the corporate-users list, ` +
+        `so the active-only filter could not be confirmed. The list may not have rendered after clearing the search.`
+      );
+    }
+
+    // The status cell also carries a trailing action label (e.g. "Active Deleted" — "Deleted" is a
+    // row action, not a status), so match the leading status token rather than the whole cell. A
+    // first-token check also avoids the substring trap where "Inactive" contains the letters "active".
+    const statusToken = (s) => s.trim().toLowerCase().split(/\s+/)[0];
+    const nonActive = statuses.filter((s) => statusToken(s) !== 'active');
+    if (nonActive.length > 0) {
+      throw new Error(
+        `[Administration.verifyOnlyActiveUsersListed] Expected only "Active" users to be listed, but ${nonActive.length} ` +
+        `of ${statuses.length} rows had a non-active status: ${JSON.stringify(nonActive)}. ` +
+        `The default active-users filter may not be applied.`
+      );
+    }
+
+    logger.info(`[Administration.verifyOnlyActiveUsersListed] All ${statuses.length} listed users are active`);
   },
 };
 

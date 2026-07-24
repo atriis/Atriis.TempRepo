@@ -65,6 +65,26 @@ const SELECTORS = {
   // Counting the distinct visible section links yields how many sections the role exposes; the only
   // other titled element on the page is a hidden `<span title="Settings">`, which this excludes.
   ADMIN_SECTION_MENU_ITEM: "a.navigatable[title]",
+
+  // --- Limited-admin add-user / edit-user / active-users filter flow (test 36297) ---
+  // "Add new user" button in the Users list toolbar (click target is its inner span)
+  ADD_NEW_USER_BTN: "[data-ng-click='onAddNewUserClicked()']",
+  // First field label inside the new-corporate-user popup form — proves the add-user form rendered
+  NEW_USER_FORM_FIRST_FIELD_LABEL: "[name='newCorporateUserForm'] > :nth-child(2) > :nth-child(1) .block-display",
+  // Close (X) button of the add-new-user popup
+  ADD_NEW_USER_POPUP_CLOSE: "#popUpCloseBtn > div",
+  // Save button on the user record detail form (shares the onSaveClicked handler used elsewhere)
+  ADMIN_SAVE_USER_BTN: "[data-ng-click='onSaveClicked()']",
+  // Success toast title shown after a save
+  ADMIN_TOAST_TITLE: ".toast-title",
+  // Third element in the admin search bar renders the "Active" users filter chip
+  ADMIN_SEARCH_BAR_FILTER: ".admin-search-bar > :nth-child(3)",
+  // Active / Inactive user filter checkboxes in the Users list
+  ADMIN_SHOW_INACTIVE_CHECKBOX: "[data-ng-model='showInactive']",
+  ADMIN_SHOW_ACTIVE_CHECKBOX: "[data-ng-model='showActive']",
+  // Corporate-users list rows; the 9th cell of each row is the status column ("Active"/"Inactive")
+  ADMIN_USER_ROWS: ".user-scroll-corporate tbody > tr",
+  ADMIN_USER_STATUS_CELL: ":nth-child(9)",
 };
 
 class AdministrationPage {
@@ -592,6 +612,267 @@ class AdministrationPage {
       throw new Error(
         `[AdministrationPage.getAdminMobileValues] Failed to read mobile values from admin. ` +
         `Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Add new user popup ---
+
+  async clickAddNewUser() {
+    try {
+      const btn = this.page.locator(SELECTORS.ADD_NEW_USER_BTN);
+      await btn.waitFor({ state: 'visible', timeout: 15000 });
+      await btn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickAddNewUser] Could not click the "Add new user" button in the Users list ` +
+        `(selector: ${SELECTORS.ADD_NEW_USER_BTN}). ` +
+        `The Users list must be open and the role must permit adding users. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getNewUserFormFirstFieldLabel() {
+    try {
+      const label = this.page.locator(SELECTORS.NEW_USER_FORM_FIRST_FIELD_LABEL);
+      await label.waitFor({ state: 'visible', timeout: 15000 });
+      return (await label.textContent() ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getNewUserFormFirstFieldLabel] Could not read the first field label in the new corporate user form ` +
+        `(selector: ${SELECTORS.NEW_USER_FORM_FIRST_FIELD_LABEL}). ` +
+        `The add-new-user popup may not have opened. Original: ${err.message}`
+      );
+    }
+  }
+
+  async closeAddNewUserPopup() {
+    try {
+      const closeBtn = this.page.locator(SELECTORS.ADD_NEW_USER_POPUP_CLOSE);
+      await closeBtn.waitFor({ state: 'visible', timeout: 15000 });
+      await closeBtn.click({ timeout: 10000 });
+      // Wait for the popup close button to detach so the users list is interactable again
+      await closeBtn.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.closeAddNewUserPopup] Could not close the add-new-user popup ` +
+        `(selector: ${SELECTORS.ADD_NEW_USER_POPUP_CLOSE}). ` +
+        `The popup may not be open. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Form scrolling ---
+
+  /**
+   * Scrolls the admin user-detail form (window + any inner scroll container) fully to the bottom.
+   * The form lazily renders its lower sections (including dynamic questions) as they scroll into
+   * view, so this must run before locating a field far down the form. A headed browser scrolls
+   * naturally; the headless run must scroll it in first.
+   *
+   * @param {object} [options]
+   * @param {number} [options.steps=15]
+   */
+  async scrollAdminFormToBottom({ steps = 15 } = {}) {
+    for (let i = 0; i < steps; i++) {
+      await this.page.evaluate(() => {
+        window.scrollBy(0, window.innerHeight);
+        for (const el of document.querySelectorAll('div, section, main, form')) {
+          const style = window.getComputedStyle(el);
+          const scrollable = (style.overflowY === 'auto' || style.overflowY === 'scroll')
+            && el.scrollHeight > el.clientHeight + 5;
+          if (scrollable) el.scrollTop = el.scrollHeight;
+        }
+      });
+      await this.page.waitForTimeout(200);
+    }
+  }
+
+  // --- First mandatory dynamic question ---
+
+  /**
+   * Fills the first mandatory, fillable text field on the user-detail form with the given value.
+   * Mandatory dynamic questions are located dynamically (not by a fixed id): the form is scrolled
+   * so lazy sections render, then the first required text input/textarea is chosen.
+   *
+   * @param {string} value - The value to type into the field
+   */
+  async fillFirstMandatoryUserField(value) {
+    try {
+      await this.scrollAdminFormToBottom();
+
+      const found = await this.page.evaluate(() => {
+        const isVisible = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+        const isMandatory = (el) => {
+          if (el.required || el.hasAttribute('required')) return true;
+          if (el.getAttribute('ng-required') === 'true') return true;
+          if (el.getAttribute('aria-required') === 'true') return true;
+          // A required marker ("*") rendered near the field's label
+          const container = el.closest("[name], .form-group, .control-group, li, tr");
+          if (container) {
+            if (container.querySelector('.mandatory, .required')) return true;
+            const label = container.querySelector('label');
+            if (label && /\*/.test(label.textContent || '')) return true;
+          }
+          return false;
+        };
+
+        const fields = Array.from(document.querySelectorAll("input[type='text'], input:not([type]), textarea"));
+        const diag = [];
+        let firstMandatory = null;
+        for (const el of fields) {
+          if (!isVisible(el)) continue;
+          const mandatory = isMandatory(el);
+          const entry = { id: el.id || null, name: el.getAttribute('name'), mandatory };
+          if (el.id && el.id.startsWith('question_')) diag.push(entry);
+          if (mandatory && !firstMandatory && el.id) firstMandatory = entry;
+        }
+        return { firstMandatory, questionFields: diag };
+      });
+
+      if (!found.firstMandatory || !found.firstMandatory.id) {
+        throw new Error(
+          `No mandatory fillable field was found on the user-detail form. ` +
+          `Visible dynamic-question fields seen: ${JSON.stringify(found.questionFields)}.`
+        );
+      }
+
+      const selector = `#${found.firstMandatory.id}`;
+      const input = this.page.locator(selector).first();
+      await input.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+      await input.click({ timeout: 5000 });
+      await input.fill('', { timeout: 5000 });
+      // pressSequentially triggers the AngularJS ng-model $watch/$dirty cycle so the form is dirtied
+      await input.pressSequentially(value, { delay: 40 });
+      await input.press('Tab');
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.fillFirstMandatoryUserField] Could not fill the first mandatory user field with "${value}". ` +
+        `The user record must be open. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Save user record ---
+
+  async clickSaveUserRecord() {
+    try {
+      const saveBtn = this.page.locator(SELECTORS.ADMIN_SAVE_USER_BTN).first();
+      await saveBtn.waitFor({ state: 'visible', timeout: 15000 });
+      await saveBtn.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+      await saveBtn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickSaveUserRecord] Could not click the Save button on the user record ` +
+        `(selector: ${SELECTORS.ADMIN_SAVE_USER_BTN}). ` +
+        `A mandatory field must be filled so the form is dirty and Save is enabled. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Toast ---
+
+  async getAdminToastText({ timeout = 15000 } = {}) {
+    try {
+      const toast = this.page.locator(SELECTORS.ADMIN_TOAST_TITLE).first();
+      await toast.waitFor({ state: 'visible', timeout });
+      return (await toast.textContent() ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getAdminToastText] No confirmation toast appeared ` +
+        `(selector: ${SELECTORS.ADMIN_TOAST_TITLE}). Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Active-users search-bar filter ---
+
+  async getSearchBarFilterText() {
+    try {
+      // Read once attached (not "visible") — the chip may be a hidden responsive dupe whose text is
+      // still authoritative; mirrors the Testim querySelector().textContent read.
+      const chip = this.page.locator(SELECTORS.ADMIN_SEARCH_BAR_FILTER).first();
+      await chip.waitFor({ state: 'attached', timeout: 15000 });
+      return (await chip.textContent() ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getSearchBarFilterText] Could not read the admin search-bar filter chip ` +
+        `(selector: ${SELECTORS.ADMIN_SEARCH_BAR_FILTER}). ` +
+        `The Users list search bar may not be visible. Original: ${err.message}`
+      );
+    }
+  }
+
+  async clearUserSearch() {
+    try {
+      const input = this.page.locator(SELECTORS.USER_SEARCH_INPUT).first();
+      await input.waitFor({ state: 'visible', timeout: 15000 });
+      // Triple-click selects existing text; Control+a/Delete clears it and dirties the AngularJS $watch
+      await input.click({ clickCount: 3, timeout: 5000 });
+      await input.press('Control+a');
+      await input.press('Delete');
+      await input.press('Tab');
+      // Let AngularJS re-filter the user list back to the default (active-only) view
+      await this.page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clearUserSearch] Could not clear the user search input ` +
+        `(selector: ${SELECTORS.USER_SEARCH_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Active / Inactive filter checkboxes ---
+
+  async isFilterChecked(selector, { timeout = 15000 } = {}) {
+    try {
+      const box = this.page.locator(selector).first();
+      await box.waitFor({ state: 'attached', timeout });
+      return await box.isChecked();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.isFilterChecked] Could not read the checked state of the filter checkbox ` +
+        `(selector: ${selector}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async isInactiveFilterChecked() {
+    return this.isFilterChecked(SELECTORS.ADMIN_SHOW_INACTIVE_CHECKBOX);
+  }
+
+  async isActiveFilterChecked() {
+    return this.isFilterChecked(SELECTORS.ADMIN_SHOW_ACTIVE_CHECKBOX);
+  }
+
+  // --- Users list status column ---
+
+  /**
+   * Reads the status column (9th cell) of every visible user row in the corporate-users list.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=20000]
+   * @returns {Promise<string[]>}
+   */
+  async getUserRowStatuses({ timeout = 20000 } = {}) {
+    try {
+      const rows = this.page.locator(SELECTORS.ADMIN_USER_ROWS);
+      await rows.first().waitFor({ state: 'visible', timeout }).catch(() => {});
+      const count = await rows.count();
+      const statuses = [];
+      for (let i = 0; i < count; i++) {
+        const row = rows.nth(i);
+        if (!(await row.isVisible().catch(() => false))) continue;
+        const cell = row.locator(SELECTORS.ADMIN_USER_STATUS_CELL).first();
+        if ((await cell.count()) === 0) continue;
+        const text = (await cell.textContent().catch(() => '') ?? '').replace(/\s+/g, ' ').trim();
+        if (text) statuses.push(text);
+      }
+      return statuses;
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getUserRowStatuses] Could not read user row status cells ` +
+        `(selector: ${SELECTORS.ADMIN_USER_ROWS}, 9th cell). Original: ${err.message}`
       );
     }
   }

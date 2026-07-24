@@ -87,6 +87,63 @@ When("I clear the mobile field for user {string} in the administration", async f
   await Administration.clearUserMobileInAdmin(this.adminPage, userName);
 });
 
+// --- Add user / edit user / active-users filter (test 36297) ---
+
+When("I click add new user in the administration", async function () {
+  logger.info("Clicking Add new user in administration");
+  await Administration.clickAddNewUser(this.adminPage);
+});
+
+Then("the new corporate user form should display the {string} field", async function (expectedLabel) {
+  logger.info("Verifying new corporate user form field label", { expectedLabel });
+  await Administration.verifyNewUserFormField(this.adminPage, expectedLabel);
+});
+
+When("I close the add new user popup in the administration", async function () {
+  logger.info("Closing the add new user popup in administration");
+  await Administration.closeAddNewUserPopup(this.adminPage);
+});
+
+When("I fill the first mandatory user field with a random value in the administration", async function () {
+  logger.info("Filling the first mandatory user field with a random value in administration");
+  await Administration.fillFirstMandatoryUserFieldWithRandomValue(this.adminPage);
+});
+
+When("I save the administration user", async function () {
+  logger.info("Saving the administration user record");
+  await Administration.saveUserRecordInAdmin(this.adminPage);
+});
+
+Then("the {string} confirmation toast should be displayed in the administration", async function (expectedText) {
+  logger.info("Verifying confirmation toast in administration", { expectedText });
+  await Administration.verifyAdminToast(this.adminPage, expectedText);
+});
+
+Then("the {string} filter should be visible in the administration user search bar", async function (expectedFilter) {
+  logger.info("Verifying search-bar filter is visible in administration", { expectedFilter });
+  await Administration.verifyAdminSearchBarFilter(this.adminPage, expectedFilter);
+});
+
+When("I clear the user search in the administration", async function () {
+  logger.info("Clearing the user search in administration");
+  await Administration.clearUserSearchInAdmin(this.adminPage);
+});
+
+Then("the inactive users filter should be unchecked in the administration", async function () {
+  logger.info("Verifying the inactive users filter is unchecked in administration");
+  await Administration.verifyInactiveUsersFilterUnchecked(this.adminPage);
+});
+
+Then("the active users filter should be checked in the administration", async function () {
+  logger.info("Verifying the active users filter is checked in administration");
+  await Administration.verifyActiveUsersFilterChecked(this.adminPage);
+});
+
+Then("only active users should be listed in the administration", async function () {
+  logger.info("Verifying only active users are listed in administration");
+  await Administration.verifyOnlyActiveUsersListed(this.adminPage);
+});
+
 Then("the mobile field should show country code {string} area code {string} and number {string}", async function (countryCode, areaCode, number) {
   logger.info("Verifying mobile values in administration", { countryCode, areaCode, number });
   await Administration.verifyMobileInAdmin(this.adminPage, { countryCode, areaCode, number });
