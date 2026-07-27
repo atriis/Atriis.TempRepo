@@ -6,7 +6,7 @@
 # Test user: pini@gov.nl (has 'only travel request' role in gov.nl corporate)
 
 @regression @shell @priority:high
-Feature: 75523 - Travel requested items visible for travel request role
+Feature: 75655 - Travel requested items visible for travel request role
   As a traveler with "only travel request" role
   I want to see the requested items (flight, hotel, car) in the trip view after sending a travel request
   So that I can confirm my request was submitted and is visible to me and to the agent
@@ -20,4 +20,3 @@ Feature: 75523 - Travel requested items visible for travel request role
     Then the "Sent to agent" confirmation should be displayed
     When I navigate to the trip from the travel request
     Then the travel requested items should be visible in the trip
-    When I navigate to the trip cart
