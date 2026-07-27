@@ -2714,7 +2714,17 @@ When("I close the financial reference dialog in the trip overview", async functi
   logger.info("Closing the financial reference dialog in the trip overview");
   await Cart.closeFinancialReferenceDialogInTripOverview(this.page);
 });
-// ===== Compensation / Climate Contribution (tests 44362, 44424) =====
+// ===== Compensation / Climate Contribution  =====
+
+Then("the additional items section should be displayed in cart", async function () {
+  logger.info("Verifying the additional items section is displayed in cart");
+  await Cart.verifyAdditionalItemsSectionDisplayed(this.page);
+});
+
+When("I add the climate contribution from the additional items section", async function () {
+  logger.info("Adding the climate contribution from the additional items section");
+  await Cart.addCompensationFromAdditionalItems(this.page);
+});
 
 Then("the {string} compensation quote should be displayed in cart", async function (expectedTitle) {
   logger.info("Verifying the compensation quote card is displayed in cart", { expectedTitle });

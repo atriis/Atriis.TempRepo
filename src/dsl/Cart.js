@@ -8105,6 +8105,64 @@ const Cart = {
   // ===========================================================================
 
   /**
+   * Verifies the cart's "Additional items" section is displayed.
+   *
+   * This is the cart-level section that offers on-demand products (test 44424) — not the
+   * per-quote "Extras" collapse, which is a different control with its own steps.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async verifyAdditionalItemsSectionDisplayed(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyAdditionalItemsSectionDisplayed] "page" is required.');
+    }
+
+    logger.debug('[Cart.verifyAdditionalItemsSectionDisplayed] Locating the Additional items section');
+    const cartPage = getPageObject(page, CartPage);
+
+    await expect(
+      cartPage.getAdditionalItemsSectionHeading(),
+      '[Cart.verifyAdditionalItemsSectionDisplayed] The cart\'s "Additional items" section is not displayed. ' +
+      'trip-cart.vue hides it unless there is something on-demand to offer, so either the company has no ' +
+      'climate compensation configured, or the compensation is already part of the trip (added automatically, ' +
+      'which is test 44362\'s flow rather than this one).',
+    ).toBeVisible({ timeout: 30000 });
+  },
+
+  /**
+   * Adds the Climate Contribution to the trip from the cart's "Additional items" section.
+   *
+   * This on-demand add is what distinguishes test 44424 from 44362, where the compensation is
+   * already attached to the trip. The tile is only clickable while the compensation is not yet a
+   * real quote; once added it is replaced by a normal compensation quote card.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async addCompensationFromAdditionalItems(page) {
+    if (!page) {
+      throw new Error('[Cart.addCompensationFromAdditionalItems] "page" is required.');
+    }
+
+    logger.debug('[Cart.addCompensationFromAdditionalItems] Adding the climate contribution from Additional items');
+    const cartPage = getPageObject(page, CartPage);
+
+    // The Additional items section sits below the quote list, so the tile starts off-screen.
+    await cartPage.scrollCompensationQuoteIntoView();
+
+    try {
+      await cartPage.clickCompensationAddToTripButton();
+      // Gate on the tile disappearing: the add is async, and without this the next assertion
+      // would race the quote reload and read the pre-add cart.
+      await cartPage.waitForCompensationAddToTripButtonToDetach();
+    } catch (err) {
+      throw new Error(
+        `[Cart.addCompensationFromAdditionalItems] Failed to add the climate contribution to the trip from the ` +
+        `cart's "Additional items" section: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Verifies the compensation quote card is displayed in the cart with the expected title.
    *
    * @param {import('playwright').Page} page

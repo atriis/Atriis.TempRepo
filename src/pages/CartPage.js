@@ -471,6 +471,16 @@ const SELECTORS = {
   // single `div.status-desc` holding trip.approvals.noPendingItems.
   APPROVALS_DIALOG_STATUS_DESC: '.approvals-dialog .status-desc',
 
+  // ===== Additional items section (trip-cart.vue) =====
+  // The cart's "Additional items" section is where on-demand products (Stay Safe, the
+  // Climate Contribution tile) are offered before they become real quotes. It is gated by
+  // `v-show`, so it stays in the DOM and hides when there is nothing to offer — visibility,
+  // not presence, is the meaningful assertion.
+  // Anchored on the heading text ON PURPOSE: the Agent "Suggested items" section directly
+  // below it reuses the same `.suggested-quotes-container` class, so a class-only selector
+  // would match either one.
+  ADDITIONAL_ITEMS_HEADING: '.suggested-quotes-container h2:text-is("Additional items")',
+
   // ===== Compensation / Climate Contribution (compensation-quote-card.vue) =====
   // The card root carries both `quote-payment-card` and `compensation-quote-card`.
   COMPENSATION_QUOTE_CARD: '.compensation-quote-card',
@@ -7396,6 +7406,17 @@ class CartPage {
     });
   }
 
+  // ===== Additional items section =====
+
+  /**
+   * Gets the cart's "Additional items" section heading locator.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getAdditionalItemsSectionHeading() {
+    return this.page.locator(SELECTORS.ADDITIONAL_ITEMS_HEADING).first();
+  }
+
   // ===== Compensation / Climate Contribution =====
 
   /**
@@ -7425,10 +7446,11 @@ class CartPage {
   /**
    * Scrolls the compensation quote card into view.
    *
-   * On the post-booking trip overview the compensation card sits below the flight card and its
-   * Extras section, so it starts outside the viewport. Playwright auto-scrolls for actions but
-   * NOT for `toBeVisible()`, and the trip overview renders lower sections lazily — so an
-   * assertion can run before the card has rendered at all.
+   * Used from both ends of the compensation flow — the on-demand tile in the cart's Additional
+   * items section, and the real quote card on the post-booking trip overview. Either way the card
+   * sits below the flight card and its Extras section, so it starts outside the viewport.
+   * Playwright auto-scrolls for actions but NOT for `toBeVisible()`, and the page renders lower
+   * sections lazily — so an assertion can run before the card has rendered at all.
    *
    * Best-effort by design: this only improves the odds that the card is rendered. The caller's
    * assertion remains the gate and produces the meaningful failure message, so a scroll failure
@@ -7450,6 +7472,47 @@ class CartPage {
    */
   getCompensationAddToTripButton() {
     return this.page.locator(SELECTORS.COMPENSATION_ADD_TO_TRIP_BUTTON);
+  }
+
+  /**
+   * Clicks the "Add to trip" button on the on-demand compensation tile.
+   */
+  async clickCompensationAddToTripButton() {
+    const button = this.page.locator(SELECTORS.COMPENSATION_ADD_TO_TRIP_BUTTON).first();
+    try {
+      await button.waitFor({ state: 'visible', timeout: 15000 });
+      await button.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickCompensationAddToTripButton] Could not click the compensation "Add to trip" button ` +
+        `(selector: ${SELECTORS.COMPENSATION_ADD_TO_TRIP_BUTTON}). compensation-quote-card.vue renders it behind ` +
+        `v-if="!isRealQuote", so it is absent when the compensation is already part of the trip (added ` +
+        `automatically, or added earlier in this scenario), and the whole tile is absent when the company has no ` +
+        `on-demand compensation configured. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the on-demand compensation tile's "Add to trip" button to disappear.
+   *
+   * Adding the compensation fires an async quote reload; once it lands, `isCompensationChosen`
+   * turns true and the tile is removed. That detach is the settle signal that separates "the
+   * click was registered" from "the trip actually has the compensation now".
+   */
+  async waitForCompensationAddToTripButtonToDetach() {
+    try {
+      await this.page
+        .locator(SELECTORS.COMPENSATION_ADD_TO_TRIP_BUTTON)
+        .first()
+        .waitFor({ state: 'detached', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForCompensationAddToTripButtonToDetach] The compensation "Add to trip" button was still ` +
+        `rendered 30s after it was clicked, so the compensation was never added to the trip. The Squake ` +
+        `add-compensation call may have failed, or the cart never reloaded its quotes. Original: ${err.message}`
+      );
+    }
   }
 
   /**
