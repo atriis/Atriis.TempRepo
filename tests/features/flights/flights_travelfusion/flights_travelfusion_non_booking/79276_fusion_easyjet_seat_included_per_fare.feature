@@ -6,7 +6,7 @@
 # Fix: Incorrect OperatorCode filtering in BuildBrandsTable caused Standard Seat feature to be applied to wrong fares
 
 @regression @flights @fusion @easyjet @branded-fares @pricing-options @priority:high @ado:78296 @tc:79276
-Feature: 78296 Fusion - EasyJet seat correctly shown as included or not per fare
+Feature: 79276 Fusion - EasyJet seat correctly shown as included or not per fare
   As a corporate traveler booking an EasyJet flight via Fusion
   I want seat selection to only show as included in fares that bundle Standard Seat
   So that I am not misled about seat entitlement per fare

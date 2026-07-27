@@ -6,7 +6,7 @@
 # Fix: Incorrect OperatorCode filtering in BuildBrandsTable caused LargeCabinBag feature to be applied to wrong fares
 
 @regression @flights @fusion @easyjet @branded-fares @pricing-options @priority:high @ado:78296 @tc:79275
-Feature: 78296 Fusion - EasyJet carry-on bag correctly shown as included or not per fare
+Feature: 79275 Fusion - EasyJet carry-on bag correctly shown as included or not per fare
   As a corporate traveler booking an EasyJet flight via Fusion
   I want carry-on bag to only show as included in fares that appear in the LargeCabinBag feature block
   So that I am not misled about baggage entitlement per fare

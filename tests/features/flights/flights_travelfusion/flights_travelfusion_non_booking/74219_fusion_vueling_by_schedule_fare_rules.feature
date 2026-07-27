@@ -4,7 +4,7 @@
 # Owner: Bruna Santos
 
 @regression @flights @fusion @vueling @by-schedule @fare-rules
-Feature: 73380 Fusion Vueling - Verify fare rules using by-schedule search
+Feature: 74219 Fusion Vueling - Verify fare rules using by-schedule search
   As a corporate traveler searching a Fusion Vueling flight by schedule
   I want fare rules to be visible at every entry point in results, pricing options and cart
   So that the strictest terms note is consistently displayed throughout the booking flow
