@@ -1,4 +1,5 @@
 const { waitForText } = require("@utils/wait");
+const { parseAmountText } = require("@utils/dom");
 
 /**
  * Page Object for checkout page.
@@ -75,6 +76,11 @@ const SELECTORS = {
   CHECKOUT_TOTAL_PRICE: '.price-summary .price-total .amount',
   CHECKOUT_SUMMARY_SECTION: '.trip-summary',
   CHECKOUT_SUMMARY_QUOTE_TITLE: '.trip-summary .summary-title',
+  // Per-line prices in the checkout trip-summary sidebar. The flight line mirrors the cart's
+  // `.flight-quote-summary .quote-price`; the compensation line (compensation-quote-summary.vue)
+  // is rendered last and carries `:class="{ last: isLast }"` on its `.quote-summary` wrapper.
+  CHECKOUT_SUMMARY_FLIGHT_PRICE: '.trip-summary .flight-quote-summary .quote-price',
+  CHECKOUT_SUMMARY_COMPENSATION_PRICE: '.trip-summary .quote-summary.last .quote-price',
 
   // Booking-success page — product details line (booking-success.vue .quote-result card)
   BOOKING_SUCCESS_PRODUCT_LINE: '.quote-result .quote-results__wrapper',
@@ -749,6 +755,102 @@ class CheckoutPage {
         `Original: ${err.message}`
       );
     }
+  }
+
+  // ===== Checkout trip-summary lines (trip-summary.vue + per-product *-quote-summary.vue) =====
+
+  /**
+   * Gets a checkout summary line title locator filtered to the expected label,
+   * e.g. "Carbon offset" (compensation-quote-summary.vue).
+   *
+   * @param {string} lineLabel - Summary title text to match
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCheckoutSummaryLineTitle(lineLabel) {
+    if (!lineLabel || typeof lineLabel !== 'string') {
+      throw new Error(
+        `[CheckoutPage.getCheckoutSummaryLineTitle] "lineLabel" must be a non-empty string, got: ${typeof lineLabel} (${lineLabel})`
+      );
+    }
+    return this.page
+      .locator(SELECTORS.CHECKOUT_SUMMARY_QUOTE_TITLE, { hasText: lineLabel })
+      .first();
+  }
+
+  /**
+   * Reads a price from the checkout trip-summary sidebar.
+   *
+   * Uses parseAmountText rather than getCheckoutTotalPrice's inline normalizer so
+   * thousands separators parse correctly in both US ("1,234.50") and EU ("1.234,50")
+   * locales — these values feed a sum assertion, where a mis-parsed thousands
+   * separator would silently compare 1.234 against 1234.50.
+   *
+   * @param {string} selector - One of the CHECKOUT_SUMMARY_* price selectors
+   * @param {string} label - Human label used in errors, e.g. "carbon offset amount"
+   * @param {number} timeout - Max wait for the price to render
+   * @returns {Promise<number>}
+   */
+  async getCheckoutSummaryAmount(selector, label, timeout = 20000) {
+    if (!selector || typeof selector !== 'string') {
+      throw new Error(
+        `[CheckoutPage.getCheckoutSummaryAmount] "selector" must be a non-empty string, got: ${typeof selector} (${selector})`
+      );
+    }
+    if (!label || typeof label !== 'string') {
+      throw new Error(
+        `[CheckoutPage.getCheckoutSummaryAmount] "label" must be a non-empty string, got: ${typeof label} (${label})`
+      );
+    }
+
+    const price = this.page.locator(selector).first();
+    let text;
+    try {
+      await price.waitFor({ state: 'visible', timeout });
+      text = await price.innerText();
+    } catch (err) {
+      throw new Error(
+        `[CheckoutPage.getCheckoutSummaryAmount] The ${label} did not appear in the checkout summary within ` +
+        `${timeout}ms (selector: ${selector}). The trip-summary sidebar may still be loading, or the trip does ` +
+        `not contain that product. Original: ${err.message}`
+      );
+    }
+
+    try {
+      return parseAmountText(text, label);
+    } catch (err) {
+      throw new Error(
+        `[CheckoutPage.getCheckoutSummaryAmount] Found the ${label} element but could not read a number from ` +
+        `its text "${text}" (selector: ${selector}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the flight line price from the checkout summary.
+   * @returns {Promise<number>}
+   */
+  async getCheckoutSummaryFlightAmount() {
+    return this.getCheckoutSummaryAmount(SELECTORS.CHECKOUT_SUMMARY_FLIGHT_PRICE, 'flight amount');
+  }
+
+  /**
+   * Reads the compensation (carbon offset) line price from the checkout summary.
+   * @returns {Promise<number>}
+   */
+  async getCheckoutSummaryCompensationAmount() {
+    return this.getCheckoutSummaryAmount(
+      SELECTORS.CHECKOUT_SUMMARY_COMPENSATION_PRICE,
+      'carbon offset amount',
+    );
+  }
+
+  /**
+   * Reads the checkout summary grand total.
+   * Reuses CHECKOUT_TOTAL_PRICE, the same selector getCheckoutTotalPrice uses.
+   * @returns {Promise<number>}
+   */
+  async getCheckoutSummaryTotalAmount() {
+    return this.getCheckoutSummaryAmount(SELECTORS.CHECKOUT_TOTAL_PRICE, 'summary total amount');
   }
 
 }

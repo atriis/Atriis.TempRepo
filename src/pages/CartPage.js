@@ -460,6 +460,61 @@ const SELECTORS = {
   APPROVALS_DIALOG_APPROVER_NAME: '.approvals-dialog .approver-name',
   APPROVALS_DIALOG_CLOSE_BUTTON: '.approvals-dialog .el-dialog__headerbtn',
 
+  // Manual approval controls inside the approvals dialog (trip-approval-steps.vue).
+  // "Modify" toggles isModifyApprovalMode, which is what reveals "Skip all"; "Save"
+  // (rendered as app-btn class="p-0 ml-4") commits via onUpdateStepApprovals.
+  // Text-based because every one of these is an app-btn with no stable class of its own.
+  APPROVALS_DIALOG_MODIFY_BUTTON: '.approvals-dialog .btns-wrapper button:has-text("Modify")',
+  APPROVALS_DIALOG_SKIP_ALL_BUTTON: '.approvals-dialog .app-footer.btns-container button:has-text("Skip all")',
+  APPROVALS_DIALOG_SAVE_BUTTON: '.approvals-dialog .btns-wrapper button:has-text("Save")',
+  // Step status description. When every step is done the component swaps the timeline for a
+  // single `div.status-desc` holding trip.approvals.noPendingItems.
+  APPROVALS_DIALOG_STATUS_DESC: '.approvals-dialog .status-desc',
+
+  // ===== Compensation / Climate Contribution (compensation-quote-card.vue) =====
+  // The card root carries both `quote-payment-card` and `compensation-quote-card`.
+  COMPENSATION_QUOTE_CARD: '.compensation-quote-card',
+  // Title differs by state, so both are matched:
+  //   * real quote (test 44362) -> base-quote-card > base-quote-header renders
+  //     `h6.has-text-weight-semibold.quote-title` whose text comes from
+  //     util.service.getProductTitle() -> compensation.climateContribution.
+  //   * product tile (test 44424, !isRealQuote) -> a plain `h5` inside `.title`.
+  // Matching only the h5 silently misses the real-quote case.
+  COMPENSATION_QUOTE_TITLE: '.compensation-quote-card h6.quote-title, .compensation-quote-card .title h5',
+  // The terms link is the <a> inside quote-terms-checkbox (base-quote-card slot), which
+  // emits openTermsAndConditions. This is what Testim's bare `.compensation-quote-card a` hit.
+  COMPENSATION_TERMS_LINK: '.compensation-quote-card .quote-terms-checkbox a',
+  // Terms dialog is append-to-body, so it is NOT nested under the card in the DOM.
+  COMPENSATION_TERMS_DIALOG: '.el-dialog.terms-dialog',
+  COMPENSATION_TERMS_DIALOG_BODY: '.el-dialog.terms-dialog .el-dialog__body p',
+  COMPENSATION_TERMS_DIALOG_CLOSE: '.el-dialog.terms-dialog .el-dialog__headerbtn',
+  // "Add to trip" button on the compensation card. Gated by `v-if="!isRealQuote"`, so it renders
+  // ONLY for the on-demand product tile (test 44424). Once the compensation exists as a real quote
+  // (test 44362) the button must be absent — that absence is an assertion, not a wait target.
+  COMPENSATION_ADD_TO_TRIP_BUTTON: '.compensation-quote-card .add-to-trip-btn',
+  // "Related Items" app-btn in the ticket-related-quotes slot of the compensation card.
+  COMPENSATION_RELATED_ITEMS_BUTTON: '.compensation-quote-card button:has-text("Related Items")',
+  // Related-quotes dialog body (compensation-related-quotes.vue), also append-to-body.
+  COMPENSATION_RELATED_QUOTES: '.compensation-related-quotes',
+  COMPENSATION_RELATED_QUOTES_TITLE: '.compensation-related-quotes .quote-title',
+  COMPENSATION_RELATED_QUOTES_DIALOG: '.el-dialog:has(.compensation-related-quotes)',
+  COMPENSATION_RELATED_QUOTES_DIALOG_CLOSE: '.el-dialog:has(.compensation-related-quotes) .el-dialog__headerbtn',
+
+  // Per-product status badges. base-quote-header.vue renders one
+  // `p.app-label.app-label--quote` inside EACH quote card, so scoping by card root is what makes
+  // "the flight is Confirmed AND the compensation is On hold" two distinct assertions instead of
+  // two reads of whichever badge happens to come first in the DOM.
+  // Safe from collisions: compensation-related-quotes.vue also renders app-label--quote per row,
+  // but that lives in an append-to-body dialog, outside .compensation-quote-card.
+  FLIGHT_QUOTE_STATUS_LABEL: '.flight-quote-card .app-label--quote',
+  COMPENSATION_QUOTE_STATUS_LABEL: '.compensation-quote-card .app-label--quote',
+
+  // Quote names listed in the trip-cancellation confirmation dialog (cancel-trip-modal.vue →
+  // .quote-details-container → h2.bold-text = quoteName(quote)). Matched by text, never by
+  // position: which row a product occupies depends on what else is in the trip.
+  TRIP_CANCELLATION_QUOTE_NAME: '.cancel-trip-modal .quote-details-container .quote-details h2.bold-text',
+
+
   // Add product from cart product carousel
   ADD_HOTEL_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Hotel")',
   ADD_FLIGHT_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Flight")',
@@ -7340,6 +7395,297 @@ class CartPage {
       method: 'GET',
     });
   }
+
+  // ===== Compensation / Climate Contribution =====
+
+  /**
+   * Gets the compensation quote card locator (compensation-quote-card.vue).
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCompensationQuoteCard() {
+    return this.page.locator(SELECTORS.COMPENSATION_QUOTE_CARD).first();
+  }
+
+  /**
+   * Gets the compensation quote card's title locator, filtered to the expected text.
+   *
+   * @param {string} expectedTitle - Title to match, e.g. "Climate Contribution"
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCompensationQuoteTitle(expectedTitle) {
+    if (!expectedTitle || typeof expectedTitle !== 'string') {
+      throw new Error(
+        `[CartPage.getCompensationQuoteTitle] "expectedTitle" must be a non-empty string, got: ${typeof expectedTitle} (${expectedTitle})`
+      );
+    }
+    return this.page.locator(SELECTORS.COMPENSATION_QUOTE_TITLE, { hasText: expectedTitle }).first();
+  }
+
+  /**
+   * Scrolls the compensation quote card into view.
+   *
+   * On the post-booking trip overview the compensation card sits below the flight card and its
+   * Extras section, so it starts outside the viewport. Playwright auto-scrolls for actions but
+   * NOT for `toBeVisible()`, and the trip overview renders lower sections lazily — so an
+   * assertion can run before the card has rendered at all.
+   *
+   * Best-effort by design: this only improves the odds that the card is rendered. The caller's
+   * assertion remains the gate and produces the meaningful failure message, so a scroll failure
+   * here (e.g. the card genuinely does not exist) is logged rather than thrown.
+   */
+  async scrollCompensationQuoteIntoView() {
+    await this.page
+      .locator(SELECTORS.COMPENSATION_QUOTE_CARD)
+      .first()
+      .scrollIntoViewIfNeeded({ timeout: 15000 })
+      .catch(() => {});
+  }
+
+  /**
+   * Gets the compensation card's "Add to trip" button locator.
+   * Present only for the on-demand product tile; absent once the compensation is a real quote.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCompensationAddToTripButton() {
+    return this.page.locator(SELECTORS.COMPENSATION_ADD_TO_TRIP_BUTTON);
+  }
+
+  /**
+   * Clicks the Terms & Conditions link on the compensation quote card.
+   */
+  async clickCompensationTermsLink() {
+    const link = this.page.locator(SELECTORS.COMPENSATION_TERMS_LINK).first();
+    try {
+      await link.waitFor({ state: 'visible', timeout: 15000 });
+      await link.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickCompensationTermsLink] Could not click the compensation Terms & Conditions link ` +
+        `(selector: ${SELECTORS.COMPENSATION_TERMS_LINK}). The compensation quote may not be a real quote yet ` +
+        `(the terms link only renders inside base-quote-card for a booked/priced compensation), or the card has not loaded. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Gets the compensation terms dialog body paragraph locator.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCompensationTermsDialogBody() {
+    return this.page.locator(SELECTORS.COMPENSATION_TERMS_DIALOG_BODY).first();
+  }
+
+  /**
+   * Closes the compensation terms dialog via its header close button.
+   */
+  async closeCompensationTermsDialog() {
+    const closeButton = this.page.locator(SELECTORS.COMPENSATION_TERMS_DIALOG_CLOSE).first();
+    try {
+      await closeButton.waitFor({ state: 'visible', timeout: 10000 });
+      await closeButton.click();
+      await this.page
+        .locator(SELECTORS.COMPENSATION_TERMS_DIALOG)
+        .first()
+        .waitFor({ state: 'hidden', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.closeCompensationTermsDialog] Could not close the compensation terms dialog ` +
+        `(selector: ${SELECTORS.COMPENSATION_TERMS_DIALOG_CLOSE}). The dialog may never have opened, or it ` +
+        `stayed open after the close click. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the "Related Items" button on the compensation quote card.
+   */
+  async clickCompensationRelatedItemsButton() {
+    const button = this.page.locator(SELECTORS.COMPENSATION_RELATED_ITEMS_BUTTON).first();
+    try {
+      await button.waitFor({ state: 'visible', timeout: 15000 });
+      await button.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickCompensationRelatedItemsButton] Could not click the compensation "Related Items" button ` +
+        `(selector: ${SELECTORS.COMPENSATION_RELATED_ITEMS_BUTTON}). The button only renders in the ` +
+        `ticket-related-quotes slot of a real compensation quote. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the compensation related-quotes dialog body to be visible.
+   */
+  async waitForCompensationRelatedQuotesVisible() {
+    try {
+      await this.page
+        .locator(SELECTORS.COMPENSATION_RELATED_QUOTES)
+        .first()
+        .waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForCompensationRelatedQuotesVisible] The compensation related-items dialog did not open ` +
+        `(selector: ${SELECTORS.COMPENSATION_RELATED_QUOTES}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Gets the quote-title locators listed inside the compensation related-quotes dialog.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCompensationRelatedQuoteTitles() {
+    return this.page.locator(SELECTORS.COMPENSATION_RELATED_QUOTES_TITLE);
+  }
+
+  /**
+   * Closes the compensation related-quotes dialog via its header close button.
+   */
+  async closeCompensationRelatedQuotesDialog() {
+    const closeButton = this.page.locator(SELECTORS.COMPENSATION_RELATED_QUOTES_DIALOG_CLOSE).first();
+    try {
+      await closeButton.waitFor({ state: 'visible', timeout: 10000 });
+      await closeButton.click();
+      await this.page
+        .locator(SELECTORS.COMPENSATION_RELATED_QUOTES)
+        .first()
+        .waitFor({ state: 'hidden', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.closeCompensationRelatedQuotesDialog] Could not close the compensation related-items dialog ` +
+        `(selector: ${SELECTORS.COMPENSATION_RELATED_QUOTES_DIALOG_CLOSE}). Original: ${err.message}`
+      );
+    }
+  }
+
+  // ===== Manual approval controls (approvals dialog) =====
+
+  /**
+   * Clicks "Modify" in the approvals dialog, entering modify-approval mode.
+   */
+  async clickApprovalsModifyButton() {
+    const button = this.page.locator(SELECTORS.APPROVALS_DIALOG_MODIFY_BUTTON).first();
+    try {
+      await button.waitFor({ state: 'visible', timeout: 15000 });
+      await button.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickApprovalsModifyButton] Could not click "Modify" in the approvals dialog ` +
+        `(selector: ${SELECTORS.APPROVALS_DIALOG_MODIFY_BUTTON}). The button only renders when ` +
+        `isModifyApprovalAllowed is true — the logged-in user may lack approval-modify rights. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks "Skip all" in the approvals dialog footer. Only rendered in modify mode.
+   */
+  async clickApprovalsSkipAllButton() {
+    const button = this.page.locator(SELECTORS.APPROVALS_DIALOG_SKIP_ALL_BUTTON).first();
+    try {
+      await button.waitFor({ state: 'visible', timeout: 15000 });
+      await button.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickApprovalsSkipAllButton] Could not click "Skip all" in the approvals dialog footer ` +
+        `(selector: ${SELECTORS.APPROVALS_DIALOG_SKIP_ALL_BUTTON}). It renders only while isModifyApprovalMode ` +
+        `is active and an approval step is still pending — check that "Modify" was clicked first. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks "Save" in the approvals dialog, committing the skipped steps.
+   */
+  async clickApprovalsSaveButton() {
+    const button = this.page.locator(SELECTORS.APPROVALS_DIALOG_SAVE_BUTTON).first();
+    try {
+      await button.waitFor({ state: 'visible', timeout: 15000 });
+      await button.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickApprovalsSaveButton] Could not click "Save" in the approvals dialog ` +
+        `(selector: ${SELECTORS.APPROVALS_DIALOG_SAVE_BUTTON}). The button is disabled until an approval ` +
+        `step is actually changed (isSaveDisabled), so "Skip all" may not have registered. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Gets the approvals dialog status-description locator.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getApprovalsStatusDescription() {
+    return this.page.locator(SELECTORS.APPROVALS_DIALOG_STATUS_DESC).first();
+  }
+
+  /**
+   * Closes the approvals dialog via its header close button.
+   */
+  async closeApprovalsDialog() {
+    const closeButton = this.page.locator(SELECTORS.APPROVALS_DIALOG_CLOSE_BUTTON).first();
+    try {
+      await closeButton.waitFor({ state: 'visible', timeout: 10000 });
+      await closeButton.click();
+      await this.page
+        .locator(SELECTORS.APPROVALS_DIALOG)
+        .first()
+        .waitFor({ state: 'hidden', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.closeApprovalsDialog] Could not close the approvals dialog ` +
+        `(selector: ${SELECTORS.APPROVALS_DIALOG_CLOSE_BUTTON}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Gets the flight quote card's title locator.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getFlightQuoteTitle() {
+    return this.page.locator(SELECTORS.FLIGHT_QUOTE_TITLE).first();
+  }
+
+  /**
+   * Gets the quote-name locators shown in the trip-cancellation confirmation dialog.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getTripCancellationQuoteNames() {
+    return this.page.locator(SELECTORS.TRIP_CANCELLATION_QUOTE_NAME);
+  }
+
+  /**
+   * Gets the status badge locator for one product's quote card.
+   *
+   * @param {'flight'|'compensation'} product
+   * @returns {import('@playwright/test').Locator}
+   */
+  getQuoteStatusLabelForProduct(product) {
+    const selectorByProduct = {
+      flight: SELECTORS.FLIGHT_QUOTE_STATUS_LABEL,
+      compensation: SELECTORS.COMPENSATION_QUOTE_STATUS_LABEL,
+    };
+    const selector = selectorByProduct[product];
+    if (!selector) {
+      throw new Error(
+        `[CartPage.getQuoteStatusLabelForProduct] "product" must be one of ${Object.keys(selectorByProduct).join(', ')}, got: ${typeof product} (${product})`
+      );
+    }
+    return this.page.locator(selector).first();
+  }
+
 }
 
 // Export CartPage and SELECTORS for use in tests and DSL

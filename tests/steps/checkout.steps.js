@@ -220,3 +220,53 @@ Then("the reference field should be linked to Recalculate Approval Flow", async 
   logger.info("Verifying a reference field linked to Recalculate Approval Flow is displayed at checkout");
   await Checkout.verifyReferenceFieldLinkedToRecalculateApprovalFlow(this.page);
 });
+// ===== Checkout trip-summary carbon offset (test 44362) =====
+
+Then("the checkout summary should show the {string} line", async function (lineLabel) {
+  logger.info("Verifying a line is shown in the checkout summary", { lineLabel });
+  await Checkout.verifySummaryLineVisible(this.page, lineLabel);
+});
+
+When("I extract the flight amount from the checkout summary", async function () {
+  this.checkoutSummaryFlightAmount = await Checkout.extractSummaryFlightAmount(this.page);
+  logger.info("Stored checkout summary flight amount", { amount: this.checkoutSummaryFlightAmount });
+});
+
+When("I extract the carbon offset amount from the checkout summary", async function () {
+  this.checkoutSummaryCarbonAmount = await Checkout.extractSummaryCarbonOffsetAmount(this.page);
+  logger.info("Stored checkout summary carbon offset amount", { amount: this.checkoutSummaryCarbonAmount });
+});
+
+When("I extract the total amount from the checkout summary", async function () {
+  this.checkoutSummaryTotalAmount = await Checkout.extractSummaryTotalAmount(this.page);
+  logger.info("Stored checkout summary total amount", { amount: this.checkoutSummaryTotalAmount });
+});
+
+Then("the checkout summary total should equal the flight amount plus the carbon offset amount", async function () {
+  const { checkoutSummaryFlightAmount, checkoutSummaryCarbonAmount, checkoutSummaryTotalAmount } = this;
+
+  if (
+    typeof checkoutSummaryFlightAmount !== "number" ||
+    typeof checkoutSummaryCarbonAmount !== "number" ||
+    typeof checkoutSummaryTotalAmount !== "number"
+  ) {
+    throw new Error(
+      "No stored checkout summary amounts found. Run the three checkout-summary extraction steps " +
+      "(flight amount, carbon offset amount, total amount) before this assertion. Got: " +
+      `flight=${checkoutSummaryFlightAmount}, carbon=${checkoutSummaryCarbonAmount}, total=${checkoutSummaryTotalAmount}`
+    );
+  }
+
+  logger.info("Verifying the checkout summary total equals flight + carbon offset", {
+    checkoutSummaryFlightAmount,
+    checkoutSummaryCarbonAmount,
+    checkoutSummaryTotalAmount,
+  });
+
+  await Checkout.verifySummaryTotalEqualsFlightPlusCarbon(
+    this.page,
+    checkoutSummaryFlightAmount,
+    checkoutSummaryCarbonAmount,
+    checkoutSummaryTotalAmount,
+  );
+});

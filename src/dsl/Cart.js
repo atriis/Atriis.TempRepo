@@ -8095,7 +8095,582 @@ const Cart = {
     }
   },
 
+  // ===========================================================================
+  // Compensation / Climate Contribution (test 44362, 44424)
+  //
+  // A compensation quote is the Squake-powered "Climate Contribution" line that
+  // rides alongside the flight. It renders as compensation-quote-card.vue, keeps
+  // a link back to the quotes it offsets ("Related Items"), and must appear in
+  // the trip-cancellation details when the trip is cancelled.
+  // ===========================================================================
+
+  /**
+   * Verifies the compensation quote card is displayed in the cart with the expected title.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedTitle - e.g. "Climate Contribution"
+   */
+  async verifyCompensationQuoteDisplayed(page, expectedTitle) {
+    if (!page) {
+      throw new Error('[Cart.verifyCompensationQuoteDisplayed] "page" is required.');
+    }
+    if (!expectedTitle || typeof expectedTitle !== 'string') {
+      throw new Error(
+        `[Cart.verifyCompensationQuoteDisplayed] "expectedTitle" must be a non-empty string, got: ${typeof expectedTitle} (${expectedTitle})`
+      );
+    }
+
+    logger.debug('[Cart.verifyCompensationQuoteDisplayed] Locating the compensation quote card', { expectedTitle });
+    const cartPage = getPageObject(page, CartPage);
+
+    // Two-stage on purpose: the card and the title fail for different reasons, and a single
+    // combined locator reports both as a bare "element(s) not found".
+    await expect(
+      cartPage.getCompensationQuoteCard(),
+      `[Cart.verifyCompensationQuoteDisplayed] No compensation quote card rendered in the cart at all. ` +
+      `The company may not have climate compensation enabled, or Squake returned no compensation for this trip.`,
+    ).toBeVisible({ timeout: 30000 });
+
+    await expect(
+      cartPage.getCompensationQuoteTitle(expectedTitle),
+      `[Cart.verifyCompensationQuoteDisplayed] The compensation quote card is present but no title matched ` +
+      `"${expectedTitle}". Check which state the card is in: a real quote titles via base-quote-header ` +
+      `(h6.quote-title), a product tile via h5.`,
+    ).toBeVisible({ timeout: 15000 });
+  },
+
+  /**
+   * Verifies the compensation quote card is present (used after booking).
+   *
+   * @param {import('playwright').Page} page
+   */
+  async verifyCompensationQuoteVisible(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyCompensationQuoteVisible] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // On the post-booking trip overview the compensation card sits below the flight card and its
+    // Extras section. It must be scrolled to before it is asserted: the overview renders lower
+    // sections lazily, and toBeVisible() does not auto-scroll the way an action would.
+    await cartPage.scrollCompensationQuoteIntoView();
+
+    await expect(
+      cartPage.getCompensationQuoteCard(),
+      '[Cart.verifyCompensationQuoteVisible] Expected the compensation quote to still be present after booking, ' +
+      'but the compensation quote card was not visible even after scrolling it into view.',
+    ).toBeVisible({ timeout: 30000 });
+  },
+
+  /**
+   * Verifies the compensation quote card offers no "Add to trip" button.
+   *
+   * compensation-quote-card.vue renders that button under `v-if="!isRealQuote"`, so it appears
+   * only for the on-demand product tile. Once the compensation exists as a real quote it must be
+   * gone — otherwise the user could add a second, duplicate compensation.
+   *
+   * The card itself is asserted visible FIRST. Without that guard the absence check would also
+   * pass when no compensation card rendered at all, turning a real regression into a green step.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedTitle - e.g. "Climate Contribution"
+   */
+  async verifyCompensationQuoteHasNoAddToTripButton(page, expectedTitle) {
+    if (!page) {
+      throw new Error('[Cart.verifyCompensationQuoteHasNoAddToTripButton] "page" is required.');
+    }
+    if (!expectedTitle || typeof expectedTitle !== 'string') {
+      throw new Error(
+        `[Cart.verifyCompensationQuoteHasNoAddToTripButton] "expectedTitle" must be a non-empty string, got: ${typeof expectedTitle} (${expectedTitle})`
+      );
+    }
+
+    logger.debug('[Cart.verifyCompensationQuoteHasNoAddToTripButton] Asserting the add-to-trip button is absent', {
+      expectedTitle,
+    });
+    const cartPage = getPageObject(page, CartPage);
+
+    // Guard: the card must exist, or the absence assertion below would pass vacuously.
+    await expect(
+      cartPage.getCompensationQuoteTitle(expectedTitle),
+      `[Cart.verifyCompensationQuoteHasNoAddToTripButton] Cannot check for the absence of the "Add to trip" button: ` +
+      `no compensation quote card titled "${expectedTitle}" was visible in the cart at all.`,
+    ).toBeVisible({ timeout: 30000 });
+
+    await expect(
+      cartPage.getCompensationAddToTripButton(),
+      `[Cart.verifyCompensationQuoteHasNoAddToTripButton] The "${expectedTitle}" compensation quote is already part ` +
+      `of the trip, so its "Add to trip" button should not be rendered (compensation-quote-card.vue gates it behind ` +
+      `v-if="!isRealQuote"), but the button is present. The compensation may have been created as a product tile ` +
+      `instead of a real quote, which would let the user add a duplicate compensation.`,
+    ).toHaveCount(0, { timeout: 15000 });
+  },
+
+  /**
+   * Opens the compensation Terms & Conditions dialog from the compensation quote card.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async openCompensationTermsAndConditions(page) {
+    if (!page) {
+      throw new Error('[Cart.openCompensationTermsAndConditions] "page" is required.');
+    }
+
+    logger.debug('[Cart.openCompensationTermsAndConditions] Opening the compensation terms dialog');
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickCompensationTermsLink();
+    } catch (err) {
+      throw new Error(
+        `[Cart.openCompensationTermsAndConditions] Failed to open the compensation Terms & Conditions dialog: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the compensation terms dialog states the purchase is non-refundable.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Full or partial terms text to match
+   */
+  async verifyCompensationTermsNonRefundable(page, expectedText) {
+    if (!page) {
+      throw new Error('[Cart.verifyCompensationTermsNonRefundable] "page" is required.');
+    }
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.verifyCompensationTermsNonRefundable] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${expectedText})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await expect(
+      cartPage.getCompensationTermsDialogBody(),
+      `[Cart.verifyCompensationTermsNonRefundable] Expected the compensation terms dialog to state "${expectedText}", ` +
+      `but that text was not found in the dialog body. The dialog may not have opened, or the terms copy changed.`,
+    ).toContainText(expectedText, { timeout: 20000 });
+  },
+
+  /**
+   * Closes the compensation Terms & Conditions dialog.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async closeCompensationTermsAndConditions(page) {
+    if (!page) {
+      throw new Error('[Cart.closeCompensationTermsAndConditions] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.closeCompensationTermsDialog();
+    } catch (err) {
+      throw new Error(
+        `[Cart.closeCompensationTermsAndConditions] Failed to close the compensation terms dialog: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Opens the "Related Items" dialog of the compensation quote — the quotes this
+   * compensation offsets.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async openCompensationRelatedItems(page) {
+    if (!page) {
+      throw new Error('[Cart.openCompensationRelatedItems] "page" is required.');
+    }
+
+    logger.debug('[Cart.openCompensationRelatedItems] Opening the compensation related-items dialog');
+    const cartPage = getPageObject(page, CartPage);
+
+    // The card is below the fold on the post-booking trip overview and the lower sections render
+    // lazily, so bring it into view before looking for its "Related Items" button.
+    await cartPage.scrollCompensationQuoteIntoView();
+
+    try {
+      await cartPage.clickCompensationRelatedItemsButton();
+      await cartPage.waitForCompensationRelatedQuotesVisible();
+    } catch (err) {
+      throw new Error(
+        `[Cart.openCompensationRelatedItems] Failed to open the compensation related-items dialog: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the compensation related-items dialog lists a quote whose title contains
+   * the expected text.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedTitle - e.g. "Flight to"
+   */
+  async verifyCompensationRelatedItemsContains(page, expectedTitle) {
+    if (!page) {
+      throw new Error('[Cart.verifyCompensationRelatedItemsContains] "page" is required.');
+    }
+    if (!expectedTitle || typeof expectedTitle !== 'string') {
+      throw new Error(
+        `[Cart.verifyCompensationRelatedItemsContains] "expectedTitle" must be a non-empty string, got: ${typeof expectedTitle} (${expectedTitle})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const matching = cartPage.getCompensationRelatedQuoteTitles().filter({ hasText: expectedTitle });
+
+    await expect(
+      matching.first(),
+      `[Cart.verifyCompensationRelatedItemsContains] Expected the compensation related-items dialog to list a quote ` +
+      `titled "${expectedTitle}", but no listed quote matched. The compensation may not be linked to the flight quote.`,
+    ).toBeVisible({ timeout: 20000 });
+  },
+
+  /**
+   * Closes the compensation related-items dialog.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async closeCompensationRelatedItems(page) {
+    if (!page) {
+      throw new Error('[Cart.closeCompensationRelatedItems] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.closeCompensationRelatedQuotesDialog();
+    } catch (err) {
+      throw new Error(
+        `[Cart.closeCompensationRelatedItems] Failed to close the compensation related-items dialog: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the flight quote card title starts with the expected prefix, e.g. "Flight to".
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedPrefix
+   */
+  async verifyFlightQuoteTitleStartsWith(page, expectedPrefix) {
+    if (!page) {
+      throw new Error('[Cart.verifyFlightQuoteTitleStartsWith] "page" is required.');
+    }
+    if (!expectedPrefix || typeof expectedPrefix !== 'string') {
+      throw new Error(
+        `[Cart.verifyFlightQuoteTitleStartsWith] "expectedPrefix" must be a non-empty string, got: ${typeof expectedPrefix} (${expectedPrefix})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const title = cartPage.getFlightQuoteTitle();
+
+    try {
+      await title.waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyFlightQuoteTitleStartsWith] The flight quote card title never became visible. ` +
+        `The trip may not contain a flight quote. Original: ${err.message}`
+      );
+    }
+
+    const actual = normalizeText(await title.innerText());
+    expect(
+      actual.startsWith(expectedPrefix),
+      `[Cart.verifyFlightQuoteTitleStartsWith] Expected the flight quote title to start with "${expectedPrefix}", ` +
+      `but it reads "${actual}".`,
+    ).toBe(true);
+  },
+
+  // ===========================================================================
+  // Manual approval handling (approvals dialog)
+  // ===========================================================================
+
+  /**
+   * Skips every pending approval step from the approvals dialog: enters modify mode,
+   * clicks "Skip all", then saves.
+   *
+   * Requires the approvals dialog to already be open — use the existing
+   * `Cart.viewApproversInTripOverview` first.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async approveAllPendingItemsInApprovalFlow(page) {
+    if (!page) {
+      throw new Error('[Cart.approveAllPendingItemsInApprovalFlow] "page" is required.');
+    }
+
+    logger.debug('[Cart.approveAllPendingItemsInApprovalFlow] Skipping all pending approval steps');
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickApprovalsModifyButton();
+      await cartPage.clickApprovalsSkipAllButton();
+      await cartPage.clickApprovalsSaveButton();
+    } catch (err) {
+      throw new Error(
+        `[Cart.approveAllPendingItemsInApprovalFlow] Failed to skip all pending approval steps. The approvals ` +
+        `dialog must be open and the user must be allowed to modify the approval flow. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the approvals dialog reports that nothing is pending.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Text the status description should contain
+   */
+  async verifyApprovalFlowHasNoPendingItems(page, expectedText = 'No pending items') {
+    if (!page) {
+      throw new Error('[Cart.verifyApprovalFlowHasNoPendingItems] "page" is required.');
+    }
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.verifyApprovalFlowHasNoPendingItems] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${expectedText})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await expect(
+      cartPage.getApprovalsStatusDescription(),
+      `[Cart.verifyApprovalFlowHasNoPendingItems] Expected the approvals dialog to report "${expectedText}" after ` +
+      `skipping every step, but the status description did not contain it. A step may have failed to skip, or the ` +
+      `save did not commit.`,
+    ).toContainText(expectedText, { timeout: 60000 });
+  },
+
+  /**
+   * Closes the approvals dialog.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async closeApprovalFlowDialog(page) {
+    if (!page) {
+      throw new Error('[Cart.closeApprovalFlowDialog] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.closeApprovalsDialog();
+    } catch (err) {
+      throw new Error(`[Cart.closeApprovalFlowDialog] Failed to close the approvals dialog: ${err.message}`);
+    }
+  },
+
+  /**
+   * Verifies ONE product's quote card shows any of the accepted statuses.
+   *
+   * Scoped per product on purpose. The unscoped alternative
+   * ({@link verifyQuoteWithStatusVisible}) scans every badge in the cart and passes if any one
+   * matches — so asserting "the flight is Confirmed" and "the compensation is On hold" against it
+   * would be two reads of whichever badge came first, not two independent checks.
+   *
+   * Accepts several statuses because some transitions are transient: after an approval flow is
+   * skipped a booking can be caught mid-flight as "Finalizing" or already settled as "Confirmed",
+   * and which one you observe depends on backend timing, not on correctness.
+   *
+   * @param {import('playwright').Page} page
+   * @param {'flight'|'compensation'} product - Which quote card to read
+   * @param {string[]} acceptedStatuses
+   * @param {{timeout?: number}} [options]
+   * @returns {Promise<{actual: string}>}
+   */
+  async verifyProductBookingStatusIsOneOf(page, product, acceptedStatuses, { timeout = 60000 } = {}) {
+    if (!page) {
+      throw new Error('[Cart.verifyProductBookingStatusIsOneOf] "page" is required.');
+    }
+    if (!product || typeof product !== 'string') {
+      throw new Error(
+        `[Cart.verifyProductBookingStatusIsOneOf] "product" must be a non-empty string, got: ${typeof product} (${product})`
+      );
+    }
+    if (!Array.isArray(acceptedStatuses) || acceptedStatuses.length === 0) {
+      throw new Error(
+        `[Cart.verifyProductBookingStatusIsOneOf] "acceptedStatuses" must be a non-empty array, got: ${typeof acceptedStatuses} (${JSON.stringify(acceptedStatuses)})`
+      );
+    }
+    if (acceptedStatuses.some((s) => !s || typeof s !== 'string')) {
+      throw new Error(
+        `[Cart.verifyProductBookingStatusIsOneOf] Every entry of "acceptedStatuses" must be a non-empty string, got: ${JSON.stringify(acceptedStatuses)}`
+      );
+    }
+
+    logger.debug('[Cart.verifyProductBookingStatusIsOneOf] Waiting for an accepted status badge', {
+      product,
+      acceptedStatuses,
+    });
+    const cartPage = getPageObject(page, CartPage);
+    const label = cartPage.getQuoteStatusLabelForProduct(product);
+
+    // Polled rather than a single read: the status settles asynchronously after the approval
+    // flow is skipped, so the first read can legitimately show an earlier state.
+    let lastSeen = '';
+    try {
+      await expect
+        .poll(
+          async () => {
+            lastSeen = (await label.innerText().catch(() => '')).trim();
+            return acceptedStatuses.some((s) => lastSeen.toLowerCase().includes(s.toLowerCase()));
+          },
+          { timeout, intervals: [1000, 2000, 5000] },
+        )
+        .toBe(true);
+    } catch {
+      throw new Error(
+        `[Cart.verifyProductBookingStatusIsOneOf] The ${product} quote status never became any of ` +
+        `${JSON.stringify(acceptedStatuses)} within ${timeout}ms. Last seen: "${lastSeen || '(no status badge found)'}". ` +
+        `Either the booking is still transitioning, the supplier returned a different status, or the ` +
+        `${product} quote card is not present on this page.`
+      );
+    }
+
+    logger.info('Matched an accepted quote status', { product, actual: lastSeen });
+    return { actual: lastSeen };
+  },
+
+  // ===========================================================================
+  // Trip cancellation, decomposed
+  //
+  // cancelTripStrict does open→confirm→assert in a single call, which leaves no
+  // point to assert what the cancellation dialog lists while it is open (test
+  // 44362 requires the Climate Contribution line to be there). These methods
+  // split that flow apart and COMPOSE the same CartPage atoms — they add no new
+  // page-level behaviour. Prefer cancelTripStrict when no mid-dialog assertion
+  // is needed.
+  //
+  // VERIFICATION STATUS — not fully exercised. Test 44362 had to comment its
+  // cancellation tail out: skipping the approval flow drives the booking to
+  // Finalizing/Confirmed, and the app will not cancel a trip in that state. Only
+  // openTripCancellationDialog has been observed passing against staging; the
+  // other three have never run end-to-end. Treat them as unproven until a
+  // scenario cancels a trip that is still cancellable.
+  // ===========================================================================
+
+  /**
+   * Opens the trip-cancellation dialog from the trip actions menu, leaving it open.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async openTripCancellationDialog(page) {
+    if (!page) {
+      throw new Error('[Cart.openTripCancellationDialog] "page" is required.');
+    }
+
+    logger.debug('[Cart.openTripCancellationDialog] Opening the trip cancellation dialog');
+    const cartPage = getPageObject(page, CartPage);
+
+    // Mirrors cancelTripStrict: an in-approval trip polls continuously so networkidle
+    // may never settle — non-fatal, the dropdown waits below provide the real sync.
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+
+    try {
+      await cartPage.waitForTripOverviewTitle();
+      await cartPage.hoverTripActionsDropdownIcon();
+      await cartPage.waitForDropdownMenu();
+      await cartPage.clickCancelTripOption();
+    } catch (err) {
+      throw new Error(
+        `[Cart.openTripCancellationDialog] Failed to open the trip cancellation dialog from the trip actions menu. ` +
+        `The trip may already be cancelled, or the actions dropdown was disabled while the page was still loading. ` +
+        `Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the trip-cancellation dialog is displayed.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async verifyTripCancellationDialogDisplayed(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyTripCancellationDialogDisplayed] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.waitForTripCancellationDialogTitle();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyTripCancellationDialogDisplayed] The trip cancellation dialog title never appeared. ` +
+        `The "Cancel trip" menu option may not have been clicked, or the trip is in a state the app refuses ` +
+        `to cancel (e.g. Finalizing). Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the open trip-cancellation dialog lists a quote with the expected name.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedQuoteName - e.g. "Climate Contribution"
+   */
+  async verifyTripCancellationDetailsContains(page, expectedQuoteName) {
+    if (!page) {
+      throw new Error('[Cart.verifyTripCancellationDetailsContains] "page" is required.');
+    }
+    if (!expectedQuoteName || typeof expectedQuoteName !== 'string') {
+      throw new Error(
+        `[Cart.verifyTripCancellationDetailsContains] "expectedQuoteName" must be a non-empty string, got: ${typeof expectedQuoteName} (${expectedQuoteName})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const matching = cartPage.getTripCancellationQuoteNames().filter({ hasText: expectedQuoteName });
+
+    await expect(
+      matching.first(),
+      `[Cart.verifyTripCancellationDetailsContains] Expected the trip cancellation dialog to list a quote named ` +
+      `"${expectedQuoteName}", but no listed quote matched. The compensation may not be attached to this trip, or ` +
+      `it was already cancelled separately.`,
+    ).toBeVisible({ timeout: 30000 });
+  },
+
+  /**
+   * Confirms the trip cancellation and verifies the success message.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{cancelled: boolean, messageVisible: boolean}>}
+   */
+  async confirmTripCancellation(page) {
+    if (!page) {
+      throw new Error('[Cart.confirmTripCancellation] "page" is required.');
+    }
+
+    logger.debug('[Cart.confirmTripCancellation] Confirming the trip cancellation');
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickConfirmTripCancellationButton();
+      await cartPage.waitForTripCancelledMessage();
+    } catch (err) {
+      throw new Error(
+        `[Cart.confirmTripCancellation] The trip cancellation was not confirmed. The supplier may have rejected ` +
+        `the cancellation, or it is still processing. THE TRIP MAY STILL BE LIVE AND NEED MANUAL CANCELLATION. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    const messageVisible = await page
+      .getByText(CANCELLATION_CONFIRMED_TEXT, { exact: true })
+      .isVisible();
+
+    await page.waitForLoadState('networkidle').catch(() => {});
+
+    return { cancelled: true, messageVisible };
+  },
+
 };
+
 
 
 // Export Cart DSL for use in tests

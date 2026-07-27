@@ -2714,4 +2714,114 @@ When("I close the financial reference dialog in the trip overview", async functi
   logger.info("Closing the financial reference dialog in the trip overview");
   await Cart.closeFinancialReferenceDialogInTripOverview(this.page);
 });
+// ===== Compensation / Climate Contribution (tests 44362, 44424) =====
 
+Then("the {string} compensation quote should be displayed in cart", async function (expectedTitle) {
+  logger.info("Verifying the compensation quote card is displayed in cart", { expectedTitle });
+  await Cart.verifyCompensationQuoteDisplayed(this.page, expectedTitle);
+});
+
+Then("{string} compensation quote does not have an add to cart button", async function (expectedTitle) {
+  logger.info("Verifying the compensation quote offers no add-to-trip button", { expectedTitle });
+  await Cart.verifyCompensationQuoteHasNoAddToTripButton(this.page, expectedTitle);
+});
+
+When("I open the compensation terms and conditions", async function () {
+  logger.info("Opening the compensation terms and conditions");
+  await Cart.openCompensationTermsAndConditions(this.page);
+});
+
+Then("the compensation terms should state that the purchase is non-refundable", async function () {
+  logger.info("Verifying the compensation terms state the purchase is non-refundable");
+  await Cart.verifyCompensationTermsNonRefundable(
+    this.page,
+    "The compensation purchase associated with your booking is non-refundable.",
+  );
+});
+
+When("I close the compensation terms and conditions dialog", async function () {
+  logger.info("Closing the compensation terms and conditions dialog");
+  await Cart.closeCompensationTermsAndConditions(this.page);
+});
+
+Then("the compensation quote should be visible after booking", async function () {
+  logger.info("Verifying the compensation quote is visible after booking");
+  await Cart.verifyCompensationQuoteVisible(this.page);
+});
+
+Then("the flight quote title should start with {string}", async function (expectedPrefix) {
+  logger.info("Verifying the flight quote card title", { expectedPrefix });
+  await Cart.verifyFlightQuoteTitleStartsWith(this.page, expectedPrefix);
+});
+
+When("I approve all pending items in the approval flow dialog", async function () {
+  logger.info("Skipping all pending approval steps in the approvals dialog");
+  await Cart.approveAllPendingItemsInApprovalFlow(this.page);
+});
+
+Then("the approval flow should show no pending items", async function () {
+  logger.info("Verifying the approval flow shows no pending items");
+  await Cart.verifyApprovalFlowHasNoPendingItems(this.page);
+});
+
+When("I close the approval flow dialog", async function () {
+  logger.info("Closing the approvals dialog");
+  await Cart.closeApprovalFlowDialog(this.page);
+});
+
+Then("the flight booking status should be {string} or {string}", async function (firstStatus, secondStatus) {
+  logger.info("Verifying the flight quote booking status", { firstStatus, secondStatus });
+  const result = await Cart.verifyProductBookingStatusIsOneOf(this.page, "flight", [firstStatus, secondStatus]);
+  logger.info("Flight quote status matched", { actual: result.actual });
+});
+
+Then("the compensation booking status should be {string} or {string}", async function (firstStatus, secondStatus) {
+  logger.info("Verifying the compensation quote booking status", { firstStatus, secondStatus });
+  const result = await Cart.verifyProductBookingStatusIsOneOf(this.page, "compensation", [firstStatus, secondStatus]);
+  logger.info("Compensation quote status matched", { actual: result.actual });
+});
+
+When("I open the related items of the compensation quote", async function () {
+  logger.info("Opening the related items of the compensation quote");
+  await Cart.openCompensationRelatedItems(this.page);
+});
+
+Then("the compensation related items should list a quote titled {string}", async function (expectedTitle) {
+  logger.info("Verifying the compensation related items list", { expectedTitle });
+  await Cart.verifyCompensationRelatedItemsContains(this.page, expectedTitle);
+});
+
+When("I close the compensation related items dialog", async function () {
+  logger.info("Closing the compensation related items dialog");
+  await Cart.closeCompensationRelatedItems(this.page);
+});
+
+// --- Trip cancellation, decomposed -----------------------------------------
+// Prefer "I successfully cancel the trip" (Cart.cancelTripStrictWithWait) unless the
+// scenario must assert something while the cancellation dialog is open, as 44362 does.
+// Currently unreferenced: 44362 cannot cancel a Finalizing trip, so its cancellation
+// tail is commented out in the feature. Kept so that path can be restored.
+
+When("I open the trip cancellation from the trip actions menu", async function () {
+  logger.info("Opening the trip cancellation dialog from the trip actions menu");
+  await Cart.openTripCancellationDialog(this.page);
+});
+
+Then("the trip cancellation dialog should be displayed", async function () {
+  logger.info("Verifying the trip cancellation dialog is displayed");
+  await Cart.verifyTripCancellationDialogDisplayed(this.page);
+});
+
+Then("the trip cancellation details should list the {string} quote", async function (expectedQuoteName) {
+  logger.info("Verifying the trip cancellation details list the expected quote", { expectedQuoteName });
+  await Cart.verifyTripCancellationDetailsContains(this.page, expectedQuoteName);
+});
+
+Then("I confirm the trip cancellation successfully", async function () {
+  logger.info("Confirming the trip cancellation");
+  const result = await Cart.confirmTripCancellation(this.page);
+  expect(
+    result.messageVisible,
+    "Cancellation confirmation message should be visible after confirming the trip cancellation",
+  ).toBe(true);
+});

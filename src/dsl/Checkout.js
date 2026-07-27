@@ -4,6 +4,7 @@ const { CheckoutPage } = require("@pages/CheckoutPage");
 const { CartPage } = require("@pages/CartPage");
 const { CommonPage } = require("@pages/CommonPage");
 const BookingErrorHandler = require("@utils/bookingErrorHandler");
+const { expectSumToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const logger = require("@utils/logger").child("Checkout-DSL");
 
 
@@ -872,6 +873,147 @@ const Checkout = {
     ).toBeVisible({ timeout: 30000 });
 
     logger.info('"linked to Recalculate Approval Flow" reference field is displayed at checkout');
+  },
+
+  // ===========================================================================
+  // Checkout trip-summary lines (test 44362)
+  //
+  // The summary sidebar lists one line per quote plus a grand total. For a trip
+  // carrying a Squake compensation the compensation renders last as "Carbon
+  // offset", and the total must equal the flight line plus that offset.
+  // ===========================================================================
+
+  /**
+   * Verifies a named line is visible in the checkout trip summary.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} lineLabel - Summary title text, e.g. "Carbon offset"
+   */
+  async verifySummaryLineVisible(page, lineLabel) {
+    if (!page) {
+      throw new Error('[Checkout.verifySummaryLineVisible] "page" is required.');
+    }
+    if (!lineLabel || typeof lineLabel !== 'string') {
+      throw new Error(
+        `[Checkout.verifySummaryLineVisible] "lineLabel" must be a non-empty string, got: ${typeof lineLabel} (${lineLabel})`
+      );
+    }
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+
+    await expect(
+      checkoutPage.getCheckoutSummaryLineTitle(lineLabel),
+      `[Checkout.verifySummaryLineVisible] Expected a "${lineLabel}" line in the checkout trip summary, but it was ` +
+      `not visible. For "Carbon offset" this means the compensation quote is not part of the trip being checked out.`,
+    ).toBeVisible({ timeout: 30000 });
+  },
+
+  /**
+   * Reads the flight line amount from the checkout summary.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>}
+   */
+  async extractSummaryFlightAmount(page) {
+    if (!page) {
+      throw new Error('[Checkout.extractSummaryFlightAmount] "page" is required.');
+    }
+
+    logger.debug('[Checkout.extractSummaryFlightAmount] Reading the flight amount from the checkout summary');
+    const checkoutPage = getPageObject(page, CheckoutPage);
+
+    try {
+      const amount = await checkoutPage.getCheckoutSummaryFlightAmount();
+      logger.info('Extracted checkout summary flight amount', { amount });
+      return amount;
+    } catch (err) {
+      throw new Error(`[Checkout.extractSummaryFlightAmount] Could not read the flight amount: ${err.message}`);
+    }
+  },
+
+  /**
+   * Reads the carbon offset (compensation) line amount from the checkout summary.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>}
+   */
+  async extractSummaryCarbonOffsetAmount(page) {
+    if (!page) {
+      throw new Error('[Checkout.extractSummaryCarbonOffsetAmount] "page" is required.');
+    }
+
+    logger.debug('[Checkout.extractSummaryCarbonOffsetAmount] Reading the carbon offset amount');
+    const checkoutPage = getPageObject(page, CheckoutPage);
+
+    try {
+      const amount = await checkoutPage.getCheckoutSummaryCompensationAmount();
+      logger.info('Extracted checkout summary carbon offset amount', { amount });
+      return amount;
+    } catch (err) {
+      throw new Error(
+        `[Checkout.extractSummaryCarbonOffsetAmount] Could not read the carbon offset amount: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Reads the grand total from the checkout summary.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>}
+   */
+  async extractSummaryTotalAmount(page) {
+    if (!page) {
+      throw new Error('[Checkout.extractSummaryTotalAmount] "page" is required.');
+    }
+
+    logger.debug('[Checkout.extractSummaryTotalAmount] Reading the checkout summary total');
+    const checkoutPage = getPageObject(page, CheckoutPage);
+
+    try {
+      const amount = await checkoutPage.getCheckoutSummaryTotalAmount();
+      logger.info('Extracted checkout summary total amount', { amount });
+      return amount;
+    } catch (err) {
+      throw new Error(`[Checkout.extractSummaryTotalAmount] Could not read the summary total: ${err.message}`);
+    }
+  },
+
+  /**
+   * Verifies the checkout summary total equals the flight amount plus the carbon offset.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} flightAmount
+   * @param {number} carbonAmount
+   * @param {number} totalAmount
+   * @param {number} [tolerance=1] - Absolute currency tolerance
+   */
+  async verifySummaryTotalEqualsFlightPlusCarbon(page, flightAmount, carbonAmount, totalAmount, tolerance = 1) {
+    if (!page) {
+      throw new Error('[Checkout.verifySummaryTotalEqualsFlightPlusCarbon] "page" is required.');
+    }
+
+    const named = { flightAmount, carbonAmount, totalAmount, tolerance };
+    for (const [name, value] of Object.entries(named)) {
+      if (typeof value !== 'number' || Number.isNaN(value)) {
+        throw new Error(
+          `[Checkout.verifySummaryTotalEqualsFlightPlusCarbon] "${name}" must be a number, got: ${typeof value} (${value}). ` +
+          `Make sure the three checkout-summary extraction steps ran before this assertion.`
+        );
+      }
+    }
+
+    logger.info('Verifying checkout summary total equals flight + carbon offset', named);
+
+    expectSumToBeEqualWithTolerance(
+      flightAmount,
+      carbonAmount,
+      totalAmount,
+      tolerance,
+      `[Checkout.verifySummaryTotalEqualsFlightPlusCarbon] Checkout summary total should equal the flight amount ` +
+      `(${flightAmount}) plus the carbon offset (${carbonAmount}) = ${flightAmount + carbonAmount}, but the summary ` +
+      `total reads ${totalAmount}`,
+    );
   },
 
 };
