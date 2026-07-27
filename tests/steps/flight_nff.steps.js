@@ -59,6 +59,34 @@ When("I add to cart from pricing options page", async function () {
   await FlightResults.addToCartFromPricingOptions(this.page);
 });
 
+When("I select a random outbound fare from pricing options page", async function () {
+  logger.info("[PricingOptions] Selecting a random outbound fare from the classic pricing options drawer");
+  const result = await FlightResults.selectRandomFareFromPricingOptionsLeg(this.page, 0);
+  logger.info("[PricingOptions] Random outbound fare selected", result);
+});
+
+When("I select a random inbound fare from pricing options page", async function () {
+  logger.info("[PricingOptions] Selecting a random inbound fare from the classic pricing options drawer");
+  const result = await FlightResults.selectRandomFareFromPricingOptionsLeg(this.page, 1);
+  logger.info("[PricingOptions] Random inbound fare selected", result);
+});
+
+When("I wait for the outbound leg in pricing options page", async function () {
+  logger.info("[PricingOptions] Waiting for the outbound leg of the classic pricing options drawer");
+  await FlightResults.waitForPricingOptionsLeg(this.page, 0);
+});
+
+When("I wait for the inbound leg in pricing options page", async function () {
+  logger.info("[PricingOptions] Waiting for the inbound leg of the classic pricing options drawer");
+  await FlightResults.waitForPricingOptionsLeg(this.page, 1);
+});
+
+Then("the pricing options leg should offer more than one fare", async function () {
+  logger.info("[PricingOptions] Verifying the current pricing options leg offers more than one fare");
+  const result = await FlightResults.verifyPricingOptionsLegOffersMultipleFares(this.page);
+  logger.info("[PricingOptions] Multiple fares verified on the current leg", result);
+});
+
 Then("the outbound leg brand cards are displayed", async function () {
   logger.info("[NewFlightFlow] Verifying outbound leg brand cards are visible");
   const result = await FlightResults.verifyOutboundLegBrandCardsVisible(this.page);

@@ -186,7 +186,10 @@ const SELECTORS = {
   // cards above (.flight-brand-leg / .flight-brand-card). Each leg tab exposes fare
   // cards (leg-pricing-option) with a "Select" button; the footer holds "Add to trip".
   PRICING_OPTIONS_LEG_SELECT_BTN: '.pricing-options .leg-pricing-option .select-btn',
+  PRICING_OPTIONS_LEG_CARD: '.pricing-options .leg-pricing-option',
+  PRICING_OPTIONS_LEG_CARD_BRAND_NAME: '.brand-name',
   PRICING_OPTIONS_TAB: '.pricing-options .pricing-options-tabs .el-tabs__item',
+  PRICING_OPTIONS_TAB_ACTIVE_CLASS: 'is-active',
   PRICING_OPTIONS_TAB_SELECTED_ICON: '.material-symbols-outlined.green',
   PRICING_OPTIONS_ADD_TO_TRIP_BTN: '.pricing-options .app-footer .add-btn',
   // Footer total price per traveller (flight-selection.vue .selection-actions)
@@ -3073,6 +3076,123 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       throw new Error(
         `[FlightResultsPage.waitForPricingOptionsLegSelected] Leg ${legIndex} did not show a selected (green check) ` +
         `state within ${timeout}ms. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits until the given leg tab is the active tab of the classic Pricing Options
+   * drawer. Element Plus marks the active tab with `is-active`. Used to confirm the
+   * drawer advanced to the next leg before reading that leg's fare cards.
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async waitForPricingOptionsActiveLeg(legIndex = 0, timeout = 60000) {
+    if (!Number.isInteger(legIndex) || legIndex < 0) {
+      throw new Error(`legIndex must be a non-negative integer, got: ${legIndex}`);
+    }
+
+    const tab = this.page.locator(SELECTORS.PRICING_OPTIONS_TAB).nth(legIndex);
+    try {
+      await expect(tab).toHaveClass(
+        new RegExp(`\\b${SELECTORS.PRICING_OPTIONS_TAB_ACTIVE_CLASS}\\b`),
+        { timeout },
+      );
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.waitForPricingOptionsActiveLeg] Leg ${legIndex} did not become the active tab ` +
+        `within ${timeout}ms. The drawer may not have advanced to that leg. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the number of fare cards rendered for the currently-active leg of the
+   * classic Pricing Options drawer.
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   * @returns {Promise<number>}
+   */
+  async getPricingOptionsLegFareCardCount(timeout = 60000) {
+    const cards = this.page.locator(SELECTORS.PRICING_OPTIONS_LEG_CARD);
+    try {
+      await cards.first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getPricingOptionsLegFareCardCount] No fare cards appeared in the pricing options ` +
+        `drawer within ${timeout}ms. Original: ${err.message}`
+      );
+    }
+    return cards.count();
+  }
+
+  /**
+   * Returns the fare (brand) name of every fare card on the currently-active leg of the
+   * classic Pricing Options drawer, in display order. Cards without a brand label yield null,
+   * so the returned array stays index-aligned with the fare cards.
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   * @returns {Promise<Array<string|null>>}
+   */
+  async getPricingOptionsLegFareNames(timeout = 60000) {
+    const cards = this.page.locator(SELECTORS.PRICING_OPTIONS_LEG_CARD);
+    await cards.first().waitFor({ state: 'visible', timeout });
+
+    const count = await cards.count();
+    const names = [];
+    for (let i = 0; i < count; i += 1) {
+      const nameEl = cards.nth(i).locator(SELECTORS.PRICING_OPTIONS_LEG_CARD_BRAND_NAME).first();
+      const text = (await nameEl.count()) > 0 ? await nameEl.innerText().catch(() => '') : '';
+      const normalized = text.replace(/\s+/g, ' ').trim();
+      names.push(normalized || null);
+    }
+    return names;
+  }
+
+  /**
+   * Returns the indices of the fare cards on the currently-active leg that can still be
+   * selected — i.e. every card except one already chosen (its button reads "Unselect").
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   * @returns {Promise<number[]>}
+   */
+  async getSelectablePricingOptionsLegCardIndices(timeout = 60000) {
+    const cards = this.page.locator(SELECTORS.PRICING_OPTIONS_LEG_CARD);
+    await cards.first().waitFor({ state: 'visible', timeout });
+
+    const count = await cards.count();
+    const indices = [];
+    for (let i = 0; i < count; i += 1) {
+      const btn = cards.nth(i).locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON).first();
+      if ((await btn.count()) === 0) continue;
+      const label = (await btn.innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
+      if (label.toLowerCase() === SELECTORS.PRICING_OPTIONS_UNSELECT_BUTTON_TEXT.toLowerCase()) continue;
+      indices.push(i);
+    }
+    return indices;
+  }
+
+  /**
+   * Clicks the "Select" button of the fare card at the given index on the currently-active
+   * leg of the classic Pricing Options drawer. Scoping the click to the card (rather than
+   * indexing the buttons) keeps the index aligned with the fare cards even when one card
+   * already shows "Unselect".
+   * @param {number} index - Zero-based fare card index
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async clickSelectButtonInPricingOptionsLegCard(index, timeout = 60000) {
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(`index must be a non-negative integer, got: ${index}`);
+    }
+
+    const card = this.page.locator(SELECTORS.PRICING_OPTIONS_LEG_CARD).nth(index);
+    const btn = card.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON).first();
+    try {
+      await card.waitFor({ state: 'visible', timeout });
+      await card.scrollIntoViewIfNeeded();
+      await btn.waitFor({ state: 'visible', timeout: 15000 });
+      await btn.click({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.clickSelectButtonInPricingOptionsLegCard] Could not click the "Select" button on ` +
+        `fare card ${index} in the pricing options drawer. Original: ${err.message}`
       );
     }
   }

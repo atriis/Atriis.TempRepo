@@ -2844,6 +2844,106 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Verifies the currently-active leg of the classic Pricing Options drawer offers more
+   * than one fare. Guards the mixed-carrier regression where only the carrier's basic /
+   * saver fare comes back instead of the full fare family list.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} [minimumFares=2] - Minimum number of fare cards the leg must offer.
+   * @returns {Promise<{fareCount: number, fareNames: Array<string|null>}>}
+   */
+  async verifyPricingOptionsLegOffersMultipleFares(page, minimumFares = 2) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyPricingOptionsLegOffersMultipleFares] "page" is required.');
+    }
+    if (!Number.isInteger(minimumFares) || minimumFares < 2) {
+      throw new Error(`[FlightResults.verifyPricingOptionsLegOffersMultipleFares] "minimumFares" must be an integer >= 2, got: ${minimumFares}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionsDrawerLeg();
+
+    const fareCount = await flightResultsPage.getPricingOptionsLegFareCardCount();
+    const fareNames = await flightResultsPage.getPricingOptionsLegFareNames();
+
+    expect(
+      fareCount,
+      `Expected the pricing options leg to offer at least ${minimumFares} fares, got ${fareCount}: ${JSON.stringify(fareNames)}`,
+    ).toBeGreaterThanOrEqual(minimumFares);
+
+    return { fareCount, fareNames };
+  },
+
+  /**
+   * Selects a random fare on the currently-active leg of the classic Pricing Options
+   * drawer, then waits for that leg to register as selected. Cards already chosen (button
+   * reads "Unselect") are excluded so the click never deselects the current fare.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} [legIndex=0] - Zero-based leg index (0=outbound, 1=inbound).
+   * @returns {Promise<{selected: boolean, legIndex: number, index: number, fareName: string|null}>}
+   */
+  async selectRandomFareFromPricingOptionsLeg(page, legIndex = 0) {
+    if (!page) {
+      throw new Error('[FlightResults.selectRandomFareFromPricingOptionsLeg] "page" is required.');
+    }
+    if (!Number.isInteger(legIndex) || legIndex < 0) {
+      throw new Error(`[FlightResults.selectRandomFareFromPricingOptionsLeg] "legIndex" must be a non-negative integer, got: ${legIndex}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionsDrawerLeg();
+
+    const fareNames = await flightResultsPage.getPricingOptionsLegFareNames();
+    const selectableIndices = await flightResultsPage.getSelectablePricingOptionsLegCardIndices();
+
+    if (selectableIndices.length === 0) {
+      throw new Error(
+        `[FlightResults.selectRandomFareFromPricingOptionsLeg] Leg ${legIndex} has no selectable fare card. ` +
+        `Fares shown: ${JSON.stringify(fareNames)}`
+      );
+    }
+
+    const index = selectableIndices[Math.floor(Math.random() * selectableIndices.length)];
+    const fareName = fareNames[index] ?? null;
+
+    logger.info('[FlightResults.selectRandomFareFromPricingOptionsLeg] Selecting a random fare', {
+      legIndex,
+      index,
+      fareName,
+      fareNames,
+    });
+
+    await flightResultsPage.clickSelectButtonInPricingOptionsLegCard(index);
+    await flightResultsPage.waitForPricingOptionsLegSelected(legIndex);
+
+    return { selected: true, legIndex, index, fareName };
+  },
+
+  /**
+   * Waits for the classic Pricing Options drawer to advance to the given leg and for that
+   * leg's fare cards to render, so the next assertion reads the new leg and not the previous one.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound).
+   * @returns {Promise<{legIndex: number}>}
+   */
+  async waitForPricingOptionsLeg(page, legIndex) {
+    if (!page) {
+      throw new Error('[FlightResults.waitForPricingOptionsLeg] "page" is required.');
+    }
+    if (!Number.isInteger(legIndex) || legIndex < 0) {
+      throw new Error(`[FlightResults.waitForPricingOptionsLeg] "legIndex" must be a non-negative integer, got: ${legIndex}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionsActiveLeg(legIndex);
+    await flightResultsPage.waitForPricingOptionsDrawerLeg();
+
+    return { legIndex };
+  },
+
+  /**
    * Verifies the inbound leg heading in the new flight flow contains the expected text.
    * The heading format is e.g., "London To Lisbon".
    * @param {import('playwright').Page} page
