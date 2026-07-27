@@ -349,6 +349,10 @@ const SELECTORS = {
   SEAT_ELEMENT: '.seat', // div.seat inside plane-seat.vue component
   SEAT_MAP_PRICE: '.total-sum-wrapper .price', // Price element in the seat map footer (app-price component)
   SEAT_MAP_SAVE_CLOSE_BUTTON: 'button:has-text("Save And Close")', // Save & Close button in seat map drawer
+  // Seat map drawer host (flight-quote-card.vue — el-drawer.app-drawer.flight-details-drawer.seats,
+  // destroy-on-close). Saving seats keeps it open behind a loading mask until the save call
+  // returns, so this is the post-condition to wait on after "Save And Close".
+  SEAT_MAP_DRAWER: '.app-drawer.flight-details-drawer.seats',
   CART_TOTAL_PRICE: '.price-total .amount', // Grand total in the cart summary sidebar (trip-summary.vue)
   PRICE_CHANGE_PREV_PRICE: '.booking-response-errors .prev-price', // Previous price in the price-change modal
   PRICE_CHANGE_UPDATED_PRICE: '.booking-response-errors .updated-price', // New price in the price-change modal
@@ -492,9 +496,20 @@ const SELECTORS = {
 
   // Seating icon in extras section (flight-seating.vue — .yellow class = PendingApproval/PendingPayment)
   SEAT_ICON_IN_EXTRAS: '.flight-seating .material-symbols-outlined.seats',
-  // Yellow status indicator inside the flight seating extras section
-  // (extras-layout.vue — .success-icon.yellow rendered when isWaitingApproval or isWarning is true)
-  SEATING_YELLOW_INDICATOR: '.flight-seating .success-icon.yellow',
+  // Collapsed summary row of the seating extras section (extras-layout.vue —
+  // `<div class="extra" v-if="!isOpen">`). Only the collapsed row carries the Edit button,
+  // so the panel must be collapsed before it can be re-opened.
+  SEATING_EXTRAS_COLLAPSED_ROW: '.flight-seating .extra',
+  // "Close" button inside the expanded seating panel (flight-seating.vue → el-card.extras-card .btns)
+  SEATING_EXTRAS_CLOSE_BUTTON: '.flight-seating .extras-card .btns button:has-text("Close")',
+  // Per-passenger seat rows inside the expanded seating panel (flight-seating.vue .pax-seat-container)
+  SEATING_PAX_SEAT_ROW: '.flight-seating .pax-seat-container .pax-seat',
+  // Per-passenger seat status icon in the expanded seating panel. flight-seating.vue's
+  // seatIconByStatus maps SeatStatusType PendingApproval / PendingPayment to className
+  // 'yellow' (a `schedule` icon) — this is the yellow indicator shown for saved-but-unpaid seats.
+  SEATING_PAX_YELLOW_STATUS_ICON: '.flight-seating .pax-seat-container .seat-status-icon.yellow',
+  // Any per-passenger status icon in the expanded panel — used for failure diagnostics
+  SEATING_PAX_STATUS_ICON: '.flight-seating .pax-seat-container .seat-status-icon',
 
   // Traveler initials (trip-traveler-tag.vue)
   TRAVELER_INITIALS: '.avatar-initials',
@@ -3820,12 +3835,21 @@ class CartPage {
   }
 
   /**
-   * Clicks the 'Save And Close' button in the seat map drawer.
+   * Clicks the 'Save And Close' button in the seat map drawer and waits for the drawer
+   * to close. The drawer stays open behind a loading mask while the seats are saved and
+   * the quotes reload, so returning on the bare click leaves the next action racing that
+   * overlay (flight-deck.ts → handleSeatsSelection emits reloadQuotes + closeDrawer).
+   * @param {number} timeout - Max wait time for the drawer to close in ms (default: 30000)
    */
-  async saveAndCloseSeatMapDrawer() {
+  async saveAndCloseSeatMapDrawer(timeout = 30000) {
     const btn = this.page.locator(SELECTORS.SEAT_MAP_SAVE_CLOSE_BUTTON).first();
     await btn.waitFor({ state: 'visible', timeout: 15000 });
     await btn.click();
+
+    await this.page
+      .locator(SELECTORS.SEAT_MAP_DRAWER)
+      .first()
+      .waitFor({ state: 'hidden', timeout });
   }
 
   /**
@@ -6267,17 +6291,92 @@ class CartPage {
   }
 
   /**
-   * Checks if the yellow seat status indicator is visible in the seating extras section.
-   * @param {number} timeout - Max wait time in ms (default: 10000)
-   * @returns {Promise<boolean>}
+   * Returns the per-passenger yellow (pending) seat status icon locator inside the
+   * expanded seating panel. Only rendered while the panel is open and after its seat
+   * data has been re-fetched — see reopenSeatingExtrasPanel.
+   * @returns {import('playwright').Locator}
    */
-  async isSeatingYellowIndicatorVisible(timeout = 10000) {
-    try {
-      await this.page.locator(SELECTORS.SEATING_YELLOW_INDICATOR).first().waitFor({ state: 'visible', timeout });
-      return true;
-    } catch {
-      return false;
-    }
+  getSeatingPendingStatusIconLocator() {
+    return this.page.locator(SELECTORS.SEATING_PAX_YELLOW_STATUS_ICON).first();
+  }
+
+  /**
+   * Collapses the seating extras panel if it is expanded, then waits for the collapsed
+   * summary row. Only the collapsed row carries the Edit button (extras-layout.vue
+   * renders it under `v-if="!isOpen"`), so this is the prerequisite for re-opening the
+   * panel. Idempotent: safe to call whether the panel is open or already closed.
+   * @param {number} timeout - Max wait time for the collapsed row in ms (default: 15000)
+   * @returns {Promise<void>}
+   */
+  async ensureSeatingExtrasCollapsed(timeout = 15000) {
+    const collapsedRow = this.page.locator(SELECTORS.SEATING_EXTRAS_COLLAPSED_ROW).first();
+    const closeButton = this.page.locator(SELECTORS.SEATING_EXTRAS_CLOSE_BUTTON).first();
+
+    // Polled rather than a single click: saving seats reloads the quote, which remounts the
+    // seating panel (often already collapsed) mid-click. A one-shot click either races the
+    // reload's loading overlay or hits a detached button. Each attempt is therefore allowed
+    // to fail — the poll's own assertion below is what reports a genuine failure.
+    await expect.poll(
+      async () => {
+        if (await collapsedRow.isVisible().catch(() => false)) {
+          return true;
+        }
+
+        if (await closeButton.isVisible().catch(() => false)) {
+          await closeButton.click({ timeout: 2000 }).catch(() => {});
+        }
+
+        return false;
+      },
+      {
+        timeout,
+        message:
+          `Seating extras panel never collapsed (${SELECTORS.SEATING_EXTRAS_COLLAPSED_ROW} stayed hidden) — ` +
+          `its status indicator only renders on the collapsed summary row`,
+      },
+    ).toBe(true);
+  }
+
+  /**
+   * Closes and re-opens the seating extras panel so its saved-seat data is re-fetched.
+   * flight-seating.vue loads the selected seats only on the panel's first open
+   * (`isOpenChanged` → `isFirstOpen`), so a panel left open across a seat save still shows
+   * the pre-save state — the seat status icons appear only after re-opening it.
+   * @param {number} phaseTimeout - Max wait time in ms applied to each phase separately —
+   *   collapsing the panel, then rendering its seat rows (default: 15000 each)
+   * @returns {Promise<void>}
+   */
+  async reopenSeatingExtrasPanel(phaseTimeout = 15000) {
+    await this.ensureSeatingExtrasCollapsed(phaseTimeout);
+    await this.clickEditSeatingExtrasButton();
+
+    await this.page
+      .locator(SELECTORS.SEATING_PAX_SEAT_ROW)
+      .first()
+      .waitFor({ state: 'visible', timeout: phaseTimeout });
+  }
+
+  /**
+   * Reads the rendered state of the expanded seating panel — the per-passenger status
+   * icons and the seat row text. Used to build an actionable failure message when an
+   * expected seat status indicator is missing.
+   * @returns {Promise<{icons: Array<{classes: string, text: string}>, rows: string[]}>}
+   */
+  async getSeatingPanelStatusState() {
+    const icons = await this.page
+      .locator(SELECTORS.SEATING_PAX_STATUS_ICON)
+      .evaluateAll((elements) => elements.map((element) => ({
+        classes: element.className,
+        text: (element.textContent || '').trim(),
+      })));
+
+    const rows = await this.page
+      .locator(SELECTORS.SEATING_PAX_SEAT_ROW)
+      .evaluateAll((elements) => elements.map(
+        (element) => (element.innerText || '').trim().replace(/\s+/g, ' '),
+      ));
+
+    return { icons, rows };
   }
 
   // ===== TRAVELER INITIALS =====

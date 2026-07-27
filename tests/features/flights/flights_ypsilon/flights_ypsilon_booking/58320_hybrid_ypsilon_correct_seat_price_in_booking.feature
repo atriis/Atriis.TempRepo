@@ -7,7 +7,7 @@
 # Updated: 2025-10-16T02:13:55Z
 
 @regression @flights @ypsilon @seating @full-purchase @hybrid
-Feature: 58320 Ypsilon - Correct seat price is passed in booking request
+Feature: 58320 HYBRID Ypsilon - Correct seat price is passed in booking request
   As a corporate traveler using Ypsilon
   I want the correct seat price to be included when booking
   So that the seat selection cost is accurately reflected in the booking
@@ -26,7 +26,8 @@ Feature: 58320 Ypsilon - Correct seat price is passed in booking request
     And I wait for the seat map to load
     And I select the first available flight seat
     And I save and close seat map drawer
+    And the booking status should be "Pending booking"
     Then the yellow seat indicator should be visible after saving seats
     When I proceed to checkout
-    When I complete the booking with Ypsilon credit card verification
+    And I complete the booking with Ypsilon credit card verification
     Then the booking status should be "Ticketing Complete"

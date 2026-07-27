@@ -2679,9 +2679,14 @@ const Cart = {
   },
 
   /**
-   * Verifies the yellow status indicator is visible in the seating extras section
-   * after saving seats. The indicator (extras-layout.vue → .success-icon.yellow)
-   * appears when the seat selection is awaiting approval / pending payment.
+   * Verifies the yellow seat status indicator is visible in the seating extras section
+   * after saving seats. flight-seating.vue maps a saved-but-unconfirmed seat
+   * (SeatStatusType PendingApproval / PendingPayment) to a yellow `schedule` icon next
+   * to the passenger's seat number.
+   *
+   * The seating panel is re-opened first: it keeps rendering its pre-save state until
+   * closed and re-opened, because flight-seating.vue fetches the selected seats only on
+   * the panel's first open.
    *
    * @param {import('playwright').Page} page
    * @param {object} [options]
@@ -2697,12 +2702,22 @@ const Cart = {
     logger.info('Verifying yellow seat indicator is visible after saving seats', { timeout });
 
     const cartPage = getPageObject(page, CartPage);
-    const visible = await cartPage.isSeatingYellowIndicatorVisible(timeout);
+    await cartPage.reopenSeatingExtrasPanel();
 
-    expect(visible, 'Expected yellow seat indicator to be visible after saving seats').toBe(true);
+    try {
+      await expect(cartPage.getSeatingPendingStatusIconLocator()).toBeVisible({ timeout });
+    } catch (error) {
+      const { icons, rows } = await cartPage.getSeatingPanelStatusState();
+      throw new Error(
+        'Seating extras did not show the yellow (pending) seat status indicator after saving seats. ' +
+        `Expected ".seat-status-icon.yellow" to be visible in the re-opened seating panel within ${timeout}ms. ` +
+        `Passenger seat rows: ${JSON.stringify(rows)}. Status icons found: ${JSON.stringify(icons)}. ` +
+        `Original: ${error.message}`
+      );
+    }
 
     logger.info('Yellow seat indicator is visible');
-    return { visible };
+    return { visible: true };
   },
 
   /**
