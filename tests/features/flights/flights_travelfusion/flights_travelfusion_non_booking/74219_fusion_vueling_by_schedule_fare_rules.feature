@@ -12,7 +12,7 @@ Feature: 74219 Fusion Vueling - Verify fare rules using by-schedule search
   Scenario: Verify fare rules in every entry point for a Fusion Vueling by-schedule search
     Given I am logged in as "veulingWeb@TFreg.club" booking a new trip
     And I have added myself as the traveler
-    When I search for a flight by schedule from "BCN" to "LON"
+    When I search for a flight by schedule from "BCN" to "LIS"
     And flight results should be available
     And I filter results by carrier "Vueling"
     And I click to open fare rules
