@@ -22,7 +22,7 @@ Feature: 69665 Hotels - Push Notification  'Hotel Content Source' and 'Country' 
     Then a push notification should be displayed
     Then the booking status should be "Pending booking"
     When I click to add a hotel to my trip from cart
-    When I search for a hotel in "Rome, Italy" for 1 night from the cart drawer
+    And I search for a hotel in "Rome, Italy" for 1 night from the cart drawer
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
