@@ -10,7 +10,11 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const logger = require("@utils/logger").child("CarSearch");
 const carLocations = require("@data/cars.json");
 
-const MAX_NO_RESULTS_RETRIES = 2;
+// 2 same-month day-shift attempts, then 1 final month-advance attempt as a last resort.
+const MAX_NO_RESULTS_RETRIES = 3;
+// How far to shift the pickup/drop-off day index on each non-final no-results retry attempt.
+// Shifting within the same visible month keeps the retry search close to the original dates.
+const NO_RESULTS_RETRY_DAY_STEP = 3;
 
 async function selectDropoffDateWithFallback(page, carSearchPage, dropoffIndex) {
   try {
@@ -66,12 +70,21 @@ async function retryCarSearchByChangingDatesOnNoResults(
       return { retriesUsed: attempt - 1, resolved: true };
     }
 
-    logger.info("No car results found. Retrying by changing dates only in edit search", {
-      attempt,
-      maxRetries,
-      pickupIndex,
-      dropoffIndex,
-    });
+    const isLastAttempt = attempt === maxRetries;
+    const retryPickupIndex = isLastAttempt ? pickupIndex : pickupIndex + attempt * NO_RESULTS_RETRY_DAY_STEP;
+    const retryDropoffIndex = isLastAttempt ? dropoffIndex : dropoffIndex + attempt * NO_RESULTS_RETRY_DAY_STEP;
+
+    logger.info(
+      isLastAttempt
+        ? "No car results found. Retrying by advancing to next month (final attempt)"
+        : "No car results found. Retrying by shifting pickup/drop-off dates within the same month",
+      {
+        attempt,
+        maxRetries,
+        pickupIndex: retryPickupIndex,
+        dropoffIndex: retryDropoffIndex,
+      },
+    );
 
     const noResultsEditButton = resultsPage.getNoResultsEditSearchButton();
     if (await noResultsEditButton.isVisible().catch(() => false)) {
@@ -81,15 +94,17 @@ async function retryCarSearchByChangingDatesOnNoResults(
     }
 
     await searchPage.clickPickupDateField();
-    await searchPage.clickCalendarNextArrow(1);
+    if (isLastAttempt) {
+      await searchPage.clickCalendarNextArrow(1);
+    }
     await selectDatesByNthAvailable(page, {
-      startIndex: pickupIndex,
+      startIndex: retryPickupIndex,
       endIndex: null,
     });
 
     await carSearchPage.clickDropoffDateField();
-    await selectDropoffDateWithFallback(page, carSearchPage, dropoffIndex);
-    await ensureDropoffAfterPickup(page, carSearchPage, dropoffIndex);
+    await selectDropoffDateWithFallback(page, carSearchPage, retryDropoffIndex);
+    await ensureDropoffAfterPickup(page, carSearchPage, retryDropoffIndex);
 
     await searchPage.waitAndClickSearchButton();
   }

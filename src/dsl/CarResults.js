@@ -10,7 +10,11 @@ const CarSearchPage = require("@pages/CarSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const logger = require("@utils/logger").child("CarResults-DSL");
 
-const MAX_LOCATION_SELECTION_RETRIES = 2;
+// 2 same-month day-shift attempts, then 1 final month-advance attempt as a last resort.
+const MAX_LOCATION_SELECTION_RETRIES = 3;
+// How far to shift the pickup/drop-off day index on each non-final no-results retry attempt.
+// Shifting within the same visible month keeps the retry search close to the original dates.
+const NO_RESULTS_RETRY_DAY_STEP = 3;
 
 
 /**
@@ -612,12 +616,21 @@ const CarResults = {
         // confirmedStatus === 'no-results' → continue to the retry path below.
       }
 
-      logger.info('No car results after location selection. Retrying by changing dates only in edit search', {
-        attempt,
-        maxRetries,
-        pickupIndex,
-        dropoffIndex,
-      });
+      const isLastAttempt = attempt === maxRetries;
+      const retryPickupIndex = isLastAttempt ? pickupIndex : pickupIndex + attempt * NO_RESULTS_RETRY_DAY_STEP;
+      const retryDropoffIndex = isLastAttempt ? dropoffIndex : dropoffIndex + attempt * NO_RESULTS_RETRY_DAY_STEP;
+
+      logger.info(
+        isLastAttempt
+          ? 'No car results after location selection. Retrying by advancing to next month (final attempt)'
+          : 'No car results after location selection. Retrying by shifting pickup/drop-off dates within the same month',
+        {
+          attempt,
+          maxRetries,
+          pickupIndex: retryPickupIndex,
+          dropoffIndex: retryDropoffIndex,
+        },
+      );
 
       const noResultsEditButton = resultsPage.getNoResultsEditSearchButton();
       if (await noResultsEditButton.isVisible().catch(() => false)) {
@@ -637,16 +650,18 @@ const CarResults = {
       const oldDropoffDate = await carSearchPage.getDropoffDateFieldValue().catch(() => '');
 
       await searchPage.clickPickupDateField();
-      await searchPage.clickCalendarNextArrow(1);
+      if (isLastAttempt) {
+        await searchPage.clickCalendarNextArrow(1);
+      }
       await selectDatesByNthAvailable(page, {
-        startIndex: pickupIndex,
+        startIndex: retryPickupIndex,
         endIndex: null,
       });
 
       await carSearchPage.clickDropoffDateField();
       try {
         await selectDatesByNthAvailable(page, {
-          startIndex: dropoffIndex,
+          startIndex: retryDropoffIndex,
           endIndex: null,
           pickerPosition: 'last',
         });
@@ -661,7 +676,7 @@ const CarResults = {
 
         await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
         await selectDatesByNthAvailable(page, {
-          startIndex: dropoffIndex,
+          startIndex: retryDropoffIndex,
           endIndex: null,
           pickerPosition: 'last',
         });
@@ -698,7 +713,7 @@ const CarResults = {
         await carSearchPage.clickDropoffDateField();
         try {
           await selectDatesByNthAvailable(page, {
-            startIndex: dropoffIndex + 1,
+            startIndex: retryDropoffIndex + 1,
             endIndex: null,
             pickerPosition: 'last',
           });
@@ -710,7 +725,7 @@ const CarResults = {
           if (shouldTryNextMonth) {
             await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
             await selectDatesByNthAvailable(page, {
-              startIndex: dropoffIndex + 1,
+              startIndex: retryDropoffIndex + 1,
               endIndex: null,
               pickerPosition: 'last',
             });

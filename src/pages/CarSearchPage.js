@@ -123,20 +123,70 @@ class CarSearchPage {
    * Opens drop-off date calendar.
    * This function is specific to Car search as it's the only product
    * that requires clicking to open the second calendar.
+   *
+   * Only moves on to the drop-off field once the pick-up date field is confirmed filled.
+   * Vue commits a calendar selection to the pick-up input asynchronously, so clicking straight
+   * into drop-off without this guard could open it while pick-up was still empty/uncommitted -
+   * that stale state then flows into later comparisons (e.g. ensureDropoffAfterPickup treating
+   * two empty strings as "same date") and was the source of the intermittent date failures.
+   * @throws {Error} If the pick-up date field never settles to a non-empty value first
    */
   async clickDropoffDateField() {
+    await this.getPickupDateFieldValue();
+
+    // The pick-up date INPUT value settling (above) is one reactive chain; the drop-off
+    // calendar's disabled-day boundary is a separate one (car-search-inputs.ts's `startDay`
+    // computed, fed into app-datepicker's `disabled-date` prop) that re-renders the day cells
+    // on its own Vue tick slightly after the input commits. Opening/selecting in the drop-off
+    // calendar before that second render settles can make selectDatesByNthAvailable count a
+    // stale set of available days - a brief settle wait avoids racing it.
+    await this.page.waitForTimeout(300);
+
     await this.page.click(SELECTORS.DROPOFF_DATE_INPUT);
   }
 
+  /**
+   * Reads the current pick-up date input value from the search form.
+   * Waits for the value to settle to non-empty before reading - Vue reactivity commits a
+   * calendar selection to the input asynchronously, so reading immediately after
+   * selectDatesByNthAvailable can otherwise observe a stale/empty value.
+   * @throws {Error} If the field never settles to a non-empty value within the timeout
+   */
   async getPickupDateFieldValue() {
     const field = this.page.locator(SELECTORS.PICKUP_DATE_INPUT).first();
     await field.waitFor({ state: "visible", timeout: 10000 });
+
+    try {
+      await this.waitForPickupDateNonEmpty({ timeout: 10000 });
+    } catch (error) {
+      throw new Error(
+        `[CarSearchPage.getPickupDateFieldValue] Pick-up date field never settled to a non-empty ` +
+          `value - the pick-up date selection likely did not commit. Original: ${error.message}`,
+      );
+    }
+
     return (await field.inputValue()).trim();
   }
 
+  /**
+   * Reads the current drop-off date input value from the search form.
+   * Same settling wait as getPickupDateFieldValue - see there for why an immediate read can
+   * observe a stale/empty value.
+   * @throws {Error} If the field never settles to a non-empty value within the timeout
+   */
   async getDropoffDateFieldValue() {
     const field = this.page.locator(SELECTORS.DROPOFF_DATE_INPUT).first();
     await field.waitFor({ state: "visible", timeout: 10000 });
+
+    try {
+      await this.waitForDropoffDateNonEmpty({ timeout: 10000 });
+    } catch (error) {
+      throw new Error(
+        `[CarSearchPage.getDropoffDateFieldValue] Drop-off date field never settled to a non-empty ` +
+          `value - the drop-off date selection likely did not commit. Original: ${error.message}`,
+      );
+    }
+
     return (await field.inputValue()).trim();
   }
 
