@@ -12,6 +12,10 @@
       "from": "BTH",
       "to": "PAD"
     },
+    "padToBth": {
+      "from": "PAD",
+      "to": "BTH"
+    },
     "licTo105": {
       "from": "LIC",
       "to": "105"
