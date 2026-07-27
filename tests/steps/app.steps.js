@@ -102,7 +102,26 @@ When("I switch the application language to {string}", async function (language) 
   await App.switchLanguage(this.page, language);
 });
 
+/**
+ * Opens the corporate expenses provider from the side navigation. The app opens it in a NEW tab,
+ * which is stored on its own World property (NOT this.newTabPage, which other suites assert on).
+ * this.page deliberately stays on the app tab so the Then step can hand focus back to it.
+ */
+When("I open the {string} expenses link from the side navigation", async function (expenseName) {
+  logger.info("Opening the corporate expenses link from the side navigation", { expenseName });
+  // Kept for the Then step's failure message ("<name> - Expenses").
+  this.expensesName = expenseName;
+  this.expensesSsoTab = await App.openExpensesLinkFromSideNav(this.page, expenseName);
+});
+
 // ===== THEN STEPS =====
+
+Then("the expenses link should open the SSO provider page in a new tab", async function () {
+  logger.info("Verifying the expenses link opened the SSO provider in a new tab");
+  // The DSL closes the SSO tab in its finally block, so drop the World reference afterwards.
+  await App.verifyExpensesSsoTabOpened(this.expensesSsoTab, this.page, this.expensesName);
+  this.expensesSsoTab = null;
+});
 
 /**
  * Verifies that the user has been redirected to the login page

@@ -1,3 +1,4 @@
+const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { launchBrowser } = require("@utils/browserFactory");
 const LoginPage = require("@pages/LoginPage");
@@ -233,6 +234,159 @@ const App = {
     const menuPage = getPageObject(page, MenuPage);
     await menuPage.hoverLanguageIcon();
     await menuPage.clickLanguageOption(languageName);
+  },
+
+  /**
+   * Opens the corporate expenses provider from the side navigation ("<expenseName> - Expenses").
+   *
+   * Clicking that entry does NOT navigate the app tab: the app calls openNewWindow(..., '_blank'),
+   * so the provider is signed into in a NEW browser tab. The new tab is therefore MANDATORY here —
+   * unlike bookANewTrip, a missing tab is a real failure, not a same-tab fallback — so the
+   * waitForEvent is armed before the click and deliberately left un-caught.
+   *
+   * @param {import('playwright').Page} page - The app tab showing the side navigation
+   * @param {string} expenseName - The corporate expense display name (e.g. "MESH")
+   * @returns {Promise<import('playwright').Page>} The newly opened SSO provider tab
+   */
+  async openExpensesLinkFromSideNav(page, expenseName) {
+    if (!page) throw new Error('[App.openExpensesLinkFromSideNav] page is required');
+    if (!expenseName || typeof expenseName !== 'string') {
+      throw new Error(`[App.openExpensesLinkFromSideNav] "expenseName" must be a non-empty string, got: ${typeof expenseName} (${JSON.stringify(expenseName)})`);
+    }
+
+    logger.debug('Opening the corporate expenses link from the side navigation', { expenseName });
+
+    const menuPage = getPageObject(page, MenuPage);
+    const loginPage = getPageObject(page, LoginPage);
+
+    try {
+      // Keep the app tab focused, and dismiss the cookie banner — it can overlay the lower
+      // side-nav entries and intercept the click.
+      await page.bringToFront().catch(() => {});
+      await loginPage.acceptCookiesIfPresent(8000);
+
+      const context = page.context();
+      if (!context) {
+        throw new Error('[App.openExpensesLinkFromSideNav] page context is null');
+      }
+
+      // Arm new-tab detection BEFORE the click, otherwise the tab can open before we listen.
+      const ssoTabPromise = context.waitForEvent('page', { timeout: 20000 });
+      // Keep that rejection handled. The click below can take longer than the 20s wait, so if the
+      // click throws first this promise is never awaited — and an unhandled rejection would kill the
+      // Cucumber worker instead of failing the step. The await further down still sees the original
+      // rejection, so a missing tab remains a real failure.
+      ssoTabPromise.catch(() => {});
+      await menuPage.clickExpensesNavItem(expenseName);
+      const ssoTab = await ssoTabPromise;
+
+      // The provider is third-party: "domcontentloaded" is enough, and failures here are not
+      // fatal — the URL assertion in verifyExpensesSsoTabOpened is what decides the outcome.
+      await ssoTab.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {});
+      logger.info('Corporate expenses SSO tab opened', { expenseName, url: ssoTab.url() });
+      return ssoTab;
+    } catch (err) {
+      throw new Error(
+        `[App.openExpensesLinkFromSideNav] Failed to open the "${expenseName} - Expenses" side-nav link and capture the ` +
+        `SSO provider tab. The app opens the provider with openNewWindow(..., '_blank'), so the app tab itself never ` +
+        `navigates — a missing new tab means either the side-nav entry was not clickable or the click did not trigger ` +
+        `the redirect. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the expenses side-nav link actually opened the corporate expenses (SSO) provider in
+   * the captured new tab, then closes that tab and returns focus to the app.
+   *
+   * There is nothing to compare against but the opened tab itself: the nav entry is a <div @click>
+   * with no href, and the provider URL is a build-time app variable (expense.Url from the
+   * per-corporation user-expense lookup, prefixed with the app's expense endpoint when relative)
+   * that this framework's config does not expose. So the assertion is structural: the tab must
+   * reach a real http(s) URL, and that URL must NOT be the app's own origin.
+   *
+   * RISK, recorded deliberately: if a deployment ever serves the expense URL from the app's OWN
+   * origin, the origin assertion below fails and prints the actual URL. The correct follow-up is
+   * then to WEAKEN that check (e.g. assert the tab is not an OBT SPA route) — never to hardcode the
+   * provider host, and never to delete the assertion: the Testim source this test came from had no
+   * assertions at all, and this check is the entire point of the test.
+   *
+   * @param {import('playwright').Page} ssoTab - The tab captured when the expenses link was clicked
+   * @param {import('playwright').Page} appPage - The app tab; its origin is what the opened tab is
+   *   compared against, and it is refocused afterwards. Required — see below.
+   * @param {string} [expenseName] - The corporate expense display name, for the failure message
+   * @returns {Promise<{url: string}>}
+   */
+  async verifyExpensesSsoTabOpened(ssoTab, appPage, expenseName) {
+    if (!ssoTab) {
+      throw new Error(
+        '[App.verifyExpensesSsoTabOpened] "ssoTab" is required — no opened tab was stored. Ensure the ' +
+        '"I open the ... expenses link from the side navigation" step ran first.'
+      );
+    }
+
+    const label = expenseName ? `"${expenseName} - Expenses"` : 'corporate expenses';
+
+    // The origin comparison is the only check here that can catch the expenses link opening an
+    // in-app page, so it must never be silently skipped: without a resolvable app origin this
+    // method would degrade to "the tab loaded something", which cannot fail. Fail loudly instead.
+    if (!appPage) {
+      throw new Error(
+        '[App.verifyExpensesSsoTabOpened] "appPage" is required — the app tab is what the opened tab\'s ' +
+        'origin is compared against, and without it this verification cannot fail.'
+      );
+    }
+
+    const appUrl = appPage.url();
+    let appOrigin = null;
+    try {
+      const parsedAppUrl = new URL(appUrl);
+      if (/^https?:$/.test(parsedAppUrl.protocol)) {
+        appOrigin = parsedAppUrl.origin;
+      }
+    } catch {
+      appOrigin = null;
+    }
+
+    if (!appOrigin) {
+      throw new Error(
+        `[App.verifyExpensesSsoTabOpened] Could not resolve an http(s) origin for the app tab (url: "${appUrl}"). ` +
+        `That origin is required for the comparison below, which is the only assertion able to catch the ${label} ` +
+        `link opening an in-app page — so it must not be skipped.`
+      );
+    }
+
+    logger.debug('Verifying the expenses link opened the SSO provider tab', { expenseName, appOrigin });
+
+    let ssoUrl;
+    try {
+      // Poll to absorb the about:blank → provider navigation the new tab starts on.
+      await expect
+        .poll(() => ssoTab.url(), {
+          timeout: 30000,
+          message:
+            `Expected the ${label} side-nav link to open the corporate expenses SSO provider in a new tab, but the ` +
+            `opened tab never left about:blank for an http(s) URL.`,
+        })
+        .toMatch(/^https?:\/\/.+/);
+
+      ssoUrl = ssoTab.url();
+
+      expect(
+        new URL(ssoUrl).origin,
+        `Expected the ${label} link to open an EXTERNAL SSO provider page, but the new tab stayed on the app ` +
+        `origin. Opened: "${ssoUrl}", app origin: "${appOrigin}". The provider URL is corporation/config ` +
+        `dependent (expense.Url from the per-corporation user-expense lookup, prefixed with the app expense ` +
+        `endpoint when relative) — never assert a hardcoded provider domain.`
+      ).not.toBe(appOrigin);
+    } finally {
+      // A foreground target="_blank" tab throttles the app page and swallows the next interaction,
+      // so always close it and hand focus back to the app.
+      await ssoTab.close().catch(() => {});
+      await appPage.bringToFront().catch(() => {});
+    }
+
+    return { url: ssoUrl };
   },
 
   /**

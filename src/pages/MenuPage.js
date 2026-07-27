@@ -13,6 +13,13 @@ const SELECTORS = {
   // listing each enabled language as a ".language-item" row labelled by name.
   LANGUAGE_ICON: ".support-icon",
   LANGUAGE_ITEM: ".language-item",
+  // Corporate expenses entry in the LEFT side-nav (app-side-nav.vue): a clickable
+  // ".icon-container" div labelled "<expenseDisplayName> - Expenses" whose only glyph is the
+  // material-symbols "account_balance_wallet" icon. Anchored on that glyph because the component
+  // declares no data-testid, and positional selectors (":nth-child(N)") must NOT be used here —
+  // the sibling nav entries are v-if gated by permissions, so the index shifts per user.
+  EXPENSES_NAV_ITEM:
+    '.app-side-nav .top-container .icon-container:has(.material-symbols-outlined:text-is("account_balance_wallet"))',
 };
 
 class MenuPage {
@@ -119,6 +126,41 @@ class MenuPage {
       await option.click({ timeout: 10000 });
     } catch (err) {
       throw new Error(`[MenuPage.clickLanguageOption] Could not select language "${languageName}" from the language list (${SELECTORS.LANGUAGE_ITEM}). The language may not be enabled for this corporation or the tooltip closed before clicking. Original: ${err.message}`);
+    }
+  }
+
+  /**
+   * Gets the corporate expenses side-nav entry by its expense display name.
+   * The row renders as "<expenseName> - Expenses", so a text filter on the display name
+   * ("MESH") matches it and also disambiguates should a second wallet-glyph entry ever appear.
+   * Works with the nav collapsed too — collapsing hides the label via overflow, not display:none.
+   *
+   * @param {string} expenseName - The corporate expense display name (e.g. "MESH")
+   * @returns {import('@playwright/test').Locator}
+   */
+  getExpensesNavItem(expenseName) {
+    return this.page.locator(SELECTORS.EXPENSES_NAV_ITEM).filter({ hasText: expenseName }).first();
+  }
+
+  /**
+   * Clicks the corporate expenses side-nav entry, which signs the user in to the
+   * configured expenses provider in a NEW browser tab.
+   *
+   * @param {string} expenseName - The corporate expense display name (e.g. "MESH")
+   */
+  async clickExpensesNavItem(expenseName) {
+    if (!expenseName || typeof expenseName !== "string") {
+      throw new Error(`[MenuPage.clickExpensesNavItem] "expenseName" must be a non-empty string, got: ${typeof expenseName} (${JSON.stringify(expenseName)})`);
+    }
+
+    const item = this.getExpensesNavItem(expenseName);
+    try {
+      // 30s (rather than the file's usual 15s) because this entry is rendered only after the
+      // async user-expense lookup resolves — same reasoning as waitForBookANewTripIcon.
+      await item.waitFor({ state: "visible", timeout: 30000 });
+      await item.click({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(`[MenuPage.clickExpensesNavItem] Could not click the "${expenseName} - Expenses" side-nav entry (${SELECTORS.EXPENSES_NAV_ITEM}). The entry is rendered only when BOTH an expense display name and an expense URL are returned by the async user-expense lookup (getUserExpense for the user's corporation), and only on desktop viewports — so "not found" can mean this user has no corporate expense provider configured rather than a broken selector. Original: ${err.message}`);
     }
   }
 }
