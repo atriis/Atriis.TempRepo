@@ -185,6 +185,21 @@ const SELECTORS = {
   LINKED_ENTITY_NAME: "[name='Name']",
   // Activate-user button (click target is its inner span) — reactivates the selected user
   ACTIVATE_USER_BTN: "[data-ng-click='onActivateOrDeactivateClicked(true)'] span",
+
+  // --- Corporate email provider setting (test 48270 / 51634) ---
+  // Corporate main email provider label, 4th row of the settings form (confirmed against the Testim
+  // recording: waitForText asserted this element reads "Corporate main email provider:")
+  ADMIN_EMAIL_PROVIDER_LABEL: "[name='settingsForm'] > :nth-child(4) > :nth-child(1) div",
+  // Tooltip ("?") icon next to the email provider label. UNCONFIRMED — the Testim export could not
+  // capture this html-attr-validation step (same gap noted in test 51634), so this is a best-effort
+  // locator scoped to the same settings-form row. Verify against the live admin DOM and adjust if needed.
+  ADMIN_EMAIL_PROVIDER_TOOLTIP_ICON: "[name='settingsForm'] > :nth-child(4) [title]",
+  // select2 (v3) trigger for the email provider dropdown, scoped to the settings-form row (avoids the
+  // fragile #s2id_autogen* id Testim recorded)
+  ADMIN_EMAIL_PROVIDER_SELECT2_TRIGGER: "[name='settingsForm'] > :nth-child(4) .select2-choice",
+  // Open select2 dropdown (rendered at body level) and its option rows
+  ADMIN_EMAIL_PROVIDER_SELECT2_DROPDOWN: ".select2-drop:visible",
+  ADMIN_EMAIL_PROVIDER_SELECT2_OPTION: ".select2-drop:visible .select2-results .select2-result-selectable > div",
 };
 
 class AdministrationPage {
@@ -2108,6 +2123,114 @@ class AdministrationPage {
         `[AdministrationPage.clickActivateUser] Could not click the activate-user button ` +
         `(selector: ${SELECTORS.ACTIVATE_USER_BTN}). ` +
         `A user must be selected first. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Corporate email provider setting (test 48270 / 51634) ---
+
+  /**
+   * Reads the corporate main email provider label text on the administration settings form.
+   *
+   * @returns {Promise<string>}
+   */
+  async getEmailProviderLabelText() {
+    try {
+      const label = this.page.locator(SELECTORS.ADMIN_EMAIL_PROVIDER_LABEL).first();
+      await label.waitFor({ state: 'visible', timeout: 15000 });
+      return (await label.textContent() ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getEmailProviderLabelText] Could not read the corporate main email provider label ` +
+        `(selector: ${SELECTORS.ADMIN_EMAIL_PROVIDER_LABEL}). ` +
+        `The administration settings form may not have rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the title attribute of the tooltip ("?") icon next to the email provider label.
+   * NOTE: this locator is unconfirmed against the live admin DOM — see
+   * SELECTORS.ADMIN_EMAIL_PROVIDER_TOOLTIP_ICON.
+   *
+   * @returns {Promise<string>}
+   */
+  async getEmailProviderTooltipTitle() {
+    try {
+      const icon = this.page.locator(SELECTORS.ADMIN_EMAIL_PROVIDER_TOOLTIP_ICON).first();
+      await icon.waitFor({ state: 'attached', timeout: 15000 });
+      const title = await icon.getAttribute('title');
+      if (!title) {
+        throw new Error('the tooltip icon has no "title" attribute.');
+      }
+      return title.trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getEmailProviderTooltipTitle] Could not read the email provider tooltip title ` +
+        `(selector: ${SELECTORS.ADMIN_EMAIL_PROVIDER_TOOLTIP_ICON}). ` +
+        `This locator is unconfirmed against the live admin DOM — verify and adjust if the tooltip icon did not ` +
+        `render as expected. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Opens the corporate main email provider select2 dropdown.
+   */
+  async openEmailProviderSelect2() {
+    try {
+      const trigger = this.page.locator(SELECTORS.ADMIN_EMAIL_PROVIDER_SELECT2_TRIGGER).first();
+      await trigger.waitFor({ state: 'visible', timeout: 15000 });
+      await trigger.click({ timeout: 10000 });
+      await this.page
+        .locator(SELECTORS.ADMIN_EMAIL_PROVIDER_SELECT2_DROPDOWN)
+        .first()
+        .waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.openEmailProviderSelect2] Could not open the corporate main email provider dropdown ` +
+        `(trigger: ${SELECTORS.ADMIN_EMAIL_PROVIDER_SELECT2_TRIGGER}). ` +
+        `The administration settings form may not have rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the text of the Nth email provider dropdown option (1-based, matching the Gherkin
+   * "option 1" / "option 2" phrasing).
+   *
+   * @param {number} index - 1-based option index
+   * @returns {Promise<string>}
+   */
+  async getEmailProviderDropdownOptionText(index) {
+    try {
+      const option = this.page.locator(SELECTORS.ADMIN_EMAIL_PROVIDER_SELECT2_OPTION).nth(index - 1);
+      await option.waitFor({ state: 'visible', timeout: 15000 });
+      return (await option.textContent() ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getEmailProviderDropdownOptionText] Could not read email provider dropdown option ${index} ` +
+        `(selector: ${SELECTORS.ADMIN_EMAIL_PROVIDER_SELECT2_OPTION}, index ${index - 1}). ` +
+        `The dropdown may not be open, or option ${index} does not exist. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Counts the visible options in the open email provider select2 dropdown.
+   *
+   * @returns {Promise<number>}
+   */
+  async countEmailProviderDropdownOptions() {
+    try {
+      const options = this.page.locator(SELECTORS.ADMIN_EMAIL_PROVIDER_SELECT2_OPTION);
+      await options.first().waitFor({ state: 'visible', timeout: 15000 });
+      return await options.count();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.countEmailProviderDropdownOptions] Could not count email provider dropdown options ` +
+        `(selector: ${SELECTORS.ADMIN_EMAIL_PROVIDER_SELECT2_OPTION}). ` +
+        `The dropdown may not be open. Original: ${err.message}`
       );
     }
   }

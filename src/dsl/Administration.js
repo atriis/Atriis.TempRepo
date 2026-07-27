@@ -2240,6 +2240,160 @@ const Administration = {
 
     logger.info('[Administration.activateFirstUser] Selected user reactivated');
   },
+
+  // --- Corporate email provider setting (test 48270 / 51634) ---
+
+  /**
+   * Verifies the corporate main email provider setting is displayed on the administration
+   * settings form.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async verifyEmailProviderSettingDisplayed(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyEmailProviderSettingDisplayed] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.verifyEmailProviderSettingDisplayed] Verifying the email provider setting is displayed');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const label = await page.getEmailProviderLabelText();
+
+    if (!label.includes('Corporate main email provider')) {
+      throw new Error(
+        `[Administration.verifyEmailProviderSettingDisplayed] Corporate main email provider setting mismatch. ` +
+        `Expected to contain "Corporate main email provider" but found "${label}". ` +
+        `The administration settings form may not have rendered.`
+      );
+    }
+
+    logger.info(`[Administration.verifyEmailProviderSettingDisplayed] Email provider setting displayed ("${label}")`);
+  },
+
+  /**
+   * Verifies the email provider tooltip ("?" icon) shows the expected title text.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} expectedTitle - The expected tooltip title text
+   */
+  async verifyEmailProviderTooltipTitle(adminPage, expectedTitle) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyEmailProviderTooltipTitle] "adminPage" is required.');
+    }
+    if (!expectedTitle || typeof expectedTitle !== 'string') {
+      throw new Error(
+        `[Administration.verifyEmailProviderTooltipTitle] "expectedTitle" must be a non-empty string, got: ${typeof expectedTitle} (${JSON.stringify(expectedTitle)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyEmailProviderTooltipTitle] Verifying email provider tooltip title "${expectedTitle}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const actual = await page.getEmailProviderTooltipTitle();
+
+    if (actual !== expectedTitle) {
+      throw new Error(
+        `[Administration.verifyEmailProviderTooltipTitle] Email provider tooltip title mismatch. ` +
+        `Expected "${expectedTitle}" but found "${actual}". ` +
+        `The tooltip icon locator is unconfirmed against the live admin DOM (see AdministrationPage.ADMIN_EMAIL_PROVIDER_TOOLTIP_ICON) — verify and adjust it if this is not the intended icon.`
+      );
+    }
+
+    logger.info(`[Administration.verifyEmailProviderTooltipTitle] Email provider tooltip title verified: "${actual}"`);
+  },
+
+  /**
+   * Opens the corporate main email provider select2 dropdown.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async openEmailProviderDropdown(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.openEmailProviderDropdown] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.openEmailProviderDropdown] Opening the corporate main email provider dropdown');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.openEmailProviderSelect2();
+    } catch (err) {
+      throw new Error(
+        `[Administration.openEmailProviderDropdown] Failed to open the corporate main email provider dropdown: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.openEmailProviderDropdown] Corporate main email provider dropdown opened');
+  },
+
+  /**
+   * Verifies the Nth email provider dropdown option (1-based) displays the expected text.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {number} index - 1-based option index (e.g. 1 for "option 1")
+   * @param {string} expectedText - The expected option text (e.g. "Outlook")
+   */
+  async verifyEmailProviderDropdownOption(adminPage, index, expectedText) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyEmailProviderDropdownOption] "adminPage" is required.');
+    }
+    if (!Number.isInteger(index) || index < 1) {
+      throw new Error(
+        `[Administration.verifyEmailProviderDropdownOption] "index" must be a positive integer, got: ${typeof index} (${JSON.stringify(index)})`
+      );
+    }
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Administration.verifyEmailProviderDropdownOption] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyEmailProviderDropdownOption] Verifying email provider dropdown option ${index} is "${expectedText}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const actual = await page.getEmailProviderDropdownOptionText(index);
+
+    if (actual !== expectedText) {
+      throw new Error(
+        `[Administration.verifyEmailProviderDropdownOption] Email provider dropdown option ${index} mismatch. ` +
+        `Expected "${expectedText}" but found "${actual}".`
+      );
+    }
+
+    logger.info(`[Administration.verifyEmailProviderDropdownOption] Email provider dropdown option ${index} is "${actual}"`);
+  },
+
+  /**
+   * Verifies the email provider dropdown contains exactly the expected number of options.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {number} expectedCount - The exact number of options expected
+   */
+  async verifyEmailProviderDropdownOptionCount(adminPage, expectedCount) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyEmailProviderDropdownOptionCount] "adminPage" is required.');
+    }
+    if (!Number.isInteger(expectedCount) || expectedCount < 0) {
+      throw new Error(
+        `[Administration.verifyEmailProviderDropdownOptionCount] "expectedCount" must be a non-negative integer, got: ${typeof expectedCount} (${JSON.stringify(expectedCount)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyEmailProviderDropdownOptionCount] Verifying email provider dropdown has ${expectedCount} option(s)`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const actualCount = await page.countEmailProviderDropdownOptions();
+
+    if (actualCount !== expectedCount) {
+      throw new Error(
+        `[Administration.verifyEmailProviderDropdownOptionCount] Email provider dropdown option count mismatch. ` +
+        `Expected exactly ${expectedCount} option(s) but found ${actualCount}.`
+      );
+    }
+
+    logger.info(`[Administration.verifyEmailProviderDropdownOptionCount] Email provider dropdown has ${actualCount} option(s)`);
+  },
 };
 
 module.exports = Administration;

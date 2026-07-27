@@ -393,3 +393,30 @@ When("I activate the first user in the administration", async function () {
   logger.info("Reactivating the first user in the administration");
   await Administration.activateFirstUser(this.adminPage);
 });
+
+// --- Corporate email provider setting (test 48270 / 51634) ---
+
+Then("the corporate main email provider setting should be displayed in the administration", async function () {
+  logger.info("Verifying the corporate main email provider setting is displayed in the administration");
+  await Administration.verifyEmailProviderSettingDisplayed(this.adminPage);
+});
+
+Then("the corporate main email provider tooltip should show the title {string} in the administration", async function (expectedTitle) {
+  logger.info("Verifying the corporate main email provider tooltip title", { expectedTitle });
+  await Administration.verifyEmailProviderTooltipTitle(this.adminPage, expectedTitle);
+});
+
+When("I open the corporate main email provider dropdown in the administration", async function () {
+  logger.info("Opening the corporate main email provider dropdown in the administration");
+  await Administration.openEmailProviderDropdown(this.adminPage);
+});
+
+Then("the corporate main email provider option {int} should be visible in the administration as {string}", async function (index, expectedText) {
+  logger.info("Verifying the corporate main email provider dropdown option", { index, expectedText });
+  await Administration.verifyEmailProviderDropdownOption(this.adminPage, index, expectedText);
+});
+
+Then("the corporate main email provider dropdown should contain {int} options", async function (expectedCount) {
+  logger.info("Verifying the corporate main email provider dropdown option count", { expectedCount });
+  await Administration.verifyEmailProviderDropdownOptionCount(this.adminPage, expectedCount);
+});
