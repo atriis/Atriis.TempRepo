@@ -54,42 +54,93 @@ const Cart = {
     const proceedWithChangeButton = cartPage.getProceedWithChangeButton();
     const bookingErrorDialog = page.locator(CheckoutSelectors.BOOKING_ERROR_DIALOG).first();
 
-    try {
-      await Promise.race([
-        targetLocator.waitFor({ state: 'visible', timeout }),
-        proceedWithChangeButton.waitFor({ state: 'visible', timeout }),
-        bookingErrorDialog.waitFor({ state: 'visible', timeout }),
-      ]);
-    } catch (error) {
-      throw new Error(
-        `Neither ${targetDescription}, booking error modal, nor the price change modal appeared within ${timeout}ms. Original error: ${error.message}`,
-      );
-    }
+    // The cart price-change modal and the cart booking-error modal are the SAME el-dialog
+    // (trip-cart.vue app-confirm wrapping trip-booking-response-errors), so
+    // BOOKING_ERROR_DIALOG — which includes `.app-confirm:has(.booking-response-errors)` —
+    // matches a price change too. The only reliable discriminator is the "Proceed with
+    // change" button, which trip-cart.vue renders exclusively for changed-but-bookable
+    // quotes (isShowCheckoutButton). So always attempt that click BEFORE declaring a
+    // booking error — the same order holdFlightAndHandlePriceChange already uses.
+    //
+    // The modal can also re-appear: clicking "Proceed with change" calls handleCheckout(),
+    // which can re-run the hold/price-check round-trip and surface a fresh price change.
+    // Keep handling it until the target wins, a real booking error shows, or time runs out.
+    const deadline = Date.now() + timeout;
+    const maxPriceChangeHandlings = 3;
+    let clickedModal = false;
+    let priceChangeHandlings = 0;
 
-    if (await targetLocator.isVisible().catch(() => false)) {
-      return { clickedModal: false, bookingErrorDetected: false };
-    }
+    for (;;) {
+      const remaining = deadline - Date.now();
 
-    if (await bookingErrorDialog.isVisible().catch(() => false)) {
-      return { clickedModal: false, bookingErrorDetected: true };
-    }
+      if (remaining <= 0) {
+        throw new Error(
+          `Neither ${targetDescription}, a booking error modal, nor a resolvable price change modal was reached within ${timeout}ms ` +
+          `(handled ${priceChangeHandlings} price-change modal(s)).`,
+        );
+      }
 
-    const clickedModal = await cartPage.clickProceedWithChangeIfVisible(1000);
+      const waiters = [
+        targetLocator.waitFor({ state: 'visible', timeout: remaining }),
+        proceedWithChangeButton.waitFor({ state: 'visible', timeout: remaining }),
+        bookingErrorDialog.waitFor({ state: 'visible', timeout: remaining }),
+      ];
+      // The losing waiters still reject when they time out; attach handlers so they
+      // don't surface as unhandled rejections.
+      waiters.forEach((waiter) => waiter.catch(() => {}));
 
-    if (!clickedModal) {
+      try {
+        await Promise.race(waiters);
+      } catch (error) {
+        throw new Error(
+          `Neither ${targetDescription}, booking error modal, nor the price change modal appeared within ${timeout}ms. Original error: ${error.message}`,
+        );
+      }
+
+      if (await targetLocator.isVisible().catch(() => false)) {
+        return { clickedModal, bookingErrorDetected: false };
+      }
+
+      // Price change before booking error — they share the same selector. The short wait
+      // inside clickProceedWithChangeIfVisible covers the tick where the dialog is already
+      // visible but its footer buttons have not rendered yet.
+      if (priceChangeHandlings < maxPriceChangeHandlings) {
+        const justClickedPriceChange = await cartPage
+          .clickProceedWithChangeIfVisible(1000)
+          .catch((error) => {
+            // The helper already returns false when the button never shows, so this only
+            // fires on a real click failure (e.g. the dialog re-rendered mid-click). Log it
+            // so the booking-error branch below doesn't misreport the cause.
+            logger.warn('Clicking "Proceed with change" failed — re-classifying the modal', { error: error.message });
+            return false;
+          });
+
+        if (justClickedPriceChange) {
+          clickedModal = true;
+          priceChangeHandlings += 1;
+          logger.info('Handled a cart price-change modal by clicking "Proceed with change"', {
+            targetDescription,
+            priceChangeHandlings,
+          });
+
+          // Let the modal tear down so the next iteration doesn't re-read the same dialog,
+          // then loop to see whether this click actually got us to the target.
+          await cartPage.waitForPriceChangeDialogHidden().catch(() => {});
+          continue;
+        }
+      } else if (await cartPage.isProceedWithChangeButtonVisible().catch(() => false)) {
+        throw new Error(
+          `The cart price-change modal re-appeared after ${priceChangeHandlings} "Proceed with change" click(s) while ` +
+          `waiting for ${targetDescription}, so checkout was never reached — the supplier keeps re-pricing this trip.`,
+        );
+      }
+
+      if (await bookingErrorDialog.isVisible().catch(() => false)) {
+        return { clickedModal, bookingErrorDetected: true };
+      }
+
       throw new Error(`Expected ${targetDescription}, a visible booking error modal, or a visible price change modal, but neither became actionable.`);
     }
-
-    await Promise.race([
-      targetLocator.waitFor({ state: 'visible', timeout: 60000 }),
-      bookingErrorDialog.waitFor({ state: 'visible', timeout: 60000 }),
-    ]);
-
-    if (await bookingErrorDialog.isVisible().catch(() => false)) {
-      return { clickedModal: true, bookingErrorDetected: true };
-    }
-
-    return { clickedModal: true, bookingErrorDetected: false };
   },
 
   /**
@@ -2201,11 +2252,26 @@ const Cart = {
     await cartPage.waitForProceedToCheckout();
     await cartPage.clickProceedToCheckout();
 
-    const { clickedModal } = await this.waitForTargetOrHandlePriceChange(
+    const { clickedModal, bookingErrorDetected } = await this.waitForTargetOrHandlePriceChange(
       page,
       checkoutHeading,
       'checkout page',
     );
+
+    // A cart-level booking error keeps the trip on the cart page, so checkout was never
+    // reached. Fail here with the supplier's own message instead of letting the next step
+    // time out waiting for a finalize button that cannot exist.
+    if (bookingErrorDetected) {
+      const checkoutPage = getPageObject(page, CheckoutPage);
+      const supplierMessage = await checkoutPage.getBookingErrorSupplierMessage().catch(() => null);
+      const bookingErrorText = await checkoutPage.getBookingErrorDialogText().catch(() => null);
+      const details = supplierMessage || bookingErrorText || 'no message could be read from the dialog';
+
+      throw new Error(
+        `[Cart.acceptTermsAndConditionsAndProceedToCheckout] A booking error modal blocked checkout on the cart page, ` +
+        `so the checkout page was never reached. Supplier response: ${details}`,
+      );
+    }
 
     return { proceeded: true, clickedModal };
   },

@@ -2566,6 +2566,27 @@ class CartPage {
     await this.getProceedWithChangeButton().waitFor({ state: 'visible', timeout });
   }
 
+  /**
+   * Waits for the price-change modal to be torn down after an action dismisses it.
+   * Hidden-state counterpart of waitForPriceChangeDialog.
+   *
+   * @param {number} [timeout=10000]
+   */
+  async waitForPriceChangeDialogHidden(timeout = 10000) {
+    await this.getPriceChangeDialog().waitFor({ state: 'hidden', timeout });
+  }
+
+  /**
+   * Whether the "Proceed with change" button is currently visible. Distinguishes a
+   * price-change modal from a booking-error modal — trip-cart.vue renders this button
+   * only for changed-but-bookable quotes, and both modals share the same el-dialog.
+   *
+   * @returns {Promise<boolean>}
+   */
+  async isProceedWithChangeButtonVisible() {
+    return this.getProceedWithChangeButton().isVisible();
+  }
+
   /** @returns {Promise<string>} the full visible text of the price-change dialog */
   async getPriceChangeDialogText() {
     return (await this.getPriceChangeDialog().innerText().catch(() => '')) ?? '';
@@ -3888,11 +3909,20 @@ class CartPage {
   /**
    * Gets the cart grand total price from the trip summary sidebar.
    * Uses the .price-total .amount selector from trip-summary.vue.
+   *
+   * Note: trip-summary.vue drops Expired/Cancelled/Ticketed flight, car and hotel quotes
+   * from `quotesToDisplay`, and renders nothing at all when that list is empty. So once a
+   * trip is fully ticketed the sidebar — and this total — no longer exists. Callers that
+   * read the total after booking should pass a short timeout and treat a rejection as
+   * "no sidebar" rather than a failure.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000] - Max wait for the total to become visible
    * @returns {Promise<number|null>} The total price as a numeric value
    */
-  async getCartTotalPrice() {
+  async getCartTotalPrice({ timeout = 15000 } = {}) {
     const totalEl = this.page.locator(SELECTORS.CART_TOTAL_PRICE).first();
-    await totalEl.waitFor({ state: 'visible', timeout: 15000 });
+    await totalEl.waitFor({ state: 'visible', timeout });
     const text = (await totalEl.innerText()).trim();
     if (!text) return null;
     return parseAmountText(text, 'cart total price');

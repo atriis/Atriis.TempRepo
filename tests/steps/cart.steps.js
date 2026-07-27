@@ -527,7 +527,11 @@ When("I extract the Other price from price breakdown", async function () {
   const cartPage = getPageObject(this.page, CartPage);
   const segments = await cartPage.getFlightPriceBreakdownSegments();
   const otherTotal = segments.reduce((sum, seg) => sum + seg.other, 0);
-  const cartTotal = await cartPage.getCartTotalPrice();
+  // The cart total is diagnostic only here — the assertion compares the extracted "Other"
+  // values. It is also genuinely absent on the second (post-booking) call: trip-summary.vue
+  // filters Ticketed flight quotes out of quotesToDisplay and then renders no sidebar at
+  // all, so a missing total must not fail the extraction.
+  const cartTotal = await cartPage.getCartTotalPrice({ timeout: 5000 }).catch(() => null);
   if (!this.extractedPrices) this.extractedPrices = [];
   if (!this.priceSnapshots) this.priceSnapshots = [];
   this.extractedPrices.push(otherTotal);
