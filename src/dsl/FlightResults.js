@@ -1772,6 +1772,33 @@ const FlightResults = {
   },
 
   /**
+   * Reads the active leg tab of the open fare rules drawer: its fare basis headline and
+   * the rules text below it. Used to compare a leg's fare rules across the results page,
+   * the pricing page and the cart.
+   *
+   * The rules text is taken as everything after the fare basis headline, because what sits
+   * above it (leg tabs, carrier, the strictest-terms note, the "Jump to..." picker) is drawer
+   * chrome that differs between the results, pricing and cart drawers.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{fareBasis: string, body: string}>} Fare basis headline and rules text
+   */
+  async getFareRulesContent(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForFareRulesMainHeadline();
+
+    const fareBasis = await flightResultsPage.getFareRulesMainHeadlineText();
+    const drawerText = await flightResultsPage.getFareRulesDrawerText();
+    const body = drawerText.split(fareBasis).pop().replace(/\s+/g, ' ').trim();
+
+    return { fareBasis, body };
+  },
+
+  /**
    * Opens the fare rules drawer and waits for the note to render.
    *
    * @param {import('playwright').Page} page - Playwright page instance

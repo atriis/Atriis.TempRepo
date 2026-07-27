@@ -723,6 +723,66 @@ When("I click fare rules for the third flight leg", async function () {
   await FlightResults.clickFareRulesLegTab(this.page, 2);
 });
 
+// Text the drawer renders in place of the rules when the supplier returned none.
+const NO_FARE_RULES_TEXT = 'No rules were found';
+
+// Captures the fare basis and rules text of the leg whose fare rules drawer is currently open,
+// in call order: the first call is leg 1, the second is leg 2, and so on.
+When("I extract the fare rules text for the current leg", async function () {
+  const content = await FlightResults.getFareRulesContent(this.page);
+
+  if (!this.extractedFareRules) this.extractedFareRules = [];
+  this.extractedFareRules.push(content);
+
+  logger.info("Extracted fare rules text for the current leg", {
+    leg: this.extractedFareRules.length,
+    fareBasis: content.fareBasis,
+    bodyLength: content.body.length,
+  });
+});
+
+Then("the fare rules displayed should match leg {int} extracted from results", async function (legNumber) {
+  const expected = this.extractedFareRules?.[legNumber - 1];
+
+  if (!expected) {
+    throw new Error(
+      `No fare rules stored for leg ${legNumber}. Run "I extract the fare rules text for the current leg" ` +
+      `on that leg's results page before this assertion.`
+    );
+  }
+
+  const actual = await FlightResults.getFareRulesContent(this.page);
+
+  logger.info("Comparing displayed fare rules against the ones extracted from results", {
+    legNumber,
+    expectedFareBasis: expected.fareBasis,
+    actualFareBasis: actual.fareBasis,
+    expectedBodyLength: expected.body.length,
+    actualBodyLength: actual.body.length,
+  });
+
+  expect(
+    actual.fareBasis,
+    `Fare basis for leg ${legNumber} should match the one shown in flight results`
+  ).toBe(expected.fareBasis);
+
+  // Empty rules on both sides would make the text comparison below vacuously true, so the
+  // rules text has to be real content before it is compared.
+  for (const [source, content] of [['flight results', expected], ['the page under test', actual]]) {
+    if (!content.body || content.body.includes(NO_FARE_RULES_TEXT)) {
+      throw new Error(
+        `Fare rules for leg ${legNumber} carry no rule text in ${source}: fare basis ` +
+        `"${content.fareBasis}" is shown but the rules body is "${content.body || '<empty>'}".`
+      );
+    }
+  }
+
+  expect(
+    actual.body,
+    `Fare rules text for leg ${legNumber} should match the text shown in flight results`
+  ).toBe(expected.body);
+});
+
 
 Then("the green circle icon at index {int} {string} should be displayed in pricing options", async function (index, description) {
   logger.info("Verifying green circle icon is displayed in pricing options", { index, description });

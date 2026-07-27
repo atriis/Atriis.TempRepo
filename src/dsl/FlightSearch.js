@@ -841,11 +841,15 @@ const FlightSearch = {
    * @param {Object} options
    * @param {number} options.departureIndex - Starting available-day index for first leg (default: SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX)
    * @param {string} options.searchType - 'completeTrip' (default) or 'bySchedule'
+   * @param {number[]} [options.dayOffsets] - Optional exact day offsets from today, one per leg (e.g. [30, 40]).
+   *   When given, each leg's date is picked as today + offset instead of the nth-available-day strategy.
+   *   The default strategy advances the calendar a month per leg, which compounds across legs and pushes
+   *   later legs months out; pass dayOffsets when a test needs its legs on predictable, near-term dates.
    */
   async searchFlightMultiCity(
     page,
     legs,
-    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX, searchType = 'completeTrip' } = {},
+    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX, searchType = 'completeTrip', dayOffsets = null } = {},
   ) {
     if (!Array.isArray(legs) || legs.length < 2) {
       throw new Error('legs must be an array of at least 2 {from, to} objects, got: ' + JSON.stringify(legs));
@@ -853,8 +857,16 @@ const FlightSearch = {
     if (searchType !== 'completeTrip' && searchType !== 'bySchedule') {
       throw new Error(`searchType must be 'completeTrip' or 'bySchedule', got: ${searchType}`);
     }
+    if (dayOffsets !== null) {
+      if (!Array.isArray(dayOffsets) || dayOffsets.length !== legs.length) {
+        throw new Error(`dayOffsets must be an array with one offset per leg (${legs.length}), got: ${JSON.stringify(dayOffsets)}`);
+      }
+      if (!dayOffsets.every((offset) => Number.isInteger(offset) && offset > 0)) {
+        throw new Error('dayOffsets must contain positive integers, got: ' + JSON.stringify(dayOffsets));
+      }
+    }
 
-    logger.info('Starting multi-city flight search', { legs, searchType });
+    logger.info('Starting multi-city flight search', { legs, searchType, dayOffsets });
 
     const flightSearchPage = getPageObject(page, FlightSearchPage);
     const searchPage = getPageObject(page, SearchPage);
@@ -870,16 +882,33 @@ const FlightSearch = {
     }
 
     // Fill origin, destination, and departure date for each leg
+    const selectedDates = [];
     for (let i = 0; i < legs.length; i++) {
       const { from, to } = legs[i];
       // Fill From + To scoped to this leg's row; Tab from To auto-opens the date picker
       await searchPage.fillMultiCityLeg(from, to, i);
       // Use the already-open picker or open it if not — never toggle-close
       await searchPage.openMultiCityDatePickerAtIndex(i);
-      await searchPage.clickCalendarNextArrow();
-      await selectDatesByNthAvailable(page, {
-        startIndex: departureIndex + i * 3,
-        endIndex: null,
+
+      if (dayOffsets) {
+        // excludeDaysOfWeek: [] so the date lands on exactly today + offset, weekday or not.
+        const targetDate = getNextDateExcludingWeekdays({ startOffsetDays: dayOffsets[i], excludeDaysOfWeek: [] });
+        const monthTableIndex = await advanceSinglePickerCalendarUntilMonthVisible(page, targetDate);
+        await clickDayInVisibleMonth(page, targetDate, monthTableIndex);
+        selectedDates.push(targetDate);
+      } else {
+        await searchPage.clickCalendarNextArrow();
+        await selectDatesByNthAvailable(page, {
+          startIndex: departureIndex + i * 3,
+          endIndex: null,
+        });
+      }
+    }
+
+    if (dayOffsets) {
+      logger.info('Multi-city legs dated by exact day offsets', {
+        dayOffsets,
+        dates: selectedDates.map((date) => date.toDateString()),
       });
     }
 

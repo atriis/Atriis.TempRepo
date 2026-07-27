@@ -197,6 +197,9 @@ const SELECTORS = {
   // Fare rules note
   FARE_RULES_NOTE: '.note',
   FARE_RULES_MAIN_HEADLINE: '.fare-rules .main-headline',
+  // Fare rules drawer body. Only the active leg tab's content is rendered, so innerText
+  // on this container returns the rules of whichever leg tab is currently selected.
+  FARE_RULES_CONTAINER: '.fare-rules',
 
   // Fare rules leg tabs inside the drawer
   FARE_RULES_LEG_TAB: '.fare-rules-tabs .el-tabs__item',
@@ -1669,6 +1672,15 @@ class FlightResultsPage {
   async getFareRulesMainHeadlineText() {
     const headline = this.getFareRulesMainHeadline();
     return (await headline.textContent()).trim();
+  }
+
+  /**
+   * Gets the visible text of the fare rules drawer for the active leg tab.
+   *
+   * @returns {Promise<string>}
+   */
+  async getFareRulesDrawerText() {
+    return await this.page.locator(SELECTORS.FARE_RULES_CONTAINER).first().innerText();
   }
 
   /**

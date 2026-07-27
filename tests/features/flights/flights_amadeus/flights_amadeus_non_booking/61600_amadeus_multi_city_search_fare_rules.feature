@@ -1,71 +1,50 @@
-# TODO: Needs retesting — scenario is almost complete and ready, but Amadeus supplier was having issues with fare rules
-#       during final validation so the full run could not be verified. Retest and finish when supplier is back up. Finish
-@daily_flights @flights @provider:amadeus @regression
-Feature: 61600 Amadeus - Multi city search, fare rules displayed
+@daily_flights @flights @provider:amadeus @regression @fare-rules @by-schedule @separate-tickets
+Feature: 61600 Amadeus - Fare rules stay consistent from results through pricing and cart
   As a corporate traveler using Amadeus
-  I want to search for a multi-city flight and view the fare rules
-  So that I can verify fare rules are correctly displayed for multi-leg itineraries
+  I want the fare rules I saw in flight results to be the same in the pricing page and in the cart
+  So that I can trust the fare rules shown for each leg of a separate-ticket itinerary
+  # ADO workitem Id(s) - 67305, 53277, 51111, 69758, 70183
 
   @priority:high
-  Scenario: Multi-city search BRU-FRA-DFW-BRU with fare rules visible in results
-    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
-    And I have added myself as the traveler
-    When I search for a multi-city flight with legs "BRU-FRA" and "FRA-DFW" and "DFW-BRU"
+  Scenario: Fare rules extracted per leg in results match the pricing page and cart tabs
+    Given I am logged in as "henry@uni.com" booking a new trip
+    And I have added a random guest traveler
+    When I search for a multi-city by-schedule flight with legs "FRA-DFW" and "DFW-BRU"
     And flight results should be available
-    And I click to open fare rules
-    Then I should see the fare rules note about strictest terms
-    When I click fare rules for the second flight leg
-    Then I should see the fare rules note about strictest terms
-    When I click fare rules for the third flight leg
-    Then I should see the fare rules note about strictest terms
-    When I close fare rules window
-    When I click to open flight details
-    And I click to open fare rules from modal
-    Then I should see the fare rules note about strictest terms
-    When I click fare rules for the second flight leg
-    Then I should see the fare rules note about strictest terms
-    When I click fare rules for the third flight leg
-    Then I should see the fare rules note about strictest terms
-    When I close fare rules window
-    And I close flight details window
-    When I click to open first pricing options
-    And I click to open fare rules from modal
-    Then I should see the fare rules note about strictest terms
-    When I close fare rules window
-    And I select the first option from pricing options
-    Then I should see the heading "Flight To Dallas"
-    When I click to open fare rules from modal
-    Then I should see the fare rules note about strictest terms
-    When I close fare rules window
-    And I select the first option from pricing options
-    Then I should see the heading "Flight To Brussels"
-    When I click to open fare rules from modal
-    Then I should see the fare rules note about strictest terms
-    When I close fare rules window
-    Then I close pricing options modal
-    When I add the first flight to cart
-    Then the booking status should be "Pending booking"
-    When I click to open fare rules
-    Then I should see the fare rules note about strictest terms
-    When I click fare rules for the second flight leg
-    Then I should see the fare rules note about strictest terms
-    When I click fare rules for the third flight leg
-    Then I should see the fare rules note about strictest terms
-    When I close fare rules window
-    When I click to open flight details
-    And I click to open fare rules in cart
-    Then I should see the fare rules note about strictest terms
-    When I click fare rules for the second flight leg
-    Then I should see the fare rules note about strictest terms
-    When I click fare rules for the third flight leg
-    Then I should see the fare rules note about strictest terms
-    When I close fare rules window
-    And I close flight details window
-    When I click to open price breakdown in cart
-    And I click to open fare rules in cart
-    Then I should see the fare rules note about strictest terms
-    When I click fare rules for the second flight leg
-    Then I should see the fare rules note about strictest terms
-    When I click fare rules for the third flight leg
-    Then I should see the fare rules note about strictest terms
 
+    # --- First leg FRA-DFW: Lufthansa ---
+    When I filter results by carrier "Lufthansa"
+    And I click to open fare rules
+    And I extract the fare rules text for the current leg
+    And I close fare rules window
+    And I select one flight segment by schedule
+    And I wait for the change flight button to be visible
+
+    # --- Second leg DFW-BRU: Delta, so the itinerary is issued as separate tickets ---
+    When I filter results by carrier "Delta"
+    And I click to open fare rules
+    And I extract the fare rules text for the current leg
+    And I close fare rules window
+    And I select one flight segment by schedule
+    And I wait for "Your Selection" text to be visible
+
+    # --- Pricing page ---
+    When I click to open fare rules
+    Then the fare rules displayed should match leg 1 extracted from results
+    When I click fare rules for the second flight leg
+    Then the fare rules displayed should match leg 2 extracted from results
+    When I close fare rules window
+    Then the "Separated Tickets" indicator should be visible in the pricing page
+
+    # --- Cart ---
+    When I add "Your Selection" fare to trip
+    Then the booking status should be "Pending booking"
+    When I click to open fare rules in cart
+    Then the fare rules displayed should match leg 1 extracted from results
+    When I click fare rules for the second flight leg
+    Then the fare rules displayed should match leg 2 extracted from results
+    When I close fare rules window
+    # Opens the trip actions menu with the retrying hover; the single hover inside the
+    # cancel step alone can silently fail while the el-dropdown is still disabled.
+    And I hover the trip actions menu
+    Then I successfully cancel the trip
