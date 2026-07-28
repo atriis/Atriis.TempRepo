@@ -13,10 +13,10 @@ Feature: 69791 - Login with invalid credentials, successful login with valid cre
   So that authentication behaves correctly for both failed and successful sign-in attempts
 
   Scenario: Invalid login is rejected, valid login succeeds, and logout returns to the login page
-    # TODO: Create step to attempt login with invalid credentials without waiting for a successful session (create App.attemptLoginWithInvalidCredentials in src/dsl/App.js)
     When I attempt to log in with invalid credentials as "ruimar1anoo@testfail.com"
-    # TODO: Create step to verify the login failure error message (create App.verifyLoginErrorMessage in src/dsl/App.js)
     Then the login error message "Login failed. Please check your credentials or use your organization's login method." should be displayed
-    Given I am logged in as "ruimariano@amadeus.com"
-    When I logout from the application
-    Then the welcome heading should contain "Welcome back"
+    When I am logged in as "ruimariano@amadeus.com"
+    Then the welcome heading should contain "Welcome Rui Mariano"
+    When I click the logout icon
+    Then the logout confirmation message "You've been logged out successfully! Please click here if you are not redirected within a few seconds." should be displayed
+    And the login page should be displayed again

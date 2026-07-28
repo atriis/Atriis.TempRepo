@@ -21,13 +21,13 @@ const logger = require("@utils/logger").child("App");
  */
 
 /**
- * Helper function to perform login on an existing page.
- * - Waits for the login form
- * - Fills email and password
- * - Submits
- * - Waits until the menu shows the logout icon (meaning login worked)
+ * Fills the login form and submits it, stopping there.
+ *
+ * Shared by the happy path (performLogin) and the negative path
+ * (App.attemptLoginWithInvalidCredentials) — the two differ only in what they wait for
+ * afterwards, so everything up to the submit lives here.
  */
-async function performLogin(page, email) {
+async function submitLoginForm(page, email) {
   if (!page) {
     throw new Error('page is required');
   }
@@ -37,7 +37,6 @@ async function performLogin(page, email) {
   }
 
   const loginPage = getPageObject(page, LoginPage);
-  const menuPage = getPageObject(page, MenuPage);
 
   await loginPage.waitForLoginPage();
   // Cookie consent banner may overlay the login form — dismiss if present.
@@ -45,6 +44,20 @@ async function performLogin(page, email) {
   await loginPage.fillEmail(email);
   await loginPage.fillPassword(config.password);
   await loginPage.clickLoginButton();
+}
+
+/**
+ * Helper function to perform login on an existing page.
+ * - Waits for the login form
+ * - Fills email and password
+ * - Submits
+ * - Waits until the menu shows the logout icon (meaning login worked)
+ */
+async function performLogin(page, email) {
+  await submitLoginForm(page, email);
+
+  const loginPage = getPageObject(page, LoginPage);
+  const menuPage = getPageObject(page, MenuPage);
 
   // Keep as-is: app needs time to finish authentication and loading
   await page.waitForLoadState("networkidle", { timeout: 60000 });
@@ -104,6 +117,60 @@ const App = {
     if (!page) throw new Error('page is required');
     await page.goto(config.baseUrl, { waitUntil: 'domcontentloaded' });
     await performLogin(page, email);
+  },
+
+  /**
+   * Submits the login form and returns WITHOUT waiting for an authenticated session.
+   *
+   * Use this for negative login tests only. The happy path (App.login) ends by waiting for
+   * the menu's logout icon, which can never appear for rejected credentials — that wait
+   * would burn the step budget and fail with an opaque timeout instead of the real reason.
+   * Verifying the rejection is left to the calling step.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} email - An email that is expected to be rejected
+   */
+  async attemptLoginWithInvalidCredentials(page, email) {
+    if (!page) throw new Error('page is required');
+    if (!email || typeof email !== 'string') {
+      throw new Error('email must be a non-empty string, got: ' + typeof email);
+    }
+
+    logger.debug('Attempting login with credentials expected to be rejected', { email });
+
+    try {
+      await page.goto(config.baseUrl, { waitUntil: 'domcontentloaded' });
+      await submitLoginForm(page, email);
+    } catch (error) {
+      throw new Error(
+        `[App.attemptLoginWithInvalidCredentials] Could not submit the login form as "${email}" ` +
+        `at ${config.baseUrl}. The login page may not have loaded or the form fields moved. ` +
+        `Original: ${error.message}`
+      );
+    }
+  },
+
+  /**
+   * Reads the login failure message shown after a rejected sign-in attempt.
+   * The expected wording is asserted by the calling step.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The normalized error text
+   */
+  async getLoginErrorMessage(page) {
+    if (!page) throw new Error('page is required');
+
+    logger.debug('Reading the login failure message');
+
+    try {
+      const loginPage = getPageObject(page, LoginPage);
+      return await loginPage.getLoginErrorMessage();
+    } catch (error) {
+      throw new Error(
+        `[App.getLoginErrorMessage] Could not read the login failure message after a rejected ` +
+        `sign-in attempt. Original: ${error.message}`
+      );
+    }
   },
 
   /**
@@ -180,18 +247,102 @@ const App = {
       throw new Error('page is required');
     }
     
-    const menuPage = getPageObject(page, MenuPage);
     const loginPage = getPageObject(page, LoginPage);
     const logoutPage = getPageObject(page, LogoutPage);
 
-    await menuPage.waitForLogoutIcon();
-    await menuPage.clickLogout();
+    await App.clickLogout(page);
 
     // Confirms logout message is shown
     await logoutPage.waitForLogoutSuccessMessage();
 
     // Confirms login screen is visible again
     await loginPage.waitForgotPasswordText();
+  },
+
+  /**
+   * Clicks the logout icon and returns immediately, WITHOUT waiting for the
+   * confirmation message or the login screen.
+   *
+   * Use this when the scenario asserts the logout confirmation itself. App.logout()
+   * consumes both of those waits internally, and the confirmation page auto-redirects
+   * to the login screen after a few seconds — so by the time a separate Then step ran,
+   * the message would already be gone.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async clickLogout(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    logger.debug('Clicking the logout icon without waiting for the confirmation page');
+
+    try {
+      const menuPage = getPageObject(page, MenuPage);
+      await menuPage.waitForLogoutIcon();
+      await menuPage.clickLogout();
+    } catch (error) {
+      throw new Error(
+        `[App.clickLogout] Could not click the logout icon in the menu. The user may not be ` +
+        `logged in, or the menu had not finished rendering. Original: ${error.message}`
+      );
+    }
+  },
+
+  /**
+   * Reads the logout confirmation message shown right after logging out.
+   * The expected wording is asserted by the calling step.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The normalized confirmation text
+   */
+  async getLogoutSuccessMessage(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    logger.debug('Reading the logout confirmation message');
+
+    try {
+      const logoutPage = getPageObject(page, LogoutPage);
+      return await logoutPage.getLogoutSuccessMessage();
+    } catch (error) {
+      throw new Error(
+        `[App.getLogoutSuccessMessage] Could not read the logout confirmation message after ` +
+        `logging out. Original: ${error.message}`
+      );
+    }
+  },
+
+  /**
+   * Waits for the login screen to be shown again, as happens a few seconds after logout
+   * when the confirmation page auto-redirects.
+   *
+   * Anchored on "Forgot password?" rather than the page heading: the login screen's heading
+   * is "Welcome back", the same wording the authenticated homepage uses, so a heading check
+   * could not tell the two apart.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{displayed: boolean}>} Resolves once the login screen is visible
+   */
+  async waitForLoginPageDisplayed(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    logger.debug('Waiting for the login screen to be displayed again');
+
+    try {
+      const loginPage = getPageObject(page, LoginPage);
+      await loginPage.waitForgotPasswordText();
+      return { displayed: true };
+    } catch (error) {
+      throw new Error(
+        `[App.waitForLoginPageDisplayed] The login screen was not displayed again. The logout ` +
+        `confirmation page may not have auto-redirected, or logout did not clear the session. ` +
+        `Original: ${error.message}`
+      );
+    }
   },
 
   /**

@@ -30,12 +30,17 @@ async function captureTripIdFromCurrentPage(page, { timeoutMs = 20000 } = {}) {
  */
 Given("I am logged in as {string}", async function (user) {
   logger.info("Logging in (no provider)", { user });
+  // Reuse a session an earlier step already opened (e.g. a rejected login attempt) instead of
+  // launching a second browser that the After hook would never close. App.login() re-navigates
+  // to the base URL, so any previous login-failure state is cleared before signing in.
   // Assign browser/context/page BEFORE login so the After hook can always
   // capture a screenshot, even when login itself fails.
-  const session = await App.createBrowserSession();
-  this.browser = session.browser;
-  this.context = session.context;
-  this.page = session.page;
+  if (!this.page) {
+    const session = await App.createBrowserSession();
+    this.browser = session.browser;
+    this.context = session.context;
+    this.page = session.page;
+  }
   await App.login(this.page, user);
 });
 
@@ -90,11 +95,36 @@ When("I book a new trip", async function () {
 // ===== WHEN STEPS =====
 
 /**
+ * Negative login: submits credentials expected to be rejected and returns while still on the
+ * login page. This is the scenario's first step, so it opens the browser session itself.
+ */
+When("I attempt to log in with invalid credentials as {string}", async function (user) {
+  logger.info("Attempting login with invalid credentials", { user });
+  // Assign browser/context/page BEFORE the attempt so the After hook can always
+  // capture a screenshot, even when the attempt fails for the wrong reason.
+  const session = await App.createBrowserSession();
+  this.browser = session.browser;
+  this.context = session.context;
+  this.page = session.page;
+  await App.attemptLoginWithInvalidCredentials(this.page, user);
+});
+
+/**
  * Logs out the current user from the application.
  */
 When("I logout from the application", async function () {
   logger.info("Logging out from application");
   await App.logout(this.page);
+});
+
+/**
+ * Clicks logout and stops there, leaving the confirmation page on screen.
+ * Use this instead of "I logout from the application" when the scenario asserts the
+ * confirmation message — that step waits past it and the page then auto-redirects.
+ */
+When("I click the logout icon", async function () {
+  logger.info("Clicking the logout icon");
+  await App.clickLogout(this.page);
 });
 
 When("I switch the application language to {string}", async function (language) {
@@ -132,6 +162,33 @@ Then("I should be redirected to the login page", async function () {
   logger.info("Verifying redirect to login page");
   const url = await this.page.url();
   expect(url).toContain("login");
+});
+
+Then("the login error message {string} should be displayed", async function (expectedMessage) {
+  logger.info("Verifying the login failure message", { expectedMessage });
+  const actualMessage = await App.getLoginErrorMessage(this.page);
+  expect(
+    actualMessage,
+    `Expected the login page to reject the credentials with "${expectedMessage}", but the message shown was "${actualMessage}"`
+  ).toBe(expectedMessage);
+});
+
+Then("the logout confirmation message {string} should be displayed", async function (expectedMessage) {
+  logger.info("Verifying the logout confirmation message", { expectedMessage });
+  const actualMessage = await App.getLogoutSuccessMessage(this.page);
+  expect(
+    actualMessage,
+    `Expected the logout confirmation page to show "${expectedMessage}", but the message shown was "${actualMessage}"`
+  ).toBe(expectedMessage);
+});
+
+Then("the login page should be displayed again", async function () {
+  logger.info("Verifying the login page is displayed again after logout");
+  const { displayed } = await App.waitForLoginPageDisplayed(this.page);
+  expect(
+    displayed,
+    "Expected the logout confirmation page to auto-redirect back to the login screen"
+  ).toBe(true);
 });
 
 Then("the welcome heading should contain {string}", async function (expectedText) {
