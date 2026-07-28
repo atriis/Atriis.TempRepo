@@ -87,6 +87,12 @@ const App = {
       viewport: config.viewport,
       screen: config.viewport,
       ignoreHTTPSErrors: true,
+      // Grant clipboard access so features that copy via navigator.clipboard.write
+      // (the share dialog's "Copy to clipboard" action) reach their success state
+      // instead of rejecting with NotAllowedError. Without it, headless Chromium
+      // denies the write, the app's catch fires an ERROR alert, and the success
+      // toast the test waits for never appears. Additive — no effect elsewhere.
+      permissions: ["clipboard-read", "clipboard-write"],
     });
 
     // In CI, record a Playwright trace for the whole session (covers login, the
