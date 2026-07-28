@@ -943,6 +943,12 @@ Then('the {string} indicator should be visible in pricing options', async functi
   }
 });
 
+Then('both edifact and NDC results are displayed', async function () {
+  logger.info('Verifying both EDIFACT and NDC content is displayed in pricing options');
+  const counts = await FlightResults.verifyBothEdifactAndNdcPricingOptionsDisplayed(this.page);
+  logger.info('Verified mixed EDIFACT/NDC pricing options', counts);
+});
+
 Then('all flight results should be from airline {string}', async function (airlineName) {
   logger.info('Verifying all flight results are from airline', { airlineName });
   await FlightResults.verifyAllResultsFromAirline(this.page, airlineName);

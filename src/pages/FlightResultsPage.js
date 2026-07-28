@@ -299,6 +299,9 @@ const SELECTORS = {
   FLIGHT_DETAILS_AIRCRAFT_NAME: '.aircraft-name',
   // NDC direct rate label in flight info top bar
   FLIGHT_INFO_TOP_BAR_LABEL: '.flight-info-top-bar .is-align-items-center > :nth-child(2)',
+  // "NDC direct rate" label text ($t('flight.ndcDirectRate')) — rendered only on NDC content in
+  // flight-preview.vue and leg-pricing-option.vue. Its absence marks EDIFACT/GDS content.
+  NDC_DIRECT_RATE_LABEL_TEXT: 'NDC direct rate',
 
   // Element Plus tooltip (rendered outside component tree)
   EL_POPPER_VISIBLE: '.el-popper:visible',
@@ -3164,6 +3167,27 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       names.push(normalized || null);
     }
     return names;
+  }
+
+  /**
+   * Counts the fare cards in the pricing options drawer by content type. NDC cards render the
+   * "NDC direct rate" label (leg-pricing-option.vue, `v-if="option.isNDC"`); EDIFACT/GDS cards
+   * render no content-type label at all, so the remainder is the EDIFACT count.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 60000, accounts for NDC pricing load)
+   * @returns {Promise<{total: number, ndc: number, edifact: number}>}
+   */
+  async getPricingOptionsContentTypeCounts(timeout = 60000) {
+    const overlay = this.getPricingOptionsOverlay();
+    await overlay.waitFor({ state: 'visible', timeout });
+
+    const cards = overlay.locator(SELECTORS.PRICING_OPTIONS_CARD);
+    await cards.first().waitFor({ state: 'visible', timeout });
+
+    const total = await cards.count();
+    const ndc = await cards.filter({ hasText: SELECTORS.NDC_DIRECT_RATE_LABEL_TEXT }).count();
+
+    return { total, ndc, edifact: total - ndc };
   }
 
   /**

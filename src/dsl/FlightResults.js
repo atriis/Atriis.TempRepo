@@ -2340,6 +2340,31 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Verifies the open pricing options drawer displays both EDIFACT and NDC content — i.e. at least
+   * one card carries the "NDC direct rate" label and at least one does not. Regression guard for
+   * bug 75701, where a corporate enabled for both content types saw NDC fares only.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{total: number, ndc: number, edifact: number}>}
+   */
+  async verifyBothEdifactAndNdcPricingOptionsDisplayed(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const counts = await flightResultsPage.getPricingOptionsContentTypeCounts();
+
+    expect(
+      counts.ndc,
+      `Pricing options should include at least one NDC fare (got ${counts.ndc} NDC of ${counts.total} options)`,
+    ).toBeGreaterThan(0);
+    expect(
+      counts.edifact,
+      `Pricing options should include at least one EDIFACT fare (got ${counts.edifact} EDIFACT of ${counts.total} options)`,
+    ).toBeGreaterThan(0);
+
+    return counts;
+  },
+
+  /**
    * Verifies the agreement indicator is visible in the first pricing option.
    * @param {import('playwright').Page} page
    */
