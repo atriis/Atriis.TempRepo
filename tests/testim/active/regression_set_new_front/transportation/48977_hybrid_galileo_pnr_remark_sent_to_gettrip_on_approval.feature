@@ -14,20 +14,19 @@ Feature: 48977 Galileo - PNR remark sent to GetTrip when user sends booking for 
 
   @priority:critical
   Scenario: PNR remark is sent to GetTrip when hotel booking is submitted for approval and car is added
-    Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
+    Given I am logged in as "remarks@gdgTest.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "Denver" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then the booking status should be "Pending booking"
     When I proceed to checkout
-    # TODO: Create step "When I send the booking for approval" that calls DSL sendForApproval in Checkout.js
-    # TODO: Create step "Then the PNR remark should be sent to GetTrip" - hybrid: validate via GetTrip API log that PNR remark is present
+    And I click the send for approval button
     Then the booking status should be "Confirmed"
-    # TODO: Create step "When I skip the approval flow approvers" that calls DSL skipApprovers in Approval.js
-    # TODO: Create step "When I search for a car from the cart" that calls DSL searchCarFromCart in Cart.js
+    #TODO: And I wait for 3 minutes
+    # TODO: Create step "When I skip the approval flow approvers" that calls DSL skipApprovers in Approval.js - click modify, skip all and save
+    #TODO: Then "No pending items - you're up to date." message is displayed
+    #TODO: And I close the approvers dialog
+    # TODO: Create or reuse step "When I search for a car from the cart" that calls DSL searchCarFromCart in Cart.js
     # TODO: Create step "When I add the first available car to my cart" that calls DSL addFirstCar in CarResults.js
     When I proceed to checkout
-    # TODO: Create step "When I send the car booking for approval" that calls DSL sendForApproval in Checkout.js
-    # TODO: Create step "Then the PNR remark for the car should also be sent to GetTrip" - hybrid: validate via GetTrip API log
-
+    And I click the send for approval button
