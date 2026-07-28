@@ -407,31 +407,71 @@ const Cart = {
   /**
    * SAFE cancel flow (never throws, returns status)
    *
+   * Best-effort cleanup: a trip that cannot be cancelled (supplier refusal, stalled UI) must be
+   * reported, never fatal — the scenarios using this step have already made all their assertions.
+   *
+   * To honour that contract the whole flow runs under an overall deadline. The sub-waits sum to
+   * more than the 120000ms Cucumber step budget in the worst case, so bounding any single wait is
+   * not enough: without a deadline one stalled wait kills the scenario before the catch below can
+   * return a status.
+   *
+   * The deadline stays under that 120000ms budget while still leaving a slow GDS cancellation room
+   * to confirm, so a genuinely-successful-but-slow cancel is not abandoned and reported as failed.
+   *
    * @param {import('playwright').Page} page
-   * @returns {Promise<{cancelled: boolean, error?: string}>}
+   * @param {object} [options]
+   * @param {number} [options.budgetMs=100000] Overall deadline for the entire cancel attempt.
+   * @returns {Promise<{cancelled: boolean, outcome?: string, error?: string}>}
    */
-  async cancelTripSafely(page) {
+  async cancelTripSafely(page, { budgetMs = 100000 } = {}) {
     if (!page) {
       throw new Error('page is required');
     }
-    
+
     const cartPage = getPageObject(page, CartPage);
-    try {
+
+    const attempt = (async () => {
       await cartPage.waitForTripOverviewTitle();
       await cartPage.hoverTripActionsDropdownIcon();
       await cartPage.waitForDropdownMenu();
       await cartPage.clickCancelTripOption();
       await cartPage.waitForTripCancellationDialogTitle();
       await cartPage.clickConfirmTripCancellationButton();
-      const wasCancelled = await cartPage.isTripCancelledMessageVisible();
-      await page.waitForLoadState("networkidle");
-      return { cancelled: wasCancelled };
-    } catch (error) {
-      return {
-        cancelled: false,
-        error: error?.message,
-      };
+
+      const outcome = await cartPage.waitForTripCancellationOutcome();
+      // Non-fatal: the cancellation verdict is already known, this only lets the UI settle.
+      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+      return { outcome };
+    })();
+
+    let timer;
+    const deadline = new Promise((resolve) => {
+      timer = setTimeout(() => resolve({ outcome: 'timeout' }), budgetMs);
+    });
+
+    let result;
+    try {
+      // The inline .catch doubles as the attempt's rejection handler, so a flow abandoned at the
+      // deadline can never surface as an unhandled rejection and kill the worker.
+      result = await Promise.race([attempt.catch((error) => ({ error: error?.message })), deadline]);
+    } finally {
+      clearTimeout(timer);
     }
+
+    if (result.error) {
+      logger.warn('Safe trip cancellation did not complete', { error: result.error });
+      return { cancelled: false, error: result.error };
+    }
+
+    const cancelled = result.outcome === 'cancelled';
+    if (!cancelled) {
+      // Surfaced loudly so a supplier-side refusal stays visible in CI instead of passing silently.
+      logger.warn('Trip was not cancelled — continuing (best-effort cleanup step)', {
+        outcome: result.outcome,
+      });
+    }
+
+    return { cancelled, outcome: result.outcome };
   },
 
   /**

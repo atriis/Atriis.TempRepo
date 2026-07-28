@@ -207,6 +207,10 @@ const SELECTORS = {
   TICKET_DETAILS_SECTION: ".ticket-details",
   SHOW_CANCELLED_ITEMS_OPTION: '.el-dropdown-menu__item',
   TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label='Trip cancellation'] .el-dialog__title",
+  // Terminal failure state of the cancellation dialog (cancel-trip-modal.vue renders
+  // <p class="bold-text cancel-trip-error"> with trip.cancelTripError when a supplier refuses to
+  // cancel one or more items). Matched structurally so the wording can change without breaking.
+  TRIP_CANCELLATION_ERROR: '.cancel-trip-modal .cancel-trip-error',
   CONFIRM_CANCEL_BUTTON: "role=button[name='Cancel trip']",
   CANCELLATION_SUCCESS_MESSAGE: "text='Cancellation confirmed!'",
   // Title on the cancellation-confirmed page; renders $t('trip.cancellationConfirmed') + '!'. Matched
@@ -2244,20 +2248,38 @@ class CartPage {
   }
 
   /**
-   * Checks whether the cancellation success message is visible.
-   * Never throws. Returns boolean.
+   * Waits for the trip-cancellation dialog to reach a terminal state and reports which one.
+   *
+   * cancel-trip-modal.vue ends in exactly one of two states: the "Cancellation confirmed!" success
+   * view, or the failure view headed by `.cancel-trip-error`. Racing both means a supplier-side
+   * refusal is detected as soon as it renders instead of burning the whole timeout waiting for a
+   * success message that will never appear.
+   *
+   * Never throws — callers decide whether a non-success outcome is fatal.
+   *
+   * Kept generous (slow GDS backends like Sabre/Amadeus can take a minute to confirm a
+   * cancellation) — safe to do so because the failure branch short-circuits as soon as it renders,
+   * and callers bound the total wait themselves.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=90000] Max wait for either terminal state.
+   * @returns {Promise<'cancelled'|'failed'|'unknown'>} 'unknown' when neither state appeared in time.
    */
-  async isTripCancelledMessageVisible({ timeout = 120000 } = {}) {
-    try {
-      const successMessage = this.page.getByText(
-        CANCELLATION_CONFIRMED_TEXT,
-        { exact: true },
+  async waitForTripCancellationOutcome({ timeout = 90000 } = {}) {
+    // Each wait carries its own rejection handler, so the losing branch can never surface as an
+    // unhandled rejection after the race has already settled.
+    const settleAs = (locator, outcome) =>
+      locator.waitFor({ state: 'visible', timeout }).then(
+        () => outcome,
+        () => null,
       );
-      await successMessage.waitFor({ state: "visible", timeout });
-      return true;
-    } catch {
-      return false;
-    }
+
+    const outcome = await Promise.race([
+      settleAs(this.page.getByText(CANCELLATION_CONFIRMED_TEXT, { exact: true }).first(), 'cancelled'),
+      settleAs(this.page.locator(SELECTORS.TRIP_CANCELLATION_ERROR).first(), 'failed'),
+    ]);
+
+    return outcome ?? 'unknown';
   }
 
   /**
