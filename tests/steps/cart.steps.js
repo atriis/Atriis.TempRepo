@@ -1433,6 +1433,11 @@ When("I click to add parking to my trip from cart", async function () {
   await Cart.clickAddParkingFromCart(this.page);
 });
 
+When("I click to add a car to my trip from cart", async function () {
+  logger.info("Clicking to add a car from cart product carousel");
+  await Cart.clickAddCarFromCart(this.page);
+});
+
 When("I navigate to the manual quote search page from the cart", async function () {
   logger.info("Navigating to manual quote search page from cart product carousel");
   await Cart.navigateToManualQuoteFromCart(this.page);
@@ -2195,6 +2200,16 @@ When("I fill in the passport expiry date in passenger info section", async funct
   await Cart.fillPassportExpiryDateInPassengerInfo(this.page);
 });
 
+When("I fill in the passport expiry date {string} in passenger info section", async function (expiryDate) {
+  logger.info("Filling passport expiry date in passenger info", { expiryDate });
+  await Cart.fillPassportExpiryDateInPassengerInfo(this.page, expiryDate);
+});
+
+When("I save the passenger info", async function () {
+  logger.info("Saving the passenger info form");
+  await Cart.savePassengerInfo(this.page);
+});
+
 Then("the passenger info form should show {int} editable fields", async function (expectedCount) {
   logger.info("Verifying passenger info editable fields count", { expectedCount });
   await Cart.verifyPassengerInfoEditableFieldsCount(this.page, expectedCount);
@@ -2277,6 +2292,21 @@ Then("I should see {string} quote in more details with pickup {string}, dropoff 
 Then("the fare rules link is not visible in the flight manual quote more details", async function () {
   logger.info("Verifying Fare Rules link is not visible inside the flight manual quote More Details drawer");
   await Cart.verifyFareRulesLinkNotVisibleInMoreDetails(this.page);
+});
+
+// Hotel-scoped variant: expands the extras via the hotel loyalty section rather than by quote-card
+// index, so it stays on the hotel quote in a trip that also holds a flight and a car.
+When("I add a hotel loyalty number {string} in the quote extras", async function (loyaltyNumber) {
+  logger.info("Adding hotel loyalty number in the quote extras", { loyaltyNumber });
+  this.selectedChainText = await Cart.addLoyaltyNumberWithFirstAvailableChain(this.page, loyaltyNumber, 0, {
+    hotelScoped: true,
+  });
+  logger.info("Added hotel loyalty number with chain", { chain: this.selectedChainText });
+});
+
+When("I add a car driver loyalty number {string} in the extras", async function (loyaltyNumber) {
+  logger.info("Adding car driver loyalty number in the quote extras", { loyaltyNumber });
+  await Cart.addCarDriverLoyaltyNumber(this.page, loyaltyNumber);
 });
 
 When("I add loyalty number {string} using the first available chain", async function (loyaltyNumber) {
@@ -2600,6 +2630,53 @@ Then("gender is not selected", async function () {
 When("I copy the trip", async function () {
   logger.info("Copying the trip via the three-dots menu");
   this.page = await Cart.copyTrip(this.page);
+});
+
+// Decomposed copy-trip flow: open the dialog, assert its contents, then confirm. Use this instead of
+// "I copy the trip" when the dialog itself is under test.
+When("I open the copy trip dialog", async function () {
+  logger.info("Opening the copy trip dialog from the trip actions menu");
+  await Cart.openCopyTripDialog(this.page);
+});
+
+Then("the copy trip dialog should show the message {string}", async function (expectedMessage) {
+  logger.info("Verifying the copy trip dialog intro message", { expectedMessage });
+  await Cart.verifyCopyTripDialogMessage(this.page, expectedMessage);
+});
+
+Then("all products in the copy trip dialog should show status {string}", async function (expectedStatus) {
+  logger.info("Verifying every quote in the copy trip dialog shows the expected status", { expectedStatus });
+  const statuses = await Cart.verifyAllCopyTripDialogQuotesHaveStatus(this.page, expectedStatus);
+  logger.info("Copy trip dialog quote statuses verified", { statuses });
+});
+
+// The copy opens in a new browser tab. This step only confirms and captures it — the scenario then
+// switches with the shared "I work on tab {int}" step, keeping page selection in one place.
+When("I confirm the copy trip", async function () {
+  logger.info("Confirming the copy trip");
+  this.copiedTripPage = await Cart.confirmCopyTrip(this.page);
+  logger.info("Copied trip is ready", { url: this.copiedTripPage.url() });
+});
+
+When("I store the car type from the cart", async function () {
+  this.storedCarType = await Cart.extractCarTypeFromCart(this.page);
+  logger.info("Stored car type from cart", { carType: this.storedCarType });
+});
+
+Then("the copied trip should contain the same hotel", async function () {
+  if (typeof this.extractedCartHotelName !== 'string' || !this.extractedCartHotelName.trim()) {
+    throw new Error("No extracted hotel name found. Run 'I extract the hotel name from cart' on the original trip before this step.");
+  }
+  logger.info("Verifying copied trip contains the same hotel", { hotelName: this.extractedCartHotelName });
+  await Cart.verifyTripHasSameHotelName(this.page, this.extractedCartHotelName);
+});
+
+Then("the copied trip should contain the same car", async function () {
+  if (typeof this.storedCarType !== 'string' || !this.storedCarType.trim()) {
+    throw new Error("No stored car type found. Run 'I store the car type from the cart' on the original trip before this step.");
+  }
+  logger.info("Verifying copied trip contains the same car", { carType: this.storedCarType });
+  await Cart.verifyTripHasSameCarType(this.page, this.storedCarType);
 });
 
 Then("the trip is created successfully with the same flight", async function () {

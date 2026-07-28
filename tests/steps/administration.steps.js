@@ -52,6 +52,52 @@ When("I open the form of payment tab in the administration", async function () {
   await Administration.openFopTabInAdmin(this.adminPage);
 });
 
+// --- Passports and Visas / Frequent flyer tabs (test 29785 — prevent updating personal information) ---
+
+When("I open the passports and visas tab in the administration", async function () {
+  logger.info("Opening the Passports and Visas tab in administration user view");
+  if (!this.adminPage) {
+    throw new Error('[administration.steps] No admin page stored — call "I navigate to the administration page" first.');
+  }
+  await Administration.openPassportsAndVisasTabInAdmin(this.adminPage);
+});
+
+Then("the passport section should be empty in the administration", async function () {
+  logger.info("Verifying no passport is saved on the administration user profile");
+  if (!this.adminPage) {
+    throw new Error('[administration.steps] No admin page stored — call "I navigate to the administration page" first.');
+  }
+  await Administration.verifyPassportSectionEmpty(this.adminPage);
+});
+
+When("I open the frequent flyer tab in the administration", async function () {
+  logger.info("Opening the Frequent flyer tab in administration user view");
+  if (!this.adminPage) {
+    throw new Error('[administration.steps] No admin page stored — call "I navigate to the administration page" first.');
+  }
+  await Administration.openFrequentFlyerTabInAdmin(this.adminPage);
+});
+
+Then("the frequent flyer number {string} should not be saved in the administration", async function (frequentFlyerNumber) {
+  logger.info("Verifying the frequent flyer number was not saved to the administration", { frequentFlyerNumber });
+  if (!this.adminPage) {
+    throw new Error('[administration.steps] No admin page stored — call "I navigate to the administration page" first.');
+  }
+  await Administration.verifyValueNotSavedInUserProfile(
+    this.adminPage,
+    frequentFlyerNumber,
+    "Frequent flyer / Membership number",
+  );
+});
+
+Then("the car loyalty number {string} should not be saved in the administration", async function (carLoyaltyNumber) {
+  logger.info("Verifying the car loyalty number was not saved to the administration", { carLoyaltyNumber });
+  if (!this.adminPage) {
+    throw new Error('[administration.steps] No admin page stored — call "I navigate to the administration page" first.');
+  }
+  await Administration.verifyValueNotSavedInUserProfile(this.adminPage, carLoyaltyNumber, "Car loyalty ID");
+});
+
 When("I navigate to the Travel Policies section", async function () {
   logger.info("Navigating to the Travel Policies section in administration");
   await Administration.openTravelPoliciesSection(this.adminPage);

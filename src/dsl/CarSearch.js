@@ -284,6 +284,105 @@ const CarSearch = {
   },
 
   /**
+   * Searches for a car from the cart's edit-search drawer (opened by the Car tile in the trip
+   * cart's product carousel).
+   *
+   * Deliberately sets NO location: the car edit-search drawer exposes no location input at all —
+   * it inherits the pick-up location from the trip context, and its readiness signal is the
+   * "Pick-up Date" field precisely because there is no autocomplete to wait for (see
+   * SearchPage.SELECTORS.EDIT_CAR_PICKUP_DATE / waitForEditSearchDrawerReady). Only the dates are
+   * settable here, so this method sets those and submits through the drawer's own primary button.
+   * Use searchCarByPlace when the location must be chosen — that requires the standalone search page.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {number} monthsAhead - Number of months ahead to advance the pick-up calendar
+   * @param {Object} options - Search configuration
+   * @param {number} options.pickupIndex - Pickup date index (>= 0)
+   * @param {number} options.dropoffIndex - Drop-off date index (>= 0)
+   * @param {number} options.maxRetries - No-results retries (handled on the results page)
+   * @returns {Promise<{searched: boolean, monthsAhead: number, pickupIndex: number, dropoffIndex: number, pickupDate: string, dropoffDate: string, noResultsRetry: Object}>}
+   * @throws {Error} If page is missing, or pickupIndex/dropoffIndex are negative
+   */
+  async searchCarFromCartDrawer(
+    page,
+    monthsAhead = 3,
+    {
+      pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
+      dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
+      maxRetries = MAX_NO_RESULTS_RETRIES,
+    } = {},
+  ) {
+    if (!page) {
+      throw new Error('[CarSearch.searchCarFromCartDrawer] "page" is required.');
+    }
+    if (!Number.isFinite(monthsAhead) || monthsAhead < 0) {
+      throw new Error(
+        `[CarSearch.searchCarFromCartDrawer] "monthsAhead" must be a non-negative number, got: ${typeof monthsAhead} (${monthsAhead})`
+      );
+    }
+    if (pickupIndex < 0) {
+      throw new Error(`[CarSearch.searchCarFromCartDrawer] "pickupIndex" must be >= 0, got ${pickupIndex}`);
+    }
+    if (dropoffIndex < 0) {
+      throw new Error(`[CarSearch.searchCarFromCartDrawer] "dropoffIndex" must be >= 0, got ${dropoffIndex}`);
+    }
+
+    logger.debug('[CarSearch.searchCarFromCartDrawer] Searching for a car from the cart drawer', {
+      monthsAhead,
+      pickupIndex,
+      dropoffIndex,
+    });
+
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      // The drawer is already scoped to the car product, so there is no product tab to click.
+      await searchPage.waitForEditSearchDrawerReady();
+
+      // Pickup date
+      await searchPage.clickPickupDateField();
+      await searchPage.clickCalendarNextArrow(monthsAhead);
+      await selectDatesByNthAvailable(page, { startIndex: pickupIndex, endIndex: null });
+
+      // Drop-off date
+      await carSearchPage.clickDropoffDateField();
+      await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
+      await selectDatesByNthAvailable(page, { startIndex: dropoffIndex, endIndex: null });
+
+      // Capture the chosen dates while the drawer is still open and its inputs are populated.
+      const pickupDate = await carSearchPage.getPickupDateFieldValue();
+      const dropoffDate = await carSearchPage.getDropoffDateFieldValue();
+
+      await searchPage.waitAndClickPrimarySearchButtonFromCart();
+
+      // Retries are driven from the results page, so this is safe for a drawer-originated search.
+      const retryResult = await retryCarSearchByChangingDatesOnNoResults(page, {
+        pickupIndex,
+        dropoffIndex,
+        maxRetries,
+      });
+
+      return {
+        searched: true,
+        monthsAhead,
+        pickupIndex,
+        dropoffIndex,
+        pickupDate,
+        dropoffDate,
+        noResultsRetry: retryResult,
+      };
+    } catch (err) {
+      throw new Error(
+        `[CarSearch.searchCarFromCartDrawer] Failed to run a car search from the cart's edit-search ` +
+        `drawer (monthsAhead=${monthsAhead}). The Car tile in the cart product carousel must have ` +
+        `opened the drawer first, and the trip must supply a pick-up location (the drawer has no ` +
+        `location field of its own). Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Searches for a car by place and rental agency.
    * @param {Object} page - Playwright page instance
    * @param {string|Object} placeInput - Location or location object

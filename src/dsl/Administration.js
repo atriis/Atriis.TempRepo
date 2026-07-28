@@ -212,6 +212,158 @@ const Administration = {
   },
 
   /**
+   * Opens the "Passports and Visas" tab in the administration user-detail view.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async openPassportsAndVisasTabInAdmin(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.openPassportsAndVisasTabInAdmin] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.openPassportsAndVisasTabInAdmin] Clicking Passports and Visas tab');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickPassportTab();
+    } catch (err) {
+      throw new Error(
+        `[Administration.openPassportsAndVisasTabInAdmin] Failed to open the Passports and Visas tab: ` +
+        `${err.message} The user record must be open in the administration user view first.`
+      );
+    }
+
+    logger.info('[Administration.openPassportsAndVisasTabInAdmin] Passports and Visas tab opened');
+  },
+
+  /**
+   * Verifies no passport is stored on the administration user's profile: the tab shows its
+   * "Add Passport" empty-state form and lists no saved passport rows.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page, on the Passports and Visas tab
+   */
+  async verifyPassportSectionEmpty(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyPassportSectionEmpty] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.verifyPassportSectionEmpty] Verifying no passport is saved on the profile');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const hasAddPassportHeader = await page.isFieldGroupHeaderVisible('Add Passport');
+
+    if (!hasAddPassportHeader) {
+      throw new Error(
+        '[Administration.verifyPassportSectionEmpty] The "Add Passport" section header is not visible, ' +
+        'so the Passports and Visas tab is not showing its empty-state form. Either the tab did not ' +
+        'open (a "Proceed without saving" dialog may be blocking it) or a passport is already stored.'
+      );
+    }
+
+    const savedPassportCount = await page.getSavedPassportRowCount();
+
+    if (savedPassportCount !== 0) {
+      throw new Error(
+        `[Administration.verifyPassportSectionEmpty] Expected no saved passports on the profile but ` +
+        `found ${savedPassportCount} passport row(s). Passport details entered in the trip must NOT be ` +
+        `persisted to the administration for a user with the "prevent updating others and own profile" role.`
+      );
+    }
+
+    logger.info('[Administration.verifyPassportSectionEmpty] No passport is stored on the administration profile');
+  },
+
+  /**
+   * Opens the "Frequent flyer" tab in the administration user-detail view.
+   * Dismisses the "Proceed without saving" confirm the admin raises when leaving a tab with
+   * pending edits, then confirms the tab actually rendered before any assertion runs against it.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async openFrequentFlyerTabInAdmin(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.openFrequentFlyerTabInAdmin] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.openFrequentFlyerTabInAdmin] Clicking Frequent flyer tab');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickFrequentFlyerTab();
+      const dismissed = await page.dismissProceedWithoutSavingIfVisible();
+      if (dismissed) {
+        logger.info('[Administration.openFrequentFlyerTabInAdmin] Dismissed the "Proceed without saving" dialog');
+      }
+    } catch (err) {
+      throw new Error(
+        `[Administration.openFrequentFlyerTabInAdmin] Failed to open the Frequent flyer tab: ` +
+        `${err.message} The user record must be open in the administration user view first.`
+      );
+    }
+
+    const headerVisible = await page.isFieldGroupHeaderVisible('Frequent flyer / Membership number');
+
+    if (!headerVisible) {
+      throw new Error(
+        '[Administration.openFrequentFlyerTabInAdmin] The "Frequent flyer / Membership number" section ' +
+        'header did not appear, so the Frequent flyer tab is not loaded. Any absence assertion run now ' +
+        'would be reading the previous tab and would pass for the wrong reason.'
+      );
+    }
+
+    logger.info('[Administration.openFrequentFlyerTabInAdmin] Frequent flyer tab opened');
+  },
+
+  /**
+   * Verifies a value entered during the trip was NOT persisted to the administration user profile.
+   * Scrolls the user-detail form first so lazily rendered lower sections are included in the read.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page, on the relevant user tab
+   * @param {string} value - The value that must be absent (e.g. a frequent flyer or loyalty number)
+   * @param {string} fieldLabel - Human-readable name of the field, used in the failure message
+   */
+  async verifyValueNotSavedInUserProfile(adminPage, value, fieldLabel) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyValueNotSavedInUserProfile] "adminPage" is required.');
+    }
+    if (!value || typeof value !== 'string') {
+      throw new Error(
+        `[Administration.verifyValueNotSavedInUserProfile] "value" must be a non-empty string, got: ` +
+        `${typeof value} (${JSON.stringify(value)})`
+      );
+    }
+    if (!fieldLabel || typeof fieldLabel !== 'string') {
+      throw new Error(
+        `[Administration.verifyValueNotSavedInUserProfile] "fieldLabel" must be a non-empty string, got: ` +
+        `${typeof fieldLabel} (${JSON.stringify(fieldLabel)})`
+      );
+    }
+
+    logger.debug('[Administration.verifyValueNotSavedInUserProfile] Verifying a trip value was not persisted', {
+      value,
+      fieldLabel,
+    });
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const profileText = await page.getUserDetailVisibleText();
+
+    if (profileText.includes(value)) {
+      throw new Error(
+        `[Administration.verifyValueNotSavedInUserProfile] "${fieldLabel}" value "${value}" WAS found on ` +
+        `the administration user profile, but a user with the "prevent updating others and own profile" ` +
+        `role must not have trip-entered details written back to the administration.`
+      );
+    }
+
+    logger.info('[Administration.verifyValueNotSavedInUserProfile] Value is absent from the administration profile', {
+      value,
+      fieldLabel,
+    });
+  },
+
+  /**
    * Opens the Travel Policies section in the administration portal.
    * If an unsaved-items dialog appears, it is dismissed before continuing.
    *

@@ -3813,6 +3813,29 @@ const Cart = {
   },
 
   /**
+   * Clicks the Car button in the "Add more services" product carousel in the cart.
+   * Opens the edit-search drawer with the car search form (it does not route away), so the
+   * follow-on search must run against the drawer.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async clickAddCarFromCart(page) {
+    if (!page) throw new Error('[Cart.clickAddCarFromCart] "page" is required.');
+    logger.debug('[Cart.clickAddCarFromCart] Opening the car search drawer from the cart product carousel');
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.clickAddCarFromCarousel();
+    } catch (err) {
+      throw new Error(
+        `[Cart.clickAddCarFromCart] Could not start adding a car to the trip from the cart. ` +
+        `The trip must already have at least one quote and the user must have access to the Car ` +
+        `product. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Clicks the Parking button from the "Add more services" product carousel in the cart.
    * Navigates to the parking search page.
    *
@@ -4881,25 +4904,72 @@ const Cart = {
 
   /**
    * Adds a loyalty number using the first available hotel chain in the dropdown.
-   * Opens extras panel, selects the first chain, fills the number, and saves.
+   * Opens the extras panel, selects the first chain, fills the number, and saves.
+   *
    * @param {import('playwright').Page} page
    * @param {string} loyaltyNumber - Loyalty number to enter
-   * @param {number} [index=0] - Extras edit button index
+   * @param {number} [index=0] - Extras edit button index (ignored when `hotelScoped` is true)
+   * @param {object} [options]
+   * @param {boolean} [options.hotelScoped=false] - Expand via the hotel loyalty section instead of the
+   *   page-wide extras edit button. Required when the trip holds more than one product: the edit
+   *   button is resolved by page-wide index, so in a flight + hotel + car trip index 0 is the
+   *   flight quote card's extras rather than the hotel's.
    * @returns {Promise<string>} The selected hotel chain text
    */
-  async addLoyaltyNumberWithFirstAvailableChain(page, loyaltyNumber, index = 0) {
+  async addLoyaltyNumberWithFirstAvailableChain(page, loyaltyNumber, index = 0, { hotelScoped = false } = {}) {
     if (!page) throw new Error('page is required');
     if (!loyaltyNumber || typeof loyaltyNumber !== 'string') throw new Error('loyaltyNumber must be a non-empty string');
 
     const cartPage = getPageObject(page, CartPage);
-    await cartPage.clickEditExtrasButton(index);
-    await cartPage.waitForSaveButton();
+
+    if (hotelScoped) {
+      await cartPage.clickHotelLoyaltyExtrasExpand();
+    } else {
+      await cartPage.clickEditExtrasButton(index);
+      await cartPage.waitForSaveButton();
+    }
+
     await cartPage.selectNewLoyaltyRadio();
     const chainText = await cartPage.selectFirstLoyaltyChain();
     await cartPage.fillLoyaltyNumber(loyaltyNumber);
     await cartPage.clickLoyaltySaveButton();
     await cartPage.waitForLoyaltySuccessIcon();
     return chainText;
+  },
+
+  /**
+   * Adds a car driver loyalty (Loyalty ID) number on the cart's car quote card.
+   * Expands the car-scoped extras panel, types the number, saves and waits for the success state.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} loyaltyNumber - Loyalty number to enter
+   * @returns {Promise<void>}
+   */
+  async addCarDriverLoyaltyNumber(page, loyaltyNumber) {
+    if (!page) throw new Error('[Cart.addCarDriverLoyaltyNumber] "page" is required.');
+    if (!loyaltyNumber || typeof loyaltyNumber !== 'string') {
+      throw new Error(
+        `[Cart.addCarDriverLoyaltyNumber] "loyaltyNumber" must be a non-empty string, got: ` +
+        `${typeof loyaltyNumber} (${JSON.stringify(loyaltyNumber)})`
+      );
+    }
+
+    logger.debug('[Cart.addCarDriverLoyaltyNumber] Adding car driver loyalty number', { loyaltyNumber });
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickCarDriverLoyaltyExpand();
+      await cartPage.fillCarDriverLoyaltyNumber(loyaltyNumber);
+      await cartPage.clickCarDriverLoyaltySaveButton();
+      await cartPage.waitForCarDriverLoyaltySuccessIcon();
+      logger.info('Added car driver loyalty number in the quote extras', { loyaltyNumber });
+    } catch (err) {
+      throw new Error(
+        `[Cart.addCarDriverLoyaltyNumber] Failed to save car driver loyalty number "${loyaltyNumber}". ` +
+        `The trip must contain a car quote, and if the supplier requires a driver the panel's Driver ` +
+        `field must be selectable. Original: ${err.message}`
+      );
+    }
   },
 
   /**
@@ -7276,6 +7346,32 @@ const Cart = {
   },
 
   /**
+   * Saves the flight passenger-info (APIS) form and waits for its success checkmark.
+   * Assumes the panel is already expanded and the required fields are filled.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async savePassengerInfo(page) {
+    if (!page) throw new Error('[Cart.savePassengerInfo] "page" is required.');
+
+    logger.debug('[Cart.savePassengerInfo] Saving the flight passenger info form');
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickSavePassengerInfoButton();
+      await cartPage.waitForPassengerInfoSaveSuccess();
+      logger.info('Passenger info saved successfully');
+    } catch (err) {
+      throw new Error(
+        `[Cart.savePassengerInfo] Failed to save the flight passenger info. Likely causes: a mandatory ` +
+        `APIS field (passport number, nationality, expiry date) is still empty or invalid, so the form ` +
+        `rejected the save. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Copies the trip via the three-dots dropdown menu.
    * Hovers over the trip actions icon, clicks "Copy trip", waits for the dialog,
    * then confirms. Handles the new window/tab the app opens for the copied trip.
@@ -7286,27 +7382,147 @@ const Cart = {
   async copyTrip(page) {
     if (!page) throw new Error('page is required');
 
+    await Cart.openCopyTripDialog(page);
+    return Cart.confirmCopyTrip(page);
+  },
+
+  /**
+   * Opens the Copy Trip dialog from the trip actions (three-dots) menu and waits for it to render.
+   * Stops with the dialog open so its contents (intro message, per-quote statuses) can be asserted
+   * before confirming.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async openCopyTripDialog(page) {
+    if (!page) throw new Error('[Cart.openCopyTripDialog] "page" is required.');
+
+    logger.debug('[Cart.openCopyTripDialog] Opening the copy trip dialog from the trip actions menu');
     const cartPage = getPageObject(page, CartPage);
 
-    await page.waitForLoadState('networkidle', { timeout: 30000 });
-    await cartPage.hoverTripActionsDropdownIcon();
-    await cartPage.clickCopyTripOption();
-    await cartPage.waitForCopyTripDialog();
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 30000 });
+      await cartPage.hoverTripActionsDropdownIcon();
+      await cartPage.clickCopyTripOption();
+      await cartPage.waitForCopyTripDialog();
+      logger.info('Copy trip dialog is open');
+    } catch (err) {
+      throw new Error(
+        `[Cart.openCopyTripDialog] Could not open the Copy Trip dialog. Likely causes: the trip actions ` +
+        `dropdown was still disabled while the trip loaded, or "Copy trip" is not offered for this trip ` +
+        `state / user. Original: ${err.message}`
+      );
+    }
+  },
 
-    const context = page.context();
-    const newPagePromise = context.waitForEvent('page', { timeout: 15000 }).catch(() => null);
-    await cartPage.clickConfirmCopyTripButton();
-    const newTripPage = await newPagePromise;
+  /**
+   * Confirms the open Copy Trip dialog and returns the copied trip's page.
+   * The app routes the copy into a new browser tab (copy-trip-modal.vue → utilService.openNewWindow),
+   * so the popup listener is armed before the click; if no tab opens the current page is returned.
+   *
+   * @param {import('playwright').Page} page - The page showing the open copy trip dialog
+   * @returns {Promise<import('playwright').Page>} The copied trip page (new tab, or the same page)
+   */
+  async confirmCopyTrip(page) {
+    if (!page) throw new Error('[Cart.confirmCopyTrip] "page" is required.');
 
-    if (newTripPage) {
-      logger.info('Copied trip opened in a new tab');
-      await newTripPage.waitForLoadState('networkidle', { timeout: 60000 });
-      return newTripPage;
+    logger.debug('[Cart.confirmCopyTrip] Confirming the copy trip dialog');
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      const context = page.context();
+      const newPagePromise = context.waitForEvent('page', { timeout: 15000 }).catch(() => null);
+      await cartPage.clickConfirmCopyTripButton();
+      const newTripPage = await newPagePromise;
+
+      if (newTripPage) {
+        await newTripPage.waitForLoadState('networkidle', { timeout: 60000 });
+        logger.info('Copied trip opened in a new tab', { url: newTripPage.url() });
+        return newTripPage;
+      }
+
+      logger.info('Copied trip opened in current tab (no new tab detected)');
+      await page.waitForLoadState('networkidle', { timeout: 60000 });
+      return page;
+    } catch (err) {
+      throw new Error(
+        `[Cart.confirmCopyTrip] Could not confirm the copy trip. Likely causes: the dialog's Copy button ` +
+        `was disabled because no quote in the trip is eligible for copy, or the copied trip's tab did ` +
+        `not finish loading within 60s. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the copy trip dialog's intro message.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMessage - Text the dialog's intro paragraph must contain
+   * @returns {Promise<string>} The actual message text
+   */
+  async verifyCopyTripDialogMessage(page, expectedMessage) {
+    if (!page) throw new Error('[Cart.verifyCopyTripDialogMessage] "page" is required.');
+    if (!expectedMessage || typeof expectedMessage !== 'string') {
+      throw new Error(
+        `[Cart.verifyCopyTripDialogMessage] "expectedMessage" must be a non-empty string, got: ` +
+        `${typeof expectedMessage} (${JSON.stringify(expectedMessage)})`
+      );
     }
 
-    logger.info('Copied trip opened in current tab (no new tab detected)');
-    await page.waitForLoadState('networkidle', { timeout: 60000 });
-    return page;
+    const cartPage = getPageObject(page, CartPage);
+    const actualMessage = await cartPage.getCopyTripDialogMessageText();
+
+    expect(
+      actualMessage,
+      `Expected the copy trip dialog intro message to contain "${expectedMessage}" but it read ` +
+      `"${actualMessage}".`,
+    ).toContain(expectedMessage);
+
+    return actualMessage;
+  },
+
+  /**
+   * Verifies every quote listed in the copy trip dialog shows the expected status.
+   * An empty status means that row rendered the "can not be copied" warning instead of a label,
+   * which fails the assertion with the row index reported.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedStatus - Status every row must show (e.g. "Pending Booking")
+   * @returns {Promise<string[]>} The statuses that were read, in row order
+   */
+  async verifyAllCopyTripDialogQuotesHaveStatus(page, expectedStatus) {
+    if (!page) throw new Error('[Cart.verifyAllCopyTripDialogQuotesHaveStatus] "page" is required.');
+    if (!expectedStatus || typeof expectedStatus !== 'string') {
+      throw new Error(
+        `[Cart.verifyAllCopyTripDialogQuotesHaveStatus] "expectedStatus" must be a non-empty string, ` +
+        `got: ${typeof expectedStatus} (${JSON.stringify(expectedStatus)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const statuses = await cartPage.getCopyTripDialogQuoteStatuses();
+
+    expect(
+      statuses.length,
+      `Expected the copy trip dialog to list at least one quote, but no quote rows were found. ` +
+      `The dialog may still be loading its quotes.`,
+    ).toBeGreaterThan(0);
+
+    const expectedNormalized = expectedStatus.trim().toLowerCase();
+    const mismatches = statuses
+      .map((status, index) => ({ status, index }))
+      .filter(({ status }) => !status.trim().toLowerCase().includes(expectedNormalized));
+
+    expect(
+      mismatches,
+      `Expected all ${statuses.length} quote(s) in the copy trip dialog to show status ` +
+      `"${expectedStatus}", but these rows did not: ` +
+      `${mismatches.map(({ index, status }) => `row ${index + 1} = "${status}"`).join('; ')}. ` +
+      `All statuses read: [${statuses.join(' | ')}].`,
+    ).toEqual([]);
+
+    logger.info('All quotes in the copy trip dialog show the expected status', { expectedStatus, statuses });
+    return statuses;
   },
 
   /**
@@ -7370,6 +7586,88 @@ const Cart = {
       flightNumber,
       `Expected copied trip to contain flight number "${storedFlightNumber}" but got "${flightNumber}"`,
     ).toBe(storedFlightNumber);
+  },
+
+  /**
+   * Reads the car type/class shown on the cart's car quote card, so a copied trip can be compared
+   * against the original.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The car type text (e.g. "Compact 4 doors")
+   */
+  async extractCarTypeFromCart(page) {
+    if (!page) throw new Error('[Cart.extractCarTypeFromCart] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    const carType = await cartPage.getFirstCarTypeText();
+
+    if (!carType) {
+      throw new Error(
+        '[Cart.extractCarTypeFromCart] The car quote card rendered an empty car type. The car quote ' +
+        'may not have finished loading, so there is no value to compare a copied trip against.'
+      );
+    }
+
+    logger.info('Extracted car type from cart', { carType });
+    return carType;
+  },
+
+  /**
+   * Verifies the copied trip's hotel quote shows the hotel name captured from the original trip.
+   *
+   * @param {import('playwright').Page} page - The copied trip's page
+   * @param {string} storedHotelName - Hotel name captured from the original trip
+   * @returns {Promise<string>} The hotel name read from the copied trip
+   */
+  async verifyTripHasSameHotelName(page, storedHotelName) {
+    if (!page) throw new Error('[Cart.verifyTripHasSameHotelName] "page" is required.');
+    if (!storedHotelName || typeof storedHotelName !== 'string') {
+      throw new Error(
+        `[Cart.verifyTripHasSameHotelName] "storedHotelName" must be a non-empty string, got: ` +
+        `${typeof storedHotelName} (${JSON.stringify(storedHotelName)}). ` +
+        `Capture it on the original trip first (step: "I extract the hotel name from cart").`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const hotelName = await cartPage.getHotelPreviewNameText();
+
+    expect(
+      hotelName,
+      `Expected the copied trip to contain the original hotel "${storedHotelName}" but its hotel quote ` +
+      `reads "${hotelName}".`,
+    ).toContain(storedHotelName);
+
+    return hotelName;
+  },
+
+  /**
+   * Verifies the copied trip's car quote shows the car type captured from the original trip.
+   *
+   * @param {import('playwright').Page} page - The copied trip's page
+   * @param {string} storedCarType - Car type captured from the original trip
+   * @returns {Promise<string>} The car type read from the copied trip
+   */
+  async verifyTripHasSameCarType(page, storedCarType) {
+    if (!page) throw new Error('[Cart.verifyTripHasSameCarType] "page" is required.');
+    if (!storedCarType || typeof storedCarType !== 'string') {
+      throw new Error(
+        `[Cart.verifyTripHasSameCarType] "storedCarType" must be a non-empty string, got: ` +
+        `${typeof storedCarType} (${JSON.stringify(storedCarType)}). ` +
+        `Capture it on the original trip first (step: "I store the car type from the cart").`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const carType = await cartPage.getFirstCarTypeText();
+
+    expect(
+      carType,
+      `Expected the copied trip to contain the original car type "${storedCarType}" but its car quote ` +
+      `reads "${carType}".`,
+    ).toBe(storedCarType);
+
+    return carType;
   },
 
   // ========================================

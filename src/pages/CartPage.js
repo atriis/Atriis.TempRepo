@@ -188,6 +188,14 @@ const SELECTORS = {
   COPY_TRIP_CONFIRM_BUTTON: ".copy-trip-dialog .app-footer .btn--primary",
   COPY_TRIP_CANNOT_COPY_INDICATOR: ".copy-trip-dialog .can-not-copy",
   COPY_TRIP_CANCEL_BUTTON: ".copy-trip-dialog .app-footer .cancel-btn",
+  // Copy-trip dialog body (copy-trip-modal.vue). The intro paragraph is anchored with a direct-child
+  // chain on purpose: `p.regular-text` is ALSO rendered inside each ineligible quote row ("This item
+  // can not be copied"), so an unanchored `.regular-text p` can resolve to the wrong paragraph.
+  COPY_TRIP_DIALOG_MESSAGE: '.copy-trip-dialog .cancel-trip-modal > .regular-text > p',
+  // One row per copied quote; read each row's own status label rather than a page-wide nth() so the
+  // assertion does not depend on which product occupies which row.
+  COPY_TRIP_DIALOG_QUOTE_ROW: '.copy-trip-dialog .quote-details-container .quote-details',
+  COPY_TRIP_DIALOG_QUOTE_STATUS: '.app-label--quote',
   TICKET_DETAILS_SECTION: ".ticket-details",
   SHOW_CANCELLED_ITEMS_OPTION: '.el-dropdown-menu__item',
   TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label='Trip cancellation'] .el-dialog__title",
@@ -530,6 +538,10 @@ const SELECTORS = {
   ADD_FLIGHT_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Flight")',
   ADD_PARKING_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Parking")',
   ADD_MANUAL_QUOTE_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Manual quote")',
+  // Car tile in the same carousel. Like Hotel (and unlike Flight/Parking) it opens the edit-search
+  // drawer: product-carousel.ts → productAction() emits `openDrawer` for every product except
+  // 'manual-quote', and the cart renders that drawer in place instead of routing away.
+  ADD_CAR_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Car")',
   ADD_HOTEL_SEARCH_DRAWER: '.app-drawer.atrs-edit-search-drawer',
   MANUAL_QUOTE_PAGE_CONTAINER: '.manual-quote-page',
 
@@ -656,6 +668,26 @@ const SELECTORS = {
   LOYALTY_SUCCESS_ICON: '.quote-extras--loyalty-number .success-icon.green',
   LOYALTY_CARD: '.quote-extras--loyalty-number .extras-card, .car-driver-loyalty, .quote-extras--container .extras-card:has-text("Loyalty ID")',
   LOYALTY_CHAIN_SELECTED_TEXT: '.quote-extras--loyalty-number .select-container .select-element:first-child .el-select .el-select__placeholder',
+  // Expander for the HOTEL loyalty extras specifically. The generic EDIT_EXTRAS_BUTTON is resolved by
+  // page-wide nth(index), so in a trip holding flight + hotel + car quote cards nth(0) opens the
+  // flight card's extras. This selector self-scopes to the hotel loyalty section.
+  HOTEL_LOYALTY_EXPAND: '.quote-extras--loyalty-number .is-clickable',
+
+  // Car driver loyalty extras (car-driver-loyalty.vue → <section class="car-driver-loyalty">).
+  // Deliberately NOT folded into the LOYALTY_* selectors above: those are either hotel-only
+  // (LOYALTY_SAVE_BUTTON, LOYALTY_SUCCESS_ICON) or `.first()`-resolved unions that would pick the
+  // hotel card when a trip holds both a hotel and a car.
+  CAR_DRIVER_LOYALTY_SECTION: '.car-driver-loyalty',
+  CAR_DRIVER_LOYALTY_EXPAND: '.car-driver-loyalty .is-clickable',
+  CAR_DRIVER_LOYALTY_INPUT: '.car-driver-loyalty .extras-card .inputs input.el-input__inner',
+  // Primary "Save" app-btn inside the panel's `.btns` row (carries the `no-border` class).
+  CAR_DRIVER_LOYALTY_SAVE_BUTTON: '.car-driver-loyalty .btns .no-border',
+  CAR_DRIVER_LOYALTY_SUCCESS_ICON: '.car-driver-loyalty .success-icon',
+
+  // Car type on the cart's car quote card (car-quote-card.vue → .car-title-block > h4.center-title).
+  // `.center-title` alone is unusable here — per-diem, parking, ground-transport and
+  // general-product quote cards all reuse that class.
+  CAR_QUOTE_CARD_TYPE_TITLE: '.car-quote-card .car-title-block h4.center-title',
 
   // EU Rail loyalty program extras (loyalty-program.vue) — <section class="loyalty-program">, no data-testid.
   // Tabs are <el-tabs>/<el-tab-pane> with values from LoyaltyTabs enum ('0' = New, '1' = Existing);
@@ -4319,6 +4351,28 @@ class CartPage {
     await this.page.locator(SELECTORS.ADD_HOTEL_SEARCH_DRAWER).waitFor({ state: 'visible', timeout });
   }
 
+  /**
+   * Clicks the Car button in the "Add more services" product carousel and waits for the
+   * edit-search drawer to open (the car search form renders in the drawer, not on a new route).
+   * @param {number} [timeout=10000]
+   */
+  async clickAddCarFromCarousel({ timeout = 10000 } = {}) {
+    const btn = this.page.locator(SELECTORS.ADD_CAR_CAROUSEL_BUTTON);
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      await btn.click();
+      await this.page.locator(SELECTORS.ADD_HOTEL_SEARCH_DRAWER).waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickAddCarFromCarousel] Could not open the car search drawer from the cart product ` +
+        `carousel (button: ${SELECTORS.ADD_CAR_CAROUSEL_BUTTON}, drawer: ${SELECTORS.ADD_HOTEL_SEARCH_DRAWER}). ` +
+        `Likely causes: the Car tile is not available for this user (product not accessible), it is ` +
+        `hidden behind the carousel's "more" overflow dropdown, or the drawer did not render within ` +
+        `${timeout}ms. Original: ${err.message}`
+      );
+    }
+  }
+
   // ===== CAR CROSS-SELL SUGGESTION (trip overview) =====
 
   /**
@@ -5728,6 +5782,118 @@ class CartPage {
     await addButton.click();
   }
 
+  /**
+   * Expands the HOTEL loyalty-number extras section and waits for its card to render.
+   * Scoped to `.quote-extras--loyalty-number` so it cannot open a sibling quote card's extras.
+   * @param {number} [timeout=15000]
+   */
+  async clickHotelLoyaltyExtrasExpand({ timeout = 15000 } = {}) {
+    const expander = this.page.locator(SELECTORS.HOTEL_LOYALTY_EXPAND).first();
+    try {
+      await expander.waitFor({ state: 'visible', timeout });
+      await expander.click();
+      await this.page.locator(SELECTORS.LOYALTY_CARD).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickHotelLoyaltyExtrasExpand] Could not expand the hotel loyalty-number extras ` +
+        `(expander: ${SELECTORS.HOTEL_LOYALTY_EXPAND}, card: ${SELECTORS.LOYALTY_CARD}). ` +
+        `Likely causes: the trip has no hotel quote, the hotel supplier does not expose a loyalty ` +
+        `section, or the quote card had not finished rendering within ${timeout}ms. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  // ===== CAR DRIVER LOYALTY EXTRAS (car-driver-loyalty.vue) =====
+
+  /**
+   * Expands the car driver loyalty extras section and waits for its loyalty input to render.
+   * @param {number} [timeout=15000]
+   */
+  async clickCarDriverLoyaltyExpand({ timeout = 15000 } = {}) {
+    const expander = this.page.locator(SELECTORS.CAR_DRIVER_LOYALTY_EXPAND).first();
+    try {
+      await expander.waitFor({ state: 'visible', timeout });
+      await expander.click();
+      await this.page
+        .locator(SELECTORS.CAR_DRIVER_LOYALTY_INPUT)
+        .first()
+        .waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickCarDriverLoyaltyExpand] Could not expand the car driver loyalty extras ` +
+        `(expander: ${SELECTORS.CAR_DRIVER_LOYALTY_EXPAND}, input: ${SELECTORS.CAR_DRIVER_LOYALTY_INPUT}). ` +
+        `Likely causes: the trip has no car quote, or the panel's data load (carService.getDriverId) ` +
+        `left the skeleton in place beyond ${timeout}ms. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Fills the Loyalty ID input in the car driver loyalty panel.
+   * @param {string} loyaltyNumber - Loyalty number to type
+   * @param {number} [timeout=10000]
+   */
+  async fillCarDriverLoyaltyNumber(loyaltyNumber, timeout = 10000) {
+    if (!loyaltyNumber || typeof loyaltyNumber !== 'string') {
+      throw new Error(
+        `[CartPage.fillCarDriverLoyaltyNumber] "loyaltyNumber" must be a non-empty string, got: ` +
+        `${typeof loyaltyNumber} (${JSON.stringify(loyaltyNumber)})`
+      );
+    }
+    const input = this.page.locator(SELECTORS.CAR_DRIVER_LOYALTY_INPUT).first();
+    try {
+      await input.waitFor({ state: 'visible', timeout });
+      await input.fill(loyaltyNumber);
+    } catch (err) {
+      throw new Error(
+        `[CartPage.fillCarDriverLoyaltyNumber] Could not fill the car Loyalty ID input with ` +
+        `"${loyaltyNumber}" (selector: ${SELECTORS.CAR_DRIVER_LOYALTY_INPUT}). Likely causes: the ` +
+        `panel is not expanded, or the input is disabled because the "Use existing" toggle is on. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks Save in the car driver loyalty panel.
+   * @param {number} [timeout=10000]
+   */
+  async clickCarDriverLoyaltySaveButton(timeout = 10000) {
+    const btn = this.page.locator(SELECTORS.CAR_DRIVER_LOYALTY_SAVE_BUTTON).first();
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      await btn.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickCarDriverLoyaltySaveButton] Could not click Save in the car driver loyalty ` +
+        `panel (selector: ${SELECTORS.CAR_DRIVER_LOYALTY_SAVE_BUTTON}). Likely causes: the panel is ` +
+        `not expanded, or a required Driver has not been selected so the button never rendered. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the success indicator on the car driver loyalty section after saving.
+   * @param {number} [timeout=30000]
+   */
+  async waitForCarDriverLoyaltySuccessIcon(timeout = 30000) {
+    try {
+      await this.page
+        .locator(SELECTORS.CAR_DRIVER_LOYALTY_SUCCESS_ICON)
+        .first()
+        .waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForCarDriverLoyaltySuccessIcon] The car driver loyalty section did not show ` +
+        `its success indicator within ${timeout}ms (selector: ${SELECTORS.CAR_DRIVER_LOYALTY_SUCCESS_ICON}). ` +
+        `Likely causes: carService.saveLoyaltyId returned an error (check for a red alert toast), or ` +
+        `the loyalty number was rejected as invalid. Original: ${err.message}`
+      );
+    }
+  }
+
   async clickLoyaltyAddButton() {
     const addButton = this.page.locator(SELECTORS.LOYALTY_ADD_BUTTON).first();
     await addButton.waitFor({ state: 'visible', timeout: 15000 });
@@ -6923,6 +7089,75 @@ class CartPage {
 
   getCopyTripCannotCopyIndicator() {
     return this.page.locator(SELECTORS.COPY_TRIP_CANNOT_COPY_INDICATOR).first();
+  }
+
+  /**
+   * Reads the intro paragraph of the copy-trip dialog
+   * (e.g. "The following items will be copied to a new trip").
+   * @param {number} [timeout=20000]
+   * @returns {Promise<string>}
+   */
+  async getCopyTripDialogMessageText(timeout = 20000) {
+    const message = this.page.locator(SELECTORS.COPY_TRIP_DIALOG_MESSAGE).first();
+    try {
+      await message.waitFor({ state: 'visible', timeout });
+      return (await message.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getCopyTripDialogMessageText] Could not read the copy-trip dialog intro message ` +
+        `(selector: ${SELECTORS.COPY_TRIP_DIALOG_MESSAGE}). Likely causes: the dialog is not open, or ` +
+        `it is still showing its loading mask while /copyTrip resolves. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the status label of every quote row listed in the copy-trip dialog, in row order.
+   * @param {number} [timeout=20000]
+   * @returns {Promise<string[]>}
+   */
+  async getCopyTripDialogQuoteStatuses(timeout = 20000) {
+    const rows = this.page.locator(SELECTORS.COPY_TRIP_DIALOG_QUOTE_ROW);
+    try {
+      await rows.first().waitFor({ state: 'visible', timeout });
+      const rowCount = await rows.count();
+      const statuses = [];
+      for (let i = 0; i < rowCount; i++) {
+        const label = rows.nth(i).locator(SELECTORS.COPY_TRIP_DIALOG_QUOTE_STATUS).first();
+        // An ineligible row renders a "can not be copied" warning instead of a status label, so
+        // record an empty string rather than failing the read — the DSL assertion reports it.
+        const text = ((await label.innerText().catch(() => '')) || '').trim();
+        statuses.push(text);
+      }
+      return statuses;
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getCopyTripDialogQuoteStatuses] Could not read the quote rows in the copy-trip ` +
+        `dialog (rows: ${SELECTORS.COPY_TRIP_DIALOG_QUOTE_ROW}, status: ${SELECTORS.COPY_TRIP_DIALOG_QUOTE_STATUS}). ` +
+        `Likely causes: the dialog is not open, or the trip's quotes had not loaded within ${timeout}ms. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the car type/class title from the first car quote card in the cart
+   * (e.g. "Compact 4 doors").
+   * @param {number} [timeout=30000]
+   * @returns {Promise<string>}
+   */
+  async getFirstCarTypeText(timeout = 30000) {
+    const title = this.page.locator(SELECTORS.CAR_QUOTE_CARD_TYPE_TITLE).first();
+    try {
+      await title.waitFor({ state: 'visible', timeout });
+      return (await title.innerText()).replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getFirstCarTypeText] Could not read the car type from the cart's car quote card ` +
+        `(selector: ${SELECTORS.CAR_QUOTE_CARD_TYPE_TITLE}). Likely causes: the trip has no car quote, ` +
+        `or the quote card had not rendered within ${timeout}ms. Original: ${err.message}`
+      );
+    }
   }
 
   async clickCopyTripCancelButton() {

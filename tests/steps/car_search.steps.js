@@ -20,6 +20,15 @@ When("I search for a car at {string}", async function (place) {
   this.carSearch = await CarSearch.searchCarByPlace(this.page, place);
 });
 
+// Car search run from the cart's edit-search drawer (opened by the Car tile in the product
+// carousel). No location parameter on purpose: the car drawer has no location field — it inherits
+// the pick-up location from the trip. Use "I search for a car at {string} ..." when the location
+// itself matters; that needs the standalone search page.
+When("I search for a car with {int} months ahead from the cart drawer", async function (monthsAhead) {
+  logger.info("Searching for car from cart drawer", { monthsAhead });
+  this.carSearch = await CarSearch.searchCarFromCartDrawer(this.page, monthsAhead);
+});
+
 When("I submit a car search at {string} without waiting for results", async function (place) {
   logger.info("Submitting car search without waiting for results (search expected to be blocked)", { place });
   this.carSearch = await CarSearch.submitCarSearchWithoutWaitingForResults(this.page, place);

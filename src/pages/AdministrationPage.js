@@ -44,6 +44,23 @@ const SELECTORS = {
   // Contact Information tab inside admin user view (ng-class contains contectInformation — note the typo in the AngularJS source)
   ADMIN_CONTACT_INFO_TAB: "[ng-class*='contectInformation']",
 
+  // Passports and Visas / Frequent flyer tabs inside the admin user view. Same `ng-class*=` pattern
+  // as FOP_TAB — the AngularJS markup is `ng-class="{'active': activeTab == CorporateUserTabs.<x>}"`.
+  ADMIN_PASSPORT_TAB: "[ng-class*='CorporateUserTabs.passport']",
+  ADMIN_FREQUENT_FLYER_TAB: "[ng-class*='CorporateUserTabs.frequent']",
+  // Section headers within a user-detail tab (e.g. "Add Passport", "Frequent flyer / Membership number")
+  ADMIN_FIELD_GROUP_HEADER: ".admin-field-group-header",
+  // Repeater rows for passports already saved on the profile
+  ADMIN_SAVED_PASSPORT_ROW: "[data-ng-repeat*='passport'], [ng-repeat*='passport']",
+  // Root of the admin user-detail form. Scopes value-absence reads to the profile being inspected —
+  // a page-wide text scan would also see trip/user ids and other numbers in the surrounding chrome
+  // and could fail an absence assertion on an unrelated match.
+  ADMIN_USER_DETAIL_FORM: "[user='selectedUser']",
+  // Leaving a user-detail tab with pending edits raises a jQuery-UI confirm. The SECOND button is
+  // "Proceed without saving" — DIALOG_CONFIRM_BTN (:first-child) is the opposite action, so it must
+  // NOT be reused here.
+  PROCEED_WITHOUT_SAVING_BTN: ".ui-dialog-buttonset button:has-text('Proceed without saving')",
+
   TRAVEL_POLICY_ACTION_LABEL: "[ng-switch-when='0'] > :nth-child(5) > :nth-child(1) label",
   TRAVEL_POLICY_SELECTED_DIRECTION: ".select2-choice .select2-chosen",
   TRAVEL_POLICY_SELECT2_TRIGGER: ".select2-choice",
@@ -549,6 +566,118 @@ class AdministrationPage {
         `[AdministrationPage.clickFopTab] Could not click the Form of Payment tab in the admin user view ` +
         `(selector: ${SELECTORS.FOP_TAB}). ` +
         `The user must be opened first and have a FOP tab. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Passports and Visas / Frequent flyer tabs in admin user view ---
+
+  /**
+   * Clicks the "Passports and Visas" tab in the admin user-detail view.
+   */
+  async clickPassportTab() {
+    try {
+      const tab = this.page.locator(SELECTORS.ADMIN_PASSPORT_TAB).first();
+      await tab.waitFor({ state: 'visible', timeout: 15000 });
+      await tab.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickPassportTab] Could not click the Passports and Visas tab in the admin ` +
+        `user view (selector: ${SELECTORS.ADMIN_PASSPORT_TAB}). ` +
+        `The user record must be opened first and the corporation must expose a passports tab. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the "Frequent flyer" tab in the admin user-detail view.
+   */
+  async clickFrequentFlyerTab() {
+    try {
+      const tab = this.page.locator(SELECTORS.ADMIN_FREQUENT_FLYER_TAB).first();
+      await tab.waitFor({ state: 'visible', timeout: 15000 });
+      await tab.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickFrequentFlyerTab] Could not click the Frequent flyer tab in the admin ` +
+        `user view (selector: ${SELECTORS.ADMIN_FREQUENT_FLYER_TAB}). ` +
+        `The user record must be opened first. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Dismisses the "Proceed without saving" jQuery-UI confirm if the admin raised it while
+   * switching user-detail tabs. Absence of the dialog is the normal case, so this is a no-op then.
+   * @param {number} [timeout=3000]
+   * @returns {Promise<boolean>} true if the dialog was dismissed
+   */
+  async dismissProceedWithoutSavingIfVisible(timeout = 3000) {
+    const btn = this.page.locator(SELECTORS.PROCEED_WITHOUT_SAVING_BTN).first();
+    const appeared = await btn
+      .waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false);
+    if (!appeared) return false;
+    try {
+      await btn.click({ timeout: 10000 });
+      await btn.waitFor({ state: 'hidden', timeout: 10000 });
+      return true;
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.dismissProceedWithoutSavingIfVisible] The "Proceed without saving" dialog ` +
+        `was visible but could not be dismissed (selector: ${SELECTORS.PROCEED_WITHOUT_SAVING_BTN}). ` +
+        `It blocks the tab switch, so the following assertions would read the previous tab. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Checks whether a user-detail section header with the given text is visible.
+   * @param {string} headerText - Header text to match (e.g. "Add Passport")
+   * @param {number} [timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async isFieldGroupHeaderVisible(headerText, timeout = 15000) {
+    if (!headerText || typeof headerText !== 'string') {
+      throw new Error(
+        `[AdministrationPage.isFieldGroupHeaderVisible] "headerText" must be a non-empty string, got: ` +
+        `${typeof headerText} (${JSON.stringify(headerText)})`
+      );
+    }
+    return this.page
+      .locator(SELECTORS.ADMIN_FIELD_GROUP_HEADER, { hasText: headerText })
+      .first()
+      .isVisible({ timeout })
+      .catch(() => false);
+  }
+
+  /**
+   * Counts passport rows already saved on the user's profile.
+   * @returns {Promise<number>}
+   */
+  async getSavedPassportRowCount() {
+    return this.page.locator(SELECTORS.ADMIN_SAVED_PASSPORT_ROW).count();
+  }
+
+  /**
+   * Returns the visible text of the admin user-detail page, after scrolling so lazily rendered
+   * lower sections (hotel/car loyalty groups) are in the DOM. Used for value-absence assertions.
+   * @returns {Promise<string>}
+   */
+  async getUserDetailVisibleText() {
+    try {
+      await this.scrollAdminFormToBottom();
+      const form = this.page.locator(SELECTORS.ADMIN_USER_DETAIL_FORM).first();
+      await form.waitFor({ state: 'attached', timeout: 15000 });
+      return ((await form.innerText()) || '').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getUserDetailVisibleText] Could not read the admin user-detail form text ` +
+        `after scrolling (selector: ${SELECTORS.ADMIN_USER_DETAIL_FORM}). Likely causes: no user record ` +
+        `is open, or the admin tab navigated away mid-read. Original: ${err.message}`
       );
     }
   }
