@@ -106,7 +106,6 @@ Feature: 76707 Amadeus city center exact location address display
         "isNewUi": true,
         "isMobile": false,
         "isOnhold": false,
-        "newUi3DsReturnUrl": "https://atriis-stg.app/payment-token/",
         "travelerContactDetails": null
       }
       """

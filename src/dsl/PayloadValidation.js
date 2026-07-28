@@ -70,10 +70,36 @@ function parseBlockExpression(expectedText) {
 
 function extractXmlBlocksByTag(xmlPayload, blockTag) {
   const safeTag = escapeRegex(blockTag);
-  // Matches either a self-closing element (<Tag .../>) or a paired element (<Tag ...>...</Tag>)
-  const regex = new RegExp(`<${safeTag}\\b[^>]*?(?:\\/>|>[\\s\\S]*?<\\/${safeTag}>)`, "gi");
-  const matches = xmlPayload.match(regex);
-  return matches || [];
+  // Namespace-agnostic on both sides: find an opening tag for blockTag regardless of any
+  // namespace prefix (e.g. <vehicle:VehicleLocation>), then independently scan forward for
+  // the next closing tag with the same local name, whatever ITS prefix is. The two sides are
+  // never required to share a prefix - simpler and less fragile than parsing/backreferencing
+  // the exact prefix, and it still works for plain (unprefixed) tags used by other suppliers.
+  const openTagRegex = new RegExp(`<(?:[\\w.-]+:)?${safeTag}\\b[^>]*>`, "gi");
+  const closeTagRegex = new RegExp(`<\\/(?:[\\w.-]+:)?${safeTag}>`, "i");
+
+  const blocks = [];
+  let openMatch;
+  while ((openMatch = openTagRegex.exec(xmlPayload)) !== null) {
+    const openTag = openMatch[0];
+
+    if (openTag.endsWith("/>")) {
+      blocks.push(openTag);
+      continue;
+    }
+
+    const searchFrom = openMatch.index + openTag.length;
+    const closeMatch = closeTagRegex.exec(xmlPayload.slice(searchFrom));
+    if (!closeMatch) {
+      continue; // No closing tag found below this open tag - skip it.
+    }
+
+    const blockEnd = searchFrom + closeMatch.index + closeMatch[0].length;
+    blocks.push(xmlPayload.slice(openMatch.index, blockEnd));
+    openTagRegex.lastIndex = blockEnd;
+  }
+
+  return blocks;
 }
 
 function normalizeRequestType(requestType) {
@@ -291,7 +317,9 @@ function extractXmlKeyValuePairs(xmlString) {
   // Match opening tags (with or without attributes) and simple content:
   // <tag>content</tag> or <tag attr="...">content</tag>
   // The opening tag may carry attributes (e.g. xmlns) before the closing ">".
-  const tagRegex = /<([a-zA-Z][a-zA-Z0-9]*?)(?:\s[^>]*)?>([^<]*?)<\/\1>/g;
+  // Tag names may be namespace-qualified (e.g. <common_v54_0:Street>...</common_v54_0:Street>),
+  // so the name can contain underscores, digits, hyphens, periods, and a colon-separated prefix.
+  const tagRegex = /<([a-zA-Z_][\w.-]*(?::[a-zA-Z_][\w.-]*)?)(?:\s[^>]*)?>([^<]*?)<\/\1>/g;
 
   let match;
   while ((match = tagRegex.exec(xmlString)) !== null) {
