@@ -580,6 +580,12 @@ class CarResultsPage {
   }
 
   async openFirstLocationLinkInResults() {
+    // The Google Maps link only renders inside the location-details tooltip
+    // (el-tooltip trigger="click" in car-location-details-tooltip.vue) - it isn't shown
+    // eagerly, so "Location details" must be clicked to open it first, on both the results
+    // page (car-preview.vue) and the cart's car quote card (car-quote-card.vue).
+    await this.openLocationDetailsTooltipByIndex(0);
+
     const link = this.page.locator(SELECTORS.FIRST_LOCATION_LINK).first();
     await link.waitFor({ state: 'visible', timeout: 30000 });
 

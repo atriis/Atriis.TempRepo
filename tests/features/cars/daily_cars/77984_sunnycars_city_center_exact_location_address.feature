@@ -8,7 +8,7 @@ Feature: 77984 SunnyCars - Cars - City Centre Exact Location
   So that I can confirm the exact pickup location before completing the trip
 
   Scenario Outline: SunnyCars city center location and address second line are consistent across booking flow
-    Given I am logged in as "automation@sunnycar.tlc" booking a new trip
+    Given I am logged in as "automation@sunnycar.gdg" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "<pickupLocation>" with rental agency "<agency>" and 1 months ahead
     And the agency station label should contain "<expectedAgencyStationLabel>" and address should contain "<expectedAgencyStationAddress>" on the vendor list

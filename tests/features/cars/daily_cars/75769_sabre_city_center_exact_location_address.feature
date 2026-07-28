@@ -7,7 +7,7 @@ Feature: 75769 Sabre city center exact location address display
   So that I can confirm the exact pickup location before completing the trip
 
   Scenario Outline: Sabre city center location and label are consistent across booking flow
-    Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
+    Given I am logged in as "automation@galileo.gdg" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "<pickupLocation>" with rental agency "<agency>"
     And the agency station label should contain "<expectedAgencyStationLabel>" and address should contain "<expectedAddressOnResults>" on the vendor list
