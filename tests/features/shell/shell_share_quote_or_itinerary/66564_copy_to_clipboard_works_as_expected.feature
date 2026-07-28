@@ -16,6 +16,7 @@ Feature: 66564 Copy to clipboard works as expected
   Scenario: Copy to clipboard in the results page share dialog works as expected
     Given I am logged in as "jskrl@jskrl.com" booking a new trip
     And I have added myself as the traveler
+    And I dismiss the mandatory notifications popup if displayed
     When I search for a round trip flight from "EWR" to "LAX"
     And flight results should be available
     And I click on the "Share" button

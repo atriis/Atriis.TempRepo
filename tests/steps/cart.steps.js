@@ -1478,6 +1478,17 @@ Then("a push notification should be displayed", async function () {
   await Cart.verifyPushNotificationDisplayed(this.page);
 });
 
+// Soft/optional dismissal — acknowledges the "Mandatory Notifications" modal if the corporation has a
+// pending notification for the traveler, and silently no-ops when it doesn't. Use it in flows that are
+// NOT about notifications: the modal opens by itself after the traveler is added and its overlay
+// intercepts every later click until the step budget runs out.
+// For a strict version that FAILS when the popup is missing, use:
+// "the mandatory notifications popup should be displayed" + "I acknowledge the push notification".
+When("I dismiss the mandatory notifications popup if displayed", async function () {
+  logger.info("Dismissing the mandatory notifications popup if it is displayed");
+  await Cart.dismissMandatoryNotificationsPopupIfVisible(this.page);
+});
+
 // ===== HYPERLINKS IN PUSH NOTIFICATIONS (test 73097) =====
 
 // Non-dismissing assertion that the mandatory-notifications popup is displayed. Unlike "a push

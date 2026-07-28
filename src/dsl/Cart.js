@@ -4044,6 +4044,38 @@ const Cart = {
   },
 
   /**
+   * Acknowledges the "Mandatory Notifications" popup only if it happens to be open, and does nothing
+   * when it is not. Soft by design — unlike acknowledgePushNotification, which requires the popup.
+   *
+   * A corporation can have an unacknowledged mandatory notification pending for the traveler, in which
+   * case this modal opens on its own once the traveler is added. It is `aria-modal` with an overlay, so
+   * it silently intercepts every following click ("... subtree intercepts pointer events") until the
+   * whole step budget is gone. Use this in flows that don't test notifications so an environment-level
+   * reminder can't block them; assert with "the mandatory notifications popup should be displayed" when
+   * the popup itself is under test.
+   *
+   * Title-scoped via getMandatoryNotificationsDialog so it never eats a reference-fields popup, which
+   * renders as the same `.el-dialog.app-dialog`.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{dismissed: boolean}>}
+   */
+  async dismissMandatoryNotificationsPopupIfVisible(page) {
+    if (!page) throw new Error('[Cart.dismissMandatoryNotificationsPopupIfVisible] "page" is required.');
+    const commonPage = getPageObject(page, CommonPage);
+
+    const visible = await commonPage.isMandatoryNotificationsPopupVisible({ timeout: 10000 });
+    if (!visible) {
+      logger.debug('No mandatory-notifications popup is open — nothing to dismiss');
+      return { dismissed: false };
+    }
+
+    logger.info('Dismissing the mandatory-notifications popup so it cannot intercept later clicks');
+    await commonPage.acknowledgeMandatoryNotificationsPopup();
+    return { dismissed: true };
+  },
+
+  /**
    * Opens the cart notification panel (header bell) and clicks the hyperlink inside a notification
    * message, returning the tab it opens in a new window so the caller can verify the linked page
    * (test 73097).
