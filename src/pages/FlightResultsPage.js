@@ -269,6 +269,7 @@ const SELECTORS = {
   SEPARATED_TICKETS_TAG: 'p.separated-tickets-tag',
   SEPARATED_TICKETS_TEXT: 'Separated Tickets',
   AGREEMENT_ICON: '.agreement-icon',
+  INSTANT_PURCHASE_LABEL: '.instant-purchase',
 
   // Unused ticket eligibility tag on a flight result card (flight-preview.vue). No data-testid,
   // so matched by the translated label text ($t('flight.unusedTicketsAvailable')).
@@ -2564,6 +2565,24 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       await firstResult.waitFor({ state: 'visible', timeout });
 
       const locator = firstResult.locator(SELECTORS.AGREEMENT_ICON).first();
+      await locator.waitFor({ state: 'attached', timeout });
+      return await locator.isVisible();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Checks if the "Instant Purchase" label is visible in the first flight result.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async isInstantPurchaseLabelVisibleInFirstResult(timeout = 15000) {
+    try {
+      const firstResult = this.page.locator(SELECTORS.FLIGHT_PREVIEW).first();
+      await firstResult.waitFor({ state: 'visible', timeout });
+
+      const locator = firstResult.locator(SELECTORS.INSTANT_PURCHASE_LABEL).first();
       await locator.waitFor({ state: 'attached', timeout });
       return await locator.isVisible();
     } catch {

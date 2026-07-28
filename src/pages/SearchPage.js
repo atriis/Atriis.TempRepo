@@ -990,7 +990,12 @@ class SearchPage {
       SELECTORS.FLIGHT_SEARCH_BUTTON_PRIMARY,
       { timeout: 10000 }
     );
-    await searchButton.click();
+    // This button's own click handler synchronously closes/unmounts its container (the
+    // from-cart search drawer) before the subsequent navigation completes, which races
+    // Playwright's built-in hover/stability actionability check and can fail with
+    // "element was detached from the DOM" even though the click's effect already fired.
+    // Safe to force: visibility and enabled-state are already explicitly verified above.
+    await searchButton.click({ force: true });
   }
 
   /**

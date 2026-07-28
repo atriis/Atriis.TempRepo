@@ -1428,6 +1428,11 @@ When("I click to add a flight to my trip from cart", async function () {
   await Cart.clickAddFlightFromCart(this.page);
 });
 
+When("I click to add parking to my trip from cart", async function () {
+  logger.info("Clicking to add parking from cart product carousel");
+  await Cart.clickAddParkingFromCart(this.page);
+});
+
 When("I navigate to the manual quote search page from the cart", async function () {
   logger.info("Navigating to manual quote search page from cart product carousel");
   await Cart.navigateToManualQuoteFromCart(this.page);

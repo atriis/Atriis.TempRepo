@@ -1,7 +1,7 @@
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
-const { UKParkingSearch } = require("../../src/dsl");
+const { UKParkingSearch, UKParkingResults, UKParkingCart } = require("../../src/dsl");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { expect } = require("@playwright/test");
@@ -18,16 +18,9 @@ When("I search for UK parking at {string}", async function (airport) {
 
 When("I fill in UK parking trip details with mobile {string}, car make {string}, model {string}, registration {string}, colour {string}, outbound flight {string}, terminal {string}, return flight {string} and return terminal {string}", async function (mobile, carMake, model, registration, colour, outboundFlight, terminal, returnFlight, returnTerminal) {
   logger.info("Filling in UK parking trip details", { mobile, carMake, model, registration, colour, outboundFlight, terminal, returnFlight, returnTerminal });
-  // TODO: implement UKParkingCart.fillTripOverviewDetails(page, { mobile, carMake, model, registration, colour, outboundFlight, terminal, returnFlight, returnTerminal })
-  // Needs a new DSL method in src/dsl/UKParkingCart.js that:
-  //   1. Waits for contact information section to be visible (.contact-information .card-title)
-  //   2. Expands contact information (.contact-information .is-clickable) and fills mobile number ([type='number'])
-  //   3. Fills vehicle details: car make ([placeholder='Volkswagen']), model ([placeholder='Golf']),
-  //      registration ([placeholder='BD51 SMR']), colour ([placeholder='Silver'])
-  //   4. Expands delivery/pickup section (.delivery-pickup .is-clickable) and fills flight details
-  //   5. Fills outbound flight (.inputs > div:nth-of-type(2) [type='text']), terminal (:nth-of-type(3)),
-  //      return flight (:nth-of-type(4)), return terminal (:nth-of-type(5))
-  throw new Error("TODO: implement UKParkingCart.fillTripOverviewDetails DSL method in src/dsl/UKParkingCart.js");
+  await UKParkingCart.fillTripOverviewDetails(this.page, {
+    mobile, carMake, model, registration, colour, outboundFlight, terminal, returnFlight, returnTerminal,
+  });
 });
 
 When("I edit the UK parking search from the results page", async function () {
@@ -70,6 +63,11 @@ When("I click the parking tab in the cart trip bar", async function () {
 When("I close the parking search panel", async function () {
   logger.info("Closing parking search panel");
   await this.page.click(".close-btn");
+});
+
+When("I select the first parking filter option", async function () {
+  logger.info("Selecting first parking filter option");
+  await UKParkingResults.selectFirstFilterOption(this.page);
 });
 
 When("I add a guest with user group as primary traveler", async function () {

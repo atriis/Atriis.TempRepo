@@ -330,6 +330,41 @@ const Search = {
   },
 
   /**
+   * Adds a random guest traveler with a specific email address.
+   * All other data (name, DOB, phone) is randomly generated.
+   * @param {Object} page - Playwright page instance
+   * @param {string} email - Guest's email address
+   * @returns {{ added: boolean, starIconVisible: boolean, guestData: Object }}
+   */
+  async addRandomGuestWithEmail(page, email) {
+    if (!page) throw new Error('page is required');
+    if (!email || typeof email !== 'string') throw new Error('email must be a non-empty string');
+
+    const searchPage = getPageObject(page, SearchPage);
+    const { firstName, lastName, dateOfBirth, phone } = generateRandomGuestData();
+
+    await searchPage.clickAddTravelerButton();
+    await searchPage.clickAddGuestTravelerButton();
+    await searchPage.fillInRandomFirstName(firstName);
+    await searchPage.fillInRandomLastName(lastName);
+    await searchPage.selectGenderMale();
+    await searchPage.fillInRandomDateOfBirth(dateOfBirth);
+    await searchPage.fillInRandomEmail(email);
+    await searchPage.fillInRandomPhone(phone);
+    await searchPage.clickAddGuestButton();
+
+    const starIconVisible = await searchPage.isStarIconVisible();
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
+
+    return {
+      added: true,
+      starIconVisible,
+      selectedTravelerCount,
+      guestData: { firstName, lastName, dateOfBirth, email, phone },
+    };
+  },
+
+  /**
    * Adds a guest traveler with a specific first/last name and user group.
    * Selects "Users Group" in the copy-settings section, then picks the given group
    * before filling in personal details and submitting.

@@ -18,10 +18,9 @@ const UKParkingSearch = {
    * 1. Navigates to the parking tab
    * 2. Fills in the airport
    * 3. Selects parking start date
-   * 4. Sets default start time
-   * 5. Selects return date
-   * 6. Sets return time
-   * 7. Executes the search
+   * 4. Selects return date
+   * 5. Ensures both required times hold a value
+   * 6. Executes the search and confirms it was accepted
    *
    * @param {Object} page - Playwright page instance
    * @param {string} airport - UK Airport name or code (e.g., "Heathrow", "LHR")
@@ -59,39 +58,57 @@ const UKParkingSearch = {
     // 1. Navigate to parking tab
     await ukParkingSearchPage.clickParkingTab();
 
-    // 2. Fill in airport
+    // 2. Fill in airport, once the form has finished rendering/animating in
+    await ukParkingSearchPage.waitForSearchFormReady();
     await ukParkingSearchPage.typeUKAirport(airport);
-
-    // Wait for airport suggestions to load (UI requirement)
-    await page.waitForTimeout(500);
 
     // 3. Select parking start date
     await ukParkingSearchPage.clickParkingFromDateField();
-    // Wait for calendar to open after clicking parking from date field
-    await page.waitForTimeout(500);
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: parkingFromIndex,
       endIndex: null, // Single date selection for parking start
     });
 
-    // 4. Set default times (required by UI to enable submission)
-    await ukParkingSearchPage.clickFirstStartTimeField();
+    // 4. Select return date. Arrival and return are two independent single-date pickers, so the
+    // arrival popper must be fully gone before the return one opens — selectDatesByNthAvailable
+    // picks from the first VISIBLE panel, and a still-closing arrival panel would swallow the
+    // clicks, leaving the return date at its prefilled value (which the app then rejects as an
+    // "Invalid date" because it precedes the newly chosen arrival).
+    await ukParkingSearchPage.waitForNoOpenDatePicker();
 
-    // 5. Select return date
     await ukParkingSearchPage.clickReturnDateField();
-    // Wait for calendar to open after clicking return date field
-    await page.waitForTimeout(500);
     await selectDatesByNthAvailable(page, {
       startIndex: returnIndex,
       endIndex: null, // Single date selection for return
     });
 
-    // 6. Set return time
-    await ukParkingSearchPage.clickSecondTimeField();
+    // 5. Both times are required. From the cart they arrive prefilled from the trip's search
+    // suggestion; on a new trip they start empty and must be primed. Priming only when empty
+    // keeps the timepicker popper closed in the prefilled case, where an open popper would cover
+    // the Search button and swallow the submit click.
+    await ukParkingSearchPage.ensureDropOffTimeIsSet();
+    await ukParkingSearchPage.ensureReturnTimeIsSet();
 
-    // 7. Execute search
-    await searchPage.clickSearchButton();
+    // 6. Execute search
+    // The primary-class-specific button avoids a strict-mode violation: when this search
+    // runs from the cart's "add parking" drawer, the trip overview behind it renders its
+    // own unrelated ".search-btn" alongside the drawer's — the "btn--primary" class is the
+    // one distinguishing selector present in both this and the general search-page context.
+    await searchPage.waitAndClickPrimarySearchButtonFromCart();
+
+    // The click is forced (see waitAndClickPrimarySearchButtonFromCart), so a rejected submit
+    // looks identical to a successful one from here. The form validates on submit and renders the
+    // reason in place instead of navigating, so surface that text rather than letting it become an
+    // opaque 120s "waiting for Add to trip" timeout on a results page that was never requested.
+    const outcome = await ukParkingSearchPage.waitForSearchOutcome();
+    if (outcome === 'rejected') {
+      const messages = await ukParkingSearchPage.getValidationMessages();
+      throw new Error(
+        `[UKParkingSearch.searchUKParking] The parking search form rejected the Search click and ` +
+        `stayed open: ${messages.join('; ')}. No results page was requested.`
+      );
+    }
   },
 };
 

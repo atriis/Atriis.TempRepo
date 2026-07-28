@@ -135,6 +135,14 @@ Given("I have added a random guest traveler with name {string} {string}", async 
   this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
+Given("I have added a random guest traveler with email {string}", async function (email) {
+  logger.info("Adding random guest traveler with fixed email", { email });
+  const result = await Search.addRandomGuestWithEmail(this.page, email);
+  expect(result.added, "Guest traveler should be added").toBe(true);
+  this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
+  this.selectedTravelerCount = result.selectedTravelerCount;
+});
+
 Given("I have added a random guest traveler with middle name {string}", async function (middleName) {
   logger.info("Adding random guest traveler with middle name", { middleName });
   const result = await Search.addRandomGuestWithMiddleName(this.page, middleName);

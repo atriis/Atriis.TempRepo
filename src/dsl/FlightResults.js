@@ -2291,6 +2291,17 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Verifies the "Instant Purchase" label is visible in the first flight result.
+   * @param {import('playwright').Page} page
+   */
+  async verifyInstantPurchaseLabelVisibleInFirstResult(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const visible = await flightResultsPage.isInstantPurchaseLabelVisibleInFirstResult();
+    expect(visible, '"Instant Purchase" label should be visible in the first flight result').toBe(true);
+  },
+
+  /**
    * Verifies a flight result displays the expected info label (e.g. "NDC direct rate").
    * @param {import('playwright').Page} page
    * @param {string} expectedText - The expected label text

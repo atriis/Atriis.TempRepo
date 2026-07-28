@@ -528,6 +528,7 @@ const SELECTORS = {
   // Add product from cart product carousel
   ADD_HOTEL_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Hotel")',
   ADD_FLIGHT_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Flight")',
+  ADD_PARKING_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Parking")',
   ADD_MANUAL_QUOTE_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Manual quote")',
   ADD_HOTEL_SEARCH_DRAWER: '.app-drawer.atrs-edit-search-drawer',
   MANUAL_QUOTE_PAGE_CONTAINER: '.manual-quote-page',
@@ -4357,6 +4358,18 @@ class CartPage {
    */
   async clickAddFlightFromCarousel({ timeout = 10000 } = {}) {
     const btn = this.page.locator(SELECTORS.ADD_FLIGHT_CAROUSEL_BUTTON);
+    await btn.waitFor({ state: 'visible', timeout });
+    await btn.click();
+    await this.page.waitForLoadState('networkidle', { timeout: 30000 });
+  }
+
+  /**
+   * Clicks the Parking button in the "Add more services" product carousel.
+   * Navigates to the parking search page.
+   * @param {number} [timeout=10000]
+   */
+  async clickAddParkingFromCarousel({ timeout = 10000 } = {}) {
+    const btn = this.page.locator(SELECTORS.ADD_PARKING_CAROUSEL_BUTTON);
     await btn.waitFor({ state: 'visible', timeout });
     await btn.click();
     await this.page.waitForLoadState('networkidle', { timeout: 30000 });

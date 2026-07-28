@@ -3813,6 +3813,19 @@ const Cart = {
   },
 
   /**
+   * Clicks the Parking button from the "Add more services" product carousel in the cart.
+   * Navigates to the parking search page.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async clickAddParkingFromCart(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickAddParkingFromCarousel();
+  },
+
+  /**
    * Clicks the "Manual quote" button from the "Add more services" product carousel
    * in the cart and waits for the manual-quote page to load. Used when the trip
    * already has at least one item in the cart and the user wants to add a manual
