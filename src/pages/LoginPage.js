@@ -16,7 +16,71 @@ const SELECTORS = {
   // Covers both the default id (#ch2-allow-all-btn) and the role-based fallback.
   COOKIE_ALLOW_ALL_BUTTON:
     '#ch2-allow-all-btn, button:has-text("Allow all cookies"), button:has-text("Allow all"), button:has-text("Accept all")',
+
+  // ===== Two-factor (2FA) verification screen (/identity/2fa) =====
+  // Shown instead of the homepage when a 2FA-enabled user submits valid credentials. Like the
+  // login and logout screens it is served by the auth service (ASP.NET MVC), so it is not in
+  // Atriis.App and has no data-testid — these were read off the live staging DOM.
+  //
+  // Capital C, and NOT the "#code"/"#resetText" ids in the legacy Testim test: that test predates
+  // the current identity screen, whose submit button has no id at all.
+  //
+  // The code field only exists on this screen, so it doubles as the "prompt is displayed" anchor.
+  // Deliberately not the "we've emailed you the verification code" heading: that wording is
+  // localized and interpolates the user's first name.
+  VERIFICATION_CODE_INPUT: "#Code",
+  VERIFICATION_SUBMIT_BUTTON: "input[type='submit'].loginButtonSubmit",
+  // Validation messages on the 2FA screen ("Code you provided is incorrect or expired.",
+  // "Final chance to enter the correct code.") render in the MVC validation summary. Scoped to
+  // that container on purpose: the page also carries 27 background-slideshow <li> thumbnails, so
+  // a bare "li" matches an <img> thumbnail first. Text-agnostic, because the wording is the value
+  // under assertion — anchoring the selector on it would be circular (wrong wording = element
+  // never found = opaque timeout instead of a text diff).
+  VERIFICATION_MESSAGE: ".validation-summary-errors li",
+  // Subtitle paragraph under the login screen's "Welcome back" heading, inside the same
+  // ".welcome" wrapper the logout confirmation uses. Text-agnostic for the reason above.
+  LOGIN_SUBTITLE: ".welcome p",
 };
+
+/**
+ * Waits for the first element matching `selector` that contains `expectedText` and returns its
+ * normalized text.
+ *
+ * When the expected wording never appears, the text currently rendered by the first matching
+ * element is returned instead, so the caller's assertion reports a readable text diff rather
+ * than an opaque timeout. Only a selector that matches nothing at all is a structural failure
+ * and throws.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} selector - A SELECTORS entry
+ * @param {string} expectedText - The wording the caller expects to be displayed
+ * @param {number} timeout - Max wait for the expected wording to render
+ * @param {string} methodName - Calling method, for the error prefix
+ * @returns {Promise<string>} The normalized text actually displayed
+ */
+async function readTextWhenDisplayed(page, selector, expectedText, timeout, methodName) {
+  const expected = page.locator(selector).filter({ hasText: expectedText }).first();
+
+  try {
+    await expected.waitFor({ state: "visible", timeout });
+    const text = (await expected.textContent()) || "";
+    return text.replace(/\s+/g, " ").trim();
+  } catch (error) {
+    const anyMatch = page.locator(selector).first();
+    const shown = await anyMatch.textContent().catch(() => null);
+
+    if (shown === null) {
+      throw new Error(
+        `[LoginPage.${methodName}] No element matching "${selector}" was rendered within ` +
+        `${timeout}ms while waiting for "${expectedText}". The screen under test is probably not ` +
+        `the one expected — the previous action may not have submitted, or the flow moved on. ` +
+        `Original: ${error.message}`
+      );
+    }
+
+    return shown.replace(/\s+/g, " ").trim();
+  }
+}
 
 class LoginPage {
   constructor(page) {
@@ -98,6 +162,83 @@ class LoginPage {
 
     const text = (await errorMessage.textContent()) || "";
     return text.replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Waits for the two-factor verification code field, which is the anchor for "the verification
+   * code prompt is displayed".
+   *
+   * @param {number} [timeout=60000] - Max wait for the 2FA screen to render
+   */
+  async waitForVerificationCodeField(timeout = 60000) {
+    try {
+      await this.page
+        .locator(SELECTORS.VERIFICATION_CODE_INPUT)
+        .waitFor({ state: "visible", timeout });
+    } catch (error) {
+      throw new Error(
+        `[LoginPage.waitForVerificationCodeField] The verification code field ` +
+        `("${SELECTORS.VERIFICATION_CODE_INPUT}") did not become visible within ${timeout}ms. ` +
+        `The user may not have two-factor authentication enabled, or the credentials were ` +
+        `rejected before the code screen was reached. Original: ${error.message}`
+      );
+    }
+  }
+
+  /**
+   * Types a verification code into the 2FA code field, replacing any previous value.
+   * @param {string} code - The code to submit
+   */
+  async fillVerificationCode(code) {
+    await this.page.locator(SELECTORS.VERIFICATION_CODE_INPUT).fill(code);
+  }
+
+  /**
+   * Submits the entered verification code.
+   *
+   * No noWaitAfter here (unlike clickLoginButton): submitting is a full form POST that reloads
+   * the screen, and the reload must finish before the caller reads the validation message —
+   * otherwise the message left over from the previous attempt could be read instead.
+   */
+  async clickVerificationSubmitButton() {
+    await this.page.locator(SELECTORS.VERIFICATION_SUBMIT_BUTTON).first().click();
+    await this.page.waitForLoadState("domcontentloaded");
+  }
+
+  /**
+   * Reads the validation message shown on the 2FA screen after a submitted code is rejected
+   * (both the "incorrect or expired" error and the final-attempt warning render here).
+   * The expected wording is asserted by the caller.
+   *
+   * @param {string} expectedText - The wording the caller expects
+   * @param {number} [timeout=30000] - Max wait for the message to render
+   * @returns {Promise<string>} The normalized message actually displayed
+   */
+  async getVerificationMessage(expectedText, timeout = 30000) {
+    return readTextWhenDisplayed(
+      this.page,
+      SELECTORS.VERIFICATION_MESSAGE,
+      expectedText,
+      timeout,
+      "getVerificationMessage"
+    );
+  }
+
+  /**
+   * Reads the login screen's subtitle. The expected wording is asserted by the caller.
+   *
+   * @param {string} expectedText - The wording the caller expects
+   * @param {number} [timeout=30000] - Max wait for the login screen to render
+   * @returns {Promise<string>} The normalized subtitle actually displayed
+   */
+  async getLoginSubtitle(expectedText, timeout = 30000) {
+    return readTextWhenDisplayed(
+      this.page,
+      SELECTORS.LOGIN_SUBTITLE,
+      expectedText,
+      timeout,
+      "getLoginSubtitle"
+    );
   }
 
   /**

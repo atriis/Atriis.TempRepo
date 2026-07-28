@@ -151,6 +151,161 @@ const App = {
   },
 
   /**
+   * Submits valid credentials for a two-factor-enabled user and returns once the verification
+   * code screen is ready to accept a code.
+   *
+   * Kept separate from App.login: that flow ends by waiting for the menu's logout icon, which
+   * never appears for a 2FA user because authentication stops at the code prompt — that wait
+   * would burn the step budget and fail with an opaque timeout instead of the real reason.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} email - A user with two-factor authentication enabled
+   */
+  async loginTriggeringTwoFactor(page, email) {
+    if (!page) throw new Error('page is required');
+    if (!email || typeof email !== 'string') {
+      throw new Error('email must be a non-empty string, got: ' + typeof email);
+    }
+
+    logger.debug('Logging in with a two-factor-enabled user', { email });
+
+    try {
+      await page.goto(config.baseUrl, { waitUntil: 'domcontentloaded' });
+      await submitLoginForm(page, email);
+    } catch (error) {
+      throw new Error(
+        `[App.loginTriggeringTwoFactor] Could not submit the login form as "${email}" at ` +
+        `${config.baseUrl}. The login page may not have loaded or the form fields moved. ` +
+        `Original: ${error.message}`
+      );
+    }
+  },
+
+  /**
+   * Waits for the two-factor verification code prompt to be displayed.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{displayed: boolean}>} Resolves once the code prompt is visible
+   */
+  async waitForTwoFactorPromptDisplayed(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    logger.debug('Waiting for the two-factor verification code prompt');
+
+    try {
+      const loginPage = getPageObject(page, LoginPage);
+      await loginPage.waitForVerificationCodeField();
+      return { displayed: true };
+    } catch (error) {
+      throw new Error(
+        `[App.waitForTwoFactorPromptDisplayed] The two-factor verification code prompt was not ` +
+        `displayed after signing in. The account may not have two-factor authentication enabled. ` +
+        `Original: ${error.message}`
+      );
+    }
+  },
+
+  /**
+   * Submits a deliberately wrong code on the two-factor screen.
+   *
+   * The code is derived from the attempt number so every attempt sends a different one: reusing
+   * one value would leave the test unable to tell a fresh rejection from an unchanged form. The
+   * digit that varies comes FIRST, so the codes stay distinct even if the field truncates the
+   * input to a shorter maximum length.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} attemptNumber - 1-based attempt counter, used to build a unique wrong code
+   * @returns {Promise<{code: string}>} The code that was submitted
+   */
+  async enterIncorrectVerificationCode(page, attemptNumber) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!Number.isInteger(attemptNumber) || attemptNumber < 1) {
+      throw new Error('attemptNumber must be an integer >= 1, got: ' + attemptNumber);
+    }
+
+    const code = `${attemptNumber}00000`;
+
+    logger.debug('Submitting an incorrect verification code', { attemptNumber, code });
+
+    try {
+      const loginPage = getPageObject(page, LoginPage);
+      await loginPage.fillVerificationCode(code);
+      await loginPage.clickVerificationSubmitButton();
+      return { code };
+    } catch (error) {
+      throw new Error(
+        `[App.enterIncorrectVerificationCode] Could not submit the verification code "${code}" ` +
+        `(attempt ${attemptNumber}). The two-factor screen may have already been left — for ` +
+        `example after the attempt limit locked the user out. Original: ${error.message}`
+      );
+    }
+  },
+
+  /**
+   * Reads the validation message shown on the two-factor screen after a code is rejected.
+   * Serves both the "incorrect or expired" error and the final-attempt warning — they render in
+   * the same element. The expected wording is asserted by the calling step.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMessage - The wording the step expects, used to wait for it
+   * @returns {Promise<string>} The normalized message actually displayed
+   */
+  async getVerificationCodeMessage(page, expectedMessage) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!expectedMessage || typeof expectedMessage !== 'string') {
+      throw new Error('expectedMessage must be a non-empty string, got: ' + typeof expectedMessage);
+    }
+
+    logger.debug('Reading the two-factor validation message', { expectedMessage });
+
+    try {
+      const loginPage = getPageObject(page, LoginPage);
+      return await loginPage.getVerificationMessage(expectedMessage);
+    } catch (error) {
+      throw new Error(
+        `[App.getVerificationCodeMessage] Could not read the two-factor validation message while ` +
+        `waiting for "${expectedMessage}". The submitted code may have been accepted, or the ` +
+        `screen already returned to the login page. Original: ${error.message}`
+      );
+    }
+  },
+
+  /**
+   * Reads the login screen's subtitle. Used to confirm the user is back on the login page.
+   * The expected wording is asserted by the calling step.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedSubtitle - The wording the step expects, used to wait for it
+   * @returns {Promise<string>} The normalized subtitle actually displayed
+   */
+  async getLoginPageSubtitle(page, expectedSubtitle) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!expectedSubtitle || typeof expectedSubtitle !== 'string') {
+      throw new Error('expectedSubtitle must be a non-empty string, got: ' + typeof expectedSubtitle);
+    }
+
+    logger.debug('Reading the login page subtitle', { expectedSubtitle });
+
+    try {
+      const loginPage = getPageObject(page, LoginPage);
+      return await loginPage.getLoginSubtitle(expectedSubtitle);
+    } catch (error) {
+      throw new Error(
+        `[App.getLoginPageSubtitle] Could not read the login page subtitle while waiting for ` +
+        `"${expectedSubtitle}". The login screen may not be displayed. Original: ${error.message}`
+      );
+    }
+  },
+
+  /**
    * Reads the login failure message shown after a rejected sign-in attempt.
    * The expected wording is asserted by the calling step.
    *

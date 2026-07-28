@@ -110,6 +110,34 @@ When("I attempt to log in with invalid credentials as {string}", async function 
 });
 
 /**
+ * Signs in with a two-factor-enabled user and stops at the verification code prompt.
+ * This is the scenario's first step, so it opens the browser session itself.
+ */
+When("I log in triggering two-factor authentication as {string}", async function (user) {
+  logger.info("Logging in with a two-factor-enabled user", { user });
+  // Assign browser/context/page BEFORE the attempt so the After hook can always
+  // capture a screenshot, even when the code prompt never appears.
+  const session = await App.createBrowserSession();
+  this.browser = session.browser;
+  this.context = session.context;
+  this.page = session.page;
+  await App.loginTriggeringTwoFactor(this.page, user);
+});
+
+/**
+ * Submits a code that is expected to be rejected. The attempt counter lives on the World, so a
+ * CI retry starts a fresh scenario at attempt 1; the DSL turns it into a unique wrong code.
+ */
+When("I enter an incorrect verification code", async function () {
+  this.verificationCodeAttempts = (this.verificationCodeAttempts || 0) + 1;
+  logger.info("Entering an incorrect verification code", {
+    attempt: this.verificationCodeAttempts,
+  });
+  const { code } = await App.enterIncorrectVerificationCode(this.page, this.verificationCodeAttempts);
+  logger.debug("Incorrect verification code submitted", { code });
+});
+
+/**
  * Logs out the current user from the application.
  */
 When("I logout from the application", async function () {
@@ -171,6 +199,45 @@ Then("the login error message {string} should be displayed", async function (exp
     actualMessage,
     `Expected the login page to reject the credentials with "${expectedMessage}", but the message shown was "${actualMessage}"`
   ).toBe(expectedMessage);
+});
+
+Then("the two-factor verification code prompt should be displayed", async function () {
+  logger.info("Verifying the two-factor verification code prompt is displayed");
+  const { displayed } = await App.waitForTwoFactorPromptDisplayed(this.page);
+  expect(
+    displayed,
+    "Expected the two-factor verification code prompt after signing in with a 2FA-enabled user"
+  ).toBe(true);
+});
+
+Then("the verification code error {string} should be displayed", async function (expectedMessage) {
+  logger.info("Verifying the verification code error message", { expectedMessage });
+  const actualMessage = await App.getVerificationCodeMessage(this.page, expectedMessage);
+  expect(
+    actualMessage,
+    `Expected the two-factor screen to reject the submitted code with "${expectedMessage}", but ` +
+    `the message shown was "${actualMessage}"`
+  ).toBe(expectedMessage);
+});
+
+Then("the final attempt warning {string} should be displayed", async function (expectedMessage) {
+  logger.info("Verifying the final attempt warning", { expectedMessage });
+  const actualMessage = await App.getVerificationCodeMessage(this.page, expectedMessage);
+  expect(
+    actualMessage,
+    `Expected the two-factor screen to warn about the last remaining attempt with ` +
+    `"${expectedMessage}", but the message shown was "${actualMessage}"`
+  ).toBe(expectedMessage);
+});
+
+Then("the login page subtitle {string} should be displayed", async function (expectedSubtitle) {
+  logger.info("Verifying the login page subtitle", { expectedSubtitle });
+  const actualSubtitle = await App.getLoginPageSubtitle(this.page, expectedSubtitle);
+  expect(
+    actualSubtitle,
+    `Expected the login page subtitle "${expectedSubtitle}", but the text shown was ` +
+    `"${actualSubtitle}"`
+  ).toBe(expectedSubtitle);
 });
 
 Then("the logout confirmation message {string} should be displayed", async function (expectedMessage) {

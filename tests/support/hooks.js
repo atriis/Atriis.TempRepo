@@ -22,17 +22,27 @@ setDefaultTimeout(120000);
 Before(async function (testCase) {
   this.scenarioTags = (testCase.pickle?.tags || []).map((tag) => tag.name);
 
-  // All scenarios use parameterized login: `Given I am logged in as "email"`
-  // The login step itself handles browser launch and navigation via App.loginAsUser(email).
-  // If a scenario is missing a login step, fail early with a clear message.
-  const hasParameterizedLogin = testCase.pickle.steps.some(step =>
-    step.text.includes('I am logged in as "')
+  // No scenario may rely on this hook for its browser: the step itself launches it and assigns
+  // this.page, so the After hook can screenshot even when the sign-in is what failed. Every step
+  // listed here calls App.createBrowserSession() — negative-auth scenarios legitimately never
+  // reach an authenticated session, so the happy-path phrase alone cannot be the gate.
+  const SESSION_OPENING_STEPS = [
+    'I am logged in as "',
+    'I attempt to log in with invalid credentials as "',
+    'I log in triggering two-factor authentication as "',
+  ];
+
+  const opensBrowserSession = testCase.pickle.steps.some(step =>
+    SESSION_OPENING_STEPS.some(phrase => step.text.includes(phrase))
   );
 
-  if (!hasParameterizedLogin) {
+  if (!opensBrowserSession) {
     throw new Error(
-      `Scenario "${testCase.pickle.name}" has no login step.\n` +
-      'All scenarios must start with: Given I am logged in as "email@domain.com"'
+      `Scenario "${testCase.pickle.name}" has no step that opens a browser session.\n` +
+      'Most scenarios must start with: Given I am logged in as "email@domain.com"\n' +
+      `Scenarios that never authenticate must start with one of: ${SESSION_OPENING_STEPS.slice(1)
+        .map(phrase => `"${phrase}..."`)
+        .join(', ')}`
     );
   }
 
