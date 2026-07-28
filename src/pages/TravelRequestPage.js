@@ -80,11 +80,16 @@ const SELECTORS = {
   RAIL_RETURN_DATE_INPUT: ".eu-rail-search-inputs [placeholder='Return']",
 
   // ===== Autocomplete suggestion poppers (app-autocomplete.vue) =====
-  // Car uses the shared app-autocomplete-popper; rail adds boxed-autocomplete-popper. Each
-  // suggestion row renders as .autocomplete-result. Only one popper is open at a time here.
+  // Car uses the shared app-autocomplete-popper; rail adds boxed-autocomplete-popper; hotel adds
+  // hotel-autocomplete-popper (hotel-autocomplete.vue popperClass). Each suggestion row renders
+  // as .autocomplete-result. Only one popper is open at a time here.
   AUTOCOMPLETE_POPPER: ".app-autocomplete-popper",
   RAIL_AUTOCOMPLETE_POPPER: ".boxed-autocomplete-popper",
+  HOTEL_AUTOCOMPLETE_POPPER: ".hotel-autocomplete-popper",
   AUTOCOMPLETE_RESULT_ITEM: ".autocomplete-result",
+
+  // Success-screen subtitle under the "Sent to agent" title (success-message component).
+  SUCCESS_DESCRIPTION: ".success-message__description",
 
   // ===== Requested-item comment on the trip Requests tab (general-product-card.vue L138-143) =====
   // The traveller comment renders in .traveler-comment p (its text is the entered comment, or a
@@ -251,6 +256,14 @@ class TravelRequestPage {
 
   async waitForSentToAgentMessage() {
     await this.getSentToAgentMessage().waitFor({ state: "visible", timeout: 30000 });
+  }
+
+  /**
+   * Gets the success-screen description locator (the subtitle under "Sent to agent").
+   * @returns {import('@playwright/test').Locator}
+   */
+  getSuccessDescription() {
+    return this.page.locator(SELECTORS.SUCCESS_DESCRIPTION).first();
   }
 
   /**
@@ -470,6 +483,37 @@ class TravelRequestPage {
   /** Opens the car drop-off date picker. */
   async openCarDropOffDatePicker() {
     await this._openDatePicker(SELECTORS.CAR_DROPOFF_DATE_INPUT);
+  }
+
+  // ===== Flight date picker (request-assistance item) =====
+
+  /**
+   * Opens the flight depart/return date picker of the request-assistance flight item. Depart and
+   * return share ONE el-range picker, so opening the depart end exposes both ends. Uses the
+   * RA-scoped input + visible-panel helper: the search page beneath the request-assistance form
+   * keeps its own (hidden) range-picker panel in the DOM, which an unscoped first-match would hit.
+   */
+  async openFlightDepartDatePicker() {
+    await this._openDatePicker(SELECTORS.FLIGHT_DEPART_DATE_INPUT);
+  }
+
+  // ===== Hotel destination + date picker =====
+
+  /** Fills the hotel destination autocomplete and selects the first suggestion. */
+  async fillHotelDestination(value) {
+    await this.fillAutocompleteAndSelectFirst(
+      SELECTORS.HOTEL_DESTINATION_INPUT,
+      value,
+      SELECTORS.HOTEL_AUTOCOMPLETE_POPPER
+    );
+  }
+
+  /**
+   * Opens the hotel check-in/check-out date picker. Check-in and check-out share ONE
+   * el-range picker, so opening the check-in end exposes both range ends.
+   */
+  async openHotelCheckInDatePicker() {
+    await this._openDatePicker(SELECTORS.HOTEL_CHECK_IN_INPUT);
   }
 
   // ===== Rail stations + date pickers =====

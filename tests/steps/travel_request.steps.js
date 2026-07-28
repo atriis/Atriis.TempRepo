@@ -161,6 +161,16 @@ When("I click the send request button", async function () {
   await TravelRequest.clickSendRequest(this.page);
 });
 
+When("I fill in the request assistance flight from {string} to {string}", async function (from, to) {
+  logger.info("Filling the request assistance flight leg without sending", { from, to });
+  await TravelRequest.fillRequestAssistanceFlight(this.page, from, to);
+});
+
+Then("the request assistance success description should be {string}", async function (expectedText) {
+  logger.info("Verifying the request assistance success description", { expectedText });
+  await TravelRequest.verifySuccessDescription(this.page, expectedText);
+});
+
 // ===== Request-assistance hotel/car/rail items + comments =====
 
 Then("the request assistance hotel destination should contain {string}", async function (expected) {
@@ -176,6 +186,16 @@ When("I add the comment {string} to the request assistance hotel item", async fu
 When("I add a car to the request assistance picking up in {string} with comment {string}", async function (location, comment) {
   logger.info("Adding car to request assistance", { location, comment });
   await TravelRequest.addCarToRequestAssistance(this.page, { location, comment });
+});
+
+When("I add a car to the request assistance picking up in {string}", async function (location) {
+  logger.info("Adding car to request assistance without a comment", { location });
+  await TravelRequest.addCarToRequestAssistance(this.page, { location });
+});
+
+When("I add a hotel to the request assistance in {string}", async function (destination) {
+  logger.info("Adding hotel to request assistance", { destination });
+  await TravelRequest.addHotelToRequestAssistance(this.page, destination);
 });
 
 When(

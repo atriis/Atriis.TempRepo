@@ -2634,6 +2634,11 @@ Then("gender is not selected", async function () {
   await Cart.verifyGenderIsNotSelected(this.page);
 });
 
+When("I add the suggested car quote to the trip", async function () {
+  logger.info("Adding the agent-suggested car quote to the trip");
+  await Cart.addSuggestedCarQuoteToTrip(this.page);
+});
+
 When("I copy the trip", async function () {
   logger.info("Copying the trip via the three-dots menu");
   this.page = await Cart.copyTrip(this.page);
@@ -2669,12 +2674,49 @@ Then("all products in the copy trip dialog should show status {string}", async f
   logger.info("Copy trip dialog quote statuses verified", { statuses });
 });
 
+// Pass the product wording the DIALOG uses: it titles quotes via utilService.getProductTitle, so a
+// car reads "Car rental at <pick-up>" (i18n car.carRental) — not the "Hire a car at" wording the
+// trip-overview cards use.
+Then("only the {string} quote should be listed in the copy trip dialog", async function (quoteName) {
+  logger.info("Verifying the copy trip dialog lists only one quote", { quoteName });
+  await Cart.verifyCopyTripDialogListsOnly(this.page, quoteName);
+});
+
 // The copy opens in a new browser tab. This step only confirms and captures it — the scenario then
 // switches with the shared "I work on tab {int}" step, keeping page selection in one place.
 When("I confirm the copy trip", async function () {
   logger.info("Confirming the copy trip");
   this.copiedTripPage = await Cart.confirmCopyTrip(this.page);
   logger.info("Copied trip is ready", { url: this.copiedTripPage.url() });
+});
+
+/**
+ * Returns the copied trip's tab, failing with a clear message when the confirm step did not run.
+ * @param {object} world - Cucumber World (`this`)
+ * @returns {import('@playwright/test').Page}
+ */
+function requireCopiedTripPage(world) {
+  if (!world.copiedTripPage) {
+    throw new Error(
+      'No copied trip tab on the World. Run "I confirm the copy trip" before this step.'
+    );
+  }
+  return world.copiedTripPage;
+}
+
+Then("the copied trip should contain a car quote", async function () {
+  logger.info("Verifying the copied trip contains a car quote");
+  await Cart.verifyTripHasCarQuote(requireCopiedTripPage(this));
+});
+
+Then("the copied trip suggested items section should be displayed", async function () {
+  logger.info("Verifying the copied trip shows the Suggested items section");
+  await Cart.verifySuggestedItemsSectionDisplayed(requireCopiedTripPage(this));
+});
+
+Then("the copied trip suggested items should contain {int} quote(s)", async function (expectedCount) {
+  logger.info("Verifying the copied trip's suggested items count", { expectedCount });
+  await Cart.verifySuggestedItemsCount(requireCopiedTripPage(this), expectedCount);
 });
 
 When("I store the car type from the cart", async function () {

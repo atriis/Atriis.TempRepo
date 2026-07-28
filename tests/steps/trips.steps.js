@@ -25,6 +25,11 @@ When("I click the first trip from the trip list", async function () {
   this.page = await Trips.clickFirstTrip(this.page);
 });
 
+When("I open the trip overview tab", async function () {
+  logger.info("Opening the trip Overview tab");
+  await Trips.openTripOverviewTab(this.page);
+});
+
 // ===== THEN STEPS =====
 
 Then("the trips page should be loaded", async function () {

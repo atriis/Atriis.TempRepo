@@ -68,6 +68,55 @@ const TravelRequest = {
   },
 
   /**
+   * Fills the flight leg of the request-assistance form WITHOUT sending it — the fill-only
+   * counterpart of sendFlightTravelRequest, for scenarios that add more products (car, hotel)
+   * to the request before clicking "Send request".
+   * Requires the request-assistance form to already be open (e.g. via the request assistance icon).
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} from - Origin airport query, e.g. "lhr"
+   * @param {string} to - Destination airport query, e.g. "MAD"
+   */
+  async fillRequestAssistanceFlight(page, from, to) {
+    if (!page) throw new Error('[TravelRequest.fillRequestAssistanceFlight] "page" is required.');
+    if (!from || typeof from !== 'string') {
+      throw new Error(`[TravelRequest.fillRequestAssistanceFlight] "from" must be a non-empty string, got: ${typeof from}`);
+    }
+    if (!to || typeof to !== 'string') {
+      throw new Error(`[TravelRequest.fillRequestAssistanceFlight] "to" must be a non-empty string, got: ${typeof to}`);
+    }
+    logger.debug('Filling request-assistance flight leg (no send)', { from, to });
+
+    const searchPage = getPageObject(page, SearchPage);
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    try {
+      // Render the flight-search-inputs form inside the request item.
+      await travelRequestPage.clickFlightButton();
+      await travelRequestPage.waitForFlightSearchInputs();
+
+      // Origin and destination — same airport-autocomplete selectors as the main search.
+      await searchPage.fillInFromField(from);
+      await searchPage.fillInToField(to);
+
+      // Depart + return — one range picker; select from the visible months. Opened via the
+      // RA-scoped picker (not clickDepartureDateField): the search page beneath keeps a hidden
+      // stale range-picker in the DOM that the unscoped panel wait would latch onto.
+      await travelRequestPage.openFlightDepartDatePicker();
+      await selectDatesByNthAvailable(page, {
+        startIndex: SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+        endIndex: SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      });
+    } catch (err) {
+      throw new Error(
+        `[TravelRequest.fillRequestAssistanceFlight] Could not fill the request-assistance flight leg ` +
+        `from "${from}" to "${to}". The flight form may not have rendered, an airport autocomplete may ` +
+        `have returned no results, or the date picker did not open. Original: ${err.message}`
+      );
+    }
+    return { filled: true, from, to };
+  },
+
+  /**
    * Opens the advanced round-trip flight search inside the request assistance form.
    * - Clicks the "Flight" service button to render the flight-search-inputs form
    * - Ensures the trip type is "Round trip" (separate outbound/return legs)
@@ -272,6 +321,37 @@ const TravelRequest = {
       null,
       { timeout: 30000 }
     );
+  },
+
+  /**
+   * Verifies the success-screen description (the subtitle under "Sent to agent") shows the
+   * expected text, e.g. "Your request was successfully created".
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expectedText
+   */
+  async verifySuccessDescription(page, expectedText) {
+    if (!page) throw new Error('[TravelRequest.verifySuccessDescription] "page" is required.');
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[TravelRequest.verifySuccessDescription] "expectedText" must be a non-empty string, got: ${typeof expectedText}`
+      );
+    }
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    const description = travelRequestPage.getSuccessDescription();
+    try {
+      await description.waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[TravelRequest.verifySuccessDescription] The travel-request success description did not appear. ` +
+        `The request may not have been submitted successfully. Original: ${err.message}`
+      );
+    }
+    const actual = (await description.innerText()).trim();
+    expect(
+      actual,
+      `[TravelRequest.verifySuccessDescription] Expected the success description to be "${expectedText}" but it was "${actual}".`
+    ).toBe(expectedText);
   },
 
   /**
@@ -605,14 +685,14 @@ const TravelRequest = {
 
   /**
    * Adds a car item to the request assistance and fills it end to end: pick-up location (autocomplete),
-   * pick-up and drop-off dates (next month), and the item comment. Pick-up/drop-off times are left at
-   * the form's valid defaults (10:00) and are not asserted downstream; the location and comment carry
-   * the meaningful test data.
+   * pick-up and drop-off dates (next month), and optionally the item comment. Pick-up/drop-off times
+   * are left at the form's valid defaults (10:00) and are not asserted downstream; the location (and
+   * comment, when given) carry the meaningful test data.
    *
    * @param {import('@playwright/test').Page} page
    * @param {Object} request
    * @param {string} request.location - Pick-up location query, e.g. "madrid"
-   * @param {string} request.comment - Comment for the car item, e.g. "carrr 3"
+   * @param {string} [request.comment] - Optional comment for the car item, e.g. "carrr 3"
    */
   async addCarToRequestAssistance(page, request) {
     if (!page) throw new Error('[TravelRequest.addCarToRequestAssistance] "page" is required.');
@@ -623,8 +703,8 @@ const TravelRequest = {
     if (!location || typeof location !== 'string') {
       throw new Error(`[TravelRequest.addCarToRequestAssistance] "location" must be a non-empty string, got: ${typeof location}`);
     }
-    if (!comment || typeof comment !== 'string') {
-      throw new Error(`[TravelRequest.addCarToRequestAssistance] "comment" must be a non-empty string, got: ${typeof comment}`);
+    if (comment !== undefined && (!comment || typeof comment !== 'string')) {
+      throw new Error(`[TravelRequest.addCarToRequestAssistance] "comment", when given, must be a non-empty string, got: ${typeof comment}`);
     }
     logger.debug('Adding car to request assistance', { location, comment });
 
@@ -649,16 +729,60 @@ const TravelRequest = {
       await selectDatesByNthAvailable(page, { startIndex: 3 });
       await searchPage.waitForDatePickerToClose();
 
-      // Comment.
-      await travelRequestPage.fillItemComment('car', comment);
+      // Comment (optional — some flows send the request without one).
+      if (comment !== undefined) {
+        await travelRequestPage.fillItemComment('car', comment);
+      }
     } catch (err) {
       throw new Error(
-        `[TravelRequest.addCarToRequestAssistance] Could not add the car request item for pick-up "${location}" with ` +
-        `comment "${comment}". A form field (location autocomplete, pick-up/drop-off date or time, or the comment) may ` +
-        `not have been available. Original: ${err.message}`
+        `[TravelRequest.addCarToRequestAssistance] Could not add the car request item for pick-up "${location}"` +
+        `${comment !== undefined ? ` with comment "${comment}"` : ''}. A form field (location autocomplete, ` +
+        `pick-up/drop-off date or time, or the comment) may not have been available. Original: ${err.message}`
       );
     }
     return { added: true, location, comment };
+  },
+
+  /**
+   * Adds a hotel item to the request assistance and fills it: destination (autocomplete) and
+   * check-in/check-out dates (next month). Dates are not asserted downstream; the destination
+   * carries the meaningful test data.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} destination - Destination query, e.g. "lon"
+   */
+  async addHotelToRequestAssistance(page, destination) {
+    if (!page) throw new Error('[TravelRequest.addHotelToRequestAssistance] "page" is required.');
+    if (!destination || typeof destination !== 'string') {
+      throw new Error(
+        `[TravelRequest.addHotelToRequestAssistance] "destination" must be a non-empty string, got: ${typeof destination}`
+      );
+    }
+    logger.debug('Adding hotel to request assistance', { destination });
+
+    const travelRequestPage = getPageObject(page, TravelRequestPage);
+    const searchPage = getPageObject(page, SearchPage);
+    try {
+      await travelRequestPage.clickAddServiceButton('Hotel');
+      await travelRequestPage.waitForProductSearchInputs('hotel');
+
+      // Destination via the hotel autocomplete (hotel-autocomplete-popper).
+      await travelRequestPage.fillHotelDestination(destination);
+
+      // Check-in/check-out share one range picker — select both ends from the next month so the
+      // stay is always in the future regardless of what the flight dates preselected.
+      await travelRequestPage.openHotelCheckInDatePicker();
+      await clickNextVisibleMonth(page);
+      await selectDatesByNthAvailable(page, { startIndex: 0, endIndex: 3 });
+      await searchPage.waitForDatePickerToClose();
+    } catch (err) {
+      throw new Error(
+        `[TravelRequest.addHotelToRequestAssistance] Could not add the hotel request item for ` +
+        `"${destination}". The destination autocomplete may have returned no results or the ` +
+        `check-in/check-out picker did not open. Original: ${err.message}`
+      );
+    }
+    return { added: true, destination };
   },
 
   // ===== Rail request item (combined) =====

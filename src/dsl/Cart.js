@@ -7630,6 +7630,143 @@ const Cart = {
   },
 
   /**
+   * Verifies the open copy trip dialog lists EXACTLY ONE quote and that its name contains the
+   * given text — proving no other product (e.g. an agent suggestion still sitting in the cart)
+   * was picked up for copying.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} quoteName - Text the single row's product name must contain (e.g. "Car rental at")
+   * @returns {Promise<string[]>} The quote names the dialog listed
+   */
+  async verifyCopyTripDialogListsOnly(page, quoteName) {
+    if (!page) throw new Error('[Cart.verifyCopyTripDialogListsOnly] "page" is required.');
+    if (!quoteName || typeof quoteName !== 'string') {
+      throw new Error(
+        `[Cart.verifyCopyTripDialogListsOnly] "quoteName" must be a non-empty string, got: ` +
+        `${typeof quoteName} (${JSON.stringify(quoteName)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const listed = await cartPage.getCopyTripDialogQuoteNames();
+
+    expect(
+      listed.length,
+      `Expected the copy trip dialog to list exactly 1 quote ("${quoteName}") but it listed ` +
+      `${listed.length}: [${listed.join(' | ')}].`,
+    ).toBe(1);
+    expect(
+      listed[0].toLowerCase(),
+      `Expected the copy trip dialog's single quote to be "${quoteName}" but it read "${listed[0]}".`,
+    ).toContain(quoteName.trim().toLowerCase());
+
+    logger.info('Copy trip dialog lists only the expected quote', { listed });
+    return listed;
+  },
+
+  /**
+   * Adds the agent-suggested car quote to the trip by clicking its "Add to trip" button in the
+   * Suggested items section of the trip overview.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async addSuggestedCarQuoteToTrip(page) {
+    if (!page) throw new Error('[Cart.addSuggestedCarQuoteToTrip] "page" is required.');
+    logger.debug('[Cart.addSuggestedCarQuoteToTrip] Adding the agent-suggested car quote to the trip');
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.clickSuggestedCarQuoteAddButton();
+    } catch (err) {
+      throw new Error(
+        `[Cart.addSuggestedCarQuoteToTrip] Could not add the agent-suggested car quote to the trip. ` +
+        `The Suggested items section may not hold an unchosen car suggestion. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the trip overview holds a car quote (any car — presence, not identity), by reading its
+   * quote-card title. Use verifyTripHasSameCarType when the copied car must match a stored one.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The car quote title that was read
+   */
+  async verifyTripHasCarQuote(page) {
+    if (!page) throw new Error('[Cart.verifyTripHasCarQuote] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    let title;
+    try {
+      title = await cartPage.getCarQuoteTitleText({ timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyTripHasCarQuote] The trip overview shows no car quote. If this is a copied trip, ` +
+        `the car may not have been copied. Original: ${err.message}`
+      );
+    }
+
+    expect(
+      title,
+      `Expected the trip overview's car quote card to show a title, but it was empty.`,
+    ).not.toBe('');
+
+    logger.info('Trip overview holds a car quote', { title });
+    return title;
+  },
+
+  /**
+   * Verifies the agent "Suggested items" section is displayed on the trip overview.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async verifySuggestedItemsSectionDisplayed(page) {
+    if (!page) throw new Error('[Cart.verifySuggestedItemsSectionDisplayed] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.getSuggestedItemsHeading().waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifySuggestedItemsSectionDisplayed] The "Suggested items" section is not displayed ` +
+        `on the trip overview. The trip may hold no agent suggestions. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the number of quotes in the agent "Suggested items" section.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount
+   * @returns {Promise<number>} The count that was read
+   */
+  async verifySuggestedItemsCount(page, expectedCount) {
+    if (!page) throw new Error('[Cart.verifySuggestedItemsCount] "page" is required.');
+    if (!Number.isInteger(expectedCount) || expectedCount < 0) {
+      throw new Error(
+        `[Cart.verifySuggestedItemsCount] "expectedCount" must be a non-negative integer, got: ` +
+        `${typeof expectedCount} (${JSON.stringify(expectedCount)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    // The suggestions render asynchronously after the overview loads, so poll the count instead of
+    // reading it once.
+    await expect
+      .poll(async () => cartPage.getSuggestedQuoteItems().count(), {
+        message:
+          `[Cart.verifySuggestedItemsCount] Expected the Suggested items section to hold ` +
+          `${expectedCount} quote(s).`,
+        timeout: 30000,
+      })
+      .toBe(expectedCount);
+
+    logger.info('Suggested items count verified', { count: expectedCount });
+    return expectedCount;
+  },
+
+  /**
    * Captures the per-segment details (carrier, flight number, departure and arrival times) of the
    * flight quote in the cart, so the same trip copied into a new tab can be compared against it.
    * On a round trip this returns the outbound segment first and the return segment last.

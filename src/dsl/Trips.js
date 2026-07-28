@@ -121,6 +121,25 @@ const Trips = {
   },
 
   /**
+   * Opens the trip Overview tab in the trip cart.
+   *
+   * @param {import('@playwright/test').Page} page
+   */
+  async openTripOverviewTab(page) {
+    if (!page) throw new Error('[Trips.openTripOverviewTab] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Opening the trip Overview tab');
+      await tripsPage.clickOverviewTab();
+    } catch (err) {
+      throw new Error(
+        `[Trips.openTripOverviewTab] Could not open the trip Overview tab. The trip cart may not have ` +
+        `finished loading. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Verifies the trip Overview tab is displayed on the trip cart page.
    *
    * @param {import('@playwright/test').Page} page

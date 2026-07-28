@@ -28,6 +28,7 @@ module.exports = {
   Homepage: require("./Homepage"),
   HotelLevelResults: require("./HotelLevelResults"),
   HotelSearch: require("./HotelSearch"),
+  LegacyGtp: require("./LegacyGtp"),
   ManualQuoteSearch: require("./ManualQuoteSearch"),
   ParallelSearch: require("./ParallelSearch"),
   Profile: require("./Profile"),

@@ -76,6 +76,12 @@ const config = {
 
   viewport: ACTIVE_VIEWPORT,
 
+  // Legacy GTP front (AngularJS) used by agents to work requested trips. Only agent-assistance
+  // scenarios navigate here; the corporate app stays on baseUrl.
+  get legacyGtpUrl() {
+    return getEnv("LEGACY_GTP_BASEURL");
+  },
+
   get quotesApiPath() {
     return getOptionalEnv("QUOTES_API_PATH", "/api/v3/quotes");
   },

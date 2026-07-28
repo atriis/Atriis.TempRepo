@@ -508,6 +508,15 @@ const SELECTORS = {
   // would match either one.
   ADDITIONAL_ITEMS_HEADING: '.suggested-quotes-container h2:text-is("Additional items")',
 
+  // ===== Agent "Suggested items" section (trip-cart.vue, below Additional items) =====
+  // Heading-anchored for the same reason as ADDITIONAL_ITEMS_HEADING above: both sections share
+  // the `.suggested-quotes-container` class. Each agent suggestion renders as a `.suggested-quote`
+  // wrapper (suggested-quote-card.vue); a not-yet-chosen car suggestion renders the car quote card
+  // with an "Add to trip" button (car-quote-card.vue, `isAgentQuote` branch).
+  SUGGESTED_ITEMS_HEADING: '.suggested-quotes-container h2:text-is("Suggested items")',
+  SUGGESTED_QUOTE_ITEM: '.suggested-quote',
+  SUGGESTED_CAR_ADD_BUTTON: '.suggested-quote .car-quote-card .add-to-trip-btn',
+
   // ===== Compensation / Climate Contribution (compensation-quote-card.vue) =====
   // The card root carries both `quote-payment-card` and `compensation-quote-card`.
   COMPENSATION_QUOTE_CARD: '.compensation-quote-card',
@@ -7305,6 +7314,44 @@ class CartPage {
    */
   getEuRailQuoteCard() {
     return this.page.locator(SELECTORS.EU_RAIL_QUOTE_CARD);
+  }
+
+  // ===== Agent "Suggested items" section =====
+
+  /**
+   * The heading of the agent "Suggested items" section. Heading-anchored because the
+   * "Additional items" section shares the same container class.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getSuggestedItemsHeading() {
+    return this.page.locator(SELECTORS.SUGGESTED_ITEMS_HEADING).first();
+  }
+
+  /**
+   * All agent suggestion items (`.suggested-quote` wrappers). Returned as a locator so callers
+   * can count or assert presence.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getSuggestedQuoteItems() {
+    return this.page.locator(SELECTORS.SUGGESTED_QUOTE_ITEM);
+  }
+
+  /**
+   * Clicks the "Add to trip" button on the agent-suggested car quote card.
+   */
+  async clickSuggestedCarQuoteAddButton() {
+    const button = this.page.locator(SELECTORS.SUGGESTED_CAR_ADD_BUTTON).first();
+    try {
+      await button.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+      await button.waitFor({ state: 'visible', timeout: 20000 });
+      await button.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickSuggestedCarQuoteAddButton] Could not click the suggested car quote's ` +
+        `"Add to trip" button (${SELECTORS.SUGGESTED_CAR_ADD_BUTTON}). The agent may not have ` +
+        `suggested a car, or the suggestion was already added to the trip. Original: ${err.message}`
+      );
+    }
   }
 
   /**

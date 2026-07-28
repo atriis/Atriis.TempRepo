@@ -183,6 +183,20 @@ class TripsPage {
     }
   }
 
+  /**
+   * Clicks the trip Overview tab header to switch the trip cart to the Overview pane.
+   */
+  async clickOverviewTab() {
+    const tab = await this.getOverviewTab({ timeout: 30000 });
+    try {
+      await tab.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.clickOverviewTab] Could not click the trip Overview tab (${SELECTORS.OVERVIEW_TAB}). Original: ${err.message}`
+      );
+    }
+  }
+
   async getMyTripsOnlyCheckbox({ timeout = 30000 } = {}) {
     const checkbox = this.page.locator(SELECTORS.MY_TRIPS_ONLY_CHECKBOX).first();
     try {
