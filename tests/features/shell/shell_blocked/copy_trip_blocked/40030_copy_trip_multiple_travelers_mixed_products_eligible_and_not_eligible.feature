@@ -12,6 +12,7 @@ Feature: 40030 - Copy trip for multiple travelers with mixed eligible and non-el
   I want to copy a trip that contains both copy-eligible and non-eligible products
   So that only the eligible products are copied and the non-eligible ones are excluded
 
+  # Bug 82017
   Scenario: Copy a trip with a flight (eligible) and EU rail (not eligible) for two guest travelers
     Given I am logged in as "copytrip@corp.com" booking a new trip
     And I have added a random guest traveler
