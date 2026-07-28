@@ -68,6 +68,67 @@ const BenerailSearch = {
 
 
   /**
+   * Performs a one-way Benerail search from the cart's edit-search drawer (opened by the Rail tile
+   * in the trip cart's product carousel — Cart.clickAddEuRailFromCart).
+   *
+   * Differs from searchBenerailOneWay in two ways: there is no product tab to pick (the drawer is
+   * already scoped to EU Rail), and the drawer keeps the trip overview's own .search-btn elements on
+   * the page, so it submits through the primary-scoped button. The trip-type radios still need
+   * setting — the drawer defaults to Round Trip.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string|object} routeInput - Route key from benerail.json, or { from, to }
+   * @param {object} options
+   * @param {number} options.departureIndex - Nth available departure date (>= 0)
+   * @returns {Promise<{searched: boolean, routeInput: string|object, from: string, to: string, departureIndex: number}>}
+   */
+  async searchBenerailOneWayFromCartDrawer(
+    page,
+    routeInput = benerailRoutes.defaultRoute,
+    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {},
+  ) {
+    if (!page) {
+      throw new Error('[BenerailSearch.searchBenerailOneWayFromCartDrawer] "page" is required.');
+    }
+    if (!Number.isFinite(departureIndex) || departureIndex < 0) {
+      throw new Error(
+        `[BenerailSearch.searchBenerailOneWayFromCartDrawer] "departureIndex" must be a non-negative ` +
+        `number, got: ${typeof departureIndex} (${departureIndex})`,
+      );
+    }
+
+    const { from, to } = resolveRoute(routeInput, benerailRoutes.routes, 'benerail');
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.waitForEditSearchDrawerVisible();
+
+      await searchPage.selectOneWayTrip();
+
+      await searchPage.fillInFromField(from);
+      await searchPage.fillInToField(to);
+
+      // Explicitly open the departure calendar, then take the Nth available date. One month ahead
+      // matches the standalone rail search — EU rail inventory is not published far out.
+      await searchPage.clickRailDepartureDateField();
+      await searchPage.clickCalendarNextArrow();
+      await selectDatesByNthAvailable(page, { startIndex: departureIndex, endIndex: null });
+
+      await searchPage.waitAndClickPrimarySearchButtonFromCart();
+
+      return { searched: true, routeInput, from, to, departureIndex };
+    } catch (err) {
+      throw new Error(
+        `[BenerailSearch.searchBenerailOneWayFromCartDrawer] Failed to run a one-way EU rail search ` +
+        `from the cart's edit-search drawer (${from} → ${to}). The Rail tile in the cart product ` +
+        `carousel must have opened the drawer first. Original: ${err.message}`,
+      );
+    }
+  },
+
+
+  /**
    * Performs a round-trip Benerail search.
    * Default dates: departure (10th), return (13th).
    * @param {import('playwright').Page} page

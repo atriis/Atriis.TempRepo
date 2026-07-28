@@ -196,6 +196,14 @@ const SELECTORS = {
   // assertion does not depend on which product occupies which row.
   COPY_TRIP_DIALOG_QUOTE_ROW: '.copy-trip-dialog .quote-details-container .quote-details',
   COPY_TRIP_DIALOG_QUOTE_STATUS: '.app-label--quote',
+  // Row-relative (like COPY_TRIP_DIALOG_QUOTE_STATUS above) — always resolved INSIDE a
+  // COPY_TRIP_DIALOG_QUOTE_ROW, never page-wide: the dialog's intro paragraph is also a
+  // `p.regular-text`. Present only on a quote that cannot be copied, where copy-trip-modal.vue
+  // renders $t('trip.canNotCopyItem') in place of the status label.
+  COPY_TRIP_DIALOG_QUOTE_WARNING: 'p.regular-text',
+  // Row-relative product name (h2.bold-text = quoteName(quote)), used to identify which row a
+  // reading came from in assertion messages.
+  COPY_TRIP_DIALOG_QUOTE_NAME: 'h2.bold-text',
   TICKET_DETAILS_SECTION: ".ticket-details",
   SHOW_CANCELLED_ITEMS_OPTION: '.el-dropdown-menu__item',
   TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label='Trip cancellation'] .el-dialog__title",
@@ -305,6 +313,17 @@ const SELECTORS = {
   // its departure time is the first .flight-time inside its .flight-duration.
   FLIGHT_QUOTE_OUTBOUND_ARRIVAL_TIME: '.flight-quote-card .flight-info.cart-format.not-last-segment .is-align-items-end .flight-time',
   FLIGHT_QUOTE_RETURN_DEPARTURE_TIME: '.flight-quote-card .flight-info.cart-format:not(.not-last-segment) .flight-duration .flight-time',
+
+  // "To pay" price block on the flight quote card (flight-extra-info.vue, isCart=true). The .to-pay
+  // span is shared with two other states — "Price starts from" outside the cart and "Expired offer"
+  // for a lapsed quote — so reading its text is what proves the quote is live and payable. ':visible'
+  // skips the hidden responsive duplicates the cart keeps mounted.
+  FLIGHT_QUOTE_TO_PAY_LABEL: '.flight-quote-card .flight-extra-info .to-pay:visible',
+  FLIGHT_QUOTE_TO_PAY_PRICE: '.flight-quote-card .flight-extra-info .price-wrapper .price:visible',
+
+  // EU rail (Benerail) quote card in the cart (eu-rail-quote-card.vue). Used for absence checks: a
+  // copied trip must not carry over a rail quote, which is not eligible for copy.
+  EU_RAIL_QUOTE_CARD: '.eu-rail-quote-card',
 
   // Car pickup/drop-off date·time label shown in the car quote card body (car-quote-card.ts
   // formattedPickupDateLabel/formattedDropoffDateLabel), e.g.
@@ -542,6 +561,17 @@ const SELECTORS = {
   // drawer: product-carousel.ts → productAction() emits `openDrawer` for every product except
   // 'manual-quote', and the cart renders that drawer in place instead of routing away.
   ADD_CAR_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Car")',
+  // Rail tile. Unlike every other tile this one is an el-dropdown trigger, not a direct action:
+  // product-carousel.vue wraps it in <el-dropdown trigger="hover"> whose menu lists one item per
+  // rail supplier the user can access (railTypesOptions), and only picking an item emits openDrawer.
+  // So the tile is HOVERED, then the supplier item is clicked.
+  ADD_RAIL_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Rail")',
+  // Rail supplier items in that dropdown. Element Plus renders dropdown items as
+  // `.el-dropdown-menu__item` (BEM double underscore) and appends the popper to body, so the menu is
+  // NOT inside .product-carousel — scope by ':visible' instead, since other closed poppers linger in
+  // the DOM. Matched by text (the item renders the raw `rail.value`, e.g. "EU Rails"), never by
+  // index: which suppliers appear depends on the user's product access.
+  RAIL_TYPE_DROPDOWN_ITEM: '.el-dropdown-menu__item:visible',
   ADD_HOTEL_SEARCH_DRAWER: '.app-drawer.atrs-edit-search-drawer',
   MANUAL_QUOTE_PAGE_CONTAINER: '.manual-quote-page',
 
@@ -4373,6 +4403,45 @@ class CartPage {
     }
   }
 
+  /**
+   * Hovers the Rail tile in the "Add more services" product carousel to open its supplier dropdown,
+   * then clicks the requested supplier and waits for the edit-search drawer to render.
+   *
+   * Two steps because the Rail tile is an el-dropdown trigger rather than a button that acts on
+   * click — see SELECTORS.ADD_RAIL_CAROUSEL_BUTTON.
+   *
+   * @param {string|RegExp} railTypeText - Supplier item text, e.g. /EU Rail/ for EU Rails
+   * @param {number} [timeout=10000]
+   */
+  async selectRailTypeFromCarousel(railTypeText, { timeout = 10000 } = {}) {
+    if (!railTypeText) {
+      throw new Error('[CartPage.selectRailTypeFromCarousel] "railTypeText" is required.');
+    }
+
+    const tile = this.page.locator(SELECTORS.ADD_RAIL_CAROUSEL_BUTTON).first();
+    try {
+      await tile.waitFor({ state: 'visible', timeout });
+      await tile.hover();
+
+      const item = this.page
+        .locator(SELECTORS.RAIL_TYPE_DROPDOWN_ITEM, { hasText: railTypeText })
+        .first();
+      await item.waitFor({ state: 'visible', timeout });
+      await item.click();
+
+      await this.page.locator(SELECTORS.ADD_HOTEL_SEARCH_DRAWER).waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.selectRailTypeFromCarousel] Could not open the rail search drawer for ` +
+        `"${railTypeText}" from the cart product carousel (tile: ${SELECTORS.ADD_RAIL_CAROUSEL_BUTTON}, ` +
+        `item: ${SELECTORS.RAIL_TYPE_DROPDOWN_ITEM}, drawer: ${SELECTORS.ADD_HOTEL_SEARCH_DRAWER}). ` +
+        `Likely causes: the Rail tile is not available for this user, this rail supplier is not in ` +
+        `the user's accessible products (so the dropdown never lists it), the hover did not open the ` +
+        `dropdown, or the drawer did not render within ${timeout}ms. Original: ${err.message}`
+      );
+    }
+  }
+
   // ===== CAR CROSS-SELL SUGGESTION (trip overview) =====
 
   /**
@@ -7136,6 +7205,144 @@ class CartPage {
         `dialog (rows: ${SELECTORS.COPY_TRIP_DIALOG_QUOTE_ROW}, status: ${SELECTORS.COPY_TRIP_DIALOG_QUOTE_STATUS}). ` +
         `Likely causes: the dialog is not open, or the trip's quotes had not loaded within ${timeout}ms. ` +
         `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * The copy-trip dialog row for the quote whose name contains the given text. Matched by product
+   * name, never by index: which row a product occupies depends on what else is in the trip.
+   *
+   * @param {string} quoteName - Text the row's product name must contain (e.g. "EU Rail")
+   * @returns {import('@playwright/test').Locator}
+   */
+  getCopyTripDialogQuoteRowByName(quoteName) {
+    if (!quoteName || typeof quoteName !== 'string') {
+      throw new Error(
+        `[CartPage.getCopyTripDialogQuoteRowByName] "quoteName" must be a non-empty string, got: ` +
+        `${typeof quoteName} (${JSON.stringify(quoteName)})`
+      );
+    }
+    return this.page
+      .locator(SELECTORS.COPY_TRIP_DIALOG_QUOTE_ROW, { hasText: quoteName })
+      .first();
+  }
+
+  /**
+   * Reads the product names of every quote row in the copy-trip dialog, in row order. Used to report
+   * what the dialog actually listed when a row lookup misses.
+   * @param {number} [timeout=20000]
+   * @returns {Promise<string[]>}
+   */
+  async getCopyTripDialogQuoteNames(timeout = 20000) {
+    const rows = this.page.locator(SELECTORS.COPY_TRIP_DIALOG_QUOTE_ROW);
+    await rows.first().waitFor({ state: 'visible', timeout });
+
+    const names = [];
+    const rowCount = await rows.count();
+    for (let i = 0; i < rowCount; i++) {
+      const name = rows.nth(i).locator(SELECTORS.COPY_TRIP_DIALOG_QUOTE_NAME).first();
+      names.push(((await name.innerText().catch(() => '')) || '').replace(/\s+/g, ' ').trim());
+    }
+    return names;
+  }
+
+  /**
+   * Reads the "can not be copied" warning on one named quote row of the copy-trip dialog.
+   * Throws if that row shows no warning — i.e. the quote IS eligible for copy.
+   *
+   * @param {string} quoteName - Text the row's product name must contain
+   * @param {number} [timeout=20000]
+   * @returns {Promise<string>}
+   */
+  async getCopyTripDialogQuoteWarningText(quoteName, timeout = 20000) {
+    const row = this.getCopyTripDialogQuoteRowByName(quoteName);
+    const warning = row.locator(SELECTORS.COPY_TRIP_DIALOG_QUOTE_WARNING).first();
+    try {
+      await warning.waitFor({ state: 'visible', timeout });
+      return (await warning.innerText()).trim();
+    } catch (err) {
+      const listed = await this.getCopyTripDialogQuoteNames().catch(() => []);
+      throw new Error(
+        `[CartPage.getCopyTripDialogQuoteWarningText] The copy-trip dialog row for "${quoteName}" showed ` +
+        `no "can not be copied" warning (row: ${SELECTORS.COPY_TRIP_DIALOG_QUOTE_ROW}, warning: ` +
+        `${SELECTORS.COPY_TRIP_DIALOG_QUOTE_WARNING}). Either that quote IS eligible for copy, or no row ` +
+        `matched that name — the dialog listed: [${listed.join(' | ')}]. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the status label on one named quote row of the copy-trip dialog (e.g. "Pending booking").
+   * A row that cannot be copied renders a warning instead of a status label, so this throws for it.
+   *
+   * @param {string} quoteName - Text the row's product name must contain
+   * @param {number} [timeout=20000]
+   * @returns {Promise<string>}
+   */
+  async getCopyTripDialogQuoteStatusByName(quoteName, timeout = 20000) {
+    const row = this.getCopyTripDialogQuoteRowByName(quoteName);
+    const label = row.locator(SELECTORS.COPY_TRIP_DIALOG_QUOTE_STATUS).first();
+    try {
+      await label.waitFor({ state: 'visible', timeout });
+      return (await label.innerText()).trim();
+    } catch (err) {
+      const listed = await this.getCopyTripDialogQuoteNames().catch(() => []);
+      throw new Error(
+        `[CartPage.getCopyTripDialogQuoteStatusByName] The copy-trip dialog row for "${quoteName}" showed ` +
+        `no status label (row: ${SELECTORS.COPY_TRIP_DIALOG_QUOTE_ROW}, status: ` +
+        `${SELECTORS.COPY_TRIP_DIALOG_QUOTE_STATUS}). A quote that cannot be copied renders the ` +
+        `"can not be copied" warning instead of a status, so this usually means that quote is not ` +
+        `eligible for copy. The dialog listed: [${listed.join(' | ')}]. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * The EU rail quote card in the cart. Returned as a locator (not awaited) so callers can assert
+   * either presence or absence.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getEuRailQuoteCard() {
+    return this.page.locator(SELECTORS.EU_RAIL_QUOTE_CARD);
+  }
+
+  /**
+   * Reads the flight quote card's price-state label — "To pay" for a live cart quote (see
+   * SELECTORS.FLIGHT_QUOTE_TO_PAY_LABEL for the other states it can render).
+   * @param {number} [timeout=30000]
+   * @returns {Promise<string>}
+   */
+  async getFlightQuoteToPayLabelText(timeout = 30000) {
+    const label = this.page.locator(SELECTORS.FLIGHT_QUOTE_TO_PAY_LABEL).first();
+    try {
+      await label.waitFor({ state: 'visible', timeout });
+      return (await label.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getFlightQuoteToPayLabelText] Could not read the flight quote's price-state label ` +
+        `(selector: ${SELECTORS.FLIGHT_QUOTE_TO_PAY_LABEL}). Likely causes: the trip has no flight ` +
+        `quote, or the quote is already ticketed/finalizing (the label is not rendered in those ` +
+        `states). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the price rendered next to the flight quote's "To pay" label.
+   * @param {number} [timeout=30000]
+   * @returns {Promise<string>}
+   */
+  async getFlightQuoteToPayPriceText(timeout = 30000) {
+    const price = this.page.locator(SELECTORS.FLIGHT_QUOTE_TO_PAY_PRICE).first();
+    try {
+      await price.waitFor({ state: 'visible', timeout });
+      return (await price.innerText()).replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getFlightQuoteToPayPriceText] Could not read the flight quote's total price ` +
+        `(selector: ${SELECTORS.FLIGHT_QUOTE_TO_PAY_PRICE}). Likely causes: the trip has no flight ` +
+        `quote, or its price had not rendered within ${timeout}ms. Original: ${err.message}`
       );
     }
   }

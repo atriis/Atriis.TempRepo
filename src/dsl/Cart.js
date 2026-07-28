@@ -3836,6 +3836,32 @@ const Cart = {
   },
 
   /**
+   * Starts adding an EU rail (Benerail) product to the trip from the cart product carousel.
+   * The Rail tile is a supplier dropdown, so this hovers it and picks "EU Rails"; like Hotel and Car
+   * it then opens the edit-search drawer in place rather than routing away, so the follow-on search
+   * must run against the drawer (BenerailSearch.searchBenerailOneWayFromCartDrawer).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async clickAddEuRailFromCart(page) {
+    if (!page) throw new Error('[Cart.clickAddEuRailFromCart] "page" is required.');
+    logger.debug('[Cart.clickAddEuRailFromCart] Opening the EU rail search drawer from the cart product carousel');
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      // Matched loosely because the dropdown item renders the raw supplier value ("EU Rails") while
+      // the product label elsewhere in the app is "EU Rail".
+      await cartPage.selectRailTypeFromCarousel(/EU Rail/i);
+    } catch (err) {
+      throw new Error(
+        `[Cart.clickAddEuRailFromCart] Could not start adding an EU rail to the trip from the cart. ` +
+        `The trip must already have at least one quote and the user must have access to the EU Rail ` +
+        `product. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Clicks the Parking button from the "Add more services" product carousel in the cart.
    * Navigates to the parking search page.
    *
@@ -7523,6 +7549,175 @@ const Cart = {
 
     logger.info('All quotes in the copy trip dialog show the expected status', { expectedStatus, statuses });
     return statuses;
+  },
+
+  /**
+   * Verifies the named quote in the open copy trip dialog is flagged as not copyable, and that its
+   * warning reads the expected text (e.g. "This item can not be copied").
+   *
+   * Scoped to one product on purpose: in a mixed-eligibility trip an unscoped check passes on any
+   * warning row, so it would still pass if an item that SHOULD be copyable were flagged too.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} quoteName - Text the row's product name must contain (e.g. "EU Rail")
+   * @param {string} expectedMessage - Text the row's warning must contain
+   * @returns {Promise<string>} The warning text that was read
+   */
+  async verifyCopyTripDialogItemWarning(page, quoteName, expectedMessage) {
+    if (!page) throw new Error('[Cart.verifyCopyTripDialogItemWarning] "page" is required.');
+    if (!quoteName || typeof quoteName !== 'string') {
+      throw new Error(
+        `[Cart.verifyCopyTripDialogItemWarning] "quoteName" must be a non-empty string, got: ` +
+        `${typeof quoteName} (${JSON.stringify(quoteName)})`
+      );
+    }
+    if (!expectedMessage || typeof expectedMessage !== 'string') {
+      throw new Error(
+        `[Cart.verifyCopyTripDialogItemWarning] "expectedMessage" must be a non-empty string, got: ` +
+        `${typeof expectedMessage} (${JSON.stringify(expectedMessage)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualMessage = await cartPage.getCopyTripDialogQuoteWarningText(quoteName);
+
+    expect(
+      actualMessage,
+      `Expected the copy trip dialog row for "${quoteName}" to warn "${expectedMessage}" but it read ` +
+      `"${actualMessage}".`,
+    ).toContain(expectedMessage);
+
+    logger.info('Copy trip dialog flags the quote as not copyable', { quoteName, actualMessage });
+    return actualMessage;
+  },
+
+  /**
+   * Verifies the named quote in the open copy trip dialog shows a status label with the expected
+   * text — which also proves it is eligible for copy, since a non-copyable quote renders the
+   * "can not be copied" warning in place of its status.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} quoteName - Text the row's product name must contain (e.g. "Flight")
+   * @param {string} expectedStatus - Status the row must show (e.g. "Pending booking")
+   * @returns {Promise<string>} The status text that was read
+   */
+  async verifyCopyTripDialogItemStatus(page, quoteName, expectedStatus) {
+    if (!page) throw new Error('[Cart.verifyCopyTripDialogItemStatus] "page" is required.');
+    if (!quoteName || typeof quoteName !== 'string') {
+      throw new Error(
+        `[Cart.verifyCopyTripDialogItemStatus] "quoteName" must be a non-empty string, got: ` +
+        `${typeof quoteName} (${JSON.stringify(quoteName)})`
+      );
+    }
+    if (!expectedStatus || typeof expectedStatus !== 'string') {
+      throw new Error(
+        `[Cart.verifyCopyTripDialogItemStatus] "expectedStatus" must be a non-empty string, got: ` +
+        `${typeof expectedStatus} (${JSON.stringify(expectedStatus)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualStatus = await cartPage.getCopyTripDialogQuoteStatusByName(quoteName);
+
+    expect(
+      actualStatus.toLowerCase(),
+      `Expected the copy trip dialog row for "${quoteName}" to show status "${expectedStatus}" but it ` +
+      `read "${actualStatus}".`,
+    ).toContain(expectedStatus.trim().toLowerCase());
+
+    logger.info('Copy trip dialog shows the expected status for the quote', { quoteName, actualStatus });
+    return actualStatus;
+  },
+
+  /**
+   * Captures the per-segment details (carrier, flight number, departure and arrival times) of the
+   * flight quote in the cart, so the same trip copied into a new tab can be compared against it.
+   * On a round trip this returns the outbound segment first and the return segment last.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<Array<{carrier: string, flightNumber: string, departureTime: string, arrivalTime: string}>>}
+   */
+  async extractFlightQuoteSegments(page) {
+    if (!page) throw new Error('[Cart.extractFlightQuoteSegments] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    let segments;
+    try {
+      segments = await cartPage.getVisibleFlightQuoteSegmentSummaries();
+    } catch (err) {
+      throw new Error(
+        `[Cart.extractFlightQuoteSegments] Could not read the flight quote's segments from the cart. ` +
+        `The trip must hold a flight quote whose segments have finished rendering. Original: ${err.message}`
+      );
+    }
+
+    logger.info('Captured flight quote segments from the cart', { segmentCount: segments.length, segments });
+    return segments;
+  },
+
+  /**
+   * Verifies the trip holds no EU rail quote — used on a copied trip, since a rail quote is not
+   * eligible for copy and must be dropped rather than carried over.
+   *
+   * @param {import('playwright').Page} page - The copied trip's page
+   * @returns {Promise<{euRailQuoteCount: 0}>}
+   */
+  async verifyTripHasNoEuRailQuote(page) {
+    if (!page) throw new Error('[Cart.verifyTripHasNoEuRailQuote] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    const railCards = cartPage.getEuRailQuoteCard();
+
+    // Polled rather than read once: the trip renders its quote cards progressively, so a rail card
+    // that IS wrongly copied can appear after the flight card is already on screen.
+    await expect
+      .poll(async () => railCards.count(), {
+        message:
+          'Expected the copied trip to contain no EU rail quote (a rail quote is not eligible for ' +
+          'copy and must be excluded), but a .eu-rail-quote-card was rendered.',
+        timeout: 15000,
+      })
+      .toBe(0);
+
+    logger.info('Copied trip contains no EU rail quote, as expected');
+    return { euRailQuoteCount: 0 };
+  },
+
+  /**
+   * Verifies the trip's flight quote shows a live "To pay" total: the expected label text (rather
+   * than "Expired offer" or the results-page "Price starts from") plus a price containing digits.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} [expectedLabel='To pay'] - Text the price-state label must contain
+   * @returns {Promise<{label: string, price: string}>}
+   */
+  async verifyFlightQuoteShowsToPayAmount(page, expectedLabel = 'To pay') {
+    if (!page) throw new Error('[Cart.verifyFlightQuoteShowsToPayAmount] "page" is required.');
+    if (!expectedLabel || typeof expectedLabel !== 'string') {
+      throw new Error(
+        `[Cart.verifyFlightQuoteShowsToPayAmount] "expectedLabel" must be a non-empty string, got: ` +
+        `${typeof expectedLabel} (${JSON.stringify(expectedLabel)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const label = await cartPage.getFlightQuoteToPayLabelText();
+    const price = await cartPage.getFlightQuoteToPayPriceText();
+
+    expect(
+      label,
+      `Expected the flight quote's price label to read "${expectedLabel}" but it read "${label}". ` +
+      `"Expired offer" means the quote lapsed; "Price starts from" means this is not a cart view.`,
+    ).toContain(expectedLabel);
+
+    expect(
+      price,
+      `Expected the flight quote's "${expectedLabel}" total to show an amount but it read "${price}".`,
+    ).toMatch(/\d/);
+
+    logger.info('Flight quote shows a to-pay amount', { label, price });
+    return { label, price };
   },
 
   /**

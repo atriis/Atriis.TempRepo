@@ -1438,6 +1438,13 @@ When("I click to add a car to my trip from cart", async function () {
   await Cart.clickAddCarFromCart(this.page);
 });
 
+// Named for the supplier, not just "rail": the carousel's Rail tile is a dropdown of rail suppliers
+// (EU Rail, UK Rail, Amtrak, ...) and each opens a different search form.
+When("I click to add an EU rail to my trip from cart", async function () {
+  logger.info("Clicking to add an EU rail from cart product carousel");
+  await Cart.clickAddEuRailFromCart(this.page);
+});
+
 When("I navigate to the manual quote search page from the cart", async function () {
   logger.info("Navigating to manual quote search page from cart product carousel");
   await Cart.navigateToManualQuoteFromCart(this.page);
@@ -2644,6 +2651,18 @@ Then("the copy trip dialog should show the message {string}", async function (ex
   await Cart.verifyCopyTripDialogMessage(this.page, expectedMessage);
 });
 
+// Mixed-eligibility counterparts of the all-products status assertion below. Both name the product
+// so a trip where the WRONG item is flagged fails here, rather than later on a disabled Copy button.
+Then("the copy trip dialog item {string} should show {string}", async function (quoteName, expectedMessage) {
+  logger.info("Verifying a copy trip dialog quote is flagged as not copyable", { quoteName, expectedMessage });
+  await Cart.verifyCopyTripDialogItemWarning(this.page, quoteName, expectedMessage);
+});
+
+Then("the copy trip dialog item {string} should show status {string}", async function (quoteName, expectedStatus) {
+  logger.info("Verifying a copy trip dialog quote is copyable and shows its status", { quoteName, expectedStatus });
+  await Cart.verifyCopyTripDialogItemStatus(this.page, quoteName, expectedStatus);
+});
+
 Then("all products in the copy trip dialog should show status {string}", async function (expectedStatus) {
   logger.info("Verifying every quote in the copy trip dialog shows the expected status", { expectedStatus });
   const statuses = await Cart.verifyAllCopyTripDialogQuotesHaveStatus(this.page, expectedStatus);
@@ -2677,6 +2696,29 @@ Then("the copied trip should contain the same car", async function () {
   }
   logger.info("Verifying copied trip contains the same car", { carType: this.storedCarType });
   await Cart.verifyTripHasSameCarType(this.page, this.storedCarType);
+});
+
+When("I store the outbound and return flight details", async function () {
+  this.storedFlightSegments = await Cart.extractFlightQuoteSegments(this.page);
+  logger.info("Stored flight segment details from the cart", { segments: this.storedFlightSegments });
+});
+
+Then("the copied trip flight details should match the stored outbound and return details", async function () {
+  if (!Array.isArray(this.storedFlightSegments) || !this.storedFlightSegments.length) {
+    throw new Error("No stored flight segments found. Run 'I store the outbound and return flight details' on the original trip before this step.");
+  }
+  logger.info("Verifying copied trip flight segments match the original", { segments: this.storedFlightSegments });
+  await Cart.verifyFlightSegmentDetails(this.page, this.storedFlightSegments);
+});
+
+Then("the copied trip should not contain the EU rail product", async function () {
+  logger.info("Verifying the copied trip excluded the non-copyable EU rail quote");
+  await Cart.verifyTripHasNoEuRailQuote(this.page);
+});
+
+Then("the copied trip should show a to pay amount", async function () {
+  logger.info("Verifying the copied trip's flight quote shows a to pay amount");
+  await Cart.verifyFlightQuoteShowsToPayAmount(this.page);
 });
 
 Then("the trip is created successfully with the same flight", async function () {
