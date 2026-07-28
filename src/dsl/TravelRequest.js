@@ -46,8 +46,11 @@ const TravelRequest = {
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
 
-    // Open date picker — scroll into view + wait for panel to stabilize
-    await travelRequestPage.clickDepartureDateField();
+    // Depart + return — one range picker; open it through the RA-scoped picker so the exact
+    // "Depart Date" input is clicked and only the VISIBLE panel is awaited. A `placeholder*='Depart'`
+    // match also hits the origin autocomplete ("From... Departure"), which sits FIRST in the DOM, and
+    // the search page beneath keeps a hidden stale range-picker the unscoped wait latched onto.
+    await travelRequestPage.openFlightDepartDatePicker();
     // Select dates from the currently visible months — no navigation needed
     await selectDatesByNthAvailable(page, {
       startIndex: SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
