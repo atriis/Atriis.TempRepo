@@ -7,8 +7,14 @@ const { escapeRegExp } = require("@utils/text");
  */
 
 const SELECTORS = {
-  // Proceed and Save buttons
-  PROCEED_BUTTON: "button:has-text('Proceed')",
+  // Proceed and Save buttons.
+  // Exact text, not `has-text`: this targets the "Proceed" CTA of the conflicting-quotes modal and
+  // the reference-fields / research popups (en.json btn.proceed = common.proceed = "Proceed"). A
+  // substring match also caught the cart's "Proceed to Checkout" CTA, so once the trip held a quote
+  // the locator resolved to two elements and every caller died on a strict-mode violation.
+  // "Proceed to Checkout" and "Proceed anyway" have their own dedicated selectors
+  // (CartPage.PROCEED_TO_CHECKOUT_BUTTON, FLIGHT_CAPACITY_PROCEED_ANYWAY_TEXT) and are not wanted here.
+  PROCEED_BUTTON: "button:text-is('Proceed')",
   SAVE_BUTTON: "button:has-text('Save')",
   HEADINGS: 'h1, h2, h3, h4, h5, h6',
 
