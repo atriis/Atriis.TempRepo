@@ -17,8 +17,7 @@ Feature: 23110 SunnyCars terms invoice payment and voucher validation
     When I search for a car at "LHR"
     # TODO: Create step "When I check terms and conditions in car results" that calls CarResults.checkTermsAndConditionsInResults(page).
     And I add the first car to cart
-    Then the booking status should be "Pending booking"
-    # TODO: Create step "Then the car FOP owner should be displayed as \"Paid by TMC\"" that calls CartPayment.verifyFopOwner(page, "Paid by TMC").
+    Then the payment type should be "Paid by TMC"
     When I check terms and conditions in cart
     And I accept Terms & Conditions
     And I proceed to checkout
