@@ -13,6 +13,7 @@ Feature: 66126 United NDC - Complete Trip booking and verifying Branded Fares
   I want to book a United NDC flight and verify branded fares are displayed
   So that I can review the ancillary information included in my fare
 
+ # Blocked: we are currently not getting branded fares for UA NDC
   Scenario: Complete trip booking with branded fares verification at each stage
     Given I am logged in as "bsua@bsua.com" booking a new trip
     And I have added myself as the traveler
