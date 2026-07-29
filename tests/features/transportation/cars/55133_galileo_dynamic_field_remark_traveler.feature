@@ -26,4 +26,4 @@ Feature: 55133 Galileo dynamic field remark with traveler connection
     And I proceed to checkout
     # TODO: Verify dynamic field values appear in checkout (7878, htht)
     And I complete the booking
-    Then the booking confirmation should show "Confirmed"
+    Then the booking status should be "Confirmed"

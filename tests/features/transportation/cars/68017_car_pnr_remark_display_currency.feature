@@ -24,5 +24,5 @@ Feature: 68017 Car PNR remark carDisplayCurrency validation
     And I proceed to checkout
     # TODO: Complete traveler reference questions
     And I complete the booking
-    Then the booking confirmation should show "Confirmed"
+    Then the booking status should be "Confirmed"
     # TODO: Verify PNR contains carDisplayCurrency remark via API (DISPLAYGBP)
