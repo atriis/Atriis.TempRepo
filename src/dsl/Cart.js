@@ -5114,6 +5114,117 @@ const Cart = {
   },
 
   /**
+   * Expands the "Request Billback" extras section on the cart's car quote card.
+   * Opening the panel triggers its data load, so the corporate billing number and the
+   * "Apply to this quote" checkbox are readable once this resolves.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async expandCarBillbackSection(page) {
+    if (!page) throw new Error('[Cart.expandCarBillbackSection] "page" is required.');
+
+    logger.debug('[Cart.expandCarBillbackSection] Expanding the car billback extras section');
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickCarBillbackExpand();
+      logger.info('Expanded the car billback extras section');
+    } catch (err) {
+      throw new Error(
+        `[Cart.expandCarBillbackSection] Failed to open the "Request Billback" extras section. The trip ` +
+        `must contain a car quote whose agreement enables billback — without it the section is not ` +
+        `rendered at all. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the corporate billing number shown in the car billback panel.
+   * The value is fetched asynchronously when the panel opens (carService.getBillback), so this polls
+   * instead of reading once — a single read can catch the input while it is still empty.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedNumber - Corporate billing number expected in the input
+   * @returns {Promise<void>}
+   */
+  async verifyCarBillbackBillingNumber(page, expectedNumber) {
+    if (!page) throw new Error('[Cart.verifyCarBillbackBillingNumber] "page" is required.');
+    if (!expectedNumber || typeof expectedNumber !== 'string') {
+      throw new Error(
+        `[Cart.verifyCarBillbackBillingNumber] "expectedNumber" must be a non-empty string, got: ` +
+        `${typeof expectedNumber} (${JSON.stringify(expectedNumber)})`
+      );
+    }
+
+    logger.debug('[Cart.verifyCarBillbackBillingNumber] Verifying the corporate billing number', { expectedNumber });
+    const cartPage = getPageObject(page, CartPage);
+
+    await expect
+      .poll(async () => cartPage.getCarBillbackBillingNumber(), {
+        timeout: 30000,
+        message:
+          `Expected the corporate billing number in the car billback panel to be "${expectedNumber}". ` +
+          `It is loaded from the user's car agreement when the panel opens, so a mismatch means either ` +
+          `the agreement is configured with a different billing number, or the billback data never loaded.`,
+      })
+      .toBe(expectedNumber);
+  },
+
+  /**
+   * Unchecks the "Apply to this quote" checkbox in the car billback panel, removing billback from the
+   * quote so the form of payment falls back to the credit card. The checkbox arrives checked for a
+   * billback agreement, so this asserts the starting state, clicks once, and polls for the flip —
+   * a bare click would silently pass even if the box was already unchecked.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} label - Checkbox label as written in the feature (e.g. "Apply to this quote")
+   * @returns {Promise<void>}
+   */
+  async uncheckCarBillbackApplyToQuote(page, label) {
+    if (!page) throw new Error('[Cart.uncheckCarBillbackApplyToQuote] "page" is required.');
+    if (!label || typeof label !== 'string') {
+      throw new Error(
+        `[Cart.uncheckCarBillbackApplyToQuote] "label" must be a non-empty string, got: ` +
+        `${typeof label} (${JSON.stringify(label)})`
+      );
+    }
+
+    logger.debug('[Cart.uncheckCarBillbackApplyToQuote] Unchecking the billback apply checkbox', { label });
+    const cartPage = getPageObject(page, CartPage);
+
+    // Confirm the checkbox being toggled is the one the feature names, so a wrong label in the
+    // Gherkin fails loudly instead of silently unchecking whatever checkbox happens to be there.
+    const actualLabel = await cartPage.getCarBillbackApplyCheckboxLabel();
+    expect(
+      actualLabel,
+      `Expected the car billback checkbox label to contain "${label}", but it reads "${actualLabel}". ` +
+      `The panel may render a different checkbox than the scenario expects.`,
+    ).toContain(label);
+
+    const isCheckedBefore = await cartPage.isCarBillbackApplyCheckboxChecked();
+    expect(
+      isCheckedBefore,
+      `Expected the "${label}" checkbox to be checked before unchecking it, but it was already unchecked. ` +
+      `Billback should be applied by default for an agreement car quote — an unchecked box means the ` +
+      `quote arrived without billback, so this scenario cannot remove it.`,
+    ).toBe(true);
+
+    await cartPage.clickCarBillbackApplyCheckbox();
+
+    await expect
+      .poll(async () => cartPage.isCarBillbackApplyCheckboxChecked(), {
+        timeout: 10000,
+        message:
+          `Expected the "${label}" checkbox to become unchecked after clicking it, but it stayed checked. ` +
+          `Likely cause: the click landed outside the checkbox input, or the panel is read-only.`,
+      })
+      .toBe(false);
+
+    logger.info('Unchecked the billback apply checkbox in the car billback panel', { label });
+  },
+
+  /**
    * Selects an existing loyalty number from the traveler's profile.
    * Assumes the loyalty extras section is already expanded.
    * Flow: click Existing radio → select from dropdown → save → verify green icon.

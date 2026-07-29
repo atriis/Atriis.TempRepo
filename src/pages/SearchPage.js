@@ -1457,19 +1457,29 @@ class SearchPage {
   /**
    * Waits until a named traveler's chip is visible in the travelers list.
    * The named chip uses .traveler-name.black; the search is case-insensitive via hasText.
+   *
+   * The default is deliberately generous: until the traveler's profile finishes loading the chip
+   * renders its loading state (trip-traveler-tag.vue shows a spinner while `isTravelerLoading`),
+   * and on slower corporations that has been observed to outlast a 15s wait — which read as
+   * "traveler was never added" even though the chip resolved moments later.
+   *
    * @param {string} name - Full name to look for (e.g. "Gadi Cohen")
+   * @param {object} [options]
+   * @param {number} [options.timeout=40000]
    */
-  async waitForTravelerNameVisible(name) {
+  async waitForTravelerNameVisible(name, { timeout = 40000 } = {}) {
     if (!name || typeof name !== 'string') {
       throw new Error(`[SearchPage.waitForTravelerNameVisible] "name" must be a non-empty string, got: ${typeof name}`);
     }
     const locator = this.page.locator(SELECTORS.SELECTED_TRAVELER_NAME).filter({ hasText: name });
     try {
-      await locator.waitFor({ state: 'visible', timeout: 15000 });
+      await locator.waitFor({ state: 'visible', timeout });
     } catch (err) {
       throw new Error(
         `[SearchPage.waitForTravelerNameVisible] Traveler name "${name}" not visible in the travelers list ` +
-        `(selector: ${SELECTORS.SELECTED_TRAVELER_NAME}). Ensure the traveler was added successfully. Original: ${err.message}`
+        `within ${timeout}ms (selector: ${SELECTORS.SELECTED_TRAVELER_NAME}). Likely causes: the traveler was ` +
+        `never selected from the autocomplete, or the chip is still in its loading state because the ` +
+        `traveler's profile never finished loading. Original: ${err.message}`
       );
     }
   }

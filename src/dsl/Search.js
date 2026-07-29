@@ -993,17 +993,20 @@ const Search = {
    * @param {import('playwright').Page} page
    * @param {string} name - Full name to look for (e.g. "Gadi Cohen")
    */
-  async verifyTravelerNameVisible(page, name) {
+  async verifyTravelerNameVisible(page, name, { timeout } = {}) {
     if (!page) throw new Error('[Search.verifyTravelerNameVisible] "page" is required.');
     if (!name || typeof name !== 'string') {
       throw new Error(`[Search.verifyTravelerNameVisible] "name" must be a non-empty string, got: ${typeof name} (${JSON.stringify(name)})`);
+    }
+    if (timeout !== undefined && (typeof timeout !== 'number' || timeout <= 0)) {
+      throw new Error(`[Search.verifyTravelerNameVisible] "timeout" must be a positive number of milliseconds, got: ${typeof timeout} (${JSON.stringify(timeout)})`);
     }
 
     logger.info('[Search.verifyTravelerNameVisible] Verifying traveler name is visible in travelers list', { name });
     const searchPage = getPageObject(page, SearchPage);
 
     try {
-      await searchPage.waitForTravelerNameVisible(name);
+      await searchPage.waitForTravelerNameVisible(name, { timeout });
     } catch (err) {
       throw new Error(`[Search.verifyTravelerNameVisible] Traveler "${name}" not visible in the travelers list: ${err.message}`);
     }

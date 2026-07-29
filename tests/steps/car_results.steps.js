@@ -157,6 +157,11 @@ Then("the agreement text should be displayed in the car results tooltip", async 
   logger.info("Agreement text tooltip validated", { tooltipText: result.tooltipText });
 });
 
+Then("handshake badge should be visible in car results", async function () {
+  logger.info("Verifying the agreement (handshake) badge is visible in car results");
+  await CarResults.verifyHandshakeBadgeVisible(this.page);
+});
+
 Then("the first station should have a {string} button", async function (buttonName) {
   if (!buttonName || typeof buttonName !== 'string') {
     throw new Error(`buttonName must be a non-empty string, got: ${buttonName}`);

@@ -2325,6 +2325,21 @@ When("I add a car driver loyalty number {string} in the extras", async function 
   await Cart.addCarDriverLoyaltyNumber(this.page, loyaltyNumber);
 });
 
+When("I click to edit the request billback extras section", async function () {
+  logger.info("Opening the request billback extras section on the car quote card");
+  await Cart.expandCarBillbackSection(this.page);
+});
+
+Then("the corporate billing number is {string}", async function (expectedNumber) {
+  logger.info("Verifying the corporate billing number in the car billback panel", { expectedNumber });
+  await Cart.verifyCarBillbackBillingNumber(this.page, expectedNumber);
+});
+
+When("I uncheck the {string} checkbox in the car billback section", async function (label) {
+  logger.info("Unchecking the billback apply checkbox", { label });
+  await Cart.uncheckCarBillbackApplyToQuote(this.page, label);
+});
+
 When("I add loyalty number {string} using the first available chain", async function (loyaltyNumber) {
   logger.info("Adding loyalty number with first available chain", { loyaltyNumber });
   this.selectedChainText = await Cart.addLoyaltyNumberWithFirstAvailableChain(this.page, loyaltyNumber);

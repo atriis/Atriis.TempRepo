@@ -1013,6 +1013,30 @@ const CarResults = {
   },
 
   /**
+   * Verifies the agreement (handshake) badge is visible on the first car result.
+   * Mirrors the hotel/room-level `verifyHandshakeBadgeVisible` assertions: an agreement fare renders
+   * the handshake icon inside the card's `.agreements` row.
+   *
+   * @param {import('playwright').Page} page
+   * @throws {Error} If no agreement badge is rendered on the first car result
+   */
+  async verifyHandshakeBadgeVisible(page) {
+    if (!page) throw new Error('[CarResults.verifyHandshakeBadgeVisible] "page" is required.');
+
+    logger.debug('[CarResults.verifyHandshakeBadgeVisible] Looking for the agreement handshake badge in car results');
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    // Cards can still be rendering right after the reference-fields popup is proceeded, so allow more
+    // than the page object's short default before declaring the badge missing.
+    const isVisible = await carResultsPage.hasVisibleAgreementTrigger({ timeout: 30000 });
+
+    expect(
+      isVisible,
+      'Expected the agreement (handshake) badge to be visible on the first car result, but no agreement icon was rendered. ' +
+      "The user's car agreement may not be returning agreement fares for this search.",
+    ).toBe(true);
+  },
+
+  /**
    * Clicks the "Terms and conditions" button on the first car result card, which opens the
    * car Terms & Conditions dialog (car-terms-conditions.vue). This is a card-level button
    * (car-preview.vue `.more-details-btn`) — not part of the agreement tooltip.

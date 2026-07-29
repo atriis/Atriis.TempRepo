@@ -739,6 +739,26 @@ const SELECTORS = {
   CAR_DRIVER_LOYALTY_SAVE_BUTTON: '.car-driver-loyalty .btns .no-border',
   CAR_DRIVER_LOYALTY_SUCCESS_ICON: '.car-driver-loyalty .success-icon',
 
+  // Car billback extras (car-billback.vue → <section class="car-billback">). Rendered in the car
+  // quote card's `#extras-content` slot next to car-driver-loyalty, so it opens the same way: one
+  // click on the extras-layout Add/View/Edit `.is-clickable` span.
+  CAR_BILLBACK_EXPAND: '.car-billback .extra__btns .is-clickable',
+  // Every selector below is scoped through `.extras-card`, which exists only while the panel is
+  // expanded — the collapsed summary row reuses `.card-title` and would otherwise match too.
+  // "Apply to this quote" el-checkbox (`car.applyToThisQuote`). Element-Plus puts `is-checked` on the
+  // `.el-checkbox` root, so that is the state anchor; `.el-checkbox__inner` is the click target.
+  // `.billback-checkbox` is on both the el-checkbox and its inner label span, hence the `.el-checkbox`
+  // qualifier.
+  CAR_BILLBACK_APPLY_CHECKBOX: '.car-billback .extras-card .el-checkbox.billback-checkbox',
+  CAR_BILLBACK_APPLY_CHECKBOX_INNER: '.car-billback .extras-card .el-checkbox.billback-checkbox .el-checkbox__inner',
+  // Label text of that checkbox. Element-Plus wraps the slot in `.el-checkbox__label`, so this also
+  // picks up the trailing tooltip icon's "info" glyph text — match with contains, not equality.
+  CAR_BILLBACK_APPLY_CHECKBOX_LABEL: '.car-billback .extras-card .el-checkbox.billback-checkbox .el-checkbox__label',
+  // "Corporate billing number" input — the FIRST `.field` of the `.columns` row. The second field
+  // holds the "Amount to be covered" radios with their own amount input, so an unscoped input
+  // selector inside the card would read the custom amount instead of the billing number.
+  CAR_BILLBACK_BILLING_NUMBER_INPUT: '.car-billback .extras-card .columns .field:first-child input.el-input__inner',
+
   // Car type on the cart's car quote card (car-quote-card.vue → .car-title-block > h4.center-title).
   // `.center-title` alone is unusable here — per-diem, parking, ground-transport and
   // general-product quote cards all reuse that class.
@@ -6054,6 +6074,117 @@ class CartPage {
         `its success indicator within ${timeout}ms (selector: ${SELECTORS.CAR_DRIVER_LOYALTY_SUCCESS_ICON}). ` +
         `Likely causes: carService.saveLoyaltyId returned an error (check for a red alert toast), or ` +
         `the loyalty number was rejected as invalid. Original: ${err.message}`
+      );
+    }
+  }
+
+  // ===== CAR BILLBACK EXTRAS (car-billback.vue) =====
+
+  /**
+   * Expands the car billback extras section and waits for its corporate billing number input to
+   * render. The panel loads its data on open (`carService.getBillback`) behind an el-skeleton, so
+   * waiting for the input — not just the card — is what proves the panel is usable.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async clickCarBillbackExpand({ timeout = 15000 } = {}) {
+    const expander = this.page.locator(SELECTORS.CAR_BILLBACK_EXPAND).first();
+    try {
+      await expander.waitFor({ state: 'visible', timeout });
+      await expander.click();
+      await this.page
+        .locator(SELECTORS.CAR_BILLBACK_BILLING_NUMBER_INPUT)
+        .first()
+        .waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickCarBillbackExpand] Could not expand the car billback extras ` +
+        `(expander: ${SELECTORS.CAR_BILLBACK_EXPAND}, input: ${SELECTORS.CAR_BILLBACK_BILLING_NUMBER_INPUT}). ` +
+        `Likely causes: the trip has no car quote, the quote has no CarBillback validation so the ` +
+        `section is never rendered, or the panel's data load (carService.getBillback) left the ` +
+        `skeleton in place beyond ${timeout}ms. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the current value of the "Corporate billing number" input in the car billback panel.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<string>} The trimmed input value ('' while the value is still loading)
+   */
+  async getCarBillbackBillingNumber({ timeout = 10000 } = {}) {
+    const input = this.page.locator(SELECTORS.CAR_BILLBACK_BILLING_NUMBER_INPUT).first();
+    try {
+      await input.waitFor({ state: 'visible', timeout });
+      return ((await input.inputValue()) || '').trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getCarBillbackBillingNumber] Could not read the corporate billing number input ` +
+        `(selector: ${SELECTORS.CAR_BILLBACK_BILLING_NUMBER_INPUT}). Likely cause: the car billback ` +
+        `panel is not expanded. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads whether the "Apply to this quote" checkbox in the car billback panel is checked.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isCarBillbackApplyCheckboxChecked({ timeout = 10000 } = {}) {
+    const checkbox = this.page.locator(SELECTORS.CAR_BILLBACK_APPLY_CHECKBOX).first();
+    try {
+      await checkbox.waitFor({ state: 'visible', timeout });
+      const classes = (await checkbox.getAttribute('class')) || '';
+      return classes.split(/\s+/).includes('is-checked');
+    } catch (err) {
+      throw new Error(
+        `[CartPage.isCarBillbackApplyCheckboxChecked] Could not read the "Apply to this quote" ` +
+        `checkbox state (selector: ${SELECTORS.CAR_BILLBACK_APPLY_CHECKBOX}). Likely cause: the car ` +
+        `billback panel is not expanded. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the label text of the "Apply to this quote" checkbox in the car billback panel.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<string>} Whitespace-collapsed label text
+   */
+  async getCarBillbackApplyCheckboxLabel({ timeout = 10000 } = {}) {
+    const label = this.page.locator(SELECTORS.CAR_BILLBACK_APPLY_CHECKBOX_LABEL).first();
+    try {
+      await label.waitFor({ state: 'visible', timeout });
+      return ((await label.textContent()) || '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getCarBillbackApplyCheckboxLabel] Could not read the billback checkbox label ` +
+        `(selector: ${SELECTORS.CAR_BILLBACK_APPLY_CHECKBOX_LABEL}). Likely cause: the car billback ` +
+        `panel is not expanded. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the "Apply to this quote" checkbox in the car billback panel. This TOGGLES the current
+   * state — the caller owns asserting the resulting state.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   */
+  async clickCarBillbackApplyCheckbox({ timeout = 10000 } = {}) {
+    const inner = this.page.locator(SELECTORS.CAR_BILLBACK_APPLY_CHECKBOX_INNER).first();
+    try {
+      await inner.waitFor({ state: 'visible', timeout });
+      await inner.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickCarBillbackApplyCheckbox] Could not click the "Apply to this quote" checkbox ` +
+        `(selector: ${SELECTORS.CAR_BILLBACK_APPLY_CHECKBOX_INNER}). Likely causes: the car billback ` +
+        `panel is not expanded, or the panel is in read-only mode (.is-read-only). ` +
+        `Original: ${err.message}`
       );
     }
   }
