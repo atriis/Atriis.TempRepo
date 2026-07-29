@@ -227,11 +227,16 @@ Then("only {string} counter location results should be displayed", async functio
 When("I deselect the {string} option in the {string} filter", async function (optionLabel, filterTitle) {
   logger.info("Deselecting filter option", { optionLabel, filterTitle });
   await CarResults.deselectFilterOption(this.page, optionLabel, filterTitle);
+  this.lastDeselectedFilter = { optionLabel, filterTitle };
 });
 
 Then("all car results should be restored", async function () {
-  logger.info("Verifying all car results are restored after filter removed");
-  await CarResults.verifyAllCarResultsRestored(this.page);
+  if (!this.lastDeselectedFilter) {
+    throw new Error('"all car results should be restored" requires a preceding "I deselect the ... option in the ... filter" step');
+  }
+  const { optionLabel, filterTitle } = this.lastDeselectedFilter;
+  logger.info("Verifying all car results are restored after filter removed", { optionLabel, filterTitle });
+  await CarResults.verifyAllCarResultsRestored(this.page, optionLabel, filterTitle);
 });
 
 Then("the first car result should be from rental agency {string}", async function (agencyName) {

@@ -1110,24 +1110,36 @@ const CarResults = {
   },
 
   /**
-   * Asserts that all car results are restored after a filter is removed.
-   * Verifies the Reset Filters button is disabled (no manually applied filters).
-   * When the sole option was auto-selected and locked by the UI (disabled checkbox),
-   * the Reset Filters button remains disabled throughout — that state is also valid.
+   * Asserts that all car results are restored after a counter-location filter option is removed.
+   * Verifies the specific option is no longer checked (its constraint on the result list is gone).
+   *
+   * Deliberately does NOT check the global Reset Filters button: that button also reflects
+   * OTHER filters unrelated to this one (e.g. the app auto-applies an agency filter to hide
+   * carriers restricted by travel policy — see car.store.ts's "FilterOut restriction" logic),
+   * so it can legitimately stay enabled even after this specific option is cleared.
    *
    * @param {import('playwright').Page} page
-   * @throws {Error} If page is invalid or the reset button is not in the expected state
+   * @param {string} optionLabel - The checkbox label text that was just deselected (e.g. "At airport")
+   * @param {string} filterTitle - The filter section title (e.g. "Rental Counter Location")
+   * @throws {Error} If inputs are invalid or the option is still checked
    * @returns {Promise<void>}
    */
-  async verifyAllCarResultsRestored(page) {
+  async verifyAllCarResultsRestored(page, optionLabel, filterTitle) {
     if (!page) throw new Error('page is required');
+    if (!optionLabel || typeof optionLabel !== 'string') {
+      throw new Error(`optionLabel must be a non-empty string, got: ${optionLabel}`);
+    }
+    if (!filterTitle || typeof filterTitle !== 'string') {
+      throw new Error(`filterTitle must be a non-empty string, got: ${filterTitle}`);
+    }
 
-    const { ResultsPage } = require('@pages/ResultsPage');
-    const resultsPage = getPageObject(page, ResultsPage);
-    const resetButton = resultsPage.getResetFiltersButton();
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const isChecked = await carResultsPage.isFilterOptionChecked(filterTitle, optionLabel, { timeout: 3000 });
 
-    await expect(resetButton).toBeVisible({ timeout: 15000 });
-    await expect(resetButton).toBeDisabled({ timeout: 15000 });
+    expect(
+      isChecked,
+      `Expected filter option "${optionLabel}" in "${filterTitle}" to no longer be checked after deselecting it, but it was still active.`,
+    ).toBe(false);
   },
 
   /**

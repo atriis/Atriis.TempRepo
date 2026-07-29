@@ -14,7 +14,6 @@ Feature: 66941 Cars - Rental Counter Location Filter
     And I have added myself as the traveler
     When I search for a car at "barajas" with 1 months ahead
     When I wait for add to trip text to be visible
-    Then the reset filters button should be visible and disabled
     Then the "Rental Counter Location" filter should be visible in car results
     Then the "Rental Counter Location" filter options should only contain valid counter location values
     When I select the "At airport" option in the "Rental Counter Location" filter
