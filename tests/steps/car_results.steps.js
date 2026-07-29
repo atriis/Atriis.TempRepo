@@ -100,6 +100,16 @@ Then("none of the car result titles should contain the word {string}", async fun
   await CarResults.assertCarTitlesDoNotContainWord(this.page, word);
 });
 
+When("I filter car results by the {string} sustainability checkbox", async function (label) {
+  logger.info("Filtering car results by sustainability checkbox", { label });
+  await CarResults.filterCarResultsBySustainability(this.page, label);
+});
+
+Then("all car results should show the eco option tag {string}", async function (expectedLabel) {
+  logger.info("Verifying every car result shows the eco option tag", { expectedLabel });
+  await CarResults.assertAllCarResultsShowEcoOptionTag(this.page, expectedLabel);
+});
+
 Then("the payment type on results should be {string}", async function (expectedPaymentType) {
   logger.info("Verifying car payment type on results", { expectedPaymentType });
   await CarResults.expectPaymentTypeOnResults(this.page, expectedPaymentType);

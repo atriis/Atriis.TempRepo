@@ -2077,6 +2077,22 @@ const Cart = {
     }
     await cartPage.fillInOOPJustificationText(justificationText);
     await cartPage.saveOOPJustificationText();
+
+    // The Save button hides only once the justification has actually been persisted. Without
+    // this wait the next action (typically "proceed to checkout") fires while the save is still
+    // in flight, so the cart still counts the justification as missing and silently refuses to
+    // advance — leaving the run on the cart page with no error. Mirrors the dropdown save flow
+    // in verifyOOPJustificationDropdownSaveWorksInCart.
+    try {
+      await cartPage.waitForSaveJustificationButtonHidden();
+    } catch (err) {
+      throw new Error(
+        `[Cart.fillInOOPJustificationTextAndSave] Saved the OOP justification "${justificationText}" ` +
+        `but the Save button never disappeared, so the justification was not persisted. ` +
+        `Checkout will refuse to proceed while the justification is still outstanding. ` +
+        `Original: ${err.message}`
+      );
+    }
   },
 
   /**
@@ -2331,6 +2347,33 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     await cartPage.acceptTermsAndConditions();
     await cartPage.waitForProceedToCheckout();
+    await cartPage.clickProceedToCheckout();
+  },
+
+  /**
+   * Clicks the cart's "Proceed to Checkout" CTA only once it is actually enabled.
+   *
+   * Use this after an action that makes the cart re-validate — saving an out-of-policy
+   * justification, for example. The CTA stays visible throughout but is briefly re-disabled, and
+   * the element being clicked is the wrapping `.btn-container` div, so a click landing in that
+   * window is swallowed with no error and the run silently stays on the cart page.
+   *
+   * Does NOT accept Terms & Conditions — a preceding step is expected to have done that, and
+   * re-clicking the checkbox would toggle it back off.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is missing or the CTA never becomes enabled
+   * @returns {Promise<void>}
+   */
+  async clickProceedToCheckoutWhenEnabled(page) {
+    if (!page) {
+      throw new Error('[Cart.clickProceedToCheckoutWhenEnabled] "page" is required, got: ' + typeof page);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('Waiting for the Proceed to Checkout CTA to become enabled');
+
+    await cartPage.waitForProceedToCheckoutEnabled();
     await cartPage.clickProceedToCheckout();
   },
 

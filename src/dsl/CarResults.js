@@ -801,6 +801,104 @@ const CarResults = {
   },
 
   /**
+   * Applies a sustainability filter in the car filter panel and waits for the results to settle.
+   *
+   * Kept separate from the generic Results.filterByCheckboxOption flow because car-filter.vue
+   * renders this control as a bare el-checkbox (no inner <p>, no `.filter-container` group),
+   * which the generic p-based locator cannot match.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} label - Visible checkbox label, e.g. "Low emission cars"
+   * @throws {Error} If validation fails, the checkbox is not found, or it does not become checked
+   * @returns {Promise<void>}
+   */
+  async filterCarResultsBySustainability(page, label) {
+    if (!page) throw new Error('[CarResults.filterCarResultsBySustainability] "page" is required, got: ' + typeof page);
+    if (!label || typeof label !== 'string') {
+      throw new Error(
+        `[CarResults.filterCarResultsBySustainability] "label" must be a non-empty string, got: ${typeof label} (${label})`
+      );
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.waitForCarTitlesVisible();
+
+    logger.debug('Applying car sustainability filter', { label });
+
+    try {
+      await carResultsPage.clickSustainabilityFilterCheckbox(label);
+    } catch (error) {
+      throw new Error(
+        `[CarResults.filterCarResultsBySustainability] Could not apply the "${label}" sustainability ` +
+        `filter to the car results. Original: ${error.message}`
+      );
+    }
+
+    await expect
+      .poll(async () => carResultsPage.isSustainabilityFilterChecked(label), {
+        timeout: 15000,
+        message:
+          `Expected the "${label}" sustainability checkbox to report a checked state after being ` +
+          `clicked, so the car results are actually filtered before any eco assertion runs.`,
+      })
+      .toBe(true);
+
+    // The filter re-renders the list client-side; wait for at least one card to be present again
+    // so downstream assertions do not read a mid-update DOM.
+    await carResultsPage.waitForCarTitlesVisible();
+
+    logger.info('Car sustainability filter applied', { label });
+  },
+
+  /**
+   * Asserts that every rendered car result card shows the eco option tag with the expected label.
+   *
+   * Intended to run straight after the "Low emission cars" filter is applied: the filter
+   * (carService filterBy.isSustainability) and the tag's render guard (car-preview
+   * isElectricCar) both delegate to the same isElectricCarType predicate, so once the filter
+   * is on, every remaining card must carry the tag. A card without it is a real defect.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedLabel - Expected tag text, e.g. "Eco Option" (localised per language)
+   * @throws {Error} If validation fails, no cards are rendered, or any card is missing the tag
+   * @returns {Promise<void>}
+   */
+  async assertAllCarResultsShowEcoOptionTag(page, expectedLabel) {
+    if (!page) throw new Error('[CarResults.assertAllCarResultsShowEcoOptionTag] "page" is required, got: ' + typeof page);
+    if (!expectedLabel || typeof expectedLabel !== 'string') {
+      throw new Error(
+        `[CarResults.assertAllCarResultsShowEcoOptionTag] "expectedLabel" must be a non-empty string, got: ${typeof expectedLabel} (${expectedLabel})`
+      );
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.waitForCarTitlesVisible();
+
+    logger.debug('Verifying the eco option tag on every car result', { expectedLabel });
+
+    const count = await carResultsPage.getCarResultCards().count();
+    expect(
+      count,
+      `[CarResults.assertAllCarResultsShowEcoOptionTag] Expected at least one car result to verify ` +
+      `the "${expectedLabel}" tag against, but the results list rendered 0 cards. The eco filter ` +
+      `may have removed every result, so this assertion would otherwise pass vacuously.`
+    ).toBeGreaterThan(0);
+
+    for (let i = 0; i < count; i++) {
+      await carResultsPage.waitForEcoOptionTagInCard(i);
+      const actualLabel = await carResultsPage.getEcoOptionTagTextInCard(i);
+      expect(
+        actualLabel,
+        `[CarResults.assertAllCarResultsShowEcoOptionTag] Car result at index ${i} of ${count} shows ` +
+        `eco tag "${actualLabel}" but "${expectedLabel}" was expected. Every result must carry the ` +
+        `eco option tag once the low-emission filter is applied.`
+      ).toBe(expectedLabel);
+    }
+
+    logger.info('All car results show the eco option tag', { expectedLabel, carResults: count });
+  },
+
+  /**
    * Verifies that the car model subtitle element is visible in results.
    * This element is only rendered for SunnyCars supplier when makeModel is populated.
    *

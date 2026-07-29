@@ -15,6 +15,13 @@ const SELECTORS = {
   LOCATION_LABEL: ".location-lines .location-address-text",
   CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   FIRST_CAR_PREVIEW: '.car-preview',
+  // One wrapper per rendered car result (car-list.vue). MUST stay scoped under `.car-list` —
+  // the unrelated station list above reuses `.preview-container` (see STATION_PREVIEW).
+  CAR_RESULT_CARD: '.car-list .preview-container',
+  // "Eco Option" tag inside a card's `.agreements` row — the plain variant of eco-label.vue,
+  // rendered only when carService.isElectricCarType(car) is true. `.eco-option-plain` exists
+  // only in that variant, so it cannot match the CO2/carbon-quantity eco-label in the same card.
+  ECO_OPTION_TAG: '.eco-label .eco-option-plain p',
   AGREEMENT_ICON_IN_CARD: '.agreements .agreement-img',
   AGREEMENT_TOOLTIP_TRIGGER_IN_CARD: '.agreements .ticket-agreement > div',
   AGREEMENT_TOOLTIP_DESCRIPTION: '.agreement-tooltip-list .agreement-tooltip__description',
@@ -41,6 +48,14 @@ const SELECTORS = {
   FILTER_SECTION: '.car-filter-container .filter-container',
   FILTER_CHECKBOX_LABEL: '.car-filter-container .filter-container .el-checkbox__label p',
   FILTER_CHECKBOX: '.car-filter-container .filter-container .el-checkbox',
+  // Sustainability ("Low emission cars") filter — car-filter.vue renders this as a BARE
+  // el-checkbox with a plain-text default slot, so Element Plus emits the label as
+  // `<span class="el-checkbox__label">` with NO inner <p>, and it sits outside any
+  // `.filter-container` group. Both differences mean the generic
+  // ResultsPage.filterByCheckboxOption helper (which requires `p:text-is(...)`) cannot match it.
+  SUSTAINABILITY_CHECKBOX: (label) =>
+    `.car-filter-container label.el-checkbox:visible:has(.el-checkbox__label:text-is("${label}"))`,
+  SUSTAINABILITY_CHECKBOX_INPUT: '.el-checkbox__input',
   // Payment type label on each car result card (.payment-method <p>)
   PAYMENT_TYPE_LABEL: '.payment-method p',
   PAYMENT_METHOD_TEXT: '.btns-container .payment-method p',
@@ -328,6 +343,130 @@ class CarResultsPage {
 
   async waitForCarTitlesVisible() {
     await this.page.locator('.car-title').first().waitFor({ state: 'visible', timeout: 60000 });
+  }
+
+  /**
+   * Clicks a sustainability filter checkbox in the car filter panel by its label text.
+   *
+   * @param {string} label - Visible checkbox label, e.g. "Low emission cars"
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If label is invalid or the checkbox never becomes visible
+   * @returns {Promise<void>}
+   */
+  async clickSustainabilityFilterCheckbox(label, { timeout = 30000 } = {}) {
+    if (typeof label !== 'string' || !label.trim()) {
+      throw new Error(
+        `[CarResultsPage.clickSustainabilityFilterCheckbox] "label" must be a non-empty string, got: ${typeof label} (${label})`
+      );
+    }
+
+    const selector = SELECTORS.SUSTAINABILITY_CHECKBOX(label.trim());
+    const checkbox = this.page.locator(selector).first();
+
+    try {
+      await checkbox.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.clickSustainabilityFilterCheckbox] The "${label}" sustainability checkbox ` +
+        `did not become visible in the car filter panel within ${timeout}ms (selector: ${selector}). ` +
+        `The filter panel may not have loaded, or the label text may differ in the active language. ` +
+        `Original: ${error.message}`
+      );
+    }
+
+    await checkbox.locator(SELECTORS.SUSTAINABILITY_CHECKBOX_INPUT).click();
+  }
+
+  /**
+   * Returns true when the sustainability filter checkbox is in the checked state.
+   *
+   * @param {string} label - Visible checkbox label, e.g. "Low emission cars"
+   * @returns {Promise<boolean>}
+   */
+  async isSustainabilityFilterChecked(label) {
+    if (typeof label !== 'string' || !label.trim()) {
+      throw new Error(
+        `[CarResultsPage.isSustainabilityFilterChecked] "label" must be a non-empty string, got: ${typeof label} (${label})`
+      );
+    }
+
+    const checkbox = this.page.locator(SELECTORS.SUSTAINABILITY_CHECKBOX(label.trim())).first();
+    const className = (await checkbox.getAttribute('class')) || '';
+    return className.includes('is-checked');
+  }
+
+  /**
+   * Returns a locator for every rendered car result card.
+   *
+   * On desktop the whole filtered list is rendered up-front — car-list.ts only attaches its
+   * lazy-load IntersectionObserver when the store reports `isMobile` — so this covers all cars.
+   *
+   * @returns {import('playwright').Locator}
+   */
+  getCarResultCards() {
+    return this.page.locator(SELECTORS.CAR_RESULT_CARD);
+  }
+
+  /**
+   * Returns the "Eco Option" tag locator inside the car result card at the given index.
+   *
+   * @param {number} index - Zero-based index of the car result card
+   * @returns {import('playwright').Locator}
+   * @throws {Error} If index is not a non-negative integer
+   */
+  getEcoOptionTagInCard(index) {
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(
+        `[CarResultsPage.getEcoOptionTagInCard] "index" must be a non-negative integer, got: ${index}`
+      );
+    }
+    return this.getCarResultCards().nth(index).locator(SELECTORS.ECO_OPTION_TAG);
+  }
+
+  /**
+   * Waits for the "Eco Option" tag to be visible in the car result card at the given index.
+   *
+   * @param {number} index - Zero-based index of the car result card
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If the tag does not become visible before the timeout
+   * @returns {Promise<void>}
+   */
+  async waitForEcoOptionTagInCard(index, { timeout = 15000 } = {}) {
+    const tag = this.getEcoOptionTagInCard(index);
+    try {
+      await tag.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.waitForEcoOptionTagInCard] "Eco Option" tag did not become visible in ` +
+        `car result card at index ${index} within ${timeout}ms (selector: ` +
+        `${SELECTORS.CAR_RESULT_CARD} >> nth=${index} >> ${SELECTORS.ECO_OPTION_TAG}). ` +
+        `The card is likely not a low-emission car, so eco-label was not rendered. ` +
+        `Original: ${error.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the trimmed "Eco Option" tag text from the car result card at the given index.
+   *
+   * @param {number} index - Zero-based index of the car result card
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If the tag text cannot be read
+   * @returns {Promise<string>}
+   */
+  async getEcoOptionTagTextInCard(index, { timeout = 15000 } = {}) {
+    const tag = this.getEcoOptionTagInCard(index);
+    try {
+      return (await tag.innerText({ timeout })).trim();
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.getEcoOptionTagTextInCard] Could not read the "Eco Option" tag text from ` +
+        `car result card at index ${index} within ${timeout}ms (selector: ` +
+        `${SELECTORS.CAR_RESULT_CARD} >> nth=${index} >> ${SELECTORS.ECO_OPTION_TAG}). ` +
+        `The tag may have re-rendered while the results list was still updating. ` +
+        `Original: ${error.message}`
+      );
+    }
   }
 
   /**

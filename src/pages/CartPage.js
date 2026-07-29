@@ -23,6 +23,12 @@ const SELECTORS = {
   // slot). Used for the disabled-state check: app-btn binds `:disabled="isCheckoutDisabled"`, so
   // for a look-but-not-book role the element carries the native `disabled` attribute.
   PROCEED_TO_CHECKOUT_NATIVE_BTN: "button.btn:has-text('Proceed to Checkout')",
+  // Same native CTA, matched only while it is actionable. app-btn re-disables the button for a
+  // beat whenever the cart re-validates (e.g. right after an OOP justification is saved), and the
+  // outer `.btn-container` we click is a plain div — so clicking during that window is a silent
+  // no-op that leaves the run sitting on the cart. Gate every click on this instead.
+  PROCEED_TO_CHECKOUT_ENABLED_BTN:
+    "button.btn:has-text('Proceed to Checkout'):not([disabled]):not(.disabled):not(.is-disabled)",
   // Same cart CTA as Proceed to Checkout, but relabelled "Send For Approvals" when the
   // user's trip requires pre-booking approval (trip-cart.vue: isPreBookingNeeded).
   SEND_FOR_APPROVAL_BUTTON: ".btn-container:has-text('Send For Approvals')",
@@ -2012,10 +2018,39 @@ class CartPage {
    */
   async waitForProceedToCheckout() {
     // Wait for button with exact text
-    await this.page.locator(SELECTORS.PROCEED_TO_CHECKOUT_BUTTON).waitFor({ 
-      state: 'visible', 
-      timeout: 10000 
+    await this.page.locator(SELECTORS.PROCEED_TO_CHECKOUT_BUTTON).waitFor({
+      state: 'visible',
+      timeout: 10000
     });
+  }
+
+  /**
+   * Waits until the cart's "Proceed to Checkout" CTA is not just visible but actionable.
+   *
+   * Deliberately NOT folded into `waitForProceedToCheckout()`: tests such as 62852 (Amtrak
+   * mandatory phone number) click the CTA precisely while it is expected to be disabled, and
+   * must keep getting a harmless no-op rather than a thrown error.
+   *
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If the button stays disabled for the whole timeout
+   * @returns {Promise<void>}
+   */
+  async waitForProceedToCheckoutEnabled({ timeout = 30000 } = {}) {
+    await this.waitForProceedToCheckout();
+
+    try {
+      await this.page.locator(SELECTORS.PROCEED_TO_CHECKOUT_ENABLED_BTN).first().waitFor({
+        state: 'visible',
+        timeout,
+      });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.waitForProceedToCheckoutEnabled] The "Proceed to Checkout" button was visible but ` +
+        `stayed disabled for ${timeout}ms (selector: ${SELECTORS.PROCEED_TO_CHECKOUT_ENABLED_BTN}). ` +
+        `The cart still has outstanding required information, or a save is still in flight. ` +
+        `Original: ${error.message}`
+      );
+    }
   }
 
   /**

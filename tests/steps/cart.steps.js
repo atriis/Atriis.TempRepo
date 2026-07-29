@@ -141,6 +141,11 @@ When("I click the proceed to checkout button", async function () {
   await cartPage.clickProceedToCheckout();
 });
 
+When("I click the proceed to checkout button once enabled", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
+  logger.info("Clicking proceed to checkout button once it is enabled");
+  await Cart.clickProceedToCheckoutWhenEnabled(this.page);
+});
+
 When("I click the send for approval button", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
   logger.info("Clicking the send for approval button in the cart");
   await Cart.clickSendForApproval(this.page);
