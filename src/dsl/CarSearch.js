@@ -234,7 +234,7 @@ const CarSearch = {
    * @param {number} options.pickupIndex - Pickup date index (>= 0)
    * @param {number} options.dropoffIndex - Drop-off date index (>= 0)
    */
-  async submitCarSearchWithoutWaitingForResults(
+  async initiateCarSearch(
     page,
     placeInput = carLocations.defaultLocation,
     monthsAhead = 3,

@@ -15,7 +15,7 @@ Feature: 61051 Sabre - Single PNR when car and flight segments are booked separa
   Scenario: A separately booked car and flight result in a single PNR
     Given I am logged in as "brunajuliana@sabretlcfaketest.com" booking a new trip
     And I have added a random guest traveler
-    When I submit a car search at "LHR" without waiting for results
+    When I initiate a car search at "LHR"
     And I select the trip purpose as "BILLABLE" and proceed
     When I add the first car to cart
     And the booking status should be "Pending booking"

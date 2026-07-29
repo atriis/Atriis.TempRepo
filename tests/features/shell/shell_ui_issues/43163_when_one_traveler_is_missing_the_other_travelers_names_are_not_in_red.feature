@@ -21,5 +21,5 @@ Feature: 43163 - When one traveler is missing, the other travelers names are not
     When I add an empty traveler slot
     # Submitting a car search with an empty slot is blocked by trip-index.handleSearch(),
     # which emits showTravelersErrorTooltip and flags the empty slot in red instead of navigating.
-    And I submit a car search at "lhr" without waiting for results
+    And I initiate a car search at "lhr"
     Then only the empty traveler slot should be highlighted in red

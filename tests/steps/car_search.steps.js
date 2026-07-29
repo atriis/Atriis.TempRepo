@@ -29,9 +29,12 @@ When("I search for a car with {int} months ahead from the cart drawer", async fu
   this.carSearch = await CarSearch.searchCarFromCartDrawer(this.page, monthsAhead);
 });
 
-When("I submit a car search at {string} without waiting for results", async function (place) {
-  logger.info("Submitting car search without waiting for results (search expected to be blocked)", { place });
-  this.carSearch = await CarSearch.submitCarSearchWithoutWaitingForResults(this.page, place);
+// Fills the car search form and clicks Search, but does NOT wait for results.
+// Use when the search is gated — a reference-fields popup must be handled first, or the search is
+// intentionally blocked (e.g. an empty traveler slot). Mirrors "I initiate a hotel search ...".
+When("I initiate a car search at {string}", async function (place) {
+  logger.info("Initiating car search (no results wait)", { place });
+  this.carSearch = await CarSearch.initiateCarSearch(this.page, place);
 });
 
 When("I search for a car at {string} with rental agency {string} and {int} months ahead", async function (place, agencyName, monthsAhead) {

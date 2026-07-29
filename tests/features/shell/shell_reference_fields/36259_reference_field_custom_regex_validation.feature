@@ -16,7 +16,7 @@ Feature: 36259 - Reference field custom regular-expression validation
   Scenario: Reference fields reject values in the wrong format and accept the correct format
     Given I am logged in as "miguelsantos@customregular.com" booking a new trip
     And I have added myself as the traveler
-    When I submit a car search at "LHR" without waiting for results
+    When I initiate a car search at "LHR"
     When I fill "* Custom Regular Expression 1" reference field pop up with "b34434"
     And I fill "* Custom Regular Expression 2" reference field pop up with "rr44!7u"
     Then a validation error is displayed on the "1" pop up reference field

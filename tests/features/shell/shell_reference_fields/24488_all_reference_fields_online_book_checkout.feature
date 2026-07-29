@@ -15,7 +15,7 @@ Feature: 24488 - All reference fields at the checkout stage during online bookin
 
   Scenario: Reference fields are displayed at the new-trip and checkout stages for a car booking
     Given I am logged in as "Rf@testim.nl" booking a new trip
-    When I submit a car search at "lhr" without waiting for results
+    When I initiate a car search at "lhr"
     Then the reference fields popup should show the following labels:
     | New Trip Rf |
     And I click proceed on the reference fields popup
