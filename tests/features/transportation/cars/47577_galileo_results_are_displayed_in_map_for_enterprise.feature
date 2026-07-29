@@ -15,7 +15,6 @@ Feature: 47577 Galileo Enterprise car results are displayed in the map
   Scenario: Search Enterprise cars and verify the map displays results
     Given I am logged in as "renato@galileo.car" booking a new trip
     And I have added myself as the traveler
-    When I select rental agency "Enterprise"
-    And I search for a car at "Skipton, UK"
-    # TODO: Map Testim wait Car___Results___Wait_for__Select__text() to an existing city-center results precondition if needed.
-    # TODO: Map Testim step Results_are_displayed_in_the_map_for_Enterprise_rental_agency().
+    When I search for a car at "Skipton, UK" with rental agency "Enterprise"
+    And I wait for select text to be visible
+    # TODO: Then results are displayed in the map (validate that there are the same amount of results in the map and the results in the page)

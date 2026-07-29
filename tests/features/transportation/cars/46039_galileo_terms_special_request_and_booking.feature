@@ -16,12 +16,17 @@ Feature: 46039 Galileo terms, special request length, and booking flow
     Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "LHR" with rental agency "AVIS"
-    # TODO: Map Testim step Car___Results___Click__Terms_and_Conditions__and_check_if_it_is_displayed__AVIS_().
+    And I wait for add to trip text to be visible
+    # TODO (Create or reuse): And I click in terms and conditions in results
+    #TODO: Then terms and conditions are displayed - verify this by verify the word RATE is displayed and close dialog
     When I add the first car to cart
-    Then the booking status should be "Pending booking"
-    # TODO: Map Testim step Only_64_characters_are_allowed_in_special_request().
-    # TODO: Map Testim step Car___Cart___Click__Terms_and_Conditions__and_check_if_it_is_displayed__AVIS_().
+    And the booking status should be "Pending booking"
+    When I add a special request text of 100 characters
+    Then the special request should be truncated to 64 characters
+    # TODO (Create or reuse): And I click in terms and conditions in cart
+    #TODO: Then terms and conditions are displayed - verify this by verify the word RATE is displayed and close dialog
     When I proceed to checkout
     And I complete the booking
-    # TODO: Map Testim step Cart___Click__Terms_and_Conditions__and_check_if_it_is_displayed__AVIS_().
+    # TODO (Create or reuse): And I click in terms and conditions in cart
+    #TODO: Then terms and conditions are displayed - verify this by verify the word RATE is displayed and close dialog
     Then I successfully cancel the trip
