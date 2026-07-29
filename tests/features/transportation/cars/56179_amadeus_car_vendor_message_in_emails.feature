@@ -15,13 +15,12 @@ Feature: 56179 Amadeus car vendor message is displayed in emails
   Scenario: Complete a car booking and verify vendor messaging in share quote and itinerary emails
     Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added myself as the traveler
-    When I select rental agency "Budget"
-    And I search for a car at "LHR"
-    # TODO: Map Testim step Click_on_proceed_after_search___Warning_and_continue().
+    When I search for a car at "LHR"
     When I add the first car to cart
-    Then the booking status should be "Pending booking"
+    And the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
-    # TODO: Map Testim step Vendor_message_is_displayed_in_Share_Quotes_email().
-    # TODO: Map Testim step Vendor_message_is_displayed_in_Share_Itinerary_email().
+    And the booking status should be "Confirmed"
+    # TODO: Then "Vendor message" is displayed in share quote email (verify the wording "Vendor Message" and if there is a content like text under it)
+     # TODO: Then "Vendor message" is displayed in share itinerary email (verify the wording "Vendor Message" and if there is a content like text under it)
     Then I successfully cancel the trip
