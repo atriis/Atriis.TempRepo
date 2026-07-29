@@ -5,7 +5,7 @@
 # Owner: Bruna Santos
 # Created: 2024-11-22T07:38:05Z
 # Updated: 2025-02-25T10:08:24Z
-@regression @cars
+@regression @cars @travel-policy @oop
 Feature: 54569 Cars - Travel Policy - In case car initiator is corporate user, restrict result (AIRPORT search)
   As a corporate traveler
   I want restricted airport results to be flagged clearly by policy
@@ -13,9 +13,9 @@ Feature: 54569 Cars - Travel Policy - In case car initiator is corporate user, r
 
   @priority:high
   Scenario: Search an airport car and verify the corporate-user policy tooltip
-    Given I am logged in as "bruno@car.com" booking a new trip
+    Given I am logged in as "bruno@travelpolicycar.com" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "LHR"
     Then the out of policy indicator should be visible in results
     And the out of policy tooltip in results should be "Initiator is corporate user"
-    #TODO And the reset add to trip button should be visible and disabled
+    And the add to trip button in the first car result should be visible and disabled

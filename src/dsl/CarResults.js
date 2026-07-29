@@ -1399,6 +1399,44 @@ const CarResults = {
       ).toBe(false);
     }
   },
+
+  /**
+   * Verifies the "Add to trip" button in a car result card is rendered but not actionable.
+   *
+   * This is how the app surfaces a travel-policy RESTRICTION (as opposed to a plain out-of-policy
+   * warning): car-preview.vue binds `:is-disabled="isRestricted"`, where `isRestricted` is
+   * `car.isRestricTravelPolicyViolation && car.travelPolicyViolations.length > 0`. The traveller can
+   * see the car but cannot book it.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} [index=0] - Zero-based index of the car result card
+   * @throws {Error} If page is missing, index is invalid, or the button is missing/enabled
+   * @returns {Promise<void>}
+   */
+  async expectAddToTripButtonRestrictedInCarResult(page, index = 0) {
+    if (!page) throw new Error('page is required');
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(`index must be a non-negative integer, got: ${index}`);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.waitForAddToTripButtonInCard(index);
+
+    const addToTripButton = carResultsPage.getAddToTripButtonInCard(index);
+
+    await expect(
+      addToTripButton,
+      `The "Add to trip" button should stay visible in car result card at index ${index} — a restricted ` +
+      `result is still shown to the traveller, only blocked from being booked`,
+    ).toBeVisible();
+
+    await expect(
+      addToTripButton,
+      `The "Add to trip" button in car result card at index ${index} should be disabled because travel ` +
+      `policy restricts the result for a corporate-user initiator. An enabled button means the app did ` +
+      `not flag the car as restricted (isRestricTravelPolicyViolation false or no policy violations)`,
+    ).toBeDisabled();
+  },
 };
 
 module.exports = CarResults;

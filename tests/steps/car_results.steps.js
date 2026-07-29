@@ -278,3 +278,8 @@ Then("the first car result should be from rental agency {string}", async functio
   logger.info("Verifying first car result is from preferred rental agency", { agencyName });
   await CarResults.assertFirstCarResultIsFromAgency(this.page, agencyName);
 });
+
+Then("the add to trip button in the first car result should be visible and disabled", async function () {
+  logger.info("Verifying the first car result's 'Add to trip' button is visible but disabled by travel policy");
+  await CarResults.expectAddToTripButtonRestrictedInCarResult(this.page, 0);
+});

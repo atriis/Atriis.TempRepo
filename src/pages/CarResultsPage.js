@@ -56,6 +56,11 @@ const SELECTORS = {
   // rendered only when carService.isElectricCarType(car) is true. `.eco-option-plain` exists
   // only in that variant, so it cannot match the CO2/carbon-quantity eco-label in the same card.
   ECO_OPTION_TAG: '.eco-label .eco-option-plain p',
+  // "Add to trip" button inside a car result card (car-preview.vue). The card renders the button
+  // twice — a desktop copy (`.desktop-btn.is-hidden-mobile`) and a mobile copy
+  // (`.mobile-btn.is-hidden-tablet`) — so `:visible` is REQUIRED to keep exactly one match at any
+  // viewport. app-btn.vue binds `:disabled="isDisabled"` on a real <button>, so toBeDisabled() works.
+  CAR_RESULT_ADD_TO_TRIP_BUTTON: 'button.add-btn:visible',
   AGREEMENT_ICON_IN_CARD: '.agreements .agreement-img',
   AGREEMENT_TOOLTIP_TRIGGER_IN_CARD: '.agreements .ticket-agreement > div',
   AGREEMENT_TOOLTIP_DESCRIPTION: '.agreement-tooltip-list .agreement-tooltip__description',
@@ -439,6 +444,48 @@ class CarResultsPage {
    */
   getCarResultCards() {
     return this.page.locator(SELECTORS.CAR_RESULT_CARD);
+  }
+
+  /**
+   * Returns the visible "Add to trip" button locator inside the car result card at the given index.
+   *
+   * @param {number} index - Zero-based index of the car result card
+   * @returns {import('playwright').Locator}
+   * @throws {Error} If index is not a non-negative integer
+   */
+  getAddToTripButtonInCard(index) {
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(
+        `[CarResultsPage.getAddToTripButtonInCard] "index" must be a non-negative integer, got: ${index}`
+      );
+    }
+    return this.getCarResultCards()
+      .nth(index)
+      .locator(SELECTORS.CAR_RESULT_ADD_TO_TRIP_BUTTON)
+      .first();
+  }
+
+  /**
+   * Waits for the "Add to trip" button in the car result card at the given index to be visible.
+   *
+   * @param {number} index - Zero-based index of the car result card
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If the button does not become visible before the timeout
+   * @returns {Promise<void>}
+   */
+  async waitForAddToTripButtonInCard(index, { timeout = 30000 } = {}) {
+    const button = this.getAddToTripButtonInCard(index);
+    try {
+      await button.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.waitForAddToTripButtonInCard] The "Add to trip" button did not become visible in ` +
+        `car result card at index ${index} within ${timeout}ms (selector: ` +
+        `${SELECTORS.CAR_RESULT_CARD} >> nth=${index} >> ${SELECTORS.CAR_RESULT_ADD_TO_TRIP_BUTTON}). ` +
+        `The results list may not have rendered yet, or the page is in share mode where car-preview.vue ` +
+        `swaps the button for share-btns. Original: ${error.message}`
+      );
+    }
   }
 
   /**
