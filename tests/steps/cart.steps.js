@@ -120,18 +120,11 @@ Then("the price at index 0 from cart should match the extracted new price", asyn
   expectNumbersToBeEqualWithTolerance(cartPrice, this.priceChangeNewPrice, 1, "Cart price should match the new price from the price-change popup");
 });
 
-async function clickTermsAndConditionsLinkFromCartStep(contextLabel) {
-  logger.info(`Clicking terms and conditions link ${contextLabel}`);
+// Works both before and after booking — the cart and the post-booking page render the same
+// quote card, so one step covers both points in the flow.
+When("I click on the terms and conditions link in the cart", async function () {
+  logger.info("Clicking terms and conditions link in the cart");
   await Cart.clickPaymentTermsLink(this.page);
-  this.termsAndConditionsModalOpenedAtStep = true;
-}
-
-When("I click on the terms and conditions link in the trip overview", async function () {
-  await clickTermsAndConditionsLinkFromCartStep.call(this, 'in trip overview');
-});
-
-When("I click on the terms and conditions link after booking", async function () {
-  await clickTermsAndConditionsLinkFromCartStep.call(this, 'after booking');
 });
 
 When("I click the proceed to checkout button", async function () {

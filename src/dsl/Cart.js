@@ -8125,7 +8125,7 @@ const Cart = {
     if (!page) throw new Error('page is required');
 
     const cartPage = getPageObject(page, CartPage);
-    logger.info("Clicking payment terms link in trip overview");
+    logger.info("Clicking payment terms link in the cart");
     await cartPage.clickPaymentTermsLink();
     await page.waitForTimeout(500); // Brief pause for modal to appear
   },
@@ -8146,6 +8146,33 @@ const Cart = {
     logger.info("Closing terms modal");
     await cartPage.closeTermsModal();
     await page.waitForTimeout(300); // Brief pause after closing
+  },
+
+  /**
+   * Verifies the car Terms & Conditions dialog displays the given text.
+   * The dialog loads its fare rules asynchronously (el-skeleton while pending), so the
+   * assertion polls until the supplier content is rendered.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Text expected inside the dialog (e.g. "RATE")
+   */
+  async verifyCarTermsDialogContainsText(page, expectedText) {
+    if (!page) throw new Error('[Cart.verifyCarTermsDialogContainsText] "page" is required.');
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.verifyCarTermsDialogContainsText] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${expectedText})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info('Verifying the terms and conditions dialog displays text', { expectedText });
+
+    await expect(
+      cartPage.getCarTermsDialogContent(),
+      `[Cart.verifyCarTermsDialogContainsText] Expected the terms and conditions dialog to display "${expectedText}", ` +
+      `but that text was not found in the dialog content. The dialog may not have opened, the supplier fare rules ` +
+      `may have failed to load ("Currently unavailable"), or the terms copy changed.`,
+    ).toContainText(expectedText, { timeout: 30000 });
   },
 
   /**

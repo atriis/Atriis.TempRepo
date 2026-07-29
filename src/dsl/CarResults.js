@@ -1012,7 +1012,14 @@ const CarResults = {
     return { tooltipText: termsText, source: 'terms-link-fallback' };
   },
 
-  async clickTermsAndConditionsLinkInCarResultsTooltip(page) {
+  /**
+   * Clicks the "Terms and conditions" button on the first car result card, which opens the
+   * car Terms & Conditions dialog (car-terms-conditions.vue). This is a card-level button
+   * (car-preview.vue `.more-details-btn`) — not part of the agreement tooltip.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async clickTermsAndConditionsInCarResults(page) {
     if (!page) throw new Error('page is required');
 
     const carResultsPage = getPageObject(page, CarResultsPage);

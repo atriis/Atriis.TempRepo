@@ -471,10 +471,16 @@ const SELECTORS = {
   // (flight-timed-quote.vue / app-timed-quote.vue both render `.timed-quote-badge`)
   TIMED_QUOTE_BADGE: '.timed-quote-badge',
 
-  // Special request (special-requests.vue)
-  SPECIAL_REQUEST_CLICKABLE: '.quote-extras--special-requests .is-clickable',
-  SPECIAL_REQUEST_TEXTAREA: '.quote-extras--special-requests textarea',
-  SPECIAL_REQUEST_SAVE_BTN: '.quote-extras--special-requests .btn--primary',
+  // Special request — two components share the same extras-layout markup but different roots:
+  // hotels/rail use special-requests.vue (.quote-extras--special-requests, maxlength 75/120),
+  // cars use car-special-request.vue (.car-special-request, maxlength 64). :visible skips the
+  // hidden responsive duplicates the cart renders. Inner selectors are scoped to this container.
+  SPECIAL_REQUEST_CONTAINER: '.quote-extras--special-requests:visible, .car-special-request:visible',
+  // Add/View/Edit opener in extras-layout.vue `.extra__btns` — last, so an "Add traveller"
+  // sibling span never wins.
+  SPECIAL_REQUEST_CLICKABLE: '.extra__btns .is-clickable',
+  SPECIAL_REQUEST_TEXTAREA: 'textarea',
+  SPECIAL_REQUEST_SAVE_BTN: '.btn--primary',
   SPECIAL_REQUEST_SUCCESS: '.success-icon',
 
   // CO2 eco-label in trip overview (hotel-preview.vue in cart context)
@@ -818,6 +824,11 @@ const SELECTORS = {
   PAYMENT_TERMS_LINK: 'a:has-text("terms"), button:has-text("terms"), .more-details-btn:has-text("terms"), [role="button"]:has-text("terms")',
   RENTAL_PERIOD_TERMS_MODAL: ':has(> :text("Terms & Conditions")), .app-dialog, .el-dialog, .terms-modal, [role="dialog"]',
   TERMS_MODAL_CLOSE_BUTTON: '[aria-label="Close this dialog"], .el-dialog__close, .close-btn, button:has-text("Close")',
+  // Car Terms & Conditions dialog content root (car-terms-conditions.vue). The same component is
+  // rendered by car-results.vue (results) and car-quote-card.vue (cart / after booking), so this one
+  // selector covers all three contexts. :visible skips the responsive/closed duplicates that
+  // el-dialog leaves attached to the body.
+  CAR_TERMS_DIALOG_CONTENT: '.car-terms-conditions:visible',
 
   // Rail (EU Rail / Benerail) quote-card Fare Rules dialog — same `.app-dialog` el-dialog used for
   // Terms & Conditions/Journey Details on the quote card, scoped to the body for content text.
@@ -4204,6 +4215,28 @@ class CartPage {
   }
 
   /**
+   * Gets the special request extra container (hotel or car variant), whichever is rendered.
+   * @returns {import('playwright').Locator}
+   */
+  getSpecialRequestContainer() {
+    return this.page.locator(SELECTORS.SPECIAL_REQUEST_CONTAINER).first();
+  }
+
+  /**
+   * Opens the special request extra so its textarea is editable.
+   * @param {number} timeout - Max wait time in ms
+   * @returns {Promise<import('playwright').Locator>} The opened container
+   */
+  async openSpecialRequestExtra(timeout) {
+    const container = this.getSpecialRequestContainer();
+    await container.waitFor({ state: 'visible', timeout });
+    const opener = container.locator(SELECTORS.SPECIAL_REQUEST_CLICKABLE).last();
+    await opener.waitFor({ state: 'visible', timeout });
+    await opener.click();
+    return container;
+  }
+
+  /**
    * Opens the special request panel, types the given text, saves it,
    * and waits for the success icon to confirm the save.
    *
@@ -4213,14 +4246,12 @@ class CartPage {
    */
   async fillSpecialRequest(text, { timeout = 20000 } = {}) {
     if (typeof text !== 'string') throw new Error('text must be a string, got: ' + typeof text);
-    const clickable = this.page.locator(SELECTORS.SPECIAL_REQUEST_CLICKABLE);
-    await clickable.waitFor({ state: 'visible', timeout });
-    await clickable.click();
-    const textarea = this.page.locator(SELECTORS.SPECIAL_REQUEST_TEXTAREA);
+    const container = await this.openSpecialRequestExtra(timeout);
+    const textarea = container.locator(SELECTORS.SPECIAL_REQUEST_TEXTAREA);
     await textarea.waitFor({ state: 'visible', timeout });
     await textarea.fill(text);
-    await this.page.locator(SELECTORS.SPECIAL_REQUEST_SAVE_BTN).click();
-    await this.page.locator(SELECTORS.SPECIAL_REQUEST_SUCCESS).waitFor({ state: 'visible', timeout });
+    await container.locator(SELECTORS.SPECIAL_REQUEST_SAVE_BTN).click();
+    await this.page.locator(SELECTORS.SPECIAL_REQUEST_SUCCESS).first().waitFor({ state: 'visible', timeout });
   }
 
   /**
@@ -4233,10 +4264,8 @@ class CartPage {
    */
   async fillSpecialRequestWithoutSaving(text, { timeout = 20000 } = {}) {
     if (typeof text !== 'string') throw new Error('text must be a string, got: ' + typeof text);
-    const clickable = this.page.locator(SELECTORS.SPECIAL_REQUEST_CLICKABLE);
-    await clickable.waitFor({ state: 'visible', timeout });
-    await clickable.click();
-    const textarea = this.page.locator(SELECTORS.SPECIAL_REQUEST_TEXTAREA);
+    const container = await this.openSpecialRequestExtra(timeout);
+    const textarea = container.locator(SELECTORS.SPECIAL_REQUEST_TEXTAREA);
     await textarea.waitFor({ state: 'visible', timeout });
     await textarea.fill(text);
   }
@@ -4248,7 +4277,7 @@ class CartPage {
    * @returns {Promise<string>} The current textarea value
    */
   async getSpecialRequestValue({ timeout = 10000 } = {}) {
-    const textarea = this.page.locator(SELECTORS.SPECIAL_REQUEST_TEXTAREA);
+    const textarea = this.getSpecialRequestContainer().locator(SELECTORS.SPECIAL_REQUEST_TEXTAREA);
     await textarea.waitFor({ state: 'visible', timeout });
     return (await textarea.inputValue()).trim();
   }
@@ -7533,6 +7562,14 @@ class CartPage {
       // If close button not found, try pressing Escape
       await this.page.press('body', 'Escape');
     }
+  }
+
+  /**
+   * Gets the car Terms & Conditions dialog content locator (fare rules + location details tabs).
+   * @returns {import('playwright').Locator}
+   */
+  getCarTermsDialogContent() {
+    return this.page.locator(SELECTORS.CAR_TERMS_DIALOG_CONTENT).first();
   }
 
   /**

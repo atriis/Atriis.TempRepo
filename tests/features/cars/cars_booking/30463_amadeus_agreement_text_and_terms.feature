@@ -19,11 +19,11 @@ Feature: 30463 - Amadeus Car - Agreement Text and Terms Conditions Displayed
     When I click on the terms and conditions link in the car results tooltip
     Then I close the terms and conditions modal
     When I add a car from city center results to cart
-    When I click on the terms and conditions link in the trip overview
+    When I click on the terms and conditions link in the cart
     When I close the terms and conditions modal
     When I proceed to checkout
     And I complete the booking
     And the booking status should be "Confirmed"
-    When I click on the terms and conditions link after booking
+    When I click on the terms and conditions link in the cart
     Then I close the terms and conditions modal
     Then I successfully cancel the trip

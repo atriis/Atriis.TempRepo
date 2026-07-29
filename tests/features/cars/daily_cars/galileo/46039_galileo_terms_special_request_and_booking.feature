@@ -5,7 +5,7 @@
 # Owner: Bruna Santos
 # Created: 2024-05-10T11:01:07Z
 # Updated: 2025-07-16T12:49:44Z
-@regression @cars @provider:galileo
+@regression @cars @provider:galileo @Transportation
 Feature: 46039 Galileo terms, special request length, and booking flow
   As a corporate traveler
   I want Galileo terms and special-request limits validated during booking
@@ -15,18 +15,21 @@ Feature: 46039 Galileo terms, special request length, and booking flow
   Scenario: Validate terms visibility, special request limit, and successful booking
     Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a car at "LHR" with rental agency "AVIS"
+    When I search for a car at "LHR"
     And I wait for add to trip text to be visible
-    # TODO (Create or reuse): And I click in terms and conditions in results
-    #TODO: Then terms and conditions are displayed - verify this by verify the word RATE is displayed and close dialog
+    And I click on the terms and conditions link in the car results
+    Then the terms and conditions modal should display the text "RATE"
+    When I close the terms and conditions modal
     When I add the first car to cart
     And the booking status should be "Pending booking"
     When I add a special request text of 100 characters
     Then the special request should be truncated to 64 characters
-    # TODO (Create or reuse): And I click in terms and conditions in cart
-    #TODO: Then terms and conditions are displayed - verify this by verify the word RATE is displayed and close dialog
+    When I click on the terms and conditions link in the cart
+    Then the terms and conditions modal should display the text "RATE"
+    When I close the terms and conditions modal
     When I proceed to checkout
     And I complete the booking
-    # TODO (Create or reuse): And I click in terms and conditions in cart
-    #TODO: Then terms and conditions are displayed - verify this by verify the word RATE is displayed and close dialog
+    And I click on the terms and conditions link in the cart
+    Then the terms and conditions modal should display the text "RATE"
+    When I close the terms and conditions modal
     Then I successfully cancel the trip

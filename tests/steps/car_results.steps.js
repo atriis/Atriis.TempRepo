@@ -181,11 +181,26 @@ When("I click on the terms and conditions link in the car results tooltip", asyn
   await clickTermsAndConditionsLinkStep.call(this, 'in car results tooltip');
 });
 
+// Card-level "Terms and conditions" button on the first car result (car-preview.vue
+// `.more-details-btn`) — scoped to the car card, unlike the generic payment-terms link above.
+When("I click on the terms and conditions link in the car results", async function () {
+  logger.info("Clicking the terms and conditions button on the first car result");
+  await CarResults.clickTermsAndConditionsInCarResults(this.page);
+});
+
 When("I close the terms and conditions modal", async function () {
   const { Cart } = require("@dsl");
   logger.info("Closing terms and conditions modal");
   await Cart.closeTermsModal(this.page);
   this.termsAndConditionsModalClosed = true;
+});
+
+// Asserts inside the car Terms & Conditions dialog (car-terms-conditions.vue), which is the same
+// component in results, cart and after booking. Not for the hotel/rail terms modals.
+Then("the terms and conditions modal should display the text {string}", async function (expectedText) {
+  const { Cart } = require("@dsl");
+  logger.info(`Verifying terms and conditions modal displays text: ${expectedText}`);
+  await Cart.verifyCarTermsDialogContainsText(this.page, expectedText);
 });
 
 Then("The terms and conditions modal should display the {string} section", async function (sectionHeading) {
