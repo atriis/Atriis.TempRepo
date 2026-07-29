@@ -12,6 +12,40 @@ const SELECTORS = {
   CAR_INFO_BAR_LOCATION: '.car-info-bar .locations .ellipsis-txt',
   // Search results
   STATION_PREVIEW: '.car-vendor-station-list > .preview-container',
+  // City station-selection view (car-city-search.vue) renders the station list beside a Google map
+  // (car-stations-google-map.vue). The wrapping `.city-map-container` is `v-if="!isMobile"`, so the
+  // map exists on DESKTOP ONLY — on mobile the same component is moved inside an el-drawer behind a
+  // "View on map" button.
+  STATION_MAP_CONTAINER: '.car-city-search .city-map-container .car-stations-google-map',
+  // One Google Maps marker per station that has coordinates. Google's marker DOM is version- and
+  // option-dependent, so the marker is resolved by probing these candidates in order (see
+  // waitForStationMapMarkers) rather than betting on a single shape. Both candidates were verified
+  // against the live Skipton search (6 stations): each returned exactly 6, stable across repeated
+  // reads. Classic `google.maps.Marker` renders TWO images per marker — the icon plus a
+  // transparent click-area overlay — so each candidate deliberately counts a marker WRAPPER or the
+  // click-area image, never the icon, to avoid double counting:
+  //  1. the focusable wrapper Google puts around each clickable marker (markers get role="button"
+  //     because car-stations-google-map.vue attaches a click listener to emit `markStation`);
+  //  2. Google's per-marker click-area image, maps.gstatic.com/mapfiles/transparent.png.
+  // Do NOT match the icon by `src`: the icon is imported into JS, and Vite inlines
+  // car-station-marker.svg (3.2 KB, under the default 4 KB assetsInlineLimit) as a URL-ENCODED
+  // data URI of the SVG source, so no filename survives to match on. A generic
+  // `img[src^="data:image/svg"]` must not be used either — it also matches Google's own control
+  // icons (measured 12 visible against 6 stations, which is what made this assertion fail).
+  // Every candidate MUST stay scoped under `.car-stations-google-map`: the same marker asset is
+  // also rendered inside each station card and in the mobile carousel, so an unscoped selector
+  // would count those instead and pass for the wrong reason.
+  STATION_MAP_MARKER_CANDIDATES: [
+    '.car-stations-google-map .gm-style [role="button"]:has(img)',
+    '.car-stations-google-map .gm-style img[src*="transparent.png"]',
+  ],
+  // A station card renders its numbered marker badge only under `v-if="hasLocation"`
+  // (car-vendor-station-preview.vue) — the exact `latitude && longitude` predicate the map's
+  // `stationMarkers` computed filters on, which is what makes marker count == badge count an
+  // invariant rather than an approximation. Always match this with `:has()` on the CARD, never
+  // count the badge directly: each card renders it twice (is-hidden-tablet + is-hidden-mobile
+  // responsive duplicates), which would double the count.
+  STATION_PREVIEW_MARKER_BADGE: '.marker-img-container p.icon-number',
   LOCATION_LABEL: ".location-lines .location-address-text",
   CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   FIRST_CAR_PREVIEW: '.car-preview',
@@ -850,6 +884,123 @@ class CarResultsPage {
   async getCarResultsCount({ timeout = 30000 } = {}) {
     await this.page.locator(SELECTORS.FIRST_CAR_PREVIEW).first().waitFor({ state: 'visible', timeout });
     return this.page.locator(SELECTORS.FIRST_CAR_PREVIEW).count();
+  }
+
+  /**
+   * Waits for the station map to draw its first marker and returns the marker selector that matched.
+   *
+   * Waiting on a marker rather than on the container is what proves the overlay is actually painted:
+   * `.google-map` exists in the DOM long before Google finishes loading its script from an external
+   * CDN, dropping the markers (Animation.DROP) and refreshing their z-index 300ms after
+   * `tilesloaded`. Google's marker DOM is version-dependent, so each candidate in
+   * STATION_MAP_MARKER_CANDIDATES is probed in order and the first one to become visible wins.
+   *
+   * `timeout` is the budget for this whole call, not per wait: the container wait and every marker
+   * candidate share one deadline. Bounding the total matters because the caller still has to poll
+   * the marker/card comparison afterwards — letting each candidate spend the full budget could
+   * overrun the 120s Cucumber step budget and replace every diagnostic below with an opaque
+   * "function timed out".
+   *
+   * @param {number} [timeout=30000] Total budget for the container wait and all marker candidates
+   * @returns {Promise<string>} The marker selector that matched — pass it to getStationMapMarkerCount
+   * @throws {Error} If the map container never appears, or no marker candidate ever matches
+   */
+  async waitForStationMapMarkers({ timeout = 30000 } = {}) {
+    const deadline = Date.now() + timeout;
+
+    try {
+      await this.page.locator(SELECTORS.STATION_MAP_CONTAINER).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.waitForStationMapMarkers] The station map container ` +
+          `("${SELECTORS.STATION_MAP_CONTAINER}") never became visible within ${timeout}ms. ` +
+          'Likely causes: the page is not on the city station-selection view (the map never renders ' +
+          'for an airport search), or the viewport is mobile-sized — `.city-map-container` is ' +
+          `v-if="!isMobile", and on mobile the map lives in a "View on map" drawer. Original: ${err.message}`,
+      );
+    }
+
+    const candidates = SELECTORS.STATION_MAP_MARKER_CANDIDATES;
+    for (const [index, candidate] of candidates.entries()) {
+      // Split whatever is left of the budget across the candidates still to probe, so a leading
+      // candidate that never matches cannot starve the ones behind it.
+      const remaining = deadline - Date.now();
+      const candidateTimeout = Math.max(2000, Math.floor(remaining / (candidates.length - index)));
+      const isVisible = await this.page
+        .locator(candidate)
+        .first()
+        .waitFor({ state: 'visible', timeout: candidateTimeout })
+        .then(() => true)
+        .catch(() => false);
+      if (isVisible) {
+        return candidate;
+      }
+    }
+
+    throw new Error(
+      `[CarResultsPage.waitForStationMapMarkers] The station map rendered no marker within the ${timeout}ms ` +
+        `budget. None of the probed marker selectors matched: ` +
+        `${candidates.map((candidate) => `"${candidate}"`).join(', ')}. ` +
+        'Likely causes: the Google Maps script failed to load from its CDN, no returned station has ' +
+        'coordinates, or Google changed its marker DOM and a new candidate is needed.',
+    );
+  }
+
+  /**
+   * Returns the number of station markers currently drawn on the station map.
+   * @param {string} markerSelector - Selector returned by waitForStationMapMarkers
+   * @returns {Promise<number>}
+   */
+  async getStationMapMarkerCount(markerSelector) {
+    if (!markerSelector || typeof markerSelector !== 'string') {
+      throw new Error(
+        '[CarResultsPage.getStationMapMarkerCount] "markerSelector" must be a non-empty string ' +
+          `(the selector returned by waitForStationMapMarkers), got: ${typeof markerSelector} "${markerSelector}"`,
+      );
+    }
+
+    try {
+      return await this.page.locator(`${markerSelector}:visible`).count();
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.getStationMapMarkerCount] Could not count the markers on the station map ` +
+          `("${markerSelector}"). The map may have unmounted or re-rendered mid-read. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Returns the number of station cards that render a numbered map-marker badge, i.e. the stations
+   * the page itself treats as located (and therefore plottable).
+   * @returns {Promise<number>}
+   */
+  async getLocatedStationPreviewCount() {
+    const locatedCardSelector = `${SELECTORS.STATION_PREVIEW}:has(${SELECTORS.STATION_PREVIEW_MARKER_BADGE})`;
+    try {
+      return await this.page.locator(locatedCardSelector).count();
+    } catch (err) {
+      throw new Error(
+        '[CarResultsPage.getLocatedStationPreviewCount] Could not count the station cards carrying a ' +
+          `map-marker badge ("${locatedCardSelector}"). Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Returns the total number of station cards in the city station list, including any station
+   * without coordinates (which the map cannot plot). Diagnostic only — never assert on this.
+   * @returns {Promise<number>}
+   */
+  async getStationPreviewCount() {
+    try {
+      return await this.page.locator(SELECTORS.STATION_PREVIEW).count();
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.getStationPreviewCount] Could not count the station cards ` +
+          `("${SELECTORS.STATION_PREVIEW}"). The station list may have re-rendered mid-read. ` +
+          `Original: ${err.message}`,
+      );
+    }
   }
 
   async readGoogleMapsContext(mapsPage) {

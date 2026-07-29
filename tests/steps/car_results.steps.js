@@ -213,6 +213,11 @@ Then("I should see the selected car location in Google Maps", async function () 
   );
 });
 
+Then("the car results should be displayed in the map matching the results on the page", async function () {
+  logger.info("Verifying the station map plots every located station from the results list");
+  await CarResults.verifyStationsDisplayedInMapMatchResults(this.page);
+});
+
 // ========================================
 // COUNTER LOCATION FILTER STEPS
 // ========================================

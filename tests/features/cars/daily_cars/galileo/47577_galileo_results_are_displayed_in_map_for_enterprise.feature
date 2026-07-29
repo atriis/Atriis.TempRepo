@@ -13,8 +13,8 @@ Feature: 47577 Galileo Enterprise car results are displayed in the map
 
   @priority:high
   Scenario: Search Enterprise cars and verify the map displays results
-    Given I am logged in as "renato@galileo.car" booking a new trip
+    Given I am logged in as "renato@cargalileocitycenter.com" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "Skipton, UK" with rental agency "Enterprise"
     And I wait for select text to be visible
-    # TODO: Then results are displayed in the map (validate that there are the same amount of results in the map and the results in the page)
+    Then the car results should be displayed in the map matching the results on the page

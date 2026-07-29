@@ -1075,6 +1075,96 @@ const CarResults = {
   },
 
   /**
+   * Verifies the station map plots exactly one marker for every located station in the results list.
+   *
+   * The map's `stationMarkers` computed keeps only stations with `latitude && longitude`, and a
+   * station card renders its numbered marker badge under exactly the same predicate — so
+   * "markers == cards carrying a badge" is an exact invariant, not an approximation. The TOTAL card
+   * count is read for diagnostics only (a station without coordinates cannot be plotted, so
+   * asserting on the total would fail for the wrong reason); it is never asserted.
+   *
+   * The comparison is polled rather than read once: markers are appended asynchronously after the
+   * external Google Maps script loads, and keep moving through the DROP animation and the 300ms
+   * post-`tilesloaded` z-index refresh, so a single read races the map.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} [timeout=30000] Budget for the marker wait AND, separately, for the polled
+   *   comparison. Both phases must fit inside the 120s Cucumber step budget, otherwise a real
+   *   mismatch is reported as an opaque "function timed out" instead of the diagnostics below.
+   * @throws {Error} If the map draws no marker, or the marker count never matches the located cards
+   * @returns {Promise<{ markerCount: number, locatedResultsCount: number, totalResultsCount: number }>}
+   */
+  async verifyStationsDisplayedInMapMatchResults(page, { timeout = 30000 } = {}) {
+    if (!page) throw new Error('page is required, got: ' + typeof page);
+    if (typeof timeout !== 'number' || timeout <= 0) {
+      throw new Error(`timeout must be a positive number of milliseconds, got: ${timeout}`);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+
+    logger.debug('Waiting for the station map to draw its markers');
+    let markerSelector;
+    try {
+      markerSelector = await carResultsPage.waitForStationMapMarkers({ timeout });
+    } catch (err) {
+      throw new Error(
+        '[CarResults.verifyStationsDisplayedInMapMatchResults] The station map never showed a car-station ' +
+          `marker, so it cannot be compared against the results list. Original: ${err.message}`,
+      );
+    }
+    logger.debug('Station map markers resolved', { markerSelector });
+
+    let markerCount = 0;
+    let locatedResultsCount = 0;
+    try {
+      // Poll both counts together: the map and the station list settle independently, and a marker
+      // count that is merely mid-render must be retried, not reported as a mismatch.
+      await expect
+        .poll(
+          async () => {
+            markerCount = await carResultsPage.getStationMapMarkerCount(markerSelector);
+            locatedResultsCount = await carResultsPage.getLocatedStationPreviewCount();
+            return markerCount > 0 && markerCount === locatedResultsCount;
+          },
+          {
+            message:
+              'The station map should plot exactly one marker per located station in the results list, ' +
+              `and at least one marker (0 vs 0 must not pass vacuously). Marker selector: "${markerSelector}"`,
+            timeout,
+          },
+        )
+        .toBe(true);
+    } catch (err) {
+      const totalResultsCount = await carResultsPage.getStationPreviewCount().catch(() => -1);
+      throw new Error(
+        '[CarResults.verifyStationsDisplayedInMapMatchResults] The station map does not match the results ' +
+          `list. The map plotted ${markerCount} marker(s) while the list showed ${locatedResultsCount} ` +
+          `located station(s) out of ${totalResultsCount} station card(s) in total (total is diagnostic ` +
+          'only — stations without coordinates cannot be plotted). Every located station must appear on ' +
+          `the map exactly once, and at least one marker must be drawn. Marker selector: ` +
+          `"${markerSelector}". Original: ${err.message}`,
+      );
+    }
+
+    const totalResultsCount = await carResultsPage.getStationPreviewCount();
+
+    logger.info('Station map markers match the located stations in the results list', {
+      markerCount,
+      locatedResultsCount,
+      totalResultsCount,
+      markerSelector,
+    });
+
+    if (totalResultsCount !== locatedResultsCount) {
+      logger.info('Some stations carry no coordinates and therefore cannot be plotted', {
+        unlocatedResultsCount: totalResultsCount - locatedResultsCount,
+      });
+    }
+
+    return { markerCount, locatedResultsCount, totalResultsCount };
+  },
+
+  /**
    * Verifies that all visible options in a filter section are drawn from the known valid set.
    * The filter hides options that have zero matching results (hideIfNoresults), so fewer options
    * than the full set may be visible — but every visible option must be a known valid value.
