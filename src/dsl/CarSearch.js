@@ -418,6 +418,56 @@ const CarSearch = {
   },
 
   /**
+   * Fills the car search form with a rental agency filter and clicks Search, WITHOUT waiting for
+   * car results.
+   *
+   * The agency-filtered twin of initiateCarSearch: use it when the search is gated by a popup that
+   * must be handled before results can load — e.g. a mandatory TRIP PURPOSE reference field, where
+   * searchCarByPlaceAndRentalAgency would poll for results that never arrive until the popup is
+   * proceeded. Follow this with the popup step; the add-to-cart step waits for the results itself.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string|Object} placeInput - Location or location object
+   * @param {string} agencyName - Rental agency name (required)
+   * @param {number} monthsAhead - Number of months ahead to search
+   * @param {Object} options - Search configuration (pickupIndex / dropoffIndex)
+   * @returns {Promise<{searched: boolean, place: string, monthsAhead: number, pickupIndex: number, dropoffIndex: number, pickupDate: string, dropoffDate: string}>}
+   * @throws {Error} If page or agencyName is not provided
+   */
+  async initiateCarSearchWithRentalAgency(
+    page,
+    placeInput = carLocations.defaultLocation,
+    agencyName,
+    monthsAhead = 3,
+    options = {},
+  ) {
+    if (!page) {
+      throw new Error('[CarSearch.initiateCarSearchWithRentalAgency] "page" is required.');
+    }
+
+    if (!agencyName || typeof agencyName !== 'string') {
+      throw new Error(
+        `[CarSearch.initiateCarSearchWithRentalAgency] "agencyName" must be a non-empty string, got: ${typeof agencyName} (${agencyName})`
+      );
+    }
+
+    logger.debug('[CarSearch.initiateCarSearchWithRentalAgency] Initiating an agency-filtered car search without waiting for results', {
+      agencyName,
+      monthsAhead,
+    });
+
+    const carSearchPage = getPageObject(page, CarSearchPage);
+
+    // The agency field only exists on the car tab, so the tab must be active before filtering.
+    await carSearchPage.clickCarTab();
+    await CarSearch.selectRentalAgencyByName(page, agencyName);
+
+    // Reuse the non-blocking search flow — it re-clicks the car tab harmlessly and leaves the
+    // agency filter in place.
+    return CarSearch.initiateCarSearch(page, placeInput, monthsAhead, options);
+  },
+
+  /**
    * Searches for a car with different pickup and drop-off locations.
    * @param {Object} page - Playwright page instance
    * @param {string|Object} pickUpLocation - Pickup location

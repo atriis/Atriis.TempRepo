@@ -37,6 +37,14 @@ When("I initiate a car search at {string}", async function (place) {
   this.carSearch = await CarSearch.initiateCarSearch(this.page, place);
 });
 
+// Agency-filtered twin of "I initiate a car search at {string}". Same non-blocking contract: the
+// search is submitted but results are not awaited, so a gating popup (e.g. trip purpose) can be
+// handled by the next step.
+When("I initiate a car search at {string} with rental agency {string}", async function (place, agencyName) {
+  logger.info("Initiating car search with agency (no results wait)", { place, agencyName });
+  this.carSearch = await CarSearch.initiateCarSearchWithRentalAgency(this.page, place, agencyName);
+});
+
 When("I search for a car at {string} with rental agency {string} and {int} months ahead", async function (place, agencyName, monthsAhead) {
   logger.info("Searching for car with agency", { place, agencyName, monthsAhead });
   await CarSearch.searchCarByPlaceAndRentalAgency(this.page, place, agencyName, monthsAhead);
