@@ -100,6 +100,21 @@ Then("none of the car result titles should contain the word {string}", async fun
   await CarResults.assertCarTitlesDoNotContainWord(this.page, word);
 });
 
+When("I sort car results by {string}", async function (sortOption) {
+  logger.info("Sorting car results", { sortOption });
+  await CarResults.sortCarResultsBy(this.page, sortOption);
+});
+
+When("I go to the last page of car results", async function () {
+  logger.info("Going to the last page of car results");
+  await CarResults.goToLastCarResultsPage(this.page);
+});
+
+Then("the out of policy indicator should be visible in the last car result", async function () {
+  logger.info("Verifying the out of policy indicator is visible in the last car result");
+  await CarResults.expectOutOfPolicyIndicatorOnLastCarResult(this.page);
+});
+
 When("I filter car results by the {string} sustainability checkbox", async function (label) {
   logger.info("Filtering car results by sustainability checkbox", { label });
   await CarResults.filterCarResultsBySustainability(this.page, label);

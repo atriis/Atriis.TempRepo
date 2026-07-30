@@ -1437,6 +1437,116 @@ const CarResults = {
       `not flag the car as restricted (isRestricTravelPolicyViolation false or no policy violations)`,
     ).toBeDisabled();
   },
+
+  /**
+   * Sorts the car results list by one of the sort options offered in the car sort bar.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} label - Visible sort option: "Most recommended", "Price" or "Agency"
+   * @throws {Error} If page or label are invalid, or the sort never takes effect
+   * @returns {Promise<{sortedBy: string}>}
+   */
+  async sortCarResultsBy(page, label) {
+    if (!page) throw new Error('page is required');
+    if (!label || typeof label !== 'string' || !label.trim()) {
+      throw new Error(
+        `label must be a non-empty string naming a car sort option (e.g. "Price"), got: ${typeof label} (${label})`
+      );
+    }
+
+    const sortLabel = label.trim();
+    logger.debug('Sorting car results', { sortBy: sortLabel });
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+
+    try {
+      await carResultsPage.selectCarSortOption(sortLabel);
+    } catch (error) {
+      throw new Error(
+        `[CarResults.sortCarResultsBy] Could not sort the car results by "${sortLabel}". Sorting sends a new ` +
+        `filter to the store, which resets the list to page 1 — so any pagination must happen after this ` +
+        `action, never before. Original: ${error.message}`
+      );
+    }
+
+    logger.info('Car results sorted', { sortedBy: sortLabel });
+    return { sortedBy: sortLabel };
+  },
+
+  /**
+   * Moves the car results list to its last pagination page.
+   *
+   * A single page of results is already the last page, so this resolves with `{ lastPage: 1 }`
+   * rather than failing when no pager is rendered.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is missing, or the last page cannot be reached
+   * @returns {Promise<{lastPage: number}>}
+   */
+  async goToLastCarResultsPage(page) {
+    if (!page) throw new Error('page is required');
+
+    logger.debug('Paging car results forward to the last page');
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+
+    let pages;
+    try {
+      ({ pages } = await carResultsPage.goToLastCarResultsPage());
+    } catch (error) {
+      throw new Error(
+        `[CarResults.goToLastCarResultsPage] Could not reach the last page of the car results list. ` +
+        `The pager is desktop-only and is re-rendered from page 1 whenever a filter or sort changes, so a ` +
+        `sort applied mid-pagination would break this. Original: ${error.message}`
+      );
+    }
+
+    logger.info('Car results are showing the last page', { lastPage: pages });
+    return { lastPage: pages };
+  },
+
+  /**
+   * Verifies the out-of-policy indicator is displayed on the LAST car result of the current page.
+   *
+   * The badge is scoped to the last-item card deliberately: car-preview.vue renders the badge on
+   * every card and only hides it with `is-invisible`, so an unscoped check would pass for an
+   * in-policy card and prove nothing.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is missing, the last card cannot be reached, or the badge is absent
+   * @returns {Promise<void>}
+   */
+  async expectOutOfPolicyIndicatorOnLastCarResult(page) {
+    if (!page) throw new Error('page is required');
+
+    logger.debug('Verifying the out of policy indicator on the last car result');
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+
+    try {
+      // Must scroll AFTER pagination — car-results.ts setPage() jumps the window back to the top.
+      await carResultsPage.scrollToLastCarResult();
+    } catch (error) {
+      throw new Error(
+        `[CarResults.expectOutOfPolicyIndicatorOnLastCarResult] Could not bring the last car result into ` +
+        `view to check its travel-policy badge. Original: ${error.message}`
+      );
+    }
+
+    await expect(
+      carResultsPage.getLastCarResultOOPBadge(),
+      `The last car result should display the out-of-policy badge. The badge element is rendered on every ` +
+      `car card and hidden with "is-invisible" when car.travelPolicyViolations is empty, so an invisible ` +
+      `badge means the app considers this car IN policy — the configured travel policy was not triggered.`,
+    ).toBeVisible();
+
+    await expect(
+      carResultsPage.getLastCarResultOOPBadgeText(),
+      `The out-of-policy badge on the last car result should read "Out of policy" (common.outOfPolicy). ` +
+      `Different wording means the badge rendered in another language or app-oop-badge switched to its ` +
+      `icon-only variant, which would not warn the traveller.`,
+    ).toHaveText('Out of policy');
+  },
 };
 
 module.exports = CarResults;

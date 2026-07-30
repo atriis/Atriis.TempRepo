@@ -15,8 +15,7 @@ Feature: 47792 Galileo car search shows out-of-policy results when policy is tri
   Scenario: Search Hertz cars at CDG and verify out-of-policy results on later pages
     Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added myself as the traveler
-    # TODO: Map Testim inline agency filter actions before the search to a reusable search/filter step for Hertz.
-    When I search for a car at "CDG"
-    # TODO: Map Testim sorting action before paging to page 3.
-    Then the out of policy indicator should be visible in results
-    # TODO: Preserve the explicit page-3 navigation from the Testim flow.
+    When I search for a car at "CDG" with rental agency "Hertz"
+    And I sort car results by "Price"
+    And I go to the last page of car results
+    Then the out of policy indicator should be visible in the last car result

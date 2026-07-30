@@ -3,6 +3,7 @@
  * Contains only UI-level interactions.
  */
 const { escapeRegex } = require("@utils/text");
+const { waitForText } = require("@utils/wait");
 
 const SELECTORS = {
   // Results page breadcrumb — trailing "gray" span shows the current product section (e.g. "Car")
@@ -61,6 +62,43 @@ const SELECTORS = {
   // (`.mobile-btn.is-hidden-tablet`) — so `:visible` is REQUIRED to keep exactly one match at any
   // viewport. app-btn.vue binds `:disabled="isDisabled"` on a real <button>, so toBeDisabled() works.
   CAR_RESULT_ADD_TO_TRIP_BUTTON: 'button.add-btn:visible',
+  // Sort bar (car-sort-bar.vue) — the component renders NO data-testid, so the app-select's own
+  // `car-sort` class is the anchor. The bar is rendered on desktop; on mobile it moves into the
+  // "Sort and filters" drawer.
+  CAR_SORT_SELECT: '.car-sort-bar .car-sort .el-select',
+  // Element Plus renders the currently selected value of the new el-select inside
+  // `.el-select__placeholder` (same shape as HotelLevelResultsPage.SORT_SELECTED_ITEM).
+  CAR_SORT_SELECTED_LABEL: '.car-sort-bar .car-sort .el-select .el-select__placeholder',
+  // Element Plus TELEPORTS every el-select popper to <body>, so each select on the results page
+  // keeps its own option list in the DOM at all times and only the OPEN one is visible. Scoping to
+  // that single visible panel — never to the popper wrapper class — is what keeps this stable: the
+  // wrapper class depends on whether the select came through app-select.vue (which adds
+  // `app-select-popper`) or is a plain el-select, and the deployed build does not always match the
+  // Atriis.App source. `.el-select-dropdown:visible` is the panel every version renders (same
+  // pattern as CartPage.EL_SELECT_VISIBLE_DROPDOWN_ITEM).
+  CAR_SORT_DROPDOWN_PANEL: '.el-select-dropdown:visible',
+  // One option row inside the panel above. el-option renders `<li class="el-select-dropdown__item">
+  // <span>Price</span></li>`, so the label must be matched with an anchored `hasText` filter on the
+  // <li> — NOT with `:text-is("Price")`, which only ever matches the SMALLEST element holding the
+  // text (the inner <span>) and therefore never resolves the clickable <li>.
+  CAR_SORT_OPTION_ITEM: '.el-select-dropdown__item',
+  // Results pagination (car-results.vue → app-pagination.vue, el-pagination layout
+  // "prev, pager, next, jumper"). Rendered `v-if="!isMobile"`, i.e. DESKTOP ONLY, and only inside
+  // the `carsToShow?.length > 0` block — so it is simply ABSENT when there is a single page.
+  CAR_RESULTS_PAGINATION: '.car-results-container .app-pagination',
+  // el-pagination renders a real <button> that carries the `disabled` attribute on the last page.
+  CAR_RESULTS_PAGINATION_NEXT: '.car-results-container .app-pagination button.btn-next',
+  CAR_RESULTS_PAGINATION_ACTIVE_PAGE: '.car-results-container .app-pagination .el-pager li.number.is-active',
+  // car-list.vue stamps id="last-item" on the LAST rendered card of the current page — the same
+  // sentinel HotelLevelResultsPage.LAST_HOTEL_VIEW_RATES_BUTTON relies on.
+  LAST_CAR_RESULT_CARD: ".car-list [id='last-item']",
+  // car-preview.vue renders the out-of-policy badge on EVERY card and merely hides it with Bulma's
+  // `is-invisible` (visibility: hidden) when car.travelPolicyViolations is empty. An UNSCOPED
+  // `.app-out-of-policy` is therefore ALWAYS present in the DOM and `.first()` resolves to an
+  // in-policy hidden badge — scoping to the last-item card is what makes the assertion meaningful.
+  LAST_CAR_RESULT_OOP_BADGE: ".car-list [id='last-item'] .app-out-of-policy",
+  // The "Out of policy" wording itself (app-oop-badge.vue → p.out-of-policy-badge).
+  LAST_CAR_RESULT_OOP_BADGE_TEXT: ".car-list [id='last-item'] .out-of-policy-badge",
   AGREEMENT_ICON_IN_CARD: '.agreements .agreement-img',
   AGREEMENT_TOOLTIP_TRIGGER_IN_CARD: '.agreements .ticket-agreement > div',
   AGREEMENT_TOOLTIP_DESCRIPTION: '.agreement-tooltip-list .agreement-tooltip__description',
@@ -921,6 +959,252 @@ class CarResultsPage {
       await this.page.waitForTimeout(200);
     }
     return false;
+  }
+
+  /**
+   * Selects a sort option in the car results sort bar by its visible label.
+   *
+   * Completion is proven by the el-select's own displayed value switching to `label` — never by a
+   * fixed wait — because Element Plus updates that label in the same tick it emits the new sort.
+   *
+   * @param {string} label - Visible sort option: "Most recommended", "Price" or "Agency"
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If label is invalid, the dropdown cannot be opened, the option is missing,
+   *                 or the selection never takes effect
+   * @returns {Promise<void>}
+   */
+  async selectCarSortOption(label, { timeout = 15000 } = {}) {
+    if (typeof label !== 'string' || !label.trim()) {
+      throw new Error(
+        `[CarResultsPage.selectCarSortOption] "label" must be a non-empty string, got: ${typeof label} (${label})`
+      );
+    }
+
+    const sortLabel = label.trim();
+    const sortSelect = this.page.locator(SELECTORS.CAR_SORT_SELECT).first();
+
+    try {
+      await sortSelect.waitFor({ state: 'visible', timeout });
+      await sortSelect.click({ timeout });
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.selectCarSortOption] Could not open the car results sort dropdown ` +
+        `(selector: ${SELECTORS.CAR_SORT_SELECT}) within ${timeout}ms. The results page may still be ` +
+        `showing its skeleton (car-sort-bar-skeleton), the search may have returned no cars at all, or ` +
+        `the viewport is mobile-sized where car-sort-bar moves into the "Sort and filters" drawer. ` +
+        `Original: ${error.message}`
+      );
+    }
+
+    // The click above leaves exactly one el-select popper open, so the visible panel IS the sort
+    // dropdown. Resolving the option inside it keeps the closed poppers of the other selects out.
+    // The label is matched exactly (anchored regex) so "Price" cannot resolve another option.
+    const option = this.page
+      .locator(SELECTORS.CAR_SORT_DROPDOWN_PANEL)
+      .first()
+      .locator(SELECTORS.CAR_SORT_OPTION_ITEM)
+      .filter({ hasText: new RegExp(`^\\s*${escapeRegex(sortLabel)}\\s*$`) })
+      .first();
+
+    try {
+      await option.waitFor({ state: 'visible', timeout });
+      await option.click({ timeout });
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.selectCarSortOption] The "${sortLabel}" sort option did not become visible in the ` +
+        `car sort dropdown within ${timeout}ms (option: ${SELECTORS.CAR_SORT_OPTION_ITEM} with exact text ` +
+        `"${sortLabel}", panel: ${SELECTORS.CAR_SORT_DROPDOWN_PANEL}). car-sort-bar.ts offers exactly ` +
+        `"Most recommended", "Price" and "Agency", so the label is either misspelled or translated in the ` +
+        `active language — or the dropdown never opened, in which case no panel is visible at all. ` +
+        `Original: ${error.message}`
+      );
+    }
+
+    const selectedLabel = this.page
+      .locator(SELECTORS.CAR_SORT_SELECTED_LABEL)
+      .filter({ hasText: new RegExp(`^\\s*${escapeRegex(sortLabel)}\\s*$`) })
+      .first();
+
+    try {
+      await selectedLabel.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.selectCarSortOption] Clicked the "${sortLabel}" sort option but the sort dropdown ` +
+        `never displayed it as the selected value within ${timeout}ms ` +
+        `(selector: ${SELECTORS.CAR_SORT_SELECTED_LABEL}). The click likely landed on the popper of a ` +
+        `different el-select, or the sort was rejected by the store. Original: ${error.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the sort option currently displayed in the car results sort bar.
+   *
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If the sort bar never renders a selected value
+   * @returns {Promise<string>} Trimmed label (whitespace collapsed), e.g. "Price"
+   */
+  async getSelectedCarSortLabel({ timeout = 15000 } = {}) {
+    const selectedLabel = this.page.locator(SELECTORS.CAR_SORT_SELECTED_LABEL).first();
+
+    try {
+      await selectedLabel.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.getSelectedCarSortLabel] The car sort bar never displayed a selected sort value ` +
+        `within ${timeout}ms (selector: ${SELECTORS.CAR_SORT_SELECTED_LABEL}). The results page may still be ` +
+        `loading, or the sort bar is hidden in the mobile "Sort and filters" drawer. Original: ${error.message}`
+      );
+    }
+
+    return ((await selectedLabel.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Pages the car results list forward until the "next page" button is disabled, i.e. until the
+   * last page of results is displayed.
+   *
+   * Returns `{ pages: 1 }` without throwing when no pagination is rendered — car-results.vue only
+   * renders app-pagination on desktop and only inside the `carsToShow?.length > 0` block, so a
+   * single page of results simply has no pager and is already the last page.
+   *
+   * The loop is bounded by `maxPages`: an unbounded loop against a pager that never disables would
+   * silently consume the 120s Cucumber step budget and surface as an opaque "function timed out"
+   * instead of the diagnostics below.
+   *
+   * @param {{ maxPages?: number, timeout?: number }} [options]
+   * @throws {Error} If the results list never renders, a page change never takes effect, or the
+   *                 "next page" button never becomes disabled within `maxPages` page changes
+   * @returns {Promise<{ pages: number }>} The page number the list ended on
+   */
+  async goToLastCarResultsPage({ maxPages = 20, timeout = 15000 } = {}) {
+    if (!Number.isInteger(maxPages) || maxPages < 1) {
+      throw new Error(
+        `[CarResultsPage.goToLastCarResultsPage] "maxPages" must be a positive integer, got: ${maxPages}`
+      );
+    }
+
+    // The car list and the pager are rendered by the same `v-if`, so once the last card of the
+    // current page is attached the pager (if there is one) is attached too. Gating on the card
+    // first is what lets the "no pagination" check below be an instant count() instead of a wait
+    // that would burn the full timeout on every single-page search.
+    const lastCard = this.page.locator(SELECTORS.LAST_CAR_RESULT_CARD).first();
+    try {
+      await lastCard.waitFor({ state: 'attached', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.goToLastCarResultsPage] The car results list never rendered a last card within ` +
+        `${timeout}ms (selector: ${SELECTORS.LAST_CAR_RESULT_CARD}). The search likely returned no cars, or ` +
+        `the active filters removed every result. Original: ${error.message}`
+      );
+    }
+
+    if ((await this.page.locator(SELECTORS.CAR_RESULTS_PAGINATION).count()) === 0) {
+      // Single page of results — already on the last page.
+      return { pages: 1 };
+    }
+
+    const nextButton = this.page.locator(SELECTORS.CAR_RESULTS_PAGINATION_NEXT).first();
+    const activePage = this.page.locator(SELECTORS.CAR_RESULTS_PAGINATION_ACTIVE_PAGE).first();
+    const readActivePage = async () =>
+      ((await activePage.textContent().catch(() => '')) || '').replace(/\s+/g, ' ').trim();
+
+    let currentPage = (await readActivePage()) || '1';
+
+    for (let pageChanges = 0; pageChanges < maxPages; pageChanges++) {
+      let isLastPage;
+      try {
+        await nextButton.waitFor({ state: 'visible', timeout });
+        isLastPage = await nextButton.isDisabled();
+      } catch (error) {
+        throw new Error(
+          `[CarResultsPage.goToLastCarResultsPage] The "next page" button of the car results pager was not ` +
+          `usable on page "${currentPage}" within ${timeout}ms ` +
+          `(selector: ${SELECTORS.CAR_RESULTS_PAGINATION_NEXT}). Original: ${error.message}`
+        );
+      }
+
+      if (isLastPage) {
+        return { pages: Number(currentPage) || 1 };
+      }
+
+      const previousPage = currentPage;
+      // el-pagination's "next" always advances by exactly one page, so the change can be awaited as
+      // a concrete expected value instead of polled for "any change at all".
+      const expectedPage = String((Number(previousPage) || 1) + 1);
+      await nextButton.click({ timeout });
+
+      // A page change is proven by the active pager number advancing — el-pagination re-renders it
+      // together with the new slice of cars, so no fixed wait is needed. Delegated to the shared
+      // waitForText helper rather than hand-rolling a poll loop.
+      try {
+        await waitForText(this.page, SELECTORS.CAR_RESULTS_PAGINATION_ACTIVE_PAGE, expectedPage, timeout);
+      } catch (error) {
+        throw new Error(
+          `[CarResultsPage.goToLastCarResultsPage] Clicked the "next page" button on page "${previousPage}" but ` +
+          `page "${expectedPage}" never became the active pager number within ${timeout}ms ` +
+          `(selector: ${SELECTORS.CAR_RESULTS_PAGINATION_ACTIVE_PAGE}). The click may have been swallowed by ` +
+          `the sticky sort bar, or the pager re-rendered because a filter/sort reset the list to page 1. ` +
+          `Original: ${error.message}`
+        );
+      }
+
+      currentPage = expectedPage;
+    }
+
+    throw new Error(
+      `[CarResultsPage.goToLastCarResultsPage] The "next page" button never became disabled after ${maxPages} ` +
+      `page changes (stopped on page "${currentPage}"). The loop is deliberately bounded so this reports a ` +
+      `real problem instead of exhausting the 120s Cucumber step budget. Either the result set is larger than ` +
+      `expected — raise "maxPages" — or the pager is stuck re-rendering.`
+    );
+  }
+
+  /**
+   * Scrolls the last car result card of the current page into view.
+   *
+   * MUST run AFTER any pagination: car-results.ts `setPage()` scrolls the window back to the top on
+   * every page change, so scrolling first would be undone.
+   *
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If the last card never attaches or cannot be scrolled to
+   * @returns {Promise<void>}
+   */
+  async scrollToLastCarResult({ timeout = 15000 } = {}) {
+    const lastCard = this.page.locator(SELECTORS.LAST_CAR_RESULT_CARD).first();
+
+    try {
+      await lastCard.waitFor({ state: 'attached', timeout });
+      await lastCard.scrollIntoViewIfNeeded({ timeout });
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.scrollToLastCarResult] Could not scroll to the last car result card within ` +
+        `${timeout}ms (selector: ${SELECTORS.LAST_CAR_RESULT_CARD}). car-list.vue only stamps id="last-item" ` +
+        `once the list has rendered, so the results may still be loading or the list may be empty. ` +
+        `Original: ${error.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the out-of-policy badge locator of the LAST car result card on the current page.
+   *
+   * Scoped to the last-item card on purpose: car-preview.vue renders the badge on every card and
+   * only hides it with `is-invisible`, so an unscoped locator would always find one.
+   *
+   * @returns {import('playwright').Locator}
+   */
+  getLastCarResultOOPBadge() {
+    return this.page.locator(SELECTORS.LAST_CAR_RESULT_OOP_BADGE).first();
+  }
+
+  /**
+   * Returns the locator of the "Out of policy" wording inside the LAST car result card's badge.
+   *
+   * @returns {import('playwright').Locator}
+   */
+  getLastCarResultOOPBadgeText() {
+    return this.page.locator(SELECTORS.LAST_CAR_RESULT_OOP_BADGE_TEXT).first();
   }
 
   /**
