@@ -12,10 +12,10 @@ Feature: 36581 Flights - Multi pax price displayed correctly in cart and checkou
   So that I can verify the cost before booking
 
   Scenario: Multi pax flight price is correct in cart and checkout with CO2 tooltip
-    Given I am logged in as "sebastian@one.com" booking a new trip
+    Given I am logged in as "daniel@climatecontribution.com" booking a new trip
     And I have added myself as the traveler
-    And I have added traveler by name "josh"
-    And I have added traveler by name "bene levi"
+    And I have added traveler by name "rui mendes"
+    And I have added traveler by name "rui mariano"
     When I search for a one way flight from "LIS" to "NYC"
     And flight results should be available
     Then the CO2 Squake tooltip should be visible in flight results
