@@ -785,11 +785,22 @@ const SELECTORS = {
   CAR_ADD_LOCATION_DROPOFF_SELECTED_TEXT:
     '.car-sunnycars-add-location .extras-card .columns .column:nth-child(2) .el-select__placeholder',
   // Options render in a body-level popper (app-select.vue sets popper-class "app-select-popper").
-  // The pick-up and drop-off selects each keep their own popper mounted after first use, and a
-  // closed one can still satisfy ':visible' on the popper element while its options are hidden —
-  // that mismatch made `.first()` resolve to an unclickable option. ':visible' on the ITEM as well
-  // is what pins this to the dropdown actually on screen.
-  CAR_ADD_LOCATION_DROPDOWN_OPTION: '.app-select-popper:visible .el-select-dropdown__item:visible',
+  // Both selects keep their own popper mounted after first use and both carry that same class, so
+  // a document-wide match is ambiguous: while the pick-up dropdown is open, `.first()` resolves to
+  // the PICK-UP option even when the caller asked for a drop-off — that is what made "select the
+  // first drop-off location" re-pick the pick-up value. Always scope the item selector to one
+  // popper resolved from the owning select (see `_getCarAddLocationPopperSelector`).
+  CAR_ADD_LOCATION_DROPDOWN_ITEM: '.el-select-dropdown__item:visible',
+  // Element-Plus points each select's wrapper at its own popper through `aria-describedby`. It is
+  // the only per-field link between a select and its options in this DOM — nothing on the popper
+  // itself identifies which field it belongs to.
+  CAR_ADD_LOCATION_SELECT_WRAPPER_SUFFIX: ' .el-select__wrapper',
+  // Green "check_circle" that extras-layout.vue renders on the COLLAPSED row (`v-if="!isOpen"`)
+  // once the section is valid and has a value. Saving calls the panel's own close(), so the row —
+  // and this icon — only exist after a successful save. `:visible` guards against hidden
+  // responsive duplicates of the quote card, same as the flight optional-services icon.
+  CAR_ADD_LOCATION_SUCCESS_ICON:
+    '.car-sunnycars-add-location .material-symbols-outlined.filled.success-icon.green:visible',
 
   // Car type on the cart's car quote card (car-quote-card.vue → .car-title-block > h4.center-title).
   // `.center-title` alone is unusable here — per-diem, parking, ground-transport and
@@ -6287,6 +6298,46 @@ class CartPage {
   }
 
   /**
+   * Resolves the option selector for ONE "Add location" field, scoped to that field's own popper.
+   *
+   * Both selects render their options into body-level poppers that share the `app-select-popper`
+   * class, and both poppers stay mounted once used — so a document-wide option selector silently
+   * resolves to whichever popper comes first in the DOM (the pick-up one). Element-Plus links a
+   * select to its popper through `aria-describedby` on `.el-select__wrapper`; that attribute is the
+   * only per-field anchor available, so the id is read at runtime and used to scope the options.
+   *
+   * @param {string} selectSelector - One of the CAR_ADD_LOCATION_*_SELECT selectors
+   * @param {string} fieldLabel - Human name of the field, for the error message
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>} Selector matching only that field's visible options
+   */
+  async _getCarAddLocationOptionSelector(selectSelector, fieldLabel, { timeout = 15000 } = {}) {
+    const wrapperSelector = `${selectSelector}${SELECTORS.CAR_ADD_LOCATION_SELECT_WRAPPER_SUFFIX}`;
+    let popperId;
+    try {
+      // The attribute is added when the select first builds its popper, so poll rather than read
+      // once — a select that has never been opened has no `aria-describedby` yet.
+      const handle = await this.page.waitForFunction(
+        (selector) => document.querySelector(selector)?.getAttribute('aria-describedby') || null,
+        wrapperSelector,
+        { timeout }
+      );
+      popperId = await handle.jsonValue();
+      await handle.dispose();
+    } catch (err) {
+      throw new Error(
+        `[CartPage._getCarAddLocationOptionSelector] Could not resolve the ${fieldLabel} location ` +
+        `dropdown's popper id (wrapper: ${wrapperSelector}). Likely causes: the "Add location" panel ` +
+        `is not expanded, or the select never opened so Element-Plus never linked it to a popper. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    return `[id="${popperId}"] ${SELECTORS.CAR_ADD_LOCATION_DROPDOWN_ITEM}`;
+  }
+
+  /**
    * Shared open-and-wait for the two "Add location" app-selects.
    * @param {string} selectSelector
    * @param {string} fieldLabel - Human name of the field, for the error message
@@ -6298,64 +6349,81 @@ class CartPage {
     try {
       await select.waitFor({ state: 'visible', timeout });
       await select.click();
-      await this.page
-        .locator(SELECTORS.CAR_ADD_LOCATION_DROPDOWN_OPTION)
-        .first()
-        .waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage._openCarAddLocationDropdown] Could not click the ${fieldLabel} location select ` +
+        `(selector: ${selectSelector}). Likely causes: the "Add location" panel is not expanded, or ` +
+        `the select is still disabled. Original: ${err.message}`
+      );
+    }
+
+    const optionSelector = await this._getCarAddLocationOptionSelector(selectSelector, fieldLabel, { timeout });
+    try {
+      await this.page.locator(optionSelector).first().waitFor({ state: 'visible', timeout });
     } catch (err) {
       throw new Error(
         `[CartPage._openCarAddLocationDropdown] Could not open the ${fieldLabel} location dropdown ` +
-        `(select: ${selectSelector}, options: ${SELECTORS.CAR_ADD_LOCATION_DROPDOWN_OPTION}). ` +
-        `Likely causes: the "Add location" panel is not expanded, or the supplier returned no ` +
-        `${fieldLabel} locations for this quote so the popper opened empty. Original: ${err.message}`
+        `(select: ${selectSelector}, options: ${optionSelector}). Likely causes: the click did not ` +
+        `open the popper, or the supplier returned no ${fieldLabel} locations for this quote so it ` +
+        `opened empty. Original: ${err.message}`
       );
     }
   }
 
   /**
-   * Reads the label text of every option in the currently open "Add location" dropdown.
+   * Reads the label text of every option in one "Add location" dropdown, which must be open.
+   * @param {string} selectSelector - The field whose options to read (CAR_ADD_LOCATION_*_SELECT)
+   * @param {string} fieldLabel - Human name of the field, for the error message
    * @param {object} [options]
    * @param {number} [options.timeout=15000]
    * @returns {Promise<string[]>} Whitespace-collapsed option labels, in DOM order
    */
-  async getCarAddLocationDropdownOptionTexts({ timeout = 15000 } = {}) {
-    const options = this.page.locator(SELECTORS.CAR_ADD_LOCATION_DROPDOWN_OPTION);
+  async _getCarAddLocationDropdownOptionTexts(selectSelector, fieldLabel, { timeout = 15000 } = {}) {
+    const optionSelector = await this._getCarAddLocationOptionSelector(selectSelector, fieldLabel, { timeout });
+    const options = this.page.locator(optionSelector);
     try {
       await options.first().waitFor({ state: 'visible', timeout });
       const texts = await options.allTextContents();
       return texts.map((text) => (text || '').replace(/\s+/g, ' ').trim());
     } catch (err) {
       throw new Error(
-        `[CartPage.getCarAddLocationDropdownOptionTexts] Could not read the open location dropdown's ` +
-        `options (selector: ${SELECTORS.CAR_ADD_LOCATION_DROPDOWN_OPTION}). Likely cause: the dropdown ` +
-        `is not open — it closes as soon as an option is picked. Original: ${err.message}`
+        `[CartPage._getCarAddLocationDropdownOptionTexts] Could not read the ${fieldLabel} location ` +
+        `dropdown's options (selector: ${optionSelector}). Likely cause: the dropdown is not open — ` +
+        `it closes as soon as an option is picked. Original: ${err.message}`
       );
     }
   }
 
   /**
-   * Reports whether an "Add location" dropdown currently shows options on screen.
-   * Used to decide whether a dropdown still needs opening — the popper can close on its own when
-   * the panel re-renders, and reopening is cheaper than failing the step. This is an instantaneous
-   * state read (no waiting), so callers must already have opened the dropdown they are asking about.
+   * Reports whether ONE "Add location" dropdown currently shows its options on screen.
+   * Used to decide whether that dropdown still needs opening — the popper can close on its own when
+   * the panel re-renders, and reopening is cheaper than failing the step. Never reports the *other*
+   * field's open popper as this one's. Resolving the popper costs up to 2s for a select that has
+   * never been opened (no `aria-describedby` yet); that case answers false rather than throwing.
+   * @param {string} selectSelector - The field to check (CAR_ADD_LOCATION_*_SELECT)
+   * @param {string} fieldLabel - Human name of the field, for the error message
    * @returns {Promise<boolean>}
    */
-  async isCarAddLocationDropdownOpen() {
-    return this.page
-      .locator(SELECTORS.CAR_ADD_LOCATION_DROPDOWN_OPTION)
-      .first()
-      .isVisible()
-      .catch(() => false);
+  async _isCarAddLocationDropdownOpen(selectSelector, fieldLabel) {
+    // A select that was never opened has no popper at all — that is "closed", not an error.
+    const optionSelector = await this._getCarAddLocationOptionSelector(selectSelector, fieldLabel, { timeout: 2000 })
+      .catch(() => null);
+    if (!optionSelector) return false;
+
+    return this.page.locator(optionSelector).first().isVisible().catch(() => false);
   }
 
   /**
-   * Clicks the first option in the currently open "Add location" dropdown.
+   * Clicks the first option in ONE "Add location" dropdown, which must be open.
+   * @param {string} selectSelector - The field to pick from (CAR_ADD_LOCATION_*_SELECT)
+   * @param {string} fieldLabel - Human name of the field, for the error message
    * @param {object} [options]
    * @param {number} [options.timeout=15000]
    * @returns {Promise<string>} The whitespace-collapsed label of the option that was clicked
    */
-  async clickFirstCarAddLocationDropdownOption({ timeout = 15000 } = {}) {
-    const option = this.page.locator(SELECTORS.CAR_ADD_LOCATION_DROPDOWN_OPTION).first();
+  async _clickFirstCarAddLocationDropdownOption(selectSelector, fieldLabel, { timeout = 15000 } = {}) {
+    const optionSelector = await this._getCarAddLocationOptionSelector(selectSelector, fieldLabel, { timeout });
+    const option = this.page.locator(optionSelector).first();
     try {
       await option.waitFor({ state: 'visible', timeout });
       const label = ((await option.textContent()) || '').replace(/\s+/g, ' ').trim();
@@ -6367,11 +6435,49 @@ class CartPage {
       return label;
     } catch (err) {
       throw new Error(
-        `[CartPage.clickFirstCarAddLocationDropdownOption] Could not select the first option in the ` +
-        `open location dropdown (selector: ${SELECTORS.CAR_ADD_LOCATION_DROPDOWN_OPTION}). Likely ` +
-        `cause: the dropdown is not open, or it rendered with no options. Original: ${err.message}`
+        `[CartPage._clickFirstCarAddLocationDropdownOption] Could not select the first ${fieldLabel} ` +
+        `location option (selector: ${optionSelector}). Likely cause: the dropdown is not open, or ` +
+        `it rendered with no options. Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Clicks the first option in the open pick-up location dropdown.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>} The label of the option that was clicked
+   */
+  async clickFirstCarAddLocationPickupOption({ timeout = 15000 } = {}) {
+    return this._clickFirstCarAddLocationDropdownOption(SELECTORS.CAR_ADD_LOCATION_PICKUP_SELECT, 'pick-up', { timeout });
+  }
+
+  /**
+   * Clicks the first option in the open drop-off location dropdown.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>} The label of the option that was clicked
+   */
+  async clickFirstCarAddLocationDropoffOption({ timeout = 15000 } = {}) {
+    return this._clickFirstCarAddLocationDropdownOption(SELECTORS.CAR_ADD_LOCATION_DROPOFF_SELECT, 'drop-off', { timeout });
+  }
+
+  /**
+   * Reads every option label in the open drop-off location dropdown.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string[]>}
+   */
+  async getCarAddLocationDropoffOptionTexts({ timeout = 15000 } = {}) {
+    return this._getCarAddLocationDropdownOptionTexts(SELECTORS.CAR_ADD_LOCATION_DROPOFF_SELECT, 'drop-off', { timeout });
+  }
+
+  /**
+   * Reports whether the drop-off location dropdown is currently showing its options.
+   * @returns {Promise<boolean>}
+   */
+  async isCarAddLocationDropoffDropdownOpen() {
+    return this._isCarAddLocationDropdownOpen(SELECTORS.CAR_ADD_LOCATION_DROPOFF_SELECT, 'drop-off');
   }
 
   /**
@@ -6412,6 +6518,28 @@ class CartPage {
         `[CartPage._getCarAddLocationSelectedText] Could not read the selected ${fieldLabel} location ` +
         `(selector: ${textSelector}). Likely cause: the "Add location" panel is not expanded. ` +
         `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the green success icon on the collapsed SunnyCars "Add location" row.
+   * Unlike the flight extras, the car quote card has no outer extras collapse, so no reopen cycle
+   * is needed — the icon appears on its own once the save request comes back and the panel closes.
+   * @param {object} [options]
+   * @param {number} [options.timeout=20000]
+   */
+  async waitForCarAddLocationGreenIcon({ timeout = 20000 } = {}) {
+    const icon = this.page.locator(SELECTORS.CAR_ADD_LOCATION_SUCCESS_ICON).first();
+    try {
+      await icon.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForCarAddLocationGreenIcon] The "Add location" green success icon never became ` +
+        `visible (selector: ${SELECTORS.CAR_ADD_LOCATION_SUCCESS_ICON}). Likely causes: the panel is ` +
+        `still open because the save did not go through (the icon only renders on the collapsed row), ` +
+        `or the CarSunnyAddLocation validation did not turn OK so extras-layout kept showing the ` +
+        `red/yellow state icon instead. Original: ${err.message}`
       );
     }
   }

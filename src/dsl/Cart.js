@@ -5265,7 +5265,7 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
 
     await cartPage.openCarAddLocationPickupDropdown();
-    const selected = await cartPage.clickFirstCarAddLocationDropdownOption();
+    const selected = await cartPage.clickFirstCarAddLocationPickupOption();
 
     // The el-select commits its value on the next Vue tick, so a single read can catch the field
     // still empty; poll until the label the click reported is actually shown in the field.
@@ -5321,22 +5321,38 @@ const Cart = {
     logger.debug('[Cart.verifyCarDropoffLocationOptionsDisplayText] Verifying the drop-off location options', { invalidText });
     const cartPage = getPageObject(page, CartPage);
 
-    const options = await cartPage.getCarAddLocationDropdownOptionTexts();
+    const isInvalid = (text) => text === '' || text === invalidText;
+    const VALID_DROPOFF_OPTIONS = 'every option displays location text';
 
-    expect(
-      options.length,
-      `Expected the drop-off location dropdown to list at least one location, but it rendered none. ` +
-      `The dropdown must be open and the supplier must have returned drop-off locations for the ` +
-      `selected pick-up location.`,
-    ).toBeGreaterThan(0);
+    // The option labels come from the drop-off list that is refetched for the chosen pick-up
+    // location, so a first read can catch labels mid-render. Poll rather than read once — a list
+    // that is genuinely broken still fails, but a list that is merely late gets a chance to settle.
+    // The polled value is a description rather than a boolean so the failure report names the
+    // offending labels instead of just "expected true".
+    let options = [];
+    await expect
+      .poll(
+        async () => {
+          options = await cartPage.getCarAddLocationDropoffOptionTexts();
+          if (options.length === 0) return 'the dropdown rendered no options at all';
 
-    const invalidOptions = options.filter((text) => text === '' || text === invalidText);
-    expect(
-      invalidOptions,
-      `Expected every drop-off location option to display location text, but ${invalidOptions.length} of ` +
-      `${options.length} displayed "${invalidText}" or nothing. Full list: ${JSON.stringify(options)}. ` +
-      `This is the 62861 regression — the option label fell back to the location id instead of its name.`,
-    ).toEqual([]);
+          const invalidOptions = options.filter(isInvalid);
+          if (invalidOptions.length === 0) return VALID_DROPOFF_OPTIONS;
+
+          return (
+            `${invalidOptions.length} of ${options.length} options displayed "${invalidText}" or ` +
+            `nothing. Full list: ${JSON.stringify(options)}`
+          );
+        },
+        {
+          timeout: 10000,
+          message:
+            `Expected every drop-off location option to display location text. This is the 62861 ` +
+            `regression — an option label fell back to "${invalidText}" or rendered empty instead of ` +
+            `showing the location name.`,
+        },
+      )
+      .toBe(VALID_DROPOFF_OPTIONS);
 
     logger.info('Verified all drop-off location options display text', { optionCount: options.length, options });
     return options;
@@ -5355,16 +5371,16 @@ const Cart = {
     logger.debug('[Cart.selectFirstCarDropoffLocation] Selecting the first drop-off location');
     const cartPage = getPageObject(page, CartPage);
 
-    // The drop-off popper is opened by the preceding step so its options can be asserted, but it
-    // closes itself whenever the panel re-renders (the drop-off list is refetched per pick-up
-    // location). Reopen rather than fail — the step's contract is "pick the first option", not
-    // "the dropdown must still be open from earlier".
-    if (!(await cartPage.isCarAddLocationDropdownOpen())) {
-      logger.debug('[Cart.selectFirstCarDropoffLocation] Drop-off dropdown was closed - reopening it');
+    // Some scenarios open the drop-off dropdown in an earlier step (to assert its options first),
+    // others come straight from selecting a pick-up location. The check is deliberately scoped to
+    // the DROP-OFF popper: an unscoped "is a dropdown open?" is still true while the pick-up popper
+    // lingers, which previously made this step re-pick the pick-up value instead of a drop-off one.
+    if (!(await cartPage.isCarAddLocationDropoffDropdownOpen())) {
+      logger.debug('[Cart.selectFirstCarDropoffLocation] Drop-off dropdown was closed - opening it');
       await cartPage.openCarAddLocationDropoffDropdown();
     }
 
-    const selected = await cartPage.clickFirstCarAddLocationDropdownOption();
+    const selected = await cartPage.clickFirstCarAddLocationDropoffOption();
 
     await expect
       .poll(async () => cartPage.getCarAddLocationDropoffSelectedText(), {
@@ -5416,6 +5432,25 @@ const Cart = {
     ).not.toBe('');
 
     logger.info('Verified the selected drop-off location displays text', { dropoffLocation: selected });
+  },
+
+  /**
+   * Verifies the SunnyCars "Add location" extras section shows its green success icon, which is the
+   * card-level proof that the pick-up/drop-off pair was accepted and the quote's location
+   * validation turned OK — the success toast alone only says the request was sent.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyCarAddLocationGreenIcon(page) {
+    if (!page) throw new Error('[Cart.verifyCarAddLocationGreenIcon] "page" is required.');
+
+    logger.debug('[Cart.verifyCarAddLocationGreenIcon] Verifying the add location green success icon');
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.waitForCarAddLocationGreenIcon();
+
+    logger.info('Verified the add location green success icon is visible');
   },
 
   /**

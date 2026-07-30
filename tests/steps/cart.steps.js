@@ -2370,6 +2370,11 @@ Then("the selected drop-off location in the add location section displays text i
   await Cart.verifySelectedCarDropoffLocationDisplaysText(this.page, invalidText);
 });
 
+Then("the add location green icon should be visible", async function () {
+  logger.info("Verifying the add location green success icon is visible");
+  await Cart.verifyCarAddLocationGreenIcon(this.page);
+});
+
 When("I add loyalty number {string} using the first available chain", async function (loyaltyNumber) {
   logger.info("Adding loyalty number with first available chain", { loyaltyNumber });
   this.selectedChainText = await Cart.addLoyaltyNumberWithFirstAvailableChain(this.page, loyaltyNumber);
