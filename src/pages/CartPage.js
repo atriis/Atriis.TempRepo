@@ -693,6 +693,13 @@ const SELECTORS = {
   // The bgcolor anchor is the email template's price box, carried over from the
   // original Testim recording; the email HTML is backend-generated (not in OBT source).
   SHARE_EMAIL_PRICE_OFFER_BOX: "[bgcolor='#1C73FF']",
+  // Share email preview — "Vendor Message" label and its value (inside iframe srcdoc).
+  // The email HTML is backend-generated and the two templates differ: the share quote email
+  // renders the label and value as adjacent cells, the share itinerary email as a .glist
+  // label/value sibling pair. So the label is located by its text and the value read from the
+  // adjacent node rather than by a template-specific path.
+  SHARE_EMAIL_VENDOR_MESSAGE_LABEL_TEXT: 'Vendor Message',
+  SHARE_EMAIL_VENDOR_MESSAGE_CANDIDATES: 'td, th, div, span, p, b, strong, li',
   SHARE_EMAIL_QUOTE_CANCELLATION_TEXT: (quoteIndex) => ({
     1: 'body > table > tbody > tr > td > table > tbody > tr:nth-child(2) > td > table > tbody > tr > td.em_side_space > table > tbody:nth-child(2) > tr:nth-child(7)',
     2: 'body > table > tbody > tr > td > table > tbody > tr:nth-child(2) > td > table > tbody > tr > td.em_side_space > table > tbody:nth-child(2) > tr:nth-child(10)',
@@ -5858,6 +5865,78 @@ class CartPage {
       await this.page.waitForTimeout(1000);
     }
     return false;
+  }
+
+  /**
+   * Reads the "Vendor Message" label and the value rendered next to it in the share email
+   * preview iframe. Works for both the share quote and the share itinerary email templates
+   * (see SHARE_EMAIL_VENDOR_MESSAGE_LABEL_TEXT for why the label is located by text).
+   * @param {object} [options]
+   * @param {number} [options.timeout=20000] - How long to keep scrolling the preview looking for the label
+   * @returns {Promise<{label: string, content: string}|null>} The label and its value, or null if the label never appeared
+   */
+  async getVendorMessageFromSharePreview({ timeout = 20_000 } = {}) {
+    if (!Number.isFinite(timeout) || timeout <= 0) {
+      throw new Error(`[CartPage.getVendorMessageFromSharePreview] "timeout" must be a positive number, got: ${timeout}`);
+    }
+
+    const deadline = Date.now() + timeout;
+    try {
+      await this._waitForShareIframeSrcdoc(timeout);
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getVendorMessageFromSharePreview] The share email preview iframe never rendered any content ` +
+          `within ${timeout}ms. The share dialog may not be open, or the preview failed to load. Original: ${err.message}`
+      );
+    }
+
+    const body = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first().contentFrame().locator('body');
+    if (!(await body.count().catch(() => 0))) {
+      throw new Error(
+        `[CartPage.getVendorMessageFromSharePreview] The share email preview iframe has no body to read. ` +
+          `The preview iframe is present but its document did not load.`
+      );
+    }
+
+    while (true) {
+      const found = await body.evaluate(
+        (root, { labelText, candidateSelector }) => {
+          const normalize = (value) => (value ?? '').replace(/\s+/g, ' ').trim();
+          const wanted = labelText.toLowerCase();
+
+          // Prefer the deepest (fewest descendants) element that starts with the label, so the
+          // enclosing rows and tables that also contain the label text are not mistaken for it.
+          const labelEl = Array.from(root.querySelectorAll(candidateSelector))
+            .filter((element) => normalize(element.textContent).toLowerCase().startsWith(wanted))
+            .sort((a, b) => b.querySelectorAll('*').length - a.querySelectorAll('*').length)
+            .pop();
+          if (!labelEl) return null;
+
+          const label = normalize(labelEl.textContent);
+          let content = normalize(labelEl.nextElementSibling?.textContent);
+          if (!content) {
+            const parentText = normalize(labelEl.parentElement?.textContent);
+            content = parentText.toLowerCase().startsWith(wanted)
+              ? normalize(parentText.slice(label.length))
+              : normalize(labelEl.parentElement?.nextElementSibling?.textContent);
+          }
+          return { label, content };
+        },
+        {
+          labelText: SELECTORS.SHARE_EMAIL_VENDOR_MESSAGE_LABEL_TEXT,
+          candidateSelector: SELECTORS.SHARE_EMAIL_VENDOR_MESSAGE_CANDIDATES,
+        }
+      );
+      if (found) return found;
+      if (Date.now() >= deadline) return null;
+
+      // The preview iframe re-renders its srcdoc while the dialog settles (and again when the
+      // summary/detailed view switches), so a single read can land on the previous document.
+      // Scroll-and-retry until the deadline, the same way sharePreviewContainsText does; the
+      // fixed pause is the retry interval, not a wait for a known element.
+      await this.scrollSharePreviewDown();
+      await this.page.waitForTimeout(1000);
+    }
   }
 
   async getSharePreviewQuoteCancellationText(quoteIndex, { timeout = 15000 } = {}) {

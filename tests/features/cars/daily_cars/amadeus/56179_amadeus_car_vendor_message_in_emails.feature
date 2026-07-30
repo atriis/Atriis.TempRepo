@@ -6,7 +6,7 @@
 # Created: 2025-01-02T12:45:34Z
 # Updated: 2025-08-05T07:17:49Z
 @regression @cars @provider:amadeus
-Feature: 56179 Amadeus car vendor message is displayed in emails
+Feature: 56179 Amadeus - Car - Vendor message is displayed in emails
   As a corporate traveler
   I want the supplier vendor message to appear in share emails
   So that quote and itinerary emails contain the correct vendor content
@@ -21,6 +21,12 @@ Feature: 56179 Amadeus car vendor message is displayed in emails
     When I proceed to checkout
     And I complete the booking
     And the booking status should be "Confirmed"
-    # TODO: Then "Vendor message" is displayed in share quote email (verify the wording "Vendor Message" and if there is a content like text under it)
-     # TODO: Then "Vendor message" is displayed in share itinerary email (verify the wording "Vendor Message" and if there is a content like text under it)
+    When I click the share quote button
+    Then "Vendor Message" should be displayed in the share email preview
+    And the vendor message content should be displayed in the share email preview
+    When I close the share dialog
+    And I click the share itinerary button
+    Then "Vendor Message" should be displayed in the share email preview
+    And the vendor message content should be displayed in the share email preview
+    When I close the share dialog
     Then I successfully cancel the trip

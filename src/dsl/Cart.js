@@ -4717,6 +4717,50 @@ const Cart = {
   },
 
   /**
+   * Verifies the share email preview shows a "Vendor Message" label with actual message text
+   * next to it — the supplier's sell message must be rendered, not just the empty label.
+   * The share dialog must already be open (quote or itinerary).
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{label: string, content: string}>} The label and message content found in the preview
+   */
+  async verifyVendorMessageInSharePreview(page) {
+    if (!page) throw new Error('[Cart.verifyVendorMessageInSharePreview] "page" is required.');
+
+    logger.debug('Reading the vendor message from the share email preview');
+    const cartPage = getPageObject(page, CartPage);
+
+    let vendorMessage;
+    try {
+      vendorMessage = await cartPage.getVendorMessageFromSharePreview();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyVendorMessageInSharePreview] Could not read the vendor message from the share email ` +
+          `preview. The share dialog must be open on a booked quote before this check. Original: ${err.message}`
+      );
+    }
+
+    if (!vendorMessage) {
+      const preview = await cartPage.getSharePreviewTextContent();
+      throw new Error(
+        `[Cart.verifyVendorMessageInSharePreview] No "Vendor Message" label was found in the share email ` +
+          `preview. The supplier may not have returned a sell message for this car quote. ` +
+          `Preview content: "${preview.slice(0, 500)}"`
+      );
+    }
+
+    // A label with no value next to it is the failure this test guards against, so require at
+    // least one word character rather than just a non-empty string (separators, dashes, colons).
+    expect(
+      vendorMessage.content,
+      `Expected the "Vendor Message" label in the share email preview to be followed by message text, ` +
+        `but the value was empty. Label read: "${vendorMessage.label}"`
+    ).toMatch(/\w/);
+
+    logger.debug('Vendor message found in the share email preview', { content: vendorMessage.content.slice(0, 200) });
+    return { label: vendorMessage.label, content: vendorMessage.content };
+  },
+
+  /**
    * Verifies that the selected shared quote preview contains the specified text.
    * The share dialog must already be open.
    * @param {import('playwright').Page} page

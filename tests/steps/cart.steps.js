@@ -1689,6 +1689,12 @@ Then("{string} should be displayed in the share email preview", async function (
   await Cart.verifySharePreviewContainsText(this.page, text);
 });
 
+Then("the vendor message content should be displayed in the share email preview", async function () {
+  logger.info("Verifying the vendor message label in the share email preview has message content");
+  const vendorMessage = await Cart.verifyVendorMessageInSharePreview(this.page);
+  logger.info("Vendor message content found in the share email preview", vendorMessage);
+});
+
 Then("the trip number in the share {word} email preview should not be a hyperlink", async function (previewType) {
   if (!this.tripId) {
     throw new Error(
