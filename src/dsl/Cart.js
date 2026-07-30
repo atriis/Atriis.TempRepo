@@ -2891,6 +2891,64 @@ const Cart = {
   },
 
   /**
+   * Verifies the seating extras section shows NO pending status indicator — the case where
+   * the trip was held without ever selecting a seat. extras-layout.vue renders the yellow
+   * `schedule` icon on the collapsed summary row from `isWaitingApproval`, which
+   * flight-seating.vue binds to `hasPendingSeats` (TripValidationStatusType.Pending); with no
+   * seats selected that status must never be Pending.
+   *
+   * The seating row itself is anchored first so the assertion cannot pass vacuously on a page
+   * where the seating section simply has not rendered yet, and the absence is then held over a
+   * stability window — the quote validation arrives asynchronously after a reload, so a single
+   * immediate read would pass before the indicator had a chance to appear.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000] - Max wait for the collapsed seating row to render
+   * @param {number} [options.stabilityWindow=5000] - How long the indicator must stay absent
+   * @returns {Promise<{ pendingIndicatorVisible: boolean }>}
+   */
+  async verifyNoSeatingPendingIndicator(page, { timeout = 15000, stabilityWindow = 5000 } = {}) {
+    if (!page) throw new Error('page is required');
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be >= 0, got ${timeout}`);
+    }
+    if (typeof stabilityWindow !== 'number' || stabilityWindow < 0) {
+      throw new Error(`stabilityWindow must be >= 0, got ${stabilityWindow}`);
+    }
+
+    logger.info('Verifying the seating extras section shows no pending status indicator', {
+      timeout,
+      stabilityWindow,
+    });
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // Anchor: the collapsed summary row is the only place the section-level status icon is
+    // rendered, so it must exist before its absence means anything.
+    await cartPage.ensureSeatingExtrasCollapsed(timeout);
+
+    const pendingIcon = cartPage.getSeatingExtrasPendingStatusIconLocator();
+    const deadline = Date.now() + stabilityWindow;
+
+    do {
+      const count = await pendingIcon.count();
+      if (count > 0) {
+        const { icons, rows } = await cartPage.getSeatingExtrasRowState();
+        throw new Error(
+          'Seating extras shows a pending status indicator even though no seat was selected. ' +
+          `Expected no visible ".flight-seating .extra .filled.success-icon.yellow", found ${count}. ` +
+          `Seating rows: ${JSON.stringify(rows)}. Status icons found: ${JSON.stringify(icons)}.`
+        );
+      }
+      await page.waitForTimeout(500);
+    } while (Date.now() < deadline);
+
+    logger.info('Seating extras shows no pending status indicator');
+    return { pendingIndicatorVisible: false };
+  },
+
+  /**
    * Gets passport details text from the cart extras section.
    * Returns the passport details for validation in step definitions.
    * 

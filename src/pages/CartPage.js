@@ -669,6 +669,15 @@ const SELECTORS = {
   SEATING_PAX_YELLOW_STATUS_ICON: '.flight-seating .pax-seat-container .seat-status-icon.yellow',
   // Any per-passenger status icon in the expanded panel — used for failure diagnostics
   SEATING_PAX_STATUS_ICON: '.flight-seating .pax-seat-container .seat-status-icon',
+  // Section-level pending indicator on the COLLAPSED seating summary row. extras-layout.vue
+  // renders `filled success-icon yellow` (a `schedule` icon) when isWaitingApproval is true,
+  // which flight-seating.vue binds to hasPendingSeats (TripValidationStatusType.Pending).
+  // Scoped to :visible — responsive layouts render hidden duplicates of the extras row.
+  SEATING_EXTRAS_PENDING_STATUS_ICON:
+    '.flight-seating .extra .material-symbols-outlined.filled.success-icon.yellow:visible',
+  // Any section-level state icon on the collapsed seating row (green check / red info /
+  // yellow schedule / yellow info) — used for failure diagnostics
+  SEATING_EXTRAS_STATUS_ICON: '.flight-seating .extra .success-icon',
 
   // Traveler initials (trip-traveler-tag.vue)
   TRAVELER_INITIALS: '.avatar-initials',
@@ -7509,6 +7518,38 @@ class CartPage {
    */
   getSeatingPendingStatusIconLocator() {
     return this.page.locator(SELECTORS.SEATING_PAX_YELLOW_STATUS_ICON).first();
+  }
+
+  /**
+   * Returns the section-level pending (yellow `schedule`) indicator locator on the collapsed
+   * seating summary row. Rendered by extras-layout.vue only while the panel is collapsed.
+   * @returns {import('playwright').Locator}
+   */
+  getSeatingExtrasPendingStatusIconLocator() {
+    return this.page.locator(SELECTORS.SEATING_EXTRAS_PENDING_STATUS_ICON);
+  }
+
+  /**
+   * Reads every section-level state icon rendered on the collapsed seating summary row,
+   * plus the row's own text. Used to build an actionable failure message when the row
+   * carries an unexpected status indicator.
+   * @returns {Promise<{icons: Array<{classes: string, text: string}>, rows: string[]}>}
+   */
+  async getSeatingExtrasRowState() {
+    const icons = await this.page
+      .locator(SELECTORS.SEATING_EXTRAS_STATUS_ICON)
+      .evaluateAll((elements) => elements.map((element) => ({
+        classes: element.className,
+        text: (element.textContent || '').trim(),
+      })));
+
+    const rows = await this.page
+      .locator(SELECTORS.SEATING_EXTRAS_COLLAPSED_ROW)
+      .evaluateAll((elements) => elements.map(
+        (element) => (element.innerText || '').trim().replace(/\s+/g, ' '),
+      ));
+
+    return { icons, rows };
   }
 
   /**
