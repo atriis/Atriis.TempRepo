@@ -2348,6 +2348,11 @@ Then("the car quote displays the optional payment message {string}", async funct
   await Cart.verifyCarOptionalPaymentMessage(this.page, message);
 });
 
+Then("the car quote does not display the optional payment message {string}", async function (message) {
+  logger.info("Verifying the optional-payment alert is NOT on the car quote card", { message });
+  await Cart.verifyCarOptionalPaymentMessageNotDisplayed(this.page, message);
+});
+
 When("I uncheck the {string} checkbox in the car billback section", async function (label) {
   logger.info("Unchecking the billback apply checkbox", { label });
   await Cart.uncheckCarBillbackApplyToQuote(this.page, label);

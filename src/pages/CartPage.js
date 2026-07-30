@@ -774,6 +774,14 @@ const SELECTORS = {
   // `.car-quote-card` because form-of-payment.vue renders the same alert for flight and hotel quotes,
   // which would otherwise be matched in a multi-product trip.
   CAR_OPTIONAL_FOP_MESSAGE: '.car-quote-card .optional-fop-message:visible',
+  // Payment-method column of the same car quote card (car-quote-card.vue → `<div class="payment-method">`
+  // holding `<p v-if="isPrePaidDisplay">Pre paid</p>` / `<p v-else>Pay On Departure</p>`). Unlike the
+  // alert above it renders UNCONDITIONALLY inside the card's extra-info slot, which makes it the
+  // positive render anchor for the NEGATIVE assertion: once this is visible the payment column has
+  // rendered, so an absent optional-payment alert is a real absence and not an un-loaded card.
+  // `.payment-method` is reused by the hotel, ground and car-preview cards, so the `.car-quote-card`
+  // scope plus `:visible` (desktop vs mobile duplicates) plus `.first()` are all required.
+  CAR_QUOTE_CARD_PAYMENT_METHOD: '.car-quote-card .payment-method:visible',
 
   // SunnyCars "Add location" extras (car-sunnycars-add-location.vue → <section class="car-sunnycars-add-location">).
   // Same extras-layout wrapper as billback, so it opens with one click on the Add/View/Edit
@@ -6316,6 +6324,31 @@ class CartPage {
         `(selector: ${SELECTORS.CAR_BILLBACK_APPLY_CHECKBOX_INNER}). Likely causes: the car billback ` +
         `panel is not expanded, or the panel is in read-only mode (.is-read-only). ` +
         `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the payment-method label of the car quote card ("Pre paid" or "Pay On Departure").
+   * That column renders unconditionally on a loaded car quote card, so this read doubles as the
+   * readiness gate a negative assertion needs: it must resolve BEFORE the absence of the
+   * optional-payment alert can be trusted. Unlike getCarOptionalPaymentMessage this THROWS on
+   * timeout — no anchor means the card never rendered, and "no alert" would be meaningless.
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<string>} Whitespace-collapsed payment-method label
+   */
+  async getCarQuotePaymentMethodLabel({ timeout = 30000 } = {}) {
+    const paymentMethod = this.page.locator(SELECTORS.CAR_QUOTE_CARD_PAYMENT_METHOD).first();
+    try {
+      await paymentMethod.waitFor({ state: 'visible', timeout });
+      return ((await paymentMethod.textContent()) || '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getCarQuotePaymentMethodLabel] The car quote card's payment-method column never ` +
+        `rendered within ${timeout}ms (selector: ${SELECTORS.CAR_QUOTE_CARD_PAYMENT_METHOD}). Likely ` +
+        `causes: the trip holds no car quote, the cart page has not finished loading, or the quote ` +
+        `card is still in its isLoading state. Original: ${err.message}`
       );
     }
   }

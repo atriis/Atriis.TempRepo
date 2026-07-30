@@ -5305,6 +5305,70 @@ const Cart = {
   },
 
   /**
+   * Verifies the cart's car quote card does NOT display the optional-payment alert — the negative
+   * counterpart of verifyCarOptionalPaymentMessage, used when the agreement makes payment mandatory.
+   *
+   * An absence can only be asserted once the card has actually rendered, so this first waits for the
+   * card's payment-method column (which renders unconditionally) and only then reads the alert once.
+   * It deliberately does NOT poll: a poll on a negative passes on its first tick and would be a false
+   * green even if the alert appeared a moment later. The single read uses the page object's default
+   * 5s window, which is the bounded guard against a late render.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} unexpectedMessage - Alert text that must NOT be on the car quote card
+   * @returns {Promise<void>}
+   */
+  async verifyCarOptionalPaymentMessageNotDisplayed(page, unexpectedMessage) {
+    if (!page) throw new Error('[Cart.verifyCarOptionalPaymentMessageNotDisplayed] "page" is required.');
+    if (!unexpectedMessage || typeof unexpectedMessage !== 'string') {
+      throw new Error(
+        `[Cart.verifyCarOptionalPaymentMessageNotDisplayed] "unexpectedMessage" must be a non-empty ` +
+        `string, got: ${typeof unexpectedMessage} (${JSON.stringify(unexpectedMessage)})`
+      );
+    }
+
+    logger.debug(
+      '[Cart.verifyCarOptionalPaymentMessageNotDisplayed] Verifying the optional-payment alert is absent',
+      { unexpectedMessage }
+    );
+    const cartPage = getPageObject(page, CartPage);
+
+    // Deterministic gate: never assert absence before the quote card's payment column has rendered.
+    const paymentLabel = await cartPage.getCarQuotePaymentMethodLabel({ timeout: 30000 });
+    logger.info('Car quote card payment method resolved', { paymentLabel });
+
+    // "Pre paid" / "Pre-Paid" / "Prepaid" depending on locale wording — normalise before matching.
+    const isPrePaid = paymentLabel.toLowerCase().replace(/[^a-z]/g, '').includes('prepaid');
+    if (isPrePaid) {
+      logger.warn(
+        'Car quote is pre-paid, so car-quote-card.vue:229 does not render the form-of-payment section ' +
+        'at all and showOptionalFopMessage short-circuits false on isPrePaidDisplay before any ' +
+        'payment-optionality logic runs. The alert is therefore absent by construction here — this ' +
+        'assertion cannot fail while the quote is pre-paid. Kept as a smoke check by decision; see ' +
+        'car-quote-card.ts:204-213 if it ever needs to discriminate.',
+        { paymentLabel, unexpectedMessage }
+      );
+    }
+
+    const actual = await cartPage.getCarOptionalPaymentMessage();
+
+    expect(
+      actual,
+      `Expected the car quote card to NOT display the optional-payment alert ` +
+      `"${unexpectedMessage}", but it read "${actual}" (payment method: "${paymentLabel}"). ` +
+      `The alert only renders while the quote is pending and NOT pre-paid, and in practice only via ` +
+      `the billback/voucher route (useBillBackForBooking without full voucher coverage) — the ` +
+      `isOptionalFOP && isPayOnDeparture branch cannot fire without a voucher, since isOptionalFOP ` +
+      `reduces to !isPayOnDeparture. See car-quote-card.ts:182-213.`,
+    ).toBe('');
+
+    logger.info('Verified the optional-payment alert is not displayed on the car quote card', {
+      unexpectedMessage,
+      paymentLabel,
+    });
+  },
+
+  /**
    * Expands the SunnyCars "Add location" extras section on the cart's car quote card.
    * Opening the panel triggers its location load, so the pick-up and drop-off selects are usable
    * once this resolves.

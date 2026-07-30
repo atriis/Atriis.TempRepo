@@ -5,18 +5,16 @@
 # Updated: 2025-03-13T08:59:35Z
 
 @regression @cars @sunnycars
-Feature: 59287 Mandatory car payment no alert displayed
+Feature: 59287 59287 Cars - No alert when Payment Mandatory
 
   As a traveler with mandatory payment requirement
   I want to NOT see an optional payment alert
-  So that I understand payment is required to complete booking
-
-  Background:
-    Given I am logged in as "automation@sunnycar.tlc" booking a new trip
-    And I have added myself as the traveler
 
   @priority:high
   Scenario: Verify no optional payment alert when payment is mandatory
+    Given I am logged in as "automation@sunnycar.tlc" booking a new trip
+    And I have added myself as the traveler
     When I search for a car at "LHR"
     And I add the first car to cart
-    # TODO: Verify optional payment alert is NOT displayed in cart
+    And the booking status should be "Pending booking"
+    Then the car quote does not display the optional payment message "Payment method is optional you can proceed without it."
