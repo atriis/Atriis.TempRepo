@@ -5225,6 +5225,200 @@ const Cart = {
   },
 
   /**
+   * Expands the SunnyCars "Add location" extras section on the cart's car quote card.
+   * Opening the panel triggers its location load, so the pick-up and drop-off selects are usable
+   * once this resolves.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async expandCarAddLocationSection(page) {
+    if (!page) throw new Error('[Cart.expandCarAddLocationSection] "page" is required.');
+
+    logger.debug('[Cart.expandCarAddLocationSection] Expanding the SunnyCars add location extras section');
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickCarAddLocationExpand();
+      logger.info('Expanded the SunnyCars add location extras section');
+    } catch (err) {
+      throw new Error(
+        `[Cart.expandCarAddLocationSection] Failed to open the "Add location" extras section. The trip ` +
+        `must contain a SunnyCars car quote — for other car suppliers the section is not rendered at ` +
+        `all. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Selects the first available pick-up location in the SunnyCars "Add location" panel.
+   * Selecting a pick-up location is what unlocks the drop-off select, so this also confirms the
+   * chosen value landed in the field before returning.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The pick-up location label that was selected
+   */
+  async selectFirstCarPickupLocation(page) {
+    if (!page) throw new Error('[Cart.selectFirstCarPickupLocation] "page" is required.');
+
+    logger.debug('[Cart.selectFirstCarPickupLocation] Selecting the first pick-up location');
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.openCarAddLocationPickupDropdown();
+    const selected = await cartPage.clickFirstCarAddLocationDropdownOption();
+
+    // The el-select commits its value on the next Vue tick, so a single read can catch the field
+    // still empty; poll until the label the click reported is actually shown in the field.
+    await expect
+      .poll(async () => cartPage.getCarAddLocationPickupSelectedText(), {
+        timeout: 15000,
+        message:
+          `Expected the pick-up location field to show "${selected}" after selecting the first option, ` +
+          `but the value never settled. Likely cause: the click landed outside the option, or the ` +
+          `supplier rejected the selection.`,
+      })
+      .toBe(selected);
+
+    logger.info('Selected the first pick-up location in the add location panel', { pickupLocation: selected });
+    return selected;
+  },
+
+  /**
+   * Opens the drop-off location dropdown in the SunnyCars "Add location" panel and leaves it open,
+   * so the options can be asserted before one is picked.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async openCarDropoffLocationDropdown(page) {
+    if (!page) throw new Error('[Cart.openCarDropoffLocationDropdown] "page" is required.');
+
+    logger.debug('[Cart.openCarDropoffLocationDropdown] Opening the drop-off location dropdown');
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.openCarAddLocationDropoffDropdown();
+    logger.info('Opened the drop-off location dropdown in the add location panel');
+  },
+
+  /**
+   * Verifies every option in the OPEN drop-off location dropdown shows real location text rather
+   * than the placeholder value the bug produced (SunnyCars drop-off locations rendered as "0"
+   * because the option label fell back to the id).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} invalidText - The value that must NOT be displayed (e.g. "0")
+   * @returns {Promise<string[]>} The option labels that were verified
+   */
+  async verifyCarDropoffLocationOptionsDisplayText(page, invalidText) {
+    if (!page) throw new Error('[Cart.verifyCarDropoffLocationOptionsDisplayText] "page" is required.');
+    if (!invalidText || typeof invalidText !== 'string') {
+      throw new Error(
+        `[Cart.verifyCarDropoffLocationOptionsDisplayText] "invalidText" must be a non-empty string, got: ` +
+        `${typeof invalidText} (${JSON.stringify(invalidText)})`
+      );
+    }
+
+    logger.debug('[Cart.verifyCarDropoffLocationOptionsDisplayText] Verifying the drop-off location options', { invalidText });
+    const cartPage = getPageObject(page, CartPage);
+
+    const options = await cartPage.getCarAddLocationDropdownOptionTexts();
+
+    expect(
+      options.length,
+      `Expected the drop-off location dropdown to list at least one location, but it rendered none. ` +
+      `The dropdown must be open and the supplier must have returned drop-off locations for the ` +
+      `selected pick-up location.`,
+    ).toBeGreaterThan(0);
+
+    const invalidOptions = options.filter((text) => text === '' || text === invalidText);
+    expect(
+      invalidOptions,
+      `Expected every drop-off location option to display location text, but ${invalidOptions.length} of ` +
+      `${options.length} displayed "${invalidText}" or nothing. Full list: ${JSON.stringify(options)}. ` +
+      `This is the 62861 regression — the option label fell back to the location id instead of its name.`,
+    ).toEqual([]);
+
+    logger.info('Verified all drop-off location options display text', { optionCount: options.length, options });
+    return options;
+  },
+
+  /**
+   * Selects the first available drop-off location in the SunnyCars "Add location" panel.
+   * Assumes the drop-off dropdown is already open.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The drop-off location label that was selected
+   */
+  async selectFirstCarDropoffLocation(page) {
+    if (!page) throw new Error('[Cart.selectFirstCarDropoffLocation] "page" is required.');
+
+    logger.debug('[Cart.selectFirstCarDropoffLocation] Selecting the first drop-off location');
+    const cartPage = getPageObject(page, CartPage);
+
+    // The drop-off popper is opened by the preceding step so its options can be asserted, but it
+    // closes itself whenever the panel re-renders (the drop-off list is refetched per pick-up
+    // location). Reopen rather than fail — the step's contract is "pick the first option", not
+    // "the dropdown must still be open from earlier".
+    if (!(await cartPage.isCarAddLocationDropdownOpen())) {
+      logger.debug('[Cart.selectFirstCarDropoffLocation] Drop-off dropdown was closed - reopening it');
+      await cartPage.openCarAddLocationDropoffDropdown();
+    }
+
+    const selected = await cartPage.clickFirstCarAddLocationDropdownOption();
+
+    await expect
+      .poll(async () => cartPage.getCarAddLocationDropoffSelectedText(), {
+        timeout: 15000,
+        message:
+          `Expected the drop-off location field to show "${selected}" after selecting the first option, ` +
+          `but the value never settled. Likely cause: the click landed outside the option, or the ` +
+          `drop-off list reloaded underneath the click.`,
+      })
+      .toBe(selected);
+
+    logger.info('Selected the first drop-off location in the add location panel', { dropoffLocation: selected });
+    return selected;
+  },
+
+  /**
+   * Verifies the drop-off location currently selected in the SunnyCars "Add location" panel shows
+   * real location text rather than the placeholder value the bug produced.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} invalidText - The value that must NOT be displayed (e.g. "0")
+   * @returns {Promise<void>}
+   */
+  async verifySelectedCarDropoffLocationDisplaysText(page, invalidText) {
+    if (!page) throw new Error('[Cart.verifySelectedCarDropoffLocationDisplaysText] "page" is required.');
+    if (!invalidText || typeof invalidText !== 'string') {
+      throw new Error(
+        `[Cart.verifySelectedCarDropoffLocationDisplaysText] "invalidText" must be a non-empty string, got: ` +
+        `${typeof invalidText} (${JSON.stringify(invalidText)})`
+      );
+    }
+
+    logger.debug('[Cart.verifySelectedCarDropoffLocationDisplaysText] Verifying the selected drop-off location', { invalidText });
+    const cartPage = getPageObject(page, CartPage);
+
+    const selected = await cartPage.getCarAddLocationDropoffSelectedText();
+
+    expect(
+      selected,
+      `Expected the selected drop-off location to display location text, but it reads ` +
+      `"${selected}". A value of "${invalidText}" or an empty field is the 62861 regression — the ` +
+      `field fell back to the location id instead of its name.`,
+    ).not.toBe(invalidText);
+
+    expect(
+      selected,
+      `Expected the selected drop-off location field to display location text, but it is empty. ` +
+      `The selection may not have committed.`,
+    ).not.toBe('');
+
+    logger.info('Verified the selected drop-off location displays text', { dropoffLocation: selected });
+  },
+
+  /**
    * Selects an existing loyalty number from the traveler's profile.
    * Assumes the loyalty extras section is already expanded.
    * Flow: click Existing radio → select from dropdown → save → verify green icon.

@@ -2340,6 +2340,36 @@ When("I uncheck the {string} checkbox in the car billback section", async functi
   await Cart.uncheckCarBillbackApplyToQuote(this.page, label);
 });
 
+When("I click to edit the add location extras section", async function () {
+  logger.info("Opening the SunnyCars add location extras section on the car quote card");
+  await Cart.expandCarAddLocationSection(this.page);
+});
+
+When("I select the first pickup location in the add location section", async function () {
+  logger.info("Selecting the first pickup location in the add location extras section");
+  await Cart.selectFirstCarPickupLocation(this.page);
+});
+
+When("I open the drop-off location dropdown in the add location section", async function () {
+  logger.info("Opening the drop-off location dropdown in the add location extras section");
+  await Cart.openCarDropoffLocationDropdown(this.page);
+});
+
+Then("all the drop-off location options in the add location section display text instead of only {string}", async function (invalidText) {
+  logger.info("Verifying all drop-off location options display text", { invalidText });
+  await Cart.verifyCarDropoffLocationOptionsDisplayText(this.page, invalidText);
+});
+
+When("I select the first drop-off location in the add location section", async function () {
+  logger.info("Selecting the first drop-off location in the add location extras section");
+  await Cart.selectFirstCarDropoffLocation(this.page);
+});
+
+Then("the selected drop-off location in the add location section displays text instead of only {string}", async function (invalidText) {
+  logger.info("Verifying the selected drop-off location displays text", { invalidText });
+  await Cart.verifySelectedCarDropoffLocationDisplaysText(this.page, invalidText);
+});
+
 When("I add loyalty number {string} using the first available chain", async function (loyaltyNumber) {
   logger.info("Adding loyalty number with first available chain", { loyaltyNumber });
   this.selectedChainText = await Cart.addLoyaltyNumberWithFirstAvailableChain(this.page, loyaltyNumber);
