@@ -132,7 +132,8 @@ class FlightSearchPage {
     const classField = this.page.locator(SELECTORS.FLIGHT_CLASS_FIELD).first();
     await classField.waitFor({ state: 'visible', timeout: 10000 });
     await classField.click();
-    await this.page.locator(SELECTORS.DROPDOWN_OPTION(value)).click();
+    // Exact text so "Economy" does not also match "Premium Economy".
+    await this._clickDropdownOptionExact(value);
     await classField.getByText(value, { exact: true }).first().waitFor({ state: 'visible', timeout: 10000 });
   }
 

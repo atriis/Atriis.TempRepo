@@ -15,15 +15,10 @@ Feature: 61699 Ypsilon - Correct cabin displayed after booking and correct cabin
   Scenario: Premium Economy cabin is displayed correctly after booking with Ypsilon
     Given I am logged in as "ypsilonCorp@club.com" booking a new trip
     And I have added a random guest traveler
-    When I search for a round trip flight from "DUB" to "PAR" with preferred carrier "Aer Lingus"
-    Then flight results should be available
-    When I click to open first pricing options
-    When I select "Premium" fare from pricing options top section
-    Then I should see the heading "Flight To"
-    And I select the first option from pricing options
-    When I select "Premium" fare from pricing options top section
-    And I select the first option from pricing options
-    And I add to trip from pricing options
+    When I search for a round trip "Premium Economy" class flight from "DUB" to "PAR"
+    And flight results should be available
+    And I filter airline results by "Aer Lingus" checkbox
+    And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I fill credit card cvv if needed
     And I proceed to checkout
