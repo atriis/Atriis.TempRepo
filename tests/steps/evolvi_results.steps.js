@@ -64,10 +64,6 @@ Then("split ticket information should be visible in cart before checkout", async
   throw new Error("TODO: implement 'split ticket information should be visible in cart before checkout' — validate split ticket labels/details are visible in cart pre-checkout");
 });
 
-When("I fill mandatory Evolvi fields in cart", async function () {
-  throw new Error("TODO: implement 'I fill mandatory Evolvi fields in cart' — complete required extras/profile/reference fields in Evolvi cart");
-});
-
 Then("split ticket information should be visible after checkout and in itinerary email", async function () {
   throw new Error("TODO: implement 'split ticket information should be visible after checkout and in itinerary email' — validate split ticket details in post-booking/cart and itinerary email preview");
 });

@@ -55,6 +55,10 @@
     "lichfieldCityToLichfieldTrentValley": {
       "from": "Lichfield City",
       "to": "Lichfield Trent Valley"
+    },
+    "182ToMan": {
+      "from": "182",
+      "to": "MAN"
     }
 
   },

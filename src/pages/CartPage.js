@@ -450,6 +450,26 @@ const SELECTORS = {
   DELIVERY_METHOD_FIRST_RADIO: ".uk-rail-delivery-method .el-radio-group > :nth-child(1) .el-radio__inner",
   GREEN_ICON_DELIVERY_METHOD: ".uk-rail-delivery-method .material-symbols-outlined",
 
+  // UK Rail (Evolvi) cart "Extras" panel — ADO #81973. Confirmed live against the app (see
+  // debug capture during Phase 3 implementation): the panel root is `.extras-container` (NOT
+  // `.extras-collapse-container` — that generic selector above does not match this panel), each
+  // field row is `.extras-layout` with a `.card-title`, and mandatory rows prefix their title with
+  // `<span class="has-text-danger">*</span>`. IMPORTANT: that asterisk is a permanent "this field
+  // is required" label — it does NOT disappear once the field is filled (confirmed live: a filled
+  // "Delivery Method" row still shows "* Delivery Method" plus a green checkmark). The real
+  // filled/unfilled signal is the row's trigger link text: "Add" (not yet filled) vs "Edit"
+  // (already filled) — matches the recording too, which only ever clicks "Add" links
+  // (records/81973_1.js). Known rows include `.uk-rail-delivery-method`, `.uk-rail-accounts`,
+  // `.uk-rail-client-reference` — plus, only when a non-cheapest fare is selected, a "Reason for
+  // Non Lowest Fare" row and a fare-flexibility dropdown row (recorded as an ARIA region literally
+  // named "Extras" containing an icon — records/81973_1.js:36-40). Any mandatory-and-unfilled row
+  // blocks "Proceed to Checkout", so the DSL fills whichever such rows are actually present rather
+  // than hardcoding two specific ones.
+  EVOLVI_EXTRAS_PANEL: '.extras-container',
+  EVOLVI_EXTRAS_PANEL_VISIBLE: '.extras-container:visible',
+  EVOLVI_MANDATORY_EXTRAS_ROW: '.extras-container .extras-layout:has(.card-title .has-text-danger):has(.is-clickable:text-is("Add"))',
+  EVOLVI_EXTRAS_VISIBLE_RADIO_OPTION: '.el-radio-group .el-radio:visible',
+
   // "Provided by" label in cart hotel preview (hotel-provided-by.vue)
   PROVIDER_LABEL: 'section.hotel-preview .provider-label',
   HOTEL_PREVIEW_NAME: 'section.hotel-preview .quote-names-container h4',
@@ -3599,6 +3619,93 @@ class CartPage {
    */
   async getVisibleExtrasSectionsCount() {
     return this.page.locator(SELECTORS.EXTRAS_SECTION_ITEM).count();
+  }
+
+  /**
+   * Fills every mandatory row currently shown in the UK Rail (Evolvi) cart "Extras" panel
+   * (ADO #81973) — e.g. "Delivery Method" (always present), and, only when a non-cheapest fare
+   * was selected, "Reason for Non Lowest Fare" and a fare-flexibility dropdown. Which mandatory
+   * rows exist depends on the fare actually selected upstream, so rows are discovered live rather
+   * than hardcoded: each mandatory row (`.card-title` prefixed with the danger asterisk) is opened
+   * via its Add/Edit trigger, then:
+   *   - if it renders a radio group, the first option is selected (the specific choice is not
+   *     asserted — mirrors selectFirstOOPJustificationOptionAndSave: the flow only needs A valid
+   *     option selected so checkout can proceed);
+   *   - otherwise it is treated as a dropdown and `dropdownOptionName` is selected if offered,
+   *     else the first available option (see records/81973_1.js for the recorded "Need More
+   *     Flexible Ticket" selection).
+   * Stops once no mandatory rows remain.
+   *
+   * @param {string} [dropdownOptionName="Need More Flexible Ticket"]
+   * @param {{maxIterations?: number}} [options]
+   * @returns {Promise<{fieldsFilled: number}>}
+   */
+  async fillAllMandatoryEvolviExtras(dropdownOptionName = "Need More Flexible Ticket", { maxIterations = 5 } = {}) {
+    // The cart's "Extras" panel loads asynchronously after the quote card itself renders (it
+    // fetches which fields are mandatory for the selected fare), so wait for the panel container
+    // before looking for individual mandatory rows — otherwise the very first check below can
+    // run before the panel exists at all and wrongly conclude there is nothing to fill.
+    await this.page.locator(SELECTORS.EVOLVI_EXTRAS_PANEL).first().waitFor({ state: "visible", timeout: 20000 });
+
+    for (let i = 0; i < maxIterations; i++) {
+      const mandatoryRow = this.page.locator(SELECTORS.EVOLVI_MANDATORY_EXTRAS_ROW).first();
+      const isPresent = await mandatoryRow
+        .waitFor({ state: "visible", timeout: 3000 })
+        .then(() => true)
+        .catch(() => false);
+      if (!isPresent) {
+        return { fieldsFilled: i };
+      }
+
+      const editButton = mandatoryRow.locator(SELECTORS.EDIT_EXTRAS_BUTTON).first();
+      await editButton.click();
+
+      // Search the whole (visible) panel — not `mandatoryRow` — for the now-expanded edit UI:
+      // once a row expands, its `.card-title` drops the mandatory asterisk span (confirmed live),
+      // so the `mandatoryRow` locator — which matches on that asterisk — can stop resolving to
+      // this same element the moment it expands. The panel-wide locator stays valid regardless,
+      // and relying on only one field being expanded for edit at a time is safe here.
+      const panel = this.page.locator(SELECTORS.EVOLVI_EXTRAS_PANEL_VISIBLE).first();
+
+      // NOTE: `.isVisible()` is a one-shot check (no auto-retry), unlike `.waitFor()`, which polls
+      // until the timeout elapses — required here since the radio group/dropdown renders
+      // asynchronously right after the click above.
+      const radioOption = panel.locator(SELECTORS.EVOLVI_EXTRAS_VISIBLE_RADIO_OPTION).first();
+      const hasRadio = await radioOption
+        .waitFor({ state: "visible", timeout: 8000 })
+        .then(() => true)
+        .catch(() => false);
+
+      if (hasRadio) {
+        await radioOption.click();
+      } else {
+        // Dropdown-style field (e.g. the fare-flexibility "Extras" option) — open it and pick the
+        // requested option if offered, else the first available one.
+        const dropdownIcon = panel.getByRole("img").first();
+        await dropdownIcon.waitFor({ state: "visible", timeout: 8000 });
+        await dropdownIcon.click();
+
+        const namedOption = this.page.getByRole("option", { name: dropdownOptionName });
+        const hasNamedOption = await namedOption
+          .waitFor({ state: "visible", timeout: 5000 })
+          .then(() => true)
+          .catch(() => false);
+        if (hasNamedOption) {
+          await namedOption.click();
+        } else {
+          await this.page.getByRole("option").first().click();
+        }
+      }
+
+      const saveButton = panel.getByRole("button", { name: "Save" }).first();
+      await saveButton.click();
+      await this.page.waitForTimeout(500); // let the panel re-render before re-querying
+    }
+
+    throw new Error(
+      `[CartPage.fillAllMandatoryEvolviExtras] Exceeded ${maxIterations} iterations filling mandatory Evolvi extras rows — ` +
+      "either the panel keeps re-adding rows or a row failed to save."
+    );
   }
 
   /**

@@ -2200,6 +2200,27 @@ const Cart = {
   },
 
   /**
+   * ADO #81973 — Fills every mandatory quote-card field required before an Evolvi (UK Rail) fare
+   * can proceed to checkout (e.g. "Delivery Method", always present; and, only when a non-cheapest
+   * fare was selected, "Reason for Non Lowest Fare" and an "Extras" dropdown option such as
+   * "Need More Flexible Ticket"). See CartPage.fillAllMandatoryEvolviExtras for the discovery
+   * logic — which fields exist depends on the fare selected upstream. Mirrors the recorded flow
+   * in records/81973_1.js.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} [extrasOptionName="Need More Flexible Ticket"]
+   * @returns {Promise<{fieldsFilled: number}>}
+   */
+  async fillMandatoryEvolviCartFields(page, extrasOptionName = "Need More Flexible Ticket") {
+    if (!page) {
+      throw new Error('[Cart.fillMandatoryEvolviCartFields] page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    return cartPage.fillAllMandatoryEvolviExtras(extrasOptionName);
+  },
+
+  /**
    * Verifies that specific options are present in the open OOP justification dropdown.
    * The dropdown must already be open before calling this method.
    *

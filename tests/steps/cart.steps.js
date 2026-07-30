@@ -3090,3 +3090,10 @@ Then("I confirm the trip cancellation successfully", async function () {
     "Cancellation confirmation message should be visible after confirming the trip cancellation",
   ).toBe(true);
 });
+
+// ===== EVOLVI MANDATORY CART FIELDS =====
+
+When("I fill mandatory Evolvi fields in cart", async function () {
+  logger.info("Filling mandatory Evolvi cart fields (Reason for Non Lowest Fare, Extras)");
+  await Cart.fillMandatoryEvolviCartFields(this.page);
+});
