@@ -16,6 +16,9 @@ Feature: 54519 Galileo - FF number correctly utilized for multiple pax
     Given I am logged in as "jamesroot@galileocorp.com" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "Shawn Craig"
+    # The second traveller's chip renders after its profile finishes loading; searching before it is
+    # committed runs the search with one passenger and the results never resolve for the pair.
+    And the traveler name "Shawn Craig" should be visible in the travelers list
     When I search for a one way flight from "ORD" to "LAS"
     And flight results should be available
     And I filter results by carrier "UA"
