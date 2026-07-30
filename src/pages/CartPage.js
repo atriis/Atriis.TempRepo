@@ -470,6 +470,12 @@ const SELECTORS = {
   // Timed quote badge — appears on quotes with a limited time window
   // (flight-timed-quote.vue / app-timed-quote.vue both render `.timed-quote-badge`)
   TIMED_QUOTE_BADGE: '.timed-quote-badge',
+  // Tooltip revealed by hovering the badge above. app-timed-quote.vue wraps the badge in an
+  // el-tooltip whose content is teleported to a body-level popper, so it is not a descendant of
+  // the quote card — hence the unscoped class. The message lives in the inner <p>; the sibling
+  // `span.warning-icon` (ligature text "warning") is excluded so the read is the message only.
+  // :visible skips poppers Element Plus keeps in the DOM after other tooltips close.
+  TIMED_QUOTE_TOOLTIP_MESSAGE: '.timed-quote-tooltip-content:visible p',
 
   // Special request — two components share the same extras-layout markup but different roots:
   // hotels/rail use special-requests.vue (.quote-extras--special-requests, maxlength 75/120),
@@ -4250,6 +4256,32 @@ class CartPage {
       .locator(SELECTORS.TIMED_QUOTE_BADGE)
       .first()
       .waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Hovers the timed quote badge (the countdown clock) to reveal its tooltip.
+   */
+  async hoverTimedQuoteBadge() {
+    await this.page.locator(SELECTORS.TIMED_QUOTE_BADGE).first().hover();
+  }
+
+  /**
+   * Reads the timed quote tooltip message revealed by hovering the badge.
+   *
+   * The message is assembled from three i18n parts around a bold countdown span
+   * (app-timed-quote.vue), so the raw text content carries the template's newlines and
+   * indentation. Whitespace is collapsed to a single space so the result compares against
+   * the message as a reader sees it.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000] - Max wait time in ms for the tooltip to appear
+   * @returns {Promise<string>} The tooltip message with whitespace normalized
+   */
+  async getTimedQuoteTooltipMessage({ timeout = 15000 } = {}) {
+    const message = this.page.locator(SELECTORS.TIMED_QUOTE_TOOLTIP_MESSAGE).first();
+    await message.waitFor({ state: 'visible', timeout });
+    const text = await message.textContent();
+    return (text ?? '').replace(/\s+/g, ' ').trim();
   }
 
   /**

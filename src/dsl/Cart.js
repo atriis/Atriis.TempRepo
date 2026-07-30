@@ -3012,6 +3012,39 @@ const Cart = {
   },
 
   /**
+   * Hovers the countdown clock on a timed quote and returns the tooltip message it reveals.
+   *
+   * The tooltip states how long the selection is held (e.g. "Your session is valid for 15:00
+   * minutes ..."), so suppliers with a fixed hold window are verified through this message.
+   * The message is returned rather than asserted — the expected wording belongs in the step.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The tooltip message with whitespace normalized
+   */
+  async hoverCountdownClockAndGetTooltipMessage(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.waitForTimedQuoteBadge();
+    await cartPage.hoverTimedQuoteBadge();
+
+    let message;
+    try {
+      message = await cartPage.getTimedQuoteTooltipMessage();
+    }
+    catch (err) {
+      throw new Error(
+        `[Cart.hoverCountdownClockAndGetTooltipMessage] The countdown clock was hovered but its ` +
+        `tooltip never appeared. The badge only renders while the quote is pending with an expiry, ` +
+        `so a quote that expired mid-scenario shows "Expired" and no tooltip. Original: ${err.message}`
+      );
+    }
+
+    logger.info('Read the timed quote countdown tooltip', { tooltipMessage: message });
+    return message;
+  },
+
+  /**
    * Fills in and saves a special request on the hotel cart card.
    *
    * @param {import('playwright').Page} page

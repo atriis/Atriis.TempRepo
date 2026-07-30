@@ -1211,6 +1211,18 @@ Then("the timed quote badge should be visible in cart", async function () {
   await Cart.verifyTimedQuoteBadgeVisible(this.page);
 });
 
+When("I hover the countdown clock", async function () {
+  logger.info("Hovering the countdown clock on the timed quote to reveal its tooltip");
+  this.countdownTooltipMessage = await Cart.hoverCountdownClockAndGetTooltipMessage(this.page);
+});
+
+// Deliberately NOT phrased "I should see the message {string}" — that phrase is already registered
+// against the profile popup (profile.steps.js), so reusing it here would assert the wrong widget.
+Then("the countdown tooltip shows the message {string}", async function (expectedMessage) {
+  logger.info("Verifying the countdown tooltip message", { expectedMessage });
+  expect(this.countdownTooltipMessage).toBe(expectedMessage);
+});
+
 When("I add a special request with text {string}", async function (text) {
   logger.info(`Adding special request: "${text}"`);
   this.specialRequestText = text;
