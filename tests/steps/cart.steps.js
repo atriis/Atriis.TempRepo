@@ -2335,6 +2335,13 @@ Then("the corporate billing number is {string}", async function (expectedNumber)
   await Cart.verifyCarBillbackBillingNumber(this.page, expectedNumber);
 });
 
+// Deliberately NOT phrased "I should see the message {string}" — that phrase is already registered
+// against the profile popup (profile.steps.js), so reusing it here would assert the wrong widget.
+Then("the car quote displays the optional payment message {string}", async function (message) {
+  logger.info("Verifying the optional-payment alert on the car quote card", { message });
+  await Cart.verifyCarOptionalPaymentMessage(this.page, message);
+});
+
 When("I uncheck the {string} checkbox in the car billback section", async function (label) {
   logger.info("Unchecking the billback apply checkbox", { label });
   await Cart.uncheckCarBillbackApplyToQuote(this.page, label);

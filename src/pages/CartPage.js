@@ -759,6 +759,15 @@ const SELECTORS = {
   // selector inside the card would read the custom amount instead of the billing number.
   CAR_BILLBACK_BILLING_NUMBER_INPUT: '.car-billback .extras-card .columns .field:first-child input.el-input__inner',
 
+  // "Payment method is optional you can proceed without it." alert on the car quote card
+  // (car-quote-card.vue → `<div class="optional-fop-message">`, gated by the showOptionalFopMessage
+  // computed: pending quote + optional FOP + not pre-paid). The same markup is emitted three times —
+  // the desktop extra-info column, the mobile extra-info column, and inside form-of-payment.vue — so
+  // `:visible` keeps the read on whichever one the current viewport actually renders. Scoped to
+  // `.car-quote-card` because form-of-payment.vue renders the same alert for flight and hotel quotes,
+  // which would otherwise be matched in a multi-product trip.
+  CAR_OPTIONAL_FOP_MESSAGE: '.car-quote-card .optional-fop-message:visible',
+
   // SunnyCars "Add location" extras (car-sunnycars-add-location.vue → <section class="car-sunnycars-add-location">).
   // Same extras-layout wrapper as billback, so it opens with one click on the Add/View/Edit
   // `.is-clickable` span.
@@ -6228,6 +6237,33 @@ class CartPage {
         `(selector: ${SELECTORS.CAR_BILLBACK_APPLY_CHECKBOX_INNER}). Likely causes: the car billback ` +
         `panel is not expanded, or the panel is in read-only mode (.is-read-only). ` +
         `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the optional-payment alert text shown on the car quote card. Returns '' when the alert is
+   * not rendered — the caller decides whether its absence is a failure, so this must not throw on a
+   * missing element (the negative scenario asserts it is absent).
+   * @param {object} [options]
+   * @param {number} [options.timeout=5000] - Kept short so a polling caller gets several attempts
+   * @returns {Promise<string>} Whitespace-collapsed alert text, or '' if the alert is not displayed
+   */
+  async getCarOptionalPaymentMessage({ timeout = 5000 } = {}) {
+    const message = this.page.locator(SELECTORS.CAR_OPTIONAL_FOP_MESSAGE).first();
+    try {
+      await message.waitFor({ state: 'visible', timeout });
+    } catch {
+      return '';
+    }
+
+    try {
+      return ((await message.textContent()) || '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getCarOptionalPaymentMessage] The optional-payment alert became visible but its ` +
+        `text could not be read (selector: ${SELECTORS.CAR_OPTIONAL_FOP_MESSAGE}). Likely cause: the ` +
+        `quote card re-rendered between the visibility wait and the read. Original: ${err.message}`
       );
     }
   }

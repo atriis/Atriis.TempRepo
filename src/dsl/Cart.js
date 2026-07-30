@@ -5225,6 +5225,42 @@ const Cart = {
   },
 
   /**
+   * Verifies the optional-payment alert on the cart's car quote card carries the expected text.
+   * The alert is driven by the quote's form-of-payment state (showOptionalFopMessage), which the card
+   * recomputes after an extras save reloads the quote — so this polls rather than reading once.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMessage - Alert text expected on the car quote card
+   * @returns {Promise<void>}
+   */
+  async verifyCarOptionalPaymentMessage(page, expectedMessage) {
+    if (!page) throw new Error('[Cart.verifyCarOptionalPaymentMessage] "page" is required.');
+    if (!expectedMessage || typeof expectedMessage !== 'string') {
+      throw new Error(
+        `[Cart.verifyCarOptionalPaymentMessage] "expectedMessage" must be a non-empty string, got: ` +
+        `${typeof expectedMessage} (${JSON.stringify(expectedMessage)})`
+      );
+    }
+
+    logger.debug('[Cart.verifyCarOptionalPaymentMessage] Verifying the optional-payment alert', { expectedMessage });
+    const cartPage = getPageObject(page, CartPage);
+
+    await expect
+      .poll(async () => cartPage.getCarOptionalPaymentMessage(), {
+        timeout: 30000,
+        message:
+          `Expected the car quote card to display the optional-payment alert "${expectedMessage}". ` +
+          `The alert only renders while the quote is pending, is not pre-paid, and its form of payment ` +
+          `is configured as optional — an empty result means either the alert never appeared (the ` +
+          `agreement makes payment mandatory, or billback fully covers the quote so it renders as ` +
+          `pre-paid), and a different text means the wording changed in cart.optionalPaymentMethod.`,
+      })
+      .toContain(expectedMessage);
+
+    logger.info('Verified the optional-payment alert on the car quote card', { expectedMessage });
+  },
+
+  /**
    * Expands the SunnyCars "Add location" extras section on the cart's car quote card.
    * Opening the panel triggers its location load, so the pick-up and drop-off selects are usable
    * once this resolves.
