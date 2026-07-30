@@ -300,6 +300,22 @@ class FlightPricingPage {
   }
 
   /**
+   * Clicks Add to trip inside the cheapest-option card, whichever form it takes.
+   *
+   * @returns {Promise<'named'|'ribbon'>} Which layout the cheapest option used
+   */
+  async clickAddToTripForCheapestOption() {
+    const { type, locator } = await this.waitForCheapestOption();
+    const addButton = locator.locator(SELECTORS.PRICING_FARE_ADD_TO_TRIP_BUTTON).first();
+
+    await addButton.waitFor({ state: 'visible', timeout: 30000 });
+    await addButton.scrollIntoViewIfNeeded();
+    await addButton.click({ timeout: 30000 });
+
+    return type;
+  }
+
+  /**
    * Sets up a listener for the next flightPricing API response.
    * Must be called BEFORE the action that triggers the API call.
    * Returns an unresolved Promise that resolves when the response arrives.

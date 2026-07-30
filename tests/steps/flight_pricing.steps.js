@@ -25,6 +25,13 @@ When('I wait for {string} text to be visible', async function (fareTitle) {
   await FlightPricing.waitForFareTitle(this.page, fareTitle);
 });
 
+When('I add the cheapest option to trip', async function () {
+  logger.info('Adding the cheapest pricing option to trip');
+  const { type } = await FlightPricing.addCheapestOptionToCart(this.page);
+  this.cheapestOptionType = type;
+  logger.info('Cheapest pricing option added to trip', { type });
+});
+
 When('I wait for the cheapest option to be visible', async function () {
   logger.info('Waiting for cheapest pricing option to be visible');
   await FlightPricing.waitForCheapestOption(this.page);

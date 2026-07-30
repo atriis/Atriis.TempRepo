@@ -121,6 +121,34 @@ const FlightPricing = {
     return this.addFareToCart(page, 'Your selection');
   },
 
+  /**
+   * Adds the cheapest pricing option to the cart, whichever form it takes:
+   * a dedicated "Cheapest package" card, or the "Your selection" card carrying
+   * the CHEAPEST ribbon (the app only renders the separate card when the
+   * cheapest combination differs from the user's selection).
+   *
+   * @param {import('@playwright/test').Page} page
+   * @returns {Promise<{added: boolean, type: 'named'|'ribbon'}>}
+   */
+  async addCheapestOptionToCart(page) {
+    if (!page) throw new Error('page is required');
+
+    logger.info('Adding cheapest option to cart');
+    const flightPricingPage = getPageObject(page, FlightPricingPage);
+    const cartPage = getPageObject(page, CartPage);
+
+    const [, type] = await Promise.all([
+      page.waitForLoadState('domcontentloaded', { timeout: 45000 }).catch(() => {}),
+      flightPricingPage.clickAddToTripForCheapestOption(),
+    ]);
+
+    await Results.clickProceedConflictQuoteModal(page);
+    await cartPage.waitForPendingBookingText({ timeout: 90000 });
+
+    logger.info('Cheapest option added to cart', { type });
+    return { added: true, type };
+  },
+
   async addFirstAdditionalPricingOptionToCart(page) {
     if (!page) {
       throw new Error('page is required');
