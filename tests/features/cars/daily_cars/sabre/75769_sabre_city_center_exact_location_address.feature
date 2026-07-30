@@ -7,7 +7,7 @@ Feature: 75769 Sabre city center exact location address display
   So that I can confirm the exact pickup location before completing the trip
 
   Scenario Outline: Sabre city center location and label are consistent across booking flow
-    Given I am logged in as "automation@galileo.gdg" booking a new trip
+    Given I am logged in as "automation@sabre.tlc" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "<pickupLocation>" with rental agency "<agency>"
     And the agency station label should contain "<expectedAgencyStationLabel>" and address should contain "<expectedAddressOnResults>" on the vendor list
@@ -26,6 +26,6 @@ Feature: 75769 Sabre city center exact location address display
     And I successfully cancel the trip
 
     Examples:
-      | pickupLocation | agency   | expectedAgencyStationLabel             | expectedAddressOnResults                          | expectedLabelOnCart                   | expectedAddressOnCart                             |
-      | MAD            | Europcar | Madrid San Leonardo (City Center)      | San Leonardo 8, Madrid, 28015, ES                 | Madrid San Leonardo (City Center)     | San Leonardo 8, Madrid, 28015, ES                 |
-      | MAD            | Hertz    | Estacion Tren Madrid (Railway Station) | Glorieta Emperador Carol V S N, Madrid, 28045, ES | Estacion Tren Madrid (Railway Station)| Glorieta Emperador Carol V S N, Madrid, 28045, ES |
+      | pickupLocation               | agency   | expectedAgencyStationLabel             | expectedAddressOnResults                                                                    | expectedLabelOnCart                   | expectedAddressOnCart                                                                       |
+      | MAD                          | Europcar | Madrid Plaza Espana (City Center)      | San Leonardo 8, Madrid, 28015, ES                                                           | Madrid Plaza Espana (City Center)     | San Leonardo 8, Madrid, 28015, ES                                                           |
+      | Plaza del Emperador Carlos V | Hertz    | Ave Atocha Rr Stn (Railway Station)    | Av Ciudad De Barcelona 3 V P3 Planta 0, Retiro Parking 3 Planta 0 Madrid, Madrid, 28007, ES | Ave Atocha Rr Stn (Railway Station)   | Av Ciudad De Barcelona 3 V P3 Planta 0, Retiro Parking 3 Planta 0 Madrid, Madrid, 28007, ES |

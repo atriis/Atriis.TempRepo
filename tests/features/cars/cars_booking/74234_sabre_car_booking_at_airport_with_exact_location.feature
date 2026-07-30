@@ -7,7 +7,7 @@ Feature: 74234 Sabre Car Booking Flow with Exact Airport Location
 
   @priority:critical
   Scenario: Search for car at LHR with Hertz and verify the exact airport location when CounterLocation in [F,S,O,A,C,M] “Airport - Shuttle required”
-    Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
+    Given I am logged in as "automation@sabre.tlc" booking a new trip
     And I have added a random guest traveler
     When I search for a car at "LHR" with rental agency "Hertz"
     Then the car location label at index 0 should contain "London Heathrow, England (Airport - Shuttle required)" on results
@@ -25,7 +25,7 @@ Feature: 74234 Sabre Car Booking Flow with Exact Airport Location
 
   @priority:critical
   Scenario: Search for car at LHR with Europcar and verify the exact airport location when CounterLocation = "I"
-    Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
+    Given I am logged in as "automation@sabre.tlc" booking a new trip
     And I have added a random guest traveler
     When I search for a car at "LHR" with rental agency "Europcar"
     Then the car location label at index 0 should contain "London Heathrow, England (Airport - In Terminal)" on results
