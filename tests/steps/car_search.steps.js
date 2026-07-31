@@ -65,6 +65,19 @@ When("I search for a car from {string} to {string}", async function (pickupLocat
   await CarSearch.searchCarWithDifferentDropoffLocation(this.page, pickupLocation, dropoffLocation);
 });
 
+// Agency-filtered twin of "I search for a car from {string} to {string}". Picks the agency before
+// the location/date flow, so the results are restricted to that vendor on an airport-to-city (or
+// any different drop-off) search.
+When("I search for a car from {string} to {string} with rental agency {string} and {int} months ahead", async function (pickupLocation, dropoffLocation, agencyName, monthsAhead) {
+  logger.info("Searching for car with agency and different pickup and dropoff locations", { pickupLocation, dropoffLocation, agencyName, monthsAhead });
+  this.carSearch = await CarSearch.searchCarWithDifferentDropoffLocationAndRentalAgency(this.page, pickupLocation, dropoffLocation, agencyName, monthsAhead);
+});
+
+When("I search for a car from {string} to {string} with rental agency {string}", async function (pickupLocation, dropoffLocation, agencyName) {
+  logger.info("Searching for car with agency and different pickup and dropoff locations", { pickupLocation, dropoffLocation, agencyName });
+  this.carSearch = await CarSearch.searchCarWithDifferentDropoffLocationAndRentalAgency(this.page, pickupLocation, dropoffLocation, agencyName);
+});
+
 When("I select rental agency {string}", async function (agencyName) {
   logger.info("Selecting rental agency", { agencyName });
   await CarSearch.selectRentalAgencyByName(this.page, agencyName);

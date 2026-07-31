@@ -1,4 +1,4 @@
-const { expect } = require("@playwright/test");
+﻿const { expect } = require("@playwright/test");
 const CarSearchPage = require("@pages/CarSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const { ResultsPage } = require("@pages/ResultsPage");
@@ -221,7 +221,7 @@ const CarSearch = {
   /**
    * Fills the car search form and clicks Search, WITHOUT waiting for car results.
    *
-   * Used by regression scenarios where the search is intentionally expected to be blocked —
+   * Used by regression scenarios where the search is intentionally expected to be blocked â€”
    * e.g. when an empty traveler slot is present, trip-index.handleSearch() emits
    * showTravelersErrorTooltip and returns without navigating, so no results ever load.
    * Polling for results (as searchCarByPlace does) would time out; this method stops right
@@ -277,7 +277,7 @@ const CarSearch = {
     const pickupDate = await carSearchPage.getPickupDateFieldValue();
     const dropoffDate = await carSearchPage.getDropoffDateFieldValue();
 
-    // Submit — do NOT wait for results; the search is expected to be blocked by validation.
+    // Submit â€” do NOT wait for results; the search is expected to be blocked by validation.
     await searchPage.waitAndClickSearchButton();
 
     return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex, pickupDate, dropoffDate };
@@ -287,12 +287,12 @@ const CarSearch = {
    * Searches for a car from the cart's edit-search drawer (opened by the Car tile in the trip
    * cart's product carousel).
    *
-   * Deliberately sets NO location: the car edit-search drawer exposes no location input at all —
+   * Deliberately sets NO location: the car edit-search drawer exposes no location input at all â€”
    * it inherits the pick-up location from the trip context, and its readiness signal is the
    * "Pick-up Date" field precisely because there is no autocomplete to wait for (see
    * SearchPage.SELECTORS.EDIT_CAR_PICKUP_DATE / waitForEditSearchDrawerReady). Only the dates are
    * settable here, so this method sets those and submits through the drawer's own primary button.
-   * Use searchCarByPlace when the location must be chosen — that requires the standalone search page.
+   * Use searchCarByPlace when the location must be chosen â€” that requires the standalone search page.
    *
    * @param {Object} page - Playwright page instance
    * @param {number} monthsAhead - Number of months ahead to advance the pick-up calendar
@@ -422,7 +422,7 @@ const CarSearch = {
    * car results.
    *
    * The agency-filtered twin of initiateCarSearch: use it when the search is gated by a popup that
-   * must be handled before results can load — e.g. a mandatory TRIP PURPOSE reference field, where
+   * must be handled before results can load â€” e.g. a mandatory TRIP PURPOSE reference field, where
    * searchCarByPlaceAndRentalAgency would poll for results that never arrive until the popup is
    * proceeded. Follow this with the popup step; the add-to-cart step waits for the results itself.
    *
@@ -462,7 +462,7 @@ const CarSearch = {
     await carSearchPage.clickCarTab();
     await CarSearch.selectRentalAgencyByName(page, agencyName);
 
-    // Reuse the non-blocking search flow — it re-clicks the car tab harmlessly and leaves the
+    // Reuse the non-blocking search flow â€” it re-clicks the car tab harmlessly and leaves the
     // agency filter in place.
     return CarSearch.initiateCarSearch(page, placeInput, monthsAhead, options);
   },
@@ -561,6 +561,59 @@ const CarSearch = {
     });
 
     return { searched: true, pickupPlace, dropoffPlace, monthsAhead, pickupIndex, dropoffIndex, noResultsRetry: retryResult };
+  },
+
+  /**
+   * Searches for a car with different pickup and drop-off locations, filtered by a rental agency.
+   *
+   * The agency-filtered twin of searchCarWithDifferentDropoffLocation: the agency field only exists
+   * on the car tab, so the tab is activated and the agency picked before the location/date flow
+   * runs. The delegated search re-clicks the car tab harmlessly and leaves the filter in place.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string|Object} pickUpLocation - Pickup location
+   * @param {string|Object} dropOffLocation - Drop-off location
+   * @param {string} agencyName - Rental agency name (required)
+   * @param {number} monthsAhead - Number of months ahead to search
+   * @param {Object} options - Search configuration (pickupIndex / dropoffIndex)
+   * @returns {Promise<{searched: boolean, pickupPlace: string, dropoffPlace: string, monthsAhead: number, pickupIndex: number, dropoffIndex: number, noResultsRetry: Object}>}
+   * @throws {Error} If page or agencyName is not provided
+   */
+  async searchCarWithDifferentDropoffLocationAndRentalAgency(
+    page,
+    pickUpLocation,
+    dropOffLocation,
+    agencyName,
+    monthsAhead = 3,
+    options = {},
+  ) {
+    if (!page) {
+      throw new Error('[CarSearch.searchCarWithDifferentDropoffLocationAndRentalAgency] "page" is required.');
+    }
+
+    if (!agencyName || typeof agencyName !== 'string') {
+      throw new Error(
+        `[CarSearch.searchCarWithDifferentDropoffLocationAndRentalAgency] "agencyName" must be a non-empty string, got: ${typeof agencyName} (${agencyName})`
+      );
+    }
+
+    logger.debug('[CarSearch.searchCarWithDifferentDropoffLocationAndRentalAgency] Searching with an agency filter and a different drop-off location', {
+      agencyName,
+      monthsAhead,
+    });
+
+    const carSearchPage = getPageObject(page, CarSearchPage);
+
+    await carSearchPage.clickCarTab();
+    await CarSearch.selectRentalAgencyByName(page, agencyName);
+
+    return CarSearch.searchCarWithDifferentDropoffLocation(
+      page,
+      pickUpLocation,
+      dropOffLocation,
+      monthsAhead,
+      options,
+    );
   },
 
   /**
