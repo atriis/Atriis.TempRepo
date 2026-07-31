@@ -866,6 +866,23 @@ const SELECTORS = {
   // general-product quote cards all reuse that class.
   CAR_QUOTE_CARD_TYPE_TITLE: '.car-quote-card .car-title-block h4.center-title',
 
+  // Links row at the bottom of the car quote card (car-quote-card.vue:199 →
+  // `<div class="more-details is-flex">`). It holds two anchors: an OPTIONAL "All-inclusive rate"
+  // link (`v-if="isAllInclusive"`) and an UNCONDITIONAL "More details" link. Because the second
+  // anchor always renders, this row is the positive render anchor for the negative all-inclusive
+  // assertion — once it is visible the card's links have painted, so a missing all-inclusive link
+  // is a real absence rather than an un-rendered card. Scoped to `.car-quote-card` (hotel cards
+  // reuse the bare `.more-details` class) and `:visible` (desktop/mobile duplicates).
+  CAR_QUOTE_MORE_DETAILS_ROW: '.car-quote-card .more-details:visible',
+  // The "All-inclusive rate" link itself, matched PAGE-WIDE by its exact text rather than by
+  // container: the check must prove the link is absent from the whole cart, not just from the first
+  // car card, so a trip with several car quotes cannot hide a stray link behind a scoped selector.
+  // `text-is` (exact) not `has-text` (substring) — the coverage dialog opened by the link carries
+  // the same wording as its title (car.allInclusiveRate, en.json:250), and a substring match on an
+  // ancestor would report the whole card as a hit. `a` narrows to the link, excluding that dialog
+  // title. Wording comes from car.allInclusiveRate, so this is en-locale only.
+  ALL_INCLUSIVE_RATE_LINK: 'a:text-is("All-inclusive rate"):visible',
+
   // EU Rail loyalty program extras (loyalty-program.vue) — <section class="loyalty-program">, no data-testid.
   // Tabs are <el-tabs>/<el-tab-pane> with values from LoyaltyTabs enum ('0' = New, '1' = Existing);
   // labels are "Use Existing" / "Enter New" (en.json euRail.loyaltyNumber.useExisting/enterNew).
@@ -6526,6 +6543,39 @@ class CartPage {
         `quote card re-rendered between the visibility wait and the read. Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Waits for the car quote card's links row ("All-inclusive rate" / "More details") to render.
+   * This is the render gate for the negative all-inclusive assertion — it THROWS on timeout,
+   * because with no row there are no card links at all and "no all-inclusive link" would be
+   * meaningless.
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<void>}
+   */
+  async waitForCarQuoteMoreDetailsRow({ timeout = 30000 } = {}) {
+    const row = this.page.locator(SELECTORS.CAR_QUOTE_MORE_DETAILS_ROW).first();
+    try {
+      await row.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForCarQuoteMoreDetailsRow] The car quote card's links row never rendered ` +
+        `within ${timeout}ms (selector: ${SELECTORS.CAR_QUOTE_MORE_DETAILS_ROW}). Likely causes: the ` +
+        `trip holds no car quote, the cart page has not finished loading, or the quote card is still ` +
+        `in its isLoading state. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Counts the visible "All-inclusive rate" links anywhere on the page. Returns 0 when the link is
+   * not rendered — the caller decides whether that is a failure, so this must not throw on a
+   * missing element (the negative scenario asserts it is absent).
+   * @returns {Promise<number>} Number of visible "All-inclusive rate" links on the page
+   */
+  async getAllInclusiveRateLinkCount() {
+    return this.page.locator(SELECTORS.ALL_INCLUSIVE_RATE_LINK).count();
   }
 
   // ===== SUNNYCARS ADD LOCATION EXTRAS (car-sunnycars-add-location.vue) =====

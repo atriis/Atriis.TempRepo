@@ -5481,6 +5481,49 @@ const Cart = {
   },
 
   /**
+   * Verifies the "All-inclusive rate" link is NOT displayed anywhere on the cart page.
+   *
+   * The link is rendered by car-quote-card.vue:201 behind `v-if="isAllInclusive"`, which is
+   * `quote.carSegment.ratePlan?.includes('All-in')` (car-quote-card.ts:126). Amadeus car quotes
+   * carry no such rate plan, so the link must be absent for this supplier.
+   *
+   * An absence can only be asserted once the card has actually rendered, so this first waits for
+   * the card's links row — which always contains the unconditional "More details" anchor — and only
+   * then reads the link count once. It deliberately does NOT poll: a poll on a negative passes on
+   * its first tick and would be a false green even if the link appeared a moment later. The check is
+   * page-wide rather than scoped to the first car card, so a stray link on any quote is caught.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{linkText: string, count: number, displayed: boolean}>}
+   */
+  async verifyAllInclusiveRateLinkNotVisibleInCart(page) {
+    if (!page) throw new Error('[Cart.verifyAllInclusiveRateLinkNotVisibleInCart] "page" is required.');
+
+    logger.debug(
+      '[Cart.verifyAllInclusiveRateLinkNotVisibleInCart] Verifying the "All-inclusive rate" link is absent'
+    );
+    const cartPage = getPageObject(page, CartPage);
+
+    // Deterministic gate: never assert absence before the quote card's links row has rendered.
+    await cartPage.waitForCarQuoteMoreDetailsRow();
+
+    const count = await cartPage.getAllInclusiveRateLinkCount();
+
+    expect(
+      count,
+      `Expected NO "All-inclusive rate" link on the cart page, but found ${count}. The link renders ` +
+      `only when the car quote's rate plan contains "All-in" (car-quote-card.vue:201 → ` +
+      `car-quote-card.ts:126 isAllInclusive). A hit here means the booked quote came back with an ` +
+      `all-inclusive rate plan — either the search did not resolve to the Amadeus supplier, or ` +
+      `Amadeus started returning "All-in" rate plans and the product expectation changed.`,
+    ).toBe(0);
+
+    logger.info('Verified the "All-inclusive rate" link is not displayed on the cart page');
+
+    return { linkText: 'All-inclusive rate', count, displayed: false };
+  },
+
+  /**
    * Expands the SunnyCars "Add location" extras section on the cart's car quote card.
    * Opening the panel triggers its location load, so the pick-up and drop-off selects are usable
    * once this resolves.

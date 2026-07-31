@@ -1066,6 +1066,11 @@ Then("the out of policy indicator should not be visible in cart", async function
   expect(isHidden).toBe(true);
 });
 
+Then("the all-inclusive rate link should not be visible in cart", async function () {
+  logger.info('Verifying the "All-inclusive rate" link is not visible in cart');
+  await Cart.verifyAllInclusiveRateLinkNotVisibleInCart(this.page);
+});
+
 Then("the out of policy free text justification should not be visible in cart", async function () {
   logger.info("Verifying OOP free text justification is not visible in cart");
   await Cart.verifyOOPFreeTextJustificationNotVisibleInCart(this.page);
