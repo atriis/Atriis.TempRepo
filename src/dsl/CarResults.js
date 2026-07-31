@@ -1187,6 +1187,46 @@ const CarResults = {
   },
 
   /**
+   * Verifies the agreement (handshake) badge is NOT rendered on the first car result — the signal
+   * that the returned fare is a non-agreement fare.
+   *
+   * ticket-agreements.vue always renders `section.ticket-agreement`, but its inner tooltip trigger
+   * (`> div` with the `handshake` icon) only renders when `hasAgreementsToShow` is true. Probing that
+   * trigger is therefore the exact inverse of `verifyHandshakeBadgeVisible`, so the positive and
+   * negative assertions can never disagree about what "has an agreement" means.
+   *
+   * @param {import('playwright').Page} page
+   * @throws {Error} If an agreement badge is rendered on the first car result
+   */
+  async verifyHandshakeBadgeNotVisible(page) {
+    if (!page) throw new Error('[CarResults.verifyHandshakeBadgeNotVisible] "page" is required.');
+
+    logger.debug('[CarResults.verifyHandshakeBadgeNotVisible] Checking the first car result carries no agreement handshake badge');
+    const carResultsPage = getPageObject(page, CarResultsPage);
+
+    try {
+      // Gate on a rendered card first: an absence assertion against a still-loading results list
+      // would pass for the wrong reason.
+      await carResultsPage.waitForCarTitlesVisible();
+    } catch (err) {
+      throw new Error(
+        '[CarResults.verifyHandshakeBadgeNotVisible] No car result card rendered, so the agreement badge ' +
+        'could not be checked. The search may have returned no cars or the results list is still loading. ' +
+        `Original: ${err.message}`,
+      );
+    }
+
+    const isVisible = await carResultsPage.hasVisibleAgreementTrigger({ timeout: 5000 });
+
+    expect(
+      isVisible,
+      'Expected NO agreement (handshake) badge on the first car result because this search should return ' +
+      'non-agreement fares, but an agreement badge was rendered. The rental agency filter may have returned ' +
+      "an agreement fare, or the user's car agreement now covers this supplier.",
+    ).toBe(false);
+  },
+
+  /**
    * Clicks the "Terms and conditions" button on the first car result card, which opens the
    * car Terms & Conditions dialog (car-terms-conditions.vue). This is a card-level button
    * (car-preview.vue `.more-details-btn`) — not part of the agreement tooltip.

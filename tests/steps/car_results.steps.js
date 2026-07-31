@@ -178,6 +178,11 @@ Then("handshake badge should be visible in car results", async function () {
   await CarResults.verifyHandshakeBadgeVisible(this.page);
 });
 
+Then("handshake badge should not be visible in car results", async function () {
+  logger.info("Verifying the agreement (handshake) badge is not visible in car results");
+  await CarResults.verifyHandshakeBadgeNotVisible(this.page);
+});
+
 // Count-agnostic on purpose: the supplier returns a different number of city-centre stations on
 // every run, so this asserts across however many station cards are currently rendered.
 Then("I should see the location name and address displayed for all station results", async function () {
