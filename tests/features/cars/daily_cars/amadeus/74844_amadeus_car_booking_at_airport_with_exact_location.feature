@@ -5,7 +5,7 @@
 # Created: 2026-07-09
 
 @transportation @cars @daily_cars @provider:amadeus @ado:74844
-Feature: 73948 Amadeus Car Booking Flow with Exact Airport Location
+Feature: 74844 Amadeus Car Booking Flow with Exact Airport Location
   As a corporate traveler using Amadeus
   I want to book or share cars with exact airport location validation
   So that I can confirm the pickup location before completing or sharing the trip
@@ -37,5 +37,5 @@ Feature: 73948 Amadeus Car Booking Flow with Exact Airport Location
     Then I successfully cancel the trip
 
 Examples:
-      | pickupLocation | agency | expectedLabel                         | expectedAddress             | expectedLocationCode |
-      | Barajas        | Avis   | Barajas (MAD) (Airport - In Terminal) | Madrid Apt T123, Madrid, ES | NON                  |
+      | pickupLocation | agency  | expectedLabel                         | expectedAddress                                    | expectedLocationCode |
+      | Barajas        | Alamo   | Barajas (MAD) (Airport - In Terminal) | Enterprise Rent A Car Aeropuerto De Ba, Madrid, ES | NON                  |
