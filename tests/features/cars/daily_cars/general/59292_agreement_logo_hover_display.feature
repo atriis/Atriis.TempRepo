@@ -5,7 +5,7 @@
 # Updated: 2025-07-07T09:43:23Z
 
 @regression @cars @agreement
-Feature: 59292 Agreement logo displays on hover
+Feature: 59292 Cars - Agreement logo is displayed when hovering over agreement
 
   As a traveler viewing car agreements
   I want to see the agreement logo when hovering over the agreement text
