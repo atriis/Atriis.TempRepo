@@ -1,5 +1,6 @@
 ﻿require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
+const { expect } = require("@playwright/test");
 const { CarResults } = require("../../src/dsl");
 const logger = require("@utils/logger").child("CarResults");
 
@@ -177,6 +178,14 @@ Then("handshake badge should be visible in car results", async function () {
   await CarResults.verifyHandshakeBadgeVisible(this.page);
 });
 
+// Count-agnostic on purpose: the supplier returns a different number of city-centre stations on
+// every run, so this asserts across however many station cards are currently rendered.
+Then("I should see the location name and address displayed for all station results", async function () {
+  logger.info("Verifying every city center station result displays a location name and address");
+  const result = await CarResults.expectAllStationsShowLocationNameAndAddress(this.page);
+  logger.info("Station location name and address verified", { stationsChecked: result.stationsChecked });
+});
+
 Then("the first station should have a {string} button", async function (buttonName) {
   if (!buttonName || typeof buttonName !== 'string') {
     throw new Error(`buttonName must be a non-empty string, got: ${buttonName}`);
@@ -246,6 +255,74 @@ Then("I should see the selected car location in Google Maps", async function () 
     this.page,
     locationContext.mapsPage,
   );
+});
+
+// ========================================
+// LOCATION DETAILS TOOLTIP - CAR RESULTS
+// ========================================
+
+// Opens the tooltip and deliberately leaves it OPEN: the two extract steps below read pickup and
+// drop-off from the same rendered tooltip, so closing here would empty the DOM they depend on.
+When("I click location details in the car results", async function () {
+  logger.info("Opening the location details tooltip on the first car result");
+  await CarResults.openLocationDetailsOnFirstCarResult(this.page);
+  this.locationDetailsTooltipOpened = true;
+});
+
+// Where each extracted address is parked on the Cucumber World for the comparison step below.
+const LOCATION_ADDRESS_WORLD_KEY = {
+  pickup: 'pickupLocationAddress',
+  dropoff: 'dropoffLocationAddress',
+};
+
+async function extractLocationAddressInLocationDetails(locationType) {
+  if (!this.locationDetailsTooltipOpened) {
+    throw new Error(
+      `Extracting the ${locationType} location address requires a preceding ` +
+      '"When I click location details in the car results" step — the tooltip is not rendered until it is opened.'
+    );
+  }
+
+  const address = await CarResults.getLocationAddressFromLocationDetails(this.page, locationType);
+  this[LOCATION_ADDRESS_WORLD_KEY[locationType]] = address;
+  logger.info(`Extracted ${locationType} location address from location details`, { [locationType]: address });
+}
+
+When("I extract the pickup location address in location details", async function () {
+  await extractLocationAddressInLocationDetails.call(this, 'pickup');
+});
+
+When("I extract the dropoff location address in location details", async function () {
+  await extractLocationAddressInLocationDetails.call(this, 'dropoff');
+});
+
+// Pure comparison of two already-extracted values — no page interaction, so the assertion belongs
+// here rather than in the DSL. Both sides are whitespace/case-normalized first so a cosmetic
+// formatting difference cannot pass this off as two genuinely different locations.
+Then("the pickup and dropoff locations should be different", async function () {
+  const pickup = this.pickupLocationAddress;
+  const dropoff = this.dropoffLocationAddress;
+
+  if (!pickup || !dropoff) {
+    throw new Error(
+      '"the pickup and dropoff locations should be different" requires both the ' +
+      '"I extract the pickup location address in location details" and ' +
+      '"I extract the dropoff location address in location details" steps to have run. ' +
+      `Got pickup: ${JSON.stringify(pickup)}, dropoff: ${JSON.stringify(dropoff)}`
+    );
+  }
+
+  const normalize = (value) => value.replace(/\s+/g, ' ').trim().toLowerCase();
+  const normalizedPickup = normalize(pickup);
+  const normalizedDropoff = normalize(dropoff);
+
+  logger.info("Verifying pickup and dropoff locations are different", { pickup, dropoff });
+
+  expect(
+    normalizedPickup,
+    `Expected the pickup and drop-off locations to differ because the search used different pickup and ` +
+    `drop-off locations, but both resolved to the same address. Pickup: "${pickup}". Drop-off: "${dropoff}".`
+  ).not.toBe(normalizedDropoff);
 });
 
 Then("the car results should be displayed in the map matching the results on the page", async function () {

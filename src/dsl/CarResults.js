@@ -196,6 +196,156 @@ const CarResults = {
   },
 
   /**
+   * Verifies that EVERY station card on the city-centre vendor list displays both a location name
+   * and a street address.
+   *
+   * The supplier returns a different number of stations on every run, so this asserts across
+   * however many cards are currently rendered instead of a fixed index. A card renders its second
+   * `.station-details` line only when the location name and the street differ
+   * (car-vendor-station-preview.vue `v-if="stationAddress !== stationStreet"`), so a single line is
+   * accepted as name and address being the same value — what must never happen is an empty line or
+   * the "No address available" fallback, which is exactly what this check is here to catch.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is invalid, no station cards are rendered, or any card is missing a
+   *   location name or address
+   * @returns {Promise<{stationsChecked: number}>}
+   */
+  async expectAllStationsShowLocationNameAndAddress(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    // The fallback the component renders when a station carries no usable address at all
+    // (`common.noAddress` in assets/locale/en.json). Staging runs in English.
+    const NO_ADDRESS_FALLBACK = 'no address available';
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForSelectText();
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+
+    logger.debug('[CarResults.expectAllStationsShowLocationNameAndAddress] Counting station cards on the vendor list');
+    const stationCount = await carResultsPage.getStationPreviewCount();
+
+    if (stationCount < 1) {
+      throw new Error(
+        '[CarResults.expectAllStationsShowLocationNameAndAddress] No station cards are rendered on the ' +
+        'city-centre vendor list, so there is nothing to verify. The search may have returned no ' +
+        'stations, or the page may still be on the car results list rather than the station list.',
+      );
+    }
+
+    const failures = [];
+
+    for (let index = 0; index < stationCount; index++) {
+      const lines = await carResultsPage.getStationDetailTextsByIndex(index);
+      const nonEmptyLines = lines.filter((line) => line.length > 0);
+
+      if (nonEmptyLines.length === 0) {
+        failures.push(`station ${index}: no location text displayed (read: ${JSON.stringify(lines)})`);
+        continue;
+      }
+
+      const locationName = nonEmptyLines[0];
+      // Only one line means name === street, so the same text serves as the address.
+      const address = nonEmptyLines.length > 1 ? nonEmptyLines[1] : locationName;
+
+      if (locationName.toLowerCase() === NO_ADDRESS_FALLBACK) {
+        failures.push(`station ${index}: location name shows the "${locationName}" fallback`);
+      }
+
+      if (address.toLowerCase() === NO_ADDRESS_FALLBACK) {
+        failures.push(`station ${index}: address shows the "${address}" fallback`);
+      }
+    }
+
+    expect(
+      failures,
+      `[CarResults.expectAllStationsShowLocationNameAndAddress] ${failures.length} of ${stationCount} station ` +
+      `card(s) on the city-centre vendor list did not display both a location name and an address: ` +
+      `${failures.join('; ')}`,
+    ).toEqual([]);
+
+    logger.info('[CarResults.expectAllStationsShowLocationNameAndAddress] All station cards display a location name and address', {
+      stationsChecked: stationCount,
+    });
+
+    return { stationsChecked: stationCount };
+  },
+
+  /**
+   * Opens the "Location details" tooltip on the first car result and LEAVES IT OPEN, so the pickup
+   * and drop-off addresses can be read by subsequent steps. The tooltip is an el-tooltip with
+   * `trigger="click"` (car-location-details-tooltip.vue) and is not rendered eagerly, so it must be
+   * opened before either address exists in the DOM.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is invalid or the tooltip cannot be opened
+   * @returns {Promise<{opened: boolean}>}
+   */
+  async openLocationDetailsOnFirstCarResult(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForAddToTripText();
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+
+    logger.debug('[CarResults.openLocationDetailsOnFirstCarResult] Opening the location details tooltip on the first car result');
+    try {
+      await carResultsPage.openLocationDetailsTooltipByIndex(0);
+    } catch (err) {
+      throw new Error(
+        '[CarResults.openLocationDetailsOnFirstCarResult] Could not open the "Location details" tooltip on the ' +
+        'first car result. The results list may not have finished rendering, or the card may not expose the ' +
+        `location details link. Original: ${err.message}`,
+      );
+    }
+
+    return { opened: true };
+  },
+
+  /**
+   * Reads either the pickup or the drop-off address from the already-open "Location details"
+   * tooltip. Requires openLocationDetailsOnFirstCarResult to have run — the tooltip is left open on
+   * purpose so both addresses can be read from the same rendered tooltip.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {'pickup'|'dropoff'} locationType - Which address to read
+   * @throws {Error} If page or locationType are invalid, or the address is not readable
+   * @returns {Promise<string>} The address text
+   */
+  async getLocationAddressFromLocationDetails(page, locationType) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const SUPPORTED_LOCATION_TYPES = ['pickup', 'dropoff'];
+    if (!SUPPORTED_LOCATION_TYPES.includes(locationType)) {
+      throw new Error(
+        `locationType must be one of ${SUPPORTED_LOCATION_TYPES.join(' | ')}, got: ${JSON.stringify(locationType)}`,
+      );
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+
+    try {
+      return locationType === 'pickup'
+        ? await carResultsPage.getPickupAddressTextFromTooltip()
+        : await carResultsPage.getDropoffAddressTextFromTooltip();
+    } catch (err) {
+      throw new Error(
+        `[CarResults.getLocationAddressFromLocationDetails] Could not read the ${locationType} address from the ` +
+        'location details tooltip. The tooltip is likely not open — it must be opened first and must stay open. ' +
+        `Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
    * Verifies the payment type label displayed on the car results page at the given index.
    * Expected values: "Pre paid" (when Is Prepaid = true) or "Pay On Departure" (when Is Prepaid = false).
    *

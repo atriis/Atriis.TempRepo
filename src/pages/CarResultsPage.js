@@ -47,6 +47,15 @@ const SELECTORS = {
   // count the badge directly: each card renders it twice (is-hidden-tablet + is-hidden-mobile
   // responsive duplicates), which would double the count.
   STATION_PREVIEW_MARKER_BADGE: '.marker-img-container p.icon-number',
+  // The location NAME and street ADDRESS lines inside a station card's `.station-details`
+  // (car-vendor-station-preview.vue): `stationAddress` then `stationStreet`, both rendered as
+  // `<p class="has-text-weight-bold is-size-7">`. MUST be used card-scoped (via
+  // getStationPreviewByIndex) — the bare class pair is what LOCATION_CITY_CENTER matches
+  // page-wide, so an unscoped read would pull in lines from outside the station list.
+  // The SECOND line is `v-if="stationAddress !== stationStreet"`, so a station whose name and
+  // street resolve to the same value renders ONE <p>, not two — callers must tolerate a single
+  // line rather than treating two as invariant.
+  STATION_DETAIL_LINE: '.station-details p.has-text-weight-bold.is-size-7',
   LOCATION_LABEL: ".location-lines .location-address-text",
   CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   FIRST_CAR_PREVIEW: '.car-preview',
@@ -1330,6 +1339,45 @@ class CarResultsPage {
         `[CarResultsPage.getStationPreviewCount] Could not count the station cards ` +
           `("${SELECTORS.STATION_PREVIEW}"). The station list may have re-rendered mid-read. ` +
           `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Reads the `.station-details` text lines of one station card — the location name followed by
+   * the street address (see SELECTORS.STATION_DETAIL_LINE for why the second line is optional).
+   * @param {number} index - Zero-based index of the station card
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<string[]>} Trimmed line texts in DOM order (1 or 2 entries)
+   */
+  async getStationDetailTextsByIndex(index, { timeout = 30000 } = {}) {
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(
+        `[CarResultsPage.getStationDetailTextsByIndex] "index" must be a number >= 0, got: ${index}`,
+      );
+    }
+
+    const lines = this.getStationPreviewByIndex(index).locator(SELECTORS.STATION_DETAIL_LINE);
+
+    try {
+      await lines.first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.getStationDetailTextsByIndex] No visible station detail line ` +
+          `("${SELECTORS.STATION_DETAIL_LINE}") appeared in station card ${index} within ${timeout}ms. ` +
+          `The station list may still be loading, or the card may render no location text at all. ` +
+          `Original: ${err.message}`,
+      );
+    }
+
+    try {
+      const texts = await lines.allInnerTexts();
+      return texts.map((text) => text.replace(/\s+/g, ' ').trim());
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.getStationDetailTextsByIndex] Could not read the station detail lines of ` +
+          `station card ${index}. The station list likely re-rendered mid-read. Original: ${err.message}`,
       );
     }
   }
