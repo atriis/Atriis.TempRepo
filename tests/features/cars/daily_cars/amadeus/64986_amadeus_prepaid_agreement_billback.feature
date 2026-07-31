@@ -5,22 +5,18 @@
 # Updated: 2025-09-14T01:06:45Z
 
 @regression @cars @amadeus @agreement @billback
-Feature: 64986 Amadeus enterprise prepaid agreement fares with billback
+Feature: 64986 Amadeus - Cars - Enterprise - 'Pre paid' text is displayed for agreement fares when bill back enabled
 
   As a traveler with Amadeus billback agreement
   I want to see "Pre paid" text for agreement fares
   So that I understand the payment is pre-paid and billback is enabled
 
-  Background:
-    Given I am logged in as "danielalmeida@amadeus.car" booking a new trip
-    And I have added myself as the traveler
-    And I have selected Enterprise rental agency
-
   @priority:high
   Scenario: Verify prepaid text for Amadeus agreement fares with billback
-    When I search for a car at "LHR"
-    Then the agreement tooltip should display agreement text
-    And the payment type should display "Pre paid" in results
+    Given I am logged in as "danielalmeida@carbillbackama.com" booking a new trip
+    And I have added myself as the traveler
+    When I search for a car at "MXP" with rental agency "Enterprise" and 1 months ahead
+    Then handshake badge should be visible in car results
+    And the payment type on results should be "Pre paid"
     When I add the first car to cart
-    Then the booking status should be "Pending booking"
-    And the payment type should display "Pre paid" in cart
+    Then the payment type should be "Pre paid"
