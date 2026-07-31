@@ -1163,6 +1163,110 @@ const CarResults = {
   },
 
   /**
+   * Hovers the agreement on the first car result to open its tooltip.
+   *
+   * @param {import('playwright').Page} page
+   * @throws {Error} If no agreement trigger is rendered on the first car result
+   */
+  async hoverAgreementInFirstCarResult(page) {
+    if (!page) throw new Error('[CarResults.hoverAgreementInFirstCarResult] "page" is required.');
+
+    logger.debug('[CarResults.hoverAgreementInFirstCarResult] Hovering the agreement on the first car result');
+    const carResultsPage = getPageObject(page, CarResultsPage);
+
+    try {
+      // Cards can still be rendering right after the search completes, so allow more than the page
+      // object's short default — same 30000 budget as verifyHandshakeBadgeVisible.
+      await carResultsPage.hoverAgreementIconInFirstCarResult({ timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        '[CarResults.hoverAgreementInFirstCarResult] Could not hover the agreement on the first car result. ' +
+        "The search may have returned no agreement fares for this user, or the results list is still loading. " +
+        `Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
+   * Verifies the open agreement tooltip belongs to the expected agreement and displays that
+   * agreement's logo image (not the generic handshake fallback).
+   *
+   * Deliberately separate from `verifyAgreementTextDisplayedInCarResultsTooltip` above: that one
+   * hovers itself and accepts ANY tooltip text (falling back to the terms link when no agreement is
+   * returned), which is the right contract for its caller but would silently pass this test. This one
+   * assumes the tooltip is already open and asserts the exact agreement plus a loaded logo image.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedAgreementText - Agreement name expected in the tooltip (e.g. "Avis Europack Rate")
+   * @returns {Promise<{tooltipText: string, logoSrc: string}>}
+   * @throws {Error} If the tooltip is missing, names a different agreement, or shows no logo image
+   */
+  async verifyAgreementLogoDisplayedInTooltip(page, expectedAgreementText) {
+    if (!page) throw new Error('[CarResults.verifyAgreementLogoDisplayedInTooltip] "page" is required.');
+    if (!expectedAgreementText || typeof expectedAgreementText !== 'string') {
+      throw new Error(
+        '[CarResults.verifyAgreementLogoDisplayedInTooltip] "expectedAgreementText" must be a non-empty string, ' +
+        `got: ${typeof expectedAgreementText} (${expectedAgreementText})`,
+      );
+    }
+
+    logger.debug('[CarResults.verifyAgreementLogoDisplayedInTooltip] Reading the open agreement tooltip', {
+      expectedAgreementText,
+    });
+    const carResultsPage = getPageObject(page, CarResultsPage);
+
+    let tooltipText;
+    try {
+      tooltipText = await carResultsPage.getAgreementTooltipText();
+    } catch (err) {
+      throw new Error(
+        '[CarResults.verifyAgreementLogoDisplayedInTooltip] The agreement tooltip did not open after hovering the ' +
+        'agreement on the first car result, so its logo could not be checked. ' +
+        `Original: ${err.message}`,
+      );
+    }
+
+    // The tooltip joins every agreement on the card with " | ", so match by containment.
+    expect(
+      tooltipText.toLowerCase(),
+      `Expected the agreement tooltip to name "${expectedAgreementText}", but it showed "${tooltipText}". ` +
+      "The first car result may carry a different agreement than the one this test expects.",
+    ).toContain(expectedAgreementText.toLowerCase());
+
+    const logo = await carResultsPage.getAgreementTooltipLogoDetails();
+
+    expect(
+      logo.visible,
+      logo.placeholderOnly
+        ? `Expected the "${expectedAgreementText}" agreement tooltip to display the agreement logo, but the generic ` +
+          'handshake placeholder rendered instead — the agreement has no logo URL configured.'
+        : `Expected the "${expectedAgreementText}" agreement tooltip to display the agreement logo, but no logo ` +
+          'image was rendered in the tooltip at all.',
+    ).toBe(true);
+
+    expect(
+      logo.src.length > 0,
+      `Expected the "${expectedAgreementText}" agreement logo to have an image source, but its src was empty.`,
+    ).toBe(true);
+
+    // app-img.vue swaps the src for noImg.svg when the external logo fails to load, so a visible
+    // <img> alone would still pass with a broken logo.
+    expect(
+      /noimg/i.test(logo.src),
+      `Expected the "${expectedAgreementText}" agreement logo to load, but the fallback placeholder image was ` +
+      `served instead (src: "${logo.src}"). The configured logo URL is unreachable.`,
+    ).toBe(false);
+
+    logger.debug('[CarResults.verifyAgreementLogoDisplayedInTooltip] Agreement logo verified', {
+      tooltipText,
+      logoSrc: logo.src,
+      logoAlt: logo.alt,
+    });
+
+    return { tooltipText, logoSrc: logo.src };
+  },
+
+  /**
    * Verifies the agreement (handshake) badge is visible on the first car result.
    * Mirrors the hotel/room-level `verifyHandshakeBadgeVisible` assertions: an agreement fare renders
    * the handshake icon inside the card's `.agreements` row.

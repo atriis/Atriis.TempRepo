@@ -111,6 +111,15 @@ const SELECTORS = {
   AGREEMENT_ICON_IN_CARD: '.agreements .agreement-img',
   AGREEMENT_TOOLTIP_TRIGGER_IN_CARD: '.agreements .ticket-agreement > div',
   AGREEMENT_TOOLTIP_DESCRIPTION: '.agreement-tooltip-list .agreement-tooltip__description',
+  // ticket-agreements.vue renders the agreement's own logo inside the tooltip via `app-img
+  // :externalUrl="agreement.icon"` — a real <img>. The tooltip is el-tooltip content, teleported to
+  // a body-level `el-popper-container`, so these selectors must stay UNSCOPED from the car card
+  // (same reason as AGREEMENT_TOOLTIP_DESCRIPTION above).
+  AGREEMENT_TOOLTIP_LOGO: '.agreement-tooltip-list .agreement-tooltip__icon img',
+  // When `agreement.icon` is empty the component falls back to a generic handshake glyph instead of
+  // the logo (note the app's own typo: `--palceholder`). Detecting it separately is what lets the DSL
+  // say "placeholder rendered, not a logo" rather than reporting a bare missing-element timeout.
+  AGREEMENT_TOOLTIP_LOGO_PLACEHOLDER: '.agreement-tooltip-list .agreement-tooltip__icon--palceholder',
   TERMS_BUTTON_IN_CARD: '.more-details-btn',
   TERMS_BUTTON_TEXT_IN_CARD: '.more-details-btn p',
   // Car model subtitle — visible only for SunnyCars supplier when makeModel is populated
@@ -817,6 +826,37 @@ class CarResultsPage {
     }
 
     return lines.join(' | ');
+  }
+
+  /**
+   * Reads the agreement logo rendered inside the open agreement tooltip.
+   * Read-only — the caller owns the assertion.
+   *
+   * @param {Object} [options]
+   * @param {number} [options.timeout=10000] - How long to wait for the logo image to be visible
+   * @returns {Promise<{visible: boolean, src: string, alt: string, placeholderOnly: boolean}>}
+   *   `placeholderOnly` is true when no logo image appeared but the generic handshake fallback did.
+   */
+  async getAgreementTooltipLogoDetails({ timeout = 10000 } = {}) {
+    const logo = this.page.locator(SELECTORS.AGREEMENT_TOOLTIP_LOGO).first();
+
+    try {
+      await logo.waitFor({ state: 'visible', timeout });
+    } catch {
+      const placeholderOnly = await this.page
+        .locator(SELECTORS.AGREEMENT_TOOLTIP_LOGO_PLACEHOLDER)
+        .first()
+        .isVisible();
+
+      return { visible: false, src: '', alt: '', placeholderOnly };
+    }
+
+    return {
+      visible: true,
+      src: (await logo.getAttribute('src')) ?? '',
+      alt: (await logo.getAttribute('alt')) ?? '',
+      placeholderOnly: false,
+    };
   }
 
   async clickTermsAndConditionsInFirstCarResult({ timeout = 15000 } = {}) {

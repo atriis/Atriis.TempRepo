@@ -173,6 +173,17 @@ Then("the agreement text should be displayed in the car results tooltip", async 
   logger.info("Agreement text tooltip validated", { tooltipText: result.tooltipText });
 });
 
+When("I hover over the agreement in the first car result", async function () {
+  logger.info("Hovering over the agreement in the first car result");
+  await CarResults.hoverAgreementInFirstCarResult(this.page);
+});
+
+Then("the car results agreement tooltip should display the logo for {string}", async function (expectedAgreementText) {
+  logger.info("Verifying the agreement logo is displayed in the car results tooltip", { expectedAgreementText });
+  const result = await CarResults.verifyAgreementLogoDisplayedInTooltip(this.page, expectedAgreementText);
+  logger.info("Agreement logo validated", { tooltipText: result.tooltipText, logoSrc: result.logoSrc });
+});
+
 Then("handshake badge should be visible in car results", async function () {
   logger.info("Verifying the agreement (handshake) badge is visible in car results");
   await CarResults.verifyHandshakeBadgeVisible(this.page);
