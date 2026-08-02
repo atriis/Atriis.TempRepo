@@ -5,7 +5,10 @@ description: >
   ID (or URL), downloads the run's cucumber JUnit artifacts, maps each feature's
   leading ADO test-case id to a test point, and PATCHes each point's outcome
   directly — without creating a test run. Passed → passed, Failed → notApplicable.
-  Skips scenarios with no numeric ADO id prefix and fully-skipped test cases.
+  The test inventory and the hybrid marking are always read from origin/main.
+  Skips scenarios with no numeric ADO id prefix, fully-skipped test cases, tests
+  that do not exist on main, and HYBRID tests (which must stay Active in ADO
+  whether they pass or fail).
   Never overwrites protected outcomes (passed, blocked, failed). Prompts for the
   run and plan if not supplied.
 ---
@@ -65,6 +68,7 @@ resolve `$env:TEMP` to its absolute path first. Never write temp files into the
 
 - **Phase 0** — Resolve inputs (prompt the user for the run and/or plan if missing)
 - **Phase 1** — Download the run's artifacts → parse cucumber JUnit → outcomes per test case
+- **Phase 1b** — Scan the repo's feature files → the set of HYBRID test-case ids to exclude
 - **Phase 2** — Fetch plan structure → suites + test points + current outcomes
 - **Phase 3** — CHECKPOINT: show update preview, wait for confirmation
 - **Phase 4** — PATCH test point outcomes directly in ADO
@@ -86,6 +90,18 @@ the fetch script's list mode if helpful, or just ask.
 
 Extract the numeric run id and plan id (from URLs if pasted). Then obtain the
 token (see Auth prerequisite above) before Phase 2.
+
+**The run must be a `main` run.** Results from a branch run reflect that branch's
+feature files, not the tests of record. Check the branch before doing any work:
+
+```powershell
+$runBranch = (gh run view $RUN --json headBranch --jq .headBranch)
+```
+
+If `$runBranch` is not `main`, stop and tell the user which branch it is. Only
+continue if they explicitly confirm they want that run synced anyway — and if
+they do, keep the `main`-based rules in Phase 1b exactly as they are (the test
+inventory still comes from `main`, never from the run's branch).
 
 ## Phase 1: Download the run's artifacts and parse JUnit
 
@@ -191,6 +207,128 @@ Parsed {fileCount} JUnit file(s) -> {N} testable test cases:
 
 **Stop here if `results` is empty.**
 
+## Phase 1b: Read `main` — the test inventory and the HYBRID exclusion set
+
+**`main` is the only source of truth for what a test is.** Both facts this phase
+produces — *does this test case exist at all* and *is it hybrid* — are read from
+`origin/main`, never from the local working tree and never from the run's own
+commit. A sync must produce the same decisions regardless of which branch the
+user has checked out or what they have uncommitted.
+
+This phase emits two sets: `onMain` (every test-case id that has a feature file on
+`main`) and `hybrid` (the subset that must never be stamped).
+
+**Hybrid tests must stay `Active` in the ADO plan whether they passed or failed
+in the run.** A hybrid test is only half-automated — the automation drives the UI
+but a human still verifies the other half (the GDS/supplier request, the email,
+the log). A green automation run therefore does *not* mean the test case passed,
+so the point must never be stamped.
+
+The JUnit artifact cannot tell you this: the cucumber junit formatter writes only
+`classname` and `name` — **no tags**. The hybrid marking lives in the repo, and
+it is inconsistent (only ~half of the hybrid features carry the `@hybrid` tag).
+Treat a feature as hybrid if **any** of these is true:
+
+1. it has the `@hybrid` tag,
+2. its `Feature:` title contains "hybrid" (any case),
+3. its filename contains "hybrid",
+4. its `# Labels:` header comment lists `hybrid`.
+
+Write this script to `$env:TEMP\ado-testplan-sync\_temp_gh_hybrid.js`:
+
+```js
+const fs = require('fs');
+const path = require('path');
+
+const root = process.argv[2];   // <repo>/tests/features
+const OUT = process.argv[3];
+if (!root || !OUT) { console.error('usage: node _temp_gh_hybrid.js <featuresDir> <outPath>'); process.exit(2); }
+
+function walk(d, out = []) {
+    if (!fs.existsSync(d)) return out;
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const full = path.join(d, e.name);
+        if (e.isDirectory()) walk(full, out);
+        else if (/\.feature$/i.test(e.name)) out.push(full);
+    }
+    return out;
+}
+
+// Same key the JUnit classname uses: the leading ADO id. Fall back to the
+// filename, then to the first id anywhere in the title (covers titles like
+// "HYBRID 68135 United NDC ..." and "hybrid_for_44798 Benerail ...").
+function resolveId(title, base) {
+    let m = /^\s*(\d{3,6})\b/.exec(title);   if (m) return m[1];
+    m = /^\s*(\d{3,6})\b/.exec(base);        if (m) return m[1];
+    // "hybrid_for_44798 ..." — `_` is a word char, so \b never fires there.
+    const ANY = /(?<!\d)(\d{3,6})(?!\d)/;
+    m = ANY.exec(title) || ANY.exec(base);   return m ? m[1] : null;
+}
+
+const files = walk(root);
+const hybrid = {};   // tc_id -> { title, file, reasons[] }   (never stamped)
+const onMain = {};   // tc_id -> { title, file }              (every test case on main)
+for (const f of files) {
+    const text = fs.readFileSync(f, 'utf8');
+    const base = path.basename(f);
+    const tm = /^[ \t]*Feature:[ \t]*(.+)$/m.exec(text);
+    const title = tm ? tm[1].trim() : '';
+
+    const id = resolveId(title, base);
+    if (!id) continue;   // no ADO id -> the parser drops it anyway
+    if (!onMain[id]) onMain[id] = { title: title || base, file: path.relative(root, f) };
+
+    const labelLine = /^#[ \t]*Labels:(.*)$/mi.exec(text);
+    const reasons = [];
+    if (/(^|\s)@hybrid\b/m.test(text)) reasons.push('@hybrid tag');
+    if (/hybrid/i.test(title)) reasons.push('title');
+    if (/hybrid/i.test(base)) reasons.push('filename');
+    if (labelLine && /(^|[,;\s])hybrid([,;\s]|$)/i.test(labelLine[1])) reasons.push('Labels header');
+    if (!reasons.length) continue;
+
+    if (hybrid[id]) { for (const r of reasons) if (!hybrid[id].reasons.includes(r)) hybrid[id].reasons.push(r); }
+    else hybrid[id] = { title: title || base, file: path.relative(root, f), reasons };
+}
+
+fs.writeFileSync(OUT, JSON.stringify({ featureCount: files.length, hybrid, onMain }), 'utf8');
+console.log(JSON.stringify({
+    featureCount: files.length,
+    onMainCount: Object.keys(onMain).length,
+    hybridCount: Object.keys(hybrid).length
+}));
+```
+
+**Always scan `main` — never the local working tree.** Neither the inventory nor
+the exclusion set may depend on which branch the user happens to have checked out,
+or on uncommitted edits to a feature file. Export `tests/features` from
+`origin/main` into the temp dir and scan that copy:
+
+```powershell
+$repo = "c:\DEV\Atriis.Test.Automation"
+$work = "$env:TEMP\ado-testplan-sync"
+$featuresSrc = "$work\main-features"
+
+# Refresh origin/main. If the fetch fails (offline / auth), WARN and continue with
+# the local origin/main ref — but never silently fall back to the working tree.
+git -C $repo fetch --quiet origin main
+if ($LASTEXITCODE -ne 0) { Write-Warning "git fetch failed - using the local origin/main ref, which may be stale" }
+
+$mainSha = (git -C $repo rev-parse --short origin/main)
+if ($LASTEXITCODE -ne 0) { throw "origin/main could not be resolved - cannot build the hybrid set" }
+
+Remove-Item $featuresSrc -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force $featuresSrc | Out-Null
+# --output, NOT a pipe: PowerShell's pipeline is text-based and corrupts the
+# binary tar stream that `git archive | tar -x` relies on.
+git -C $repo archive --output "$work\main-features.tar" origin/main tests/features
+tar -x -f "$work\main-features.tar" -C $featuresSrc
+
+$hybridRaw = node $work\_temp_gh_hybrid.js $featuresSrc\tests\features $work\_temp_hybrid.json
+```
+
+Report the resolved `$mainSha` in the Phase 3 preview so the user can see exactly
+which revision the hybrid set came from.
+
 ## Phase 2: Fetch plan structure
 
 Write this script to `$env:TEMP\ado-testplan-sync\_temp_gh_fetch.js`:
@@ -280,11 +418,29 @@ Write this script to `$env:TEMP\ado-testplan-sync\_temp_gh_diff.js`:
 const fs = require('fs');
 const parse = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const plan = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
-const OUT = process.argv[4];
+const mainScan = JSON.parse(fs.readFileSync(process.argv[4], 'utf8'));
+const hybridSet = mainScan.hybrid || {};
+const onMain = mainScan.onMain || {};
+const OUT = process.argv[5];
 const PROTECTED = new Set(['passed', 'blocked', 'failed']);
+// Anything that is not one of these reads as "Active" in the Test Plan UI.
+const ACTIVE = new Set(['', 'unspecified', 'none', 'active']);
 
-const willUpdate = [], protectedSkip = [], notFound = [];
+const willUpdate = [], protectedSkip = [], notFound = [], hybridSkip = [], notOnMain = [];
 for (const r of parse.results) {
+    // Only tests that exist on main are synced. A result for a feature that is
+    // not on main came from a branch (or was renamed/deleted since) and must not
+    // be written to the plan.
+    if (!onMain[r.tc_id]) { notOnMain.push({ tc_id: r.tc_id, classname: r.classname, runOutcome: r.outcome }); continue; }
+
+    // HYBRID: never stamped — the test case must stay Active regardless of the
+    // run outcome, because a human still verifies the non-automated half.
+    if (hybridSet[r.tc_id]) {
+        const pts = plan.tcToPoints[r.tc_id] || [];
+        for (const p of pts) hybridSkip.push({ tc_id: r.tc_id, runOutcome: r.outcome, title: hybridSet[r.tc_id].title, reasons: hybridSet[r.tc_id].reasons, ...p });
+        if (!pts.length) hybridSkip.push({ tc_id: r.tc_id, runOutcome: r.outcome, title: hybridSet[r.tc_id].title, reasons: hybridSet[r.tc_id].reasons, currentOutcome: '(not in plan)' });
+        continue;
+    }
     const pts = plan.tcToPoints[r.tc_id];
     if (!pts || !pts.length) { notFound.push(r.tc_id); continue; }
     for (const p of pts) {
@@ -293,13 +449,24 @@ for (const r of parse.results) {
     }
 }
 
+// Hybrid points that a PREVIOUS sync already stamped are no longer Active.
+// Reported so the user can decide; never reset automatically.
+const hybridStale = hybridSkip.filter(h => h.currentOutcome !== '(not in plan)' && !ACTIVE.has(h.currentOutcome));
+
 fs.writeFileSync(OUT, JSON.stringify(willUpdate), 'utf8');
+fs.writeFileSync(OUT.replace(/\.json$/, '-hybrid.json'), JSON.stringify(hybridSkip), 'utf8');
 console.log(JSON.stringify({
     planName: plan.planName,
     willUpdate_passed: willUpdate.filter(u => u.outcome === 'passed').length,
     willUpdate_notApplicable: willUpdate.filter(u => u.outcome === 'notApplicable').length,
     willUpdate_total: willUpdate.length,
     protectedCount: protectedSkip.length,
+    hybridCount: hybridSkip.length,
+    hybridPassedInRun: hybridSkip.filter(h => h.runOutcome === 'passed').length,
+    hybridFailedInRun: hybridSkip.filter(h => h.runOutcome === 'notApplicable').length,
+    hybridStale,
+    notOnMainCount: notOnMain.length,
+    notOnMain,
     notFound
 }));
 ```
@@ -307,10 +474,12 @@ console.log(JSON.stringify({
 Run:
 
 ```powershell
-$diffRaw = node $env:TEMP\ado-testplan-sync\_temp_gh_diff.js $env:TEMP\ado-testplan-sync\_temp_parse.json $env:TEMP\ado-testplan-sync\_temp_fetch.json $env:TEMP\ado-testplan-sync\_temp_updates.json
+$diffRaw = node $env:TEMP\ado-testplan-sync\_temp_gh_diff.js $env:TEMP\ado-testplan-sync\_temp_parse.json $env:TEMP\ado-testplan-sync\_temp_fetch.json $env:TEMP\ado-testplan-sync\_temp_hybrid.json $env:TEMP\ado-testplan-sync\_temp_updates.json
 ```
 
-Classification:
+Classification (checked in this order):
+- **Not on `main`** → `notOnMain` (no feature file on main — branch-only or since renamed/deleted)
+- **Hybrid** → `hybridSkip` (never written — stays Active, pass or fail)
 - **Not found** → `notFound` (test case has no point in the plan)
 - **Found, `currentOutcome` in {passed, blocked, failed}** → `protected` (every matching point — untouched)
 - **Found, not protected** → `willUpdate`
@@ -321,13 +490,24 @@ Present:
 ===========================================================================
 GITHUB RUN → ADO UPDATE PREVIEW
 Plan:  #{planId} "{planName}"
-Run:   {githubRun}
+Run:   {githubRun}  (branch: {runBranch})
+Tests: origin/main @ {mainSha} — {onMainCount} test cases, {hybridCount} hybrid
 ===========================================================================
 
 WILL BE UPDATED ({willUpdate_total} test points):
   passed={N}   notApplicable={N}
   NOTE: a run FAILURE is written as ADO "notApplicable" (not "failed") —
         this is the Testim agent's contract, carried over intentionally.
+
+SKIPPED — HYBRID, LEFT ACTIVE ({hybridCount} test points):
+  passed in run={N}   failed in run={N}
+  Hybrid tests are never stamped — a human still verifies the non-automated half.
+  Hybrid set read from origin/main @ {mainSha} ({hybridCount} ids)
+  TC IDs: {comma-separated hybrid tc_ids}
+
+SKIPPED — NOT ON MAIN ({notOnMainCount} test cases):
+  No feature file on origin/main — branch-only, or renamed/deleted since the run.
+  TC IDs: {comma-separated notOnMain tc_ids}
 
 SKIPPED — PROTECTED ({protectedCount} test points):
   (currentOutcome is passed / blocked / failed — will not overwrite)
@@ -341,6 +521,21 @@ Proceed and PATCH {willUpdate_total} test points in plan #{planId}?
 ```
 
 **Do not proceed to Phase 4 until the user explicitly says Yes.**
+
+**If `hybridStale` is non-empty**, add this note under the hybrid block — those
+points are not Active because an *earlier* sync (before this rule existed) already
+stamped them:
+
+```
+  WARNING: {N} hybrid point(s) are currently {outcome}, not Active:
+    TC {tc_id} "{title}" -> {currentOutcome}
+  Skipping them keeps them as-is; it does not restore them to Active.
+  Reset them to Active as well? -> Yes / No (default No)
+```
+
+Only if the user says Yes, reset those points in Phase 4 with the same
+PATCH endpoint and body `{ "resetToActive": true }` (not an `outcome` value).
+Never do this unprompted.
 
 ## Phase 4: PATCH test point outcomes
 
@@ -425,9 +620,18 @@ Remove-Item $env:TEMP\ado-testplan-sync\_temp_gh_parse.js  -ErrorAction Silently
 Remove-Item $env:TEMP\ado-testplan-sync\_temp_gh_fetch.js  -ErrorAction SilentlyContinue
 Remove-Item $env:TEMP\ado-testplan-sync\_temp_gh_diff.js   -ErrorAction SilentlyContinue
 Remove-Item $env:TEMP\ado-testplan-sync\_temp_gh_push.js   -ErrorAction SilentlyContinue
+Remove-Item $env:TEMP\ado-testplan-sync\_temp_gh_hybrid.js -ErrorAction SilentlyContinue
 Remove-Item $env:TEMP\ado-testplan-sync\_temp_parse.json   -ErrorAction SilentlyContinue
 Remove-Item $env:TEMP\ado-testplan-sync\_temp_fetch.json   -ErrorAction SilentlyContinue
+Remove-Item $env:TEMP\ado-testplan-sync\_temp_hybrid.json  -ErrorAction SilentlyContinue
 Remove-Item $env:TEMP\ado-testplan-sync\_temp_updates.json -ErrorAction SilentlyContinue
+Remove-Item $env:TEMP\ado-testplan-sync\_temp_updates-hybrid.json -ErrorAction SilentlyContinue
+Remove-Item $env:TEMP\ado-testplan-sync\main-features.tar -ErrorAction SilentlyContinue
+# Remove-Item -Recurse can return before Windows releases the directory handle,
+# leaving the (now empty) root behind. Retry once; a leftover empty dir is
+# harmless either way — Phase 1b recreates it.
+Remove-Item $env:TEMP\ado-testplan-sync\main-features -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item $env:TEMP\ado-testplan-sync\main-features -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item $env:TEMP\ado-testplan-sync\gh-run-$RUN -Recurse -Force -ErrorAction SilentlyContinue
 ```
 
@@ -440,6 +644,8 @@ Metric                    Count
 ──────────────────────────────────────────────────
 Updated → passed          {N}
 Updated → notApplicable   {N}    (Failed in the run)
+Skipped (not on main)     {N}    (no feature file on origin/main)
+Skipped (hybrid)          {N}    (left Active — pass or fail)
 Skipped (protected)       {N}    (passed/blocked/failed — untouched)
 Not found in plan         {N}    TC IDs: ...
 Errors                    {N}    (after 5 retries)
@@ -454,6 +660,22 @@ Errors                    {N}    (after 5 retries)
 - Only two outcome values are ever written: `passed` and `notApplicable` — nothing else.
 - **Never overwrite protected outcomes** — skip any point whose `currentOutcome` is
   `passed`, `blocked`, or `failed`.
+- **Never stamp a HYBRID test case** — hybrid points stay `Active` whether the run
+  passed or failed, because only half the test is automated. The hybrid set comes
+  from Phase 1b, *not* from the JUnit artifact — the junit formatter emits no tags.
+  Hybrid is checked **before** the protected/not-found rules, so a hybrid id never
+  reaches `willUpdate`. Resetting an already-stamped hybrid point back to Active
+  requires an explicit Yes at the checkpoint.
+- **`main` is the source of truth for the tests** — both the test inventory
+  (`onMain`) and the hybrid set are read from `origin/main`, exported with
+  `git archive` into `$env:TEMP\ado-testplan-sync\main-features\`. Never the local
+  working tree, never the run's own commit. The decisions must be identical no
+  matter which branch is checked out or what is uncommitted. Show the `main` SHA
+  in the preview.
+- **Only sync tests that exist on `main`** — a result whose tc id has no feature
+  file on `main` is branch-only (or renamed/deleted since) and is never written.
+- **The run itself should be a `main` run** — check `headBranch` in Phase 0 and
+  require explicit confirmation before syncing a branch run.
 - The ADO test case id is the **leading numeric sequence** of the JUnit
   `<testcase classname="...">` (the feature title's ADO prefix).
 - Deduplicate by `tc_id` — worst outcome wins across all suites in the run
