@@ -1,8 +1,8 @@
 name: Suite - Shell
 
 # 3rd in the chain. Started by the previous domain's `chain-next` job (Hotels
-# dispatches this ~5 min after it finishes), and also manually dispatchable on
-# its own. When this run finishes, its own `chain-next` job waits 5 min and
+# dispatches this ~2 min after it finishes), and also manually dispatchable on
+# its own. When this run finishes, its own `chain-next` job waits 2 min and
 # dispatches "Suite - Transportation". The chain self-dispatches instead of
 # using the workflow_run event — see suite-scheduler.yml header for why.
 
@@ -71,7 +71,7 @@ jobs:
           ]
         }
 
-  # Advance the chain: 5 min after this domain finishes, dispatch Transportation
+  # Advance the chain: 2 min after this domain finishes, dispatch Transportation
   # (the last domain). Runs on success OR failure; skipped only if cancelled.
   chain-next:
     name: Start next domain (Transportation)
@@ -82,12 +82,12 @@ jobs:
     permissions:
       actions: write
     steps:
-      - name: Wait 5 min, then dispatch Suite - Transportation
+      - name: Wait 2 min, then dispatch Suite - Transportation
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo "Cooldown 5 min before starting the next domain (Transportation)…"
-          sleep 300
+          echo "Cooldown 2 min before starting the next domain (Transportation)…"
+          sleep 120
           # Retry: transient GitHub API 5xx must not break the chain (run #29709388523 died on a one-off HTTP 503).
           for attempt in 1 2 3 4 5; do
             if gh workflow run suite-transportation.yml --ref main --repo "$GITHUB_REPOSITORY"; then

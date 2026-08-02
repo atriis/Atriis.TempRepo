@@ -1,10 +1,10 @@
 name: Suite - Flights
 
 # HEAD of the stable domain chain: Flights → Hotels → Shell → Transportation.
-# Dispatched daily at 21:00 Portugal time by suite-scheduler.yml (the schedule
+# Dispatched daily at 21:10 Portugal time by suite-scheduler.yml (the schedule
 # lives there so decoy DST cron slots can't start the downstream chain), and
 # manually dispatchable here. When this run finishes, the `chain-next` job waits
-# 5 min and dispatches "Suite - Hotels" (which does the same for Shell, and so
+# 2 min and dispatches "Suite - Hotels" (which does the same for Shell, and so
 # on). The chain advances by self-dispatch, NOT the workflow_run event, because
 # the built-in GITHUB_TOKEN can't trigger workflow_run cascades — see
 # suite-scheduler.yml header for the full rationale.
@@ -72,7 +72,7 @@ jobs:
         }
 
   # Advance the chain: after this whole domain run (test + report) finishes,
-  # wait 5 min and dispatch the next domain. Runs on success OR failure (domains
+  # wait 2 min and dispatch the next domain. Runs on success OR failure (domains
   # are independent); skipped only if this run was cancelled. `gh workflow run`
   # is a workflow_dispatch, which github.token is allowed to trigger.
   chain-next:
@@ -84,12 +84,12 @@ jobs:
     permissions:
       actions: write
     steps:
-      - name: Wait 5 min, then dispatch Suite - Hotels
+      - name: Wait 2 min, then dispatch Suite - Hotels
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo "Cooldown 5 min before starting the next domain (Hotels)…"
-          sleep 300
+          echo "Cooldown 2 min before starting the next domain (Hotels)…"
+          sleep 120
           # Retry: transient GitHub API 5xx must not break the chain (run #29709388523 died on a one-off HTTP 503).
           for attempt in 1 2 3 4 5; do
             if gh workflow run suite-hotels.yml --ref main --repo "$GITHUB_REPOSITORY"; then

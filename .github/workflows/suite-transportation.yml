@@ -1,7 +1,7 @@
 name: Suite - Transportation
 
 # LAST in the chain (Cars + Rails). Started by the previous domain's
-# `chain-next` job (Shell dispatches this ~5 min after it finishes), and also
+# `chain-next` job (Shell dispatches this ~2 min after it finishes), and also
 # manually dispatchable on its own. Being last, it has no `chain-next` job — the
 # chain ends here.
 
