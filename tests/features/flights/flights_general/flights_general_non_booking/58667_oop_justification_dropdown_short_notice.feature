@@ -6,7 +6,7 @@
 # Updated: 2025-09-16T02:24:51Z
 
 @regression @flights @general @oop @travel-policy
-Feature: 58667 Flights - OOP justification dropdown for flights less than two weeks ahead
+Feature: 58667 Flights - When adding to cart a flight that is less than two weeks ahead, saving justification dropdown works as expected
   As a corporate traveler
   I want to save OOP justification when booking a flight less than two weeks ahead
   So that I can explain why I'm booking on short notice
