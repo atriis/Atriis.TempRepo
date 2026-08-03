@@ -1,0 +1,342 @@
+name: Rerun Failures (reusable)
+
+# Reusable engine behind the four per-domain rerun workflows (Rerun - Flights,
+# Rerun - Hotels, Rerun - Shell, Rerun - Transportation). Manual only: nothing
+# schedules or chains into it, so it never runs unless someone asks for it.
+#
+# What it does, in one job:
+#   1. resolve the source run — an explicit run id, or the most recent COMPLETED
+#      run of that domain's suite workflow (success or failure; cancelled and
+#      in-progress runs are skipped)
+#   2. download that run's `*-report` artifacts (the per-suite
+#      cucumber-report.json files) and extract every failed scenario as a
+#      `path/to.feature:LINE` location
+#   3. check the repo out AT THAT RUN'S COMMIT and rerun exactly those locations
+#
+# Why the source run's commit and not main: the line numbers come from that
+# run's feature files. Checking out main would rerun whatever now sits on those
+# lines, which after any edit is a different scenario (or none at all). Rerunning
+# at the run's SHA reproduces the failure faithfully — it does NOT pick up fixes
+# pushed since. Fixes get verified by the normal suite run.
+#
+# Two hard safety rails, both learned the expensive way:
+#   - `cucumber-js` with no path arguments runs the ENTIRE suite, which fires
+#     real bookings. The run step refuses to start with an empty location list.
+#   - the list is capped (max-scenarios). A rerun that inherits a whole domain's
+#     worth of failures would blow past its own timeout and report nothing. What
+#     gets dropped is always printed — never silently truncated.
+#
+# The failure reports are read straight from the per-suite artifacts rather than
+# the report job's summary.json, so a rerun still works when the source run's
+# report job failed or was skipped.
+
+on:
+  workflow_call:
+    inputs:
+      domain:
+        description: Human-readable domain label used in job names (e.g. "Flights").
+        required: true
+        type: string
+      suite-workflow:
+        description: Suite workflow filename to pull failures from (e.g. "suite-flights.yml").
+        required: true
+        type: string
+      run-id:
+        description: Specific run id of that suite workflow. Blank = its latest completed run.
+        required: false
+        type: string
+        default: ''
+      parallel:
+        description: Cucumber workers. Keep at 1 for booking suites.
+        required: false
+        type: number
+        default: 1
+      retry:
+        description: Cucumber --retry for the rerun.
+        required: false
+        type: number
+        default: 1
+      max-scenarios:
+        description: Safety cap on how many failed scenarios one rerun may take.
+        required: false
+        type: number
+        default: 40
+      job-timeout-minutes:
+        required: false
+        type: number
+        default: 180
+      step-timeout-minutes:
+        required: false
+        type: number
+        default: 170
+
+env:
+  LOG_LEVEL: info
+  LOG_FORMAT: pretty
+
+jobs:
+  rerun:
+    name: '[${{ inputs.domain }}] Rerun failed scenarios'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.job-timeout-minutes }}
+    permissions:
+      contents: read
+      actions: read # gh run list / view / download against the source run
+    steps:
+      # Initial checkout is only needed to resolve the local composite action
+      # below; the tree is replaced with the source run's commit before the
+      # tests actually run.
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Resolve source run
+        id: source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUITE_WORKFLOW: ${{ inputs.suite-workflow }}
+          REQUESTED_RUN_ID: ${{ inputs.run-id }}
+        run: |
+          set -euo pipefail
+          if [ -n "$REQUESTED_RUN_ID" ]; then
+            run_id="$REQUESTED_RUN_ID"
+            echo "Using the run id supplied on dispatch: $run_id"
+          else
+            # Latest run that actually finished producing results. A cancelled
+            # or still-running run has partial (or no) artifacts, so skip past
+            # those to the newest success/failure.
+            run_id=$(gh run list --workflow "$SUITE_WORKFLOW" --repo "$GITHUB_REPOSITORY" \
+              --limit 30 --json databaseId,status,conclusion \
+              --jq '[.[] | select(.status == "completed" and (.conclusion == "success" or .conclusion == "failure"))][0].databaseId')
+          fi
+          if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
+            echo "::error::No completed run of $SUITE_WORKFLOW found to rerun failures from."
+            exit 1
+          fi
+
+          meta=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" \
+            --json headSha,displayTitle,conclusion,createdAt,url,workflowName)
+          head_sha=$(jq -r '.headSha' <<<"$meta")
+          run_url=$(jq -r '.url' <<<"$meta")
+
+          {
+            echo "run_id=$run_id"
+            echo "head_sha=$head_sha"
+            echo "run_url=$run_url"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## ${{ inputs.domain }} — Rerun of failed scenarios"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Source run | [$(jq -r '.workflowName' <<<"$meta") #$run_id]($run_url) |"
+            echo "| Source conclusion | $(jq -r '.conclusion' <<<"$meta") |"
+            echo "| Source started | $(jq -r '.createdAt' <<<"$meta") |"
+            echo "| Commit under test | \`$head_sha\` |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Everything lands in RUNNER_TEMP, not the workspace: the checkout that
+      # follows runs `git clean -ffdx` and would delete the rerun list.
+      - name: Download failure reports from the source run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.source.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/source-artifacts"
+          if ! gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" \
+               -p '*-report' -D "$RUNNER_TEMP/source-artifacts"; then
+            echo "::warning::No '*-report' artifacts could be downloaded from run $RUN_ID (expired, or the run produced none)."
+          fi
+          echo "Report files found: $(find "$RUNNER_TEMP/source-artifacts" -name cucumber-report.json | wc -l)"
+
+      - name: Build the rerun list
+        id: list
+        shell: bash
+        env:
+          MAX_SCENARIOS: ${{ inputs.max-scenarios }}
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const root = path.join(process.env.RUNNER_TEMP, 'source-artifacts');
+          const listFile = path.join(process.env.RUNNER_TEMP, 'rerun-locations.txt');
+          const cap = parseInt(process.env.MAX_SCENARIOS || '40', 10);
+
+          // Same semantics as the suite report: strict mode fails the run on
+          // pending/undefined/ambiguous too, so those are failures to rerun.
+          const FAIL_STATUSES = new Set(['failed', 'ambiguous', 'pending', 'undefined']);
+
+          const walk = (dir) => !fs.existsSync(dir) ? [] :
+            fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+              e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]);
+
+          const reports = walk(root).filter((f) => path.basename(f) === 'cucumber-report.json');
+          const found = [];
+          for (const file of reports) {
+            // artifact dir is "<suite_id>-report" — keep the suite for the summary
+            const m = file.match(/source-artifacts[\\/]([^\\/]+)-report[\\/]/);
+            const suiteId = m ? m[1] : '';
+            let data;
+            try { data = JSON.parse(fs.readFileSync(file, 'utf8')); }
+            catch (e) { console.log('Skipping invalid JSON: ' + file); continue; }
+            for (const feature of (Array.isArray(data) ? data : [data])) {
+              // Reports written on a Windows dev box carry backslash uris.
+              const uri = String(feature.uri || '').replace(/\\/g, '/');
+              if (!uri) continue;
+              for (const el of (feature.elements || [])) {
+                if (el.type !== 'scenario') continue;
+                const steps = el.steps || [];
+                if (!steps.some((s) => s.result && FAIL_STATUSES.has(s.result.status))) continue;
+                found.push({ loc: uri + ':' + el.line, suite: suiteId, scenario: el.name || '' });
+              }
+            }
+          }
+
+          const seen = new Set();
+          const unique = found.filter((f) => !seen.has(f.loc) && seen.add(f.loc));
+          unique.sort((a, b) => a.loc.localeCompare(b.loc));
+
+          const selected = unique.slice(0, cap);
+          const dropped = unique.slice(cap);
+
+          fs.writeFileSync(listFile, selected.map((s) => s.loc).join('\n') + (selected.length ? '\n' : ''));
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'count=' + selected.length + '\n');
+
+          const esc = (t) => String(t || '').slice(0, 220).split('\n').join(' ').split('|').join('¦');
+          const out = [];
+          if (unique.length === 0) {
+            out.push('### Nothing to rerun', '', 'The source run reported no failed scenarios.', '');
+          } else {
+            out.push('### Scenarios being rerun (' + selected.length + ')', '');
+            out.push('| Suite | Scenario | Location |');
+            out.push('|-------|----------|----------|');
+            for (const s of selected) out.push('| ' + esc(s.suite) + ' | ' + esc(s.scenario) + ' | ' + esc(s.loc) + ' |');
+            out.push('');
+            if (dropped.length > 0) {
+              // Never truncate silently — a capped rerun that looks complete is
+              // worse than one that says what it left behind.
+              out.push('> **' + dropped.length + ' further failed scenario(s) were NOT rerun** (max-scenarios = ' + cap + '):');
+              out.push('>');
+              for (const s of dropped) out.push('> - `' + esc(s.loc) + '` — ' + esc(s.scenario));
+              out.push('');
+              console.log('::warning::' + dropped.length + ' failed scenario(s) exceeded the max-scenarios cap of ' + cap + ' and were not rerun.');
+            }
+          }
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
+          console.log('Selected ' + selected.length + ' of ' + unique.length + ' failed scenario(s) from ' + reports.length + ' report file(s).');
+          NODE
+
+      - name: Nothing to rerun
+        if: steps.list.outputs.count == '0'
+        shell: bash
+        run: echo "Source run ${{ steps.source.outputs.run_id }} had no failed scenarios — nothing to do."
+
+      # From here on, the workspace IS the source run's commit, so the feature
+      # file line numbers in the rerun list mean what they meant then.
+      - name: Check out the commit the failures happened on
+        if: steps.list.outputs.count != '0'
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ steps.source.outputs.head_sha }}
+
+      - name: Setup test environment
+        if: steps.list.outputs.count != '0'
+        uses: ./.github/actions/setup-test-env
+        with:
+          env-file-content: ${{ secrets.ENV }}
+
+      - name: Rerun failed scenarios
+        if: steps.list.outputs.count != '0'
+        timeout-minutes: ${{ inputs.step-timeout-minutes }}
+        shell: bash
+        env:
+          CI: "true"
+        run: |
+          set -euo pipefail
+          mapfile -t LOCATIONS < "$RUNNER_TEMP/rerun-locations.txt"
+          # Hard stop: `cucumber-js` with no path arguments runs the WHOLE suite,
+          # which means real bookings against staging. An empty list is a bug in
+          # the step above, never an instruction to run everything.
+          if [ "${#LOCATIONS[@]}" -eq 0 ]; then
+            echo "::error::Rerun list is empty — refusing to invoke cucumber-js with no arguments."
+            exit 1
+          fi
+          echo "Rerunning ${#LOCATIONS[@]} scenario(s):"
+          printf '  %s\n' "${LOCATIONS[@]}"
+          npx cucumber-js "${LOCATIONS[@]}" \
+            --profile ci \
+            --parallel ${{ inputs.parallel }} \
+            --retry ${{ inputs.retry }}
+
+      - name: Post rerun outcome
+        if: always() && steps.list.outputs.count != '0'
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const file = 'test-results/cucumber-report.json';
+            if (!fs.existsSync(file)) {
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, '\n### Rerun result\n\nNo cucumber report was produced — the rerun step timed out or crashed before writing results.\n');
+              process.exit(0);
+            }
+            const FAIL = new Set(['failed','ambiguous','pending','undefined']);
+            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+            const esc = t => String(t || '').slice(0, 220).split('\n').join(' ').split('|').join('¦');
+            let passed = 0;
+            const rows = [];
+            for (const feature of (Array.isArray(data) ? data : [data])) {
+              const uri = String(feature.uri || '').replace(/\\\\/g, '/');
+              for (const el of (feature.elements || [])) {
+                if (el.type !== 'scenario') continue;
+                const steps = el.steps || [];
+                const bad = steps.find(s => s.result && FAIL.has(s.result.status));
+                if (bad) {
+                  const err = ((bad.result && bad.result.error_message) || '').split('\n')[0];
+                  rows.push('| ❌ | ' + esc(el.name) + ' | ' + esc(uri + ':' + el.line) + ' | ' + esc(err) + ' |');
+                } else { passed++; rows.push('| ✅ | ' + esc(el.name) + ' | ' + esc(uri + ':' + el.line) + ' | — |'); }
+              }
+            }
+            const failed = rows.length - passed;
+            const out = ['', '### Rerun result', '',
+              '**' + passed + ' now passing, ' + failed + ' still failing** (of ' + rows.length + ' rerun).', '',
+              '| | Scenario | Location | Error |', '|---|----------|----------|-------|', ...rows, ''];
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
+          "
+        continue-on-error: true
+
+      - name: Upload rerun JUnit results
+        if: always() && steps.list.outputs.count != '0'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rerun-${{ inputs.domain }}-results
+          path: test-results/cucumber-junit.xml
+          if-no-files-found: ignore
+
+      - name: Upload rerun Cucumber report
+        if: always() && steps.list.outputs.count != '0'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rerun-${{ inputs.domain }}-report
+          path: test-results/cucumber-report.json
+          if-no-files-found: ignore
+
+      - name: Upload rerun screenshots
+        if: always() && steps.list.outputs.count != '0'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rerun-${{ inputs.domain }}-screenshots
+          path: test-results/screenshots/
+          if-no-files-found: ignore
+
+      - name: Upload rerun traces
+        if: always() && steps.list.outputs.count != '0'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rerun-${{ inputs.domain }}-traces
+          path: test-results/traces/
+          if-no-files-found: ignore

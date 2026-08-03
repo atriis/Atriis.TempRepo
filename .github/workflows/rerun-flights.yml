@@ -1,0 +1,57 @@
+name: Rerun - Flights
+
+# Manual only. Reruns the scenarios that FAILED in the latest completed
+# "Suite - Flights" run (or in a specific run id you pass in), against the
+# commit that run used. Nothing schedules or chains into this — it exists so a
+# domain's failures can be re-checked without paying for a whole suite run.
+#
+# All the logic lives in rerun-runner.yml; this file only supplies the domain
+# and the dispatch knobs. See that file's header for the safety rails.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Suite - Flights run id to take failures from (blank = latest completed run)'
+        required: false
+        type: string
+        default: ''
+      parallel:
+        description: 'Cucumber workers (keep at 1 — flight bookings are real)'
+        required: false
+        type: choice
+        default: '1'
+        options: ['1', '2', '3', '4']
+      retry:
+        description: 'Retries per scenario'
+        required: false
+        type: choice
+        default: '1'
+        options: ['0', '1', '2', '3']
+      max_scenarios:
+        description: 'Safety cap — failures beyond this are listed but not rerun'
+        required: false
+        type: string
+        default: '40'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: rerun-flights
+  cancel-in-progress: false
+
+jobs:
+  rerun:
+    uses: ./.github/workflows/rerun-runner.yml
+    secrets: inherit
+    with:
+      domain: Flights
+      suite-workflow: suite-flights.yml
+      run-id: ${{ inputs.run_id }}
+      parallel: ${{ fromJSON(inputs.parallel) }}
+      retry: ${{ fromJSON(inputs.retry) }}
+      max-scenarios: ${{ fromJSON(inputs.max_scenarios) }}
+      job-timeout-minutes: 300
+      step-timeout-minutes: 290
