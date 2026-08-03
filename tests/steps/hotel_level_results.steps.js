@@ -290,6 +290,11 @@ Then("the hotel at position {int} should be {string}", async function (index, ex
   await HotelLevelResults.verifyHotelNameAtIndex(this.page, index, expectedName);
 });
 
+Then("the hotel at position {int} should be highlighted", async function (index) {
+  logger.info("Verifying hotel at position is highlighted", { index });
+  await HotelLevelResults.verifyHotelHighlightedAtIndex(this.page, index);
+});
+
 Then("the hotel at position {int} should preferably be {string}", async function (index, expectedName) {
   logger.info("Soft-checking hotel name at position (non-blocking)", { index, expectedName });
   try {

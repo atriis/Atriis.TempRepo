@@ -24,6 +24,9 @@ const SELECTORS = {
   SORT_OPTION: (value) => `.el-select-dropdown__item:has-text("${value}")`,
   // Hotel card containers for index-based selection
   HOTEL_CARD: '.hotel-preview',
+  // Highlight class applied to the searched/preselected hotel card (hotel-list.vue binds
+  // '.selected-hotel' on the <hotel-preview> root when the hotel matches the preselected search).
+  HOTEL_CARD_HIGHLIGHT_CLASS: 'selected-hotel',
   VIEW_RATES_BUTTON: `${require("@pages/ResultsPage").SELECTORS.RESULTS_BUTTON}:has-text("View rates")`,
   // Hotel detail drawer amenities
   HOTEL_AMENITY_ACTIVE: '.hotel-amenities .grid div.black',
@@ -830,6 +833,22 @@ class HotelLevelResultsPage {
     const name = this.page.locator(SELECTORS.HOTEL_NAME).nth(index - 1);
     await name.waitFor({ state: 'visible', timeout: 30000 });
     return (await name.textContent()).trim();
+  }
+
+  /**
+   * Checks whether the hotel card at a specific 1-based index carries the
+   * highlight class ('.selected-hotel') applied to the searched/preselected hotel.
+   * @param {number} index - 1-based hotel card index
+   * @returns {Promise<boolean>} True if the card at that position is highlighted
+   */
+  async isHotelHighlightedAtIndex(index) {
+    if (typeof index !== 'number' || index < 1) {
+      throw new Error('index must be >= 1, got: ' + index);
+    }
+    const card = this.page.locator(SELECTORS.HOTEL_CARD).nth(index - 1);
+    await card.waitFor({ state: 'visible', timeout: 30000 });
+    const classAttr = (await card.getAttribute('class')) || '';
+    return classAttr.split(/\s+/).includes(SELECTORS.HOTEL_CARD_HIGHLIGHT_CLASS);
   }
 
   /**

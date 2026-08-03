@@ -895,6 +895,23 @@ const HotelLevelResults = {
   },
 
   /**
+   * Verifies that the hotel at a specific position is highlighted — the visual
+   * emphasis the app applies to the specific hotel the user searched for.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} index - 1-based hotel position expected to be highlighted
+   */
+  async verifyHotelHighlightedAtIndex(page, index) {
+    if (!page) throw new Error('page is required');
+    if (typeof index !== 'number' || index < 1) throw new Error('index must be >= 1, got: ' + index);
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const isHighlighted = await hotelLevelResultsPage.isHotelHighlightedAtIndex(index);
+
+    expect(isHighlighted, `Expected the hotel at position ${index} to be highlighted (searched hotel), but it was not`).toBe(true);
+  },
+
+  /**
    * Clicks a supplier filter checkbox to filter hotel results by supplier.
    * @param {import('playwright').Page} page
    * @param {string} supplierName - Supplier name (e.g. "sabre", "amadeus", "expedia")
