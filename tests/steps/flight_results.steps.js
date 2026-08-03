@@ -581,6 +581,19 @@ Then("flight results should be available", async function () {
   expect(isDisplayed).toBe(true);
 });
 
+Then("the displayed results departure times match the selected time frame", async function () {
+  // this.selectedTimeFrame is set by the "I select time frame ... for both legs" step and carries
+  // the window bounds (minHour/maxHour) that go with the label picked in advanced search.
+  expect(
+    this.selectedTimeFrame,
+    'No time frame was selected earlier in the scenario — this step must follow a time-frame selection step'
+  ).toBeTruthy();
+
+  logger.info("Verifying results departure times match the selected time frame", this.selectedTimeFrame);
+  const result = await FlightResults.verifyResultsDepartureTimesMatchTimeFrame(this.page, this.selectedTimeFrame);
+  logger.info("Results departure times verified", { checked: result.checked });
+});
+
 Then("the flight origin should show {string}", async function (expectedOrigin) {
   logger.info("Verifying the flight origin on the results header", { expectedOrigin });
   await FlightResults.verifyFlightResultsOrigin(this.page, expectedOrigin);

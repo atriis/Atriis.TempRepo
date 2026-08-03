@@ -2291,6 +2291,53 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     return (await departureDate.textContent()).trim();
   }
 
+  /**
+   * Reads the per-leg departure time of each result card.
+   *
+   * A card holds one .flight-info-container per leg (flight-preview.vue renders it
+   * `v-for` over flightResult.segments), and inside a leg the first .flight-time is the
+   * leg's departure (flights[0].depDate) while the second is its arrival. Only the leg
+   * departure is constrained by the search time frame, so connection departures inside a
+   * leg are deliberately not read.
+   *
+   * @param {Object} [options]
+   * @param {number} [options.maxCards] - Cap on how many cards to read (default: 5)
+   * @param {number} [options.timeout] - Max wait for the first card/leg to render
+   * @returns {Promise<Array<{cardIndex: number, legIndex: number, time: string}>>}
+   */
+  async getResultsLegDepartureTimes({ maxCards = 5, timeout = 60000 } = {}) {
+    const cards = this.page.locator(SELECTORS.FLIGHT_PREVIEW);
+    await cards.first().waitFor({ state: 'visible', timeout });
+
+    const cardCount = Math.min(await cards.count(), maxCards);
+    const departures = [];
+
+    for (let cardIndex = 0; cardIndex < cardCount; cardIndex += 1) {
+      const legs = cards.nth(cardIndex).locator(SELECTORS.FLIGHT_PREVIEW_SEGMENT);
+      await legs.first().waitFor({ state: 'visible', timeout });
+
+      const legCount = await legs.count();
+      for (let legIndex = 0; legIndex < legCount; legIndex += 1) {
+        const departure = legs.nth(legIndex).locator(SELECTORS.FLIGHT_TIME).first();
+        await departure.waitFor({ state: 'visible', timeout });
+        departures.push({
+          cardIndex,
+          legIndex,
+          time: ((await departure.innerText()) ?? '').replace(/\s+/g, ' ').trim(),
+        });
+      }
+    }
+
+    if (!departures.length) {
+      throw new Error(
+        '[FlightResultsPage.getResultsLegDepartureTimes] Could not read any leg departure time from the ' +
+        `results cards (selectors: ${SELECTORS.FLIGHT_PREVIEW} > ${SELECTORS.FLIGHT_PREVIEW_SEGMENT} > ${SELECTORS.FLIGHT_TIME}).`
+      );
+    }
+
+    return departures;
+  }
+
   async getFirstResultFlightSegmentSummaries({ timeout = 60000 } = {}) {
     const card = this.page.locator(SELECTORS.FLIGHT_PREVIEW).first();
     await card.waitFor({ state: 'visible', timeout });

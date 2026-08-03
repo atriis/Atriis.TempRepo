@@ -30,6 +30,30 @@ function extractDayToken(dateText) {
   return match[1];
 }
 
+/**
+ * Converts a displayed flight time into minutes past midnight. Handles both notations the
+ * results page can render depending on the corporation's time-format setting: 24-hour
+ * ("15:35") and 12-hour AM/PM ("3:35 PM").
+ *
+ * @param {string} timeText - Time as displayed, e.g. "15:35" or "3:35 PM"
+ * @returns {number} Minutes past midnight
+ */
+function parseTimeOfDayToMinutes(timeText) {
+  const match = (timeText ?? '').match(/\b(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (!match) {
+    throw new Error(`Could not parse a time of day from flight time text: "${timeText}"`);
+  }
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const meridiem = match[3]?.toUpperCase();
+
+  if (meridiem === 'AM' && hours === 12) hours = 0;
+  if (meridiem === 'PM' && hours !== 12) hours += 12;
+
+  return hours * 60 + minutes;
+}
+
 // Per-leg fare-rule cross-check helpers (bug 79393). These mirror the app's own mapping
 // (extractRefundFeature / extractChangeFeature in _flight-brand-builder.logic.ts) so the test can
 // assert each brand card's change/cancellation badge reflects that leg's fare rules from the
@@ -3741,6 +3765,72 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     ).toBe(0);
 
     return { totalResults: results.length, matchingCarrier: matching.length, matchingFromForbidden: 0 };
+  },
+
+  /**
+   * Verifies every displayed leg departure time falls inside the searched time frame.
+   *
+   * The advanced-search time frame constrains each leg's DEPARTURE, so the check reads the
+   * first .flight-time of every leg on the result cards.
+   *
+   * WARN — the frame is matched at HOUR granularity, i.e. "Afternoon (11:00-17:00)" accepts
+   * 11:00 through 17:59, not 17:00 sharp. The app does not filter client-side: it sends the
+   * frame to the supplier as a preferred time plus a window in whole hours
+   * (Afternoon = timeString '1400' + deltaInHours 3, flight/models/consts.ts), and Amadeus
+   * applies that window per hour bucket, so the whole 17:00 hour comes back (observed: 17:10
+   * on a BRU-BCN afternoon search). Minute-exact bounds would fail on that boundary hour for
+   * a supplier behaviour the app cannot control. This still fails loudly on results genuinely
+   * outside the frame — an unfiltered BRU-BCN search returns a 06:40 inbound leg.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Object} timeFrame - Resolved frame from FlightSearch.resolveTimeFrame
+   * @param {number} timeFrame.minHour - Window start hour, e.g. 11
+   * @param {number} timeFrame.maxHour - Window end hour, e.g. 17
+   * @param {string} [timeFrame.label] - Dropdown label, used in failure messages
+   * @param {Object} [options]
+   * @param {number} [options.maxCards] - How many result cards to check (default: 5)
+   * @returns {Promise<{checked: number, departures: Array<{cardIndex: number, legIndex: number, time: string}>}>}
+   */
+  async verifyResultsDepartureTimesMatchTimeFrame(page, timeFrame, { maxCards = 5 } = {}) {
+    if (!page) throw new Error('[FlightResults.verifyResultsDepartureTimesMatchTimeFrame] "page" is required.');
+    const { minHour, maxHour, label } = timeFrame ?? {};
+    if (!Number.isFinite(minHour) || !Number.isFinite(maxHour)) {
+      throw new Error(
+        '[FlightResults.verifyResultsDepartureTimesMatchTimeFrame] "timeFrame" must carry numeric minHour/maxHour ' +
+        `(from FlightSearch.resolveTimeFrame), got: ${JSON.stringify(timeFrame)}`
+      );
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const departures = await flightResultsPage.getResultsLegDepartureTimes({ maxCards });
+
+    const frameText = label ?? `${minHour}:00-${maxHour}:00`;
+
+    const outOfRange = [];
+    for (const departure of departures) {
+      const hour = Math.floor(parseTimeOfDayToMinutes(departure.time) / 60);
+      if (hour < minHour || hour > maxHour) {
+        outOfRange.push(departure);
+      }
+    }
+
+    logger.info('Verified results departure times against the searched time frame', {
+      timeFrame: frameText,
+      acceptedHours: `${minHour}:00-${maxHour}:59`,
+      checked: departures.length,
+      outOfRange: outOfRange.length,
+    });
+
+    expect(
+      outOfRange,
+      `[FlightResults.verifyResultsDepartureTimesMatchTimeFrame] ${outOfRange.length} of ${departures.length} leg ` +
+      `departure time(s) fall outside the searched time frame "${frameText}" (accepted at hour granularity: ` +
+      `${minHour}:00-${maxHour}:59): ` +
+      `${outOfRange.map((d) => `card ${d.cardIndex + 1} leg ${d.legIndex + 1} departs ${d.time}`).join('; ')}. ` +
+      `All departures read: ${departures.map((d) => d.time).join(', ')}.`
+    ).toEqual([]);
+
+    return { checked: departures.length, departures };
   },
 }
 

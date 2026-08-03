@@ -543,12 +543,19 @@ const FlightSearch = {
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
 
-    await searchPage.clickDepartureDateField();
-    await searchPage.clickCalendarNextArrow();
-    await selectDatesByNthAvailable(page, {
-      startIndex: departureIndex,
-      endIndex: returnIndex,
-    });
+    if (await flightSearchPage.isAdvancedSearchExpanded()) {
+      // Advanced layout (e.g. time-frame-restricted users have advanced search force-enabled):
+      // dates are split into per-leg fields, so the single range calendar would leave the
+      // outbound date empty. Same branch as searchFlight.
+      await this._selectAdvancedRoundTripDates(page, departureIndex, returnIndex);
+    } else {
+      await searchPage.clickDepartureDateField();
+      await searchPage.clickCalendarNextArrow();
+      await selectDatesByNthAvailable(page, {
+        startIndex: departureIndex,
+        endIndex: returnIndex,
+      });
+    }
 
     // Optional cabin-class selection (e.g. "Premium Economy") before completing the trip setup.
     if (cabinClass) {

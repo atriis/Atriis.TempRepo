@@ -15,7 +15,9 @@ Feature: 80191 Amadeus - Flights matching time frame search criteria are display
   Scenario: Flights matching afternoon time frame and carrier filter are displayed
     Given I am logged in as "timeFrame@ama.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "BRU" to "BCN"
+    When I search for a round trip flight from "BRU" to "BCN" without clicking search button
     And I select time frame "afternoon" for both legs
+    And I click the search button
     And I filter results by carrier "VY"
-    Then results are displayed and departure times match the selected time frame in search
+    Then flight results should be available
+    And the displayed results departure times match the selected time frame
