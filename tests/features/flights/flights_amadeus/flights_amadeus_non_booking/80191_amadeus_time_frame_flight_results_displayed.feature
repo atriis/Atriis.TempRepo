@@ -7,7 +7,7 @@
 # ADO Test Case ID: 80191
 @ado:80191
 @regression @priority:medium @provider:amadeus @flights @time_frame
-Feature: 65427 Amadeus - Flights matching time frame search criteria are displayed in results
+Feature: 80191 Amadeus - Flights matching time frame search criteria are displayed in results
   As a corporate traveler
   I want to search for flights filtered by time frame and carrier
   So that only flights meeting my search criteria are displayed in results
