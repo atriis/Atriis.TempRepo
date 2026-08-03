@@ -19,7 +19,7 @@ Feature: 37304 - Guest reference field is not displayed for a profiled user
     When I search for a one way flight from "LIS" to "NYC"
     Then the following checkout reference fields should not be visible:
     | *Only For Guest |
-    And I click proceed button if visible
+    And I select the trip purpose as "BILLABLE" and proceed
     When I add the first flight to cart
     And the booking status should be "Pending booking"
     When I click add payment method button
