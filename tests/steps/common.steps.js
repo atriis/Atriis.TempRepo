@@ -18,6 +18,7 @@ const App = require("@dsl/App");
 const FlightPricing = require("@dsl/FlightPricing");
 const Cart = require("@dsl/Cart");
 const FlightResults = require("@dsl/FlightResults");
+const Results = require("@dsl/Results");
 const DynamicAndReferenceFields = require("@dsl/DynamicAndReferenceFields");
 const logger = require("@utils/logger").child("Common");
 
@@ -106,6 +107,18 @@ Then('the {string} in the intercepted response should equal {string} plus {strin
 
   logger.info('Field sum validated', { total, a, b });
   return { total, a, b };
+});
+
+Then('the intercepted response should have at least one result where {string} is {string}', async function (field, expectedValue) {
+  logger.info('Verifying the intercepted response has a matching result', { field, expectedValue });
+  const { total, matches } = await Results.countResultsWhereFieldEquals(this.page, this.lastInterceptedResponsePromise, field, expectedValue);
+  expect(matches, `Expected at least one of the ${total} results to have "${field}" = "${expectedValue}"`).toBeGreaterThan(0);
+});
+
+Then('the intercepted response should have no result where {string} is {string}', async function (field, expectedValue) {
+  logger.info('Verifying the intercepted response has no matching result', { field, expectedValue });
+  const { total, matches } = await Results.countResultsWhereFieldEquals(this.page, this.lastInterceptedResponsePromise, field, expectedValue);
+  expect(matches, `Expected none of the ${total} results to have "${field}" = "${expectedValue}"`).toBe(0);
 });
 
 Given("I work on tab {int}", async function (tabNumber) {

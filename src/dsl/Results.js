@@ -2,6 +2,8 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { CommonPage, SELECTORS } = require("@pages/CommonPage");
 const { expect } = require("@playwright/test");
+const { readJson } = require("@utils/networkInterceptor");
+const logger = require("@utils/logger").child("Results-DSL");
 
 /**
  * Results DSL
@@ -10,6 +12,49 @@ const { expect } = require("@playwright/test");
  * Describes WHAT the user does, not HOW the UI works.
  */
 const Results = {
+
+  // ===== INTERCEPTED SEARCH RESPONSE =====
+
+  /**
+   * Counts results in an intercepted search response whose `field` equals `expectedValue`
+   * (compared as strings, so booleans/numbers work — e.g. "hasUnusedTicket" is "true").
+   *
+   * Throws when the response carries no results at all, so a caller asserting "no result
+   * matches" can never pass just because the payload was empty or its shape changed.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Promise<import('@playwright/test').Response>} responsePromise
+   * @param {string} field
+   * @param {string} expectedValue
+   * @returns {Promise<{total: number, matches: number}>}
+   */
+  async countResultsWhereFieldEquals(page, responsePromise, field, expectedValue) {
+    if (!page) throw new Error('page is required');
+    if (!responsePromise) {
+      throw new Error('[Results.countResultsWhereFieldEquals] no intercepted response — call the intercept step before triggering the search');
+    }
+    if (!field || typeof field !== 'string') throw new Error('field must be a non-empty string, got: ' + typeof field);
+    if (typeof expectedValue !== 'string') throw new Error('expectedValue must be a string, got: ' + typeof expectedValue);
+
+    const raw = await readJson(responsePromise);
+    // The response may be the object itself or a single-element array wrapping it, e.g. [{ results: [...] }].
+    const body = Array.isArray(raw) ? raw[0] : raw;
+    const results = Array.isArray(body?.results) ? body.results : [];
+
+    if (results.length === 0) {
+      throw new Error(
+        `[Results.countResultsWhereFieldEquals] the intercepted response carried no results, so "${field}" ` +
+        `could not be evaluated. A "no result matches" assertion would pass vacuously here. ` +
+        `Response keys: ${Object.keys(body ?? {}).join(', ') || '(none)'}`
+      );
+    }
+
+    const matches = results.filter((r) => r && String(r[field]) === expectedValue).length;
+    logger.info('Counted intercepted-response results where field equals value', {
+      field, expectedValue, total: results.length, matches,
+    });
+    return { total: results.length, matches };
+  },
 
   // ===== ADD TO TRIP / SELECT ACTIONS =====
 

@@ -14,9 +14,13 @@ const SELECTORS = {
   // Element Plus dialog header close button (X)
   DIALOG_HEADER_CLOSE_BTN: '.el-dialog__headerbtn',
 
-  // Unused tickets banner on results page
-  UNUSED_TICKETS_BANNER: '.stay-safe-banner',
+  // Unused tickets banner on results page (the <unused-tickets-banner> component; note .stay-safe-banner is
+  // a different, COVID-safety banner)
+  UNUSED_TICKETS_BANNER: '.unused-tickets-banner',
   UNUSED_TICKETS_VIEW_DETAILS: '.view-details-btn',
+
+  // Unused tickets results filter ("Unused Tickets Available" checkbox in the left filter panel)
+  UNUSED_TICKETS_FILTER: '.el-checkbox:has-text("Unused Tickets Available")',
 
   // Checkout: stable section wrapping the unused tickets checkbox + radio list
   UNUSED_TICKETS_CHECKOUT_SECTION: '.reference-form-contact-details:has(.unused-tickets-checkbox)',
@@ -31,6 +35,14 @@ const DEFAULT_TIMEOUT = 30000;
 class UnusedTicketsPage {
   constructor(page) {
     this.page = page;
+  }
+
+  getBanner() {
+    return this.page.locator(SELECTORS.UNUSED_TICKETS_BANNER);
+  }
+
+  getFilter() {
+    return this.page.locator(SELECTORS.UNUSED_TICKETS_FILTER);
   }
 
   async clickUnusedTicketsIconOnSearch({ timeout = DEFAULT_TIMEOUT } = {}) {

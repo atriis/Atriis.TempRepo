@@ -1,7 +1,13 @@
 const { getPageObject } = require('@utils/pageObjectCache');
 const { UnusedTicketsPage } = require('@pages/UnusedTicketsPage');
+const { expect } = require('@playwright/test');
 const App = require('@dsl/App');
-const logger = require('@utils/logger');
+const logger = require('@utils/logger').child('UnusedTickets-DSL');
+
+// The banner/filter render with the results list, so they are given the same budget as a results
+// assertion. An absence check needs no extra budget beyond confirming the results page settled.
+const PRESENCE_TIMEOUT = 15000;
+const ABSENCE_TIMEOUT = 10000;
 
 function assertNoMco(content, where) {
   if (/MCO/i.test(content)) {
@@ -116,6 +122,34 @@ const UnusedTickets = {
 
     const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
     await unusedTicketsPage.closeUnusedTicketsModal();
+  },
+
+  async verifyBannerVisible(page, { timeout = PRESENCE_TIMEOUT } = {}) {
+    if (!page) throw new Error('page parameter is required');
+    logger.info('Verifying the unused tickets banner is visible in results', { timeout });
+    const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+    await expect(unusedTicketsPage.getBanner(), 'Unused tickets banner should be visible in results').toBeVisible({ timeout });
+  },
+
+  async verifyBannerNotVisible(page, { timeout = ABSENCE_TIMEOUT } = {}) {
+    if (!page) throw new Error('page parameter is required');
+    logger.info('Verifying the unused tickets banner is NOT visible in results', { timeout });
+    const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+    await expect(unusedTicketsPage.getBanner(), 'Unused tickets banner should not be visible in results').not.toBeVisible({ timeout });
+  },
+
+  async verifyFilterVisible(page, { timeout = PRESENCE_TIMEOUT } = {}) {
+    if (!page) throw new Error('page parameter is required');
+    logger.info('Verifying the unused tickets filter is visible in results', { timeout });
+    const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+    await expect(unusedTicketsPage.getFilter(), 'Unused Tickets Available filter should be visible in results').toBeVisible({ timeout });
+  },
+
+  async verifyFilterNotVisible(page, { timeout = ABSENCE_TIMEOUT } = {}) {
+    if (!page) throw new Error('page parameter is required');
+    logger.info('Verifying the unused tickets filter is NOT visible in results', { timeout });
+    const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+    await expect(unusedTicketsPage.getFilter(), 'Unused Tickets Available filter should not be visible in results').not.toBeVisible({ timeout });
   },
 };
 
