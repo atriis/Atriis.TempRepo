@@ -6,7 +6,7 @@
 # Fixed in: OBT Frontend
 
 @regression @smoke @flights @bug:75337 @non-booking
-Feature: 75337 OBT - Flight times should display in 12-hour format on the pricing page
+Feature: 77129 OBT - Flight times should display in 12-hour format on the pricing page
   As a corporate traveler with a 12-hour time format profile setting
   I want flight times on the "Your Selection" pricing page to honour my time format preference
   So that the display is consistent with my profile and with the flight search results page
