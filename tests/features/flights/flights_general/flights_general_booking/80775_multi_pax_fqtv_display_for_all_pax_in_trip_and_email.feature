@@ -2,7 +2,7 @@
 # ADO Test Case ID: 80775
 @ado:80775
 @flights @booking
-Feature: 78353 Multi pax with FQTV - Display FQTV for all pax in trip and email
+Feature: 80775 Multi pax with FQTV - Display FQTV for all pax in trip and email
 
   As a booker
   I want to share the itinerary after booking multiple travelers
