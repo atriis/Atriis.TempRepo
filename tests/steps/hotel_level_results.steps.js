@@ -229,6 +229,11 @@ Then("the sort filter has {string} selected", async function (expectedLabel) {
   await HotelLevelResults.verifySortSelected(this.page, expectedLabel);
 });
 
+Then("all hotels are sorted by price from lowest to highest", async function () {
+  logger.info("Verifying hotel results are sorted by price from lowest to highest");
+  await HotelLevelResults.verifyHotelsSortedByPriceAscending(this.page);
+});
+
 When("I share the hotel price offer by email from results", async function () {
   logger.info("Sharing hotel price offer by email from hotel-level results page");
   await HotelLevelResults.shareHotelPriceOfferByEmail(this.page);

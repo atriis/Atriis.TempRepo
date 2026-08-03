@@ -680,6 +680,29 @@ const HotelLevelResults = {
   },
 
   /**
+   * Verifies that all hotel-level results are ordered by price from lowest to highest.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If no priced results are found or the prices are not in ascending order
+   */
+  async verifyHotelsSortedByPriceAscending(page) {
+    if (!page) throw new Error('page is required');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const prices = await hotelLevelResultsPage.getAllHotelLevelPrices();
+    if (prices.length === 0) {
+      throw new Error('Expected hotel results with prices, but none were found');
+    }
+    for (let i = 1; i < prices.length; i++) {
+      if (prices[i] < prices[i - 1]) {
+        throw new Error(
+          `Hotel results are not sorted by price from lowest to highest: ` +
+          `position ${i + 1} (${prices[i]}) is lower than position ${i} (${prices[i - 1]}). ` +
+          `Full order: [${prices.join(', ')}]`
+        );
+      }
+    }
+  },
+
+  /**
    * Verifies the number of supplier filters in the hotel filter panel.
    * @param {import('playwright').Page} page
    * @param {number} expectedCount - Expected number of supplier filters
