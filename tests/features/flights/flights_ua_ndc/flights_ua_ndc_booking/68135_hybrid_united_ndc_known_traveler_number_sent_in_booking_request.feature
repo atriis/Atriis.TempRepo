@@ -7,7 +7,7 @@
 # Updated: 2025-10-01T04:09:57Z
 
 @regression @flights @ndc @united @hybrid @known-traveler @full-purchase
-Feature: HYBRID 68135 United NDC - Known Traveler Number is being sent in the booking request
+Feature: 68135 HYBRID United NDC - Known Traveler Number is being sent in the booking request
 
   As a corporate traveler with a known traveler number
   I want to complete a booking with a traveler that has a known traveler number

@@ -7,7 +7,7 @@
 # Updated: 2025-11-25T08:31:39Z
 
 @regression @flights @ndc @ba @apis @tsa-redress
-Feature: hybrid_54900 BA NDC - TSA redress sent correctly in booking request
+Feature: 54900 BA NDC - TSA redress sent correctly in booking request
 
   As a corporate traveler with TSA/redress data configured
   I want to book a BA NDC flight to the US

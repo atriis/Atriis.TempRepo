@@ -7,7 +7,7 @@
 # Updated: 2025-09-29T06:23:28Z
 
 @regression @flights @ndc @united @hybrid @seating @loyalty
-Feature: HYBRID 55075 United NDC - Loyalty number is being sent on seat request
+Feature: 55075 HYBRID United NDC - Loyalty number is being sent on seat request
 
   As a corporate traveler with a loyalty number
   I want to verify the loyalty number is sent when requesting seats

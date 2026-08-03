@@ -1,5 +1,5 @@
 @regression @flights @priority:medium @domain:flights @workitem:74825
-Feature: Flight pricing options fare component visual validation
+Feature: 74825 Flight pricing options fare component visual validation
   As a traveler
   I want the pricing options fare component text to use the correct color
   So that fare details remain readable and consistent
@@ -7,7 +7,7 @@ Feature: Flight pricing options fare component visual validation
   # Source: ADO #74825 - [Flights new flow][Pricing options][FE] - Incorrect Text Color in Fare Component
   # Note: Step catalog currently has no direct text-color assertion step.
 
-  Scenario: 74825 Verify pricing options fare component is rendered and ready for color validation
+  Scenario: Verify pricing options fare component is rendered and ready for color validation
     Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "lhrToMad"
