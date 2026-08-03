@@ -16,7 +16,7 @@ Feature: 35650 Amadeus - Codeshare flights are displayed
   Scenario: Codeshare "Operated by" text is displayed in results and flight details
     Given I am logged in as "testim@prof.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "AMS" to "YMQ"
+    When I search for a round trip flight from "LON" to "YMQ"
     And flight results should be available
     And I filter results by carrier "DL"
     Then the "Operated by" text should be visible in the flight results
