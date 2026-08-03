@@ -1,12 +1,12 @@
-# Test Name: 66639 Sabre UA NDC Corporate Rate - Flight search returns results with corporate account code
-# Test Case: 66639
+# Test Name: 78891 Sabre UA NDC Corporate Rate - Flight search returns results with corporate account code
+# Test Case: 78891
 # Status: Active
 # Labels: Regression,Flights,Sabre NDC,Froco,Search Flight,payload,2026 plan 2
 # Owner: Yael
 # Created: 2026-06-07
 
 @regression @flights @sabre @sabre-ndc @payload @ado:66639
-Feature: 66639 Sabre UA NDC - Corporate rate flight search returns results for Froco user
+Feature: 78891 Sabre UA NDC - Corporate rate flight search returns results for Froco user
   As a Froco corporate traveler with a Sabre NDC UA agreement
   I want to search for round trip flights via Sabre NDC with my corporate account code
   So that I receive UA NDC corporate rates in the flight results
