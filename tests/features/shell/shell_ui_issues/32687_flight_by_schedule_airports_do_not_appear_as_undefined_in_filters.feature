@@ -16,6 +16,5 @@ Feature: 32687 Flights - Flight by schedule airports do not appear as 'undefined
     Given I am logged in as "testim@prof.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "ATL" to "JNB"
-    And I select one flight segment by schedule
     Then the Select Flight button should be visible in results
     And the airport filter sections "Atlanta Airports" and "Johannesburg Airports" should be visible for route "Atlanta to Johannesburg"
