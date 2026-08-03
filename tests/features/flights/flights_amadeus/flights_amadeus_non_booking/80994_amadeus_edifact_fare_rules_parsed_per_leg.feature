@@ -10,7 +10,7 @@
 # ADO Test Case ID: 80994
 @ado:80994
 @regression @flights @provider:amadeus @fare-rules @edifact
-Feature: 79393 Amadeus EDIFACT - Change and cancellation rules parsed per leg in pricing options
+Feature: 80994 Amadeus EDIFACT - Change and cancellation rules parsed per leg in pricing options
   As a corporate traveler booking an Amadeus EDIFACT round trip
   I want each leg's change and cancellation rules in Pricing Options to reflect that leg's fare rules
   So that every leg shows its parsed rule instead of the generic "check fare rules" fallback
