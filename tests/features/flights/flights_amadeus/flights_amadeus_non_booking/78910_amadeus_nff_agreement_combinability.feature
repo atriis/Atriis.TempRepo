@@ -1,5 +1,9 @@
+# Source: ADO Bug #78480 - New Flight Flow - Pricing Options - NFF allows non-combinable agreement fares
+
+# ADO Test Case ID: 78910
+@ado:78910
 @regression @flights @amadeus @nff @agreement-combinability
-Feature: 78480 Amadeus - New Flight Flow - Agreement fare combinability restriction
+Feature: 78910 Amadeus - New Flight Flow - Agreement fare combinability restriction
 
   Scenario: Selecting non-agreement outbound restricts inbound to non-agreement fares only
     Given I am logged in as "corp.amadeus.nff@amsalem.com" booking a new trip

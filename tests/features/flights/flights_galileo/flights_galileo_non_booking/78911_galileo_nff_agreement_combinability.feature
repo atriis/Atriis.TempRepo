@@ -1,12 +1,16 @@
-@regression @flights @afkl-ndc @nff @agreement-combinability
-Feature: 78480 AFKL NDC - New Flight Flow - Agreement fare combinability restriction
+# Source: ADO Bug #78480 - New Flight Flow - Pricing Options - NFF allows non-combinable agreement fares
+
+# ADO Test Case ID: 78911
+@ado:78911
+@regression @flights @galileo @nff @agreement-combinability
+Feature: 78911 Galileo - New Flight Flow - Agreement fare combinability restriction
 
   Scenario: Selecting non-agreement outbound restricts inbound to non-agreement fares only
-    Given I am logged in as "corp.afklndc.nff@amsalem.com" booking a new trip
+    Given I am logged in as "corp.galileo.nff@gdg.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "CDG" to "AMS"
+    When I search for a round trip "Business" class flight from "LON" to "BER"
     Then flight results should be available
-    And I filter airline results by "Air France" checkbox
+    And I filter airline results by "Eurowings" checkbox
     When I select the first flight result in new flight flow
     Then the outbound leg brand cards are displayed
     When I select the outbound first non-agreement brand card from pricing options new flight flow

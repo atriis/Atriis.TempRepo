@@ -2,8 +2,11 @@
 # Status: Draft
 # Labels: Regression,Flights,Sabre,Regular Markup,2026 plan 2
 
+# Source: ADO User Story #77052 - Sabre - Markup alignment
+
 # ADO Test Case ID: 80769
-@regression @flights @sabre @ado:77052 @management-fee
+@ado:80769
+@regression @flights @sabre @management-fee
 Feature: 80769 Sabre - Origin-Destination MU applied on multi city complete trip for multi PAX
   As a corporate traveler with an origin-destination management markup configuration
   I want to search a multi-city complete trip (LIS-PAR-LON-LIS) with an extended stay in Paris for 2 adult passengers

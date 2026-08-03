@@ -1,9 +1,12 @@
-# Test Name: 77052 Sabre - Office ID MU - published rates - fixed value - by schedule round trip - multi PAX
+# Test Name: 82463 Sabre - Office ID MU - published rates - fixed value - by schedule round trip - multi PAX
 # Status: Draft
 # Labels: Regression,Flights,Sabre,Regular Markup,2026 plan 2
+# Source: ADO User Story #77052 - Sabre - Markup alignment
 
-@regression @flights @sabre @ado:77052 @management-fee
-Feature: 77052 Sabre - Office ID MU fixed value applied on by schedule round trip for multi PAX
+# ADO Test Case ID: 82463
+@ado:82463
+@regression @flights @sabre @management-fee
+Feature: 82463 Sabre - Office ID MU fixed value applied on by schedule round trip for multi PAX
   As a corporate traveler with an office ID management markup configuration
   I want to search round trip flights by schedule for 2 adult passengers on different routes
   So that the fixed markup amount is correctly applied only for the configured office ID

@@ -5,7 +5,11 @@
 # Owner: Yael
 # Created: 2026-06-07
 
-@regression @flights @sabre @sabre-ndc @payload @ado:66639
+# Source: ADO User Story #66639 - [Flights] Sabre UA NDC corporate rate
+
+# ADO Test Case ID: 78891
+@ado:78891
+@regression @flights @sabre @sabre-ndc @payload
 Feature: 78891 Sabre UA NDC - Corporate rate flight search returns results for Froco user
   As a Froco corporate traveler with a Sabre NDC UA agreement
   I want to search for round trip flights via Sabre NDC with my corporate account code

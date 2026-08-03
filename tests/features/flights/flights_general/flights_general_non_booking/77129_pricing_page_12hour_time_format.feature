@@ -5,6 +5,8 @@
 # Expected: times should honour the profile's time format setting, matching the search results page.
 # Fixed in: OBT Frontend
 
+# ADO Test Case ID: 77129
+@ado:77129
 @regression @smoke @flights @bug:75337 @non-booking
 Feature: 77129 OBT - Flight times should display in 12-hour format on the pricing page
   As a corporate traveler with a 12-hour time format profile setting

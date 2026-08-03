@@ -1,9 +1,12 @@
-# Test Name: 76040 Amadeus - Office ID MU - published rates - fixed value - by schedule round trip - multi PAX
+# Test Name: 77845 Amadeus - Office ID MU - published rates - fixed value - by schedule round trip - multi PAX
 # Status: Draft
 # Labels: Regression,Flights,Amadeus,Regular Markup,2026 plan 2
+# Source: ADO User Story #76040 - Amadeus - Markup alignment
 
-@regression @flights @amadeus @ado:76040 @management-fee
-Feature: 76040 Amadeus - Office ID MU fixed value applied on by schedule round trip for multi PAX
+# ADO Test Case ID: 77845
+@ado:77845
+@regression @flights @amadeus @management-fee
+Feature: 77845 Amadeus - Office ID MU fixed value applied on by schedule round trip for multi PAX
   As a corporate traveler with an office ID management markup configuration
   I want to search round trip flights by schedule for 2 adult passengers on different routes
   So that the fixed markup amount is correctly applied only for the configured office ID

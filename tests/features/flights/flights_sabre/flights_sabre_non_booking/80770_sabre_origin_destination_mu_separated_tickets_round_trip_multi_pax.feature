@@ -2,8 +2,11 @@
 # Status: Draft
 # Labels: Regression,Flights,Sabre,Regular Markup,2026 plan 2
 
+# Source: ADO User Story #77052 - Sabre - Markup alignment
+
 # ADO Test Case ID: 80770
-@regression @flights @sabre @ado:77052 @management-fee @separate-tickets
+@ado:80770
+@regression @flights @sabre @management-fee @separate-tickets
 Feature: 80770 Sabre - Origin-Destination MU applied per segment on a separated-tickets round trip for multi PAX
   As a corporate traveler with an origin-destination management markup configuration
   I want to book a separated-tickets round trip where only the Portugal->France leg qualifies
