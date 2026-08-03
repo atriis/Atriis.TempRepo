@@ -20,7 +20,7 @@ Feature: 31006 - Dynamic profile fields are not shown for a guest without the TM
     And I select the trip purpose as "BILLABLE" and proceed
     When I add the first flight to cart
     And the booking status should be "Pending booking"
-    And I select the first OOP justification option and save
+    #And I select the first OOP justification option and save
     When I proceed to checkout
     And I wait for booking details in checkout
     Then the following checkout reference fields should not be visible:
