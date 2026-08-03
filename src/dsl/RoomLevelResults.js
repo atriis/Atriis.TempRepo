@@ -4,6 +4,7 @@ const RoomLevelResultsPage = require("@pages/RoomLevelResultsPage");
 const { CommonPage } = require("@pages/CommonPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const Results = require("./Results");
+const { normalizeText } = require("@utils/text");
 
 /**
  * RoomLevelResults DSL
@@ -462,6 +463,33 @@ const RoomLevelResults = {
     if (!priceRegex.test(dialogText)) {
       throw new Error(
         `Expected Terms & Conditions dialog to contain price "${price}", but got text: "${dialogText.slice(-200)}"`
+      );
+    }
+  },
+
+  /**
+   * Opens the Terms & Conditions dialog on the first room and asserts it contains
+   * the expected text (case-insensitive). Used to confirm notices such as the
+   * shared-bathroom note that render below the cancellation policy.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Text expected to appear in the T&C dialog
+   */
+  async verifyTextInTermsAndConditions(page, expectedText) {
+    if (!page) throw new Error('page parameter is required');
+    if (typeof expectedText !== 'string' || expectedText.trim().length === 0) {
+      throw new Error(`expectedText must be a non-empty string, got: ${typeof expectedText}`);
+    }
+
+    const p = getPageObject(page, RoomLevelResultsPage);
+    const dialogText = await p.getTermsAndConditionsText();
+
+    // The T&C rule title and its description render as adjacent DOM nodes whose text content
+    // concatenates with no separator (e.g. "shared bathroom" + "this room includes...") — so strip
+    // all whitespace on both sides before matching (case-insensitive) rather than just collapsing it.
+    const strip = (s) => normalizeText(s).replace(/\s+/g, "").toLowerCase();
+    if (!strip(dialogText).includes(strip(expectedText))) {
+      throw new Error(
+        `Expected room level Terms & Conditions dialog to contain "${expectedText}", but got text: "${dialogText.slice(-300)}"`
       );
     }
   },

@@ -127,6 +127,11 @@ When("I click on the terms and conditions link in the cart", async function () {
   await Cart.clickPaymentTermsLink(this.page);
 });
 
+Then("the cart terms and conditions should include {string}", async function (expectedText) {
+  logger.info("Verifying cart terms and conditions include expected text", { expectedText });
+  await Cart.verifyTextInCartTermsAndConditions(this.page, expectedText);
+});
+
 When("I click the proceed to checkout button", async function () {
   logger.info("Clicking proceed to checkout button");
   const cartPage = getPageObject(this.page, CartPage);

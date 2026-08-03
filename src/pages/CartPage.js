@@ -968,6 +968,10 @@ const SELECTORS = {
   // selector covers all three contexts. :visible skips the responsive/closed duplicates that
   // el-dialog leaves attached to the body.
   CAR_TERMS_DIALOG_CONTENT: '.car-terms-conditions:visible',
+  // Hotel Terms & Conditions dialog content root (app-terms-conditions.vue). Rendered inside the
+  // hotel-quote-card el-dialog in the cart; holds the rule lines (cancellation policy, room notices
+  // such as the shared-bathroom note). :visible skips the closed duplicate el-dialog leaves attached.
+  HOTEL_TERMS_DIALOG_CONTENT: '.app-terms-conditions:visible',
 
   // Rail (EU Rail / Benerail) quote-card Fare Rules dialog — same `.app-dialog` el-dialog used for
   // Terms & Conditions/Journey Details on the quote card, scoped to the body for content text.
@@ -1026,6 +1030,30 @@ class CartPage {
     const label = this.page.locator(SELECTORS.CANCELLATION_POLICY_LABEL).first();
     await label.waitFor({ state: 'visible', timeout });
     return (await label.textContent()).trim();
+  }
+
+  /**
+   * Opens the hotel Terms & Conditions dialog from the cart quote card and returns its full text.
+   * The rule lines load asynchronously (skeleton -> content), so this waits for the rendered
+   * terms container before reading. Closes the dialog before returning so subsequent steps are
+   * not blocked by the overlay.
+   * @param {number} timeout - Maximum wait time in ms
+   * @returns {Promise<string>} Full text content of the T&C dialog
+   */
+  async getHotelTermsAndConditionsText({ timeout = 20000 } = {}) {
+    await this.clickPaymentTermsLink();
+    const dialog = this.page.locator(SELECTORS.HOTEL_TERMS_DIALOG_CONTENT).first();
+    await dialog.waitFor({ state: 'visible', timeout });
+    // Wait for the async-loaded rule lines to render past the loading skeleton.
+    await this.page
+      .locator(`${SELECTORS.HOTEL_TERMS_DIALOG_CONTENT} .terms-container`)
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .catch(() => {});
+    const text = (await dialog.textContent()) ?? '';
+    await this.page.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+    return text.trim();
   }
 
   /**

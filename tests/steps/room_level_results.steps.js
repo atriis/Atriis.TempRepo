@@ -121,6 +121,11 @@ Then("terms and conditions are displayed", async function () {
   logger.info("Terms and conditions dialog confirmed visible");
 });
 
+Then("the room level terms and conditions should include {string}", async function (expectedText) {
+  logger.info("Verifying room level terms and conditions include expected text", { expectedText });
+  await RoomLevelResults.verifyTextInTermsAndConditions(this.page, expectedText);
+});
+
 Then("the booking fee from hotel level should match the booking fee from room level", async function () {
   if (this.hotelBookingFee === undefined) {
     throw new Error("No hotel booking fee stored. Run 'I extract the booking fee from the first hotel result' before this step.");

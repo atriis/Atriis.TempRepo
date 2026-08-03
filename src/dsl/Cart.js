@@ -673,6 +673,31 @@ const Cart = {
   },
 
   /**
+   * Opens the hotel Terms & Conditions dialog in the cart and asserts it contains the
+   * expected text (case-insensitive). Used to confirm notices such as the shared-bathroom
+   * note that render below the cancellation policy.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Text expected to appear in the cart T&C dialog
+   */
+  async verifyTextInCartTermsAndConditions(page, expectedText) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedText !== 'string' || expectedText.trim().length === 0) {
+      throw new Error(`expectedText must be a non-empty string, got: ${typeof expectedText}`);
+    }
+    const cartPage = getPageObject(page, CartPage);
+    const dialogText = await cartPage.getHotelTermsAndConditionsText();
+    // The T&C rule title and its description render as adjacent DOM nodes whose text content
+    // concatenates with no separator (e.g. "shared bathroom" + "this room includes...") — so strip
+    // all whitespace on both sides before matching (case-insensitive) rather than just collapsing it.
+    const strip = (s) => normalizeText(s).replace(/\s+/g, "").toLowerCase();
+    if (!strip(dialogText).includes(strip(expectedText))) {
+      throw new Error(
+        `Expected cart Terms & Conditions dialog to contain "${expectedText}", but got text: "${dialogText.slice(-300)}"`
+      );
+    }
+  },
+
+  /**
    * Extracts the seat price from the seat map drawer footer.
    * Reads raw text from the Page Object, then parses to a numeric value.
    *

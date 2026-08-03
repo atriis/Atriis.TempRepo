@@ -41,6 +41,9 @@ const SELECTORS = {
   TOOLTIP_POPPER: '[role="tooltip"], .el-tooltip__popper, .el-popper',
   TERMS_AND_CONDITIONS_BUTTON: ".room-list button:has-text('Terms & Conditions')",
   TERMS_AND_CONDITIONS_DIALOG: ".terms-conditions-dialog",
+  // Rendered rule lines inside the T&C dialog (app-terms-conditions.vue). They load asynchronously
+  // after the dialog opens, so getTermsAndConditionsText waits on this before reading the body.
+  TERMS_AND_CONDITIONS_CONTENT: ".terms-container",
   ALL_ROOM_PRICE_AMOUNTS: ".room-list__cards > div .price-details-main h4.amount",
   // Active filter badge tag in the room-filter summary bar
   ROOM_FILTER_SUMMARY_TAG: (text) => `.room-filter-summary .el-tag:has-text("${text}")`,
@@ -637,6 +640,14 @@ class RoomLevelResultsPage {
 
     const dialog = this.page.locator(SELECTORS.TERMS_AND_CONDITIONS_DIALOG).first();
     await dialog.waitFor({ state: 'visible', timeout: 15000 });
+
+    // The terms body (app-terms-conditions) loads asynchronously after the dialog opens; wait for
+    // the rendered rule lines before reading so we capture the policy text, not just title/buttons.
+    await dialog
+      .locator(SELECTORS.TERMS_AND_CONDITIONS_CONTENT)
+      .first()
+      .waitFor({ state: 'visible', timeout: 15000 })
+      .catch(() => {});
 
     const text = (await dialog.textContent()) ?? '';
 
