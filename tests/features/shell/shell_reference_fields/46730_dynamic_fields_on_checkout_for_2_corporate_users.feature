@@ -17,7 +17,7 @@ Feature: 46730 - Dynamic fields at checkout for two corporate users
     Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added myself as the traveler
     And I have added traveler by name "Gadi cohen"
-    When I initiate a hotel search in "Amsterdam" for 1 night
+    When I initiate a hotel search in "London, UK" for 1 night
     And I select the "Soort reis/Type of trip" reference field as "Medical leave" and proceed
     And I select the first hotel result
     And I add a refundable room to my cart
