@@ -15,7 +15,7 @@ Feature: 80288 - Sabre - Ancillaries post booking before ticketing
 
   Scenario: Sabre flight on hold displays Baggage and Optional services in cart
     Given I am logged in as "priceNot0@corp.frosch" booking a new trip
-    And I have added a random guest traveler with phone type "Cellular phone"
+    And I have added a random guest traveler with phone type "Mobile"
     When I search for a one way flight from "LON" to "TLV" on a day that is not Friday or Saturday
     And I filter results by carrier "EL AL"
     And I add the first flight to cart

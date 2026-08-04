@@ -352,6 +352,7 @@ const SELECTORS = {
   EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span', // The field that shows selected extra option
   EXTRAS_ARROW_BUTTON: '.px-4.ticket-bottom.py-4 .el-icon.el-collapse-item__arrow', // Arrow button to expand/collapse extras information
   EXTRAS_COLLAPSE_HEADER: '.px-4.ticket-bottom.py-4 .el-collapse-item__header', // Clickable header row for the extras collapse; aria-expanded reflects true open/closed state
+  EXTRAS_SAVE_BUTTON_SAVING: 'button.btn.is-loading', // app-btn renders "button is-loading" while its :is-loading prop is true (app-btn.vue) — Bulma hides the label (transparent) but "Save" stays in the DOM, so filter by text to pick the extras Save button
   FLIGHT_OPTIONAL_SERVICES_TITLE: '.flight-optional-services .card-title', // "Optional Services" title in the extras section (flight-optional-services.vue)
   FLIGHT_OPTIONAL_SERVICES_EDIT_BUTTON: '.flight-optional-services .extra__btns', // Edit/Add button in the optional services extras row (flight-optional-services.vue)
   FLIGHT_OPTIONAL_SERVICES_MESSAGE: '.flight-optional-services .el-tab-pane span', // Message text inside the optional services tab content (flight-optional-services.vue)
@@ -3466,14 +3467,24 @@ class CartPage {
   }
 
   /**
+   * Returns the extras Save button while its save request is still in flight.
+   * Resolves to zero elements once the save settles, so `isVisible()` is a safe
+   * "is a save still running?" probe and `waitFor({ state: 'hidden' })` is a safe wait.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getSavingExtrasButton() {
+    return this.page.locator(SELECTORS.EXTRAS_SAVE_BUTTON_SAVING).filter({ hasText: 'Save' }).first();
+  }
+
+  /**
    * Waits for a just-clicked Save button's loading state to clear. Whether the button then
    * disappears entirely (panel collapses) or stays visible (panel remains open, e.g. showing
    * the newly saved entry) varies by section, so this only waits for the loading state itself —
    * not for the button to vanish — to avoid hanging on sections that keep the panel open.
+   * @param {number} [timeout=15000] - Timeout for the loading state to clear
    */
-  async waitForSaveButtonLoadingToClear() {
-    const loadingSaveButton = this.page.locator('button.is-loading').filter({ hasText: 'Save' });
-    await loadingSaveButton.waitFor({ state: 'hidden', timeout: 15000 });
+  async waitForSaveButtonLoadingToClear(timeout = 15000) {
+    await this.getSavingExtrasButton().waitFor({ state: 'hidden', timeout });
   }
 
   /**
@@ -3599,16 +3610,41 @@ class CartPage {
   }
 
   /**
-   * Waits for a green success icon to be visible inside the extras panel, re-opening
-   * the extras accordion as needed. The accordion appears to auto-collapse repeatedly
-   * (not just once right after save — e.g. a periodic background refresh), so a single
-   * reopen-then-wait is not reliable; this retries the reopen+check cycle instead.
+   * Waits for a green success icon to be visible inside the extras panel.
+   *
+   * Two independent things have to be true before the icon can even exist:
+   *   1. The individual extra's save must have RESOLVED. The icon is rendered only on the
+   *      collapsed summary row (extras-layout.vue, `v-if="!isOpen"`), and the panel closes
+   *      itself only after the save request comes back (e.g. flight-optional-services.ts
+   *      `saveServices` -> close()). While it is in flight the Save button carries
+   *      `is-loading`, the panel stays open, and no icon is in the DOM at all. Sabre
+   *      ancillary saves can take well over half a minute, so this is waited for
+   *      explicitly rather than absorbed by short icon polls.
+   *   2. The OUTER extras accordion must be expanded — saving collapses it, and it can
+   *      auto-collapse again afterwards (e.g. a background quote reload), so the
+   *      reopen+check cycle is retried rather than done once.
+   *
+   * If the save fails, the app shows an error notification and leaves the panel OPEN, so a
+   * still-open panel after the save settled is reported as a save failure, not a missing icon.
    *
    * @param {() => import('@playwright/test').Locator} getIconLocator - Returns the icon locator to check
-   * @param {number} [maxAttempts=10]
+   * @param {number} [timeout=90000] - Total budget; stays under the 120s step timeout
    */
-  async waitForGreenIconAfterSave(getIconLocator, maxAttempts = 10) {
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  async waitForGreenIconAfterSave(getIconLocator, timeout = 90000) {
+    const deadline = Date.now() + timeout;
+    const savingButton = this.getSavingExtrasButton();
+    let sawSaveInFlight = false;
+
+    while (Date.now() < deadline) {
+      if (await savingButton.isVisible().catch(() => false)) {
+        sawSaveInFlight = true;
+        // Clamped to >= 1ms: Playwright treats a timeout of 0 as "no timeout" (waits forever).
+        await savingButton
+          .waitFor({ state: 'hidden', timeout: Math.max(1, deadline - Date.now()) })
+          .catch(() => {});
+        continue;
+      }
+
       await this.reopenExtrasAfterSave();
 
       const becameVisible = await getIconLocator()
@@ -3618,7 +3654,19 @@ class CartPage {
       if (becameVisible) return;
     }
 
-    throw new Error(`Green success icon did not become visible after ${maxAttempts} reopen attempts.`);
+    const stillSaving = await savingButton.isVisible().catch(() => false);
+    if (stillSaving) {
+      throw new Error(
+        `Green success icon never appeared: the extras save was still in flight after ${timeout}ms ` +
+          `(Save button stuck in its loading state, so the panel never collapsed).`
+      );
+    }
+    throw new Error(
+      `Green success icon did not become visible within ${timeout}ms` +
+        `${sawSaveInFlight ? ', although the save request had settled' : ' (no save was in flight)'}. ` +
+        `If the extra's panel is still expanded, the save failed — the app leaves it open and shows an ` +
+        `error notification; otherwise the icon itself is not rendering.`
+    );
   }
 
   /**
