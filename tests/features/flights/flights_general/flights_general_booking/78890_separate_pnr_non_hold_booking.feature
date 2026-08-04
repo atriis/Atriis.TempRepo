@@ -12,7 +12,7 @@ Feature: 78890 - Separate PNR created when adding flight to a non-Hold booking
 
   Scenario: Adding a second flight after booking creates a separate PNR
     Given I am logged in as "newPnr@sabre.corp" booking a new trip
-    And I have added a random guest traveler with phone type "Cellular phone"
+    And I have added a random guest traveler with phone type "Mobile"
     When I search for a one way flight from "FRA" to "WAW"
     And flight results should be available
     And I filter results by "No stops" checkbox

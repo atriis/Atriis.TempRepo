@@ -13,7 +13,7 @@ Feature: 72547 Sabre NDC - Editing APIS info after booking is blocked
 
   Scenario: APIS info cannot be edited after Sabre NDC flight is booked
     Given I am logged in as "corp@sabreNdc.frosch" booking a new trip
-    And I have added a random guest traveler with phone type "Cellular phone"
+    And I have added a random guest traveler with phone type "Mobile"
     When I search for a round trip flight from "YYZ" to "LAX"
     And flight results should be available
     And I add the first flight to cart
