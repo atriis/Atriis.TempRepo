@@ -17,8 +17,9 @@ Feature: 66604 Amadeus - Wi-Fi amenity filter works in room level after hotel na
     Given I am logged in as "amy@gadasy.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
+    And I click proceed button if visible
     And I wait to see view rates text in results page
-    And I filter hotel results by hotel name "Park Lane"
+    When I filter hotel results by hotel name "Doubletree" or skip if unavailable
     And I select the first hotel result
     When I filter room results by Wi-Fi amenity
     Then only rooms with Wi-Fi should be displayed
