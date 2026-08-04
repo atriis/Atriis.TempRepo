@@ -6,14 +6,14 @@
 # Updated: 2026-06-04T00:00:00Z
 
 @regression @flights @sabre @hold @price-validation
-Feature: 78633 sabre_validate_cartPrice_is_not_zero
+Feature: 78633 Sabre - Validate cart price is not zero
   As a corporate traveler
   I want to hold a non-lowest Sabre fare from EWR to LHR
   So that the price after hold is valid and any price change is genuine
 
   Scenario: Sabre hold flight EWR to LHR validates price change modal and hold status
     Given I am logged in as "priceNot0@corp.frosch" booking a new trip
-    And I have added a random guest traveler with phone type "Cellular phone"
+    And I have added a random guest traveler with phone type "Mobile"
     When I search for a one way flight from "EWR" to "LHR"
     And flight results should be available
     And I filter results by "No stops" checkbox
