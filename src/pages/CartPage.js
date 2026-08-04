@@ -7253,7 +7253,10 @@ class CartPage {
     await select.click();
     const option = this.page.locator(SELECTORS.EL_SELECT_VISIBLE_DROPDOWN_ITEM).filter({ hasText: vendorText }).first();
     await option.waitFor({ state: 'visible', timeout: 10000 });
-    await option.click();
+    // force: true — see selectFirstEuRailLoyaltyVendor() below re: hover-tracking instability.
+    // Without it the option reports "not stable" indefinitely and the popper eventually closes,
+    // leaving every remaining retry to fail as "not visible" until the click times out.
+    await option.click({ force: true });
   }
 
   /**
