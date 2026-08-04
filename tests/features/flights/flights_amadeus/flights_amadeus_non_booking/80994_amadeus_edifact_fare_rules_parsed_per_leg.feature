@@ -19,8 +19,8 @@ Feature: 80994 Amadeus EDIFACT - Change and cancellation rules parsed per leg in
   Scenario: Round trip LIS-LON change and cancellation rules per leg match the supplier fare rules, not the generic fallback
     Given I am logged in as "corp.amadeus.nff@amsalem.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "LIS" to "LON"
-    And I filter results by carrier "TAP"
+    When I search for a round trip flight from "LIS" to "LON" with preferred carrier "Tap Air Portugal"
+    And flight results should be available
     And I start intercepting the flight pricing selection response
     And I select the first flight result in new flight flow
     Then the change and cancellation rules for each brand card leg should match that leg's fare rules in the intercepted pricing response
