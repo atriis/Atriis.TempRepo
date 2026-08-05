@@ -1406,6 +1406,14 @@ When("I store the second booked flight number", async function () {
   });
 });
 
+Then("the flight numbers in cart should match the stored flight numbers", async function () {
+  if (!Array.isArray(this.storedFlightNumbers) || !this.storedFlightNumbers.length) {
+    throw new Error("No stored flight numbers found. Run 'I store the first/second booked flight number' before this step.");
+  }
+  logger.info("Verifying flight numbers in cart match the stored flight numbers", { storedFlightNumbers: this.storedFlightNumbers });
+  await Cart.verifyFlightNumbersMatchStored(this.page, this.storedFlightNumbers);
+});
+
 When("I store the first quote PNR code", async function () {
   logger.info("Storing the first quote PNR code from cart");
   const pnrCodes = await Cart.extractVisibleFlightQuotePnrCodes(this.page);

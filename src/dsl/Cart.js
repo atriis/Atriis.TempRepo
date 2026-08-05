@@ -8928,6 +8928,27 @@ const Cart = {
   },
 
   /**
+   * Verifies the flight numbers currently shown in the cart match a previously stored set,
+   * e.g. confirming the flights held are the same ones that were added to cart.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string[]} storedFlightNumbers - Flight numbers extracted before the comparison point.
+   */
+  async verifyFlightNumbersMatchStored(page, storedFlightNumbers) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(storedFlightNumbers) || !storedFlightNumbers.length) {
+      throw new Error(`storedFlightNumbers must be a non-empty array, got: ${typeof storedFlightNumbers}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const currentFlightNumbers = await cartPage.getVisibleFlightNumbers();
+    expect(
+      currentFlightNumbers,
+      `Expected cart flight numbers ${JSON.stringify(currentFlightNumbers)} to match stored flight numbers ${JSON.stringify(storedFlightNumbers)}`,
+    ).toEqual(storedFlightNumbers);
+  },
+
+  /**
    * Reads the car type/class shown on the cart's car quote card, so a copied trip can be compared
    * against the original.
    *
