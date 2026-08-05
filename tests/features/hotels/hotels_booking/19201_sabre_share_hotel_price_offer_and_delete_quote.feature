@@ -16,7 +16,7 @@ Feature: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
   Scenario: Share hotel price offer from results, book and delete quote
     Given I am logged in as "sabrin@orly.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Vienna Austria" for 1 night
+    When I search for a hotel in "Paris France" for 1 night
     And I wait to see view rates text in results page
     When I sort hotel results by "Price"
     And I enter share mode on hotel results

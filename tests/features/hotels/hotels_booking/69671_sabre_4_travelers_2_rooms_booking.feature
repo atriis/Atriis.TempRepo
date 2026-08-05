@@ -19,7 +19,7 @@ Feature: 69671 Sabre - Book hotel for 4 travelers in 2 rooms with price match
     And I have added traveler by name "Maria Fernanda"
     And I have added traveler by name "James Douglas"
     And I have added a random guest traveler
-    When I search for a hotel in "Leipzig,Germany,(LEJ)" for 1 night with 2 rooms
+    When I search for a hotel in "Paris France" for 1 night with 2 rooms
     And I wait to see view rates text in results page
     When I sort hotel results by "Price"
     And I select the first hotel result

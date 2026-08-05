@@ -16,7 +16,7 @@ Feature: 47086 Sabre - Price comparison between hotel level and room level
   Scenario: Hotel level price matches room level price for Sabre results
     Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Holiday Inn Oxford" for 1 night
+    When I search for a hotel in "Paris France" for 1 night
     And I wait to see view rates text in results page
     When I extract the price from hotel level results
     And I select the first hotel result
