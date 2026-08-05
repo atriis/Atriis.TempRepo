@@ -20,6 +20,12 @@ When("I add the first car to cart", async function () {
   await CarResults.addCarAirportFromResultsPageToCart(this.page);
 });
 
+Then("the first car result shows \"{int} days total\" and a daily rate", async function (expectedDays) {
+  logger.info("Verifying days total and daily rate on the first car result", { expectedDays });
+  const result = await CarResults.expectDaysTotalAndDailyRateDisplayed(this.page, expectedDays);
+  this.carResultsDailyRate = result.dailyRateAmount;
+});
+
 // ========================================
 // THEN STEPS - ASSERTIONS
 // ========================================

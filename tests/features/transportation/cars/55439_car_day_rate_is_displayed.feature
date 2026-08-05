@@ -13,14 +13,23 @@ Feature: 55439 Car day rate is displayed consistently
 
   @priority:high
   Scenario: Validate day rate across results, cart, new search, and more details
-    Given I am logged in as "carCorp@gdg.com" booking a new trip
+    Given I am logged in as "automation@galileo.gdg" booking a new trip
     And I have added myself as the traveler
-    # TODO: Map Testim step Search_car() to the exact search parameters used by this test.
-    # TODO: Map Testim step Validate_daily_rate_in_results().
-    # TODO: Map Testim step Add_car_to_cart().
-    # TODO: Map Testim step Validate_daily_rate_in_cart().
-    # TODO: Map Testim step Cancel_quote_from_cart_before_checkout().
-    # TODO: Map Testim step New_search_from_cart().
-    # TODO: Map Testim step Validate_daily_rate_and_add_to_cart().
-    # TODO: Map Testim step Validate_number_of_days_and_rate_in_more_details().
-    Then I successfully cancel the trip
+    When I search for a car at "LHR" for 7 days with drop-off time "15:00"
+    Then the first car result shows "8 days total" and a daily rate
+    When I add the first car to cart
+    Then the booking status should be "Pending booking"
+    And the daily rate is displayed under the price in the cart
+    And I click more details in cart
+    Then the more details drawer shows a daily rate and subtotal consistent with 8 days
+    And the daily rate in more details should match the results and cart daily rate
+    And I close more details in cart
+    When I click to add a car to my trip from cart
+    And I search for a car for 7 days with drop-off time "08:00" from the cart drawer
+    Then the first car result shows "7 days total" and a daily rate
+    When I add the first car to cart
+    Then the booking status should be "Pending booking"
+    And the daily rate is displayed under the price for the last car in cart
+    And I click more details for the last car in cart
+    Then the more details drawer shows a daily rate and subtotal consistent with 7 days
+    And the daily rate in more details should match the results and cart daily rate

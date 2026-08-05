@@ -6,6 +6,7 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const { normalizeTextStrict, tokenizeAddress } = require("@utils/text");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
+const { parseAmountText } = require("@utils/dom");
 const CarSearchPage = require("@pages/CarSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const logger = require("@utils/logger").child("CarResults-DSL");
@@ -1882,6 +1883,62 @@ const CarResults = {
       `Different wording means the badge rendered in another language or app-oop-badge switched to its ` +
       `icon-only variant, which would not warn the traveller.`,
     ).toHaveText('Out of policy');
+  },
+
+  /**
+   * Verifies a car result card shows "{expectedDays} days total" above the price, and a daily
+   * rate ("... / Per day") below it.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} expectedDays - Expected total rental day count
+   * @param {number} [index=0] - Zero-based car result card index
+   * @throws {Error} If validation fails, the price text never appears, or the day count/daily
+   *   rate text does not match the expected shape
+   * @returns {Promise<{daysTotalText: string, dailyRateText: string, dailyRateAmount: number}>}
+   */
+  async expectDaysTotalAndDailyRateDisplayed(page, expectedDays, index = 0) {
+    if (!page) {
+      throw new Error('[CarResults.expectDaysTotalAndDailyRateDisplayed] "page" is required.');
+    }
+    if (typeof expectedDays !== 'number' || expectedDays <= 0) {
+      throw new Error(
+        `[CarResults.expectDaysTotalAndDailyRateDisplayed] "expectedDays" must be a positive number, got: ${typeof expectedDays} (${expectedDays})`
+      );
+    }
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`[CarResults.expectDaysTotalAndDailyRateDisplayed] "index" must be >= 0, got: ${index}`);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.waitForDaysTotalAndDailyRateVisible(index);
+
+    const daysTotalText = (await carResultsPage.getDaysTotalTextByIndex(index).innerText()).trim();
+    const dailyRateText = (await carResultsPage.getDailyRateTextByIndex(index).innerText()).trim();
+
+    const daysMatch = /(\d+)\s*days?\s*total/i.exec(daysTotalText);
+    expect(
+      daysMatch,
+      `[CarResults.expectDaysTotalAndDailyRateDisplayed] Expected the price title on car result index ` +
+      `${index} to read "{N} days total", got: "${daysTotalText}".`,
+    ).not.toBeNull();
+
+    const actualDays = Number(daysMatch[1]);
+    expect(
+      actualDays,
+      `[CarResults.expectDaysTotalAndDailyRateDisplayed] Expected "${expectedDays} days total" on car ` +
+      `result index ${index}, but the price title read "${daysTotalText}". The search dates/times may not ` +
+      `have produced the expected rental duration.`,
+    ).toBe(expectedDays);
+
+    expect(
+      /per day/i.test(dailyRateText),
+      `[CarResults.expectDaysTotalAndDailyRateDisplayed] Expected a "... / Per day" daily rate under the ` +
+      `price on car result index ${index}, got: "${dailyRateText}".`,
+    ).toBe(true);
+
+    const dailyRateAmount = parseAmountText(dailyRateText, 'daily rate (results)');
+
+    return { daysTotalText, dailyRateText, dailyRateAmount };
   },
 };
 

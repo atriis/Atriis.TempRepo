@@ -16,6 +16,22 @@ const MAX_NO_RESULTS_RETRIES = 3;
 // Shifting within the same visible month keeps the retry search close to the original dates.
 const NO_RESULTS_RETRY_DAY_STEP = 3;
 
+/**
+ * Parses a "HH:mm" time string into zero-padded [hour, minute] strings matching the
+ * app-timepicker's el-select option labels.
+ * @param {string} timeString - e.g. "15:00"
+ * @param {string} paramName - for error messages
+ * @returns {[string, string]}
+ * @throws {Error} If timeString is not "HH:mm"
+ */
+function parseHourMinute(timeString, paramName) {
+  const match = /^([0-9]{1,2}):([0-9]{1,2})$/.exec(String(timeString).trim());
+  if (!match) {
+    throw new Error(`${paramName} must be a "HH:mm" time string, got: ${timeString}`);
+  }
+  return [match[1].padStart(2, '0'), match[2].padStart(2, '0')];
+}
+
 async function selectDropoffDateWithFallback(page, carSearchPage, dropoffIndex) {
   try {
     await selectDatesByNthAvailable(page, {
@@ -147,6 +163,10 @@ const CarSearch = {
    * @param {Object} options - Search configuration
    * @param {number} options.pickupIndex - Pickup date index (>= 0)
    * @param {number} options.dropoffIndex - Drop-off date index (>= 0)
+   * @param {string} [options.pickupTime] - Explicit pick-up time "HH:mm" (24h, zero-padded).
+   *   Defaults to the form's own pre-filled "10:00" when omitted.
+   * @param {string} [options.dropoffTime] - Explicit drop-off time "HH:mm" (24h, zero-padded).
+   *   Defaults to the form's own pre-filled "10:00" when omitted.
    * @returns {Promise<{searched: boolean, place: string, monthsAhead: number, pickupIndex: number, dropoffIndex: number, pickupDate: string, dropoffDate: string, noResultsRetry: Object}>} Search result including the selected pickup/drop-off date field values
    * @throws {Error} If pickupIndex or dropoffIndex are negative
    */
@@ -158,16 +178,18 @@ const CarSearch = {
       pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
       dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
       maxRetries = MAX_NO_RESULTS_RETRIES,
+      pickupTime,
+      dropoffTime,
     } = {},
   ) {
     if (!page) {
       throw new Error('page is required');
     }
-    
+
     if (pickupIndex < 0) {
       throw new Error(`pickupIndex must be >= 0, got ${pickupIndex}`);
     }
-    
+
     if (dropoffIndex < 0) {
       throw new Error(`dropoffIndex must be >= 0, got ${dropoffIndex}`);
     }
@@ -201,6 +223,16 @@ const CarSearch = {
       endIndex: null,
     });
 
+    if (pickupTime) {
+      const [hour, minute] = parseHourMinute(pickupTime, 'pickupTime');
+      await carSearchPage.setTimeFieldTo('pickup', hour, minute);
+    }
+
+    if (dropoffTime) {
+      const [hour, minute] = parseHourMinute(dropoffTime, 'dropoffTime');
+      await carSearchPage.setTimeFieldTo('dropoff', hour, minute);
+    }
+
     // Capture the selected pickup/drop-off dates while the search form is still open and
     // the inputs are visible/populated. Exposed on the return so callers (e.g. a follow-on
     // flight search in a single-PNR trip) can align the flight dates to the car rental.
@@ -215,7 +247,7 @@ const CarSearch = {
       maxRetries,
     });
 
-    return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex, pickupDate, dropoffDate, noResultsRetry: retryResult };
+    return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex, pickupDate, dropoffDate, pickupTime, dropoffTime, noResultsRetry: retryResult };
   },
 
   /**
@@ -300,6 +332,16 @@ const CarSearch = {
    * @param {number} options.pickupIndex - Pickup date index (>= 0)
    * @param {number} options.dropoffIndex - Drop-off date index (>= 0)
    * @param {number} options.maxRetries - No-results retries (handled on the results page)
+   * @param {string} [options.pickupTime] - Explicit pick-up time "HH:mm" (24h, zero-padded).
+   *   Defaults to the form's own pre-filled "10:00" when omitted.
+   * @param {string} [options.dropoffTime] - Explicit drop-off time "HH:mm" (24h, zero-padded).
+   *   Defaults to the form's own pre-filled "10:00" when omitted.
+   * @param {number} [options.dropoffMonthAdvance=1] - How many months to advance the drop-off
+   *   calendar past the pick-up calendar's month before indexing drop-off days. The drawer
+   *   pre-fills both calendars from the trip's existing car search, so the drop-off calendar
+   *   already opens on the SAME month as pick-up — advancing 1 (the default) targets a
+   *   next-month drop-off, matching the default dropoffIndex's multi-week rental. Pass 0 for a
+   *   drop-off date within the same month as pick-up (e.g. a short, explicit-day-gap rental).
    * @returns {Promise<{searched: boolean, monthsAhead: number, pickupIndex: number, dropoffIndex: number, pickupDate: string, dropoffDate: string, noResultsRetry: Object}>}
    * @throws {Error} If page is missing, or pickupIndex/dropoffIndex are negative
    */
@@ -310,6 +352,9 @@ const CarSearch = {
       pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
       dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
       maxRetries = MAX_NO_RESULTS_RETRIES,
+      pickupTime,
+      dropoffTime,
+      dropoffMonthAdvance = 1,
     } = {},
   ) {
     if (!page) {
@@ -326,11 +371,17 @@ const CarSearch = {
     if (dropoffIndex < 0) {
       throw new Error(`[CarSearch.searchCarFromCartDrawer] "dropoffIndex" must be >= 0, got ${dropoffIndex}`);
     }
+    if (!Number.isInteger(dropoffMonthAdvance) || dropoffMonthAdvance < 0) {
+      throw new Error(
+        `[CarSearch.searchCarFromCartDrawer] "dropoffMonthAdvance" must be a non-negative integer, got: ${dropoffMonthAdvance}`
+      );
+    }
 
     logger.debug('[CarSearch.searchCarFromCartDrawer] Searching for a car from the cart drawer', {
       monthsAhead,
       pickupIndex,
       dropoffIndex,
+      dropoffMonthAdvance,
     });
 
     const carSearchPage = getPageObject(page, CarSearchPage);
@@ -347,8 +398,20 @@ const CarSearch = {
 
       // Drop-off date
       await carSearchPage.clickDropoffDateField();
-      await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
+      if (dropoffMonthAdvance > 0) {
+        await carSearchPage.clickDropoffSecondCalendarNextMonthArrow(dropoffMonthAdvance);
+      }
       await selectDatesByNthAvailable(page, { startIndex: dropoffIndex, endIndex: null });
+
+      if (pickupTime) {
+        const [hour, minute] = parseHourMinute(pickupTime, 'pickupTime');
+        await carSearchPage.setTimeFieldTo('pickup', hour, minute);
+      }
+
+      if (dropoffTime) {
+        const [hour, minute] = parseHourMinute(dropoffTime, 'dropoffTime');
+        await carSearchPage.setTimeFieldTo('dropoff', hour, minute);
+      }
 
       // Capture the chosen dates while the drawer is still open and its inputs are populated.
       const pickupDate = await carSearchPage.getPickupDateFieldValue();
@@ -370,6 +433,8 @@ const CarSearch = {
         dropoffIndex,
         pickupDate,
         dropoffDate,
+        pickupTime,
+        dropoffTime,
         noResultsRetry: retryResult,
       };
     } catch (err) {

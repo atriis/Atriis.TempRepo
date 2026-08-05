@@ -20,6 +20,18 @@ When("I search for a car at {string}", async function (place) {
   this.carSearch = await CarSearch.searchCarByPlace(this.page, place);
 });
 
+// Explicit day-gap + drop-off time variant, used to control the billed rental duration:
+// when the drop-off HOUR is later than the pick-up hour (left at the form's own default), the
+// supplier bills an extra day on top of the calendar day gap.
+When("I search for a car at {string} for {int} days with drop-off time {string}", async function (place, dayGap, dropoffTime) {
+  logger.info("Searching for car with an explicit day gap and drop-off time", { place, dayGap, dropoffTime });
+  this.carSearch = await CarSearch.searchCarByPlace(this.page, place, 3, {
+    pickupIndex: 0,
+    dropoffIndex: dayGap,
+    dropoffTime,
+  });
+});
+
 // Car search run from the cart's edit-search drawer (opened by the Car tile in the product
 // carousel). No location parameter on purpose: the car drawer has no location field — it inherits
 // the pick-up location from the trip. Use "I search for a car at {string} ..." when the location
@@ -27,6 +39,23 @@ When("I search for a car at {string}", async function (place) {
 When("I search for a car with {int} months ahead from the cart drawer", async function (monthsAhead) {
   logger.info("Searching for car from cart drawer", { monthsAhead });
   this.carSearch = await CarSearch.searchCarFromCartDrawer(this.page, monthsAhead);
+});
+
+// Explicit day-gap + drop-off time variant of the cart-drawer search (see the standalone
+// twin above for why an explicit drop-off time controls the billed rental duration).
+// monthsAhead=0 (unlike the standalone variant's 3): the cart drawer's pickup calendar is
+// pre-filled from the car already in the trip, so advancing further months would stack on top
+// of that existing date instead of measuring from today. dropoffMonthAdvance=0 keeps the
+// drop-off calendar on that SAME pre-filled month too, so dropoffIndex=dayGap lands exactly
+// dayGap days after pick-up instead of a month+ away.
+When("I search for a car for {int} days with drop-off time {string} from the cart drawer", async function (dayGap, dropoffTime) {
+  logger.info("Searching for car from cart drawer with an explicit day gap and drop-off time", { dayGap, dropoffTime });
+  this.carSearch = await CarSearch.searchCarFromCartDrawer(this.page, 0, {
+    pickupIndex: 0,
+    dropoffIndex: dayGap,
+    dropoffTime,
+    dropoffMonthAdvance: 0,
+  });
 });
 
 // Fills the car search form and clicks Search, but does NOT wait for results.

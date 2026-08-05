@@ -33,6 +33,20 @@ const SELECTORS = {
 
   RENTAL_AGENCY_DROPDOWN_OPTION:
     (agencyName) => `li.el-select-dropdown__item span:text("${agencyName}")`,
+
+  // Pick-up/drop-off TIME fields (app-timepicker). Present in both the standalone car search
+  // form and the cart's edit-search drawer (car-search-inputs.vue is shared by both).
+  PICKUP_TIME_INPUT: "input.app-timepicker-input[placeholder='Pick-up Time']",
+  DROPOFF_TIME_INPUT: "input.app-timepicker-input[placeholder='Drop-off Time']",
+  // app-timepicker teleports its el-dropdown to <body> with this popper class.
+  TIME_SELECTOR_POPPER: ".time-selector-popper:visible",
+  // Hours/minutes el-selects inside the time popper (time-selection-box.vue) — present in
+  // both 24h and 12h display modes; the AM/PM toggle only renders in 12h mode.
+  TIME_HOURS_TRIGGER: ".section-time-select .app-column:nth-child(1) .el-select__wrapper",
+  TIME_MINUTES_TRIGGER: ".section-time-select .app-column:nth-child(2) .el-select__wrapper",
+  // Element-Plus teleports every select dropdown to <body>; :visible filters to the one
+  // actually open.
+  VISIBLE_TIME_OPTION: ".el-select-dropdown__item:visible",
 };
 
 class CarSearchPage {
@@ -432,6 +446,110 @@ class CarSearchPage {
       )
       .catch(() => {});
     return (await input.inputValue()).trim();
+  }
+
+  // ===== PICK-UP / DROP-OFF TIME (app-timepicker) =====
+
+  /**
+   * Opens a time-picker's popper and returns the visible popper locator. Each timepicker
+   * teleports its own .time-selector-popper to <body>, and a just-closed one can still be
+   * transitioning out when the next one opens - so target the LAST visible popper. Retries the
+   * open once in case the click's popper closes mid-transition.
+   * @param {import('playwright').Locator} input - the readonly time input to click
+   * @param {string} triggerSelector - selector for a control expected inside the open popper
+   * @returns {Promise<import('playwright').Locator>}
+   */
+  async _openTimePopper(input, triggerSelector) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      await input.click({ timeout: 10000 });
+      await this.page.waitForTimeout(400);
+      const popper = this.page.locator(SELECTORS.TIME_SELECTOR_POPPER).last();
+      try {
+        await popper.waitFor({ state: "visible", timeout: 5000 });
+        await popper.locator(triggerSelector).waitFor({ state: "visible", timeout: 5000 });
+        return popper;
+      } catch (openErr) {
+        if (attempt === 2) throw openErr;
+        await this.page.waitForTimeout(400);
+      }
+    }
+  }
+
+  /**
+   * Sets a pick-up/drop-off time-picker to an explicit hour:minute by selecting from the two
+   * el-select dropdowns inside the time popper. The time input is readonly, so it can only be
+   * set through the popper.
+   *
+   * For metric (24h) users the picker auto-closes once the minute is selected; a mouse click in
+   * a neutral top-left corner is used as a fallback commit if the popper is still open after the
+   * minute pick (covers 12h/AM-PM users, where no in-form neutral blur target exists).
+   *
+   * @param {'pickup'|'dropoff'} field - which time field to set
+   * @param {string} hour - hour option text, zero-padded 24h (e.g. "08", "15")
+   * @param {string} minute - minute option text, zero-padded (e.g. "00", "15", "30", "45")
+   * @throws {Error} If the popper or its hours/minutes el-select is not available, or the value
+   *   does not commit
+   */
+  async setTimeFieldTo(field, hour, minute) {
+    const inputSelector = field === "pickup" ? SELECTORS.PICKUP_TIME_INPUT : SELECTORS.DROPOFF_TIME_INPUT;
+
+    try {
+      const input = this.page.locator(inputSelector).first();
+
+      // --- Hour ---
+      let popper = await this._openTimePopper(input, SELECTORS.TIME_HOURS_TRIGGER);
+      await popper.locator(SELECTORS.TIME_HOURS_TRIGGER).click({ timeout: 5000 });
+      await this.page
+        .locator(SELECTORS.VISIBLE_TIME_OPTION, { hasText: new RegExp(`^\\s*${hour}\\s*$`) })
+        .first()
+        .click({ timeout: 5000 });
+      await this.page.waitForTimeout(400);
+
+      // --- Minute --- (popper may have auto-closed after the hour pick; reopen if needed)
+      popper = this.page.locator(SELECTORS.TIME_SELECTOR_POPPER).last();
+      const stillOpen = await popper
+        .locator(SELECTORS.TIME_MINUTES_TRIGGER)
+        .isVisible()
+        .catch(() => false);
+      if (!stillOpen) {
+        popper = await this._openTimePopper(input, SELECTORS.TIME_MINUTES_TRIGGER);
+      }
+      await popper.locator(SELECTORS.TIME_MINUTES_TRIGGER).click({ timeout: 5000 });
+      await this.page
+        .locator(SELECTORS.VISIBLE_TIME_OPTION, { hasText: new RegExp(`^\\s*${minute}\\s*$`) })
+        .first()
+        .click({ timeout: 5000 });
+      await this.page.waitForTimeout(300);
+
+      // --- Commit fallback --- metric (24h) users auto-close on minute pick; if the popper is
+      // still open (12h/AM-PM users), click a neutral corner to blur and commit.
+      const poppersStillVisible = await this.page.locator(SELECTORS.TIME_SELECTOR_POPPER).count();
+      if (poppersStillVisible > 0) {
+        await this.page.mouse.click(2, 2);
+        await this.page.waitForTimeout(300);
+      }
+
+      const value = (await input.inputValue()).trim();
+      if (!value || !value.includes(hour)) {
+        throw new Error(`the ${field} time input reads "${value}" after selecting ${hour}:${minute}`);
+      }
+    } catch (err) {
+      throw new Error(
+        `[CarSearchPage.setTimeFieldTo] Could not set the ${field} time to ${hour}:${minute}. ` +
+        `The time picker popper (class: time-selector-popper) or its hours/minutes el-select was ` +
+        `not available. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the committed value of the pick-up or drop-off time input.
+   * @param {'pickup'|'dropoff'} field
+   * @returns {Promise<string>}
+   */
+  async getTimeFieldValue(field) {
+    const inputSelector = field === "pickup" ? SELECTORS.PICKUP_TIME_INPUT : SELECTORS.DROPOFF_TIME_INPUT;
+    return (await this.page.locator(inputSelector).first().inputValue()).trim();
   }
 }
 

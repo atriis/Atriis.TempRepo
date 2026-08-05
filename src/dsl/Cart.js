@@ -4436,6 +4436,18 @@ const Cart = {
   },
 
   /**
+   * Opens the More Details drawer for the LAST car quote card in the trip (the most recently
+   * added one). Use when two or more cars are in the same trip, since they can carry identical
+   * pick-up/drop-off dates and are otherwise indistinguishable by text.
+   * @param {import('playwright').Page} page
+   */
+  async openMoreDetailsForLastCarInCart(page) {
+    if (!page) throw new Error('[Cart.openMoreDetailsForLastCarInCart] "page" is required.');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickMoreDetailsForLastCarInCart();
+  },
+
+  /**
    * Opens the More Details drawer for a specific quote card identified by text.
    * @param {import('playwright').Page} page
    * @param {string} quoteIdentifier - Partial text to identify the quote card (e.g. "Flight to", "Test Hotel", "Car Rental")
@@ -4509,6 +4521,135 @@ const Cart = {
     if (!page) throw new Error('page is required');
     const cartPage = getPageObject(page, CartPage);
     await cartPage.closeMoreDetailsDrawer();
+  },
+
+  /**
+   * Verifies the daily-rate text ("... / Per day") is displayed under a car cart line item's
+   * price, before the More Details drawer is opened.
+   *
+   * @param {import('playwright').Page} page
+   * @param {boolean} [last=false] - When true, targets the LAST (most recently added) car quote
+   *   card instead of the first — use when two or more cars are in the same trip.
+   * @throws {Error} If page is missing, the daily rate never appears, or it does not read
+   *   "... / Per day"
+   * @returns {Promise<{text: string, amount: number}>}
+   */
+  async expectDailyRateDisplayedInCart(page, last = false) {
+    if (!page) throw new Error('[Cart.expectDailyRateDisplayedInCart] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForCarCartCardDailyRateVisible(15000, last);
+
+    const text = (await cartPage.getCarCartCardDailyRate(last).innerText()).trim();
+    expect(
+      /per day/i.test(text),
+      `[Cart.expectDailyRateDisplayedInCart] Expected a "... / Per day" daily rate under the car ` +
+      `cart line item's price, got: "${text}".`,
+    ).toBe(true);
+
+    const amount = parseAmountText(text, 'daily rate (cart)');
+    return { text, amount };
+  },
+
+  /**
+   * Reads the "Price Per day" and "Subtotal" rows from the car's open More Details drawer, and
+   * asserts the subtotal row's day count matches expectedNumberOfDays when provided.
+   *
+   * Preconditions: the car More Details drawer must already be open (via openMoreDetailsInCart).
+   *
+   * @param {import('playwright').Page} page
+   * @param {Object} [options]
+   * @param {number} [options.expectedNumberOfDays] - Expected day count in the "Subtotal (total
+   *   for N days)" label
+   * @throws {Error} If page is missing, the price rows never appear, the row labels do not match
+   *   "Price Per day"/"Subtotal", or the subtotal's day count does not match expectedNumberOfDays
+   * @returns {Promise<{pricePerDay: number, subtotal: number, subtotalLabel: string, numberOfDays: number}>}
+   */
+  async getMoreDetailsPricePerDayAndSubtotal(page, { expectedNumberOfDays } = {}) {
+    if (!page) throw new Error('[Cart.getMoreDetailsPricePerDayAndSubtotal] "page" is required.');
+    if (expectedNumberOfDays != null && (typeof expectedNumberOfDays !== 'number' || expectedNumberOfDays <= 0)) {
+      throw new Error(
+        `[Cart.getMoreDetailsPricePerDayAndSubtotal] "expectedNumberOfDays" must be a positive number when ` +
+        `provided, got: ${typeof expectedNumberOfDays} (${expectedNumberOfDays})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForCarMoreDetailsPriceRowsVisible();
+
+    const pricePerDayLabel = (await cartPage.getCarMoreDetailsPriceRowLabel(0).innerText()).trim();
+    const pricePerDayText = (await cartPage.getCarMoreDetailsPriceRowValue(0).innerText()).trim();
+    const subtotalLabel = (await cartPage.getCarMoreDetailsPriceRowLabel(1).innerText()).trim();
+    const subtotalText = (await cartPage.getCarMoreDetailsPriceRowValue(1).innerText()).trim();
+
+    expect(
+      /price.*per.*day/i.test(pricePerDayLabel),
+      `[Cart.getMoreDetailsPricePerDayAndSubtotal] Expected the More Details drawer's first price row to be ` +
+      `"Price Per day", got: "${pricePerDayLabel}". The row order in car-quote-card.vue may have changed.`,
+    ).toBe(true);
+
+    expect(
+      /subtotal/i.test(subtotalLabel),
+      `[Cart.getMoreDetailsPricePerDayAndSubtotal] Expected the More Details drawer's second price row to be ` +
+      `"Subtotal (...)", got: "${subtotalLabel}". The row order in car-quote-card.vue may have changed.`,
+    ).toBe(true);
+
+    const daysMatch = /(\d+)/.exec(subtotalLabel);
+    expect(
+      daysMatch,
+      `[Cart.getMoreDetailsPricePerDayAndSubtotal] Could not find a day count in the Subtotal label: "${subtotalLabel}".`,
+    ).not.toBeNull();
+    const numberOfDays = Number(daysMatch[1]);
+
+    if (expectedNumberOfDays != null) {
+      expect(
+        numberOfDays,
+        `[Cart.getMoreDetailsPricePerDayAndSubtotal] Expected the Subtotal row to say ` +
+        `"total for ${expectedNumberOfDays} days", got: "${subtotalLabel}".`,
+      ).toBe(expectedNumberOfDays);
+    }
+
+    const pricePerDay = parseAmountText(pricePerDayText, 'price per day (more details)');
+    const subtotal = parseAmountText(subtotalText, 'subtotal (more details)');
+
+    return { pricePerDay, subtotal, subtotalLabel, numberOfDays };
+  },
+
+  /**
+   * Verifies that Subtotal / number of days equals the displayed "Price Per day" rate inside the
+   * car's open More Details drawer.
+   *
+   * Preconditions: the car More Details drawer must already be open (via openMoreDetailsInCart).
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} numberOfDays - Expected rental day count (also asserted against the Subtotal
+   *   row's own label)
+   * @param {number} [tolerance=0.02]
+   * @throws {Error} If page/numberOfDays are invalid, the price rows never appear, or the
+   *   computed rate does not match the displayed Price Per day within tolerance
+   * @returns {Promise<{pricePerDay: number, subtotal: number, computedRate: number}>}
+   */
+  async expectSubtotalDividedByDaysEqualsRate(page, numberOfDays, tolerance = 0.02) {
+    if (!page) throw new Error('[Cart.expectSubtotalDividedByDaysEqualsRate] "page" is required.');
+    if (typeof numberOfDays !== 'number' || numberOfDays <= 0) {
+      throw new Error(
+        `[Cart.expectSubtotalDividedByDaysEqualsRate] "numberOfDays" must be a positive number, got: ${typeof numberOfDays} (${numberOfDays})`
+      );
+    }
+
+    const { pricePerDay, subtotal } = await Cart.getMoreDetailsPricePerDayAndSubtotal(page, {
+      expectedNumberOfDays: numberOfDays,
+    });
+
+    const computedRate = subtotal / numberOfDays;
+    expectNumbersToBeEqualWithTolerance(
+      computedRate,
+      pricePerDay,
+      tolerance,
+      'Daily rate (Subtotal / number of days vs displayed Price Per day, in More Details)',
+    );
+
+    return { pricePerDay, subtotal, computedRate };
   },
 
   /**

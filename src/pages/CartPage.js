@@ -261,6 +261,21 @@ const SELECTORS = {
   POST_TICKETING_FIRST_SEAT_BUTTON: '.flight-post-ticketing-details .post-ticketing-table tbody tr:first-child td:nth-child(5) .add-seats-btn',
   MORE_DETAILS_HOTEL_BUTTON: ".more-details",
   MORE_DETAILS_CAR_BUTTON: ".more-details.is-flex",
+  // Daily rate under the price on a car cart line item (car-quote-card.vue -> app-price
+  // subtitle slot). Only rendered when the quote's numberOfDays > 1.
+  CAR_CART_CARD_DAILY_RATE: '.product-extra-info.price-wrapper .price-subtitle p',
+  // Car's own inline "More details" drawer (car-quote-card.vue el-drawer) — NOT the shared
+  // hotel/flight .cart-more-details-drawer (general-quote-more-details.vue has no Car entry in
+  // its typeMap). Class name is shared with the unrelated parking product's drawer, so :visible
+  // is required to target only the one currently open. Same selector value as the
+  // `.parking-details-drawer:visible` half of ANY_VISIBLE_DRAWER below — kept as its own
+  // constant because callers here need ONLY the car/parking drawer, never the generic
+  // `.el-drawer:visible` half.
+  CAR_MORE_DETAILS_DRAWER: '.parking-details-drawer:visible',
+  // Price-breakdown rows in the car drawer's "Price Summary" section — each is a `.price-item`
+  // div with two <p> children (label, value), in a FIXED template order: Price Per day (0),
+  // Subtotal (1), Tax, Surcharges, [Handling Fee], Cancellation Service.
+  CAR_MORE_DETAILS_PRICE_ITEMS: '.price-breakdown .price-summary .price-item',
   // Generic "More details" trigger that matches both hotel cart items (.more-details)
   // and flight cart items (.more-details-btn). Used by Cart.openMoreDetailsInCart
   // so a single Gherkin step works across hotel and flight manual quotes.
@@ -5403,21 +5418,56 @@ class CartPage {
   }
 
   /**
-   * Clicks the More Details trigger on any cart item (hotel or flight). The
-   * underlying DOM uses two different classes — `.more-details` for hotels and
-   * `.more-details-btn` for flights — but both open the same drawer
-   * (`[aria-label='More details']`), so one Gherkin step covers both.
+   * Clicks the More Details trigger on any cart item (hotel, flight, or car). Hotel/flight open
+   * the shared drawer (`[aria-label='More details']`); car opens its own inline drawer (see
+   * CAR_MORE_DETAILS_DRAWER). The underlying DOM uses two different classes — `.more-details`
+   * for hotels/cars and `.more-details-btn` for flights.
+   *
+   * Cars render the trigger as a wrapper `<div class="more-details">` around an `<a>` link
+   * (car-quote-card.vue) — a center-click on the wider div can land on empty space beside the
+   * link and silently no-op, so the inner `<a>` is clicked directly when present.
    */
   async clickMoreDetailsInCart() {
     const moreDetails = this.page.locator(SELECTORS.MORE_DETAILS_BUTTON_ANY).first();
     try {
       await moreDetails.waitFor({ state: 'visible', timeout: 15000 });
-      await moreDetails.click({ timeout: 10000 });
+      const innerLink = moreDetails.locator(SELECTORS.MORE_DETAILS_INNER_LINK);
+      if (await innerLink.count() > 0) {
+        await innerLink.first().click({ timeout: 10000 });
+      } else {
+        await moreDetails.click({ timeout: 10000 });
+      }
     } catch (err) {
       throw new Error(
         `[CartPage.clickMoreDetailsInCart] Could not click a "More details" trigger in the cart ` +
-        `(selector: ${SELECTORS.MORE_DETAILS_BUTTON_ANY}). The cart may still be loading or no hotel/flight item is present. ` +
+        `(selector: ${SELECTORS.MORE_DETAILS_BUTTON_ANY}). The cart may still be loading or no hotel/flight/car item is present. ` +
         `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Clicks the More Details trigger on the LAST car quote card in the trip overview — i.e. the
+   * most recently added car. Use when two or more cars are in the same trip and the generic
+   * `clickMoreDetailsInCart` (which always opens the FIRST match) would open the wrong one.
+   * Cars scored identical pick-up/drop-off dates are indistinguishable by text, so this relies
+   * on DOM order instead.
+   */
+  async clickMoreDetailsForLastCarInCart() {
+    const moreDetails = this.page.locator(SELECTORS.MORE_DETAILS_CAR_BUTTON).last();
+    try {
+      await moreDetails.waitFor({ state: 'visible', timeout: 15000 });
+      const innerLink = moreDetails.locator(SELECTORS.MORE_DETAILS_INNER_LINK);
+      if (await innerLink.count() > 0) {
+        await innerLink.first().click({ timeout: 10000 });
+      } else {
+        await moreDetails.click({ timeout: 10000 });
+      }
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickMoreDetailsForLastCarInCart] Could not click the "More details" trigger on the last ` +
+        `car quote card (selector: ${SELECTORS.MORE_DETAILS_CAR_BUTTON}). The cart may still be loading or no ` +
+        `car item is present. Original: ${err.message}`,
       );
     }
   }
@@ -5543,6 +5593,84 @@ class CartPage {
     const closeBtn = this.page.locator(SELECTORS.MORE_DETAILS_DRAWER_CLOSE).first();
     await closeBtn.waitFor({ state: 'visible', timeout: 10000 });
     await closeBtn.click();
+  }
+
+  /**
+   * Locator for the daily-rate text under a car cart line item's price (before opening
+   * More Details). Only rendered when the quote's numberOfDays > 1.
+   * @param {boolean} [last=false] - When true, targets the LAST (most recently added) car quote
+   *   card instead of the first — use when two or more cars are in the same trip.
+   * @returns {import('playwright').Locator}
+   */
+  getCarCartCardDailyRate(last = false) {
+    const locator = this.page.locator(SELECTORS.CAR_CART_CARD_DAILY_RATE);
+    return last ? locator.last() : locator.first();
+  }
+
+  /**
+   * Waits for the daily-rate text to appear under a car cart line item's price.
+   * @param {number} [timeout=15000]
+   * @param {boolean} [last=false] - See getCarCartCardDailyRate
+   * @throws {Error} If the daily rate never becomes visible
+   */
+  async waitForCarCartCardDailyRateVisible(timeout = 15000, last = false) {
+    try {
+      await this.getCarCartCardDailyRate(last).waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForCarCartCardDailyRateVisible] The daily-rate text never appeared under ` +
+        `the car cart line item's price within ${timeout}ms (selector: ${SELECTORS.CAR_CART_CARD_DAILY_RATE}). ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the car's own "More details" drawer (car-quote-card.vue) to be open and its
+   * price-breakdown rows to be rendered.
+   * @param {number} [timeout=15000]
+   * @throws {Error} If the drawer or its price rows never become visible
+   */
+  async waitForCarMoreDetailsPriceRowsVisible(timeout = 15000) {
+    try {
+      const drawer = this.page.locator(SELECTORS.CAR_MORE_DETAILS_DRAWER).first();
+      await drawer.waitFor({ state: 'visible', timeout });
+      await drawer.locator(SELECTORS.CAR_MORE_DETAILS_PRICE_ITEMS).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForCarMoreDetailsPriceRowsVisible] The car More Details drawer or its price ` +
+        `breakdown rows never appeared within ${timeout}ms (drawer: ${SELECTORS.CAR_MORE_DETAILS_DRAWER}, ` +
+        `rows: ${SELECTORS.CAR_MORE_DETAILS_PRICE_ITEMS}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Locator for a price-breakdown row's label (first <p>) inside the car More Details drawer.
+   * @param {number} rowIndex - 0 = Price Per day, 1 = Subtotal
+   * @returns {import('playwright').Locator}
+   */
+  getCarMoreDetailsPriceRowLabel(rowIndex) {
+    return this.page
+      .locator(SELECTORS.CAR_MORE_DETAILS_DRAWER)
+      .locator(SELECTORS.CAR_MORE_DETAILS_PRICE_ITEMS)
+      .nth(rowIndex)
+      .locator('p')
+      .nth(0);
+  }
+
+  /**
+   * Locator for a price-breakdown row's value (second <p>) inside the car More Details drawer.
+   * @param {number} rowIndex - 0 = Price Per day, 1 = Subtotal
+   * @returns {import('playwright').Locator}
+   */
+  getCarMoreDetailsPriceRowValue(rowIndex) {
+    return this.page
+      .locator(SELECTORS.CAR_MORE_DETAILS_DRAWER)
+      .locator(SELECTORS.CAR_MORE_DETAILS_PRICE_ITEMS)
+      .nth(rowIndex)
+      .locator('p')
+      .nth(1);
   }
 
   /**

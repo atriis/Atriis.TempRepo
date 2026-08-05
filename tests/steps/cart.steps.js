@@ -2291,6 +2291,52 @@ When("I close more details in cart", async function () {
   await Cart.closeMoreDetailsInCart(this.page);
 });
 
+// Use instead of "I click more details in cart" when two or more cars are in the same trip —
+// the generic step always opens the FIRST match, which is wrong once a second car exists.
+When("I click more details for the last car in cart", async function () {
+  logger.info("Opening More Details drawer for the last car in cart");
+  await Cart.openMoreDetailsForLastCarInCart(this.page);
+});
+
+Then("the daily rate is displayed under the price in the cart", async function () {
+  logger.info("Verifying the daily rate is displayed under the price in the cart");
+  const result = await Cart.expectDailyRateDisplayedInCart(this.page);
+  this.cartDailyRate = result.amount;
+});
+
+// Use instead of the step above when two or more cars are in the same trip — the generic
+// version always reads the FIRST car's rate, which is wrong once a second car exists.
+Then("the daily rate is displayed under the price for the last car in cart", async function () {
+  logger.info("Verifying the daily rate is displayed under the price for the last car in cart");
+  const result = await Cart.expectDailyRateDisplayedInCart(this.page, true);
+  this.cartDailyRate = result.amount;
+});
+
+Then("the more details drawer shows a daily rate and subtotal consistent with {int} days", async function (numberOfDays) {
+  logger.info("Verifying the more details price breakdown is internally consistent", { numberOfDays });
+  this.moreDetailsPricePerDay = (await Cart.expectSubtotalDividedByDaysEqualsRate(this.page, numberOfDays)).pricePerDay;
+});
+
+Then("the daily rate in more details should match the results and cart daily rate", async function () {
+  logger.info("Comparing the daily rate across results, cart, and more details", {
+    resultsDailyRate: this.carResultsDailyRate,
+    cartDailyRate: this.cartDailyRate,
+    moreDetailsPricePerDay: this.moreDetailsPricePerDay,
+  });
+  expectNumbersToBeEqualWithTolerance(
+    this.moreDetailsPricePerDay,
+    this.carResultsDailyRate,
+    0.02,
+    "Daily rate: more details vs results",
+  );
+  expectNumbersToBeEqualWithTolerance(
+    this.moreDetailsPricePerDay,
+    this.cartDailyRate,
+    0.02,
+    "Daily rate: more details vs cart",
+  );
+});
+
 When("I click more details for the {string} quote in cart", async function (quoteIdentifier) {
   logger.info("Opening More Details drawer for specific quote", { quoteIdentifier });
   await Cart.openMoreDetailsForQuote(this.page, quoteIdentifier);

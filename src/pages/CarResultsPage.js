@@ -62,6 +62,11 @@ const SELECTORS = {
   // One wrapper per rendered car result (car-list.vue). MUST stay scoped under `.car-list` —
   // the unrelated station list above reuses `.preview-container` (see STATION_PREVIEW).
   CAR_RESULT_CARD: '.car-list .preview-container',
+  // Price block (car-preview.vue -> app-price). Title renders "{N} days total" (numberOfDays);
+  // subtitle renders "{currency}{avgPerDayPrice} / Per day" and only exists when numberOfDays > 1.
+  // MUST be scoped to a single card (via CAR_RESULT_CARD) — every rendered card has its own.
+  CARD_PRICE_TITLE: '.price-container .price .price-title p',
+  CARD_PRICE_SUBTITLE: '.price-container .price .price-subtitle p',
   // "Eco Option" tag inside a card's `.agreements` row — the plain variant of eco-label.vue,
   // rendered only when carService.isElectricCarType(car) is true. `.eco-option-plain` exists
   // only in that variant, so it cannot match the CO2/carbon-quantity eco-label in the same card.
@@ -438,6 +443,44 @@ class CarResultsPage {
 
   async waitForCarTitlesVisible() {
     await this.page.locator('.car-title').first().waitFor({ state: 'visible', timeout: 60000 });
+  }
+
+  /**
+   * Locator for the "{N} days total" text above a car result card's price.
+   * @param {number} index - Zero-based card index
+   * @returns {import('playwright').Locator}
+   */
+  getDaysTotalTextByIndex(index) {
+    return this.getCarResultCards().nth(index).locator(SELECTORS.CARD_PRICE_TITLE);
+  }
+
+  /**
+   * Locator for the "{currency}{rate} / Per day" text under a car result card's price.
+   * Only rendered when the card's numberOfDays > 1.
+   * @param {number} index - Zero-based card index
+   * @returns {import('playwright').Locator}
+   */
+  getDailyRateTextByIndex(index) {
+    return this.getCarResultCards().nth(index).locator(SELECTORS.CARD_PRICE_SUBTITLE);
+  }
+
+  /**
+   * Waits for both the days-total and daily-rate text to be visible on a car result card.
+   * @param {number} [index=0] - Zero-based card index
+   * @param {number} [timeout=15000]
+   * @throws {Error} If either element never becomes visible
+   */
+  async waitForDaysTotalAndDailyRateVisible(index = 0, timeout = 15000) {
+    try {
+      await this.getDaysTotalTextByIndex(index).waitFor({ state: 'visible', timeout });
+      await this.getDailyRateTextByIndex(index).waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.waitForDaysTotalAndDailyRateVisible] The days-total/daily-rate price text ` +
+        `never appeared on car result card index ${index} within ${timeout}ms (selectors: ` +
+        `${SELECTORS.CARD_PRICE_TITLE} / ${SELECTORS.CARD_PRICE_SUBTITLE}). Original: ${err.message}`
+      );
+    }
   }
 
   /**
