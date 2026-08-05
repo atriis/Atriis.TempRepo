@@ -11,12 +11,11 @@ Feature: 66961 Amadeus station opening hours validation
   I want to see correct opening hours for specific rental stations
   So that I know when I can pick up or drop off my car
 
-  Background:
-    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
-    And I have added myself as the traveler
-    And I have selected Enterprise rental agency
-
   @priority:high
   Scenario: Verify Amadeus station opening hours are correct
-    When I search for a car at "Shipyard Dr @ Pettinaro Park Dr, Wilmington, DE, USA"
-    # TODO: Verify the displayed station opening hours match the configured hours
+    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
+    And I have added myself as the traveler
+    And I search for a car at "Shipyard Dr @ Pettinaro Park Dr, Wilmington, DE, USA" with rental agency "Enterprise"
+    And I wait for select text to be visible
+    And I click see details for "2" result
+    Then the displayed station opening hours are "Monday: 07:30 - 18:00, Tuesday: 07:30 - 18:00, Wednesday: 07:30 - 18:00, Thursday: 07:30 - 18:00, Friday: 07:30 - 18:00, Saturday: 08:00 - 12:00" 

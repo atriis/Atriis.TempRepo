@@ -398,6 +398,18 @@ Then("the first car result should be from rental agency {string}", async functio
   await CarResults.assertFirstCarResultIsFromAgency(this.page, agencyName);
 });
 
+When("I click see details for {string} result", async function (resultIndex) {
+  const index = parseInt(resultIndex, 10);
+  logger.info("Clicking 'See details' on station result", { resultIndex: index });
+  await CarResults.clickSeeDetailsForStationResult(this.page, index);
+});
+
+Then("the displayed station opening hours are {string}", async function (expectedHoursCsv) {
+  const expectedHours = expectedHoursCsv.split(",").map((entry) => entry.trim()).filter(Boolean);
+  logger.info("Verifying displayed station opening hours", { expectedHours });
+  await CarResults.expectStationOpeningHours(this.page, expectedHours);
+});
+
 Then("the add to trip button in the first car result should be visible and disabled", async function () {
   logger.info("Verifying the first car result's 'Add to trip' button is visible but disabled by travel policy");
   await CarResults.expectAddToTripButtonRestrictedInCarResult(this.page, 0);

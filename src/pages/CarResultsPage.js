@@ -56,6 +56,15 @@ const SELECTORS = {
   // street resolve to the same value renders ONE <p>, not two — callers must tolerate a single
   // line rather than treating two as invariant.
   STATION_DETAIL_LINE: '.station-details p.has-text-weight-bold.is-size-7',
+  // "See details" opens the station details dialog (car-station-details.vue), teleported to
+  // <body> via el-dialog. `<car-station-details v-if="!!selectedStation">` unmounts the whole
+  // dialog content on close, so `.working-hours` only exists in the DOM while it is open — no
+  // extra scoping needed. Structure: `.working-hours` > title <p> > ONE of [SunnyCars status <p>,
+  // per-weekday <div> wrapper, "No information" <p>] — the per-weekday wrapper renders one
+  // `<div><p>...</p></div>` per day, each <p> holding several <span>s that innerText joins into
+  // e.g. "Monday: 07:30 - 18:00" (matches the legacy Testim selector
+  // `.working-hours > :nth-child(2) > :nth-child(N) p`).
+  STATION_WORKING_HOURS_ROW: '.working-hours > div > div > p',
   LOCATION_LABEL: ".location-lines .location-address-text",
   CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   FIRST_CAR_PREVIEW: '.car-preview',
@@ -219,6 +228,43 @@ class CarResultsPage {
         `Original: ${error.message}`
       );
     }
+  }
+
+  /**
+   * Returns the locator for each rendered weekday row inside the open station "Working hours"
+   * section (car-station-details.vue), e.g. a row whose text reads "Monday: 07:30 - 18:00".
+   * Only present while the "See details" dialog for a station is open.
+   * @returns {import('playwright').Locator}
+   */
+  getStationWorkingHoursRows() {
+    return this.page.locator(SELECTORS.STATION_WORKING_HOURS_ROW);
+  }
+
+  /**
+   * Waits for the open station's "Working hours" rows to render, then returns their trimmed text.
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If no working-hours rows become visible within the timeout
+   * @returns {Promise<string[]>}
+   */
+  async getStationWorkingHoursRowTexts({ timeout = 15000 } = {}) {
+    const rows = this.getStationWorkingHoursRows();
+    try {
+      await rows.first().waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.getStationWorkingHoursRowTexts] No station working-hours rows became visible within ${timeout}ms ` +
+        `(selector: ${SELECTORS.STATION_WORKING_HOURS_ROW}). The "See details" dialog may not be open, or the station ` +
+        `may render a different working-hours branch (e.g. a SunnyCars open-status message instead of per-weekday rows). ` +
+        `Original: ${error.message}`
+      );
+    }
+
+    const count = await rows.count();
+    const texts = [];
+    for (let i = 0; i < count; i++) {
+      texts.push(((await rows.nth(i).innerText()) || '').replace(/\s+/g, ' ').trim());
+    }
+    return texts;
   }
 
   /**

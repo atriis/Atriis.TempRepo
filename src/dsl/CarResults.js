@@ -542,6 +542,57 @@ const CarResults = {
   },
 
   /**
+   * Clicks "See details" on the city-centre agency station card at the given 1-based result
+   * index, opening the station details dialog (car-station-details.vue) with its opening hours.
+   * Reuses CarResultsPage.clickStationButtonByIndex — the same generic station-card button
+   * lookup already used elsewhere for the "Select" button.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} resultIndex - 1-based station result index, as shown in the feature/UI
+   * @throws {Error} If page or resultIndex are invalid
+   * @returns {Promise<{opened: boolean, resultIndex: number}>}
+   */
+  async clickSeeDetailsForStationResult(page, resultIndex) {
+    if (!page) throw new Error('page is required');
+    if (typeof resultIndex !== 'number' || resultIndex < 1) {
+      throw new Error(`resultIndex must be >= 1, got: ${resultIndex}`);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.clickStationButtonByIndex(resultIndex - 1, 'See details', { timeout: 30000 });
+
+    return { opened: true, resultIndex };
+  },
+
+  /**
+   * Verifies that the open station details dialog displays every expected weekday opening-hours
+   * line (e.g. "Monday: 07:30 - 18:00"). Order-independent — each expected line must appear
+   * somewhere among the rendered rows.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string[]} expectedHours - Expected weekday opening-hours lines
+   * @throws {Error} If page or expectedHours are invalid, or any expected line is missing
+   * @returns {Promise<void>}
+   */
+  async expectStationOpeningHours(page, expectedHours) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(expectedHours) || expectedHours.length === 0) {
+      throw new Error(`expectedHours must be a non-empty array, got: ${typeof expectedHours}`);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const actualRows = await carResultsPage.getStationWorkingHoursRowTexts();
+
+    const missing = expectedHours.filter((expected) => !actualRows.includes(expected.trim()));
+
+    expect(
+      missing,
+      `[CarResults.expectStationOpeningHours] Expected station opening hours ${JSON.stringify(expectedHours)} ` +
+      `but the dialog rendered: ${JSON.stringify(actualRows)}. Missing: ${JSON.stringify(missing)}`
+    ).toEqual([]);
+  },
+
+  /**
    * Finds the best matching agency station card by label and optional address.
    * For duplicate labels, chooses the highest-scoring address match.
    *
