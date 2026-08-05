@@ -495,6 +495,51 @@ const Results = {
     return { filtered: true, option };
   },
 
+  /**
+   * Selects a filter option checkbox by label within a named filter section (e.g. "Car Class"),
+   * handling that section's own "View more" expansion if the option isn't rendered yet.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} optionLabel - The checkbox label text, e.g. "Van"
+   * @param {string} filterTitle - The filter section's title, e.g. "Car Class"
+   * @returns {Promise<{selected: boolean, optionLabel: string, filterTitle: string}>}
+   */
+  async selectFilterSectionOption(page, optionLabel, filterTitle) {
+    if (!page) throw new Error('page is required');
+    if (typeof optionLabel !== 'string' || !optionLabel.trim()) {
+      throw new Error(`optionLabel must be a non-empty string, got: ${typeof optionLabel}`);
+    }
+    if (typeof filterTitle !== 'string' || !filterTitle.trim()) {
+      throw new Error(`filterTitle must be a non-empty string, got: ${typeof filterTitle}`);
+    }
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    const result = await resultsPage.clickFilterSectionOptionByLabel(filterTitle, optionLabel);
+    return { selected: result.clicked || result.wasAlreadyChecked, optionLabel, filterTitle };
+  },
+
+  /**
+   * Removes an already-applied filter option checkbox within a named filter section. The checkbox
+   * is a plain toggle, so clicking the same option again (via the same
+   * clickFilterSectionOptionByLabel mechanism as selectFilterSectionOption) unchecks it.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} optionLabel - The checkbox label text to remove, e.g. "SUV"
+   * @param {string} filterTitle - The filter section's title, e.g. "Car Class"
+   * @returns {Promise<{removed: boolean, optionLabel: string, filterTitle: string}>}
+   */
+  async removeFilterSectionOption(page, optionLabel, filterTitle) {
+    if (!page) throw new Error('page is required');
+    if (typeof optionLabel !== 'string' || !optionLabel.trim()) {
+      throw new Error(`optionLabel must be a non-empty string, got: ${typeof optionLabel}`);
+    }
+    if (typeof filterTitle !== 'string' || !filterTitle.trim()) {
+      throw new Error(`filterTitle must be a non-empty string, got: ${typeof filterTitle}`);
+    }
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    await resultsPage.clickFilterSectionOptionByLabel(filterTitle, optionLabel);
+    return { removed: true, optionLabel, filterTitle };
+  },
+
 };
 
 module.exports = Results;

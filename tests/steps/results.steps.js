@@ -177,6 +177,18 @@ When("I filter airline results by {string} checkbox", async function (option) {
   await Results.filterAirlineByCheckboxOption(this.page, option);
 });
 
+When("I filter results by {string}", async function (optionLabel) {
+  const filterTitle = "Car Class";
+  logger.info("Filtering results by filter section option", { optionLabel, filterTitle });
+  await Results.selectFilterSectionOption(this.page, optionLabel, filterTitle);
+});
+
+When("I remove the filter {string}", async function (optionLabel) {
+  const filterTitle = "Car Class";
+  logger.info("Removing filter section option", { optionLabel, filterTitle });
+  await Results.removeFilterSectionOption(this.page, optionLabel, filterTitle);
+});
+
 // ===== THEN STEPS - FILTERS =====
 
 Then("the reset filters button should be visible and disabled", async function () {

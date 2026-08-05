@@ -121,6 +121,11 @@ When("I filter car results by the {string} sustainability checkbox", async funct
   await CarResults.filterCarResultsBySustainability(this.page, label);
 });
 
+Then("all the car options on this page contain {string} model text", async function (expectedText) {
+  logger.info("Verifying all car options contain expected model text", { expectedText });
+  await CarResults.assertAllCarTitlesContainText(this.page, expectedText);
+});
+
 Then("all car results should show the eco option tag {string}", async function (expectedLabel) {
   logger.info("Verifying every car result shows the eco option tag", { expectedLabel });
   await CarResults.assertAllCarResultsShowEcoOptionTag(this.page, expectedLabel);

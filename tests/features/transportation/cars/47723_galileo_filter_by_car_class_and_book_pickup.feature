@@ -13,10 +13,18 @@ Feature: 47723 Galileo filters by car class and books a pickup vehicle
 
   @priority:critical
   Scenario: Filter by SUV, van, and pickup before completing a booking
-    Given I am logged in as "gal@leo.com" booking a new trip
+    Given I am logged in as "automation@galileo.gdg" booking a new trip
     And I have added a random guest traveler
-    When I search for a car at "LAX"
-    # TODO: Map Testim steps Filter_by_SUV(), Filter_by_SUV_1(), Filter_by_Van(), and Filter_by_any_option_in_results_page('Pickup').
+    When I search for a car at "Los Angeles Intl. (LAX), Los Angeles, CA, United States"
+    And I wait for add to trip text to be visible
+    And I filter results by "SUV"
+    Then all the car options on this page contain "SUV" model text
+    When I remove the filter "SUV"
+    And I filter results by "Van"
+    Then all the car options on this page contain "Van" model text
+    When I remove the filter "Van"
+    And I filter results by "Pickup"
+    Then all the car options on this page contain "Pickup" model text
     When I add the first car to cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout

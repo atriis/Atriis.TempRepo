@@ -951,6 +951,48 @@ const CarResults = {
   },
 
   /**
+   * Asserts that every visible car result title contains the given text (case-insensitive).
+   * Intended to run right after a "Car Class" filter option is applied (e.g. "SUV"), so every
+   * remaining `.car-title` (which renders the car CLASS, not the vendor name — see getCarTitles)
+   * must carry that class name.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedText - Text expected in every car title, e.g. "SUV"
+   * @throws {Error} If validation fails, no cards are rendered, or any title is missing the text
+   * @returns {Promise<void>}
+   */
+  async assertAllCarTitlesContainText(page, expectedText) {
+    if (!page) throw new Error('[CarResults.assertAllCarTitlesContainText] "page" is required, got: ' + typeof page);
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(`[CarResults.assertAllCarTitlesContainText] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${expectedText})`);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.waitForCarTitlesVisible();
+
+    const titleLocators = carResultsPage.getCarTitles();
+    const count = await titleLocators.count();
+
+    expect(
+      count,
+      `[CarResults.assertAllCarTitlesContainText] Expected at least one car result to verify contains ` +
+      `"${expectedText}", but the results list rendered 0 cards. The "${expectedText}" class filter may ` +
+      `have removed every result, so this assertion would otherwise pass vacuously.`
+    ).toBeGreaterThan(0);
+
+    const expectedLower = expectedText.toLowerCase();
+    for (let i = 0; i < count; i++) {
+      const text = await titleLocators.nth(i).innerText();
+      expect(
+        text.toLowerCase(),
+        `[CarResults.assertAllCarTitlesContainText] Car title at index ${i} of ${count} does not contain ` +
+        `expected text "${expectedText}": "${text.trim()}". Every remaining result should match the ` +
+        `applied "Car Class" filter option.`
+      ).toContain(expectedLower);
+    }
+  },
+
+  /**
    * Applies a sustainability filter in the car filter panel and waits for the results to settle.
    *
    * Kept separate from the generic Results.filterByCheckboxOption flow because car-filter.vue

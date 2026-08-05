@@ -26,6 +26,10 @@ const SELECTORS = {
   FILTER_GROUP_TITLE: 'h4.filter-title',
   FILTER_CHECKBOX_LABEL: 'label.el-checkbox',
   FILTER_CHECKBOX_INNER: '.el-checkbox__input',
+  // The visible label text INSIDE a checkbox in any app-checkbox-group.vue filter section — used by
+  // clickFilterSectionOptionByLabel, which scopes to one named section (via AIRPORTS_FILTER_CONTAINER
+  // + FILTER_GROUP_TITLE below) rather than matching a label anywhere on the page.
+  FILTER_SECTION_OPTION_LABEL: '.el-checkbox__label p.filter-title',
   AIRPORT_OPTION_TEXT: '.airports-content',
   FILTER_VIEW_MORE_CONTAINER: '.view-txt-link',
   FILTER_VIEW_MORE_BUTTON: 'button',
@@ -1014,8 +1018,94 @@ class ResultsPage {
     }
   }
 
+  /**
+   * Clicks a filter option checkbox by its label text within a NAMED filter section (identified by
+   * its h4 title, e.g. "Car Class"). Unlike filterByCheckboxOption above (which searches the whole
+   * page for a single unique label), this scopes to one section — required on a results page that
+   * renders several independent app-checkbox-group.vue filters (e.g. car results: Agencies, Car
+   * Class, Specs, Counter Location), each with its own "View more" toggle. Scoping to the named
+   * section is what keeps the "View more" expansion targeted at the right one.
+   *
+   * @param {string} filterTitle - The filter section's h4 title, e.g. "Car Class"
+   * @param {string} optionLabel - The checkbox label text, e.g. "Van"
+   * @param {{timeout?: number}} [options]
+   * @throws {Error} If inputs are invalid, the section never appears, or the option never becomes clickable
+   * @returns {Promise<{clicked: boolean, wasAlreadyChecked: boolean, wasDisabled: boolean}>}
+   */
+  async clickFilterSectionOptionByLabel(filterTitle, optionLabel, { timeout = 15000 } = {}) {
+    if (typeof filterTitle !== 'string' || !filterTitle.trim()) {
+      throw new Error(`[ResultsPage.clickFilterSectionOptionByLabel] filterTitle must be a non-empty string, got: ${typeof filterTitle}`);
+    }
+    if (typeof optionLabel !== 'string' || !optionLabel.trim()) {
+      throw new Error(`[ResultsPage.clickFilterSectionOptionByLabel] optionLabel must be a non-empty string, got: ${typeof optionLabel}`);
+    }
+
+    const section = this.page
+      .locator(SELECTORS.AIRPORTS_FILTER_CONTAINER)
+      .filter({ has: this.page.locator(SELECTORS.FILTER_GROUP_TITLE, { hasText: filterTitle }) });
+
+    try {
+      await section.first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[ResultsPage.clickFilterSectionOptionByLabel] The "${filterTitle}" filter section never became ` +
+        `visible within ${timeout}ms. Original: ${err.message}`
+      );
+    }
+
+    let labelEl = section.first()
+      .locator(SELECTORS.FILTER_SECTION_OPTION_LABEL)
+      .filter({ hasText: optionLabel })
+      .first();
+
+    // The option may not be rendered at all yet — app-checkbox-group.vue only renders the first
+    // CHECKBOX_DISPLAY_COUNT options up front and hides the rest behind its own "View more" toggle,
+    // scoped to THIS section only (see class comment above for why page-wide expansion is unsafe).
+    const isOptionRendered = (await labelEl.count()) > 0;
+    if (!isOptionRendered) {
+      const viewMoreToggle = section.first()
+        .locator(SELECTORS.FILTER_VIEW_MORE_CONTAINER)
+        .filter({ has: this.page.locator(SELECTORS.FILTER_VIEW_MORE_LABEL, { hasText: 'View more' }) })
+        .locator(SELECTORS.FILTER_VIEW_MORE_BUTTON)
+        .first();
+
+      if (await viewMoreToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await viewMoreToggle.click();
+        labelEl = section.first()
+          .locator(SELECTORS.FILTER_SECTION_OPTION_LABEL)
+          .filter({ hasText: optionLabel })
+          .first();
+      }
+    }
+
+    try {
+      await labelEl.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[ResultsPage.clickFilterSectionOptionByLabel] Option "${optionLabel}" never became visible in the ` +
+        `"${filterTitle}" filter section within ${timeout}ms, even after expanding "View more". ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    // Walk up to the parent .el-checkbox to read its state classes (is-checked, is-disabled).
+    const checkbox = labelEl.locator('xpath=ancestor::label[contains(@class,"el-checkbox")][1]');
+    const cls = await checkbox.getAttribute('class').catch(() => '') || '';
+    const wasAlreadyChecked = cls.includes('is-checked');
+    const wasDisabled = cls.includes('is-disabled');
+    if (wasDisabled) {
+      return { clicked: false, wasAlreadyChecked, wasDisabled };
+    }
+
+    const inner = checkbox.locator('.el-checkbox__inner').first();
+    await inner.waitFor({ state: 'visible', timeout });
+    await inner.scrollIntoViewIfNeeded();
+    await inner.click({ timeout });
+    return { clicked: true, wasAlreadyChecked, wasDisabled };
+  }
+
   async clickEditButton() {
-     await this.getEditButton().waitFor({ state: 'visible' }); 
+     await this.getEditButton().waitFor({ state: 'visible' });
      await this.getEditButton().click();
  }
 
