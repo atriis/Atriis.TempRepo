@@ -68,6 +68,7 @@
 # so the booking flow can complete.
 
 # ADO Test Case ID: 82046
+# ADO Bug: 81973
 @ado:82046
 @transportation @rails @evolvi @regression @payload
 Feature: 82046 Evolvi - Dynamic profile field values are sent to Evolvi on corporate-user bookings
