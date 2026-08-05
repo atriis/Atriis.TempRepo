@@ -1416,7 +1416,7 @@ Then("the flight numbers in cart should match the stored flight numbers", async 
 
 When("I store the first quote PNR code", async function () {
   logger.info("Storing the first quote PNR code from cart");
-  const pnrCodes = await Cart.extractVisibleFlightQuotePnrCodes(this.page);
+  const pnrCodes = await Cart.extractVisibleQuotePnrCodes(this.page);
 
   this.storedFirstQuotePnrCode = pnrCodes[0];
   logger.info("Stored first quote PNR code", { firstQuotePnrCode: this.storedFirstQuotePnrCode });
@@ -1424,7 +1424,7 @@ When("I store the first quote PNR code", async function () {
 
 When("I store the second quote PNR code", async function () {
   logger.info("Storing the second quote PNR code from cart");
-  const pnrCodes = await Cart.extractVisibleFlightQuotePnrCodes(this.page);
+  const pnrCodes = await Cart.extractVisibleQuotePnrCodes(this.page);
 
   this.storedFirstQuotePnrCode ??= pnrCodes[0];
 

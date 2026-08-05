@@ -3734,16 +3734,17 @@ const Cart = {
   },
 
   /**
-   * Extracts all visible PNR codes from flight quote cards in the cart.
+   * Extracts all visible PNR codes from quote cards in the cart, regardless of product
+   * type (flight, car, etc.).
    *
    * @param {import('playwright').Page} page
    * @returns {Promise<string[]>}
    */
-  async extractVisibleFlightQuotePnrCodes(page) {
+  async extractVisibleQuotePnrCodes(page) {
     if (!page) throw new Error('page is required');
 
     const cartPage = getPageObject(page, CartPage);
-    return await cartPage.getVisibleFlightQuotePnrCodes();
+    return await cartPage.getVisibleQuotePnrCodes();
   },
 
   /**

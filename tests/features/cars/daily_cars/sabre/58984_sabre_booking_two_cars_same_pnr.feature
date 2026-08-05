@@ -11,24 +11,20 @@ Feature: 58984 Sabre booking two cars with same PNR
   I want both car bookings to share the same PNR
   So that car rentals are linked in the same trip
 
-  Background:
-    Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
-    And I have added myself as the traveler
-
   @priority:high
   Scenario: Book two cars and verify they share the same PNR
-    When I have selected Budget as the rental agency
-    And I search for a car at "LHR"
+    Given I am logged in as "automation@sabre.tlc" booking a new trip
+    And I have added myself as the traveler
+    When I search for a car at "LHR" with rental agency "Budget"
     And I add the first car to cart
     Then the booking status should be "Pending booking"
-    When I accept Terms & Conditions
-    And I proceed to checkout
+    When I edit the car search at "LGW" without changing dates
+    And I add the first car to cart
+    And I accept all Terms & Conditions on the page
+    And I click the proceed to checkout button
     And I complete the booking
-    # TODO: Extract PNR from first car booking
-    # TODO: Search for a second car with different dates/location
-    When I add the first car to cart
-    And I accept Terms & Conditions
-    And I complete the booking
-    # TODO: Verify both cars share the same PNR
-    And I cancel the trip
-    Then I successfully cancel the trip
+    And the booking status should be "Confirmed"
+    And I store the first quote PNR code
+    And I store the second quote PNR code
+    Then the stored quote PNR codes should match
+    And I successfully cancel the trip with 60 seconds wait

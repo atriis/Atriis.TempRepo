@@ -4989,13 +4989,17 @@ class CartPage {
   }
 
   /**
-   * Gets all visible PNR codes rendered inside flight quote cards in the cart.
+   * Gets all visible PNR codes rendered inside quote cards in the cart, regardless of
+   * product type (flight, car, etc.) — `.quote-payment-card` is the shared wrapper class
+   * every quote-card variant renders (car-quote-card.vue, flight-quote-card.vue, ...).
    *
    * @param {{ timeout?: number }} options
    * @returns {Promise<string[]>}
    */
-  async getVisibleFlightQuotePnrCodes({ timeout = 15000 } = {}) {
-    const quoteCards = this.page.locator(SELECTORS.FLIGHT_QUOTE_CARD);
+  async getVisibleQuotePnrCodes({ timeout = 15000 } = {}) {
+    // `:visible` excludes hidden responsive-layout duplicates of the same quote card
+    // (the app renders both a mobile and desktop copy; only one is ever displayed).
+    const quoteCards = this.page.locator(`${SELECTORS.QUOTE_PAYMENT_CARD}:visible`);
     await quoteCards.first().waitFor({ state: 'visible', timeout });
 
     const count = await quoteCards.count();

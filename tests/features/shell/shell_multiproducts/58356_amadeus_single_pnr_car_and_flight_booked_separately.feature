@@ -23,7 +23,7 @@ Feature: 58356 Amadeus - Single PNR when car and flight segments are booked sepa
     When I click to add a flight to my trip from cart
     And I edit the flight search from "LIS" to "LON" with the same dates as the car search
     Then flight results should be available
-    When I filter results by carrier "TP"
+    When I filter results by carrier "Iberia"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     And I add a credit card as payment method
