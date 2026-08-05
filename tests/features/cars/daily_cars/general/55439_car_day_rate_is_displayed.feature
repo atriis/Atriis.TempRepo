@@ -6,7 +6,7 @@
 # Created: 2024-12-09T05:24:09Z
 # Updated: 2025-09-29T02:40:40Z
 @regression @cars
-Feature: 55439 Car day rate is displayed consistently
+Feature: 55439 Car - Display day rate
   As a corporate traveler
   I want to see day-rate pricing consistently across the car flow
   So that pricing details remain reliable from results through cart details
