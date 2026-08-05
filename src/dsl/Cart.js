@@ -3483,6 +3483,74 @@ const Cart = {
   },
 
   /**
+   * Opens the "Location details" tooltip on the first cart item and LEAVES IT OPEN, so the pickup
+   * and drop-off addresses can be read by subsequent steps. Mirrors
+   * CarResults.openLocationDetailsOnFirstCarResult but targets the cart's own tooltip instance
+   * (car-location-details-tooltip.vue is reused, unscoped, on both pages).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is invalid or the tooltip cannot be opened
+   * @returns {Promise<{opened: boolean}>}
+   */
+  async openLocationDetailsOnFirstCartItem(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    logger.debug('[Cart.openLocationDetailsOnFirstCartItem] Opening the location details tooltip on the first cart item');
+    try {
+      await cartPage.openLocationDetailsTooltipByIndex(0);
+    } catch (err) {
+      throw new Error(
+        '[Cart.openLocationDetailsOnFirstCartItem] Could not open the "Location details" tooltip on the ' +
+        'first cart item. The cart may not have finished rendering, or the item may not expose the ' +
+        `location details link. Original: ${err.message}`,
+      );
+    }
+
+    return { opened: true };
+  },
+
+  /**
+   * Reads either the pickup or the drop-off address from the already-open cart "Location details"
+   * tooltip. Requires openLocationDetailsOnFirstCartItem to have run — the tooltip is left open on
+   * purpose so both addresses can be read from the same rendered tooltip.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {'pickup'|'dropoff'} locationType - Which address to read
+   * @throws {Error} If page or locationType are invalid, or the address is not readable
+   * @returns {Promise<string>} The address text
+   */
+  async getLocationAddressFromCartLocationDetails(page, locationType) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const SUPPORTED_LOCATION_TYPES = ['pickup', 'dropoff'];
+    if (!SUPPORTED_LOCATION_TYPES.includes(locationType)) {
+      throw new Error(
+        `locationType must be one of ${SUPPORTED_LOCATION_TYPES.join(' | ')}, got: ${JSON.stringify(locationType)}`,
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      return locationType === 'pickup'
+        ? await cartPage.getPickupAddressTextFromTooltip()
+        : await cartPage.getDropoffAddressTextFromTooltip();
+    } catch (err) {
+      throw new Error(
+        `[Cart.getLocationAddressFromCartLocationDetails] Could not read the ${locationType} address from the ` +
+        'cart location details tooltip. The tooltip is likely not open — it must be opened first and must stay open. ' +
+        `Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
    * Opens the extras edit panel at the specified index.
    * Used to add optional extras like Premier Inn services or airline baggage.
    * @param {import('playwright').Page} page

@@ -823,6 +823,89 @@ Then("the car date in cart should not be {string}", async function (unwantedDate
   await Cart.verifyCarDateInCartIsNot(this.page, unwantedDate);
 });
 
+// ========================================
+// LOCATION DETAILS TOOLTIP - CART
+// ========================================
+
+// Opens the tooltip and deliberately leaves it OPEN: the two extract steps below read pickup and
+// drop-off from the same rendered tooltip, so closing here would empty the DOM they depend on.
+// Mirrors "I click location details in the car results" in car_results.steps.js.
+When("I click location details in cart", async function () {
+  logger.info("Opening the location details tooltip on the first cart item");
+  await Cart.openLocationDetailsOnFirstCartItem(this.page);
+  this.cartLocationDetailsTooltipOpened = true;
+});
+
+// Where each extracted cart address is parked on the Cucumber World, kept distinct from the
+// results-side pickupLocationAddress/dropoffLocationAddress so the comparison step below can
+// compare the two capture points instead of one overwriting the other.
+const CART_LOCATION_ADDRESS_WORLD_KEY = {
+  pickup: 'cartPickupLocationAddress',
+  dropoff: 'cartDropoffLocationAddress',
+};
+
+async function extractCartLocationAddressInLocationDetails(locationType) {
+  if (!this.cartLocationDetailsTooltipOpened) {
+    throw new Error(
+      `Extracting the ${locationType} location address requires a preceding ` +
+      '"When I click location details in cart" step — the tooltip is not rendered until it is opened.'
+    );
+  }
+
+  const address = await Cart.getLocationAddressFromCartLocationDetails(this.page, locationType);
+  this[CART_LOCATION_ADDRESS_WORLD_KEY[locationType]] = address;
+  logger.info(`Extracted ${locationType} location address from cart location details`, { [locationType]: address });
+}
+
+When("I extract the pickup location address in cart location details", async function () {
+  await extractCartLocationAddressInLocationDetails.call(this, 'pickup');
+});
+
+When("I extract the dropoff location address in cart location details", async function () {
+  await extractCartLocationAddressInLocationDetails.call(this, 'dropoff');
+});
+
+// Pure comparison of already-extracted values — no page interaction, so the assertion belongs here
+// rather than in the DSL. Both sides are whitespace/case-normalized first so a cosmetic formatting
+// difference cannot fail this off as two genuinely different locations.
+Then("pickup and drop-off locations match the captured result values", async function () {
+  const resultsPickup = this.pickupLocationAddress;
+  const resultsDropoff = this.dropoffLocationAddress;
+  const cartPickup = this.cartPickupLocationAddress;
+  const cartDropoff = this.cartDropoffLocationAddress;
+
+  const missing = [];
+  if (!resultsPickup) missing.push('"I extract the pickup location address in location details"');
+  if (!resultsDropoff) missing.push('"I extract the dropoff location address in location details"');
+  if (!cartPickup) missing.push('"I extract the pickup location address in cart location details"');
+  if (!cartDropoff) missing.push('"I extract the dropoff location address in cart location details"');
+
+  if (missing.length > 0) {
+    throw new Error(
+      '"pickup and drop-off locations match the captured result values" requires the following step(s) to have run first: ' +
+      `${missing.join(', ')}.`
+    );
+  }
+
+  const normalize = (value) => value.replace(/\s+/g, ' ').trim().toLowerCase();
+
+  logger.info("Verifying cart pickup and drop-off locations match the results", {
+    resultsPickup, resultsDropoff, cartPickup, cartDropoff,
+  });
+
+  expect(
+    normalize(cartPickup),
+    `Expected the cart pickup location to match the one selected on the results page, but they differ. ` +
+    `Results pickup: "${resultsPickup}". Cart pickup: "${cartPickup}".`
+  ).toBe(normalize(resultsPickup));
+
+  expect(
+    normalize(cartDropoff),
+    `Expected the cart drop-off location to match the one selected on the results page, but they differ. ` +
+    `Results drop-off: "${resultsDropoff}". Cart drop-off: "${cartDropoff}".`
+  ).toBe(normalize(resultsDropoff));
+});
+
 Then("cancellation confirmation is spelled correctly", async function () {
   logger.info("Verifying cancellation confirmation is spelled correctly");
   await Cart.verifyCancellationConfirmedSpelledCorrectly(this.page);
