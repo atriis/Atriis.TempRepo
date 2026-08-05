@@ -11,14 +11,11 @@ Feature: 62896 Car class type and vendor policies combined
   I want to see correct OOP restrictions when using car class, type, and vendor policies together
   So that I understand which cars meet all policy requirements
 
-  Background:
-    Given I am logged in as "stefanyrita@car.com" booking a new trip
-    And I have added myself as the traveler
-    And I have selected Europcar as the rental agency
-
   @priority:high
   Scenario: Validate combined car class, type and vendor policies
-    When I search for a car at "LHR"
+    Given I am logged in as "stefanyrita@carsabregdgpolicy.com" booking a new trip
+    And I have added myself as the traveler
+    When I search for a car at "LHR" with rental agency "Europcar"
     # TODO: Verify car class and type filtering with vendor policies applied
     Then the out of policy indicator should not be visible in results
     And the result should be restricted if applicable
