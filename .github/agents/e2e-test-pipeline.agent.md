@@ -726,6 +726,8 @@ Example: `Feature: 81304 Benerail - Fare rules remain accessible after quote can
 
 This creates a permanent link between the automation code and the ADO Test Case, allowing any future CI/CD pipeline or test runner to read the ID from the file and know which ADO Test Case to update with run results. Without this, there is no traceable correlation between the feature file and its ADO Test Case. Set `state.adoTestCase.embeddedInFeatureFile = true` on success.
 
+**Rename the feature file if its numeric prefix doesn't match `adoTcId`**: feature files are named `{id}_{description}.feature`, using whatever id was known at generation time (Phase 2) — for Bugs/User Stories this is the original work item id, not the Test Case id, since the Test Case doesn't exist yet at that point. If the file's current numeric prefix differs from `adoTcId`, rename it so the prefix matches (`git mv` if already tracked, plain rename otherwise), keeping the rest of the filename unchanged, and update `state.generation.featurePath` to the new path. Skip this if the filename already starts with `adoTcId`.
+
 On success, also set `state.adoTestCase.created = true`, `testCaseId = adoTcId`, `testCaseUrl` (from the sub-agent's response), and `linkedToWorkItem = true` — this is what lets Phase 6's Rule #37 pre-PR consistency check know a Test Case exists to verify against.
 
 **Receives**: `state.adoTestCase`
