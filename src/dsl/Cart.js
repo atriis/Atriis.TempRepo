@@ -3860,6 +3860,25 @@ const Cart = {
   },
 
   /**
+   * Verifies both the outbound and inbound EU Rail (Benerail) journeys are present in the cart
+   * after a round trip booking (AB#81914 regression check).
+   * @param {import('playwright').Page} page
+   */
+  async verifyBothBenerailJourneysArePresentInCart(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const segmentCount = await cartPage.getVisibleRailQuoteSegmentCount();
+
+    expect(
+      segmentCount,
+      `Expected both outbound and inbound Benerail journeys to be visible in the cart, but found ${segmentCount} segment(s).`,
+    ).toBeGreaterThanOrEqual(2);
+
+    return { segmentCount };
+  },
+
+  /**
    * Waits for and verifies the trip-bar cart-count badge (shown on results/product pages).
    * Polls so the asynchronous add-to-cart commit and the reactive badge update have time to
    * settle before asserting — this is the signal that a shared quote has been added to the trip,

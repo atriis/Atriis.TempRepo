@@ -27,6 +27,17 @@ const SEARCH_DEFAULTS = {
   },
 
   /**
+   * Benerail (EU Rail) search defaults — deliberately nearer than the shared RAIL defaults
+   * above. Benerail inventory at the far-out RAIL dates was intermittently empty on the return
+   * leg (AB#81914 fix-loop finding); Amtrak and Evolvi still use the shared RAIL defaults and
+   * are unaffected by this override.
+   */
+  RAIL_BENERAIL: {
+    DEPARTURE_INDEX: 4,  // Selects the 5th available date
+    RETURN_INDEX: 6,     // Selects the 7th available date
+  },
+
+  /**
    * Flight search defaults
    *
    * Designed to avoid very near dates, which are often unavailable.

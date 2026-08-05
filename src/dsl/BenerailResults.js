@@ -1,5 +1,6 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const { ResultsPage } = require("@pages/ResultsPage");
+const { BenerailResultsPage } = require("@pages/BenerailResultsPage");
 const Results = require("./Results");
 
 /**
@@ -71,6 +72,36 @@ const BenerailResults = {
     await BenerailResults.clickAddToTripBenerail(page);
 
     return { addedToTrip: true };
+  },
+
+  /** Clicks "Show Later Departures" on the outbound results and waits for the refresh */
+  async clickShowLaterDepartures(page) {
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    await benerailResultsPage.clickShowLaterDeparturesButton();
+    return { clicked: true };
+  },
+
+  /**
+   * Expands "More Options" on the last visible outbound result and selects an alternative fare.
+   */
+  async selectAlternativeFareForLastOutboundResult(page) {
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    await benerailResultsPage.selectLastResultAlternativeFare();
+    return { selected: true };
+  },
+
+  /**
+   * Selects the first result for the current leg and confirms the selection committed before
+   * returning. Use this instead of selectFirstBenerailOption when it immediately follows another
+   * leg's selection in the same round-trip flow (e.g. the inbound leg right after an outbound
+   * alternative fare was chosen) — see BenerailResultsPage.clickFirstSelectButtonAndConfirmTransition.
+   */
+  async selectFirstBenerailOptionAndConfirmTransition(page) {
+    const resultsPage = getPageObject(page, ResultsPage);
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    await resultsPage.waitForSelectText();
+    await benerailResultsPage.clickFirstSelectButtonAndConfirmTransition();
+    return { selected: true };
   },
 };
 

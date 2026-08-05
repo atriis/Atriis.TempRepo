@@ -1,5 +1,6 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const { SearchPage } = require("@pages/SearchPage");
+const { BenerailSearchPage } = require("@pages/BenerailSearchPage");
 const benerailRoutes = require("@data/benerail.json");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
@@ -25,7 +26,8 @@ const BenerailSearch = {
 
   /**
    * Performs a one-way Benerail search.
-   * Default departure: 10th available date.
+   * Default departure: 5th available date (SEARCH_DEFAULTS.RAIL_BENERAIL) — nearer than the
+   * shared RAIL default, since far-out Benerail inventory was intermittently empty (AB#81914).
    * @param {import('playwright').Page} page
    * @param {string|object} routeInput
    * @param {object} options
@@ -34,7 +36,7 @@ const BenerailSearch = {
   async searchBenerailOneWay(
     page,
     routeInput = benerailRoutes.defaultRoute,
-    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {},
+    { departureIndex = SEARCH_DEFAULTS.RAIL_BENERAIL.DEPARTURE_INDEX } = {},
   ) {
     // Resolve route (key or inline object)
     const { from, to } = resolveRoute(
@@ -44,6 +46,7 @@ const BenerailSearch = {
     );
 
     const searchPage = getPageObject(page, SearchPage);
+    const benerailSearchPage = getPageObject(page, BenerailSearchPage);
 
     // Provider + trip type
     await BenerailSearch.selectBenerailSearch(page);
@@ -54,8 +57,9 @@ const BenerailSearch = {
     await searchPage.fillInToField(to);
 
     // Calendar flow: explicitly open the departure calendar, then select the Nth available date.
-    await searchPage.clickRailDepartureDateField();
-    await searchPage.clickCalendarNextArrow();
+    // One month ahead, not the shared 3-month default — Benerail inventory is not published that far out.
+    await benerailSearchPage.clickRailDepartureDateField();
+    await searchPage.clickCalendarNextArrow(1);
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
       endIndex: null,
@@ -85,7 +89,7 @@ const BenerailSearch = {
   async searchBenerailOneWayFromCartDrawer(
     page,
     routeInput = benerailRoutes.defaultRoute,
-    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {},
+    { departureIndex = SEARCH_DEFAULTS.RAIL_BENERAIL.DEPARTURE_INDEX } = {},
   ) {
     if (!page) {
       throw new Error('[BenerailSearch.searchBenerailOneWayFromCartDrawer] "page" is required.');
@@ -100,6 +104,7 @@ const BenerailSearch = {
     const { from, to } = resolveRoute(routeInput, benerailRoutes.routes, 'benerail');
 
     const searchPage = getPageObject(page, SearchPage);
+    const benerailSearchPage = getPageObject(page, BenerailSearchPage);
 
     try {
       await searchPage.waitForEditSearchDrawerVisible();
@@ -111,8 +116,8 @@ const BenerailSearch = {
 
       // Explicitly open the departure calendar, then take the Nth available date. One month ahead
       // matches the standalone rail search — EU rail inventory is not published far out.
-      await searchPage.clickRailDepartureDateField();
-      await searchPage.clickCalendarNextArrow();
+      await benerailSearchPage.clickRailDepartureDateField();
+      await searchPage.clickCalendarNextArrow(1);
       await selectDatesByNthAvailable(page, { startIndex: departureIndex, endIndex: null });
 
       await searchPage.waitAndClickPrimarySearchButtonFromCart();
@@ -130,7 +135,9 @@ const BenerailSearch = {
 
   /**
    * Performs a round-trip Benerail search.
-   * Default dates: departure (10th), return (13th).
+   * Default dates: departure (5th available), return (7th available) — SEARCH_DEFAULTS.RAIL_BENERAIL,
+   * nearer than the shared RAIL default since far-out Benerail inventory was intermittently
+   * empty on the return leg (AB#81914).
    * @param {import('playwright').Page} page
    * @param {string|object} routeInput
    * @param {object} options
@@ -140,8 +147,8 @@ const BenerailSearch = {
     page,
     routeInput = benerailRoutes.defaultRoute,
     {
-      departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.RAIL.RETURN_INDEX,
+      departureIndex = SEARCH_DEFAULTS.RAIL_BENERAIL.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.RAIL_BENERAIL.RETURN_INDEX,
     } = {},
   ) {
     // Resolve route (key or inline object)
@@ -152,6 +159,7 @@ const BenerailSearch = {
     );
 
     const searchPage = getPageObject(page, SearchPage);
+    const benerailSearchPage = getPageObject(page, BenerailSearchPage);
 
     // Provider + trip type
     await BenerailSearch.selectBenerailSearch(page);
@@ -162,8 +170,9 @@ const BenerailSearch = {
     // Route is confirmed (fillInFromField already asserted the value committed) — now move to the
     // departure date field. This must be an explicit click: the calendar panel does not open on its
     // own, it previously opened only as a side effect of Tab shifting focus onto this field.
-    await searchPage.clickRailDepartureDateField();
-    await searchPage.clickCalendarNextArrow();
+    await benerailSearchPage.clickRailDepartureDateField();
+    // One month ahead, not the shared 3-month default — Benerail inventory is not published that far out.
+    await searchPage.clickCalendarNextArrow(1);
 
     // Calendar flow: select Nth available date for departure
     await selectDatesByNthAvailable(page, {
@@ -178,7 +187,7 @@ const BenerailSearch = {
     // No further month advance here — the return picker already continues from the departure
     // month (it can't show return dates before the chosen departure date), so re-advancing 3 more
     // months here pushed the return date ~3 months past departure and produced no availability.
-    await searchPage.clickRailReturnDateField();
+    await benerailSearchPage.clickRailReturnDateField();
 
     // Calendar flow: select Nth available date for return
     await selectDatesByNthAvailable(page, {

@@ -1408,6 +1408,12 @@ Then('both outbound and return segments should be present in the trip', async fu
   logger.info('Round-trip segments are present in the trip', result);
 });
 
+Then('the outbound and inbound Benerail journeys should both be present in the cart', async function () {
+  logger.info('Verifying both outbound and inbound Benerail journeys are present in the cart');
+  const result = await Cart.verifyBothBenerailJourneysArePresentInCart(this.page);
+  logger.info('Benerail round-trip journeys verified in cart', result);
+});
+
 Then("the cart badge should show {string} item", async function (expectedCount) {
   logger.info("Verifying trip-bar cart badge count", { expectedCount });
   await Cart.verifyCartBadgeCount(this.page, Number(expectedCount));

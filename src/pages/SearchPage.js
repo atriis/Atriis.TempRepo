@@ -153,13 +153,6 @@ const SELECTORS = {
   RETURN_PLACEHOLDER: "input[placeholder*='Return']",
   PICK_UP_DATE_INPUT: "[placeholder='Pick-up Date']", //Same locator used for Cars and GroundScope/Transferz
 
-  // Rail (eu-rail-search-inputs.vue) date fields, scoped to the Rail form's own root class.
-  // DEPARTURE_PLACEHOLDER/RETURN_PLACEHOLDER below are unscoped and can resolve to another
-  // product's hidden field (e.g. Flight's "Depart Date") depending on DOM order, so Rail flows
-  // must use these instead.
-  RAIL_DEPARTURE_DATE_INPUT: ".eu-rail-search-inputs [placeholder='Departure']",
-  RAIL_RETURN_DATE_INPUT: ".eu-rail-search-inputs [placeholder='Return']",
-
   // Traveler slot validation state (.is-danger applied when search is attempted with an empty slot)
   TRAVELER_SLOT_DANGER: '.trip-traveler-tag.is-danger',
 };
@@ -866,31 +859,6 @@ class SearchPage {
 
     // Wait until the date picker panel is visible. Scope to .first() so a still-visible
     // sibling popper (e.g. the departure panel closing) does not trip strict mode.
-    await this.getDatePickerPanel().first().waitFor({ state: "visible" });
-  }
-
-  /**
-   * Opens the Rail (EU Rail) departure date calendar.
-   *
-   * Scoped to `.eu-rail-search-inputs` — the unscoped DEPARTURE_PLACEHOLDER selector used by
-   * clickDepartureDateField() can resolve to another product's hidden field (e.g. Flight's
-   * "Depart Date") depending on DOM order, so Rail flows must click this scoped field instead.
-   */
-  async clickRailDepartureDateField() {
-    const field = this.page.locator(SELECTORS.RAIL_DEPARTURE_DATE_INPUT).first();
-    await field.waitFor({ state: "visible", timeout: 10000 });
-    await field.click();
-    await this.getDatePickerPanel().first().waitFor({ state: "visible" });
-  }
-
-  /**
-   * Opens the Rail (EU Rail) return date calendar. See clickRailDepartureDateField for why this
-   * must be scoped to `.eu-rail-search-inputs` rather than the unscoped RETURN_PLACEHOLDER.
-   */
-  async clickRailReturnDateField() {
-    const field = this.page.locator(SELECTORS.RAIL_RETURN_DATE_INPUT).first();
-    await field.waitFor({ state: "visible", timeout: 10000 });
-    await field.click();
     await this.getDatePickerPanel().first().waitFor({ state: "visible" });
   }
 

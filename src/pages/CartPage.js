@@ -3801,7 +3801,14 @@ class CartPage {
 
       const saveButton = panel.getByRole("button", { name: "Save" }).first();
       await saveButton.click();
-      await this.page.waitForTimeout(500); // let the panel re-render before re-querying
+
+      // The Save button hides only once the row has actually been persisted server-side —
+      // same signal (and same reason) as CartPage.waitForSaveJustificationButtonHidden for the
+      // OOP-justification flow. The row's own mandatory asterisk/"Add" label can disappear
+      // optimistically before that persistence finishes, so waiting on it instead (or on a
+      // fixed delay) can let the next iteration — or the caller's checkout click — run before
+      // the cart has actually finished re-validating.
+      await saveButton.waitFor({ state: "hidden", timeout: 10000 });
     }
 
     throw new Error(
@@ -8343,6 +8350,20 @@ class CartPage {
    */
   getEuRailQuoteCard() {
     return this.page.locator(SELECTORS.EU_RAIL_QUOTE_CARD);
+  }
+
+  /**
+   * Counts the visible EU Rail (Benerail) journey segments in the cart's rail quote card — one
+   * "Fare Rules" button renders per journey/leg (see clickRailFareRulesButton). Used to assert
+   * both outbound and inbound legs made it into the cart (AB#81914 regression: selecting an
+   * outbound alternative via Earlier/Later dropped the outbound leg from the cart).
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<number>}
+   */
+  async getVisibleRailQuoteSegmentCount({ timeout = 15000 } = {}) {
+    const fareRulesButtons = this.getEuRailQuoteCard().getByRole('button', { name: 'Fare Rules' });
+    await fareRulesButtons.first().waitFor({ state: 'visible', timeout });
+    return fareRulesButtons.count();
   }
 
   // ===== Agent "Suggested items" section =====

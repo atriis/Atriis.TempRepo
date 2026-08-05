@@ -23,6 +23,21 @@ When("I add a Benerail round trip to the trip", async function () {
   await BenerailResults.addBenerailRoundtripToTrip(this.page);
 });
 
+When("I click Show Later Departures on the outbound results", async function () {
+  logger.info("Clicking Show Later Departures on Benerail outbound results");
+  await BenerailResults.clickShowLaterDepartures(this.page);
+});
+
+When("I expand More Options for the last outbound result and select an alternative fare", async function () {
+  logger.info("Expanding More Options and selecting an alternative fare for the last outbound Benerail result");
+  await BenerailResults.selectAlternativeFareForLastOutboundResult(this.page);
+});
+
+When("I select the first Benerail option for the inbound journey", async function () {
+  logger.info("Selecting first Benerail option for the inbound journey");
+  await BenerailResults.selectFirstBenerailOptionAndConfirmTransition(this.page);
+});
+
 // ===== TODO STUBS — need DSL/Page implementation =====
 
 // --- Fare Rules ---

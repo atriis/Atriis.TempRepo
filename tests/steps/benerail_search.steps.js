@@ -25,6 +25,14 @@ When("I search for a round trip Benerail train from {string}", async function (r
   await BenerailSearch.searchBenerailRoundTrip(this.page, routeKey);
 });
 
+// Near-date variant: the default departure/return indices (10th/13th available date) land far
+// enough out that supplier inventory for a given route is sometimes empty on the return leg
+// (AB#81914 fix-loop finding). Closer dates consistently have confirmed schedule data.
+When("I search for a round trip Benerail train from {string} with a near departure date", async function (routeKey) {
+  logger.info("Searching for round trip Benerail train with a near departure date", { routeKey });
+  await BenerailSearch.searchBenerailRoundTrip(this.page, routeKey, { departureIndex: 1, returnIndex: 3 });
+});
+
 // ===== TODO STUBS — need DSL/Page implementation =====
 
 When("I navigate to the Benerail rail search tab", async function () {

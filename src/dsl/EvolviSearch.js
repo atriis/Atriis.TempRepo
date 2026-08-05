@@ -70,8 +70,9 @@ const EvolviSearch = {
     await searchPage.fillInOrField(from, 1);
     await searchPage.fillInOrField(to, 2);
 
-    // Calendar flow: select the Nth available date for departure
-    await searchPage.clickCalendarNextArrow();
+    // Calendar flow: select the Nth available date for departure. One month ahead,
+    // not the shared 3-month default — Evolvi inventory is not published that far out.
+    await searchPage.clickCalendarNextArrow(1);
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
       endIndex: null,
@@ -113,9 +114,10 @@ const EvolviSearch = {
     await searchPage.selectRoundTrip();
     await EvolviSearch.ensureSplitTicketIsUnchecked(page);
 
-    // Departure flow: select Nth available date for departure
+    // Departure flow: select Nth available date for departure. One month ahead,
+    // not the shared 3-month default — Evolvi inventory is not published that far out.
     await searchPage.fillInOrField(from, 1);
-    await searchPage.clickCalendarNextArrow();
+    await searchPage.clickCalendarNextArrow(1);
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
       endIndex: null,
