@@ -126,6 +126,14 @@ When("I edit the car search from {string} to {string}", async function (pickupLo
   await CarSearch.editCarSearchWithDifferentDropoffLocation(this.page, pickupLocation, dropoffLocation);
 });
 
+// Edits an already-searched car to a new location without touching the rental dates — used when a
+// second car search must reuse the exact dates of the first (see editCarSearchWithDifferentDropoffLocation's
+// twin, which always drives both date pickers).
+When("I edit the car search at {string} without changing dates", async function (newLocation) {
+  logger.info("Editing car search location without changing dates", { newLocation });
+  await CarSearch.editCarSearchLocation(this.page, newLocation);
+});
+
 // ========================================
 // WHEN STEPS - CAR SEARCH EXPECTING NO RESULTS
 // ========================================

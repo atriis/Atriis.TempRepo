@@ -766,6 +766,55 @@ const CarSearch = {
     return { searched: true, pickupPlace, dropoffPlace, monthsAhead, pickupIndex, dropoffIndex };
   },
 
+  /**
+   * Edits an existing car search to a new pickup/drop-off location, leaving the rental dates
+   * untouched. Unlike editCarSearchWithDifferentDropoffLocation (which always drives both date
+   * pickers), this only fills the location field and re-submits — for scenarios that need a
+   * second car at a different place on the SAME dates as the first search.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string|Object} newLocation - New pickup/drop-off location
+   * @throws {Error} If page or newLocation are missing
+   * @returns {Promise<{searched: boolean, place: string}>}
+   */
+  async editCarSearchLocation(page, newLocation) {
+    if (!page) {
+      throw new Error('[CarSearch.editCarSearchLocation] "page" is required.');
+    }
+
+    if (!newLocation) {
+      throw new Error('[CarSearch.editCarSearchLocation] "newLocation" is required.');
+    }
+
+    const place = resolveLocation(
+      newLocation,
+      ["place", "location"],
+      carLocations,
+    );
+
+    logger.debug('[CarSearch.editCarSearchLocation] Editing car search location without changing dates', { place });
+
+    const searchPage = getPageObject(page, SearchPage);
+    const cartPage = getPageObject(page, CartPage);
+    const carSearchPage = getPageObject(page, CarSearchPage);
+
+    try {
+      // Opens the cart's "Add more services" > Car drawer (car-search-inputs.vue). The drawer
+      // pre-fills pickup/dropoff dates from the trip's existing car search, so leaving the date
+      // fields untouched and only replacing the destination is what keeps dates unchanged.
+      await cartPage.clickAddCarFromCarousel();
+      await searchPage.waitForEditSearchDrawerReady();
+      await carSearchPage.setCarSearchFormDestination(place);
+      await searchPage.waitAndClickPrimarySearchButtonFromCart();
+    } catch (err) {
+      throw new Error(
+        `[CarSearch.editCarSearchLocation] Failed to edit the car search to "${place}" without changing dates. Original: ${err.message}`
+      );
+    }
+
+    return { searched: true, place };
+  },
+
   // ===== SUGGESTED CAR SEARCH (cross-sell from trip overview) =====
 
   /**

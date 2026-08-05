@@ -26,6 +26,10 @@ const SELECTORS = {
   // rendered <input> (input-class), so the input carries the `pick-up` class and holds the
   // destination's display name as its value.
   CAR_SEARCH_FORM_DESTINATION_INPUT: ".car-search-inputs .pick-up input",
+  // Shared Element Plus autocomplete suggestion list (same class car-autocomplete's underlying
+  // app-autocomplete renders as every other product's location autocomplete).
+  AUTOCOMPLETE_LIST:
+    ".el-scrollbar__view.el-autocomplete-suggestion__list li[id*='item-0']:visible",
 
   // XPath used due to complex dropdown structure
   RENTAL_AGENCY_DROPDOWN_FIELD:
@@ -422,6 +426,53 @@ class CarSearchPage {
       .locator(SELECTORS.DROPOFF_DIFFERENT_LOCATION_LABEL)
       .filter({ hasText: "Drop-off at a different location" })
       .first();
+  }
+
+  /**
+   * Replaces the car search form's pre-filled pick-up location with a new value.
+   * Uses real keyboard events (Ctrl+A + Backspace) rather than fill() — the input's value is
+   * Vue-bound to the previous search's location object, so a programmatic fill() would be
+   * overwritten by that binding on the next render. Mirrors SearchPage.editAirportField's
+   * clear-then-type-then-select-suggestion technique, scoped to the car-specific input class.
+   * @param {string} value - New pick-up location to search
+   * @throws {Error} If value is missing or the input/suggestion never settle
+   */
+  async setCarSearchFormDestination(value) {
+    if (!value || typeof value !== "string") {
+      throw new Error(`[CarSearchPage.setCarSearchFormDestination] "value" must be a non-empty string, got: ${typeof value}`);
+    }
+
+    const input = this.page.locator(SELECTORS.CAR_SEARCH_FORM_DESTINATION_INPUT).first();
+
+    try {
+      await input.waitFor({ state: "visible", timeout: 10000 });
+      await input.scrollIntoViewIfNeeded();
+      await input.focus();
+      await input.press("Control+A");
+      await input.press("Backspace");
+      await this.page.waitForTimeout(300);
+      await input.pressSequentially(value, { delay: 100 });
+
+      const firstSuggestion = this.page.locator(SELECTORS.AUTOCOMPLETE_LIST).first();
+      await firstSuggestion.waitFor({ state: "visible", timeout: 15000 });
+      await firstSuggestion.click();
+
+      await this.page.waitForFunction(
+        ([selector, expectedValue]) => {
+          const el = document.querySelector(selector);
+          return !!el && typeof el.value === "string" && el.value.trim().length > 0
+            && el.value.toUpperCase().includes(expectedValue.toUpperCase());
+        },
+        [SELECTORS.CAR_SEARCH_FORM_DESTINATION_INPUT, value],
+        { timeout: 10000 },
+      );
+    } catch (err) {
+      throw new Error(
+        `[CarSearchPage.setCarSearchFormDestination] Failed to replace the car search destination with "${value}". ` +
+        `The pick-up input (${SELECTORS.CAR_SEARCH_FORM_DESTINATION_INPUT}) or its autocomplete suggestion list ` +
+        `may not have rendered. Original: ${err.message}`
+      );
+    }
   }
 
   /**
