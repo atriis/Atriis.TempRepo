@@ -809,6 +809,10 @@ const SELECTORS = {
   // quote's validation requires a driver, so it's scoped to `.field .app-select` to avoid matching
   // anything else inside `.inputs`.
   CAR_DRIVER_LOYALTY_DRIVER_SELECT: '.car-driver-loyalty .extras-card .inputs .field .app-select .el-select',
+  // "Use Existing" el-switch — only rendered when the quote already carries a membershipId
+  // (car-driver-loyalty.vue: `v-if="quote.membershipId"`). It starts ON, which disables the
+  // Loyalty ID input, so editing to a new number requires toggling it off first.
+  CAR_DRIVER_LOYALTY_USE_EXISTING_TOGGLE: '.car-driver-loyalty .toggle-container .el-switch',
   // Primary "Save" app-btn inside the panel's `.btns` row (carries the `no-border` class).
   CAR_DRIVER_LOYALTY_SAVE_BUTTON: '.car-driver-loyalty .btns .no-border',
   CAR_DRIVER_LOYALTY_SUCCESS_ICON: '.car-driver-loyalty .success-icon',
@@ -6728,6 +6732,27 @@ class CartPage {
         `dropdown (select: ${SELECTORS.CAR_DRIVER_LOYALTY_DRIVER_SELECT}). Likely causes: the panel is ` +
         `not expanded, the quote does not require a driver so the field never rendered, or no trip ` +
         `passenger is named "${driverName}". Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the "Use Existing" toggle in the car driver loyalty panel. Only rendered when the
+   * quote already carries a membershipId, and starts ON (disabling the Loyalty ID input), so
+   * this is used to switch it off before typing a new number.
+   * @param {number} [timeout=10000]
+   */
+  async clickCarDriverLoyaltyUseExistingToggle(timeout = 10000) {
+    const toggle = this.page.locator(SELECTORS.CAR_DRIVER_LOYALTY_USE_EXISTING_TOGGLE).first();
+    try {
+      await toggle.waitFor({ state: 'visible', timeout });
+      await toggle.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickCarDriverLoyaltyUseExistingToggle] Could not click the "Use Existing" toggle ` +
+        `(selector: ${SELECTORS.CAR_DRIVER_LOYALTY_USE_EXISTING_TOGGLE}). Likely causes: the panel is ` +
+        `not expanded, or the toggle never rendered because the quote has no existing membershipId. ` +
+        `Original: ${err.message}`
       );
     }
   }

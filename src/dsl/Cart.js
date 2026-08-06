@@ -5546,6 +5546,68 @@ const Cart = {
   },
 
   /**
+   * Clicks the "Use Existing" toggle in the car driver/loyalty extras panel. Only rendered when
+   * the quote already carries a membershipId, and starts ON (disabling the Loyalty ID input) —
+   * use this to switch it off before editing the loyalty number. Assumes the panel is already
+   * expanded (see expandCarDriverLoyaltySection).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async clickCarDriverLoyaltyUseExistingToggle(page) {
+    if (!page) throw new Error('[Cart.clickCarDriverLoyaltyUseExistingToggle] "page" is required.');
+
+    logger.debug('[Cart.clickCarDriverLoyaltyUseExistingToggle] Clicking the car driver/loyalty "Use Existing" toggle');
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickCarDriverLoyaltyUseExistingToggle();
+      logger.info('Clicked the car driver/loyalty "Use Existing" toggle');
+    } catch (err) {
+      throw new Error(
+        `[Cart.clickCarDriverLoyaltyUseExistingToggle] Failed to click the "Use Existing" toggle in the ` +
+        `driver/loyalty id extras section. The panel must already be expanded and the quote must carry ` +
+        `an existing membershipId for the toggle to render. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Edits the Loyalty ID input in the car driver/loyalty extras panel to a new number, without
+   * expanding the panel or saving. Assumes the panel is already expanded (see
+   * expandCarDriverLoyaltySection) and, if the quote carries an existing membershipId, that the
+   * "Use Existing" toggle has already been switched off (see clickCarDriverLoyaltyUseExistingToggle)
+   * so the input is enabled.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} loyaltyNumber - Loyalty number to type
+   * @returns {Promise<void>}
+   */
+  async editCarDriverLoyaltyNumber(page, loyaltyNumber) {
+    if (!page) throw new Error('[Cart.editCarDriverLoyaltyNumber] "page" is required.');
+    if (!loyaltyNumber || typeof loyaltyNumber !== 'string') {
+      throw new Error(
+        `[Cart.editCarDriverLoyaltyNumber] "loyaltyNumber" must be a non-empty string, got: ` +
+        `${typeof loyaltyNumber} (${JSON.stringify(loyaltyNumber)})`
+      );
+    }
+
+    logger.debug('[Cart.editCarDriverLoyaltyNumber] Editing car driver loyalty number', { loyaltyNumber });
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.fillCarDriverLoyaltyNumber(loyaltyNumber);
+      logger.info('Edited car driver loyalty number in the quote extras', { loyaltyNumber });
+    } catch (err) {
+      throw new Error(
+        `[Cart.editCarDriverLoyaltyNumber] Failed to edit car driver loyalty number to "${loyaltyNumber}". ` +
+        `The panel must already be expanded, and the Loyalty ID input must not be disabled by the ` +
+        `"Use Existing" toggle. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Adds a car driver loyalty (Loyalty ID) number on the cart's car quote card.
    * Expands the car-scoped extras panel, types the number, saves and waits for the success state.
    *

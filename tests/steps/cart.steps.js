@@ -2530,6 +2530,16 @@ When("I select {string} as the driver", async function (driverName) {
   await Cart.selectCarDriver(this.page, driverName);
 });
 
+When("I click use existing toggle in the driver\\/loyalty id extras section", async function () {
+  logger.info("Clicking the driver/loyalty id extras \"Use Existing\" toggle");
+  await Cart.clickCarDriverLoyaltyUseExistingToggle(this.page);
+});
+
+When("I edit the car loyalty number to {string}", async function (loyaltyNumber) {
+  logger.info("Editing car loyalty number", { loyaltyNumber });
+  await Cart.editCarDriverLoyaltyNumber(this.page, loyaltyNumber);
+});
+
 Then("the corporate billing number is {string}", async function (expectedNumber) {
   logger.info("Verifying the corporate billing number in the car billback panel", { expectedNumber });
   await Cart.verifyCarBillbackBillingNumber(this.page, expectedNumber);
