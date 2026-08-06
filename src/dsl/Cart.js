@@ -7883,6 +7883,53 @@ const Cart = {
   },
 
   /**
+   * Selects a named optional service in the expanded optional services panel.
+   * Prefer this over selectRandomOptionalService when the scenario has to reach the
+   * save: the panel also lists free SSRs the airline can reject (e.g. one needing an
+   * infant or extra passenger details), so a random pick is not reliably addable.
+   * @param {import('playwright').Page} page
+   * @param {string} optionText - Substring of the service name (e.g. "Priority fast security lane")
+   */
+  async selectOptionalServiceByText(page, optionText) {
+    if (!page) throw new Error('page is required');
+    if (typeof optionText !== 'string' || !optionText.trim()) {
+      throw new Error(`optionText must be a non-empty string, got: ${typeof optionText}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.selectOptionalServiceByText(optionText);
+    logger.info('Selected optional service', { optionText });
+  },
+
+  /**
+   * Selects one of a comma-separated list of optional services, picked at random, so
+   * consecutive runs cover different services. Candidates missing from the current
+   * offer are skipped; only an offer carrying none of them fails.
+   * @param {import('playwright').Page} page
+   * @param {string} optionList - Comma-separated service names, e.g. "Lounge access, Preferred boarding"
+   * @returns {Promise<string>} The service that was selected
+   */
+  async selectRandomOptionalServiceFrom(page, optionList) {
+    if (!page) throw new Error('page is required');
+    if (typeof optionList !== 'string' || !optionList.trim()) {
+      throw new Error(`optionList must be a non-empty string, got: ${typeof optionList}`);
+    }
+
+    const candidates = optionList
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean);
+    if (candidates.length === 0) {
+      throw new Error(`optionList must contain at least one service name, got: "${optionList}"`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const selected = await cartPage.selectOneOfOptionalServices(candidates);
+    logger.info('Selected optional service at random', { selected, candidates });
+    return selected;
+  },
+
+  /**
    * Verifies the "optional services will be available after booking is complete" message is visible.
    * @param {import('playwright').Page} page
    */

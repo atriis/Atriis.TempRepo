@@ -385,7 +385,14 @@ When("I click to edit the meal extras section", async function () {
   await cartPage.clickEditMealExtrasButton();
 });
 
-When("I click to edit the baggage extras section", async function () {
+// Opening the baggage panel waits up to 120s for the supplier's ancillary offers
+// (CartPage.clickEditBaggageExtrasButton) — Sabre NDC fires several Get Ancillaries
+// calls per open. Without headroom above that internal budget, cucumber's default
+// 120s step timeout fires first and reports the opaque "function timed out" instead
+// of the real "Baggage extras did not open" message.
+const BAGGAGE_EXTRAS_STEP_TIMEOUT_MS = 180000;
+
+When("I click to edit the baggage extras section", { timeout: BAGGAGE_EXTRAS_STEP_TIMEOUT_MS }, async function () {
   logger.info("Clicking to edit the baggage extras section");
   await Cart.openBaggageExtras(this.page);
 });
@@ -410,7 +417,9 @@ When("I add baggage for outbound and return segments", async function () {
   await Cart.addBaggageForAllSegments(this.page);
 });
 
-When("I select the {string} baggage option for the {string} flight", async function (optionText, direction) {
+// Opens the baggage panel itself when it is not already expanded, so it inherits the
+// same slow-ancillaries wait as "I click to edit the baggage extras section".
+When("I select the {string} baggage option for the {string} flight", { timeout: BAGGAGE_EXTRAS_STEP_TIMEOUT_MS }, async function (optionText, direction) {
   logger.info("Selecting baggage option in cart for flight direction", { optionText, direction });
   await Cart.selectBaggageOptionForFlightDirection(this.page, optionText, direction);
 });
@@ -2186,6 +2195,16 @@ Then("the optional services extras section should be visible", async function ()
 When("I click optional services in extras", async function () {
   logger.info("Clicking optional services section in extras");
   await Cart.clickOptionalServicesInExtras(this.page);
+});
+
+When("I select the {string} optional service", async function (optionText) {
+  logger.info("Selecting optional service by name", { optionText });
+  await Cart.selectOptionalServiceByText(this.page, optionText);
+});
+
+When("I select a random optional service from {string}", async function (optionList) {
+  logger.info("Selecting a random optional service from a named list", { optionList });
+  this.selectedOptionalService = await Cart.selectRandomOptionalServiceFrom(this.page, optionList);
 });
 
 When("I select a random optional service", async function () {

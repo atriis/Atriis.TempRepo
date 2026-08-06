@@ -383,6 +383,8 @@ const SELECTORS = {
   FLIGHT_OPTIONAL_SERVICES_MESSAGE: '.flight-optional-services .el-tab-pane span', // Message text inside the optional services tab content (flight-optional-services.vue)
   FLIGHT_OPTIONAL_SERVICES_OPTION_TITLE: '.flight-optional-services .service-option .option-title', // Each available service option title inside the expanded optional services panel
   FLIGHT_OPTIONAL_SERVICES_OPTION_CHECKBOX: '.flight-optional-services .el-tab-pane:visible .service-option .el-checkbox:not(.is-disabled)', // Selectable (non-disabled) service checkboxes scoped to the active traveler tab
+  FLIGHT_OPTIONAL_SERVICES_OPTION_ROW: '.flight-optional-services .el-tab-pane:visible .service-option', // A whole service option row (title + checkbox) in the active traveler tab
+  FLIGHT_OPTIONAL_SERVICES_ROW_CHECKBOX: '.el-checkbox:not(.is-disabled)', // Selectable checkbox, relative to a FLIGHT_OPTIONAL_SERVICES_OPTION_ROW
   FLIGHT_OPTIONAL_SERVICES_SAVE_BUTTON: '.flight-optional-services .no-border', // Save button scoped to the optional services panel (disambiguates from other simultaneously-open extras panels)
   FLIGHT_OPTIONAL_SERVICES_SUCCESS_ICON: '.flight-optional-services .material-symbols-outlined.filled.success-icon.green:visible', // Green checkmark after successful save (extras-layout.vue), scoped to the visible instance (hidden duplicates can exist, e.g. responsive layouts)
   // Flight Ancillary Services (flight-ancillary-services.vue)
@@ -3451,13 +3453,19 @@ class CartPage {
 
   /**
    * Opens the baggage extras panel by clicking the Edit/Add button scoped to the flight-baggage section.
-   * @param {number} [timeout=10000] - Timeout for waiting
+   * The content timeout is deliberately separate from (and much larger than) the button timeout:
+   * the panel cannot populate until the supplier's ancillary offers come back. Sabre NDC fires
+   * several Get Ancillaries calls per open and is slow to settle, so this allows two minutes.
+   * Callers must keep their step timeout above it (see BAGGAGE_EXTRAS_STEP_TIMEOUT_MS) or
+   * cucumber's own timeout fires first and hides this error.
+   * @param {number} [timeout=10000] - Timeout for the Edit/Add button to become visible
+   * @param {number} [contentTimeout=120000] - Timeout for the panel content to render after the click
    */
-  async clickEditBaggageExtrasButton(timeout = 10000) {
+  async clickEditBaggageExtrasButton(timeout = 10000, contentTimeout = 120000) {
     const btn = this.page.locator(SELECTORS.BAGGAGE_CLICKABLE).first();
     await btn.waitFor({ state: 'visible', timeout });
     await btn.click();
-    await this.waitForBaggageContent(timeout);
+    await this.waitForBaggageContent(contentTimeout);
   }
 
   /**
@@ -3605,7 +3613,10 @@ class CartPage {
         this.page.locator(SELECTORS.BAGGAGE_SAVE_BUTTON).first().waitFor({ state: 'visible', timeout }),
       ]);
     } catch {
-      throw new Error('Baggage extras did not open');
+      throw new Error(
+        `Baggage extras did not open: no traveler tab, baggage dropdown, selected tag or Save button ` +
+          `appeared within ${timeout}ms of the panel being clicked.`
+      );
     }
   }
 
@@ -4098,6 +4109,60 @@ class CartPage {
     const randomIndex = Math.floor(Math.random() * count);
     await checkboxes.nth(randomIndex).click();
     return randomIndex;
+  }
+
+  /**
+   * Selects the optional service whose row contains the given text.
+   * Matching is case-insensitive, so the supplier's raw service name
+   * ("PRIORITY FAST SECURITY LANE") matches the label as the app renders it.
+   * @param {string} optionText - Substring of the service name (e.g. "Priority fast security lane")
+   * @param {number} [timeout=15000] - Max wait for the options to render
+   * @returns {Promise<string>} The option text that was selected
+   */
+  async selectOptionalServiceByText(optionText, timeout = 15000) {
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error('optionText must be a non-empty string');
+    }
+    return this.selectOneOfOptionalServices([optionText], timeout);
+  }
+
+  /**
+   * Selects ONE of the given optional services, chosen at random, so consecutive runs
+   * exercise different services instead of always the same one.
+   * The candidates are tried in random order and the first one actually present and
+   * selectable wins — a service missing from this particular offer is skipped rather
+   * than failing the run, and only an offer carrying none of them is an error.
+   * @param {string[]} optionTexts - Candidate service names (substring match, case-insensitive)
+   * @param {number} [timeout=15000] - Max wait for the options to render
+   * @returns {Promise<string>} The candidate that was selected
+   */
+  async selectOneOfOptionalServices(optionTexts, timeout = 15000) {
+    if (!Array.isArray(optionTexts) || optionTexts.length === 0) {
+      throw new Error('optionTexts must be a non-empty array of service names');
+    }
+
+    const rows = this.page.locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_OPTION_ROW);
+    await rows.first().waitFor({ state: 'visible', timeout });
+
+    const shuffled = [...optionTexts].sort(() => Math.random() - 0.5);
+    for (const optionText of shuffled) {
+      const checkbox = rows
+        .filter({ hasText: optionText })
+        .first()
+        .locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_ROW_CHECKBOX);
+      if ((await checkbox.count()) > 0) {
+        await checkbox.first().click();
+        return optionText;
+      }
+    }
+
+    const available = await this.page
+      .locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_OPTION_TITLE)
+      .allInnerTexts();
+    throw new Error(
+      `No selectable optional service matching any of ${optionTexts.map((t) => `"${t}"`).join(', ')}. ` +
+        `Available options: ${available.map((title) => `"${title.trim()}"`).join(', ')}`
+    );
   }
 
   /**
