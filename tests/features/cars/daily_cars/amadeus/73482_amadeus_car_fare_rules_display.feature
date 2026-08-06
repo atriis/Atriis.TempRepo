@@ -18,24 +18,24 @@ Feature: 73482 Amadeus - Cars - Verify that the terms/fare rules are loading in 
     When I search for a car at "LHR"
     And I wait for add to trip text to be visible
     And I click on the terms and conditions link in the car results
-    Then The terms and conditions modal should display the "Charge" section
-    And The terms and conditions modal should display the "Coverage" section
-    And The terms and conditions modal should display the "Remarks" section
+    Then the terms and conditions modal should display the "Charge" section
+    And the terms and conditions modal should display the "Coverage" section
+    And the terms and conditions modal should display the "Remarks" section
     And I close the terms and conditions modal
     When I add the first car to cart
     And the booking status should be "Pending booking"
     And I fill in the OOP justification text "abc"
     When I click on the terms and conditions link in the cart
-    Then The terms and conditions modal should display the "Charge" section
-    And The terms and conditions modal should display the "Coverage" section
-    And The terms and conditions modal should display the "Remarks" section
+    Then the terms and conditions modal should display the "Charge" section
+    And the terms and conditions modal should display the "Coverage" section
+    And the terms and conditions modal should display the "Remarks" section
     And I close the terms and conditions modal
     And I proceed to checkout
     And I complete the booking
     And the booking status should be "Confirmed"
     When I click on the terms and conditions link in the cart
-    Then The terms and conditions modal should display the "Charge" section
-    And The terms and conditions modal should display the "Coverage" section
-    And The terms and conditions modal should display the "Remarks" section
+    Then the terms and conditions modal should display the "Charge" section
+    And the terms and conditions modal should display the "Coverage" section
+    And the terms and conditions modal should display the "Remarks" section
     And I close the terms and conditions modal
     And I successfully cancel the trip

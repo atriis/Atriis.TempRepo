@@ -259,7 +259,7 @@ Then("the terms and conditions modal should display the text {string}", async fu
   await Cart.verifyCarTermsDialogContainsText(this.page, expectedText);
 });
 
-Then("The terms and conditions modal should display the {string} section", async function (sectionHeading) {
+Then("the terms and conditions modal should display the {string} section", async function (sectionHeading) {
   const { Cart } = require("@dsl");
   logger.info(`Extracting terms and conditions modal section: ${sectionHeading}`);
   const result = await Cart.extractAndVerifyTermsModalSection(this.page, sectionHeading);

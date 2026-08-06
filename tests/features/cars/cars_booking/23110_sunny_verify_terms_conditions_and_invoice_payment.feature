@@ -17,7 +17,7 @@ Feature: 23110 - Sunny Car - Verify Terms and Conditions and Invoice Payment
     And I add the first car to cart
     Then the payment type should be "Pre paid" 
     When I click on the terms and conditions link in the cart
-    Then The terms and conditions modal should display the "Rental period" section
+    Then the terms and conditions modal should display the "Rental period" section
     When I close the terms and conditions modal
     When I proceed to checkout
     And I complete the booking
