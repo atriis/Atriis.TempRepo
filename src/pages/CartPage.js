@@ -230,6 +230,18 @@ const SELECTORS = {
   CANCELLED_QUOTE_CHECK_PRICE_BUTTON: '.cancelled-quotes-container .check-price-btn',
   ACTIVE_QUOTE_ACTIONS_DROPDOWN_ICON: '.quote-payment-card .base-quote-header .expand-icon.is-clickable',
   ACTIVE_QUOTE_CANCEL_OPTION: '.el-dropdown-menu__item',
+  // Hotel quote "Change Dates" modification (no data-testid on this flow).
+  // 3-dots (more_vert) kebab in the hotel quote's shared header; hover opens the menu.
+  // Scoped to .base-quote-header (the quote-level header) so it never picks up the
+  // trip-level actions kebab (.dropdowns-container .expand-icon).
+  HOTEL_QUOTE_ACTIONS_ICON: '.base-quote-header .expand-icon.material-symbols-outlined',
+  CHANGE_DATES_QUOTE_OPTION: '.el-dropdown-menu__item',
+  // Status label rendered in the quote header (e.g. "Confirmed", "Pending modification").
+  HOTEL_QUOTE_STATUS: '.base-quote-header .app-label--quote',
+  // Countdown clock shown while a quote is pending modification (~30 min for Sabre hotels).
+  MODIFICATION_COUNTDOWN: '.timed-quote .countdown, .timed-quote-badge',
+  // "Cancel Modify" button shown in the quote header while pending modification.
+  CANCEL_MODIFY_BUTTON: '.base-quote-header .btn-cancel-modify',
   // Cookie consent banner "Allow all cookies" button (CookieHub / OneTrust)
   COOKIE_ALLOW_ALL_BUTTON: '#ch2-allow-all-btn, button:has-text("Allow all cookies"), button:has-text("Allow all"), button:has-text("Accept all")',
   // Info icon inside the "Cancel trip" option in the trip-level dropdown (shown when a quote is In Progress)
@@ -2376,6 +2388,80 @@ class CartPage {
     await icon.waitFor({ state: 'visible', timeout: 15000 });
     await icon.hover();
     await this.page.waitForTimeout(1000);
+  }
+
+  /**
+   * Opens the hotel quote's 3-dots (more_vert) actions menu.
+   * The el-dropdown trigger is hover-based, so we hover the kebab and wait for
+   * the menu to render. Retries the hover once to absorb the render gap where
+   * the menu closes before its items paint.
+   */
+  async openHotelQuoteActionsDropdown() {
+    const icon = this.page.locator(SELECTORS.HOTEL_QUOTE_ACTIONS_ICON).first();
+    await icon.waitFor({ state: 'visible', timeout: 15000 });
+    await icon.scrollIntoViewIfNeeded().catch(() => {});
+    // The el-dropdown opens on hover. Wait for the "Change Dates" item itself to
+    // become visible (the reliable signal the QUOTE menu opened) rather than the
+    // trip-level menu's items. Re-hover once to absorb the open/close render gap.
+    const changeDates = this.page
+      .locator(SELECTORS.CHANGE_DATES_QUOTE_OPTION, { hasText: 'Change Dates' })
+      .first();
+    await icon.hover();
+    try {
+      await changeDates.waitFor({ state: 'visible', timeout: 5000 });
+    } catch {
+      await icon.hover();
+      await changeDates.waitFor({ state: 'visible', timeout: 10000 });
+    }
+  }
+
+  /**
+   * Clicks the "Change Dates" option in the open hotel quote menu.
+   */
+  async clickChangeDatesQuoteOption() {
+    const option = this.page
+      .locator(SELECTORS.CHANGE_DATES_QUOTE_OPTION, { hasText: 'Change Dates' })
+      .first();
+    await option.waitFor({ state: 'visible', timeout: 15000 });
+    await option.click();
+  }
+
+  /**
+   * Reads the hotel quote status label (e.g. "Pending modification").
+   * @returns {Promise<string>}
+   */
+  async getHotelQuoteStatusText({ timeout = 15000 } = {}) {
+    const el = this.page.locator(SELECTORS.HOTEL_QUOTE_STATUS).first();
+    await el.waitFor({ state: 'visible', timeout });
+    return ((await el.innerText()) ?? '').trim();
+  }
+
+  /**
+   * Reads the modification countdown text (e.g. "29:58"), or '' if absent.
+   * @returns {Promise<string>}
+   */
+  async getModificationCountdownText({ timeout = 15000 } = {}) {
+    const el = this.page.locator(SELECTORS.MODIFICATION_COUNTDOWN).first();
+    try {
+      await el.waitFor({ state: 'visible', timeout });
+    } catch {
+      return '';
+    }
+    return ((await el.innerText()) ?? '').trim();
+  }
+
+  /**
+   * Whether the "Cancel Modify" button is visible on the quote.
+   * @returns {Promise<boolean>}
+   */
+  async isCancelModifyButtonVisible({ timeout = 15000 } = {}) {
+    const el = this.page.locator(SELECTORS.CANCEL_MODIFY_BUTTON).first();
+    try {
+      await el.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**

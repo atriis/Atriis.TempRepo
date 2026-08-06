@@ -355,6 +355,14 @@ When("I extract the price at index {int} from {string}", async function (index, 
   console.log(`[Price] index=${index} location="${location}" â†’ ${price}`);
 });
 
+// Explicit fixed wait. Use sparingly and only when a real UI/back-end settle
+// time is required that cannot be observed with a specific locator wait — e.g.
+// letting a pending hotel modification settle before re-checkout.
+When("I wait for {int} seconds", async function (seconds) {
+  logger.info("Waiting", { seconds });
+  await this.page.waitForTimeout(seconds * 1000);
+});
+
 Then("I should see a success notification", async function () {
   logger.info("Verifying success notification is visible");
   const commonPage = getPageObject(this.page, CommonPage);
