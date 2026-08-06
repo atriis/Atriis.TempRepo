@@ -149,6 +149,16 @@ Then("the sustainability filter checkbox should be enabled and clickable", async
   await HotelLevelResults.verifySustainabilityFilterEnabled(this.page);
 });
 
+Then("hovering over the sustainable tag should show the hotel certifications tooltip", async function () {
+  logger.info("Verifying the certifications tooltip opens on the sustainable tag");
+  await HotelLevelResults.verifyHotelCertificationsTooltip(this.page);
+});
+
+Then("each certification is listed in the tooltip exactly once", async function () {
+  logger.info("Verifying each certification is listed in the tooltip exactly once");
+  await HotelLevelResults.verifyEachCertificationListedOnce(this.page);
+});
+
 When("I sort hotel results by {string}", async function (label) {
   logger.info("Sorting hotel results by", { label });
   await HotelLevelResults.sortBy(this.page, label);

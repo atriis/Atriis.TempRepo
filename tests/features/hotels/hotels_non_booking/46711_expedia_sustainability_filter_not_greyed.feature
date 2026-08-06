@@ -19,3 +19,6 @@ Feature: 46711 Expedia - Sustainability filter is not greyed out
     When I search for a hotel in "LON" for 1 night
     And I wait to see view rates text in results page
     Then the sustainability filter checkbox should be enabled and clickable
+    When I apply hotel level filter "Sustainability" with option "Only Eco Certified Properties"
+    Then hovering over the sustainable tag should show the hotel certifications tooltip
+    And each certification is listed in the tooltip exactly once

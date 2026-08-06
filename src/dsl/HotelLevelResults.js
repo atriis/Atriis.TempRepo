@@ -14,6 +14,25 @@ const HOTEL_SUPPLIER_ID_MAP = {
   hcorpo: 'HCORPO',
 };
 
+// Heading rendered above the certification list in the hotel eco tooltip (hotel-info.vue).
+const CERTIFICATIONS_TOOLTIP_TITLE = 'Certifications';
+
+/**
+ * Returns the values that occur more than once, compared case-insensitively.
+ * @param {string[]} values
+ * @returns {string[]} The duplicated values, in first-seen order
+ */
+function findDuplicates(values) {
+  const seen = new Set();
+  const duplicates = new Set();
+  for (const value of values) {
+    const key = value.toLowerCase();
+    if (seen.has(key)) duplicates.add(value);
+    seen.add(key);
+  }
+  return [...duplicates];
+}
+
 function resolveHotelSupplierId(supplierName, { strict = false } = {}) {
   const key = supplierName.toLowerCase().replace(/[^a-z0-9]/g, '');
   const supplierId = HOTEL_SUPPLIER_ID_MAP[key];
@@ -183,6 +202,50 @@ const HotelLevelResults = {
     const isEnabled = await hotelLevelResultsPage.isSustainabilityFilterEnabled();
     if (!isEnabled) throw new Error('Sustainability filter is greyed out (disabled)');
     return { enabled: true };
+  },
+
+  /**
+   * Hovers the "Sustainable" eco tag on the first certified hotel and verifies its tooltip shows
+   * the "Certifications" heading together with at least one certification.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{titles: string[], certifications: string[]}>}
+   */
+  async verifyHotelCertificationsTooltip(page) {
+    if (!page) throw new Error('page is required');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const { titles, certifications } = await hotelLevelResultsPage.hoverSustainableTagAndGetCertifications();
+
+    expect(titles, `Expected the eco tooltip to show the "${CERTIFICATIONS_TOOLTIP_TITLE}" heading`)
+      .toContain(CERTIFICATIONS_TOOLTIP_TITLE);
+    expect(
+      certifications.length,
+      'Expected the eco tooltip to list at least one certification',
+    ).toBeGreaterThan(0);
+
+    logger.info('Hotel certifications tooltip displayed', { certifications });
+    return { titles, certifications };
+  },
+
+  /**
+   * Verifies the hotel eco tooltip shows its certification information only once — the
+   * "Certifications" heading is rendered a single time and no certification is listed twice.
+   * @param {import('playwright').Page} page
+   */
+  async verifyEachCertificationListedOnce(page) {
+    if (!page) throw new Error('page is required');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const { titles, certifications } = await hotelLevelResultsPage.hoverSustainableTagAndGetCertifications();
+
+    expect(
+      titles.length,
+      `Expected the "${CERTIFICATIONS_TOOLTIP_TITLE}" heading once, got: ${titles.join(', ')}`,
+    ).toBe(1);
+
+    const duplicates = findDuplicates(certifications);
+    expect(
+      duplicates,
+      `Expected every certification to be listed once, duplicated: ${duplicates.join(', ')}`,
+    ).toEqual([]);
   },
 
   /**

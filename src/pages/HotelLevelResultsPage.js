@@ -1,4 +1,5 @@
 ﻿const { SELECTORS: RESULTS_SELECTORS } = require("@pages/ResultsPage");
+const { normalizeText } = require("@utils/text");
 
 /**
  * Page Object for hotel level results page.
@@ -19,6 +20,16 @@ const SELECTORS = {
   CO2_VALUE: ".hotel-info .eco-label .is-size-7",
   SUPPLIER_LOGO_IMG: (supplierId) => `.hotel-supplier-carousel img[alt*="${supplierId}"], .supplier-img img[alt*="${supplierId}"]`,
   SUSTAINABILITY_FILTER_CHECKBOX: 'input.el-checkbox__original[value="ecoCertificated"]',
+  // "Sustainable" eco tag in a hotel card. hotel-info.vue renders it as the el-tooltip trigger,
+  // and only for hotels that carry at least one eco label.
+  SUSTAINABLE_TAG: '.hotel-preview .hotel-info .eco',
+  // Certifications tooltip. el-tooltip effect="light" portals the popper to body level, so it is
+  // matched globally and narrowed to the visible one carrying the .cert heading.
+  ECO_CERTIFICATIONS_TOOLTIP: '.el-popper.is-light:has(.cert):visible',
+  // Heading ("Certifications") inside the certifications tooltip
+  ECO_CERTIFICATIONS_TITLE: '.cert',
+  // Certification name inside a tooltip list item — the sibling div of the check-icon column
+  ECO_CERTIFICATION_NAME: 'ul > li .is-flex > div:not(.checkIcon)',
   // Sort dropdown in hotel list header
   SORT_SELECT: '.hotel-list-sort .sort .el-select',
   SORT_OPTION: (value) => `.el-select-dropdown__item:has-text("${value}")`,
@@ -86,6 +97,12 @@ const SELECTORS = {
   HOTEL_ADDRESS: '.hotel-preview .address-distance p',
   // Reset Filters (clear all) button in the hotel filter summary bar
   RESET_FILTERS_BUTTON: '.hotel-filter-summary .clear-all',
+};
+
+// Filter section title → Vuex hotelFilter key. Most sections store under the lowercased title,
+// but the Sustainability section is stored under 'ecoLabels' (hotel.service.ts).
+const HOTEL_FILTER_STORE_KEYS = {
+  sustainability: 'ecoLabels',
 };
 
 class HotelLevelResultsPage {
@@ -357,6 +374,57 @@ class HotelLevelResultsPage {
   }
 
   /**
+   * Hovers the "Sustainable" eco tag on the first certified hotel card and reads the
+   * certifications tooltip contents.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000] - Timeout for the eco tag to appear
+   * @returns {Promise<{titles: string[], certifications: string[]}>} Tooltip headings and certification names
+   */
+  async hoverSustainableTagAndGetCertifications({ timeout = 15000 } = {}) {
+    const tag = this.page.locator(SELECTORS.SUSTAINABLE_TAG).first();
+    try {
+      await tag.waitFor({ state: 'visible', timeout });
+    } catch {
+      // hotel-info.vue renders the .eco tag only when the hotel has at least one eco label, so an
+      // absent tag means the results hold no eco-certified hotel — not a broken selector.
+      throw new Error(
+        `[HotelLevelResultsPage.hoverSustainableTagAndGetCertifications] No "Sustainable" eco tag appeared ` +
+        `in the hotel results within ${timeout}ms — the results contain no eco-certified hotel to hover ` +
+        `(selector: ${SELECTORS.SUSTAINABLE_TAG}).`
+      );
+    }
+    await tag.scrollIntoViewIfNeeded();
+    await tag.hover();
+
+    const tooltip = this.page.locator(SELECTORS.ECO_CERTIFICATIONS_TOOLTIP).first();
+    try {
+      await tooltip.waitFor({ state: 'visible', timeout: 5000 });
+    } catch {
+      // El-Plus opens the popper on a real pointer-enter only; move away and re-hover once.
+      await this.page.mouse.move(0, 0);
+      await this.page.waitForTimeout(300);
+      try {
+        await tag.hover();
+        await tooltip.waitFor({ state: 'visible', timeout: 5000 });
+      } catch {
+        throw new Error(
+          `[HotelLevelResultsPage.hoverSustainableTagAndGetCertifications] The certifications tooltip did not ` +
+          `open after hovering the "Sustainable" eco tag (selector: ${SELECTORS.ECO_CERTIFICATIONS_TOOLTIP}).`
+        );
+      }
+    }
+
+    const titles = (await tooltip.locator(SELECTORS.ECO_CERTIFICATIONS_TITLE).allTextContents())
+      .map(normalizeText)
+      .filter(Boolean);
+    const certifications = (await tooltip.locator(SELECTORS.ECO_CERTIFICATION_NAME).allTextContents())
+      .map(normalizeText)
+      .filter(Boolean);
+
+    return { titles, certifications };
+  }
+
+  /**
    * Selects a sort option by label text in the hotel list sort dropdown.
    * @param {string} label - The sort option label (e.g., "Price", "Most recommended")
    */
@@ -508,15 +576,16 @@ class HotelLevelResultsPage {
   /**   * Ensures a hotel-level filter is applied in the Vuex store.
    * When only one option exists for a filter, the app auto-checks and disables the checkbox
    * without updating the store. This method dispatches directly to the store as a fallback.
-   * @param {string} filterName - Vuex filter key matched from the filter section title (e.g. "Agreement" → "agreement")
+   * @param {string} filterName - Filter section title; mapped to its Vuex key via HOTEL_FILTER_STORE_KEYS,
+   *   falling back to the lowercased title (e.g. "Agreement" → "agreement")
    * @param {string} optionText - Substring text of the option label (e.g. "Corp")
    */
   async ensureHotelFilterApplied(filterName, optionText) {
     // Read the checked value from the DOM and dispatch to Vuex if the store hasn't been updated
-    await this.page.evaluate(({ filterName, optionText }) => {
+    const storeKey = HOTEL_FILTER_STORE_KEYS[filterName.toLowerCase()] || filterName.toLowerCase();
+    await this.page.evaluate(({ optionText, storeKey }) => {
       const app = document.querySelector('#app').__vue_app__;
       const store = app.config.globalProperties.$store;
-      const storeKey = filterName.toLowerCase(); // e.g. "Agreement" → "agreement"
       const current = store.getters['hotelStore/hotelFilter'][storeKey];
       if (current && current.length > 0) return; // already set via UI click
 
@@ -544,7 +613,7 @@ class HotelLevelResultsPage {
           return;
         }
       }
-    }, { filterName, optionText });
+    }, { optionText, storeKey });
   }
 
   /**
