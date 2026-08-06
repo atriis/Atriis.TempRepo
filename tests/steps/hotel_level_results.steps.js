@@ -225,9 +225,9 @@ Then("handshake badge should be visible in hotel level results", async function 
   await HotelLevelResults.verifyHandshakeBadgeVisible(this.page);
 });
 
-Then("TMC badge filter should be visible in hotel level results", async function () {
-  logger.info("Verifying TMC agreement filter is visible in hotel level results");
-  await HotelLevelResults.verifyAgreementFilterVisible(this.page);
+Then("agreement badge should be visible on all hotels in hotel level results", async function () {
+  logger.info("Verifying every hotel in hotel level results has the agreement badge");
+  await HotelLevelResults.verifyAgreementBadgeOnAllHotels(this.page);
 });
 
 When("I select the last hotel result", async function () {

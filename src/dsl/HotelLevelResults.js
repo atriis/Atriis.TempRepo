@@ -705,15 +705,22 @@ const HotelLevelResults = {
   },
 
   /**
-   * Verifies that the Agreement filter section is visible in the hotel-level filter panel.
+   * Verifies that every hotel card in the results carries the agreement badge (handshake icon) —
+   * i.e. there is no hotel without it.
    * @param {import('playwright').Page} page
-   * @throws {Error} If the Agreement filter section is not visible
+   * @throws {Error} If no hotels are listed, or any hotel card is missing the agreement badge
    */
-  async verifyAgreementFilterVisible(page) {
+  async verifyAgreementBadgeOnAllHotels(page) {
     if (!page) throw new Error('page is required');
     const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
-    const isVisible = await hotelLevelResultsPage.isFilterSectionVisible('Agreement');
-    if (!isVisible) throw new Error('Agreement filter section is not visible in hotel level results');
+    const { total, missingIndexes } = await hotelLevelResultsPage.findHotelsMissingAgreementBadge();
+    if (total === 0) throw new Error('No hotel results are listed, so the agreement badge cannot be verified on all hotels');
+    if (missingIndexes.length > 0) {
+      throw new Error(
+        `${missingIndexes.length} of ${total} hotels are missing the agreement badge (handshake) ` +
+        `(0-based card indexes: ${missingIndexes.join(', ')})`
+      );
+    }
   },
 
   async verifyHotelWasntFoundMessageNotDisplayed(page) {

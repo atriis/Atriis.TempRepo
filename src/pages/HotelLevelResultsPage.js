@@ -67,6 +67,10 @@ const SELECTORS = {
   MORE_DETAILS_BUTTON: '.more-details-btn',
   // Agreement badge (any) in hotel card
   AGREEMENT_BADGE: '.hotel-preview .ticket-agreement',
+  // Same agreement icon as AGREEMENT_BADGE, but relative to HOTEL_CARD so it can be
+  // resolved per hotel card. Scoped to .ticket-agreement because the popular-filter chips
+  // in hotel-info.vue reuse the .agreement-img class outside the agreement row.
+  AGREEMENT_ICON_IN_CARD: '.ticket-agreement .agreement-img',
   // Last hotel item in hotel list (lazy-loaded sentinel element)
   LAST_HOTEL_VIEW_RATES_BUTTON: "[id='last-item'] .btn--primary",
   // Selected sort value in the hotel-list-sort dropdown
@@ -785,6 +789,27 @@ class HotelLevelResultsPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Scans every hotel card in the results list for the agreement icon (the same icon
+   * isAnyAgreementBadgeVisible checks — resolved per card here instead of page-wide).
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<{ total: number, missingIndexes: number[] }>} Card count and the 0-based
+   *   indexes of the cards with no visible agreement icon (empty when every card has one)
+   */
+  async findHotelsMissingAgreementBadge({ timeout = 10000 } = {}) {
+    const cards = this.page.locator(SELECTORS.HOTEL_CARD);
+    await cards.first().waitFor({ state: 'visible', timeout });
+    const total = await cards.count();
+    const missingIndexes = [];
+    for (let i = 0; i < total; i++) {
+      const badge = cards.nth(i).locator(SELECTORS.AGREEMENT_ICON_IN_CARD).first();
+      const isVisible = await badge.isVisible().catch(() => false);
+      if (!isVisible) missingIndexes.push(i);
+    }
+    return { total, missingIndexes };
   }
 
   /**

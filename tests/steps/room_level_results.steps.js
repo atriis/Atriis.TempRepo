@@ -340,9 +340,9 @@ Then("handshake badge should be visible in room level results", async function (
   await RoomLevelResults.verifyHandshakeBadgeVisible(this.page);
 });
 
-Then("TMC badge filter should be visible in room level results", async function () {
-  logger.info("Verifying TMC agreement filter is visible in room level results");
-  await RoomLevelResults.verifyAgreementFilterVisible(this.page);
+Then("agreement badge should be visible on all rooms in room level results", async function () {
+  logger.info("Verifying every room in room level results has the agreement badge");
+  await RoomLevelResults.verifyAgreementBadgeOnAllRooms(this.page);
 });
 
 Then("the {string} filter tag should be visible in room level results", async function (tagText) {

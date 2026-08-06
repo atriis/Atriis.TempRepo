@@ -445,15 +445,22 @@ const RoomLevelResults = {
   },
 
   /**
-   * Verifies that the Agreement filter section is visible in the room-level filter panel.
+   * Verifies that every room card in the room list carries the agreement badge (handshake icon) —
+   * i.e. there is no room without it.
    * @param {import('playwright').Page} page
-   * @throws {Error} If the Agreement filter section is not visible
+   * @throws {Error} If no rooms are listed, or any room card is missing the agreement badge
    */
-  async verifyAgreementFilterVisible(page) {
+  async verifyAgreementBadgeOnAllRooms(page) {
     if (!page) throw new Error('page is required');
     const p = getPageObject(page, RoomLevelResultsPage);
-    const isVisible = await p.isRoomFilterSectionVisible('Agreement');
-    if (!isVisible) throw new Error('Agreement filter section is not visible in room level results');
+    const { total, missingIndexes } = await p.findRoomsMissingAgreementBadge();
+    if (total === 0) throw new Error('No rooms are listed, so the agreement badge cannot be verified on all rooms');
+    if (missingIndexes.length > 0) {
+      throw new Error(
+        `${missingIndexes.length} of ${total} rooms are missing the agreement badge (handshake) ` +
+        `(0-based card indexes: ${missingIndexes.join(', ')})`
+      );
+    }
   },
 
   async verifyPriceInTermsAndConditions(page, price) {

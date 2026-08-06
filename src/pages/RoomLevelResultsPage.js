@@ -51,6 +51,8 @@ const SELECTORS = {
   ROOM_FILTER_SUMMARY_TAG: (text) => `.room-filter-summary .el-tag:has-text("${text}")`,
   // Agreement badge (handshake icon) in room results — target the icon, not the wrapper section
   AGREEMENT_BADGE: '.ticket-agreement .agreement-img',
+  // Room card containers in the flat room list, used for per-room scans
+  ROOM_CARD: '.room-list__cards .room-preview',
   // "Provided by" label inside room-preview (hotel-provided-by.vue)
   PROVIDER_LABEL: '.room-list .provider-label',
   // Room level results header ("Showing X rooms" text)
@@ -750,6 +752,27 @@ class RoomLevelResultsPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Scans every room card in the room list for the agreement icon (AGREEMENT_BADGE, the same
+   * icon isAnyAgreementBadgeVisible checks — resolved per card here instead of page-wide).
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<{ total: number, missingIndexes: number[] }>} Card count and the 0-based
+   *   indexes of the cards with no visible agreement icon (empty when every card has one)
+   */
+  async findRoomsMissingAgreementBadge({ timeout = 30000 } = {}) {
+    const cards = this.page.locator(SELECTORS.ROOM_CARD);
+    await cards.first().waitFor({ state: 'visible', timeout });
+    const total = await cards.count();
+    const missingIndexes = [];
+    for (let i = 0; i < total; i++) {
+      const badge = cards.nth(i).locator(SELECTORS.AGREEMENT_BADGE).first();
+      const isVisible = await badge.isVisible().catch(() => false);
+      if (!isVisible) missingIndexes.push(i);
+    }
+    return { total, missingIndexes };
   }
 
   /**
