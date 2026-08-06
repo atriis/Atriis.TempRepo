@@ -20,11 +20,12 @@ Feature: 79146 Sabre NDC - Ancillaries after ticketing for multiple passengers
     And I filter results by carrier "TP"
     Then the "NDC Direct Rate" indicator should be visible in results
     When I add the first flight to cart
-    And I accept Terms & Conditions
-    And I hold the trip
-    Then the booking status should be "ON HOLD"
+    Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
+    # Sabre NDC sits on "Finalizing" right after booking; the badge is rendered from data
+    # fetched on load, so it only flips to ticketed after a reload.
+    And I refresh the page
     Then the quote status is "Ticketing Complete"
     When I click the extras arrow button
     Then the "Baggage" section should be visible in the extras
