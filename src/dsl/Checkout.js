@@ -701,6 +701,46 @@ const Checkout = {
   },
 
   /**
+   * Verifies the booking-success page title matches one of the given expected values (e.g.
+   * "Confirmation in Progress" for the in-progress state or "Trip Submitted for Approval" for the
+   * in-approval state — booking-success.vue's `dataByType` computed).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string[]} expectedTitles - Acceptable title texts (at least one)
+   * @throws {Error} If inputs are invalid or the rendered title matches none of them
+   * @returns {Promise<{ titleText: string }>}
+   */
+  async verifyBookingSuccessTitleIsOneOf(page, expectedTitles) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(expectedTitles) || expectedTitles.length === 0)
+      throw new Error(`expectedTitles must be a non-empty array, got: ${typeof expectedTitles}`);
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    let titleText;
+    try {
+      titleText = await checkoutPage.getBookingSuccessTitleText();
+    } catch (err) {
+      throw new Error(
+        `[Checkout.verifyBookingSuccessTitleIsOneOf] The booking-success title never became visible while ` +
+        `waiting for one of: ${JSON.stringify(expectedTitles)}. Original: ${err.message}`
+      );
+    }
+
+    const normalizedActual = titleText.trim().toLowerCase();
+    const matched = expectedTitles.some((expected) => normalizedActual === expected.trim().toLowerCase());
+
+    if (!matched) {
+      throw new Error(
+        `[Checkout.verifyBookingSuccessTitleIsOneOf] Expected the booking-success title to be one of ` +
+        `${JSON.stringify(expectedTitles)}, but it read: "${titleText}"`
+      );
+    }
+
+    logger.info('Booking success title matched one of the expected values', { expectedTitles, titleText });
+    return { titleText };
+  },
+
+  /**
    * Clicks the "Go to trip" button on the booking-success page and waits for the trip overview to load.
    * Button visibility was already confirmed by waitForGoToTripButtonVisible, so clicks directly without re-waiting.
    */

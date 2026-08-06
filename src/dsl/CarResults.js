@@ -384,6 +384,56 @@ const CarResults = {
   },
 
   /**
+   * Clicks the "In Policy" toggle switch in the car results sort bar (car-sort-bar.vue). Toggling
+   * it off reveals out-of-policy/on-request cars that are hidden while the filter is on.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is invalid or the toggle cannot be clicked
+   * @returns {Promise<void>}
+   */
+  async toggleInPolicyFilterOnResults(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    logger.debug('[CarResults.toggleInPolicyFilterOnResults] Clicking the "In Policy" toggle in car results');
+    await carResultsPage.clickInPolicyToggle();
+  },
+
+  /**
+   * Verifies the availability label displayed on a car result card matches the expected text
+   * (e.g. "On request" or "Instant confirmation").
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedLabel - Expected availability label text
+   * @param {number} [index=0] - Zero-based index of the car result card to check
+   * @throws {Error} If page/expectedLabel/index are invalid, or the label does not match
+   * @returns {Promise<void>}
+   */
+  async expectCarAvailabilityLabelAtIndex(page, expectedLabel, index = 0) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!expectedLabel || typeof expectedLabel !== 'string') {
+      throw new Error(`expectedLabel must be a non-empty string, got: ${expectedLabel}`);
+    }
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`index must be >= 0, got ${index}`);
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.waitForCarAvailabilityLabelAtIndex(index);
+    const label = carResultsPage.getCarAvailabilityLabelAtIndex(index);
+
+    await expect(
+      label,
+      `[CarResults.expectCarAvailabilityLabelAtIndex] Expected the availability label on car result card ` +
+      `${index} to read "${expectedLabel}".`
+    ).toHaveText(expectedLabel, { ignoreCase: true, timeout: 15000 });
+  },
+
+  /**
    * Gets the current visible FOP (payment type) from car results.
    * @param {import('playwright').Page} page
    * @returns {Promise<string>}

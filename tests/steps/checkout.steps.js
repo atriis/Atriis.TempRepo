@@ -194,6 +194,11 @@ Then("line with product details is displayed after checkout with status {string}
   await Checkout.verifyProductDetailsLineDisplayedWithStatus(this.page, status);
 });
 
+Then("I should see {string} or {string} status on the booking page", async function (statusA, statusB) {
+  logger.info("Verifying booking page status is one of the expected values", { statusA, statusB });
+  await Checkout.verifyBookingSuccessTitleIsOneOf(this.page, [statusA, statusB]);
+});
+
 When("I click go to trip button", async function () {
   logger.info("Clicking Go to trip button to navigate to trip overview");
   await Checkout.clickGoToTripButton(this.page);

@@ -142,6 +142,16 @@ Then("the payment type on results should be {string}", async function (expectedP
   await CarResults.expectPaymentTypeOnResults(this.page, expectedPaymentType);
 });
 
+When("I toggle the \"In Policy\" filter on car results", async function () {
+  logger.info("Toggling the \"In Policy\" filter on car results");
+  await CarResults.toggleInPolicyFilterOnResults(this.page);
+});
+
+Then("I should see the {string} label on the first car result", async function (expectedLabel) {
+  logger.info("Verifying availability label on the first car result", { expectedLabel });
+  await CarResults.expectCarAvailabilityLabelAtIndex(this.page, expectedLabel, 0);
+});
+
 Then("the car FOP on results should be {string}", async function (expectedFOP) {
   logger.info("Verifying car FOP on results", { expectedFOP, agency: this.currentCarAgency || null });
   await CarResults.expectCurrentFOPOnResults(this.page, expectedFOP, { agencyName: this.currentCarAgency });

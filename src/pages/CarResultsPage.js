@@ -99,6 +99,16 @@ const SELECTORS = {
   // (`.mobile-btn.is-hidden-tablet`) — so `:visible` is REQUIRED to keep exactly one match at any
   // viewport. app-btn.vue binds `:disabled="isDisabled"` on a real <button>, so toBeDisabled() works.
   CAR_RESULT_ADD_TO_TRIP_BUTTON: 'button.add-btn:visible',
+  // Availability label inside a car result card (car-preview.vue `.car-features` -> first
+  // `.car-feature`, only rendered when car.vehicleAvailability is set): "Instant confirmation"
+  // (Confirmed) or "On request" (Requested). MUST be scoped via CAR_RESULT_CARD — every card
+  // renders its own `.car-features` block.
+  CAR_AVAILABILITY_LABEL: '.car-features .car-feature p',
+  // "In Policy" toggle switch in the results sort bar (car-sort-bar.vue `.in-policy .el-switch`,
+  // v-model="filterBy.inPolicy"). Rendered next to the sort dropdown, DESKTOP+MOBILE (only hidden
+  // entirely when showAllInputs is false). Click the whole `.el-switch` element, not an inner
+  // sub-span — same convention as CartPage.CAR_DRIVER_LOYALTY_USE_EXISTING_TOGGLE.
+  IN_POLICY_TOGGLE: '.car-sort-bar .in-policy .el-switch',
   // Sort bar (car-sort-bar.vue) — the component renders NO data-testid, so the app-select's own
   // `car-sort` class is the anchor. The bar is rendered on desktop; on mobile it moves into the
   // "Sort and filters" drawer.
@@ -643,6 +653,74 @@ class CarResultsPage {
         `${SELECTORS.CAR_RESULT_CARD} >> nth=${index} >> ${SELECTORS.CAR_RESULT_ADD_TO_TRIP_BUTTON}). ` +
         `The results list may not have rendered yet, or the page is in share mode where car-preview.vue ` +
         `swaps the button for share-btns. Original: ${error.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the availability label locator inside the car result card at the given index
+   * (e.g. "Instant confirmation" or "On request").
+   *
+   * @param {number} index - Zero-based index of the car result card
+   * @returns {import('playwright').Locator}
+   * @throws {Error} If index is not a non-negative integer
+   */
+  getCarAvailabilityLabelAtIndex(index) {
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(
+        `[CarResultsPage.getCarAvailabilityLabelAtIndex] "index" must be a non-negative integer, got: ${index}`
+      );
+    }
+    return this.getCarResultCards().nth(index).locator(SELECTORS.CAR_AVAILABILITY_LABEL).first();
+  }
+
+  /**
+   * Waits for the availability label in the car result card at the given index to be visible.
+   *
+   * @param {number} index - Zero-based index of the car result card
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If the label never becomes visible
+   * @returns {Promise<void>}
+   */
+  async waitForCarAvailabilityLabelAtIndex(index, { timeout = 30000 } = {}) {
+    const label = this.getCarAvailabilityLabelAtIndex(index);
+    try {
+      await label.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.waitForCarAvailabilityLabelAtIndex] The availability label did not become visible in ` +
+        `car result card at index ${index} within ${timeout}ms (selector: ` +
+        `${SELECTORS.CAR_RESULT_CARD} >> nth=${index} >> ${SELECTORS.CAR_AVAILABILITY_LABEL}). ` +
+        `The card may not carry a vehicleAvailability value, or the results list has not rendered yet. ` +
+        `Original: ${error.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the "In Policy" toggle switch locator in the results sort bar.
+   * @returns {import('playwright').Locator}
+   */
+  getInPolicyToggle() {
+    return this.page.locator(SELECTORS.IN_POLICY_TOGGLE).first();
+  }
+
+  /**
+   * Clicks the "In Policy" toggle switch in the results sort bar.
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If the toggle never becomes visible/clickable
+   * @returns {Promise<void>}
+   */
+  async clickInPolicyToggle({ timeout = 30000 } = {}) {
+    const toggle = this.getInPolicyToggle();
+    try {
+      await toggle.waitFor({ state: 'visible', timeout });
+      await toggle.click();
+    } catch (error) {
+      throw new Error(
+        `[CarResultsPage.clickInPolicyToggle] Could not click the "In Policy" toggle in the car results sort bar ` +
+        `within ${timeout}ms (selector: ${SELECTORS.IN_POLICY_TOGGLE}). The sort bar may not have rendered yet, ` +
+        `or showAllInputs is false for this viewport/result set. Original: ${error.message}`
       );
     }
   }

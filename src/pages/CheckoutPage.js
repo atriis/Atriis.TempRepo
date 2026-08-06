@@ -44,6 +44,10 @@ const SELECTORS = {
   // FUSION_VERIFICATION_TITLE (shared const); distinct from the checkout-page
   // APPROVAL_SUCCESS_TITLE screen above.
   PRE_BOOKING_APPROVAL_SUCCESS_TITLE: BOOKING_SUCCESS_TITLE_SELECTOR,
+  // Generic alias for reading the booking-success title regardless of successType — also covers
+  // 'inProgress' ("Confirmation in Progress") and 'inApproval' ("Trip Submitted for Approval").
+  // Same shared element as FUSION_VERIFICATION_TITLE/PRE_BOOKING_APPROVAL_SUCCESS_TITLE above.
+  BOOKING_SUCCESS_TITLE: BOOKING_SUCCESS_TITLE_SELECTOR,
   BOOKING_ERROR_DIALOG: ".booking-error-dialog, .el-dialog.app-dialog.app-confirm:has(.booking-response-errors), .el-dialog:has-text('Checkout notification'):has-text('Booking error')",
   BACK_TO_TRIP_BUTTON: ".back-to-trip-btn, .app-footer .btn--primary:has-text('Back to trip'), button:has-text('Back to trip')",
   EMAIL_INPUT: ".email-input .el-input__inner",
@@ -278,6 +282,18 @@ class CheckoutPage {
    */
   async getPreBookingApprovalSuccessTitleText(timeout = 60000) {
     const titleLocator = this.page.locator(SELECTORS.PRE_BOOKING_APPROVAL_SUCCESS_TITLE).first();
+    await titleLocator.waitFor({ state: 'visible', timeout });
+    return await titleLocator.innerText();
+  }
+
+  /**
+   * Waits for the booking-success title to render and returns its text, whatever the
+   * successType (default, inProgress, inApproval, preBooking, requestAssistance).
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   * @returns {Promise<string>}
+   */
+  async getBookingSuccessTitleText(timeout = 60000) {
+    const titleLocator = this.page.locator(SELECTORS.BOOKING_SUCCESS_TITLE).first();
     await titleLocator.waitFor({ state: 'visible', timeout });
     return await titleLocator.innerText();
   }
