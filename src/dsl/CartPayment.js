@@ -308,6 +308,30 @@ class CartPayment {
   }
 
   /**
+   * Verifies the "Add payment method" button is visible — expected when the cart's form of
+   * payment falls back to credit card (e.g. after billback is removed from a quote).
+   * @param {import('@playwright/test').Page} page
+   */
+  static async verifyAddPaymentMethodButtonVisible(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const isVisible = await paymentPage.isAddPaymentMethodButtonVisible();
+    expect(isVisible, '[CartPayment.verifyAddPaymentMethodButtonVisible] "Add payment method" button should be visible').toBe(true);
+  }
+
+  /**
+   * Verifies the "Add payment method" button is NOT visible — expected when a quote is fully
+   * covered by billback, so no credit card fallback is needed.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async verifyAddPaymentMethodButtonNotVisible(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const isVisible = await paymentPage.isAddPaymentMethodButtonVisible();
+    expect(isVisible, '[CartPayment.verifyAddPaymentMethodButtonNotVisible] "Add payment method" button should not be visible').toBe(false);
+  }
+
+  /**
    * Verifies that a card's checkbox is checked, matched by card name string.
    * @param {import('@playwright/test').Page} page
    * @param {string} cardName - Substring to match against card label text

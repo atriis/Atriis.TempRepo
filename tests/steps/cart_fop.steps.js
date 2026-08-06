@@ -154,6 +154,16 @@ Then("the add card details button should be visible", async function () {
   await CartPayment.verifyAddCardDetailsButtonVisible(this.page);
 });
 
+Then("the add payment method button should be visible", async function () {
+  logger.info("Verifying add payment method button is visible");
+  await CartPayment.verifyAddPaymentMethodButtonVisible(this.page);
+});
+
+Then("the add payment method button should not be visible", async function () {
+  logger.info("Verifying add payment method button is not visible");
+  await CartPayment.verifyAddPaymentMethodButtonNotVisible(this.page);
+});
+
 Then("the payment options should include {string} and {string}", async function (optionOne, optionTwo) {
   logger.info("Verifying payment options include both options", { optionOne, optionTwo });
   await CartPayment.verifyPaymentOptions(this.page, [optionOne, optionTwo]);

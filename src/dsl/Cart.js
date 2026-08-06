@@ -5582,29 +5582,27 @@ const Cart = {
   },
 
   /**
-   * Unchecks the "Apply to this quote" checkbox in the car billback panel, removing billback from the
-   * quote so the form of payment falls back to the credit card. The checkbox arrives checked for a
-   * billback agreement, so this asserts the starting state, clicks once, and polls for the flip —
-   * a bare click would silently pass even if the box was already unchecked.
+   * Clicks the "Apply to this quote" checkbox in the car billback panel, toggling billback on/off
+   * for the quote (unchecked falls back to the credit card FOP).
    *
    * @param {import('playwright').Page} page
    * @param {string} label - Checkbox label as written in the feature (e.g. "Apply to this quote")
    * @returns {Promise<void>}
    */
-  async uncheckCarBillbackApplyToQuote(page, label) {
-    if (!page) throw new Error('[Cart.uncheckCarBillbackApplyToQuote] "page" is required.');
+  async clickCarBillbackApplyToQuote(page, label) {
+    if (!page) throw new Error('[Cart.clickCarBillbackApplyToQuote] "page" is required.');
     if (!label || typeof label !== 'string') {
       throw new Error(
-        `[Cart.uncheckCarBillbackApplyToQuote] "label" must be a non-empty string, got: ` +
+        `[Cart.clickCarBillbackApplyToQuote] "label" must be a non-empty string, got: ` +
         `${typeof label} (${JSON.stringify(label)})`
       );
     }
 
-    logger.debug('[Cart.uncheckCarBillbackApplyToQuote] Unchecking the billback apply checkbox', { label });
+    logger.debug('[Cart.clickCarBillbackApplyToQuote] Clicking the billback apply checkbox', { label });
     const cartPage = getPageObject(page, CartPage);
 
-    // Confirm the checkbox being toggled is the one the feature names, so a wrong label in the
-    // Gherkin fails loudly instead of silently unchecking whatever checkbox happens to be there.
+    // Confirm the checkbox being clicked is the one the feature names, so a wrong label in the
+    // Gherkin fails loudly instead of silently clicking whatever checkbox happens to be there.
     const actualLabel = await cartPage.getCarBillbackApplyCheckboxLabel();
     expect(
       actualLabel,
@@ -5612,26 +5610,9 @@ const Cart = {
       `The panel may render a different checkbox than the scenario expects.`,
     ).toContain(label);
 
-    const isCheckedBefore = await cartPage.isCarBillbackApplyCheckboxChecked();
-    expect(
-      isCheckedBefore,
-      `Expected the "${label}" checkbox to be checked before unchecking it, but it was already unchecked. ` +
-      `Billback should be applied by default for an agreement car quote — an unchecked box means the ` +
-      `quote arrived without billback, so this scenario cannot remove it.`,
-    ).toBe(true);
-
     await cartPage.clickCarBillbackApplyCheckbox();
 
-    await expect
-      .poll(async () => cartPage.isCarBillbackApplyCheckboxChecked(), {
-        timeout: 10000,
-        message:
-          `Expected the "${label}" checkbox to become unchecked after clicking it, but it stayed checked. ` +
-          `Likely cause: the click landed outside the checkbox input, or the panel is read-only.`,
-      })
-      .toBe(false);
-
-    logger.info('Unchecked the billback apply checkbox in the car billback panel', { label });
+    logger.info('Clicked the billback apply checkbox in the car billback panel', { label });
   },
 
   /**

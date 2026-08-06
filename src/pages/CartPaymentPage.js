@@ -183,6 +183,22 @@ class CartPaymentPage {
   }
 
   /**
+   * Checks whether the "Add payment method" button is visible. Scoped to the first match —
+   * see clickAddPaymentMethodButton for why multiple form-of-payment blocks can each render one.
+   * @param {{timeout?: number}} [options]
+   * @returns {Promise<boolean>}
+   */
+  async isAddPaymentMethodButtonVisible({ timeout = 5000 } = {}) {
+    const button = this.page.getByRole("button", { name: SELECTORS.ADD_PAYMENT_METHOD_BTN_NAME }).first();
+    try {
+      await button.waitFor({ state: "visible", timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Clicks the button to open the Add Card Details modal.
    */
   async clickAddCardDetailsButton() {

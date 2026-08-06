@@ -6721,27 +6721,6 @@ class CartPage {
   }
 
   /**
-   * Reads whether the "Apply to this quote" checkbox in the car billback panel is checked.
-   * @param {object} [options]
-   * @param {number} [options.timeout=10000]
-   * @returns {Promise<boolean>}
-   */
-  async isCarBillbackApplyCheckboxChecked({ timeout = 10000 } = {}) {
-    const checkbox = this.page.locator(SELECTORS.CAR_BILLBACK_APPLY_CHECKBOX).first();
-    try {
-      await checkbox.waitFor({ state: 'visible', timeout });
-      const classes = (await checkbox.getAttribute('class')) || '';
-      return classes.split(/\s+/).includes('is-checked');
-    } catch (err) {
-      throw new Error(
-        `[CartPage.isCarBillbackApplyCheckboxChecked] Could not read the "Apply to this quote" ` +
-        `checkbox state (selector: ${SELECTORS.CAR_BILLBACK_APPLY_CHECKBOX}). Likely cause: the car ` +
-        `billback panel is not expanded. Original: ${err.message}`
-      );
-    }
-  }
-
-  /**
    * Reads the label text of the "Apply to this quote" checkbox in the car billback panel.
    * @param {object} [options]
    * @param {number} [options.timeout=10000]

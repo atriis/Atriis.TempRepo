@@ -26,7 +26,7 @@ Feature: 57199 Sabre billback removal and credit card payment
     Then the booking status should be "Pending booking"
     When I click to edit the request billback extras section
     Then the corporate billing number is "17010058"
-    When I uncheck the "Apply to this quote" checkbox in the car billback section
+    When I click the "Apply to this quote" checkbox in the car billback section
     And I click the save button
     Then the booking status should be "Pending booking"
     When I click to edit the request billback extras section

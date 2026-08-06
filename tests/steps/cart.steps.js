@@ -2518,9 +2518,9 @@ Then("the car quote does not display the optional payment message {string}", asy
   await Cart.verifyCarOptionalPaymentMessageNotDisplayed(this.page, message);
 });
 
-When("I uncheck the {string} checkbox in the car billback section", async function (label) {
-  logger.info("Unchecking the billback apply checkbox", { label });
-  await Cart.uncheckCarBillbackApplyToQuote(this.page, label);
+When("I click the {string} checkbox in the car billback section", async function (label) {
+  logger.info("Clicking the billback apply checkbox", { label });
+  await Cart.clickCarBillbackApplyToQuote(this.page, label);
 });
 
 When("I click to edit the add location extras section", async function () {
