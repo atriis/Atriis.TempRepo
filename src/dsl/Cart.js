@@ -8270,6 +8270,34 @@ const Cart = {
   },
 
   /**
+   * Switches the expanded baggage panel to the given traveler tab. Baggage rows are
+   * scoped to the visible tab pane, so later baggage selections apply to this traveler.
+   * @param {import('playwright').Page} page
+   * @param {number} tabNumber - 1-based traveler tab (1 = first traveler)
+   */
+  async switchBaggageTravelerTab(page, tabNumber) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickBaggageTravelerTabByIndex(tabNumber);
+    logger.info('Switched baggage traveler tab', { tabNumber });
+  },
+
+  /**
+   * Switches the expanded optional services panel to the given traveler tab. Option rows
+   * are scoped to the visible tab pane, so later selections apply to this traveler.
+   * @param {import('playwright').Page} page
+   * @param {number} tabNumber - 1-based traveler tab (1 = first traveler)
+   */
+  async switchOptionalServicesTravelerTab(page, tabNumber) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickOptionalServicesTravelerTabByIndex(tabNumber);
+    logger.info('Switched optional services traveler tab', { tabNumber });
+  },
+
+  /**
    * Selects one of a comma-separated list of optional services, picked at random, so
    * consecutive runs cover different services. Candidates missing from the current
    * offer are skipped; only an offer carrying none of them fails.

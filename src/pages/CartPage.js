@@ -385,6 +385,7 @@ const SELECTORS = {
   FLIGHT_OPTIONAL_SERVICES_OPTION_CHECKBOX: '.flight-optional-services .el-tab-pane:visible .service-option .el-checkbox:not(.is-disabled)', // Selectable (non-disabled) service checkboxes scoped to the active traveler tab
   FLIGHT_OPTIONAL_SERVICES_OPTION_ROW: '.flight-optional-services .el-tab-pane:visible .service-option', // A whole service option row (title + checkbox) in the active traveler tab
   FLIGHT_OPTIONAL_SERVICES_ROW_CHECKBOX: '.el-checkbox:not(.is-disabled)', // Selectable checkbox, relative to a FLIGHT_OPTIONAL_SERVICES_OPTION_ROW
+  FLIGHT_OPTIONAL_SERVICES_TRAVELER_TAB: '.flight-optional-services .flight-cart-tabs .el-tabs__item:visible', // Per-traveler tab inside the optional services panel
   FLIGHT_OPTIONAL_SERVICES_SAVE_BUTTON: '.flight-optional-services .no-border', // Save button scoped to the optional services panel (disambiguates from other simultaneously-open extras panels)
   FLIGHT_OPTIONAL_SERVICES_SUCCESS_ICON: '.flight-optional-services .material-symbols-outlined.filled.success-icon.green:visible', // Green checkmark after successful save (extras-layout.vue), scoped to the visible instance (hidden duplicates can exist, e.g. responsive layouts)
   // Flight Ancillary Services (flight-ancillary-services.vue)
@@ -4330,6 +4331,23 @@ class CartPage {
       `No selectable optional service matching any of ${optionTexts.map((t) => `"${t}"`).join(', ')}. ` +
         `Available options: ${available.map((title) => `"${title.trim()}"`).join(', ')}`
     );
+  }
+
+  /**
+   * Switches the expanded optional services panel to the given traveler tab.
+   * Option rows are scoped to the visible tab pane, so every later selection in the
+   * panel applies to this traveler.
+   * @param {number} tabNumber - 1-based traveler tab (1 = first traveler)
+   * @param {number} [timeout=15000] - Max wait for the tab to appear
+   */
+  async clickOptionalServicesTravelerTabByIndex(tabNumber, timeout = 15000) {
+    if (!Number.isInteger(tabNumber) || tabNumber < 1) {
+      throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
+    }
+
+    const tab = this.page.locator(SELECTORS.FLIGHT_OPTIONAL_SERVICES_TRAVELER_TAB).nth(tabNumber - 1);
+    await tab.waitFor({ state: 'visible', timeout });
+    await tab.click();
   }
 
   /**

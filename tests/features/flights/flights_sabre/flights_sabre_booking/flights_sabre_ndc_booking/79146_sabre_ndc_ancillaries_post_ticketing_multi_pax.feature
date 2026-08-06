@@ -31,10 +31,14 @@ Feature: 79146 Sabre NDC - Ancillaries after ticketing for multiple passengers
     And the "Optional services" section should be visible in the extras
     When I click to edit the baggage extras section
     And I select the "1st bag" baggage option for the "outbound" flight
+    And I switch to baggage traveler tab 2
+    And I select the "1st bag" baggage option for the "outbound" flight
     And I click the save button
     Then the quote status is "Ticketing Complete"
     And the visible baggage green icon should be visible
     When I click optional services in extras
+    And I select a random optional service from "Priority fast security lane, Lounge access, Preferred boarding"
+    And I switch to optional services traveler tab 2
     And I select a random optional service from "Priority fast security lane, Lounge access, Preferred boarding"
     And I click the save button
     Then the quote status is "Ticketing Complete"

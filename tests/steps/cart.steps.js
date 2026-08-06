@@ -2270,6 +2270,18 @@ When("I select the {string} optional service", async function (optionText) {
   await Cart.selectOptionalServiceByText(this.page, optionText);
 });
 
+// Switching the panel's traveler tab is how multi-pax extras are reached: both panels
+// scope their rows to the visible tab pane, so the selection steps below follow the tab.
+When("I switch to baggage traveler tab {int}", { timeout: BAGGAGE_EXTRAS_STEP_TIMEOUT_MS }, async function (tabNumber) {
+  logger.info("Switching baggage traveler tab", { tabNumber });
+  await Cart.switchBaggageTravelerTab(this.page, tabNumber);
+});
+
+When("I switch to optional services traveler tab {int}", async function (tabNumber) {
+  logger.info("Switching optional services traveler tab", { tabNumber });
+  await Cart.switchOptionalServicesTravelerTab(this.page, tabNumber);
+});
+
 When("I select a random optional service from {string}", async function (optionList) {
   logger.info("Selecting a random optional service from a named list", { optionList });
   this.selectedOptionalService = await Cart.selectRandomOptionalServiceFrom(this.page, optionList);
