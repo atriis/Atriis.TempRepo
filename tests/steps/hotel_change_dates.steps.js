@@ -136,14 +136,6 @@ When("I continue the date modification", { timeout: MODIFY_STEP_TIMEOUT_MS }, as
   await HotelChangeDates.continueModification(this.page);
 });
 
-Then("the hotel quote should show the Pending modification status", async function () {
-  const cartPage = getPageObject(this.page, CartPage);
-  const status = await cartPage.getHotelQuoteStatusText();
-  logger.info("Hotel quote status after modification", { status });
-  expect(status.toLowerCase(), 'Hotel quote status should be "Pending modification"')
-    .toContain("pending modification");
-});
-
 Then("the hotel quote should show a modification countdown of about 30 minutes", async function () {
   const cartPage = getPageObject(this.page, CartPage);
   const countdownText = await cartPage.getModificationCountdownText();

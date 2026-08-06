@@ -31,7 +31,7 @@ Feature: 76009 Sabre - Hotel change dates modification
     And the difference should equal the updated total minus the original total
     When I extract the updated total price
     And I continue the date modification
-    Then the hotel quote should show the Pending modification status
+    Then the booking status should be "Pending modification"
     And the hotel quote should show a modification countdown of about 30 minutes
     And a Cancel Modify button should be visible on the hotel quote
     And the hotel quote dates in cart should equal the extracted new dates

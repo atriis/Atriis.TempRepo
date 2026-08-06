@@ -31,7 +31,7 @@ function formatDateForPicker(date) {
 /**
  * DSL for the hotel "Change Dates" post-booking modification flow.
  *
- * Composes CartPage (kebab menu + post-modification status) and
+ * Composes CartPage (kebab menu) and
  * HotelChangeDatesPage (the modification page). Assertions live in the step
  * layer; this DSL performs the workflow actions and returns the data the steps
  * assert on.
@@ -159,13 +159,10 @@ const HotelChangeDates = {
   async continueModification(page) {
     if (!page) throw new Error("page is required");
     const changeDatesPage = getPageObject(page, HotelChangeDatesPage);
-    const cartPage = getPageObject(page, CartPage);
 
     logger.info("Continuing the date modification");
     await changeDatesPage.clickContinue();
     await page.waitForURL(/\/cart(\/|$|\?|#)/, { timeout: process.env.CI ? 300000 : 240000 });
-    // Confirm the quote header (with its new status) is back on screen.
-    await cartPage.getHotelQuoteStatusText().catch(() => {});
     logger.info("Returned to cart after modification", { url: page.url() });
   },
 };

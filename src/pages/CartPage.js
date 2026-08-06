@@ -236,8 +236,6 @@ const SELECTORS = {
   // trip-level actions kebab (.dropdowns-container .expand-icon).
   HOTEL_QUOTE_ACTIONS_ICON: '.base-quote-header .expand-icon.material-symbols-outlined',
   CHANGE_DATES_QUOTE_OPTION: '.el-dropdown-menu__item',
-  // Status label rendered in the quote header (e.g. "Confirmed", "Pending modification").
-  HOTEL_QUOTE_STATUS: '.base-quote-header .app-label--quote',
   // Countdown clock shown while a quote is pending modification (~30 min for Sabre hotels).
   MODIFICATION_COUNTDOWN: '.timed-quote .countdown, .timed-quote-badge',
   // "Cancel Modify" button shown in the quote header while pending modification.
@@ -2424,16 +2422,6 @@ class CartPage {
       .first();
     await option.waitFor({ state: 'visible', timeout: 15000 });
     await option.click();
-  }
-
-  /**
-   * Reads the hotel quote status label (e.g. "Pending modification").
-   * @returns {Promise<string>}
-   */
-  async getHotelQuoteStatusText({ timeout = 15000 } = {}) {
-    const el = this.page.locator(SELECTORS.HOTEL_QUOTE_STATUS).first();
-    await el.waitFor({ state: 'visible', timeout });
-    return ((await el.innerText()) ?? '').trim();
   }
 
   /**
