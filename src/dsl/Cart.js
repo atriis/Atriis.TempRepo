@@ -3967,7 +3967,7 @@ const Cart = {
    * @param {string} expectedStatus - Status text to wait for (case-insensitive, substring)
    * @param {{timeout?: number, pollInterval?: number}} [options]
    */
-  async waitForQuoteStatus(page, expectedStatus, { timeout = 180000, pollInterval = 10000 } = {}) {
+  async waitForQuoteStatus(page, expectedStatus, { timeout = 120000, pollInterval = 10000 } = {}) {
     if (!page) throw new Error('page is required');
     if (!expectedStatus || typeof expectedStatus !== 'string') {
       throw new Error(`expectedStatus must be a non-empty string, got: ${typeof expectedStatus}`);

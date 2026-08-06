@@ -38,10 +38,13 @@ Feature: 79146 Sabre NDC - Ancillaries after ticketing for multiple passengers
     And I click the save button
     Then the quote status is "Ticketing Complete"
     And the visible baggage green icon should be visible
+    # Optional services are offered per departure airport. Out of LHR the only one on
+    # offer is Preferred boarding, so this names it rather than picking from a list —
+    # 82592 departs LIS, which also offers priority fast security lane and lounge access.
     When I click optional services in extras
-    And I select a random optional service from "Priority fast security lane, Lounge access, Preferred boarding"
+    And I select the "Preferred boarding" optional service
     And I switch to optional services traveler tab 2
-    And I select a random optional service from "Priority fast security lane, Lounge access, Preferred boarding"
+    And I select the "Preferred boarding" optional service
     And I click the save button
     Then the quote status is "Ticketing Complete"
     And the optional services green icon should be visible

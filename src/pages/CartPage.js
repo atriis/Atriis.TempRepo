@@ -4353,10 +4353,12 @@ class CartPage {
    * Matching is case-insensitive, so the supplier's raw service name
    * ("PRIORITY FAST SECURITY LANE") matches the label as the app renders it.
    * @param {string} optionText - Substring of the service name (e.g. "Priority fast security lane")
-   * @param {number} [timeout=15000] - Max wait for the options to render
+   * @param {number} [timeout=120000] - Max wait for the options to render; must match
+   *   selectOneOfOptionalServices, which this delegates to, or the panel's skeleton state
+   *   outlives the wait
    * @returns {Promise<string>} The option text that was selected
    */
-  async selectOptionalServiceByText(optionText, timeout = 15000) {
+  async selectOptionalServiceByText(optionText, timeout = 120000) {
     if (!optionText || typeof optionText !== 'string') {
       throw new Error('optionText must be a non-empty string');
     }
@@ -4369,11 +4371,14 @@ class CartPage {
    * The candidates are tried in random order and the first one actually present and
    * selectable wins — a service missing from this particular offer is skipped rather
    * than failing the run, and only an offer carrying none of them is an error.
+   * The wait allows two minutes: the panel renders skeleton placeholders until the
+   * supplier's ancillary offers arrive, and on Sabre NDC that regularly exceeds 15s.
+   * Callers must keep their step timeout above it (see OPTIONAL_SERVICES_STEP_TIMEOUT_MS).
    * @param {string[]} optionTexts - Candidate service names (substring match, case-insensitive)
-   * @param {number} [timeout=15000] - Max wait for the options to render
+   * @param {number} [timeout=120000] - Max wait for the options to render
    * @returns {Promise<string>} The candidate that was selected
    */
-  async selectOneOfOptionalServices(optionTexts, timeout = 15000) {
+  async selectOneOfOptionalServices(optionTexts, timeout = 120000) {
     if (!Array.isArray(optionTexts) || optionTexts.length === 0) {
       throw new Error('optionTexts must be a non-empty array of service names');
     }
@@ -4407,9 +4412,10 @@ class CartPage {
    * Option rows are scoped to the visible tab pane, so every later selection in the
    * panel applies to this traveler.
    * @param {number} tabNumber - 1-based traveler tab (1 = first traveler)
-   * @param {number} [timeout=15000] - Max wait for the tab to appear
+   * @param {number} [timeout=120000] - Max wait for the tab to appear; the panel can still
+   *   be in its skeleton state while Sabre NDC returns the ancillary offers
    */
-  async clickOptionalServicesTravelerTabByIndex(tabNumber, timeout = 15000) {
+  async clickOptionalServicesTravelerTabByIndex(tabNumber, timeout = 120000) {
     if (!Number.isInteger(tabNumber) || tabNumber < 1) {
       throw new Error(`tabNumber must be a positive integer, got: ${tabNumber}`);
     }

@@ -1650,8 +1650,8 @@ Then("the traveler {string} is available in cart page", async function (traveler
   await Cart.verifyTravelerVisibleInCartPage(this.page, travelerName);
 });
 
-// Refreshes for up to 3 minutes, so it needs headroom over cucumber's default 120s.
-const QUOTE_STATUS_WAIT_STEP_TIMEOUT_MS = 240000;
+// Refreshes for up to 2 minutes, so it needs headroom over cucumber's default 120s.
+const QUOTE_STATUS_WAIT_STEP_TIMEOUT_MS = 180000;
 
 // Unlike "the quote status is {string}", this reloads the page before each check. Statuses
 // that settle supplier-side after booking (Sabre NDC goes Finalizing -> Ticketing Complete)
@@ -2276,7 +2276,12 @@ When("I click optional services in extras", async function () {
   await Cart.clickOptionalServicesInExtras(this.page);
 });
 
-When("I select the {string} optional service", async function (optionText) {
+// Selecting a service waits up to 120s for the panel to come back from skeleton state
+// (CartPage.selectOneOfOptionalServices), so these steps need headroom above cucumber's
+// default 120s or its timeout fires first and hides the real error.
+const OPTIONAL_SERVICES_STEP_TIMEOUT_MS = 180000;
+
+When("I select the {string} optional service", { timeout: OPTIONAL_SERVICES_STEP_TIMEOUT_MS }, async function (optionText) {
   logger.info("Selecting optional service by name", { optionText });
   await Cart.selectOptionalServiceByText(this.page, optionText);
 });
@@ -2288,12 +2293,12 @@ When("I switch to baggage traveler tab {int}", { timeout: BAGGAGE_EXTRAS_STEP_TI
   await Cart.switchBaggageTravelerTab(this.page, tabNumber);
 });
 
-When("I switch to optional services traveler tab {int}", async function (tabNumber) {
+When("I switch to optional services traveler tab {int}", { timeout: OPTIONAL_SERVICES_STEP_TIMEOUT_MS }, async function (tabNumber) {
   logger.info("Switching optional services traveler tab", { tabNumber });
   await Cart.switchOptionalServicesTravelerTab(this.page, tabNumber);
 });
 
-When("I select a random optional service from {string}", async function (optionList) {
+When("I select a random optional service from {string}", { timeout: OPTIONAL_SERVICES_STEP_TIMEOUT_MS }, async function (optionList) {
   logger.info("Selecting a random optional service from a named list", { optionList });
   this.selectedOptionalService = await Cart.selectRandomOptionalServiceFrom(this.page, optionList);
 });
