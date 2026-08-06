@@ -7,6 +7,7 @@ const Cart = require("../../src/dsl/Cart");
 const RoomLevelResultsPage = require("../../src/pages/RoomLevelResultsPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const logger = require("@utils/logger").child("RoomResults");
+const { getGsaAllowance } = require("../support/scenarioState");
 
 setDefaultTimeout(120000);
 
@@ -372,4 +373,73 @@ When("I navigate back to hotel level results via breadcrumb", async function () 
 When("I filter room results by max price {int}", async function (maxPrice) {
   logger.info("Filtering room results by max price", { maxPrice });
   await RoomLevelResults.filterRoomsByMaxPrice(this.page, maxPrice);
+});
+
+// ========================================
+// GSA PER DIEM POLICY
+// ========================================
+
+// The allowance was resolved at hotel level from the searched check-in month; room level
+// must show the same limit and apply it to the rooms of the selected hotel.
+Then("the GSA lodging limit banner should be displayed in room level results", async function () {
+  logger.info("Verifying the GSA lodging limit banner in room level results");
+  const { actual, expected } = await RoomLevelResults.getGsaBannerComparisonInRoomResults(
+    this.page,
+    getGsaAllowance(this),
+  );
+
+  expect(actual.title).toBe(expected.title);
+  expect(actual.info).toBe(expected.info);
+});
+
+// Checked on the hotel already open. If that hotel has no room above the limit it cannot
+// answer this, so the DSL falls back to the hotel priced closest above the limit.
+Then("every room priced above the GSA nightly lodging limit should be out of policy", async function () {
+  const allowance = getGsaAllowance(this);
+  logger.info("Verifying rooms above the GSA nightly limit are out of policy", { nightlyLimit: allowance.nightlyLimit });
+
+  const { breakdown, fallbackHotel } = await RoomLevelResults.getRoomsAboveGsaLimitWithFallback(
+    this.page,
+    allowance.nightlyLimit,
+  );
+
+  if (fallbackHotel) {
+    this.selectedHotel = fallbackHotel;
+    logger.info("Rooms above the GSA nightly limit were checked on a second hotel", fallbackHotel);
+  }
+
+  expect(
+    breakdown.aboveLimit,
+    `No room is priced above the GSA nightly limit of ${allowance.nightlyLimit} in any hotel checked, so the indicator cannot be verified`,
+  ).toBeGreaterThan(0);
+  expect(
+    breakdown.missingIndicator.map((room) => `room ${room.index + 1} (${room.price})`),
+    `Rooms priced above the GSA nightly limit of ${allowance.nightlyLimit} without an out of policy indicator`,
+  ).toEqual([]);
+});
+
+Then("no room priced below the GSA nightly lodging limit should be out of policy", async function () {
+  const allowance = getGsaAllowance(this);
+  logger.info("Verifying rooms below the GSA nightly limit are in policy", { nightlyLimit: allowance.nightlyLimit });
+
+  const breakdown = await RoomLevelResults.getRoomPolicyIndicatorsAgainstGsaLimit(this.page, allowance.nightlyLimit);
+
+  expect(
+    breakdown.belowLimit,
+    `No room is priced below the GSA nightly limit of ${allowance.nightlyLimit}, so the indicator cannot be verified`,
+  ).toBeGreaterThan(0);
+  expect(
+    breakdown.unexpectedIndicator.map((room) => `room ${room.index + 1} (${room.price})`),
+    `Rooms priced below the GSA nightly limit of ${allowance.nightlyLimit} showing an out of policy indicator`,
+  ).toEqual([]);
+});
+
+Then("the out of policy tooltip in room level results should quote the GSA nightly lodging limit", async function () {
+  logger.info("Verifying the out of policy tooltip in room level results quotes the GSA nightly limit");
+  const { actual, expected } = await RoomLevelResults.getGsaViolationTooltipInRoomResults(
+    this.page,
+    getGsaAllowance(this),
+  );
+
+  expect(actual).toBe(expected);
 });

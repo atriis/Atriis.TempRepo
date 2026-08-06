@@ -1,4 +1,5 @@
 ﻿const { SELECTORS: RESULTS_SELECTORS } = require("@pages/ResultsPage");
+const { toNumber } = require("@utils/numbers");
 const { normalizeText } = require("@utils/text");
 
 /**
@@ -97,6 +98,20 @@ const SELECTORS = {
   HOTEL_ADDRESS: '.hotel-preview .address-distance p',
   // Reset Filters (clear all) button in the hotel filter summary bar
   RESET_FILTERS_BUTTON: '.hotel-filter-summary .clear-all',
+  // GSA per diem banner (gsa-details-banner.vue) shown above the hotel list when the
+  // search location and user resolve to a GSA lodging limit
+  GSA_BANNER: '.gsa-details-banner',
+  // Title and limit lines inside the GSA banner, relative to GSA_BANNER
+  GSA_BANNER_TITLE: '.gsa-title',
+  GSA_BANNER_INFO: '.gsa-info',
+  // Out of policy badge (app-oop-badge.vue) inside a hotel card, relative to HOTEL_CARD
+  HOTEL_CARD_OOP_BADGE: '.app-out-of-policy',
+  // Info icon inside the OOP badge that opens the policy violation tooltip
+  HOTEL_CARD_OOP_INFO_ICON: '.app-out-of-policy span.info-icon',
+  // Price amount inside a hotel card, relative to HOTEL_CARD
+  HOTEL_CARD_PRICE_AMOUNT: '.hotel-price .amount',
+  // Hotel name inside a hotel card, relative to HOTEL_CARD
+  HOTEL_CARD_NAME: '.hotel-name h4',
 };
 
 // Filter section title → Vuex hotelFilter key. Most sections store under the lowercased title,
@@ -268,6 +283,65 @@ class HotelLevelResultsPage {
       }
       return parsedPrice;
     });
+  }
+
+  /** Waits until the GSA per diem banner is visible above the hotel list */
+  async waitForGsaBanner({ timeout = 30000 } = {}) {
+    await this.page.locator(SELECTORS.GSA_BANNER).first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Reads the two lines of the GSA per diem banner.
+   * @returns {Promise<{title: string, info: string}>} Banner title and limit lines
+   */
+  async getGsaBannerText() {
+    await this.waitForGsaBanner();
+
+    const banner = this.page.locator(SELECTORS.GSA_BANNER).first();
+    const title = (await banner.locator(SELECTORS.GSA_BANNER_TITLE).textContent()) ?? '';
+    const info = (await banner.locator(SELECTORS.GSA_BANNER_INFO).textContent()) ?? '';
+
+    return { title: title.trim(), info: info.trim() };
+  }
+
+  /**
+   * Reads every loaded hotel card and pairs its displayed price with whether the card
+   * carries an out of policy badge. Used to check the policy indicator against a limit.
+   * @returns {Promise<Array<{name: string, price: number, isOutOfPolicy: boolean}>>} One entry per card, in display order
+   */
+  async getHotelPricesWithPolicyIndicator() {
+    const cards = this.page.locator(SELECTORS.HOTEL_CARD);
+    await cards.first().waitFor({ state: 'visible', timeout: 30000 });
+
+    const cardCount = await cards.count();
+    const hotels = [];
+
+    for (let index = 0; index < cardCount; index++) {
+      const card = cards.nth(index);
+      const priceText = (await card.locator(SELECTORS.HOTEL_CARD_PRICE_AMOUNT).first().textContent()) ?? '';
+      const price = toNumber(priceText, `hotel-level price on card ${index + 1}`);
+
+      const name = ((await card.locator(SELECTORS.HOTEL_CARD_NAME).first().textContent()) ?? '').trim();
+      const isOutOfPolicy = await card.locator(SELECTORS.HOTEL_CARD_OOP_BADGE).first().isVisible();
+
+      hotels.push({ name, price, isOutOfPolicy });
+    }
+
+    return hotels;
+  }
+
+  /**
+   * Hovers the info icon of the first out of policy hotel card to open its violation tooltip.
+   * Scoped to the hotel card rather than using CommonPage's page-wide OOP icon, because other
+   * components reuse the .app-out-of-policy class for their own badges.
+   */
+  async hoverFirstOutOfPolicyInfoIcon() {
+    const infoIcon = this.page
+      .locator(`${SELECTORS.HOTEL_CARD} ${SELECTORS.HOTEL_CARD_OOP_INFO_ICON}`)
+      .first();
+
+    await infoIcon.waitFor({ state: 'visible', timeout: 30000 });
+    await infoIcon.hover();
   }
 
   async openMapView() {

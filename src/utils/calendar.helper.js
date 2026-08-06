@@ -757,6 +757,7 @@ async function selectDateAfterAdvancingMonths(
 }
 
 module.exports = {
+  parseDateValue,
   selectDatesByNthAvailable,
   selectDatesByNthAvailableFromNextVisibleMonth,
   selectDatesByInputValues,

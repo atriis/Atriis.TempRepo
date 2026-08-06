@@ -4,7 +4,13 @@ const RoomLevelResultsPage = require("@pages/RoomLevelResultsPage");
 const { CommonPage } = require("@pages/CommonPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const Results = require("./Results");
+const HotelLevelResults = require("./HotelLevelResults");
 const { normalizeText } = require("@utils/text");
+const {
+  buildGsaBannerText,
+  buildGsaViolationText,
+  splitByGsaLimit,
+} = require("@utils/gsaPerDiem.helper");
 
 /**
  * RoomLevelResults DSL
@@ -635,6 +641,120 @@ const RoomLevelResults = {
     } catch (err) {
       throw new Error(`[RoomLevelResults.filterRoomsByMaxPrice] Failed to apply max price filter of ${maxPrice}. ${err.message}`);
     }
+  },
+
+  // ===== GSA PER DIEM POLICY =====
+
+  /**
+   * Compares the GSA banner rendered above the room list against the allowance.
+   * The room-level banner carries the same limit as the hotel-level one.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} allowance - Allowance resolved at hotel level
+   * @returns {Promise<{actual: {title: string, info: string}, expected: {title: string, info: string}}>}
+   */
+  async getGsaBannerComparisonInRoomResults(page, allowance) {
+    if (!page) throw new Error('[RoomLevelResults.getGsaBannerComparisonInRoomResults] "page" is required.');
+    if (!allowance) throw new Error('[RoomLevelResults.getGsaBannerComparisonInRoomResults] "allowance" is required.');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const banner = await roomLevelResultsPage.getGsaBannerText();
+    const expected = buildGsaBannerText(allowance);
+
+    return {
+      actual: { title: normalizeText(banner.title), info: normalizeText(banner.info) },
+      expected: { title: normalizeText(expected.title), info: normalizeText(expected.info) },
+    };
+  },
+
+  /**
+   * Checks every loaded room card's out of policy badge against the GSA nightly limit.
+   * @param {import('playwright').Page} page
+   * @param {number} nightlyLimit - The GSA nightly lodging limit that applies to the stay
+   * @returns {Promise<{total: number, aboveLimit: number, belowLimit: number,
+   *                    missingIndicator: Array<object>, unexpectedIndicator: Array<object>}>}
+   */
+  async getRoomPolicyIndicatorsAgainstGsaLimit(page, nightlyLimit) {
+    if (!page) throw new Error('[RoomLevelResults.getRoomPolicyIndicatorsAgainstGsaLimit] "page" is required.');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const rooms = await roomLevelResultsPage.getRoomPricesWithPolicyIndicator();
+
+    if (rooms.length === 0) {
+      throw new Error('[RoomLevelResults.getRoomPolicyIndicatorsAgainstGsaLimit] No room results are loaded to check.');
+    }
+
+    const breakdown = splitByGsaLimit(rooms, nightlyLimit);
+
+    logger.info('Checked room policy indicators against the GSA nightly limit', {
+      nightlyLimit,
+      total: breakdown.total,
+      aboveLimit: breakdown.aboveLimit,
+      belowLimit: breakdown.belowLimit,
+    });
+
+    return breakdown;
+  },
+
+  /**
+   * Checks the out of policy rooms against the GSA nightly limit on the hotel currently
+   * open, falling back to a second hotel only when this one cannot answer the question.
+   *
+   * The hotel selected for the room checks is the one priced closest below the limit, so it
+   * always has rooms under the limit but may have none above it — a small hotel whose whole
+   * room list sits under the limit answers the in-policy half and nothing else. In that case
+   * this returns to the hotel list and opens the hotel priced closest above the limit, where
+   * every room is above it by definition.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} nightlyLimit - The GSA nightly lodging limit that applies to the stay
+   * @returns {Promise<{breakdown: object, fallbackHotel: {name: string, price: number}|null}>}
+   */
+  async getRoomsAboveGsaLimitWithFallback(page, nightlyLimit) {
+    if (!page) throw new Error('[RoomLevelResults.getRoomsAboveGsaLimitWithFallback] "page" is required.');
+
+    let breakdown = await this.getRoomPolicyIndicatorsAgainstGsaLimit(page, nightlyLimit);
+
+    if (breakdown.aboveLimit > 0) {
+      return { breakdown, fallbackHotel: null };
+    }
+
+    logger.info('This hotel has no room above the GSA nightly limit — checking the hotel priced closest above it instead', {
+      nightlyLimit,
+      roomsInThisHotel: breakdown.total,
+    });
+
+    await this.navigateBackViaBreakcrumb(page);
+    const fallbackHotel = await HotelLevelResults.selectHotelPricedClosestAboveGsaLimit(page, nightlyLimit);
+
+    // The filter panel is built from the loaded room set, so waiting for it means the whole
+    // room list has rendered before any room is read.
+    await this.verifyRoomLevelFilters(page);
+
+    breakdown = await this.getRoomPolicyIndicatorsAgainstGsaLimit(page, nightlyLimit);
+
+    return { breakdown, fallbackHotel };
+  },
+
+  /**
+   * Hovers the first out of policy room card and reads its violation tooltip.
+   * @param {import('playwright').Page} page
+   * @param {object} allowance - Allowance resolved at hotel level
+   * @returns {Promise<{actual: string, expected: string}>}
+   */
+  async getGsaViolationTooltipInRoomResults(page, allowance) {
+    if (!page) throw new Error('[RoomLevelResults.getGsaViolationTooltipInRoomResults] "page" is required.');
+    if (!allowance) throw new Error('[RoomLevelResults.getGsaViolationTooltipInRoomResults] "allowance" is required.');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const commonPage = getPageObject(page, CommonPage);
+    await roomLevelResultsPage.hoverFirstOutOfPolicyInfoIcon();
+    const actual = await commonPage.getOOPTooltipText();
+
+    return {
+      actual: normalizeText(actual),
+      expected: normalizeText(buildGsaViolationText(allowance)),
+    };
   },
 };
 

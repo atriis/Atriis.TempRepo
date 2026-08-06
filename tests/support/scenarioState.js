@@ -32,7 +32,20 @@ function getStoredFlightNumbers(world) {
   throw new Error("A stored flight number must be available before validating the flight capacity modal");
 }
 
+function getGsaAllowance(world) {
+  const allowance = world.gsaAllowance;
+
+  if (!allowance || typeof allowance.nightlyLimit !== "number") {
+    throw new Error(
+      "The GSA nightly lodging limit must be extracted for the searched check-in month before it can be verified",
+    );
+  }
+
+  return allowance;
+}
+
 module.exports = {
   getTravelerCount,
   getStoredFlightNumbers,
+  getGsaAllowance,
 };

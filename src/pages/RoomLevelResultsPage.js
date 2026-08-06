@@ -1,4 +1,6 @@
-﻿/**
+﻿const { toNumber } = require("@utils/numbers");
+
+/**
  * Page Object for room level results page.
  * Contains only UI-level interactions.
  */
@@ -72,6 +74,22 @@ const SELECTORS = {
   // Slider runway and thumb for the room-level Price filter panel
   ROOM_PRICE_SLIDER_RUNWAY: '.room-filter .price-slider .el-slider__runway',
   ROOM_PRICE_SLIDER_THUMB: '.room-filter .price-slider .el-slider__button-wrapper',
+  // GSA per diem banner (gsa-details-banner.vue) shown above the room list, carrying the
+  // same limit as the hotel-level banner
+  GSA_BANNER: '.gsa-details-banner',
+  // Title and limit lines inside the GSA banner, relative to GSA_BANNER
+  GSA_BANNER_TITLE: '.gsa-title',
+  GSA_BANNER_INFO: '.gsa-info',
+  // Room card container
+  ROOM_CARD: '.room-list__cards > div',
+  // Out of policy badge inside a room card, relative to ROOM_CARD. Scoped to
+  // .price-details-oop because room-deposit.vue reuses the .app-out-of-policy class
+  // for styling on the deposit note, which is not a policy violation.
+  ROOM_CARD_OOP_BADGE: '.price-details-oop .app-out-of-policy',
+  // Info icon inside the room OOP badge that opens the policy violation tooltip
+  ROOM_CARD_OOP_INFO_ICON: '.price-details-oop .app-out-of-policy span.info-icon',
+  // Price amount inside a room card, relative to ROOM_CARD
+  ROOM_CARD_PRICE_AMOUNT: '.price-details-main h4.amount',
 };
 
 class RoomLevelResultsPage {
@@ -350,6 +368,62 @@ class RoomLevelResultsPage {
       prices.push({ index: i, text, price: Math.round(parsed) });
     }
     return prices;
+  }
+
+  /** Waits until the GSA per diem banner is visible above the room list */
+  async waitForGsaBanner({ timeout = 30000 } = {}) {
+    await this.page.locator(SELECTORS.GSA_BANNER).first().waitFor({ state: "visible", timeout });
+  }
+
+  /**
+   * Reads the two lines of the GSA per diem banner.
+   * @returns {Promise<{title: string, info: string}>} Banner title and limit lines
+   */
+  async getGsaBannerText() {
+    await this.waitForGsaBanner();
+
+    const banner = this.page.locator(SELECTORS.GSA_BANNER).first();
+    const title = (await banner.locator(SELECTORS.GSA_BANNER_TITLE).textContent()) ?? "";
+    const info = (await banner.locator(SELECTORS.GSA_BANNER_INFO).textContent()) ?? "";
+
+    return { title: title.trim(), info: info.trim() };
+  }
+
+  /**
+   * Reads every loaded room card and pairs its displayed price with whether the card
+   * carries an out of policy badge. Used to check the policy indicator against a limit.
+   * @returns {Promise<Array<{index: number, price: number, isOutOfPolicy: boolean}>>} One entry per card, in display order
+   */
+  async getRoomPricesWithPolicyIndicator() {
+    const cards = this.page.locator(SELECTORS.ROOM_CARD);
+    await cards.first().waitFor({ state: "visible", timeout: 30000 });
+
+    const cardCount = await cards.count();
+    const rooms = [];
+
+    for (let index = 0; index < cardCount; index++) {
+      const card = cards.nth(index);
+      const priceText = (await card.locator(SELECTORS.ROOM_CARD_PRICE_AMOUNT).first().textContent()) ?? "";
+      const price = toNumber(priceText, `room-level price on card ${index + 1}`);
+
+      const isOutOfPolicy = await card.locator(SELECTORS.ROOM_CARD_OOP_BADGE).first().isVisible();
+
+      rooms.push({ index, price, isOutOfPolicy });
+    }
+
+    return rooms;
+  }
+
+  /**
+   * Hovers the info icon of the first out of policy room card to open its violation tooltip.
+   * Scoped to .price-details-oop rather than using CommonPage's page-wide OOP icon, because
+   * room-deposit.vue renders its own .app-out-of-policy badge with an identical info icon.
+   */
+  async hoverFirstOutOfPolicyInfoIcon() {
+    const infoIcon = this.page.locator(SELECTORS.ROOM_CARD_OOP_INFO_ICON).first();
+
+    await infoIcon.waitFor({ state: "visible", timeout: 30000 });
+    await infoIcon.hover();
   }
 
   async isCO2LabelVisible({ timeout = 10000 } = {}) {

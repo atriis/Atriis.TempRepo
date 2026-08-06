@@ -31,5 +31,21 @@
       "destination": "New York"
     }
   },
-  "defaultLocation": "london"
+  "defaultLocation": "london",
+  "gsaPerDiems": {
+    "tallahassee": {
+      "cityName": "Tallahassee",
+      "currency": "USD",
+      "currencySymbol": "$",
+      "mealsAllowance": 80,
+      "limitationName": "testim gsa",
+      "nightlyLimitByMonth": {
+        "Jan": 138,
+        "Feb": 138,
+        "Mar": 138,
+        "Apr": 138
+      },
+      "defaultNightlyLimit": 113
+    }
+  }
 }

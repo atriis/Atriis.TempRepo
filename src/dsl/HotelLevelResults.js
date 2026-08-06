@@ -3,6 +3,13 @@ const HotelLevelResultsPage = require("@pages/HotelLevelResultsPage");
 const { CommonPage } = require("@pages/CommonPage");
 const { expect } = require("@playwright/test");
 const logger = require("@utils/logger");
+const { normalizeText } = require("@utils/text");
+const {
+  resolveGsaPerDiem,
+  buildGsaBannerText,
+  buildGsaViolationText,
+  splitByGsaLimit,
+} = require("@utils/gsaPerDiem.helper");
 
 const HOTEL_SUPPLIER_ID_MAP = {
   expedia: 'EXPEDIARAPID',
@@ -38,6 +45,52 @@ function resolveHotelSupplierId(supplierName, { strict = false } = {}) {
   const supplierId = HOTEL_SUPPLIER_ID_MAP[key];
   if (!supplierId && strict) throw new Error('Unknown supplier: ' + supplierName);
   return supplierId || supplierName.toUpperCase();
+}
+
+/**
+ * Selects the hotel whose price sits nearest the GSA nightly limit on the given side and
+ * opens its room list. Shared by the two side-specific DSL methods below.
+ *
+ * @param {import('playwright').Page} page
+ * @param {number} nightlyLimit - The GSA nightly lodging limit that applies to the stay
+ * @param {'above'|'below'} side - Which side of the limit to select from
+ * @returns {Promise<{name: string, price: number, position: number}>} The selected hotel
+ */
+async function selectHotelClosestToGsaLimit(page, nightlyLimit, side) {
+  if (!page) throw new Error('[HotelLevelResults.selectHotelClosestToGsaLimit] "page" is required.');
+  if (typeof nightlyLimit !== 'number' || Number.isNaN(nightlyLimit)) {
+    throw new Error(`[HotelLevelResults.selectHotelClosestToGsaLimit] "nightlyLimit" must be a number, got: ${nightlyLimit}`);
+  }
+  if (side !== 'above' && side !== 'below') {
+    throw new Error(`[HotelLevelResults.selectHotelClosestToGsaLimit] "side" must be "above" or "below", got: ${side}`);
+  }
+
+  const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+  const hotels = await hotelLevelResultsPage.getHotelPricesWithPolicyIndicator();
+  const candidates = hotels
+    .map((hotel, index) => ({ ...hotel, position: index + 1 }))
+    .filter((hotel) => (side === 'below' ? hotel.price < nightlyLimit : hotel.price > nightlyLimit));
+
+  if (candidates.length === 0) {
+    throw new Error(
+      `[HotelLevelResults.selectHotelClosestToGsaLimit] No hotel is priced ${side} the GSA nightly limit of ${nightlyLimit}.`,
+    );
+  }
+
+  const closest = candidates.reduce((best, hotel) =>
+    (side === 'below' ? hotel.price > best.price : hotel.price < best.price) ? hotel : best,
+  );
+
+  logger.info(`Selecting the hotel priced closest ${side} the GSA nightly limit`, {
+    nightlyLimit,
+    hotel: closest.name,
+    price: closest.price,
+    position: closest.position,
+  });
+
+  await hotelLevelResultsPage.clickViewRatesByIndex(closest.position);
+
+  return { name: closest.name, price: closest.price, position: closest.position };
 }
 
 /**
@@ -1066,6 +1119,126 @@ const HotelLevelResults = {
         'No active filters may be applied, or the filter summary bar is not rendered.'
       );
     }
+  },
+
+  // ===== GSA PER DIEM POLICY =====
+
+  /**
+   * Resolves the GSA allowance that applies to a completed hotel search.
+   * Page-less: the allowance comes from the search parameters and the GSA data file,
+   * not from the rendered page, so it can be resolved before any assertion runs.
+   *
+   * @param {string} location - The location the hotel search was performed with
+   * @param {string} checkInDate - The check-in value read back from the search form
+   * @returns {{cityName: string, currency: string, currencySymbol: string, checkInMonth: string,
+   *            nightlyLimit: number, mealsAllowance: number, limitationName: string}}
+   */
+  resolveGsaAllowance(location, checkInDate) {
+    const allowance = resolveGsaPerDiem(location, checkInDate);
+
+    logger.info('Resolved GSA allowance for hotel search', allowance);
+
+    return allowance;
+  },
+
+  /**
+   * Compares the GSA banner rendered above the hotel list against the allowance.
+   * @param {import('playwright').Page} page
+   * @param {object} allowance - Allowance from resolveGsaAllowance
+   * @returns {Promise<{actual: {title: string, info: string}, expected: {title: string, info: string}}>}
+   */
+  async getGsaBannerComparisonInHotelResults(page, allowance) {
+    if (!page) throw new Error('[HotelLevelResults.getGsaBannerComparisonInHotelResults] "page" is required.');
+    if (!allowance) throw new Error('[HotelLevelResults.getGsaBannerComparisonInHotelResults] "allowance" is required.');
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const banner = await hotelLevelResultsPage.getGsaBannerText();
+    const expected = buildGsaBannerText(allowance);
+
+    return {
+      actual: { title: normalizeText(banner.title), info: normalizeText(banner.info) },
+      expected: { title: normalizeText(expected.title), info: normalizeText(expected.info) },
+    };
+  },
+
+  /**
+   * Checks every loaded hotel card's out of policy badge against the GSA nightly limit.
+   * @param {import('playwright').Page} page
+   * @param {number} nightlyLimit - The GSA nightly lodging limit that applies to the stay
+   * @returns {Promise<{total: number, aboveLimit: number, belowLimit: number,
+   *                    missingIndicator: Array<object>, unexpectedIndicator: Array<object>}>}
+   */
+  async getHotelPolicyIndicatorsAgainstGsaLimit(page, nightlyLimit) {
+    if (!page) throw new Error('[HotelLevelResults.getHotelPolicyIndicatorsAgainstGsaLimit] "page" is required.');
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const hotels = await hotelLevelResultsPage.getHotelPricesWithPolicyIndicator();
+
+    if (hotels.length === 0) {
+      throw new Error('[HotelLevelResults.getHotelPolicyIndicatorsAgainstGsaLimit] No hotel results are loaded to check.');
+    }
+
+    const breakdown = splitByGsaLimit(hotels, nightlyLimit);
+
+    logger.info('Checked hotel policy indicators against the GSA nightly limit', {
+      nightlyLimit,
+      total: breakdown.total,
+      aboveLimit: breakdown.aboveLimit,
+      belowLimit: breakdown.belowLimit,
+    });
+
+    return breakdown;
+  },
+
+  /**
+   * Selects the hotel priced closest below the GSA nightly limit and opens its rooms.
+   *
+   * The hotel card shows the price of its cheapest room, so a hotel under the limit is
+   * guaranteed to have at least one room under it — which is what makes the in-policy
+   * room check meaningful rather than vacuous.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} nightlyLimit - The GSA nightly lodging limit that applies to the stay
+   * @returns {Promise<{name: string, price: number, position: number}>} The selected hotel
+   */
+  async selectHotelPricedClosestBelowGsaLimit(page, nightlyLimit) {
+    return selectHotelClosestToGsaLimit(page, nightlyLimit, 'below');
+  },
+
+  /**
+   * Selects the hotel priced closest above the GSA nightly limit and opens its rooms.
+   *
+   * The hotel card shows the price of its cheapest room, so every room of a hotel priced
+   * above the limit is also above it — which is what makes the out of policy room check
+   * meaningful regardless of how wide that hotel's room list happens to be.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} nightlyLimit - The GSA nightly lodging limit that applies to the stay
+   * @returns {Promise<{name: string, price: number, position: number}>} The selected hotel
+   */
+  async selectHotelPricedClosestAboveGsaLimit(page, nightlyLimit) {
+    return selectHotelClosestToGsaLimit(page, nightlyLimit, 'above');
+  },
+
+  /**
+   * Hovers the first out of policy hotel card and reads its violation tooltip.
+   * @param {import('playwright').Page} page
+   * @param {object} allowance - Allowance from resolveGsaAllowance
+   * @returns {Promise<{actual: string, expected: string}>}
+   */
+  async getGsaViolationTooltipInHotelResults(page, allowance) {
+    if (!page) throw new Error('[HotelLevelResults.getGsaViolationTooltipInHotelResults] "page" is required.');
+    if (!allowance) throw new Error('[HotelLevelResults.getGsaViolationTooltipInHotelResults] "allowance" is required.');
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const commonPage = getPageObject(page, CommonPage);
+    await hotelLevelResultsPage.hoverFirstOutOfPolicyInfoIcon();
+    const actual = await commonPage.getOOPTooltipText();
+
+    return {
+      actual: normalizeText(actual),
+      expected: normalizeText(buildGsaViolationText(allowance)),
+    };
   },
 };
 
