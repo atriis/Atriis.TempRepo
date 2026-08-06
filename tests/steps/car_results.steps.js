@@ -266,6 +266,92 @@ Then("the terms and conditions modal should display the {string} section", async
   this.termsAndConditionsSection = result;
 });
 
+// Switches the car Terms & Conditions dialog from its default "fare rules" tab to
+// "vendor and location details". Same literal step text is reused at all 3 points in the flow
+// (results, cart, cart after booking) since the dialog always opens on the fare rules tab.
+When("I click vendor and location details tab", async function () {
+  const { Cart } = require("@dsl");
+  logger.info("Clicking vendor and location details tab");
+  await Cart.clickVendorAndLocationDetailsTab(this.page);
+});
+
+// Extraction + comparison helpers for the fare-rules/vendor-location-details cross-context
+// checks (73542): store each context's pane text on `this.carTerms*`, keyed by context, so the
+// "match" assertions below can diff results vs cart vs cart-after-booking.
+async function extractFareRulesTextStep(context) {
+  const { Cart } = require("@dsl");
+  logger.info(`Extracting and storing fare rules text from ${context}`);
+  const { content } = await Cart.extractCarTermsPaneText(this.page, 'fareRules');
+  this.carTermsFareRules = this.carTermsFareRules || {};
+  this.carTermsFareRules[context] = content;
+}
+
+async function extractLocationDetailsTextStep(context) {
+  const { Cart } = require("@dsl");
+  logger.info(`Extracting and storing location details text from ${context}`);
+  const { content } = await Cart.extractCarTermsPaneText(this.page, 'locationDetails');
+  this.carTermsLocationDetails = this.carTermsLocationDetails || {};
+  this.carTermsLocationDetails[context] = content;
+}
+
+function assertStoredTextMatches(store, context, label) {
+  const stored = store || {};
+  if (!stored.results) {
+    throw new Error(`No ${label} text stored for "results". Run the "from results" extraction step before this assertion.`);
+  }
+  if (!stored[context]) {
+    throw new Error(`No ${label} text stored for "${context}". Run the "from ${context}" extraction step before this assertion.`);
+  }
+  // Cart/post-booking terms read from the persisted CarRules quote record (getCarTermsFromQuote),
+  // a richer data source than the results-page preview (search-cache-sourced getCarTerms) — the
+  // cart text is a superset of the results text, not byte-identical, so this checks containment
+  // rather than equality (same tolerance verifyCarTermsDialogContainsText applies elsewhere).
+  expect(
+    stored[context],
+    `Expected ${label} text from "${context}" to include the ${label} text captured from "results"`,
+  ).toContain(stored.results);
+}
+
+When("I extract and store the fare rules text from results", async function () {
+  await extractFareRulesTextStep.call(this, 'results');
+});
+
+When("I extract and store the fare rules text from cart", async function () {
+  await extractFareRulesTextStep.call(this, 'cart');
+});
+
+When("I extract and store the fare rules text from cart after booking", async function () {
+  await extractFareRulesTextStep.call(this, 'cartAfterBooking');
+});
+
+When("I extract and store the location details text from results", async function () {
+  await extractLocationDetailsTextStep.call(this, 'results');
+});
+
+When("I extract and store the location details text from cart", async function () {
+  await extractLocationDetailsTextStep.call(this, 'cart');
+});
+
+When("I extract and store the location details text from cart after booking", async function () {
+  await extractLocationDetailsTextStep.call(this, 'cartAfterBooking');
+});
+
+Then("the fare rules from results match fare rules from cart", async function () {
+  assertStoredTextMatches(this.carTermsFareRules, 'cart', 'fare rules');
+});
+
+Then("the fare rules from results match fare rules from cart after booking", async function () {
+  assertStoredTextMatches(this.carTermsFareRules, 'cartAfterBooking', 'fare rules');
+});
+
+Then("the vendor and location text from results match vendor and location text from cart", async function () {
+  assertStoredTextMatches(this.carTermsLocationDetails, 'cart', 'vendor and location');
+});
+
+Then("the vendor and location text from results match vendor and location text from cart after booking", async function () {
+  assertStoredTextMatches(this.carTermsLocationDetails, 'cartAfterBooking', 'vendor and location');
+});
+
 When("I open the first car location link in results", async function () {
   logger.info("Opening first car location link in results");
   this.carLocationContext = await CarResults.openFirstCarLocationLinkInResults(this.page);

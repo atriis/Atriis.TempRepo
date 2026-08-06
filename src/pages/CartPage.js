@@ -1004,6 +1004,14 @@ const SELECTORS = {
   // selector covers all three contexts. :visible skips the responsive/closed duplicates that
   // el-dialog leaves attached to the body.
   CAR_TERMS_DIALOG_CONTENT: '.car-terms-conditions:visible',
+  // el-tabs nav item for the "Vendor and location details" tab in car-terms-conditions.vue —
+  // Element Plus renders the nav button id as `tab-{paneName}` from the el-tab-pane's `name`.
+  CAR_TERMS_LOCATION_DETAILS_TAB: '#tab-locationDetails:visible',
+  // el-tab-pane content roots (Element Plus renders each pane's id as `pane-{paneName}`), used to
+  // read the FULL tab content (all rule lines) for cross-context (results/cart/booked) comparison —
+  // distinct from CAR_TERMS_DIALOG_CONTENT's h5-heading-scoped extraction above.
+  CAR_TERMS_FARE_RULES_PANE: '#pane-fareRules:visible',
+  CAR_TERMS_LOCATION_DETAILS_PANE: '#pane-locationDetails:visible',
   // Hotel Terms & Conditions dialog content root (app-terms-conditions.vue). Rendered inside the
   // hotel-quote-card el-dialog in the cart; holds the rule lines (cancellation policy, room notices
   // such as the shared-bathroom note). :visible skips the closed duplicate el-dialog leaves attached.
@@ -8844,6 +8852,35 @@ class CartPage {
    */
   getCarTermsDialogContent() {
     return this.page.locator(SELECTORS.CAR_TERMS_DIALOG_CONTENT).first();
+  }
+
+  /**
+   * Clicks the "Vendor and location details" tab inside the car Terms & Conditions dialog.
+   * @returns {Promise<void>}
+   */
+  async clickCarTermsLocationDetailsTab() {
+    const tab = this.page.locator(SELECTORS.CAR_TERMS_LOCATION_DETAILS_TAB).first();
+    await tab.waitFor({ state: 'visible', timeout: 15000 });
+    await tab.click();
+    await this.page.locator(SELECTORS.CAR_TERMS_LOCATION_DETAILS_PANE).first().waitFor({ state: 'visible', timeout: 15000 });
+  }
+
+  /**
+   * Gets the full text content of a car Terms & Conditions tab pane, for cross-context
+   * (results/cart/after-booking) text comparison.
+   *
+   * @param {'fareRules'|'locationDetails'} paneName
+   * @returns {Promise<string>} Trimmed text content of the pane.
+   */
+  async extractCarTermsPaneContent(paneName) {
+    const selector = paneName === 'locationDetails'
+      ? SELECTORS.CAR_TERMS_LOCATION_DETAILS_PANE
+      : SELECTORS.CAR_TERMS_FARE_RULES_PANE;
+
+    const pane = this.page.locator(selector).first();
+    await pane.waitFor({ state: 'visible', timeout: 15000 });
+    const text = await pane.innerText();
+    return (text || '').trim();
   }
 
   /**

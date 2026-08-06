@@ -9263,6 +9263,47 @@ const Cart = {
     return { section: sectionHeading, content };
   },
 
+  /**
+   * Clicks the "Vendor and location details" tab inside the car Terms & Conditions dialog
+   * (car-terms-conditions.vue). The dialog opens with the fare rules tab active by default.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async clickVendorAndLocationDetailsTab(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info('Clicking vendor and location details tab');
+    await cartPage.clickCarTermsLocationDetailsTab();
+  },
+
+  /**
+   * Extracts the full text content of a car Terms & Conditions tab pane (all rule lines), for
+   * cross-context comparison (results vs cart vs cart after booking).
+   *
+   * @param {import('playwright').Page} page
+   * @param {'fareRules'|'locationDetails'} paneName
+   * @returns {Promise<string>} The pane's trimmed text content.
+   */
+  async extractCarTermsPaneText(page, paneName) {
+    if (!page) throw new Error('page is required');
+    if (paneName !== 'fareRules' && paneName !== 'locationDetails') {
+      throw new Error(`paneName must be "fareRules" or "locationDetails", got: ${paneName}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info(`Extracting car terms pane text: ${paneName}`);
+
+    const content = await cartPage.extractCarTermsPaneContent(paneName);
+
+    if (!content) {
+      throw new Error(`No content found in the "${paneName}" pane of the car terms modal`);
+    }
+
+    logger.info(`✓ Car terms pane "${paneName}" text extracted`, { length: content.length });
+    return { paneName, content };
+  },
+
   async addSunnyFlightNumber(page, flightNumber = 'BA123') {
     if (!page) throw new Error('page is required');
     if (!flightNumber || typeof flightNumber !== 'string') {
