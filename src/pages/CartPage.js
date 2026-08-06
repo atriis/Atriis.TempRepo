@@ -805,6 +805,10 @@ const SELECTORS = {
   CAR_DRIVER_LOYALTY_SECTION: '.car-driver-loyalty',
   CAR_DRIVER_LOYALTY_EXPAND: '.car-driver-loyalty .is-clickable',
   CAR_DRIVER_LOYALTY_INPUT: '.car-driver-loyalty .extras-card .inputs input.el-input__inner',
+  // Driver `app-select` (non-filterable el-select of trip passengers) — only rendered when the
+  // quote's validation requires a driver, so it's scoped to `.field .app-select` to avoid matching
+  // anything else inside `.inputs`.
+  CAR_DRIVER_LOYALTY_DRIVER_SELECT: '.car-driver-loyalty .extras-card .inputs .field .app-select .el-select',
   // Primary "Save" app-btn inside the panel's `.btns` row (carries the `no-border` class).
   CAR_DRIVER_LOYALTY_SAVE_BUTTON: '.car-driver-loyalty .btns .no-border',
   CAR_DRIVER_LOYALTY_SUCCESS_ICON: '.car-driver-loyalty .success-icon',
@@ -6693,6 +6697,37 @@ class CartPage {
         `"${loyaltyNumber}" (selector: ${SELECTORS.CAR_DRIVER_LOYALTY_INPUT}). Likely causes: the ` +
         `panel is not expanded, or the input is disabled because the "Use existing" toggle is on. ` +
         `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Selects a driver by visible name from the car driver loyalty panel's Driver dropdown.
+   * The dropdown is a non-filterable el-select of trip passengers, so this opens it and clicks
+   * the option matching the name rather than typing into a filter.
+   * @param {string} driverName - Full driver name as shown in the dropdown (e.g. "Rafael Dinmark")
+   * @param {number} [timeout=10000]
+   */
+  async selectCarDriverByName(driverName, timeout = 10000) {
+    if (!driverName || typeof driverName !== 'string') {
+      throw new Error(
+        `[CartPage.selectCarDriverByName] "driverName" must be a non-empty string, got: ` +
+        `${typeof driverName} (${JSON.stringify(driverName)})`
+      );
+    }
+    const select = this.page.locator(SELECTORS.CAR_DRIVER_LOYALTY_DRIVER_SELECT).first();
+    const option = this.page.locator('.el-select-dropdown__item').filter({ hasText: driverName }).first();
+    try {
+      await select.waitFor({ state: 'visible', timeout });
+      await select.click();
+      await option.waitFor({ state: 'visible', timeout });
+      await option.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.selectCarDriverByName] Could not select driver "${driverName}" from the Driver ` +
+        `dropdown (select: ${SELECTORS.CAR_DRIVER_LOYALTY_DRIVER_SELECT}). Likely causes: the panel is ` +
+        `not expanded, the quote does not require a driver so the field never rendered, or no trip ` +
+        `passenger is named "${driverName}". Original: ${err.message}`
       );
     }
   }

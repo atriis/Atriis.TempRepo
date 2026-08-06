@@ -5489,6 +5489,63 @@ const Cart = {
   },
 
   /**
+   * Expands the "Driver/Loyalty ID" extras section on the cart's car quote card, without
+   * filling or saving anything. Use before selecting a driver and/or entering a loyalty number.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async expandCarDriverLoyaltySection(page) {
+    if (!page) throw new Error('[Cart.expandCarDriverLoyaltySection] "page" is required.');
+
+    logger.debug('[Cart.expandCarDriverLoyaltySection] Expanding the car driver/loyalty id extras section');
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickCarDriverLoyaltyExpand();
+      logger.info('Expanded the car driver/loyalty id extras section');
+    } catch (err) {
+      throw new Error(
+        `[Cart.expandCarDriverLoyaltySection] Failed to open the "Driver/Loyalty ID" extras section. ` +
+        `The trip must contain a car quote. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Selects a driver by name in the car driver/loyalty extras panel's Driver dropdown, connecting
+   * the quote to one of the trip's travelers. Assumes the panel is already expanded (see
+   * expandCarDriverLoyaltySection).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} driverName - Full driver name as shown in the dropdown (e.g. "Rafael Dinmark")
+   * @returns {Promise<void>}
+   */
+  async selectCarDriver(page, driverName) {
+    if (!page) throw new Error('[Cart.selectCarDriver] "page" is required.');
+    if (!driverName || typeof driverName !== 'string') {
+      throw new Error(
+        `[Cart.selectCarDriver] "driverName" must be a non-empty string, got: ` +
+        `${typeof driverName} (${JSON.stringify(driverName)})`
+      );
+    }
+
+    logger.debug('[Cart.selectCarDriver] Selecting car driver', { driverName });
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.selectCarDriverByName(driverName);
+      logger.info('Selected car driver in the quote extras', { driverName });
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectCarDriver] Failed to select driver "${driverName}" in the car driver/loyalty ` +
+        `extras panel. The Driver/Loyalty ID section must already be expanded, and "${driverName}" ` +
+        `must match a traveler added to the trip. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Adds a car driver loyalty (Loyalty ID) number on the cart's car quote card.
    * Expands the car-scoped extras panel, types the number, saves and waits for the success state.
    *

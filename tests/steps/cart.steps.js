@@ -2520,6 +2520,16 @@ When("I click to edit the request billback extras section", async function () {
   await Cart.expandCarBillbackSection(this.page);
 });
 
+When("I click to edit the driver\\/loyalty id extras section", async function () {
+  logger.info("Opening the driver/loyalty id extras section on the car quote card");
+  await Cart.expandCarDriverLoyaltySection(this.page);
+});
+
+When("I select {string} as the driver", async function (driverName) {
+  logger.info("Selecting car driver in the extras section", { driverName });
+  await Cart.selectCarDriver(this.page, driverName);
+});
+
 Then("the corporate billing number is {string}", async function (expectedNumber) {
   logger.info("Verifying the corporate billing number in the car billback panel", { expectedNumber });
   await Cart.verifyCarBillbackBillingNumber(this.page, expectedNumber);
