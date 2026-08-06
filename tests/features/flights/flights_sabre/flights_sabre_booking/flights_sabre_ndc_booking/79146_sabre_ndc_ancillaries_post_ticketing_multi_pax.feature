@@ -23,10 +23,11 @@ Feature: 79146 Sabre NDC - Ancillaries after ticketing for multiple passengers
     Then the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
-    # Sabre NDC sits on "Finalizing" right after booking; the badge is rendered from data
-    # fetched on load, so it only flips to ticketed after a reload.
-    And I refresh the page
-    Then the quote status is "Ticketing Complete"
+    # Sabre NDC reports "Finalizing" as soon as the booking returns. The badge only flips
+    # once ticketing settles supplier-side, and it renders from data fetched on load, so
+    # the next step keeps reloading until it reads ticketed rather than refreshing once.
+    Then the quote status is "Finalizing"
+    And the quote status should become "Ticketing Complete"
     When I click the extras arrow button
     Then the "Baggage" section should be visible in the extras
     And the "Optional services" section should be visible in the extras

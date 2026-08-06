@@ -3955,6 +3955,56 @@ const Cart = {
   },
 
   /**
+   * Refreshes the page until a quote reaches the given status.
+   *
+   * Sabre NDC reports "Finalizing" as soon as the booking call returns and only flips to
+   * "Ticketing Complete" once ticketing settles supplier-side, which can take longer than
+   * one page load. The badge comes from data fetched on load and never updates in place,
+   * so polling the DOM cannot see the change — only a reload can. Reloads first, then
+   * re-checks, waiting `pollInterval` between attempts.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedStatus - Status text to wait for (case-insensitive, substring)
+   * @param {{timeout?: number, pollInterval?: number}} [options]
+   */
+  async waitForQuoteStatus(page, expectedStatus, { timeout = 180000, pollInterval = 10000 } = {}) {
+    if (!page) throw new Error('page is required');
+    if (!expectedStatus || typeof expectedStatus !== 'string') {
+      throw new Error(`expectedStatus must be a non-empty string, got: ${typeof expectedStatus}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const deadline = Date.now() + timeout;
+    let attempts = 0;
+
+    for (;;) {
+      attempts++;
+      await page.reload({ waitUntil: 'load' });
+
+      try {
+        await cartPage.getStatusByExpectedText(expectedStatus, { timeout: 5000, page });
+        logger.info('Quote reached the expected status', { expectedStatus, attempts });
+        return;
+      } catch {
+        if (Date.now() >= deadline) break;
+      }
+
+      logger.info('Quote status not reached yet, waiting before the next refresh', {
+        expectedStatus,
+        attempts,
+        pollInterval,
+      });
+      await page.waitForTimeout(pollInterval);
+    }
+
+    const seen = await cartPage.getVisibleStatusLabelTexts().catch(() => []);
+    throw new Error(
+      `Quote never reached status "${expectedStatus}" within ${timeout}ms (${attempts} refreshes). ` +
+        `Status badges currently on the page: ${seen.map((text) => `"${text.trim()}"`).join(', ') || '(none found)'}`
+    );
+  },
+
+  /**
    * Verifies that all quotes in the cart have visible PNR codes.
    * Expects at least 2 PNR code elements to be visible (one per held quote).
    * @param {import('playwright').Page} page

@@ -1203,6 +1203,15 @@ class CartPage {
   }
 
   /**
+   * Returns the text of every status badge currently rendered. Diagnostic only — lets a
+   * failed status wait report what the quote actually shows instead of just "not found".
+   * @returns {Promise<string[]>}
+   */
+  async getVisibleStatusLabelTexts() {
+    return this.page.locator(SELECTORS.ANY_STATUS_LABEL).allInnerTexts();
+  }
+
+  /**
    * Gets the trip-level status badge shown beside the Trip overview heading.
    *
    * @param {object} options
@@ -3663,6 +3672,18 @@ class CartPage {
     const segment = this.page.locator(SELECTORS.BAGGAGE_SEGMENT_ROW).nth(segmentIndex);
     await segment.waitFor({ state: 'visible', timeout });
 
+    // Element Plus renders each select's dropdown in a body-level portal that outlives the
+    // select, so a panel left open by a previous segment or traveller tab is still in the
+    // DOM. `BAGGAGE_DROPDOWN_PANEL` is document-wide, so that stale panel can win `.last()`
+    // while it animates away — the option inside it never holds still and the click never
+    // fires. Dismiss anything already open first so only this trigger's panel can match.
+    await this.page.keyboard.press('Escape').catch(() => {});
+    await this.page
+      .locator(SELECTORS.BAGGAGE_DROPDOWN_PANEL)
+      .first()
+      .waitFor({ state: 'hidden', timeout: 3000 })
+      .catch(() => {});
+
     const trigger = segment.locator(SELECTORS.BAGGAGE_SEGMENT_SELECT_TRIGGER).first();
     await trigger.click();
 
@@ -3673,7 +3694,55 @@ class CartPage {
       .locator(SELECTORS.DROPDOWN_OPTION, { hasText: optionText })
       .first();
     await option.waitFor({ state: 'visible', timeout });
-    await option.click();
+    await this.clickOptionWhenSettled(option);
+
+    // A forced click lands wherever the option happened to be, so confirm the tab really
+    // ended up with the option we asked for rather than whatever slid under the cursor.
+    const selectedTag = this.page
+      .locator(SELECTORS.BAGGAGE_SELECTED_TAG)
+      .filter({ hasText: optionText })
+      .first();
+    try {
+      await selectedTag.waitFor({ state: 'visible', timeout });
+    } catch {
+      const tags = await this.page.locator(SELECTORS.BAGGAGE_SELECTED_TAG).allInnerTexts().catch(() => []);
+      throw new Error(
+        `Clicked baggage option "${optionText}" for segment ${segmentIndex}, but the active traveler tab ` +
+          `does not show it as selected. Selected tags: ${tags.map((t) => `"${t.trim()}"`).join(', ') || '(none)'}`
+      );
+    }
+  }
+
+  /**
+   * Clicks a dropdown option that may still be moving.
+   *
+   * Playwright refuses to click until an element occupies the same box on two consecutive
+   * animation frames. Element Plus poppers reposition whenever the content behind them
+   * reflows, which on the multi-traveller baggage panel can continue well past any normal
+   * animation, so that check can never pass and the click never fires.
+   *
+   * Polls the option's box until it stops changing, then clicks. If it never settles the
+   * click is forced — the caller is expected to verify the selection afterwards.
+   *
+   * @param {import('@playwright/test').Locator} option - The option to click
+   * @param {{settleTimeout?: number, clickTimeout?: number}} [options]
+   */
+  async clickOptionWhenSettled(option, { settleTimeout = 5000, clickTimeout = 5000 } = {}) {
+    const deadline = Date.now() + settleTimeout;
+    let previous = null;
+
+    while (Date.now() < deadline) {
+      const box = await option.boundingBox();
+      if (box && previous && box.x === previous.x && box.y === previous.y) break;
+      previous = box;
+      await this.page.waitForTimeout(100);
+    }
+
+    try {
+      await option.click({ timeout: clickTimeout });
+    } catch {
+      await option.click({ force: true, timeout: clickTimeout });
+    }
   }
 
   /**

@@ -1650,6 +1650,17 @@ Then("the traveler {string} is available in cart page", async function (traveler
   await Cart.verifyTravelerVisibleInCartPage(this.page, travelerName);
 });
 
+// Refreshes for up to 3 minutes, so it needs headroom over cucumber's default 120s.
+const QUOTE_STATUS_WAIT_STEP_TIMEOUT_MS = 240000;
+
+// Unlike "the quote status is {string}", this reloads the page before each check. Statuses
+// that settle supplier-side after booking (Sabre NDC goes Finalizing -> Ticketing Complete)
+// render from data fetched on load, so polling the DOM alone never sees the change.
+Then("the quote status should become {string}", { timeout: QUOTE_STATUS_WAIT_STEP_TIMEOUT_MS }, async function (expectedStatus) {
+  logger.info("Refreshing until the quote reaches the expected status", { expectedStatus });
+  await Cart.waitForQuoteStatus(this.page, expectedStatus);
+});
+
 Then("all quotes should have PNR codes", async function () {
   logger.info("Verifying all quotes have PNR codes");
   await Cart.verifyAllQuotesHavePnrCodes(this.page);
