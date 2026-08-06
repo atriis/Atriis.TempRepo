@@ -265,6 +265,10 @@ const CarSearch = {
    * @param {Object} options
    * @param {number} options.pickupIndex - Pickup date index (>= 0)
    * @param {number} options.dropoffIndex - Drop-off date index (>= 0)
+   * @param {string} [options.pickupTime] - Explicit pick-up time "HH:mm" (24h, zero-padded).
+   *   Defaults to the form's own pre-filled time when omitted.
+   * @param {string} [options.dropoffTime] - Explicit drop-off time "HH:mm" (24h, zero-padded).
+   *   Defaults to the form's own pre-filled time when omitted.
    */
   async initiateCarSearch(
     page,
@@ -273,6 +277,8 @@ const CarSearch = {
     {
       pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
       dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
+      pickupTime,
+      dropoffTime,
     } = {},
   ) {
     if (!page) {
@@ -303,6 +309,16 @@ const CarSearch = {
     await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
     await selectDatesByNthAvailable(page, { startIndex: dropoffIndex, endIndex: null });
 
+    if (pickupTime) {
+      const [hour, minute] = parseHourMinute(pickupTime, 'pickupTime');
+      await carSearchPage.setTimeFieldTo('pickup', hour, minute);
+    }
+
+    if (dropoffTime) {
+      const [hour, minute] = parseHourMinute(dropoffTime, 'dropoffTime');
+      await carSearchPage.setTimeFieldTo('dropoff', hour, minute);
+    }
+
     // Capture the selected pickup/drop-off dates while the form is still open, before the
     // search click. Mirrors searchCarByPlace so single-PNR scenarios can align a follow-on
     // flight search to the car rental dates even when the car search doesn't wait for results.
@@ -312,7 +328,7 @@ const CarSearch = {
     // Submit â€” do NOT wait for results; the search is expected to be blocked by validation.
     await searchPage.waitAndClickSearchButton();
 
-    return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex, pickupDate, dropoffDate };
+    return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex, pickupDate, dropoffDate, pickupTime, dropoffTime };
   },
 
   /**

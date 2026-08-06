@@ -11,6 +11,14 @@ const CarSearchPage = require("@pages/CarSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const logger = require("@utils/logger").child("CarResults-DSL");
 
+// SunnyCars station open-status colors ($red-200 / $orange-200 in Atriis.App
+// src/assets/style/abstracts/_variables.scss), asserted as resolved CSS so the check reflects
+// what actually renders rather than a class name that may not carry the intended style.
+const STATION_STATUS_COLORS = {
+  red: 'rgb(239, 68, 56)',
+  orange: 'rgb(250, 153, 39)',
+};
+
 // 2 same-month day-shift attempts, then 1 final month-advance attempt as a last resort.
 const MAX_LOCATION_SELECTION_RETRIES = 3;
 // How far to shift the pickup/drop-off day index on each non-final no-results retry attempt.
@@ -590,6 +598,231 @@ const CarResults = {
       `[CarResults.expectStationOpeningHours] Expected station opening hours ${JSON.stringify(expectedHours)} ` +
       `but the dialog rendered: ${JSON.stringify(actualRows)}. Missing: ${JSON.stringify(missing)}`
     ).toEqual([]);
+  },
+
+  /**
+   * Scans the rendered city-centre station cards and returns the zero-based index of the first
+   * one whose SunnyCars open-status message matches `expectedMessage`. There is no pagination on
+   * this list (car-city-search.ts renders a flat `stationsToShow` array), so every candidate is
+   * already in the DOM â€” this never re-searches or paginates, only reads what is rendered.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedMessage - Open-status message to match (e.g. "The station is closed
+   *   on the selected dates and times"), matched case-insensitively as a substring
+   * @throws {Error} If page/expectedMessage are invalid, no station cards are rendered, or no
+   *   rendered card's status message matches
+   * @returns {Promise<number>} Zero-based index of the first matching station card
+   */
+  async findFirstStationIndexByStatusMessage(page, expectedMessage) {
+    if (!page) throw new Error('[CarResults.findFirstStationIndexByStatusMessage] page is required');
+    if (typeof expectedMessage !== 'string' || !expectedMessage.trim()) {
+      throw new Error(
+        `[CarResults.findFirstStationIndexByStatusMessage] "expectedMessage" must be a non-empty string, ` +
+        `got: ${typeof expectedMessage} (${expectedMessage})`
+      );
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForSelectText();
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const stationCount = await carResultsPage.getStationPreviewCount();
+
+    if (stationCount < 1) {
+      throw new Error(
+        '[CarResults.findFirstStationIndexByStatusMessage] No station cards are rendered on the ' +
+        'city-centre vendor list, so there is nothing to search. The search may have returned no stations.'
+      );
+    }
+
+    const needle = expectedMessage.trim().toLowerCase();
+    logger.debug('[CarResults.findFirstStationIndexByStatusMessage] Scanning station cards for status message', {
+      stationCount,
+      expectedMessage,
+    });
+
+    for (let index = 0; index < stationCount; index++) {
+      const hasStatusLine = (await carResultsPage.getStationStatusLineByIndex(index).count()) > 0;
+      if (!hasStatusLine) {
+        // Non-SunnyCars result or status "none" â€” isWorkingHoursVisible renders no status line at all.
+        continue;
+      }
+
+      const messageText = await carResultsPage.getStationStatusMessageTextByIndex(index, { timeout: 5000 });
+      if (messageText.toLowerCase().includes(needle)) {
+        logger.info('[CarResults.findFirstStationIndexByStatusMessage] Found matching station', { index, messageText });
+        return index;
+      }
+    }
+
+    throw new Error(
+      `[CarResults.findFirstStationIndexByStatusMessage] None of the ${stationCount} rendered station card(s) ` +
+      `displayed a status message matching "${expectedMessage}". The current search (place/dates/times) may not ` +
+      `return a station in that state â€” try different search criteria.`
+    );
+  },
+
+  /**
+   * Asserts that the colored status-word span on a station card's results-page card resolves to
+   * the expected color (checked via computed CSS `color`, not the class name, so a class/SCSS
+   * naming mismatch would correctly fail this rather than false-positive).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} index - Zero-based index of the station card
+   * @param {'red'|'orange'} color - Expected status color
+   * @throws {Error} If page/index/color are invalid, or the colored span is missing/wrong color
+   * @returns {Promise<void>}
+   */
+  async expectStationStatusColorAtIndex(page, index, color) {
+    if (!page) throw new Error('[CarResults.expectStationStatusColorAtIndex] page is required');
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`[CarResults.expectStationStatusColorAtIndex] "index" must be a number >= 0, got: ${index}`);
+    }
+    const expectedRgb = STATION_STATUS_COLORS[color];
+    if (!expectedRgb) {
+      throw new Error(
+        `[CarResults.expectStationStatusColorAtIndex] "color" must be one of ${Object.keys(STATION_STATUS_COLORS).join(', ')}, got: ${color}`
+      );
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const colorSpan = carResultsPage.getStationStatusColorSpanByIndex(index);
+
+    try {
+      await expect(
+        colorSpan,
+        `[CarResults.expectStationStatusColorAtIndex] Expected station card ${index}'s status word to render in ` +
+        `${color} (${expectedRgb}).`
+      ).toHaveCSS('color', expectedRgb, { timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[CarResults.expectStationStatusColorAtIndex] Station card ${index}'s status word is not rendered in ${color}. ` +
+        `Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Same color check as expectStationStatusColorAtIndex, scoped to the open "See details" dialog.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {'red'|'orange'} color - Expected status color
+   * @throws {Error} If page/color are invalid, or the colored span is missing/wrong color
+   * @returns {Promise<void>}
+   */
+  async expectStationStatusColorInModal(page, color) {
+    if (!page) throw new Error('[CarResults.expectStationStatusColorInModal] page is required');
+    const expectedRgb = STATION_STATUS_COLORS[color];
+    if (!expectedRgb) {
+      throw new Error(
+        `[CarResults.expectStationStatusColorInModal] "color" must be one of ${Object.keys(STATION_STATUS_COLORS).join(', ')}, got: ${color}`
+      );
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const colorSpan = carResultsPage.getStationStatusModalColorSpan();
+
+    try {
+      await expect(
+        colorSpan,
+        `[CarResults.expectStationStatusColorInModal] Expected the "See details" dialog's status word to render ` +
+        `in ${color} (${expectedRgb}).`
+      ).toHaveCSS('color', expectedRgb, { timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[CarResults.expectStationStatusColorInModal] The "See details" dialog's status word is not rendered in ${color}. ` +
+        `Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Asserts that a station card's open-status message matches the expected text. Unlike
+   * expectTextVisible (page-wide), this is scoped to a specific card index â€” needed when the same
+   * message could also be visible elsewhere (e.g. in an already-open dialog for a different station).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} index - Zero-based index of the station card
+   * @param {string} expectedMessage - Expected open-status message text
+   * @throws {Error} If page/index/expectedMessage are invalid, or the message does not match
+   * @returns {Promise<void>}
+   */
+  async expectStationStatusMessageAtIndex(page, index, expectedMessage) {
+    if (!page) throw new Error('[CarResults.expectStationStatusMessageAtIndex] page is required');
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`[CarResults.expectStationStatusMessageAtIndex] "index" must be a number >= 0, got: ${index}`);
+    }
+    if (typeof expectedMessage !== 'string' || !expectedMessage.trim()) {
+      throw new Error(
+        `[CarResults.expectStationStatusMessageAtIndex] "expectedMessage" must be a non-empty string, got: ${typeof expectedMessage}`
+      );
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const actualMessage = await carResultsPage.getStationStatusMessageTextByIndex(index);
+
+    expect(
+      actualMessage.toLowerCase().includes(expectedMessage.trim().toLowerCase()),
+      `[CarResults.expectStationStatusMessageAtIndex] Expected station card ${index}'s status message to contain ` +
+      `"${expectedMessage}", but it rendered: "${actualMessage}"`
+    ).toBe(true);
+  },
+
+  /**
+   * Asserts the enabled/disabled state of a station card's "Select" button.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} index - Zero-based index of the station card
+   * @param {boolean} shouldBeEnabled - Expected enabled state
+   * @throws {Error} If page/index/shouldBeEnabled are invalid, or the button is in the wrong state
+   * @returns {Promise<void>}
+   */
+  async expectStationSelectButtonStateAtIndex(page, index, shouldBeEnabled) {
+    if (!page) throw new Error('[CarResults.expectStationSelectButtonStateAtIndex] page is required');
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`[CarResults.expectStationSelectButtonStateAtIndex] "index" must be a number >= 0, got: ${index}`);
+    }
+    if (typeof shouldBeEnabled !== 'boolean') {
+      throw new Error(
+        `[CarResults.expectStationSelectButtonStateAtIndex] "shouldBeEnabled" must be a boolean, got: ${typeof shouldBeEnabled}`
+      );
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const selectButton = carResultsPage.getStationButtonByIndex(index, 'Select');
+
+    try {
+      if (shouldBeEnabled) {
+        await expect(
+          selectButton,
+          `[CarResults.expectStationSelectButtonStateAtIndex] Expected the "Select" button on station card ${index} to be enabled.`
+        ).toBeEnabled({ timeout: 15000 });
+      } else {
+        await expect(
+          selectButton,
+          `[CarResults.expectStationSelectButtonStateAtIndex] Expected the "Select" button on station card ${index} to be disabled.`
+        ).toBeDisabled({ timeout: 15000 });
+      }
+    } catch (err) {
+      throw new Error(
+        `[CarResults.expectStationSelectButtonStateAtIndex] The "Select" button on station card ${index} was not ` +
+        `${shouldBeEnabled ? 'enabled' : 'disabled'} as expected. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Closes the open station "See details" dialog.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is invalid or the dialog cannot be closed
+   * @returns {Promise<void>}
+   */
+  async closeStationDetailsModal(page) {
+    if (!page) throw new Error('[CarResults.closeStationDetailsModal] page is required');
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.closeStationDetailsModal();
   },
 
   /**

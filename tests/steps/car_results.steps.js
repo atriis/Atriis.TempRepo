@@ -414,3 +414,86 @@ Then("the add to trip button in the first car result should be visible and disab
   logger.info("Verifying the first car result's 'Add to trip' button is visible but disabled by travel policy");
   await CarResults.expectAddToTripButtonRestrictedInCarResult(this.page, 0);
 });
+
+// ========================================
+// THEN/WHEN STEPS - CITY CENTER STATION STATUS (67021)
+// ========================================
+
+// Maps the quoted Gherkin status label to the exact SunnyCars open-status message (Atriis.App
+// src/assets/locale/en.json car.carStation.*). Message text, not a CSS class or the raw
+// StationOpenStatus enum value, is what reliably identifies a station's status here - see
+// CarResults.expectStationStatusColorAtIndex for why the class name cannot be trusted for this.
+const STATION_STATUS_MESSAGES = {
+  'Closed': 'The station is closed on the selected dates and times',
+  'Open On Request': 'The station can be opened on request on the selected dates and times',
+};
+const STATION_OPEN_MESSAGE = 'The station is open on the selected dates and times';
+
+function resolveStationStatusMessage(status) {
+  const message = STATION_STATUS_MESSAGES[status];
+  if (!message) {
+    throw new Error(
+      `[car_results.steps] Unknown station status "${status}". Known statuses: ${Object.keys(STATION_STATUS_MESSAGES).join(', ')}`
+    );
+  }
+  return message;
+}
+
+// Finds the first city-center station card in the given status and verifies its status word is
+// displayed in the given color. Stores the found index on `this.stationIndex` for the paired
+// button-state/click-see-details steps that follow it in the same status block.
+Then(
+  "I verify that first {string} station status is displayed in {word} on the results page - search until you find the first one to validate things",
+  async function (status, color) {
+    logger.info("Searching city-center results for first station with status", { status, color });
+    const message = resolveStationStatusMessage(status);
+    this.stationIndex = await CarResults.findFirstStationIndexByStatusMessage(this.page, message);
+    await CarResults.expectStationStatusColorAtIndex(this.page, this.stationIndex, color);
+  }
+);
+
+// Same "search until found" contract as above, for the Open status (no color check - the Open
+// status word renders without a colored span at all).
+Then(
+  "I verify that first open station has select button enabled on the results page - search until you find the first one to validate things",
+  async function () {
+    logger.info("Searching city-center results for first open station");
+    this.stationIndex = await CarResults.findFirstStationIndexByStatusMessage(this.page, STATION_OPEN_MESSAGE);
+    await CarResults.expectStationSelectButtonStateAtIndex(this.page, this.stationIndex, true);
+  }
+);
+
+Then("first {string} station status select button is {word}", async function (status, state) {
+  if (state !== 'enabled' && state !== 'disabled') {
+    throw new Error(`[car_results.steps] "select button is {word}" must be "enabled" or "disabled", got: ${state}`);
+  }
+  logger.info("Verifying station select button state", { status, state, stationIndex: this.stationIndex });
+  await CarResults.expectStationSelectButtonStateAtIndex(this.page, this.stationIndex, state === 'enabled');
+});
+
+When("I click first {string} station status see details button", async function (status) {
+  logger.info("Clicking see details for station", { status, stationIndex: this.stationIndex });
+  await CarResults.clickSeeDetailsForStationResult(this.page, this.stationIndex + 1);
+});
+
+Then("I verify that first {string} station status is displayed in {word} on see details modal", async function (status, color) {
+  logger.info("Verifying station status color in see details modal", { status, color });
+  await CarResults.expectStationStatusColorInModal(this.page, color);
+});
+
+When("I close see details modal", async function () {
+  logger.info("Closing station see details modal");
+  await CarResults.closeStationDetailsModal(this.page);
+});
+
+Then("text {string} should be visible for the first open station that has select button enabled", async function (expectedText) {
+  logger.info("Verifying open station's status message on the results page card", { expectedText, stationIndex: this.stationIndex });
+  await CarResults.expectStationStatusMessageAtIndex(this.page, this.stationIndex, expectedText);
+});
+
+// Reuses the same "see details" click as the Closed/Open On Request steps above; the feature's
+// own wording ("first first") is a typo in the source scenario, kept verbatim here to match it.
+When("I click first first open station that has select button enabled see details button", async function () {
+  logger.info("Clicking see details for the first open station", { stationIndex: this.stationIndex });
+  await CarResults.clickSeeDetailsForStationResult(this.page, this.stationIndex + 1);
+});

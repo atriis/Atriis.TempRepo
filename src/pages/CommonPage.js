@@ -137,6 +137,30 @@ class CommonPage {
   }
 
   /**
+   * Returns whether any element currently on the page shows the given text. Domain-agnostic and
+   * scope-agnostic (checks the whole page, including an open modal), for callers that only need
+   * to confirm a piece of text is somewhere visible rather than in a specific product's results.
+   * @param {string} text - Text to look for (partial match)
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @throws {Error} If "text" is not a non-empty string
+   * @returns {Promise<boolean>}
+   */
+  async isTextVisible(text, { timeout = 15000 } = {}) {
+    if (typeof text !== 'string' || !text.trim()) {
+      throw new Error(`[CommonPage.isTextVisible] "text" must be a non-empty string, got: ${typeof text} (${text})`);
+    }
+
+    const element = this.page.getByText(text, { exact: false }).first();
+    try {
+      await element.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Reads the trip-bar cart-count badge text (e.g. "1"), or null when no badge is shown.
    * The badge reflects the number of quotes on the trip and updates reactively, so it is
    * the signal that a shared/added quote has actually committed to the cart.

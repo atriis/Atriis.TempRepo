@@ -95,6 +95,32 @@ const Results = {
   },
 
   /**
+   * Asserts that the given text is visible anywhere on the page (whole-page scope, including an
+   * open modal) â€” for the generic "text {string} should be visible" step, not tied to any one
+   * product's results.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedText - Text expected to be visible (partial match)
+   * @throws {Error} If page/expectedText are invalid, or the text never becomes visible
+   * @returns {Promise<void>}
+   */
+  async expectTextVisible(page, expectedText) {
+    if (!page) {
+      throw new Error('[Results.expectTextVisible] page is required');
+    }
+    if (typeof expectedText !== 'string' || !expectedText.trim()) {
+      throw new Error(`[Results.expectTextVisible] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${expectedText})`);
+    }
+
+    const commonPage = getPageObject(page, CommonPage);
+    const isVisible = await commonPage.isTextVisible(expectedText);
+
+    expect(
+      isVisible,
+      `[Results.expectTextVisible] Expected text "${expectedText}" to be visible on the page, but it never appeared.`
+    ).toBe(true);
+  },
+
+  /**
    * Waits for the "Select" button and clicks the first available option.
    * @param {import('playwright').Page} page - Playwright page instance
    * @returns {Promise<{clicked: boolean}>}

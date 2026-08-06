@@ -66,6 +66,17 @@ When("I initiate a car search at {string}", async function (place) {
   this.carSearch = await CarSearch.initiateCarSearch(this.page, place);
 });
 
+// City-center station-status twin: pins both pick-up/drop-off to a specific time of day (10 PM
+// here is 22:00 in the "HH:mm" format initiateCarSearch/setTimeFieldTo expect). The literal
+// "10:00 PM" wording is fixed, not parameterized, since it belongs to one specific scenario.
+When("I initiate a car search at {string} with 10:00 PM pickup time and 10:00 PM drop off time", async function (place) {
+  logger.info("Initiating car search with 10:00 PM pick-up/drop-off time (no results wait)", { place });
+  this.carSearch = await CarSearch.initiateCarSearch(this.page, place, 3, {
+    pickupTime: '22:00',
+    dropoffTime: '22:00',
+  });
+});
+
 // Agency-filtered twin of "I initiate a car search at {string}". Same non-blocking contract: the
 // search is submitted but results are not awaited, so a gating popup (e.g. trip purpose) can be
 // handled by the next step.

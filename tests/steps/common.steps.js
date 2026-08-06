@@ -319,6 +319,14 @@ Then('I should see the heading {string}', async function (text) {
   await expect(commonPage.getHeadingByText(text)).toBeVisible({ timeout: 30000 });
 });
 
+// Generic, domain-agnostic text-visibility check (whole-page scope, including an open modal) —
+// distinct from "the {string} text should be visible in results" (results.steps.js), which is
+// scoped to the results page only.
+Then('text {string} should be visible', async function (text) {
+  logger.info('Verifying text is visible on the page', { text });
+  await Results.expectTextVisible(this.page, text);
+});
+
 Then('there should be {int} elements matching css locator {string}', async function (expectedCount, cssSelector) {
   logger.info('Validating list length by css locator', { expectedCount, cssSelector });
 

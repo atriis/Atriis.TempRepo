@@ -51,6 +51,9 @@ const SELECTORS = {
   // Element-Plus teleports every select dropdown to <body>; :visible filters to the one
   // actually open.
   VISIBLE_TIME_OPTION: ".el-select-dropdown__item:visible",
+  // AM/PM toggle (time-selection-box.vue `.section-buttons .section-ampm p.time-part`) — only
+  // rendered when the picker is in 12h mode. Scoped under the open popper by the caller.
+  TIME_AMPM_BUTTON: ".section-ampm .time-part",
 };
 
 class CarSearchPage {
@@ -531,12 +534,19 @@ class CarSearchPage {
    * el-select dropdowns inside the time popper. The time input is readonly, so it can only be
    * set through the popper.
    *
+   * Detects 12h/AM-PM mode (time-selection-box.vue `isAmPm`) by whether its AM/PM toggle renders
+   * at all - it never does for a 24h picker. When present, the meridiem is set BEFORE the hours
+   * dropdown is ever opened (the hour option list depends on it, and opening/closing that dropdown
+   * around a later toggle click proved unreliable), then the 12h-labeled hour ("01"-"12") is
+   * clicked instead of the 24h one. This is purely additive: a 24h picker never has an AM/PM
+   * toggle, so existing 24h callers take the exact same path as before.
+   *
    * For metric (24h) users the picker auto-closes once the minute is selected; a mouse click in
    * a neutral top-left corner is used as a fallback commit if the popper is still open after the
    * minute pick (covers 12h/AM-PM users, where no in-form neutral blur target exists).
    *
    * @param {'pickup'|'dropoff'} field - which time field to set
-   * @param {string} hour - hour option text, zero-padded 24h (e.g. "08", "15")
+   * @param {string} hour - hour option text, zero-padded 24h (e.g. "08", "15", "22")
    * @param {string} minute - minute option text, zero-padded (e.g. "00", "15", "30", "45")
    * @throws {Error} If the popper or its hours/minutes el-select is not available, or the value
    *   does not commit
@@ -544,44 +554,90 @@ class CarSearchPage {
   async setTimeFieldTo(field, hour, minute) {
     const inputSelector = field === "pickup" ? SELECTORS.PICKUP_TIME_INPUT : SELECTORS.DROPOFF_TIME_INPUT;
 
+    const hourNum = parseInt(hour, 10);
+    const meridiem = hourNum >= 12 ? 'PM' : 'AM';
+    const hour12 = String(hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum).padStart(2, '0');
+
     try {
       const input = this.page.locator(inputSelector).first();
 
       // --- Hour ---
       let popper = await this._openTimePopper(input, SELECTORS.TIME_HOURS_TRIGGER);
-      await popper.locator(SELECTORS.TIME_HOURS_TRIGGER).click({ timeout: 5000 });
-      await this.page
-        .locator(SELECTORS.VISIBLE_TIME_OPTION, { hasText: new RegExp(`^\\s*${hour}\\s*$`) })
-        .first()
-        .click({ timeout: 5000 });
-      await this.page.waitForTimeout(400);
 
-      // --- Minute --- (popper may have auto-closed after the hour pick; reopen if needed)
-      popper = this.page.locator(SELECTORS.TIME_SELECTOR_POPPER).last();
-      const stillOpen = await popper
-        .locator(SELECTORS.TIME_MINUTES_TRIGGER)
-        .isVisible()
-        .catch(() => false);
-      if (!stillOpen) {
-        popper = await this._openTimePopper(input, SELECTORS.TIME_MINUTES_TRIGGER);
+      const isAmPmMode = (await popper.locator(SELECTORS.TIME_AMPM_BUTTON).count()) > 0;
+      let alreadyCommitted = false;
+      if (isAmPmMode) {
+        const meridiemButton = popper
+          .locator(SELECTORS.TIME_AMPM_BUTTON, { hasText: new RegExp(`^\\s*${meridiem}\\s*$`) })
+          .first();
+        const isAlreadyActive = ((await meridiemButton.getAttribute('class')) || '').includes('active');
+        if (!isAlreadyActive) {
+          await meridiemButton.click({ timeout: 5000 });
+          await this.page.waitForTimeout(300);
+
+          // Toggling AM/PM re-applies the currently-selected hour/minute under the new meridiem -
+          // if those already match the target (e.g. it only differed from the form's own
+          // pre-filled time by meridiem), the value is already committed and the popper is often
+          // already closed, so selecting the hour/minute again would be both unnecessary and,
+          // since there is nothing left open to select from, unreliable.
+          const valueAfterMeridiem = (await input.inputValue()).trim();
+          alreadyCommitted =
+            valueAfterMeridiem.includes(hour12) &&
+            valueAfterMeridiem.includes(minute) &&
+            new RegExp(meridiem, 'i').test(valueAfterMeridiem);
+
+          if (!alreadyCommitted) {
+            // Toggling AM/PM can close the popper entirely; reopen it if so.
+            popper = this.page.locator(SELECTORS.TIME_SELECTOR_POPPER).last();
+            const stillOpenAfterMeridiem = await popper
+              .locator(SELECTORS.TIME_HOURS_TRIGGER)
+              .isVisible()
+              .catch(() => false);
+            if (!stillOpenAfterMeridiem) {
+              popper = await this._openTimePopper(input, SELECTORS.TIME_HOURS_TRIGGER);
+            }
+          }
+        }
       }
-      await popper.locator(SELECTORS.TIME_MINUTES_TRIGGER).click({ timeout: 5000 });
-      await this.page
-        .locator(SELECTORS.VISIBLE_TIME_OPTION, { hasText: new RegExp(`^\\s*${minute}\\s*$`) })
-        .first()
-        .click({ timeout: 5000 });
-      await this.page.waitForTimeout(300);
 
-      // --- Commit fallback --- metric (24h) users auto-close on minute pick; if the popper is
-      // still open (12h/AM-PM users), click a neutral corner to blur and commit.
-      const poppersStillVisible = await this.page.locator(SELECTORS.TIME_SELECTOR_POPPER).count();
-      if (poppersStillVisible > 0) {
-        await this.page.mouse.click(2, 2);
+      if (!alreadyCommitted) {
+        await popper.locator(SELECTORS.TIME_HOURS_TRIGGER).click({ timeout: 5000 });
+        const targetHourText = isAmPmMode ? hour12 : hour;
+        await this.page
+          .locator(SELECTORS.VISIBLE_TIME_OPTION, { hasText: new RegExp(`^\\s*${targetHourText}\\s*$`) })
+          .first()
+          .click({ timeout: 5000 });
+        await this.page.waitForTimeout(400);
+
+        // --- Minute --- (popper may have auto-closed after the hour pick; reopen if needed)
+        popper = this.page.locator(SELECTORS.TIME_SELECTOR_POPPER).last();
+        const stillOpen = await popper
+          .locator(SELECTORS.TIME_MINUTES_TRIGGER)
+          .isVisible()
+          .catch(() => false);
+        if (!stillOpen) {
+          popper = await this._openTimePopper(input, SELECTORS.TIME_MINUTES_TRIGGER);
+        }
+        await popper.locator(SELECTORS.TIME_MINUTES_TRIGGER).click({ timeout: 5000 });
+        await this.page
+          .locator(SELECTORS.VISIBLE_TIME_OPTION, { hasText: new RegExp(`^\\s*${minute}\\s*$`) })
+          .first()
+          .click({ timeout: 5000 });
         await this.page.waitForTimeout(300);
+
+        // --- Commit fallback --- metric (24h) users auto-close on minute pick; if the popper is
+        // still open (12h/AM-PM users), click a neutral corner to blur and commit.
+        const poppersStillVisible = await this.page.locator(SELECTORS.TIME_SELECTOR_POPPER).count();
+        if (poppersStillVisible > 0) {
+          await this.page.mouse.click(2, 2);
+          await this.page.waitForTimeout(300);
+        }
       }
 
       const value = (await input.inputValue()).trim();
-      if (!value || !value.includes(hour)) {
+      const matches24h = value.includes(hour);
+      const matches12h = value.includes(hour12) && new RegExp(meridiem, 'i').test(value);
+      if (!value || (!matches24h && !matches12h)) {
         throw new Error(`the ${field} time input reads "${value}" after selecting ${hour}:${minute}`);
       }
     } catch (err) {

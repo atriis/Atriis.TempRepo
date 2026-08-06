@@ -65,6 +65,20 @@ const SELECTORS = {
   // e.g. "Monday: 07:30 - 18:00" (matches the legacy Testim selector
   // `.working-hours > :nth-child(2) > :nth-child(N) p`).
   STATION_WORKING_HOURS_ROW: '.working-hours > div > div > p',
+  // SunnyCars open-status line inside a station card (car-vendor-station-preview.vue): a lone
+  // `<p class="is-size-7">` (deliberately WITHOUT `has-text-weight-bold` on the <p> itself, unlike
+  // the two `has-text-weight-bold is-size-7` name/address lines matched by STATION_DETAIL_LINE) —
+  // that missing class is what keeps this selector from also matching the address lines. Holds 2
+  // spans for an Open station (label + message) or 3 for Closed/OpenOnRequest (label + colored
+  // status word + message) — always card-scoped via getStationPreviewByIndex.
+  STATION_STATUS_LINE: '.station-details p.is-size-7:not(.has-text-weight-bold)',
+  // Same open-status line inside the "See details" dialog (car-station-details.vue): the SunnyCars
+  // `<p>` is the only one under `.working-hours` that renders a `<span>` child (the sibling
+  // "Working hours" title `<p>` shares the same `muliBold has-text-weight-bold` classes but has no
+  // spans), so `:has(span)` is what isolates it. Holds 1 span (Open) or 2 spans (Closed/OnRequest).
+  STATION_STATUS_MODAL_LINE: '.working-hours p.muliBold.has-text-weight-bold:has(span)',
+  // "See details" dialog close button (car-city-search.vue el-dialog wrapping car-station-details).
+  STATION_DETAILS_MODAL_CLOSE: '.el-dialog:has(.car-station-details) .el-dialog__headerbtn',
   LOCATION_LABEL: ".location-lines .location-address-text",
   CITY_CENTER_ADDRESS: '.location-label + a[target="_blank"]',
   FIRST_CAR_PREVIEW: '.car-preview',
@@ -1507,6 +1521,198 @@ class CarResultsPage {
       throw new Error(
         `[CarResultsPage.getStationDetailTextsByIndex] Could not read the station detail lines of ` +
           `station card ${index}. The station list likely re-rendered mid-read. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Returns the locator for the SunnyCars open-status line inside a station card.
+   * @param {number} index - Zero-based index of the station card
+   * @returns {import('playwright').Locator}
+   */
+  getStationStatusLineByIndex(index) {
+    return this.getStationPreviewByIndex(index).locator(SELECTORS.STATION_STATUS_LINE);
+  }
+
+  /**
+   * Reads the plain (uncolored) open-status message text of a station card, e.g. "The station is
+   * closed on the selected dates and times". That message is always the LAST `<span>` in the
+   * status line — a colored status-word span (present only for Closed/OpenOnRequest) precedes it,
+   * so `.last()` resolves correctly whether 2 or 3 spans are rendered.
+   * @param {number} index - Zero-based index of the station card
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @throws {Error} If index is invalid or the status line never becomes visible
+   * @returns {Promise<string>}
+   */
+  async getStationStatusMessageTextByIndex(index, { timeout = 15000 } = {}) {
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`[CarResultsPage.getStationStatusMessageTextByIndex] "index" must be a number >= 0, got: ${index}`);
+    }
+
+    const statusLine = this.getStationStatusLineByIndex(index);
+    try {
+      await statusLine.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.getStationStatusMessageTextByIndex] The open-status line ("${SELECTORS.STATION_STATUS_LINE}") ` +
+        `never appeared in station card ${index} within ${timeout}ms. The station may not be a SunnyCars result, ` +
+        `or the card may not have finished rendering. Original: ${err.message}`
+      );
+    }
+
+    const messageSpan = statusLine.locator('span').last();
+    try {
+      return ((await messageSpan.innerText()) || '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.getStationStatusMessageTextByIndex] Could not read the open-status message text ` +
+        `from station card ${index}. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the CSS class of the colored status-word span in a station card, or `null` when the
+   * card has no colored span (an Open station renders only the label + message spans, with no
+   * status-word span at all — see car-vendor-station-preview.vue `v-if="isOpen !== Open"`).
+   * @param {number} index - Zero-based index of the station card
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @throws {Error} If index is invalid or the status line never becomes visible
+   * @returns {Promise<string|null>}
+   */
+  async getStationStatusColorClassByIndex(index, { timeout = 15000 } = {}) {
+    if (typeof index !== 'number' || index < 0) {
+      throw new Error(`[CarResultsPage.getStationStatusColorClassByIndex] "index" must be a number >= 0, got: ${index}`);
+    }
+
+    const statusLine = this.getStationStatusLineByIndex(index);
+    try {
+      await statusLine.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.getStationStatusColorClassByIndex] The open-status line ("${SELECTORS.STATION_STATUS_LINE}") ` +
+        `never appeared in station card ${index} within ${timeout}ms. Original: ${err.message}`
+      );
+    }
+
+    const spans = statusLine.locator('span');
+    const spanCount = await spans.count();
+    // label + message only â€” no colored status-word span (Open station).
+    if (spanCount < 3) {
+      return null;
+    }
+
+    return ((await spans.nth(1).getAttribute('class')) || '').trim();
+  }
+
+  /**
+   * Returns the locator for the colored status-word span in a station card. Only meaningful when
+   * the card is known to be Closed/OpenOnRequest (3 spans rendered) â€” callers must confirm that
+   * via getStationStatusColorClassByIndex/getStationStatusMessageTextByIndex first, since an Open
+   * station renders only 2 spans and this would otherwise resolve to the message span instead.
+   * @param {number} index - Zero-based index of the station card
+   * @returns {import('playwright').Locator}
+   */
+  getStationStatusColorSpanByIndex(index) {
+    return this.getStationStatusLineByIndex(index).locator('span').nth(1);
+  }
+
+  /**
+   * Returns the locator for the colored status-word span in the open "See details" dialog. Only
+   * meaningful when the station is known to be Closed/OpenOnRequest (2 spans rendered) â€” see
+   * getStationStatusColorSpanByIndex for the same caveat.
+   * @returns {import('playwright').Locator}
+   */
+  getStationStatusModalColorSpan() {
+    return this.getStationStatusModalLine().locator('span').nth(0);
+  }
+
+  /**
+   * Returns the locator for the SunnyCars open-status line inside the open "See details" dialog.
+   * @returns {import('playwright').Locator}
+   */
+  getStationStatusModalLine() {
+    return this.page.locator(SELECTORS.STATION_STATUS_MODAL_LINE).first();
+  }
+
+  /**
+   * Reads the plain (uncolored) open-status message text from the open "See details" dialog.
+   * Always the LAST `<span>` in the modal's status line (see STATION_STATUS_MODAL_LINE).
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @throws {Error} If the dialog's status line never becomes visible
+   * @returns {Promise<string>}
+   */
+  async getStationStatusModalMessageText({ timeout = 15000 } = {}) {
+    const statusLine = this.getStationStatusModalLine();
+    try {
+      await statusLine.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.getStationStatusModalMessageText] The open-status line ("${SELECTORS.STATION_STATUS_MODAL_LINE}") ` +
+        `never appeared within ${timeout}ms. The "See details" dialog may not be open. Original: ${err.message}`
+      );
+    }
+
+    const messageSpan = statusLine.locator('span').last();
+    try {
+      return ((await messageSpan.innerText()) || '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.getStationStatusModalMessageText] Could not read the open-status message text ` +
+        `from the "See details" dialog. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the CSS class of the colored status-word span in the open "See details" dialog, or
+   * `null` when the dialog has no colored span (Open station â€” only the message span renders).
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @throws {Error} If the dialog's status line never becomes visible
+   * @returns {Promise<string|null>}
+   */
+  async getStationStatusModalColorClass({ timeout = 15000 } = {}) {
+    const statusLine = this.getStationStatusModalLine();
+    try {
+      await statusLine.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.getStationStatusModalColorClass] The open-status line ("${SELECTORS.STATION_STATUS_MODAL_LINE}") ` +
+        `never appeared within ${timeout}ms. The "See details" dialog may not be open. Original: ${err.message}`
+      );
+    }
+
+    const spans = statusLine.locator('span');
+    const spanCount = await spans.count();
+    // message span only â€” no colored status-word span (Open station).
+    if (spanCount < 2) {
+      return null;
+    }
+
+    return ((await spans.nth(0).getAttribute('class')) || '').trim();
+  }
+
+  /**
+   * Closes the open station "See details" dialog via its header close button.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @throws {Error} If the close button never becomes visible or the dialog does not close
+   * @returns {Promise<void>}
+   */
+  async closeStationDetailsModal({ timeout = 15000 } = {}) {
+    const closeButton = this.page.locator(SELECTORS.STATION_DETAILS_MODAL_CLOSE).first();
+    try {
+      await closeButton.waitFor({ state: 'visible', timeout });
+      await closeButton.click();
+      await this.page.locator(SELECTORS.STATION_STATUS_MODAL_LINE).first().waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CarResultsPage.closeStationDetailsModal] Could not close the "See details" dialog ` +
+        `("${SELECTORS.STATION_DETAILS_MODAL_CLOSE}") within ${timeout}ms. Original: ${err.message}`
       );
     }
   }
