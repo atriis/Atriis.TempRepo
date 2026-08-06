@@ -390,7 +390,11 @@ When("I click to edit the meal extras section", async function () {
 // calls per open. Without headroom above that internal budget, cucumber's default
 // 120s step timeout fires first and reports the opaque "function timed out" instead
 // of the real "Baggage extras did not open" message.
-const BAGGAGE_EXTRAS_STEP_TIMEOUT_MS = 180000;
+// Selecting an option can pay that cost twice in one step: opening the panel when it is not
+// already expanded, then waiting again for the offer-dependent segment rows to render
+// (CartPage.selectBaggageOptionForSegment, another 120s). This sits above both so whichever
+// one actually stalls is the error that gets reported.
+const BAGGAGE_EXTRAS_STEP_TIMEOUT_MS = 300000;
 
 When("I click to edit the baggage extras section", { timeout: BAGGAGE_EXTRAS_STEP_TIMEOUT_MS }, async function () {
   logger.info("Clicking to edit the baggage extras section");

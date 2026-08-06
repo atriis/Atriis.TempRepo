@@ -3657,11 +3657,21 @@ class CartPage {
    * Selects a baggage option (e.g. "Extra 5kg") for the given flight segment
    * inside the currently active passenger tab. Index 0 = outbound, 1 = inbound.
    *
+   * The segment rows get their own, much larger budget: they only render once the supplier's
+   * ancillary offers arrive, whereas `waitForBaggageContent` can report the panel open as soon
+   * as its chrome (traveller tabs, Save button) is up — that chrome comes from the passenger
+   * list and needs no supplier data, so the 120s allowed by `clickEditBaggageExtrasButton` is
+   * often already spent by the time we get here. Sabre NDC answers Get Ancillaries with a 404
+   * until the offer is ready and the OBT retries by design, so the rows can lag the panel by
+   * more than a per-action timeout's worth. Callers must keep their step timeout above this
+   * (see BAGGAGE_EXTRAS_STEP_TIMEOUT_MS) or cucumber times out first and hides the real error.
+   *
    * @param {number} segmentIndex - 0-based segment index
    * @param {string} optionText - Substring to match against the dropdown option label
-   * @param {number} [timeout=10000] - Per-action timeout
+   * @param {number} [timeout=10000] - Per-action timeout for the dropdown interactions
+   * @param {number} [segmentTimeout=120000] - Timeout for the offer-dependent segment row to render
    */
-  async selectBaggageOptionForSegment(segmentIndex, optionText, timeout = 10000) {
+  async selectBaggageOptionForSegment(segmentIndex, optionText, timeout = 10000, segmentTimeout = 120000) {
     if (!Number.isInteger(segmentIndex) || segmentIndex < 0) {
       throw new Error(`segmentIndex must be a non-negative integer, got: ${segmentIndex}`);
     }
@@ -3670,7 +3680,16 @@ class CartPage {
     }
 
     const segment = this.page.locator(SELECTORS.BAGGAGE_SEGMENT_ROW).nth(segmentIndex);
-    await segment.waitFor({ state: 'visible', timeout });
+    try {
+      await segment.waitFor({ state: 'visible', timeout: segmentTimeout });
+    } catch {
+      const rowCount = await this.page.locator(SELECTORS.BAGGAGE_SEGMENT_ROW).count().catch(() => -1);
+      throw new Error(
+        `Baggage segment row ${segmentIndex} never rendered within ${segmentTimeout}ms of the panel opening ` +
+          `(visible segment rows found: ${rowCount}). The panel was open, so the supplier's ancillary offers ` +
+          `are the likely holdup.`
+      );
+    }
 
     // Element Plus renders each select's dropdown in a body-level portal that outlives the
     // select, so a panel left open by a previous segment or traveller tab is still in the
