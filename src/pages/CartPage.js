@@ -8792,6 +8792,13 @@ class CartPage {
     return this.page.locator(SELECTORS.TICKET_DETAILS_SECTION).first();
   }
 
+  /**
+   * The "Journey Details" button (rail quote card) inside the first ticket details section.
+   */
+  getJourneyDetailsButtonInFirstTicketDetails() {
+    return this.getFirstTicketDetailsSection().getByRole('button', { name: 'Journey Details' });
+  }
+
   // ========================================
   // PAYMENT TERMS - CARS & HOTELS
   // ========================================

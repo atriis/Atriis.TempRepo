@@ -4809,6 +4809,47 @@ const Cart = {
   },
 
   /**
+   * Opens a rail Fare Rules dialog (results, cart, or trip overview — the button/dialog markup
+   * is shared across all three) and verifies its body contains the expected text, then closes it.
+   * See test 29414.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Text expected inside the Fare Rules dialog (case-insensitive)
+   * @param {number} index - Zero-based index of the Fare Rules button (default: 0)
+   * @returns {Promise<{text: string}>}
+   */
+  async verifyRailFareRulesDialogContainsText(page, expectedText, index = 0) {
+    if (!page) {
+      throw new Error('[Cart.verifyRailFareRulesDialogContainsText] "page" is required.');
+    }
+    if (typeof expectedText !== 'string' || !expectedText) {
+      throw new Error(
+        `[Cart.verifyRailFareRulesDialogContainsText] "expectedText" must be a non-empty string, got: ${typeof expectedText}`,
+      );
+    }
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(
+        `[Cart.verifyRailFareRulesDialogContainsText] "index" must be a non-negative integer, got: ${index}`,
+      );
+    }
+
+    logger.debug('[Cart.verifyRailFareRulesDialogContainsText] Checking rail Fare Rules dialog text', { expectedText, index });
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickRailFareRulesButton(index);
+    const text = await cartPage.getRailFareRulesDialogText();
+
+    expect(
+      text.toLowerCase(),
+      `[Cart.verifyRailFareRulesDialogContainsText] Fare Rules dialog should contain ` +
+      `"${expectedText}", but got: "${text}"`,
+    ).toContain(expectedText.toLowerCase());
+
+    await cartPage.closeRailFareRulesDialog();
+    return { text };
+  },
+
+  /**
    * Opens the More Details drawer and verifies the hotel address contains the expected text.
    * Closes the drawer after verification.
    * @param {import('playwright').Page} page
@@ -9026,6 +9067,33 @@ const Cart = {
     const ticketDetails = cartPage.getFirstTicketDetailsSection();
     await ticketDetails.waitFor({ state: 'visible', timeout: 30000 });
     logger.info('Ticket details section is visible after booking');
+    return { visible: true };
+  },
+
+  /**
+   * Verifies the "Journey Details" button is visible inside the first ticket details section
+   * on the trip overview page (rail quote card). See test 29414.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{visible: true}>}
+   */
+  async verifyJourneyDetailsButtonVisibleInTicketDetails(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyJourneyDetailsButtonVisibleInTicketDetails] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const journeyDetailsButton = cartPage.getJourneyDetailsButtonInFirstTicketDetails();
+    try {
+      await journeyDetailsButton.waitFor({ state: 'visible', timeout: 20000 });
+    } catch (error) {
+      throw new Error(
+        `[Cart.verifyJourneyDetailsButtonVisibleInTicketDetails] The "Journey Details" button was not visible ` +
+        `inside the ticket details section within 20000ms. Original: ${error.message}`,
+      );
+    }
+
+    logger.info('Journey Details button is visible in ticket details');
     return { visible: true };
   },
 

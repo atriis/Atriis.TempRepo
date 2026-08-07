@@ -41,16 +41,19 @@ When("I select the first Benerail option for the inbound journey", async functio
 // ===== TODO STUBS — need DSL/Page implementation =====
 
 // --- Fare Rules ---
-Then("the fare rules should be accessible in Benerail results", async function () {
-  throw new Error("TODO: implement 'the fare rules should be accessible in Benerail results' — open fare rules modal from results page and assert it loads (see test 29414)");
+Then("the fare rules should be accessible in Benerail results and contain {string}", async function (expectedText) {
+  logger.info("Verifying Benerail fare rules are accessible in results", { expectedText });
+  await Cart.verifyRailFareRulesDialogContainsText(this.page, expectedText, 0);
 });
 
-Then("the fare rules should be accessible in the Benerail cart", async function () {
-  throw new Error("TODO: implement 'the fare rules should be accessible in the Benerail cart' — open fare rules modal from cart page and assert it loads (see test 29414)");
+Then("the fare rules should be accessible in the Benerail cart and contain {string}", async function (expectedText) {
+  logger.info("Verifying Benerail fare rules are accessible in cart", { expectedText });
+  await Cart.verifyRailFareRulesDialogContainsText(this.page, expectedText, 0);
 });
 
-Then("the fare rules should be accessible in the Benerail trip overview after booking", async function () {
-  throw new Error("TODO: implement 'the fare rules should be accessible in the Benerail trip overview after booking' — open fare rules from the trip overview page and assert it loads (see test 29414)");
+Then("the fare rules should be accessible in the Benerail trip overview after booking and contain {string}", async function (expectedText) {
+  logger.info("Verifying Benerail fare rules are accessible in the trip overview after booking", { expectedText });
+  await Cart.verifyRailFareRulesDialogContainsText(this.page, expectedText, 0);
 });
 
 Then("the fare rules link should be visible in the Benerail trip overview", async function () {
@@ -308,7 +311,8 @@ When("I select a seat for the Benerail booking", async function () {
 });
 
 Then("the trip overview should show the journey details button", async function () {
-  throw new Error("TODO: implement 'the trip overview should show the journey details button' — after completing booking, assert the Journey Details button is visible in the trip overview for the Benerail segment (see test 62008)");
+  logger.info("Verifying the Journey Details button is visible in the Benerail trip overview");
+  await Cart.verifyJourneyDetailsButtonVisibleInTicketDetails(this.page);
 });
 
 Then("the Benerail ticket should be marked as refundable in the itinerary after booking", async function () {
