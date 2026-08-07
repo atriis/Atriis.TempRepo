@@ -11,8 +11,7 @@
 Feature: 31334 - Galileo - Specific Car Search Without Errors
 
   Scenario: Search for cars at specific locations with Galileo and verify results
-    Given I am logged in as "vinicius@bengalileo.com"
-    When I book a new trip
+    Given I am logged in as "vinicius@bengalileo.com" booking a new trip
     And I have added myself as the traveler
     When I search for a car from "Walsall, UK" to "The Turf Hotel, Mold Road, Wrexham, UK" with 1 months ahead
     And the first station should have a "Select" button
