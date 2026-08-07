@@ -16,7 +16,8 @@ Feature: 69869 Fusion - Paid baggage correctly displayed in Flight Details and P
     And I have added myself as the traveler
     When I search for a one way flight from "KWI" to "DEL"
     Then flight results should be available
-    When I add the first flight to cart
+    When I filter results by carrier "Indigo"
+    And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I click to edit the baggage extras section
     And I select a paid baggage option
