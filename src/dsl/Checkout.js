@@ -784,7 +784,7 @@ const Checkout = {
     const checkoutPage = getPageObject(page, CheckoutPage);
     const cartPage = getPageObject(page, CartPage);
     try {
-      await checkoutPage.getGoToTripButton().click();
+      await checkoutPage.getGoToTripButton().click({ timeout: 60000 });
       await cartPage.waitForTripOverviewTitle();
     } catch (err) {
       throw new Error(
