@@ -194,6 +194,11 @@ Then("line with product details is displayed after checkout with status {string}
   await Checkout.verifyProductDetailsLineDisplayedWithStatus(this.page, status);
 });
 
+Then("line with product details is displayed after checkout with status {string} or {string} or {string}", async function (statusA, statusB, statusC) {
+  logger.info("Verifying product details line status is one of the expected values", { statusA, statusB, statusC });
+  await Checkout.verifyProductDetailsLineDisplayedWithStatusOneOf(this.page, [statusA, statusB, statusC]);
+});
+
 Then("I should see {string} or {string} status on the booking page", async function (statusA, statusB) {
   logger.info("Verifying booking page status is one of the expected values", { statusA, statusB });
   await Checkout.verifyBookingSuccessTitleIsOneOf(this.page, [statusA, statusB]);

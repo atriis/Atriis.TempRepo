@@ -701,6 +701,41 @@ const Checkout = {
   },
 
   /**
+   * Verifies the product details line on the booking-success page is visible and shows one of the
+   * given expected statuses (OR match), e.g. "Ticketing Complete" / "Confirmed" / "Finalizing".
+   * @param {import('playwright').Page} page
+   * @param {string[]} expectedStatuses - Acceptable status texts (at least one)
+   */
+  async verifyProductDetailsLineDisplayedWithStatusOneOf(page, expectedStatuses) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(expectedStatuses) || expectedStatuses.length === 0)
+      throw new Error(`"expectedStatuses" must be a non-empty array, got: ${typeof expectedStatuses}`);
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const statusBadge = checkoutPage.getBookingSuccessProductStatus();
+    let actualText;
+    try {
+      actualText = await statusBadge.innerText();
+    } catch (err) {
+      throw new Error(
+        `[Checkout.verifyProductDetailsLineDisplayedWithStatusOneOf] Product details line status badge never ` +
+        `became visible while waiting for one of: ${JSON.stringify(expectedStatuses)}. Original: ${err.message}`
+      );
+    }
+
+    const normalizedActual = actualText.trim().toLowerCase();
+    const matched = expectedStatuses.some((expected) => normalizedActual.includes(expected.trim().toLowerCase()));
+
+    if (!matched) {
+      throw new Error(
+        `[Checkout.verifyProductDetailsLineDisplayedWithStatusOneOf] Expected the product details line status to ` +
+        `be one of ${JSON.stringify(expectedStatuses)}, but it read: "${actualText}"`
+      );
+    }
+
+    logger.info('Product details line status matched one of the expected values', { expectedStatuses, actualText });
+  },
+
+  /**
    * Verifies the booking-success page title matches one of the given expected values (e.g.
    * "Confirmation in Progress" for the in-progress state or "Trip Submitted for Approval" for the
    * in-approval state — booking-success.vue's `dataByType` computed).
