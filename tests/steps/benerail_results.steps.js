@@ -132,7 +132,8 @@ Then("the Delete button should be displayed and the Search again button should b
 });
 
 Then("the time left to book counter should be visible in the Benerail checkout", async function () {
-  throw new Error("TODO: implement 'the time left to book counter should be visible in the Benerail checkout' — assert the expiry countdown widget is visible on the checkout page (see test 66407)");
+  logger.info("Verifying the time left to book counter is visible in the Benerail checkout");
+  await Cart.verifyTimeLeftToBookCounterVisibleInCheckout(this.page);
 });
 
 // --- Birth Date ---

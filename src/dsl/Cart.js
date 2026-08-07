@@ -3149,6 +3149,35 @@ const Cart = {
   },
 
   /**
+   * Verifies the "time left to book" countdown message is visible on the checkout page.
+   *
+   * Benerail checkout renders app-timed-cart.vue, which shows the countdown message inline
+   * (no hover/tooltip needed) sharing the same markup as the cart's timed-quote tooltip, so
+   * the existing page read is reused directly instead of the badge-hover flow above.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{visible: true}>}
+   */
+  async verifyTimeLeftToBookCounterVisibleInCheckout(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyTimeLeftToBookCounterVisibleInCheckout] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.getTimedQuoteTooltipMessage();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyTimeLeftToBookCounterVisibleInCheckout] The "time left to book" counter was not visible ` +
+        `in checkout within the expected timeout. Original: ${err.message}`,
+      );
+    }
+
+    logger.info('Time left to book counter is visible in checkout');
+    return { visible: true };
+  },
+
+  /**
    * Fills in and saves a special request on the hotel cart card.
    *
    * @param {import('playwright').Page} page
