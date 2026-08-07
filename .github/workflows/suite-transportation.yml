@@ -24,13 +24,27 @@ jobs:
     with:
       domain: Transportation
       history-workflow: suite-transportation.yml
+      # cars-daily used to be ONE job for all 62 daily_cars scenarios. cucumber-js
+      # only flushes its json/junit formatters at process exit, so a single step
+      # timeout there wiped out every scenario's result, not just the slow ones
+      # (run #31144616743: 3 sabre scenarios deterministically fail — Sabre
+      # returns 0 results for LHR/Enterprise and LHR/Budget in this env — and
+      # --retry 3 burns ~3 min per attempt on each, starving the other ~50
+      # scenarios in the queue until the 130 min step timeout killed the job with
+      # a 0-byte report). Sharded per supplier folder (mirrors Flights/Hotels) so
+      # one bad supplier only blanks its own shard.
       expected-suites: >-
-        cars-booking cars-daily rails-daily
+        cars-booking cars-daily-amadeus cars-daily-galileo cars-daily-general
+        cars-daily-sabre cars-daily-sunny-cars rails-daily
       matrix: |
         {
           "include": [
-            { "suite_id": "cars-booking", "suite_name": "Cars Booking", "test_path": "tests/features/cars/cars_booking/", "parallel": 1, "retry": 3, "job_timeout_minutes": 120, "step_timeout_minutes": 110 },
-            { "suite_id": "cars-daily",   "suite_name": "Cars Daily",   "test_path": "tests/features/cars/daily_cars/",   "parallel": 2, "retry": 3, "job_timeout_minutes": 140, "step_timeout_minutes": 130 },
-            { "suite_id": "rails-daily",  "suite_name": "Rails Daily",  "test_path": "tests/features/rails/daily_rails/", "parallel": 2, "retry": 3, "job_timeout_minutes": 90,  "step_timeout_minutes": 85 }
+            { "suite_id": "cars-booking",         "suite_name": "Cars Booking",          "test_path": "tests/features/cars/cars_booking/",                                                     "parallel": 1, "retry": 3, "job_timeout_minutes": 120, "step_timeout_minutes": 110 },
+            { "suite_id": "cars-daily-amadeus",    "suite_name": "Cars Daily Amadeus",    "test_path": "tests/features/cars/daily_cars/amadeus/",                                              "parallel": 2, "retry": 3, "job_timeout_minutes": 70,  "step_timeout_minutes": 65 },
+            { "suite_id": "cars-daily-galileo",    "suite_name": "Cars Daily Galileo",    "test_path": "tests/features/cars/daily_cars/galileo/",                                              "parallel": 2, "retry": 3, "job_timeout_minutes": 75,  "step_timeout_minutes": 70 },
+            { "suite_id": "cars-daily-general",    "suite_name": "Cars Daily General",    "test_path": "tests/features/cars/daily_cars/general/ tests/features/cars/daily_cars/payload_test/", "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "cars-daily-sabre",      "suite_name": "Cars Daily Sabre",      "test_path": "tests/features/cars/daily_cars/sabre/",                                                "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "cars-daily-sunny-cars", "suite_name": "Cars Daily Sunny Cars", "test_path": "tests/features/cars/daily_cars/sunny_cars/",                                           "parallel": 2, "retry": 3, "job_timeout_minutes": 60,  "step_timeout_minutes": 55 },
+            { "suite_id": "rails-daily",           "suite_name": "Rails Daily",           "test_path": "tests/features/rails/daily_rails/",                                                     "parallel": 2, "retry": 3, "job_timeout_minutes": 90,  "step_timeout_minutes": 85 }
           ]
         }
