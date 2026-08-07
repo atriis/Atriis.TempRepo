@@ -82,6 +82,73 @@ const BenerailResults = {
   },
 
   /**
+   * Expands "More Options" on the first visible result without selecting a fare.
+   */
+  async expandMoreOptionsForFirstResult(page) {
+    if (!page) throw new Error("page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    await benerailResultsPage.expandFirstResultMoreOptions();
+    return { expanded: true };
+  },
+
+  /**
+   * Verifies that the "Contract fares available in options" handshake badge is visible for at
+   * least one Benerail result.
+   * @throws {Error} If no handshake badge is visible
+   */
+  async verifyHandshakeBadgeVisibleInMoreOptionsResults(page) {
+    if (!page) throw new Error("page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const isVisible = await benerailResultsPage.isHandshakeBadgeVisibleInMoreOptionsResults();
+    if (!isVisible) {
+      throw new Error("No handshake badge (contract fares available in options) is visible in any Benerail result");
+    }
+  },
+
+  /**
+   * Hovers the agreement (handshake) logo on the first agreement-bearing alternative in "more
+   * options" results and verifies its tooltip opens with both an agreement code/description and a
+   * rendered icon (a real agreement logo, or the generic handshake glyph when no logo URL is
+   * configured). The exact contract identifier is real corporate data (not a fixed UI label), so
+   * this asserts non-empty tooltip text rather than a specific string — mirrors
+   * CarResults.verifyAgreementTextDisplayedInCarResultsTooltip / verifyAgreementLogoDisplayedInTooltip
+   * for the same shared ticket-agreements.vue component.
+   * @throws {Error} If no agreement-bearing alternative is found, its tooltip shows no text, or
+   *   neither a logo image nor the handshake placeholder renders
+   */
+  async hoverAndVerifyAgreementTooltipInMoreOptionsResults(page) {
+    if (!page) throw new Error("page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    await benerailResultsPage.hoverFirstAgreementLogoInMoreOptionsResults();
+
+    const tooltipText = await benerailResultsPage.getAgreementTooltipText();
+    if (!tooltipText) {
+      throw new Error("Agreement tooltip showed no agreement code/text after hovering the handshake logo in more options results");
+    }
+
+    const logo = await benerailResultsPage.getAgreementTooltipLogoDetails();
+    if (!logo.visible && !logo.placeholderOnly) {
+      throw new Error(
+        `Agreement tooltip showed the agreement code ("${tooltipText}") but no logo image or handshake placeholder rendered`
+      );
+    }
+
+    return { tooltipText, logoSrc: logo.src, placeholderOnly: logo.placeholderOnly };
+  },
+
+  /**
+   * Selects the first agreement-bearing alternative fare revealed by "More Options" and adds it
+   * to the trip.
+   */
+  async selectAndAddAgreementFareFromMoreOptionsToTrip(page) {
+    if (!page) throw new Error("page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    await benerailResultsPage.selectFirstAgreementFareFromMoreOptions();
+    await BenerailResults.clickAddToTripBenerail(page);
+    return { addedToTrip: true };
+  },
+
+  /**
    * Expands "More Options" on the last visible outbound result and selects an alternative fare.
    */
   async selectAlternativeFareForLastOutboundResult(page) {

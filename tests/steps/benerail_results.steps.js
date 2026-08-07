@@ -28,6 +28,26 @@ When("I click Show Later Departures on the outbound results", async function () 
   await BenerailResults.clickShowLaterDepartures(this.page);
 });
 
+When("I expand more options for the first result", async function () {
+  logger.info("Expanding more options for the first Benerail result");
+  await BenerailResults.expandMoreOptionsForFirstResult(this.page);
+});
+
+Then("the handshake badge should be displayed in at least one of more options results", async function () {
+  logger.info("Verifying the handshake badge is displayed in at least one of the more options results");
+  await BenerailResults.verifyHandshakeBadgeVisibleInMoreOptionsResults(this.page);
+});
+
+Then("I hover the agreement logo to see the tooltip in more options results", async function () {
+  logger.info("Hovering the agreement logo and verifying its tooltip in more options results");
+  await BenerailResults.hoverAndVerifyAgreementTooltipInMoreOptionsResults(this.page);
+});
+
+When("I select and add to cart the first agreement fare from more options", async function () {
+  logger.info("Selecting and adding the first agreement fare from more options to the trip");
+  await BenerailResults.selectAndAddAgreementFareFromMoreOptionsToTrip(this.page);
+});
+
 When("I expand More Options for the last outbound result and select an alternative fare", async function () {
   logger.info("Expanding More Options and selecting an alternative fare for the last outbound Benerail result");
   await BenerailResults.selectAlternativeFareForLastOutboundResult(this.page);
