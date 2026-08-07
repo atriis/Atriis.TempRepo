@@ -25,7 +25,7 @@
     "bdd:flights:lufthansa": "set PROVIDER=lufthansa && npx cucumber-js tests/features/flights/lufthansa/",
     "bdd:hotels:general": "set PROVIDER=ratehawk && npx cucumber-js tests/features/hotels/",
     "bdd:hotels:galileo": "set PROVIDER=galileo && npx cucumber-js tests/features/hotels/galileo/",
-    "bdd:cars:general": "npx cucumber-js tests/features/cars/",
+    "bdd:cars:general": "npx cucumber-js tests/features/cars/amadeus/ tests/features/cars/galileo/ tests/features/cars/general/ tests/features/cars/payload_test/ tests/features/cars/sabre/ tests/features/cars/sunny_cars/",
     "bdd:cars:galileo": "set PROVIDER=galileo && npx cucumber-js tests/features/cars/galileo/",
     "bdd:manual_quote": "set PROVIDER=amadeus && npx cucumber-js tests/features/manual_quote/"
   },
