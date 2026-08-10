@@ -5,7 +5,7 @@
 # Owner: Bruna Santos
 # Created: 2025-01-02T07:13:34Z
 # Updated: 2025-05-12T11:54:29Z
-@wip @transportation @rails @benerail @regression
+@transportation @rails @benerail @regression
 Feature: 56162 Benerail - Mandatory Age Association field is not displayed in extras for guest traveler
   As a corporate traveler booking for a guest
   I want the mandatory Age Association field to NOT appear in the Benerail extras for a guest passenger
