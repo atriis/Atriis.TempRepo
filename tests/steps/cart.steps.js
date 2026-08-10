@@ -1272,6 +1272,24 @@ Then("the optional services green icon should be visible", async function () {
   await cartPage.waitForGreenIconAfterSave(() => cartPage.getOptionalServicesGreenIcon());
 });
 
+// Literal-text variant, for a baseline where no option label has been stored yet.
+Then("the baggage {string} should be displayed in flight details", async function (expectedBaggage) {
+  logger.info("Verifying baggage allowance is displayed in flight details", { expectedBaggage });
+  const result = await Cart.verifyBaggageWordsInFlightDetails(this.page, expectedBaggage);
+  logger.info("Baggage allowance confirmed in flight details", result);
+});
+
+// Word-matching counterpart of "the paid baggage should be displayed in flight details", for
+// suppliers that word the bag differently in Extras and in the drawer.
+Then("the added baggage should be displayed in flight details", async function () {
+  if (!this.baggageOptionText) {
+    throw new Error("No stored baggage option label found. Run 'I extract the selected baggage option label' before this step.");
+  }
+  logger.info("Verifying the added baggage is displayed in flight details", { baggageOptionText: this.baggageOptionText });
+  const result = await Cart.verifyBaggageWordsInFlightDetails(this.page, this.baggageOptionText);
+  logger.info("Added baggage confirmed in flight details", result);
+});
+
 Then("the paid baggage should be displayed in flight details", async function () {
   if (!this.baggageOptionText) {
     throw new Error("No stored baggage option label found. Run 'I extract the selected baggage option label' before this step.");

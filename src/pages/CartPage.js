@@ -7770,6 +7770,18 @@ class CartPage {
   }
 
   /**
+   * Returns the visible text of the open flight details drawer body, for callers that must
+   * compare wording rather than wait on a known string.
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>}
+   */
+  async getFlightDetailsDrawerText({ timeout = 15000 } = {}) {
+    const body = this.page.locator(SELECTORS.FLIGHT_DETAILS_DRAWER_BODY).first();
+    await body.waitFor({ state: 'visible', timeout });
+    return body.innerText();
+  }
+
+  /**
    * Scrolls the flight details drawer body to the bottom so the return-leg
    * section is brought into view.
    * @param {{ timeout?: number }} options

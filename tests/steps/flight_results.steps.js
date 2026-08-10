@@ -543,6 +543,14 @@ When('I select the fare with baggage {string}', async function (baggageText) {
   await FlightResults.selectFareWithBaggage(this.page, baggageText);
 });
 
+// Opens pricing options itself. Prefer this over the step above when the first result may
+// return no fare cards at all.
+When('I select the fare with baggage {string} from the first result offering it', async function (baggageText) {
+  logger.info("Scanning results for a fare with the requested baggage", { baggageText });
+  const result = await FlightResults.selectFareWithBaggageAcrossResults(this.page, baggageText);
+  logger.info("Selected the fare with the requested baggage", result);
+});
+
 When("I scroll to the Flight Duration filter", async function () {
   logger.info("Scrolling to Flight Duration filter");
   await FlightResults.scrollToFlightDurationTitle(this.page);

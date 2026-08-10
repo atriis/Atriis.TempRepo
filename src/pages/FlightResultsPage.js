@@ -2021,6 +2021,29 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   await selectButton.click();
 }
 
+  /**
+   * Reports whether the open pricing-options modal offers a fare with the given baggage allowance,
+   * so a caller scanning results can act on a miss instead of failing on it.
+   *
+   * @param {string} baggageText - Baggage label substring (e.g. "0PC")
+   * @param {number} [timeout=8000] - Render allowance before treating the fare as absent
+   * @returns {Promise<boolean>}
+   */
+  async hasFareWithBaggageInPricingOptions(baggageText, timeout = 8000) {
+    // Scoped to the drawer so a card from a previously scanned result cannot match
+    const card = this.getPricingOptionsOverlay()
+      .locator(SELECTORS.PRICING_OPTIONS_CARD)
+      .filter({ has: this.page.locator(SELECTORS.PRICING_OPTIONS_BAGGAGE_CLASS, { hasText: baggageText }) })
+      .first();
+
+    try {
+      await card.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // Static title: "Flight duration"
   getFlightDurationTitle() {
     return this.page.getByText(SELECTORS.FLIGHT_DURATION_TITLE_TEXT, { exact: false }).first();

@@ -1995,6 +1995,73 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 },
 
   /**
+   * Scans results until one offers a fare with the given baggage allowance, then selects that fare
+   * on every leg tab of its modal. A result can open with no fare cards at all, so the fare cannot
+   * be pinned to the first result.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} baggageText - Baggage label substring (e.g. "0PC")
+   * @param {object} [options]
+   * @param {number} [options.maxResults=6] - How many results to scan before giving up.
+   * @returns {Promise<{ resultIndex: number, legCount: number, attempts: Array }>}
+   */
+  async selectFareWithBaggageAcrossResults(page, baggageText, { maxResults = 6 } = {}) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!baggageText || typeof baggageText !== 'string') {
+      throw new Error(`baggageText must be a non-empty string, got: ${typeof baggageText}`);
+    }
+    if (!Number.isInteger(maxResults) || maxResults < 1) {
+      throw new Error(`maxResults must be an integer >= 1, got: ${maxResults}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    // A pricing-options button only exists on a rendered result, so this covers both
+    await flightResultsPage.waitForPricingOptionsButton(0);
+
+    const buttonCount = await flightResultsPage.getPricingOptionsButtonCount();
+    const limit = Math.min(maxResults, buttonCount);
+    if (limit === 0) {
+      throw new Error('No "Pricing Options" buttons found in the flight results');
+    }
+
+    const attempts = [];
+    for (let i = 0; i < limit; i += 1) {
+      await flightResultsPage.clickPricingOptionsButton(i);
+
+      const hasFare = await flightResultsPage.hasFareWithBaggageInPricingOptions(baggageText);
+      attempts.push({ index: i, hasFare });
+      logger.info('Scanned result for a fare with the requested baggage', { index: i, baggageText, hasFare });
+
+      if (hasFare) {
+        // A single-leg product renders no tab strip, so treat 0 tabs as one leg to select.
+        let legCount = Math.max(await flightResultsPage.getPricingOptionsTabCount(), 1);
+        for (let leg = 0; leg < legCount; leg += 1) {
+          await flightResultsPage.clickSelectForFareWithBaggagePricingOptions(baggageText);
+          await flightResultsPage.waitForPricingOptionsLegSelected(leg);
+          // The strip is certainly rendered once a leg is confirmed, so the count read before the
+          // first selection cannot be trusted to have seen every tab.
+          if (leg === 0) {
+            legCount = Math.max(await flightResultsPage.getPricingOptionsTabCount(), legCount);
+          }
+        }
+        logger.info('Selected the fare with the requested baggage on every leg', { resultIndex: i, baggageText, legCount });
+        return { resultIndex: i, legCount, attempts };
+      }
+
+      await flightResultsPage.clickXToClosePricingOptionsModal();
+      await flightResultsPage.waitForPricingOptionsOverlayHidden().catch(() => {});
+    }
+
+    throw new Error(
+      `No result among the first ${limit} offers a fare with baggage "${baggageText}". ` +
+      `Scanned: ${JSON.stringify(attempts)}`,
+    );
+  },
+
+  /**
    * Scrolls to the Flight Duration filter title.
    * Useful for ensuring the filter is in view before interacting with it.
    * 

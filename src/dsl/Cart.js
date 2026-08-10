@@ -6952,6 +6952,59 @@ const Cart = {
   },
 
   /**
+   * Verifies a baggage option is listed in the open flight details drawer, matching on the label's
+   * significant words instead of verbatim: Extras words the bag as "1st ADDITIONAL BAG - GBP25.70"
+   * while the drawer words it as "0PC, LUGGAGE-FIRST ADDITIONAL BAG". Dropping the price, the
+   * quantity/ordinal and punctuation leaves the words both surfaces share, so the assertion holds
+   * when the supplier renames its options — what matters is that the chosen bag is listed.
+   *
+   * Kept separate from verifyBaggageInFlightDetails so this PR changes no existing behaviour;
+   * migrating that method's caller onto this one belongs in its own change.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedLabel - Baggage option label, or any descriptor to look for
+   * @returns {Promise<{ matched: true, expectedLabel: string, words: string[] }>}
+   */
+  async verifyBaggageWordsInFlightDetails(page, expectedLabel) {
+    if (!page) throw new Error('page is required');
+    if (!expectedLabel || typeof expectedLabel !== 'string') {
+      throw new Error('expectedLabel must be a non-empty string, got: ' + typeof expectedLabel);
+    }
+
+    // Ordinals and counts differ between the two surfaces ("1st" vs "FIRST"), so they are dropped
+    // along with the price segment; what remains is the wording that identifies the bag.
+    const ORDINALS = /^(\d+|\d+(ST|ND|RD|TH)|FIRST|SECOND|THIRD|FOURTH|X)$/;
+    const words = expectedLabel
+      .split(' - ')[0]
+      .toUpperCase()
+      .split(/[^A-Z0-9]+/)
+      .filter((w) => w.length > 1 && !ORDINALS.test(w));
+
+    if (words.length === 0) {
+      throw new Error(
+        `expectedLabel "${expectedLabel}" has no significant words left to match on after removing ` +
+        `its price and quantity — pass a descriptor that names the baggage.`,
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info('Verifying baggage is listed in the flight details drawer', { expectedLabel, words });
+
+    let drawerText = '';
+    await expect(async () => {
+      drawerText = (await cartPage.getFlightDetailsDrawerText()).toUpperCase();
+      const missing = words.filter((w) => !drawerText.includes(w));
+      expect(
+        missing.length,
+        `Flight details should list the baggage "${expectedLabel}" (matching on ${JSON.stringify(words)}), ` +
+        `but ${JSON.stringify(missing)} was absent. Drawer text: ${drawerText.replace(/\s+/g, ' ').slice(0, 400)}`,
+      ).toBe(0);
+    }).toPass({ timeout: 15000 });
+
+    return { matched: true, expectedLabel, words };
+  },
+
+  /**
    * Verifies that the baggage cost is reflected in the price breakdown drawer
    * as the "Other" row. The cart converts the baggage price to the user's
    * display currency (e.g. AED -> GBP), so numeric equality against the
