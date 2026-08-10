@@ -1,6 +1,7 @@
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
+const { expect } = require("@playwright/test");
 const { BenerailSearch } = require("@dsl");
 const logger = require("@utils/logger").child("BenerailSearch");
 
@@ -18,6 +19,21 @@ When("I search for a one way Benerail train from {string}", async function (rout
 When("I search for a one way Benerail train from {string} from the cart drawer", async function (routeKey) {
   logger.info("Searching for one-way Benerail train from the cart drawer", { routeKey });
   await BenerailSearch.searchBenerailOneWayFromCartDrawer(this.page, routeKey);
+});
+
+// Fills and commits the From/To/date route selection without submitting the search — used to
+// inspect what the station autocomplete actually committed into the form (test 66533, umlaut
+// character handling).
+When("I search for a one way Benerail train from {string} without clicking search button", async function (routeKey) {
+  logger.info("Filling one-way Benerail train search without submitting", { routeKey });
+  await BenerailSearch.searchBenerailOneWay(this.page, routeKey, { clickSearch: false });
+});
+
+Then("search form displays from as {string} and to as {string}", async function (expectedFrom, expectedTo) {
+  logger.info("Verifying Benerail search form From/To field values", { expectedFrom, expectedTo });
+  const { from, to } = await BenerailSearch.getRouteFieldValues(this.page);
+  expect(from, `Expected the From field to display "${expectedFrom}", got "${from}"`).toContain(expectedFrom);
+  expect(to, `Expected the To field to display "${expectedTo}", got "${to}"`).toContain(expectedTo);
 });
 
 When("I search for a round trip Benerail train from {string}", async function (routeKey) {

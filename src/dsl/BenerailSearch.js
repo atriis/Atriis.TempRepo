@@ -31,12 +31,17 @@ const BenerailSearch = {
    * @param {import('playwright').Page} page
    * @param {string|object} routeInput
    * @param {object} options
+   * @param {boolean} options.clickSearch - Set false to fill the form without submitting it
+   *   (e.g. to inspect what the autocomplete committed into the From/To fields).
    * @returns {Promise<object>} Search result metadata
    */
   async searchBenerailOneWay(
     page,
     routeInput = benerailRoutes.defaultRoute,
-    { departureIndex = SEARCH_DEFAULTS.RAIL_BENERAIL.DEPARTURE_INDEX } = {},
+    {
+      departureIndex = SEARCH_DEFAULTS.RAIL_BENERAIL.DEPARTURE_INDEX,
+      clickSearch = true,
+    } = {},
   ) {
     // Resolve route (key or inline object)
     const { from, to } = resolveRoute(
@@ -65,9 +70,37 @@ const BenerailSearch = {
       endIndex: null,
     });
 
-    await searchPage.waitAndClickSearchButton();
+    if (clickSearch) {
+      await searchPage.waitAndClickSearchButton();
+    }
 
-    return { searched: true, routeInput, from, to, departureIndex };
+    return { searched: clickSearch, routeInput, from, to, departureIndex };
+  },
+
+  /**
+   * Reads the From/To fields currently displayed in the Benerail search form — e.g. to verify
+   * what the station autocomplete actually committed after selecting a suggestion (test 66533,
+   * umlaut character handling), independent of the raw route input that was typed.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{from: string, to: string}>}
+   */
+  async getRouteFieldValues(page) {
+    if (!page) {
+      throw new Error('[BenerailSearch.getRouteFieldValues] "page" is required.');
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      const from = await searchPage.getFromFieldValue();
+      const to = await searchPage.getToFieldValue();
+      return { from, to };
+    } catch (err) {
+      throw new Error(
+        `[BenerailSearch.getRouteFieldValues] Failed to read the Benerail search form's From/To ` +
+        `field values. Original: ${err.message}`,
+      );
+    }
   },
 
 

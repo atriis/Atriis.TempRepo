@@ -696,6 +696,58 @@ class SearchPage {
   }
 
   /**
+   * Reads the current value of the "From" field, trying each FROM_PLACEHOLDER
+   * fallback selector in order (mirrors the resolution typeIntoNthAvailableInput
+   * uses to type into it) until one matches a rendered input.
+   * @returns {Promise<string>}
+   */
+  async getFromFieldValue() {
+    try {
+      for (const selector of SELECTORS.FROM_PLACEHOLDER) {
+        const locator = this.page.locator(selector);
+        if ((await locator.count()) > 0) {
+          const field = locator.nth(0);
+          await field.waitFor({ state: 'visible', timeout: 10000 });
+          return (await field.inputValue()).trim();
+        }
+      }
+      throw new Error('No FROM_PLACEHOLDER selector matched a rendered input.');
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.getFromFieldValue] Could not read the From field's current value. ` +
+        `The search form may not be rendered, or none of the FROM_PLACEHOLDER fallback selectors ` +
+        `matched. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Reads the current value of the "To" field, trying each TO_PLACEHOLDER
+   * fallback selector in order (mirrors the resolution typeIntoNthAvailableInput
+   * uses to type into it) until one matches a rendered input.
+   * @returns {Promise<string>}
+   */
+  async getToFieldValue() {
+    try {
+      for (const selector of SELECTORS.TO_PLACEHOLDER) {
+        const locator = this.page.locator(selector);
+        if ((await locator.count()) > 0) {
+          const field = locator.nth(0);
+          await field.waitFor({ state: 'visible', timeout: 10000 });
+          return (await field.inputValue()).trim();
+        }
+      }
+      throw new Error('No TO_PLACEHOLDER selector matched a rendered input.');
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.getToFieldValue] Could not read the To field's current value. ` +
+        `The search form may not be rendered, or none of the TO_PLACEHOLDER fallback selectors ` +
+        `matched. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
    * Waits for the FROM airport input to be visible — used to confirm the search
    * form is ready for editing (works for both fresh search and add-to-trip context).
    */
