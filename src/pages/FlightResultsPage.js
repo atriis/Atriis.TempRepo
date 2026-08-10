@@ -263,6 +263,8 @@ const SELECTORS = {
 
   // EU Rail options banner (eu-rail-options.vue — appears in flight results when rail is available)
   EU_RAIL_OPTIONS_BANNER: '.eu-rail-options',
+  // "Rail Options" CTA inside the EU Rail banner (eu-rail-options.vue — opens Benerail results in a new tab)
+  EU_RAIL_OPTIONS_BUTTON: '.eu-rail-options .rails-btn',
 
   // Separated Tickets tag (flight-selection.vue / flight-preview.vue — shown when split rules apply)
   // Uses text-based selector since the tag is wrapped in el-tooltip which can interfere with CSS-class visibility checks
@@ -2602,13 +2604,32 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
    * @param {number} timeout - Max wait time in ms (default: 10000)
    * @returns {Promise<boolean>}
    */
-  async isRailBannerVisible(timeout = 90000) {
+  async isRailBannerVisible(timeout = 150000) {
     try {
       await this.page.locator(SELECTORS.EU_RAIL_OPTIONS_BANNER).first().waitFor({ state: 'visible', timeout });
       return true;
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Clicks the "Rail Options" CTA in the EU Rail banner. Navigation opens Benerail
+   * results in a new browser tab (goToEuRailOptions() in flight-results.ts uses
+   * utilService.openNewWindow(..., '_blank')), so this waits for and returns that tab.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<import('playwright').Page>}
+   */
+  async clickRailOptionsButtonAndWaitForNewTab(timeout = 15000) {
+    const railOptionsButton = this.page.locator(SELECTORS.EU_RAIL_OPTIONS_BUTTON).first();
+    await railOptionsButton.waitFor({ state: 'visible', timeout });
+
+    const popupPromise = this.page.context().waitForEvent('page', { timeout });
+    await railOptionsButton.click();
+
+    const popupPage = await popupPromise;
+    await popupPage.waitForLoadState('domcontentloaded', { timeout: 60000 });
+    return popupPage;
   }
 
   /**

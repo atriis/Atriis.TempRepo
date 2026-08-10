@@ -1,7 +1,7 @@
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
-const { BenerailResults, Cart } = require("@dsl");
+const { BenerailResults, Cart, FlightResults } = require("@dsl");
 const logger = require("@utils/logger").child("BenerailResults");
 
 setDefaultTimeout(120000);
@@ -266,8 +266,9 @@ Then("the Rail is available for this route message should be visible in flight r
   throw new Error("TODO: implement 'the Rail is available for this route message should be visible in flight results' — assert the Air-Rail informational banner/message is visible on the flight results page (see test 47148)");
 });
 
-When("I click the Rail Options button in flight results", async function () {
-  throw new Error("TODO: implement 'I click the Rail Options button in flight results' — click the 'Rail Options' CTA that appears in the flight results when air-rail mixed is available (see test 47148)");
+When("I click the rail options button in flight results", async function () {
+  logger.info("Clicking Rail Options button in flight results");
+  this.page = await FlightResults.clickRailOptionsButton(this.page);
 });
 
 Then("the first Benerail result Select button should be visible", async function () {

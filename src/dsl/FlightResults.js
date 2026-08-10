@@ -2386,6 +2386,18 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Clicks the "Rail Options" CTA in the EU Rail banner and returns the new
+   * Benerail results tab it opens.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<import('playwright').Page>}
+   */
+  async clickRailOptionsButton(page) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    return flightResultsPage.clickRailOptionsButtonAndWaitForNewTab();
+  },
+
+  /**
    * Verifies the "Separated Tickets" indicator is visible in flight results.
    * This tag appears when split rules apply and the system issues tickets per carrier.
    * @param {import('playwright').Page} page

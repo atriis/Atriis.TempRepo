@@ -12,6 +12,10 @@ const logger = require("@utils/logger").child("FlightResults");
 
 setDefaultTimeout(120000);
 
+// EU Rail options is a supplier-dependent async lookup that can take longer than
+// the default step timeout to surface the banner in flight results (see test 47148).
+const RAIL_BANNER_STEP_TIMEOUT_MS = 180000;
+
 async function applyResultsSearchFilter(world, filterText) {
   if (!filterText || typeof filterText !== 'string') {
     throw new Error(`filterText must be a non-empty string, got: ${typeof filterText}`);
@@ -940,7 +944,7 @@ When("I extract the price from pricing option at index {int}", async function (i
 // THEN STEPS - RAIL BANNER
 // ========================================
 
-Then("the rail banner should be visible in results", async function () {
+Then("the rail banner should be visible in results", { timeout: RAIL_BANNER_STEP_TIMEOUT_MS }, async function () {
   logger.info("Verifying rail banner is visible in flight results");
   await FlightResults.verifyRailBannerVisible(this.page);
 });
