@@ -12,13 +12,10 @@ Feature: 56134 Benerail - Travel policy triggered when configured for 1st class 
   So that the travel policy is enforced correctly for Benerail bookings
 
   Scenario: OOP indicator appears when booking a Benerail route with 1st class and destination policy
-    Given I am logged in as "justinbieber@benerail.com" booking a new trip
+    Given I am logged in as "justinbieber@benerailmoovenlgov.com" booking a new trip
     And I have added myself as the traveler
-    # TODO: note Search_benerail_by_place_one_way__direct_only_ uses direct-only filter
-    # The existing step does not support direct-only — add TODO on BenerailSearch DSL to add directOnly option
     When I search for a one way Benerail train from "beleuToBeabc"
-    And I click proceed on the reference fields popup
-    # TODO: create step "Then the travel policy should be triggered for 1st class and destination in Benerail" in benerail_results.steps.js
-    # covers: Travel_Policy_is_triggered_when_configured_for_1st_class_and_destination()
-    # — validates OOP indicator appears in results for 1st class and destination-restricted route
-    Then the travel policy should be triggered for 1st class and destination in Benerail
+    And I click proceed button if visible
+   And I wait for select text to be visible
+    And I expand more options for the first result
+    Then the out of policy tooltip in more options results should be "Origin is be and Destination is within country and Class Of Service is first"
