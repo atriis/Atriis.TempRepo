@@ -261,19 +261,6 @@ Then("the traveler should still be visible in the Benerail cart", async function
   throw new Error("TODO: implement 'the traveler should still be visible in the Benerail cart' — after adding quote to cart, assert traveler is displayed in the cart header/traveler section (see test 44941)");
 });
 
-// --- Share 2 ways ---
-When("I click the share icon in Benerail results", async function () {
-  throw new Error("TODO: implement 'I click the share icon in Benerail results' — click the share/send icon button on the Benerail results page (see test 46315)");
-});
-
-When("I click the share price offer button in Benerail results", async function () {
-  throw new Error("TODO: implement 'I click the share price offer button in Benerail results' — select the Price Offer share option from the share panel (see test 46315)");
-});
-
-Then("the Include in price offer option should be visible", async function () {
-  throw new Error("TODO: implement 'the Include in price offer option should be visible' — assert the 'Include in price offer' checkbox or button is displayed in the share panel (see test 46315)");
-});
-
 // --- Air-rail mixed ---
 Then("the Rail is available for this route message should be visible in flight results", async function () {
   throw new Error("TODO: implement 'the Rail is available for this route message should be visible in flight results' — assert the Air-Rail informational banner/message is visible on the flight results page (see test 47148)");
@@ -360,15 +347,7 @@ When("I click Later and extract the first result departure time", async function
   logger.info("Clicking Later and extracting the first Benerail result departure time");
   this.benerailDepartureTimes = this.benerailDepartureTimes || {};
   this.benerailDepartureTimes.firstLater = await BenerailResults.clickLaterAndExtractFirstResultDepartureTime(this.page);
-});
-
-When("I click Earlier and extract the first result departure time", async function () {
-  throw new Error("TODO: implement 'I click Earlier and extract the first result departure time' — click the Earlier navigation button, wait for results to refresh, read and store the first result departure time (see test 62220)");
-});
-
-Then("the Earlier results departure time should be before the Later results time", async function () {
-  throw new Error("TODO: implement 'the Earlier results departure time should be before the Later results time' — compare stored Earlier vs Later departure times and assert Earlier < Later (see test 62220)");
-});
+})
 
 When("I click Later and extract the subsequent first result departure time", async function () {
   logger.info("Clicking Later a second time and extracting the new first Benerail result departure time");

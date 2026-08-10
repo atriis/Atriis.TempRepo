@@ -136,6 +136,26 @@ const Results = {
     return { clicked: true };
   },
 
+  /**
+   * Waits for a just-clicked share quote button in results to visually flip to its "Added"
+   * state before the next share action runs, avoiding a race with the button's re-render.
+   * Generic across products — every screen's share button uses the same underlying
+   * share-btns component, so this is not tied to any one product's results.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{changed: boolean}>}
+   */
+  async waitForShareButtonChangeInResults(page) {
+    if (!page) {
+      throw new Error('[Results.waitForShareButtonChangeInResults] page is required to wait for the share button state change, but received: undefined.');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForShareQuoteButtonAdded();
+
+    return { changed: true };
+  },
+
   // ===== CONFLICT QUOTE MODAL =====
 
   /**

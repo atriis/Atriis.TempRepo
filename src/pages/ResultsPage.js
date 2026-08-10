@@ -12,8 +12,23 @@ const SELECTORS = {
   RESULTS_BUTTON: ".btn.btn--primary",
   CAR_RESULT_CARD: '.car-preview',
   AGENCY_STATION_ADDRESS: '.station-details p.has-text-weight-bold.is-size-7',
-  SHARE_MAIN_BUTTON: 'button.share-btn.mr-4',
+  // 'share-btn p-2' is the constant across every product's share-mode-entry button
+  // (@click="setShareMode" in flight-list-sort.vue, car-sort-bar.vue, eu-rail-results.vue,
+  // amtrak-results.vue, hotel-list-sort.vue, hotel-details.vue, hotel-results.vue,
+  // car-results.vue, parking-results.vue). 'mr-4' is only an incidental desktop-spacing
+  // utility present on some of those (flights/cars/parking desktop) — rail desktop and every
+  // floating/mobile variant omit it. Kept the original '.mr-4' selector alongside the broader
+  // '.p-2' one (comma = union) as a fallback, so the pre-existing flights/cars/parking match
+  // path is unchanged even if the '.p-2' reasoning is ever wrong. ':visible' on each branch is
+  // required because the desktop AND the '.mobile-actions' floating variant both render in the
+  // DOM at once (the floating one is only CSS-hidden outside mobile breakpoints), so an unscoped
+  // match hits both regardless of viewport.
+  SHARE_MAIN_BUTTON: 'button.share-btn.mr-4:visible, button.share-btn.p-2:visible',
   SHARE_QUOTE_RESULTS_BUTTON: '.share-btn.py-2',
+  // app-share-products-btns.vue's v-if branch (isProductInShare=true) renders this exact literal
+  // class list — distinct from the v-else "not yet added" state (SHARE_QUOTE_RESULTS_BUTTON above,
+  // which lacks has-text-primary) — so it only matches once a share click has registered.
+  SHARE_QUOTE_ADDED_INDICATOR: '.share-btn.has-text-primary.py-2',
   SHARE_QUOTE_EMAIL_BUTTON: '.share-bar button.share-btn.is-hidden-mobile',
   NO_RESULTS_CONTAINER: '.app-no-results',
   NO_RESULTS_TITLE: '.app-no-results h3',
@@ -559,6 +574,23 @@ class ResultsPage {
       .locator(SELECTORS.SHARE_QUOTE_RESULTS_BUTTON)
       .nth(index);
     await button.click({ timeout: 60000 }); // Waits automatically for actionable state
+  }
+
+  /**
+   * Waits for a just-clicked "Share" quote button to flip into its "Added" state
+   * (check_circle icon + has-text-primary class) before the next action reads the DOM.
+   */
+  async waitForShareQuoteButtonAdded() {
+    try {
+      await this.page
+        .locator(SELECTORS.SHARE_QUOTE_ADDED_INDICATOR)
+        .first()
+        .waitFor({ state: "visible", timeout: 15000 });
+    } catch (e) {
+      throw new Error(
+        `[ResultsPage.waitForShareQuoteButtonAdded] Timed out waiting for a share button to switch to its "Added" state. The quote may not have been added to the share selection. Original: ${e.message}`
+      );
+    }
   }
 
   /**

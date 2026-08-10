@@ -23,6 +23,11 @@ When("I wait for select text to be visible", async function () {
   await resultsPage.waitForSelectText();
 });
 
+When("I wait to see change button", async function () {
+  logger.info("Waiting for share button to change to its Added state");
+  await Results.waitForShareButtonChangeInResults(this.page);
+});
+
 When("I wait for add to trip text to be visible", async function () {
   logger.info("Waiting for 'Add to trip' button to be visible");
   const resultsPage = getPageObject(this.page, ResultsPage);
