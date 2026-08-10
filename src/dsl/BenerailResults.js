@@ -192,6 +192,20 @@ const BenerailResults = {
   },
 
   /**
+   * Hovers the OOP shield icon on the first out-of-policy alternative revealed by "More Options"
+   * and returns its tooltip text (see BenerailResultsPage.hoverFirstOOPShieldIconInMoreOptionsResults
+   * / getOOPTooltipTextInMoreOptionsResults for why this can't reuse CommonPage.getOOPTooltipText).
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<string>} The OOP tooltip text
+   */
+  async hoverAndGetOOPTooltipTextInMoreOptionsResults(page) {
+    if (!page) throw new Error("page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    await benerailResultsPage.hoverFirstOOPShieldIconInMoreOptionsResults();
+    return await benerailResultsPage.getOOPTooltipTextInMoreOptionsResults();
+  },
+
+  /**
    * Selects the first agreement-bearing alternative fare revealed by "More Options" and adds it
    * to the trip.
    */

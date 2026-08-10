@@ -1,6 +1,7 @@
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { ResultsPage } = require("@pages/ResultsPage");
+const { SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 
 /**
  * Page Object for Benerail (EU Rail) results.
@@ -27,6 +28,16 @@ const SELECTORS = {
   // Matches the app's own typo in ticket-agreements.vue (`--palceholder`, not "--placeholder") —
   // rendered instead of a logo image when the agreement has no logo URL configured.
   AGREEMENT_TOOLTIP_LOGO_PLACEHOLDER: ".agreement-tooltip-list .agreement-tooltip__icon--palceholder",
+  // eu-rail-preview.vue renders an alternative's OOP badge with app-oop-badge's `isIconOnly` prop
+  // (the only product using that variant) — its shield icon is the el-tooltip trigger directly,
+  // unlike the default OOP badge elsewhere in the app where a separate info icon triggers the
+  // tooltip (see CommonPage.getOOPInfoIcon). Same root class as CommonPage.OOP_INFO either way.
+  ALTERNATIVE_OOP_SHIELD_ICON: `${COMMON_SELECTORS.OOP_INFO} .shield-icon`,
+  // app-oop-badge.vue's violations-list content — identical markup between the icon-only and
+  // default badge variants, so this reuses CommonPage.OOP_TOOLTIP_TEXT's value. Read directly
+  // rather than via CommonPage.getOOPTooltipText, whose internal visibility wait gates on the info
+  // icon and never resolves for the icon-only variant (see the method below).
+  OOP_TOOLTIP_TEXT: `li${COMMON_SELECTORS.OOP_TOOLTIP_TEXT}`,
 };
 
 class BenerailResultsPage {
@@ -290,6 +301,48 @@ class BenerailResultsPage {
     if (rowHandle) {
       await rowHandle.waitForElementState("hidden", { timeout: 20000 }).catch(() => {});
     }
+  }
+
+  /**
+   * Gets the first "more options" alternative row (eu-rail-preview.vue's `.bottom-section-divider`)
+   * that is out-of-policy. Filtering on the shield-icon trigger already narrows to rows whose
+   * `<app-oop-badge isIconOnly>` rendered (i.e. `alternative.travelPolicyViolations?.length`) — no
+   * per-row violation check needed, same pattern as getFirstMoreOptionsRowWithAgreement.
+   * @returns {Locator}
+   */
+  getFirstMoreOptionsRowWithOOP() {
+    return this.page
+      .locator(SELECTORS.MORE_OPTIONS_ROW)
+      .filter({ has: this.page.locator(SELECTORS.ALTERNATIVE_OOP_SHIELD_ICON) })
+      .first();
+  }
+
+  /**
+   * Hovers the OOP shield icon on the first out-of-policy alternative revealed by "More Options",
+   * opening its el-tooltip. eu-rail-preview.vue's icon-only app-oop-badge has no separate info
+   * icon, so the shield icon itself must be hovered (see ALTERNATIVE_OOP_SHIELD_ICON).
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async hoverFirstOOPShieldIconInMoreOptionsResults({ timeout = 15000 } = {}) {
+    const trigger = this.getFirstMoreOptionsRowWithOOP().locator(SELECTORS.ALTERNATIVE_OOP_SHIELD_ICON).first();
+    await trigger.waitFor({ state: "visible", timeout });
+    await trigger.hover();
+  }
+
+  /**
+   * Reads the currently open OOP tooltip's violation-list text after
+   * hoverFirstOOPShieldIconInMoreOptionsResults. Does not use CommonPage.getOOPTooltipText — its
+   * internal waitForOOPTooltipVisible() gates on the info icon, which the icon-only badge variant
+   * never renders (see ALTERNATIVE_OOP_SHIELD_ICON).
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getOOPTooltipTextInMoreOptionsResults({ timeout = 10000 } = {}) {
+    const tooltipText = this.page.locator(SELECTORS.OOP_TOOLTIP_TEXT);
+    await tooltipText.first().waitFor({ state: "visible", timeout });
+    return ((await tooltipText.first().textContent()) ?? "").trim();
   }
 
   /**

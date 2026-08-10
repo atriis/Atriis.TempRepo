@@ -1,6 +1,7 @@
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
+const { expect } = require("@playwright/test");
 const { BenerailResults, Cart, FlightResults } = require("@dsl");
 const logger = require("@utils/logger").child("BenerailResults");
 
@@ -41,6 +42,14 @@ Then("the handshake badge should be displayed in at least one of more options re
 Then("I hover the agreement logo to see the tooltip in more options results", async function () {
   logger.info("Hovering the agreement logo and verifying its tooltip in more options results");
   await BenerailResults.hoverAndVerifyAgreementTooltipInMoreOptionsResults(this.page);
+});
+
+Then("the out of policy tooltip in more options results should be {string}", async function (expectedText) {
+  logger.info("Verifying OOP tooltip in more options results", { expectedText });
+  const actualText = await BenerailResults.hoverAndGetOOPTooltipTextInMoreOptionsResults(this.page);
+  const normalizedActual = actualText.replace(/\s+/g, ' ').trim();
+  const normalizedExpected = expectedText.replace(/\s+/g, ' ').trim();
+  expect(normalizedActual).toBe(normalizedExpected);
 });
 
 When("I select and add to cart the first agreement fare from more options", async function () {
