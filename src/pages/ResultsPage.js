@@ -740,7 +740,15 @@ class ResultsPage {
     } catch (err) {
       throw new Error(`[ResultsPage.getConflictingQuoteModalTripNumber] Trip number link not visible in conflicting quotes modal. Modal may not be open. Original: ${err.message}`);
     }
-    return (await tripLink.innerText()).trim();
+    // When multiple existing trips conflict, the app renders a trailing ", " inside the same
+    // span for every non-last trip id (see conflicting-quotes-modal.vue), so the raw text of
+    // the first link can be e.g. "3796350, ". Only the digits are the actual trip id.
+    const rawText = (await tripLink.innerText()).trim();
+    const tripId = rawText.match(/\d+/)?.[0];
+    if (!tripId) {
+      throw new Error(`[ResultsPage.getConflictingQuoteModalTripNumber] Could not parse a numeric trip ID from modal text: "${rawText}"`);
+    }
+    return tripId;
   }
 
   /**
