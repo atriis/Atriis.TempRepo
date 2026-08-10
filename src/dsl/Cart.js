@@ -8519,6 +8519,25 @@ const Cart = {
   },
 
   /**
+   * Verifies that an extras section with the given name is NOT rendered.
+   * @param {import('playwright').Page} page
+   * @param {string} sectionName - Display text of the section title (e.g. "Age Association")
+   */
+  async verifyExtrasSectionNotVisibleByName(page, sectionName) {
+    if (!page) throw new Error('[Cart.verifyExtrasSectionNotVisibleByName] "page" is required.');
+    if (!sectionName || typeof sectionName !== 'string') {
+      throw new Error(
+        `[Cart.verifyExtrasSectionNotVisibleByName] "sectionName" must be a non-empty string, got: ${typeof sectionName} (${JSON.stringify(sectionName)})`,
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const isVisible = await cartPage.isExtrasSectionVisibleByName(sectionName);
+    expect(isVisible, `[Cart.verifyExtrasSectionNotVisibleByName] Expected extras section "${sectionName}" to NOT be visible`).toBe(false);
+    logger.info('Extras section is not visible', { sectionName });
+  },
+
+  /**
    * Verifies the count of visible extras sections in the cart extras panel.
    * @param {import('playwright').Page} page
    * @param {number} expectedCount

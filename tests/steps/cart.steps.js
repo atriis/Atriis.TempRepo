@@ -2368,6 +2368,11 @@ Then("the {string} section should be visible in the extras", async function (sec
   await Cart.verifyExtrasSectionVisibleByName(this.page, sectionName);
 });
 
+Then("the age association mandatory field should not be displayed in the Benerail extras", async function () {
+  logger.info("Verifying Age Association mandatory field is not displayed in Benerail extras");
+  await Cart.verifyExtrasSectionNotVisibleByName(this.page, "Age Association");
+});
+
 Then("there should be {int} extras sections visible", async function (expectedCount) {
   logger.info("Verifying extras sections count", { expectedCount });
   await Cart.verifyExtrasSectionsCount(this.page, expectedCount);

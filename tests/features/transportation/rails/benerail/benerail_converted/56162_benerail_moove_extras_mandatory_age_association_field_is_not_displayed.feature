@@ -12,14 +12,9 @@ Feature: 56162 Benerail - Mandatory Age Association field is not displayed in ex
   So that the extras section remains clean and uncluttered
 
   Scenario: Age association mandatory field is not shown in Benerail extras for guest traveler
-    Given I am logged in as "beny@benerail.com" booking a new trip
+    Given I am logged in as "pmac@bene.ral" booking a new trip
     And I have added a random guest traveler
     When I search for a one way Benerail train from "bebmiToSchiphol"
-    # TODO: create step "And I fill in the reference fields for the guest traveler" in benerail_search.steps.js
-    # covers: Ref_field_guest() — fills reference fields specific to a guest traveler
-    And I fill in the reference fields for the guest traveler
-    And I click proceed on the reference fields popup
-    When I add a Benerail round trip to the trip
-    # TODO: create step "Then the Age Association mandatory field should not be displayed in the Benerail extras" in benerail_results.steps.js
-    # covers: List_length() — verifies the extras list does NOT contain the Age Association mandatory entry
-    Then the Age Association mandatory field should not be displayed in the Benerail extras
+    When I add a Benerail one way to the trip
+    And the booking status should be "Pending booking"
+    Then the age association mandatory field should not be displayed in the Benerail extras
