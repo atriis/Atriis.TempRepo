@@ -9,6 +9,12 @@ const { ResultsPage } = require("@pages/ResultsPage");
  */
 
 const SELECTORS = {
+  // eu-rail-preview.vue's root class (bound on <ticket-layout>) — one per Benerail result card.
+  RESULT_CARD: ".eu-rail-preview",
+  // Both the departure and arrival blocks share this wrapper class; departure renders first in
+  // DOM order (see eu-rail-preview.vue's journey-details section), so .first() on a card's
+  // matches is the departure time, not the arrival time.
+  RESULT_TIME_BLOCK: ".journey-duration-container p.has-text-weight-bold",
   // eu-rail-preview.vue's static hint (agreements-in-additional-indication) — rendered whenever a
   // result's alternatives contain a corporate/agency agreement fare.
   MORE_OPTIONS_AGREEMENT_INDICATION_ICON: ".agreements-in-additional-indication .agreement-img",
@@ -48,6 +54,66 @@ class BenerailResultsPage {
     if (handle) {
       await handle.waitForElementState("hidden", { timeout }).catch(() => {});
     }
+  }
+
+  /**
+   * Gets the first Benerail result card (eu-rail-preview.vue).
+   * @returns {Locator}
+   */
+  getFirstResultCard() {
+    return this.page.locator(SELECTORS.RESULT_CARD).first();
+  }
+
+  /**
+   * Counts how many Benerail result cards are currently rendered. "Show Later Departures"
+   * appends newly-loaded results to the end of this list (eu-rail.store.ts's loadLaterRails
+   * dispatches `appendRailSegments`, not a replace) rather than refreshing it in place, so this
+   * count is what identifies where the newly-opened later departures start.
+   * @returns {Promise<number>}
+   */
+  async getResultCardCount() {
+    return this.page.locator(SELECTORS.RESULT_CARD).count();
+  }
+
+  /**
+   * Reads the departure time displayed on the Benerail result card at the given index (e.g.
+   * "14:32" or "2:32 PM", depending on the user's time-format setting). Scrolls the card into
+   * view first since newly-appended later/earlier results render below the fold.
+   * @param {number} [index=0]
+   * @param {number} [timeout=60000]
+   * @returns {Promise<string>} The raw displayed departure time text
+   */
+  async getDepartureTimeTextForResultAtIndex(index = 0, timeout = 60000) {
+    const card = this.page.locator(SELECTORS.RESULT_CARD).nth(index);
+    await card.waitFor({ state: "visible", timeout });
+    await card.scrollIntoViewIfNeeded();
+    const departureTime = card.locator(SELECTORS.RESULT_TIME_BLOCK).first();
+    await departureTime.waitFor({ state: "visible", timeout });
+    return ((await departureTime.innerText()) ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Reads the departure time displayed on the first Benerail result card. Used as the initial
+   * baseline before any "Show Later Departures" / "Show Earlier Departures" click.
+   * @param {number} [timeout=60000]
+   * @returns {Promise<string>} The raw displayed departure time text
+   */
+  async getFirstResultDepartureTimeText(timeout = 60000) {
+    return this.getDepartureTimeTextForResultAtIndex(0, timeout);
+  }
+
+  /**
+   * Waits for new result cards to be appended after clicking "Show Later Departures" /
+   * "Show Earlier Departures" — the list grows in place, so the Select button that
+   * clickShowLaterDeparturesButton waits on is already present before and after the click and
+   * proves nothing about the new data having arrived.
+   * @param {number} previousCardCount - The result-card count read before the click
+   * @param {number} [timeout=20000]
+   */
+  async waitForNewResultCardsAppended(previousCardCount, timeout = 20000) {
+    await expect
+      .poll(() => this.getResultCardCount(), { timeout, message: "Timed out waiting for new Benerail result cards to be appended after clicking Show Later Departures" })
+      .toBeGreaterThan(previousCardCount);
   }
 
   /**

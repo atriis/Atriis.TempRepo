@@ -350,8 +350,16 @@ Then("the first Benerail result should depart from 06:00 or later", async functi
   throw new Error("TODO: implement 'the first Benerail result should depart from 06:00 or later' — assert the first result departure time is >= 06:00 on the initial results page (see test 62220)");
 });
 
+When("I extract the first result departure time", async function () {
+  logger.info("Extracting the initial first Benerail result departure time");
+  this.benerailDepartureTimes = this.benerailDepartureTimes || {};
+  this.benerailDepartureTimes.initial = await BenerailResults.extractFirstResultDepartureTime(this.page);
+});
+
 When("I click Later and extract the first result departure time", async function () {
-  throw new Error("TODO: implement 'I click Later and extract the first result departure time' — click the Later navigation button, wait for results to refresh, read and store the first result departure time (see tests 62220, 62825)");
+  logger.info("Clicking Later and extracting the first Benerail result departure time");
+  this.benerailDepartureTimes = this.benerailDepartureTimes || {};
+  this.benerailDepartureTimes.firstLater = await BenerailResults.clickLaterAndExtractFirstResultDepartureTime(this.page);
 });
 
 When("I click Earlier and extract the first result departure time", async function () {
@@ -363,11 +371,31 @@ Then("the Earlier results departure time should be before the Later results time
 });
 
 When("I click Later and extract the subsequent first result departure time", async function () {
-  throw new Error("TODO: implement 'I click Later and extract the subsequent first result departure time' — click Later a second time, wait for refresh, read and store the new first result departure time (see test 62825)");
+  logger.info("Clicking Later a second time and extracting the new first Benerail result departure time");
+  this.benerailDepartureTimes = this.benerailDepartureTimes || {};
+  this.benerailDepartureTimes.secondLater = await BenerailResults.clickLaterAndExtractFirstResultDepartureTime(this.page);
+});
+
+Then("the first Later click should display results later than the initial results", async function () {
+  const { initial, firstLater } = this.benerailDepartureTimes || {};
+  if (!initial || !firstLater) {
+    throw new Error("Missing stored departure times — expected both the initial extraction and the first Later click to have run first");
+  }
+  logger.info("Verifying the first Later click shows a later departure time than the initial results", { initial: initial.raw, firstLater: firstLater.raw });
+  if (!(firstLater.minutes > initial.minutes)) {
+    throw new Error(`Expected the first Later click's departure time ("${firstLater.raw}") to be later than the initial departure time ("${initial.raw}")`);
+  }
 });
 
 Then("the second Later click should display results later than the first Later click", async function () {
-  throw new Error("TODO: implement 'the second Later click should display results later than the first Later click' — compare first Later time vs second Later time and assert second > first (see test 62825)");
+  const { firstLater, secondLater } = this.benerailDepartureTimes || {};
+  if (!firstLater || !secondLater) {
+    throw new Error("Missing stored departure times — expected both the first and second Later click extractions to have run first");
+  }
+  logger.info("Verifying the second Later click shows a later departure time than the first Later click", { firstLater: firstLater.raw, secondLater: secondLater.raw });
+  if (!(secondLater.minutes > firstLater.minutes)) {
+    throw new Error(`Expected the second Later click's departure time ("${secondLater.raw}") to be later than the first Later click's departure time ("${firstLater.raw}")`);
+  }
 });
 
 // --- Check-in ---

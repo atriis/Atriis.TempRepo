@@ -9,6 +9,29 @@ const Results = require("./Results");
  * Business actions performed on Benerail results.
  */
 
+/**
+ * Converts a displayed Benerail departure/arrival time into minutes past midnight. Handles both
+ * notations the results page can render depending on the user's time-format setting: 24-hour
+ * ("14:32") and 12-hour AM/PM ("2:32 PM").
+ * @param {string} timeText - Time as displayed, e.g. "14:32" or "2:32 PM"
+ * @returns {number} Minutes past midnight
+ */
+function parseTimeOfDayToMinutes(timeText) {
+  const match = (timeText ?? "").match(/\b(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (!match) {
+    throw new Error(`Could not parse a time of day from Benerail result time text: "${timeText}"`);
+  }
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const meridiem = match[3]?.toUpperCase();
+
+  if (meridiem === "AM" && hours === 12) hours = 0;
+  if (meridiem === "PM" && hours !== 12) hours += 12;
+
+  return hours * 60 + minutes;
+}
+
 const BenerailResults = {
   /** Waits until Benerail results are ready */
   async waitForBenerailResults(page) {
@@ -79,6 +102,38 @@ const BenerailResults = {
     const benerailResultsPage = getPageObject(page, BenerailResultsPage);
     await benerailResultsPage.clickShowLaterDeparturesButton();
     return { clicked: true };
+  },
+
+  /**
+   * Reads the first Benerail result's departure time without navigating — used as the baseline
+   * before clicking "Show Later Departures" (see test 62825).
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{raw: string, minutes: number}>}
+   */
+  async extractFirstResultDepartureTime(page) {
+    if (!page) throw new Error("page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const raw = await benerailResultsPage.getFirstResultDepartureTimeText();
+    return { raw, minutes: parseTimeOfDayToMinutes(raw) };
+  },
+
+  /**
+   * Clicks "Show Later Departures" and reads the departure time of the first newly-opened later
+   * result. "Show Later Departures" appends new results to the end of the outbound list rather
+   * than replacing it (eu-rail.store.ts's loadLaterRails → appendRailSegments), so the first
+   * later result is not the page's first result card — it is the card at the index the list had
+   * right before this click. Reused for both the first and second "Later" click in test 62825.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{raw: string, minutes: number}>}
+   */
+  async clickLaterAndExtractFirstResultDepartureTime(page) {
+    if (!page) throw new Error("page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const previousCardCount = await benerailResultsPage.getResultCardCount();
+    await BenerailResults.clickShowLaterDepartures(page);
+    await benerailResultsPage.waitForNewResultCardsAppended(previousCardCount);
+    const raw = await benerailResultsPage.getDepartureTimeTextForResultAtIndex(previousCardCount);
+    return { raw, minutes: parseTimeOfDayToMinutes(raw) };
   },
 
   /**
