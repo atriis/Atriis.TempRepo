@@ -2128,6 +2128,11 @@ Then("the card number field is pre-populated with a valid full card number", asy
   await Cart.verifyEuRailLoyaltyNumberPrepopulated(this.page);
 });
 
+Then("the existing loyalty card number is {string}", async function (expectedCardNumber) {
+  logger.info("Verifying EU Rail loyalty card number matches expected value", { expectedCardNumber });
+  await Cart.verifyEuRailLoyaltyNumberEquals(this.page, expectedCardNumber);
+});
+
 When("I edit the card number to {string} and click {string}", async function (newCardNumber, buttonName) {
   logger.info("Editing EU Rail card number and clicking button", { newCardNumber, buttonName });
   this.euRailEditedCardNumber = newCardNumber;
@@ -2193,6 +2198,13 @@ Then("the new entry is not saved", async function () {
 When("I select the loyalty program index {int}", async function (index) {
   logger.info("Selecting EU Rail loyalty program vendor by index", { index });
   const result = await Cart.selectEuRailLoyaltyVendorByIndex(this.page, index);
+  this.euRailSelectedVendor = result.vendor;
+  logger.info("Selected EU Rail loyalty program vendor", result);
+});
+
+When("I select the loyalty program containing {string}", async function (optionText) {
+  logger.info("Selecting EU Rail loyalty program vendor by text", { optionText });
+  const result = await Cart.selectEuRailLoyaltyVendorByText(this.page, optionText);
   this.euRailSelectedVendor = result.vendor;
   logger.info("Selected EU Rail loyalty program vendor", result);
 });

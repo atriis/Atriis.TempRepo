@@ -6442,6 +6442,38 @@ const Cart = {
   },
 
   /**
+   * Verifies the EU Rail loyalty card number field shows an exact expected value.
+   * Unlike verifyEuRailLoyaltyNumberPrepopulated() (format-only, to stay safe against shared
+   * mutable profile data), this asserts literal equality — only safe when expectedCardNumber is
+   * either something the scenario itself just entered, or a fixture value that THIS scenario
+   * never edits (select-and-resave, not select-and-change). Do not use it against a stored
+   * profile value that other scenarios (or a different run of this one) might mutate.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedCardNumber - Exact card number the field should show
+   */
+  async verifyEuRailLoyaltyNumberEquals(page, expectedCardNumber) {
+    if (!page) throw new Error('[Cart.verifyEuRailLoyaltyNumberEquals] "page" is required.');
+    if (typeof expectedCardNumber !== 'string' || !expectedCardNumber) {
+      throw new Error(`[Cart.verifyEuRailLoyaltyNumberEquals] "expectedCardNumber" must be a non-empty string, got: ${typeof expectedCardNumber}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    let actualValue;
+    try {
+      actualValue = await cartPage.getEuRailLoyaltyNumberInputValue();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyEuRailLoyaltyNumberEquals] Could not read the card number field value: ${err.message}`
+      );
+    }
+
+    expect(
+      actualValue,
+      `Card number field should show "${expectedCardNumber}", but found "${actualValue}"`
+    ).toBe(expectedCardNumber);
+  },
+
+  /**
    * Edits the EU Rail loyalty card number field and clicks the given button (e.g. "Save").
    * @param {import('playwright').Page} page
    * @param {string} newCardNumber - New card number to enter
@@ -6672,6 +6704,32 @@ const Cart = {
     } catch (err) {
       throw new Error(
         `[Cart.selectEuRailLoyaltyVendorByIndex] Failed to select the loyalty program at index ${index}: ${err.message}`
+      );
+    }
+    return { vendor };
+  },
+
+  /**
+   * Selects the loyalty program whose text contains the given substring, from whichever tab's
+   * dropdown is currently open — the "Enter New" tab's vendor dropdown, or the "Use Existing"
+   * tab's stored-program dropdown. Does not enter a card number or click Save.
+   * @param {import('playwright').Page} page
+   * @param {string} optionText - Substring to match (case-insensitive) in the dropdown option
+   * @returns {Promise<{ vendor: string }>}
+   */
+  async selectEuRailLoyaltyVendorByText(page, optionText) {
+    if (!page) throw new Error('[Cart.selectEuRailLoyaltyVendorByText] "page" is required.');
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error(`[Cart.selectEuRailLoyaltyVendorByText] "optionText" must be a non-empty string, got: ${typeof optionText}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    let vendor;
+    try {
+      vendor = await cartPage.selectEuRailLoyaltyVendorByText(optionText);
+    } catch (err) {
+      throw new Error(
+        `[Cart.selectEuRailLoyaltyVendorByText] Failed to select the loyalty program containing "${optionText}": ${err.message}`
       );
     }
     return { vendor };

@@ -932,6 +932,11 @@ const SELECTORS = {
   // a .loyalty-new pane. ':visible' selects the one actually rendered for the active tab.
   EURAIL_LOYALTY_NUMBER_INPUT: '.loyalty-program .loyalty-number-input .el-input__inner:visible',
   EURAIL_LOYALTY_VALIDATION_MSG: '.loyalty-program .validation-msg:visible',
+  // The vendor/existing-program popper (Element Plus renders it at body level, not scoped under
+  // .loyalty-program). Scoping option lookups to THIS single, most-recently-opened panel (via
+  // .last()) avoids mixing in options from a prior select's popper that can still match
+  // ":visible" for a moment while it fades out.
+  EURAIL_LOYALTY_DROPDOWN_PANEL: '.el-select-dropdown:visible',
 
   // Premier Inn extras - breakfast visibility (premier-inn.vue)
   PREMIER_INN_PAYMENT_LABEL: '.quote-extras--premier-inn .extras-card label.label',
@@ -7617,6 +7622,34 @@ class CartPage {
     await select.waitFor({ state: 'visible', timeout: 10000 });
     await select.click();
     const option = this.page.locator(SELECTORS.EL_SELECT_VISIBLE_DROPDOWN_ITEM).nth(index);
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    const text = (await option.textContent()).trim();
+    // force: true — see selectFirstEuRailLoyaltyVendor() above re: hover-tracking instability
+    await option.click({ force: true });
+    return text;
+  }
+
+  /**
+   * Selects the loyalty program whose text contains the given substring, from whichever EU Rail
+   * loyalty dropdown is currently visible — the "Enter New" tab's vendor dropdown, or the "Use
+   * Existing" tab's stored-program dropdown — so the same step works regardless of active tab.
+   * @param {string} optionText - Substring to match (case-insensitive) in the dropdown option
+   * @returns {Promise<string>} The text of the selected option
+   */
+  async selectEuRailLoyaltyVendorByText(optionText) {
+    if (!optionText || typeof optionText !== 'string') throw new Error('optionText must be a non-empty string');
+    const vendorSelect = this.page.locator(SELECTORS.EURAIL_LOYALTY_VENDOR_SELECT);
+    const existingSelect = this.page.locator(SELECTORS.EURAIL_LOYALTY_EXISTING_SELECT);
+    const select = (await vendorSelect.isVisible()) ? vendorSelect : existingSelect;
+    await select.waitFor({ state: 'visible', timeout: 10000 });
+    await select.click();
+    // Scope to the most-recently-opened popper (.last()) rather than a flat, page-wide item
+    // list: a select opened earlier in the same scenario can leave its popper matching
+    // ":visible" for a moment while it fades out, and a global item list would then mix its
+    // stale options in ahead of this select's freshly-opened ones (see EURAIL_LOYALTY_DROPDOWN_PANEL).
+    const dropdown = this.page.locator(SELECTORS.EURAIL_LOYALTY_DROPDOWN_PANEL).last();
+    await dropdown.waitFor({ state: 'visible', timeout: 10000 });
+    const option = dropdown.locator(SELECTORS.DROPDOWN_OPTION).filter({ hasText: optionText }).first();
     await option.waitFor({ state: 'visible', timeout: 10000 });
     const text = (await option.textContent()).trim();
     // force: true — see selectFirstEuRailLoyaltyVendor() above re: hover-tracking instability

@@ -12,10 +12,21 @@ Feature: 63920 Benerail - Loyalty card can be saved as new and used as existing 
   So that my loyalty benefits are applied to the Benerail booking
 
   Scenario: Benerail loyalty card saved as new and used as existing in trip overview
-    Given I am logged in as "pini@benerail.com" booking a new trip
+    Given I am logged in as "pini@bene.ral" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToAmsterdamCe"
     When I add a Benerail one way to the trip
-    # TODO: create step "Then the new and existing loyalty card options should be saved at trip level" in benerail_results.steps.js
-    # covers: New_and_Existing_are_saved_in_trip_level() — verifies both save-new and use-existing loyalty card flows
-    Then the new and existing Benerail loyalty card options should be saved at trip level
+    And the booking status should be "Pending booking"
+    When I expand the loyalty number extras section
+    And I open the "Enter New" tab in the loyalty section
+    And I edit the card number to "30838112345678900"
+    And I select the loyalty program containing "club eurostar"
+    And I click the save button
+    And the booking status should be "Pending booking"
+    When I expand the loyalty number extras section
+    And I open the "Use Existing" tab in the loyalty section
+    And I select the loyalty program containing "club eurostar"
+    Then the existing loyalty card number is "30838110019338123"
+    And I click the save button
+    When I expand the loyalty number extras section
+    Then the existing loyalty card number is "30838110019338123"
