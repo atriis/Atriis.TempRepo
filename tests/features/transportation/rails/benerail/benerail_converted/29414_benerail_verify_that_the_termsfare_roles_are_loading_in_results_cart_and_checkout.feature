@@ -5,7 +5,7 @@
 # Owner: Bruna Santos
 # Created: 2023-05-31T03:29:27Z
 # Updated: 2026-02-17T07:46:17Z
-@wip @transportation @rails @benerail @regression @priority:critical
+@transportation @rails @benerail @regression @priority:critical
 Feature: 29414 Benerail - Fare rules loading in results, cart and checkout
   As a corporate traveler
   I want to see Benerail fare rules in results, cart and checkout/trip overview

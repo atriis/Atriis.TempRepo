@@ -5,7 +5,7 @@
 # Owner: pini harush
 # Created: 2025-09-04T12:46:01Z
 # Updated: 2025-09-04T01:07:22Z
-@wip @transportation @rails @benerail @regression
+@transportation @rails @benerail @regression
 Feature: 66407 Benerail - Expiry counter shows time left to book in checkout
   As a corporate traveler
   I want to see the time left to book counter in the checkout page

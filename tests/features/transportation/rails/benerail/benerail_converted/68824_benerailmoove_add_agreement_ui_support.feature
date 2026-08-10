@@ -5,7 +5,7 @@
 # Owner: Pedro Carneiro
 # Created: 2025-10-10T03:51:37Z
 # Updated: 2025-10-22T06:36:23Z
-@wip @transportation @rails @benerail @regression
+@transportation @rails @benerail @regression
 Feature: 68824 Benerail - Agreement UI support in results
   As a corporate traveler
   I want to see agreement information in the Benerail results when a corporate agreement is configured

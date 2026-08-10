@@ -5,7 +5,7 @@
 # Owner: pini harush
 # Created: 2025-06-26T01:43:33Z
 # Updated: 2025-10-31T12:13:27Z
-@wip @transportation @rails @benerail @regression
+@transportation @rails @benerail @regression
 Feature: 63920 Benerail - Loyalty card can be saved as new and used as existing at trip level
   As a corporate traveler with a Benerail loyalty card
   I want to save a new loyalty card and use an existing one
