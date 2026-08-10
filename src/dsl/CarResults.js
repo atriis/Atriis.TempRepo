@@ -33,7 +33,21 @@ const NO_RESULTS_RETRY_DAY_STEP = 3;
  */
 const CarResults = {
   /**
-   * Adds a car to the cart when searching by airport.
+   * Adds a car to the cart when searching by airport, with automatic no-results retry.
+   *
+   * The airport path has no intermediate "select a station" step (unlike city-centre, where
+   * selectFirstCityCenterPickupLocation/selectCityCenterPickupLocationByLabel already wrap
+   * _retryLocationSelectionOnNoResults) — car cards render directly from the search. That left
+   * this method as the one place in the airport flow where a genuinely empty result set had no
+   * retry at all: it would just hang waiting for "Add to trip" that never appears. Wrapping the
+   * confirmation step in the same _retryLocationSelectionOnNoResults helper (no-op selection
+   * callback — there is nothing to click before checking, only after retrying) closes that gap
+   * and keeps behavior symmetric with the city-centre path, editing search dates and retrying
+   * (max 2 retries, then one final month-advance attempt) if no results appear.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If no car results appear after all retries (data/availability issue)
+   * @returns {Promise<{added: boolean, noResultsRetry: Object}>}
    */
   async addCarAirportFromResultsPageToCart(page) {
     const resultsPage = getPageObject(page, ResultsPage);
@@ -44,12 +58,33 @@ const CarResults = {
     // if it never appears the wait is bounded.
     await resultsPage.handleConflictQuoteModalIfAppears(5000);
 
+    // No station to select on the airport path — cards render directly from the search, so the
+    // "selection" callback is a no-op. On a retry attempt (after editing dates and re-searching),
+    // there is likewise nothing to click; the helper simply re-checks for results.
+    const retryResult = await this._retryLocationSelectionOnNoResults(page, async () => {}, {
+      maxRetries: MAX_LOCATION_SELECTION_RETRIES,
+      pickupIndex: SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
+      dropoffIndex: SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
+      // The airport path never renders a station list, so a 'station-list' signal can't occur;
+      // confirm real results (Add to trip / car cards) before proceeding, same as the by-label
+      // city-centre flow — an ambiguous 12s timeout must not be mistaken for success.
+      confirmResultsOnTimeout: true,
+    });
+
+    if (!retryResult.resolved) {
+      throw new Error(
+        '[CarResults.addCarAirportFromResultsPageToCart] No car results appeared after ' +
+        `${retryResult.retriesUsed} date-change retry attempt(s). The supplier returned no ` +
+        'available cars for all tried date ranges. This is a data/availability issue, not a test bug.'
+      );
+    }
+
     await Results.waitAndClickAddToTripButton(page);
 
     // Handle any Conflicting Quotes modal triggered by the car add itself.
     await Results.clickProceedConflictQuoteModal(page);
 
-    return { added: true };
+    return { added: true, noResultsRetry: retryResult };
   },
 
   /**

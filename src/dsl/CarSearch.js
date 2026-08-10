@@ -173,7 +173,7 @@ const CarSearch = {
   async searchCarByPlace(
     page,
     placeInput = carLocations.defaultLocation,
-    monthsAhead = 3,
+    monthsAhead = 1,
     {
       pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
       dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
@@ -273,7 +273,7 @@ const CarSearch = {
   async initiateCarSearch(
     page,
     placeInput = carLocations.defaultLocation,
-    monthsAhead = 3,
+    monthsAhead = 1,
     {
       pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
       dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
@@ -363,7 +363,7 @@ const CarSearch = {
    */
   async searchCarFromCartDrawer(
     page,
-    monthsAhead = 3,
+    monthsAhead = 1,
     {
       pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
       dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
@@ -476,7 +476,7 @@ const CarSearch = {
     page,
     placeInput = carLocations.defaultLocation,
     agencyName,
-    monthsAhead = 3,
+    monthsAhead = 1,
     options = {},
   ) {
     if (!page) {
@@ -519,7 +519,7 @@ const CarSearch = {
     page,
     placeInput = carLocations.defaultLocation,
     agencyName,
-    monthsAhead = 3,
+    monthsAhead = 1,
     options = {},
   ) {
     if (!page) {
@@ -564,7 +564,7 @@ const CarSearch = {
     page,
     pickUpLocation,
     dropOffLocation,
-    monthsAhead = 3,
+    monthsAhead = 1,
     {
       pickupIndex = SEARCH_DEFAULTS.CAR.PICKUP_INDEX,
       dropoffIndex = SEARCH_DEFAULTS.CAR.DROPOFF_INDEX,
@@ -665,7 +665,7 @@ const CarSearch = {
     pickUpLocation,
     dropOffLocation,
     agencyName,
-    monthsAhead = 3,
+    monthsAhead = 1,
     options = {},
   ) {
     if (!page) {
