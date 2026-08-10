@@ -583,8 +583,11 @@ const FlightPricing = {
    * @param {Promise<import('@playwright/test').Response>} responsePromise - from startCapturingPricingResponse.
    * @param {object} [options]
    * @param {string|number|null} [options.expectedPercentOfBase=null] - assert markup ≈ this % of base (±2%, min 1).
+   * @param {string|number|null} [options.expectedPercentOfWhole=null] - assert markup ≈ this % of
+   *   wholePrice (±2%, min 1), for configurations expressed against the whole price. Independent
+   *   of expectedPercentOfBase; the two differ because wholePrice carries taxes.
    */
-  async validateMarkupApplied(page, responsePromise, { expectedPercentOfBase = null } = {}) {
+  async validateMarkupApplied(page, responsePromise, { expectedPercentOfBase = null, expectedPercentOfWhole = null } = {}) {
     if (!page) throw new Error('page is required');
     if (!responsePromise) throw new Error('responsePromise is required — call startCapturingPricingResponse before the pricing action');
 
@@ -601,6 +604,10 @@ const FlightPricing = {
       wholePrice,
       muInclusivePerPax,
       expectedPercentOfBase,
+      expectedPercentOfWhole,
+      // Both ratios, so a percentage mismatch shows which denominator the supplier used
+      markupPercentOfBase: basePrice > 0 ? Number(((markup / basePrice) * 100).toFixed(2)) : null,
+      markupPercentOfWhole: wholePrice > 0 ? Number(((markup / wholePrice) * 100).toFixed(2)) : null,
       currency: published.currency,
       displayCurrency: published.displayCurrency,
       officeId: published.officeId,
@@ -619,6 +626,21 @@ const FlightPricing = {
       expect(
         Math.abs(markup - expectedMarkup) <= tolerance,
         `Markup ${markup} should be ${percent}% of the base fare ${basePrice} (= ${expectedMarkup.toFixed(2)}) within ${tolerance.toFixed(2)} ${published.currency}`,
+      ).toBe(true);
+    }
+
+    if (expectedPercentOfWhole != null) {
+      const percent = Number(expectedPercentOfWhole);
+      if (!Number.isFinite(wholePrice) || wholePrice <= 0) {
+        throw new Error(`Cannot check the markup against the whole price — wholePrice is missing or invalid (${published.wholePrice})`);
+      }
+      const expectedMarkup = wholePrice * (percent / 100);
+      const tolerance = Math.max(expectedMarkup * 0.02, 1);
+      expect(
+        Math.abs(markup - expectedMarkup) <= tolerance,
+        `Markup ${markup} should be ${percent}% of the whole price ${wholePrice} (= ${expectedMarkup.toFixed(2)}) ` +
+        `within ${tolerance.toFixed(2)} ${published.currency}. Actual: ${((markup / wholePrice) * 100).toFixed(2)}% of wholePrice, ` +
+        `${basePrice > 0 ? ((markup / basePrice) * 100).toFixed(2) : '?'}% of basePrice ${basePrice}`,
       ).toBe(true);
     }
 

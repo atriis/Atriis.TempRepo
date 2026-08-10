@@ -1559,6 +1559,33 @@ const FlightResults = {
   },
 
   /**
+   * Selects the fare matching the target price on every leg tab of the open pricing-options modal,
+   * since "Add to trip" stays disabled until each tab has a fare and the tab count varies per run.
+   * @param {import('playwright').Page} page
+   * @param {number} targetPrice - Per-pax price to match (from the flightPricing response).
+   * @returns {Promise<{ selected: true, legCount: number, selectedPrice: number }>}
+   */
+  async selectPublishedFareOnEveryLeg(page, targetPrice) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    // A single-leg product renders no tab strip, so treat 0 tabs as one leg
+    const tabCount = await flightResultsPage.getPricingOptionsTabCount();
+    const legCount = Math.max(tabCount, 1);
+
+    logger.info('Selecting the published fare on every leg of the pricing options modal', { targetPrice, tabCount, legCount });
+
+    let selectedPrice;
+    for (let leg = 0; leg < legCount; leg += 1) {
+      ({ selectedPrice } = await this.selectPricingOptionByPrice(page, targetPrice));
+    }
+
+    return { selected: true, legCount, selectedPrice };
+  },
+
+  /**
    * Selects a pricing option in the open modal at the given zero-based index.
    * Used by tests that need to pick a specific fare (e.g. the second fare).
    * @param {import('playwright').Page} page

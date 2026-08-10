@@ -1115,16 +1115,49 @@ Then('the cart total price should be the last extracted price multiplied by the 
   );
 });
 
+// Same check against the open price breakdown instead of the cart total. On separated tickets the
+// breakdown drawer covers one ticket, so this reconciles that ticket rather than the whole trip.
+Then('the price breakdown total should equal the published fare price multiplied by the number of selected travelers', function () {
+  if (typeof this.publishedMuInclusivePrice !== 'number') {
+    throw new Error('publishedMuInclusivePrice is not set — run a markup validation step on the published fare before this check.');
+  }
+  if (typeof this.priceBreakdownTotal !== 'number') {
+    throw new Error("priceBreakdownTotal is not set — run 'I extract the price from price breakdown' before this check.");
+  }
+
+  const trackedCount = 1 + (this.guestTravelerCount ?? 0);
+  const travelerCount = Math.max(Number(this.selectedTravelerCount) || 0, trackedCount);
+  const expectedPrice = this.publishedMuInclusivePrice * travelerCount;
+
+  logger.info('Comparing price breakdown total with published MU-inclusive per-pax price x selected travelers', {
+    publishedMuInclusivePrice: this.publishedMuInclusivePrice,
+    travelerCount,
+    expectedPrice,
+    priceBreakdownTotal: this.priceBreakdownTotal,
+  });
+
+  expectNumbersToBeEqualWithTolerance(
+    this.priceBreakdownTotal,
+    expectedPrice,
+    1,
+    `Price breakdown total vs published MU-inclusive per-pax (${this.publishedMuInclusivePrice}) x ${travelerCount} selected travelers`,
+  );
+});
+
 // Verifies: cart total = published per-pax price x number of selected travelers.
 Then('the cart total price should equal the published fare price multiplied by the number of selected travelers', async function () {
   if (typeof this.publishedMuInclusivePrice !== 'number') {
     throw new Error('publishedMuInclusivePrice is not set — run "the origin-destination markup should be ... on the published fare" step before this check.');
   }
 
-  const travelerCount = this.selectedTravelerCount;
+  // Same under-read race as the percentage-tolerance step above: derive the count as
+  // primary (1) + tracked guests and keep the higher of the two.
+  const trackedCount = 1 + (this.guestTravelerCount ?? 0);
+  const travelerCount = Math.max(Number(this.selectedTravelerCount) || 0, trackedCount);
   if (!Number.isInteger(travelerCount) || travelerCount < 1) {
     throw new Error(
-      `selectedTravelerCount must be a positive integer — make sure traveler-adding steps ran first. Got: ${travelerCount}`,
+      `Could not determine a valid traveler count — make sure the traveler-adding steps ran first ` +
+      `(selectedTravelerCount=${this.selectedTravelerCount}, guestTravelerCount=${this.guestTravelerCount}).`,
     );
   }
 

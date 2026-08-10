@@ -159,6 +159,18 @@ Then('the origin-destination markup should be {string} percent of the base fare 
   logger.info('Origin-destination MU validated on published fare', result);
 });
 
+// Same published-fare check as the percent-of-base variant below, but the configured percentage is
+// expressed against wholePrice (which carries taxes), so the two yield different amounts. Travelfusion
+// configures the MU this way. Stores publishedMuInclusivePrice for the cart.
+Then('the management markup on the published fare should be {string} percent of the whole price', async function (percent) {
+  logger.info('Validating the management markup is a percentage of the whole price on the published fare', { percent });
+  const result = await FlightPricing.validateMarkupApplied(
+    this.page, this.lastInterceptedResponsePromise ?? this.flightPricingResponsePromise, { expectedPercentOfWhole: percent }
+  );
+  this.publishedMuInclusivePrice = result.muInclusivePerPax;
+  logger.info('Management markup percentage of whole price validated on published fare', result);
+});
+
 // Percent-of-base check on the published fare (Galileo-safe: no wholePrice/markup sum assumption);
 // valid only on a single-qualifying-carrier itinerary. Stores publishedMuInclusivePrice for the cart.
 Then('the management markup on the published fare should be {string} percent of the base fare', async function (percent) {

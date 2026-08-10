@@ -338,6 +338,18 @@ When('I select the published fare from pricing options', async function () {
   await FlightResults.selectPricingOptionByPrice(this.page, this.publishedMuInclusivePrice);
 });
 
+// Requires publishedMuInclusivePrice. Prefer this over the single-leg step above whenever the
+// itinerary may price as a round trip: "Add to trip" only enables once every leg tab has a fare,
+// and Travelfusion returns one-leg and round-trip products for the same search.
+When('I select the published fare for every direction from pricing options', async function () {
+  if (typeof this.publishedMuInclusivePrice !== 'number') {
+    throw new Error('publishedMuInclusivePrice is not set — run a markup validation step on the published fare before selecting it.');
+  }
+  logger.info('Selecting the published fare on every direction from pricing options', { price: this.publishedMuInclusivePrice });
+  const result = await FlightResults.selectPublishedFareOnEveryLeg(this.page, this.publishedMuInclusivePrice);
+  logger.info('Published fare selected on every direction', result);
+});
+
 When("I click to open the second fare rules from pricing options modal", async function () {
   logger.info("Clicking to open the second fare rules from pricing options modal");
   await FlightResults.clickToOpenSecondFareRulesFromPricingOptions(this.page);
