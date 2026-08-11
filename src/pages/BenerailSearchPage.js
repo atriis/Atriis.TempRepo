@@ -40,6 +40,22 @@ const SELECTORS = {
   // "Via" row (eu-rail-search-inputs.vue) — checkbox reveals the via-station autocomplete once checked.
   VIA_CHECKBOX: ".eu-rail-search-inputs .via-row .el-checkbox__inner",
   VIA_STATION_INPUT: ".eu-rail-search-inputs .via-autocomplete input",
+
+  // From-station field (eu-rail-autocomplete.vue), scoped like RAIL_DEPARTURE_DATE_INPUT above —
+  // the unscoped FROM_PLACEHOLDER used by SearchPage.fillInFromField risks matching another
+  // supplier's mounted-but-hidden "From... Station or Location" input (UK Rail/Amtrak render the
+  // same placeholder text).
+  RAIL_FROM_STATION_INPUT: ".eu-rail-search-inputs input[placeholder='From... Station or Location' i]",
+  // Station autocomplete suggestion popper (eu-rail-autocomplete.vue's #autocomplete-result slot,
+  // wrapping Element Plus's app-autocomplete with popperClass="boxed-autocomplete-popper"). Element
+  // Plus mounts a NEW popper element per query rather than reusing one, so a just-closed popper
+  // from the previous query can still match ":visible" while it's transitioning out — same
+  // multi-popper hazard as TIME_SELECTOR_POPPER above — so callers must scope to `.last()`, not
+  // aggregate text across every visible match, or a stale popper's rows leak into the new read.
+  RAIL_STATION_AUTOCOMPLETE_POPPER: ".boxed-autocomplete-popper:visible",
+  // The row text sits in a nested <p>, separate from the location_on icon's ligature text, so
+  // reading this instead of the <li> itself avoids picking up the icon's text content.
+  RAIL_STATION_AUTOCOMPLETE_SUGGESTION_TEXT: ".autocomplete-result-text p",
 };
 
 class BenerailSearchPage {
@@ -263,6 +279,73 @@ class BenerailSearchPage {
       throw new Error(
         `[BenerailSearchPage.enableViaStation] Could not check the "Via" checkbox (selector: ` +
         `${SELECTORS.VIA_CHECKBOX}) or the via-station field did not appear. Original: ${err.message}`
+      );
+    }
+  }
+
+  // ===== STATION AUTOCOMPLETE (test 63183) =====
+
+  /**
+   * Types a query into the rail "From" station autocomplete field and returns the currently
+   * visible suggestion-row texts — without selecting a suggestion. Used to validate what the
+   * autocomplete surfaces for a given spelling variant (test 63183), not to commit a route field
+   * (see SearchPage.fillInFromField for the committing variant used by real searches).
+   *
+   * Clears via real keyboard events (Ctrl+A + Backspace) rather than fill(''), matching
+   * SearchPage.editAirportField — the Vue-bound autocomplete model does not reliably reset on a
+   * programmatic fill.
+   *
+   * @param {string} query - Station name/spelling variant to type
+   * @returns {Promise<string[]>} Trimmed suggestion row texts, in the order they render
+   */
+  async getStationAutocompleteSuggestionTexts(query) {
+    if (typeof query !== "string" || !query.trim()) {
+      throw new Error(`[BenerailSearchPage.getStationAutocompleteSuggestionTexts] "query" must be a non-empty string, got: ${JSON.stringify(query)}`);
+    }
+
+    const input = this.page.locator(SELECTORS.RAIL_FROM_STATION_INPUT).first();
+
+    try {
+      await input.waitFor({ state: "visible", timeout: 10000 });
+      await input.focus();
+      await input.press("Control+A");
+      await input.press("Backspace");
+      // Clearing existing text fires its own debounced search (usually empty results, closing the
+      // popper) — settle that before typing the next query, or its late-arriving "no results" state
+      // can overwrite the new query's just-rendered suggestions (matches SearchPage.editAirportField).
+      await this.page.waitForTimeout(300);
+      await input.pressSequentially(query, { delay: 50 });
+      // Give the debounced search a moment to fire and the popper to start rendering before the
+      // poll loop below starts reading it — checking immediately after the last keystroke can
+      // catch the previous query's now-stale (or empty) popper before this one has loaded.
+      await this.page.waitForTimeout(500);
+
+      // Poll rather than a single fixed wait — how long the debounced search takes to render
+      // varies with whether a suggestion popper was already open and populated from the previous
+      // query (observed empirically: a fixed ~500ms wait flaked in exactly that case). A query with
+      // genuinely no matches will legitimately exhaust this loop and return an empty array — that's
+      // real data for the caller to assert on, not a page-object error.
+      //
+      // Element Plus mounts a new popper per query rather than reusing one, so `.last()` — not an
+      // aggregate over every ":visible" popper — is what avoids reading stale rows off a previous
+      // popper still transitioning out (see RAIL_STATION_AUTOCOMPLETE_POPPER).
+      const deadline = Date.now() + 5000;
+      let texts = [];
+      do {
+        const latestPopper = this.page.locator(SELECTORS.RAIL_STATION_AUTOCOMPLETE_POPPER).last();
+        texts = (await latestPopper.locator(SELECTORS.RAIL_STATION_AUTOCOMPLETE_SUGGESTION_TEXT).allTextContents())
+          .map((text) => text.trim())
+          .filter(Boolean);
+        if (texts.length > 0) break;
+        await this.page.waitForTimeout(200);
+      } while (Date.now() < deadline);
+
+      return texts;
+    } catch (err) {
+      throw new Error(
+        `[BenerailSearchPage.getStationAutocompleteSuggestionTexts] Could not read station ` +
+        `autocomplete suggestions for "${query}" (input: ${SELECTORS.RAIL_FROM_STATION_INPUT}, ` +
+        `suggestions: ${SELECTORS.RAIL_STATION_AUTOCOMPLETE_POPPER} ${SELECTORS.RAIL_STATION_AUTOCOMPLETE_SUGGESTION_TEXT}). Original: ${err.message}`
       );
     }
   }
