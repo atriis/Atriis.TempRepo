@@ -54,11 +54,37 @@ When("I search for a round trip Benerail train from {string} with a near departu
   await BenerailSearch.searchBenerailRoundTrip(this.page, routeKey, { departureIndex: 1, returnIndex: 3 });
 });
 
-// ===== TODO STUBS — need DSL/Page implementation =====
-
+// Shared by test 63183 (autocomplete improvements) and test 68008 (time-picker redesign) — both
+// need to land on the Benerail search form within an existing trip without running a full search.
 When("I navigate to the Benerail rail search tab", async function () {
-  throw new Error("TODO: implement 'I navigate to the Benerail rail search tab' — navigate to the rail search tab within an existing trip (no booking flow) using BenerailSearch or AppPage");
+  logger.info("Navigating to the Benerail rail search tab");
+  await BenerailSearch.selectBenerailSearch(this.page);
 });
+
+// ===== TIME-PICKER REDESIGN (test 68008) =====
+
+When("I select the one way trip type for the Benerail search", async function () {
+  logger.info("Selecting the one way trip type for the Benerail search");
+  await BenerailSearch.selectOneWayTripType(this.page);
+});
+
+When("I set the Benerail departure time to {string}", async function (time) {
+  logger.info("Setting the Benerail departure time", { time });
+  await BenerailSearch.setDepartureTime(this.page, time);
+});
+
+Then("the Benerail departure time should display {string}", async function (expectedTime) {
+  logger.info("Verifying the Benerail departure time display", { expectedTime });
+  const displayedTime = await BenerailSearch.getDepartureTimeDisplayed(this.page);
+  expect(displayedTime, `Expected the departure time to display "${expectedTime}", got "${displayedTime}"`).toContain(expectedTime);
+});
+
+When("I enable the via station option on the Benerail search form", async function () {
+  logger.info("Enabling the via station option on the Benerail search form");
+  await BenerailSearch.enableViaStationField(this.page);
+});
+
+// ===== TODO STUBS — need DSL/Page implementation =====
 
 Then("the dynamic fields section should be visible in the Benerail search form", async function () {
   throw new Error("TODO: implement 'the dynamic fields section should be visible in the Benerail search form' — assert that corporate dynamic fields are rendered in the search form even when no reference fields are configured");
@@ -82,8 +108,4 @@ When("I fill in the reference field if required", async function () {
 
 Then("the Benerail autocomplete improvements should be validated", async function () {
   throw new Error("TODO: implement 'the Benerail autocomplete improvements should be validated' — test autocomplete behaviour: type partial station name, verify dropdown suggestions, select station. See test 63183 for full scenario.");
-});
-
-Then("the Benerail time-picker component should function correctly", async function () {
-  throw new Error("TODO: implement 'the Benerail time-picker component should function correctly' — verify redesigned time-picker: open, set time, close, verify value persists. See test 68008 for full scenario.");
 });

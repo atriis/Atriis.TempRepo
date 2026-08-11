@@ -23,6 +23,19 @@ const BenerailSearch = {
     await page.getByRole("option", { name: "EU Rail" }).click();
   },
 
+  /**
+   * Selects the "One Way" trip type on the Benerail search form.
+   * @param {import('playwright').Page} page
+   */
+  async selectOneWayTripType(page) {
+    if (!page) {
+      throw new Error('[BenerailSearch.selectOneWayTripType] "page" is required.');
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.selectOneWayTrip();
+  },
+
 
   /**
    * Performs a one-way Benerail search.
@@ -246,6 +259,64 @@ const BenerailSearch = {
       departureIndex,
       returnIndex,
     };
+  },
+
+  /**
+   * Sets the Benerail search form's departure time via the redesigned time-picker component
+   * (test 68008). Expects the form's search tab/trip type to already be selected.
+   * @param {import('playwright').Page} page
+   * @param {string} time - "HH:mm", e.g. "04:00"
+   * @returns {Promise<string>} The committed value read back from the time input
+   */
+  async setDepartureTime(page, time) {
+    if (!page) {
+      throw new Error('[BenerailSearch.setDepartureTime] "page" is required.');
+    }
+    if (typeof time !== "string" || !/^\d{1,2}:\d{2}$/.test(time)) {
+      throw new Error(`[BenerailSearch.setDepartureTime] "time" must be an "HH:mm" string, got: ${time}`);
+    }
+
+    const [hour, minute] = time.split(":");
+    const benerailSearchPage = getPageObject(page, BenerailSearchPage);
+
+    try {
+      await benerailSearchPage.setDepartureTimeTo(hour.padStart(2, "0"), minute);
+      return await benerailSearchPage.getDepartureTimeValue();
+    } catch (err) {
+      throw new Error(
+        `[BenerailSearch.setDepartureTime] Failed to set the Benerail departure time to "${time}". ` +
+        `Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
+   * Reads the value currently displayed in the Benerail search form's departure time field.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>}
+   */
+  async getDepartureTimeDisplayed(page) {
+    if (!page) {
+      throw new Error('[BenerailSearch.getDepartureTimeDisplayed] "page" is required.');
+    }
+
+    const benerailSearchPage = getPageObject(page, BenerailSearchPage);
+    return benerailSearchPage.getDepartureTimeValue();
+  },
+
+  /**
+   * Checks the "Via" checkbox on the Benerail search form, revealing the via-station field
+   * (test 68008 — confirms the redesigned time-picker's value is unaffected by unrelated form
+   * interactions).
+   * @param {import('playwright').Page} page
+   */
+  async enableViaStationField(page) {
+    if (!page) {
+      throw new Error('[BenerailSearch.enableViaStationField] "page" is required.');
+    }
+
+    const benerailSearchPage = getPageObject(page, BenerailSearchPage);
+    await benerailSearchPage.enableViaStation();
   },
 };
 

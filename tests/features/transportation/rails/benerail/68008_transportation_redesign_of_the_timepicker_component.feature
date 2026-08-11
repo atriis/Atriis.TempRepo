@@ -12,8 +12,12 @@ Feature: 68008 Transportation - Redesigned time-picker component validation
   So that selecting departure and return times is intuitive and functions correctly
 
   Scenario: Redesigned time-picker component works correctly in the Benerail search form
-    Given I am logged in as "beny@benerail.com" booking a new trip
-    # NOTE: This test does NOT add a traveler — it goes directly to validate the time-picker UI
-    # TODO: create step "Then the Benerail time-picker component should function correctly" in benerail_search.steps.js
-    # covers: Validate_Time_picker() — tests all time-picker interactions (hours, minutes, AM/PM or 24h format)
-    Then the Benerail time-picker component should function correctly
+    Given I am logged in as "beny@moove.com" booking a new trip
+    When I navigate to the Benerail rail search tab
+    And I select the one way trip type for the Benerail search
+    And I set the Benerail departure time to "04:00"
+    Then the Benerail departure time should display "04:00"
+    When I set the Benerail departure time to "04:45"
+    Then the Benerail departure time should display "04:45"
+    When I enable the via station option on the Benerail search form
+    Then the Benerail departure time should display "04:45"
