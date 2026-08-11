@@ -260,6 +260,11 @@ Then("I should see {string} in journey details", async function (expectedText) {
   await BenerailResults.verifyStationVisibleInJourneyDetails(this.page, expectedText);
 });
 
+Then("the travel time should be displayed in the Benerail journey details panel", async function () {
+  logger.info("Verifying the 'Travel Time' heading is visible in the Benerail journey details panel");
+  await BenerailResults.verifyTravelTimeVisibleInJourneyDetails(this.page);
+});
+
 When("I extract the departure and arrival times from the journey details panel", async function () {
   logger.info("Extracting departure and arrival times from the Benerail journey details panel");
   this.benerailJourneyDetailsTimes = await BenerailResults.extractJourneyDetailsTimes(this.page);

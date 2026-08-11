@@ -194,6 +194,27 @@ const BenerailResults = {
   },
 
   /**
+   * Verifies the "Travel Time" heading is visible in the open Journey Details panel (see test
+   * 62215).
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{actualText: string}>}
+   * @throws {Error} If the heading is missing or does not mention "Travel Time"
+   */
+  async verifyTravelTimeVisibleInJourneyDetails(page) {
+    if (!page) throw new Error("[BenerailResults.verifyTravelTimeVisibleInJourneyDetails] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const travelTimeText = await benerailResultsPage.getJourneyDetailsTravelTimeText();
+
+    if (!travelTimeText.toLowerCase().includes("travel time")) {
+      throw new Error(
+        `[BenerailResults.verifyTravelTimeVisibleInJourneyDetails] Expected the Benerail Journey ` +
+        `Details panel to show a "Travel Time" heading, but it showed "${travelTimeText}"`
+      );
+    }
+    return { actualText: travelTimeText };
+  },
+
+  /**
    * Verifies the given text is shown in the Benerail results page breadcrumb's first item (the
    * "Search" link) — confirms the search tab/link is still reachable after searching (see test
    * hybrid_44798).

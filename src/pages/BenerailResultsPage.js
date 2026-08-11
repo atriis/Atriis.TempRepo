@@ -57,6 +57,9 @@ const SELECTORS = {
   JOURNEY_DETAILS_ARRIVAL_ITEM: ".eu-rail-timeline .rail-timeline-item.arrival",
   JOURNEY_DETAILS_STATION_TEXT: ".is-capitalized.header",
   JOURNEY_DETAILS_TIME_TEXT: ".railSegment-hour-container.header",
+  // eu-rail-journey-details.vue's heading, e.g. "Direct - Travel Time : 1h 45m" or "2 changes -
+  // Travel Time : 2h 10m" — the $t('euRail.travelTime') label ("Travel Time") plus rail.durationText.
+  JOURNEY_DETAILS_TRAVEL_TIME_TEXT: ".eu-rail-heading h5",
   JOURNEY_DETAILS_CLOSE_BUTTON: ".el-dialog__headerbtn",
   // eu-rail-results.vue's app-breadcrumb — first item is the "Search" link back to the trip
   // search page (see FlightResultsPage.RESULTS_BREADCRUMB_SEARCH_LINK for the same pattern).
@@ -224,6 +227,26 @@ class BenerailResultsPage {
     const departureRaw = ((await departureTime.textContent()) ?? "").replace(/\s+/g, " ").trim();
     const arrivalRaw = ((await arrivalTime.textContent()) ?? "").replace(/\s+/g, " ").trim();
     return { departureRaw, arrivalRaw };
+  }
+
+  /**
+   * Reads the "Travel Time" heading text from the open Journey Details panel (e.g. "Direct -
+   * Travel Time : 1h 45m").
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getJourneyDetailsTravelTimeText(timeout = 10000) {
+    const dialog = this.getJourneyDetailsDialog();
+    const travelTimeText = dialog.locator(SELECTORS.JOURNEY_DETAILS_TRAVEL_TIME_TEXT);
+    try {
+      await travelTimeText.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[BenerailResultsPage.getJourneyDetailsTravelTimeText] Could not find the "Travel Time" ` +
+        `heading in the open Benerail Journey Details panel. Original: ${err.message}`
+      );
+    }
+    return ((await travelTimeText.textContent()) ?? "").replace(/\s+/g, " ").trim();
   }
 
   /**
