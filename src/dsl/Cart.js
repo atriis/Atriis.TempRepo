@@ -1706,6 +1706,40 @@ const Cart = {
   },
 
   /**
+   * Removes a named traveler (corporate user or guest) from the cart page's Travellers section
+   * (trip-traveler-tag.vue's remove icon), by clicking their tag's remove button and waiting for
+   * the tag to disappear (removeTraveler dispatches tripStore/removeTraveler then reloads the trip).
+   * @param {import('playwright').Page} page
+   * @param {string} travelerName - Traveler's full or partial name as displayed, e.g. "Secbene Moove"
+   * @returns {Promise<void>}
+   */
+  async removeTravelerFromCartByName(page, travelerName) {
+    if (!page) throw new Error('[Cart.removeTravelerFromCartByName] "page" is required.');
+    if (!travelerName || typeof travelerName !== 'string') {
+      throw new Error(`[Cart.removeTravelerFromCartByName] "travelerName" must be a non-empty string, got: ${typeof travelerName}`);
+    }
+
+    logger.info('Removing traveler from cart page', { travelerName });
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickRemoveTravelerButtonByName(travelerName);
+      await expect(
+        cartPage.getTravelerNameLocator(travelerName),
+        `[Cart.removeTravelerFromCartByName] Expected traveler "${travelerName}" to disappear from the cart page ` +
+        `after clicking remove.`,
+      ).toBeHidden({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.removeTravelerFromCartByName] Failed to remove traveler "${travelerName}" from the cart page. ` +
+        `Original: ${err.message}`,
+      );
+    }
+
+    logger.info('Traveler removed from cart page', { travelerName });
+  },
+
+  /**
    * Verifies the per-diem quote card's total amount equals `expectedAmount` (35703). Waits for the
    * quote card, then polls the header amount (`.per-diem-quote-card .amount`) until its numeric core
    * equals the expected value — the amount recalculates after days off are deducted at booking, so it
@@ -8784,6 +8818,136 @@ const Cart = {
         `rejected the save. Original: ${err.message}`
       );
     }
+  },
+
+  // ========================================
+  // Rail passenger info (Benerail eu-rail extras — eu-rail-passenger-info.vue)
+  // ========================================
+
+  /**
+   * Verifies the rail passenger-info card-title shows the expected ratio (e.g. "3/3") with the
+   * green success checkmark, confirming all passengers have valid info.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedRatio - Expected ratio text, e.g. "3/3"
+   */
+  async verifyRailPassengerInfoDisplayed(page, expectedRatio) {
+    if (!page) throw new Error('[Cart.verifyRailPassengerInfoDisplayed] "page" is required.');
+    if (!expectedRatio || typeof expectedRatio !== 'string') {
+      throw new Error(`[Cart.verifyRailPassengerInfoDisplayed] "expectedRatio" must be a non-empty string, got: ${typeof expectedRatio}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const statusText = await cartPage.getRailPassengerInfoStatusText();
+    expect(statusText, `Expected rail passenger info status to contain "${expectedRatio}", got "${statusText}"`).toContain(expectedRatio);
+
+    const hasSuccessIcon = await cartPage.hasRailPassengerInfoSuccessIcon();
+    expect(hasSuccessIcon, 'Expected rail passenger info to show the green success checkmark').toBe(true);
+
+    logger.info('Rail passenger info displayed with green checkmark', { expectedRatio, statusText });
+  },
+
+  /**
+   * Opens the rail passenger-info panel in extras.
+   * @param {import('playwright').Page} page
+   */
+  async clickRailPassengerInfoEdit(page) {
+    if (!page) throw new Error('[Cart.clickRailPassengerInfoEdit] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.openRailPassengerInfoPanel();
+    logger.info('Opened rail passenger info panel');
+  },
+
+  /**
+   * Clicks a passenger's tab in the rail passenger-info panel and verifies their email, last name,
+   * and first name match the expected values. The tab label already carries "{firstName} {lastName}",
+   * so it is verified directly from the passengerName argument the caller clicked.
+   * @param {import('playwright').Page} page
+   * @param {string} passengerName - Passenger's full name as shown on the tab, e.g. "Bene Moove"
+   * @param {string} expectedEmail
+   * @param {string} expectedLastName
+   * @param {string} expectedFirstName
+   */
+  async verifyRailPassengerDetails(page, passengerName, expectedEmail, expectedLastName, expectedFirstName) {
+    if (!page) throw new Error('[Cart.verifyRailPassengerDetails] "page" is required.');
+    if (!passengerName || typeof passengerName !== 'string') {
+      throw new Error(`[Cart.verifyRailPassengerDetails] "passengerName" must be a non-empty string, got: ${typeof passengerName}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickRailPassengerInfoTabByName(passengerName);
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyRailPassengerDetails] Could not find or click passenger tab "${passengerName}" in the rail ` +
+        `passenger info panel. Original: ${err.message}`,
+      );
+    }
+
+    expect(
+      passengerName,
+      `Expected passenger tab "${passengerName}" to contain first name "${expectedFirstName}" and last name "${expectedLastName}"`,
+    ).toContain(expectedFirstName);
+    expect(passengerName).toContain(expectedLastName);
+
+    const actualEmail = await cartPage.getRailPassengerInfoEmailValue();
+    expect(actualEmail, `Expected passenger "${passengerName}" email to be "${expectedEmail}", got "${actualEmail}"`).toBe(expectedEmail);
+
+    logger.info('Verified rail passenger details', { passengerName, expectedEmail, expectedLastName, expectedFirstName });
+  },
+
+  /**
+   * Removes the email value from a named passenger's tab in the rail passenger-info panel.
+   * @param {import('playwright').Page} page
+   * @param {string} passengerName
+   */
+  async removeRailPassengerInfoEmail(page, passengerName) {
+    if (!page) throw new Error('[Cart.removeRailPassengerInfoEmail] "page" is required.');
+    if (!passengerName || typeof passengerName !== 'string') {
+      throw new Error(`[Cart.removeRailPassengerInfoEmail] "passengerName" must be a non-empty string, got: ${typeof passengerName}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickRailPassengerInfoTabByName(passengerName);
+    await cartPage.clearRailPassengerInfoEmail();
+    logger.info('Removed rail passenger info email', { passengerName });
+  },
+
+  /**
+   * Adds an email value to a named passenger's tab in the rail passenger-info panel.
+   * @param {import('playwright').Page} page
+   * @param {string} email
+   * @param {string} passengerName
+   */
+  async addRailPassengerInfoEmail(page, email, passengerName) {
+    if (!page) throw new Error('[Cart.addRailPassengerInfoEmail] "page" is required.');
+    if (!email || typeof email !== 'string') {
+      throw new Error(`[Cart.addRailPassengerInfoEmail] "email" must be a non-empty string, got: ${typeof email}`);
+    }
+    if (!passengerName || typeof passengerName !== 'string') {
+      throw new Error(`[Cart.addRailPassengerInfoEmail] "passengerName" must be a non-empty string, got: ${typeof passengerName}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickRailPassengerInfoTabByName(passengerName);
+    await cartPage.fillRailPassengerInfoEmail(email);
+    logger.info('Added rail passenger info email', { email, passengerName });
+  },
+
+  /**
+   * Verifies the rail passenger-info email field is marked mandatory (red border / is-danger)
+   * after an unsuccessful save attempt with the field empty.
+   * @param {import('playwright').Page} page
+   */
+  async verifyRailPassengerInfoEmailFieldRequired(page) {
+    if (!page) throw new Error('[Cart.verifyRailPassengerInfoEmailFieldRequired] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    const isInvalid = await cartPage.isRailPassengerInfoEmailFieldInvalid();
+    expect(isInvalid, 'Expected rail passenger info email field to show a red border (is-danger) after saving with it empty').toBe(true);
+
+    logger.info('Rail passenger info email field marked as mandatory (red border)');
   },
 
   /**

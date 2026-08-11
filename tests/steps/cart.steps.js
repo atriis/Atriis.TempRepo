@@ -2452,6 +2452,46 @@ Then("the passenger info section should show a green circle checkmark indicating
   logger.info("Verifying passenger info section shows success checkmark");
   await Cart.verifyPassengerInfoSaveSuccess(this.page);
 });
+
+// ========================================
+// RAIL PASSENGER INFO (Benerail eu-rail extras)
+// ========================================
+
+Then("passenger info is displayed 3\\/3 with a green checkmark", async function () {
+  logger.info("Verifying rail passenger info shows 3/3 with a green checkmark");
+  await Cart.verifyRailPassengerInfoDisplayed(this.page, "3/3");
+});
+
+When("I click to edit passenger info", async function () {
+  logger.info("Clicking to edit rail passenger info");
+  await Cart.clickRailPassengerInfoEdit(this.page);
+});
+
+Then("I click {string} passenger to validate that email is {string}, last name is {string} and first name is {string}", async function (passengerName, expectedEmail, expectedLastName, expectedFirstName) {
+  logger.info("Clicking passenger tab and validating details", { passengerName, expectedEmail, expectedLastName, expectedFirstName });
+  await Cart.verifyRailPassengerDetails(this.page, passengerName, expectedEmail, expectedLastName, expectedFirstName);
+});
+
+When("I remove passenger info email from {string}", async function (passengerName) {
+  logger.info("Removing passenger info email", { passengerName });
+  await Cart.removeRailPassengerInfoEmail(this.page, passengerName);
+});
+
+Then("passenger info email field is mandatory - border gets red", async function () {
+  logger.info("Verifying passenger info email field is mandatory");
+  await Cart.verifyRailPassengerInfoEmailFieldRequired(this.page);
+});
+
+When("I add the passenger info email {string} to the passenger {string}", async function (email, passengerName) {
+  logger.info("Adding passenger info email", { email, passengerName });
+  await Cart.addRailPassengerInfoEmail(this.page, email, passengerName);
+});
+
+When("I delete {string} corporate user from cart page", async function (travelerName) {
+  logger.info("Deleting corporate user from cart page", { travelerName });
+  await Cart.removeTravelerFromCartByName(this.page, travelerName);
+});
+
 // ========================================
 // MORE DETAILS DRAWER â€” PRICE
 // ========================================

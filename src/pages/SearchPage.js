@@ -313,10 +313,11 @@ class SearchPage {
    *
    * @param {number} minCount - Minimum number of named traveller chips to wait for.
    * @param {object} [options]
-   * @param {number} [options.timeout=15000]
+   * @param {number} [options.timeout=40000] - On slower corporations the newly added traveller's
+   *   profile/name can take well over 15s to resolve and render (observed outlasting 15s waits).
    * @returns {Promise<void>}
    */
-  async waitForTravelerNamesDisplayed(minCount, { timeout = 15000 } = {}) {
+  async waitForTravelerNamesDisplayed(minCount, { timeout = 40000 } = {}) {
     if (!Number.isInteger(minCount) || minCount < 1) {
       throw new Error(`minCount must be a positive integer, got: ${minCount}`);
     }

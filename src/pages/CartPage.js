@@ -712,11 +712,33 @@ const SELECTORS = {
   // Traveler full name (trip-traveler-tag.vue), rendered by trip-cart.vue's <trip-travelers-list>
   // under the "Travellers" section — same class pattern as SearchPage.SELECTED_TRAVELER_NAME.
   TRAVELER_NAME: '.trip-traveler-tag .traveler-name',
+  // Traveler tag root (trip-traveler-tag.vue), used to scope the remove icon to one specific
+  // traveler by name via .filter({ hasText }) — app-btn always renders 'btn btn--default
+  // btn--size-default btn--round' plus its own class, so the remove icon (a nested
+  // .material-symbols-outlined span) is reliably found by class alone within this scope.
+  TRAVELER_TAG_ROOT: '.trip-traveler-tag',
+  TRAVELER_REMOVE_ICON: '.material-symbols-outlined.remove-btn',
 
   // Hotel autocomplete destination value (hotel-autocomplete inside cart search drawer)
   HOTEL_SEARCH_DESTINATION_INPUT: ".hotel-autocomplete .el-input__inner",
   HOTEL_SEARCH_CHECK_IN_INPUT: "[placeholder='Check in']",
   HOTEL_SEARCH_CHECK_OUT_INPUT: "[placeholder='Check out']",
+
+  // Rail (Benerail eu-rail) passenger info section (eu-rail-passenger-info.vue). Shares the
+  // extras-layout.vue wrapper with .flight-passenger-info / .passenger-title, so the
+  // click-to-edit / green success-icon / card-title status text follow the identical class
+  // pattern used by those sections. One el-tabs tab per passenger, labeled "{firstName} {lastName}".
+  RAIL_PASSENGER_INFO_SECTION: '.eu-rail-passenger-info',
+  RAIL_PASSENGER_INFO_EXPAND_BUTTON: '.eu-rail-passenger-info .is-clickable',
+  RAIL_PASSENGER_INFO_STATUS_TEXT: '.eu-rail-passenger-info .card-title',
+  RAIL_PASSENGER_INFO_SUCCESS_ICON: '.eu-rail-passenger-info .success-icon.green',
+  RAIL_PASSENGER_INFO_TAB: '.eu-rail-passenger-info .el-tabs__item',
+  // Each field renders as a bare <p>{Label}</p> immediately followed by its input wrapper <div>
+  // (no shared .field wrapper like flight-passenger-info's DOB field), so fields are targeted by
+  // the adjacent-sibling combinator off the label paragraph, scoped :visible to the active tab
+  // (inactive el-tab-pane content stays in the DOM, hidden via display:none).
+  RAIL_PASSENGER_INFO_EMAIL_INPUT: '.eu-rail-passenger-info p:text-is("Email"):visible + div input',
+  RAIL_PASSENGER_INFO_EMAIL_FIELD: '.eu-rail-passenger-info p:text-is("Email"):visible + div .el-input',
 
   // Passenger title (Travelodge extras - passenger-title.vue)
   PASSENGER_TITLE_SECTION: '.passenger-title',
@@ -1404,6 +1426,127 @@ class CartPage {
       .locator(SELECTORS.PASSENGER_INFO_SAVE_SUCCESS_ICON)
       .first()
       .waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Opens the rail (Benerail eu-rail) passenger-info panel (eu-rail-passenger-info.vue).
+   * @param {number} timeout
+   */
+  async openRailPassengerInfoPanel(timeout = 15000) {
+    const expandButton = this.page.locator(SELECTORS.RAIL_PASSENGER_INFO_EXPAND_BUTTON).first();
+    await expandButton.waitFor({ state: 'visible', timeout });
+    await expandButton.click();
+    await this.page.locator(SELECTORS.RAIL_PASSENGER_INFO_TAB).first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Gets the rail passenger-info card-title status text (e.g. "Passenger info 3/3").
+   * @param {number} timeout
+   * @returns {Promise<string>}
+   */
+  async getRailPassengerInfoStatusText(timeout = 15000) {
+    const statusText = this.page.locator(SELECTORS.RAIL_PASSENGER_INFO_STATUS_TEXT).first();
+    await statusText.waitFor({ state: 'visible', timeout });
+    return (await statusText.innerText()).trim();
+  }
+
+  /**
+   * Returns true when the rail passenger-info green success icon is visible.
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async hasRailPassengerInfoSuccessIcon(timeout = 10000) {
+    try {
+      await this.page.locator(SELECTORS.RAIL_PASSENGER_INFO_SUCCESS_ICON).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Clicks a passenger's tab by their visible name ("{firstName} {lastName}") inside the
+   * rail passenger-info panel.
+   * @param {string} passengerName
+   * @param {number} timeout
+   */
+  async clickRailPassengerInfoTabByName(passengerName, timeout = 15000) {
+    if (!passengerName || typeof passengerName !== 'string') {
+      throw new Error('passengerName must be a non-empty string');
+    }
+    const tab = this.page.locator(SELECTORS.RAIL_PASSENGER_INFO_TAB, { hasText: passengerName }).first();
+    await tab.waitFor({ state: 'visible', timeout });
+    await tab.click();
+  }
+
+  /**
+   * Gets the current value of the active passenger's email field in the rail passenger-info panel.
+   * @param {number} timeout
+   * @returns {Promise<string>}
+   */
+  async getRailPassengerInfoEmailValue(timeout = 15000) {
+    const input = this.page.locator(SELECTORS.RAIL_PASSENGER_INFO_EMAIL_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    return await input.inputValue();
+  }
+
+  /**
+   * Fills the active passenger's email field in the rail passenger-info panel.
+   * @param {string} email
+   * @param {number} timeout
+   */
+  async fillRailPassengerInfoEmail(email, timeout = 15000) {
+    const input = this.page.locator(SELECTORS.RAIL_PASSENGER_INFO_EMAIL_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    await input.fill(email);
+  }
+
+  /**
+   * Clears the active passenger's email field in the rail passenger-info panel.
+   * @param {number} timeout
+   */
+  async clearRailPassengerInfoEmail(timeout = 15000) {
+    const input = this.page.locator(SELECTORS.RAIL_PASSENGER_INFO_EMAIL_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    await input.fill('');
+  }
+
+  /**
+   * Returns true when the active passenger's email field is marked invalid (is-danger) in the
+   * rail passenger-info panel — rendered after an unsuccessful save attempt.
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isRailPassengerInfoEmailFieldInvalid(timeout = 10000) {
+    const field = this.page.locator(`${SELECTORS.RAIL_PASSENGER_INFO_EMAIL_FIELD}.is-danger`).first();
+    try {
+      await field.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Gets the traveler-tag (trip-traveler-tag.vue) root locator matching the given name, scoped to
+   * the cart page's Travellers section.
+   * @param {string} travelerName
+   * @returns {Locator}
+   */
+  getTravelerTagByName(travelerName) {
+    return this.page.locator(SELECTORS.TRAVELER_TAG_ROOT).filter({ hasText: travelerName }).first();
+  }
+
+  /**
+   * Clicks the remove icon on a specific traveler's tag by name in the cart page's Travellers
+   * section.
+   * @param {string} travelerName
+   * @param {number} timeout
+   */
+  async clickRemoveTravelerButtonByName(travelerName, timeout = 15000) {
+    const removeIcon = this.getTravelerTagByName(travelerName).locator(SELECTORS.TRAVELER_REMOVE_ICON).first();
+    await removeIcon.waitFor({ state: 'visible', timeout });
+    await removeIcon.click();
   }
 
   /**

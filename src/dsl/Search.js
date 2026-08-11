@@ -365,6 +365,77 @@ const Search = {
   },
 
   /**
+   * Adds a new guest traveler with a specific full name and a specific email address. Unlike
+   * addRandomGuestWithName/addRandomGuestWithEmail (which fix one field and randomize the rest),
+   * this fixes both — used when a scenario later asserts the exact email against a specific
+   * passenger. Works identically whether the "Add Traveller" button is on the pre-search widget
+   * or the cart page's own Travellers section: both render the same shared trip-travelers-list.vue
+   * / trip-edit-traveler.vue components (confirmed against Atriis.App source — same classes,
+   * same dialog markup).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} fullName - Guest's full name, e.g. "Ellen Murphy" (split on whitespace into
+   *   first name + last name; a middle name would be folded into the last name)
+   * @param {string} email - Guest's email address
+   * @returns {{ added: boolean, starIconVisible: boolean, guestData: Object }}
+   */
+  async addGuestWithNameAndEmail(page, fullName, email) {
+    if (!page) throw new Error('[Search.addGuestWithNameAndEmail] "page" is required.');
+    if (!fullName || typeof fullName !== 'string' || !fullName.trim()) {
+      throw new Error(`[Search.addGuestWithNameAndEmail] "fullName" must be a non-empty string, got: ${JSON.stringify(fullName)}`);
+    }
+    if (!email || typeof email !== 'string') {
+      throw new Error(`[Search.addGuestWithNameAndEmail] "email" must be a non-empty string, got: ${typeof email}`);
+    }
+
+    const [firstName, ...rest] = fullName.trim().split(/\s+/);
+    const lastName = rest.join(' ');
+    if (!lastName) {
+      throw new Error(`[Search.addGuestWithNameAndEmail] "fullName" must include both a first and last name, got: "${fullName}"`);
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+    const { dateOfBirth, phone } = generateRandomGuestData();
+
+    // NOTE: if a prior traveler (e.g. added by name via the autocomplete) hasn't fully rendered yet,
+    // trip-travelers-list.vue's addEmptyTraveler() can compute firstEmptyTravelerIdx off the
+    // not-yet-committed travelers array, so clicking "Add Traveller" here targets the still-resolving
+    // slot instead of creating a genuinely new one — silently overwriting the prior traveler instead
+    // of adding this guest alongside them. Callers adding this guest right after another traveler
+    // should wait for that traveler's name to be displayed first (see the existing "I wait for the
+    // traveler name to be displayed" step / Search.waitForTravelerNameDisplayed) — this method can't
+    // reliably detect "still resolving" itself, since sampling the count here risks reading the same
+    // stale, not-yet-rendered state it would be trying to wait out.
+    try {
+      await searchPage.clickAddTravelerButton();
+      await searchPage.clickAddGuestTravelerButton();
+      await searchPage.fillInRandomFirstName(firstName);
+      await searchPage.fillInRandomLastName(lastName);
+      await searchPage.selectGenderMale();
+      await searchPage.fillInRandomDateOfBirth(dateOfBirth);
+      await searchPage.fillInRandomEmail(email);
+      await searchPage.fillInRandomPhone(phone);
+      await searchPage.clickAddGuestButton();
+    } catch (err) {
+      throw new Error(
+        `[Search.addGuestWithNameAndEmail] Failed to add guest traveler "${fullName}" with email "${email}". Original: ${err.message}`
+      );
+    }
+
+    const starIconVisible = await searchPage.isStarIconVisible();
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
+
+    logger.info('[Search.addGuestWithNameAndEmail] Added guest traveler', { fullName, email });
+
+    return {
+      added: true,
+      starIconVisible,
+      selectedTravelerCount,
+      guestData: { firstName, lastName, dateOfBirth, email, phone },
+    };
+  },
+
+  /**
    * Adds a guest traveler with a specific first/last name and user group.
    * Selects "Users Group" in the copy-settings section, then picks the given group
    * before filling in personal details and submitting.

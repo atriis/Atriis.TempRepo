@@ -143,6 +143,25 @@ Given("I have added a random guest traveler with email {string}", async function
   this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
+async function addGuestWithNameAndEmailStep(world, fullName, email) {
+  logger.info("Adding guest traveler with fixed name and email", { fullName, email });
+  const result = await Search.addGuestWithNameAndEmail(world.page, fullName, email);
+  expect(result.added, "Guest traveler should be added").toBe(true);
+  world.guestTravelerCount = (world.guestTravelerCount ?? 0) + 1;
+  world.selectedTravelerCount = result.selectedTravelerCount;
+}
+
+// Same underlying action (the "Add Traveller" widget/dialog is shared between the pre-search
+// traveler bar and the cart page's own Travellers section — see Search.addGuestWithNameAndEmail),
+// registered under two phrasings so scenarios read naturally at either point in the flow.
+Given("I have added a guest traveler named {string} with email {string}", async function (fullName, email) {
+  await addGuestWithNameAndEmailStep(this, fullName, email);
+});
+
+Given("I add guest traveller from cart named {string} with email {string}", async function (fullName, email) {
+  await addGuestWithNameAndEmailStep(this, fullName, email);
+});
+
 Given("I have added a random guest traveler with middle name {string}", async function (middleName) {
   logger.info("Adding random guest traveler with middle name", { middleName });
   const result = await Search.addRandomGuestWithMiddleName(this.page, middleName);

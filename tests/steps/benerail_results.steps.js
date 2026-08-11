@@ -327,15 +327,6 @@ Then("the Age Association mandatory field should not be displayed in the Benerai
   throw new Error("TODO: implement 'the Age Association mandatory field should not be displayed in the Benerail extras' — assert the Age Association field is NOT marked as mandatory in the Benerail extras section (see test 56162)");
 });
 
-// --- Passenger details ---
-When("I select a Benerail result container to see passenger details", async function () {
-  throw new Error("TODO: implement 'I select a Benerail result container to see passenger details' — expand or select a result container that reveals the passenger details section (see test 62001)");
-});
-
-Then("the passenger details should be correctly displayed in Benerail results", async function () {
-  throw new Error("TODO: implement 'the passenger details should be correctly displayed in Benerail results' — assert traveler name, ticket type, and other passenger details are shown correctly (see test 62001)");
-});
-
 // --- Route/refundable in itinerary ---
 Then("the Benerail route displayed should be the correct one", async function () {
   throw new Error("TODO: implement 'the Benerail route displayed should be the correct one' — assert origin/destination stations shown on the results page match the searched route (see test 62008)");
