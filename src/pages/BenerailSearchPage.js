@@ -14,6 +14,11 @@ const SELECTORS = {
   // flows must click these scoped fields instead.
   RAIL_DEPARTURE_DATE_INPUT: ".eu-rail-search-inputs [placeholder='Departure']",
   RAIL_RETURN_DATE_INPUT: ".eu-rail-search-inputs [placeholder='Return']",
+  // NumberOfStops app-select (eu-rail-search-inputs.vue's "airline_stops"-icon field, values
+  // "Direct Only"/"Max 1 Change"/"Max 2 Change"/"Direct and Indirect" — models/consts.ts). No
+  // `name` prop is passed to this app-select instance, so it can't be targeted by name like
+  // SearchPage's TRAVELER_TYPE_SELECT — it's the first (and only) app-select in .stops-cards-container.
+  NUMBER_OF_STOPS_SELECT: ".eu-rail-search-inputs .stops-cards-container .app-select .el-select",
 };
 
 class BenerailSearchPage {
@@ -47,6 +52,35 @@ class BenerailSearchPage {
     await field.waitFor({ state: "visible", timeout: 10000 });
     await field.click();
     await this.getDatePickerPanel().first().waitFor({ state: "visible" });
+  }
+
+  /**
+   * Selects a "Number of Stops" option (e.g. "Direct Only") on the Benerail search form.
+   * Opens the app-select and clicks the option matching the label exactly — option labels here
+   * are fixed enum keys ("Direct Only", "Max 1 Change", "Max 2 Change", "Direct and Indirect"),
+   * not free text, so an exact match is safe (unlike SearchPage.selectGuestPassengerType's
+   * partial match against age-range-suffixed labels).
+   * @param {string} label - Exact option label, e.g. "Direct Only"
+   */
+  async selectNumberOfStops(label) {
+    try {
+      const select = this.page.locator(SELECTORS.NUMBER_OF_STOPS_SELECT).first();
+      await select.waitFor({ state: "visible", timeout: 10000 });
+      await select.click({ timeout: 10000 });
+
+      const option = this.page
+        .locator(SEARCH_SELECTORS.TRAVELER_TYPE_OPTION)
+        .filter({ hasText: label })
+        .first();
+      await option.waitFor({ state: "visible", timeout: 10000 });
+      await option.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[BenerailSearchPage.selectNumberOfStops] Could not select "${label}" in the Number of Stops ` +
+        `field (select: ${SELECTORS.NUMBER_OF_STOPS_SELECT}). The Benerail search form may not be open ` +
+        `or the option is unavailable. Original: ${err.message}`
+      );
+    }
   }
 }
 

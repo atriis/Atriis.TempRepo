@@ -47,6 +47,17 @@ const SELECTORS = {
   // rather than via CommonPage.getOOPTooltipText, whose internal visibility wait gates on the info
   // icon and never resolves for the icon-only variant (see the method below).
   OOP_TOOLTIP_TEXT: `li${COMMON_SELECTORS.OOP_TOOLTIP_TEXT}`,
+  // Journey Details panel (eu-rail-preview.vue's el-dialog wrapping eu-rail-journey-details.vue),
+  // scoped to :visible since every result card mounts its own instance and hidden ones can linger.
+  JOURNEY_DETAILS_DIALOG: ".el-dialog:has(.eu-rail-journey-details):visible",
+  // eu-rail-timeline.vue: one .rail-timeline-item.departure/.arrival per route-details leg. .first()
+  // on departure / .last() on arrival covers both a direct journey (exactly one of each) and a
+  // journey with changes (multiple legs) — the overall journey's start/end times and stations.
+  JOURNEY_DETAILS_DEPARTURE_ITEM: ".eu-rail-timeline .rail-timeline-item.departure",
+  JOURNEY_DETAILS_ARRIVAL_ITEM: ".eu-rail-timeline .rail-timeline-item.arrival",
+  JOURNEY_DETAILS_STATION_TEXT: ".is-capitalized.header",
+  JOURNEY_DETAILS_TIME_TEXT: ".railSegment-hour-container.header",
+  JOURNEY_DETAILS_CLOSE_BUTTON: ".el-dialog__headerbtn",
 };
 
 class BenerailResultsPage {
@@ -120,6 +131,106 @@ class BenerailResultsPage {
    */
   async getFirstResultDepartureTimeText(timeout = 60000) {
     return this.getDepartureTimeTextForResultAtIndex(0, timeout);
+  }
+
+  /**
+   * Reads the arrival time displayed on the Benerail result card at the given index. Mirrors
+   * getDepartureTimeTextForResultAtIndex, but reads the second RESULT_TIME_BLOCK match (see that
+   * selector's comment — departure renders first in DOM order, arrival second).
+   * @param {number} [index=0]
+   * @param {number} [timeout=60000]
+   * @returns {Promise<string>} The raw displayed arrival time text
+   */
+  async getArrivalTimeTextForResultAtIndex(index = 0, timeout = 60000) {
+    const card = this.page.locator(SELECTORS.RESULT_CARD).nth(index);
+    await card.waitFor({ state: "visible", timeout });
+    await card.scrollIntoViewIfNeeded();
+    const arrivalTime = card.locator(SELECTORS.RESULT_TIME_BLOCK).nth(1);
+    await arrivalTime.waitFor({ state: "visible", timeout });
+    return ((await arrivalTime.innerText()) ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Reads the arrival time displayed on the first Benerail result card.
+   * @param {number} [timeout=60000]
+   * @returns {Promise<string>} The raw displayed arrival time text
+   */
+  async getFirstResultArrivalTimeText(timeout = 60000) {
+    return this.getArrivalTimeTextForResultAtIndex(0, timeout);
+  }
+
+  /**
+   * Opens the Journey Details panel for the Benerail result card at the given index. Clicks the
+   * card's "Journey Details" text (eu-rail-preview.vue renders exactly one visible instance per
+   * card — a mobile OR desktop variant via v-if, never both) and waits for its dialog to open.
+   * @param {number} [index=0]
+   * @param {number} [timeout=15000]
+   * @throws {Error} If the button or the resulting dialog never appear
+   */
+  async openJourneyDetailsForResultAtIndex(index = 0, timeout = 15000) {
+    try {
+      const card = this.page.locator(SELECTORS.RESULT_CARD).nth(index);
+      await card.waitFor({ state: "visible", timeout });
+      await card.getByText("Journey Details", { exact: true }).click({ timeout });
+      await this.page.locator(SELECTORS.JOURNEY_DETAILS_DIALOG).waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[BenerailResultsPage.openJourneyDetailsForResultAtIndex] Could not open the Journey Details ` +
+        `panel for the Benerail result at index ${index}. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Gets the currently open Journey Details dialog.
+   * @returns {Locator}
+   */
+  getJourneyDetailsDialog() {
+    return this.page.locator(SELECTORS.JOURNEY_DETAILS_DIALOG);
+  }
+
+  /**
+   * Reads the departure or arrival station name from the open Journey Details panel
+   * (eu-rail-timeline.vue already renders it lowercase, e.g. "bruxelles-midi (be)").
+   * @param {object} [options]
+   * @param {"departure"|"arrival"} [options.leg="departure"]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getJourneyDetailsStationText({ leg = "departure", timeout = 10000 } = {}) {
+    const dialog = this.getJourneyDetailsDialog();
+    const itemSelector = leg === "arrival" ? SELECTORS.JOURNEY_DETAILS_ARRIVAL_ITEM : SELECTORS.JOURNEY_DETAILS_DEPARTURE_ITEM;
+    const items = dialog.locator(itemSelector);
+    const station = leg === "arrival" ? items.last() : items.first();
+    const stationText = station.locator(SELECTORS.JOURNEY_DETAILS_STATION_TEXT);
+    await stationText.waitFor({ state: "visible", timeout });
+    return ((await stationText.textContent()) ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Reads the departure and arrival times from the open Journey Details panel.
+   * @param {number} [timeout=10000]
+   * @returns {Promise<{departureRaw: string, arrivalRaw: string}>}
+   */
+  async getJourneyDetailsTimes(timeout = 10000) {
+    const dialog = this.getJourneyDetailsDialog();
+    const departureTime = dialog.locator(SELECTORS.JOURNEY_DETAILS_DEPARTURE_ITEM).first().locator(SELECTORS.JOURNEY_DETAILS_TIME_TEXT);
+    const arrivalTime = dialog.locator(SELECTORS.JOURNEY_DETAILS_ARRIVAL_ITEM).last().locator(SELECTORS.JOURNEY_DETAILS_TIME_TEXT);
+    await departureTime.waitFor({ state: "visible", timeout });
+    await arrivalTime.waitFor({ state: "visible", timeout });
+    const departureRaw = ((await departureTime.textContent()) ?? "").replace(/\s+/g, " ").trim();
+    const arrivalRaw = ((await arrivalTime.textContent()) ?? "").replace(/\s+/g, " ").trim();
+    return { departureRaw, arrivalRaw };
+  }
+
+  /**
+   * Closes the open Journey Details panel and waits for it to hide.
+   * @param {number} [timeout=10000]
+   */
+  async closeJourneyDetailsDialog(timeout = 10000) {
+    const dialog = this.getJourneyDetailsDialog();
+    await dialog.locator(SELECTORS.JOURNEY_DETAILS_CLOSE_BUTTON).click({ timeout });
+    await dialog.waitFor({ state: "hidden", timeout });
   }
 
   /**

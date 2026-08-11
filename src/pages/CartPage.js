@@ -709,6 +709,9 @@ const SELECTORS = {
 
   // Traveler initials (trip-traveler-tag.vue)
   TRAVELER_INITIALS: '.avatar-initials',
+  // Traveler full name (trip-traveler-tag.vue), rendered by trip-cart.vue's <trip-travelers-list>
+  // under the "Travellers" section — same class pattern as SearchPage.SELECTED_TRAVELER_NAME.
+  TRAVELER_NAME: '.trip-traveler-tag .traveler-name',
 
   // Hotel autocomplete destination value (hotel-autocomplete inside cart search drawer)
   HOTEL_SEARCH_DESTINATION_INPUT: ".hotel-autocomplete .el-input__inner",
@@ -8146,6 +8149,16 @@ class CartPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Gets the traveler-name element (trip-traveler-tag.vue) in the cart page's Travellers section
+   * matching the given name.
+   * @param {string} travelerName - Traveler's full or partial name as displayed, e.g. "Pedro"
+   * @returns {Locator}
+   */
+  getTravelerNameLocator(travelerName) {
+    return this.page.locator(SELECTORS.TRAVELER_NAME).filter({ hasText: travelerName }).first();
   }
 
   // ===== HOTEL SEARCH FROM CART =====

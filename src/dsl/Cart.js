@@ -1672,6 +1672,40 @@ const Cart = {
   },
 
   /**
+   * Verifies a traveler is visible in the cart page's Travellers section (trip-cart.vue's
+   * <trip-travelers-list>, rendering trip-traveler-tag.vue per traveler). Guards against the
+   * regression this covers: a traveler silently disappearing from the cart after a quote is
+   * added (see test 44941).
+   * @param {import('playwright').Page} page
+   * @param {string} travelerName - Traveler's full or partial name as displayed, e.g. "Pedro"
+   * @returns {Promise<void>}
+   */
+  async verifyTravelerVisibleInCartPage(page, travelerName) {
+    if (!page) throw new Error('[Cart.verifyTravelerVisibleInCartPage] "page" is required.');
+    if (!travelerName || typeof travelerName !== 'string') {
+      throw new Error(`[Cart.verifyTravelerVisibleInCartPage] "travelerName" must be a non-empty string, got: ${typeof travelerName}`);
+    }
+
+    logger.info('Verifying traveler is visible in the cart page', { travelerName });
+
+    const cartPage = getPageObject(page, CartPage);
+    const traveler = cartPage.getTravelerNameLocator(travelerName);
+
+    try {
+      await expect(
+        traveler,
+        `[Cart.verifyTravelerVisibleInCartPage] Expected traveler "${travelerName}" to still be visible in the ` +
+        `cart page's Travellers section — adding the quote to cart may have dropped the passenger.`,
+      ).toBeVisible({ timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyTravelerVisibleInCartPage] Traveler "${travelerName}" was not visible in the cart page ` +
+        `within 30s. Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
    * Verifies the per-diem quote card's total amount equals `expectedAmount` (35703). Waits for the
    * quote card, then polls the header amount (`.per-diem-quote-card .amount`) until its numeric core
    * equals the expected value — the amount recalculates after days off are deducted at booking, so it

@@ -14,6 +14,11 @@ When("I search for a one way Benerail train from {string}", async function (rout
   await BenerailSearch.searchBenerailOneWay(this.page, routeKey);
 });
 
+When("I search direct only option for a one way Benerail train from {string}", async function (routeKey) {
+  logger.info("Searching for a direct-only one-way Benerail train", { routeKey });
+  await BenerailSearch.searchBenerailOneWay(this.page, routeKey, { numberOfStops: "Direct Only" });
+});
+
 // Drawer variant: the search form is the one the cart's Rail tile opens over the trip overview, so
 // there is no product tab to select and the trip's own search buttons are still on the page.
 When("I search for a one way Benerail train from {string} from the cart drawer", async function (routeKey) {

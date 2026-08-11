@@ -33,6 +33,9 @@ const BenerailSearch = {
    * @param {object} options
    * @param {boolean} options.clickSearch - Set false to fill the form without submitting it
    *   (e.g. to inspect what the autocomplete committed into the From/To fields).
+   * @param {string} [options.numberOfStops] - Optional "Number of Stops" filter to select before
+   *   submitting, e.g. "Direct Only" (see BenerailSearchPage.selectNumberOfStops for the full
+   *   option set). Left unset, the form keeps its default ("Direct and Indirect").
    * @returns {Promise<object>} Search result metadata
    */
   async searchBenerailOneWay(
@@ -41,6 +44,7 @@ const BenerailSearch = {
     {
       departureIndex = SEARCH_DEFAULTS.RAIL_BENERAIL.DEPARTURE_INDEX,
       clickSearch = true,
+      numberOfStops,
     } = {},
   ) {
     // Resolve route (key or inline object)
@@ -70,11 +74,15 @@ const BenerailSearch = {
       endIndex: null,
     });
 
+    if (numberOfStops) {
+      await benerailSearchPage.selectNumberOfStops(numberOfStops);
+    }
+
     if (clickSearch) {
       await searchPage.waitAndClickSearchButton();
     }
 
-    return { searched: clickSearch, routeInput, from, to, departureIndex };
+    return { searched: clickSearch, routeInput, from, to, departureIndex, numberOfStops };
   },
 
   /**

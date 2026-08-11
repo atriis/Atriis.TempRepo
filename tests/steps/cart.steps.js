@@ -1645,6 +1645,11 @@ Then("the quote status is {string}", async function (expectedStatus) {
   await Cart.verifyQuoteWithStatusVisible(this.page, expectedStatus);
 });
 
+Then("the traveler {string} is available in cart page", async function (travelerName) {
+  logger.info("Verifying traveler is available in cart page", { travelerName });
+  await Cart.verifyTravelerVisibleInCartPage(this.page, travelerName);
+});
+
 Then("all quotes should have PNR codes", async function () {
   logger.info("Verifying all quotes have PNR codes");
   await Cart.verifyAllQuotesHavePnrCodes(this.page);

@@ -251,19 +251,44 @@ When("I extract the departure and arrival times from the Benerail results", asyn
 });
 
 When("I open journey details for the first Benerail result", async function () {
-  throw new Error("TODO: implement 'I open journey details for the first Benerail result' — click the Journey Details button on the first Benerail result to open the details panel (see test 44941)");
+  logger.info("Opening journey details for the first Benerail result");
+  await BenerailResults.openJourneyDetailsForFirstResult(this.page);
+});
+
+Then("I should see {string} in journey details", async function (expectedText) {
+  logger.info("Verifying text is visible in the Benerail journey details panel", { expectedText });
+  await BenerailResults.verifyStationVisibleInJourneyDetails(this.page, expectedText);
 });
 
 When("I extract the departure and arrival times from the journey details panel", async function () {
-  throw new Error("TODO: implement 'I extract the departure and arrival times from the journey details panel' — read and store departure/arrival times from the open journey details panel (see test 44941)");
+  logger.info("Extracting departure and arrival times from the Benerail journey details panel");
+  this.benerailJourneyDetailsTimes = await BenerailResults.extractJourneyDetailsTimes(this.page);
 });
 
 Then("the journey details times should match the results page times", async function () {
-  throw new Error("TODO: implement 'the journey details times should match the results page times' — compare previously stored results-page times vs journey-details-panel times and assert they match (see test 44941)");
+  const { initial } = this.benerailDepartureTimes || {};
+  const resultsArrival = this.benerailResultsArrivalTime;
+  const journeyDetails = this.benerailJourneyDetailsTimes;
+  if (!initial || !resultsArrival || !journeyDetails) {
+    throw new Error("Missing stored times — expected the results-page departure/arrival times and the journey-details-panel times to have been extracted first");
+  }
+  logger.info("Verifying Benerail journey details times match the results page times", {
+    resultsDeparture: initial.raw,
+    resultsArrival: resultsArrival.raw,
+    journeyDetailsDeparture: journeyDetails.departure.raw,
+    journeyDetailsArrival: journeyDetails.arrival.raw,
+  });
+  if (journeyDetails.departure.minutes !== initial.minutes) {
+    throw new Error(`Expected the journey details departure time ("${journeyDetails.departure.raw}") to match the results page departure time ("${initial.raw}")`);
+  }
+  if (journeyDetails.arrival.minutes !== resultsArrival.minutes) {
+    throw new Error(`Expected the journey details arrival time ("${journeyDetails.arrival.raw}") to match the results page arrival time ("${resultsArrival.raw}")`);
+  }
 });
 
 When("I close the Benerail journey details panel", async function () {
-  throw new Error("TODO: implement 'I close the Benerail journey details panel' — click close/X on the journey details panel (see test 44941)");
+  logger.info("Closing the Benerail journey details panel");
+  await BenerailResults.closeJourneyDetailsPanel(this.page);
 });
 
 Then("the traveler should still be visible in the Benerail cart", async function () {
@@ -351,6 +376,11 @@ When("I extract the first result departure time", async function () {
   logger.info("Extracting the initial first Benerail result departure time");
   this.benerailDepartureTimes = this.benerailDepartureTimes || {};
   this.benerailDepartureTimes.initial = await BenerailResults.extractFirstResultDepartureTime(this.page);
+});
+
+When("I extract the first result arrival time", async function () {
+  logger.info("Extracting the first Benerail result arrival time");
+  this.benerailResultsArrivalTime = await BenerailResults.extractFirstResultArrivalTime(this.page);
 });
 
 When("I click Later and extract the first result departure time", async function () {

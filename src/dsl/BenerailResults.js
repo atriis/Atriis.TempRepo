@@ -139,6 +139,87 @@ const BenerailResults = {
   },
 
   /**
+   * Reads the first Benerail result's arrival time without navigating — used as the results-page
+   * baseline before comparing against the Journey Details panel (see test 44941).
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{raw: string, minutes: number}>}
+   */
+  async extractFirstResultArrivalTime(page) {
+    if (!page) throw new Error("[BenerailResults.extractFirstResultArrivalTime] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const raw = await benerailResultsPage.getFirstResultArrivalTimeText();
+    return { raw, minutes: parseTimeOfDayToMinutes(raw) };
+  },
+
+  /**
+   * Opens the Journey Details panel for the first Benerail result.
+   * @param {import('playwright').Page} page
+   */
+  async openJourneyDetailsForFirstResult(page) {
+    if (!page) throw new Error("[BenerailResults.openJourneyDetailsForFirstResult] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    await benerailResultsPage.openJourneyDetailsForResultAtIndex(0);
+    return { opened: true };
+  },
+
+  /**
+   * Verifies the given text (e.g. a station name) is visible in the open Journey Details panel —
+   * checked against both the departure and arrival station text (see test 44941).
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   * @returns {Promise<{matchedLeg: string, actualText: string}>}
+   * @throws {Error} If neither the departure nor arrival station text contains expectedText
+   */
+  async verifyStationVisibleInJourneyDetails(page, expectedText) {
+    if (!page) throw new Error("[BenerailResults.verifyStationVisibleInJourneyDetails] page is required");
+    if (!expectedText || typeof expectedText !== "string") {
+      throw new Error(`[BenerailResults.verifyStationVisibleInJourneyDetails] "expectedText" must be a non-empty string, got: ${typeof expectedText}`);
+    }
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const departureText = await benerailResultsPage.getJourneyDetailsStationText({ leg: "departure" });
+    const arrivalText = await benerailResultsPage.getJourneyDetailsStationText({ leg: "arrival" });
+    const needle = expectedText.toLowerCase();
+
+    if (departureText.toLowerCase().includes(needle)) {
+      return { matchedLeg: "departure", actualText: departureText };
+    }
+    if (arrivalText.toLowerCase().includes(needle)) {
+      return { matchedLeg: "arrival", actualText: arrivalText };
+    }
+
+    throw new Error(
+      `[BenerailResults.verifyStationVisibleInJourneyDetails] Expected to see "${expectedText}" in the ` +
+      `Benerail Journey Details panel, but departure shows "${departureText}" and arrival shows "${arrivalText}"`
+    );
+  },
+
+  /**
+   * Reads the departure and arrival times from the open Journey Details panel.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{departure: {raw: string, minutes: number}, arrival: {raw: string, minutes: number}}>}
+   */
+  async extractJourneyDetailsTimes(page) {
+    if (!page) throw new Error("[BenerailResults.extractJourneyDetailsTimes] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const { departureRaw, arrivalRaw } = await benerailResultsPage.getJourneyDetailsTimes();
+    return {
+      departure: { raw: departureRaw, minutes: parseTimeOfDayToMinutes(departureRaw) },
+      arrival: { raw: arrivalRaw, minutes: parseTimeOfDayToMinutes(arrivalRaw) },
+    };
+  },
+
+  /**
+   * Closes the open Journey Details panel.
+   * @param {import('playwright').Page} page
+   */
+  async closeJourneyDetailsPanel(page) {
+    if (!page) throw new Error("[BenerailResults.closeJourneyDetailsPanel] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    await benerailResultsPage.closeJourneyDetailsDialog();
+    return { closed: true };
+  },
+
+  /**
    * Clicks "Show Later Departures" and reads the departure time of the first newly-opened later
    * result. "Show Later Departures" appends new results to the end of the outbound list rather
    * than replacing it (eu-rail.store.ts's loadLaterRails → appendRailSegments), so the first
