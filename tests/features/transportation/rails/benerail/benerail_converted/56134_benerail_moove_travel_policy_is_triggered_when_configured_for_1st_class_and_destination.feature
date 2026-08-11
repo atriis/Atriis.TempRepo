@@ -16,6 +16,6 @@ Feature: 56134 Benerail - Travel policy triggered when configured for 1st class 
     And I have added myself as the traveler
     When I search for a one way Benerail train from "beleuToBeabc"
     And I click proceed button if visible
-   And I wait for select text to be visible
+    And I wait for select text to be visible
     And I expand more options for the first result
     Then the out of policy tooltip in more options results should be "Origin is be and Destination is within country and Class Of Service is first"
