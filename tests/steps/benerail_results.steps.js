@@ -488,8 +488,9 @@ When("I cancel the Benerail trip via API", async function () {
 });
 
 // --- Agreements account nav ---
-Then("the Benerail search tab should still be visible", async function () {
-  throw new Error("TODO: implement 'the Benerail search tab should still be visible' — after Benerail search with agreements, assert the Search tab link is still present in the nav (see test hybrid_44798)");
+Then("I should see {string} text in breadcrumb", async function (expectedText) {
+  logger.info("Verifying text is visible in the Benerail results breadcrumb", { expectedText });
+  await BenerailResults.verifyTextVisibleInBreadcrumb(this.page, expectedText);
 });
 
 // --- Results confirmation ---

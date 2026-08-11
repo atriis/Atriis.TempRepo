@@ -58,6 +58,9 @@ const SELECTORS = {
   JOURNEY_DETAILS_STATION_TEXT: ".is-capitalized.header",
   JOURNEY_DETAILS_TIME_TEXT: ".railSegment-hour-container.header",
   JOURNEY_DETAILS_CLOSE_BUTTON: ".el-dialog__headerbtn",
+  // eu-rail-results.vue's app-breadcrumb — first item is the "Search" link back to the trip
+  // search page (see FlightResultsPage.RESULTS_BREADCRUMB_SEARCH_LINK for the same pattern).
+  RESULTS_BREADCRUMB_SEARCH_LINK: ".eu-rail-results .breadcrumb li:first-child a",
 };
 
 class BenerailResultsPage {
@@ -518,6 +521,18 @@ class BenerailResultsPage {
     if (moreOptionsHandle) {
       await moreOptionsHandle.waitForElementState("hidden", { timeout: 20000 }).catch(() => {});
     }
+  }
+
+  /**
+   * Reads the text of the results-page breadcrumb's first item (the "Search" link).
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<string>}
+   */
+  async getBreadcrumbSearchLinkText({ timeout = 30000 } = {}) {
+    const link = this.page.locator(SELECTORS.RESULTS_BREADCRUMB_SEARCH_LINK).first();
+    await link.waitFor({ state: "visible", timeout });
+    return ((await link.textContent()) ?? "").trim();
   }
 }
 

@@ -194,6 +194,30 @@ const BenerailResults = {
   },
 
   /**
+   * Verifies the given text is shown in the Benerail results page breadcrumb's first item (the
+   * "Search" link) — confirms the search tab/link is still reachable after searching (see test
+   * hybrid_44798).
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   * @throws {Error} If the breadcrumb's first item does not show expectedText
+   */
+  async verifyTextVisibleInBreadcrumb(page, expectedText) {
+    if (!page) throw new Error("[BenerailResults.verifyTextVisibleInBreadcrumb] page is required");
+    if (!expectedText || typeof expectedText !== "string") {
+      throw new Error(`[BenerailResults.verifyTextVisibleInBreadcrumb] "expectedText" must be a non-empty string, got: ${typeof expectedText}`);
+    }
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const actualText = await benerailResultsPage.getBreadcrumbSearchLinkText();
+
+    if (actualText !== expectedText) {
+      throw new Error(
+        `[BenerailResults.verifyTextVisibleInBreadcrumb] Expected to see "${expectedText}" in the ` +
+        `Benerail results breadcrumb, but it shows "${actualText}"`
+      );
+    }
+  },
+
+  /**
    * Reads the departure and arrival times from the open Journey Details panel.
    * @param {import('playwright').Page} page
    * @returns {Promise<{departure: {raw: string, minutes: number}, arrival: {raw: string, minutes: number}}>}
