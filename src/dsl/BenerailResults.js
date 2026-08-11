@@ -1,3 +1,4 @@
+const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { BenerailResultsPage } = require("@pages/BenerailResultsPage");
@@ -285,6 +286,36 @@ const BenerailResults = {
       throw new Error(`Expected "${changeText}" to render in red (${CHANGES_COLOR_HEX}) for a non-direct journey, got ${hexColor}`);
     }
     return { changeText, dotCount, expectedChanges };
+  },
+
+  /**
+   * Verifies the "no trains found" empty state is displayed with the expected title text — the
+   * edge case where a traveler's profile has no pre-configured rail content and the search
+   * returns no results (see test 62867). Cannot reuse
+   * Results.validateNoResultsTitle/ResultsPage.waitForNoResultsTitle ('.app-no-results h3'):
+   * that selector expects app-no-results-search.vue's default <h3>-wrapped fallback, but
+   * eu-rail-results.vue overrides the '#no-result-title' slot with plain interpolated text and no
+   * <h3> wrapper, so the shared h3 selector never matches here. Falls back to the shared container
+   * getter (ResultsPage.getNoResultsContainer) and a text-contains check on the whole container.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedTitleText - Expected no-trains-found title substring
+   * @throws {Error} If the no-results panel never appears or its title text doesn't match
+   */
+  async verifyNoTrainsFoundMessage(page, expectedTitleText) {
+    if (!page) throw new Error("[BenerailResults.verifyNoTrainsFoundMessage] page is required");
+    if (!expectedTitleText || typeof expectedTitleText !== "string") {
+      throw new Error(`[BenerailResults.verifyNoTrainsFoundMessage] "expectedTitleText" must be a non-empty string, got: ${typeof expectedTitleText}`);
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    const container = resultsPage.getNoResultsContainer();
+    try {
+      await container.waitFor({ state: "visible", timeout: 60000 });
+      await expect(container, `[BenerailResults.verifyNoTrainsFoundMessage] Expected the Benerail no-results panel to contain "${expectedTitleText}"`).toContainText(expectedTitleText, { timeout: 60000 });
+    } catch (err) {
+      throw new Error(`[BenerailResults.verifyNoTrainsFoundMessage] The Benerail no-trains-found message ("${expectedTitleText}") never appeared. Original: ${err.message}`);
+    }
+    return { visible: true, expectedTitleText };
   },
 
   /**

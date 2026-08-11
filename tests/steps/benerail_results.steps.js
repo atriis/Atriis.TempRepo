@@ -415,7 +415,8 @@ When("I close the mandatory notification banner if visible", async function () {
 
 // --- No trains found ---
 Then("the no trains found message should be displayed in Benerail results", async function () {
-  throw new Error("TODO: implement 'the no trains found message should be displayed in Benerail results' — assert the empty-state / no-results message is displayed (see test 62867 — edge case where no content is returned)");
+  logger.info("Verifying the no trains found message is displayed in Benerail results");
+  await BenerailResults.verifyNoTrainsFoundMessage(this.page, "No train found on selected times");
 });
 
 // --- Loyalty card ---
