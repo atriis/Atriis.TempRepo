@@ -1825,6 +1825,16 @@ Then("the share quote preview should show {string}", async function (expectedTex
   await Cart.verifySharePreviewContainsText(this.page, expectedText);
 });
 
+Then("the fare rules {string} and its content should be visible in the Benerail share quote email", async function (fareRuleLabel) {
+  logger.info("Verifying fare rule and its content in the Benerail share quote email", { fareRuleLabel });
+  await Cart.verifyLabeledContentVisibleInSharePreview(this.page, fareRuleLabel);
+});
+
+Then("the fare rules {string} and its content should be visible in the Benerail share itinerary email", async function (fareRuleLabel) {
+  logger.info("Verifying fare rule and its content in the Benerail share itinerary email", { fareRuleLabel });
+  await Cart.verifyLabeledContentVisibleInSharePreview(this.page, fareRuleLabel);
+});
+
 Then("the hotel manual quote details should show {string}", async function (expectedText) {
   logger.info("Verifying More Details drawer contains text", { expectedText });
   await Cart.verifyMoreDetailsDrawerContainsText(this.page, expectedText);

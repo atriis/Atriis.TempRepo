@@ -5221,6 +5221,54 @@ const Cart = {
   },
 
   /**
+   * Verifies the share email preview shows a labeled section (e.g. "Vendor Message", or a fare
+   * rule category like "Conditions of Cancellation and Exchange") with actual content next to
+   * it — the label must be rendered with real content, not just the empty label.
+   * The share dialog must already be open (quote or itinerary).
+   * @param {import('playwright').Page} page
+   * @param {string} labelText - The label to look for in the share email preview
+   * @returns {Promise<{label: string, content: string}>} The label and content found in the preview
+   */
+  async verifyLabeledContentVisibleInSharePreview(page, labelText) {
+    if (!page) throw new Error('[Cart.verifyLabeledContentVisibleInSharePreview] "page" is required.');
+    if (!labelText || typeof labelText !== 'string') {
+      throw new Error(`[Cart.verifyLabeledContentVisibleInSharePreview] "labelText" must be a non-empty string, got: ${typeof labelText}`);
+    }
+
+    logger.debug('Reading labeled content from the share email preview', { labelText });
+    const cartPage = getPageObject(page, CartPage);
+
+    let found;
+    try {
+      found = await cartPage.getLabeledContentFromSharePreview(labelText);
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyLabeledContentVisibleInSharePreview] Could not read "${labelText}" from the share email ` +
+          `preview. The share dialog must be open on a booked quote before this check. Original: ${err.message}`
+      );
+    }
+
+    if (!found) {
+      const preview = await cartPage.getSharePreviewTextContent();
+      throw new Error(
+        `[Cart.verifyLabeledContentVisibleInSharePreview] No "${labelText}" label was found in the share email ` +
+          `preview. Preview content: "${preview.slice(0, 500)}"`
+      );
+    }
+
+    // A label with no value next to it is the failure this check guards against, so require at
+    // least one word character rather than just a non-empty string (separators, dashes, colons).
+    expect(
+      found.content,
+      `Expected the "${labelText}" label in the share email preview to be followed by content, ` +
+        `but the value was empty. Label read: "${found.label}"`
+    ).toMatch(/\w/);
+
+    logger.debug('Labeled content found in the share email preview', { labelText, content: found.content.slice(0, 200) });
+    return { label: found.label, content: found.content };
+  },
+
+  /**
    * Verifies the share email preview shows a "Vendor Message" label with actual message text
    * next to it — the supplier's sell message must be rendered, not just the empty label.
    * The share dialog must already be open (quote or itinerary).
@@ -5228,40 +5276,7 @@ const Cart = {
    * @returns {Promise<{label: string, content: string}>} The label and message content found in the preview
    */
   async verifyVendorMessageInSharePreview(page) {
-    if (!page) throw new Error('[Cart.verifyVendorMessageInSharePreview] "page" is required.');
-
-    logger.debug('Reading the vendor message from the share email preview');
-    const cartPage = getPageObject(page, CartPage);
-
-    let vendorMessage;
-    try {
-      vendorMessage = await cartPage.getVendorMessageFromSharePreview();
-    } catch (err) {
-      throw new Error(
-        `[Cart.verifyVendorMessageInSharePreview] Could not read the vendor message from the share email ` +
-          `preview. The share dialog must be open on a booked quote before this check. Original: ${err.message}`
-      );
-    }
-
-    if (!vendorMessage) {
-      const preview = await cartPage.getSharePreviewTextContent();
-      throw new Error(
-        `[Cart.verifyVendorMessageInSharePreview] No "Vendor Message" label was found in the share email ` +
-          `preview. The supplier may not have returned a sell message for this car quote. ` +
-          `Preview content: "${preview.slice(0, 500)}"`
-      );
-    }
-
-    // A label with no value next to it is the failure this test guards against, so require at
-    // least one word character rather than just a non-empty string (separators, dashes, colons).
-    expect(
-      vendorMessage.content,
-      `Expected the "Vendor Message" label in the share email preview to be followed by message text, ` +
-        `but the value was empty. Label read: "${vendorMessage.label}"`
-    ).toMatch(/\w/);
-
-    logger.debug('Vendor message found in the share email preview', { content: vendorMessage.content.slice(0, 200) });
-    return { label: vendorMessage.label, content: vendorMessage.content };
+    return Cart.verifyLabeledContentVisibleInSharePreview(page, 'Vendor Message');
   },
 
   /**

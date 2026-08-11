@@ -781,13 +781,14 @@ const SELECTORS = {
   // The bgcolor anchor is the email template's price box, carried over from the
   // original Testim recording; the email HTML is backend-generated (not in OBT source).
   SHARE_EMAIL_PRICE_OFFER_BOX: "[bgcolor='#1C73FF']",
-  // Share email preview — "Vendor Message" label and its value (inside iframe srcdoc).
+  // Share email preview — any "label + its value" pair (inside iframe srcdoc), e.g. "Vendor
+  // Message" or a fare rule category like "Conditions of Cancellation and Exchange".
   // The email HTML is backend-generated and the two templates differ: the share quote email
   // renders the label and value as adjacent cells, the share itinerary email as a .glist
   // label/value sibling pair. So the label is located by its text and the value read from the
   // adjacent node rather than by a template-specific path.
   SHARE_EMAIL_VENDOR_MESSAGE_LABEL_TEXT: 'Vendor Message',
-  SHARE_EMAIL_VENDOR_MESSAGE_CANDIDATES: 'td, th, div, span, p, b, strong, li',
+  SHARE_EMAIL_LABELED_CONTENT_CANDIDATES: 'td, th, div, span, p, b, strong, li',
   SHARE_EMAIL_QUOTE_CANCELLATION_TEXT: (quoteIndex) => ({
     1: 'body > table > tbody > tr > td > table > tbody > tr:nth-child(2) > td > table > tbody > tr > td.em_side_space > table > tbody:nth-child(2) > tr:nth-child(7)',
     2: 'body > table > tbody > tr > td > table > tbody > tr:nth-child(2) > td > table > tbody > tr > td.em_side_space > table > tbody:nth-child(2) > tr:nth-child(10)',
@@ -6570,8 +6571,25 @@ class CartPage {
    * @returns {Promise<{label: string, content: string}|null>} The label and its value, or null if the label never appeared
    */
   async getVendorMessageFromSharePreview({ timeout = 20_000 } = {}) {
+    return this.getLabeledContentFromSharePreview(SELECTORS.SHARE_EMAIL_VENDOR_MESSAGE_LABEL_TEXT, { timeout });
+  }
+
+  /**
+   * Reads an arbitrary label and the value rendered next to it in the share email preview
+   * iframe (e.g. "Vendor Message", or a fare rule category like "Conditions of Cancellation
+   * and Exchange"). Works for both the share quote and the share itinerary email templates
+   * (see SHARE_EMAIL_LABELED_CONTENT_CANDIDATES for why the label is located by text).
+   * @param {string} labelText - The exact (case-insensitive) label text to locate
+   * @param {object} [options]
+   * @param {number} [options.timeout=20000] - How long to keep scrolling the preview looking for the label
+   * @returns {Promise<{label: string, content: string}|null>} The label and its value, or null if the label never appeared
+   */
+  async getLabeledContentFromSharePreview(labelText, { timeout = 20_000 } = {}) {
+    if (!labelText || typeof labelText !== 'string') {
+      throw new Error(`[CartPage.getLabeledContentFromSharePreview] "labelText" must be a non-empty string, got: ${typeof labelText}`);
+    }
     if (!Number.isFinite(timeout) || timeout <= 0) {
-      throw new Error(`[CartPage.getVendorMessageFromSharePreview] "timeout" must be a positive number, got: ${timeout}`);
+      throw new Error(`[CartPage.getLabeledContentFromSharePreview] "timeout" must be a positive number, got: ${timeout}`);
     }
 
     const deadline = Date.now() + timeout;
@@ -6579,7 +6597,7 @@ class CartPage {
       await this._waitForShareIframeSrcdoc(timeout);
     } catch (err) {
       throw new Error(
-        `[CartPage.getVendorMessageFromSharePreview] The share email preview iframe never rendered any content ` +
+        `[CartPage.getLabeledContentFromSharePreview] The share email preview iframe never rendered any content ` +
           `within ${timeout}ms. The share dialog may not be open, or the preview failed to load. Original: ${err.message}`
       );
     }
@@ -6587,7 +6605,7 @@ class CartPage {
     const body = this.page.locator(SELECTORS.SHARE_EMAIL_IFRAME).first().contentFrame().locator('body');
     if (!(await body.count().catch(() => 0))) {
       throw new Error(
-        `[CartPage.getVendorMessageFromSharePreview] The share email preview iframe has no body to read. ` +
+        `[CartPage.getLabeledContentFromSharePreview] The share email preview iframe has no body to read. ` +
           `The preview iframe is present but its document did not load.`
       );
     }
@@ -6610,15 +6628,21 @@ class CartPage {
           let content = normalize(labelEl.nextElementSibling?.textContent);
           if (!content) {
             const parentText = normalize(labelEl.parentElement?.textContent);
-            content = parentText.toLowerCase().startsWith(wanted)
+            // The label and its value can share one row/cell ("Vendor Message: some text") or
+            // sit in two separate sibling rows (a fare rule category row followed by its own
+            // rule-text row, with nothing else in the label's row). Only trust the same-parent
+            // slice when it actually left something behind; an empty slice means the label's
+            // row/cell held nothing else, so the value must be in the next sibling instead.
+            const sameParentValue = parentText.toLowerCase().startsWith(wanted)
               ? normalize(parentText.slice(label.length))
-              : normalize(labelEl.parentElement?.nextElementSibling?.textContent);
+              : '';
+            content = sameParentValue || normalize(labelEl.parentElement?.nextElementSibling?.textContent);
           }
           return { label, content };
         },
         {
-          labelText: SELECTORS.SHARE_EMAIL_VENDOR_MESSAGE_LABEL_TEXT,
-          candidateSelector: SELECTORS.SHARE_EMAIL_VENDOR_MESSAGE_CANDIDATES,
+          labelText,
+          candidateSelector: SELECTORS.SHARE_EMAIL_LABELED_CONTENT_CANDIDATES,
         }
       );
       if (found) return found;
