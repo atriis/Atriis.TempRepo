@@ -424,8 +424,9 @@ Then("the new and existing loyalty card options should be saved at trip level", 
 });
 
 // --- Journey summary (direct/changes) ---
-Then("the journey summary should correctly indicate non-direct routes", async function () {
-  throw new Error("TODO: implement 'the journey summary should correctly indicate non-direct routes' — assert journey summary shows number of changes or 'Direct' label correctly for the searched route (see test 67510)");
+Then("the journey summary should show the same number of change dots as changes", async function () {
+  logger.info("Verifying Benerail journey summary change count matches rendered change dots");
+  await BenerailResults.verifyJourneySummaryChangesMatchDots(this.page);
 });
 
 // --- Journey selection stepper ---

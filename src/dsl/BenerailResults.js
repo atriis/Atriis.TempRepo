@@ -32,6 +32,26 @@ function parseTimeOfDayToMinutes(timeText) {
   return hours * 60 + minutes;
 }
 
+/**
+ * Converts a `rgb(r, g, b)` / `rgba(r, g, b, a)` computed-style color string into lowercase hex
+ * (e.g. "rgb(239, 68, 56)" -> "#ef4438"), so it can be compared against the fixed hex colors
+ * eu-rail-preview.scss's .change-text renders ($red-200 / $green-300).
+ * @param {string} rgb
+ * @returns {string}
+ */
+function parseRgbToHex(rgb) {
+  const parts = (rgb ?? "").match(/\d+/g)?.map(Number) ?? [];
+  if (parts.length < 3) {
+    throw new Error(`Could not parse an RGB color from Benerail change-text computed style: "${rgb}"`);
+  }
+  return "#" + parts.slice(0, 3).map((value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+// eu-rail-preview.scss's .change-text: $red-200 for "N changes", $green-300 (via the .green
+// modifier class) for "Direct" — see Atriis.OBT's src/assets/style/abstracts/_variables.scss.
+const CHANGES_COLOR_HEX = "#ef4438";
+const DIRECT_COLOR_HEX = "#4caf4e";
+
 const BenerailResults = {
   /** Waits until Benerail results are ready */
   async waitForBenerailResults(page) {
@@ -224,6 +244,47 @@ const BenerailResults = {
     const benerailResultsPage = getPageObject(page, BenerailResultsPage);
     await benerailResultsPage.selectLastResultAlternativeFare();
     return { selected: true };
+  },
+
+  /**
+   * Verifies the Benerail result at the given index shows a consistent journey-summary
+   * indicator: "Direct" in green with zero change dots, or "N changes" in red with exactly N
+   * rendered change dots (eu-rail-preview.vue renders one .journey-change-dot per
+   * rail.railChanges entry, colored via $red-200/$green-300 — see test 67510). The color check
+   * guards against the exact bug class this ticket targets: a route that actually has a change
+   * but gets mislabeled/rendered as "Direct" (or vice versa) would still be internally consistent
+   * on dot count alone.
+   * @param {import('playwright').Page} page
+   * @param {number} [index=0]
+   * @returns {Promise<{changeText: string, dotCount: number, expectedChanges: number}>}
+   * @throws {Error} If the change count parsed from the text doesn't match the rendered dot
+   *   count, or the text color doesn't match its Direct/changes state
+   */
+  async verifyJourneySummaryChangesMatchDots(page, index = 0) {
+    if (!page) throw new Error("page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const { changeText, changeTextColor, dotCount } = await benerailResultsPage.getJourneySummaryForResultAtIndex(index);
+    const hexColor = parseRgbToHex(changeTextColor);
+
+    const changeMatch = changeText.match(/(\d+)\s*change/i);
+    if (!changeMatch) {
+      if (dotCount !== 0) {
+        throw new Error(`Expected no change dots for a direct Benerail journey ("${changeText}"), but found ${dotCount}`);
+      }
+      if (hexColor !== DIRECT_COLOR_HEX) {
+        throw new Error(`Expected "${changeText}" to render in green (${DIRECT_COLOR_HEX}) for a direct journey, got ${hexColor}`);
+      }
+      return { changeText, dotCount, expectedChanges: 0 };
+    }
+
+    const expectedChanges = Number(changeMatch[1]);
+    if (dotCount !== expectedChanges) {
+      throw new Error(`Benerail journey summary shows "${changeText}" but rendered ${dotCount} change dot(s) — expected ${expectedChanges}`);
+    }
+    if (hexColor !== CHANGES_COLOR_HEX) {
+      throw new Error(`Expected "${changeText}" to render in red (${CHANGES_COLOR_HEX}) for a non-direct journey, got ${hexColor}`);
+    }
+    return { changeText, dotCount, expectedChanges };
   },
 
   /**

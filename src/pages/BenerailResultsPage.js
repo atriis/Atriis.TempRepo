@@ -16,6 +16,15 @@ const SELECTORS = {
   // DOM order (see eu-rail-preview.vue's journey-details section), so .first() on a card's
   // matches is the departure time, not the arrival time.
   RESULT_TIME_BLOCK: ".journey-duration-container p.has-text-weight-bold",
+  // eu-rail-preview.vue renders one .journey-change-dot per rail.railChanges entry (only when
+  // length > 1) inside .journey-timeline, and the "N changes"/"Direct" label in a sibling
+  // .change-text span — both driven off the same rail.railChanges array. For exactly one change,
+  // eu-rail-preview.scss draws the single dot as a CSS ::after pseudo-element on .journey-timeline
+  // itself (its "Default behavior" comment) instead of a real .journey-change-dot span — see
+  // getJourneySummaryForResultAtIndex.
+  JOURNEY_TIMELINE: ".journey-timeline",
+  JOURNEY_CHANGE_DOTS: ".journey-change-dot",
+  JOURNEY_CHANGE_TEXT: ".change-text",
   // eu-rail-preview.vue's static hint (agreements-in-additional-indication) — rendered whenever a
   // result's alternatives contain a corporate/agency agreement fare.
   MORE_OPTIONS_AGREEMENT_INDICATION_ICON: ".agreements-in-additional-indication .agreement-img",
@@ -111,6 +120,33 @@ class BenerailResultsPage {
    */
   async getFirstResultDepartureTimeText(timeout = 60000) {
     return this.getDepartureTimeTextForResultAtIndex(0, timeout);
+  }
+
+  /**
+   * Reads the journey-summary "N changes"/"Direct" text, its computed text color, and the
+   * rendered change-dot count for the Benerail result card at the given index
+   * (eu-rail-preview.vue's journey-timeline section). For a single change, the dot is a CSS
+   * ::after pseudo-element on .journey-timeline rather than a real .journey-change-dot span —
+   * invisible to a Playwright locator count — so this counts that state as 1 rather than 0 (see
+   * JOURNEY_TIMELINE above).
+   * @param {number} [index=0]
+   * @param {number} [timeout=60000]
+   * @returns {Promise<{changeText: string, changeTextColor: string, dotCount: number}>}
+   */
+  async getJourneySummaryForResultAtIndex(index = 0, timeout = 60000) {
+    const card = this.page.locator(SELECTORS.RESULT_CARD).nth(index);
+    await card.waitFor({ state: "visible", timeout });
+    const changeTextEl = card.locator(SELECTORS.JOURNEY_CHANGE_TEXT).first();
+    const [rawChangeText, changeTextColor, timelineClass, explicitDotCount] = await Promise.all([
+      changeTextEl.textContent(),
+      changeTextEl.evaluate((el) => window.getComputedStyle(el).color),
+      card.locator(SELECTORS.JOURNEY_TIMELINE).first().getAttribute("class"),
+      card.locator(SELECTORS.JOURNEY_CHANGE_DOTS).count(),
+    ]);
+    const changeText = (rawChangeText ?? "").replace(/\s+/g, " ").trim();
+    const hasCssSingleDot = !(timelineClass ?? "").includes("has-multiple-changes") && !(timelineClass ?? "").includes("no-changes");
+    const dotCount = hasCssSingleDot ? 1 : explicitDotCount;
+    return { changeText, changeTextColor, dotCount };
   }
 
   /**
