@@ -5,7 +5,7 @@
 # Owner: Pedro Carneiro
 # Created: 2025-09-26T04:29:26Z
 # Updated: 2025-09-26T05:09:27Z
-@wip @transportation @rails @benerail @regression
+@transportation @rails @benerail @regression
 Feature: 68008 Transportation - Redesigned time-picker component validation
   As a corporate traveler
   I want to use the redesigned time-picker component for Benerail search

@@ -5,7 +5,7 @@
 # Owner: Shani Hadar
 # Created: 2024-02-22T01:23:38Z
 # Updated: 2026-02-03T10:49:44Z
-@wip @transportation @rails @benerail @regression
+@transportation @rails @benerail @regression
 Feature: 33896 Benerail - Can save date of birth for guest passenger without DOB
   As a corporate traveler booking for a guest without a date of birth
   I want to save the birth date in the Benerail cart extras

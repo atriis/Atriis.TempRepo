@@ -5,7 +5,7 @@
 # Owner: Bruna Santos
 # Created: 2025-05-20T07:45:15Z
 # Updated: 2026-01-21T10:00:45Z
-@wip @transportation @rails @benerail @regression
+@transportation @rails @benerail @regression
 Feature: 62220 Benerail - Earlier results are correct after clicking Later then navigating back to Earlier
   As a corporate traveler
   I want Earlier results to correctly reset to earlier departure times after I browse Later results

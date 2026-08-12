@@ -5,7 +5,7 @@
 # Owner: Pedro Carneiro
 # Created: 2025-09-26T03:19:55Z
 # Updated: 2025-10-02T10:19:03Z
-@wip @transportation @rails @benerail @regression
+@transportation @rails @benerail @regression
 Feature: 68009 Benerail - Journey selection stepper elements are displayed correctly
   As a corporate traveler selecting a Benerail round trip journey
   I want to see the journey selection stepper element for both outbound and return selections

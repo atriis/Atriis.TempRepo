@@ -5,7 +5,7 @@
 # Owner: Shani Hadar
 # Created: 2024-01-03T04:49:41Z
 # Updated: 2025-12-23T04:10:45Z
-@wip @transportation @rails @benerail @regression
+@transportation @rails @benerail @regression
 Feature: 35111 Benerail - Send price offer mail and share quote and itinerary from cart
   As a corporate traveler
   I want to send a price offer from results, share the quote and itinerary from cart

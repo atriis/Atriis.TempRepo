@@ -5,7 +5,7 @@
 # Owner: pini harush
 # Created: 2025-01-01T00:00:00Z
 # Updated: 2026-01-19T07:43:56Z
-@wip @transportation @rails @benerail @regression
+@transportation @rails @benerail @regression
 Feature: 61642 Benerail Moove - Corporate program is being correctly sent
   As a corporate traveler
   I want to book a one way Benerail trip with a corporate program account

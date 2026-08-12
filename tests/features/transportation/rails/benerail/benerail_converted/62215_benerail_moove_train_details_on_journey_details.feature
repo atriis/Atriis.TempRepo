@@ -5,7 +5,7 @@
 # Owner: Pedro Carneiro
 # Created: 2025-05-20T11:41:52Z
 # Updated: 2025-12-23T04:43:06Z
-@wip @transportation @rails @benerail @regression
+@transportation @rails @benerail @regression
 Feature: 62215 Benerail - Train details are shown on Journey Details panel
   As a corporate traveler
   I want to see the train details (operator, type, number) in the Journey Details panel

@@ -5,7 +5,7 @@
 # Owner: Bruna Santos
 # Created: 2024-12-31T01:49:08Z
 # Updated: 2025-09-01T06:16:36Z
-@wip @transportation @rails @benerail @regression @travel_policy
+@transportation @rails @benerail @regression @travel_policy
 Feature: 56134 Benerail - Travel policy triggered when configured for 1st class and destination
   As a corporate traveler subject to a travel policy for 1st class and destination rules
   I want to see the out-of-policy indicator when selecting a 1st class or disallowed destination
