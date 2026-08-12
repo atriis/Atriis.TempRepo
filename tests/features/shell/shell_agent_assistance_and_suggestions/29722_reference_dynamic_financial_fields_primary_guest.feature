@@ -24,16 +24,17 @@ Feature: 29722 - Reference, dynamic and financial fields on the travel request p
       | Type of Trip |
       | Type of traveller |
       | Location travel policy |
-      | Location |
       | Personnel number |
     And the travel request popup should show a reference section for traveler "Pini Cohen"
-    And the reference fields popup should show the following labels:
-      | Payment Group |
-      | Bank account |
+    And the reference fields for traveler "Pini Cohen" should have the following values:
+      | field | value |
+      | Payment Group | CBKI |
+      | Bank account |  |
     And the travel request popup should show a reference section for traveler "Israel Israeli"
-    And the reference fields popup should show the following labels:
-      | Payment Group |
-      | Bank account |
+    And the reference fields for traveler "Israel Israeli" should have the following values:
+      | field | value |
+      | Payment Group | Select |
+      | Bank account |  |
     And the number of reference and dynamic fields in the travel request popup should be 9
     And the reference fields should have the following values:
       | field | value |
@@ -48,33 +49,26 @@ Feature: 29722 - Reference, dynamic and financial fields on the travel request p
       | Type of Trip | Select |
       | Type of traveller | Select |
       | Location travel policy | Select |
-      | Payment Group | Select |
-    When I click proceed on the reference fields popup
-    Then clicking proceed should show a mandatory field validation error
-    When I select the first available option for the "Type of Trip" reference field
-    And I select the first available option for the "Type of traveller" reference field
-    And I select the first available option for the "Payment Group" reference field
-    And I click proceed on the reference fields popup
-    Then the financial reference modal title should be "Financial Reference"
+      | Personnel number |  |
+    And I save the reference field popup if displayed
+    Then the financial reference should be marked as invalid
+    And the custom error "This field is required" should be displayed below the "Type of Trip" reference field
+    And the custom error "This field is required" should be displayed below the "Location travel policy" reference field
+    And the custom error "This field is required" should be displayed below the "Payment Group" reference field for traveler "Israel Israeli"
     When I select the "Financial Reference" reference field as "uploadname7 (uploadcode7)"
-    And I select the "Type of traveller" reference field as "Civil Expert"
-    And I select the "Location" reference field as "ACCRA"
-    And I fill in the "Personnel number" reference field with "123"
-    And I fill in the "Bank account" reference field with "456"
-    And I fill in the "Bank account" reference field with "789"
-    Then the following reference fields should not be editable:
-      | Financial Reference Code |
+    And I select the first available option for the "Type of Trip" reference field
+    And I select the first available option for the "Location travel policy" reference field
+    And I select the first available option for the "Payment Group" reference field for traveler "Israel Israeli"
     And the reference fields should have the following values:
       | field | value |
       | Financial Reference | uploadname7 (uploadcode7) |
-      | Type of Trip | Education and courses |
-      | Type of traveller | Civil Expert |
-      | Location travel policy | Netherlands |
-      | Location | ACCRA |
-      | Personnel number | 123 |
-      | Payment Group | ALG |
-      | Bank account | 456 |
-      | Financial Reference Code | CBKI |
-      | Bank account | 789 |
+      | Type of Trip | Annual leave |
+      | Location travel policy | Caribbean |
+    And the reference fields for traveler "Israel Israeli" should have the following values:
+      | field | value |
+      | Payment Group | ABJ1 |
+    And the reference fields for traveler "Pini Cohen" should have the following values:
+      | field | value |
+      | Payment Group | CBKI |
     And I save the reference field popup if displayed
     Then the "Sent to agent" confirmation should be displayed

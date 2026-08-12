@@ -26,6 +26,13 @@ const SELECTORS = {
   // Mandatory "*" marker on the Financial Reference collapse header (trip-app.vue:
   // <span class="ml-2 has-text-danger mr-1">*</span>). Its presence marks the section as required.
   FINANCIAL_REFERENCE_MANDATORY_MARKER: '.financial-section span.has-text-danger',
+  // Financial Reference in a REJECTED state after submit. financial-reference.vue binds `is-danger`
+  // directly onto its `<el-select>` (v$.selectedFrCode.$invalid && $dirty, or $invalid && markFields)
+  // and that template renders NO form-validation-msg/.help node at all — so unlike a general or
+  // per-traveller reference field, an unfilled mandatory Financial Reference shows only a red border
+  // and never the "This field is required" text. This class is therefore the ONLY signal that its
+  // mandatory validation fired.
+  FINANCIAL_REFERENCE_ERROR_STATE: '.financial-reference .el-select.is-danger',
   // Open reference-fields dialog (trip-app.vue el-dialog) used to scope field counts.
   REFERENCE_DIALOG: '.el-dialog:visible',
   // Footer buttons inside the open reference-fields dialog (trip-app.vue `.app-footer`), e.g.
@@ -1448,6 +1455,225 @@ class DynamicAndReferenceFieldsPage {
       results.push({ label, present });
     }
     return results;
+  }
+
+  /**
+   * Waits for the Financial Reference dropdown to enter its rejected state after a submit attempt.
+   * Use this instead of a validation-message read for that one field: financial-reference.vue renders
+   * no `.help` text node, so the `is-danger` class on its el-select is the only evidence its mandatory
+   * validation fired.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<void>}
+   */
+  async waitForFinancialReferenceErrorState({ timeout = 10000 } = {}) {
+    const invalidSelect = this.page.locator(SELECTORS.FINANCIAL_REFERENCE_ERROR_STATE).first();
+    try {
+      await invalidSelect.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.waitForFinancialReferenceErrorState] The Financial Reference dropdown was not ` +
+        `marked invalid (selector: ${SELECTORS.FINANCIAL_REFERENCE_ERROR_STATE}) within ${timeout}ms after submitting the ` +
+        `form. Either its mandatory validation did not fire, or the popup was submitted successfully when it should ` +
+        `have been blocked. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Resolves ONE traveller's reference/dynamic field container, scoped to that passenger's own
+   * collapse item. The Travellers Reference Questions section renders the same labels once per
+   * passenger (e.g. "Payment Group" and "Bank account" exist for every traveller), so the shared
+   * fieldContainerByLabel — which resolves `.first()` across the whole page — always lands on the
+   * FIRST traveller and cannot address a later one. Scoping through the passenger header (the same
+   * approach as travellerSectionFieldLabelPresence) is what makes a per-traveller read or click
+   * addressable at all.
+   *
+   * Candidates are tried exact-label-then-substring, each visible-first: `exactFieldLabelRegex`
+   * anchoring stops a short label being shadowed by a longer one that contains it, and preferring a
+   * VISIBLE match skips the hidden responsive (mobile/desktop) duplicate the layout renders. The
+   * attached fallbacks keep the resolver usable for presence-style reads on a collapsed section.
+   *
+   * @param {string} travellerName - Traveller full name as shown in the passenger header (e.g. "Israel Israeli")
+   * @param {string} fieldName - Field label inside that traveller's section (e.g. "Payment Group")
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<import('playwright').Locator>} The field container inside that traveller's section
+   */
+  async travellerFieldContainer(travellerName, fieldName, { timeout = 15000 } = {}) {
+    if (!travellerName || typeof travellerName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.travellerFieldContainer] "travellerName" must be a non-empty string, got: ${typeof travellerName} (${travellerName})`
+      );
+    }
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.travellerFieldContainer] "fieldName" must be a non-empty string, got: ${typeof fieldName} (${fieldName})`
+      );
+    }
+
+    const header = this.page
+      .locator(SELECTORS.TRAVELER_FIELD_SECTION)
+      .locator(SELECTORS.COLLAPSE_SECTION_HEADER)
+      .filter({ hasText: nameContainsRegex(travellerName) })
+      .first();
+    try {
+      await header.waitFor({ state: 'attached', timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.travellerFieldContainer] No passenger header matching "${travellerName}" rendered in ` +
+        `the Travellers Reference Questions section (${SELECTORS.TRAVELER_FIELD_SECTION}) within ${timeout}ms. That traveller ` +
+        `may not be on the trip, or the reference-fields popup never opened. Original: ${err.message}`
+      );
+    }
+    // The header's parent is the passenger's `.el-collapse-item`; its `.traveler-questions` content
+    // holds this traveller's fields only. ('..' is auto-detected as xpath by Playwright.)
+    const questions = header.locator('..').locator(SELECTORS.TRAVELER_QUESTIONS_BLOCK);
+    const exactLabel = this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: exactFieldLabelRegex(fieldName) });
+
+    const candidates = [
+      questions.locator(SELECTORS.FIELD_CONTAINER).filter({ has: exactLabel, visible: true }),
+      questions.locator(SELECTORS.FIELD_CONTAINER).filter({ has: exactLabel }),
+      questions.locator(SELECTORS.FIELD_CONTAINER).filter({ hasText: fieldName, visible: true }),
+      questions.locator(SELECTORS.FIELD_CONTAINER).filter({ hasText: fieldName }),
+    ];
+    for (const candidate of candidates) {
+      if ((await candidate.count()) > 0) return candidate.first();
+    }
+
+    throw new Error(
+      `[DynamicAndReferenceFieldsPage.travellerFieldContainer] Traveller "${travellerName}" has no reference field labelled ` +
+      `"${fieldName}" in their section (searched ${SELECTORS.FIELD_CONTAINER} inside ${SELECTORS.TRAVELER_QUESTIONS_BLOCK}). ` +
+      `The field may not be configured for this traveller, or its label differs from the feature text.`
+    );
+  }
+
+  /**
+   * Reads the validation error rendered under ONE traveller's reference field — e.g. the
+   * "This field is required" message below the guest primary's empty mandatory "Payment Group" after
+   * Save. Per-traveller scoping is the whole point: getReferenceFieldCustomError resolves the label
+   * page-wide with `.first()`, so it would read the FIRST traveller's field, which may already hold a
+   * value and therefore show no error at all.
+   *
+   * @param {string} travellerName - Traveller full name (e.g. "Israel Israeli")
+   * @param {string} fieldName - Field label in that traveller's section (e.g. "Payment Group")
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<string>} The trimmed error text shown under that traveller's field
+   */
+  async getTravellerReferenceFieldError(travellerName, fieldName, { timeout = 10000 } = {}) {
+    // Only the first passenger section is expanded by default, so a later traveller's field is
+    // attached but hidden and its error node could never become visible.
+    await this.expandAllCollapsedTravelerSections();
+    const container = await this.travellerFieldContainer(travellerName, fieldName);
+    const error = container.locator(SELECTORS.VALIDATION_ERROR).first();
+    try {
+      await error.waitFor({ state: 'visible', timeout });
+      return (await error.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.getTravellerReferenceFieldError] Could not read a validation error ` +
+        `(selector: ${SELECTORS.VALIDATION_ERROR}) below the "${fieldName}" reference field of traveller ` +
+        `"${travellerName}" within ${timeout}ms. Likely no error is rendered for that traveller's field — it may ` +
+        `already hold a value, or it is not mandatory for them. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Selects the FIRST available option of ONE traveller's reference-field dropdown, without
+   * submitting the popup. Used for a mandatory per-traveller field whose configured options vary per
+   * corporate profile, where the unscoped selectFirstReferenceFieldOption would resolve `.first()`
+   * and fill the WRONG traveller's copy of a duplicated label (e.g. "Payment Group").
+   *
+   * @param {string} travellerName - Traveller full name (e.g. "Israel Israeli")
+   * @param {string} fieldName - Dropdown label in that traveller's section (e.g. "Payment Group")
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<{selectedOption: string}>}
+   */
+  async selectFirstTravellerReferenceFieldOption(travellerName, fieldName, { timeout = 10000 } = {}) {
+    // A collapsed passenger section leaves the dropdown hidden and unclickable.
+    await this.expandAllCollapsedTravelerSections();
+    const container = await this.travellerFieldContainer(travellerName, fieldName);
+    try {
+      await container.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.selectFirstTravellerReferenceFieldOption] The "${fieldName}" field of traveller ` +
+        `"${travellerName}" did not become visible within ${timeout}ms. Its passenger section may have failed to expand. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    try {
+      await container.scrollIntoViewIfNeeded({ timeout: 5000 });
+      const selectWrapper = container.locator(SELECTORS.EL_SELECT).first();
+      await selectWrapper.click({ timeout: 5000 });
+
+      // From the freshly opened, unfiltered list, ArrowDown highlights the first option and Enter
+      // commits it — acting on the active dropdown without locating an option element that could
+      // collide with another traveller's dropdown popper. Mirrors selectFirstReferenceFieldOption.
+      await this.page.keyboard.press('ArrowDown');
+      await this.page.keyboard.press('Enter');
+
+      // Give the popper time to finish its close animation before the next interaction.
+      await this.page.waitForTimeout(300);
+
+      return { selectedOption: ((await selectWrapper.innerText()) || '').trim() };
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.selectFirstTravellerReferenceFieldOption] Field "${fieldName}" of traveller ` +
+        `"${travellerName}" was visible but selecting its first option failed — the dropdown may have had no ` +
+        `selectable options. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the current value of ONE traveller's reference field. The traveller-scoped counterpart of
+   * getFieldValueByLabel, which resolves duplicated labels page-wide with `.first()` and so reports
+   * the first traveller's value for every traveller asked about.
+   *
+   * @param {string} travellerName - Traveller full name (e.g. "Israel Israeli")
+   * @param {string} fieldName - Field label in that traveller's section (e.g. "Payment Group")
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>} The trimmed field value, or '' when the field renders none
+   */
+  async getTravellerFieldValue(travellerName, fieldName, { timeout = 15000 } = {}) {
+    await this.expandAllCollapsedTravelerSections();
+    const container = await this.travellerFieldContainer(travellerName, fieldName, { timeout });
+    try {
+      await container.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.getTravellerFieldValue] The "${fieldName}" field of traveller "${travellerName}" ` +
+        `did not become visible within ${timeout}ms, so its value could not be read. Its passenger section may have ` +
+        `failed to expand. Original: ${err.message}`
+      );
+    }
+
+    // Same three-way read as getFieldValueByLabel: a dropdown exposes the selected text on its
+    // el-select; a free-text field holds it in the input's `value` (innerText is "" for inputs); a
+    // non-input display field renders it in `.control`.
+    const selectWrapper = container.locator(SELECTORS.EL_SELECT).first();
+    if ((await selectWrapper.count()) > 0) {
+      const text = (await selectWrapper.innerText().catch(() => '')).trim();
+      if (text) return text;
+    }
+    const input = container.locator(`input${SELECTORS.INPUT_INNER}, input`).first();
+    if ((await input.count()) > 0) {
+      const value = (await input.inputValue().catch(() => '')).trim();
+      if (value) return value;
+    }
+    const control = container.locator('.control').first();
+    if ((await control.count()) > 0) {
+      const text = (await control.innerText().catch(() => '')).trim();
+      if (text) return text;
+    }
+    return '';
   }
 
   /**
