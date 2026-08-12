@@ -3,6 +3,34 @@ const { SearchPage } = require("@pages/SearchPage");
 const { generateRandomGuestData } = require("@utils/data/generateRandomGuestData.js");
 const logger = require("@utils/logger").child("Search");
 
+// Builds a DD/MM/YYYY date of birth for an exact age (guest form's DOB input format), rather than
+// generateRandomGuestData's random 25-60 range — used where a scenario needs every guest passenger
+// to land in the same fare/age bracket regardless of when the test runs (test 62001).
+function getFixedAgeDateOfBirth(age) {
+  const dob = new Date();
+  dob.setFullYear(dob.getFullYear() - age);
+  const day = String(dob.getDate()).padStart(2, '0');
+  const month = String(dob.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month}/${dob.getFullYear()}`;
+}
+
+// trip.store.ts addTraveler dispatches loadTrip (GET /tripinit) WITHOUT awaiting it — the response
+// lands seconds after the add-traveler UI settles, commits setTrip (replacing trip.passengers),
+// and extras-layout.ts's passengers watcher force-closes any open extras panel (e.g. rail
+// passenger info). networkidle is not enough: there's a network-quiet gap before the delayed
+// reload request even starts, so it resolves too early. Arm this BEFORE the add action fires,
+// then await the returned settle() after — so callers only proceed once the reload has landed
+// and the watcher-triggered re-render has settled (test 62001).
+function armTripReloadSettle(page, timeout = 30000) {
+  const responsePromise = page
+    .waitForResponse((response) => response.url().includes('/tripinit'), { timeout })
+    .catch(() => null);
+  return async () => {
+    await responsePromise;
+    await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+  };
+}
+
 /**
  * Search (Domain DSL)
  *
@@ -137,8 +165,11 @@ const Search = {
     }
     
     const searchPage = getPageObject(page, SearchPage);
+    const settleTripReload = armTripReloadSettle(page);
     await searchPage.clickAddTravelerButton();
     const result = await Search.fillInTravelerNameAndSave(page, name);
+    await settleTripReload();
+
     const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
 
     return {
@@ -371,7 +402,8 @@ const Search = {
    * passenger. Works identically whether the "Add Traveller" button is on the pre-search widget
    * or the cart page's own Travellers section: both render the same shared trip-travelers-list.vue
    * / trip-edit-traveler.vue components (confirmed against Atriis.App source — same classes,
-   * same dialog markup).
+   * same dialog markup). Date of birth is fixed to exactly 30 years old (not the random 25-60
+   * range) so every guest passenger lands in the same fare/age bracket (test 62001).
    *
    * @param {import('playwright').Page} page
    * @param {string} fullName - Guest's full name, e.g. "Ellen Murphy" (split on whitespace into
@@ -395,7 +427,8 @@ const Search = {
     }
 
     const searchPage = getPageObject(page, SearchPage);
-    const { dateOfBirth, phone } = generateRandomGuestData();
+    const { phone } = generateRandomGuestData();
+    const dateOfBirth = getFixedAgeDateOfBirth(30);
 
     // NOTE: if a prior traveler (e.g. added by name via the autocomplete) hasn't fully rendered yet,
     // trip-travelers-list.vue's addEmptyTraveler() can compute firstEmptyTravelerIdx off the
@@ -406,6 +439,7 @@ const Search = {
     // traveler name to be displayed" step / Search.waitForTravelerNameDisplayed) — this method can't
     // reliably detect "still resolving" itself, since sampling the count here risks reading the same
     // stale, not-yet-rendered state it would be trying to wait out.
+    const settleTripReload = armTripReloadSettle(page);
     try {
       await searchPage.clickAddTravelerButton();
       await searchPage.clickAddGuestTravelerButton();
@@ -421,6 +455,7 @@ const Search = {
         `[Search.addGuestWithNameAndEmail] Failed to add guest traveler "${fullName}" with email "${email}". Original: ${err.message}`
       );
     }
+    await settleTripReload();
 
     const starIconVisible = await searchPage.isStarIconVisible();
     const selectedTravelerCount = await searchPage.getSelectedTravelerCount();

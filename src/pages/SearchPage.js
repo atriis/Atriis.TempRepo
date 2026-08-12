@@ -12,6 +12,11 @@ const { normalizeText } = require("@utils/text");
 const SELECTORS = {
   // Traveler interaction
   ADD_TRAVELER_BUTTON: ".btn.btn--default.btn--size-default.btn--round.add-btn",
+  // trip-traveler-tag.vue's empty-slot placeholder ("Select traveler"). Rendered instead of the
+  // round add-btn when a traveler slot is empty but the max-travelers add-btn itself isn't shown
+  // (e.g. cart page after removing a traveler) — same click handler opens the same edit-traveler
+  // dialog either way (confirmed against Atriis.App source, trip-traveler-tag.vue).
+  EMPTY_TRAVELER_SLOT: ".traveler-name.has-text-weight-semibold.is-clickable",
   ADD_ME_BUTTON: ".imt-btn",
   STAR_ICON: ".star-icon",
   REMOVE_TRAVELER_BUTTON: ".btn--default .material-symbols-outlined",
@@ -254,12 +259,19 @@ class SearchPage {
     await modal.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
   }
 
-  // Opens traveler selection panel
+  // Opens traveler selection panel. Clicks whichever trigger is actually rendered: the round
+  // add-btn (pre-search widget, or cart page while under the traveler cap) or the empty-slot
+  // "Select traveler" placeholder (cart page once a slot has been vacated and add-btn no longer
+  // renders) — both open the same edit-traveler dialog.
   async clickAddTravelerButton({ retries = 1 } = {}) {
     await this.closeVisibleEditTravelerModal();
 
     for (let attempt = 0; attempt <= retries; attempt++) {
-      await this.page.click(SELECTORS.ADD_TRAVELER_BUTTON);
+      const trigger = this.page
+        .locator(`${SELECTORS.ADD_TRAVELER_BUTTON}:visible`)
+        .or(this.page.locator(`${SELECTORS.EMPTY_TRAVELER_SLOT}:visible`))
+        .first();
+      await trigger.click();
 
       const modal = this.getEditTravelerModal();
       await modal.waitFor({ state: 'visible', timeout: 10000 });

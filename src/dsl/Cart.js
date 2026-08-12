@@ -1737,6 +1737,13 @@ const Cart = {
       );
     }
 
+    // removeTraveler dispatches a trip reload that resolves after the tag itself disappears —
+    // extras-layout.ts watches the trip's passengers array and force-closes/re-renders extras
+    // panels when that reload lands, so callers that immediately interact with an extras panel
+    // (e.g. rail passenger info) can race a reload still in flight. Settle here instead of
+    // pushing that wait onto every caller (test 62001).
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+
     logger.info('Traveler removed from cart page', { travelerName });
   },
 

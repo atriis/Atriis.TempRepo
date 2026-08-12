@@ -2536,6 +2536,11 @@ When("I delete {string} corporate user from cart page", async function (traveler
   await Cart.removeTravelerFromCartByName(this.page, travelerName);
 });
 
+When("I delete {string} guest traveler from cart page", async function (travelerName) {
+  logger.info("Deleting guest traveler from cart page", { travelerName });
+  await Cart.removeTravelerFromCartByName(this.page, travelerName);
+});
+
 // ========================================
 // MORE DETAILS DRAWER â€” PRICE
 // ========================================

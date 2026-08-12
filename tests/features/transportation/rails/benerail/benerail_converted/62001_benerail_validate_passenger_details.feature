@@ -44,5 +44,14 @@ Feature: 62001 Benerail - Passenger details validation for multiple travelers
     Then I click "Ellen Murphy" passenger to validate that email is "ellen@atriistech.com", last name is "Murphy" and first name is "Ellen"
     And I click the save button
     And the booking status should be "Pending booking"
+    Then passenger info is displayed 3/3 with a green checkmark
+    When I delete "David Kohler" guest traveler from cart page
+    And I have added traveler by name "Secbene Moove"
+    When I click to edit passenger info
+    And I click "Secbene Moove" passenger to validate that email is "testimsec@benemoove.com", last name is "Moove" and first name is "Secbene"
+    And I click the save button
+    And the booking status should be "Pending booking"
+    And I refresh the page
+    Then passenger info is displayed 3/3 with a green checkmark
     And I proceed to checkout
     Then I wait for booking details in checkout

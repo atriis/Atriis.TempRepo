@@ -1444,13 +1444,30 @@ class CartPage {
 
   /**
    * Opens the rail (Benerail eu-rail) passenger-info panel (eu-rail-passenger-info.vue).
+   *
+   * extras-layout.ts watches the trip's `passengers` array and force-closes the panel
+   * (`isOpen = false`) whenever that reference changes — which happens on the trip reload
+   * triggered by adding/removing a traveler. If that reload is still in flight when this method's
+   * click fires, the watcher can snap the panel shut again just after opening, so the tabs never
+   * appear even though the click itself succeeded (test 62001). Retrying the click covers that race.
    * @param {number} timeout
    */
   async openRailPassengerInfoPanel(timeout = 15000) {
     const expandButton = this.page.locator(SELECTORS.RAIL_PASSENGER_INFO_EXPAND_BUTTON).first();
-    await expandButton.waitFor({ state: 'visible', timeout });
-    await expandButton.click();
-    await this.page.locator(SELECTORS.RAIL_PASSENGER_INFO_TAB).first().waitFor({ state: 'visible', timeout });
+    const tab = this.page.locator(SELECTORS.RAIL_PASSENGER_INFO_TAB).first();
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        await expandButton.waitFor({ state: 'visible', timeout });
+        await expandButton.click();
+        await tab.waitFor({ state: 'visible', timeout });
+        return;
+      } catch (error) {
+        if (attempt === 1) {
+          throw error;
+        }
+      }
+    }
   }
 
   /**
@@ -2458,12 +2475,29 @@ class CartPage {
   }
 
   /**
-   * Accepts Terms & Conditions checkbox (required before checkout).
+   * Accepts Terms & Conditions checkbox (required before checkout). Verifies the checkbox
+   * actually stayed checked and retries once: a trip reload still in flight from a just-completed
+   * save (e.g. re-validating a re-added traveler's passenger info) can re-render this checkbox
+   * back to unchecked right after the click registers, silently leaving it unaccepted (test 62001).
    */
   async acceptTermsAndConditions() {
     const checkbox = this.page.locator(SELECTORS.TERMS_CHECKBOX).nth(0);
+    const checkboxInput = this.page.locator(SELECTORS.TERMS_CHECKBOX_INPUT).nth(0);
     await checkbox.waitFor({ state: "visible" });
-    await checkbox.click();
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await checkbox.click();
+      const classes = (await checkboxInput.getAttribute('class')) || '';
+      if (classes.includes('is-checked')) {
+        return;
+      }
+      await this.page.waitForTimeout(1000);
+    }
+
+    throw new Error(
+      '[CartPage.acceptTermsAndConditions] Terms & Conditions checkbox did not stay checked after ' +
+      'clicking twice — likely a trip reload from a recent save reset it right after the click.'
+    );
   }
 
   /**
@@ -3862,10 +3896,20 @@ class CartPage {
   }
 
   /**
-   * Clicks the Save button in extras section.
+   * Clicks the Save button in extras section. Re-queries and retries once on detachment: some
+   * extras panels (e.g. rail passenger info right after a traveler was just added/removed) can
+   * still be re-rendering their traveler tabs when this is called, detaching the Save button
+   * mid-click (test 62001).
    */
   async clickSaveButton() {
-    await this.getSaveButton().click();
+    try {
+      await this.getSaveButton().click();
+    } catch (error) {
+      if (!/detached|not attached/i.test(error.message || '')) {
+        throw error;
+      }
+      await this.getSaveButton().click();
+    }
   }
 
   /**
