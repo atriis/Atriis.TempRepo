@@ -5,13 +5,12 @@
 # Owner: Pedro Carneiro
 # Created: 2025-05-08T02:15:02Z
 # Updated: 2026-02-06T03:27:06Z
-@wip @transportation @rails @benerail @regression @priority:critical
+@transportation @rails @benerail @regression @priority:critical
 Feature: 62001 Benerail - Passenger details validation for multiple travelers
   As a corporate traveler booking for multiple passengers
   I want to see the passenger details panel correctly populated in Benerail results
   So that I can confirm each traveler's information before adding to cart
 
- #Incomplete test, check testim to finish it
   Scenario: Benerail passenger details are correctly displayed for three travelers
     Given I am logged in as "testim@benemoove.com" booking a new trip
     And I have added myself as the traveler
