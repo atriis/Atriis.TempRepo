@@ -167,6 +167,20 @@ Then("the reference fields should have the following values:", async function (d
   }
 });
 
+// Traveller-scoped values. Use this instead of the step above whenever the field label repeats per
+// passenger ("Payment Group", "Bank account"): the unscoped verifier resolves the label page-wide and
+// takes the first match, so it reports the FIRST traveller's value for every traveller asked about.
+Then("the reference fields for traveler {string} should have the following values:", async function (travelerName, dataTable) {
+  const pairs = dataTable.hashes().map(row => ({ label: row.field, expectedValue: row.value }));
+  logger.info("Verifying traveller-scoped reference field values", { travelerName, pairs });
+  const result = await DynamicAndReferenceFields.verifyTravellerReferenceFieldValues(this.page, travelerName, pairs);
+  const mismatches = result.results.filter(r => !r.match);
+  if (mismatches.length > 0) {
+    const details = mismatches.map(m => `"${m.label}": expected "${m.expected}", got "${m.actual}"`).join('; ');
+    throw new Error(`Reference field value mismatches for traveler "${travelerName}": ${details}`);
+  }
+});
+
 Then("the following reference fields should not be editable:", async function (dataTable) {
   const labels = dataTable.raw().map(row => row[0]);
   logger.info("Verifying reference fields are not editable", { labels });
@@ -194,6 +208,15 @@ When("I select the first available option for the {string} reference field", asy
   logger.info(`Selected reference field option`, { fieldName, selectedOption: result?.selectedOption });
 });
 
+// Traveller-scoped variant of the step above, for a mandatory field that exists once per passenger
+// (e.g. "Payment Group"). The unscoped step takes the first matching dropdown, which fills the wrong
+// traveller's copy when the empty, mandatory one belongs to a later traveller.
+When("I select the first available option for the {string} reference field for traveler {string}", async function (fieldName, travelerName) {
+  logger.info(`Selecting the first available option for reference field "${fieldName}" of traveler "${travelerName}" (no proceed)`);
+  const result = await DynamicAndReferenceFields.selectFirstReferenceFieldOptionForTraveller(this.page, fieldName, travelerName);
+  logger.info(`Selected traveller-scoped reference field option`, { fieldName, travelerName, selectedOption: result?.selectedOption });
+});
+
 // Fills a TEXT reference field in the search-gating reference-fields popup by its label (as written in
 // the feature, e.g. "* Custom Regular Expression 1"). Blurs after filling so a custom-regex validation
 // fires on entry. Follow with the validation-error / message assertion steps below.
@@ -219,6 +242,22 @@ Then("the message {string} is displayed in the pop up reference field", async fu
 Then("the custom error {string} should be displayed below the {string} reference field", async function (expectedError, fieldName) {
   logger.info(`Verifying custom error "${expectedError}" is displayed below the "${fieldName}" reference field`);
   await DynamicAndReferenceFields.verifyReferenceFieldCustomError(this.page, expectedError, fieldName);
+});
+
+// Financial Reference has NO validation-message node (financial-reference.vue renders none), so its
+// mandatory enforcement shows up only as the red `is-danger` border on the dropdown. Use this step for
+// that field instead of a "custom error ... should be displayed" assertion.
+Then("the financial reference should be marked as invalid", async function () {
+  logger.info("Verifying the financial reference dropdown is marked invalid after submit");
+  await DynamicAndReferenceFields.verifyFinancialReferenceInvalidState(this.page);
+});
+
+// Traveller-scoped variant of the step above. Required for a label that repeats per passenger
+// ("Payment Group", "Bank account"): the unscoped step reads the first match, which may be a
+// pre-filled field that correctly shows no error at all.
+Then("the custom error {string} should be displayed below the {string} reference field for traveler {string}", async function (expectedError, fieldName, travelerName) {
+  logger.info(`Verifying custom error "${expectedError}" is displayed below the "${fieldName}" reference field of traveler "${travelerName}"`);
+  await DynamicAndReferenceFields.verifyTravellerReferenceFieldCustomError(this.page, expectedError, fieldName, travelerName);
 });
 
 Then("no validation error is triggered for the reference field", async function () {

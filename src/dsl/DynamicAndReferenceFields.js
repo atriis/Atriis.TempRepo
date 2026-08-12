@@ -619,6 +619,46 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Selects the FIRST available option for a reference field belonging to ONE named traveller,
+   * without submitting the popup.
+   *
+   * Exists separately from selectFirstReferenceFieldOption because the Travellers Reference Questions
+   * section renders the same label once per passenger (e.g. "Payment Group" for each traveller). The
+   * unscoped method filters `.input-dropdown` by label and takes `.first()`, so on a multi-traveller
+   * trip it always fills the FIRST traveller's copy — silently the wrong field when the mandatory,
+   * empty one belongs to a later traveller (test 29722: the guest primary "Israel Israeli").
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} fieldName - Visible dropdown label (e.g. "Payment Group")
+   * @param {string} travellerName - Traveller full name as shown in the passenger header (e.g. "Israel Israeli")
+   * @returns {Promise<{selectedOption: string}>}
+   */
+  async selectFirstReferenceFieldOptionForTraveller(page, fieldName, travellerName) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.selectFirstReferenceFieldOptionForTraveller] "page" is required.');
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectFirstReferenceFieldOptionForTraveller] "fieldName" must be a non-empty string, got: ${typeof fieldName} (${fieldName})`
+      );
+    }
+    if (!travellerName || typeof travellerName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectFirstReferenceFieldOptionForTraveller] "travellerName" must be a non-empty string, got: ${typeof travellerName} (${travellerName})`
+      );
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    logger.debug('Selecting the first available option for a traveller-scoped reference field', { fieldName, travellerName });
+    try {
+      return await dynamicFieldsPage.selectFirstTravellerReferenceFieldOption(travellerName, fieldName);
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectFirstReferenceFieldOptionForTraveller] Could not fill the mandatory "${fieldName}" ` +
+        `reference field for traveller "${travellerName}", so the travel request cannot be submitted. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Dismisses the open reference-fields popup via its Back/Close button, returning to the new-trip
    * page without proceeding. Used when the traveller set must be changed (e.g. adding a guest) before
    * re-running the search. Follow with an "add traveller" step and a fresh search.
@@ -720,7 +760,61 @@ const DynamicAndReferenceFields = {
     const results = [];
     for (const { label, expectedValue } of fieldValuePairs) {
       const actual = await dynamicFieldsPage.getFieldValueByLabel(label);
-      const match = actual.toLowerCase().includes(expectedValue.toLowerCase());
+      // An EMPTY expected value asserts the field is blank, and must be compared strictly: the
+      // substring match below is vacuously true for '' (`includes('')`), so it would silently pass
+      // whatever the field actually holds. Blank is only meaningful for a FREE-TEXT field — an empty
+      // el-input renders no text at all (input-textbox.vue has no placeholder), whereas an empty
+      // dropdown renders the "Select" placeholder and should be asserted with that value instead.
+      const match = expectedValue === '' ? actual === '' : actual.toLowerCase().includes(expectedValue.toLowerCase());
+      results.push({ label, expected: expectedValue, actual, match });
+    }
+    const allMatch = results.every(r => r.match);
+    return { allMatch, results };
+  },
+
+  /**
+   * Verifies that ONE named traveller's reference fields hold the expected values.
+   *
+   * The traveller-scoped counterpart of verifyReferenceFieldValues: that method resolves each label
+   * page-wide with `.first()`, so on a multi-traveller trip every row reports the FIRST traveller's
+   * value. Any per-traveller label ("Payment Group", "Bank account") therefore needs this variant —
+   * asserting two different expected values for the same label without it can never pass.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} travellerName - Traveller full name as shown in the passenger header (e.g. "Israel Israeli")
+   * @param {Array<{label: string, expectedValue: string}>} fieldValuePairs
+   * @returns {Promise<{allMatch: boolean, results: Array<{label: string, expected: string, actual: string, match: boolean}>}>}
+   */
+  async verifyTravellerReferenceFieldValues(page, travellerName, fieldValuePairs) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyTravellerReferenceFieldValues] "page" is required.');
+    if (!travellerName || typeof travellerName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyTravellerReferenceFieldValues] "travellerName" must be a non-empty string, got: ${typeof travellerName} (${travellerName})`
+      );
+    }
+    if (!Array.isArray(fieldValuePairs) || fieldValuePairs.length === 0) {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyTravellerReferenceFieldValues] "fieldValuePairs" must be a non-empty array, got: ${typeof fieldValuePairs}`
+      );
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    logger.debug('Reading traveller-scoped reference field values', { travellerName, fieldValuePairs });
+
+    const results = [];
+    for (const { label, expectedValue } of fieldValuePairs) {
+      let actual;
+      try {
+        actual = await dynamicFieldsPage.getTravellerFieldValue(travellerName, label);
+      } catch (err) {
+        throw new Error(
+          `[DynamicAndReferenceFields.verifyTravellerReferenceFieldValues] Could not read the "${label}" reference field ` +
+          `of traveller "${travellerName}", so its expected value "${expectedValue}" could not be verified. Original: ${err.message}`
+        );
+      }
+      // An empty expected value asserts the field is blank; otherwise match case-insensitively on
+      // substring, as verifyReferenceFieldValues does (the control text can carry extra markup text).
+      const match = expectedValue === '' ? actual === '' : actual.toLowerCase().includes(expectedValue.toLowerCase());
       results.push({ label, expected: expectedValue, actual, match });
     }
     const allMatch = results.every(r => r.match);
@@ -826,6 +920,71 @@ const DynamicAndReferenceFields = {
     expect(
       actualError,
       `Expected the custom error below the "${fieldName}" reference field to contain "${expectedError}", but got "${actualError}"`
+    ).toContain(expectedError);
+  },
+
+  /**
+   * Verifies the mandatory Financial Reference was enforced on submit — i.e. its dropdown is flagged
+   * invalid because it was left empty.
+   *
+   * Distinct from verifyFinancialReferenceMandatoryMarker, which asserts the static "*" required
+   * marker on the section header and is true from the moment the popup opens. This asserts the
+   * post-submit rejection. It cannot be expressed with the custom-error verifiers: financial-reference.vue
+   * renders no validation-message node, so the field shows a red border and no "This field is required"
+   * text (the reason the original recording found only three such messages, not four).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyFinancialReferenceInvalidState(page) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyFinancialReferenceInvalidState] "page" is required.');
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    logger.debug('Verifying the Financial Reference dropdown is flagged invalid after submit');
+    await dynamicFieldsPage.waitForFinancialReferenceErrorState();
+  },
+
+  /**
+   * Verifies that a validation error is displayed below ONE named traveller's reference/dynamic field.
+   * Param order mirrors verifyReferenceFieldCustomError (expected error first, field second) with the
+   * traveller appended, matching the Gherkin word order.
+   *
+   * Needed wherever the field label repeats per passenger: the unscoped verifier resolves `.first()`,
+   * so asserting the guest primary's mandatory-field error would instead inspect the first traveller's
+   * copy — which may be pre-filled and correctly show no error, making the assertion unpassable.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedError - Expected error text (e.g. "This field is required")
+   * @param {string} fieldName - Field label (e.g. "Payment Group")
+   * @param {string} travellerName - Traveller full name (e.g. "Israel Israeli")
+   * @returns {Promise<void>}
+   */
+  async verifyTravellerReferenceFieldCustomError(page, expectedError, fieldName, travellerName) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyTravellerReferenceFieldCustomError] "page" is required.');
+    if (!expectedError || typeof expectedError !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyTravellerReferenceFieldCustomError] "expectedError" must be a non-empty string, got: ${typeof expectedError} (${expectedError})`
+      );
+    }
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyTravellerReferenceFieldCustomError] "fieldName" must be a non-empty string, got: ${typeof fieldName} (${fieldName})`
+      );
+    }
+    if (!travellerName || typeof travellerName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyTravellerReferenceFieldCustomError] "travellerName" must be a non-empty string, got: ${typeof travellerName} (${travellerName})`
+      );
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    logger.debug('Reading validation error below a traveller-scoped reference field', { travellerName, fieldName, expectedError });
+    const actualError = await dynamicFieldsPage.getTravellerReferenceFieldError(travellerName, fieldName);
+
+    expect(
+      actualError,
+      `Expected the error below the "${fieldName}" reference field of traveller "${travellerName}" to contain ` +
+      `"${expectedError}", but got "${actualError}"`
     ).toContain(expectedError);
   },
 
