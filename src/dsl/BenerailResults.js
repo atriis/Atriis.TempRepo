@@ -53,6 +53,57 @@ function parseRgbToHex(rgb) {
 const CHANGES_COLOR_HEX = "#ef4438";
 const DIRECT_COLOR_HEX = "#4caf4e";
 
+// eu-rail-stepper.ts's getStepperText(): "MMM dd " + the leg's HH:mm/h:mm AM/PM time, e.g.
+// "Jan 05 14:30" or "Jan 05 2:30 PM".
+const STEPPER_DATE_TIME_PATTERN = /[A-Za-z]{3}\s+\d{1,2}\s+\d{1,2}:\d{2}(\s*[AP]M)?/i;
+
+/**
+ * Checks whether a journey stepper segment snapshot matches one of its three named states.
+ * "active" and "completed" are not mutually exclusive in the app itself — eu-rail-stepper.ts's
+ * isActive formula (`shownSegment === idx+1 || selectedSegments[idx+1]`) stays true for a leg
+ * after it's picked, it's just that the completed segment's CSS rule (:has(.check-icon)) is
+ * declared after .isActive in eu-rail-stepper.scss and wins the cascade regardless — so visually,
+ * and for this check, "completed" only requires the checkmark, independent of isActive.
+ * @param {{isActive: boolean, isCompleted: boolean}} state
+ * @param {"active"|"completed"|"default"} expected
+ * @returns {boolean}
+ */
+function stepperSegmentMatchesState(state, expected) {
+  if (expected === "active") return state.isActive && !state.isCompleted;
+  if (expected === "completed") return state.isCompleted;
+  if (expected === "default") return !state.isActive && !state.isCompleted;
+  throw new Error(`Unknown expected stepper state: "${expected}"`);
+}
+
+/**
+ * Polls a journey stepper segment (see BenerailResultsPage.getJourneyStepperSegmentState) until it
+ * reaches the given named state, then validates it shows a date + time. Polling — rather than one
+ * read — absorbs the client-side re-render after a leg is selected (a purely local Vue state
+ * change with no request to await; the same kind of race BenerailResultsPage's
+ * clickFirstSelectButtonAndConfirmTransition already works around on the click side, AB#81914).
+ * @param {import('@pages/BenerailResultsPage').BenerailResultsPage} benerailResultsPage
+ * @param {number} index - 0 for outbound, 1 for inbound/return
+ * @param {string} legLabel - "outbound" or "inbound", for error messages
+ * @param {"active"|"completed"|"default"} expected
+ * @param {number} [timeout=30000]
+ * @returns {Promise<{isActive: boolean, isCompleted: boolean, stepText: string}>}
+ */
+async function waitForStepperSegmentState(benerailResultsPage, index, legLabel, expected, timeout = 30000) {
+  let lastState;
+  await expect.poll(
+    async () => {
+      lastState = await benerailResultsPage.getJourneyStepperSegmentState(index, 3000);
+      return stepperSegmentMatchesState(lastState, expected);
+    },
+    { timeout, message: () => `Timed out waiting for the ${legLabel} stepper step to reach its "${expected}" state, last read: ${JSON.stringify(lastState)}` },
+  ).toBe(true);
+
+  if (!STEPPER_DATE_TIME_PATTERN.test(lastState.stepText)) {
+    throw new Error(`Expected the ${legLabel} stepper step to show a date and time, got: "${lastState.stepText}"`);
+  }
+  return lastState;
+}
+
 const BenerailResults = {
   /** Waits until Benerail results are ready */
   async waitForBenerailResults(page) {
@@ -484,6 +535,36 @@ const BenerailResults = {
     await resultsPage.waitForSelectText();
     await benerailResultsPage.clickFirstSelectButtonAndConfirmTransition();
     return { selected: true };
+  },
+
+  /**
+   * Verifies the journey stepper (eu-rail-stepper.vue) before any leg has been selected: the
+   * outbound step is highlighted/active and the inbound step is in its default (grey) state, both
+   * showing their date and time.
+   */
+  async verifyJourneyStepperBeforeSelection(page) {
+    if (!page) throw new Error("[BenerailResults.verifyJourneyStepperBeforeSelection] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const [outbound, inbound] = await Promise.all([
+      waitForStepperSegmentState(benerailResultsPage, 0, "outbound", "active"),
+      waitForStepperSegmentState(benerailResultsPage, 1, "inbound", "default"),
+    ]);
+    return { outbound, inbound };
+  },
+
+  /**
+   * Verifies the journey stepper (eu-rail-stepper.vue) right after the outbound leg has been
+   * selected: the outbound step shows its completed checkmark and the inbound step becomes
+   * highlighted/active, both showing their date and time.
+   */
+  async verifyJourneyStepperAfterOutboundSelection(page) {
+    if (!page) throw new Error("[BenerailResults.verifyJourneyStepperAfterOutboundSelection] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const [outbound, inbound] = await Promise.all([
+      waitForStepperSegmentState(benerailResultsPage, 0, "outbound", "completed"),
+      waitForStepperSegmentState(benerailResultsPage, 1, "inbound", "active"),
+    ]);
+    return { outbound, inbound };
   },
 };
 

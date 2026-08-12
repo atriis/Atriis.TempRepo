@@ -64,6 +64,20 @@ const SELECTORS = {
   // eu-rail-results.vue's app-breadcrumb — first item is the "Search" link back to the trip
   // search page (see FlightResultsPage.RESULTS_BREADCRUMB_SEARCH_LINK for the same pattern).
   RESULTS_BREADCRUMB_SEARCH_LINK: ".eu-rail-results .breadcrumb li:first-child a",
+  // eu-rail-stepper.vue's header stepper: one .page-container per leg (outbound at index 0,
+  // inbound/return at index 1 — only rendered when the search has a return date). A step's
+  // .page-number carries .isActive (blue, highlighted) while it's the shown/selected leg, or
+  // contains a .check-icon (white background, blue border/check) once that leg has been picked
+  // (see eu-rail-stepper.ts's stepperSegments and eu-rail-stepper.scss).
+  JOURNEY_STEPPER: ".eu-rail-stepper",
+  // Relative to a JOURNEY_STEPPER locator (see getJourneyStepperSegmentState) — do not prefix
+  // with ".eu-rail-stepper" again, that would require a nested stepper inside itself.
+  JOURNEY_STEPPER_SEGMENT: ".page-container",
+  JOURNEY_STEPPER_SEGMENT_NUMBER: ".page-number",
+  JOURNEY_STEPPER_SEGMENT_CHECK_ICON: ".check-icon",
+  // getStepperText() renders as the leg's title paragraph's sibling <p> (unclassed) — the date
+  // + time text, e.g. "Jan 05 14:30".
+  JOURNEY_STEPPER_SEGMENT_STEP_TEXT: "p:not(.page-title)",
 };
 
 class BenerailResultsPage {
@@ -91,6 +105,46 @@ class BenerailResultsPage {
     if (handle) {
       await handle.waitForElementState("hidden", { timeout }).catch(() => {});
     }
+  }
+
+  /**
+   * Reads the current rendered state of one leg of the journey selection stepper
+   * (eu-rail-stepper.vue): whether it's the highlighted/active step, whether it's already been
+   * completed (checkmark), and its displayed date/time text. A single, non-retrying snapshot —
+   * callers that read this right after an action that mutates the stepper (e.g. selecting a leg)
+   * must poll it themselves (see BenerailResults.waitForStepperSegmentState) rather than trust one
+   * read, since the class/icon change is a client-side Vue re-render with no request to await.
+   * @param {number} index - 0 for outbound, 1 for inbound/return
+   * @param {number} [timeout=30000]
+   * @returns {Promise<{isActive: boolean, isCompleted: boolean, stepText: string}>}
+   */
+  async getJourneyStepperSegmentState(index, timeout = 30000) {
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(`[BenerailResultsPage.getJourneyStepperSegmentState] "index" must be a non-negative integer, got: ${index}`);
+    }
+    const stepper = this.page.locator(SELECTORS.JOURNEY_STEPPER).first();
+    await stepper.waitFor({ state: "visible", timeout });
+
+    // eu-rail-stepper.ts only pushes a second segment when the search has a return date — an
+    // out-of-range index (e.g. a one-way search) would otherwise hang until timeout with no clue
+    // why, so fail immediately with the actual rendered count.
+    const segmentCount = await stepper.locator(SELECTORS.JOURNEY_STEPPER_SEGMENT).count();
+    if (index >= segmentCount) {
+      throw new Error(
+        `[BenerailResultsPage.getJourneyStepperSegmentState] Requested stepper segment index ${index}, ` +
+        `but only ${segmentCount} segment(s) are currently rendered — is this a round-trip search?`,
+      );
+    }
+
+    const segment = stepper.locator(SELECTORS.JOURNEY_STEPPER_SEGMENT).nth(index);
+    const pageNumber = segment.locator(SELECTORS.JOURNEY_STEPPER_SEGMENT_NUMBER).first();
+    const [isActive, isCompleted, rawStepText] = await Promise.all([
+      pageNumber.evaluate((el) => el.classList.contains("isActive")),
+      segment.locator(SELECTORS.JOURNEY_STEPPER_SEGMENT_CHECK_ICON).count().then((count) => count > 0),
+      segment.locator(SELECTORS.JOURNEY_STEPPER_SEGMENT_STEP_TEXT).first().textContent({ timeout }),
+    ]);
+
+    return { isActive, isCompleted, stepText: (rawStepText ?? "").replace(/\s+/g, " ").trim() };
   }
 
   /**

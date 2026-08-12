@@ -469,12 +469,14 @@ Then("the journey summary should show the same number of change dots as changes"
 });
 
 // --- Journey selection stepper ---
-Then("the Benerail journey stepper should be visible for the outbound selection", async function () {
-  throw new Error("TODO: implement 'the Benerail journey stepper should be visible for the outbound selection' — assert the step indicator/stepper element is visible during outbound journey selection (see test 68009)");
+Then("the Benerail journey stepper should show the outbound step highlighted and the inbound step default, both with their date and time", async function () {
+  logger.info("Verifying Benerail journey stepper before any leg selection");
+  await BenerailResults.verifyJourneyStepperBeforeSelection(this.page);
 });
 
-Then("the Benerail journey stepper should be visible for the return selection", async function () {
-  throw new Error("TODO: implement 'the Benerail journey stepper should be visible for the return selection' — after selecting outbound, assert the stepper advances and return selection stepper is visible (see test 68009)");
+Then("the Benerail journey stepper should show the outbound step completed and the inbound step highlighted, both with their date and time", async function () {
+  logger.info("Verifying Benerail journey stepper after the outbound leg is selected");
+  await BenerailResults.verifyJourneyStepperAfterOutboundSelection(this.page);
 });
 
 // --- Agreement UI ---
