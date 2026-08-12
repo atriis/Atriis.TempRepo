@@ -235,6 +235,15 @@ function parseOnKeyExpression(expectedText) {
   return { rawValue, typedValue, key };
 }
 
+// JSON APIs often represent numeric/boolean identifiers as strings (e.g. loyalty numbers,
+// postal codes). onKey() type-coerces the expected value for convenience, so comparisons must
+// also accept the equivalent string/number/boolean representation on the actual side.
+function onKeyValuesMatch(actual, typedValue) {
+  if (actual === typedValue) return true;
+  if (typeof actual === typeof typedValue) return false;
+  return String(actual) === String(typedValue);
+}
+
 function escapeRegex(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -521,7 +530,7 @@ const PayloadValidation = {
           if (actual === undefined) {
             throw new Error(`JSON key "${key}" not found in captured ${source} payload for request type "${requestType}"`);
           }
-          if (actual !== typedValue) {
+          if (!onKeyValuesMatch(actual, typedValue)) {
             throw new Error(`JSON key "${key}" expected ${JSON.stringify(typedValue)} but got ${JSON.stringify(actual)} in captured ${source} payload for request type "${requestType}"`);
           }
           logger.info(`onKey matched JSON: key="${key}" value=${JSON.stringify(typedValue)}`);
@@ -553,7 +562,7 @@ const PayloadValidation = {
               }
             }
 
-            if (actualValue !== typedValue) {
+            if (!onKeyValuesMatch(actualValue, typedValue)) {
               throw new Error(`JSON key "${key}" expected ${JSON.stringify(typedValue)} but got ${JSON.stringify(actualValue)} in captured ${source} payload for request type "${requestType}"`);
             }
 
@@ -825,7 +834,7 @@ const PayloadValidation = {
           let parsed;
           try { parsed = JSON.parse(rawPayload); } catch { parsed = null; }
           const actual = parsed !== null ? getByPath(parsed, key) : undefined;
-          if (actual !== undefined && actual === typedValue) {
+          if (actual !== undefined && onKeyValuesMatch(actual, typedValue)) {
             throw new Error(`JSON key "${key}" unexpectedly matched ${JSON.stringify(typedValue)} in captured ${source} payload for request type "${requestType}"`);
           }
           logger.info(`onKey not contains passed for JSON: key="${key}" value=${JSON.stringify(typedValue)}`);
@@ -855,7 +864,7 @@ const PayloadValidation = {
               }
             }
 
-            if (actualValue === typedValue) {
+            if (onKeyValuesMatch(actualValue, typedValue)) {
               throw new Error(`JSON key "${key}" unexpectedly matched ${JSON.stringify(typedValue)} in captured ${source} payload for request type "${requestType}"`);
             }
 

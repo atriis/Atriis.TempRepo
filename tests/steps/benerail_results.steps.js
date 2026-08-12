@@ -336,11 +336,6 @@ When("I select a seat for the Benerail booking", async function () {
   throw new Error("TODO: implement 'I select a seat for the Benerail booking' — open seat selection, pick a seat, confirm selection (see test 62008)");
 });
 
-Then("the trip overview should show the journey details button", async function () {
-  logger.info("Verifying the Journey Details button is visible in the Benerail trip overview");
-  await Cart.verifyJourneyDetailsButtonVisibleInTicketDetails(this.page);
-});
-
 Then("the Benerail ticket should be marked as refundable in the itinerary after booking", async function () {
   throw new Error("TODO: implement 'the Benerail ticket should be marked as refundable in the itinerary after booking' — on the trip overview/itinerary page, assert the Benerail ticket has a refundable indicator (see test 62008)");
 });

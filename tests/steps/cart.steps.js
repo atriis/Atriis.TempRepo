@@ -1565,6 +1565,11 @@ Then('the outbound and inbound Benerail journeys should both be present in the c
   logger.info('Benerail round-trip journeys verified in cart', result);
 });
 
+Then('the trip overview should show the journey details button', async function () {
+  logger.info('Verifying the Journey Details button is visible in the Benerail trip overview');
+  await Cart.verifyJourneyDetailsButtonVisibleInTicketDetails(this.page);
+});
+
 Then("the cart badge should show {string} item", async function (expectedCount) {
   logger.info("Verifying trip-bar cart badge count", { expectedCount });
   await Cart.verifyCartBadgeCount(this.page, Number(expectedCount));
