@@ -45,9 +45,9 @@ Feature: 29785 - Copy trip with eligible products and prevent updating personal 
     When I open the copy trip dialog
     Then the copy trip dialog should show the message "The following items will be copied to a new trip"
     And all products in the copy trip dialog should show status "Pending Booking"
-    # Validate the copied trip contents (the copy opens in a new browser tab)
+    # Validate the copied trip contents. The copy opens in a new browser tab; each "copied trip"
+    # step addresses that tab itself, so the administration checks below stay on this trip's tab.
     When I confirm the copy trip
-    And I work on tab 2
     Then the trip is created successfully with the same flight
     And the copied trip should contain the same hotel
     And the copied trip should contain the same car
