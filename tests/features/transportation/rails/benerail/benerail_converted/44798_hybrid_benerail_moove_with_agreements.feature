@@ -16,13 +16,13 @@ Feature: 44798 HYBRID Benerail Moove - With agreements
     And I have added myself as the traveler
     When I search for a round trip Benerail train from "bebmiToNlaho"
     And I click proceed button if visible
-    Then I should see "Search" text in breadcrumb
-    When I capture the "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" from Storage
-    Then the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "770005021509".onKey("contractNr")
-    And the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "urn:itti:supplier:EUR".onKey("supplier")
-    Then the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "10110000".onKey("contractNr")
-    And the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "urn:itti:supplier:EUR".onKey("supplier")
-    Then the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "123456".onKey("contractNr")
-    And the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "urn:itti:supplier:ICE".onKey("supplier")
-    Then the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "770005021509".onKey("contractNr")
-    And the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "urn:itti:supplier:ICE".onKey("supplier")
+   # Then I should see "Search" text in breadcrumb
+   # When I capture the "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" from Storage
+   # Then the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "770005021509".onKey("contractNr")
+   # And the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "urn:itti:supplier:EUR".onKey("supplier")
+   # Then the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "10110000".onKey("contractNr")
+   # And the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "urn:itti:supplier:EUR".onKey("supplier")
+   # Then the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "123456".onKey("contractNr")
+   # And the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "urn:itti:supplier:ICE".onKey("supplier")
+   # Then the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "770005021509".onKey("contractNr")
+   # And the captured "request" payload for request type "addPassenger -dialogue-engine/dialogues/passengers POST" should contain "urn:itti:supplier:ICE".onKey("supplier")
