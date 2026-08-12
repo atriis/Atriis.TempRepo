@@ -174,6 +174,90 @@ async function clickNextVisibleMonth(page) {
   }
 }
 
+async function clickPrevVisibleMonth(page) {
+  const prevArrow = page.locator(SELECTORS.DATE_PICKER_PREV_MONTH_ARROW).first();
+  await prevArrow.waitFor({ state: "visible", timeout: 10000 });
+  await prevArrow.scrollIntoViewIfNeeded().catch(() => {});
+
+  try {
+    await prevArrow.click({ timeout: 3000 });
+  } catch (error) {
+    if (!(error instanceof Error) || !/not stable|intercepts pointer events|timeout/i.test(error.message)) {
+      throw error;
+    }
+
+    await prevArrow.click({ force: true, timeout: 3000 });
+  }
+}
+
+async function clickPrevVisibleYear(page) {
+  const prevYearArrow = page.locator(SELECTORS.DATE_PICKER_PREV_YEAR_ARROW).first();
+  await prevYearArrow.waitFor({ state: "visible", timeout: 10000 });
+  await prevYearArrow.scrollIntoViewIfNeeded().catch(() => {});
+
+  try {
+    await prevYearArrow.click({ timeout: 3000 });
+  } catch (error) {
+    if (!(error instanceof Error) || !/not stable|intercepts pointer events|timeout/i.test(error.message)) {
+      throw error;
+    }
+
+    await prevYearArrow.click({ force: true, timeout: 3000 });
+  }
+}
+
+/**
+ * Selects a date of birth (a past date) from an already-open single-month date picker that
+ * exposes prev/next YEAR arrows (app-datepicker's showYearArrows prop) in addition to the usual
+ * month arrows — required because DOB pickers must jump back potentially decades, which the
+ * month-by-month `advanceCalendarUntilMonthVisible` strategy (built for near-future booking
+ * dates) cannot do in a reasonable number of steps.
+ *
+ * Typing the date directly into the input is unreliable for these pickers: the visible
+ * placeholder ("DD/MM/YYYY") does not match the format the component actually parses on blur
+ * (e.g. "DD MMM YYYY"), so a typed value can silently fail to commit. Clicking through the
+ * calendar sidesteps that mismatch entirely.
+ *
+ * @param {Object} page - Playwright page instance
+ * @param {string} dateValue - Date of birth, e.g. "20/12/1995" (parsed via parseDateValue)
+ */
+async function selectDateOfBirthWithYearArrows(page, dateValue) {
+  const targetDate = parseDateValue(dateValue);
+
+  const before = await getVisibleSinglePickerMonthAndYear(page);
+  const yearsBack = before.year - targetDate.getFullYear();
+  if (yearsBack < 0) {
+    throw new Error(
+      `[selectDateOfBirthWithYearArrows] Target year ${targetDate.getFullYear()} is after the ` +
+      `currently visible year ${before.year} — a date of birth cannot be in the future.`,
+    );
+  }
+  for (let i = 0; i < yearsBack; i++) {
+    await clickPrevVisibleYear(page);
+  }
+
+  const afterYearNav = await getVisibleSinglePickerMonthAndYear(page);
+  if (afterYearNav.year !== targetDate.getFullYear()) {
+    throw new Error(
+      `[selectDateOfBirthWithYearArrows] After ${yearsBack} prev-year click(s), expected year ` +
+      `${targetDate.getFullYear()} but the picker shows ${afterYearNav.year}.`,
+    );
+  }
+
+  const monthDiff = targetDate.getMonth() - afterYearNav.monthIndex;
+  if (monthDiff > 0) {
+    for (let i = 0; i < monthDiff; i++) {
+      await clickNextVisibleMonth(page);
+    }
+  } else if (monthDiff < 0) {
+    for (let i = 0; i < -monthDiff; i++) {
+      await clickPrevVisibleMonth(page);
+    }
+  }
+
+  await clickDayInVisibleMonth(page, targetDate, 0);
+}
+
 async function advanceCalendarUntilMonthVisible(page, targetDate, maxMonthAdvances = 24) {
   for (let attempt = 0; attempt <= maxMonthAdvances; attempt++) {
     const visibleMonthTableIndex = await getVisibleMonthTableIndex(page, targetDate);
@@ -765,6 +849,9 @@ module.exports = {
   selectNthWeekdayFromNextMonth,
   selectRoundTripDatesOnNthWeekday,
   clickNextVisibleMonth,
+  clickPrevVisibleMonth,
+  clickPrevVisibleYear,
+  selectDateOfBirthWithYearArrows,
   selectDateAfterAdvancingMonths,
   getNextDateExcludingWeekdays,
   advanceCalendarUntilMonthVisible,

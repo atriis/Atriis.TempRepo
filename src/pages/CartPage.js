@@ -3,6 +3,7 @@ const { waitForText } = require("@utils/wait");
 const { parseAmountText } = require("@utils/dom");
 const { getNetworkInterceptor } = require("@utils/networkInterceptor");
 const config = require("@config/config");
+const { SELECTORS: SEARCH_SELECTORS } = require("@pages/SearchPage");
 
 /**
  * Page Object for cart page.
@@ -739,6 +740,18 @@ const SELECTORS = {
   // (inactive el-tab-pane content stays in the DOM, hidden via display:none).
   RAIL_PASSENGER_INFO_EMAIL_INPUT: '.eu-rail-passenger-info p:text-is("Email"):visible + div input',
   RAIL_PASSENGER_INFO_EMAIL_FIELD: '.eu-rail-passenger-info p:text-is("Email"):visible + div .el-input',
+
+  // Rail (Benerail eu-rail) date-of-birth extras section (date-of-birth.vue → <section
+  // class="eu-rail-date-of-birth">), rendered only when the quote's validations require a
+  // passenger DOB. Shares the same extras-layout.vue wrapper as RAIL_PASSENGER_INFO_* above, so
+  // it follows the identical is-clickable/card-title/success-icon.green/.no-border conventions
+  // used across every other extras section in this file (test 33896).
+  RAIL_DATE_OF_BIRTH_SECTION: '.eu-rail-date-of-birth',
+  RAIL_DATE_OF_BIRTH_CARD_TITLE: '.eu-rail-date-of-birth .card-title',
+  RAIL_DATE_OF_BIRTH_EXPAND_BUTTON: '.eu-rail-date-of-birth .is-clickable',
+  RAIL_DATE_OF_BIRTH_INPUT: '.eu-rail-date-of-birth .eu-rail-date-picker input',
+  RAIL_DATE_OF_BIRTH_SAVE_BUTTON: '.eu-rail-date-of-birth .btns .no-border',
+  RAIL_DATE_OF_BIRTH_SUCCESS_ICON: '.eu-rail-date-of-birth .success-icon.green',
 
   // Passenger title (Travelodge extras - passenger-title.vue)
   PASSENGER_TITLE_SECTION: '.passenger-title',
@@ -1510,6 +1523,102 @@ class CartPage {
     const input = this.page.locator(SELECTORS.RAIL_PASSENGER_INFO_EMAIL_INPUT).first();
     await input.waitFor({ state: 'visible', timeout });
     await input.fill('');
+  }
+
+  /**
+   * Opens the rail (Benerail eu-rail) date-of-birth panel (date-of-birth.vue).
+   * @param {number} timeout
+   */
+  async openRailBirthDatePanel(timeout = 15000) {
+    try {
+      const expandButton = this.page.locator(SELECTORS.RAIL_DATE_OF_BIRTH_EXPAND_BUTTON).first();
+      await expandButton.waitFor({ state: 'visible', timeout });
+      await expandButton.click();
+      await this.page.locator(SELECTORS.RAIL_DATE_OF_BIRTH_INPUT).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.openRailBirthDatePanel] Could not open the Benerail birth-date panel ` +
+        `(selector: ${SELECTORS.RAIL_DATE_OF_BIRTH_EXPAND_BUTTON}). The section may not be rendered ` +
+        `for this quote. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns true when the rail birth-date section is marked required (card-title carries the
+   * leading "*" required marker, e.g. "* Birth Date").
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isRailBirthDateSectionRequired(timeout = 15000) {
+    const cardTitle = this.page.locator(SELECTORS.RAIL_DATE_OF_BIRTH_CARD_TITLE).first();
+    await cardTitle.waitFor({ state: 'visible', timeout });
+    const text = (await cardTitle.innerText()).trim();
+    return text.startsWith('*');
+  }
+
+  /**
+   * Opens the rail birth-date calendar popper by clicking the DOB input. Typing directly into
+   * this input is unreliable (its placeholder "DD/MM/YYYY" does not match the format the
+   * component actually parses on blur), so date selection must go through the calendar UI —
+   * see calendar.helper.js's selectDateOfBirthWithYearArrows.
+   * @param {number} timeout
+   */
+  async openRailBirthDateCalendar(timeout = 10000) {
+    try {
+      const dobInput = this.page.locator(SELECTORS.RAIL_DATE_OF_BIRTH_INPUT).first();
+      await dobInput.waitFor({ state: 'visible', timeout });
+      await dobInput.click();
+      await this.page.locator(SEARCH_SELECTORS.DATE_PICKER_PANEL).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.openRailBirthDateCalendar] Could not open the rail birth-date calendar ` +
+        `(selector: ${SELECTORS.RAIL_DATE_OF_BIRTH_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the Save button in the rail birth-date panel.
+   * @param {number} timeout
+   */
+  async clickRailBirthDateSaveButton(timeout = 10000) {
+    const saveButton = this.page.locator(SELECTORS.RAIL_DATE_OF_BIRTH_SAVE_BUTTON).first();
+    try {
+      await saveButton.waitFor({ state: 'visible', timeout });
+      await saveButton.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickRailBirthDateSaveButton] Could not click the rail birth-date "Save" button ` +
+        `(selector: ${SELECTORS.RAIL_DATE_OF_BIRTH_SAVE_BUTTON}). The panel may not be in edit mode. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns true when the rail birth-date green success icon is visible.
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async hasRailBirthDateSuccessIcon(timeout = 10000) {
+    try {
+      await this.page.locator(SELECTORS.RAIL_DATE_OF_BIRTH_SUCCESS_ICON).first().waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Gets the current value of the rail birth-date input.
+   * @param {number} timeout
+   * @returns {Promise<string>}
+   */
+  async getRailBirthDateValue(timeout = 10000) {
+    const dobInput = this.page.locator(SELECTORS.RAIL_DATE_OF_BIRTH_INPUT).first();
+    await dobInput.waitFor({ state: 'visible', timeout });
+    return await dobInput.inputValue();
   }
 
   /**

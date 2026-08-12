@@ -2497,6 +2497,35 @@ When("I add the passenger info email {string} to the passenger {string}", async 
   await Cart.addRailPassengerInfoEmail(this.page, email, passengerName);
 });
 
+// ========================================
+// RAIL DATE OF BIRTH (Benerail eu-rail extras)
+// ========================================
+
+Then("the birth date section should be visible and required in the Benerail cart", async function () {
+  logger.info("Verifying the Benerail birth-date section is visible and required");
+  await Cart.verifyRailBirthDateSectionRequired(this.page);
+});
+
+When("I save the birth date as {string} in the Benerail extras cart", async function (dateValue) {
+  logger.info("Saving the Benerail birth date", { dateValue });
+  await Cart.saveBirthDateInCart(this.page, dateValue);
+});
+
+Then("the birth date should be saved successfully in the Benerail cart by having a green check mark next to it", async function () {
+  logger.info("Verifying the Benerail birth date saved successfully with a green checkmark");
+  await Cart.verifyBirthDateSavedSuccessfully(this.page);
+});
+
+When("I expand the birth date section", async function () {
+  logger.info("Expanding the Benerail birth-date section");
+  await Cart.expandBirthDateSection(this.page);
+});
+
+Then("birth date is {string}", async function (expectedDate) {
+  logger.info("Verifying the Benerail birth date value", { expectedDate });
+  await Cart.verifyBirthDateValue(this.page, expectedDate);
+});
+
 When("I delete {string} corporate user from cart page", async function (travelerName) {
   logger.info("Deleting corporate user from cart page", { travelerName });
   await Cart.removeTravelerFromCartByName(this.page, travelerName);

@@ -436,6 +436,58 @@ const Search = {
   },
 
   /**
+   * Adds a guest traveler with a specific first/last name but NO date of birth. Used for
+   * scenarios covering rail products (e.g. Benerail) that require the DOB to be entered
+   * separately in the cart extras when a passenger's DOB isn't pre-configured (see test 33896).
+   * Otherwise identical to addGuestWithNameAndEmail — same widget/dialog, own randomly
+   * generated email/phone since the caller doesn't need to assert against them.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} firstName
+   * @param {string} lastName
+   * @returns {{ added: boolean, starIconVisible: boolean, selectedTravelerCount: number, guestData: Object }}
+   */
+  async addGuestWithoutDateOfBirth(page, firstName, lastName) {
+    if (!page) throw new Error('[Search.addGuestWithoutDateOfBirth] "page" is required.');
+    if (!firstName || typeof firstName !== 'string') {
+      throw new Error(`[Search.addGuestWithoutDateOfBirth] "firstName" must be a non-empty string, got: ${typeof firstName}`);
+    }
+    if (!lastName || typeof lastName !== 'string') {
+      throw new Error(`[Search.addGuestWithoutDateOfBirth] "lastName" must be a non-empty string, got: ${typeof lastName}`);
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+    const { email, phone } = generateRandomGuestData();
+
+    try {
+      await searchPage.clickAddTravelerButton();
+      await searchPage.clickAddGuestTravelerButton();
+      await searchPage.fillInRandomFirstName(firstName);
+      await searchPage.fillInRandomLastName(lastName);
+      await searchPage.selectGenderMale();
+      await searchPage.fillInRandomEmail(email);
+      await searchPage.fillInRandomPhone(phone);
+      await searchPage.clickAddGuestButton();
+    } catch (err) {
+      throw new Error(
+        `[Search.addGuestWithoutDateOfBirth] Failed to add guest traveler "${firstName} ${lastName}" without a date of birth. Original: ${err.message}`
+      );
+    }
+
+    const starIconVisible = await searchPage.isStarIconVisible();
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
+
+    logger.info('[Search.addGuestWithoutDateOfBirth] Added guest traveler without date of birth', { firstName, lastName });
+
+    return {
+      added: true,
+      starIconVisible,
+      selectedTravelerCount,
+      guestData: { firstName, lastName, dateOfBirth: null, email, phone },
+    };
+  },
+
+  /**
    * Adds a guest traveler with a specific first/last name and user group.
    * Selects "Users Group" in the copy-settings section, then picks the given group
    * before filling in personal details and submitting.

@@ -84,6 +84,11 @@ When("I enable the via station option on the Benerail search form", async functi
   await BenerailSearch.enableViaStationField(this.page);
 });
 
+When("I select {string} from travellers ages dropdown in benerail search", async function (ageLabel) {
+  logger.info("Selecting age category in the Benerail travellers ages dropdown", { ageLabel });
+  await BenerailSearch.selectTravellerAge(this.page, ageLabel);
+});
+
 // ===== TODO STUBS — need DSL/Page implementation =====
 
 Then("the dynamic fields section should be visible in the Benerail search form", async function () {

@@ -353,6 +353,24 @@ const BenerailSearch = {
   },
 
   /**
+   * Selects an age category (e.g. "Youth (15-25)") for the default traveler in the Benerail
+   * search form's travellers-ages dropdown (test 33896).
+   * @param {import('playwright').Page} page
+   * @param {string} ageLabel - Age category label, e.g. "Youth (15-25)"
+   */
+  async selectTravellerAge(page, ageLabel) {
+    if (!page) {
+      throw new Error('[BenerailSearch.selectTravellerAge] "page" is required.');
+    }
+    if (!ageLabel || typeof ageLabel !== 'string') {
+      throw new Error(`[BenerailSearch.selectTravellerAge] "ageLabel" must be a non-empty string, got: ${typeof ageLabel}`);
+    }
+
+    const benerailSearchPage = getPageObject(page, BenerailSearchPage);
+    await benerailSearchPage.selectTravellerAge(ageLabel);
+  },
+
+  /**
    * Types each station-name spelling variant from STATION_AUTOCOMPLETE_CASES into the rail
    * "From" field and records the suggestions the autocomplete actually surfaced for it (test
    * 63183, autocomplete improvements). Returns raw per-case results rather than asserting —

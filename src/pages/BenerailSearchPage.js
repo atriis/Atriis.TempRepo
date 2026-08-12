@@ -20,6 +20,13 @@ const SELECTORS = {
   // SearchPage's TRAVELER_TYPE_SELECT — it's the first (and only) app-select in .stops-cards-container.
   NUMBER_OF_STOPS_SELECT: ".eu-rail-search-inputs .stops-cards-container .app-select .el-select",
 
+  // Per-traveler age category app-select on the search tab itself (eu-rail-search-inputs.vue's
+  // travelers-ages-row, gated by v-if="!isEditingSearch"). The row renders the traveler-count
+  // select first, then one age select per entry in PassengerRailInfos[] — with a single default
+  // traveler and no guest added at search time, index 1 (0-based, via .nth()) is that traveler's
+  // age select. No name/data-testid on the select itself, so it's targeted purely by container class.
+  RAIL_TRAVELLER_AGE_SELECT: ".eu-rail-search-inputs .travelers-ages-row .field.app-column .el-select",
+
   // Redesigned time-picker (app-timepicker, shared with Cars — see CarSearchPage's own copy of
   // this trigger/option set). The `.rail-time-picker` class on eu-rail-search-inputs.vue's
   // <app-timepicker> lands on its root section, so this uniquely scopes to the rail departure
@@ -116,6 +123,34 @@ class BenerailSearchPage {
         `[BenerailSearchPage.selectNumberOfStops] Could not select "${label}" in the Number of Stops ` +
         `field (select: ${SELECTORS.NUMBER_OF_STOPS_SELECT}). The Benerail search form may not be open ` +
         `or the option is unavailable. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Selects an age category (e.g. "Youth (15-25)") for the default traveler on the Benerail
+   * search form's travelers-ages-row. Targets index 1 of RAIL_TRAVELLER_AGE_SELECT — index 0 is
+   * the traveler-count select, index 1 is the first (and, absent an added guest, only) passenger's
+   * age select.
+   * @param {string} ageLabel - Age category label, e.g. "Youth (15-25)"
+   */
+  async selectTravellerAge(ageLabel) {
+    try {
+      const select = this.page.locator(SELECTORS.RAIL_TRAVELLER_AGE_SELECT).nth(1);
+      await select.waitFor({ state: "visible", timeout: 10000 });
+      await select.click({ timeout: 10000 });
+
+      const option = this.page
+        .locator(SEARCH_SELECTORS.TRAVELER_TYPE_OPTION)
+        .filter({ hasText: ageLabel })
+        .first();
+      await option.waitFor({ state: "visible", timeout: 10000 });
+      await option.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[BenerailSearchPage.selectTravellerAge] Could not select "${ageLabel}" in the travellers ages ` +
+        `dropdown (select: ${SELECTORS.RAIL_TRAVELLER_AGE_SELECT}). The Benerail search form may not be ` +
+        `open or the age option is unavailable. Original: ${err.message}`
       );
     }
   }

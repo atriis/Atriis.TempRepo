@@ -58,6 +58,13 @@ const SELECTORS = {
   DATE_PICKER_PANEL: ".el-picker-panel:visible",
   DATE_PICKER_CALENDAR_NEXT_ARROW:
     "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']:visible",
+  // Backward navigation (date-of-birth pickers only need to go back in time). Year arrows only
+  // render when the picker opts into them (app-datepicker's showYearArrows prop adds a
+  // show-year-arrows class to the popper — otherwise .d-arrow-left/.d-arrow-right stay hidden).
+  DATE_PICKER_PREV_MONTH_ARROW:
+    "button.el-picker-panel__icon-btn.arrow-left[aria-label='Previous Month']:visible",
+  DATE_PICKER_PREV_YEAR_ARROW:
+    "button.el-picker-panel__icon-btn.d-arrow-left[aria-label='Previous Year']:visible",
   DATE_PICKER_MONTH_TABLE: "table.el-date-table",
   DATE_PICKER_AVAILABLE_DAY_CELL: "td.available .el-date-table-cell__text",
   DATE_PICKER_TODAY_AVAILABLE_DAY_CELL: "td.available.today .el-date-table-cell__text",

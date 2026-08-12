@@ -162,6 +162,14 @@ Given("I add guest traveller from cart named {string} with email {string}", asyn
   await addGuestWithNameAndEmailStep(this, fullName, email);
 });
 
+Given("I have added a guest passenger without date of birth named {string} {string}", async function (firstName, lastName) {
+  logger.info("Adding guest traveler without date of birth", { firstName, lastName });
+  const result = await Search.addGuestWithoutDateOfBirth(this.page, firstName, lastName);
+  expect(result.added, "Guest traveler should be added").toBe(true);
+  this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
+  this.selectedTravelerCount = result.selectedTravelerCount;
+});
+
 Given("I have added a random guest traveler with middle name {string}", async function (middleName) {
   logger.info("Adding random guest traveler with middle name", { middleName });
   const result = await Search.addRandomGuestWithMiddleName(this.page, middleName);

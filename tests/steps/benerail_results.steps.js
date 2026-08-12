@@ -165,19 +165,6 @@ Then("the time left to book counter should be visible in the Benerail checkout",
   await Cart.verifyTimeLeftToBookCounterVisibleInCheckout(this.page);
 });
 
-// --- Birth Date ---
-Then("the birth date section should be visible and required in the Benerail cart", async function () {
-  throw new Error("TODO: implement 'the birth date section should be visible and required in the Benerail cart' — assert the date-of-birth input section is visible and marked as required for guest travelers in cart (see test 33896)");
-});
-
-When("I save the birth date in the Benerail cart", async function () {
-  throw new Error("TODO: implement 'I save the birth date in the Benerail cart' — fill in a valid date-of-birth for the guest traveler in the cart and click save (see test 33896)");
-});
-
-Then("the birth date should be saved successfully in the Benerail cart", async function () {
-  throw new Error("TODO: implement 'the birth date should be saved successfully in the Benerail cart' — assert that the saved date-of-birth value is properly displayed after saving (see test 33896)");
-});
-
 // --- 1st Class ---
 When("I verify the second result is in 2nd class", async function () {
   throw new Error("TODO: implement 'I verify the second result is in 2nd class' — assert the second Benerail result row shows 2nd class label (see test 52934)");

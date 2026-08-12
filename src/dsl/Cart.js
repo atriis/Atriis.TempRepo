@@ -12,6 +12,7 @@ const ProfilePage = require("@pages/ProfilePage");
 const tripStatus = require("@data/tripStatus.json");
 const config = require("@config/config");
 const BookingErrorHandler = require("@utils/bookingErrorHandler");
+const { selectDateOfBirthWithYearArrows } = require("@utils/calendar.helper");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const { parseAmountText } = require("@utils/dom");
 const { normalizeText, extractDateTokens } = require("@utils/text");
@@ -8963,6 +8964,88 @@ const Cart = {
     expect(isInvalid, 'Expected rail passenger info email field to show a red border (is-danger) after saving with it empty').toBe(true);
 
     logger.info('Rail passenger info email field marked as mandatory (red border)');
+  },
+
+  // ========================================
+  // RAIL DATE OF BIRTH (Benerail eu-rail extras)
+  // ========================================
+
+  /**
+   * Verifies the rail birth-date section is visible and marked as required (leading "*" on the
+   * card-title, e.g. "* Birth Date").
+   * @param {import('playwright').Page} page
+   */
+  async verifyRailBirthDateSectionRequired(page) {
+    if (!page) throw new Error('[Cart.verifyRailBirthDateSectionRequired] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    const isRequired = await cartPage.isRailBirthDateSectionRequired();
+    expect(isRequired, 'Expected the Benerail birth-date section to be visible and marked as required (leading "*")').toBe(true);
+
+    logger.info('Rail birth-date section is visible and required');
+  },
+
+  /**
+   * Expands the rail birth-date panel.
+   * @param {import('playwright').Page} page
+   */
+  async expandBirthDateSection(page) {
+    if (!page) throw new Error('[Cart.expandBirthDateSection] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.openRailBirthDatePanel();
+    logger.info('Expanded rail birth-date section');
+  },
+
+  /**
+   * Fills and saves a date of birth in the rail birth-date extras panel.
+   * @param {import('playwright').Page} page
+   * @param {string} dateValue - Date in "DD/MM/YYYY" format (e.g. "20/12/1995").
+   */
+  async saveBirthDateInCart(page, dateValue) {
+    if (!page) throw new Error('[Cart.saveBirthDateInCart] "page" is required.');
+    if (!dateValue || typeof dateValue !== 'string') {
+      throw new Error(`[Cart.saveBirthDateInCart] "dateValue" must be a non-empty string, got: ${typeof dateValue}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.openRailBirthDatePanel();
+    await cartPage.openRailBirthDateCalendar();
+    await selectDateOfBirthWithYearArrows(page, dateValue);
+    await cartPage.clickRailBirthDateSaveButton();
+    logger.info('Saved rail birth date', { dateValue });
+  },
+
+  /**
+   * Verifies the rail birth date was saved successfully (green checkmark next to the section).
+   * @param {import('playwright').Page} page
+   */
+  async verifyBirthDateSavedSuccessfully(page) {
+    if (!page) throw new Error('[Cart.verifyBirthDateSavedSuccessfully] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    const hasSuccessIcon = await cartPage.hasRailBirthDateSuccessIcon();
+    expect(hasSuccessIcon, 'Expected a green checkmark next to the Benerail birth-date section after saving').toBe(true);
+
+    logger.info('Rail birth date saved successfully with a green checkmark');
+  },
+
+  /**
+   * Verifies the rail birth-date input holds the expected value.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedDate - Expected date in "DD/MM/YYYY" format (e.g. "20/12/1995").
+   */
+  async verifyBirthDateValue(page, expectedDate) {
+    if (!page) throw new Error('[Cart.verifyBirthDateValue] "page" is required.');
+    if (!expectedDate || typeof expectedDate !== 'string') {
+      throw new Error(`[Cart.verifyBirthDateValue] "expectedDate" must be a non-empty string, got: ${typeof expectedDate}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualDate = await cartPage.getRailBirthDateValue();
+    expect(actualDate, `Expected the Benerail birth-date field to show "${expectedDate}", got "${actualDate}"`).toBe(expectedDate);
+
+    logger.info('Verified rail birth date value', { expectedDate });
   },
 
   /**
