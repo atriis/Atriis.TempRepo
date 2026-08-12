@@ -12,7 +12,6 @@ Feature: 40030 - Copy trip for multiple travelers with mixed eligible and non-el
   I want to copy a trip that contains both copy-eligible and non-eligible products
   So that only the eligible products are copied and the non-eligible ones are excluded
 
-  # Bug 82017
   Scenario: Copy a trip with a flight (eligible) and EU rail (not eligible) for two guest travelers
     Given I am logged in as "copytrip@corp.com" booking a new trip
     And I have added a random guest traveler
@@ -33,15 +32,16 @@ Feature: 40030 - Copy trip for multiple travelers with mixed eligible and non-el
     Then the copy trip dialog should show the message "The following items will be copied to a new trip"
     And the copy trip dialog item "Flight" should show status "Pending booking"
     And the copy trip dialog item "EU Rail" should show "This item can not be copied"
-    # Validate the copied trip: flight copied, rail excluded (the copy opens in a new browser tab)
+    # Validate the copied trip: flight copied, rail excluded. The copy opens in a new browser tab;
+    # every "copied trip" step below addresses that tab itself, so no tab switch is needed here.
     When I confirm the copy trip
-    And I work on tab 2
     Then the copied trip should show a to pay amount
     And the copied trip should not contain the EU rail product
     And the trip is created successfully with the same flight
     And the copied trip flight details should match the stored outbound and return details
     # Clean up both trips — the flight is a GDS quote and must not be left behind
+    When I work on the copied trip
     Then I successfully cancel the trip
-    When I work on tab 1
+    When I work on the original trip
     Then the booking status should be "Pending booking"
     And I successfully cancel the trip

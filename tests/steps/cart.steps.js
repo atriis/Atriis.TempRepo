@@ -3115,10 +3115,15 @@ Then("only the {string} quote should be listed in the copy trip dialog", async f
   await Cart.verifyCopyTripDialogListsOnly(this.page, quoteName);
 });
 
-// The copy opens in a new browser tab. This step only confirms and captures it — the scenario then
-// switches with the shared "I work on tab {int}" step, keeping page selection in one place.
+// The copy opens in a new browser tab. Both tabs are captured on the World so the copied-trip
+// assertions below can target the copy by identity — NOT by tab index. Index-based switching is
+// wrong here: "I am logged in as ... booking a new trip" leaves the post-login home tab open at
+// index 0 and opens the trip at index 1, so the copy is index 2 — "I work on tab 2" silently
+// asserted against the ORIGINAL trip (AB#82017 run: the EU-rail exclusion check "failed" on the
+// original, and the checks before it passed for the wrong reason).
 When("I confirm the copy trip", async function () {
   logger.info("Confirming the copy trip");
+  this.originalTripPage = this.page;
   this.copiedTripPage = await Cart.confirmCopyTrip(this.page);
   logger.info("Copied trip is ready", { url: this.copiedTripPage.url() });
 });
@@ -3136,6 +3141,28 @@ function requireCopiedTripPage(world) {
   }
   return world.copiedTripPage;
 }
+
+// Named tab switches for the copy-trip flow. The assertions below address their tab explicitly, so
+// these are only needed by steps that act on whichever trip is active — cancelling each trip in
+// cleanup, checking a booking status. Prefer these over "I work on tab {int}": the tab index of a
+// trip depends on how the session was opened, the identity stored on the World does not.
+When("I work on the copied trip", async function () {
+  const copiedTripPage = requireCopiedTripPage(this);
+  logger.info("Switching to the copied trip tab", { url: copiedTripPage.url() });
+  this.page = copiedTripPage;
+  await this.page.bringToFront();
+});
+
+When("I work on the original trip", async function () {
+  if (!this.originalTripPage) {
+    throw new Error(
+      "No original trip tab on the World. Run \"I confirm the copy trip\" before this step.",
+    );
+  }
+  logger.info("Switching back to the original trip tab", { url: this.originalTripPage.url() });
+  this.page = this.originalTripPage;
+  await this.page.bringToFront();
+});
 
 Then("the copied trip should contain a car quote", async function () {
   logger.info("Verifying the copied trip contains a car quote");
@@ -3162,7 +3189,7 @@ Then("the copied trip should contain the same hotel", async function () {
     throw new Error("No extracted hotel name found. Run 'I extract the hotel name from cart' on the original trip before this step.");
   }
   logger.info("Verifying copied trip contains the same hotel", { hotelName: this.extractedCartHotelName });
-  await Cart.verifyTripHasSameHotelName(this.page, this.extractedCartHotelName);
+  await Cart.verifyTripHasSameHotelName(requireCopiedTripPage(this), this.extractedCartHotelName);
 });
 
 Then("the copied trip should contain the same car", async function () {
@@ -3170,7 +3197,7 @@ Then("the copied trip should contain the same car", async function () {
     throw new Error("No stored car type found. Run 'I store the car type from the cart' on the original trip before this step.");
   }
   logger.info("Verifying copied trip contains the same car", { carType: this.storedCarType });
-  await Cart.verifyTripHasSameCarType(this.page, this.storedCarType);
+  await Cart.verifyTripHasSameCarType(requireCopiedTripPage(this), this.storedCarType);
 });
 
 When("I store the outbound and return flight details", async function () {
@@ -3183,22 +3210,24 @@ Then("the copied trip flight details should match the stored outbound and return
     throw new Error("No stored flight segments found. Run 'I store the outbound and return flight details' on the original trip before this step.");
   }
   logger.info("Verifying copied trip flight segments match the original", { segments: this.storedFlightSegments });
-  await Cart.verifyFlightSegmentDetails(this.page, this.storedFlightSegments);
+  await Cart.verifyFlightSegmentDetails(requireCopiedTripPage(this), this.storedFlightSegments);
 });
 
 Then("the copied trip should not contain the EU rail product", async function () {
   logger.info("Verifying the copied trip excluded the non-copyable EU rail quote");
-  await Cart.verifyTripHasNoEuRailQuote(this.page);
+  await Cart.verifyTripHasNoEuRailQuote(requireCopiedTripPage(this));
 });
 
 Then("the copied trip should show a to pay amount", async function () {
   logger.info("Verifying the copied trip's flight quote shows a to pay amount");
-  await Cart.verifyFlightQuoteShowsToPayAmount(this.page);
+  await Cart.verifyFlightQuoteShowsToPayAmount(requireCopiedTripPage(this));
 });
 
+// Only ever used after "I confirm the copy trip" (40030, 29785), so it targets the copied tab —
+// asserting on the active tab would pass against the original trip, which holds the same flight.
 Then("the trip is created successfully with the same flight", async function () {
   logger.info("Verifying copied trip contains the same flight number", { flightNumber: this.storedFlightNumber });
-  await Cart.verifyTripHasSameFlightNumber(this.page, this.storedFlightNumber);
+  await Cart.verifyTripHasSameFlightNumber(requireCopiedTripPage(this), this.storedFlightNumber);
 });
 
 Then("the ticket details should be visible after booking", async function () {
