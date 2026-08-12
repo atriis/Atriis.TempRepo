@@ -1,5 +1,6 @@
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
+const { toNumber } = require("@utils/numbers");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { BenerailResultsPage } = require("@pages/BenerailResultsPage");
 const Results = require("./Results");
@@ -56,6 +57,20 @@ const DIRECT_COLOR_HEX = "#4caf4e";
 // eu-rail-stepper.ts's getStepperText(): "MMM dd " + the leg's HH:mm/h:mm AM/PM time, e.g.
 // "Jan 05 14:30" or "Jan 05 2:30 PM".
 const STEPPER_DATE_TIME_PATTERN = /[A-Za-z]{3}\s+\d{1,2}\s+\d{1,2}:\d{2}(\s*[AP]M)?/i;
+
+/**
+ * Parses a price-breakdown passenger-row label (eu-rail-price-breakdown.vue, e.g. "2 Adult")
+ * into its traveler count and age-association type.
+ * @param {string} labelText
+ * @returns {{count: number, type: string}}
+ */
+function parsePassengerBreakdownLabel(labelText) {
+  const match = (labelText ?? "").match(/^(\d+)\s+(.+)$/);
+  if (!match) {
+    throw new Error(`Could not parse a traveler count from Benerail price breakdown label: "${labelText}"`);
+  }
+  return { count: Number(match[1]), type: match[2].trim() };
+}
 
 /**
  * Checks whether a journey stepper segment snapshot matches one of its three named states.
@@ -565,6 +580,57 @@ const BenerailResults = {
       waitForStepperSegmentState(benerailResultsPage, 1, "inbound", "active"),
     ]);
     return { outbound, inbound };
+  },
+
+  /**
+   * Hovers the price info icon on the Benerail result card at the given index and verifies its
+   * price breakdown tooltip (eu-rail-price-breakdown.vue): the displayed total must equal
+   * price-per-ticket x traveler count, summed across every passenger-type row — and, when
+   * expectedTravelerCount is given, those rows' counts must add up to it (catches a group
+   * mislabeled with the wrong traveler count) (see test 34821).
+   * @param {import('playwright').Page} page
+   * @param {number} [index=0]
+   * @param {number} [expectedTravelerCount] - Total travelers expected across all rows; omit to
+   *   skip that check and only verify the price math.
+   * @returns {Promise<{rows: Array<{type: string, count: number, pricePerTicket: number}>, total: number}>}
+   * @throws {Error} If the summed per-row subtotals don't match the displayed total, or (when
+   *   expectedTravelerCount is given) the row counts don't add up to it
+   */
+  async verifyTotalPriceReflectsAllTravelers(page, index = 0, expectedTravelerCount) {
+    if (!page) throw new Error("[BenerailResults.verifyTotalPriceReflectsAllTravelers] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    await benerailResultsPage.hoverPriceInfoIconForResultAtIndex(index);
+
+    const rawRows = await benerailResultsPage.getPriceBreakdownPassengerRows();
+    if (!rawRows.length) {
+      throw new Error("[BenerailResults.verifyTotalPriceReflectsAllTravelers] Price breakdown tooltip showed no passenger rows");
+    }
+    const rows = rawRows.map(({ labelText, priceText }) => {
+      const { count, type } = parsePassengerBreakdownLabel(labelText);
+      return { type, count, pricePerTicket: toNumber(priceText, `price per ticket for "${labelText}"`) };
+    });
+
+    const totalText = await benerailResultsPage.getPriceBreakdownTotalText();
+    const total = toNumber(totalText, "price breakdown total");
+
+    const expectedTotal = rows.reduce((sum, row) => sum + row.count * row.pricePerTicket, 0);
+    if (Math.abs(expectedTotal - total) > 0.01) {
+      throw new Error(
+        `[BenerailResults.verifyTotalPriceReflectsAllTravelers] Expected the price breakdown total ` +
+        `(${total.toFixed(2)}) to equal price-per-ticket x traveler count summed across all rows ` +
+        `(${expectedTotal.toFixed(2)}), rows: ${JSON.stringify(rows)}`
+      );
+    }
+
+    const actualTravelerCount = rows.reduce((sum, row) => sum + row.count, 0);
+    if (Number.isInteger(expectedTravelerCount) && actualTravelerCount !== expectedTravelerCount) {
+      throw new Error(
+        `[BenerailResults.verifyTotalPriceReflectsAllTravelers] Expected the price breakdown to cover ` +
+        `${expectedTravelerCount} traveler(s), but its rows add up to ${actualTravelerCount}: ${JSON.stringify(rows)}`
+      );
+    }
+
+    return { rows, total };
   },
 };
 

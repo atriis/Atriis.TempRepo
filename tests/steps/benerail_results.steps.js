@@ -2,7 +2,8 @@ require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
-const { BenerailResults, Cart, FlightResults } = require("@dsl");
+const { BenerailResults, Cart, FlightResults, Results } = require("@dsl");
+const { expectSumToBeEqualWithTolerance } = require("../../src/assertions/numberAssertions");
 const logger = require("@utils/logger").child("BenerailResults");
 
 setDefaultTimeout(120000);
@@ -204,7 +205,41 @@ When("I set the age association for the second traveler", async function () {
 });
 
 Then("the total price should reflect both travelers correctly", async function () {
-  throw new Error("TODO: implement 'the total price should reflect both travelers correctly' — assert the pricing breakdown in results/cart shows correct total for 2 travelers (see test 34821)");
+  logger.info("Verifying the Benerail price breakdown total reflects both travelers correctly");
+  const { total } = await BenerailResults.verifyTotalPriceReflectsAllTravelers(this.page, 0, 2);
+  this.benerailLegPrices = this.benerailLegPrices || [];
+  this.benerailLegPrices.push(total);
+});
+
+When("I extract the Benerail outbound total price for both travelers in results", async function () {
+  const [outboundTotalForBothTravelers] = this.benerailLegPrices || [];
+  if (typeof outboundTotalForBothTravelers !== "number") {
+    throw new Error("[benerail_results.steps] Missing outbound total — expected 'the total price should reflect both travelers correctly' to have run for the outbound leg first");
+  }
+  logger.info("Storing the verified Benerail outbound leg total for both travelers", { outboundTotalForBothTravelers });
+  this.benerailOutboundTotalForBothTravelers = outboundTotalForBothTravelers;
+});
+
+When("I extract the Benerail inbound total price for both travelers in results", async function () {
+  const inboundTotalForBothTravelers = (this.benerailLegPrices || [])[1];
+  if (typeof inboundTotalForBothTravelers !== "number") {
+    throw new Error("[benerail_results.steps] Missing inbound total — expected 'the total price should reflect both travelers correctly' to have run a second time for the inbound leg");
+  }
+  logger.info("Storing the verified Benerail inbound leg total for both travelers", { inboundTotalForBothTravelers });
+  this.benerailInboundTotalForBothTravelers = inboundTotalForBothTravelers;
+});
+
+Then("the total price in cart should equal the sum of the outbound and inbound totals for both travelers", async function () {
+  if (typeof this.benerailOutboundTotalForBothTravelers !== "number" || typeof this.benerailInboundTotalForBothTravelers !== "number") {
+    throw new Error("[benerail_results.steps] Missing outbound/inbound total — expected both 'I extract the Benerail outbound total price for both travelers in results' and 'I extract the Benerail inbound total price for both travelers in results' to have run first");
+  }
+  const cartTotal = await Cart.extractCartTotalPrice(this.page);
+  logger.info("Verifying the Benerail cart total equals outbound + inbound totals for both travelers", {
+    outboundTotalForBothTravelers: this.benerailOutboundTotalForBothTravelers,
+    inboundTotalForBothTravelers: this.benerailInboundTotalForBothTravelers,
+    cartTotal,
+  });
+  expectSumToBeEqualWithTolerance(this.benerailOutboundTotalForBothTravelers, this.benerailInboundTotalForBothTravelers, cartTotal, 0.02, "Benerail cart total");
 });
 
 Then("the booking status should show In Progress or Finalizing", async function () {
@@ -298,7 +333,8 @@ When("I click the rail options button in flight results", async function () {
 });
 
 Then("the first Benerail result Select button should be visible", async function () {
-  throw new Error("TODO: implement 'the first Benerail result Select button should be visible' — after clicking Rail Options, assert the Benerail results are loaded and the first result has a Select button (see test 47148)");
+  logger.info("Verifying the first Benerail result's Select button is visible");
+  await Results.verifySelectButtonVisible(this.page);
 });
 
 // --- Results improvements ---

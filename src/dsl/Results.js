@@ -137,6 +137,20 @@ const Results = {
   },
 
   /**
+   * Verifies the first "Select" button in results is visible, without clicking it.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async verifySelectButtonVisible(page) {
+    if (!page) {
+      throw new Error('[Results.verifySelectButtonVisible] page is required');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await expect(resultsPage.getSelectButton()).toBeVisible();
+  },
+
+  /**
    * Waits for a just-clicked share quote button in results to visually flip to its "Added"
    * state before the next share action runs, avoiding a race with the button's re-render.
    * Generic across products — every screen's share button uses the same underlying

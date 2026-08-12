@@ -78,6 +78,22 @@ const SELECTORS = {
   // getStepperText() renders as the leg's title paragraph's sibling <p> (unclassed) — the date
   // + time text, e.g. "Jan 05 14:30".
   JOURNEY_STEPPER_SEGMENT_STEP_TEXT: "p:not(.page-title)",
+  // eu-rail-preview.vue's el-tooltip trigger over the "From <price>" block — opens
+  // eu-rail-price-breakdown.vue's content. Before "More Options" is expanded, exactly one of
+  // these renders per result card (the main fare's); expanding adds one more per alternative.
+  PRICE_INFO_ICON: ".price-info-icon",
+  // eu-rail-price-breakdown.vue's root — el-tooltip content teleported to the document body, one
+  // per mounted trigger, so :visible narrows to whichever is currently hovered open.
+  PRICE_BREAKDOWN_TOOLTIP: ".price-breakdown-tooltip:visible",
+  // Each priceBreakDownByPtc row (e.g. "2 Adult"); the Total row is a sibling <div> at the same
+  // nesting level under .tooltip-content, distinguished only by its has-text-weight-bold class —
+  // excluding it here avoids relying on fragile nth-child positioning when there's more than one
+  // passenger-type row (e.g. a mixed adult/child age association).
+  PRICE_BREAKDOWN_PASSENGER_ROW: ".tooltip-content > div:not(.has-text-weight-bold)",
+  PRICE_BREAKDOWN_PASSENGER_LABEL: "p.text-gray",
+  PRICE_BREAKDOWN_PASSENGER_PRICE: ".is-justify-content-space-between p:nth-child(2)",
+  PRICE_BREAKDOWN_TOTAL_ROW: ".tooltip-content > div.has-text-weight-bold",
+  PRICE_BREAKDOWN_TOTAL_PRICE: "p:nth-child(2)",
 };
 
 class BenerailResultsPage {
@@ -616,6 +632,60 @@ class BenerailResultsPage {
     if (moreOptionsHandle) {
       await moreOptionsHandle.waitForElementState("hidden", { timeout: 20000 }).catch(() => {});
     }
+  }
+
+  /**
+   * Hovers the price breakdown info icon on the Benerail result card at the given index, opening
+   * eu-rail-price-breakdown.vue's tooltip content. Once a leg is selected, it's shown as its own
+   * separate, condensed RESULT_CARD instance above the list for the leg being picked (a "Change"
+   * button instead of "Select", no is-selected/other state class of its own) — that tile renders
+   * no price-info-icon at all, so filtering candidates down to cards that DO have one skips it
+   * without depending on its other CSS classes (confirmed empirically — see AB#34821 fix notes).
+   * @param {number} [index=0]
+   * @param {number} [timeout=15000]
+   */
+  async hoverPriceInfoIconForResultAtIndex(index = 0, timeout = 15000) {
+    const candidateCards = this.page.locator(SELECTORS.RESULT_CARD).filter({ has: this.page.locator(SELECTORS.PRICE_INFO_ICON) });
+    const card = candidateCards.nth(index);
+    await card.waitFor({ state: "visible", timeout });
+    const infoIcon = card.locator(SELECTORS.PRICE_INFO_ICON).first();
+    await infoIcon.waitFor({ state: "visible", timeout });
+    await infoIcon.hover();
+    await this.page.locator(SELECTORS.PRICE_BREAKDOWN_TOOLTIP).waitFor({ state: "visible", timeout });
+  }
+
+  /**
+   * Reads every passenger-type row (eu-rail-price-breakdown.vue's v-for over
+   * rail.priceBreakDownByPtc) from the currently open price breakdown tooltip: the traveler
+   * count/type label (e.g. "2 Adult") and that group's displayed price-per-ticket.
+   * @param {number} [timeout=10000]
+   * @returns {Promise<Array<{labelText: string, priceText: string}>>}
+   */
+  async getPriceBreakdownPassengerRows(timeout = 10000) {
+    const tooltip = this.page.locator(SELECTORS.PRICE_BREAKDOWN_TOOLTIP);
+    await tooltip.waitFor({ state: "visible", timeout });
+    const rows = tooltip.locator(SELECTORS.PRICE_BREAKDOWN_PASSENGER_ROW);
+    const count = await rows.count();
+    const result = [];
+    for (let index = 0; index < count; index += 1) {
+      const row = rows.nth(index);
+      const labelText = ((await row.locator(SELECTORS.PRICE_BREAKDOWN_PASSENGER_LABEL).textContent()) ?? "").trim();
+      const priceText = ((await row.locator(SELECTORS.PRICE_BREAKDOWN_PASSENGER_PRICE).textContent()) ?? "").trim();
+      result.push({ labelText, priceText });
+    }
+    return result;
+  }
+
+  /**
+   * Reads the "Total" row's price from the currently open price breakdown tooltip.
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getPriceBreakdownTotalText(timeout = 10000) {
+    const tooltip = this.page.locator(SELECTORS.PRICE_BREAKDOWN_TOOLTIP);
+    await tooltip.waitFor({ state: "visible", timeout });
+    const totalPrice = tooltip.locator(SELECTORS.PRICE_BREAKDOWN_TOTAL_ROW).locator(SELECTORS.PRICE_BREAKDOWN_TOTAL_PRICE);
+    return ((await totalPrice.textContent()) ?? "").trim();
   }
 
   /**
