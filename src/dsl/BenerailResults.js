@@ -283,6 +283,34 @@ const BenerailResults = {
     return { raw, minutes: parseTimeOfDayToMinutes(raw) };
   },
 
+  /** Clicks "Show Earlier Departures" on the outbound results and waits for the refresh */
+  async clickShowEarlierDepartures(page) {
+    if (!page) throw new Error("[BenerailResults.clickShowEarlierDepartures] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    await benerailResultsPage.clickShowEarlierDeparturesButton();
+    return { clicked: true };
+  },
+
+  /**
+   * Clicks "Show Earlier Departures" and reads the departure time of the first newly-loaded
+   * earlier result. Unlike "Show Later Departures" (which appends to the end of the list — see
+   * clickLaterAndExtractFirstResultDepartureTime), "Show Earlier Departures" prepends new results
+   * to the start of the outbound list (eu-rail.store.ts's loadEarlierRails → prependRailSegments),
+   * so the first newly-loaded earlier result is always the page's new first result card,
+   * regardless of how many cards were already loaded (see test 62220).
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{raw: string, minutes: number}>}
+   */
+  async clickEarlierAndExtractFirstResultDepartureTime(page) {
+    if (!page) throw new Error("[BenerailResults.clickEarlierAndExtractFirstResultDepartureTime] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const previousCardCount = await benerailResultsPage.getResultCardCount();
+    await BenerailResults.clickShowEarlierDepartures(page);
+    await benerailResultsPage.waitForNewResultCardsAppended(previousCardCount);
+    const raw = await benerailResultsPage.getDepartureTimeTextForResultAtIndex(0);
+    return { raw, minutes: parseTimeOfDayToMinutes(raw) };
+  },
+
   /**
    * Expands "More Options" on the first visible result without selecting a fare.
    */

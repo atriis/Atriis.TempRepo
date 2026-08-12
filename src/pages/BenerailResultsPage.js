@@ -319,6 +319,24 @@ class BenerailResultsPage {
   }
 
   /**
+   * Gets the "Show Earlier Departures" navigation button on Benerail (EU Rail) results.
+   * No data-testid on this control — role-based lookup matches the translated label.
+   * @returns {Locator}
+   */
+  getShowEarlierDeparturesButton() {
+    return this.page.getByRole("button", { name: "Show Earlier Departures" });
+  }
+
+  /** Clicks "Show Earlier Departures" and waits for the outbound results to refresh */
+  async clickShowEarlierDeparturesButton() {
+    const button = this.getShowEarlierDeparturesButton();
+    await button.waitFor({ state: "visible", timeout: 60000 });
+    await button.click();
+    const resultsPage = getPageObject(this.page, ResultsPage);
+    await resultsPage.waitForSelectText();
+  }
+
+  /**
    * Gets the "More Options" toggle for the last visible Benerail (EU Rail) result — expands
    * that result's alternative fares.
    * @returns {Locator}

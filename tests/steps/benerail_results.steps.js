@@ -352,7 +352,15 @@ Then("the train details should be displayed in the Benerail journey details", as
 
 // --- Earlier/Later navigation ---
 Then("the first Benerail result should depart from 06:00 or later", async function () {
-  throw new Error("TODO: implement 'the first Benerail result should depart from 06:00 or later' — assert the first result departure time is >= 06:00 on the initial results page (see test 62220)");
+  const { initial } = this.benerailDepartureTimes || {};
+  if (!initial) {
+    throw new Error("[benerail_results.steps] Missing stored departure time — expected the initial first result departure time to have been extracted first");
+  }
+  logger.info("Verifying the first Benerail result departs from 06:00 or later", { initial: initial.raw });
+  const earliestAllowedMinutes = 6 * 60;
+  if (initial.minutes < earliestAllowedMinutes) {
+    throw new Error(`[benerail_results.steps] Expected the first Benerail result's departure time ("${initial.raw}") to be 06:00 or later`);
+  }
 });
 
 When("I extract the first result departure time", async function () {
@@ -397,6 +405,23 @@ Then("the second Later click should display results later than the first Later c
   logger.info("Verifying the second Later click shows a later departure time than the first Later click", { firstLater: firstLater.raw, secondLater: secondLater.raw });
   if (!(secondLater.minutes > firstLater.minutes)) {
     throw new Error(`Expected the second Later click's departure time ("${secondLater.raw}") to be later than the first Later click's departure time ("${firstLater.raw}")`);
+  }
+});
+
+When("I click Earlier and extract the first result departure time", async function () {
+  logger.info("Clicking Earlier and extracting the first Benerail result departure time");
+  this.benerailDepartureTimes = this.benerailDepartureTimes || {};
+  this.benerailDepartureTimes.earlier = await BenerailResults.clickEarlierAndExtractFirstResultDepartureTime(this.page);
+});
+
+Then("the earlier results departure time should be before the later results time", async function () {
+  const { earlier, firstLater } = this.benerailDepartureTimes || {};
+  if (!earlier || !firstLater) {
+    throw new Error("[benerail_results.steps] Missing stored departure times — expected both the Earlier click and the Later click extractions to have run first");
+  }
+  logger.info("Verifying the Earlier click's departure time is before the Later click's departure time", { earlier: earlier.raw, firstLater: firstLater.raw });
+  if (!(earlier.minutes < firstLater.minutes)) {
+    throw new Error(`[benerail_results.steps] Expected the Earlier click's departure time ("${earlier.raw}") to be before the Later click's departure time ("${firstLater.raw}")`);
   }
 });
 
