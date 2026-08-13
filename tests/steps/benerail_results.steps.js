@@ -26,8 +26,27 @@ When("I add a Benerail round trip to the trip", async function () {
 });
 
 When("I click Show Later Departures on the outbound results", async function () {
-  logger.info("Clicking Show Later Departures on Benerail outbound results");
+  // Recorded before the click so a following "later departure results should be displayed" can
+  // prove new departures actually arrived — the list grows in place, so nothing about the page
+  // after the click distinguishes "loaded more" from "did nothing" on its own.
+  this.benerailResultCountBeforeShowLater = await BenerailResults.getResultCount(this.page);
+  logger.info("Clicking Show Later Departures on Benerail outbound results", {
+    resultCountBeforeClick: this.benerailResultCountBeforeShowLater,
+  });
   await BenerailResults.clickShowLaterDepartures(this.page);
+});
+
+Then("later departure results should be displayed", async function () {
+  if (typeof this.benerailResultCountBeforeShowLater !== "number") {
+    throw new Error(
+      "[benerail_results.steps] Missing the pre-click result count — expected 'I click Show Later " +
+      "Departures on the outbound results' to have run first",
+    );
+  }
+  logger.info("Verifying later departures were added to the Benerail outbound results", {
+    resultCountBeforeClick: this.benerailResultCountBeforeShowLater,
+  });
+  await BenerailResults.verifyLaterDeparturesDisplayed(this.page, this.benerailResultCountBeforeShowLater);
 });
 
 When("I expand more options for the first result", async function () {
@@ -342,8 +361,48 @@ Then("the Benerail results page improvements should be visible", async function 
   throw new Error("TODO: implement 'the Benerail results page improvements should be visible' — assert various UI improvement elements are present on the results page (see test 51524)");
 });
 
-Then("the seat price should not be included in the journey price", async function () {
-  throw new Error("TODO: implement 'the seat price should not be included in the journey price' — assert the displayed journey price does NOT include seat reservation price (see test 51524)");
+Then("the seating price should not be displayed in the Benerail cart summary", async function () {
+  logger.info("Verifying no seating price is shown on the Benerail quote's cart summary line");
+  await Cart.verifySeatingPriceNotDisplayedInTripSummary(this.page);
+});
+
+// --- Cart seating extras ---
+When("I click Benerail seating in extras", async function () {
+  logger.info("Opening the Benerail seating extras section in the cart");
+  const result = await Cart.openRailSeatingExtras(this.page);
+  logger.info("Benerail seating extras section opened", result);
+});
+
+When("I click outbound and inbound seat checkboxes", async function () {
+  logger.info("Selecting a seat on the Benerail outbound and inbound legs");
+  const selectedLegs = await Cart.selectRailSeatsForOutboundAndInbound(this.page);
+  logger.info("Benerail seats selected", selectedLegs);
+});
+
+When("I extract outbound and inbound seat prices", async function () {
+  this.benerailSeatPrices = await Cart.extractRailSeatPrices(this.page);
+  logger.info("Extracted Benerail outbound and inbound seat prices", this.benerailSeatPrices);
+});
+
+When("I select continue without reserving seats", async function () {
+  logger.info("Ticking 'Continue without reserving seats' in the Benerail seating extras");
+  await Cart.selectRailContinueWithoutSeats(this.page);
+});
+
+Then("the seating price in the Benerail cart summary is the sum of outbound and inbound seats", async function () {
+  if (!this.benerailSeatPrices) {
+    throw new Error(
+      "[benerail_results.steps] Missing the per-leg seat prices — expected 'I extract outbound and " +
+      "inbound seat prices' to have run first, while the seating panel was still open",
+    );
+  }
+
+  const { outbound, inbound } = this.benerailSeatPrices;
+  logger.info("Verifying the Benerail cart summary seating price is the sum of both legs", {
+    outbound,
+    inbound,
+  });
+  await Cart.verifyRailSeatingPriceIsSumOfSeats(this.page, outbound, inbound);
 });
 
 Then("the seat selection improvements should be validated in results", async function () {
@@ -508,6 +567,20 @@ Then("the Benerail journey stepper should show the outbound step highlighted and
 Then("the Benerail journey stepper should show the outbound step completed and the inbound step highlighted, both with their date and time", async function () {
   logger.info("Verifying Benerail journey stepper after the outbound leg is selected");
   await BenerailResults.verifyJourneyStepperAfterOutboundSelection(this.page);
+});
+
+Then("the Benerail journey stepper {string} step should show one of the times {string}", async function (leg, allowedTimes) {
+  const expectedTimes = allowedTimes.split(",").map((time) => time.trim()).filter(Boolean);
+  if (!expectedTimes.length) {
+    throw new Error(`[benerail_results.steps] Expected a comma-separated list of times, got: "${allowedTimes}"`);
+  }
+
+  const { stepText, time } = await BenerailResults.getJourneyStepperStepTime(this.page, leg);
+  logger.info("Verifying the Benerail journey stepper step time", { leg, stepText, time, expectedTimes });
+  expect(
+    expectedTimes,
+    `Expected the ${leg} journey stepper step to show one of ${expectedTimes.join(" / ")}, but it shows "${stepText}"`,
+  ).toContain(time);
 });
 
 // --- Agreement UI ---

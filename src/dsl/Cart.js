@@ -18,6 +18,18 @@ const { parseAmountText } = require("@utils/dom");
 const { normalizeText, extractDateTokens } = require("@utils/text");
 const logger = require("@utils/logger").child("Cart-DSL");
 
+// Journey legs of a round-trip rail quote, in the order eu-rail-seats.vue renders them: the API
+// returns the outbound leg first and the return leg second, matching the journey stepper's order.
+const RAIL_SEATING_LEG_INDEXES = [
+  { leg: "outbound", index: 0 },
+  { leg: "inbound", index: 1 },
+];
+// Saving seats fires an async refreshQuotes, so the cart summary's seating row is polled rather
+// than read once.
+const RAIL_SEATING_SUMMARY_POLL_TIMEOUT_MS = 30000;
+// Seat prices are money — compare to 2 decimal places.
+const RAIL_SEATING_PRICE_PRECISION = 2;
+
 /**
  * Cart DSL
  *
@@ -3251,6 +3263,259 @@ const Cart = {
 
     logger.info('Time left to book counter is visible in checkout');
     return { visible: true };
+  },
+
+  /**
+   * Verifies the rail quote's line in the cart trip-summary sidebar shows no "Seating" price —
+   * i.e. no seat reservation cost is folded into the journey price while no seat has been chosen
+   * (test 51524). eu-rail-quote-summary.vue only renders that row when the quote carries a
+   * displaySeatPrice, so the row's absence is the assertion.
+   *
+   * @param {import('playwright').Page} page
+   * @throws {Error} If a seating price row is displayed on the rail quote's summary line
+   */
+  async verifySeatingPriceNotDisplayedInTripSummary(page) {
+    if (!page) {
+      throw new Error('[Cart.verifySeatingPriceNotDisplayedInTripSummary] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const isSeatingPriceDisplayed = await cartPage.isRailQuoteSummarySeatPriceVisible();
+
+    if (isSeatingPriceDisplayed) {
+      const seatingPriceText = await cartPage.getRailQuoteSummarySeatPriceText();
+      throw new Error(
+        `[Cart.verifySeatingPriceNotDisplayedInTripSummary] Expected the rail quote's cart summary line ` +
+        `to show no seating price before any seat was selected, but it shows: "${seatingPriceText}"`,
+      );
+    }
+
+    logger.info('No seating price is displayed on the rail quote cart summary line');
+    return { seatingPriceDisplayed: false };
+  },
+
+  /**
+   * Opens the rail seating extras section on the cart's rail quote and waits for its seat data.
+   * The same trigger reads "Add" before any seat is chosen and "Edit" afterwards, so this one
+   * method serves every pass over the panel (test 51524).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{openButtonLabel: string, segmentCount: number}>}
+   */
+  async openRailSeatingExtras(page) {
+    if (!page) {
+      throw new Error('[Cart.openRailSeatingExtras] "page" is required.');
+    }
+
+    logger.debug('Opening the rail seating extras section');
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      const openButtonLabel = await cartPage.clickRailSeatingExtrasOpenButton();
+      await cartPage.waitForRailSeatingExtrasCard();
+      const segmentCount = await cartPage.getRailSeatingSegmentCount();
+
+      logger.info('Rail seating extras section is open', { openButtonLabel, segmentCount });
+      return { openButtonLabel, segmentCount };
+    } catch (error) {
+      throw new Error(
+        `[Cart.openRailSeatingExtras] Could not open the rail quote's Seating extras section in the ` +
+        `cart. Original: ${error.message}`,
+      );
+    }
+  },
+
+  /**
+   * Ticks one seat on each journey leg of the rail seating panel — outbound (leg 0) and inbound
+   * (leg 1). Each click is verified to have left the checkbox CHECKED: eu-rail-seats.vue's handler
+   * toggles rather than sets, so a click landing on an already-selected seat would silently clear
+   * it and the seating price would never appear (test 51524).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{outbound: {caption: string}, inbound: {caption: string}}>}
+   * @throws {Error} If the journey has fewer than two legs, or a seat did not stay selected
+   */
+  async selectRailSeatsForOutboundAndInbound(page) {
+    if (!page) {
+      throw new Error('[Cart.selectRailSeatsForOutboundAndInbound] "page" is required.');
+    }
+
+    logger.debug('Selecting a seat on the outbound and inbound journey legs');
+    const cartPage = getPageObject(page, CartPage);
+    const segmentCount = await cartPage.getRailSeatingSegmentCount();
+
+    if (segmentCount < RAIL_SEATING_LEG_INDEXES.length) {
+      const captions = [];
+      for (let index = 0; index < segmentCount; index += 1) {
+        captions.push(await cartPage.getRailSeatingSegmentCaption(index));
+      }
+      throw new Error(
+        `[Cart.selectRailSeatsForOutboundAndInbound] Selecting an outbound and an inbound seat needs ` +
+        `two journey legs in the seating panel, but it shows ${segmentCount}` +
+        `${captions.length ? ` (${captions.join(' | ')})` : ''}. This is what a one-way search looks ` +
+        `like here — the scenario must search a round trip.`,
+      );
+    }
+
+    const selectedLegs = {};
+
+    for (const { leg, index } of RAIL_SEATING_LEG_INDEXES) {
+      const caption = await cartPage.getRailSeatingSegmentCaption(index);
+      await cartPage.clickRailSeatingSeatCheckbox(index);
+
+      const isChecked = await cartPage.isRailSeatingSeatCheckboxChecked(index);
+      if (!isChecked) {
+        throw new Error(
+          `[Cart.selectRailSeatsForOutboundAndInbound] The ${leg} seat checkbox ("${caption}") is not ` +
+          `selected after clicking it. eu-rail-seats.vue toggles seat selection, so the seat was most ` +
+          `likely already selected and this click cleared it.`,
+        );
+      }
+
+      selectedLegs[leg] = { caption };
+      logger.info('Seat selected on a journey leg', { leg, caption });
+    }
+
+    return selectedLegs;
+  },
+
+  /**
+   * Reads the per-leg seat prices shown in the rail seating panel and their sum. The display-currency
+   * figure is taken deliberately — that is the currency the cart summary's seating row also uses, so
+   * the two are directly comparable (test 51524).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{outbound: number, inbound: number, total: number, outboundText: string, inboundText: string}>}
+   */
+  async extractRailSeatPrices(page) {
+    if (!page) {
+      throw new Error('[Cart.extractRailSeatPrices] "page" is required.');
+    }
+
+    logger.debug('Reading the outbound and inbound seat prices from the rail seating panel');
+    const cartPage = getPageObject(page, CartPage);
+    const prices = {};
+
+    for (const { leg, index } of RAIL_SEATING_LEG_INDEXES) {
+      const priceText = await cartPage.getRailSeatingSeatDisplayPriceText(index);
+      prices[leg] = parseAmountText(priceText, `${leg} rail seat price`);
+      prices[`${leg}Text`] = priceText;
+    }
+
+    const total = prices.outbound + prices.inbound;
+    const extractedPrices = { ...prices, total };
+
+    logger.info('Extracted the rail seat prices', extractedPrices);
+    return extractedPrices;
+  },
+
+  /**
+   * Verifies the rail quote's cart summary seating row equals the outbound plus inbound seat prices
+   * that were selected (test 51524).
+   *
+   * Polled rather than read once: saving the seats fires an async refreshQuotes, so the summary can
+   * still be showing the pre-save figure for a moment after the save settles.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} outboundSeatPrice - Outbound leg's seat price, in the displayed currency
+   * @param {number} inboundSeatPrice - Inbound leg's seat price, in the displayed currency
+   * @throws {Error} If the summary's seating price never matches the sum of the two legs
+   */
+  async verifyRailSeatingPriceIsSumOfSeats(page, outboundSeatPrice, inboundSeatPrice) {
+    if (!page) {
+      throw new Error('[Cart.verifyRailSeatingPriceIsSumOfSeats] "page" is required.');
+    }
+    if (!Number.isFinite(outboundSeatPrice)) {
+      throw new Error(
+        `[Cart.verifyRailSeatingPriceIsSumOfSeats] "outboundSeatPrice" must be a finite number, got: ` +
+        `${typeof outboundSeatPrice} (${outboundSeatPrice})`,
+      );
+    }
+    if (!Number.isFinite(inboundSeatPrice)) {
+      throw new Error(
+        `[Cart.verifyRailSeatingPriceIsSumOfSeats] "inboundSeatPrice" must be a finite number, got: ` +
+        `${typeof inboundSeatPrice} (${inboundSeatPrice})`,
+      );
+    }
+
+    const expectedTotal = outboundSeatPrice + inboundSeatPrice;
+    logger.debug('Verifying the rail cart summary seating price against the selected seats', {
+      outboundSeatPrice,
+      inboundSeatPrice,
+      expectedTotal,
+    });
+
+    const cartPage = getPageObject(page, CartPage);
+    let lastSeenText = '(the seating row never became visible)';
+
+    await expect
+      .poll(
+        async () => {
+          try {
+            lastSeenText = await cartPage.getRailQuoteSummarySeatPriceText();
+            return parseAmountText(lastSeenText, 'rail cart summary seating price');
+          } catch {
+            return null;
+          }
+        },
+        {
+          timeout: RAIL_SEATING_SUMMARY_POLL_TIMEOUT_MS,
+          message:
+            `[Cart.verifyRailSeatingPriceIsSumOfSeats] The rail quote's cart summary seating price ` +
+            `never settled on the sum of the selected seats. Expected ${expectedTotal} ` +
+            `(outbound ${outboundSeatPrice} + inbound ${inboundSeatPrice}); the summary last showed ` +
+            `"${lastSeenText}".`,
+        },
+      )
+      .toBeCloseTo(expectedTotal, RAIL_SEATING_PRICE_PRECISION);
+
+    logger.info('The rail cart summary seating price equals the outbound plus inbound seat prices', {
+      outboundSeatPrice,
+      inboundSeatPrice,
+      expectedTotal,
+      summaryText: lastSeenText,
+    });
+    return { expectedTotal, summaryText: lastSeenText };
+  },
+
+  /**
+   * Ticks "Continue without reserving seats" in the rail seating panel. This is the app's own way to
+   * drop every reserved seat: it clears each selected seat AND is the only thing that re-enables
+   * Save once nothing is selected (canSaveMooveSeats in eu-rail-seats.ts). Both effects are asserted
+   * here so a no-op fails on the spot rather than as a confusing price assertion later (test 51524).
+   *
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the checkbox did not tick, or Save stayed disabled afterwards
+   */
+  async selectRailContinueWithoutSeats(page) {
+    if (!page) {
+      throw new Error('[Cart.selectRailContinueWithoutSeats] "page" is required.');
+    }
+
+    logger.debug('Ticking "Continue without reserving seats" in the rail seating panel');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickRailSeatingContinueWithoutSeatsCheckbox();
+
+    const isChecked = await cartPage.isRailSeatingContinueWithoutSeatsChecked();
+    if (!isChecked) {
+      throw new Error(
+        '[Cart.selectRailContinueWithoutSeats] The "Continue without reserving seats" checkbox is not ' +
+        'ticked after clicking it, so the reserved seats have not been dropped.',
+      );
+    }
+
+    const isSaveEnabled = await cartPage.isRailSeatingSaveButtonEnabled();
+    if (!isSaveEnabled) {
+      throw new Error(
+        '[Cart.selectRailContinueWithoutSeats] "Continue without reserving seats" is ticked but the ' +
+        'rail seating panel\'s Save button is still disabled, so the seats cannot be removed. ' +
+        'eu-rail-seats.ts enables Save via canSaveMooveSeats once this box is ticked — the app is not ' +
+        'reacting to the change.',
+      );
+    }
+
+    logger.info('"Continue without reserving seats" is ticked and Save is enabled');
+    return { continueWithoutSeats: true, saveEnabled: true };
   },
 
   /**

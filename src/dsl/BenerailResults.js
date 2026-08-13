@@ -58,6 +58,14 @@ const DIRECT_COLOR_HEX = "#4caf4e";
 // "Jan 05 14:30" or "Jan 05 2:30 PM".
 const STEPPER_DATE_TIME_PATTERN = /[A-Za-z]{3}\s+\d{1,2}\s+\d{1,2}:\d{2}(\s*[AP]M)?/i;
 
+// The time half of that same text — the date prefix is fixed-width but the time is what the
+// search was actually run for, so it is pulled off the end in either notation.
+const STEPPER_TIME_PATTERN = /(\d{1,2}:\d{2}(?:\s*[AP]M)?)\s*$/i;
+
+// eu-rail-stepper.ts pushes the outbound leg first and the inbound/return leg second (the latter
+// only when the search carries a return date — i.e. only on a round trip).
+const STEPPER_LEG_INDEXES = { outbound: 0, inbound: 1 };
+
 /**
  * Parses a price-breakdown passenger-row label (eu-rail-price-breakdown.vue, e.g. "2 Adult")
  * into its traveler count and age-association type.
@@ -189,6 +197,41 @@ const BenerailResults = {
     const benerailResultsPage = getPageObject(page, BenerailResultsPage);
     await benerailResultsPage.clickShowLaterDeparturesButton();
     return { clicked: true };
+  },
+
+  /**
+   * Counts the Benerail result cards currently rendered — the baseline to read before clicking
+   * "Show Later Departures", so verifyLaterDeparturesDisplayed has something to compare against.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>}
+   */
+  async getResultCount(page) {
+    if (!page) throw new Error("[BenerailResults.getResultCount] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    return benerailResultsPage.getResultCardCount();
+  },
+
+  /**
+   * Verifies "Show Later Departures" actually opened further departures. The outbound list grows
+   * in place (eu-rail.store.ts's loadLaterRails -> appendRailSegments), so the "Select" text the
+   * click itself waits on is present before and after and proves nothing — only a grown card
+   * count proves the later results arrived (test 51524).
+   * @param {import('playwright').Page} page
+   * @param {number} previousCardCount - Result-card count read before the click
+   */
+  async verifyLaterDeparturesDisplayed(page, previousCardCount) {
+    if (!page) throw new Error("[BenerailResults.verifyLaterDeparturesDisplayed] page is required");
+    if (!Number.isInteger(previousCardCount) || previousCardCount < 0) {
+      throw new Error(
+        `[BenerailResults.verifyLaterDeparturesDisplayed] "previousCardCount" must be a non-negative ` +
+        `integer, got: ${typeof previousCardCount} (${previousCardCount})`,
+      );
+    }
+
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    await benerailResultsPage.waitForNewResultCardsAppended(previousCardCount);
+    const currentCardCount = await benerailResultsPage.getResultCardCount();
+    return { previousCardCount, currentCardCount };
   },
 
   /**
@@ -580,6 +623,38 @@ const BenerailResults = {
       waitForStepperSegmentState(benerailResultsPage, 1, "inbound", "active"),
     ]);
     return { outbound, inbound };
+  },
+
+  /**
+   * Reads the time shown on one leg of the journey stepper (eu-rail-stepper.vue). The stepper
+   * echoes the search's own DepartTime/ReturnTime rather than any result's departure — so this is
+   * the time band the results were requested for, which is what test 51524 pins down.
+   * @param {import('playwright').Page} page
+   * @param {"outbound"|"inbound"} leg
+   * @returns {Promise<{stepText: string, time: string}>} The full step text and just its time
+   */
+  async getJourneyStepperStepTime(page, leg) {
+    if (!page) throw new Error("[BenerailResults.getJourneyStepperStepTime] page is required");
+
+    const index = STEPPER_LEG_INDEXES[leg];
+    if (index === undefined) {
+      throw new Error(
+        `[BenerailResults.getJourneyStepperStepTime] "leg" must be one of ` +
+        `${Object.keys(STEPPER_LEG_INDEXES).join(", ")}, got: ${leg}`,
+      );
+    }
+
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const { stepText } = await benerailResultsPage.getJourneyStepperSegmentState(index);
+    const match = stepText.match(STEPPER_TIME_PATTERN);
+    if (!match) {
+      throw new Error(
+        `[BenerailResults.getJourneyStepperStepTime] Could not read a time from the ${leg} journey ` +
+        `stepper step, which shows: "${stepText}"`,
+      );
+    }
+
+    return { stepText, time: match[1].replace(/\s+/g, " ").trim() };
   },
 
   /**

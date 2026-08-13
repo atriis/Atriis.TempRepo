@@ -515,6 +515,51 @@ const SELECTORS = {
   // this pinpoints the flight quote's icon vs. the hotel quote's icon rather than by position.
   FLIGHT_QUOTE_SUMMARY_ICON: '.quote-summary-list .icon-img-wrapper .icon-img.flight',
   HOTEL_QUOTE_SUMMARY_ICON: '.quote-summary-list .icon-img-wrapper .icon-img.hotel',
+  // The rail quote's own line in that same sidebar (eu-rail-quote-summary.vue, mounted by
+  // general-quote-summary.vue for Products.Rail). Anchored on its product icon rather than a
+  // position, so it still resolves in a cart holding other products.
+  RAIL_QUOTE_SUMMARY_ITEM: '.quote-summary-list .quote-item:has(.icon-img.rail)',
+  // The "Seating" row inside that rail line. eu-rail-quote-summary.vue renders it only when the
+  // quote carries a seat price (`v-if="!!quote.pricings[0].displaySeatPrice"`), so its absence is
+  // what proves no seat reservation cost has been folded into the quote price (test 51524).
+  RAIL_QUOTE_SUMMARY_SEAT_PRICE: '.quote-summary-list .quote-item:has(.icon-img.rail) .seat-price',
+
+  // ===== RAIL SEATING EXTRAS (eu-rail-seats.vue) =====
+  // Rail seats are their OWN extras component, not the flight `.flight-seating` one — none of the
+  // SEATING_* / seat-map selectors above apply here. Every selector below is rooted on the
+  // component's own `<section class="seats">`, which is the only `class="seats"` in Atriis.OBT and
+  // so identifies the section outright. :visible throughout — responsive layouts render hidden
+  // duplicates of extras rows.
+  // Add / Edit / View trigger on the collapsed row (extras-layout.vue renders exactly one of the
+  // three depending on hasValue/isPending/isViewMode). Matched by class, never by label: the same
+  // step opens the panel as "Add" before any seat is chosen and as "Edit" afterwards.
+  RAIL_SEATING_EXTRAS_OPEN_BUTTON: '.seats:visible .extras-layout .extra .extra__btns .is-clickable',
+  // The expanded panel (eu-rail-seats.vue el-card.extras-card)
+  RAIL_SEATING_EXTRAS_CARD: '.seats:visible .extras-card',
+  // Shown in place of the panel body while euRailService.getSeats is in flight (eu-rail-seats.vue
+  // `v-else` branch) — must be gone before any seat row is read.
+  RAIL_SEATING_LOADING_SKELETON: '.seats:visible .el-skeleton',
+  // One <section> per journey leg (`v-for="(segment, segmentIdx) in seats"`). The API returns the
+  // outbound leg at index 0 and the return leg at index 1, matching the journey stepper's order.
+  RAIL_SEATING_SEGMENT: '.seats:visible .extras-card .control > section',
+  // Leg heading inside a segment (segment.header) — relative to RAIL_SEATING_SEGMENT
+  RAIL_SEATING_SEGMENT_CAPTION: '.seats-caption',
+  // A selectable seat's checkbox inside a segment — relative to RAIL_SEATING_SEGMENT. The
+  // `.seats-list` class is what separates these from the "Continue without reserving seats"
+  // checkbox, which sits in the same card without it.
+  RAIL_SEATING_SEAT_CHECKBOX: '.el-checkbox.seats-list',
+  // A seat's price spans — relative to RAIL_SEATING_SEGMENT. eu-rail-seats.vue renders TWO: the
+  // first is the display-currency amount (what the cart summary's seating row also shows), the
+  // second is the original-currency "( ... ) - per Traveller" figure. Always take .first().
+  RAIL_SEATING_SEAT_DISPLAY_PRICE: '.el-checkbox.seats-list .price',
+  // "Continue without reserving seats" (euRail.continueWithoutSeats). Ticking it clears every
+  // selected seat AND is the only thing that re-enables Save once nothing is selected
+  // (canSaveMooveSeats in eu-rail-seats.ts). Identified as the card's non-seat checkbox.
+  RAIL_SEATING_NO_SEATS_CHECKBOX: '.seats:visible .extras-card .el-checkbox:not(.seats-list)',
+  // Save scoped to the rail seating panel (app-btn type="primary" class="no-border"). The feature
+  // clicks Save through the shared cart step; this exists to report the button's enabled state,
+  // which is the difference between "save did nothing" and "save failed".
+  RAIL_SEATING_SAVE_BUTTON: '.seats:visible .extras-card .btns .no-border',
 
   // Timed quote badge — appears on quotes with a limited time window
   // (flight-timed-quote.vue / app-timed-quote.vue both render `.timed-quote-badge`)
@@ -8314,6 +8359,275 @@ class CartPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Checks whether the rail quote's line in the cart trip-summary sidebar shows a "Seating" price
+   * row. Waits for the rail line itself first, so a `false` here means "the rail quote is on
+   * screen and carries no seating price" rather than "the sidebar had not rendered yet".
+   * @param {number} [timeout=30000] - Max wait for the rail quote line to render
+   * @param {number} [seatPriceTimeout=5000] - How long to give the seating row to appear
+   * @returns {Promise<boolean>}
+   */
+  async isRailQuoteSummarySeatPriceVisible(timeout = 30000, seatPriceTimeout = 5000) {
+    const railQuoteLine = this.page.locator(SELECTORS.RAIL_QUOTE_SUMMARY_ITEM).first();
+    await railQuoteLine.waitFor({ state: 'visible', timeout });
+    await railQuoteLine.scrollIntoViewIfNeeded();
+
+    try {
+      await this.page
+        .locator(SELECTORS.RAIL_QUOTE_SUMMARY_SEAT_PRICE)
+        .first()
+        .waitFor({ state: 'visible', timeout: seatPriceTimeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Reads the "Seating" row's text from the rail quote's cart trip-summary line, e.g.
+   * "Seating €9.80" — used to report what was actually displayed when it should not have been.
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getRailQuoteSummarySeatPriceText(timeout = 10000) {
+    const seatPriceRow = this.page.locator(SELECTORS.RAIL_QUOTE_SUMMARY_SEAT_PRICE).first();
+    await seatPriceRow.waitFor({ state: 'visible', timeout });
+    return (await seatPriceRow.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  // ===== RAIL SEATING EXTRAS (eu-rail-seats.vue) =====
+
+  /**
+   * Clicks the rail seating extras row's Add/Edit/View trigger to expand the panel.
+   * @param {number} [timeout=10000] - Max wait for the trigger to render
+   * @returns {Promise<string>} The trigger's label, so callers can report which state it was in
+   */
+  async clickRailSeatingExtrasOpenButton(timeout = 10000) {
+    const openButton = this.page.locator(SELECTORS.RAIL_SEATING_EXTRAS_OPEN_BUTTON).first();
+
+    try {
+      await openButton.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.clickRailSeatingExtrasOpenButton] The rail seating extras row's Add/Edit/View ` +
+        `trigger did not appear within ${timeout}ms. The Seating section only renders for suppliers ` +
+        `offering seats (eu-rail-seats.vue requires isPaidSeatsAvailable / isBeneMooveRail / ` +
+        `isDistribusion), so the quote in the cart may not offer seat selection at all. ` +
+        `Original: ${error.message}`,
+      );
+    }
+
+    const label = (await openButton.innerText()).replace(/\s+/g, ' ').trim();
+    await openButton.scrollIntoViewIfNeeded();
+    await openButton.click();
+    return label;
+  }
+
+  /**
+   * Waits for the expanded rail seating panel to be ready to read — the card visible and the
+   * loading skeleton gone, so a seat row that has not loaded yet is never mistaken for absent.
+   * @param {number} [timeout=30000] - Max wait for the panel and its seat data
+   * @returns {Promise<void>}
+   */
+  async waitForRailSeatingExtrasCard(timeout = 30000) {
+    try {
+      await this.page
+        .locator(SELECTORS.RAIL_SEATING_EXTRAS_CARD)
+        .first()
+        .waitFor({ state: 'visible', timeout });
+      await this.page
+        .locator(SELECTORS.RAIL_SEATING_LOADING_SKELETON)
+        .first()
+        .waitFor({ state: 'hidden', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.waitForRailSeatingExtrasCard] The rail seating panel did not finish opening ` +
+        `within ${timeout}ms. Either the click did not expand the section or euRailService.getSeats ` +
+        `never resolved, leaving the loading skeleton in place. Original: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Counts the journey-leg segments rendered inside the expanded rail seating panel.
+   * @returns {Promise<number>}
+   */
+  async getRailSeatingSegmentCount() {
+    return this.page.locator(SELECTORS.RAIL_SEATING_SEGMENT).count();
+  }
+
+  /**
+   * Returns the segment locator for one journey leg, validating the index against what is on
+   * screen so an out-of-range leg reports the real segment count instead of timing out later.
+   * @param {number} segmentIndex - 0 = outbound, 1 = inbound
+   * @returns {Promise<import('playwright').Locator>}
+   */
+  async getRailSeatingSegmentLocator(segmentIndex) {
+    if (!Number.isInteger(segmentIndex) || segmentIndex < 0) {
+      throw new Error(
+        `[CartPage.getRailSeatingSegmentLocator] "segmentIndex" must be a non-negative integer, got: ` +
+        `${typeof segmentIndex} (${segmentIndex})`,
+      );
+    }
+
+    const segmentCount = await this.getRailSeatingSegmentCount();
+    if (segmentCount === 0) {
+      throw new Error(
+        `[CartPage.getRailSeatingSegmentLocator] Requested journey-leg segment ${segmentIndex} but the ` +
+        `rail seating panel shows no legs at all, so it is not open yet — waitForRailSeatingExtrasCard ` +
+        `must succeed first.`,
+      );
+    }
+    if (segmentIndex >= segmentCount) {
+      throw new Error(
+        `[CartPage.getRailSeatingSegmentLocator] Requested journey-leg segment ${segmentIndex} but the ` +
+        `rail seating panel renders only ${segmentCount}. A one-way journey has a single leg.`,
+      );
+    }
+
+    return this.page.locator(SELECTORS.RAIL_SEATING_SEGMENT).nth(segmentIndex);
+  }
+
+  /**
+   * Reads a journey leg's heading text (segment.header) from the rail seating panel.
+   * @param {number} segmentIndex - 0 = outbound, 1 = inbound
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getRailSeatingSegmentCaption(segmentIndex, timeout = 10000) {
+    const segment = await this.getRailSeatingSegmentLocator(segmentIndex);
+    const caption = segment.locator(SELECTORS.RAIL_SEATING_SEGMENT_CAPTION).first();
+
+    try {
+      await caption.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.getRailSeatingSegmentCaption] Journey-leg segment ${segmentIndex} has no leg ` +
+        `heading after ${timeout}ms, so the seating panel is not laid out as expected. ` +
+        `Original: ${error.message}`,
+      );
+    }
+
+    return (await caption.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Clicks the first selectable seat checkbox within one journey leg.
+   * @param {number} segmentIndex - 0 = outbound, 1 = inbound
+   * @param {number} [timeout=10000]
+   * @returns {Promise<void>}
+   */
+  async clickRailSeatingSeatCheckbox(segmentIndex, timeout = 10000) {
+    const segment = await this.getRailSeatingSegmentLocator(segmentIndex);
+    const checkbox = segment.locator(SELECTORS.RAIL_SEATING_SEAT_CHECKBOX).first();
+
+    try {
+      await checkbox.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.clickRailSeatingSeatCheckbox] Journey-leg segment ${segmentIndex} offers no ` +
+        `selectable seat checkbox after ${timeout}ms. eu-rail-seats.vue only renders one when the ` +
+        `seat is paid and carries a possibleReservation — this leg may show "Seats not offered" or ` +
+        `an automatically-assigned seat instead. Original: ${error.message}`,
+      );
+    }
+
+    await checkbox.scrollIntoViewIfNeeded();
+    await checkbox.click();
+  }
+
+  /**
+   * Reports whether the first seat checkbox in one journey leg is currently ticked.
+   * Element Plus puts `is-checked` on the `.el-checkbox` root.
+   * @param {number} segmentIndex - 0 = outbound, 1 = inbound
+   * @returns {Promise<boolean>}
+   */
+  async isRailSeatingSeatCheckboxChecked(segmentIndex) {
+    const segment = await this.getRailSeatingSegmentLocator(segmentIndex);
+    const checkbox = segment.locator(SELECTORS.RAIL_SEATING_SEAT_CHECKBOX).first();
+    const classes = (await checkbox.getAttribute('class')) || '';
+    return classes.includes('is-checked');
+  }
+
+  /**
+   * Reads a seat's display-currency price text from one journey leg, e.g. "€9.80".
+   * @param {number} segmentIndex - 0 = outbound, 1 = inbound
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getRailSeatingSeatDisplayPriceText(segmentIndex, timeout = 10000) {
+    const segment = await this.getRailSeatingSegmentLocator(segmentIndex);
+    const displayPrice = segment.locator(SELECTORS.RAIL_SEATING_SEAT_DISPLAY_PRICE).first();
+
+    try {
+      await displayPrice.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.getRailSeatingSeatDisplayPriceText] No seat price is displayed for journey-leg ` +
+        `segment ${segmentIndex} after ${timeout}ms, so this leg's seat is not a priced, selectable ` +
+        `one. Original: ${error.message}`,
+      );
+    }
+
+    return (await displayPrice.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Clicks the "Continue without reserving seats" checkbox in the rail seating panel.
+   * @param {number} [timeout=10000]
+   * @returns {Promise<void>}
+   */
+  async clickRailSeatingContinueWithoutSeatsCheckbox(timeout = 10000) {
+    const checkbox = this.page.locator(SELECTORS.RAIL_SEATING_NO_SEATS_CHECKBOX).first();
+
+    try {
+      await checkbox.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.clickRailSeatingContinueWithoutSeatsCheckbox] The "Continue without reserving ` +
+        `seats" checkbox did not appear within ${timeout}ms. eu-rail-seats.vue renders it only when ` +
+        `isPaidSeatsAvailable is true, so this quote may not offer paid seats. ` +
+        `Original: ${error.message}`,
+      );
+    }
+
+    await checkbox.scrollIntoViewIfNeeded();
+    await checkbox.click();
+  }
+
+  /**
+   * Reports whether "Continue without reserving seats" is currently ticked.
+   * @returns {Promise<boolean>}
+   */
+  async isRailSeatingContinueWithoutSeatsChecked() {
+    const checkbox = this.page.locator(SELECTORS.RAIL_SEATING_NO_SEATS_CHECKBOX).first();
+    const classes = (await checkbox.getAttribute('class')) || '';
+    return classes.includes('is-checked');
+  }
+
+  /**
+   * Reports whether the rail seating panel's own Save button is enabled. eu-rail-seats.vue disables
+   * it whenever nothing is selected and paid seats are available (canSaveMooveSeats), which is the
+   * difference between a save that failed and a save that was never possible.
+   * @param {number} [timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isRailSeatingSaveButtonEnabled(timeout = 10000) {
+    const saveButton = this.page.locator(SELECTORS.RAIL_SEATING_SAVE_BUTTON).first();
+
+    try {
+      await saveButton.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.isRailSeatingSaveButtonEnabled] The rail seating panel's Save button is not ` +
+        `visible after ${timeout}ms — the panel is either closed or offers no saveable seats ` +
+        `(eu-rail-seats.vue renders Save only when hasAnySeats). Original: ${error.message}`,
+      );
+    }
+
+    return saveButton.isEnabled();
   }
 
   // ===== SEATING ICON =====
