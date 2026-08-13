@@ -17,6 +17,7 @@ const {
   expectSumToBeEqualWithTolerance,
 } = require("../../src/assertions/numberAssertions");
 const { extractPriceFromLocation } = require("@utils/priceExtraction");
+const { escapeRegex } = require("@utils/text");
 
 setDefaultTimeout(120000);
 
@@ -1375,6 +1376,60 @@ Then("the countdown tooltip shows the message {string}", async function (expecte
   logger.info("Verifying the countdown tooltip message", { expectedMessage });
   expect(this.countdownTooltipMessage).toBe(expectedMessage);
 });
+
+// Range-checked variant of the step above, for tooltips read after the quote has started ageing.
+// The tooltip embeds the LIVE countdown, not the static TTL: app-timed-cart.vue derives the
+// remaining M:SS from the server's quote.expires, so a 20-minute window already reads 19:5x by
+// the time the badge is hovered (add-to-trip -> status check -> hover costs seconds). Pinning a
+// literal "20:00" can therefore only pass inside the first second of the quote's life.
+// The scenario writes the sentence with an MM:SS placeholder so the wording is still asserted
+// verbatim -- which is what makes this an expiry check: the live countdown and the "Cart expired"
+// message share a container and class, so a presence-only read goes green on an expired quote.
+const COUNTDOWN_PLACEHOLDER = "MM:SS";
+
+Then(
+  "the countdown tooltip shows the message {string} with between {int} and {int} minutes remaining",
+  async function (expectedTemplate, minMinutes, maxMinutes) {
+    logger.info("Verifying the countdown tooltip message and remaining window", {
+      expectedTemplate,
+      minMinutes,
+      maxMinutes,
+    });
+
+    const [head, tail, ...extra] = expectedTemplate.split(COUNTDOWN_PLACEHOLDER);
+    if (tail === undefined || extra.length > 0) {
+      throw new Error(
+        `[cart.steps] The expected tooltip message must contain exactly one "${COUNTDOWN_PLACEHOLDER}" ` +
+        `placeholder marking where the live countdown is rendered, but got: "${expectedTemplate}"`,
+      );
+    }
+
+    const pattern = new RegExp(`^${escapeRegex(head)}(\\d{1,2}):([0-5]\\d)${escapeRegex(tail)}$`);
+    const match = (this.countdownTooltipMessage ?? "").match(pattern);
+    if (!match) {
+      throw new Error(
+        `[cart.steps] Expected the countdown tooltip to read "${expectedTemplate}" ` +
+        `(with ${COUNTDOWN_PLACEHOLDER} standing in for the live countdown), but it read: ` +
+        `"${this.countdownTooltipMessage}". An "Expired"/"Cart expired" wording here means the quote ` +
+        `ran out before the clock was hovered.`,
+      );
+    }
+
+    const minutes = Number(match[1]);
+    if (minutes < minMinutes || minutes > maxMinutes) {
+      throw new Error(
+        `[cart.steps] The countdown tooltip showed ${match[1]}:${match[2]} (${minutes} min), outside the ` +
+        `expected ${minMinutes}-${maxMinutes} minute window. The window comes from the supplier's quote ` +
+        `expiry, so a lower value means the quote was already ageing when the clock was hovered.`,
+      );
+    }
+
+    logger.info("Countdown tooltip message and remaining window verified", {
+      countdown: `${match[1]}:${match[2]}`,
+      minutes,
+    });
+  },
+);
 
 When("I add a special request with text {string}", async function (text) {
   logger.info(`Adding special request: "${text}"`);
