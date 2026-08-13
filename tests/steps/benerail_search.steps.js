@@ -14,6 +14,14 @@ When("I search for a one way Benerail train from {string}", async function (rout
   await BenerailSearch.searchBenerailOneWay(this.page, routeKey);
 });
 
+// Weekday-anchored departure date instead of the default "Nth available date" — same phrasing as
+// the flights equivalent ("...on the {int} {string} of next month"), for scenarios that need a
+// predictable mid-month departure so the expected carrier/fare inventory is stable (test 62008).
+When("I search for a one way Benerail train from {string} on the {int} {string} of next month", async function (routeKey, nth, dayOfWeek) {
+  logger.info("Searching for one-way Benerail train on a specific weekday of next month", { routeKey, nth, dayOfWeek });
+  await BenerailSearch.searchBenerailOneWayOnNthWeekday(this.page, routeKey, dayOfWeek, nth);
+});
+
 When("I search direct only option for a one way Benerail train from {string}", async function (routeKey) {
   logger.info("Searching for a direct-only one-way Benerail train", { routeKey });
   await BenerailSearch.searchBenerailOneWay(this.page, routeKey, { numberOfStops: "Direct Only" });

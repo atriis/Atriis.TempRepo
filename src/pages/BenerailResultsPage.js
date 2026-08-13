@@ -94,6 +94,21 @@ const SELECTORS = {
   PRICE_BREAKDOWN_PASSENGER_PRICE: ".is-justify-content-space-between p:nth-child(2)",
   PRICE_BREAKDOWN_TOTAL_ROW: ".tooltip-content > div.has-text-weight-bold",
   PRICE_BREAKDOWN_TOTAL_PRICE: "p:nth-child(2)",
+  // eu-rail-route-details.vue — one logo/name block per carrier of the journey (Benerail Moove
+  // only). Its carrier name paragraph carries BOTH .supplier-name and .train-carrier-text; only
+  // .supplier-name is unique to it, since eu-rail-preview.vue also uses .train-carrier-text for an
+  // alternative's class/brand paragraphs. Order follows the route's legs, so .first() is the first
+  // train company of the route.
+  ROUTE_DETAILS_CARRIER_NAME: ".eu-rail-route-details .supplier-name",
+  // A "More Options" alternative's fare descriptors, inside the row's .alternative-description:
+  // eu-rail-preview.vue gives BOTH its travel class and its fare brand name (e.g. "2nd class" and
+  // "Full flex", from railSegmentProposedPrices[0].class / .brandName) this same class pair, so
+  // this matches two paragraphs per row — fine for matching a row by fare name, but it means a
+  // fare-name argument that also reads like a class would match the wrong paragraph.
+  ALTERNATIVE_BRAND_NAME: ".alternative-description .train-carrier-text",
+  // That alternative's own "Select" button (eu-rail-preview.vue's .select-rail-btn), distinct from
+  // the main fare's Select button on the result card itself.
+  ALTERNATIVE_SELECT_BUTTON: ".select-rail-btn",
 };
 
 class BenerailResultsPage {
@@ -562,6 +577,87 @@ class BenerailResultsPage {
     if (rowHandle) {
       await rowHandle.waitForElementState("hidden", { timeout: 20000 }).catch(() => {});
     }
+  }
+
+  /**
+   * Reads the first train company of the route shown on the Benerail result card at the given
+   * index (eu-rail-route-details.vue's first carrier block — see ROUTE_DETAILS_CARRIER_NAME).
+   * @param {number} [index=0] - 0-based result card index
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<string>} The carrier name, e.g. "InterCity Express"
+   */
+  async getFirstRouteCarrierNameForResult(index = 0, { timeout = 30000 } = {}) {
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(
+        `[BenerailResultsPage.getFirstRouteCarrierNameForResult] "index" must be a non-negative integer, got: ${index}`,
+      );
+    }
+
+    const card = this.page.locator(SELECTORS.RESULT_CARD).nth(index);
+    await card.waitFor({ state: "visible", timeout });
+    const carrierName = card.locator(SELECTORS.ROUTE_DETAILS_CARRIER_NAME).first();
+    await carrierName.waitFor({ state: "visible", timeout });
+    return ((await carrierName.textContent()) ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Selects the "More Options" alternative fare whose brand name matches `fareName` (e.g.
+   * "Full flex"), matched case-insensitively so the feature can read naturally regardless of the
+   * supplier's own capitalisation. "More Options" must already be expanded.
+   *
+   * Mirrors selectFirstAgreementFareFromMoreOptions' teardown wait: selecting a fare replaces the
+   * results list wholesale in a purely client-side update, so waiting for this row to disappear is
+   * what proves the click landed before the caller moves on to "Add to trip".
+   *
+   * @param {string} fareName - Fare/brand name to select, e.g. "full flex"
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async selectMoreOptionsFareByName(fareName, { timeout = 15000 } = {}) {
+    if (!fareName || typeof fareName !== "string") {
+      throw new Error(
+        `[BenerailResultsPage.selectMoreOptionsFareByName] "fareName" must be a non-empty string, got: ${typeof fareName}`,
+      );
+    }
+
+    const row = this.page
+      .locator(SELECTORS.MORE_OPTIONS_ROW)
+      .filter({ has: this.page.locator(SELECTORS.ALTERNATIVE_BRAND_NAME, { hasText: fareName }) })
+      .first();
+
+    try {
+      await row.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      const availableFares = await this.getMoreOptionsFareNames();
+      throw new Error(
+        `[BenerailResultsPage.selectMoreOptionsFareByName] No expanded "More Options" alternative ` +
+        `offers the fare "${fareName}". Fares currently listed: ` +
+        `${availableFares.length ? availableFares.join(", ") : "(none — is More Options expanded?)"}. ` +
+        `Original: ${err.message}`,
+      );
+    }
+
+    const selectButton = row.locator(SELECTORS.ALTERNATIVE_SELECT_BUTTON).first();
+    await selectButton.waitFor({ state: "visible", timeout });
+    const rowHandle = await row.elementHandle();
+    await selectButton.click();
+
+    if (rowHandle) {
+      await rowHandle.waitForElementState("hidden", { timeout: 20000 }).catch(() => {});
+    }
+  }
+
+  /**
+   * Lists the fare descriptors (travel class and fare brand — see ALTERNATIVE_BRAND_NAME) of every
+   * currently expanded "More Options" alternative, so a fare-not-found failure states what was
+   * actually on offer instead of raising a bare timeout.
+   * @returns {Promise<string[]>}
+   */
+  async getMoreOptionsFareNames() {
+    const names = this.page.locator(SELECTORS.MORE_OPTIONS_ROW).locator(SELECTORS.ALTERNATIVE_BRAND_NAME);
+    const rawNames = await names.allTextContents();
+    return rawNames.map((name) => name.replace(/\s+/g, " ").trim()).filter(Boolean);
   }
 
   /**

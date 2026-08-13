@@ -5220,6 +5220,21 @@ const Cart = {
   },
 
   /**
+   * Reads the first train company of the route from the EU rail (Benerail) quote card in the cart /
+   * trip overview — the assertion itself belongs to the step (see dsl.md).
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} Carrier name, e.g. "InterCity Express"
+   */
+  async getFirstEuRailTrainCompany(page) {
+    if (!page) {
+      throw new Error('[Cart.getFirstEuRailTrainCompany] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    return await cartPage.getFirstEuRailQuoteRouteCarrierName();
+  },
+
+  /**
    * Opens the More Details drawer and verifies the hotel address contains the expected text.
    * Closes the drawer after verification.
    * @param {import('playwright').Page} page

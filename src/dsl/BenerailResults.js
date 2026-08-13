@@ -490,6 +490,41 @@ const BenerailResults = {
   },
 
   /**
+   * Reads the first train company of the route shown on the Benerail result card at the given
+   * index — the assertion itself belongs to the step (see dsl.md).
+   * @param {import('playwright').Page} page
+   * @param {number} [index=0] - 0-based result card index
+   * @returns {Promise<string>} Carrier name, e.g. "InterCity Express"
+   */
+  async getFirstTrainCompanyForResult(page, index = 0) {
+    if (!page) throw new Error("[BenerailResults.getFirstTrainCompanyForResult] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    return await benerailResultsPage.getFirstRouteCarrierNameForResult(index);
+  },
+
+  /**
+   * Selects the named fare (e.g. "full flex") from the already-expanded "More Options" alternatives
+   * and adds it to the trip. Expects expandMoreOptionsForFirstResult to have run first — matching
+   * the feature's own "expand more options / add fare" step split.
+   * @param {import('playwright').Page} page
+   * @param {string} fareName - Fare/brand name as shown on the alternative, e.g. "full flex"
+   */
+  async addBenerailFareOneWayToTrip(page, fareName) {
+    if (!page) throw new Error("[BenerailResults.addBenerailFareOneWayToTrip] page is required");
+    if (!fareName || typeof fareName !== "string") {
+      throw new Error(
+        `[BenerailResults.addBenerailFareOneWayToTrip] "fareName" must be a non-empty string, got: ${typeof fareName}`,
+      );
+    }
+
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    await benerailResultsPage.selectMoreOptionsFareByName(fareName);
+    await BenerailResults.clickAddToTripBenerail(page);
+
+    return { addedToTrip: true, fareName };
+  },
+
+  /**
    * Selects the first agreement-bearing alternative fare revealed by "More Options" and adds it
    * to the trip.
    */

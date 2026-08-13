@@ -82,6 +82,31 @@ When("I expand More Options for the last outbound result and select an alternati
   await BenerailResults.selectAlternativeFareForLastOutboundResult(this.page);
 });
 
+When("I add a Benerail fare {string} one way to the trip", async function (fareName) {
+  logger.info("Adding the named Benerail fare from more options to the trip", { fareName });
+  await BenerailResults.addBenerailFareOneWayToTrip(this.page, fareName);
+});
+
+Then("I verify that the first train company of the route for the first result is {string}", async function (expectedCompany) {
+  logger.info("Verifying the first train company of the route for the first Benerail result", { expectedCompany });
+  const actualCompany = await BenerailResults.getFirstTrainCompanyForResult(this.page, 0);
+  expect(
+    actualCompany,
+    `The first train company of the route on the first Benerail result should be "${expectedCompany}", but got: "${actualCompany}"`,
+  ).toBe(expectedCompany);
+});
+
+// Cart / trip-overview counterpart of the results-page check above: the quote card renders the same
+// eu-rail-route-details block, so the carrier the traveller picked can be re-verified after adding.
+Then("I verify that the first train company of the route is {string}", async function (expectedCompany) {
+  logger.info("Verifying the first train company of the route on the Benerail quote card", { expectedCompany });
+  const actualCompany = await Cart.getFirstEuRailTrainCompany(this.page);
+  expect(
+    actualCompany,
+    `The first train company of the route on the Benerail quote card should be "${expectedCompany}", but got: "${actualCompany}"`,
+  ).toBe(expectedCompany);
+});
+
 When("I select the first Benerail option for the inbound journey", async function () {
   logger.info("Selecting first Benerail option for the inbound journey");
   await BenerailResults.selectFirstBenerailOptionAndConfirmTransition(this.page);

@@ -361,6 +361,13 @@ const SELECTORS = {
   // copied trip must not carry over a rail quote, which is not eligible for copy.
   EU_RAIL_QUOTE_CARD: '.eu-rail-quote-card',
 
+  // The rail quote's carrier name(s), rendered by the same eu-rail-route-details.vue component the
+  // results cards use (one block per leg of the journey, in leg order — see
+  // BenerailResultsPage.ROUTE_DETAILS_CARRIER_NAME for why .supplier-name and not
+  // .train-carrier-text). Desktop-only in the quote card: the mobile branch prints carrier names
+  // as plain .title-suppliers paragraphs instead.
+  EU_RAIL_QUOTE_ROUTE_CARRIER_NAME: '.eu-rail-quote-card .eu-rail-route-details .supplier-name',
+
   // Car pickup/drop-off date·time label shown in the car quote card body (car-quote-card.ts
   // formattedPickupDateLabel/formattedDropoffDateLabel), e.g.
   // "03 Jul 2026 · 14:30 - 05 Jul 2026 · 10:15". Split on " - " to separate pickup from drop-off.
@@ -6610,6 +6617,20 @@ class CartPage {
     const button = this.page.locator(SELECTORS.CHECK_PRICE_FARE_RULES_BUTTON).first();
     await button.waitFor({ state: 'visible', timeout: 15000 });
     await button.click();
+  }
+
+  /**
+   * Reads the first train company of the route from the EU rail (Benerail) quote card in the cart /
+   * trip overview — the same eu-rail-route-details.vue block shown on the results card, so the
+   * carrier the traveller picked can be re-verified once the quote is in the cart.
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<string>} The carrier name, e.g. "InterCity Express"
+   */
+  async getFirstEuRailQuoteRouteCarrierName({ timeout = 30000 } = {}) {
+    const carrierName = this.page.locator(SELECTORS.EU_RAIL_QUOTE_ROUTE_CARRIER_NAME).first();
+    await carrierName.waitFor({ state: 'visible', timeout });
+    return ((await carrierName.textContent()) ?? '').replace(/\s+/g, ' ').trim();
   }
 
   /**

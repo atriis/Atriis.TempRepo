@@ -2,7 +2,7 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const { SearchPage } = require("@pages/SearchPage");
 const { BenerailSearchPage } = require("@pages/BenerailSearchPage");
 const benerailRoutes = require("@data/benerail.json");
-const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const { selectDatesByNthAvailable, selectNthWeekdayFromNextMonth } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 
@@ -129,6 +129,62 @@ const BenerailSearch = {
     }
 
     return { searched: clickSearch, routeInput, from, to, departureIndex, numberOfStops };
+  },
+
+  /**
+   * Performs a one-way Benerail search on the Nth occurrence of a given weekday in the next month
+   * (e.g. the 3rd Monday), instead of the default "Nth available date" strategy. Used by scenarios
+   * that need a predictable, mid-month weekday departure so the expected inventory (carrier, fare
+   * brands) is stable — see test 62008.
+   *
+   * Unlike searchBenerailOneWay this must NOT advance the calendar itself:
+   * selectNthWeekdayFromNextMonth clicks the next-month arrow as part of resolving the date.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string|object} routeInput - Route key from benerail.json, or { from, to }
+   * @param {string} dayOfWeek - "monday","tuesday",...,"sunday"
+   * @param {number} [nth=1] - Which occurrence of that weekday to take (1 = first)
+   * @returns {Promise<{searched: boolean, routeInput: string|object, from: string, to: string, dayOfWeek: string, nth: number}>}
+   */
+  async searchBenerailOneWayOnNthWeekday(page, routeInput = benerailRoutes.defaultRoute, dayOfWeek, nth = 1) {
+    if (!page) {
+      throw new Error('[BenerailSearch.searchBenerailOneWayOnNthWeekday] "page" is required.');
+    }
+    if (!dayOfWeek || typeof dayOfWeek !== "string") {
+      throw new Error(
+        `[BenerailSearch.searchBenerailOneWayOnNthWeekday] "dayOfWeek" must be a non-empty string, got: ${typeof dayOfWeek}`,
+      );
+    }
+    if (!Number.isInteger(nth) || nth < 1) {
+      throw new Error(
+        `[BenerailSearch.searchBenerailOneWayOnNthWeekday] "nth" must be a positive integer, got: ${nth}`,
+      );
+    }
+
+    const { from, to } = resolveRoute(routeInput, benerailRoutes.routes, "benerail");
+
+    const searchPage = getPageObject(page, SearchPage);
+    const benerailSearchPage = getPageObject(page, BenerailSearchPage);
+
+    try {
+      await BenerailSearch.selectBenerailSearch(page);
+      await searchPage.selectOneWayTrip();
+
+      await searchPage.fillInFromField(from);
+      await searchPage.fillInToField(to);
+
+      await benerailSearchPage.clickRailDepartureDateField();
+      await selectNthWeekdayFromNextMonth(page, { dayOfWeek, nth });
+
+      await searchPage.waitAndClickSearchButton();
+
+      return { searched: true, routeInput, from, to, dayOfWeek, nth };
+    } catch (err) {
+      throw new Error(
+        `[BenerailSearch.searchBenerailOneWayOnNthWeekday] Failed to run a one-way EU rail search ` +
+        `(${from} → ${to}) departing the ${nth} ${dayOfWeek} of next month. Original: ${err.message}`,
+      );
+    }
   },
 
   /**
