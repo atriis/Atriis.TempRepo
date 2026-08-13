@@ -109,6 +109,14 @@ const SELECTORS = {
   // That alternative's own "Select" button (eu-rail-preview.vue's .select-rail-btn), distinct from
   // the main fare's Select button on the result card itself.
   ALTERNATIVE_SELECT_BUTTON: ".select-rail-btn",
+  // The already-chosen leg's mini summary card (eu-rail-preview-mini.vue), which replaces that leg's
+  // row once it is picked on a round trip. It reuses the full card's `.eu-rail-preview` root class,
+  // so the root class cannot tell the two apart — the button type can: the mini renders its CTA as
+  // app-btn type="secondary" labelled btn.change ("Change") for an already-chosen leg, while every
+  // still-selectable result and alternative renders type="primary" labelled common.select
+  // ("Select"). So a *secondary* .select-rail-btn exists only on a committed leg, which is what
+  // makes it a reliable "the outbound was accepted and the list below is now the inbound" gate.
+  SELECTED_LEG_CHANGE_BUTTON: ".select-rail-btn.btn--secondary",
 };
 
 class BenerailResultsPage {
@@ -437,6 +445,28 @@ class BenerailResultsPage {
    */
   getFirstMoreOptionsButton() {
     return this.page.getByRole("button", { name: "More Options" }).first();
+  }
+
+  /**
+   * Waits for the "Change" button of an already-committed leg to appear (see
+   * SELECTED_LEG_CHANGE_BUTTON). On a round trip this is what proves the outbound selection was
+   * accepted and the list below has switched to the inbound leg, so a following "expand more
+   * options for the first result" acts on an inbound result rather than a stale outbound one.
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   */
+  async waitForSelectedLegChangeButton({ timeout = 30000 } = {}) {
+    const changeButton = this.page.locator(SELECTORS.SELECTED_LEG_CHANGE_BUTTON).first();
+    try {
+      await changeButton.waitFor({ state: "visible", timeout });
+    } catch (error) {
+      throw new Error(
+        `[BenerailResultsPage.waitForSelectedLegChangeButton] No committed Benerail leg showed a ` +
+        `"Change" button within ${timeout}ms. The leg selection likely did not register, or the ` +
+        `search was one way (a single-leg search never renders the mini summary card). ` +
+        `Original: ${error.message}`,
+      );
+    }
   }
 
   /**

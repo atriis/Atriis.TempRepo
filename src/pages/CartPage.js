@@ -368,6 +368,18 @@ const SELECTORS = {
   // as plain .title-suppliers paragraphs instead.
   EU_RAIL_QUOTE_ROUTE_CARRIER_NAME: '.eu-rail-quote-card .eu-rail-route-details .supplier-name',
 
+  // One block per leg of the rail quote — eu-rail-quote-card.vue's v-for over quote.segments, in
+  // leg order, so index 0 is the outbound and index 1 the return (same leg ordering as
+  // clickRailFareRulesButton's segmentIndex). `.ticket-title` appears exactly once in that
+  // component, so scoping it to the rail card is enough to isolate the per-leg blocks.
+  EU_RAIL_QUOTE_SEGMENT: '.eu-rail-quote-card .ticket-title',
+  // That leg's travel class, e.g. "1st Class" (eu-rail-quote-card.vue's getClass(segment)).
+  // Relative to EU_RAIL_QUOTE_SEGMENT — see getEuRailQuoteSegmentClass, do not prefix with
+  // '.eu-rail-quote-card' again. Two nodes in the component carry this class, each behind a
+  // mutually exclusive guard: a <p> gated on `!(isMobile && isBeneMooveRail)` and a <span> gated on
+  // `isBeneMooveRail && isMobile`. On the desktop viewport the suite runs at, only the <p> mounts.
+  EU_RAIL_QUOTE_SEGMENT_CLASS: '.rail-class',
+
   // Car pickup/drop-off date·time label shown in the car quote card body (car-quote-card.ts
   // formattedPickupDateLabel/formattedDropoffDateLabel), e.g.
   // "03 Jul 2026 · 14:30 - 05 Jul 2026 · 10:15". Split on " - " to separate pickup from drop-off.
@@ -6635,6 +6647,51 @@ class CartPage {
     const carrierName = this.page.locator(SELECTORS.EU_RAIL_QUOTE_ROUTE_CARRIER_NAME).first();
     await carrierName.waitFor({ state: 'visible', timeout });
     return ((await carrierName.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Reads the travel class of one leg of the EU rail (Benerail) quote card in the cart, so the
+   * class the traveller picked per leg can be re-verified once the quote is in the cart — a round
+   * trip can legitimately mix classes (e.g. a 2nd class outbound with a 1st class return).
+   * @param {number} segmentIndex - Zero-based leg index: 0 = outbound, 1 = return.
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<string>} The leg's travel class, e.g. "1st Class"
+   */
+  async getEuRailQuoteSegmentClass(segmentIndex, { timeout = 30000 } = {}) {
+    if (!Number.isInteger(segmentIndex) || segmentIndex < 0) {
+      throw new Error(
+        `[CartPage.getEuRailQuoteSegmentClass] "segmentIndex" must be a non-negative integer, got: ${segmentIndex}`,
+      );
+    }
+
+    const segmentCount = await this.page.locator(SELECTORS.EU_RAIL_QUOTE_SEGMENT).count();
+    if (segmentIndex >= segmentCount) {
+      throw new Error(
+        `[CartPage.getEuRailQuoteSegmentClass] Requested leg index ${segmentIndex} but the rail quote ` +
+        `card in the cart renders only ${segmentCount} leg(s). A one-way search produces a single ` +
+        `segment — index 1 requires a round trip.`,
+      );
+    }
+
+    const railClass = this.page
+      .locator(SELECTORS.EU_RAIL_QUOTE_SEGMENT)
+      .nth(segmentIndex)
+      .locator(SELECTORS.EU_RAIL_QUOTE_SEGMENT_CLASS)
+      .first();
+
+    try {
+      await railClass.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.getEuRailQuoteSegmentClass] The travel class of rail quote leg ${segmentIndex} did ` +
+        `not become visible within ${timeout}ms. Either the quote card has not finished rendering, or ` +
+        `this supplier's segment carries no class (eu-rail-quote-card.vue only prints getClass(segment) ` +
+        `when the segment has one). Original: ${error.message}`,
+      );
+    }
+
+    return ((await railClass.textContent()) ?? '').replace(/\s+/g, ' ').trim();
   }
 
   /**

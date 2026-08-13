@@ -5340,6 +5340,37 @@ const Cart = {
   },
 
   /**
+   * Reads the travel class of one leg of the EU rail (Benerail) quote card in the cart — the
+   * assertion itself belongs to the step (see dsl.md). Leg indexes follow the quote card's own
+   * segment order, matching verifyRailFareRulesDialogContainsText's `index`.
+   * @param {import('playwright').Page} page
+   * @param {number} [segmentIndex=0] - Zero-based leg index: 0 = outbound, 1 = return.
+   * @returns {Promise<string>} The leg's travel class, e.g. "1st Class"
+   */
+  async getEuRailSegmentClass(page, segmentIndex = 0) {
+    if (!page) {
+      throw new Error('[Cart.getEuRailSegmentClass] "page" is required.');
+    }
+    if (!Number.isInteger(segmentIndex) || segmentIndex < 0) {
+      throw new Error(
+        `[Cart.getEuRailSegmentClass] "segmentIndex" must be a non-negative integer, got: ${segmentIndex}`,
+      );
+    }
+
+    logger.debug('[Cart.getEuRailSegmentClass] Reading the rail quote leg travel class', { segmentIndex });
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      return await cartPage.getEuRailQuoteSegmentClass(segmentIndex);
+    } catch (error) {
+      throw new Error(
+        `[Cart.getEuRailSegmentClass] Could not read the travel class of rail quote leg ` +
+        `${segmentIndex} in the cart. Original: ${error.message}`,
+      );
+    }
+  },
+
+  /**
    * Opens the More Details drawer and verifies the hotel address contains the expected text.
    * Closes the drawer after verification.
    * @param {import('playwright').Page} page

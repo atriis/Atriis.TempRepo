@@ -525,6 +525,61 @@ const BenerailResults = {
   },
 
   /**
+   * Waits for the committed leg's "Change" button on a round trip — the gate that proves the
+   * outbound selection was accepted and the results list below now belongs to the inbound leg.
+   *
+   * Deliberately NOT the shared "I wait to see change button" step (Results.
+   * waitForShareButtonChangeInResults): despite its wording, that one waits for a *share quote*
+   * button to flip to its "Added" state, which never happens outside share mode.
+   * @param {import('playwright').Page} page
+   */
+  async waitForSelectedLegChangeButton(page) {
+    if (!page) throw new Error('[BenerailResults.waitForSelectedLegChangeButton] page is required');
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    try {
+      await benerailResultsPage.waitForSelectedLegChangeButton();
+    } catch (error) {
+      throw new Error(
+        `[BenerailResults.waitForSelectedLegChangeButton] The Benerail outbound leg was not ` +
+        `committed, so the inbound results are not showing yet. Original: ${error.message}`,
+      );
+    }
+    return { outboundCommitted: true };
+  },
+
+  /**
+   * Selects an alternative revealed by "More Options" WITHOUT adding it to the trip — the
+   * select-only half of addBenerailFareOneWayToTrip, for scenarios that add both legs of a round
+   * trip with a single "Add to trip" afterwards (test 52934).
+   *
+   * `fareDescriptor` matches either descriptor the alternative row prints — its travel class
+   * ("1st Class") or its fare brand ("Full flex") — because eu-rail-preview.vue gives both the
+   * same class (see BenerailResultsPage.ALTERNATIVE_BRAND_NAME).
+   * @param {import('playwright').Page} page
+   * @param {string} fareDescriptor - Travel class or fare brand shown on the alternative
+   */
+  async selectBenerailFareFromMoreOptions(page, fareDescriptor) {
+    if (!page) throw new Error('[BenerailResults.selectBenerailFareFromMoreOptions] page is required');
+    if (!fareDescriptor || typeof fareDescriptor !== "string") {
+      throw new Error(
+        `[BenerailResults.selectBenerailFareFromMoreOptions] "fareDescriptor" must be a non-empty string, got: ${typeof fareDescriptor}`,
+      );
+    }
+
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    try {
+      await benerailResultsPage.selectMoreOptionsFareByName(fareDescriptor);
+    } catch (error) {
+      throw new Error(
+        `[BenerailResults.selectBenerailFareFromMoreOptions] Could not select the "${fareDescriptor}" ` +
+        `alternative from the expanded "More Options" list. Original: ${error.message}`,
+      );
+    }
+
+    return { selected: true, fareDescriptor };
+  },
+
+  /**
    * Selects the first agreement-bearing alternative fare revealed by "More Options" and adds it
    * to the trip.
    */

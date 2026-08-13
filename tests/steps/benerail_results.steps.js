@@ -87,6 +87,41 @@ When("I add a Benerail fare {string} one way to the trip", async function (fareN
   await BenerailResults.addBenerailFareOneWayToTrip(this.page, fareName);
 });
 
+When("I wait to see the change button on the selected Benerail leg", async function () {
+  logger.info("Waiting for the committed Benerail leg's Change button");
+  await BenerailResults.waitForSelectedLegChangeButton(this.page);
+});
+
+// Select-only counterpart of the step above: a round trip picks a fare per leg and adds both with a
+// single "Add to trip", so selecting and adding cannot be one step here (test 52934).
+When("I select a Benerail {string} from more options", async function (fareDescriptor) {
+  logger.info("Selecting a Benerail alternative from more options", { fareDescriptor });
+  await BenerailResults.selectBenerailFareFromMoreOptions(this.page, fareDescriptor);
+});
+
+When("I click Benerail add to trip button", async function () {
+  logger.info("Clicking the Benerail add to trip button");
+  await BenerailResults.clickAddToTripBenerail(this.page);
+});
+
+Then("the cart should show {string} for the Benerail outbound in cart", async function (expectedClass) {
+  logger.info("Verifying the Benerail outbound leg travel class in the cart", { expectedClass });
+  const actualClass = await Cart.getEuRailSegmentClass(this.page, 0);
+  expect(
+    actualClass,
+    `Expected the Benerail outbound leg in the cart to show the "${expectedClass}" travel class, but got: "${actualClass}"`,
+  ).toBe(expectedClass);
+});
+
+Then("the cart should show {string} for the Benerail inbound in cart", async function (expectedClass) {
+  logger.info("Verifying the Benerail inbound leg travel class in the cart", { expectedClass });
+  const actualClass = await Cart.getEuRailSegmentClass(this.page, 1);
+  expect(
+    actualClass,
+    `Expected the Benerail inbound leg in the cart to show the "${expectedClass}" travel class, but got: "${actualClass}"`,
+  ).toBe(expectedClass);
+});
+
 Then("I verify that the first train company of the route for the first result is {string}", async function (expectedCompany) {
   logger.info("Verifying the first train company of the route for the first Benerail result", { expectedCompany });
   const actualCompany = await BenerailResults.getFirstTrainCompanyForResult(this.page, 0);
@@ -212,39 +247,6 @@ Then(
     await Cart.verifyTimeLeftToBookCounterVisibleInCheckout(this.page, { minMinutes, maxMinutes });
   },
 );
-
-// --- 1st Class ---
-When("I verify the second result is in 2nd class", async function () {
-  throw new Error("TODO: implement 'I verify the second result is in 2nd class' — assert the second Benerail result row shows 2nd class label (see test 52934)");
-});
-
-When("I select the second Benerail result", async function () {
-  throw new Error("TODO: implement 'I select the second Benerail result' — click the Select button on the second Benerail result row (see test 52934)");
-});
-
-When("I expand the 1st class options for the first Benerail result", async function () {
-  throw new Error("TODO: implement 'I expand the 1st class options for the first Benerail result' — click the 1st class toggle/expand button on the first result (see test 52934)");
-});
-
-Then("the 1st class alternative should be visible for the first result", async function () {
-  throw new Error("TODO: implement 'the 1st class alternative should be visible for the first result' — assert the 1st class option row is rendered for the first result (see test 52934)");
-});
-
-When("I select the 1st class Benerail option and add to trip", async function () {
-  throw new Error("TODO: implement 'I select the 1st class Benerail option and add to trip' — click Select on the 1st class row and add to the trip (see test 52934)");
-});
-
-Then("the cart should show 1st Class for the Benerail booking", async function () {
-  throw new Error("TODO: implement 'the cart should show 1st Class for the Benerail booking' — assert the cart displays '1st Class' or equivalent label for the Benerail quote (see test 52934)");
-});
-
-When("I open the Benerail seat selection in cart", async function () {
-  throw new Error("TODO: implement 'I open the Benerail seat selection in cart' — click the seat selection button/link in the Benerail cart block (see test 52934)");
-});
-
-Then("the Book and Finalize button should be visible in the Benerail seat dialog", async function () {
-  throw new Error("TODO: implement 'the Book and Finalize button should be visible in the Benerail seat dialog' — assert Book and Finalize CTA is visible within the seat selection dialog (see test 52934)");
-});
 
 // --- Price for multiple travelers ---
 When("I set the age association for the second traveler", async function () {
