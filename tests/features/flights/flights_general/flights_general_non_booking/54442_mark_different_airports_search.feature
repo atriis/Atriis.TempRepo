@@ -15,4 +15,5 @@ Feature: 54442 Flights - Mark different airports in search
     Given I am logged in as "joana@amadeusandafklm.com" booking a new trip
     And I have added myself as the traveler
     When I search for a multi-city flight with legs "LHR-MXP" and "LIN-LCY"
-    Then airport codes "MXP" and "LIN" should be marked in the first flight result
+    And I filter results by carrier "BA"
+    Then airport codes "LHR" and "LCY" should be marked in the first flight result
