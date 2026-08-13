@@ -105,6 +105,24 @@ Then("the inbound leg brand cards should display incremental price delta", async
   logger.info("[NewFlightFlow] Inbound price delta verified", result);
 });
 
+Then("the {string} cabin class tab should be displayed in flight selection", async function (cabinName) {
+  logger.info("[NewFlightFlow] Verifying cabin class tab is displayed above the brand cards", { cabinName });
+  const result = await FlightResults.verifyCabinClassTabDisplayedNewFlightFlow(this.page, cabinName);
+  logger.info("[NewFlightFlow] Cabin class tab verified", result);
+});
+
+When("I select the {string} cabin class tab in flight selection", async function (cabinName) {
+  logger.info("[NewFlightFlow] Selecting cabin class tab above the brand cards", { cabinName });
+  const result = await FlightResults.selectCabinClassTabNewFlightFlow(this.page, cabinName);
+  logger.info("[NewFlightFlow] Cabin class tab selected", result);
+});
+
+Then("every outbound leg brand card name should contain {string}", async function (expectedText) {
+  logger.info("[NewFlightFlow] Verifying every outbound brand card name contains the expected text", { expectedText });
+  const result = await FlightResults.verifyOutboundBrandCardNamesContain(this.page, expectedText);
+  logger.info("[NewFlightFlow] Outbound brand card names verified", result);
+});
+
 Then("the inbound leg brand cards should be visible", async function () {
   logger.info("[NewFlightFlow] Verifying inbound leg brand cards are visible");
   const result = await FlightResults.verifyInboundLegBrandCardsVisible(this.page);

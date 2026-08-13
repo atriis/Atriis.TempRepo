@@ -3232,6 +3232,99 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     return { inboundBrandCardsVisible: true };
   },
 
+  /**
+   * Verifies a cabin class is offered as a tab above a leg's brand cards in the new flight flow.
+   * Matching is case-insensitive substring, so "Premium" passes for a "Premium Economy" tab.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} cabinName - Cabin name or substring (e.g. "Premium")
+   * @param {number} legIndex - Zero-based leg index (default: 0 = outbound)
+   * @returns {Promise<{cabinName: string, legIndex: number, tabNames: string[]}>}
+   */
+  async verifyCabinClassTabDisplayedNewFlightFlow(page, cabinName, legIndex = 0) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyCabinClassTabDisplayedNewFlightFlow] "page" is required.');
+    }
+    if (!cabinName || typeof cabinName !== 'string') {
+      throw new Error(`[FlightResults.verifyCabinClassTabDisplayedNewFlightFlow] "cabinName" must be a non-empty string, got: ${typeof cabinName}`);
+    }
+
+    logger.debug('[NewFlightFlow] Reading cabin class tabs for leg', { cabinName, legIndex });
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const tabNames = await flightResultsPage.getNewFlightFlowCabinClassTabNames(legIndex);
+    const normalizedCabinName = cabinName.toLowerCase();
+
+    expect(
+      tabNames.some((tabName) => tabName.toLowerCase().includes(normalizedCabinName)),
+      `Expected leg ${legIndex} to offer a "${cabinName}" cabin class tab, got: [${tabNames.join(', ')}]`,
+    ).toBe(true);
+
+    return { cabinName, legIndex, tabNames };
+  },
+
+  /**
+   * Selects a cabin class tab above a leg's brand cards in the new flight flow, so the leg
+   * re-renders its brand cards for that cabin class.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} cabinName - Cabin name or substring (e.g. "Premium")
+   * @param {number} legIndex - Zero-based leg index (default: 0 = outbound)
+   * @returns {Promise<{selected: true, cabinName: string, legIndex: number}>}
+   */
+  async selectCabinClassTabNewFlightFlow(page, cabinName, legIndex = 0) {
+    if (!page) {
+      throw new Error('[FlightResults.selectCabinClassTabNewFlightFlow] "page" is required.');
+    }
+    if (!cabinName || typeof cabinName !== 'string') {
+      throw new Error(`[FlightResults.selectCabinClassTabNewFlightFlow] "cabinName" must be a non-empty string, got: ${typeof cabinName}`);
+    }
+
+    logger.debug('[NewFlightFlow] Selecting cabin class tab', { cabinName, legIndex });
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickNewFlightFlowCabinClassTab(cabinName, legIndex);
+    await flightResultsPage.waitForNewFlightFlowBrandCards(legIndex);
+
+    return { selected: true, cabinName, legIndex };
+  },
+
+  /**
+   * Verifies every brand card name on the outbound leg contains the expected text, so a cabin
+   * class tab cannot silently list brands belonging to another cabin.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Text every brand name must contain (e.g. "Premium")
+   * @returns {Promise<{expectedText: string, brandNames: string[]}>}
+   */
+  async verifyOutboundBrandCardNamesContain(page, expectedText) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyOutboundBrandCardNamesContain] "page" is required.');
+    }
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(`[FlightResults.verifyOutboundBrandCardNamesContain] "expectedText" must be a non-empty string, got: ${typeof expectedText}`);
+    }
+
+    logger.debug('[NewFlightFlow] Reading outbound brand card names', { expectedText });
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const brandNames = await flightResultsPage.getOutboundBrandCardNames();
+    const normalizedExpectedText = expectedText.toLowerCase();
+
+    expect(
+      brandNames.length,
+      `Expected the outbound leg to display at least one brand card carrying "${expectedText}", got none.`,
+    ).toBeGreaterThan(0);
+
+    const mismatched = brandNames.filter(
+      (brandName) => !brandName || !brandName.toLowerCase().includes(normalizedExpectedText),
+    );
+
+    expect(
+      mismatched,
+      `Expected every outbound brand card name to contain "${expectedText}", but these did not: [${mismatched.join(', ')}]. All names: [${brandNames.join(', ')}]`,
+    ).toEqual([]);
+
+    return { expectedText, brandNames };
+  },
+
   async verifyPriceWithoutStartingFromLabel(page) {
     if (!page) {
       throw new Error('[FlightResults.verifyPriceWithoutStartingFromLabel] "page" is required.');

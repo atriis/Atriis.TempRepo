@@ -180,6 +180,14 @@ const SELECTORS = {
   // Staging strips data-testid in its build, so target the stable component class instead.
   NEW_FLOW_CHANGE_AND_CANCELLATION_WARNING: '.mixed-rules-warning',
   NEW_FLOW_NFF_CLOSE_BTN: '.flight-results-select-brand button.p-2',
+  // Cabin-class tabs above a leg's brand cards (flight-brand-leg-tabs.vue). One tab per cabin
+  // class the leg actually offers, labelled with the class name (Economy / Premium / Business).
+  // Rendered as a button group on desktop; the narrow-screen build swaps in a dropdown instead.
+  // The component puts data-testid on the tab CONTAINER only, not on the individual buttons,
+  // so the button class is the most specific stable hook available.
+  // DISTINCT from PRICING_OPTIONS_CABIN_CLASS_TABS, which belongs to the classic drawer.
+  NEW_FLOW_LEG_CABIN_CLASS_TAB: '.flight-brand-leg-tabs .button-group-item',
+  NEW_FLOW_LEG_CABIN_CLASS_TAB_ACTIVE_CLASS: 'active',
 
   // Classic Pricing Options drawer (pricing-options.vue) — leg-by-leg "Select fare" flow.
   // This renders for non-New-Flight-Flow accounts and is DISTINCT from the NFF brand
@@ -3132,6 +3140,75 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       );
     }
     // Brief pause to allow the UI to animate the card selection and load the next leg
+    await this.page.waitForTimeout(1000);
+  }
+
+  /**
+   * Returns the cabin-class tab labels rendered above a leg's brand cards, in display order.
+   * The tabs are derived from the cabin classes the leg actually offers, so a leg priced in a
+   * single cabin renders none at all.
+   *
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @returns {Promise<string[]>} Trimmed tab labels (e.g. ["Economy", "Premium", "Business"])
+   */
+  async getNewFlightFlowCabinClassTabNames(legIndex = 0, timeout = 30000) {
+    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
+    const tabs = leg.locator(SELECTORS.NEW_FLOW_LEG_CABIN_CLASS_TAB);
+
+    try {
+      await tabs.first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getNewFlightFlowCabinClassTabNames] No cabin class tabs rendered for leg ${legIndex} within ${timeout}ms. ` +
+        `The leg may offer only one cabin class (tabs render one per available class), or the brand cards may not have loaded. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    return (await tabs.allInnerTexts())
+      .map((text) => text.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+  }
+
+  /**
+   * Clicks a cabin-class tab above a leg's brand cards. Matches the label by case-insensitive
+   * substring, so "Premium" selects a tab labelled "Premium" or "Premium Economy".
+   *
+   * @param {string} cabinName - Cabin name or substring (e.g. "Premium")
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async clickNewFlightFlowCabinClassTab(cabinName, legIndex = 0, timeout = 30000) {
+    if (!cabinName || typeof cabinName !== 'string') {
+      throw new Error(
+        `[FlightResultsPage.clickNewFlightFlowCabinClassTab] "cabinName" must be a non-empty string, got: ${typeof cabinName}`
+      );
+    }
+
+    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
+    const tab = leg.locator(SELECTORS.NEW_FLOW_LEG_CABIN_CLASS_TAB)
+      .filter({ hasText: new RegExp(escapeRegExp(cabinName), 'i') })
+      .first();
+
+    try {
+      await tab.waitFor({ state: 'visible', timeout });
+      await tab.click({ timeout });
+      // Confirm the tab actually took, so callers never read the previous cabin class's cards.
+      await expect(tab).toHaveClass(
+        new RegExp(`\\b${SELECTORS.NEW_FLOW_LEG_CABIN_CLASS_TAB_ACTIVE_CLASS}\\b`),
+        { timeout }
+      );
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.clickNewFlightFlowCabinClassTab] Could not select the "${cabinName}" cabin class tab on leg ${legIndex}. ` +
+        `The leg may not offer that cabin class, or the tab did not become active after the click. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    // The active-class check above confirms the tab state, but the brand cards animate in via a
+    // Vue <transition>; a brief settle keeps callers from reading cards mid-swap.
     await this.page.waitForTimeout(1000);
   }
 
