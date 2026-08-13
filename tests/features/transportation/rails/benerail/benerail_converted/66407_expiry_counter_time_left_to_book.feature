@@ -20,4 +20,4 @@ Feature: 66407 Benerail - Expiry counter shows time left to book in checkout
     And the booking status should be "Pending booking"
     When I proceed to checkout
     And I wait for booking details in checkout
-    Then the time left to book counter should be visible in the Benerail checkout showing between 15 and 20 minutes
+    Then the time left to book counter should be visible in the Benerail checkout showing between 18 and 20 minutes

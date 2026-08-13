@@ -3253,11 +3253,11 @@ const Cart = {
    *
    * @param {import('playwright').Page} page
    * @param {object} [options]
-   * @param {number} [options.minMinutes=15] - Lowest acceptable whole minute remaining (inclusive)
+   * @param {number} [options.minMinutes=18] - Lowest acceptable whole minute remaining (inclusive)
    * @param {number} [options.maxMinutes=20] - Highest acceptable whole minute remaining (inclusive)
    * @returns {Promise<{visible: true, countdown: string, minutes: number}>}
    */
-  async verifyTimeLeftToBookCounterVisibleInCheckout(page, { minMinutes = 15, maxMinutes = 20 } = {}) {
+  async verifyTimeLeftToBookCounterVisibleInCheckout(page, { minMinutes = 18, maxMinutes = 20 } = {}) {
     if (!page) {
       throw new Error('[Cart.verifyTimeLeftToBookCounterVisibleInCheckout] "page" is required.');
     }
