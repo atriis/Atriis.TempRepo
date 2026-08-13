@@ -1014,6 +1014,10 @@ const SELECTORS = {
   // Tabs are <el-tabs>/<el-tab-pane> with values from LoyaltyTabs enum ('0' = New, '1' = Existing);
   // labels are "Use Existing" / "Enter New" (en.json euRail.loyaltyNumber.useExisting/enterNew).
   EURAIL_LOYALTY_SECTION: '.loyalty-program',
+  // The section's own extra-layout expander. Scoped to `.loyalty-program` so it opens the rail
+  // loyalty extras specifically, unlike the page-wide, index-based clickEditExtrasButton() which
+  // resolves to whichever extras section happens to come first in the cart.
+  EURAIL_LOYALTY_EXPAND: '.loyalty-program .is-clickable',
   EURAIL_LOYALTY_TAB: '.loyalty-program .tabs-container .el-tabs__item:visible',
   EURAIL_LOYALTY_EXISTING_SELECT: '.loyalty-program .loyalty-existing .app-select .el-select',
   EURAIL_LOYALTY_EXISTING_SELECT_TEXT: '.loyalty-program .loyalty-existing .app-select .el-select__placeholder',
@@ -7893,10 +7897,35 @@ class CartPage {
 
   /**
    * Returns whether the EU Rail loyalty program panel is currently expanded (its tabs are rendered).
+   * @param {object} [options]
+   * @param {number} [options.timeout=0] Time to allow the tabs to appear before answering false.
    * @returns {Promise<boolean>}
    */
-  async isEuRailLoyaltyPanelOpen() {
-    return this.page.locator(SELECTORS.EURAIL_LOYALTY_TAB).first().isVisible();
+  async isEuRailLoyaltyPanelOpen({ timeout = 0 } = {}) {
+    const tab = this.page.locator(SELECTORS.EURAIL_LOYALTY_TAB).first();
+    if (!timeout) return tab.isVisible();
+    return tab.waitFor({ state: 'visible', timeout }).then(() => true).catch(() => false);
+  }
+
+  /**
+   * Expands the EU RAIL loyalty-program extras section via its own expander and waits for the
+   * "Use Existing"/"Enter New" tabs to render.
+   * @param {number} [timeout=15000]
+   */
+  async clickEuRailLoyaltyExtrasExpand({ timeout = 15000 } = {}) {
+    const expander = this.page.locator(SELECTORS.EURAIL_LOYALTY_EXPAND).first();
+    try {
+      await expander.waitFor({ state: 'visible', timeout });
+      await expander.click();
+      await this.page.locator(SELECTORS.EURAIL_LOYALTY_TAB).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickEuRailLoyaltyExtrasExpand] Could not expand the EU Rail loyalty-program extras ` +
+        `(expander: ${SELECTORS.EURAIL_LOYALTY_EXPAND}, tabs: ${SELECTORS.EURAIL_LOYALTY_TAB}). ` +
+        `Likely causes: the trip has no EU Rail quote, or the quote card had not finished rendering ` +
+        `within ${timeout}ms. Original: ${err.message}`
+      );
+    }
   }
 
   /**

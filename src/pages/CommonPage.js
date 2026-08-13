@@ -83,6 +83,19 @@ const SELECTORS = {
   // Both the reference-fields popup and this reminder popup render as `.el-dialog.app-dialog`, so the
   // reminder popup MUST be identified by its title — never by the generic dialog class.
   MANDATORY_NOTIFICATIONS_TITLE: 'Mandatory Notifications',
+
+  // One reminder message inside the mandatory-notifications popup: app-reminder-popup.vue renders
+  // `<p class="mt5" v-html="injectHyperlinks(reminder.text)">` per UNREAD reminder, so a popup can
+  // carry several messages. Always used dialog-scoped (getMandatoryNotificationsDialog) — `.mt5` is a
+  // generic spacing class elsewhere in the app.
+  MANDATORY_NOTIFICATION_MESSAGE: 'p.mt5',
+
+  // OPTIONAL push notifications (reminder.service.ts → showNotificationReminders): reminders of
+  // type 11 are raised as ElNotification toasts (type 10 go to the popup above). Element Plus
+  // renders each as `.el-notification[role=alert]` with the message in `.el-notification__content`.
+  // They auto-dismiss after 7000ms, so an assertion has to run right after the search that raised them.
+  OPTIONAL_NOTIFICATION_TOAST: '.el-notification',
+  OPTIONAL_NOTIFICATION_TOAST_TEXT: '.el-notification .el-notification__content',
 };
 
 /**
@@ -694,6 +707,56 @@ class CommonPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Reads every reminder message rendered inside the open mandatory-notifications popup. The popup
+   * renders one `p.mt5` per UNREAD reminder, so a corporation with several mandatory notifications for
+   * the same search shows several messages in one dialog. Whitespace is collapsed to a single space.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000] Max time to wait for the first message to render.
+   * @returns {Promise<string[]>} Message texts, in DOM order.
+   */
+  async getMandatoryNotificationMessages({ timeout = 15000 } = {}) {
+    const messages = this.getMandatoryNotificationsDialog().locator(SELECTORS.MANDATORY_NOTIFICATION_MESSAGE);
+    // Tolerate an empty body instead of throwing here — callers assert on the returned contents and
+    // can report what was actually on screen.
+    await messages.first().waitFor({ state: 'visible', timeout }).catch(() => {});
+    const texts = await messages.allInnerTexts();
+    return texts.map((t) => (t || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+  }
+
+  /**
+   * Waits for an OPTIONAL push-notification toast (ElNotification, reminder type 11) whose message
+   * contains the given text. Matched by text rather than by position because several optional
+   * notifications stack at once, and each toast is removed after 7 seconds — so this must be awaited
+   * immediately after the action that raised it.
+   * @param {string} expectedText - Substring the toast message must contain (case-insensitive).
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>} The full text of the matched toast.
+   */
+  async waitForOptionalNotificationToast(expectedText, { timeout = 15000 } = {}) {
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error('[CommonPage.waitForOptionalNotificationToast] "expectedText" must be a non-empty string.');
+    }
+    const toast = this.page
+      .locator(SELECTORS.OPTIONAL_NOTIFICATION_TOAST)
+      .filter({ hasText: new RegExp(escapeRegExp(expectedText), 'i') })
+      .first();
+    try {
+      await toast.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      const visible = await this.page.locator(SELECTORS.OPTIONAL_NOTIFICATION_TOAST_TEXT).allInnerTexts().catch(() => []);
+      throw new Error(
+        `[CommonPage.waitForOptionalNotificationToast] No optional push-notification toast containing ` +
+        `"${expectedText}" appeared within ${timeout}ms. Toast(s) on screen: ` +
+        `${visible.length ? visible.map((t) => `"${t.replace(/\s+/g, ' ').trim()}"`).join(', ') : 'none'}. ` +
+        `(Optional notifications auto-dismiss after 7s — assert them immediately after the search that ` +
+        `raises them.) Original: ${err.message}`
+      );
+    }
+    return (await toast.innerText()).replace(/\s+/g, ' ').trim();
   }
 
   /**

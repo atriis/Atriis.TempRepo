@@ -1686,6 +1686,16 @@ Then("the mandatory notifications popup should be displayed", async function () 
   await Cart.verifyMandatoryNotificationsPopupDisplayed(this.page);
 });
 
+// Strict assertion that BOTH notifications configured for the searched origin/destination were raised:
+// the optional one as a toast, the mandatory one inside the still-open "Mandatory Notifications" popup.
+// Only the optional text is given — the mandatory counterpart is the same sentence with "optional"
+// swapped for "mandatory" (see Cart.verifyBenerailOriginDestinationNotifications). The popup is left
+// open for a following "I acknowledge the push notification".
+Then("the mandatory and optional notifications for the Benerail {string} should be displayed", async function (optionalNotificationText) {
+  logger.info("Verifying the Benerail origin/destination push notifications are displayed", { optionalNotificationText });
+  await Cart.verifyBenerailOriginDestinationNotifications(this.page, optionalNotificationText);
+});
+
 // Clicks the hyperlink inside the mandatory-notifications popup; the link opens the linked page in a
 // NEW browser tab, stored on the World for the following "opens the linked page" step.
 When("I click the push notification hyperlink", async function () {
@@ -2136,6 +2146,15 @@ Then("each entry is displayed as {string}", async function (formatPattern) {
   for (const optionText of this.euRailLoyaltyOptions) {
     expect(optionText, `Loyalty entry "${optionText}" should follow the "${formatPattern}" format (contain " - ")`).toContain(" - ");
   }
+});
+
+// Proves the stored loyalty numbers offered in the cart belong to the TRAVELLER on the quote and not
+// to the booker running the search (test 31347). Values are masked in the dropdown
+// ("*********213 - EUR"), so each row is substring-matched against the option labels.
+Then("the rail loyalty numbers from the traveler should be displayed:", async function (dataTable) {
+  const expectedEntries = dataTable.raw().map((row) => row[0].trim());
+  logger.info("Verifying the traveller's rail loyalty numbers are offered in the cart", { expectedEntries });
+  await Cart.verifyEuRailTravelerLoyaltyOptions(this.page, expectedEntries);
 });
 
 When("I select the first existing loyalty program from the dropdown", async function () {

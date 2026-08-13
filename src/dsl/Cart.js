@@ -4640,6 +4640,73 @@ const Cart = {
   },
 
   /**
+   * Verifies that BOTH push notifications configured for a route's origin/destination were raised by
+   * the search: the OPTIONAL one as an ElNotification toast, and the MANDATORY one inside the
+   * "Mandatory Notifications" popup (reminder.service.ts routes type 11 to a toast and type 10 to the
+   * popup — see test 31347, Benerail NLASC -> BEBCE).
+   *
+   * Only the optional text is passed in, because the pair is configured per origin/destination with
+   * matching wording ("optional/mandatory notification for benerail from X to Y"), so the mandatory
+   * counterpart is the same sentence with the leading "optional" swapped for "mandatory". The feature's
+   * later notification-center table spells both texts out, which is where a wording change would show.
+   *
+   * The toast is checked FIRST: it is removed after 7 seconds, while the popup stays open until it is
+   * acknowledged. The popup is left OPEN so a following step can acknowledge it.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} optionalNotificationText - Text of the optional notification, e.g.
+   *   "optional notification for benerail from NLASC to BEBCE"
+   * @returns {Promise<{optional: string, mandatory: string}>} The matched notification texts
+   */
+  async verifyBenerailOriginDestinationNotifications(page, optionalNotificationText) {
+    if (!page) throw new Error('[Cart.verifyBenerailOriginDestinationNotifications] "page" is required.');
+    if (!optionalNotificationText || typeof optionalNotificationText !== 'string') {
+      throw new Error(
+        `[Cart.verifyBenerailOriginDestinationNotifications] "optionalNotificationText" must be a ` +
+        `non-empty string, got: ${typeof optionalNotificationText} (${JSON.stringify(optionalNotificationText)})`
+      );
+    }
+
+    const commonPage = getPageObject(page, CommonPage);
+    const optional = await commonPage.waitForOptionalNotificationToast(optionalNotificationText);
+    logger.info('Optional push-notification toast displayed', { text: optional });
+
+    const expectedMandatory = optionalNotificationText.replace(/^\s*optional\b/i, 'mandatory');
+    if (expectedMandatory === optionalNotificationText) {
+      throw new Error(
+        `[Cart.verifyBenerailOriginDestinationNotifications] Expected "${optionalNotificationText}" to start ` +
+        `with "optional" so the mandatory counterpart can be derived from it. Pass the OPTIONAL ` +
+        `notification text to this step.`
+      );
+    }
+
+    const popupVisible = await commonPage.isMandatoryNotificationsPopupVisible({ timeout: 15000 });
+    if (!popupVisible) {
+      const openTitles = await commonPage.getVisibleDialogTitles().catch(() => []);
+      throw new Error(
+        `[Cart.verifyBenerailOriginDestinationNotifications] The optional notification was displayed, but the ` +
+        `"Mandatory Notifications" popup carrying "${expectedMandatory}" was not. Visible dialog(s): ` +
+        `${openTitles.length ? openTitles.join(', ') : 'none'}.`
+      );
+    }
+
+    const messages = await commonPage.getMandatoryNotificationMessages();
+    const normalize = (s) => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const needle = normalize(expectedMandatory);
+    const mandatory = messages.find((m) => normalize(m).includes(needle));
+    if (!mandatory) {
+      throw new Error(
+        `[Cart.verifyBenerailOriginDestinationNotifications] The "Mandatory Notifications" popup does not show ` +
+        `"${expectedMandatory}". Message(s) in the popup: ` +
+        `${messages.length ? messages.map((m) => `"${m}"`).join(', ') : 'none'}.`
+      );
+    }
+    logger.info('Mandatory push notification displayed in the popup', { text: mandatory });
+
+    return { optional, mandatory };
+  },
+
+  /**
    * Clicks the hyperlink inside the mandatory-notifications popup and returns the tab it opens in a new
    * window, so the caller can store it and verify the linked page (test 73097).
    *
@@ -6760,6 +6827,77 @@ const Cart = {
         `the traveler may not have any stored loyalty programs. ${err.message}`
       );
     }
+  },
+
+  /**
+   * Verifies the EU Rail "Use Existing" dropdown offers the expected stored loyalty numbers — the ones
+   * belonging to the TRAVELLER on the quote, not to the booker who is running the search (test 31347).
+   *
+   * Opens the "Use Existing" tab and the dropdown itself, so the caller only has to have the loyalty
+   * extras section expanded. Falls back to the section's own expander when the panel is not open: the
+   * generic "I expand the loyalty number extras section" step resolves the extras edit button by
+   * page-wide index, which does not necessarily land on the rail loyalty section.
+   *
+   * Each expected entry is matched as a case-insensitive SUBSTRING of an option label, and every matched
+   * option must also carry a card-number tail — the label is built as `${programName} - ${last4}`
+   * (loyalty-program.ts → existingLoyaltyToDisplay), so an entry without digits would mean the programme
+   * is offered with no stored number behind it.
+   *
+   * Callers pass programme names rather than card numbers: the stored numbers are shared, mutable
+   * profile data that other scenarios legitimately edit (see test 80737), and the deployed app no longer
+   * renders the masked full number the Testim-era tests expected ("*********213 - EUR" → ADO US 79348).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string[]} expectedEntries - Expected option labels, e.g. ["Club Eurostar"]
+   * @returns {Promise<string[]>} All option labels found in the dropdown
+   */
+  async verifyEuRailTravelerLoyaltyOptions(page, expectedEntries) {
+    if (!page) throw new Error('[Cart.verifyEuRailTravelerLoyaltyOptions] "page" is required.');
+    if (!Array.isArray(expectedEntries) || expectedEntries.length === 0) {
+      throw new Error('[Cart.verifyEuRailTravelerLoyaltyOptions] "expectedEntries" must be a non-empty array.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    if (!(await cartPage.isEuRailLoyaltyPanelOpen({ timeout: 5000 }))) {
+      logger.info('EU Rail loyalty panel is not open — expanding it via the loyalty section expander');
+      await cartPage.clickEuRailLoyaltyExtrasExpand();
+    }
+
+    await cartPage.clickEuRailLoyaltyTab('Use Existing');
+    const options = await this.getEuRailExistingLoyaltyOptions(page);
+
+    const normalize = (s) => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const optionsNorm = options.map((o) => ({ raw: (o || '').replace(/\s+/g, ' ').trim(), norm: normalize(o) }));
+    const rendered = options.length ? options.map((o) => `"${(o || '').trim()}"`).join(', ') : 'none';
+
+    const missing = [];
+    const withoutNumber = [];
+    for (const expected of expectedEntries) {
+      const needle = normalize(expected);
+      if (!needle) continue;
+      const match = optionsNorm.find((o) => o.norm.includes(needle));
+      if (!match) {
+        missing.push(expected);
+      } else if (!/ - \d{1,4}$/.test(match.raw)) {
+        withoutNumber.push(match.raw);
+      }
+    }
+
+    if (missing.length > 0) {
+      throw new Error(
+        `[Cart.verifyEuRailTravelerLoyaltyOptions] The traveller's loyalty dropdown is missing ` +
+        `[${missing.join(' | ')}]. Options found: ${rendered}. ` +
+        `(Loyalty programmes must come from the traveller on the quote, not from the booker.)`
+      );
+    }
+    if (withoutNumber.length > 0) {
+      throw new Error(
+        `[Cart.verifyEuRailTravelerLoyaltyOptions] The traveller's loyalty programme(s) ` +
+        `[${withoutNumber.join(' | ')}] are offered without a card number — the option label should end ` +
+        `in " - <last 4 digits>". Options found: ${rendered}.`
+      );
+    }
+    return options;
   },
 
   /**

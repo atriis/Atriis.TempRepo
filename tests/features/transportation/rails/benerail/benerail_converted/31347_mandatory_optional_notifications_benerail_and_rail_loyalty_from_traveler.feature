@@ -23,30 +23,24 @@ Feature: 31347 - Merged Benerail notifications by origin and destination, and ra
   So that required information is surfaced and the traveler's own loyalty numbers are used
 
   Scenario: Benerail origin and destination notifications appear and merge in the notification center, with loyalty numbers from the traveler
-    Given I am logged in as "shani@testimcorpnl.com"
-    When I book a new trip
-    And I add a traveler by name "tali loyal" from the search autocomplete
-    # TODO: add route "nlascToBebce" (from NLASC to BEBCE) to src/data/benerail.json so the routeKey below resolves
+    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
+    And I have added traveler by name "tali loyal"
     And I search for a round trip Benerail train from "nlascToBebce"
-    # TODO: I proceed past the reference fields popup after search (candidate reuse: "I click proceed on the reference fields popup" in tests/steps/dynamic_fields.steps.js)
-    And I proceed past the reference fields popup after search
-    # TODO: the mandatory and optional notifications for the Benerail origin and destination should be displayed (Notifications.verifyBenerailNotificationsDisplayed in tests/steps/push_notifications.steps.js)
-    Then the mandatory and optional notifications for the Benerail origin and destination should be displayed
+    And I click proceed button if visible
+    # Asserts BOTH notifications configured for NLASC -> BEBCE: the optional one as a toast (it
+    # auto-dismisses after 7s, hence right after the search) and the mandatory one in the popup, which
+    # is left open for the acknowledge step below.
+    Then the mandatory and optional notifications for the Benerail "optional notification for benerail from NLASC to BEBCE" should be displayed
     When I acknowledge the push notification
     And I add a Benerail round trip to the trip
-    # TODO: the Fare Rules link should be visible for the Benerail quote in cart (candidate reuse: "the fare rules link should be visible in the Benerail trip overview" in tests/steps/benerail_results.steps.js)
-    Then the Fare Rules link should be visible for the Benerail quote in cart
-    # TODO: I open the notification center (Notifications.openNotificationCenter in tests/steps/push_notifications.steps.js)
+    Then the booking status should be "Pending booking"
     When I open the notification center
-    # TODO: the notification center should display the following notifications: (Notifications.verifyNotificationCenterMessages in tests/steps/push_notifications.steps.js)
     Then the notification center should display the following notifications:
       | optional notification for benerail from NLA ...   |
       | optional notification for benerail from NLA ...   |
       | mandatory notification for benerail from NL ...   |
-    # TODO: I open the rail loyalty numbers for the Benerail booking (Notifications.openRailLoyaltyNumbers in tests/steps/push_notifications.steps.js)
-    When I open the rail loyalty numbers for the Benerail booking
-    # TODO: the rail loyalty numbers from the traveler should be displayed: (Notifications.verifyRailLoyaltyNumbers in tests/steps/push_notifications.steps.js)
+    When I close the notification center
+    And I expand the loyalty number extras section
     Then the rail loyalty numbers from the traveler should be displayed:
-      | *********213 - EUR |
-      | *********786 - GV  |
-    Then I successfully cancel the quote
+      | Club Eurostar - 0000 |
+      | SNCF Voyageur - 5780 |

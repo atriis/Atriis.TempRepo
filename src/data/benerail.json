@@ -83,6 +83,10 @@
     "bebmiToNlban": {
       "from": "BEBMI",
       "to": "NLBAN"
+    },
+    "nlascToBebce": {
+      "from": "NLASC",
+      "to": "BEBCE"
     }
   },
   "defaultRoute": "beleuToBeabc"
