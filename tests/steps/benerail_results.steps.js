@@ -205,10 +205,13 @@ Then("the Delete button should be displayed and the Search again button should b
   throw new Error("TODO: implement 'the Delete button should be displayed and the Search again button should be clickable' — on an expired Benerail trip, assert Delete and Search again CTAs are visible and functional (see test 65020)");
 });
 
-Then("the time left to book counter should be visible in the Benerail checkout", async function () {
-  logger.info("Verifying the time left to book counter is visible in the Benerail checkout");
-  await Cart.verifyTimeLeftToBookCounterVisibleInCheckout(this.page);
-});
+Then(
+  "the time left to book counter should be visible in the Benerail checkout showing between {int} and {int} minutes",
+  async function (minMinutes, maxMinutes) {
+    logger.info("Verifying the time left to book counter in the Benerail checkout", { minMinutes, maxMinutes });
+    await Cart.verifyTimeLeftToBookCounterVisibleInCheckout(this.page, { minMinutes, maxMinutes });
+  },
+);
 
 // --- 1st Class ---
 When("I verify the second result is in 2nd class", async function () {

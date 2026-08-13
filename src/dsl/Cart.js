@@ -3237,23 +3237,35 @@ const Cart = {
   },
 
   /**
-   * Verifies the "time left to book" countdown message is visible on the checkout page.
+   * Verifies the "time left to book" countdown is visible on the checkout page AND is still
+   * counting down within the expected booking window.
    *
    * Benerail checkout renders app-timed-cart.vue, which shows the countdown message inline
    * (no hover/tooltip needed) sharing the same markup as the cart's timed-quote tooltip, so
    * the existing page read is reused directly instead of the badge-hover flow above.
    *
+   * The wording check is not cosmetic: app-timed-cart.vue renders BOTH the live countdown and
+   * the "Cart expired ..." message as a `<p class="fs14">` inside the same
+   * `.timed-quote-tooltip-content` container, so a presence-only read goes green on an expired
+   * cart — the exact failure an expiry test exists to catch. The countdown itself is
+   * `M:SS` derived from the server's `quote.expires`, so the minutes are range-checked rather
+   * than compared to a fixed value.
+   *
    * @param {import('playwright').Page} page
-   * @returns {Promise<{visible: true}>}
+   * @param {object} [options]
+   * @param {number} [options.minMinutes=15] - Lowest acceptable whole minute remaining (inclusive)
+   * @param {number} [options.maxMinutes=20] - Highest acceptable whole minute remaining (inclusive)
+   * @returns {Promise<{visible: true, countdown: string, minutes: number}>}
    */
-  async verifyTimeLeftToBookCounterVisibleInCheckout(page) {
+  async verifyTimeLeftToBookCounterVisibleInCheckout(page, { minMinutes = 15, maxMinutes = 20 } = {}) {
     if (!page) {
       throw new Error('[Cart.verifyTimeLeftToBookCounterVisibleInCheckout] "page" is required.');
     }
 
     const cartPage = getPageObject(page, CartPage);
+    let message;
     try {
-      await cartPage.getTimedQuoteTooltipMessage();
+      message = await cartPage.getTimedQuoteTooltipMessage();
     } catch (err) {
       throw new Error(
         `[Cart.verifyTimeLeftToBookCounterVisibleInCheckout] The "time left to book" counter was not visible ` +
@@ -3261,8 +3273,34 @@ const Cart = {
       );
     }
 
-    logger.info('Time left to book counter is visible in checkout');
-    return { visible: true };
+    if (!/time left to book/i.test(message)) {
+      throw new Error(
+        `[Cart.verifyTimeLeftToBookCounterVisibleInCheckout] Expected the "Time left to book" countdown in ` +
+        `checkout, but the timed-cart banner read: "${message}". A "Cart expired" message here means the ` +
+        `quote expired before checkout was reached.`,
+      );
+    }
+
+    const match = message.match(/(\d+):([0-5]\d)/);
+    if (!match) {
+      throw new Error(
+        `[Cart.verifyTimeLeftToBookCounterVisibleInCheckout] The "Time left to book" label was shown but no ` +
+        `M:SS countdown was rendered next to it. Banner text: "${message}".`,
+      );
+    }
+
+    const minutes = Number(match[1]);
+    if (minutes < minMinutes || minutes > maxMinutes) {
+      throw new Error(
+        `[Cart.verifyTimeLeftToBookCounterVisibleInCheckout] The countdown showed ${match[0]} ` +
+        `(${minutes} min), outside the expected ${minMinutes}-${maxMinutes} minute booking window. ` +
+        `The window comes from the supplier's quote expiry, so a value below the range means the quote was ` +
+        `already ageing before checkout was reached.`,
+      );
+    }
+
+    logger.info('Time left to book counter is visible in checkout', { countdown: match[0], minutes });
+    return { visible: true, countdown: match[0], minutes };
   },
 
   /**

@@ -11,7 +11,7 @@ Feature: 66407 Benerail - Expiry counter shows time left to book in checkout
   I want to see the time left to book counter in the checkout page
   So that I know how long I have before the Benerail quote expires
 
-  Scenario: Time left to book counter is visible in Benerail checkout
+  Scenario: Time left to book counter is visible in Benerail checkout and within the booking window
     Given I am logged in as "beny@moove.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "bebmiToSchiphol"
@@ -20,4 +20,4 @@ Feature: 66407 Benerail - Expiry counter shows time left to book in checkout
     And the booking status should be "Pending booking"
     When I proceed to checkout
     And I wait for booking details in checkout
-    Then the time left to book counter should be visible in the Benerail checkout
+    Then the time left to book counter should be visible in the Benerail checkout showing between 15 and 20 minutes
