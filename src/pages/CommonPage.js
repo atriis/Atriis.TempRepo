@@ -14,7 +14,12 @@ const SELECTORS = {
   // the locator resolved to two elements and every caller died on a strict-mode violation.
   // "Proceed to Checkout" and "Proceed anyway" have their own dedicated selectors
   // (CartPage.PROCEED_TO_CHECKOUT_BUTTON, FLIGHT_CAPACITY_PROCEED_ANYWAY_TEXT) and are not wanted here.
-  PROCEED_BUTTON: "button:text-is('Proceed')",
+  // `:visible` is part of the selector, not a caller concern. An earlier reference-fields popup (e.g. the
+  // search-stage "New trip reference fields" dialog) stays in the DOM hidden after it closes, so by checkout
+  // an unrestricted match resolves to the hidden leftover plus the live dialog and every caller dies on a
+  // strict-mode violation. Only one of these dialogs is ever open at a time, so the visible match is
+  // unambiguous, and every caller waits for visibility anyway.
+  PROCEED_BUTTON: "button:text-is('Proceed'):visible",
   SAVE_BUTTON: "button:has-text('Save')",
   HEADINGS: 'h1, h2, h3, h4, h5, h6',
 
@@ -396,6 +401,8 @@ class CommonPage {
    * @returns {Promise<boolean>} True if clicked, false if not displayed
    */
   async clickProceedButtonIfVisible(timeout = 10000) {
+    // A hidden-only Proceed matches nothing (see PROCEED_BUTTON), which is the same "not displayed"
+    // outcome this helper already returns false for.
     const button = this.getProceedButton();
     const isVisible = await button.isVisible();
 

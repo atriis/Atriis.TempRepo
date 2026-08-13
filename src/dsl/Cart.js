@@ -10744,6 +10744,71 @@ const Cart = {
   },
 
   /**
+   * Verifies the open approvals dialog lists EXACTLY the expected approvers, checking the whole
+   * list in a single pass. verifyApproverAssigned closes the dialog when it finishes, so asserting
+   * one name per step only works if the dialog is reopened between each — this reads the list once
+   * instead, and also catches an approver that should NOT be on the flow.
+   *
+   * Comparison is order-independent but duplicate-sensitive (sorted multiset): the dialog renders
+   * one `.approver-name` per approval step, and two approvers sharing a step have no guaranteed
+   * order between them, so asserting position would be brittle.
+   *
+   * The dialog must already be open (see viewApproversInTripOverview). Closes it when done, matching
+   * verifyApproverAssigned / verifyApproverCount.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string[]} expectedNames - Exact approver names, as rendered in the dialog
+   * @returns {Promise<{approvers: string[]}>} The approver names actually listed
+   */
+  async verifyApproversAre(page, expectedNames) {
+    if (!page) throw new Error('[Cart.verifyApproversAre] "page" is required.');
+    if (!Array.isArray(expectedNames) || expectedNames.length === 0) {
+      throw new Error(
+        `[Cart.verifyApproversAre] "expectedNames" must be a non-empty array of approver names, got: ` +
+        `${Array.isArray(expectedNames) ? 'an empty array' : typeof expectedNames}`
+      );
+    }
+
+    const expected = expectedNames.map((name) => {
+      if (typeof name !== 'string' || name.trim().length === 0) {
+        throw new Error(
+          `[Cart.verifyApproversAre] Every expected approver name must be a non-empty string, got: ${name}`
+        );
+      }
+      return name.trim();
+    });
+
+    logger.debug('[Cart.verifyApproversAre] Verifying the full approver list in the approvals dialog', { expected });
+    const cartPage = getPageObject(page, CartPage);
+    const actual = await cartPage.getApproverNames();
+
+    const sortedActual = [...actual].sort();
+    const sortedExpected = [...expected].sort();
+    const matches =
+      sortedActual.length === sortedExpected.length &&
+      sortedActual.every((name, index) => name === sortedExpected[index]);
+
+    if (!matches) {
+      // Reported alongside the full lists: a count-only mismatch (the same approver listed twice)
+      // leaves both of these empty, so the raw lists are what explains that case.
+      const missing = expected.filter((name) => !actual.includes(name));
+      const unexpected = actual.filter((name) => !expected.includes(name));
+      await cartPage.closeApprovalsDialog().catch(() => {});
+      throw new Error(
+        `[Cart.verifyApproversAre] The approval flow's approvers do not match. ` +
+        `Expected ${expected.length}: [${expected.join(', ')}]. Found ${actual.length}: [${actual.join(', ')}].` +
+        (missing.length ? ` Missing: [${missing.join(', ')}].` : '') +
+        (unexpected.length ? ` Unexpected: [${unexpected.join(', ')}].` : '') +
+        ` Check the approval flow configuration for this trip's traveler.`
+      );
+    }
+
+    logger.info('Approval flow approvers matched the expected list', { approvers: actual });
+    await cartPage.closeApprovalsDialog();
+    return { approvers: actual };
+  },
+
+  /**
    * Starts capturing the next /api/v3/quotes?tripId=... GET response.
    * Must be called BEFORE the action that navigates to / refreshes the cart.
    * Returns an unresolved Promise — do NOT await in the calling step.

@@ -257,6 +257,15 @@ Then("the approver {string} should be assigned to the approval flow", async func
   await Cart.verifyApproverAssigned(this.page, approverName);
 });
 
+// Asserts the COMPLETE approver list in one pass. Prefer this over repeating the single-approver step
+// above for a multi-approver flow: that step closes the dialog when it finishes, so chaining it per
+// approver needs "I view the approvers in the trip overview" again before each one.
+Then("the trip overview approvers should be:", async function (dataTable) {
+  const expectedApprovers = dataTable.raw().map((row) => row[0]);
+  logger.info("Verifying the full approver list in the trip overview", { expectedApprovers });
+  await Cart.verifyApproversAre(this.page, expectedApprovers);
+});
+
 When("I click the share quote button", async function () {
   logger.info("Clicking share quote button");
   await Cart.clickShareQuoteAndWaitForSubjectField(this.page);

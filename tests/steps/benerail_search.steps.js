@@ -103,10 +103,6 @@ Then("the dynamic fields section should be visible in the Benerail search form",
   throw new Error("TODO: implement 'the dynamic fields section should be visible in the Benerail search form' — assert that corporate dynamic fields are rendered in the search form even when no reference fields are configured");
 });
 
-Then("the linked reference questions should be visible in the Benerail search form", async function () {
-  throw new Error("TODO: implement 'the linked reference questions should be visible in the Benerail search form' — assert that linked reference questions appear in the Benerail search form for the configured corporate");
-});
-
 When("I fill in the reference and dynamic fields for the Benerail search", async function () {
   throw new Error("TODO: implement 'I fill in the reference and dynamic fields for the Benerail search' — fill in corporate reference and dynamic field inputs on the Benerail search form before proceeding");
 });

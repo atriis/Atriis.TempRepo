@@ -9593,9 +9593,12 @@ class CartPage {
 
   /**
    * The "Journey Details" button (rail quote card) inside the first ticket details section.
+   * `.first()`: a round-trip rail quote renders one of these per leg inside the same section, so an
+   * unqualified match is a strict-mode violation. Callers use this button as a "the quote card has
+   * rendered" gate, which the first leg's button answers on its own.
    */
   getJourneyDetailsButtonInFirstTicketDetails() {
-    return this.getFirstTicketDetailsSection().getByRole('button', { name: 'Journey Details' });
+    return this.getFirstTicketDetailsSection().getByRole('button', { name: 'Journey Details' }).first();
   }
 
   // ========================================

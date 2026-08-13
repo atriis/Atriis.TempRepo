@@ -200,10 +200,6 @@ Then("the approval flow should have the correct approvers assigned", async funct
   throw new Error("TODO: implement 'the approval flow should have the correct approvers assigned' — after booking with approval-flow policy, verify approvers list is correct on trip/approval page (see test 22999)");
 });
 
-Then("the approval flow should have the correct approvers for duration and origin rules", async function () {
-  throw new Error("TODO: implement 'the approval flow should have the correct approvers for duration and origin rules' — after booking under duration & origin policy, verify approvers list (see test 23004)");
-});
-
 // --- Cancellation with Warning ---
 When("I cancel the Benerail trip with warning and continue", async function () {
   throw new Error("TODO: implement 'I cancel the Benerail trip with warning and continue' — cancel the Benerail trip through UI, confirm the warning dialog that appears, then continue (different from standard Trip_Cancelation) (see tests 23004, hybrid_61642)");
