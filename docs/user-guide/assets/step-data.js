@@ -2,7 +2,7 @@
 // Re-run: node docs/user-guide/scan-steps.js
 window.STEP_DATA = {
   "generatedFrom": "tests/steps/*.js",
-  "count": 1778,
+  "count": 1856,
   "products": [
     "Cars",
     "Flights",
@@ -1346,12 +1346,93 @@ window.STEP_DATA = {
       ]
     },
     {
+      "type": "Then",
+      "text": "later departure results should be displayed",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I expand more options for the first result",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the handshake badge should be displayed in at least one of more options results",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I hover the agreement logo to see the tooltip in more options results",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the out of policy tooltip in more options results should be {string}",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select and add to cart the first agreement fare from more options",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
       "type": "When",
       "text": "I expand More Options for the last outbound result and select an alternative fare",
       "file": "benerail_results.steps.js",
       "product": "Rail",
       "dsl": [
         "BenerailResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I add a Benerail fare {string} one way to the trip",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I verify that the first train company of the route for the first result is {string}",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I verify that the first train company of the route is {string}",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
       ]
     },
     {
@@ -1365,24 +1446,30 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the fare rules should be accessible in Benerail results",
+      "text": "the fare rules should be accessible in Benerail results and contain {string}",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
-      "text": "the fare rules should be accessible in the Benerail cart",
+      "text": "the fare rules should be accessible in the Benerail cart and contain {string}",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
-      "text": "the fare rules should be accessible in the Benerail trip overview after booking",
+      "text": "the fare rules should be accessible in the Benerail trip overview after booking and contain {string}",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
@@ -1507,31 +1594,12 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the time left to book counter should be visible in the Benerail checkout",
+      "text": "the time left to book counter should be visible in the Benerail checkout showing between {int} and {int} minutes",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the birth date section should be visible and required in the Benerail cart",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I save the birth date in the Benerail cart",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the birth date should be saved successfully in the Benerail cart",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "When",
@@ -1601,7 +1669,32 @@ window.STEP_DATA = {
       "text": "the total price should reflect both travelers correctly",
       "file": "benerail_results.steps.js",
       "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I extract the Benerail outbound total price for both travelers in results",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
       "dsl": []
+    },
+    {
+      "type": "When",
+      "text": "I extract the Benerail inbound total price for both travelers in results",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the total price in cart should equal the sum of the outbound and inbound totals for both travelers",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
@@ -1657,14 +1750,36 @@ window.STEP_DATA = {
       "text": "I open journey details for the first Benerail result",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I should see {string} in journey details",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the travel time should be displayed in the Benerail journey details panel",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
     },
     {
       "type": "When",
       "text": "I extract the departure and arrival times from the journey details panel",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "BenerailResults"
+      ]
     },
     {
       "type": "Then",
@@ -1678,32 +1793,13 @@ window.STEP_DATA = {
       "text": "I close the Benerail journey details panel",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "BenerailResults"
+      ]
     },
     {
       "type": "Then",
       "text": "the traveler should still be visible in the Benerail cart",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I click the share icon in Benerail results",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I click the share price offer button in Benerail results",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the Include in price offer option should be visible",
       "file": "benerail_results.steps.js",
       "product": "Rail",
       "dsl": []
@@ -1717,17 +1813,21 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I click the Rail Options button in flight results",
+      "text": "I click the rail options button in flight results",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "FlightResults"
+      ]
     },
     {
       "type": "Then",
       "text": "the first Benerail result Select button should be visible",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Results"
+      ]
     },
     {
       "type": "Then",
@@ -1738,10 +1838,57 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the seat price should not be included in the journey price",
+      "text": "the seating price should not be displayed in the Benerail cart summary",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I click Benerail seating in extras",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I click outbound and inbound seat checkboxes",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I extract outbound and inbound seat prices",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select continue without reserving seats",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the seating price in the Benerail cart summary is the sum of outbound and inbound seats",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
@@ -1753,20 +1900,6 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the Age Association mandatory field should not be displayed in the Benerail extras",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I select a Benerail result container to see passenger details",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the passenger details should be correctly displayed in Benerail results",
       "file": "benerail_results.steps.js",
       "product": "Rail",
       "dsl": []
@@ -1801,13 +1934,6 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the trip overview should show the journey details button",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
       "text": "the Benerail ticket should be marked as refundable in the itinerary after booking",
       "file": "benerail_results.steps.js",
       "product": "Rail",
@@ -1829,7 +1955,50 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I extract the first result departure time",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I extract the first result arrival time",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I click Later and extract the first result departure time",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I click Later and extract the subsequent first result departure time",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the first Later click should display results later than the initial results",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the second Later click should display results later than the first Later click",
       "file": "benerail_results.steps.js",
       "product": "Rail",
       "dsl": []
@@ -1839,25 +2008,13 @@ window.STEP_DATA = {
       "text": "I click Earlier and extract the first result departure time",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "BenerailResults"
+      ]
     },
     {
       "type": "Then",
-      "text": "the Earlier results departure time should be before the Later results time",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I click Later and extract the subsequent first result departure time",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the second Later click should display results later than the first Later click",
+      "text": "the earlier results departure time should be before the later results time",
       "file": "benerail_results.steps.js",
       "product": "Rail",
       "dsl": []
@@ -1909,7 +2066,9 @@ window.STEP_DATA = {
       "text": "the no trains found message should be displayed in Benerail results",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "BenerailResults"
+      ]
     },
     {
       "type": "Then",
@@ -1920,24 +2079,39 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the journey summary should correctly indicate non-direct routes",
+      "text": "the journey summary should show the same number of change dots as changes",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "BenerailResults"
+      ]
     },
     {
       "type": "Then",
-      "text": "the Benerail journey stepper should be visible for the outbound selection",
+      "text": "the Benerail journey stepper should show the outbound step highlighted and the inbound step default, both with their date and time",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "BenerailResults"
+      ]
     },
     {
       "type": "Then",
-      "text": "the Benerail journey stepper should be visible for the return selection",
+      "text": "the Benerail journey stepper should show the outbound step completed and the inbound step highlighted, both with their date and time",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the Benerail journey stepper {string} step should show one of the times {string}",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
     },
     {
       "type": "Then",
@@ -1969,10 +2143,12 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the Benerail search tab should still be visible",
+      "text": "I should see {string} text in breadcrumb",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "BenerailResults"
+      ]
     },
     {
       "type": "Then",
@@ -1992,7 +2168,43 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I search for a one way Benerail train from {string} on the {int} {string} of next month",
+      "file": "benerail_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailSearch"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I search direct only option for a one way Benerail train from {string}",
+      "file": "benerail_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailSearch"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I search for a one way Benerail train from {string} from the cart drawer",
+      "file": "benerail_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailSearch"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I search for a one way Benerail train from {string} without clicking search button",
+      "file": "benerail_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailSearch"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "search form displays from as {string} and to as {string}",
       "file": "benerail_search.steps.js",
       "product": "Rail",
       "dsl": [
@@ -2022,7 +2234,54 @@ window.STEP_DATA = {
       "text": "I navigate to the Benerail rail search tab",
       "file": "benerail_search.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "BenerailSearch"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select the one way trip type for the Benerail search",
+      "file": "benerail_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailSearch"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I set the Benerail departure time to {string}",
+      "file": "benerail_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailSearch"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the Benerail departure time should display {string}",
+      "file": "benerail_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailSearch"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I enable the via station option on the Benerail search form",
+      "file": "benerail_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailSearch"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select {string} from travellers ages dropdown in benerail search",
+      "file": "benerail_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailSearch"
+      ]
     },
     {
       "type": "Then",
@@ -2064,14 +2323,9 @@ window.STEP_DATA = {
       "text": "the Benerail autocomplete improvements should be validated",
       "file": "benerail_search.steps.js",
       "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the Benerail time-picker component should function correctly",
-      "file": "benerail_search.steps.js",
-      "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "BenerailSearch"
+      ]
     },
     {
       "type": "When",
@@ -2263,6 +2517,24 @@ window.STEP_DATA = {
       ]
     },
     {
+      "type": "When",
+      "text": "I toggle the \"In Policy\" filter on car results",
+      "file": "car_results.steps.js",
+      "product": "Cars",
+      "dsl": [
+        "CarResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I should see the {string} label on the first car result",
+      "file": "car_results.steps.js",
+      "product": "Cars",
+      "dsl": [
+        "CarResults"
+      ]
+    },
+    {
       "type": "Then",
       "text": "the car FOP on results should be {string}",
       "file": "car_results.steps.js",
@@ -2431,6 +2703,85 @@ window.STEP_DATA = {
       "dsl": [
         "Cart"
       ]
+    },
+    {
+      "type": "When",
+      "text": "I click vendor and location details tab",
+      "file": "car_results.steps.js",
+      "product": "Cars",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I extract and store the fare rules text from results",
+      "file": "car_results.steps.js",
+      "product": "Cars",
+      "dsl": []
+    },
+    {
+      "type": "When",
+      "text": "I extract and store the fare rules text from cart",
+      "file": "car_results.steps.js",
+      "product": "Cars",
+      "dsl": []
+    },
+    {
+      "type": "When",
+      "text": "I extract and store the fare rules text from cart after booking",
+      "file": "car_results.steps.js",
+      "product": "Cars",
+      "dsl": []
+    },
+    {
+      "type": "When",
+      "text": "I extract and store the location details text from results",
+      "file": "car_results.steps.js",
+      "product": "Cars",
+      "dsl": []
+    },
+    {
+      "type": "When",
+      "text": "I extract and store the location details text from cart",
+      "file": "car_results.steps.js",
+      "product": "Cars",
+      "dsl": []
+    },
+    {
+      "type": "When",
+      "text": "I extract and store the location details text from cart after booking",
+      "file": "car_results.steps.js",
+      "product": "Cars",
+      "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the fare rules from results match fare rules from cart",
+      "file": "car_results.steps.js",
+      "product": "Cars",
+      "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the fare rules from results match fare rules from cart after booking",
+      "file": "car_results.steps.js",
+      "product": "Cars",
+      "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the vendor and location text from results match vendor and location text from cart",
+      "file": "car_results.steps.js",
+      "product": "Cars",
+      "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the vendor and location text from results match vendor and location text from cart after booking",
+      "file": "car_results.steps.js",
+      "product": "Cars",
+      "dsl": []
     },
     {
       "type": "When",
@@ -3996,6 +4347,13 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
+      "text": "the price breakdown total should equal the published fare price multiplied by the number of selected travelers",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": []
+    },
+    {
+      "type": "Then",
       "text": "the cart total price should equal the published fare price multiplied by the number of selected travelers",
       "file": "cart.steps.js",
       "product": "Shared",
@@ -4140,6 +4498,24 @@ window.STEP_DATA = {
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the baggage {string} should be displayed in flight details",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the added baggage should be displayed in flight details",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
@@ -4483,6 +4859,15 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
+      "text": "the trip overview should show the journey details button",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
       "text": "the cart badge should show {string} item",
       "file": "cart.steps.js",
       "product": "Shared",
@@ -4618,6 +5003,15 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
+      "text": "the traveler {string} is available in cart page",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
       "text": "all quotes should have PNR codes",
       "file": "cart.steps.js",
       "product": "Shared",
@@ -4646,6 +5040,15 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the mandatory notifications popup should be displayed",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the mandatory and optional notifications for the Benerail {string} should be displayed",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -4835,6 +5238,24 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the share quote preview should show {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the fare rules {string} and its content should be visible in the Benerail share quote email",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the fare rules {string} and its content should be visible in the Benerail share itinerary email",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -5192,6 +5613,15 @@ window.STEP_DATA = {
       "dsl": []
     },
     {
+      "type": "Then",
+      "text": "the rail loyalty numbers from the traveler should be displayed:",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
       "type": "When",
       "text": "I select the first existing loyalty program from the dropdown",
       "file": "cart.steps.js",
@@ -5203,6 +5633,15 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the card number field is pre-populated with a valid full card number",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the existing loyalty card number is {string}",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -5302,6 +5741,15 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I select the loyalty program index {int}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select the loyalty program containing {string}",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -5544,6 +5992,15 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
+      "text": "the age association mandatory field should not be displayed in the Benerail extras",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
       "text": "there should be {int} extras sections visible",
       "file": "cart.steps.js",
       "product": "Shared",
@@ -5671,6 +6128,123 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the passenger info section should show a green circle checkmark indicating success",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "passenger info is displayed 3\\/3 with a green checkmark",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I click to edit passenger info",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I click {string} passenger to validate that email is {string}, last name is {string} and first name is {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I remove passenger info email from {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "passenger info email field is mandatory - border gets red",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I add the passenger info email {string} to the passenger {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the birth date section should be visible and required in the Benerail cart",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I save the birth date as {string} in the Benerail extras cart",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the birth date should be saved successfully in the Benerail cart by having a green check mark next to it",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I expand the birth date section",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "birth date is {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I delete {string} corporate user from cart page",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I delete {string} guest traveler from cart page",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -6509,6 +7083,20 @@ window.STEP_DATA = {
       "dsl": [
         "Cart"
       ]
+    },
+    {
+      "type": "When",
+      "text": "I work on the copied trip",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": []
+    },
+    {
+      "type": "When",
+      "text": "I work on the original trip",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": []
     },
     {
       "type": "Then",
@@ -7791,6 +8379,24 @@ window.STEP_DATA = {
       ]
     },
     {
+      "type": "Then",
+      "text": "line with product details is displayed after checkout with status {string} or {string} or {string}",
+      "file": "checkout.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Checkout"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I should see {string} or {string} status on the booking page",
+      "file": "checkout.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Checkout"
+      ]
+    },
+    {
       "type": "When",
       "text": "I click go to trip button",
       "file": "checkout.steps.js",
@@ -8359,6 +8965,15 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
+      "text": "the reference fields for traveler {string} should have the following values:",
+      "file": "dynamic_fields.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "DynamicAndReferenceFields"
+      ]
+    },
+    {
+      "type": "Then",
       "text": "the following reference fields should not be editable:",
       "file": "dynamic_fields.steps.js",
       "product": "Shared",
@@ -8378,6 +8993,15 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I select the first available option for the {string} reference field",
+      "file": "dynamic_fields.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "DynamicAndReferenceFields"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select the first available option for the {string} reference field for traveler {string}",
       "file": "dynamic_fields.steps.js",
       "product": "Shared",
       "dsl": [
@@ -8414,6 +9038,24 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the custom error {string} should be displayed below the {string} reference field",
+      "file": "dynamic_fields.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "DynamicAndReferenceFields"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the financial reference should be marked as invalid",
+      "file": "dynamic_fields.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "DynamicAndReferenceFields"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the custom error {string} should be displayed below the {string} reference field for traveler {string}",
       "file": "dynamic_fields.steps.js",
       "product": "Shared",
       "dsl": [
@@ -8914,6 +9556,33 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
+      "text": "the {string} cabin class tab should be displayed in flight selection",
+      "file": "flight_nff.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select the {string} cabin class tab in flight selection",
+      "file": "flight_nff.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "every outbound leg brand card name should contain {string}",
+      "file": "flight_nff.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "Then",
       "text": "the inbound leg brand cards should be visible",
       "file": "flight_nff.steps.js",
       "product": "Flights",
@@ -9227,6 +9896,15 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
+      "text": "the management markup on the published fare should be {string} percent of the whole price",
+      "file": "flight_pricing.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightPricing"
+      ]
+    },
+    {
+      "type": "Then",
       "text": "the management markup on the published fare should be {string} percent of the base fare",
       "file": "flight_pricing.steps.js",
       "product": "Flights",
@@ -9482,6 +10160,15 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I select the published fare from pricing options",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select the published fare for every direction from pricing options",
       "file": "flight_results.steps.js",
       "product": "Flights",
       "dsl": [
@@ -9761,6 +10448,15 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I select the fare with baggage {string}",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select the fare with baggage {string} from the first result offering it",
       "file": "flight_results.steps.js",
       "product": "Flights",
       "dsl": [
@@ -13405,6 +14101,15 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I wait to see change button",
+      "file": "results.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Results"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I wait for add to trip text to be visible",
       "file": "results.steps.js",
       "product": "Shared",
@@ -14292,6 +14997,29 @@ window.STEP_DATA = {
     {
       "type": "Given",
       "text": "I have added a random guest traveler with email {string}",
+      "file": "search.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Search"
+      ]
+    },
+    {
+      "type": "Given",
+      "text": "I have added a guest traveler named {string} with email {string}",
+      "file": "search.steps.js",
+      "product": "Shared",
+      "dsl": []
+    },
+    {
+      "type": "Given",
+      "text": "I add guest traveller from cart named {string} with email {string}",
+      "file": "search.steps.js",
+      "product": "Shared",
+      "dsl": []
+    },
+    {
+      "type": "Given",
+      "text": "I have added a guest passenger without date of birth named {string} {string}",
       "file": "search.steps.js",
       "product": "Shared",
       "dsl": [
