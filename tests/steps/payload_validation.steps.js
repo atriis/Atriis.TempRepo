@@ -529,6 +529,26 @@ Then(
   }
 );
 
+When("I capture the number of {string} requests sent for the trip", async function (requestType) {
+  await runPayloadValidationStep(this, "captureRequestCount", { requestType }, async () => {
+    logger.info("Capturing baseline request count", { requestType, ...getScenarioIdentifiers(this) });
+    await PayloadValidation.captureRequestCount(this.page, this, requestType);
+  });
+});
+
+Then(
+  "no additional {string} requests should have been sent after {string}",
+  async function (requestType, anchorRequestType) {
+    await runPayloadValidationStep(this, "expectRequestCountUnchanged", {
+      requestType,
+      anchorRequestType,
+    }, async () => {
+      logger.info("Validating no additional requests were sent", { requestType, anchorRequestType });
+      await PayloadValidation.expectRequestCountUnchanged(this.page, this, requestType, anchorRequestType);
+    });
+  }
+);
+
 Then(
   "in the captured {string} payload for request type {string}, path {string} should not contain {string}",
   async function (source, requestType, path, expectedValue) {

@@ -3,6 +3,13 @@ const { expect } = require("@playwright/test");
 const { fetchPayloadFromStorage } = require("@utils/payloadValidationClient");
 const logger = require("@utils/logger").child("PayloadValidation-DSL");
 
+// Request-count polling. Distributor logs are published asynchronously, so counts are read
+// repeatedly until they stop changing rather than trusted on the first read.
+const COUNT_POLL_INTERVAL_MS = 2000;
+const COUNT_STABLE_READS = 2;
+const COUNT_SETTLE_TIMEOUT_MS = 30000;
+const ANCHOR_TIMEOUT_MS = 60000;
+
 function buildKey(source, requestType) {
   return `${source.toLowerCase()}::${requestType.trim()}`;
 }
@@ -129,6 +136,41 @@ function getScenarioIdentifiers(world) {
     transactionId: world.transactionId || null,
     sid: world.sid || null,
   };
+}
+
+function sleep(delayMs) {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+// A single read can land mid-burst while the logs are still being published, so poll until
+// the count repeats COUNT_STABLE_READS times in a row before trusting it.
+async function settleRequestCount(countRequests, { requestType }) {
+  const deadline = Date.now() + COUNT_SETTLE_TIMEOUT_MS;
+  let settledCount = await countRequests();
+  let consecutiveMatches = 1;
+
+  while (consecutiveMatches < COUNT_STABLE_READS && Date.now() < deadline) {
+    await sleep(COUNT_POLL_INTERVAL_MS);
+    const currentCount = await countRequests();
+
+    if (currentCount === settledCount) {
+      consecutiveMatches += 1;
+    } else {
+      settledCount = currentCount;
+      consecutiveMatches = 1;
+    }
+  }
+
+  if (consecutiveMatches < COUNT_STABLE_READS) {
+    logger.warn(`Request count for "${requestType}" never settled - using the last read`, {
+      requestType,
+      settledCount,
+      consecutiveMatches,
+      settleTimeoutMs: COUNT_SETTLE_TIMEOUT_MS,
+    });
+  }
+
+  return settledCount;
 }
 
 function parseJsonPayload(payload, source, requestType) {
@@ -1554,6 +1596,147 @@ const PayloadValidation = {
     throw new Error(
       `No ${source} payload for request type "${requestType}" matched key "${key}" with value ${JSON.stringify(expectedValue)} across ${multiMatchResult.metadata.returnedMatches} candidate(s). Last error: ${lastError?.message || "n/a"}`
     );
+  },
+
+  /**
+   * How many distributor requests of a given type were logged for the current trip.
+   * Only the total is needed, so a single payload is downloaded - metadata.totalMatches
+   * already reports every match. Throws when the request type was never logged.
+   */
+  async getRequestCount(world, requestType) {
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+    const identifiers = getScenarioIdentifiers(world);
+
+    if (!identifiers.tripId) {
+      throw new Error(
+        `Cannot count "${normalizedRequestType}" requests: no trip id is available on the world context.`
+      );
+    }
+
+    const result = await fetchPayloadFromStorage({
+      source: "request",
+      requestType: normalizedRequestType,
+      tripId: identifiers.tripId,
+      transactionId: identifiers.transactionId,
+      sid: identifiers.sid,
+      returnAllMatches: true,
+      maxMatches: 1,
+    });
+
+    return result.metadata.totalMatches;
+  },
+
+  /**
+   * Waits until at least one request of the given type has been logged for the trip.
+   * Used to prove a stage of the flow reached the supplier before counting anything else.
+   */
+  async waitForRequestType(world, requestType) {
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    const deadline = Date.now() + ANCHOR_TIMEOUT_MS;
+    let lastError;
+
+    while (Date.now() < deadline) {
+      try {
+        const count = await this.getRequestCount(world, normalizedRequestType);
+        logger.info(`Request type "${normalizedRequestType}" is present in the trip log`, { count });
+        return count;
+      } catch (error) {
+        lastError = error;
+        await sleep(COUNT_POLL_INTERVAL_MS);
+      }
+    }
+
+    throw new Error(
+      `Request type "${normalizedRequestType}" was never logged for this trip within ${ANCHOR_TIMEOUT_MS}ms. ` +
+      `Last error: ${lastError?.message || "n/a"}`
+    );
+  },
+
+  /**
+   * Stores the current number of requests of a given type as the baseline for a later
+   * comparison. Fails when the type has never been sent - that means the flow under test
+   * never reached this supplier, which would make the later comparison meaningless.
+   */
+  async captureRequestCount(page, world, requestType) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    let baselineCount;
+    try {
+      baselineCount = await settleRequestCount(() => this.getRequestCount(world, normalizedRequestType), {
+        requestType: normalizedRequestType,
+      });
+    } catch (error) {
+      throw new Error(
+        `Could not establish a baseline count for "${normalizedRequestType}" requests: no such request has ` +
+        `been logged for this trip. Check that the selected flight is really served by the expected supplier. ` +
+        `Underlying error: ${error.message}`
+      );
+    }
+
+    if (!world.capturedRequestCounts) {
+      world.capturedRequestCounts = {};
+    }
+
+    world.capturedRequestCounts[normalizedRequestType] = {
+      count: baselineCount,
+      capturedAt: new Date().toISOString(),
+    };
+
+    logger.info(`Baseline request count captured for "${normalizedRequestType}"`, { count: baselineCount });
+
+    return baselineCount;
+  },
+
+  /**
+   * Asserts no further request of the given type was sent since the baseline was captured.
+   *
+   * `anchorRequestType` is a request the flow is known to send after the baseline (e.g.
+   * SelectFlight for add to cart). Waiting for it first proves that stage's traffic has been
+   * published, so an unchanged count means "nothing was re-sent" and not "nothing logged yet".
+   */
+  async expectRequestCountUnchanged(page, world, requestType, anchorRequestType) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+    const normalizedAnchor = normalizeRequestType(anchorRequestType);
+
+    const baselineRecord = world.capturedRequestCounts?.[normalizedRequestType];
+    if (!baselineRecord) {
+      throw new Error(
+        `No baseline count captured for "${normalizedRequestType}". Run the capture step first.`
+      );
+    }
+
+    await this.waitForRequestType(world, normalizedAnchor);
+
+    const currentCount = await settleRequestCount(() => this.getRequestCount(world, normalizedRequestType), {
+      requestType: normalizedRequestType,
+    });
+
+    logger.info(`Comparing "${normalizedRequestType}" request count against the baseline`, {
+      baselineCount: baselineRecord.count,
+      currentCount,
+      anchorRequestType: normalizedAnchor,
+    });
+
+    expect(
+      currentCount,
+      `Expected no additional "${normalizedRequestType}" requests after "${normalizedAnchor}", but the count ` +
+      `went from ${baselineRecord.count} (captured at ${baselineRecord.capturedAt}) to ${currentCount}. ` +
+      `${currentCount - baselineRecord.count} extra request(s) were sent - the previously retrieved pricing ` +
+      `data was not reused.`
+    ).toBe(baselineRecord.count);
   },
 };
 
