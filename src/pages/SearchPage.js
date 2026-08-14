@@ -30,6 +30,18 @@ const SELECTORS = {
   LAST_NAME_INPUT: "[placeholder='Last Name']",
   MIDDLE_NAME_INPUT: ".edit-traveler [placeholder='Middle Name']",
   GENDER_DROPDOWN: "div.el-select__selected-item:has-text('Please select gender')",
+  // Guest form — gender select addressed STRUCTURALLY (by name), not by its text. GENDER_DROPDOWN
+  // above is anchored ON the "Please select gender" string, so asserting the placeholder with it
+  // would be circular; these two exist for reading/asserting that placeholder instead.
+  // app-select renders `name` on the <section> wrapper; Element Plus 2.10.7 renders
+  // div.el-select__wrapper > div.el-select__selection > div.el-select__selected-item.el-select__placeholder.
+  // name='gender' is present on BOTH the desktop and the mobile copy of add-guest-form.vue, so
+  // callers must always use :visible / .first() and must never assert a count of 1.
+  GUEST_GENDER_SELECT: ".edit-traveler section.app-select[name='gender']",
+  GUEST_GENDER_PLACEHOLDER: ".el-select__placeholder",
+  // Fallback for GUEST_GENDER_PLACEHOLDER: while the select holds no value, the wrapper's own
+  // text content IS just the placeholder.
+  GUEST_GENDER_SELECT_WRAPPER: ".el-select__wrapper",
   GENDER_OPTION_MALE: "role=option[name='Male']",
   DATE_OF_BIRTH_INPUT: "[placeholder='DD/MM/YYYY']",
   EMAIL_INPUT: "[placeholder='Enter email address']",
@@ -257,6 +269,47 @@ class SearchPage {
     }
 
     await modal.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+  }
+
+  /**
+   * Asserts the edit-traveler dialog is currently open and visible.
+   * Unlike closeVisibleEditTravelerModal (which returns silently when the dialog is absent), this
+   * fails loudly — use it to gate an action that only makes sense while the dialog is open.
+   * @param {{ timeout?: number }} [options]
+   */
+  async assertEditTravelerDialogVisible({ timeout = 10000 } = {}) {
+    const dialog = this.getEditTravelerModal().locator(SELECTORS.EDIT_TRAVELER_DIALOG).first();
+
+    try {
+      await dialog.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.assertEditTravelerDialogVisible] The edit-traveler dialog is not open ` +
+        `(${SELECTORS.EDIT_TRAVELER_MODAL} ${SELECTORS.EDIT_TRAVELER_DIALOG}). ` +
+        `It may have been closed already, or never opened. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Asserts that no edit-traveler dialog is visible any more.
+   * The `:visible` in EDIT_TRAVELER_MODAL means a zero-match locator counts as hidden, so this
+   * passes once the dialog is either detached or no longer rendered.
+   * @param {{ timeout?: number }} [options]
+   */
+  async assertEditTravelerModalHidden({ timeout = 10000 } = {}) {
+    try {
+      await this.page
+        .locator(SELECTORS.EDIT_TRAVELER_MODAL)
+        .first()
+        .waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.assertEditTravelerModalHidden] The edit-traveler dialog is still visible ` +
+        `(${SELECTORS.EDIT_TRAVELER_MODAL}). The close button click may not have registered, or an ` +
+        `unsaved-changes confirmation may be blocking the close. Original: ${err.message}`
+      );
+    }
   }
 
   // Opens traveler selection panel. Clicks whichever trigger is actually rendered: the round
@@ -544,6 +597,50 @@ class SearchPage {
     const option = this.page.getByRole('option', { name: genderName }).first();
     await option.waitFor({ state: 'visible', timeout: 10000 });
     await option.click();
+  }
+
+  /**
+   * Reads the placeholder text currently rendered in the guest form's gender select.
+   * Addresses the select structurally (name='gender'), NOT by its text, so the value read is not
+   * pre-determined by the locator. Returns the raw normalised string — asserting is the DSL's job.
+   * @param {{ timeout?: number }} [options]
+   * @returns {Promise<string>} Placeholder text with line breaks stripped and trimmed
+   */
+  async getGuestGenderPlaceholderText({ timeout = 10000 } = {}) {
+    const select = this.page.locator(`${SELECTORS.GUEST_GENDER_SELECT}:visible`).first();
+
+    try {
+      await select.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.getGuestGenderPlaceholderText] The guest gender select never became visible ` +
+        `(${SELECTORS.GUEST_GENDER_SELECT}:visible). The add-guest form may not be open. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    const placeholder = select.locator(SELECTORS.GUEST_GENDER_PLACEHOLDER).first();
+    let target = placeholder;
+    let usedSelector = SELECTORS.GUEST_GENDER_PLACEHOLDER;
+
+    // Element Plus only renders .el-select__placeholder in some versions/states; while the select
+    // holds no value the wrapper's own text is the placeholder, so fall back to it.
+    if ((await placeholder.count()) === 0) {
+      target = select.locator(SELECTORS.GUEST_GENDER_SELECT_WRAPPER).first();
+      usedSelector = SELECTORS.GUEST_GENDER_SELECT_WRAPPER;
+    }
+
+    try {
+      await target.waitFor({ state: 'visible', timeout });
+      const text = await target.innerText({ timeout });
+      return text.replace(/[\r\n]+/g, '').trim();
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.getGuestGenderPlaceholderText] Could not read the gender select placeholder text ` +
+        `(${SELECTORS.GUEST_GENDER_SELECT} ${usedSelector}). The select markup may have changed. ` +
+        `Original: ${err.message}`
+      );
+    }
   }
 
   /**

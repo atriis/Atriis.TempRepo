@@ -201,14 +201,6 @@ Then("the traveler checkbox {string} should be visible", async function (labelTe
   await Search.verifyTravelerCheckboxVisible(this.page, labelText);
 });
 
-When("I open the traveler drawer", async function () {
-  throw new Error("TODO: implement 'I open the traveler drawer' — open traveler section from search page");
-});
-
-When("I click add guest traveler", async function () {
-  throw new Error("TODO: implement 'I click add guest traveler' — click add guest traveler button in traveler drawer");
-});
-
 When("I open the add guest traveler form", async function () {
   logger.info("Opening add guest traveler form");
   await Search.openAddGuestTravelerForm(this.page);
@@ -234,12 +226,14 @@ Then("the date picker should remain open for month selection", async function ()
   await Search.verifyDobPickerStillOpen(this.page);
 });
 
-Then("the gender field should display Please select gender", async function () {
-  throw new Error("TODO: implement 'the gender field should display Please select gender' — validate guest gender dropdown placeholder text");
+Then("the gender field placeholder should display {string}", async function (expectedPlaceholder) {
+  logger.info("Verifying the guest gender field placeholder text", { expectedPlaceholder });
+  await Search.verifyGuestGenderPlaceholder(this.page, expectedPlaceholder);
 });
 
 When("I close the guest traveler dialog", async function () {
-  throw new Error("TODO: implement 'I close the guest traveler dialog' — close add guest popup/dialog");
+  logger.info("Closing the guest traveler dialog");
+  await Search.closeEditTravelerDialog(this.page);
 });
 
 Given("I have added a guest traveler {string} {string} with user group {string}", async function (firstName, lastName, userGroupName) {

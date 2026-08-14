@@ -155,14 +155,6 @@ Then("itinerary email split ticket information should match the trip", async fun
   throw new Error("TODO: implement 'itinerary email split ticket information should match the trip' — compare itinerary email split-ticket details with trip data");
 });
 
-Then("the Evolvi no-results helper message should be displayed", async function () {
-  throw new Error("TODO: implement 'the Evolvi no-results helper message should be displayed' — assert helper text guiding user to modify filter criteria");
-});
-
-Then("the Evolvi no results title should be displayed", async function () {
-  throw new Error("TODO: implement 'the Evolvi no results title should be displayed' — assert no-results title/header is shown");
-});
-
 Then("the FOP owner should be displayed as Paid by TMC", async function () {
   throw new Error("TODO: implement 'the FOP owner should be displayed as Paid by TMC' — assert FOP owner label text in cart payment section");
 });

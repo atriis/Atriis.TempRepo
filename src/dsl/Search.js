@@ -1,3 +1,4 @@
+const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { SearchPage } = require("@pages/SearchPage");
 const { generateRandomGuestData } = require("@utils/data/generateRandomGuestData.js");
@@ -767,6 +768,43 @@ const Search = {
   },
 
   /**
+   * Closes the open edit/guest-traveler dialog and confirms it is gone, so a following traveller
+   * action cannot race the closing overlay.
+   *
+   * Deliberately stricter than SearchPage.closeVisibleEditTravelerModal, which returns silently when
+   * the dialog is absent and swallows its own hidden-wait: here a missing dialog and a dialog that
+   * refuses to close are both hard failures.
+   * @param {import('playwright').Page} page
+   */
+  async closeEditTravelerDialog(page) {
+    if (!page) throw new Error('[Search.closeEditTravelerDialog] "page" is required.');
+
+    logger.debug('[Search.closeEditTravelerDialog] Closing the edit/guest-traveler dialog');
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      await searchPage.assertEditTravelerDialogVisible();
+    } catch (err) {
+      throw new Error(
+        `[Search.closeEditTravelerDialog] Cannot close the guest-traveler dialog because it is not open. ` +
+        `A preceding step should have opened it (e.g. "I open the add guest traveler form"). ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    try {
+      await searchPage.closeVisibleEditTravelerModal();
+      await searchPage.assertEditTravelerModalHidden();
+    } catch (err) {
+      throw new Error(
+        `[Search.closeEditTravelerDialog] The guest-traveler dialog did not close. ` +
+        `The dialog header close button may be missing or the dialog is blocking dismissal. ` +
+        `Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Selects the copy-settings radio in the guest form by type name.
    * Currently supports "Users Group" (second radio).
    * @param {import('playwright').Page} page
@@ -1010,6 +1048,54 @@ const Search = {
       await searchPage.selectGenderByName(gender);
     } catch (err) {
       throw new Error(`[Search.selectGuestGender] Failed to select guest gender "${gender}": ${err.message}`);
+    }
+  },
+
+  /**
+   * Verifies the guest form's gender select prompts the user with the expected placeholder text
+   * (i.e. no gender is pre-selected and the field tells the user to pick one).
+   * @param {import('playwright').Page} page
+   * @param {string} expectedPlaceholder - Exact placeholder text expected (e.g. "Please select gender")
+   */
+  async verifyGuestGenderPlaceholder(page, expectedPlaceholder) {
+    if (!page) throw new Error('[Search.verifyGuestGenderPlaceholder] "page" is required.');
+    if (!expectedPlaceholder || typeof expectedPlaceholder !== 'string') {
+      throw new Error(
+        `[Search.verifyGuestGenderPlaceholder] "expectedPlaceholder" must be a non-empty string, ` +
+        `got: ${typeof expectedPlaceholder} (${JSON.stringify(expectedPlaceholder)})`
+      );
+    }
+
+    logger.debug('[Search.verifyGuestGenderPlaceholder] Verifying guest gender placeholder text', { expectedPlaceholder });
+    const searchPage = getPageObject(page, SearchPage);
+    const expected = expectedPlaceholder.trim();
+    let actualPlaceholder = '';
+
+    try {
+      // Poll: the guest form's selects mount and settle their labels a beat after the form opens,
+      // so a single read can catch the field mid-render.
+      await expect
+        .poll(
+          async () => {
+            // Short inner timeout so the poll below can actually retry a mid-render read.
+            actualPlaceholder = await searchPage.getGuestGenderPlaceholderText({ timeout: 3000 });
+            return actualPlaceholder;
+          },
+          {
+            timeout: 15000,
+            message:
+              `[Search.verifyGuestGenderPlaceholder] The gender field never displayed the expected ` +
+              `placeholder "${expected}".`,
+          }
+        )
+        .toBe(expected);
+    } catch (err) {
+      throw new Error(
+        `[Search.verifyGuestGenderPlaceholder] Gender field placeholder mismatch in the guest form. ` +
+        `Expected exactly "${expected}", last read "${actualPlaceholder}". ` +
+        `Either a gender is pre-selected (so the prompt is not shown) or the prompt wording changed. ` +
+        `Original: ${err.message}`
+      );
     }
   },
 
