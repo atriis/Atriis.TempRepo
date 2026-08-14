@@ -61,10 +61,7 @@ class TransportationSupplierExecution {
           encoding: "utf-8",
           stdio: ["pipe", "pipe", "pipe"],
           timeout: (this.supplier.timeoutMs || 60000) * 2,
-          env: {
-            ...process.env,
-            PROVIDER: this.supplier.providerTag,
-          },
+          env: process.env,
         });
       } catch (err) {
         exitCode = err.status || 1;

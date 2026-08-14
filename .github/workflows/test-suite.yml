@@ -89,13 +89,17 @@ jobs:
           # Other
           - suite_id: cars-daily
             suite_name: Cars Daily
+            # cars_blocked/ and payload_test/ are deliberately excluded.
             test_path: >-
-              tests/features/cars/amadeus/ tests/features/cars/galileo/
-              tests/features/cars/general/ tests/features/cars/payload_test/
-              tests/features/cars/sabre/ tests/features/cars/sunny_cars/
-          - suite_id: rails-daily
-            suite_name: Rails Daily
-            test_path: tests/features/rails/daily_rails/
+              tests/features/transportation/cars/amadeus/ tests/features/transportation/cars/galileo/
+              tests/features/transportation/cars/general/
+              tests/features/transportation/cars/sabre/ tests/features/transportation/cars/sunny_cars/
+          # daily_rails/ dissolved into the per-supplier amtrak/, benerail/ and
+          # evolvi/ folders. Only benerail runs; glob *.feature at the folder
+          # root so benerail_blocked/ is not recursed into.
+          - suite_id: rails-benerail
+            suite_name: Rails Benerail
+            test_path: tests/features/transportation/rails/benerail/*.feature
           # Shell
           - suite_id: shell-agent-assistance-and-suggestions
             suite_name: Shell Agent Assistance And Suggestions

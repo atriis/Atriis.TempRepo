@@ -20,14 +20,15 @@
     "bdd": "cucumber-js",
     "bdd:rerun": "npx cucumber-js @test-results/rerun.txt --config cucumber.js",
     "bdd:rerun:headed": "cross-env HEADLESS=false npx cucumber-js @test-results/rerun.txt --config cucumber.js",
-    "bdd:smoke": "set PROVIDER=amadeus && npx cucumber-js tests/features/smoke/",
-    "bdd:flights:general": "set PROVIDER=amadeus && npx cucumber-js tests/features/flights/",
-    "bdd:flights:lufthansa": "set PROVIDER=lufthansa && npx cucumber-js tests/features/flights/lufthansa/",
-    "bdd:hotels:general": "set PROVIDER=ratehawk && npx cucumber-js tests/features/hotels/",
-    "bdd:hotels:galileo": "set PROVIDER=galileo && npx cucumber-js tests/features/hotels/galileo/",
-    "bdd:cars:general": "npx cucumber-js tests/features/cars/amadeus/ tests/features/cars/galileo/ tests/features/cars/general/ tests/features/cars/payload_test/ tests/features/cars/sabre/ tests/features/cars/sunny_cars/",
-    "bdd:cars:galileo": "set PROVIDER=galileo && npx cucumber-js tests/features/cars/galileo/",
-    "bdd:manual_quote": "set PROVIDER=amadeus && npx cucumber-js tests/features/manual_quote/"
+    "bdd:smoke": "npx cucumber-js tests/features/smoke/",
+    "bdd:flights:general": "npx cucumber-js tests/features/flights/",
+    "bdd:flights:lufthansa": "npx cucumber-js tests/features/flights/lufthansa/",
+    "bdd:hotels:general": "npx cucumber-js tests/features/hotels/",
+    "bdd:hotels:galileo": "npx cucumber-js tests/features/hotels/galileo/",
+    "bdd:cars:general": "npx cucumber-js tests/features/transportation/cars/amadeus/ tests/features/transportation/cars/galileo/ tests/features/transportation/cars/general/ tests/features/transportation/cars/sabre/ tests/features/transportation/cars/sunny_cars/",
+    "bdd:cars:galileo": "npx cucumber-js tests/features/transportation/cars/galileo/",
+    "bdd:rails:benerail": "npx cucumber-js tests/features/transportation/rails/benerail/*.feature",
+    "bdd:manual_quote": "npx cucumber-js tests/features/manual_quote/"
   },
   "keywords": [
     "playwright",

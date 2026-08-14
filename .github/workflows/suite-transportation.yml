@@ -35,22 +35,32 @@ jobs:
       # one bad supplier only blanks its own shard.
       #
       # cars_booking/ and daily_cars/ were later flattened into per-supplier
-      # folders directly under tests/features/cars/ (e.g. cars_booking's
-      # 30463_amadeus_agreement_text_and_terms.feature now lives in
-      # tests/features/cars/amadeus/), so the former standalone cars-booking
+      # folders directly under the cars/ root (e.g. cars_booking's
+      # 30463_amadeus_agreement_text_and_terms.feature now lives in the
+      # amadeus/ folder), so the former standalone cars-booking
       # suite is folded into the supplier suites below (with a timeout bump to
       # cover the extra scenarios each absorbed).
+      #
+      # The whole cars/ and rails/ trees then moved under
+      # tests/features/transportation/, and rails/daily_rails/ dissolved into
+      # the per-supplier amtrak/, benerail/ and evolvi/ folders. The nightly now
+      # runs benerail as a whole folder and drops amtrak/evolvi.
+      #
+      # Deliberately NOT run: cars/cars_blocked/, cars/payload_test/ and
+      # rails/benerail/benerail_blocked/. benerail therefore globs *.feature at
+      # the folder root rather than passing the folder, which would recurse into
+      # benerail_blocked/.
       expected-suites: >-
         cars-amadeus cars-galileo cars-general
-        cars-sabre cars-sunny-cars rails-daily
+        cars-sabre cars-sunny-cars rails-benerail
       matrix: |
         {
           "include": [
-            { "suite_id": "cars-amadeus",    "suite_name": "Cars Amadeus",    "test_path": "tests/features/cars/amadeus/",                                       "parallel": 2, "retry": 3, "job_timeout_minutes": 80,  "step_timeout_minutes": 75 },
-            { "suite_id": "cars-galileo",    "suite_name": "Cars Galileo",    "test_path": "tests/features/cars/galileo/",                                       "parallel": 2, "retry": 3, "job_timeout_minutes": 75,  "step_timeout_minutes": 70 },
-            { "suite_id": "cars-general",    "suite_name": "Cars General",    "test_path": "tests/features/cars/general/ tests/features/cars/payload_test/",     "parallel": 2, "retry": 3, "job_timeout_minutes": 110, "step_timeout_minutes": 105 },
-            { "suite_id": "cars-sabre",      "suite_name": "Cars Sabre",      "test_path": "tests/features/cars/sabre/",                                         "parallel": 2, "retry": 3, "job_timeout_minutes": 120, "step_timeout_minutes": 115 },
-            { "suite_id": "cars-sunny-cars", "suite_name": "Cars Sunny Cars", "test_path": "tests/features/cars/sunny_cars/",                                    "parallel": 2, "retry": 3, "job_timeout_minutes": 75,  "step_timeout_minutes": 70 },
-            { "suite_id": "rails-daily",     "suite_name": "Rails Daily",     "test_path": "tests/features/rails/daily_rails/",                                  "parallel": 2, "retry": 3, "job_timeout_minutes": 90,  "step_timeout_minutes": 85 }
+            { "suite_id": "cars-amadeus",    "suite_name": "Cars Amadeus",    "test_path": "tests/features/transportation/cars/amadeus/",                                                             "parallel": 2, "retry": 3, "job_timeout_minutes": 80,  "step_timeout_minutes": 75 },
+            { "suite_id": "cars-galileo",    "suite_name": "Cars Galileo",    "test_path": "tests/features/transportation/cars/galileo/",                                                             "parallel": 2, "retry": 3, "job_timeout_minutes": 75,  "step_timeout_minutes": 70 },
+            { "suite_id": "cars-general",    "suite_name": "Cars General",    "test_path": "tests/features/transportation/cars/general/",                                                             "parallel": 2, "retry": 3, "job_timeout_minutes": 110, "step_timeout_minutes": 105 },
+            { "suite_id": "cars-sabre",      "suite_name": "Cars Sabre",      "test_path": "tests/features/transportation/cars/sabre/",                                                               "parallel": 2, "retry": 3, "job_timeout_minutes": 120, "step_timeout_minutes": 115 },
+            { "suite_id": "cars-sunny-cars", "suite_name": "Cars Sunny Cars", "test_path": "tests/features/transportation/cars/sunny_cars/",                                                          "parallel": 2, "retry": 3, "job_timeout_minutes": 75,  "step_timeout_minutes": 70 },
+            { "suite_id": "rails-benerail", "suite_name": "Rails Benerail",  "test_path": "tests/features/transportation/rails/benerail/*.feature",                                                  "parallel": 3, "retry": 3, "job_timeout_minutes": 180, "step_timeout_minutes": 175 }
           ]
         }
