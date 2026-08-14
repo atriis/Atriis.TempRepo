@@ -15,14 +15,19 @@ function getScenarioIdentifiers(world) {
 }
 
 // Resolves world variable placeholders in expressions.
-// Supported: {tripNumber} → world.tripId, {transactionId} → world.transactionId, {sid} → world.sid
+// {tripNumber} is a special alias for world.tripId (no world.tripNumber field exists).
+// Any other {key} resolves generically against world[key] (e.g. {storedFirstQuotePnrCode}),
+// so new stored values work without adding another one-off .replace() here.
 function resolveWorldPlaceholders(expectedText, world) {
   if (!expectedText || !expectedText.includes('{')) return expectedText;
   const tripId = world.tripId || world.currentTripId || world.createdTripId || null;
-  return expectedText
-    .replace(/\{tripNumber\}/g, tripId ?? '{tripNumber}')
-    .replace(/\{transactionId\}/g, world.transactionId ?? '{transactionId}')
-    .replace(/\{sid\}/g, world.sid ?? '{sid}');
+  return expectedText.replace(/\{(\w+)\}/g, (match, key) => {
+    if (key === 'tripNumber') return tripId ?? match;
+    const value = world[key];
+    // Only substitute primitives — an accidental brace match on a non-string world property
+    // (e.g. {page}) must stay literal instead of coercing an object to "[object Object]".
+    return typeof value === 'string' || typeof value === 'number' ? value : match;
+  });
 }
 
 async function runPayloadValidationStep(world, stepName, metadata, action) {
