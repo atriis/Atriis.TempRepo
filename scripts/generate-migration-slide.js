@@ -291,16 +291,16 @@ slide.addText(
 
 // Feature-file counts for every test_path in the nightly chain
 // (suite-flights → suite-hotels → suite-shell → suite-transportation):
-// Flights 23 suites, Hotels 2, Shell 28, Transportation 6 = 59 suites.
+// Flights 23 suites, Hotels 2, Shell 28, Transportation 7 = 60 suites.
 // One .feature file is one test, which is why these are FILE counts and not
 // cucumber pickle counts — the handful of Scenario Outlines in the suites expand
-// into several runs each, which would total 728 and overstate the test count.
+// into several runs each, which would total 736 and overstate the test count.
 // Recount with: for each "test_path" in .github/workflows/suite-*.yml, count the
 // *.feature files under it (the *_blocked folders sit outside those paths).
 const comp = [
   { name: 'Flights', value: 284 },
   { name: 'Hotels',  value: 115 },
-  { name: 'Transportation',    value: 103 },
+  { name: 'Transportation',    value: 111 },
   { name: 'Shell',   value: 191 },
 ];
 const compTotal = comp.reduce((a, b) => a + b.value, 0);
