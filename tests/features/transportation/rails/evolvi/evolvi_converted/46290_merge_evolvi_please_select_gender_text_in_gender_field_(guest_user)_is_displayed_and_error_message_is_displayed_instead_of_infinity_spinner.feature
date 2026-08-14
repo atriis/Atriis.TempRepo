@@ -5,7 +5,7 @@
 # Owner: Bruna Santos
 # Created: 2024-05-22T09:33:42Z
 # Updated: 2025-09-14T09:14:20Z
-@wip @transportation @rails @evolvi @regression
+@transportation @rails @evolvi @regression
 Feature: 46290 Evolvi - Guest gender prompt and no results error display
   As a corporate traveler
   I want to add a guest in Evolvi search

@@ -5,7 +5,7 @@
 # Owner: Bruna Santos
 # Created: 2024-12-03T08:24:00Z
 # Updated: 2025-06-08T12:28:51Z
-@wip @transportation @rails @evolvi @regression
+@transportation @rails @evolvi @regression
 Feature: 55041 Evolvi - CVV field hidden for invoice FOP
   As a corporate traveler
   I want to checkout an Evolvi quote configured with invoice FOP
