@@ -108,10 +108,12 @@ const EvolviSearch = {
     );
 
     const searchPage = getPageObject(page, SearchPage);
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
 
-    // Provider + trip type
+    // Provider + trip type. UK Rail calls a round trip "Return" (Return / One Way / Open Return),
+    // so this cannot go through SearchPage.selectRoundTrip like the other products do.
     await EvolviSearch.selectEvolviSearch(page);
-    await searchPage.selectRoundTrip();
+    await evolviSearchPage.selectReturnTripType();
     await EvolviSearch.ensureSplitTicketIsUnchecked(page);
 
     // Departure flow: select Nth available date for departure. One month ahead,
@@ -130,7 +132,11 @@ const EvolviSearch = {
       endIndex: null,
     });
 
-    await searchPage.clickSearchButton();
+    // Wait for the button to leave its disabled state before clicking, as the one-way flow does.
+    // A "return" search adds returnDate/returnTime to evolvi-search-inputs.ts's vuelidate rules,
+    // and the button stays .is-disabled until that revalidation settles — clicking it before then
+    // is silently swallowed, leaving the run sitting on a filled-in but never-submitted form.
+    await searchPage.waitAndClickSearchButton();
 
     return {
       searched: true,

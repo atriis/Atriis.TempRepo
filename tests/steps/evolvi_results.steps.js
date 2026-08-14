@@ -18,6 +18,89 @@ When("I add an Evolvi round trip to the trip", async function () {
   await EvolviResults.addEvolviRoundtripToTrip(this.page);
 });
 
+// ===== ROUND TRIP LEG SELECTION (test 34400) =====
+//
+// Where each leg's resolved journey is parked on the Cucumber World, so the selection step picks
+// its fare from the same journey column the departure hour was read from, and the assertion step
+// compares against that recorded hour.
+function storeExtractedJourney(world, direction, journey) {
+  world.evolviExtractedJourneys = world.evolviExtractedJourneys || {};
+  world.evolviExtractedJourneys[direction] = journey;
+}
+
+function readExtractedJourney(world, direction, extractionStepPhrase) {
+  const journey = (world.evolviExtractedJourneys || {})[direction];
+  if (!journey) {
+    throw new Error(
+      `[evolvi_results.steps] Missing the extracted ${direction} journey — expected ` +
+      `'${extractionStepPhrase}' to have run first`,
+    );
+  }
+  return journey;
+}
+
+function verifySelectedJourneySummary(summary, extractedJourney, direction) {
+  if (!summary.raw.includes(summary.label)) {
+    throw new Error(
+      `[evolvi_results.steps] Expected the ${direction} summary at the top of the Evolvi results to be labelled ` +
+      `"${summary.label}", but it reads: "${summary.raw}"`,
+    );
+  }
+  if (summary.departureHour !== extractedJourney.departureHour) {
+    throw new Error(
+      `[evolvi_results.steps] Expected the ${direction} summary at the top of the Evolvi results to show the ` +
+      `departure hour of the selected journey ("${extractedJourney.departureHour}"), but it shows ` +
+      `"${summary.departureHour}" (full summary: "${summary.raw}")`,
+    );
+  }
+}
+
+When("I extract the first outbound departure hour available", async function () {
+  logger.info("Extracting the first available Evolvi outbound departure hour");
+  const journey = await EvolviResults.extractFirstAvailableDepartureHour(this.page, "outbound");
+  logger.info("Stored the Evolvi outbound journey", journey);
+  storeExtractedJourney(this, "outbound", journey);
+});
+
+When("I select the outbound first price available", async function () {
+  const { columnIndex } = readExtractedJourney(this, "outbound", "I extract the first outbound departure hour available");
+  logger.info("Selecting the first available Evolvi outbound fare", { columnIndex });
+  await EvolviResults.selectFirstAvailablePrice(this.page, "outbound", columnIndex);
+});
+
+Then("outbound is displayed on top of the page with the same extracted outbound departure hour", async function () {
+  const extractedJourney = readExtractedJourney(this, "outbound", "I extract the first outbound departure hour available");
+  const summary = await EvolviResults.readSelectedJourneySummary(this.page, "outbound");
+  logger.info("Verifying the Evolvi outbound summary matches the extracted departure hour", {
+    extractedDepartureHour: extractedJourney.departureHour,
+    summary: summary.raw,
+  });
+  verifySelectedJourneySummary(summary, extractedJourney, "outbound");
+});
+
+When("I extract the first inbound departure hour available", async function () {
+  logger.info("Extracting the first available Evolvi inbound departure hour");
+  const journey = await EvolviResults.extractFirstAvailableDepartureHour(this.page, "inbound");
+  logger.info("Stored the Evolvi inbound journey", journey);
+  storeExtractedJourney(this, "inbound", journey);
+});
+
+When("I select the inbound first price available", async function () {
+  const { columnIndex } = readExtractedJourney(this, "inbound", "I extract the first inbound departure hour available");
+  logger.info("Selecting the first available Evolvi inbound fare", { columnIndex });
+  await EvolviResults.selectFirstAvailablePrice(this.page, "inbound", columnIndex);
+});
+
+Then("inbound is displayed on top of the page with the same extracted inbound departure hour", async function () {
+  const extractedJourney = readExtractedJourney(this, "inbound", "I extract the first inbound departure hour available");
+  const summary = await EvolviResults.readSelectedJourneySummary(this.page, "inbound");
+  logger.info("Verifying the Evolvi inbound summary matches the extracted departure hour", {
+    extractedDepartureHour: extractedJourney.departureHour,
+    summary: summary.raw,
+  });
+  verifySelectedJourneySummary(summary, extractedJourney, "inbound");
+});
+
 // ===== TODO STUBS — need DSL/Page implementation =====
 
 When("I close mandatory notifications if displayed", async function () {

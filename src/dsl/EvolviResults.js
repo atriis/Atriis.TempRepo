@@ -8,6 +8,40 @@ const Results = require("./Results");
  * Business actions performed on Evolvi results.
  */
 
+/**
+ * Everything that differs between the two legs of a round trip on the Evolvi results page. The
+ * price grid is a single table of 10 columns shared by both directions (uk-rail-results.ts's
+ * isOutboundCell: 0-4 outbound, 5-9 inbound), while the journey headers and the summary above
+ * them are per-direction blocks — so a leg is addressed by three positions, not one.
+ */
+const DIRECTIONS = {
+  outbound: { label: "Outbound", sectionIndex: 0, firstCellIndex: 0, summaryIndex: 0 },
+  inbound: { label: "Inbound", sectionIndex: 1, firstCellIndex: 5, summaryIndex: 1 },
+};
+
+/**
+ * Both the journey column header and the header summary print a 24-hour "HH:MM" departure time.
+ * Matching it explicitly means a selector that silently drifts onto the wrong element fails here
+ * with what it actually read, instead of handing the caller an empty string that would then
+ * "match" an equally empty expectation.
+ */
+const DEPARTURE_HOUR_PATTERN = /\b(\d{1,2}:\d{2})\b/;
+
+/**
+ * @param {string} methodName - Calling DSL method, for error context
+ * @param {string} direction - "outbound" or "inbound"
+ * @returns {{label: string, sectionIndex: number, firstCellIndex: number, summaryIndex: number}}
+ */
+function resolveDirection(methodName, direction) {
+  const resolved = DIRECTIONS[direction];
+  if (!resolved) {
+    throw new Error(
+      `[EvolviResults.${methodName}] "direction" must be one of ${Object.keys(DIRECTIONS).join(", ")}, got: ${direction}`,
+    );
+  }
+  return resolved;
+}
+
 const EvolviResults = {
   /** Selects the cheapest suggested fare and adds it to the trip */
   async selectCheapestSuggestedFare(page) {
@@ -50,6 +84,105 @@ const EvolviResults = {
     await Results.waitAndClickAddToTripButton(page);
 
     return { addedToTrip: true };
+  },
+
+  /**
+   * Finds the first journey of one direction that can actually be booked and reads its departure
+   * hour. "First available" is resolved against the price grid rather than the journey headers
+   * alone: a journey column can be rendered but have no selectable fare (cancelled service,
+   * company-disabled fares, or — for inbound — no fare compatible with the outbound already
+   * chosen), and picking such a column would leave the following selection step with nothing to
+   * click. Returning the column index alongside the hour is what keeps the later assertion
+   * honest, since the fare must be selected from the very column the hour was read from.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} direction - "outbound" or "inbound"
+   * @returns {Promise<{columnIndex: number, departureHour: string}>}
+   */
+  async extractFirstAvailableDepartureHour(page, direction) {
+    if (!page) throw new Error("[EvolviResults.extractFirstAvailableDepartureHour] page is required");
+    const { label, sectionIndex, firstCellIndex } = resolveDirection("extractFirstAvailableDepartureHour", direction);
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    await resultsPage.waitForOutboundText();
+    await resultsPage.waitForSuggestedFaresText();
+
+    const columnCount = await resultsPage.getJourneyColumnCount(sectionIndex);
+    if (columnCount === 0) {
+      throw new Error(
+        `[EvolviResults.extractFirstAvailableDepartureHour] No ${label} journey columns are displayed in the Evolvi results`,
+      );
+    }
+
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      const selectableFares = await resultsPage.countSelectableFaresInColumn(firstCellIndex + columnIndex);
+      if (selectableFares === 0) continue;
+
+      const departureHour = await resultsPage.getJourneyDepartureTimeText(sectionIndex, columnIndex);
+      if (!DEPARTURE_HOUR_PATTERN.test(departureHour)) {
+        throw new Error(
+          `[EvolviResults.extractFirstAvailableDepartureHour] Expected the ${label} journey at column ${columnIndex} ` +
+          `to display a departure hour, but read: "${departureHour}"`,
+        );
+      }
+
+      return { columnIndex, departureHour };
+    }
+
+    throw new Error(
+      `[EvolviResults.extractFirstAvailableDepartureHour] None of the ${columnCount} displayed ${label} journeys ` +
+      "offers a selectable fare",
+    );
+  },
+
+  /**
+   * Selects the first selectable fare of one direction's journey column — the column
+   * extractFirstAvailableDepartureHour resolved, so the selected fare belongs to the journey whose
+   * departure hour was recorded.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} direction - "outbound" or "inbound"
+   * @param {number} columnIndex - Journey column within that direction, as returned by extractFirstAvailableDepartureHour
+   */
+  async selectFirstAvailablePrice(page, direction, columnIndex) {
+    if (!page) throw new Error("[EvolviResults.selectFirstAvailablePrice] page is required");
+    const { firstCellIndex } = resolveDirection("selectFirstAvailablePrice", direction);
+    if (!Number.isInteger(columnIndex) || columnIndex < 0) {
+      throw new Error(
+        `[EvolviResults.selectFirstAvailablePrice] "columnIndex" must be a non-negative integer, got: ${columnIndex}`,
+      );
+    }
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    await resultsPage.clickFirstSelectableFareInColumn(firstCellIndex + columnIndex);
+
+    return { selected: true };
+  },
+
+  /**
+   * Reads one leg's summary from the top of the results page, once that leg has been picked.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} direction - "outbound" or "inbound"
+   * @returns {Promise<{raw: string, label: string, departureHour: string}>}
+   */
+  async readSelectedJourneySummary(page, direction) {
+    if (!page) throw new Error("[EvolviResults.readSelectedJourneySummary] page is required");
+    const { label, summaryIndex } = resolveDirection("readSelectedJourneySummary", direction);
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    await resultsPage.waitForSelectedSummaryPicked(summaryIndex);
+    const raw = await resultsPage.getSelectedSummaryText(summaryIndex);
+
+    const match = raw.match(DEPARTURE_HOUR_PATTERN);
+    if (!match) {
+      throw new Error(
+        `[EvolviResults.readSelectedJourneySummary] Expected the ${label} summary at the top of the Evolvi results ` +
+        `to display a departure hour, but read: "${raw}"`,
+      );
+    }
+
+    return { raw, label, departureHour: match[1] };
   },
 };
 
