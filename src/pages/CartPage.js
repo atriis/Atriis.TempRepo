@@ -380,6 +380,23 @@ const SELECTORS = {
   // `isBeneMooveRail && isMobile`. On the desktop viewport the suite runs at, only the <p> mounts.
   EU_RAIL_QUOTE_SEGMENT_CLASS: '.rail-class',
 
+  // "Mobile Barcode" button on a BOOKED rail quote card. eu-rail-quote-card.vue renders it in its
+  // #booking-confirm-voucher slot, which base-quote-card.vue forwards to booking-confirm-layout.vue's
+  // .box-right, and only when the supplier returned barcode URLs (v-if="barcodeUrls.length") — so the
+  // button being rendered at all is what proves this booking carries a mobile barcode. Scoped to the
+  // rail card because the car and hotel quote cards fill the same slot with their own buttons.
+  EU_RAIL_MOBILE_BARCODE_BUTTON: '.eu-rail-quote-card .box-right .btns-container button:has-text("Mobile Barcode")',
+  // The barcode dialog is appended to <body> (append-to-body), so it sits outside the quote card, and
+  // the trip overview keeps other el-dialogs mounted but hidden. It is therefore identified by the
+  // barcode image only it owns and filtered to the visible one — see getEuRailMobileBarcodeDialog.
+  EU_RAIL_MOBILE_BARCODE_DIALOG: '.el-dialog',
+  // One <img class="barcode-img"> per barcode URL inside .barcode-dialog — app-img.vue renders the
+  // <img> as its own root, so the class lands on the image itself and not on a wrapper.
+  EU_RAIL_MOBILE_BARCODE_IMAGE: '.barcode-dialog .barcode-img',
+  // Same two shapes as SHARE_DIALOG_CLOSE: the app skins some el-dialog headers with its own svg icon
+  // and leaves the stock .el-dialog__headerbtn in others. Resolved inside the barcode dialog only.
+  EU_RAIL_MOBILE_BARCODE_DIALOG_CLOSE: '.el-dialog__header [fill="currentColor"], .el-dialog__headerbtn',
+
   // Car pickup/drop-off date·time label shown in the car quote card body (car-quote-card.ts
   // formattedPickupDateLabel/formattedDropoffDateLabel), e.g.
   // "03 Jul 2026 · 14:30 - 05 Jul 2026 · 10:15". Split on " - " to separate pickup from drop-off.
@@ -6710,6 +6727,109 @@ class CartPage {
     }
 
     return ((await railClass.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Locator for the open mobile-barcode dialog of the booked rail quote.
+   *
+   * el-dialog is appended to <body>, and the trip overview keeps other dialogs mounted but hidden, so
+   * the dialog is resolved by the barcode image only it contains and filtered to the visible one
+   * rather than by position (an unscoped .first() would land on a stale hidden dialog).
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getEuRailMobileBarcodeDialog() {
+    return this.page
+      .locator(SELECTORS.EU_RAIL_MOBILE_BARCODE_DIALOG)
+      .filter({ visible: true })
+      .filter({ has: this.page.locator(SELECTORS.EU_RAIL_MOBILE_BARCODE_IMAGE) });
+  }
+
+  /**
+   * Reports whether the "Mobile Barcode" button is rendered on the booked rail quote card.
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<boolean>} True if the button is visible within the timeout
+   */
+  async isEuRailMobileBarcodeButtonVisible({ timeout = 30000 } = {}) {
+    const button = this.page.locator(SELECTORS.EU_RAIL_MOBILE_BARCODE_BUTTON).first();
+    try {
+      await button.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Clicks the "Mobile Barcode" button on the booked rail quote card.
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   */
+  async clickEuRailMobileBarcodeButton({ timeout = 30000 } = {}) {
+    const button = this.page.locator(SELECTORS.EU_RAIL_MOBILE_BARCODE_BUTTON).first();
+    await button.waitFor({ state: 'visible', timeout });
+    await button.click();
+  }
+
+  /**
+   * Waits for the mobile-barcode dialog to be open.
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   */
+  async waitForEuRailMobileBarcodeDialog({ timeout = 30000 } = {}) {
+    await this.getEuRailMobileBarcodeDialog().first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Reads the state of the barcode (QR) image shown in the open mobile-barcode dialog.
+   *
+   * The src is an external supplier URL rendered through app-img.vue, which silently swaps in its
+   * bundled noImg.svg placeholder (alt "Image unavailable") when that URL fails to load — so a
+   * visibility check alone would pass on a broken barcode. `loaded` reports whether the browser
+   * actually decoded a bitmap, and is polled because the request is still in flight when the dialog
+   * first becomes visible.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<{count: number, src: string, alt: string, loaded: boolean, naturalWidth: number}>}
+   */
+  async getEuRailMobileBarcodeImageState({ timeout = 30000 } = {}) {
+    const images = this.getEuRailMobileBarcodeDialog().first().locator(SELECTORS.EU_RAIL_MOBILE_BARCODE_IMAGE);
+    const image = images.first();
+    await image.waitFor({ state: 'visible', timeout });
+
+    const readState = () =>
+      image.evaluate((img) => ({
+        src: img.getAttribute('src') ?? '',
+        alt: img.getAttribute('alt') ?? '',
+        loaded: img.complete && img.naturalWidth > 0,
+        naturalWidth: img.naturalWidth,
+      }));
+
+    let state = await readState();
+    const deadline = Date.now() + timeout;
+    while (!state.loaded && Date.now() < deadline) {
+      await this.page.waitForTimeout(500);
+      state = await readState();
+    }
+
+    return { count: await images.count(), ...state };
+  }
+
+  /**
+   * Closes the mobile-barcode dialog and waits for it to go away.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async closeEuRailMobileBarcodeDialog({ timeout = 15000 } = {}) {
+    const dialog = this.getEuRailMobileBarcodeDialog().first();
+    const closeButton = dialog.locator(SELECTORS.EU_RAIL_MOBILE_BARCODE_DIALOG_CLOSE).first();
+    await closeButton.waitFor({ state: 'visible', timeout });
+    await closeButton.click();
+    // The dialog locator only matches while the dialog is visible, so once it closes the locator
+    // resolves to nothing — which Playwright also treats as 'hidden'.
+    await dialog.waitFor({ state: 'hidden', timeout });
   }
 
   /**

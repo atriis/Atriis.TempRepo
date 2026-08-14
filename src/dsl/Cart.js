@@ -5370,6 +5370,122 @@ const Cart = {
     }
   },
 
+  // ===== EU RAIL (BENERAIL) MOBILE BARCODE =====
+
+  /**
+   * Verifies the "Mobile Barcode" button is displayed on the booked rail quote card in the trip
+   * overview. eu-rail-quote-card.vue only renders that button when the supplier returned barcode
+   * URLs, so its presence is the state check that the booking carries a mobile barcode at all.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async verifyEuRailMobileBarcodeButtonVisible(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyEuRailMobileBarcodeButtonVisible] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const visible = await cartPage.isEuRailMobileBarcodeButtonVisible();
+
+    expect(
+      visible,
+      '[Cart.verifyEuRailMobileBarcodeButtonVisible] Expected the booked rail quote card in the trip ' +
+      'overview to show the "Mobile Barcode" button, but it was not rendered. The quote may not be ' +
+      'confirmed yet, or the supplier returned no barcode for this ticket.',
+    ).toBe(true);
+
+    logger.info('The Mobile Barcode button is displayed on the booked rail quote card');
+  },
+
+  /**
+   * Opens the mobile-barcode dialog from the booked rail quote card.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async openEuRailMobileBarcodeDialog(page) {
+    if (!page) {
+      throw new Error('[Cart.openEuRailMobileBarcodeDialog] "page" is required.');
+    }
+
+    logger.debug('Opening the rail mobile barcode dialog');
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.clickEuRailMobileBarcodeButton();
+      await cartPage.waitForEuRailMobileBarcodeDialog();
+    } catch (error) {
+      throw new Error(
+        `[Cart.openEuRailMobileBarcodeDialog] Could not open the mobile barcode dialog from the ` +
+        `booked rail quote card. Original: ${error.message}`,
+      );
+    }
+  },
+
+  /**
+   * Verifies the barcode (QR) image is displayed and actually loaded inside the open
+   * mobile-barcode dialog.
+   *
+   * The image points at an external supplier URL and is rendered through app-img.vue, which falls
+   * back to a bundled placeholder when that URL fails — so this asserts the browser decoded a real
+   * bitmap, not just that an <img> element is on screen.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{count: number, src: string}>} How many barcode images the dialog shows, and the first image's src
+   */
+  async verifyEuRailMobileBarcodeImageDisplayed(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyEuRailMobileBarcodeImageDisplayed] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    let state;
+    try {
+      state = await cartPage.getEuRailMobileBarcodeImageState();
+    } catch (error) {
+      throw new Error(
+        `[Cart.verifyEuRailMobileBarcodeImageDisplayed] No barcode image became visible in the ` +
+        `mobile barcode dialog. The dialog must be open before this check. Original: ${error.message}`,
+      );
+    }
+
+    expect(
+      state.loaded,
+      `[Cart.verifyEuRailMobileBarcodeImageDisplayed] Expected the mobile barcode dialog to show a ` +
+      `loaded barcode image, but the browser decoded nothing (naturalWidth: ${state.naturalWidth}, ` +
+      `alt: "${state.alt}", src: "${state.src}").`,
+    ).toBe(true);
+
+    logger.info('The barcode image is displayed in the mobile barcode dialog', {
+      barcodeImageCount: state.count,
+      naturalWidth: state.naturalWidth,
+    });
+    return { count: state.count, src: state.src };
+  },
+
+  /**
+   * Closes the mobile-barcode dialog.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async closeEuRailMobileBarcodeDialog(page) {
+    if (!page) {
+      throw new Error('[Cart.closeEuRailMobileBarcodeDialog] "page" is required.');
+    }
+
+    logger.debug('Closing the rail mobile barcode dialog');
+    const cartPage = getPageObject(page, CartPage);
+
+    try {
+      await cartPage.closeEuRailMobileBarcodeDialog();
+    } catch (error) {
+      throw new Error(
+        `[Cart.closeEuRailMobileBarcodeDialog] Could not close the mobile barcode dialog. ` +
+        `Original: ${error.message}`,
+      );
+    }
+  },
+
   /**
    * Opens the More Details drawer and verifies the hotel address contains the expected text.
    * Closes the drawer after verification.

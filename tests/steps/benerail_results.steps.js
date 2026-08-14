@@ -215,8 +215,42 @@ When("I checkout the Benerail booking", async function () {
 });
 
 // --- Barcode ---
-Then("the mobile barcode should be visible in cart and itinerary mail", async function () {
-  throw new Error("TODO: implement 'the mobile barcode should be visible in cart and itinerary mail' — assert the mobile barcode element is rendered in cart, then send itinerary email and verify barcode is included (see test 22999)");
+// Test 22999 validates the mobile barcode twice: on the booked quote card in the trip overview, and
+// again in the share itinerary email. The four trip-overview steps are kept separate rather than
+// folded into one so the failure points to which half broke — button missing, dialog not opening, or
+// the barcode image itself not rendering.
+Then("I should see Benerail mobile barcode in trip overview", async function () {
+  logger.info("Verifying the Mobile Barcode button is displayed on the booked Benerail quote");
+  await Cart.verifyEuRailMobileBarcodeButtonVisible(this.page);
+});
+
+When("I click Benerail mobile barcode", async function () {
+  logger.info("Opening the Benerail mobile barcode dialog");
+  await Cart.openEuRailMobileBarcodeDialog(this.page);
+});
+
+Then("I should see the QR code", async function () {
+  logger.info("Verifying the barcode image is displayed in the Benerail mobile barcode dialog");
+  await Cart.verifyEuRailMobileBarcodeImageDisplayed(this.page);
+});
+
+When("I close the Benerail mobile barcode dialog", async function () {
+  logger.info("Closing the Benerail mobile barcode dialog");
+  await Cart.closeEuRailMobileBarcodeDialog(this.page);
+});
+
+Then("Benerail mobile bar code in share itinerary is displayed", async function () {
+  // The itinerary email is backend-generated and renders the barcode row far below the fold of the
+  // preview iframe, so this goes through the preview reader that keeps scrolling the iframe until the
+  // label appears. Closing the share dialog is part of this step — as the hotel
+  // supplier-confirmation check in cart.steps.js also does — because the barcode label is the last
+  // thing the scenario needs from the preview, and the approvers check that follows cannot open the
+  // approvals dialog while the share dialog is still covering the trip overview.
+  logger.info("Verifying the mobile bar code is displayed in the Benerail share itinerary email preview");
+  await Cart.verifySharePreviewContainsText(this.page, "Mobile Bar Code");
+
+  logger.info("Closing the share itinerary dialog");
+  await Cart.closeShareDialog(this.page);
 });
 
 // --- Expiry ---
