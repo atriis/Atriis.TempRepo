@@ -2486,6 +2486,11 @@ Then("the passenger info section should be marked as required with an asterisk",
   await Cart.verifyPassengerInfoMarkedAsRequired(this.page);
 });
 
+Then("the passenger info section should be highlighted in red", async function () {
+  logger.info("Verifying passenger info section shows the red error border");
+  await Cart.verifyPassengerInfoHighlightedInRed(this.page);
+});
+
 When("I click passenger info in extras", async function () {
   logger.info("Clicking passenger info expand button in extras");
   await Cart.clickPassengerInfoInExtras(this.page);
@@ -2882,6 +2887,11 @@ Then("the hold flight button should be disabled", async function () {
 Then("the proceed to checkout button should be disabled", async function () {
   logger.info("Verifying proceed to checkout button is disabled");
   await Cart.verifyProceedToCheckoutButtonDisabled(this.page);
+});
+
+Then("the proceed to checkout button should be enabled", async function () {
+  logger.info("Verifying proceed to checkout button is enabled");
+  await Cart.verifyProceedToCheckoutButtonEnabled(this.page);
 });
 
 Then("the checkout should display the role restriction message {string}", async function (message) {

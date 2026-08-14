@@ -8591,6 +8591,28 @@ const Cart = {
   },
 
   /**
+   * Verifies the cart's "Proceed to Checkout" button has become actionable again — the counterpart
+   * to verifyProceedToCheckoutButtonDisabled, used after supplying the information that was
+   * blocking checkout (ADO 82534: saving the mandatory passport details).
+   *
+   * Waits rather than sampling `isProceedToCheckoutButtonDisabled()` once: the CTA re-enables only
+   * after the cart re-validates following the save, so a single immediate check would race that
+   * round-trip and read the stale disabled state.
+   *
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the button stays disabled for the whole timeout
+   */
+  async verifyProceedToCheckoutButtonEnabled(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForProceedToCheckoutEnabled();
+    logger.info('Proceed to Checkout button is enabled');
+  },
+
+  /**
    * Verifies the FQTV displayed in the cart extras matches expected text.
    * Clicks the FQTV section to expand it, then checks the selected value.
    *
@@ -9142,6 +9164,24 @@ const Cart = {
     const isRequired = await cartPage.isPassengerInfoMarkedAsRequired();
     expect(isRequired, 'Expected passenger info section to show required asterisk').toBe(true);
     logger.info('Passenger info section is marked as required (asterisk visible)');
+  },
+
+  /**
+   * Verifies the Passenger Info extras row is highlighted with the red error border the cart shows
+   * after a checkout attempt was blocked by missing APIS details (ADO 82534). The border only
+   * renders once Proceed to Checkout has been clicked, so call this after that click.
+   * @param {import('playwright').Page} page
+   */
+  async verifyPassengerInfoHighlightedInRed(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const isHighlighted = await cartPage.isPassengerInfoHighlightedInRed();
+    expect(
+      isHighlighted,
+      'Expected passenger info section to be highlighted in red (error border) after the blocked checkout attempt',
+    ).toBe(true);
+    logger.info('Passenger info section is highlighted in red (error border visible)');
   },
 
   /**

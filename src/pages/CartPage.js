@@ -1086,6 +1086,13 @@ const SELECTORS = {
   PASSENGER_INFO_SECTION: '.flight-passenger-info',
   PASSENGER_INFO_EXPAND_BUTTON: '.flight-passenger-info .is-clickable',
   PASSENGER_INFO_REQUIRED_ASTERISK: '.flight-passenger-info .card-title .has-text-danger',
+  // Red error border the cart paints on the Passenger Info extras row once a checkout attempt was
+  // blocked. extras-layout.vue adds 'error-border' only when isShowRedBorder = !isValid &&
+  // isCheckoutActivated, and isCheckoutActivated is set solely by the 'checkoutActivated' event that
+  // trip-cart.ts emits from beforeProceedToPayment() — so this is absent until Proceed to Checkout
+  // is actually clicked. The class sits on the collapsed `.extra` row or the expanded `.padding`
+  // wrapper, both inside `.flight-passenger-info`, so match on the class alone.
+  PASSENGER_INFO_ERROR_BORDER: '.flight-passenger-info .error-border',
   PASSENGER_INFO_DOB_FIELD: '.flight-passenger-info .field:has(label:text-is("Date of birth"))',
   PASSENGER_INFO_DOB_DATEPICKER: '.flight-passenger-info .field:has(label:text-is("Date of birth")) .app-datepicker',
   PASSENGER_INFO_DOB_INPUT: '.flight-passenger-info .field:has(label:text-is("Date of birth")) input',
@@ -4314,6 +4321,17 @@ class CartPage {
   async isPassengerInfoMarkedAsRequired(timeout = 10000) {
     const asterisk = this.page.locator(SELECTORS.PASSENGER_INFO_REQUIRED_ASTERISK).first();
     return asterisk.isVisible({ timeout }).catch(() => false);
+  }
+
+  /**
+   * Checks whether the Passenger Info extras row carries the red error border shown after a
+   * blocked checkout attempt.
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isPassengerInfoHighlightedInRed(timeout = 15000) {
+    const border = this.page.locator(SELECTORS.PASSENGER_INFO_ERROR_BORDER).first();
+    return border.isVisible({ timeout }).catch(() => false);
   }
 
   /**
