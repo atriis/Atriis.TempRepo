@@ -3,9 +3,14 @@
  * Contains only UI-level interactions.
  */
 
+// Single source of truth for the CVV input selector — CVV_INPUT and CVV_INPUT_VISIBLE below both derive from it.
+const CVV_INPUT_BASE = "[placeholder='cvv']";
+
 const SELECTORS = {
-  // CVV input field selector
-  CVV_INPUT: "[placeholder='cvv']",
+  // CVV input field selector (all CVV inputs in the cart, one per quote card)
+  CVV_INPUT: CVV_INPUT_BASE,
+  // Visible CVV input - the cart renders one CVV input per quote card; :visible scopes reads to the active one
+  CVV_INPUT_VISIBLE: `${CVV_INPUT_BASE}:visible`,
   // "Add Payment Method" modal selectors
   DROPDOWN_WRAPPER: ".el-select__wrapper",
   CARD_HOLDER_NAME_INPUT: "[placeholder=\"Card holder name\"]",
@@ -979,6 +984,27 @@ class CartPaymentPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Gets the trimmed value currently typed in the visible CVV input in the FOP section.
+   *
+   * Reads `.first()` of the visible CVV inputs: the cart renders one CVV input per quote card, and
+   * `fillCVV` above types the same value into EVERY visible CVV input, so all visible inputs hold the
+   * same value and the first is representative. If `fillCVV` is ever changed to target a single quote
+   * card, this reader must be scoped to that same card instead.
+   *
+   * Callers that assert on this value must poll it (see CartPayment.verifyCVVValue) — form-of-payment.vue
+   * binds the input with `v-model="cvvNumber"` + `@keyup="validateCvv()"`, and form-of-payment.ts
+   * mutates `cvvNumber` inside that handler, so a single read can catch a pre-normalisation value.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>}
+   */
+  async getCVVValue({ timeout = 15000 } = {}) {
+    const el = this.page.locator(SELECTORS.CVV_INPUT_VISIBLE).first();
+    await el.waitFor({ state: 'visible', timeout });
+    return (await el.inputValue()).trim();
   }
 
   /**

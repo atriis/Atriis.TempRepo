@@ -726,6 +726,33 @@ class CartPayment {
     }
     await paymentPage.fillCVV(cvv);
   }
+
+  /**
+   * Verifies the CVV field displays the expected value after it was typed.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} expectedCvv - Expected CVV value (3-4 digits, e.g. "123")
+   */
+  static async verifyCVVValue(page, expectedCvv) {
+    if (!page) throw new Error('page is required');
+    if (!expectedCvv || typeof expectedCvv !== 'string') {
+      throw new Error(`expectedCvv must be a non-empty string, got: ${typeof expectedCvv}`);
+    }
+    if (!/^\d{3,4}$/.test(expectedCvv)) {
+      throw new Error(`expectedCvv must be 3 or 4 digits, got: "${expectedCvv}"`);
+    }
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    // Poll rather than read once: form-of-payment.vue:117-122 binds the input with `v-model="cvvNumber"`
+    // and `@keyup="validateCvv()"`, and form-of-payment.ts:172-190 mutates `cvvNumber` inside that
+    // handler (truncating to 4 digits, stripping non-digits) — so the value settles a render after the
+    // last keystroke.
+    await expect.poll(
+      async () => paymentPage.getCVVValue({ timeout: 5000 }),
+      {
+        message: `Expected the CVV field to display "${expectedCvv}"`,
+        timeout: 15000,
+      }
+    ).toBe(expectedCvv);
+  }
 }
 
 module.exports = CartPayment;

@@ -163,10 +163,6 @@ Then("the Evolvi no results title should be displayed", async function () {
   throw new Error("TODO: implement 'the Evolvi no results title should be displayed' — assert no-results title/header is shown");
 });
 
-Then("the Evolvi expiry tooltip should show at least {int} minutes", async function (minutes) {
-  throw new Error(`TODO: implement 'the Evolvi expiry tooltip should show at least ${minutes} minutes' — read expiry tooltip and assert the displayed value is >= ${minutes}`);
-});
-
 Then("the FOP owner should be displayed as Paid by TMC", async function () {
   throw new Error("TODO: implement 'the FOP owner should be displayed as Paid by TMC' — assert FOP owner label text in cart payment section");
 });

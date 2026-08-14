@@ -84,10 +84,6 @@ Then("the card {string} should be visible", async function (cardName) {
   this.addedCardName = cardName;
 });
 
-Then("the saved card mask should be visible as {string}", async function (maskedCard) {
-  throw new Error(`TODO: implement 'the saved card mask should be visible as {string}' — assert saved card mask ${maskedCard} is visible in FOP area`);
-});
-
 Then("the last {int} digits of the credit card {string} should be displayed in the FOP section", async function (count, last4) {
   logger.info("Verifying last digits of credit card in FOP section", { count, last4 });
   if (count !== 4) {
@@ -101,7 +97,8 @@ When("I fill CVV with {string}", async function (cvv) {
 });
 
 Then("CVV should display {string}", async function (cvv) {
-  throw new Error(`TODO: implement 'CVV should display {string}' — assert CVV field contains ${cvv}`);
+  logger.info("Verifying CVV field displays the entered value", { cvv });
+  await CartPayment.verifyCVVValue(this.page, cvv);
 });
 
 Then("the card details text should be visible", async function () {
