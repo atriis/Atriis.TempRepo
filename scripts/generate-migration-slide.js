@@ -91,8 +91,8 @@ ly += 0.3;
 slide.addChart(pptx.ChartType.line, [
   {
     name: 'Migration %',
-    labels: ['9', '10', '11', '12', '13', '14', '15'],
-    values: [45, 53, 63, 63, 68, 74, 86],
+    labels: ['9', '10', '11', '12', '13', '14', '15', '16'],
+    values: [45, 53, 63, 63, 68, 74, 86, 94],
   },
 ], {
   x: LX, y: ly, w: 4.2, h: 2.2,
@@ -129,11 +129,11 @@ slide.addText('Overall Migration', {
   x: CX, y: 1.42, w: 3.7, h: 0.3,
   fontSize: 12, bold: true, color: COLORS.ink, align: 'center', fontFace: 'Calibri',
 });
-slide.addText('86%', {
+slide.addText('94%', {
   x: CX, y: 1.7, w: 3.7, h: 0.95,
   fontSize: 64, bold: true, color: COLORS.green, align: 'center', fontFace: 'Calibri',
 });
-slide.addText('610 / 712 tests migrated', {
+slide.addText('672 / 712 tests migrated', {
   x: CX, y: 2.65, w: 3.7, h: 0.35,
   fontSize: 13, color: COLORS.ink, align: 'center', fontFace: 'Calibri',
 });
@@ -151,13 +151,14 @@ slide.addText('Domain Breakdown', {
 // *_blocked folders under tests/features/<domain>.
 // Conversion is complete for Hotels / Flights / Shell, so their total IS their
 // converted scope and the blocked slice is all that is outstanding. Only
-// Transportation still carries a to-do backlog (148 in scope, 46 converted), so
-// it alone sets `showRemainder` to paint that backlog as a grey track behind.
+// Transportation still carries a to-do backlog (148 in scope, 108 converted, of
+// which 2 are blocked, leaving 106 running), so it alone sets `showRemainder` to
+// paint that backlog as a grey track behind.
 const domains = [
   { name: 'Hotels',         total: 121, done: 121, blocked: 4,  pct: 100, showRemainder: false },
   { name: 'Flights',        total: 254, done: 254, blocked: 25, pct: 100, showRemainder: false },
-  { name: 'Transportation', total: 148, done: 46,  blocked: 0,  pct: 31,  showRemainder: true  },
-  { name: 'Shell',          total: 189, done: 189, blocked: 27, pct: 100, showRemainder: false },
+  { name: 'Transportation', total: 148, done: 108, blocked: 2,  pct: 73,  showRemainder: true  },
+  { name: 'Shell',          total: 189, done: 189, blocked: 25, pct: 100, showRemainder: false },
 ];
 
 const barX = CX;
@@ -174,20 +175,32 @@ domains.forEach((d, i) => {
     fontSize: 11, bold: true, color: COLORS.ink, fontFace: 'Calibri',
   });
   // numbers on top of the bar: total (black) / migrated & running (green) /
-  // the outstanding figure for this domain. The third number is coloured to match
-  // its own bar segment — amber where it counts blocked tests, grey only for
-  // Transportation, whose outstanding figure is a still-to-do backlog.
+  // then one figure per outstanding segment this domain actually has, each
+  // coloured to match its own bar segment — grey for a still-to-do backlog
+  // (Transportation only) and amber for converted-but-blocked tests. A domain
+  // can carry both, so the two are separate runs rather than one either/or
+  // figure: Transportation shows its grey backlog followed by its amber blocked.
   const running = Math.max(0, d.done - d.blocked);
-  const rest = d.showRemainder ? d.total - d.done : d.blocked;
-  const restColor = d.showRemainder ? COLORS.sub : COLORS.yellow;
+  const gap = { text: '  ', options: { color: COLORS.sub } };
+  const numbers = [
+    { text: String(d.total), options: { color: COLORS.ink, bold: true } },
+    gap,
+    { text: String(running), options: { color: COLORS.green, bold: true } },
+  ];
+  if (d.showRemainder) {
+    numbers.push(gap, {
+      text: String(d.total - d.done),
+      options: { color: COLORS.sub, bold: true },
+    });
+  }
+  if (d.blocked) {
+    numbers.push(gap, {
+      text: String(d.blocked),
+      options: { color: COLORS.yellow, bold: true },
+    });
+  }
   slide.addText(
-    [
-      { text: String(d.total), options: { color: COLORS.ink, bold: true } },
-      { text: '  ', options: { color: COLORS.sub } },
-      { text: String(running), options: { color: COLORS.green, bold: true } },
-      { text: '  ', options: { color: COLORS.sub } },
-      { text: String(rest), options: { color: restColor, bold: true } },
-    ],
+    numbers,
     {
       x: barX + 1.35, y: ry, w: 1.75, h: 0.25,
       fontSize: 10, fontFace: 'Calibri',
@@ -276,14 +289,19 @@ slide.addText(
   }
 );
 
-// Scenario counts for every test_path in the nightly chain
+// Feature-file counts for every test_path in the nightly chain
 // (suite-flights → suite-hotels → suite-shell → suite-transportation):
-// Flights 23 suites, Hotels 2, Shell 28, Transportation 3 = 56 suites.
+// Flights 23 suites, Hotels 2, Shell 28, Transportation 6 = 59 suites.
+// One .feature file is one test, which is why these are FILE counts and not
+// cucumber pickle counts — the handful of Scenario Outlines in the suites expand
+// into several runs each, which would total 728 and overstate the test count.
+// Recount with: for each "test_path" in .github/workflows/suite-*.yml, count the
+// *.feature files under it (the *_blocked folders sit outside those paths).
 const comp = [
-  { name: 'Flights', value: 274 },
-  { name: 'Hotels',  value: 112 },
-  { name: 'Transportation',    value: 57  },
-  { name: 'Shell',   value: 192 },
+  { name: 'Flights', value: 284 },
+  { name: 'Hotels',  value: 115 },
+  { name: 'Transportation',    value: 103 },
+  { name: 'Shell',   value: 191 },
 ];
 const compTotal = comp.reduce((a, b) => a + b.value, 0);
 
