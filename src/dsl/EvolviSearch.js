@@ -5,6 +5,7 @@ const evolviRoutes = require("@data/evolvi.json");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
+const logger = require("@utils/logger").child("EvolviSearch");
 
 /**
  * EvolviSearch DSL
@@ -21,6 +22,63 @@ const EvolviSearch = {
     const searchPage = getPageObject(page, SearchPage);
     await searchPage.clickRailTab();
     await page.getByRole("option", { name: "UK Rail" }).click();
+  },
+
+  /**
+   * Reads the traveller-count options the UK Rail search form offers for the travellers currently
+   * added to the trip.
+   *
+   * evolvi-search-inputs.ts builds `travelersCountOptions` from `passengers.length` upwards, so with
+   * 3 travellers on the trip the select must offer 3/4/5 Traveller and nothing lower — a "1 Traveller"
+   * option is the multipax regression this reads for. The dropdown is closed again before returning
+   * so the assertion never leaves an open popper over the search form.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{travelerCount: number, optionLabels: string[], offeredCounts: number[]}>}
+   *   travelerCount: travellers currently added in the search form;
+   *   optionLabels: the option labels as rendered;
+   *   offeredCounts: the leading number parsed out of each label
+   */
+  async readTravelersCountOptions(page) {
+    if (!page) {
+      throw new Error('[EvolviSearch.readTravelersCountOptions] "page" is required.');
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
+
+    const travelerCount = await searchPage.getSelectedTravelerCount();
+
+    await evolviSearchPage.openTravelersCountDropdown();
+    const optionLabels = await evolviSearchPage.getTravelersCountOptionLabels();
+    await evolviSearchPage.closeTravelersCountDropdown();
+
+    if (optionLabels.length === 0) {
+      throw new Error(
+        '[EvolviSearch.readTravelersCountOptions] The UK Rail traveller-count select rendered no ' +
+          'options — the dropdown did not open, or its options are not in the visible app-select popper.',
+      );
+    }
+
+    // Labels read "<n> Traveller" ($t('common.traveller')); anything without a leading number means
+    // the popper matched is not the traveller-count one, so fail loudly rather than silently drop it.
+    const offeredCounts = optionLabels.map((label) => {
+      const match = /^(\d+)\b/.exec(label);
+      if (!match) {
+        throw new Error(
+          `[EvolviSearch.readTravelersCountOptions] Traveller-count option "${label}" does not start ` +
+            `with a number. All options read: ${JSON.stringify(optionLabels)}`,
+        );
+      }
+      return Number(match[1]);
+    });
+
+    logger.info(
+      "[EvolviSearch.readTravelersCountOptions] Read the UK Rail traveller-count options",
+      { travelerCount, optionLabels, offeredCounts },
+    );
+
+    return { travelerCount, optionLabels, offeredCounts };
   },
 
   /**

@@ -5,7 +5,7 @@
 # Owner: Bruna Santos
 # Created: 2024-06-05T07:51:20Z
 # Updated: 2026-02-03T05:36:16Z
-@wip @transportation @rails @evolvi @regression
+@transportation @rails @evolvi @regression
 Feature: 46785 Evolvi - Multi traveler search should not show single traveler-only option
   As a corporate traveler
   I want to add multiple travelers in Evolvi search
@@ -13,14 +13,8 @@ Feature: 46785 Evolvi - Multi traveler search should not show single traveler-on
 
   Scenario: Multipax traveler selection validations in Evolvi search
     Given I am logged in as "corp@evolvi.com" booking a new trip
-    # TODO: create step "When I select Evolvi in the search product selector" in evolvi_search.steps.js
-    # covers: Selecting_Evolvi_option_in_search()
-    When I select Evolvi in the search product selector
+    When I select UK Rail in the search form
     And I have added myself as the traveler
     And I have added a random guest traveler
-    # TODO: create step "And I add a third traveler named {string}" in search.steps.js
-    # covers: add_third_traveller('Fabio Torres')
-    And I add a third traveler named "Fabio Torres"
-    # TODO: create step "Then the single traveler-only option should not be displayed in Evolvi search" in evolvi_search.steps.js
-    # covers: Checking_that_one_traveler_is_not_displayed()
+    And I have added traveler by name "Fabio Torres"
     Then the single traveler-only option should not be displayed in Evolvi search
