@@ -1,5 +1,3 @@
-const { waitForText } = require("@utils/wait");
-
 /**
  * Page Object for menu page.
  * Contains only UI-level interactions.
@@ -7,7 +5,15 @@ const { waitForText } = require("@utils/wait");
 
 const SELECTORS = {
   BOOK_NEW_TRIP_ICON: ".top-container > :nth-child(4) .material-symbols-outlined",
-  LOGOUT_ICON: ".logout-icon",
+  // Header profile avatar (app-header.vue): always visible immediately after login, with no click
+  // needed to reveal it — used as the "are we logged in" signal instead of the logout button itself,
+  // which as of app v2.13 lives inside this avatar's dropdown (see LOGOUT_ICON below) and would
+  // require opening that dropdown just to prove login succeeded.
+  AVATAR_TRIGGER: ".app-profile-menu .avatar-trigger",
+  // Log out button. Previously a standalone header icon (`.logout-icon`); app v2.13 moved it into a
+  // dropdown revealed by clicking AVATAR_TRIGGER (profile-menu.vue renders it as a
+  // `.profile-menu-item.logout-item` button, teleported into an `.el-popper` on click/open).
+  LOGOUT_ICON: ".profile-menu-item.logout-item",
   TRIPS_ICON: "a[href=\"/trips\"]",
   // Language switcher (app-header.vue): the globe icon reveals a hover tooltip
   // listing each enabled language as a ".language-item" row labelled by name.
@@ -76,16 +82,21 @@ class MenuPage {
   }
 
   /**
-   * Waits for the logout icon to be visible.
-   * Used as confirmation that the user is logged in.
+   * Waits for the header profile avatar to be visible.
+   * Used as confirmation that the user is logged in. Checks the avatar trigger rather than the
+   * logout button itself (see LOGOUT_ICON) — the avatar is visible immediately post-login with no
+   * click required, so this stays a passive "did we land on the logged-in header" check.
    */
   async waitForLogoutIcon() {
-    await waitForText(this.page, SELECTORS.LOGOUT_ICON, "logout");
+    await this.page.locator(SELECTORS.AVATAR_TRIGGER).waitFor({ state: "visible", timeout: 30000 });
   }
 
-  /** Clicks logout icon */
+  /** Opens the profile avatar dropdown and clicks "Log out" inside it. */
   async clickLogout() {
-    await this.getLogoutIcon().click();
+    await this.page.locator(SELECTORS.AVATAR_TRIGGER).click();
+    const logoutButton = this.getLogoutIcon();
+    await logoutButton.waitFor({ state: "visible", timeout: 10000 });
+    await logoutButton.click();
   }
 
   /** Opens the Trips page */
