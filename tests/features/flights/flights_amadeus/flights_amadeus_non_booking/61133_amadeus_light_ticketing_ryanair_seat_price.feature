@@ -13,7 +13,7 @@ Feature: 61133 Amadeus Light Ticketing - Ryanair - Total price in cart is correc
     When I filter airline results by "Ryanair" checkbox
     And I add the first flight to cart
     And I extract the price at index 4 from "cart"
-    When I click to edit extras at index 2
+    And I click seating in extras
     And I click add seats in extras
     And I wait for the seat map to load
     And I select the first available flight seat
