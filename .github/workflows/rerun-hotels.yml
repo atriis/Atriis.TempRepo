@@ -4,6 +4,10 @@ name: Rerun - Hotels
 # "Suite - Hotels" run on main (or in a specific run id you pass in), against
 # the latest main by default. All the logic lives in rerun-runner.yml — see its
 # header.
+#
+# `rerun_against`: main (the default) reruns each failure at its CURRENT line on
+# main, so a test fixed since the suite ran is verified as fixed; source-commit
+# reproduces the failure on the commit that run used, picking up no fixes.
 
 on:
   workflow_dispatch:

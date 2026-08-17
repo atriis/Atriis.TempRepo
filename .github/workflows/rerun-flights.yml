@@ -5,6 +5,10 @@ name: Rerun - Flights
 # the latest main by default. Nothing schedules or chains into this — it exists
 # so a domain's failures can be re-checked without paying for a whole suite run.
 #
+# `rerun_against`: main (the default) reruns each failure at its CURRENT line on
+# main, so a test fixed since the suite ran is verified as fixed; source-commit
+# reproduces the failure on the commit that run used, picking up no fixes.
+#
 # All the logic lives in rerun-runner.yml; this file only supplies the domain
 # and the dispatch knobs. See that file's header for the safety rails.
 
