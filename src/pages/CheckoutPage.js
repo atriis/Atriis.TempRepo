@@ -13,8 +13,11 @@ const BOOKING_SUCCESS_TITLE_SELECTOR = ".booking-success .success-message__title
 
 const SELECTORS = {
   BOOKING_DETAILS_HEADING: "h1.mb-5",
-  FINALIZE_BUTTON: "button:has-text('Finalize')",
-  BOOK_AND_FINALIZE_BUTTON: "button:has-text('Book and Finalize')",
+  // The app label is backend-driven i18n and ships in both US and UK spelling ("Finalize"/"Finalise"),
+  // so every finalize locator lists both variants — :has-text is a substring match, and the two
+  // spellings share no common substring that covers them.
+  FINALIZE_BUTTON: "button:has-text('Finalize'), button:has-text('Finalise')",
+  BOOK_AND_FINALIZE_BUTTON: "button:has-text('Book and Finalize'), button:has-text('Book and Finalise')",
   // Additional button text variants for different suppliers (e.g., Sunny cars uses "Book Now" or similar)
   BOOK_NOW_BUTTON: "button:has-text('Book Now'), button:has-text('Book'), button:has-text('Confirm')",
   FALLBACK_BUTTON: ".btn-container button",
@@ -164,7 +167,7 @@ class CheckoutPage {
   /**
    * Waits until one of the finalize button variants is available.
    * Different suppliers and fares show different labels:
-   * - Flights/Hotels: "Finalize" or "Book and Finalize"
+   * - Flights/Hotels: "Finalize"/"Finalise" or "Book and Finalize"/"Book and Finalise"
    * - Cars (Sunny, etc.): "Book Now", "Book", or "Confirm"
    */
   async waitForBookAndFinalizeButton() {

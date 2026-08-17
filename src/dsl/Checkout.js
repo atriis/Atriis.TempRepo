@@ -882,7 +882,7 @@ const Checkout = {
    * Verifies the checkout finalize CTA button reads the expected label (test 54558). The label is
    * backend-driven (cart.checkoutBtn.*) and recalculates asynchronously after a reference-field change,
    * so this polls the button text against the accepted variant set:
-   *   - "Book and Finalize"  -> matches "Book and Finalize" OR "Finalize"
+   *   - "Book and Finalize"  -> matches "Book and Finalize" OR "Finalize" (either UK/US spelling)
    *   - "Submit for Approval" -> matches "Submit for Approval" OR "Send For Approvals"
    * The expected string names the logical intent; both wording variants are treated as a pass.
    *
@@ -902,7 +902,7 @@ const Checkout = {
     const wantsApproval = /submit for approval|send for approval/i.test(expectedText);
     const acceptedRegex = wantsApproval
       ? /(submit for approval)|(send for approvals)/i
-      : /(book and finalize)|(finalize)/i;
+      : /(book and finali[sz]e)|(finali[sz]e)/i;
 
     try {
       await expect
