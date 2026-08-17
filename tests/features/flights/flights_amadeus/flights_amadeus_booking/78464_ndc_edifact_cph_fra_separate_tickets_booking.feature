@@ -28,7 +28,7 @@ Feature: 78464 Amadeus NDC + Edifact - Both quotes confirmed for CPH-FRA separat
     Then "Flight to Frankfurt" should be displayed in the checkout page
     And "Flight to Copenhagen" should be displayed in the checkout page
     When I complete the booking
-    Then the booking status should be "Finalizing"
+    Then the booking status should be "Finalising"
     And the first quote destination should contain "Frankfurt"
     And the last quote destination should contain "Copenhagen"
-    When I attempt to cancel the trip safely
+    And I attempt to cancel the trip safely
