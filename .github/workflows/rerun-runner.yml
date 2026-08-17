@@ -4,15 +4,23 @@ name: Rerun Failures (reusable)
 # Rerun - Hotels, Rerun - Shell, Rerun - Transportation). Manual only: nothing
 # schedules or chains into it, so it never runs unless someone asks for it.
 #
-# What it does, in one job:
-#   1. resolve the source run — an explicit run id, or the most recent COMPLETED
-#      run of that domain's suite workflow ON MAIN (success or failure;
-#      cancelled and in-progress runs are skipped)
-#   2. download that run's `*-report` artifacts (the per-suite
-#      cucumber-report.json files) and collect every failed scenario as a
-#      (feature file, scenario name) IDENTITY — not a line number
-#   3. check out the ref being tested, then re-resolve each of those identities
-#      to a CURRENT `path/to.feature:LINE` on that ref, and rerun those
+# EVERY failed scenario is rerun. Three jobs:
+#   plan   - resolve the source run, collect its failures, work out where each
+#            one lives on the ref under test, and shard them
+#   rerun  - one matrix job per shard, running that shard's scenarios
+#   report - aggregate every shard into a single pass/fail table
+#
+# Sharding is BY SOURCE SUITE, not by an arbitrary slice count. Each shard holds
+# exactly the failures that came out of one suite job of the source run, so the
+# rerun inherits that run's concurrency contract unchanged: scenarios that ran
+# serially in one suite job still run serially in one rerun job, and different
+# suites run concurrently just as they did in the suite. That matters because
+# bookings are real and suites are the unit that isolates test users — an
+# arbitrary shard could put two scenarios sharing a login into parallel jobs.
+#
+# It also means a whole domain's worth of failures fits: 100 failures spread over
+# 7 suites is 7 jobs, each well inside its own timeout, instead of one job trying
+# to serialise 100 real bookings and dying at the step timeout with no report.
 #
 # Which ref (the `ref` input):
 #   - `main` (default) — rerun the failures against the latest main, so a test
@@ -22,25 +30,27 @@ name: Rerun Failures (reusable)
 #     reproduces the failure faithfully and does NOT pick up fixes pushed
 #     since. Use it when investigating a flake rather than verifying a fix.
 #
-# Why step 2 stores names and step 3 re-resolves them: the line numbers in the
-# source report belong to that run's feature files. Reusing them against main
-# would rerun whatever now sits on those lines, which after any edit is a
-# different scenario (or none at all). So the failed scenario is looked up by
-# name in a `--dry-run` inventory of the checked-out feature files, and the
-# line number is taken from there. Scenario Outline example rows share one
-# name, so same-named occurrences are matched in order (1st failing row -> 1st
-# row on the ref, and so on).
+# Failures are collected as (feature file, scenario name) IDENTITIES, never as
+# line numbers: the line numbers in the source report belong to that run's
+# feature files, and reusing them against main would rerun whatever now sits on
+# those lines — after any edit a different scenario, or none. So each failure is
+# looked up by name in a `--dry-run` inventory of the checked-out feature files
+# and its CURRENT line is taken from there. Scenario Outline example rows share
+# one name, so same-named occurrences are matched in order (1st failing row ->
+# 1st row on the ref, and so on).
 #
-# Three hard safety rails, the first two learned the expensive way:
+# `main` is resolved to a concrete SHA in `plan` and every shard checks out THAT
+# sha, so a push landing mid-rerun cannot shift the line numbers under the shards.
+#
+# Three hard safety rails, the first learned the expensive way:
 #   - `cucumber-js` with no path arguments runs the ENTIRE suite, which fires
-#     real bookings. The run step refuses to start with an empty location list.
-#   - the list is capped (max-scenarios). A rerun that inherits a whole domain's
-#     worth of failures would blow past its own timeout and report nothing. What
-#     gets dropped is always printed — never silently truncated.
+#     real bookings. Every shard refuses to start with an empty location list.
 #   - a failure that no longer resolves on the ref (feature file moved, scenario
 #     renamed or deleted, example row removed) is reported as unresolved rather
-#     than dropped quietly. If NOTHING resolves, the job fails instead of
+#     than dropped quietly. If NOTHING resolves, the plan fails instead of
 #     reporting a green rerun of nothing.
+#   - `max-scenarios` is an OPT-IN limit (0 = no limit, the default). When it is
+#     set, whatever it drops is always printed — never silently truncated.
 #
 # The failure reports are read straight from the per-suite artifacts rather than
 # the report job's summary.json, so a rerun still works when the source run's
@@ -70,7 +80,7 @@ on:
         type: string
         default: main
       parallel:
-        description: Cucumber workers. Keep at 1 for booking suites.
+        description: Cucumber workers within a shard. Keep at 1 for booking suites.
         required: false
         type: number
         default: 1
@@ -80,15 +90,17 @@ on:
         type: number
         default: 1
       max-scenarios:
-        description: Safety cap on how many failed scenarios one rerun may take.
+        description: Optional limit on total scenarios rerun. 0 = no limit (rerun every failure).
         required: false
         type: number
-        default: 40
+        default: 0
       job-timeout-minutes:
+        description: Timeout for one shard job.
         required: false
         type: number
         default: 180
       step-timeout-minutes:
+        description: Timeout for one shard's cucumber step.
         required: false
         type: number
         default: 170
@@ -98,17 +110,23 @@ env:
   LOG_FORMAT: pretty
 
 jobs:
-  rerun:
-    name: '[${{ inputs.domain }}] Rerun failed scenarios'
+  plan:
+    name: '[${{ inputs.domain }}] Plan the rerun'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ inputs.job-timeout-minutes }}
+    timeout-minutes: 30
     permissions:
       contents: read
       actions: read # gh run list / view / download against the source run
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+      count: ${{ steps.resolve.outputs.count }}
+      shards: ${{ steps.resolve.outputs.shards }}
+      sha: ${{ steps.resolve.outputs.sha }}
+      run_id: ${{ steps.source.outputs.run_id }}
+      run_url: ${{ steps.source.outputs.run_url }}
     steps:
-      # Initial checkout is only needed to resolve the local composite action
-      # below; the tree is replaced with the ref under test before the tests
-      # actually run.
+      # Initial checkout is only needed to read the repo before the tree is
+      # replaced with the ref under test.
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Validate inputs
@@ -201,9 +219,9 @@ jobs:
           fi
           echo "Report files found: $(find "$RUNNER_TEMP/source-artifacts" -name cucumber-report.json | wc -l)"
 
-      # Identity only — (feature file, scenario name, source line). The line is
-      # kept for reporting and for ordering same-named example rows, never as the
-      # thing handed to cucumber-js.
+      # Identity only — (feature file, scenario name, source line, suite). The
+      # line is kept for reporting and for ordering same-named example rows,
+      # never as the thing handed to cucumber-js.
       - name: Collect failed scenarios from the source run
         id: collect
         shell: bash
@@ -227,9 +245,9 @@ jobs:
           const reports = walk(root).filter((f) => path.basename(f) === 'cucumber-report.json');
           const found = [];
           for (const file of reports) {
-            // artifact dir is "<suite_id>-report" — keep the suite for the summary
+            // artifact dir is "<suite_id>-report" — the suite_id becomes the shard
             const m = file.match(/source-artifacts[\\/]([^\\/]+)-report[\\/]/);
-            const suiteId = m ? m[1] : '';
+            const suiteId = m ? m[1] : 'unknown-suite';
             let data;
             try { data = JSON.parse(fs.readFileSync(file, 'utf8')); }
             catch (e) { console.log('Skipping invalid JSON: ' + file); continue; }
@@ -281,11 +299,19 @@ jobs:
         with:
           ref: ${{ steps.source.outputs.checkout_ref }}
 
-      - name: Setup test environment
+      # Only cucumber is needed to build the inventory — no browsers, no ENV
+      # secret. The shards do the full setup.
+      - name: Install dependencies
         if: steps.collect.outputs.count != '0'
-        uses: ./.github/actions/setup-test-env
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          env-file-content: ${{ secrets.ENV }}
+          node-version: 20
+          cache: 'npm'
+
+      - name: npm ci
+        if: steps.collect.outputs.count != '0'
+        shell: bash
+        run: npm ci
 
       # A cucumber `--dry-run` over just the affected feature files gives the
       # authoritative scenario -> line mapping for this tree, including the
@@ -293,18 +319,21 @@ jobs:
       # no support code: undefined steps are irrelevant when all we want is the
       # pickle inventory, and skipping the requires keeps allure/module-alias out
       # of it entirely.
-      - name: Resolve failed scenarios against the ref under test
+      - name: Resolve failed scenarios and shard them
         id: resolve
         if: steps.collect.outputs.count != '0'
         shell: bash
         env:
           MAX_SCENARIOS: ${{ inputs.max-scenarios }}
           CHECKOUT_REF: ${{ steps.source.outputs.checkout_ref }}
+          SOURCE_RUN_ID: ${{ steps.source.outputs.run_id }}
         run: |
           set -euo pipefail
 
-          echo "Rerunning against $(git rev-parse HEAD) ($CHECKOUT_REF)"
-          echo "| Commit under test | \`$(git rev-parse HEAD)\` |" >> "$GITHUB_STEP_SUMMARY"
+          SHA="$(git rev-parse HEAD)"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Rerunning against $SHA ($CHECKOUT_REF)"
+          echo "| Commit under test | \`$SHA\` |" >> "$GITHUB_STEP_SUMMARY"
 
           # Phase 1 — write the dry-run profile and list the files to inventory.
           # The profile and its output stay in the WORKSPACE, not RUNNER_TEMP:
@@ -350,13 +379,13 @@ jobs:
             echo '[]' > rerun-dryrun-report.json
           fi
 
-          # Phase 3 — match failures to current lines, apply the cap, report.
+          # Phase 3 — match failures to current lines, shard by suite, report.
           node - <<'NODE'
           const fs = require('fs');
           const path = require('path');
           const tmp = process.env.RUNNER_TEMP;
           const ref = process.env.CHECKOUT_REF;
-          const cap = parseInt(process.env.MAX_SCENARIOS || '40', 10);
+          const limit = parseInt(process.env.MAX_SCENARIOS || '0', 10) || 0;
 
           const failures = JSON.parse(fs.readFileSync(path.join(tmp, 'failures.json'), 'utf8'));
           const missingFiles = new Set(JSON.parse(fs.readFileSync(path.join(tmp, 'missing-files.json'), 'utf8')));
@@ -409,37 +438,74 @@ jobs:
           }
           resolved.sort((a, b) => a.loc.localeCompare(b.loc));
 
-          const selected = resolved.slice(0, cap);
-          const dropped = resolved.slice(cap);
+          // A location list is passed to each shard as one space-separated
+          // string, so a path with a space in it would split into two bad args.
+          const spaced = resolved.filter((s) => /\s/.test(s.loc));
+          if (spaced.length > 0) {
+            console.log('::error::Feature paths contain whitespace, which the shard argument list cannot carry: ' +
+              spaced.map((s) => s.loc).join(', '));
+            process.exit(1);
+          }
 
-          fs.writeFileSync(path.join(tmp, 'rerun-locations.txt'),
-            selected.map((s) => s.loc).join('\n') + (selected.length ? '\n' : ''));
+          // max-scenarios is opt-in: 0 means rerun every failure.
+          const selected = limit > 0 ? resolved.slice(0, limit) : resolved;
+          const dropped = limit > 0 ? resolved.slice(limit) : [];
+
+          // One shard per source suite: the failures of one suite job stay in one
+          // job, exactly as they ran in the source run.
+          const bySuite = new Map();
+          for (const s of selected) {
+            const id = String(s.suite || 'unknown-suite').replace(/[^A-Za-z0-9._-]/g, '-');
+            const shard = bySuite.get(id) || [];
+            shard.push(s);
+            bySuite.set(id, shard);
+          }
+          const include = [...bySuite.entries()]
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([suite_id, items]) => ({
+              suite_id,
+              count: items.length,
+              locations: items.map((s) => s.loc).join(' '),
+            }));
+
+          // A skipped job must still have a syntactically valid matrix, so never
+          // emit an empty include — the job's `if` is what stops it running.
+          const matrix = { include: include.length > 0 ? include : [{ suite_id: 'none', count: 0, locations: '' }] };
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'matrix=' + JSON.stringify(matrix) + '\n');
           fs.appendFileSync(process.env.GITHUB_OUTPUT, 'count=' + selected.length + '\n');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'shards=' + include.length + '\n');
 
           const esc = (t) => String(t == null ? '' : t).slice(0, 220).split('\n').join(' ').split('|').join('¦');
           const out = [''];
           if (selected.length > 0) {
-            out.push('### Scenarios being rerun (' + selected.length + ' of ' + failures.length + ' failed)', '');
-            out.push('| Suite | Scenario | Location on ' + esc(ref) + ' | Was |');
+            out.push('### Rerunning ' + selected.length + ' of ' + failures.length +
+              ' failed scenario(s) across ' + include.length + ' shard(s)', '');
+            out.push('| Shard (source suite) | Scenarios |');
+            out.push('|----------------------|-----------|');
+            for (const s of include) out.push('| ' + esc(s.suite_id) + ' | ' + s.count + ' |');
+            out.push('');
+            out.push('<details><summary>Every scenario being rerun</summary>', '');
+            out.push('| Shard | Scenario | Location on ' + esc(ref) + ' | Was |');
             out.push('|-------|----------|-------------|-----|');
             for (const s of selected) {
               out.push('| ' + esc(s.suite) + ' | ' + esc(s.name) + ' | `' + esc(s.loc) + '` | `:' + esc(s.sourceLine) + '` |');
             }
-            out.push('');
+            out.push('', '</details>', '');
           }
           if (dropped.length > 0) {
-            // Never truncate silently — a capped rerun that looks complete is
+            // Never truncate silently — a limited rerun that looks complete is
             // worse than one that says what it left behind.
-            out.push('> **' + dropped.length + ' further failed scenario(s) were NOT rerun** (max-scenarios = ' + cap + '):');
+            out.push('> **' + dropped.length + ' failed scenario(s) were NOT rerun** because max-scenarios was set to ' +
+              limit + '. Dispatch with max_scenarios = 0 to rerun every failure.');
             out.push('>');
             for (const s of dropped) out.push('> - `' + esc(s.loc) + '` — ' + esc(s.name));
             out.push('');
-            console.log('::warning::' + dropped.length + ' failed scenario(s) exceeded the max-scenarios cap of ' + cap + ' and were not rerun.');
+            console.log('::warning::' + dropped.length + ' failed scenario(s) were dropped by max-scenarios = ' + limit + '.');
           }
           if (unresolved.length > 0) {
-            // These are the ones the old line-number-carrying approach would
-            // have run blind: the line still exists, but it is a different
-            // scenario now (or none).
+            // These are the ones a line-number-carrying rerun would have run
+            // blind: the line still exists, but it is a different scenario now
+            // (or none).
             out.push('> **' + unresolved.length + ' failed scenario(s) could not be located on `' + esc(ref) + '`** and were not rerun:');
             out.push('>');
             for (const s of unresolved) {
@@ -450,104 +516,190 @@ jobs:
           }
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
 
-          console.log('Resolved ' + resolved.length + ' of ' + failures.length + ' failed scenario(s) on ' + ref + '; running ' + selected.length + '.');
+          console.log('Resolved ' + resolved.length + ' of ' + failures.length + ' failed scenario(s) on ' + ref +
+            '; rerunning ' + selected.length + ' in ' + include.length + ' shard(s).');
           if (resolved.length === 0) {
             // Every failure vanished from this ref. Possible (a whole feature
             // deleted), but far more often it means the reports and the tree
             // have nothing to do with each other — so fail loudly instead of
             // reporting a green rerun of zero scenarios.
-            console.log('::error::None of the ' + failures.length + ' failed scenario(s) could be located on ' + ref + ' — nothing was rerun. Check that the source run belongs to this repo state, or rerun with ref=source-commit.');
+            console.log('::error::None of the ' + failures.length + ' failed scenario(s) could be located on ' + ref +
+              ' — nothing was rerun. Check that the source run belongs to this repo state, or rerun with ref=source-commit.');
             process.exit(1);
           }
           NODE
 
-      - name: Rerun failed scenarios
-        if: steps.resolve.outputs.count != '0'
+  rerun:
+    name: '[${{ inputs.domain }}] ${{ matrix.suite_id }} (${{ matrix.count }})'
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.job-timeout-minutes }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      # The exact sha the plan resolved the line numbers on, so a push landing
+      # mid-rerun cannot move them under us.
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+
+      - uses: ./.github/actions/setup-test-env
+        with:
+          env-file-content: ${{ secrets.ENV }}
+
+      - name: Rerun ${{ matrix.suite_id }} failures
         timeout-minutes: ${{ inputs.step-timeout-minutes }}
         shell: bash
         env:
           CI: "true"
+          LOCATIONS: ${{ matrix.locations }}
         run: |
           set -euo pipefail
-          mapfile -t LOCATIONS < "$RUNNER_TEMP/rerun-locations.txt"
+          read -r -a LOCS <<<"$LOCATIONS"
           # Hard stop: `cucumber-js` with no path arguments runs the WHOLE suite,
           # which means real bookings against staging. An empty list is a bug in
-          # the step above, never an instruction to run everything.
-          if [ "${#LOCATIONS[@]}" -eq 0 ]; then
-            echo "::error::Rerun list is empty — refusing to invoke cucumber-js with no arguments."
+          # the plan job, never an instruction to run everything.
+          if [ "${#LOCS[@]}" -eq 0 ]; then
+            echo "::error::Shard ${{ matrix.suite_id }} got an empty location list — refusing to invoke cucumber-js with no arguments."
             exit 1
           fi
-          echo "Rerunning ${#LOCATIONS[@]} scenario(s):"
-          printf '  %s\n' "${LOCATIONS[@]}"
-          npx cucumber-js "${LOCATIONS[@]}" \
+          echo "Rerunning ${#LOCS[@]} scenario(s) from ${{ matrix.suite_id }}:"
+          printf '  %s\n' "${LOCS[@]}"
+          npx cucumber-js "${LOCS[@]}" \
             --profile ci \
             --parallel ${{ inputs.parallel }} \
             --retry ${{ inputs.retry }}
 
-      - name: Post rerun outcome
-        if: always() && steps.resolve.outputs.count != '0'
-        shell: bash
-        run: |
-          node -e "
-            const fs = require('fs');
-            const file = 'test-results/cucumber-report.json';
-            if (!fs.existsSync(file)) {
-              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, '\n### Rerun result\n\nNo cucumber report was produced — the rerun step timed out or crashed before writing results.\n');
-              process.exit(0);
-            }
-            const FAIL = new Set(['failed','ambiguous','pending','undefined']);
-            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-            const esc = t => String(t || '').slice(0, 220).split('\n').join(' ').split('|').join('¦');
-            let passed = 0;
-            const rows = [];
-            for (const feature of (Array.isArray(data) ? data : [data])) {
-              const uri = String(feature.uri || '').replace(/\\\\/g, '/');
-              for (const el of (feature.elements || [])) {
-                if (el.type !== 'scenario') continue;
-                const steps = el.steps || [];
-                const bad = steps.find(s => s.result && FAIL.has(s.result.status));
-                if (bad) {
-                  const err = ((bad.result && bad.result.error_message) || '').split('\n')[0];
-                  rows.push('| ❌ | ' + esc(el.name) + ' | ' + esc(uri + ':' + el.line) + ' | ' + esc(err) + ' |');
-                } else { passed++; rows.push('| ✅ | ' + esc(el.name) + ' | ' + esc(uri + ':' + el.line) + ' | — |'); }
-              }
-            }
-            const failed = rows.length - passed;
-            const out = ['', '### Rerun result', '',
-              '**' + passed + ' now passing, ' + failed + ' still failing** (of ' + rows.length + ' rerun).', '',
-              '| | Scenario | Location | Error |', '|---|----------|----------|-------|', ...rows, ''];
-            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
-          "
-        continue-on-error: true
-
       - name: Upload rerun JUnit results
-        if: always() && steps.resolve.outputs.count != '0'
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: rerun-${{ inputs.domain }}-results
+          name: rerun-${{ matrix.suite_id }}-results
           path: test-results/cucumber-junit.xml
           if-no-files-found: ignore
 
       - name: Upload rerun Cucumber report
-        if: always() && steps.resolve.outputs.count != '0'
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: rerun-${{ inputs.domain }}-report
+          name: rerun-${{ matrix.suite_id }}-report
           path: test-results/cucumber-report.json
           if-no-files-found: ignore
 
       - name: Upload rerun screenshots
-        if: always() && steps.resolve.outputs.count != '0'
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: rerun-${{ inputs.domain }}-screenshots
+          name: rerun-${{ matrix.suite_id }}-screenshots
           path: test-results/screenshots/
           if-no-files-found: ignore
 
       - name: Upload rerun traces
-        if: always() && steps.resolve.outputs.count != '0'
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: rerun-${{ inputs.domain }}-traces
+          name: rerun-${{ matrix.suite_id }}-traces
           path: test-results/traces/
           if-no-files-found: ignore
+
+  report:
+    name: '[${{ inputs.domain }}] Rerun report'
+    needs: [plan, rerun]
+    if: ${{ always() && needs.plan.outputs.count != '0' && (needs.rerun.result == 'success' || needs.rerun.result == 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Download every shard's report
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: 'rerun-*-report'
+          path: shard-reports
+        continue-on-error: true
+
+      # One table for the whole rerun. A shard that produced no report at all
+      # (timed out, or crashed before writing) is called out by name rather than
+      # quietly leaving its scenarios out of the totals.
+      - name: Aggregate shard results
+        shell: bash
+        env:
+          EXPECTED_SHARDS: ${{ needs.plan.outputs.shards }}
+          EXPECTED_SCENARIOS: ${{ needs.plan.outputs.count }}
+          SOURCE_RUN_URL: ${{ needs.plan.outputs.run_url }}
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const root = 'shard-reports';
+          const FAIL = new Set(['failed', 'ambiguous', 'pending', 'undefined']);
+          const esc = (t) => String(t == null ? '' : t).slice(0, 220).split('\n').join(' ').split('|').join('¦');
+
+          const walk = (dir) => !fs.existsSync(dir) ? [] :
+            fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+              e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]);
+
+          const files = walk(root).filter((f) => path.basename(f) === 'cucumber-report.json');
+          const rows = [];
+          const shards = new Set();
+          let passed = 0;
+          for (const file of files) {
+            // Anchor on the artifact DIRECTORY: a greedy match runs past it and
+            // swallows "cucumber-report.json" too.
+            const m = file.match(/[\\/]rerun-(.+?)-report[\\/]/);
+            const shard = m ? m[1] : path.dirname(file);
+            shards.add(shard);
+            let data;
+            try { data = JSON.parse(fs.readFileSync(file, 'utf8')); }
+            catch (e) { console.log('Skipping invalid JSON: ' + file); continue; }
+            for (const feature of (Array.isArray(data) ? data : [data])) {
+              const uri = String(feature.uri || '').replace(/\\/g, '/');
+              for (const el of (feature.elements || [])) {
+                if (el.type !== 'scenario') continue;
+                const bad = (el.steps || []).find((s) => s.result && FAIL.has(s.result.status));
+                if (bad) {
+                  const err = ((bad.result && bad.result.error_message) || '').split('\n')[0];
+                  rows.push({ ok: false, shard, name: el.name, loc: uri + ':' + el.line, err });
+                } else {
+                  passed++;
+                  rows.push({ ok: true, shard, name: el.name, loc: uri + ':' + el.line, err: '' });
+                }
+              }
+            }
+          }
+          rows.sort((a, b) => Number(a.ok) - Number(b.ok) || a.shard.localeCompare(b.shard) || a.loc.localeCompare(b.loc));
+
+          const expectedShards = parseInt(process.env.EXPECTED_SHARDS || '0', 10);
+          const expectedScenarios = parseInt(process.env.EXPECTED_SCENARIOS || '0', 10);
+          const failed = rows.length - passed;
+
+          const out = ['', '## Rerun result', ''];
+          out.push('**' + passed + ' now passing, ' + failed + ' still failing** of ' + rows.length +
+            ' rerun (' + expectedScenarios + ' were planned, across ' + expectedShards + ' shard(s)).', '');
+          if (rows.length < expectedScenarios) {
+            out.push('> **' + (expectedScenarios - rows.length) + ' planned scenario(s) produced no result.** ' +
+              'A shard hit its timeout or crashed before writing a report — check the shard jobs above.', '');
+            console.log('::warning::' + (expectedScenarios - rows.length) +
+              ' planned scenario(s) produced no result; a shard did not finish.');
+          }
+          if (shards.size < expectedShards) {
+            out.push('> Reports came back from ' + shards.size + ' of ' + expectedShards + ' shard(s).', '');
+          }
+          out.push('| | Shard | Scenario | Location | Error |');
+          out.push('|---|-------|----------|----------|-------|');
+          for (const r of rows) {
+            out.push('| ' + (r.ok ? '✅' : '❌') + ' | ' + esc(r.shard) + ' | ' + esc(r.name) + ' | ' +
+              esc(r.loc) + ' | ' + (r.ok ? '—' : esc(r.err)) + ' |');
+          }
+          out.push('');
+          out.push('Source run: ' + (process.env.SOURCE_RUN_URL || '(unknown)'));
+          out.push('');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
+          console.log(passed + ' passing, ' + failed + ' failing, ' + rows.length + ' scenario(s) reported.');
+          NODE
