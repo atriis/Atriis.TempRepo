@@ -1,20 +1,20 @@
 # Test Name: 45589 NDC - Trip overview - More Details
 # Status: Active
-# Labels: Flights,Regression,Iberia,Full Purchase,price,progress page,2026 plan 1
+# Labels: Flights,Regression,Full Purchase,price,progress page,2026 plan 1
 # Owner: pini harush
 # Created: 2024-05-01T03:42:43Z
 # Updated: 2026-02-10T05:08:44Z
 
-@regression @flights @ndc @iberia @full-purchase
-Feature: 45589 NDC Iberia - Trip overview more details
+@regression @flights @ndc @full-purchase
+Feature: 45589 NDC - Trip overview more details
   As a corporate traveler
   I want to see flight details in the trip overview after booking
   So that I can verify traveler, ticket, FF, meal, and seat information
 
   Scenario: Trip overview shows detailed flight information after booking
-    Given I am logged in as "bsiberia@bsiberia.com" booking a new trip
+    Given I am logged in as "bsafkl@bsafkl.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "MAD" to "LON"
+    When I search for a one way flight from "AMS" to "PAR"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     And I proceed to checkout
