@@ -1342,16 +1342,21 @@ class FlightResultsPage {
   }
 
   /**
-   * Extracts the price amount from the pricing options modal.
+   * Extracts the total price from the nth pricing option card in the drawer.
    *
-   * @param {number} index - Zero-based index of the amount element (default: 0)
-   * @returns {Promise<number|null>} The price value or null if not found
+   * Indexes by CARD, not by `.amount` node: once a fare is selected on one leg,
+   * every card renders a second `.amount` for the "+ $X" combination delta, so a
+   * flat nth() over `.amount` would read card 0's delta as "index 1".
+   *
+   * @param {number} index - Zero-based pricing option card index (default: 0)
+   * @returns {Promise<number|null>} The card's total price, or null if not found
    */
   async getAmountPriceValuePricingOptions(index = 0) {
     const overlay = this.getPricingOptionsOverlay();
     await overlay.waitFor({ state: 'visible', timeout: 60000 });
-    await overlay.locator(SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE).nth(index).waitFor({ state: 'visible', timeout: 120000 });
-    return extractNumber(overlay, SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE, index);
+    const card = overlay.locator(SELECTORS.PRICING_OPTIONS_ITEM).nth(index);
+    await card.locator('.amount').first().waitFor({ state: 'visible', timeout: 120000 });
+    return extractNumber(card, '.amount', 0);
   }
 
   /**

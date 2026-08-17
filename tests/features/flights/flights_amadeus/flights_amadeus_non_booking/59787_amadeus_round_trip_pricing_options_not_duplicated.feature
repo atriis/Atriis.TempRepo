@@ -15,6 +15,7 @@ Feature: 59787 Amadeus - Round trip pricing options are not duplicated
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "MNL"
     And flight results should be available
+    And I filter results by carrier "Air China"
     And I click to open first pricing options
     When I extract the price from pricing option at index 0
     And I extract the price from pricing option at index 1
