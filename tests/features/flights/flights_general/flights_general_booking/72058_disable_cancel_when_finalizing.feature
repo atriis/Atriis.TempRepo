@@ -19,5 +19,5 @@ Feature: 72058 Flights - Disable cancel when quote status is Finalizing
     Then the booking status should be "Pending booking"
     And I proceed to checkout
     And I complete the booking
-    Then the booking status should be "Finalizing"
+    Then the booking status should be "Finalising"
     And the cancel trip button should be disabled
