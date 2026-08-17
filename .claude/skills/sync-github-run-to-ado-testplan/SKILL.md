@@ -134,21 +134,40 @@ function findJunit(d, out = []) {
     return out;
 }
 
+// Handles both self-closing <testcase .../> and <testcase ...>...</testcase>.
+// The open tag is scanned quote-aware rather than matched with /<testcase\b([^>]*?)>/:
+// `[^>]*?` stops at the FIRST `>`, including one inside a quoted attribute value,
+// so a feature title containing `>` (e.g. TC 64409 "... inProgress > &quot;Confirmation
+// in progress&quot; ...") truncates the attrs group mid-value, classname parses as
+// empty, and the whole test case is silently dropped as "no leading numeric ADO id".
 function parseJunit(xml) {
-    // Match both self-closing <testcase .../> and <testcase ...>...</testcase>
-    const re = /<testcase\b([^>]*?)(\/>|>([\s\S]*?)<\/testcase>)/g;
     const rows = [];
-    let m;
-    while ((m = re.exec(xml)) !== null) {
-        const attrs = m[1], closeOrBody = m[2], body = m[3] || '';
+    const TAG = '<testcase';
+    let i = 0;
+    while ((i = xml.indexOf(TAG, i)) !== -1) {
+        let j = i + TAG.length, quote = null, end = -1;
+        for (; j < xml.length; j++) {
+            const c = xml[j];
+            if (quote) { if (c === quote) quote = null; continue; }
+            if (c === '"' || c === "'") { quote = c; continue; }
+            if (c === '>') { end = j; break; }
+        }
+        if (end === -1) break;   // truncated file
+        const selfClose = xml[end - 1] === '/';
+        const attrs = xml.slice(i + TAG.length, selfClose ? end - 1 : end);
         const cm = /classname="([^"]*)"/.exec(attrs);
         const classname = cm ? cm[1] : '';
-        let outcome = 'Passed';
-        if (closeOrBody !== '/>') {
+
+        let outcome = 'Passed', next = end + 1;
+        if (!selfClose) {
+            const close = xml.indexOf('</testcase>', end);
+            const body = close === -1 ? xml.slice(end + 1) : xml.slice(end + 1, close);
             if (/<failure\b/.test(body) || /<error\b/.test(body)) outcome = 'Failed';
             else if (/<skipped\b/.test(body)) outcome = 'Skipped';
+            next = close === -1 ? xml.length : close + '</testcase>'.length;
         }
         rows.push({ classname, outcome });
+        i = next;
     }
     return rows;
 }

@@ -115,26 +115,55 @@ function worse(a, b) {
   return RANK[b] > RANK[a] ? b : a;
 }
 
+// Handles both self-closing <testcase .../> and <testcase ...>...</testcase>.
+// The open tag is scanned quote-aware rather than matched with /<testcase\b([^>]*?)>/:
+// `[^>]*?` stops at the FIRST `>`, including one inside a quoted attribute value, so a
+// feature title containing `>` (e.g. TC 64409 "... inProgress > &quot;Confirmation in
+// progress&quot; ...") truncates the attrs group mid-value, classname parses as empty,
+// and the whole test case is silently dropped as having no ADO id prefix.
 function parseJunit(xml) {
-  // Match both self-closing <testcase .../> and <testcase ...>...</testcase>
-  const re = /<testcase\b([^>]*?)(\/>|>([\s\S]*?)<\/testcase>)/g;
+  const TAG = '<testcase';
   const results = [];
-  let m;
-  while ((m = re.exec(xml)) !== null) {
-    const attrs = m[1];
-    const bodyOrClose = m[2];
-    const body = m[3] || '';
+  let i = 0;
+  while ((i = xml.indexOf(TAG, i)) !== -1) {
+    let j = i + TAG.length;
+    let quote = null;
+    let end = -1;
+    for (; j < xml.length; j++) {
+      const c = xml[j];
+      if (quote) {
+        if (c === quote) quote = null;
+        continue;
+      }
+      if (c === '"' || c === "'") {
+        quote = c;
+        continue;
+      }
+      if (c === '>') {
+        end = j;
+        break;
+      }
+    }
+    if (end === -1) break; // truncated file
+    const selfClose = xml[end - 1] === '/';
+    const attrs = xml.slice(i + TAG.length, selfClose ? end - 1 : end);
     const cm = /classname="([^"]*)"/.exec(attrs);
     const classname = cm ? cm[1] : '';
-    const idMatch = /^\s*(\d{3,6})\b/.exec(classname);
-    if (!idMatch) continue; // no ADO id prefix -> skip
-    const id = idMatch[1];
+
     let outcome = 'Passed';
-    if (bodyOrClose !== '/>') {
+    let next = end + 1;
+    if (!selfClose) {
+      const close = xml.indexOf('</testcase>', end);
+      const body = close === -1 ? xml.slice(end + 1) : xml.slice(end + 1, close);
       if (/<failure\b/.test(body) || /<error\b/.test(body)) outcome = 'Failed';
       else if (/<skipped\b/.test(body)) outcome = 'NotApplicable';
+      next = close === -1 ? xml.length : close + '</testcase>'.length;
     }
-    results.push({ id, outcome, classname });
+    i = next;
+
+    const idMatch = /^\s*(\d{3,6})\b/.exec(classname);
+    if (!idMatch) continue; // no ADO id prefix -> skip
+    results.push({ id: idMatch[1], outcome, classname });
   }
   return results;
 }
