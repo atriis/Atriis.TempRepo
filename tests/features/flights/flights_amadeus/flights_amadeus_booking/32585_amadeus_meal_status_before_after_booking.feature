@@ -21,13 +21,13 @@ Feature: 32585 Amadeus - Meal status displayed in cart before and after booking
     When I click to edit the meal extras section
     And I add meal "Diabetic Meal (DBML)" to the flight
     And I click to edit the meal extras section
-    Then the selected meal should have status "Reservation in progress, proceed to checkout for finalization"
+    Then the selected meal should have status "Reservation in progress, proceed to checkout for finalisation"
     When I add a credit card as payment method
     Then the payment method should be added
     When I fill credit card cvv if needed
     And I proceed to checkout
     And I complete the booking
-    Then the booking status should be "Finalizing"
+    Then the booking status should be "Finalising"
     When I click the extras arrow button
     And I click to edit the meal extras section
     Then the selected meal should have status matching "(In progress)|(Declined by)"
