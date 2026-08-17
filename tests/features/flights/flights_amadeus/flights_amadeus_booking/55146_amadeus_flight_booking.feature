@@ -14,11 +14,13 @@ Feature: 55146 Amadeus - Flight booking
 
   @priority:critical
   Scenario: Book a round trip Amadeus flight successfully
-    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
+    Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "LON" to "IST"
+    When I search for a round trip flight from "LIS" to "IST"
     And I add the first flight to cart
+    Then the booking status should be "Pending booking"
+    And I add a credit card as payment method
     And I proceed to checkout
     And I complete the booking
-    Then the booking status should be "Finalizing"
+    Then the booking status should be "Finalising"
   
