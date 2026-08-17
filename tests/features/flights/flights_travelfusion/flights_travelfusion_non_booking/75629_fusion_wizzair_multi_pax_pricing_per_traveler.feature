@@ -6,7 +6,7 @@
 # Fix: Fusion V3 API was returning total fare for all passengers; fix ensures per-pax price is returned
 
 @regression @flights @fusion @multi-pax @pricing @ado:74593 @tc:75629 @priority:critical
-Feature: 74593 Fusion Wizz Air - Pricing options show per-traveler fare for multi-pax search
+Feature: 75629 Fusion Wizz Air - Pricing options show per-traveler fare for multi-pax search
   As a corporate travel arranger booking a Wizz Air flight via Fusion for multiple passengers
   I want the pricing options view to display the fare per traveler
   So that I can accurately compare options without seeing an inflated total price across all passengers
