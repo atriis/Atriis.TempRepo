@@ -251,7 +251,7 @@ jobs:
           // only about the same scenario appearing in two suites' artifacts.
           const seen = new Set();
           const unique = found.filter((f) => {
-            const key = f.uri + ' ' + f.line + ' ' + f.name;
+            const key = f.uri + ' :: ' + f.line + ' :: ' + f.name;
             return !seen.has(key) && seen.add(key);
           });
           unique.sort((a, b) => a.uri.localeCompare(b.uri) || a.line - b.line);
@@ -383,7 +383,7 @@ jobs:
           // can be paired by position: Nth failing row -> Nth row on the ref.
           const groups = new Map();
           for (const f of failures) {
-            const key = f.uri + ' ' + f.name;
+            const key = f.uri + ' :: ' + f.name;
             const g = groups.get(key) || [];
             g.push(f);
             groups.set(key, g);
