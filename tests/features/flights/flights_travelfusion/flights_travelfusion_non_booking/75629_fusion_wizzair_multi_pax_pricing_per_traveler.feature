@@ -12,7 +12,7 @@ Feature: 75629 Fusion Wizz Air - Pricing options show per-traveler fare for mult
   So that I can accurately compare options without seeing an inflated total price across all passengers
 
   Scenario: Fusion Wizz Air pricing options display per-traveler fare with 2 adult passengers
-    Given I am logged in as "wizzair@fusion.com" booking a new trip
+    Given I am logged in as "wizzAir@TFreg.club" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
     When I search for a one way flight from "BCN" to "TIA"
