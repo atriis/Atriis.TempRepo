@@ -6,7 +6,7 @@
 # Updated: 2025-08-04T05:04:01Z
 
 @regression @flights @general @hybrid
-Feature: 30426 Flights - Correct destination in welcome screen
+Feature: 30426 HYBRID Flights - Correct destination in welcome screen
   As a corporate traveler
   I want the correct destination to appear in the welcome screen
   So that I know my booking details are accurate
