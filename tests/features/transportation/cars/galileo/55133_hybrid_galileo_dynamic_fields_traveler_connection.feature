@@ -1,5 +1,5 @@
 @transportation @cars @regression @provider:galileo
-Feature: HYBRID 55133 Galileo - dynamic field send as remark with traveler connection
+Feature: 55133 HYBRID Galileo - dynamic field send as remark with traveler connection
 
   Scenario: Dynamic fields are filled and sent as remarks with traveler connection
     Given I am logged in as "rafael@dinmark.com" booking a new trip
