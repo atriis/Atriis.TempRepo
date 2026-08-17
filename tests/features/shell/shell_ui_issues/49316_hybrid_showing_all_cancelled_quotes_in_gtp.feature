@@ -7,7 +7,7 @@
 # Updated: 2025-09-17T12:19:50Z
 
 @regression @shell @flights @hotels @ui @approval
-Feature: 49316 - Showing all cancelled quotes in GTP
+Feature: 49316 HYBRID Showing all cancelled quotes in GTP
   As a corporate traveler using GTP
   I want to book a flight and a hotel and then cancel the entire trip
   So that all cancelled quotes are visible in the trip overview after cancellation
