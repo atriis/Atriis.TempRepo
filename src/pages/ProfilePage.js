@@ -2,9 +2,17 @@ const { expect } = require("@playwright/test");
 const { EL_SELECT_DISABLED_INNER } = require("@utils/elementPlus");
 
 const SELECTORS = {
-  // Navigation to profile
-  PASSENGER_AVATAR: '.app-header .passenger-avatar',
-  USER_PROFILE_LINK: '.user-profile-link',
+  // Navigation to profile.
+  // As of app v2.13 the header avatar is wrapped by app-profile-menu.vue: an el-tooltip with
+  // trigger="click" whose content (teleported into an .el-popper) holds "My profile", the
+  // permission-gated "Manage profiles" and "Log out". The avatar itself is rendered with
+  // isTooltipDisabled, so hovering it no longer reveals anything — the trigger must be CLICKED.
+  // The old hover target `.user-profile-link` still exists, but only inside the traveler-avatar
+  // tooltip on trip pages, never in the header. Same selectors MenuPage uses for logout.
+  // Each selector accepts the component's data-testid or its class, so neither being absent
+  // in a given deployment breaks navigation.
+  PROFILE_MENU_TRIGGER: '[data-testid="profile-menu.trigger"], .app-profile-menu .avatar-trigger',
+  MY_PROFILE_MENU_ITEM: '[data-testid="profile-menu.my-profile"], .profile-menu-item.my-profile-item',
 
   // Profile tabs
   FREQUENT_PROGRAMS_TAB: '#tab-frequentPrograms',
@@ -64,7 +72,12 @@ const SELECTORS = {
   REMOVE_ENTRY_BUTTON: '.remove-btn-wrapper .remove-btn',
   FF_NUMBER_INPUT: '.el-input__inner',
   FF_CARRIER_DROPDOWN: '.el-select',
-  SAVE_BUTTON: 'button:has-text("Save Frequent Programs")',
+  // The only button in the form's footer. Anchored on structure, not text: the label is
+  // "Save" + the frequentPrograms tab label, which app commit 05139b0e (AB#81039, "Normalise the
+  // OBT master English content to consistent English (UK)") changed from "Frequent Programs" to
+  // "Frequent Programmes" in en.json while leaving en-US.json on the US spelling — so any text
+  // match here breaks on whichever of the two English locales the corporation is configured for.
+  SAVE_BUTTON: '.frequent-programs-form-content > .btns-container button',
 
   // Form of Payment tab
   FORM_OF_PAYMENT_TAB: "[id='tab-formOfPayment'] p",
@@ -139,24 +152,32 @@ class ProfilePage {
 
   // --- Navigation ---
 
-  async hoverAvatar() {
+  /** Clicks the header avatar to open the profile dropdown. */
+  async openProfileMenu() {
+    const trigger = this.page.locator(SELECTORS.PROFILE_MENU_TRIGGER).first();
     try {
-      await this.page.locator(SELECTORS.PASSENGER_AVATAR).hover({ timeout: 15000 });
+      await trigger.waitFor({ state: 'visible', timeout: 15000 });
+      await trigger.click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
-        `[ProfilePage.hoverAvatar] Could not hover over passenger avatar (selector: ${SELECTORS.PASSENGER_AVATAR}). ` +
-        `The avatar may not be rendered yet or the user is not logged in. Original: ${err.message}`
+        `[ProfilePage.openProfileMenu] Could not open the header profile menu (selector: ${SELECTORS.PROFILE_MENU_TRIGGER}). ` +
+        `The avatar may not be rendered yet, the user is not logged in, or the viewport is mobile — ` +
+        `app-header.vue renders app-profile-menu only when "!isMobile". Original: ${err.message}`
       );
     }
   }
 
-  async clickProfileLink() {
+  /** Clicks "My profile" inside the open profile dropdown. Opens the profile in a new tab. */
+  async clickMyProfile() {
+    const item = this.page.locator(SELECTORS.MY_PROFILE_MENU_ITEM).first();
     try {
-      await this.page.locator(SELECTORS.USER_PROFILE_LINK).click({ timeout: 10000 });
+      await item.waitFor({ state: 'visible', timeout: 10000 });
+      await item.click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
-        `[ProfilePage.clickProfileLink] Could not click "Profile settings" link (selector: ${SELECTORS.USER_PROFILE_LINK}). ` +
-        `The tooltip with the profile link may not have appeared after hovering the avatar. Original: ${err.message}`
+        `[ProfilePage.clickMyProfile] Could not click "My profile" (selector: ${SELECTORS.MY_PROFILE_MENU_ITEM}). ` +
+        `The profile dropdown may not have opened — it is revealed by CLICKING the avatar trigger, not hovering it. ` +
+        `Original: ${err.message}`
       );
     }
   }

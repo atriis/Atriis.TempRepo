@@ -11,7 +11,7 @@ const logger = require("@utils/logger").child("Profile");
  */
 const Profile = {
   /**
-   * Navigates to the user profile by hovering the avatar and clicking the profile link.
+   * Navigates to the user profile by opening the header avatar menu and clicking "My profile".
    * The profile opens in a new tab — returns the new page instance.
    */
   async navigateToProfile(page) {
@@ -19,7 +19,7 @@ const Profile = {
       throw new Error('[Profile.navigateToProfile] "page" is required.');
     }
 
-    logger.debug("[Profile.navigateToProfile] Hovering avatar and clicking profile link");
+    logger.debug("[Profile.navigateToProfile] Opening the avatar menu and clicking \"My profile\"");
 
     const profilePage = getPageObject(page, ProfilePage);
     const loginPage = getPageObject(page, LoginPage);
@@ -36,8 +36,8 @@ const Profile = {
     const newPagePromise = context.waitForEvent("page", { timeout: 15000 }).catch(() => null);
 
     try {
-      await profilePage.hoverAvatar();
-      await profilePage.clickProfileLink();
+      await profilePage.openProfileMenu();
+      await profilePage.clickMyProfile();
     } catch (err) {
       throw new Error(
         `[Profile.navigateToProfile] Failed to navigate to user profile: ${err.message}`
