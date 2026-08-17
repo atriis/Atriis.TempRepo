@@ -1,9 +1,9 @@
 name: Rerun - Flights
 
 # Manual only. Reruns the scenarios that FAILED in the latest completed
-# "Suite - Flights" run (or in a specific run id you pass in), against the
-# commit that run used. Nothing schedules or chains into this — it exists so a
-# domain's failures can be re-checked without paying for a whole suite run.
+# "Suite - Flights" run on main (or in a specific run id you pass in), against
+# the latest main by default. Nothing schedules or chains into this — it exists
+# so a domain's failures can be re-checked without paying for a whole suite run.
 #
 # All the logic lives in rerun-runner.yml; this file only supplies the domain
 # and the dispatch knobs. See that file's header for the safety rails.
@@ -12,10 +12,16 @@ on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: 'Suite - Flights run id to take failures from (blank = latest completed run)'
+        description: 'Suite - Flights run id to take failures from (blank = latest completed run on main)'
         required: false
         type: string
         default: ''
+      rerun_against:
+        description: 'main = verify fixes pushed since the run · source-commit = reproduce the failure as it was'
+        required: false
+        type: choice
+        default: 'main'
+        options: ['main', 'source-commit']
       parallel:
         description: 'Cucumber workers (keep at 1 — flight bookings are real)'
         required: false
@@ -50,6 +56,7 @@ jobs:
       domain: Flights
       suite-workflow: suite-flights.yml
       run-id: ${{ inputs.run_id }}
+      ref: ${{ inputs.rerun_against }}
       parallel: ${{ fromJSON(inputs.parallel) }}
       retry: ${{ fromJSON(inputs.retry) }}
       max-scenarios: ${{ fromJSON(inputs.max_scenarios) }}

@@ -1,18 +1,24 @@
 name: Rerun - Transportation
 
 # Manual only. Reruns the scenarios that FAILED in the latest completed
-# "Suite - Transportation" run (or in a specific run id you pass in), against
-# the commit that run used. All the logic lives in rerun-runner.yml — see its
-# header.
+# "Suite - Transportation" run on main (or in a specific run id you pass in),
+# against the latest main by default. All the logic lives in rerun-runner.yml —
+# see its header.
 
 on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: 'Suite - Transportation run id to take failures from (blank = latest completed run)'
+        description: 'Suite - Transportation run id to take failures from (blank = latest completed run on main)'
         required: false
         type: string
         default: ''
+      rerun_against:
+        description: 'main = verify fixes pushed since the run · source-commit = reproduce the failure as it was'
+        required: false
+        type: choice
+        default: 'main'
+        options: ['main', 'source-commit']
       parallel:
         description: 'Cucumber workers (keep at 1 — car/rail bookings are real)'
         required: false
@@ -47,6 +53,7 @@ jobs:
       domain: Transportation
       suite-workflow: suite-transportation.yml
       run-id: ${{ inputs.run_id }}
+      ref: ${{ inputs.rerun_against }}
       parallel: ${{ fromJSON(inputs.parallel) }}
       retry: ${{ fromJSON(inputs.retry) }}
       max-scenarios: ${{ fromJSON(inputs.max_scenarios) }}

@@ -1,17 +1,24 @@
 name: Rerun - Shell
 
 # Manual only. Reruns the scenarios that FAILED in the latest completed
-# "Suite - Shell" run (or in a specific run id you pass in), against the commit
-# that run used. All the logic lives in rerun-runner.yml — see its header.
+# "Suite - Shell" run on main (or in a specific run id you pass in), against the
+# latest main by default. All the logic lives in rerun-runner.yml — see its
+# header.
 
 on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: 'Suite - Shell run id to take failures from (blank = latest completed run)'
+        description: 'Suite - Shell run id to take failures from (blank = latest completed run on main)'
         required: false
         type: string
         default: ''
+      rerun_against:
+        description: 'main = verify fixes pushed since the run · source-commit = reproduce the failure as it was'
+        required: false
+        type: choice
+        default: 'main'
+        options: ['main', 'source-commit']
       parallel:
         description: 'Cucumber workers'
         required: false
@@ -46,6 +53,7 @@ jobs:
       domain: Shell
       suite-workflow: suite-shell.yml
       run-id: ${{ inputs.run_id }}
+      ref: ${{ inputs.rerun_against }}
       parallel: ${{ fromJSON(inputs.parallel) }}
       retry: ${{ fromJSON(inputs.retry) }}
       max-scenarios: ${{ fromJSON(inputs.max_scenarios) }}
