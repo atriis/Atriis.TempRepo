@@ -4,7 +4,7 @@
 # Owner: Bruna Santos
 
 @regression @flights @afkl @ndc @umlaut @middle-name @full-purchase
-Feature: 59199 AFKL NDC - Flight booking with umlaut in traveler name and middle name
+Feature: 59199 HYBRID AFKL NDC - Flight booking with umlaut in traveler name and middle name
   As a corporate traveler
   I want to book a flight for travelers with umlaut characters and middle names
   So that the ticket is issued correctly with the full traveler details
