@@ -6,7 +6,7 @@
 # Created: 2025-01-01T00:00:00Z
 # Updated: 2026-01-19T07:43:56Z
 @transportation @rails @benerail @regression
-Feature: Benerail Moove - Full name is correctly sent when passenger full name has more than 15 characters
+Feature: 62913 Benerail Moove - Full name is correctly sent when passenger full name has more than 15 characters
   As a QA engineer
   I want to perform a Benerail search with a guest whose full name exceeds 15 characters
   So that I can confirm the full name is correctly truncated or sent in the request without errors
