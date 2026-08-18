@@ -446,11 +446,20 @@ const PayloadValidation = {
     const normalizedRequestType = normalizeRequestType(requestType);
     const key = buildKey(normalizedSource, normalizedRequestType);
 
+    // Monotonic counter, not the wall clock: several payloads can be stored inside the same
+    // millisecond, and "the previous capture" has to be resolvable without ties.
+    world.capturedPayloadSequence = (world.capturedPayloadSequence || 0) + 1;
+
     world.capturedParserPayloads[key] = {
       source: normalizedSource,
       requestType: normalizedRequestType,
       payload,
       capturedAt: new Date().toISOString(),
+      sequence: world.capturedPayloadSequence,
+      // rowKey identifies ONE stored call. The request and the response of that call share it,
+      // which is what lets a later step capture the counterpart of this exact payload.
+      rowKey: filters.rowKey || null,
+      pinned: filters.pinned === true,
       filters: {
         tripId: filters.tripId || null,
         transactionId: filters.transactionId || null,
@@ -462,6 +471,8 @@ const PayloadValidation = {
       key,
       payloadSize: payload ? payload.length : 0,
       capturedAt: world.capturedParserPayloads[key].capturedAt,
+      rowKey: world.capturedParserPayloads[key].rowKey,
+      pinned: world.capturedParserPayloads[key].pinned,
       filters: world.capturedParserPayloads[key].filters,
     });
 
@@ -509,7 +520,138 @@ const PayloadValidation = {
         tripId: options.tripId,
         transactionId: options.transactionId,
         sid: options.sid,
+        rowKey: captureResult.metadata?.rowKey,
       }
+    );
+  },
+
+  /**
+   * Capture the counterpart of the payload captured most recently for `previousSource`.
+   *
+   * Why this exists: {@link capturePayloadByRequestType} always takes the LATEST call of a request
+   * type, and {@link expectCapturedPayloadContains} passes if ANY call of that type satisfies the
+   * assertion. Both are right for duplicate parallel traffic, and both are wrong when a trip
+   * deliberately sends several semantically different calls of the same type (e.g. one
+   * post-creation Sabre TravelItineraryAddInfoRQ per frequent flyer carrier) — a response
+   * assertion could then go green on a sibling call's response.
+   *
+   * This method reads the request/response pair of ONE call: it takes the rowKey of the payload
+   * already captured (and possibly narrowed by an assertion) for `previousSource`, and stores the
+   * other side of that same row. The stored record is marked `pinned`, so later assertions on it
+   * never fall back to scanning other calls of the same type.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world - Cucumber world
+   * @param {string} source - the side to capture now: "request" or "response"
+   * @param {string} previousSource - the side already captured: "response" or "request"
+   * @returns {Promise<object>} the stored payload record
+   */
+  async capturePayloadFromPreviousCapture(page, world, source, previousSource) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    assertWorld(world);
+
+    const normalizedSource = normalizeSource(source);
+    const normalizedPreviousSource = normalizeSource(previousSource);
+
+    if (normalizedSource === "block" || normalizedPreviousSource === "block") {
+      throw new Error(
+        `Capturing from a previous capture only supports "request" and "response", got source="${source}" previous="${previousSource}"`
+      );
+    }
+
+    if (normalizedSource === normalizedPreviousSource) {
+      throw new Error(
+        `Capturing the "${normalizedSource}" payload from the previous "${normalizedPreviousSource}" is a no-op. ` +
+        `Use the opposite sources, e.g. capture the "response" from the previous "request".`
+      );
+    }
+
+    const previousRecord = this.getLastCapturedPayloadBySource(world, normalizedPreviousSource);
+    const requestType = previousRecord.requestType;
+
+    if (!previousRecord.rowKey) {
+      throw new Error(
+        `The previously captured ${normalizedPreviousSource} payload for request type "${requestType}" has no stored rowKey, ` +
+        `so its ${normalizedSource} counterpart cannot be resolved. Capture it with a Storage capture step first.`
+      );
+    }
+
+    const identifiers = getScenarioIdentifiers(world);
+
+    logger.info(`Capturing the counterpart of the previous capture`, {
+      source: normalizedSource,
+      previousSource: normalizedPreviousSource,
+      requestType,
+      rowKey: previousRecord.rowKey,
+      ...identifiers,
+    });
+
+    let captureResult;
+    try {
+      captureResult = await fetchPayloadFromStorage({
+        source: normalizedSource,
+        requestType,
+        tripId: identifiers.tripId || previousRecord.filters?.tripId,
+        transactionId: identifiers.transactionId || previousRecord.filters?.transactionId,
+        sid: identifiers.sid || previousRecord.filters?.sid,
+        rowKey: previousRecord.rowKey,
+      });
+    } catch (error) {
+      throw new Error(
+        `Could not capture the ${normalizedSource} payload of the previously captured ` +
+        `${normalizedPreviousSource} "${requestType}" (rowKey ${previousRecord.rowKey}). ` +
+        `Underlying error: ${error.message}`
+      );
+    }
+
+    const record = this.setCapturedPayload(
+      world,
+      normalizedSource,
+      requestType,
+      captureResult.payload,
+      {
+        tripId: captureResult.metadata?.tripId || identifiers.tripId,
+        transactionId: captureResult.metadata?.transactionId || identifiers.transactionId,
+        sid: captureResult.metadata?.sid || identifiers.sid,
+        rowKey: captureResult.metadata?.rowKey || previousRecord.rowKey,
+        pinned: true,
+      }
+    );
+
+    logger.info(`Counterpart payload captured and pinned`, {
+      source: normalizedSource,
+      requestType,
+      rowKey: record.rowKey,
+      payloadSize: record.payload ? record.payload.length : 0,
+    });
+
+    return record;
+  },
+
+  /**
+   * Return the payload record most recently stored for a given source, whichever request type it
+   * belongs to. "Most recently stored" includes payloads promoted by an assertion's multi-match
+   * scan, so this resolves to the call the previous step actually validated.
+   */
+  getLastCapturedPayloadBySource(world, source) {
+    assertWorld(world);
+    const normalizedSource = normalizeSource(source);
+
+    const records = Object.values(world.capturedParserPayloads || {}).filter(
+      (record) => record.source === normalizedSource
+    );
+
+    if (records.length === 0) {
+      throw new Error(
+        `No ${normalizedSource} payload has been captured yet. Run a capture step for it first.`
+      );
+    }
+
+    return records.reduce((latest, record) =>
+      (record.sequence || 0) > (latest.sequence || 0) ? record : latest
     );
   },
 
@@ -788,8 +930,12 @@ const PayloadValidation = {
 
     // Try the currently captured (latest) payload first — fast path.
     let firstError = null;
+    let pinnedRecord = null;
     try {
       const payloadRecord = this.getCapturedPayload(world, source, requestType);
+      if (payloadRecord.pinned) {
+        pinnedRecord = payloadRecord;
+      }
       const result = runAssertion(payloadRecord.payload, payloadRecord.filters || {});
       if (result.blockPayload) {
         this.setCapturedPayload(world, "block", requestType, result.blockPayload, result.blockFilters);
@@ -797,7 +943,18 @@ const PayloadValidation = {
       return;
     } catch (err) {
       firstError = err;
-      logger.debug(`Fast-path assertion failed, scanning all candidates: ${err.message}`);
+      logger.debug(`Fast-path assertion failed: ${err.message}`);
+    }
+
+    // A pinned payload was captured as the counterpart of ONE specific call. Scanning sibling
+    // calls of the same request type is exactly what pinning exists to prevent, so fail here.
+    if (pinnedRecord) {
+      throw new Error(
+        `Assertion failed on the pinned ${source} payload for request type "${requestType}" ` +
+        `(rowKey ${pinnedRecord.rowKey}). Other calls of this request type were NOT checked, ` +
+        `because this payload was captured from a specific previous capture. ` +
+        `Error: ${firstError.message}`
+      );
     }
 
     // Fallback: same request type can appear multiple times (parallel traffic).
@@ -832,6 +989,7 @@ const PayloadValidation = {
           tripId: match.metadata.tripId,
           transactionId: match.metadata.transactionId,
           sid: match.metadata.sid,
+          rowKey: match.metadata.rowKey,
         });
         if (result.blockPayload) {
           this.setCapturedPayload(world, "block", requestType, result.blockPayload, result.blockFilters);
@@ -1067,13 +1225,28 @@ const PayloadValidation = {
     };
 
     let firstError = null;
+    let pinnedRecord = null;
     try {
       const payloadRecord = this.getCapturedPayload(world, source, requestType);
+      if (payloadRecord.pinned) {
+        pinnedRecord = payloadRecord;
+      }
       runAssertion(payloadRecord.payload);
       return;
     } catch (err) {
       firstError = err;
-      logger.debug(`Fast-path not-contains assertion failed, scanning all candidates: ${err.message}`);
+      logger.debug(`Fast-path not-contains assertion failed: ${err.message}`);
+    }
+
+    // See the same guard in expectCapturedPayloadContains: a pinned payload must never be
+    // satisfied by a sibling call of the same request type.
+    if (pinnedRecord) {
+      throw new Error(
+        `Not-contains assertion failed on the pinned ${source} payload for request type "${requestType}" ` +
+        `(rowKey ${pinnedRecord.rowKey}). Other calls of this request type were NOT checked, ` +
+        `because this payload was captured from a specific previous capture. ` +
+        `Error: ${firstError.message}`
+      );
     }
 
     const identifiers = getScenarioIdentifiers(world);
@@ -1100,6 +1273,7 @@ const PayloadValidation = {
           tripId: match.metadata.tripId,
           transactionId: match.metadata.transactionId,
           sid: match.metadata.sid,
+          rowKey: match.metadata.rowKey,
         });
         logger.info(`Multi-match fallback (not contains) succeeded: found matching payload among ${multiMatchResult.metadata.returnedMatches} candidate(s) for requestType="${requestType}"`);
         return;
@@ -1585,6 +1759,7 @@ const PayloadValidation = {
             tripId: match.metadata.tripId,
             transactionId: match.metadata.transactionId,
             sid: match.metadata.sid,
+            rowKey: match.metadata.rowKey,
           });
           return;
         }

@@ -50,7 +50,34 @@
 
 ---
 
-### 2.3. `getCapturedPayload(world, source, requestType)`
+### 2.3. `capturePayloadFromPreviousCapture(page, world, source, previousSource)`
+
+- **Purpose:** Capture the other half of the call captured just before — the response of that request, or the request of that response.
+- **Parameters:**
+  - `page`: Playwright page object (required)
+  - `world`: Test context object (required)
+  - `source`: the side to capture now — `"request"` or `"response"`
+  - `previousSource`: the side already captured — `"response"` or `"request"`
+- **Key Logic:** Reads the most recently stored record for `previousSource` (including one promoted by an assertion's multi-match scan), takes its storage `rowKey` — a request and its response share one rowKey — and downloads the other side of that same row. The request type is inherited from the previous capture.
+- **Returns:** The stored payload record, marked `pinned`.
+- **Error Handling:** Throws if nothing was captured for `previousSource`, if that record has no `rowKey`, if both sources are the same, or if Storage has no counterpart for the row.
+- **Fallback:** None by design — and assertions on the pinned record skip the multi-match scan too (see section 6).
+- **Usage:**
+  - Step: `When I capture the "{source}" payload from the previous "{previousSource}" from Storage`
+  - Use when a trip sends the same request type several times and the assertion must stay on ONE of them (e.g. one post-creation Sabre `TravelItineraryAddInfoRQ` per frequent flyer carrier): capture the request, assert what identifies it, then capture its response with this step.
+- **Logging:** Logs the resolved request type, rowKey, and payload size.
+
+**Example**
+```gherkin
+When I capture the "request" payload for request type "TravelItineraryAddInfoRQ" from Storage
+Then the captured "request" payload for request type "TravelItineraryAddInfoRQ" should contain "TravelingCarrierCode=\"AA\""
+When I capture the "response" payload from the previous "request" from Storage
+Then the captured "response" payload for request type "TravelItineraryAddInfoRQ" should contain "<Success timeStamp="
+```
+
+---
+
+### 2.4. `getCapturedPayload(world, source, requestType)`
 
 - **Purpose:** Retrieve a previously captured payload from the test context.
 - **Parameters:**
@@ -64,7 +91,7 @@
 
 ---
 
-### 2.4. `expectCapturedPayloadContains(page, world, source, requestType, expectedText)`
+### 2.5. `expectCapturedPayloadContains(page, world, source, requestType, expectedText)`
 
 - **Purpose:** Assert that the captured payload contains the expected value, supporting advanced expressions:
   - Plain text: `"foo"`
@@ -96,7 +123,7 @@
 
 ---
 
-### 2.4.1. `expectCapturedPayloadNotContains(page, world, source, requestType, expectedText)`
+### 2.5.1. `expectCapturedPayloadNotContains(page, world, source, requestType, expectedText)`
 
 - **Purpose:** Assert that the captured payload does **not** contain the expected value, supporting the same expression syntax as `expectCapturedPayloadContains(...)`:
   - Plain text: `"foo"`
@@ -120,7 +147,7 @@
 
 ---
 
-### 2.5. `expectCapturedPayloadPathExists(page, world, source, requestType, path)`
+### 2.6. `expectCapturedPayloadPathExists(page, world, source, requestType, path)`
 
 - **Purpose:** Assert that a JSON path exists in the captured payload.
 - **Parameters:**
@@ -135,7 +162,7 @@
 
 ---
 
-### 2.6. `expectCapturedPayloadPathContains(...)` and `expectCapturedPayloadPathNotContains(...)`
+### 2.7. `expectCapturedPayloadPathContains(...)` and `expectCapturedPayloadPathNotContains(...)`
 
 - **Purpose:** Assert that a JSON path contains or does not contain a substring.
 - **Parameters:**
@@ -157,7 +184,7 @@
 
 ---
 
-### 2.7. `expectCapturedPayloadContainsXmlBlock(page, world, source, requestType, expectedXmlBlock)`
+### 2.8. `expectCapturedPayloadContainsXmlBlock(page, world, source, requestType, expectedXmlBlock)`
 
 - **Purpose:** Assert that all key-value pairs in an XML block exist in the captured payload.
 - **Parameters:**
@@ -189,7 +216,7 @@
 
 ---
 
-### 2.8. `expectCapturedPayloadContainsJsonBlock(page, world, source, requestType, expectedJsonBlock)`
+### 2.9. `expectCapturedPayloadContainsJsonBlock(page, world, source, requestType, expectedJsonBlock)`
 
 - **Purpose:** Assert that all key-value pairs in a JSON block exist in the captured payload (deep subset match).
 - **Parameters:**
@@ -230,7 +257,7 @@
 
 ---
 
-### 2.9. `expectCapturedJsonKeyValue(world, source, requestType, key, expectedValue)`
+### 2.10. `expectCapturedJsonKeyValue(world, source, requestType, key, expectedValue)`
 
 - **Purpose:** Assert that a specific key in a JSON payload has the expected value (supports nested keys and JSON fragments).
 - **Parameters:**
@@ -285,6 +312,7 @@ All step definitions are in `tests/steps/payload_validation.steps.js`. Here is t
 | Gherkin Step | Method Called | Purpose |
 |---|---|---|
 | `When I capture the "{source}" payload for request type "{requestType}" from Storage` | `capturePayloadByRequestType()` | Fetch and cache payload |
+| `When I capture the "{source}" payload from the previous "{previousSource}" from Storage` | `capturePayloadFromPreviousCapture()` | Fetch and cache the other half of the call captured just before (same rowKey), pinned |
 | `Then the captured "{source}" payload for request type "{requestType}" should contain "{expression}"` | `expectCapturedPayloadContains()` | Assert payload contains text/block/split/map/onKey |
 | `Then the captured "{source}" payload for request type "{requestType}" should not contain "{expression}"` | `expectCapturedPayloadNotContains()` | Assert payload does not contain text/block/split/map/onKey |
 | `Then the captured "{source}" payload for request type "{requestType}" should contain the multiline text:` | `expectCapturedPayloadContains()` | Assert payload contains multi-line plain-text block (no operators) |
@@ -398,6 +426,11 @@ Parallel API traffic can emit multiple payloads for the same request type within
 ### Fallback Triggers
 - Any assertion method in `expectCapturedPayloadContains()` when the latest payload does not match
 - Any JSON key lookup in `expectCapturedJsonKeyValue()` when the latest does not contain the key
+
+### When the Fallback Is Suppressed
+Payloads captured by `capturePayloadFromPreviousCapture()` are marked **pinned**: they belong to one specific call, identified by its storage rowKey. `expectCapturedPayloadContains()` and `expectCapturedPayloadNotContains()` do **not** scan candidates for a pinned payload — they fail on that payload alone, naming the rowKey.
+
+This matters when a trip deliberately sends several semantically different calls of the same request type. Scanning siblings there would let a response assertion go green on the wrong call's response, which is exactly what pinning prevents.
 
 ### Configuration
 - **Max candidates:** 10 (hardcoded, adjustable via `maxMatches` parameter to Storage client)

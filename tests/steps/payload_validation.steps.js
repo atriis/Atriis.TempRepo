@@ -115,6 +115,36 @@ When("I capture the {string} payload for request type {string} from Storage", as
   });
 });
 
+// Captures the other half of the call captured just before — the response of that request, or the
+// request of that response. Use it when a trip sends the same request type several times and the
+// assertion must stay on ONE of them (e.g. one post-creation FQTV call per carrier): capture the
+// request, assert what identifies it, then capture its response with this step. The request type
+// is inherited from the previous capture, so it is not repeated here.
+When("I capture the {string} payload from the previous {string} from Storage", async function (source, previousSource) {
+  await runPayloadValidationStep(this, "capturePayloadFromPreviousCapture", { source, previousSource }, async () => {
+    logger.info("Capturing the counterpart of the previous capture from Storage", {
+      source,
+      previousSource,
+      ...getScenarioIdentifiers(this),
+    });
+
+    const record = await PayloadValidation.capturePayloadFromPreviousCapture(
+      this.page,
+      this,
+      source,
+      previousSource
+    );
+
+    this.lastCapturedParserPayload = record;
+    logger.info("Counterpart payload captured from Storage", {
+      source: record.source,
+      requestType: record.requestType,
+      rowKey: record.rowKey,
+      capturedAt: record.capturedAt,
+    });
+  });
+});
+
 Then("the captured {string} payload for request type {string} should contain {string}", async function (source, requestType, expectedText) {
   await expectCapturedContains(
     this,

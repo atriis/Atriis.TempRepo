@@ -261,10 +261,13 @@ async function downloadPayload({ baseUrl, tripId, rowKey, source, operationTimeo
  * @param {string}  options.requestType           - e.g. "Amadeus4.Car_LocationList"
  * @param {string}  options.tripId                - required trip identifier
  * @param {string}  [options.transactionId]       - optional additional filter
+ * @param {string}  [options.rowKey]              - pin the lookup to ONE stored row. A request and
+ *                                                  its response share the same rowKey, so this is
+ *                                                  how the counterpart of a captured payload is read.
  * @param {number}  [options.lookbackMinutes]     - defaults to config value
  * @returns {Promise<{ payload: string, metadata: object }>}
  */
-async function fetchPayloadFromStorage({ source, requestType, tripId, transactionId, sid, lookbackMinutes, returnAllMatches = false, maxMatches } = {}) {
+async function fetchPayloadFromStorage({ source, requestType, tripId, transactionId, sid, rowKey, lookbackMinutes, returnAllMatches = false, maxMatches } = {}) {
   if (!source || !["request", "response"].includes(source)) {
     throw new Error(`source must be "request" or "response", got: ${source}`);
   }
@@ -344,6 +347,7 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
       from: criteria.fromDate.toISOString(),
       to: criteria.toDate.toISOString(),
       tripId: criteria.includeTripId ? tripIdString : "<ignored>",
+      rowKey: rowKey || "<any>",
       requestType: criteria.includeRequestType ? requestType : "<ignored>",
       requestTypeMatchMode: criteria.includeRequestType
         ? (requestTypeMatcher.hasWildcard ? "wildcard" : "exact")
@@ -395,6 +399,9 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
       if (!entry) continue;
 
       if (entry.timestamp < criteria.fromDate || entry.timestamp > criteria.toDate) continue;
+      // A pinned rowKey identifies one exact stored call, so it overrides nothing else but narrows
+      // every filter combination below to that single row.
+      if (rowKey && entry.rowKey !== rowKey) continue;
       if (criteria.includeRequestType && !requestTypeMatcher.matches(entry.requestType)) continue;
       if (criteria.includeTransactionId && criteria.transactionIdOverride && entry.transactionId !== criteria.transactionIdOverride) continue;
       if (criteria.includeSid && criteria.sidOverride && entry.sid !== criteria.sidOverride) continue;
