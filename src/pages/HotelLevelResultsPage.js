@@ -93,8 +93,9 @@ const SELECTORS = {
   // parallel hotel search loads (product-search-loader.vue). Its message renders the destination
   // in bold, e.g. "...Exciting <b>New York hotel</b> offers are coming now...".
   PARALLEL_SEARCH_LOADER_MESSAGE: '.product-search-loader .loader-msg',
-  // Hotel name text inside hotel cards
-  HOTEL_NAME: '.hotel-preview .hotel-name h4',
+  // Hotel name text inside hotel cards. Targets the .hotel-name link itself rather than its
+  // heading child - the app renamed that heading h4 -> h3 in the Figma UI alignment (657b67ff).
+  HOTEL_NAME: '.hotel-preview .hotel-name',
   // Slider runway and thumb for the hotel-level Price filter panel
   HOTEL_PRICE_SLIDER_RUNWAY: '.hotel-filter .price-slider .el-slider__runway',
   HOTEL_PRICE_SLIDER_THUMB: '.hotel-filter .price-slider .el-slider__button-wrapper',
@@ -114,8 +115,8 @@ const SELECTORS = {
   HOTEL_CARD_OOP_INFO_ICON: '.app-out-of-policy span.info-icon',
   // Price amount inside a hotel card, relative to HOTEL_CARD
   HOTEL_CARD_PRICE_AMOUNT: '.hotel-price .amount',
-  // Hotel name inside a hotel card, relative to HOTEL_CARD
-  HOTEL_CARD_NAME: '.hotel-name h4',
+  // Hotel name inside a hotel card, relative to HOTEL_CARD. Tag-agnostic - see HOTEL_NAME.
+  HOTEL_CARD_NAME: '.hotel-name',
 };
 
 // Filter section title → Vuex hotelFilter key. Most sections store under the lowercased title,
