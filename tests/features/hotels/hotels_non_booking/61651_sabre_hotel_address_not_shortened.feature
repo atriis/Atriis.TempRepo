@@ -17,7 +17,7 @@ Feature: 61651 Sabre - Hotel address not shortened in More Details, Itinerary, a
     Given I am logged in as "shani@sabnat.com" booking a new trip
     And I click proceed button if visible
     And I have added myself as the traveler
-    When I search for a hotel in "Paris France" for 1 night
+    When I search for a hotel in "Comfort Suites Monroeville" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
