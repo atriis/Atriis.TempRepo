@@ -87,6 +87,10 @@
     "nlascToBebce": {
       "from": "NLASC",
       "to": "BEBCE"
+    },
+    "fratwToFrnte": {
+      "from": "FRATW",
+      "to": "FRNTE"
     }
   },
   "defaultRoute": "beleuToBeabc"
