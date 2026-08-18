@@ -20,7 +20,7 @@ Feature: 78890 - Separate PNR created when adding flight to a non-Hold booking
     And I add the first flight to cart
     When I proceed to checkout
     And I complete the booking
-    Then the last quote status should be "Finalizing"
+    Then the last quote status should be "Finalising"
     When I click to add a flight to my trip from cart
     And I search for a one way flight from "KRK" to "FRA"
     And flight results should be available
@@ -29,7 +29,7 @@ Feature: 78890 - Separate PNR created when adding flight to a non-Hold booking
     And I add the first flight to cart
     When I proceed to checkout
     And I complete the booking
-    Then the last quote status should be "Finalizing"
+    Then the last quote status should be "Finalising"
     When I store the first quote PNR code
     And I store the second quote PNR code
     Then the stored quote PNR codes should not match
