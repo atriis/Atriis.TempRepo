@@ -16,6 +16,14 @@ Given("I have added myself as the traveler", async function () {
   this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
+// Product-agnostic: expands any collapsible section of the visible search form by its rendered
+// title, e.g. "Advanced search" — which UK Rail hides its class/priority/split-ticket options
+// behind. Already-expanded sections are left open rather than toggled shut.
+When("I click {string} in search page", async function (sectionTitle) {
+  logger.info("Expanding a section of the search form", { sectionTitle });
+  await Search.clickSearchFormSection(this.page, sectionTitle);
+});
+
 When("I click to add myself as the traveler", async function () {
   logger.info("Clicking Add me button (profile popup expected)");
   await Search.clickAddMeButton(this.page);

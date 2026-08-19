@@ -5730,6 +5730,132 @@ const Cart = {
     ).toContain(expectedNumber);
   },
 
+  // ===== UK RAIL (EVOLVI) SPLIT TICKET — test 44341 =====
+
+  /**
+   * Verifies the cart's UK Rail quote card still shows the split ticket: the SplitTix glyph on the
+   * ticket-type row, plus the expected label beside it.
+   *
+   * Used both before and after checkout — the app returns to the same trip overview once the
+   * booking is finalized, so the quote card is read the same way either side of it.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedLabel - e.g. "SplitTix"
+   * @returns {Promise<{iconVisible: boolean, text: string}>}
+   */
+  async verifyUkRailSplitTicketInfoInCart(page, expectedLabel) {
+    if (!page) throw new Error('[Cart.verifyUkRailSplitTicketInfoInCart] "page" is required.');
+    if (typeof expectedLabel !== 'string' || !expectedLabel.trim()) {
+      throw new Error(
+        `[Cart.verifyUkRailSplitTicketInfoInCart] "expectedLabel" must be a non-empty string, got: ${expectedLabel}`
+      );
+    }
+    const cartPage = getPageObject(page, CartPage);
+
+    const info = await cartPage.getUkRailSplitTicketInfoInCart();
+    logger.info('[Cart.verifyUkRailSplitTicketInfoInCart] Read the UK Rail quote card', info);
+
+    expect(
+      info.iconVisible,
+      'The split ticket icon should be displayed on the UK Rail quote card in the cart — ' +
+        'uk-rail-segment-info.vue only renders it while the segment is a split ticket. ' +
+        `Ticket row read: "${info.text}"`
+    ).toBe(true);
+    expect(
+      info.text,
+      `The UK Rail quote card in the cart should show "${expectedLabel}" as its ticket type.`
+    ).toContain(expectedLabel);
+
+    return info;
+  },
+
+  /**
+   * Verifies the open More details drawer shows the same split-ticket icon and label, then closes
+   * the drawer so the following steps are not left clicking through it.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedLabel - e.g. "SplitTix"
+   * @returns {Promise<{iconVisible: boolean, text: string}>}
+   */
+  async verifyUkRailSplitTicketInfoInMoreDetailsAndClose(page, expectedLabel) {
+    if (!page) throw new Error('[Cart.verifyUkRailSplitTicketInfoInMoreDetailsAndClose] "page" is required.');
+    if (typeof expectedLabel !== 'string' || !expectedLabel.trim()) {
+      throw new Error(
+        `[Cart.verifyUkRailSplitTicketInfoInMoreDetailsAndClose] "expectedLabel" must be a non-empty string, got: ${expectedLabel}`
+      );
+    }
+    const cartPage = getPageObject(page, CartPage);
+
+    const info = await cartPage.getUkRailSplitTicketInfoInMoreDetails();
+    logger.info(
+      '[Cart.verifyUkRailSplitTicketInfoInMoreDetailsAndClose] Read the More details drawer',
+      info
+    );
+
+    try {
+      expect(
+        info.iconVisible,
+        'The split ticket icon should be displayed in the UK Rail More details drawer. ' +
+          `Drawer text read: "${info.text}"`
+      ).toBe(true);
+      expect(
+        info.text,
+        `The UK Rail More details drawer should show "${expectedLabel}" as the ticket type.`
+      ).toContain(expectedLabel);
+    } finally {
+      // Close either way: leaving the drawer open would block every following cart interaction and
+      // turn one assertion failure into a cascade of unrelated ones.
+      await cartPage.closeAnyVisibleDrawer();
+    }
+
+    return info;
+  },
+
+  /**
+   * Verifies the share itinerary email preview carries the split-ticket icon plus the expected
+   * labels — e.g. "SplitTix" and the "Remain on the train, change ticket" split instruction.
+   * The share dialog must already be open.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string[]} expectedTexts - Every text that must appear in the preview
+   * @returns {Promise<{iconPresent: boolean, text: string, imageSources: string[]}>}
+   */
+  async verifyUkRailSplitTicketInfoInSharePreview(page, expectedTexts) {
+    if (!page) throw new Error('[Cart.verifyUkRailSplitTicketInfoInSharePreview] "page" is required.');
+    if (!Array.isArray(expectedTexts) || expectedTexts.length === 0) {
+      throw new Error(
+        `[Cart.verifyUkRailSplitTicketInfoInSharePreview] "expectedTexts" must be a non-empty array, got: ${expectedTexts}`
+      );
+    }
+    const cartPage = getPageObject(page, CartPage);
+
+    const info = await cartPage.getUkRailSplitTicketInfoInSharePreview();
+    logger.info('[Cart.verifyUkRailSplitTicketInfoInSharePreview] Read the itinerary email preview', {
+      iconPresent: info.iconPresent,
+      imageSources: info.imageSources,
+    });
+
+    expect(
+      info.text,
+      'The share itinerary email preview text should not be empty'
+    ).toBeTruthy();
+
+    for (const expectedText of expectedTexts) {
+      expect(
+        info.text,
+        `The share itinerary email preview should contain "${expectedText}".`
+      ).toContain(expectedText);
+    }
+
+    expect(
+      info.iconPresent,
+      'The share itinerary email preview should contain the split ticket icon — no <img> in the ' +
+        `preview names a split ticket. Images found: ${JSON.stringify(info.imageSources)}`
+    ).toBe(true);
+
+    return info;
+  },
+
   /**
    * Verifies that the share email preview iframe contains a hotel image.
    * The share dialog must already be open.

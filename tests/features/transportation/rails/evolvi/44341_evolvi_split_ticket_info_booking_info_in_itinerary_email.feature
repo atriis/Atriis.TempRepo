@@ -12,29 +12,31 @@ Feature: 44341 Evolvi - Split ticket info before and after booking and in itiner
   So that split ticket details remain consistent in cart, booking, and itinerary email
 
   Scenario: Validate split ticket information across search, cart, and itinerary email
-    Given I am logged in as "corp32@evolvi.com" booking a new trip
+    Given I am logged in as "new@rail.com" booking a new trip
     And I have added myself as the traveler
-    # TODO: create step "When I select UK Rail in the search form" in evolvi_search.steps.js
-    # covers: Select_UK_Rail()
     When I select UK Rail in the search form
-    # TODO: create step "When I validate and configure split ticket options in Evolvi search" in evolvi_search.steps.js
-    # covers: Split_Ticket_options_in_search_form()
-    When I validate and configure split ticket options in Evolvi search
-    # TODO: create step "When I perform the Evolvi split ticket search" in evolvi_search.steps.js
-    # covers: Search()
-    When I perform the Evolvi split ticket search
-    # TODO: create step "When I select a Split Ticket result" in evolvi_results.steps.js
-    # covers: Result_page__select_Split_Ticket()
-    When I select a Split Ticket result
-    # TODO: create step "Then split ticket information should be visible in cart before checkout" in evolvi_results.steps.js
-    # covers: Split_Ticket_info_in_cart__before_checkout()
-    Then split ticket information should be visible in cart before checkout
-    # TODO: create step "When I fill mandatory Evolvi fields in cart" in evolvi_results.steps.js
-    # covers: Fill_mandatory_fields_in_cart()
-    When I fill mandatory Evolvi fields in cart
-    # TODO: create step "Then split ticket information should be visible after checkout and in itinerary email" in evolvi_results.steps.js
-    # covers: Split_Ticket_info_in_cart__after_checkout_and_itinerary_email()
-    Then split ticket information should be visible after checkout and in itinerary email
-    # TODO: create step "Then itinerary email split ticket information should match the trip" in evolvi_results.steps.js
-    # covers: Info_in_itinerary_email_matches_info_in_trip()
-    Then itinerary email split ticket information should match the trip
+    And I validate that split ticket options in Evolvi search checkbox is checked
+    Then I hover over split ticket info to see the message "SplitTix, or split ticketing, is a practice that allows travellers to save money on UK rail fares by purchasing multiple tickets for a single journey instead of a single, through ticket."
+    And I click "Advanced search" in search page
+    Then I should select "Split at calling stations" radio button
+    Then I hover over split ticket info from "Split at calling stations" to see message "where the traveller may change ticket at a station when train stops, yet they will remain on the train and possibly be required to change seat."
+    And I also see message "where the traveller will only change ticket when getting on or off a train." when hover over split ticket info from "Split at calling stations"
+    When I search one way Evolvi train from "souToOxf" without unchecking split ticket checkbox
+    And I should click info icon next to "SplitTix Available"
+    Then I should see message should contain "SplitTix, or split ticketing, is a practice that allows travellers to save money on UK rail fares by purchasing multiple tickets for a single journey instead of a single, through ticket."
+    When I hover over the first split ticket fare highlighted in blue
+    Then I should see message "SplitTix fare selected - you are purchasing multiple tickets to cover the cost of your journey" for the first split ticket fare highlighted in blue
+    And I should see that first split ticket fare highlighted in blue message contaings "Saving of"
+    When I select and add to cart the first split ticket fare highlighted in blue
+    Then split ticket icon information and "SplitTix" should be visible in cart
+    When I click more details in cart
+    Then split ticket icon information and "SplitTix" should be visible in more details
+    And I fill mandatory Evolvi fields in cart
+    And I proceed to checkout
+    And I complete the booking
+    Then split ticket icon information and "SplitTix" should be visible in cart
+    When I click more details in cart
+    Then split ticket icon information and "SplitTix" should be visible in more details
+    And I click the share itinerary button
+    Then split ticket icon information, "SplitTix" and "Remain on the train, change ticket" should be visible in itinerary
+    And I close the share dialog

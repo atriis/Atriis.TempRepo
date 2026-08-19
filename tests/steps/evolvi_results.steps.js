@@ -101,6 +101,38 @@ Then("inbound is displayed on top of the page with the same extracted inbound de
   verifySelectedJourneySummary(summary, extractedJourney, "inbound");
 });
 
+// ===== SPLIT TICKET (SplitTix) =====
+
+When("I should click info icon next to {string}", async function (groupTitle) {
+  logger.info("Opening the SplitTix info dialog from the results", { groupTitle });
+  await EvolviResults.openSplitTicketInfoDialog(this.page, groupTitle);
+});
+
+Then("I should see message should contain {string}", async function (expectedMessage) {
+  logger.info("Verifying the SplitTix info dialog message and closing it", { expectedMessage });
+  await EvolviResults.expectSplitTicketInfoDialogMessageAndClose(this.page, expectedMessage);
+});
+
+When("I hover over the first split ticket fare highlighted in blue", async function () {
+  logger.info("Hovering the first blue-highlighted SplitTix fare");
+  await EvolviResults.hoverFirstBlueSplitTicketFare(this.page);
+});
+
+Then("I should see message {string} for the first split ticket fare highlighted in blue", async function (expectedMessage) {
+  logger.info("Verifying the SplitTix fare tooltip message", { expectedMessage });
+  await EvolviResults.expectBlueSplitTicketFareTooltipContains(this.page, expectedMessage);
+});
+
+Then("I should see that first split ticket fare highlighted in blue message contaings {string}", async function (expectedText) {
+  logger.info("Verifying the SplitTix fare tooltip saving line", { expectedText });
+  await EvolviResults.expectBlueSplitTicketFareTooltipContains(this.page, expectedText);
+});
+
+When("I select and add to cart the first split ticket fare highlighted in blue", async function () {
+  logger.info("Selecting the first blue-highlighted SplitTix fare and adding it to the trip");
+  await EvolviResults.selectAndAddFirstBlueSplitTicketFareToTrip(this.page);
+});
+
 // ===== TODO STUBS — need DSL/Page implementation =====
 
 When("I close mandatory notifications if displayed", async function () {
@@ -137,22 +169,6 @@ Then("the cart status should be Pending booking", async function () {
 
 Then("the departure city should be correct in the Evolvi TOD section", async function () {
   throw new Error("TODO: implement 'the departure city should be correct in the Evolvi TOD section' — validate departure city text in delivery method (TOD) section");
-});
-
-When("I select a Split Ticket result", async function () {
-  throw new Error("TODO: implement 'I select a Split Ticket result' — select a result marked as SplitTix/Anytime Return according to scenario data");
-});
-
-Then("split ticket information should be visible in cart before checkout", async function () {
-  throw new Error("TODO: implement 'split ticket information should be visible in cart before checkout' — validate split ticket labels/details are visible in cart pre-checkout");
-});
-
-Then("split ticket information should be visible after checkout and in itinerary email", async function () {
-  throw new Error("TODO: implement 'split ticket information should be visible after checkout and in itinerary email' — validate split ticket details in post-booking/cart and itinerary email preview");
-});
-
-Then("itinerary email split ticket information should match the trip", async function () {
-  throw new Error("TODO: implement 'itinerary email split ticket information should match the trip' — compare itinerary email split-ticket details with trip data");
 });
 
 Then("the FOP owner should be displayed as Paid by TMC", async function () {

@@ -410,6 +410,17 @@ const SELECTORS = {
   // locator — see getUkRailRoute; do not prefix it with '.uk-rail-quote-card' again.
   UK_RAIL_SEGMENT_ROUTE_STATION: ':scope > p',
 
+  // UK rail (Evolvi) split-ticket ticket-type row in the cart. uk-rail-segment-info.vue swaps the
+  // plain `.muliBold` description for a `.has-text-weight-bold` paragraph carrying the SplitTix
+  // glyph plus "SplitTix <fare class>" whenever `segment.isSplitTicket` — so the glyph and the label
+  // are the two things that prove the cart kept the split ticket.
+  // The glyph is looked for inside the More details drawer too, where
+  // general-quote-more-details.vue mounts uk-rail-more-details.vue — which renders
+  // uk-rail-segment-info again (this time with `isMoreDetails`), followed by the per-leg
+  // "Remain on the train, change ticket" lines. That drawer is MORE_DETAILS_DRAWER_CONTAINER.
+  UK_RAIL_SPLIT_TICKET_SEGMENT: '.uk-rail-quote-card .uk-rail-segment-info',
+  UK_RAIL_SPLIT_TICKET_ICON: '.evolvi-splittix-icon',
+
   // Car pickup/drop-off date·time label shown in the car quote card body (car-quote-card.ts
   // formattedPickupDateLabel/formattedDropoffDateLabel), e.g.
   // "03 Jul 2026 · 14:30 - 05 Jul 2026 · 10:15". Split on " - " to separate pickup from drop-off.
@@ -561,6 +572,10 @@ const SELECTORS = {
   EVOLVI_EXTRAS_PANEL: '.extras-container',
   EVOLVI_EXTRAS_PANEL_VISIBLE: '.extras-container:visible',
   EVOLVI_MANDATORY_EXTRAS_ROW: '.extras-container .extras-layout:has(.card-title .has-text-danger):has(.is-clickable:text-is("Add"))',
+  // An extras row's own heading, e.g. "* Delivery Method" / "* Seating" / "* Reason for Non Lowest".
+  // Resolved RELATIVE to a row locator, and used to tell one outstanding mandatory row from the next
+  // so a saved row is not filled twice — see _waitForEvolviExtrasRowToClear.
+  EVOLVI_EXTRAS_ROW_TITLE: '.card-title',
   EVOLVI_EXTRAS_VISIBLE_RADIO_OPTION: '.el-radio-group .el-radio:visible',
 
   // "Provided by" label in cart hotel preview (hotel-provided-by.vue)
@@ -4283,7 +4298,7 @@ class CartPage {
    * @param {{maxIterations?: number}} [options]
    * @returns {Promise<{fieldsFilled: number}>}
    */
-  async fillAllMandatoryEvolviExtras(dropdownOptionName = "Need More Flexible Ticket", { maxIterations = 5 } = {}) {
+  async fillAllMandatoryEvolviExtras(dropdownOptionName = "Need More Flexible Ticket", { maxIterations = 8 } = {}) {
     // The cart's "Extras" panel loads asynchronously after the quote card itself renders (it
     // fetches which fields are mandatory for the selected fare), so wait for the panel container
     // before looking for individual mandatory rows — otherwise the very first check below can
@@ -4299,6 +4314,10 @@ class CartPage {
       if (!isPresent) {
         return { fieldsFilled: i };
       }
+
+      // Recorded before opening the row, so the save below can be confirmed against the row it
+      // actually belongs to — see the _waitForEvolviExtrasRowToClear call at the end of the loop.
+      const rowTitle = await this._readEvolviExtrasRowTitle(mandatoryRow);
 
       const editButton = mandatoryRow.locator(SELECTORS.EDIT_EXTRAS_BUTTON).first();
       await editButton.click();
@@ -4350,12 +4369,59 @@ class CartPage {
       // fixed delay) can let the next iteration — or the caller's checkout click — run before
       // the cart has actually finished re-validating.
       await saveButton.waitFor({ state: "hidden", timeout: 10000 });
+
+      // The Save button hiding is NOT the row leaving the mandatory set: the row's own asterisk and
+      // its "Add" -> "Edit" flip land one cart re-validation later. Without waiting for that, the
+      // next iteration re-resolves EVOLVI_MANDATORY_EXTRAS_ROW to the row just saved and fills it a
+      // second time — two iterations per field, so a quote with 3 mandatory rows needed 6 and blew
+      // the cap (observed live on a SplitTix quote: Delivery Method, Seating, Reason for Non Lowest).
+      await this._waitForEvolviExtrasRowToClear(rowTitle);
     }
 
     throw new Error(
       `[CartPage.fillAllMandatoryEvolviExtras] Exceeded ${maxIterations} iterations filling mandatory Evolvi extras rows — ` +
       "either the panel keeps re-adding rows or a row failed to save."
     );
+  }
+
+  /**
+   * Reads an extras row's card title, normalized and without the leading mandatory asterisk.
+   * Returns '' when the title cannot be read, which callers treat as "cannot track this row".
+   * @param {import('playwright').Locator} row
+   * @returns {Promise<string>}
+   */
+  async _readEvolviExtrasRowTitle(row) {
+    const title = await row
+      .locator(SELECTORS.EVOLVI_EXTRAS_ROW_TITLE)
+      .first()
+      .innerText()
+      .catch(() => "");
+    return title.replace(/\s+/g, " ").replace(/^\*\s*/, "").trim();
+  }
+
+  /**
+   * Waits until the named row is no longer the first outstanding mandatory extras row — i.e. the
+   * cart has finished re-validating the save and moved on to the next field (or none remain).
+   *
+   * Deliberately does NOT throw on timeout: if a row genuinely fails to clear, the caller's loop
+   * re-opens and re-saves it exactly as it did before this wait existed, so a slow or unusual panel
+   * degrades to the old behaviour instead of failing a scenario that used to pass.
+   *
+   * @param {string} rowTitle - Title of the row just saved, as returned by _readEvolviExtrasRowTitle
+   * @param {number} [timeout=15000]
+   * @returns {Promise<boolean>} Whether the row cleared within the timeout
+   */
+  async _waitForEvolviExtrasRowToClear(rowTitle, timeout = 15000) {
+    if (!rowTitle) return false;
+
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      const firstMandatory = this.page.locator(SELECTORS.EVOLVI_MANDATORY_EXTRAS_ROW).first();
+      if ((await firstMandatory.count()) === 0) return true;
+      if ((await this._readEvolviExtrasRowTitle(firstMandatory)) !== rowTitle) return true;
+      await this.page.waitForTimeout(500);
+    }
+    return false;
   }
 
   /**
@@ -6476,6 +6542,91 @@ class CartPage {
       if (src && src.startsWith('http') && !src.includes('logo')) return true;
     }
     return false;
+  }
+
+  /**
+   * Reads the UK Rail (Evolvi) split-ticket state out of the cart's quote card: whether the SplitTix
+   * glyph is displayed on the ticket-type row, and the row's text.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<{iconVisible: boolean, text: string}>}
+   */
+  async getUkRailSplitTicketInfoInCart({ timeout = 30000 } = {}) {
+    const segment = this.page.locator(SELECTORS.UK_RAIL_SPLIT_TICKET_SEGMENT).first();
+    try {
+      await segment.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getUkRailSplitTicketInfoInCart] No UK Rail quote card segment is displayed in the cart ` +
+          `(selector: ${SELECTORS.UK_RAIL_SPLIT_TICKET_SEGMENT}). Original: ${err.message}`
+      );
+    }
+
+    const icon = segment.locator(SELECTORS.UK_RAIL_SPLIT_TICKET_ICON).first();
+    const iconVisible = await icon
+      .waitFor({ state: 'visible', timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+
+    return {
+      iconVisible,
+      text: this.normalizeSharePreviewText(await segment.innerText()),
+    };
+  }
+
+  /**
+   * Reads the same split-ticket state out of the open More details drawer.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<{iconVisible: boolean, text: string}>}
+   */
+  async getUkRailSplitTicketInfoInMoreDetails({ timeout = 15000 } = {}) {
+    const text = await this.getMoreDetailsDrawerText({ timeout });
+    const icon = this.page
+      .locator(SELECTORS.MORE_DETAILS_DRAWER_CONTAINER)
+      .first()
+      .locator(SELECTORS.UK_RAIL_SPLIT_TICKET_ICON)
+      .first();
+    const iconVisible = await icon
+      .waitFor({ state: 'visible', timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+
+    return { iconVisible, text: this.normalizeSharePreviewText(text) };
+  }
+
+  /**
+   * Reads the split-ticket state out of the share itinerary email preview.
+   *
+   * The preview is backend-generated HTML inside the `.email-content-container` iframe, so the glyph
+   * cannot be found by a Vue class the way it can in the app: it is looked for as an <img> whose src
+   * or alt names the split ticket. The returned `imageSources` list is what makes a missing glyph
+   * diagnosable rather than just false.
+   *
+   * @returns {Promise<{iconPresent: boolean, text: string, imageSources: string[]}>}
+   */
+  async getUkRailSplitTicketInfoInSharePreview() {
+    const srcdoc = await this._waitForShareIframeSrcdoc();
+    if (srcdoc.trim().length === 0) {
+      throw new Error(
+        '[CartPage.getUkRailSplitTicketInfoInSharePreview] Share itinerary email preview iframe had no ' +
+          'srcdoc content. The preview may not have finished rendering, or the share dialog is not open.'
+      );
+    }
+
+    const imageSources = [...srcdoc.matchAll(/<img[^>]*>/gi)].map((match) => match[0]);
+    const iconPresent = imageSources.some((tag) => /split/i.test(tag));
+
+    return {
+      iconPresent,
+      text: await this.getSharePreviewTextContent(),
+      imageSources: imageSources.map((tag) => {
+        const src = /src=["']([^"']+)["']/i.exec(tag);
+        return src ? src[1] : tag;
+      }),
+    };
   }
 
   normalizeSharePreviewText(text) {

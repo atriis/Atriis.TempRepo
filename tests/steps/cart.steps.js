@@ -3591,3 +3591,25 @@ When("I fill mandatory Evolvi fields in cart", async function () {
   logger.info("Filling mandatory Evolvi cart fields (Reason for Non Lowest Fare, Extras)");
   await Cart.fillMandatoryEvolviCartFields(this.page);
 });
+
+// ===== UK RAIL (EVOLVI) SPLIT TICKET =====
+//
+// Read the same way before and after checkout — "I complete the booking" navigates back to the trip
+// overview, so the quote card is in place either side of it.
+Then("split ticket icon information and {string} should be visible in cart", async function (expectedLabel) {
+  logger.info("Verifying split ticket icon and label in the cart", { expectedLabel });
+  await Cart.verifyUkRailSplitTicketInfoInCart(this.page, expectedLabel);
+});
+
+Then("split ticket icon information and {string} should be visible in more details", async function (expectedLabel) {
+  logger.info("Verifying split ticket icon and label in More details, then closing the drawer", { expectedLabel });
+  await Cart.verifyUkRailSplitTicketInfoInMoreDetailsAndClose(this.page, expectedLabel);
+});
+
+Then("split ticket icon information, {string} and {string} should be visible in itinerary", async function (expectedLabel, expectedSplitInstruction) {
+  logger.info("Verifying split ticket icon and labels in the share itinerary email preview", {
+    expectedLabel,
+    expectedSplitInstruction,
+  });
+  await Cart.verifyUkRailSplitTicketInfoInSharePreview(this.page, [expectedLabel, expectedSplitInstruction]);
+});

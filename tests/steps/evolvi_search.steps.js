@@ -26,15 +26,46 @@ When("I search for a round trip Evolvi train from {string}", async function (rou
   await EvolviSearch.searchEvolviRoundTrip(this.page, routeKey);
 });
 
+// ===== SPLIT TICKET (SplitTix) =====
+
+// The counterpart of "I search for a one way Evolvi train from {string}", which unchecks
+// "Request Split Ticket" before searching. This one leaves it on so the results come back with
+// SplitTix fares, and it does not re-select the UK Rail product — the split-ticket scenarios have
+// already selected it and configured Advanced search by the time they search.
+When("I search one way Evolvi train from {string} without unchecking split ticket checkbox", async function (routeKey) {
+  logger.info("Searching for one-way Evolvi train with split ticket requested", { routeKey });
+  await EvolviSearch.searchEvolviOneWayWithSplitTicket(this.page, routeKey);
+});
+
+When("I validate that split ticket options in Evolvi search checkbox is checked", async function () {
+  logger.info("Verifying the Evolvi split ticket option is offered and pre-checked");
+  await EvolviSearch.expectSplitTicketCheckboxIsChecked(this.page);
+});
+
+Then("I hover over split ticket info to see the message {string}", async function (expectedMessage) {
+  logger.info("Hovering the Evolvi split ticket info tooltip", { expectedMessage });
+  await EvolviSearch.expectSplitTicketInfoTooltipMessage(this.page, expectedMessage);
+});
+
+Then("I should select {string} radio button", async function (label) {
+  logger.info("Selecting the Evolvi split type radio button", { label });
+  await EvolviSearch.selectSplitTicketType(this.page, label);
+});
+
+// The split-type tooltip documents both split types at once, so both of this scenario's message
+// checks read the same tooltip — the radio label in the phrase names where the icon sits, not which
+// half of the tooltip is asserted.
+Then("I hover over split ticket info from {string} to see message {string}", async function (radioLabel, expectedMessage) {
+  logger.info("Hovering the Evolvi split type info tooltip", { radioLabel, expectedMessage });
+  await EvolviSearch.expectSplitTicketTypeTooltipMessage(this.page, expectedMessage);
+});
+
+Then("I also see message {string} when hover over split ticket info from {string}", async function (expectedMessage, radioLabel) {
+  logger.info("Re-reading the Evolvi split type info tooltip", { radioLabel, expectedMessage });
+  await EvolviSearch.expectSplitTicketTypeTooltipMessage(this.page, expectedMessage);
+});
+
 // ===== TODO STUBS — need DSL/Page implementation =====
-
-When("I validate and configure split ticket options in Evolvi search", async function () {
-  throw new Error("TODO: implement 'I validate and configure split ticket options in Evolvi search' — validate split-ticket controls and configure split-ticket radio options");
-});
-
-When("I perform the Evolvi split ticket search", async function () {
-  throw new Error("TODO: implement 'I perform the Evolvi split ticket search' — fill route/date values for split-ticket scenario and search");
-});
 
 When("I search Evolvi with NCL location", async function () {
   throw new Error("TODO: implement 'I search Evolvi with NCL location' — perform one-way Evolvi search using NCL location and TOD-specific setup");

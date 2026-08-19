@@ -1,3 +1,4 @@
+const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { EvolviSearchPage, SELECTORS: EVOLVI_SELECTORS } = require("@pages/EvolviSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
@@ -94,6 +95,177 @@ const EvolviSearch = {
     if (await checkbox.isChecked()) {
       await evolviSearchPage.toggleSplitTicketCheckbox();
     }
+  },
+
+  /**
+   * Ensures the "Request Split Ticket" checkbox is checked — the mirror of
+   * ensureSplitTicketIsUnchecked, for the scenarios that must search WITH split ticketing on.
+   * Safe to call even if it is already checked.
+   * @param {import('playwright').Page} page
+   */
+  async ensureSplitTicketIsChecked(page) {
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
+    const checkbox = page.locator(EVOLVI_SELECTORS.SPLIT_TICKET_CHECKBOX);
+
+    if (!(await checkbox.isChecked())) {
+      await evolviSearchPage.toggleSplitTicketCheckbox();
+    }
+  },
+
+  /**
+   * Verifies the split-ticket option is offered as expected in the UK Rail search form: the
+   * SplitTix glyph is displayed beside the option, and its checkbox arrives already ticked
+   * (evolvi-search-inputs.ts defaults railInfo.isSplitTicket to true, so an unticked box here
+   * means the default regressed and every later SplitTix assertion would be vacuous).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{iconVisible: boolean, checked: boolean}>}
+   */
+  async expectSplitTicketCheckboxIsChecked(page) {
+    if (!page) throw new Error('[EvolviSearch.expectSplitTicketCheckboxIsChecked] "page" is required.');
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
+
+    const iconVisible = await evolviSearchPage.isSplitTicketIconVisible();
+    const checked = await evolviSearchPage.isSplitTicketCheckboxChecked();
+
+    logger.info(
+      "[EvolviSearch.expectSplitTicketCheckboxIsChecked] Read the UK Rail split-ticket option",
+      { iconVisible, checked },
+    );
+
+    expect(
+      iconVisible,
+      'The SplitTix icon should be displayed next to the "Request Split Ticket" option in the UK Rail search form.',
+    ).toBe(true);
+    expect(
+      checked,
+      'The "Request Split Ticket" checkbox should be checked in the UK Rail search form.',
+    ).toBe(true);
+
+    return { iconVisible, checked };
+  },
+
+  /**
+   * Hovers the info icon next to the "Request Split Ticket" checkbox and asserts its tooltip shows
+   * the expected message.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMessage
+   * @returns {Promise<string>} The tooltip description that was read
+   */
+  async expectSplitTicketInfoTooltipMessage(page, expectedMessage) {
+    if (!page) throw new Error('[EvolviSearch.expectSplitTicketInfoTooltipMessage] "page" is required.');
+    if (!expectedMessage || typeof expectedMessage !== "string") {
+      throw new Error(
+        `[EvolviSearch.expectSplitTicketInfoTooltipMessage] "expectedMessage" must be a non-empty string, got: ${expectedMessage}`,
+      );
+    }
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
+
+    const description = await evolviSearchPage.hoverSplitTicketInfoAndGetDescription();
+    logger.info("[EvolviSearch.expectSplitTicketInfoTooltipMessage] Read the split-ticket tooltip", {
+      description,
+    });
+
+    expect(
+      description,
+      "The split-ticket info tooltip in the UK Rail search form should show the SplitTix explanation.",
+    ).toContain(expectedMessage);
+
+    return description;
+  },
+
+  /**
+   * Selects one of the split-type radio buttons inside Advanced search by its rendered label.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} label - e.g. "Split at calling stations"
+   */
+  async selectSplitTicketType(page, label) {
+    if (!page) throw new Error('[EvolviSearch.selectSplitTicketType] "page" is required.');
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
+
+    logger.info("[EvolviSearch.selectSplitTicketType] Selecting the split type", { label });
+    await evolviSearchPage.selectSplitTicketTypeRadio(label);
+
+    return { selected: label };
+  },
+
+  /**
+   * Hovers the info icon inside the split-type radio group and asserts its tooltip shows the
+   * expected message.
+   *
+   * The single tooltip documents BOTH split types at once (splitAtBoard + splitAtBoardInfo, then
+   * splitAtCallingStations + splitAtCallingStationsInfo), so the whole tooltip text is read and
+   * only the message the caller asked about is asserted — which is why the same method serves both
+   * of 44341's split-type message checks.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMessage
+   * @returns {Promise<string>} The tooltip text that was read
+   */
+  async expectSplitTicketTypeTooltipMessage(page, expectedMessage) {
+    if (!page) throw new Error('[EvolviSearch.expectSplitTicketTypeTooltipMessage] "page" is required.');
+    if (!expectedMessage || typeof expectedMessage !== "string") {
+      throw new Error(
+        `[EvolviSearch.expectSplitTicketTypeTooltipMessage] "expectedMessage" must be a non-empty string, got: ${expectedMessage}`,
+      );
+    }
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
+
+    const tooltipText = await evolviSearchPage.hoverSplitTicketTypeInfoAndGetTooltipText();
+    logger.info("[EvolviSearch.expectSplitTicketTypeTooltipMessage] Read the split-type tooltip", {
+      tooltipText,
+    });
+
+    expect(
+      tooltipText,
+      "The split-type info tooltip inside Advanced search should explain both split types.",
+    ).toContain(expectedMessage);
+
+    return tooltipText;
+  },
+
+  /**
+   * Performs a one-way UK Rail search leaving the "Request Split Ticket" checkbox ON, so the
+   * results come back carrying SplitTix fares.
+   *
+   * Unlike searchEvolviOneWay this does NOT re-select the UK Rail product: the split-ticket
+   * scenarios have already selected it and configured Advanced search by the time they search, and
+   * re-opening the product select would throw that configuration away.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string|object} routeInput
+   * @param {object} options
+   * @returns {Promise<object>} Search result metadata
+   */
+  async searchEvolviOneWayWithSplitTicket(
+    page,
+    routeInput = evolviRoutes.defaultRoute,
+    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {},
+  ) {
+    if (!page) throw new Error('[EvolviSearch.searchEvolviOneWayWithSplitTicket] "page" is required.');
+
+    const { from, to } = resolveRoute(routeInput, evolviRoutes.routes, "evolvi");
+    const searchPage = getPageObject(page, SearchPage);
+
+    await searchPage.selectOneWayTrip();
+    await EvolviSearch.ensureSplitTicketIsChecked(page);
+
+    await searchPage.fillInOrField(from, 1);
+    await searchPage.fillInOrField(to, 2);
+
+    // One month ahead, not the shared 3-month default — Evolvi inventory is not published that far
+    // out. Same reasoning as searchEvolviOneWay.
+    await searchPage.clickCalendarNextArrow(1);
+    await selectDatesByNthAvailable(page, {
+      startIndex: departureIndex,
+      endIndex: null,
+    });
+
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, splitTicket: true, routeInput, from, to, departureIndex };
   },
 
   /**

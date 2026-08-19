@@ -46,6 +46,46 @@ const SELECTORS = {
   // "<direction>: HH:MM" plus the fare price — and only then gains .has-price.
   SELECTED_SUMMARY: ".selected-prices > .selected-price",
   SELECTED_SUMMARY_PICKED: ".has-price",
+
+  // ===== SplitTix (split ticket) =====
+  //
+  // uk-rail-results.vue renders one .main-rows group per fare type, and only the SplitTix group's
+  // .title-cell carries the SplitTix glyph (`v-if="priceTypeGroup.title.indexOf('SplitTix') >= 0"`).
+  // Anchoring on that glyph is what separates the split-ticket fares from every other fare type
+  // without depending on where the group happens to be sorted.
+  SPLIT_TICKET_GROUP: ".results .main-rows:has(.title-cell .evolvi-splittix-icon)",
+  // The group's clickable title, e.g. "SplitTix Available" (uk-rail-results.ts's
+  // formatSplitTixTitle splits the supplier title on its last word, so the head is the label the
+  // manual test names and the tail is the fare class).
+  SPLIT_TICKET_GROUP_TITLE: ".splittix-title",
+  // The info glyph inside a SplitTix group title, scoped by that title's text so a page with more
+  // than one SplitTix group still opens the dialog from the group the step names.
+  SPLIT_TICKET_TITLE_INFO_ICON: (title) =>
+    `.results .main-rows .title-cell:has(.splittix-title:has-text("${title}")) .splittix-helper-symbol`,
+  // The "Save with SplitTix" el-dialog openSplitTixDetails() shows. Three dialogs in this view
+  // share the .uk-rail-results-dialog class (journey details, SplitTix, flexible policy), so this
+  // pins the SplitTix one by the glyph only its header renders.
+  SPLIT_TICKET_DIALOG:
+    ".uk-rail-results-dialog:visible:has(.el-dialog__header .evolvi-splittix-icon)",
+  SPLIT_TICKET_DIALOG_BODY: ".el-dialog__body",
+  SPLIT_TICKET_DIALOG_CLOSE: ".el-dialog__headerbtn, .el-dialog__close",
+  // A fare cell "highlighted in blue": uk-rail-results.vue puts .blue-bgd on the .price-cell and
+  // .blue on its app-price whenever priceDetails.isCheapest, and .blue-bgd is the light-blue cell
+  // background the manual test describes (uk-rail-results.scss).
+  //
+  // Restricted to each group's FIRST .price-row for the same reason FIRST_PRICE_ROW is: a collapsed
+  // .price-row-container is `max-height: 72px; overflow: hidden`, and clipped rows still report a
+  // bounding box, so `:visible` would happily hand back an unclickable row.
+  SPLIT_TICKET_BLUE_CELL:
+    ".results .main-rows:has(.title-cell .evolvi-splittix-icon) .price-row-container > .price-row:first-child > .price-cell.blue-bgd",
+  // The price inside that cell — the hover/click target. app-price.vue has a single root div, so
+  // uk-rail-results.vue's class="price" and :class="{ blue, is-clickable }" all land on it.
+  SPLIT_TICKET_BLUE_FARE: ".app-price.price.blue",
+  // el-tooltip renders the cell tooltip with popper-class "uk-rail-tooltip" at body level; its
+  // content is uk-rail-cell-tooltip-content.vue, whose .info-container block holds the
+  // "SplitTix fare selected …" line and the "Saving of <amount>" sub-title.
+  SPLIT_TICKET_FARE_TOOLTIP: ".uk-rail-tooltip:visible",
+  SPLIT_TICKET_FARE_TOOLTIP_INFO: ".info-container",
 };
 
 /**
@@ -189,6 +229,181 @@ class EvolviResultsPage {
     const summary = this.page.locator(SELECTORS.SELECTED_SUMMARY).nth(summaryIndex);
     await summary.waitFor({ state: "visible", timeout });
     return ((await summary.innerText()) ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  // ===== SplitTix (split ticket) =====
+
+  /**
+   * Waits until a SplitTix fare group is on the page, so "no blue fare" is never reported when the
+   * real problem is "the search came back with no split-ticket fares at all".
+   *
+   * @param {number} [timeout=60000]
+   */
+  async _waitForSplitTicketGroup(timeout = 60000) {
+    const title = this.page
+      .locator(`${SELECTORS.SPLIT_TICKET_GROUP} ${SELECTORS.SPLIT_TICKET_GROUP_TITLE}`)
+      .first();
+    try {
+      await title.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        "[EvolviResultsPage._waitForSplitTicketGroup] No SplitTix fare group is displayed in the Evolvi " +
+          `results (selector: ${SELECTORS.SPLIT_TICKET_GROUP}). The search may have come back without ` +
+          `split-ticket fares. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Clicks the info glyph next to a SplitTix group title (e.g. "SplitTix Available"), which opens
+   * the "Save with SplitTix" dialog, and waits for that dialog to render.
+   *
+   * @param {string} title - The group title the icon sits next to, e.g. "SplitTix Available"
+   * @param {number} [timeout=30000]
+   */
+  async clickSplitTicketTitleInfoIcon(title, timeout = 30000) {
+    if (!title || typeof title !== "string") {
+      throw new Error(
+        `[EvolviResultsPage.clickSplitTicketTitleInfoIcon] "title" must be a non-empty string, got: ${title}`,
+      );
+    }
+    const icon = this.page.locator(SELECTORS.SPLIT_TICKET_TITLE_INFO_ICON(title)).first();
+    try {
+      await icon.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[EvolviResultsPage.clickSplitTicketTitleInfoIcon] No info icon was found next to a "${title}" ` +
+          `fare group in the Evolvi results (selector: ${SELECTORS.SPLIT_TICKET_TITLE_INFO_ICON(title)}). ` +
+          `Original: ${err.message}`,
+      );
+    }
+    await icon.scrollIntoViewIfNeeded().catch(() => {});
+    await icon.click();
+    await this.page
+      .locator(SELECTORS.SPLIT_TICKET_DIALOG)
+      .first()
+      .waitFor({ state: "visible", timeout });
+  }
+
+  /**
+   * Reads the body text of the open "Save with SplitTix" dialog.
+   *
+   * @param {number} [timeout=30000]
+   * @returns {Promise<string>}
+   */
+  async getSplitTicketDialogText(timeout = 30000) {
+    const body = this.page
+      .locator(`${SELECTORS.SPLIT_TICKET_DIALOG} ${SELECTORS.SPLIT_TICKET_DIALOG_BODY}`)
+      .first();
+    await body.waitFor({ state: "visible", timeout });
+    return ((await body.innerText()) ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Closes the "Save with SplitTix" dialog and waits for it to go away, so the following steps are
+   * not left clicking through the overlay.
+   *
+   * @param {number} [timeout=15000]
+   */
+  async closeSplitTicketDialog(timeout = 15000) {
+    const dialog = this.page.locator(SELECTORS.SPLIT_TICKET_DIALOG).first();
+    const closeButton = dialog.locator(SELECTORS.SPLIT_TICKET_DIALOG_CLOSE).first();
+    await closeButton.waitFor({ state: "visible", timeout });
+    await closeButton.click();
+    await dialog.waitFor({ state: "hidden", timeout });
+  }
+
+  /**
+   * Hovers the first split-ticket fare highlighted in blue and waits for its fare tooltip to open.
+   *
+   * @param {number} [timeout=15000]
+   */
+  async hoverFirstBlueSplitTicketFare(timeout = 15000) {
+    const fare = await this._requireFirstBlueSplitTicketFare();
+    await fare.scrollIntoViewIfNeeded().catch(() => {});
+    await fare.hover();
+
+    const tooltip = this.page.locator(SELECTORS.SPLIT_TICKET_FARE_TOOLTIP).first();
+    try {
+      await tooltip.waitFor({ state: "visible", timeout });
+    } catch {
+      // Element Plus mounts the popper on the first pointer-enter, which can lose the race while
+      // the results grid is still settling. Re-arm the pointer from a neutral position and retry.
+      await this.page.mouse.move(0, 0);
+      await this.page.waitForTimeout(300);
+      await fare.hover();
+      await tooltip.waitFor({ state: "visible", timeout });
+    }
+  }
+
+  /**
+   * Reads the text of the split-ticket fare tooltip's info block — the "SplitTix fare selected …"
+   * line plus its "Saving of <amount>" sub-title. Re-hovers first when the tooltip is not open, so
+   * consecutive assertion steps can each read it without racing the popper's dismissal.
+   *
+   * @param {number} [timeout=15000]
+   * @returns {Promise<string>}
+   */
+  async getBlueSplitTicketFareTooltipInfoText(timeout = 15000) {
+    const info = this.page
+      .locator(`${SELECTORS.SPLIT_TICKET_FARE_TOOLTIP} ${SELECTORS.SPLIT_TICKET_FARE_TOOLTIP_INFO}`)
+      .first();
+
+    if ((await info.count()) === 0 || !(await info.isVisible().catch(() => false))) {
+      await this.hoverFirstBlueSplitTicketFare(timeout);
+    }
+
+    try {
+      await info.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        "[EvolviResultsPage.getBlueSplitTicketFareTooltipInfoText] The split-ticket fare tooltip did not " +
+          `show its SplitTix info block (selector: ${SELECTORS.SPLIT_TICKET_FARE_TOOLTIP} ` +
+          `${SELECTORS.SPLIT_TICKET_FARE_TOOLTIP_INFO}). uk-rail-cell-tooltip-content.vue only renders ` +
+          "it for a fare whose ticket.isSplitTicket is true, so the hovered fare may not be a split " +
+          `ticket. Original: ${err.message}`,
+      );
+    }
+    return ((await info.innerText()) ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Clicks the first split-ticket fare highlighted in blue, selecting it.
+   *
+   * @param {number} [timeout=30000]
+   */
+  async clickFirstBlueSplitTicketFare(timeout = 30000) {
+    const fare = await this._requireFirstBlueSplitTicketFare(timeout);
+    await fare.scrollIntoViewIfNeeded().catch(() => {});
+    await fare.click();
+  }
+
+  /** Every blue-highlighted split-ticket fare in the SplitTix group's first price row. */
+  _blueSplitTicketFares() {
+    return this.page.locator(
+      `${SELECTORS.SPLIT_TICKET_BLUE_CELL} ${SELECTORS.SPLIT_TICKET_BLUE_FARE}`,
+    );
+  }
+
+  /**
+   * Resolves the first blue-highlighted split-ticket fare, failing with what the page actually
+   * offers rather than letting a later hover/click time out on an empty locator.
+   */
+  async _requireFirstBlueSplitTicketFare(timeout = 30000) {
+    await this._waitForSplitTicketGroup(timeout);
+
+    const fare = this._blueSplitTicketFares().first();
+    try {
+      await fare.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        "[EvolviResultsPage._requireFirstBlueSplitTicketFare] The SplitTix fare group is displayed but " +
+          "none of its fares is highlighted in blue — uk-rail-results.vue only adds .blue-bgd/.blue to a " +
+          "cell whose priceDetails.isCheapest is true, so no split-ticket fare came back as the cheapest. " +
+          `Original: ${err.message}`,
+      );
+    }
+    return fare;
   }
 
   /** Every selectable fare sitting in one grid column, top group first. */

@@ -1,6 +1,8 @@
+const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const EvolviResultsPage = require("@pages/EvolviResultsPage");
 const Results = require("./Results");
+const logger = require("@utils/logger").child("EvolviResults");
 
 /**
  * EvolviResults DSL
@@ -183,6 +185,125 @@ const EvolviResults = {
     }
 
     return { raw, label, departureHour: match[1] };
+  },
+
+  // ===== SplitTix (split ticket) — test 44341 =====
+
+  /**
+   * Opens the "Save with SplitTix" dialog from the info icon next to a SplitTix fare group's title
+   * (e.g. "SplitTix Available").
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} title - The group title the icon sits next to
+   */
+  async openSplitTicketInfoDialog(page, title) {
+    if (!page) throw new Error('[EvolviResults.openSplitTicketInfoDialog] "page" is required.');
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.info("[EvolviResults.openSplitTicketInfoDialog] Opening the SplitTix info dialog", { title });
+    await resultsPage.clickSplitTicketTitleInfoIcon(title);
+
+    return { opened: true, title };
+  },
+
+  /**
+   * Asserts the open "Save with SplitTix" dialog contains the expected message, then closes it.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMessage
+   * @returns {Promise<string>} The dialog text that was read
+   */
+  async expectSplitTicketInfoDialogMessageAndClose(page, expectedMessage) {
+    if (!page) throw new Error('[EvolviResults.expectSplitTicketInfoDialogMessageAndClose] "page" is required.');
+    if (!expectedMessage || typeof expectedMessage !== "string") {
+      throw new Error(
+        `[EvolviResults.expectSplitTicketInfoDialogMessageAndClose] "expectedMessage" must be a non-empty string, got: ${expectedMessage}`,
+      );
+    }
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    const dialogText = await resultsPage.getSplitTicketDialogText();
+    logger.info(
+      "[EvolviResults.expectSplitTicketInfoDialogMessageAndClose] Read the SplitTix dialog",
+      { dialogText },
+    );
+
+    expect(
+      dialogText,
+      'The "Save with SplitTix" dialog should explain what split ticketing is.',
+    ).toContain(expectedMessage);
+
+    await resultsPage.closeSplitTicketDialog();
+
+    return dialogText;
+  },
+
+  /**
+   * Hovers the first split-ticket fare highlighted in blue, opening its fare tooltip.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async hoverFirstBlueSplitTicketFare(page) {
+    if (!page) throw new Error('[EvolviResults.hoverFirstBlueSplitTicketFare] "page" is required.');
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.info("[EvolviResults.hoverFirstBlueSplitTicketFare] Hovering the first blue SplitTix fare");
+    await resultsPage.hoverFirstBlueSplitTicketFare();
+
+    return { hovered: true };
+  },
+
+  /**
+   * Asserts the first blue split-ticket fare's tooltip contains the expected text.
+   *
+   * The tooltip's info block carries both the "SplitTix fare selected …" confirmation and the
+   * "Saving of <amount>" sub-title (uk-rail-cell-tooltip-content.vue), so one method serves both of
+   * 44341's tooltip assertions; the reader re-hovers when the popper has already dismissed itself.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   * @returns {Promise<string>} The tooltip info text that was read
+   */
+  async expectBlueSplitTicketFareTooltipContains(page, expectedText) {
+    if (!page) throw new Error('[EvolviResults.expectBlueSplitTicketFareTooltipContains] "page" is required.');
+    if (!expectedText || typeof expectedText !== "string") {
+      throw new Error(
+        `[EvolviResults.expectBlueSplitTicketFareTooltipContains] "expectedText" must be a non-empty string, got: ${expectedText}`,
+      );
+    }
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    const tooltipText = await resultsPage.getBlueSplitTicketFareTooltipInfoText();
+    logger.info(
+      "[EvolviResults.expectBlueSplitTicketFareTooltipContains] Read the SplitTix fare tooltip",
+      { tooltipText },
+    );
+
+    expect(
+      tooltipText,
+      "The tooltip of the split-ticket fare highlighted in blue should confirm the SplitTix selection " +
+        "and the saving it makes.",
+    ).toContain(expectedText);
+
+    return tooltipText;
+  },
+
+  /**
+   * Selects the first split-ticket fare highlighted in blue and adds it to the trip.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async selectAndAddFirstBlueSplitTicketFareToTrip(page) {
+    if (!page) throw new Error('[EvolviResults.selectAndAddFirstBlueSplitTicketFareToTrip] "page" is required.');
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.info(
+      "[EvolviResults.selectAndAddFirstBlueSplitTicketFareToTrip] Selecting the first blue SplitTix fare",
+    );
+    await resultsPage.clickFirstBlueSplitTicketFare();
+    await Results.waitAndClickAddToTripButton(page);
+
+    return { selected: true, addedToTrip: true };
   },
 };
 

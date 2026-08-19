@@ -23,6 +23,16 @@ const SELECTORS = {
 
   // Search and guest management
   SEARCH_BUTTON: "button.search-btn",
+  // An el-collapse-item header inside the visible search form, addressed by its rendered title —
+  // e.g. "Advanced search" ($t('common.advancedSearch')), which UK Rail (evolvi-search-inputs.vue)
+  // uses to hide its class/priority/split-ticket options. `:visible` keeps the other products'
+  // search forms, which stay mounted behind the active tab, from being matched first by DOM order.
+  SEARCH_FORM_COLLAPSE_HEADER: (title) =>
+    `.el-collapse-item__header:visible:has-text("${title}")`,
+  // element-plus flags an expanded collapse item's header with .is-active, so expanding is
+  // checkable rather than a blind toggle that would close an already-open section.
+  SEARCH_FORM_COLLAPSE_HEADER_EXPANDED: (title) =>
+    `.el-collapse-item__header.is-active:visible:has-text("${title}")`,
   FLIGHT_SEARCH_BUTTON_PRIMARY: "button.btn--primary.search-btn",
 
   // Guest information form
@@ -1082,6 +1092,46 @@ class SearchPage {
         await nextArrow.click({ force: true, timeout: 3000 });
       }
     }
+  }
+
+  /**
+   * Expands a collapsible section of the visible search form by its rendered title — e.g.
+   * "Advanced search". No-ops when the section is already expanded, so the caller does not have to
+   * know whether an earlier step opened it.
+   *
+   * @param {string} title - The section title as rendered, e.g. "Advanced search"
+   * @param {number} [timeout=30000]
+   */
+  async clickSearchFormCollapseSection(title, timeout = 30000) {
+    if (!title || typeof title !== "string") {
+      throw new Error(
+        `[SearchPage.clickSearchFormCollapseSection] "title" must be a non-empty string, got: ${title}`,
+      );
+    }
+    const header = this.page
+      .locator(SELECTORS.SEARCH_FORM_COLLAPSE_HEADER(title))
+      .first();
+    try {
+      await header.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.clickSearchFormCollapseSection] No visible "${title}" section header was found ` +
+          `in the search form (selector: ${SELECTORS.SEARCH_FORM_COLLAPSE_HEADER(title)}). ` +
+          `Original: ${err.message}`,
+      );
+    }
+
+    const expandedHeader = this.page
+      .locator(SELECTORS.SEARCH_FORM_COLLAPSE_HEADER_EXPANDED(title))
+      .first();
+    if ((await expandedHeader.count()) > 0) {
+      return { expanded: true, clicked: false };
+    }
+
+    await header.scrollIntoViewIfNeeded().catch(() => {});
+    await header.click();
+    await expandedHeader.waitFor({ state: "visible", timeout: 10000 });
+    return { expanded: true, clicked: true };
   }
 
   // Executes the search

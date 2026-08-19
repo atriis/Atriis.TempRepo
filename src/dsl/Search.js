@@ -1330,6 +1330,28 @@ const Search = {
       throw new Error(`[Search.verifyOnlyEmptyTravelerSlotIsRed] ${err.message}`);
     }
   },
+
+  /**
+   * Expands a collapsible section of the search form by its rendered title — e.g. "Advanced
+   * search", which UK Rail hides its class/priority/split-ticket options behind. Already-expanded
+   * sections are left open rather than toggled shut.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} sectionTitle - The section title as rendered, e.g. "Advanced search"
+   * @returns {Promise<{expanded: boolean, clicked: boolean}>}
+   */
+  async clickSearchFormSection(page, sectionTitle) {
+    if (!page) throw new Error('[Search.clickSearchFormSection] "page" is required.');
+    if (!sectionTitle || typeof sectionTitle !== 'string') {
+      throw new Error(
+        `[Search.clickSearchFormSection] "sectionTitle" must be a non-empty string, got: ${sectionTitle}`,
+      );
+    }
+
+    logger.info('[Search.clickSearchFormSection] Expanding search form section', { sectionTitle });
+    const searchPage = getPageObject(page, SearchPage);
+    return searchPage.clickSearchFormCollapseSection(sectionTitle);
+  },
 };
 
 module.exports = Search;
