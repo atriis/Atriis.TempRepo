@@ -82,6 +82,37 @@ const config = {
     return getEnv("LEGACY_GTP_BASEURL");
   },
 
+  // Fallback domain for the addresses generated when a test shares a quote or itinerary to an
+  // external recipient. Only used when no test mailbox is configured below: it just has to be
+  // a valid domain the corporation does not own, so the share dialog treats it as an external
+  // email. example.com is RFC 2606 reserved and never routes, so mail sent there is not
+  // readable — configure mailbox.* to assert on delivered mail.
+  get shareRecipientEmailDomain() {
+    return getOptionalEnv("SHARE_RECIPIENT_EMAIL_DOMAIN", "example.com");
+  },
+
+  // Test mailbox used to read the emails the app actually sends (share quote / share
+  // itinerary). Optional: with no API key set, tests can still generate a recipient and assert
+  // the send succeeded, but any step that reads delivered mail fails with a configuration error
+  // rather than passing vacuously.
+  mailbox: {
+    // Mailsac API key. Empty disables mail reading — the presence of a key IS the switch.
+    get apiKey() {
+      return getOptionalEnv("MAILBOX_API_KEY", "");
+    },
+    // Domain generated addresses are created under. Empty means mailsac.com.
+    get domain() {
+      return getOptionalEnv("MAILBOX_DOMAIN", "");
+    },
+    // How long to wait for a sent email to land before failing.
+    get timeoutMs() {
+      return Number(getOptionalEnv("MAILBOX_TIMEOUT_MS", "120000"));
+    },
+    // Gap between polls. Each poll is one metered API call, so this is the cost lever.
+    get pollIntervalMs() {
+      return Number(getOptionalEnv("MAILBOX_POLL_INTERVAL_MS", "5000"));
+    },
+  },
   get quotesApiPath() {
     return getOptionalEnv("QUOTES_API_PATH", "/api/v3/quotes");
   },

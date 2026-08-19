@@ -7,6 +7,7 @@ const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage")
 const { ResultsPage } = require("@pages/ResultsPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
 const FlightResults = require("./FlightResults");
+const Email = require("./Email");
 const Profile = require("./Profile");
 const ProfilePage = require("@pages/ProfilePage");
 const tripStatus = require("@data/tripStatus.json");
@@ -3177,6 +3178,42 @@ const Cart = {
   },
 
   /**
+   * Selects a UK Rail delivery method by queue name and saves it.
+   *
+   * Needed whenever the ticket format matters, because the generic
+   * "I fill mandatory Evolvi fields in cart" step takes the FIRST radio of every mandatory row,
+   * which for Delivery Method is the printer queue. Only an eTicket carries Apple/Google wallet
+   * passes (Evolvi returns PKPassLink/TransitPassLink per issued segment), so a scenario asserting
+   * on wallet links has to choose that queue explicitly.
+   *
+   * Run this BEFORE filling the remaining mandatory extras: saving the row clears its mandatory
+   * asterisk, so the generic step then skips it instead of overwriting this choice.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} queueName - Queue name or a distinctive part of it, e.g. "eTicket Queue"
+   * @returns {Promise<{selectedLabel: string}>} The full label of the option selected
+   */
+  async selectDeliveryMethodByName(page, queueName) {
+    if (!page) throw new Error('[Cart.selectDeliveryMethodByName] "page" is required.');
+    if (typeof queueName !== 'string' || !queueName.trim()) {
+      throw new Error(
+        `[Cart.selectDeliveryMethodByName] "queueName" must be a non-empty string, got: ${queueName}`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await Cart.expandDeliveryMethod(page);
+    const selectedLabel = await cartPage.selectDeliveryMethodByName(queueName);
+    await cartPage.clickSaveButton();
+    await cartPage.waitForDeliveryMethodGreenIcon();
+
+    logger.info('[Cart.selectDeliveryMethodByName] Delivery method saved', { queueName, selectedLabel });
+
+    return { selectedLabel };
+  },
+
+  /**
    * Expands the UK Rail "Delivery Method" row in the cart extras section, without selecting or
    * saving anything. Opening the panel is what makes the app load its queues and pre-select the
    * TOD station, so this is the prerequisite for reading either back.
@@ -5856,6 +5893,86 @@ const Cart = {
     return info;
   },
 
+  /**
+   * Verifies that a wallet link is present in the share itinerary email preview and points
+   * somewhere. Used for the Evolvi UK Rail ticket-delivery links, e.g.
+   * "Get your PKPASS (Apple Wallet)" and "Get your Ticket (Google Wallet)".
+   *
+   * The preview iframe carries the same backend-generated HTML the mail server sends, so the
+   * anchor is matched on its rendered label (whitespace-normalised, case-insensitive) rather
+   * than on a structural path through the email template, which changes between releases.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} linkLabel - The link label as it reads in the email, e.g. "Get your Ticket (Google Wallet)"
+   * @returns {Promise<{text: string, href: string}>} The matched link
+   */
+  async verifyWalletLinkInSharePreview(page, linkLabel) {
+    if (!page) throw new Error('[Cart.verifyWalletLinkInSharePreview] "page" is required.');
+    if (typeof linkLabel !== 'string' || !linkLabel.trim()) {
+      throw new Error(
+        `[Cart.verifyWalletLinkInSharePreview] "linkLabel" must be a non-empty string, got: ${linkLabel}`
+      );
+    }
+    const cartPage = getPageObject(page, CartPage);
+
+    const links = await cartPage.getSharePreviewLinks();
+    const normalize = (value) => (value ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const wanted = normalize(linkLabel);
+    const match = links.find((link) => normalize(link.text).includes(wanted));
+
+    // Thrown rather than asserted through expect(): the custom message passed to
+    // expect(value, message) is dropped by this Playwright version, and the list of links the
+    // preview does contain is what makes a failure diagnosable.
+    if (!match) {
+      throw new Error(
+        `[Cart.verifyWalletLinkInSharePreview] The share itinerary email preview should contain a ` +
+          `"${linkLabel}" link, but no link carries that label. Links found: ` +
+          `${JSON.stringify(links.map((link) => link.text).filter(Boolean))}`
+      );
+    }
+
+    if (!/^https?:\/\/\S+/i.test(match.href)) {
+      throw new Error(
+        `[Cart.verifyWalletLinkInSharePreview] The "${linkLabel}" link in the share itinerary email ` +
+          `preview should point to an absolute http(s) URL, but its href was "${match.href}".`
+      );
+    }
+
+    logger.info('[Cart.verifyWalletLinkInSharePreview] Wallet link found in the itinerary email preview', {
+      label: match.text,
+      href: match.href,
+    });
+
+    return match;
+  },
+
+  /**
+   * Adds a freshly generated, non-corporate email address as a recipient of the open share
+   * dialog, replacing Testim's hosted "Generate email address" step.
+   *
+   * The address comes from the Email DSL: an address inside the configured test mailbox when
+   * there is one — so the sent mail can be read back and asserted — otherwise a throwaway on
+   * config.shareRecipientEmailDomain, which still exercises the recipient picker and the send.
+   * Either way it is unique per call and unknown to the corporation, which is what makes the
+   * share dialog offer it as an external recipient.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} [tag] - Short label folded into the local part, e.g. a test id
+   * @returns {Promise<{email: string, readable: boolean}>} The address added, and whether the
+   *   mail sent to it can be read back from a test mailbox
+   */
+  async addGeneratedShareRecipient(page, tag = 'itinerary') {
+    if (!page) throw new Error('[Cart.addGeneratedShareRecipient] "page" is required.');
+
+    const recipient = Email.generateRecipientAddress(tag);
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.addExternalShareRecipient(recipient.email);
+
+    logger.info('[Cart.addGeneratedShareRecipient] Added a generated recipient to the share dialog', recipient);
+
+    return recipient;
+  },
   /**
    * Verifies that the share email preview iframe contains a hotel image.
    * The share dialog must already be open.

@@ -17,6 +17,33 @@ class CustomWorld extends World {
     // Every trip number touched during the scenario, first-seen order and
     // de-duplicated. Surfaced into the CI summary table by the After hook.
     this.tripIds = [];
+    // What the share dialog's email preview was seen to contain during the scenario, so a
+    // later step can prove the delivered mail carries the same thing. Written by the
+    // share-preview verification steps, read by the received-email steps.
+    this.emailPreviewExpectations = { texts: [], links: [] };
+  }
+
+  /**
+   * Record a string confirmed present in the share email preview.
+   * @param {...string} texts
+   */
+  recordEmailPreviewText(...texts) {
+    for (const text of texts) {
+      if (typeof text !== "string" || !text.trim()) continue;
+      if (!this.emailPreviewExpectations.texts.includes(text)) {
+        this.emailPreviewExpectations.texts.push(text);
+      }
+    }
+  }
+
+  /**
+   * Record a link confirmed present in the share email preview.
+   * @param {{text: string, href: string}} link
+   */
+  recordEmailPreviewLink(link) {
+    if (!link || typeof link.text !== "string" || !link.text.trim()) return;
+    if (this.emailPreviewExpectations.links.some((known) => known.text === link.text)) return;
+    this.emailPreviewExpectations.links.push({ text: link.text, href: link.href ?? "" });
   }
 
   /**

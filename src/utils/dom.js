@@ -257,9 +257,53 @@ async function waitForEnabled(locator, timeout = 5000) {
   await locator.evaluate((el) => !el.hasAttribute("disabled"));
 }
 
+/**
+ * Collapses whitespace, non-breaking spaces and zero-width characters in HTML-derived text.
+ *
+ * @param {string} text
+ * @returns {string}
+ */
+function normalizeHtmlText(text) {
+  return (text ?? "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Extracts every hyperlink from a raw HTML string.
+ *
+ * Why this exists:
+ * - The itinerary/quote emails are backend-generated table documents. Their links are read
+ *   both from the share dialog preview (iframe srcdoc) and from the delivered mail fetched
+ *   over a mailbox API, and both have to be compared against each other, so they must be
+ *   parsed identically.
+ * - Parsing the HTML string rather than a live DOM avoids having to scroll a long email
+ *   document to bring links into view.
+ *
+ * @param {string} html - Raw HTML
+ * @returns {Array<{text: string, href: string}>} Link label (tags stripped) and href, in document order
+ */
+function extractHtmlLinks(html) {
+  if (typeof html !== "string" || html.trim() === "") {
+    return [];
+  }
+
+  return [...html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)].map((match) => {
+    const hrefMatch = /href=["']([^"']*)["']/i.exec(match[1]);
+    return {
+      text: normalizeHtmlText(match[2].replace(/<[^>]+>/g, " ")),
+      href: hrefMatch ? hrefMatch[1].trim() : "",
+    };
+  });
+}
 module.exports = {
   extractNumber,
   parseAmountText,
   typeIntoNthAvailableInput,
   pressTab,
+  extractHtmlLinks,
+  normalizeHtmlText,
 };

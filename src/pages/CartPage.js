@@ -1,6 +1,6 @@
 const { expect } = require("@playwright/test");
 const { waitForText } = require("@utils/wait");
-const { parseAmountText } = require("@utils/dom");
+const { parseAmountText, extractHtmlLinks } = require("@utils/dom");
 const { getNetworkInterceptor } = require("@utils/networkInterceptor");
 const config = require("@config/config");
 const { SELECTORS: SEARCH_SELECTORS } = require("@pages/SearchPage");
@@ -909,6 +909,15 @@ const SELECTORS = {
   SHARE_EMAIL_CONTAINER: '.email-content-container',
   // Share email preview iframe
   SHARE_EMAIL_IFRAME: '.email-content-container iframe',
+  // Share dialog "Send to" recipient picker (app-share-quotes.vue -> user-autocomplete ->
+  // app-autocomplete -> el-autocomplete). The component is mounted with 'allow-external-email',
+  // so an address matching no corporate user is offered back as a single synthetic suggestion
+  // in its own popper, which has to be clicked before it becomes a recipient.
+  SHARE_RECIPIENT_INPUT: '.app-share-quotes .user-autocomplete input',
+  SHARE_RECIPIENT_SUGGESTION: '.user-autocomplete-popper li',
+  // Recipient chips (trip-traveler-tag). app-share-quotes renders a mobile and a desktop
+  // recipients-list, so callers filter this to the visible one.
+  SHARE_RECIPIENT_CHIPS: '.app-share-quotes .recipients-list > *',
   // Hotel address in share email preview
   SHARE_EMAIL_HOTEL_ADDRESS: "[target='_blank']",
 
@@ -5214,6 +5223,44 @@ class CartPage {
   }
 
   /**
+   * Selects a delivery method by its queue name.
+   *
+   * Each radio's label is the backend's `deliveryMethod.queueName`
+   * (uk-rail-delivery-method.vue's v-for over deliveryMethodsToShow), so the option is matched on
+   * that text rather than on a position: the queues are corporation configuration and their order
+   * is not guaranteed. Matching is a case-insensitive substring, because the default option's
+   * label also carries a " (Default)" suffix and a TOD option appends its station name.
+   *
+   * @param {string} queueName - Queue name or a distinctive part of it, e.g. "eTicket Queue"
+   * @returns {Promise<string>} The full label of the option that was selected
+   */
+  async selectDeliveryMethodByName(queueName) {
+    const options = this.page.locator(SELECTORS.DELIVERY_METHOD_OPTION);
+    await options.first().waitFor({ state: 'visible', timeout: 15000 });
+
+    const count = await options.count();
+    const labels = [];
+
+    for (let i = 0; i < count; i += 1) {
+      const option = options.nth(i);
+      const label = ((await option.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+      labels.push(label);
+
+      if (label.toLowerCase().includes(queueName.toLowerCase())) {
+        // Click the radio input, not the row: the row's label contains the TOD station picker,
+        // and clicking that opens the picker instead of selecting the option.
+        await option.locator('.el-radio__inner').first().click();
+        return label;
+      }
+    }
+
+    throw new Error(
+      `[CartPage.selectDeliveryMethodByName] No delivery method matches "${queueName}". ` +
+        `Options offered for this quote: ${JSON.stringify(labels)}`
+    );
+  }
+
+  /**
    * Waits for the green success icon to appear next to delivery method.
    * Indicates that the delivery method has been successfully saved.
    */
@@ -6672,6 +6719,76 @@ class CartPage {
    */
   async getSharePreviewRawHtml() {
     return await this._waitForShareIframeSrcdoc();
+  }
+
+  /**
+   * Reads every hyperlink out of the share email preview.
+   *
+   * The preview is backend-generated email HTML injected as the iframe's srcdoc
+   * (app-share-quotes.vue -> :srcdoc="emailContent"), so the anchors are parsed from that
+   * raw HTML rather than the live iframe DOM: the email is a long table document and the
+   * links sit far below the fold, where a DOM read would need scrolling inside the frame.
+   *
+   * Uses the same parser as the mailbox reader, so preview links and delivered-mail links are
+   * directly comparable.
+   *
+   * @returns {Promise<Array<{text: string, href: string}>>} Link text (tags stripped) and href
+   */
+  async getSharePreviewLinks() {
+    const srcdoc = await this._waitForShareIframeSrcdoc();
+    if (srcdoc.trim().length === 0) {
+      throw new Error(
+        '[CartPage.getSharePreviewLinks] Share email preview iframe had no srcdoc content. The ' +
+          'preview may not have finished rendering, or the share dialog is not open.'
+      );
+    }
+
+    return extractHtmlLinks(srcdoc);
+  }
+
+  /**
+   * Adds an external (non-corporate) email address as a recipient in the open share dialog.
+   *
+   * The "Send to" field is a user-autocomplete mounted with 'allow-external-email'
+   * (user-autocomplete.ts -> querySearch): when the typed text matches no corporate user and
+   * is a valid address, the component synthesises a single suggestion. Typing alone does not
+   * add a recipient — the suggestion has to be clicked.
+   *
+   * @param {string} email - The address to add
+   * @returns {Promise<void>}
+   */
+  async addExternalShareRecipient(email) {
+    const chips = this.page.locator(SELECTORS.SHARE_RECIPIENT_CHIPS).filter({ visible: true });
+    const chipsBefore = await chips.count();
+
+    const input = this.page.locator(SELECTORS.SHARE_RECIPIENT_INPUT).filter({ visible: true }).first();
+    await input.waitFor({ state: 'visible', timeout: 30_000 });
+    await input.click();
+    // el-autocomplete fetches suggestions from a debounced input event. fill() sets the value
+    // in one shot, which the debounce can swallow and leave the popper closed, so the address
+    // is typed out instead.
+    await input.pressSequentially(email, { delay: 30 });
+
+    const suggestion = this.page
+      .locator(SELECTORS.SHARE_RECIPIENT_SUGGESTION)
+      .filter({ visible: true })
+      .first();
+    try {
+      await suggestion.waitFor({ state: 'visible', timeout: 20_000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.addExternalShareRecipient] No suggestion was offered for "${email}". The ` +
+          'external-email option only appears when the address matches no corporate user and ' +
+          `passes the component's email validation. Original: ${err.message}`
+      );
+    }
+    await suggestion.click();
+
+    // The chip is a trip-traveler-tag whose label is the address; long addresses are truncated
+    // in it, so the recipient is confirmed by the chip count growing rather than by chip text.
+    await expect
+      .poll(async () => chips.count(), { timeout: 15_000, message: `Recipient "${email}" was not added to the share dialog` })
+      .toBe(chipsBefore + 1);
   }
 
   /**

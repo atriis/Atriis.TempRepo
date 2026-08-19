@@ -644,6 +644,17 @@ When("I select default delivery method and save", async function () {
   await Cart.selectDefaultDeliveryMethod(this.page);
 });
 
+// Picks a delivery method by queue name. Needed when the ticket format matters: the generic
+// "I fill mandatory Evolvi fields in cart" step takes the first radio of every mandatory row,
+// which for Delivery Method is the printer queue, and only an eTicket carries wallet passes.
+// Place this BEFORE that step — saving the row clears its mandatory asterisk, so the generic
+// step then leaves the choice alone.
+When("I select the {string} delivery method and save", async function (queueName) {
+  logger.info("Selecting a delivery method by queue name", { queueName });
+  const { selectedLabel } = await Cart.selectDeliveryMethodByName(this.page, queueName);
+  this.selectedDeliveryMethod = selectedLabel;
+});
+
 When("I expand delivery method in extras section", async function () {
   logger.info("Expanding the delivery method row in the cart extras section");
   await Cart.expandDeliveryMethod(this.page);
@@ -3612,4 +3623,28 @@ Then("split ticket icon information, {string} and {string} should be visible in 
     expectedSplitInstruction,
   });
   await Cart.verifyUkRailSplitTicketInfoInSharePreview(this.page, [expectedLabel, expectedSplitInstruction]);
+  // Kept for the delivered-mail comparison: whatever the preview was proven to contain is what
+  // the received email has to contain too.
+  this.recordEmailPreviewText(expectedLabel, expectedSplitInstruction);
+});
+
+// The wallet links are the ticket-delivery links in the itinerary email ("Get your PKPASS
+// (Apple Wallet)", "Get your Ticket (Google Wallet)"). They are read from the share preview
+// iframe, which carries the same backend-generated HTML the mail server sends.
+Then("the wallet link {string} should be visible in itinerary", async function (linkLabel) {
+  logger.info("Verifying a wallet link in the share itinerary email preview", { linkLabel });
+  const link = await Cart.verifyWalletLinkInSharePreview(this.page, linkLabel);
+  this.recordEmailPreviewLink(link);
+});
+
+// Replaces Testim's hosted "Generate email address" step. The generated address is external to
+// the corporation, so the share dialog offers it as a recipient to click; when a test mailbox is
+// configured it is an address inside that mailbox, which is what lets a later step read the mail
+// back. The timestamp is taken here so the read-back cannot match a previous run's email.
+When("I add a generated email address as the itinerary recipient", async function () {
+  const recipient = await Cart.addGeneratedShareRecipient(this.page, "itinerary");
+  this.generatedItineraryRecipient = recipient.email;
+  this.generatedItineraryRecipientIsReadable = recipient.readable;
+  this.itineraryShareSentAfter = new Date();
+  logger.info("Added a generated email address as the itinerary recipient", recipient);
 });
