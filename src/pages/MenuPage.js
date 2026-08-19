@@ -9,7 +9,16 @@ const SELECTORS = {
   // needed to reveal it — used as the "are we logged in" signal instead of the logout button itself,
   // which as of app v2.13 lives inside this avatar's dropdown (see LOGOUT_ICON below) and would
   // require opening that dropdown just to prove login succeeded.
-  AVATAR_TRIGGER: ".app-profile-menu .avatar-trigger",
+  //
+  // Matches EITHER header shape, because staging serves both and has been observed switching
+  // between them mid-session (2026-08-19: passing runs at 09:33/09:38, then `.avatar-trigger`
+  // absent from 09:43 — same code, same user):
+  //   * `.avatar-trigger`   — the v2.13 dropdown-style profile menu;
+  //   * `.passenger-avatar` — app-avatar.vue's avatar, with logout as a sibling `.logout-icon`.
+  // Login confirmation is on the critical path of every scenario in the suite, so it must not be
+  // pinned to whichever of the two happens to be deployed. Resolve with .first() — a union selector
+  // would otherwise trip Playwright strict mode if a build ever rendered both.
+  AVATAR_TRIGGER: ".app-profile-menu .avatar-trigger, .app-profile-menu .passenger-avatar",
   // Log out button. Previously a standalone header icon (`.logout-icon`); app v2.13 moved it into a
   // dropdown revealed by clicking AVATAR_TRIGGER (profile-menu.vue renders it as a
   // `.profile-menu-item.logout-item` button, teleported into an `.el-popper` on click/open).
@@ -88,12 +97,15 @@ class MenuPage {
    * click required, so this stays a passive "did we land on the logged-in header" check.
    */
   async waitForLogoutIcon() {
-    await this.page.locator(SELECTORS.AVATAR_TRIGGER).waitFor({ state: "visible", timeout: 30000 });
+    await this.page
+      .locator(SELECTORS.AVATAR_TRIGGER)
+      .first()
+      .waitFor({ state: "visible", timeout: 30000 });
   }
 
   /** Opens the profile avatar dropdown and clicks "Log out" inside it. */
   async clickLogout() {
-    await this.page.locator(SELECTORS.AVATAR_TRIGGER).click();
+    await this.page.locator(SELECTORS.AVATAR_TRIGGER).first().click();
     const logoutButton = this.getLogoutIcon();
     await logoutButton.waitFor({ state: "visible", timeout: 10000 });
     await logoutButton.click();
