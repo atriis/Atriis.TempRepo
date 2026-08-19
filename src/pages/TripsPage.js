@@ -21,8 +21,22 @@ const SELECTORS = {
   FIRST_TRIP_USER_GROUP_CONTAINER:
     '.trip-preview:first-of-type .booker-consultant-container',
 
-  MY_TRIPS_ONLY_CHECKBOX:
-    '.trip-monitor-filter .el-checkbox:has-text("My trips only")',
+  // A standalone checkbox in the trip-monitor filter panel, its label node, and its
+  // ticked variant (Element Plus adds "is-checked"). :visible mirrors
+  // STATUS_FILTER_CHECKBOX below — it keeps .first() off a hidden mobile-drawer
+  // duplicate.
+  //
+  // NOT usable for the Trip Status group: app-checkbox-group.vue renders a
+  // results-count <p> inside the same .el-checkbox__label as the status name, so
+  // the label's text is "Confirmed 12", not "Confirmed", and an exact-text match
+  // would miss. Status options have their own selectors + checkStatusFilterOption,
+  // which match the inner p.filter-title instead.
+  FILTER_CHECKBOX:
+    '.trip-monitor-filter .el-checkbox:visible',
+  FILTER_CHECKBOX_LABEL:
+    '.el-checkbox__label',
+  FILTER_CHECKBOX_CHECKED:
+    '.trip-monitor-filter .el-checkbox.is-checked:visible',
 
   // Clickable link on a trip card (trip-preview.vue → router-link.more-details-link)
   // that opens the trip. Its target is "_blank" for bookers/no-corp users and
@@ -94,6 +108,34 @@ const SELECTORS = {
     '#pane-search-results .trip-preview .app-label:visible',
   RESULT_TRIP_ID:
     '#pane-search-results .trip-preview .trip-id:visible',
+
+  // Trips-page tab headers (my-trips.vue -> el-tabs). Element Plus renders each
+  // el-tab-pane header as an .el-tabs__item and the visible label sits in a nested
+  // <div class="tab"><p>. Matching the LABEL rather than the #tab-<name> id keeps
+  // the assertion on the text the scenario names ("Upcoming" / "Search results").
+  TRIPS_TAB:
+    '.my-trips .el-tabs__header .el-tabs__item',
+  TRIPS_TAB_LABEL:
+    '.tab p',
+
+  // Root of the search suggestions popper (trip-monitor-filter.vue -> el-dropdown
+  // popper-class="search-dropdown-popper"). Element Plus teleports the popper to
+  // <body>, so it is NOT a descendant of .trip-monitor-filter.
+  SEARCH_SUGGESTIONS_POPPER:
+    '.search-dropdown-popper',
+
+  // The trip list and its trip cards inside the search-results pane. my-trips.vue
+  // keeps every el-tab-pane mounted, so both are pane-scoped and the cards are
+  // :visible-scoped so a card in an inactive pane is never matched.
+  SEARCH_RESULTS_TRIP_LIST:
+    '#pane-search-results .trip-list',
+  SEARCH_RESULTS_TRIP_CARD:
+    '#pane-search-results .trip-preview:visible',
+
+  // Comma-joined traveller names on a search-results trip card
+  // (trip-preview.vue -> .passenger-names).
+  RESULT_PASSENGER_NAMES:
+    '#pane-search-results .trip-preview .passenger-names:visible',
 };
 
 class TripsPage {
@@ -197,14 +239,80 @@ class TripsPage {
     }
   }
 
-  async getMyTripsOnlyCheckbox({ timeout = 30000 } = {}) {
-    const checkbox = this.page.locator(SELECTORS.MY_TRIPS_ONLY_CHECKBOX).first();
+  /**
+   * Returns the trip-monitor filter checkbox whose visible label reads the given
+   * text, once it is visible.
+   *
+   * @param {string} label - visible checkbox label, e.g. "My trips only"
+   * @param {object} options
+   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
+   */
+  async getFilterCheckboxByLabel(label, { timeout = 30000 } = {}) {
+    if (typeof label !== 'string' || label.length === 0) {
+      throw new Error('[TripsPage.getFilterCheckboxByLabel] "label" must be a non-empty string, got: ' + typeof label);
+    }
+    const checkbox = this.page
+      .locator(SELECTORS.FILTER_CHECKBOX)
+      .filter({ has: this.page.locator(SELECTORS.FILTER_CHECKBOX_LABEL, { hasText: exactText(label) }) })
+      .first();
     try {
       await checkbox.waitFor({ state: 'visible', timeout });
       return checkbox;
     } catch (err) {
       throw new Error(
-        `[TripsPage.getMyTripsOnlyCheckbox] "My trips only" checkbox not found (${SELECTORS.MY_TRIPS_ONLY_CHECKBOX}) within ${timeout}ms. The trips filter panel may not be rendered or the account lacks CanViewAllCorporateTrips permission. Original: ${err.message}`
+        `[TripsPage.getFilterCheckboxByLabel] The "${label}" filter checkbox (${SELECTORS.FILTER_CHECKBOX}) was not visible within ${timeout}ms. The trips filter panel may not be rendered or the label differs from the value passed. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the "My trips only" filter checkbox once it is visible.
+   *
+   * Thin wrapper over getFilterCheckboxByLabel — kept because the reason THIS
+   * control can be missing is specific to it (the account lacks the permission
+   * that renders it), and that hint would be misleading on a status checkbox.
+   *
+   * @param {object} options
+   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
+   */
+  async getMyTripsOnlyCheckbox({ timeout = 30000 } = {}) {
+    try {
+      return await this.getFilterCheckboxByLabel('My trips only', { timeout });
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.getMyTripsOnlyCheckbox] "My trips only" checkbox not found within ${timeout}ms. The trips filter panel may not be rendered or the account lacks CanViewAllCorporateTrips permission. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Ticks the trip-monitor filter checkbox with the given label.
+   *
+   * @param {string} label - visible checkbox label, e.g. "My trips only"
+   * @returns {Promise<{ alreadyChecked: boolean }>} whether the control was already
+   *   ticked, so the caller can report a step that changed nothing.
+   */
+  async checkFilterCheckbox(label) {
+    const checkbox = await this.getFilterCheckboxByLabel(label);
+    try {
+      if (((await checkbox.getAttribute('class')) || '').includes('is-checked')) {
+        return { alreadyChecked: true };
+      }
+      // The el-checkbox label can wrap nested markup that swallows text clicks
+      // (see checkStatusFilterOption), so click Element Plus' visual box, which
+      // reliably toggles the control.
+      const box = checkbox.locator(SELECTORS.STATUS_FILTER_CHECKBOX_BOX).first();
+      await box.click({ timeout: 10000 });
+      // Confirm the toggle registered before the caller waits on filtered results.
+      await this.page
+        .locator(SELECTORS.FILTER_CHECKBOX_CHECKED)
+        .filter({ has: this.page.locator(SELECTORS.FILTER_CHECKBOX_LABEL, { hasText: exactText(label) }) })
+        .first()
+        .waitFor({ state: 'attached', timeout: 5000 });
+      return { alreadyChecked: false };
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.checkFilterCheckbox] Could not tick the "${label}" filter checkbox. Original: ${err.message}`
       );
     }
   }
@@ -228,6 +336,43 @@ class TripsPage {
     } catch (err) {
       throw new Error(
         `[TripsPage.fillTripsSearch] Could not type "${term}" into the trips search input (${SELECTORS.SEARCH_INPUT}). The filter panel may not be rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Submits the trips search by pressing Enter on the free-text search input.
+   *
+   * trip-monitor-filter.vue binds @keydown.enter="searchTrips" on the el-input, so
+   * Enter is what runs the search from the input itself — the alternative entry
+   * point is the "expand your search" suggestion (see clickSearchExpandItem).
+   */
+  async submitTripsSearch() {
+    const input = this.page.locator(SELECTORS.SEARCH_INPUT).first();
+    try {
+      await input.waitFor({ state: 'visible', timeout: 15000 });
+      await input.press('Enter', { timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.submitTripsSearch] Could not submit the trips search by pressing Enter on the search input (${SELECTORS.SEARCH_INPUT}). The filter panel may not be rendered or no term was typed. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the search suggestions popper once it is visible.
+   *
+   * @param {object} options
+   * @param {number} options.timeout - Maximum time to wait (default: 15000ms)
+   */
+  async getSearchSuggestionsPopper({ timeout = 15000 } = {}) {
+    const popper = this.page.locator(SELECTORS.SEARCH_SUGGESTIONS_POPPER).first();
+    try {
+      await popper.waitFor({ state: 'visible', timeout });
+      return popper;
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.getSearchSuggestionsPopper] The trips search suggestions dropdown (${SELECTORS.SEARCH_SUGGESTIONS_POPPER}) was not visible within ${timeout}ms. The dropdown only opens while the search input holds a term — ensure the term was typed. Original: ${err.message}`
       );
     }
   }
@@ -428,6 +573,131 @@ class TripsPage {
     } catch (err) {
       throw new Error(
         `[TripsPage.getResultTripId] No search-results trip showed the id "${tripId}" within ${timeout}ms. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the trips-page tab header locator for the given visible label,
+   * WITHOUT waiting.
+   *
+   * A caller asserting a tab is ABSENT needs the bare locator — a waiting variant
+   * would throw before the assertion could run.
+   *
+   * @param {string} label - visible tab label, e.g. "Upcoming" / "Search results"
+   */
+  getTripsTabLocator(label) {
+    if (typeof label !== 'string' || label.length === 0) {
+      throw new Error('[TripsPage.getTripsTabLocator] "label" must be a non-empty string, got: ' + typeof label);
+    }
+    return this.page
+      .locator(SELECTORS.TRIPS_TAB)
+      .filter({ has: this.page.locator(SELECTORS.TRIPS_TAB_LABEL, { hasText: exactText(label) }) });
+  }
+
+  /**
+   * Waits until the trips tab strip has rendered at least one tab.
+   *
+   * A caller asserting a tab is ABSENT must first know the strip is up: straight
+   * after a page reload no tab exists yet, so the absence check would pass against
+   * a still-loading page rather than against a page that dropped the tab.
+   *
+   * @param {object} options
+   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
+   */
+  async waitForTripsTabStrip({ timeout = 30000 } = {}) {
+    const anyTab = this.page.locator(SELECTORS.TRIPS_TAB).first();
+    try {
+      await anyTab.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.waitForTripsTabStrip] The trips tab strip (${SELECTORS.TRIPS_TAB}) had not rendered a single tab within ${timeout}ms. The trips page may still be loading. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the trips-page tab header for the given label once it is visible.
+   *
+   * @param {string} label - visible tab label, e.g. "Upcoming"
+   * @param {object} options
+   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
+   */
+  async getTripsTab(label, { timeout = 30000 } = {}) {
+    const tab = this.getTripsTabLocator(label).first();
+    try {
+      await tab.waitFor({ state: 'visible', timeout });
+      return tab;
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.getTripsTab] The "${label}" trips tab (${SELECTORS.TRIPS_TAB}) was not visible within ${timeout}ms. The trips page may not have loaded or the tab label differs from the value passed. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the trip list inside the search-results pane once it is visible.
+   *
+   * @param {object} options
+   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
+   */
+  async getSearchResultsTripList({ timeout = 30000 } = {}) {
+    const list = this.page.locator(SELECTORS.SEARCH_RESULTS_TRIP_LIST).first();
+    try {
+      await list.waitFor({ state: 'visible', timeout });
+      return list;
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.getSearchResultsTripList] The search-results trip list (${SELECTORS.SEARCH_RESULTS_TRIP_LIST}) was not visible within ${timeout}ms. The search may not have produced a results tab. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the search-results trip-card locator, WITHOUT waiting, so a caller can
+   * assert on how many cards rendered. An empty .trip-list still renders, so the
+   * card count is what separates "results" from "an empty results pane".
+   */
+  getSearchResultsTripCardsLocator() {
+    return this.page.locator(SELECTORS.SEARCH_RESULTS_TRIP_CARD);
+  }
+
+  /**
+   * Returns the traveller-names locator for every search-results trip card that
+   * lists the given traveller, WITHOUT waiting.
+   *
+   * A caller asserting a traveller is ABSENT from the results needs the bare
+   * locator — a waiting variant would throw before the assertion could run.
+   *
+   * @param {string} traveller - traveller full name, e.g. "Ibire Cvvsky"
+   */
+  getResultTripsForTravellerLocator(traveller) {
+    if (typeof traveller !== 'string' || traveller.length === 0) {
+      throw new Error('[TripsPage.getResultTripsForTravellerLocator] "traveller" must be a non-empty string, got: ' + typeof traveller);
+    }
+    return this.page.locator(SELECTORS.RESULT_PASSENGER_NAMES, { hasText: traveller });
+  }
+
+  /**
+   * Returns the traveller-names node of a search-results trip card listing the
+   * given traveller, once visible.
+   *
+   * Substring match on purpose: .passenger-names holds every traveller on the trip
+   * as one comma-joined string, so an exact-text match would only ever hit
+   * single-traveller trips.
+   *
+   * @param {string} traveller - traveller full name, e.g. "Ibire Cvvsky"
+   * @param {object} options
+   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
+   */
+  async getResultTripForTraveller(traveller, { timeout = 30000 } = {}) {
+    const names = this.getResultTripsForTravellerLocator(traveller).first();
+    try {
+      await names.waitFor({ state: 'visible', timeout });
+      return names;
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.getResultTripForTraveller] No search-results trip listed the traveller "${traveller}" within ${timeout}ms. The search may have returned other travellers' trips only. Original: ${err.message}`
       );
     }
   }

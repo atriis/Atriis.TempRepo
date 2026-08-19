@@ -286,6 +286,45 @@ const Trips = {
   },
 
   /**
+   * Verifies the search suggestions dropdown opened under the search input.
+   *
+   * @param {import('@playwright/test').Page} page
+   */
+  async verifyTripsSearchSuggestionsDisplayed(page) {
+    if (!page) throw new Error('[Trips.verifyTripsSearchSuggestionsDisplayed] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying the trips search suggestions dropdown is displayed');
+      const popper = await tripsPage.getSearchSuggestionsPopper({ timeout: 15000 });
+      await expect(popper, '[Trips.verifyTripsSearchSuggestionsDisplayed] Expected the trips search suggestions dropdown to be displayed after typing a search term, but it was not visible. The dropdown only opens while the input holds a term.')
+        .toBeVisible({ timeout: 10000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifyTripsSearchSuggestionsDisplayed] Failed to verify the trips search suggestions dropdown. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Submits the trip-monitor search, opening the "Search results" tab.
+   *
+   * @param {import('@playwright/test').Page} page
+   */
+  async submitTripsSearch(page) {
+    if (!page) throw new Error('[Trips.submitTripsSearch] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Submitting the trips search');
+      await tripsPage.submitTripsSearch();
+    } catch (err) {
+      throw new Error(
+        `[Trips.submitTripsSearch] Failed to submit the trips search. The search input may not be rendered or no term was typed first. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Verifies the search suggestions dropdown offers the "expand your search"
    * option.
    *
@@ -487,6 +526,183 @@ const Trips = {
       if (err.matcherResult !== undefined) throw err;
       throw new Error(
         `[Trips.verifyTripDisplayedById] Failed to verify the trip id "${tripId}" in the results. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies a trips-page tab with the given label is displayed.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} label - visible tab label, e.g. "Upcoming" / "Search results"
+   */
+  async verifyTripsTabDisplayed(page, label) {
+    if (!page) throw new Error('[Trips.verifyTripsTabDisplayed] page is required');
+    if (typeof label !== 'string' || label.length === 0) {
+      throw new Error('[Trips.verifyTripsTabDisplayed] "label" must be a non-empty string, got: ' + typeof label);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying trips tab is displayed', { label });
+      const tab = await tripsPage.getTripsTab(label, { timeout: 30000 });
+      await expect(tab, `[Trips.verifyTripsTabDisplayed] Expected the "${label}" trips tab to be displayed, but it was not visible.`)
+        .toBeVisible({ timeout: 10000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifyTripsTabDisplayed] Failed to verify the "${label}" trips tab. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies no trips-page tab with the given label is present.
+   *
+   * my-trips.vue guards the search-results pane with v-if, so a dismissed search
+   * REMOVES its tab from the DOM rather than hiding it — absence is asserted by
+   * count, which also fails correctly if the tab is merely hidden.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} label - visible tab label, e.g. "Search results"
+   */
+  async verifyTripsTabNotDisplayed(page, label) {
+    if (!page) throw new Error('[Trips.verifyTripsTabNotDisplayed] page is required');
+    if (typeof label !== 'string' || label.length === 0) {
+      throw new Error('[Trips.verifyTripsTabNotDisplayed] "label" must be a non-empty string, got: ' + typeof label);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying trips tab is not displayed', { label });
+      // Straight after a reload NO tab has rendered yet, so a bare count-0 check
+      // would pass against a still-loading page. Wait for the strip to come up
+      // first, so the assertion can only pass because this tab specifically is gone.
+      await tripsPage.waitForTripsTabStrip({ timeout: 30000 });
+      const tab = tripsPage.getTripsTabLocator(label);
+      await expect(tab, `[Trips.verifyTripsTabNotDisplayed] Expected the "${label}" trips tab to be gone from the trips page, but it was still rendered. A page refresh should discard the search and drop its tab.`)
+        .toHaveCount(0, { timeout: 15000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifyTripsTabNotDisplayed] Failed to verify the "${label}" trips tab was removed. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the search-results pane rendered a non-empty trip list.
+   *
+   * An empty .trip-list still renders, so the trip cards are asserted too —
+   * otherwise a search that matched nothing would pass this check.
+   *
+   * @param {import('@playwright/test').Page} page
+   */
+  async verifySearchResultsTripListDisplayed(page) {
+    if (!page) throw new Error('[Trips.verifySearchResultsTripListDisplayed] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying the search results display a trip list');
+      const list = await tripsPage.getSearchResultsTripList({ timeout: 30000 });
+      await expect(list, '[Trips.verifySearchResultsTripListDisplayed] Expected the search-results pane to render a trip list, but it was not visible. The search may not have produced a results tab.')
+        .toBeVisible({ timeout: 10000 });
+      const cards = tripsPage.getSearchResultsTripCardsLocator();
+      await expect(cards.first(), '[Trips.verifySearchResultsTripListDisplayed] The search-results trip list rendered but contained no trip cards — the search returned zero trips.')
+        .toBeVisible({ timeout: 15000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifySearchResultsTripListDisplayed] Failed to verify the search-results trip list. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies a search-results trip lists the given traveller among its passengers.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} traveller - traveller full name, e.g. "Ibire Cvvsky"
+   */
+  async verifySearchResultsShowTraveller(page, traveller) {
+    if (!page) throw new Error('[Trips.verifySearchResultsShowTraveller] page is required');
+    if (typeof traveller !== 'string' || traveller.length === 0) {
+      throw new Error('[Trips.verifySearchResultsShowTraveller] "traveller" must be a non-empty string, got: ' + typeof traveller);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying search results show a trip for traveller', { traveller });
+      const names = await tripsPage.getResultTripForTraveller(traveller, { timeout: 30000 });
+      await expect(names, `[Trips.verifySearchResultsShowTraveller] Expected a search-results trip to list the traveller "${traveller}" among its passengers, but no card did.`)
+        .toContainText(traveller, { timeout: 10000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifySearchResultsShowTraveller] Failed to verify a trip for traveller "${traveller}" in the search results. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies NO search-results trip lists the given traveller.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} traveller - traveller full name, e.g. "Ibire Cvvsky"
+   */
+  async verifySearchResultsDoNotShowTraveller(page, traveller) {
+    if (!page) throw new Error('[Trips.verifySearchResultsDoNotShowTraveller] page is required');
+    if (typeof traveller !== 'string' || traveller.length === 0) {
+      throw new Error('[Trips.verifySearchResultsDoNotShowTraveller] "traveller" must be a non-empty string, got: ' + typeof traveller);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying search results do NOT show a trip for traveller', { traveller });
+
+      // An absence check is only meaningful against rendered results: while the
+      // search is still loading, or if it returned nothing at all, "this traveller
+      // is missing" is trivially true. Require a rendered, non-empty result set
+      // first so the assertion can only pass because THIS traveller was filtered out.
+      const list = await tripsPage.getSearchResultsTripList({ timeout: 30000 });
+      await expect(list, `[Trips.verifySearchResultsDoNotShowTraveller] Expected the search-results pane to render a trip list before checking that "${traveller}" is absent, but it was not visible.`)
+        .toBeVisible({ timeout: 10000 });
+      const cards = tripsPage.getSearchResultsTripCardsLocator();
+      await expect(cards.first(), `[Trips.verifySearchResultsDoNotShowTraveller] The search returned NO trips at all, so the absence of "${traveller}" proves nothing about the filter. Expected a non-empty result set.`)
+        .toBeVisible({ timeout: 15000 });
+
+      const names = tripsPage.getResultTripsForTravellerLocator(traveller);
+      await expect(names, `[Trips.verifySearchResultsDoNotShowTraveller] Expected no search-results trip to list the traveller "${traveller}", but at least one did. The "My trips only" filter should have excluded other travellers' trips.`)
+        .toHaveCount(0, { timeout: 15000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifySearchResultsDoNotShowTraveller] Failed to verify the traveller "${traveller}" is absent from the search results. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Ticks a named checkbox filter in the trip-monitor filter panel.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} filterLabel - visible filter label, e.g. "My trips only"
+   */
+  async checkTripsFilter(page, filterLabel) {
+    if (!page) throw new Error('[Trips.checkTripsFilter] page is required');
+    if (typeof filterLabel !== 'string' || filterLabel.length === 0) {
+      throw new Error('[Trips.checkTripsFilter] "filterLabel" must be a non-empty string, got: ' + typeof filterLabel);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Checking trips filter', { filterLabel });
+      const { alreadyChecked } = await tripsPage.checkFilterCheckbox(filterLabel);
+      if (alreadyChecked) {
+        // Surfaced rather than swallowed: "My trips only" is ticked by default for
+        // some accounts (see verifyMyTripsOnlyCheckboxChecked), so this step can be
+        // a no-op and any assertion that follows would pass for the wrong reason.
+        logger.warn(
+          `[Trips.checkTripsFilter] The "${filterLabel}" filter was ALREADY checked — this step changed nothing. Any assertion that depends on the filter turning on here may pass for the wrong reason.`
+        );
+      }
+    } catch (err) {
+      throw new Error(
+        `[Trips.checkTripsFilter] Failed to check the "${filterLabel}" filter on the trips page. Original: ${err.message}`
       );
     }
   },

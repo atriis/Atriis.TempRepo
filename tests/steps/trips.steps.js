@@ -6,6 +6,11 @@ const logger = require("@utils/logger").child("Trips");
 
 setDefaultTimeout(120000);
 
+// Visible label of the tab my-trips.vue renders for a submitted search. The two
+// steps below name it in their phrase instead of taking it as a parameter, so it
+// is declared once here rather than repeated at each call site.
+const SEARCH_RESULTS_TAB = "Search results";
+
 // ===== WHEN STEPS =====
 
 When("I navigate to the trips page", async function () {
@@ -77,7 +82,7 @@ When("I search the past trips for {string}", async function (term) {
 
 When("I submit the trips search", async function () {
   logger.info("Submitting the trips search");
-  throw new Error("TODO: implement 'I submit the trips search' — press Enter on the trips search input to run the search");
+  await Trips.submitTripsSearch(this.page);
 });
 
 When("I expand the trips search", async function () {
@@ -87,7 +92,7 @@ When("I expand the trips search", async function () {
 
 When("I check the {string} filter on the trips page", async function (filterLabel) {
   logger.info("Checking trips filter", { filterLabel });
-  throw new Error(`TODO: implement 'I check the {string} filter on the trips page' — tick the "${filterLabel}" filter checkbox`);
+  await Trips.checkTripsFilter(this.page, filterLabel);
 });
 
 When("I uncheck the {string} filter on the trips page", async function (filterLabel) {
@@ -117,7 +122,7 @@ When("I filter the search results by trip status {string}", async function (stat
 
 Then("the trips search suggestions dropdown should be displayed", async function () {
   logger.info("Verifying trips search suggestions dropdown is displayed");
-  throw new Error("TODO: implement 'the trips search suggestions dropdown should be displayed' — assert the search suggestions popper is visible");
+  await Trips.verifyTripsSearchSuggestionsDisplayed(this.page);
 });
 
 Then("the trips search should offer to expand the search", async function () {
@@ -127,27 +132,32 @@ Then("the trips search should offer to expand the search", async function () {
 
 Then("a search results tab should be displayed", async function () {
   logger.info("Verifying a search results tab is displayed");
-  throw new Error("TODO: implement 'a search results tab should be displayed' — assert the 'Search results' tab is present");
+  await Trips.verifyTripsTabDisplayed(this.page, SEARCH_RESULTS_TAB);
 });
 
 Then("the search results tab should no longer be displayed", async function () {
   logger.info("Verifying the search results tab is no longer displayed");
-  throw new Error("TODO: implement 'the search results tab should no longer be displayed' — assert the 'Search results' tab was removed after refresh");
+  await Trips.verifyTripsTabNotDisplayed(this.page, SEARCH_RESULTS_TAB);
 });
 
 Then("the search results should display a trip list", async function () {
   logger.info("Verifying the search results display a trip list");
-  throw new Error("TODO: implement 'the search results should display a trip list' — assert the search-results pane renders trip cards");
+  await Trips.verifySearchResultsTripListDisplayed(this.page);
 });
 
 Then("the search results should show a trip for traveller {string}", async function (traveller) {
   logger.info("Verifying search results show a trip for traveller", { traveller });
-  throw new Error(`TODO: implement 'the search results should show a trip for traveller {string}' — assert a search-results trip lists "${traveller}" in its passengers`);
+  await Trips.verifySearchResultsShowTraveller(this.page, traveller);
+});
+
+Then("the search results should not show a trip for traveller {string}", async function (traveller) {
+  logger.info("Verifying search results do not show a trip for traveller", { traveller });
+  await Trips.verifySearchResultsDoNotShowTraveller(this.page, traveller);
 });
 
 Then("the {string} trips tab should be displayed", async function (tabName) {
   logger.info("Verifying trips tab is displayed", { tabName });
-  throw new Error(`TODO: implement 'the {string} trips tab should be displayed' — assert the "${tabName}" trips tab is shown`);
+  await Trips.verifyTripsTabDisplayed(this.page, tabName);
 });
 
 Then("the trips results count should be {string}", async function (expectedCount) {
