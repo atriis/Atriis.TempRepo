@@ -673,6 +673,19 @@ Then("I should see route that contains {string} to {string}", async function (ex
   await Cart.verifyRailRouteInCart(this.page, expectedOrigin, expectedDestination);
 });
 
+// The two leg-specific variants of the route assertion above. uk-rail-quote-card.vue renders one
+// segment-route row per quote segment in journey order, so the outbound leg is row 0 and the
+// inbound leg of a round trip is row 1 — which is the whole point of the inbound-order check.
+Then("the cart should show {string} to {string} for the Evolvi outbound leg", async function (expectedOrigin, expectedDestination) {
+  logger.info("Verifying the Evolvi outbound leg route in the cart", { expectedOrigin, expectedDestination });
+  await Cart.verifyRailRouteInCart(this.page, expectedOrigin, expectedDestination, { legIndex: 0 });
+});
+
+Then("the cart should show {string} to {string} for the Evolvi inbound leg", async function (expectedOrigin, expectedDestination) {
+  logger.info("Verifying the Evolvi inbound leg route in the cart", { expectedOrigin, expectedDestination });
+  await Cart.verifyRailRouteInCart(this.page, expectedOrigin, expectedDestination, { legIndex: 1 });
+});
+
 When("I extract cancellation policy from cart", async function () {
   logger.info("Extracting cancellation policy from cart");
   this.cartCancellationPolicy = await Cart.getCancellationPolicyFromCart(this.page);

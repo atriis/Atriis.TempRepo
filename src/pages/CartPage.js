@@ -407,8 +407,8 @@ const SELECTORS = {
   // holds exactly two <p> nodes — origin (`segment.originForSearch`) then destination
   // (`segment.destinationForSearch`) — separated by an arrow_right_alt icon span. Both values are
   // the supplier's own "Station Name (CRS)" strings with a space forced before the bracket
-  // (`.replace('(', ' (')`), e.g. "Newcastle (NCL)". Index 0 is the outbound leg — see
-  // getUkRailRoute, which reads the first row only.
+  // (`.replace('(', ' (')`), e.g. "Newcastle (NCL)". Rows follow journey order, so index 0 is the
+  // outbound leg and index 1 the inbound leg of a round trip — see getUkRailRoute.
   UK_RAIL_SEGMENT_ROUTE: '.uk-rail-quote-card .uk-rail-segment-info .segment-route',
   // The two station <p> nodes of a single UK_RAIL_SEGMENT_ROUTE row, which holds nothing else but
   // them and the arrow icon span between them. ':scope >' marks this as resolved RELATIVE to a row
@@ -5339,8 +5339,9 @@ class CartPage {
 
   /**
    * Reads the origin and destination stations of a UK rail (Evolvi) quote leg in the cart.
-   * @param {number} legIndex - Zero-based leg index; 0 is the outbound leg
-   * @param {number} timeout - Maximum wait time in milliseconds
+   * @param {object} [options] - Read options
+   * @param {number} [options.legIndex] - Zero-based leg index; 0 is the outbound leg
+   * @param {number} [options.timeout] - Maximum wait time in milliseconds
    * @returns {Promise<{origin: string, destination: string}>} The leg's route stations
    */
   async getUkRailRoute({ legIndex = 0, timeout = 30000 } = {}) {

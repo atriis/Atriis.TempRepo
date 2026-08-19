@@ -44,6 +44,21 @@ function resolveDirection(methodName, direction) {
   return resolved;
 }
 
+/**
+ * Waits for the Evolvi results and adds the cheapest suggested fare to the trip.
+ *
+ * Shared by the one-way and round-trip entry points below, which differ only in what was searched:
+ * a suggested fare already prices the whole journey, so both end in the same single selection plus
+ * "Add to trip". Module-local so it stays out of the step-facing vocabulary.
+ *
+ * @param {import('playwright').Page} page - Playwright page instance
+ */
+async function addCheapestSuggestedFareToTrip(page) {
+  const resultsPage = getPageObject(page, EvolviResultsPage);
+  await resultsPage.waitForOutboundText();
+  await EvolviResults.selectCheapestSuggestedFare(page);
+}
+
 const EvolviResults = {
   /** Selects the cheapest suggested fare and adds it to the trip */
   async selectCheapestSuggestedFare(page) {
@@ -60,30 +75,22 @@ const EvolviResults = {
    * Complete workflow to add an Evolvi one-way option.
    */
   async addEvolviOneWayToTrip(page) {
-    const resultsPage = getPageObject(page, EvolviResultsPage);
-
-    await resultsPage.waitForOutboundText();
-    await EvolviResults.selectCheapestSuggestedFare(page);
+    await addCheapestSuggestedFareToTrip(page);
 
     return { workflowCompleted: true, selected: true };
   },
 
   /**
    * Complete workflow to add an Evolvi round trip.
-   * Requires two selections before adding to trip.
+   *
+   * The suggested-fares panel prices the return journey as a whole, so the cheapest suggested fare
+   * already carries both legs: one selection plus one "Add to trip" builds the round-trip quote,
+   * the same shape as a one way. There is no second leg to pick afterwards and no second "Add to
+   * trip" to click — the app leaves the results page for the trip overview as soon as the quote is
+   * created, so anything that clicks again waits out its timeout against a button that is gone.
    */
   async addEvolviRoundtripToTrip(page) {
-    const resultsPage = getPageObject(page, EvolviResultsPage);
-
-    // First leg
-    await resultsPage.waitForOutboundText();
-    await EvolviResults.selectCheapestSuggestedFare(page);
-
-    // Second leg
-    await resultsPage.waitForOutboundText();
-    await EvolviResults.selectCheapestSuggestedFare(page);
-
-    await Results.waitAndClickAddToTripButton(page);
+    await addCheapestSuggestedFareToTrip(page);
 
     return { addedToTrip: true };
   },

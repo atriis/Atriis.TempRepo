@@ -6,13 +6,21 @@ const { normalizeText } = require("@utils/text");
  */
 
 /**
+ * The UK Rail search form itself (evolvi-search-inputs.vue's root). Every other product's form stays
+ * mounted behind its tab, so `:visible` is what makes this mean "the UK Rail form is on screen" —
+ * and its leaving the screen is the proof that a Search click actually submitted. Hoisted out of
+ * SELECTORS because everything inside the form resolves against it.
+ */
+const SEARCH_FORM = ".uk-rail-search:visible";
+
+/**
  * The split-type radio group inside Advanced search, rendered only while the split-ticket checkbox
  * is checked (`v-if="railInfo.isSplitTicket"`). It carries no class of its own, so it is addressed
  * by the one thing unique to it: `.radio-info` is rendered nowhere else in the UK Rail search form.
  * Hoisted out of SELECTORS because three of its entries build on it.
  */
 const SPLIT_TICKET_TYPE_RADIO_GROUP =
-  ".uk-rail-search:visible .checkbox-container .el-radio-group:has(.radio-info)";
+  `${SEARCH_FORM} .checkbox-container .el-radio-group:has(.radio-info)`;
 
 const SELECTORS = {
   SPLIT_TICKET_CHECKBOX:
@@ -27,8 +35,7 @@ const SELECTORS = {
   // app-select passes a `name`, so position inside that container is the only stable handle.
   // `:visible` keeps the other products' search forms — mounted but hidden while the Rail tab is
   // active — from being matched first by DOM order.
-  TRAVELERS_COUNT_SELECT:
-    ".uk-rail-search:visible .extra-details-container > .app-column:first-child .el-select",
+  TRAVELERS_COUNT_SELECT: `${SEARCH_FORM} .extra-details-container > .app-column:first-child .el-select`,
   // Option rows of the open traveller-count select. app-select renders through el-select/el-option,
   // so each option is `<li class="el-select-dropdown__item"><span>3 Traveller</span></li>` inside the
   // shared `.app-select-popper`. Only one popper is open at a time, so `:visible` on the popper
@@ -50,7 +57,7 @@ const SELECTORS = {
   // inherited class and drops it (verified live — 0 matches for `.evoli-splittix-Info`, 1 for this
   // selector). The UK Rail search form mounts exactly one app-tooltip, so scoping to the form is
   // enough to identify it.
-  SPLIT_TICKET_INFO_TRIGGER: ".uk-rail-search:visible .app-tooltip__content",
+  SPLIT_TICKET_INFO_TRIGGER: `${SEARCH_FORM} .app-tooltip__content`,
   // app-tooltip renders through el-tooltip with popper-class "app-tooltip", appended at body
   // level, so the popper is NOT reachable under `.uk-rail-search`. Its description carries the
   // $t('ukRail.splitTixInformation') line the manual test quotes.
@@ -67,11 +74,30 @@ const SELECTORS = {
   // popper-class of its own, so the only way to tell it apart from the app-tooltip popper above
   // is to exclude that one.
   SPLIT_TICKET_TYPE_TOOLTIP: ".el-popper.is-light:visible:not(.app-tooltip)",
+
+  SEARCH_FORM,
 };
 
 class EvolviSearchPage {
   constructor(page) {
     this.page = page;
+  }
+
+  /**
+   * Reports whether the UK Rail search form has left the screen, which is how a submitted search is
+   * told apart from a swallowed Search click. Waits up to `timeout` for it to go, then answers with
+   * a boolean instead of throwing so a caller can retry the click.
+   *
+   * @param {number} [timeout=15000]
+   * @returns {Promise<boolean>} true once the form is gone, false if it is still on screen
+   */
+  async isSearchFormGone(timeout = 15000) {
+    try {
+      await this.page.locator(SELECTORS.SEARCH_FORM).first().waitFor({ state: "hidden", timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /** Toggles the "Request Split Ticket" checkbox */

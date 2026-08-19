@@ -14,6 +14,41 @@ const logger = require("@utils/logger").child("EvolviSearch");
  * High-level business actions for UK Rail searches.
  */
 
+/**
+ * Clicks Search and confirms the form actually submitted, clicking again when it did not.
+ *
+ * Picking the return date leaves Element Plus's date popper closing while vuelidate re-runs over the
+ * returnDate/returnTime rules a "return" search adds. A Search click that lands inside that window is
+ * swallowed: the button reports itself enabled, the click does nothing, and the run sits on a
+ * filled-in but never-submitted form until some later step times out against a page that never
+ * changed — which reads as that step's bug, not as a search that never ran. The form leaving the
+ * screen is the only reliable proof the click took.
+ *
+ * @param {object} searchPage - SearchPage page object
+ * @param {object} evolviSearchPage - EvolviSearchPage page object
+ * @param {object} [options]
+ * @param {number} [options.attempts=3] - How many Search clicks to try before giving up
+ * @returns {Promise<{attempts: number}>} How many clicks it took
+ */
+async function clickSearchUntilSubmitted(searchPage, evolviSearchPage, { attempts = 3 } = {}) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    await searchPage.waitAndClickSearchButton();
+
+    if (await evolviSearchPage.isSearchFormGone()) {
+      if (attempt > 1) logger.info("The UK Rail search submitted on a repeat click", { attempts: attempt });
+      return { attempts: attempt };
+    }
+
+    logger.warn("The UK Rail search form is still on screen after clicking Search, clicking again", { attempt });
+  }
+
+  throw new Error(
+    `[EvolviSearch.clickSearchUntilSubmitted] The UK Rail search was never submitted: the search form was still ` +
+    `on screen after ${attempts} Search clicks. The form is filled in, so the click is being swallowed rather ` +
+    `than rejected — the date popper or the form's revalidation is most likely still holding the button.`,
+  );
+}
+
 const EvolviSearch = {
   /**
    * Selects the UK Rail provider in the search UI.
@@ -362,11 +397,10 @@ const EvolviSearch = {
       endIndex: null,
     });
 
-    // Wait for the button to leave its disabled state before clicking, as the one-way flow does.
-    // A "return" search adds returnDate/returnTime to evolvi-search-inputs.ts's vuelidate rules,
-    // and the button stays .is-disabled until that revalidation settles — clicking it before then
-    // is silently swallowed, leaving the run sitting on a filled-in but never-submitted form.
-    await searchPage.waitAndClickSearchButton();
+    // A "return" search adds returnDate/returnTime to evolvi-search-inputs.ts's vuelidate rules, and
+    // the button stays .is-disabled until that revalidation settles. Waiting for it to be enabled is
+    // necessary but not sufficient — see clickSearchUntilSubmitted.
+    await clickSearchUntilSubmitted(searchPage, evolviSearchPage);
 
     return {
       searched: true,

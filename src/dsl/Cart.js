@@ -3287,7 +3287,8 @@ const Cart = {
    * @param {import('playwright').Page} page - Playwright page instance
    * @param {string} expectedOrigin - Text expected in the origin station
    * @param {string} expectedDestination - Text expected in the destination station
-   * @param {number} legIndex - Zero-based leg index; 0 is the outbound leg
+   * @param {object} [options] - Read options
+   * @param {number} [options.legIndex] - Zero-based leg index; 0 is the outbound leg
    * @returns {Promise<{origin: string, destination: string}>} The route read from the cart
    */
   async verifyRailRouteInCart(page, expectedOrigin, expectedDestination, { legIndex = 0 } = {}) {
