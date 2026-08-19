@@ -5135,6 +5135,30 @@ const Cart = {
   },
 
   /**
+   * Verifies a "More details" link is displayed on the trip overview.
+   *
+   * Used as a rendering gate right after a booking completes (test 67503): the trip overview is
+   * re-rendered from the booked trip, and the quote card's own "More details" link is the last part
+   * of it to appear — so reading the post-booking price before it is there can read a stale or
+   * half-rendered amount.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async verifyMoreDetailsLinkDisplayedInTripOverview(page) {
+    if (!page) throw new Error('[Cart.verifyMoreDetailsLinkDisplayedInTripOverview] "page" is required.');
+    logger.debug('Checking the "More details" link is displayed in the trip overview');
+    const cartPage = getPageObject(page, CartPage);
+
+    if (!(await cartPage.isMoreDetailsLinkVisible())) {
+      throw new Error(
+        'Expected a "More details" link on the trip overview, but none became visible. The trip ' +
+          'overview never finished rendering the booked quote card, so any price read from it now ' +
+          'would not be the booked price.'
+      );
+    }
+  },
+
+  /**
    * Opens the More Details drawer for the LAST car quote card in the trip (the most recently
    * added one). Use when two or more cars are in the same trip, since they can carry identical
    * pick-up/drop-off dates and are otherwise indistinguishable by text.

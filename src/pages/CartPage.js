@@ -291,6 +291,11 @@ const SELECTORS = {
   // and flight cart items (.more-details-btn). Used by Cart.openMoreDetailsInCart
   // so a single Gherkin step works across hotel and flight manual quotes.
   MORE_DETAILS_BUTTON_ANY: ".more-details-btn, .more-details",
+  // Any VISIBLE "More details" trigger, whatever the product: flights/rail render an app-btn
+  // `.more-details-btn`, hotels/cars a `.more-details` wrapper. `:visible` keeps the mobile
+  // duplicate of the same card out. Used as the "the booked trip overview has finished rendering"
+  // gate before a post-booking price is read (test 67503).
+  MORE_DETAILS_BUTTON_ANY_VISIBLE: '.more-details-btn:visible, .more-details:visible',
   // Any visible Element-Plus drawer (used to read text from whichever drawer is currently open)
   ANY_VISIBLE_DRAWER: '.el-drawer:visible, .parking-details-drawer:visible',
   // Inner anchor inside a More Details wrapper (car quote uses div > a pattern)
@@ -4431,6 +4436,20 @@ class CartPage {
       await this.page.waitForTimeout(500);
     }
     return false;
+  }
+
+  /**
+   * Whether a "More details" trigger is visible on the current cart / trip overview.
+   * @param {number} [timeout=60000]
+   * @returns {Promise<boolean>}
+   */
+  async isMoreDetailsLinkVisible(timeout = 60000) {
+    return this.page
+      .locator(SELECTORS.MORE_DETAILS_BUTTON_ANY_VISIBLE)
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false);
   }
 
   /**

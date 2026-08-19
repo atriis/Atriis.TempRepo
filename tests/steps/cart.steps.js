@@ -2667,6 +2667,14 @@ When("I click more details in cart", async function () {
   await Cart.openMoreDetailsInCart(this.page);
 });
 
+// A rendering gate, not a feature check: after "I complete the booking" the app returns to the trip
+// overview and rebuilds it from the booked trip, and the quote card's "More details" link is the
+// last part to render — so a price read before it is there can be the pre-booking one (test 67503).
+Then("the more details link should be displayed in the trip overview", async function () {
+  logger.info("Verifying the More details link is displayed in the trip overview");
+  await Cart.verifyMoreDetailsLinkDisplayedInTripOverview(this.page);
+});
+
 When("I extract the price from more details", async function () {
   logger.info("Extracting price from More Details drawer");
   this.moreDetailsPrice = await Cart.extractPriceFromMoreDetails(this.page);

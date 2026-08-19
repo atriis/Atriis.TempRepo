@@ -17,18 +17,13 @@ Feature: 67503 Evolvi - Price does not change after Multi Traveler booking
     And I have added a random guest traveler
     And I have added a random guest traveler
     When I search for a one way Evolvi train from "licTo105"
-    And I close mandatory notifications if displayed
-    And I select the first available Evolvi fare
+    And I acknowledge the push notification
     And I add an Evolvi one way to the trip
-    Then the cart status should be Pending booking
+    And the booking status should be "Pending booking"
     When I extract the price at index 0 from "cart"
-    # TODO: fill the Evolvi UK Rail "Client Reference" extras row in the cart — expand the row, type the free-text client reference values, and save it (the generic mandatory-extras step only handles radio and dropdown rows)
-    And I fill in the Evolvi client reference fields in cart
     And I fill mandatory Evolvi fields in cart
-    And I accept Terms & Conditions
-    And I click the proceed to checkout button
+    And I proceed to checkout
     And I complete the booking
-    # TODO: assert the "More details" link is displayed on the booked trip overview, confirming the trip overview has finished rendering before the post-booking price is read
     Then the more details link should be displayed in the trip overview
     When I extract the price at index 0 from "cart"
     Then the extracted price at index 0 should equal the extracted price at index 1 within tolerance of 0.39
