@@ -27,4 +27,5 @@ Feature: 83094 Iberia NDC - New Flight Flow - OfferPrice is not re-sent when fli
     And I add to cart from pricing options new flight flow
     Then the booking status should be "Pending booking"
     And no additional "OfferPrice" requests should have been sent after "SelectFlight"
+    And every "OfferPrice" request should reference a different "OfferID"
     Then I successfully cancel the trip

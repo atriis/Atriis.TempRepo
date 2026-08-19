@@ -265,9 +265,11 @@ async function downloadPayload({ baseUrl, tripId, rowKey, source, operationTimeo
  *                                                  its response share the same rowKey, so this is
  *                                                  how the counterpart of a captured payload is read.
  * @param {number}  [options.lookbackMinutes]     - defaults to config value
+ * @param {number}  [options.timeoutMs]           - whole-operation budget; defaults to config value.
+ *                                                  Raise it when downloading many payloads at once.
  * @returns {Promise<{ payload: string, metadata: object }>}
  */
-async function fetchPayloadFromStorage({ source, requestType, tripId, transactionId, sid, rowKey, lookbackMinutes, returnAllMatches = false, maxMatches } = {}) {
+async function fetchPayloadFromStorage({ source, requestType, tripId, transactionId, sid, rowKey, lookbackMinutes, returnAllMatches = false, maxMatches, timeoutMs } = {}) {
   if (!source || !["request", "response"].includes(source)) {
     throw new Error(`source must be "request" or "response", got: ${source}`);
   }
@@ -288,7 +290,9 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
   const token = payloadValidation.internalAtriisToken || null;
 
   const lookback = lookbackMinutes ?? payloadValidation.lookbackMinutes;
-  const operationTimeoutMs = payloadValidation.timeoutMs;
+  // The budget covers the whole operation, downloads included, so callers that pull many payloads
+  // in one call (rather than just the latest) can raise it to match what they are fetching.
+  const operationTimeoutMs = timeoutMs ?? payloadValidation.timeoutMs;
   const configuredMaxRequestsMatches = payloadValidation.maxRequestsMatches;
   const maxRequestsMatches = Number(maxMatches ?? configuredMaxRequestsMatches);
   const requestTypeMatcher = buildRequestTypeMatcher(requestType);

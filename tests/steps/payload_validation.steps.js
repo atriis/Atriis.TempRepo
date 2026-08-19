@@ -580,6 +580,24 @@ Then(
 );
 
 Then(
+  "every {string} request should reference a different {string}",
+  async function (requestType, attributeName) {
+    await runPayloadValidationStep(this, "expectRequestAttributeValuesAreUnique", {
+      requestType,
+      attributeName,
+    }, async () => {
+      logger.info("Validating request attribute values are unique", { requestType, attributeName });
+      await PayloadValidation.expectRequestAttributeValuesAreUnique(
+        this.page,
+        this,
+        requestType,
+        attributeName
+      );
+    });
+  }
+);
+
+Then(
   "in the captured {string} payload for request type {string}, path {string} should not contain {string}",
   async function (source, requestType, path, expectedValue) {
     await runPayloadValidationStep(this, "expectCapturedPayloadPathNotContains", {

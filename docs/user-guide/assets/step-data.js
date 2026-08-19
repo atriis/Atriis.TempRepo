@@ -2,7 +2,7 @@
 // Re-run: node docs/user-guide/scan-steps.js
 window.STEP_DATA = {
   "generatedFrom": "tests/steps/*.js",
-  "count": 1856,
+  "count": 1862,
   "products": [
     "Cars",
     "Flights",
@@ -1418,6 +1418,51 @@ window.STEP_DATA = {
       ]
     },
     {
+      "type": "When",
+      "text": "I wait to see the change button on the selected Benerail leg",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select a Benerail {string} from more options",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I click Benerail add to trip button",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "BenerailResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the cart should show {string} for the Benerail outbound in cart",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the cart should show {string} for the Benerail inbound in cart",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
       "type": "Then",
       "text": "I verify that the first train company of the route for the first result is {string}",
       "file": "benerail_results.steps.js",
@@ -1530,13 +1575,6 @@ window.STEP_DATA = {
       "dsl": []
     },
     {
-      "type": "Then",
-      "text": "the approval flow should have the correct approvers for duration and origin rules",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
       "type": "When",
       "text": "I cancel the Benerail trip with warning and continue",
       "file": "benerail_results.steps.js",
@@ -1559,10 +1597,48 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the mobile barcode should be visible in cart and itinerary mail",
+      "text": "I should see Benerail mobile barcode in trip overview",
       "file": "benerail_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I click Benerail mobile barcode",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I should see the QR code",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I close the Benerail mobile barcode dialog",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "Benerail mobile bar code in share itinerary is displayed",
+      "file": "benerail_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
@@ -1600,62 +1676,6 @@ window.STEP_DATA = {
       "dsl": [
         "Cart"
       ]
-    },
-    {
-      "type": "When",
-      "text": "I verify the second result is in 2nd class",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I select the second Benerail result",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I expand the 1st class options for the first Benerail result",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the 1st class alternative should be visible for the first result",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I select the 1st class Benerail option and add to trip",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the cart should show 1st Class for the Benerail booking",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I open the Benerail seat selection in cart",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the Book and Finalize button should be visible in the Benerail seat dialog",
-      "file": "benerail_results.steps.js",
-      "product": "Rail",
-      "dsl": []
     },
     {
       "type": "When",
@@ -2286,13 +2306,6 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the dynamic fields section should be visible in the Benerail search form",
-      "file": "benerail_search.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the linked reference questions should be visible in the Benerail search form",
       "file": "benerail_search.steps.js",
       "product": "Rail",
       "dsl": []
@@ -3469,6 +3482,15 @@ window.STEP_DATA = {
       ]
     },
     {
+      "type": "Then",
+      "text": "the trip overview approvers should be:",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
       "type": "When",
       "text": "I click the share quote button",
       "file": "cart.steps.js",
@@ -4592,6 +4614,13 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the countdown tooltip shows the message {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the countdown tooltip shows the message {string} with between {int} and {int} minutes remaining",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": []
@@ -6018,6 +6047,15 @@ window.STEP_DATA = {
       ]
     },
     {
+      "type": "Then",
+      "text": "the passenger info section should be highlighted in red",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
       "type": "When",
       "text": "I click passenger info in extras",
       "file": "cart.steps.js",
@@ -6574,6 +6612,15 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the proceed to checkout button should be disabled",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the proceed to checkout button should be enabled",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -7659,13 +7706,6 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the saved card mask should be visible as {string}",
-      "file": "cart_fop.steps.js",
-      "product": "Shared",
-      "dsl": []
-    },
-    {
-      "type": "Then",
       "text": "the last {int} digits of the credit card {string} should be displayed in the FOP section",
       "file": "cart_fop.steps.js",
       "product": "Shared",
@@ -7685,7 +7725,9 @@ window.STEP_DATA = {
       "text": "CVV should display {string}",
       "file": "cart_fop.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "CartPayment"
+      ]
     },
     {
       "type": "Then",
@@ -9217,6 +9259,60 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I extract the first outbound departure hour available",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select the outbound first price available",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "outbound is displayed on top of the page with the same extracted outbound departure hour",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I extract the first inbound departure hour available",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select the inbound first price available",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "inbound is displayed on top of the page with the same extracted inbound departure hour",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I close mandatory notifications if displayed",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
@@ -9308,27 +9404,6 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the Evolvi no-results helper message should be displayed",
-      "file": "evolvi_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the Evolvi no results title should be displayed",
-      "file": "evolvi_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the Evolvi expiry tooltip should show at least {int} minutes",
-      "file": "evolvi_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
       "text": "the FOP owner should be displayed as Paid by TMC",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
@@ -9340,6 +9415,15 @@ window.STEP_DATA = {
       "file": "evolvi_results.steps.js",
       "product": "Rail",
       "dsl": []
+    },
+    {
+      "type": "When",
+      "text": "I select UK Rail in the search form",
+      "file": "evolvi_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviSearch"
+      ]
     },
     {
       "type": "When",
@@ -9358,13 +9442,6 @@ window.STEP_DATA = {
       "dsl": [
         "EvolviSearch"
       ]
-    },
-    {
-      "type": "When",
-      "text": "I select UK Rail in the search form",
-      "file": "evolvi_search.steps.js",
-      "product": "Rail",
-      "dsl": []
     },
     {
       "type": "When",
@@ -9388,18 +9465,13 @@ window.STEP_DATA = {
       "dsl": []
     },
     {
-      "type": "When",
-      "text": "I select Evolvi in the search product selector",
-      "file": "evolvi_search.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
       "type": "Then",
       "text": "the single traveler-only option should not be displayed in Evolvi search",
       "file": "evolvi_search.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviSearch"
+      ]
     },
     {
       "type": "When",
@@ -13412,6 +13484,15 @@ window.STEP_DATA = {
       ]
     },
     {
+      "type": "When",
+      "text": "I capture the {string} payload from the previous {string} from Storage",
+      "file": "payload_validation.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "PayloadValidation"
+      ]
+    },
+    {
       "type": "Then",
       "text": "the captured {string} payload for request type {string} should contain {string}",
       "file": "payload_validation.steps.js",
@@ -13487,6 +13568,33 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "in the captured {string} payload for request type {string}, path {string} should contain {string}",
+      "file": "payload_validation.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "PayloadValidation"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I capture the number of {string} requests sent for the trip",
+      "file": "payload_validation.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "PayloadValidation"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "no additional {string} requests should have been sent after {string}",
+      "file": "payload_validation.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "PayloadValidation"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "every {string} request should reference a different {string}",
       "file": "payload_validation.steps.js",
       "product": "Shared",
       "dsl": [
@@ -15073,20 +15181,6 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I open the traveler drawer",
-      "file": "search.steps.js",
-      "product": "Shared",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I click add guest traveler",
-      "file": "search.steps.js",
-      "product": "Shared",
-      "dsl": []
-    },
-    {
-      "type": "When",
       "text": "I open the add guest traveler form",
       "file": "search.steps.js",
       "product": "Shared",
@@ -15132,17 +15226,21 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the gender field should display Please select gender",
+      "text": "the gender field placeholder should display {string}",
       "file": "search.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "Search"
+      ]
     },
     {
       "type": "When",
       "text": "I close the guest traveler dialog",
       "file": "search.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "Search"
+      ]
     },
     {
       "type": "Given",

@@ -17,15 +17,17 @@ applyTo: '**/*.feature, **/payload_validation.steps.js, **/PayloadValidation.js'
 - ✅ Dynamic world placeholders for runtime values (`{tripNumber}`, `{transactionId}`, `{sid}`)
 - ✅ Deep JSON subset matching (arrays + object nesting)
 - ✅ XML and JSON validation with loose structure matching
+- ✅ Request counting — prove a supplier call was **not** re-sent
 
 ## Supported Step Definitions
 
 | When | Then |
 |------|------|
 | Capture payloads by request type | Assert contains/not contains with operators |
-| | Multi-line XML assertions (exact tag match) |
+| Capture a request **count** as a baseline | Multi-line XML assertions (exact tag match) |
 | | Multi-line JSON assertions (deep subset match) |
 | | JSON path exists/contains/not contains |
+| | Assert no additional requests were sent since the baseline |
 
 > **Priority rules:** Always run a capture step before assertions. Use existing step definitions; do not invent new expression types.
 
@@ -112,6 +114,34 @@ Then the captured "request" payload for request type "Booking" should contain th
 ```
 Expected structure is matched as a deep subset of actual payload. If the payload is malformed or cannot be parsed as JSON, the step will throw an assertion error with a message indicating the parse failure and the request type — treat this as a contract violation and investigate the API response before adjusting the test.
 
+### 5. Request Count — Prove a Call Was Not Re-Sent
+
+Use when the requirement is *"the data already retrieved must be reused"*, not *"the payload must contain X"*. These two steps need **no** capture-payload step — they query the trip's request log directly.
+
+```gherkin
+# Drive the flow until the request under test has already been sent
+Then the outbound leg brand cards are displayed
+When I capture the number of "OfferPrice" requests sent for the trip
+
+# Run the action that must not re-trigger it
+And I add to cart from pricing options new flight flow
+
+# Assert, anchored on a request the action is guaranteed to send
+Then no additional "OfferPrice" requests should have been sent after "SelectFlight"
+
+# And once every request of that type has been sent, that none of them repeat
+And every "OfferPrice" request should reference a different "OfferID"
+```
+
+- **Baseline first.** The assertion throws `No baseline count captured for "..."` without it.
+- **The capture fails fast** if that request type was never logged — the flow never reached the supplier (wrong carrier / filter / test data). Fix the setup; do not move the capture step later.
+- **The anchor is mandatory and must be a real request the action sends.** It proves the new traffic has been published, so an unchanged count means *"nothing was re-sent"* and not *"nothing logged yet"*.
+- **Counts are polled** until two consecutive reads agree (2 s interval, 30 s cap) because distributor logs publish asynchronously. On timeout the DSL logs a warning and uses the last read — it does not fail.
+- **Trip-scoped.** The count covers the whole trip, and `world.tripId` must already be set.
+- **A count alone can be fooled.** It only proves the total did not *grow* after a point — if the same entity were requested twice from the very start, the baseline would just begin higher and the assertion would still pass. Pair it with `every "..." request should reference a different "..."`, which inspects every request in the trip and fails on any repeated attribute value. Run that one last, once all such requests have been sent.
+
+Canonical example: `tests/features/flights/flights_ib_ndc/flights_ib_ndc_non_booking/83094_ib_ndc_no_offerprice_resent_on_add_to_cart.feature`
+
 ## Scenario Identifiers (world context)
 
 These are automatically captured during booking flow:
@@ -196,9 +226,11 @@ Error: Expected content not found in any of the 3 captured request payload(s) fo
 - ✅ Use specific request types (e.g., "Amadeus4.Car_Sell" not "Car")
 - ✅ Use `.map()` for flexible pattern matching instead of exact strings
 - ✅ Use multi-line JSON for full structure validation
+- ✅ Use the request-count steps for "must not be re-sent" requirements, always with an anchor
 
 ### DON'T
-- ❌ Skip the capture step before assertions
+- ❌ Skip the capture step before assertions (content **and** request count)
+- ❌ Use a request-count assertion without an anchor request that the action under test really sends
 - ❌ Create new expression types
 - ❌ Hardcode dynamic values — use `{tripNumber}`, `{transactionId}`, `{sid}`
 - ❌ Assume order of keys in JSON

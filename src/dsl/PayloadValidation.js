@@ -9,6 +9,12 @@ const COUNT_POLL_INTERVAL_MS = 2000;
 const COUNT_STABLE_READS = 2;
 const COUNT_SETTLE_TIMEOUT_MS = 30000;
 const ANCHOR_TIMEOUT_MS = 60000;
+// Upper bound when every request of a type must be downloaded and inspected, not just the latest
+// few. Well above any realistic per-trip volume so the set is never silently truncated.
+const MAX_REQUESTS_TO_INSPECT = 200;
+// Downloading every payload takes far longer than fetching the latest one, and the volume is
+// highest exactly when a request is being repeated - the case this check exists to catch.
+const INSPECT_ALL_TIMEOUT_MS = 180000;
 
 function buildKey(source, requestType) {
   return `${source.toLowerCase()}::${requestType.trim()}`;
@@ -1912,6 +1918,87 @@ const PayloadValidation = {
       `${currentCount - baselineRecord.count} extra request(s) were sent - the previously retrieved pricing ` +
       `data was not reused.`
     ).toBe(baselineRecord.count);
+  },
+
+  /**
+   * Asserts that no two requests of the given type carry the same value for an XML attribute.
+   *
+   * For OfferPrice, the attribute is OfferID: each request should price a different offer, so the
+   * same offer id appearing twice means the supplier was asked to re-price something already priced.
+   * Run this once every request of that type has been sent - it looks at the whole trip.
+   */
+  async expectRequestAttributeValuesAreUnique(page, world, requestType, attributeName) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    if (!attributeName || typeof attributeName !== "string") {
+      throw new Error("attributeName must be a non-empty string");
+    }
+
+    const identifiers = getScenarioIdentifiers(world);
+    if (!identifiers.tripId) {
+      throw new Error(
+        `Cannot inspect "${normalizedRequestType}" requests: no trip id is available on the world context.`
+      );
+    }
+
+    const result = await fetchPayloadFromStorage({
+      source: "request",
+      requestType: normalizedRequestType,
+      tripId: identifiers.tripId,
+      transactionId: identifiers.transactionId,
+      sid: identifiers.sid,
+      returnAllMatches: true,
+      maxMatches: MAX_REQUESTS_TO_INSPECT,
+      timeoutMs: INSPECT_ALL_TIMEOUT_MS,
+    });
+
+    // A truncated set would silently weaken the assertion - duplicates could live in the dropped tail.
+    if (result.metadata.totalMatches > result.metadata.returnedMatches) {
+      throw new Error(
+        `Cannot verify unique "${attributeName}" values: only ${result.metadata.returnedMatches} of ` +
+        `${result.metadata.totalMatches} "${normalizedRequestType}" requests were downloaded. ` +
+        `Raise MAX_REQUESTS_TO_INSPECT so every request is inspected.`
+      );
+    }
+
+    const attributeRegex = new RegExp(`\\b${escapeRegex(attributeName)}="([^"]+)"`, "gi");
+    const requestsByValue = new Map();
+
+    result.matches.forEach((match, index) => {
+      const values = new Set([...match.payload.matchAll(attributeRegex)].map((m) => m[1]));
+      if (values.size === 0) {
+        logger.warn(`No "${attributeName}" found in a "${normalizedRequestType}" request`, {
+          requestIndex: index,
+          rowKey: match.metadata.rowKey,
+        });
+      }
+      for (const value of values) {
+        if (!requestsByValue.has(value)) requestsByValue.set(value, []);
+        requestsByValue.get(value).push(match.metadata.timestamp);
+      }
+    });
+
+    const duplicates = [...requestsByValue.entries()].filter(([, timestamps]) => timestamps.length > 1);
+
+    logger.info(`Checked "${attributeName}" uniqueness across "${normalizedRequestType}" requests`, {
+      requests: result.matches.length,
+      distinctValues: requestsByValue.size,
+      duplicates: duplicates.length,
+    });
+
+    expect(
+      duplicates.length,
+      `Every "${normalizedRequestType}" request must carry a different "${attributeName}", but ` +
+      `${duplicates.length} value(s) were requested more than once across ${result.matches.length} request(s):\n` +
+      duplicates
+        .map(([value, timestamps]) => `  ${attributeName}="${value}" sent ${timestamps.length}x at ${timestamps.join(", ")}`)
+        .join("\n")
+    ).toBe(0);
   },
 };
 

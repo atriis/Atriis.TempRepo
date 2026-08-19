@@ -7,7 +7,9 @@
 **PayloadValidation** is a DSL module for capturing, extracting, and validating API payloads (request/response) in the Atriis Test Automation framework. It supports advanced assertions on XML/JSON payloads, block extraction, key/value checks, pattern matching, and robust fallback logic for parallel API traffic.
 
 - **Primary Use:** Validate that API payloads (captured from Azure Storage) contain expected data at every step of the booking flow.
+- **Request-count checks:** Beyond content assertions, the DSL can also count how many requests of a given type reached the supplier for the current trip — which lets a scenario prove a call was **not** re-sent, and assert that no two of those requests target the same entity (see §2.10).
 - **Integration Points:** Used in Cucumber step definitions (`payload_validation.steps.js`) and referenced in Gherkin feature files (see canonical example below).
+- **Global switch:** Every payload step runs through `runPayloadValidationStep()`, which no-ops (with a warning log) when `PAYLOAD_VALIDATION_ENABLED=false`. This applies to the request-count steps as well.
 
 ---
 
@@ -279,6 +281,105 @@ Then the captured "response" payload for request type "TravelItineraryAddInfoRQ"
 
 ---
 
+### 2.10. Request-count methods
+
+`getRequestCount(...)` · `waitForRequestType(...)` · `captureRequestCount(...)` · `expectRequestCountUnchanged(...)`
+
+These four methods do not assert on payload **content**. They count how many requests of a given type were logged for the current trip, so a scenario can prove that a supplier call was **not** repeated — for example, that pricing already retrieved is reused instead of re-requested when flights are added to the cart.
+
+#### Why the counts are polled
+
+Distributor logs are published asynchronously, so a single read can land mid-burst and return a count that is still growing. Counts are therefore read repeatedly until they stop changing, using these module-level constants in `src/dsl/PayloadValidation.js`:
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `COUNT_POLL_INTERVAL_MS` | `2000` | Delay between reads while a count is settling |
+| `COUNT_STABLE_READS` | `2` | Identical consecutive reads required before a count is trusted |
+| `COUNT_SETTLE_TIMEOUT_MS` | `30000` | Give-up time for settling — logs a **warning** and uses the last read; it does **not** fail the step |
+| `ANCHOR_TIMEOUT_MS` | `60000` | Give-up time while waiting for the anchor request type to appear |
+
+#### 2.10.1. `getRequestCount(world, requestType)`
+
+- **Purpose:** Return how many distributor requests of the given type were logged for the current trip.
+- **Parameters:**
+  - `world`: Test context object (required)
+  - `requestType`: API request type identifier (e.g. `"OfferPrice"`)
+- **Key Logic:** Calls `fetchPayloadFromStorage` with `returnAllMatches: true` and `maxMatches: 1` — only one payload is downloaded because `metadata.totalMatches` already reports every match.
+- **Returns:** `metadata.totalMatches` (number).
+- **Error Handling:** Throws when `world.tripId` is not available, or when the request type was never logged for the trip.
+- **Usage:** Internal — used by the capture/assert methods below.
+
+#### 2.10.2. `waitForRequestType(world, requestType)`
+
+- **Purpose:** Wait until at least one request of the given type has been logged for the trip.
+- **Key Logic:** Polls `getRequestCount()` every `COUNT_POLL_INTERVAL_MS` until it succeeds or `ANCHOR_TIMEOUT_MS` elapses.
+- **Returns:** The count observed once the type is present.
+- **Error Handling:** Throws after `ANCHOR_TIMEOUT_MS`, including the last underlying error.
+- **Usage:** Internal — used as the *anchor* in `expectRequestCountUnchanged()` to prove that the stage under test really reached the supplier before the comparison is made.
+
+#### 2.10.3. `captureRequestCount(page, world, requestType)`
+
+- **Purpose:** Store the current number of requests of a given type as the baseline for a later comparison.
+- **Parameters:**
+  - `page`: Playwright page object (required)
+  - `world`: Test context object (required)
+  - `requestType`: API request type identifier
+- **Key Logic:** Settles the count (see table above), then stores it on the world as `world.capturedRequestCounts[requestType] = { count, capturedAt }`.
+- **Returns:** The baseline count.
+- **Error Handling:** Fails when the type has never been sent — that means the flow under test never reached this supplier, which would make the later comparison meaningless. The error message points at the likely cause (*"Check that the selected flight is really served by the expected supplier"*).
+- **Usage:** Step: `When I capture the number of "{requestType}" requests sent for the trip`
+
+#### 2.10.4. `expectRequestCountUnchanged(page, world, requestType, anchorRequestType)`
+
+- **Purpose:** Assert that no further request of the given type was sent since the baseline was captured.
+- **Parameters:**
+  - `page`: Playwright page object (required)
+  - `world`: Test context object (required)
+  - `requestType`: The request type that must **not** grow (e.g. `"OfferPrice"`)
+  - `anchorRequestType`: A request the flow is known to send **after** the baseline (e.g. `"SelectFlight"` for add to cart)
+- **Key Logic:**
+  1. Reads the baseline from `world.capturedRequestCounts`
+  2. Waits for `anchorRequestType` via `waitForRequestType()`
+  3. Settles the current count for `requestType`
+  4. Asserts current count `===` baseline count
+- **Why the anchor matters:** Waiting for the anchor proves that this stage's traffic has already been published, so an unchanged count means *"nothing was re-sent"* rather than *"nothing has been logged yet"*. Without it the assertion would pass for the wrong reason.
+- **Returns:** void (assertion passes or throws)
+- **Error Handling:**
+  - No baseline captured → `No baseline count captured for "{requestType}". Run the capture step first.`
+  - Count grew → failure message reports baseline, capture timestamp, current count and the number of extra requests, plus the interpretation: *"the previously retrieved pricing data was not reused"*.
+- **Usage:** Step: `Then no additional "{requestType}" requests should have been sent after "{anchorRequestType}"`
+
+#### 2.10.5. `expectRequestAttributeValuesAreUnique(page, world, requestType, attributeName)`
+
+- **Purpose:** Assert that no two requests of the given type carry the same value for an XML attribute — e.g. that every `OfferPrice` prices a *different* offer.
+- **Parameters:**
+  - `page`: Playwright page object (required)
+  - `world`: Test context object (required)
+  - `requestType`: The request type to inspect (e.g. `"OfferPrice"`)
+  - `attributeName`: The XML attribute whose values must all differ (e.g. `"OfferID"`)
+- **Key Logic:**
+  1. Downloads **every** matching request (`maxMatches: MAX_REQUESTS_TO_INSPECT`, with a raised `timeoutMs`)
+  2. Throws if the set was truncated — duplicates could otherwise hide in the dropped tail
+  3. Extracts `attributeName="…"` from each payload and groups requests by value
+  4. Asserts no value appears in more than one request
+- **Why this is not covered by the count check:** a count only proves the total did not *grow* after a point. If the same offer were priced twice from the start, the baseline would simply begin higher and the count assertion would still pass. This one catches repetition wherever it happens in the flow.
+- **Returns:** void (assertion passes or throws)
+- **Error Handling:**
+  - Truncated result set → explicit error naming `MAX_REQUESTS_TO_INSPECT`, never a silent partial check
+  - Duplicates found → failure lists each repeated value with how many times it was sent and at what timestamps
+- **Usage:** Step: `Then every "{requestType}" request should reference a different "{attributeName}"`
+- **When to run it:** after every request of that type has been sent, since it inspects the whole trip.
+
+#### Gotchas
+
+- **Capture step is mandatory** — the assertion throws if no baseline exists for that request type.
+- **Trip-scoped, not step-scoped** — the count covers the whole trip, so the baseline must be captured at the exact point in the flow you want to measure from.
+- **`world.tripId` must be set** — the count cannot be established before the trip exists.
+- **Settling never fails on timeout** — it warns and uses the last read, so an unusually slow log publication could in theory yield a stale count. Check the warning in the logs when a request-count test behaves oddly.
+- **Disabled by the global switch** — with `PAYLOAD_VALIDATION_ENABLED=false` both steps silently no-op, like all other payload steps.
+
+---
+
 ## 3. Helper Functions (Internal)
 
 ### 3.1. Expression Parsers
@@ -324,6 +425,9 @@ All step definitions are in `tests/steps/payload_validation.steps.js`. Here is t
 | `Then in the captured "{source}" payload for request type "{requestType}", path "{path}" should exist` | `expectCapturedPayloadPathExists()` | Assert JSON path exists |
 | `Then in the captured "{source}" payload for request type "{requestType}", path "{path}" should contain "{expectedValue}"` | `expectCapturedPayloadPathContains()` | Assert JSON path contains substring |
 | `Then in the captured "{source}" payload for request type "{requestType}", path "{path}" should not contain "{expectedValue}"` | `expectCapturedPayloadPathNotContains()` | Assert JSON path does not contain substring |
+| `When I capture the number of "{requestType}" requests sent for the trip` | `captureRequestCount()` | Store the current request count as the baseline (§2.10.3) |
+| `Then no additional "{requestType}" requests should have been sent after "{anchorRequestType}"` | `expectRequestCountUnchanged()` | Assert the count did not grow since the baseline (§2.10.4) |
+| `Then every "{requestType}" request should reference a different "{attributeName}"` | `expectRequestAttributeValuesAreUnique()` | Assert no two requests share the same attribute value (§2.10.5) |
 
 ---
 
@@ -331,7 +435,7 @@ All step definitions are in `tests/steps/payload_validation.steps.js`. Here is t
 
 ### 5.1 Canonical Feature File
 
-See [payload_amadeus_city_center_exact_location_address.feature](../tests/features/cars/payload_test/payload_amadeus_city_center_exact_location_address.feature) for a comprehensive, real-world test demonstrating all PayloadValidation assertion types and patterns.
+See [payload_amadeus_city_center_exact_location_address.feature](../tests/features/transportation/cars/payload_test/payload_amadeus_city_center_exact_location_address.feature) for a comprehensive, real-world test demonstrating all PayloadValidation assertion types and patterns.
 
 **Key patterns demonstrated:**
 1. **Block extraction** – `.block("locationAddress")` on response payload, then chain assertions on cached block
@@ -401,11 +505,43 @@ Then the captured "block" payload for request type "Amadeus4.Car_LocationList" s
 ```
 Uses glob patterns (e.g., `MADX*`, `*ABC*`) for flexible matching.
 
+#### Request Count (No Expression)
+```gherkin
+When I capture the number of "OfferPrice" requests sent for the trip
+# ... the part of the flow under test runs here ...
+Then no additional "OfferPrice" requests should have been sent after "SelectFlight"
+```
+No capture-payload step is needed for these two — they query the trip's request log directly.
+
 #### Block Expression (Contain / Not Contain)
 ```gherkin
 Then the captured "response" payload for request type "Amadeus4.Car_LocationList" should contain "MADX03".block("locationAddress")
 Then the captured "response" payload for request type "Amadeus4.Car_LocationList" should not contain "BCNX99".block("locationAddress")
 ```
+
+### 5.3 Request-Count Feature (Canonical)
+
+See [83094_ib_ndc_no_offerprice_resent_on_add_to_cart.feature](../tests/features/flights/flights_ib_ndc/flights_ib_ndc_non_booking/83094_ib_ndc_no_offerprice_resent_on_add_to_cart.feature) — the reference usage of the request-count steps.
+
+```gherkin
+When I filter results by carrier "IB"
+And I select the first flight result in new flight flow
+Then the outbound leg brand cards are displayed
+When I capture the number of "OfferPrice" requests sent for the trip
+And I select the outbound first option from pricing options new flight flow
+Then the inbound leg brand cards should be visible
+When I select the inbound first option from pricing options new flight flow
+And I add to cart from pricing options new flight flow
+Then the booking status should be "Pending booking"
+And no additional "OfferPrice" requests should have been sent after "SelectFlight"
+```
+
+**Pattern to copy:**
+
+1. Drive the flow to the point where the request under test has already been sent (here: the pricing options are displayed, so `OfferPrice` has reached Iberia).
+2. Capture the baseline — the step fails fast if that request type was never logged, which catches a wrong carrier or wrong test data early.
+3. Run the action that must **not** re-trigger it (add to cart).
+4. Assert with an anchor that is guaranteed to be sent by that action (`SelectFlight`), so the comparison happens only after the new traffic has been published.
 
 ---
 
@@ -609,8 +745,9 @@ And the extracted trip identifier should not be empty
 - **`tests/steps/payload_validation.steps.js`** — Cucumber step definitions
 
 ### Examples & Documentation
-- **`tests/features/cars/payload_test/payload_amadeus_city_center_exact_location_address.feature`** — Canonical feature file with real usage
-- **`tests/features/cars/payload_test/PAYLOADVALIDATION_TECHNICAL_SURVEY.md`** — Detailed technical survey
+- **`tests/features/transportation/cars/payload_test/payload_amadeus_city_center_exact_location_address.feature`** — Canonical feature file for the content assertions
+- **`tests/features/flights/flights_ib_ndc/flights_ib_ndc_non_booking/83094_ib_ndc_no_offerprice_resent_on_add_to_cart.feature`** — Canonical feature file for the request-count steps
+- **`.github/instructions/payload-validation-dsl.instructions.md`** — Condensed agent-facing reference
 
 ### Integration Points
 - **`src/utils/payloadValidationClient.js`** — Payload validation client (called by `capturePayloadByRequestType`)
@@ -657,6 +794,16 @@ JSON path:
   not contains: "Barcelona"
 ```
 
+### Request-Count Steps (No Expression Syntax)
+
+```gherkin
+When I capture the number of "<requestType>" requests sent for the trip
+Then no additional "<requestType>" requests should have been sent after "<anchorRequestType>"
+```
+
+- `<requestType>` — the call that must not be repeated (e.g. `OfferPrice`)
+- `<anchorRequestType>` — a call the flow is guaranteed to send after the baseline (e.g. `SelectFlight`), used to prove the new traffic has been published before comparing
+
 ---
 
 ## 13. Common Scenarios & Solutions
@@ -678,12 +825,21 @@ JSON path:
 **Problem:** Need to verify all fields in a block exist.
 **Solution:** Use multi-line step `should contain the XML:` or `should contain the JSON:` with full block.
 
+### Scenario: A Supplier Call Must Not Be Re-Sent
+**Problem:** Need to prove that data already retrieved is reused instead of being requested again (e.g. `OfferPrice` must not be re-sent when flights are added to the cart).
+**Solution:** Capture the baseline count at the point where the call has already been made, run the action, then assert with `no additional "..." requests should have been sent after "..."` using an anchor request the action is guaranteed to send. See §2.10 and §5.3.
+
+### Scenario: Baseline Capture Fails With "no such request has been logged"
+**Problem:** `When I capture the number of "X" requests sent for the trip` throws before the action even runs.
+**Solution:** This is the intended fail-fast. The flow never reached that supplier — usually the wrong carrier was selected, the filter did not apply, or the trip id is not yet on the world context. Fix the scenario setup rather than moving the capture step later.
+
 ---
 
 **For further details, implementation notes, or updates, refer to:**
 - `src/dsl/PayloadValidation.js` (full implementation)
 - `tests/steps/payload_validation.steps.js` (step definitions)
-- `tests/features/cars/payload_test/payload_amadeus_city_center_exact_location_address.feature` (real usage)
+- `tests/features/transportation/cars/payload_test/payload_amadeus_city_center_exact_location_address.feature` (content assertions)
+- `tests/features/flights/flights_ib_ndc/flights_ib_ndc_non_booking/83094_ib_ndc_no_offerprice_resent_on_add_to_cart.feature` (request-count steps)
 
 ---
 
