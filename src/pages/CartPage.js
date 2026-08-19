@@ -397,6 +397,19 @@ const SELECTORS = {
   // and leaves the stock .el-dialog__headerbtn in others. Resolved inside the barcode dialog only.
   EU_RAIL_MOBILE_BARCODE_DIALOG_CLOSE: '.el-dialog__header [fill="currentColor"], .el-dialog__headerbtn',
 
+  // UK rail (Evolvi) quote card route row in the cart. uk-rail-quote-card.vue renders one
+  // <uk-rail-segment-info> per quote.segments entry, and that component's `.segment-route` block
+  // holds exactly two <p> nodes — origin (`segment.originForSearch`) then destination
+  // (`segment.destinationForSearch`) — separated by an arrow_right_alt icon span. Both values are
+  // the supplier's own "Station Name (CRS)" strings with a space forced before the bracket
+  // (`.replace('(', ' (')`), e.g. "Newcastle (NCL)". Index 0 is the outbound leg — see
+  // getUkRailRoute, which reads the first row only.
+  UK_RAIL_SEGMENT_ROUTE: '.uk-rail-quote-card .uk-rail-segment-info .segment-route',
+  // The two station <p> nodes of a single UK_RAIL_SEGMENT_ROUTE row, which holds nothing else but
+  // them and the arrow icon span between them. ':scope >' marks this as resolved RELATIVE to a row
+  // locator — see getUkRailRoute; do not prefix it with '.uk-rail-quote-card' again.
+  UK_RAIL_SEGMENT_ROUTE_STATION: ':scope > p',
+
   // Car pickup/drop-off date·time label shown in the car quote card body (car-quote-card.ts
   // formattedPickupDateLabel/formattedDropoffDateLabel), e.g.
   // "03 Jul 2026 · 14:30 - 05 Jul 2026 · 10:15". Split on " - " to separate pickup from drop-off.
@@ -514,6 +527,21 @@ const SELECTORS = {
   DELIVERY_METHOD_TITLE: ".uk-rail-delivery-method .card-title",
   DELIVERY_METHOD_FIRST_RADIO: ".uk-rail-delivery-method .el-radio-group > :nth-child(1) .el-radio__inner",
   GREEN_ICON_DELIVERY_METHOD: ".uk-rail-delivery-method .material-symbols-outlined",
+  // The expanded panel loads its queues and TOD stations over the network
+  // (ukRailStore/loadDeliveryMethods) and shows an el-skeleton meanwhile, so every read of an
+  // option must wait for this to disappear first — otherwise the station select is not mounted yet.
+  DELIVERY_METHOD_LOADING_SKELETON: ".uk-rail-delivery-method .el-skeleton",
+  // One el-radio per delivery queue (uk-rail-delivery-method.vue's v-for over
+  // deliveryMethodsToShow). Its label prints `deliveryMethod.queueName` — e.g.
+  // "Atriis - Ticket on Departure (Collect at Station)" — plus " (Default)" on the default queue,
+  // which is why callers match the row by substring and not by exact text.
+  DELIVERY_METHOD_OPTION: ".uk-rail-delivery-method .el-radio-group .el-radio",
+  // The station picker rendered inside a TOD queue's row only (v-if="deliveryMethod.isTOD"), an
+  // app-select whose chosen option label Element Plus prints in `.el-select__placeholder` (same
+  // shape as MEAL_SELECTED_TEXT / FQTV_SELECTED_TEXT). Relative to DELIVERY_METHOD_OPTION.
+  // uk-rail-delivery-method.ts's initSelectedField() pre-selects the quote's origin station here
+  // when the quote has no station saved yet, so this is where the departure city surfaces.
+  DELIVERY_METHOD_OPTION_STATION_VALUE: ".delivery-option__station .el-select__placeholder",
 
   // UK Rail (Evolvi) cart "Extras" panel — ADO #81973. Confirmed live against the app (see
   // debug capture during Phase 3 implementation): the panel root is `.extras-container` (NOT
@@ -5125,6 +5153,89 @@ class CartPage {
    */
   async waitForDeliveryMethodGreenIcon() {
     await this.page.locator(SELECTORS.GREEN_ICON_DELIVERY_METHOD).waitFor({ state: 'visible', timeout: 15000 });
+  }
+
+  /**
+   * Waits for the expanded delivery method panel to finish loading its queues and TOD stations.
+   * @param {number} timeout - Maximum wait time in milliseconds
+   */
+  async waitForDeliveryMethodLoaded({ timeout = 30000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.DELIVERY_METHOD_LOADING_SKELETON).waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForDeliveryMethodLoaded] The delivery method panel skeleton was still showing after ${timeout}ms. ` +
+        `The loadDeliveryMethods call for this quote most likely never resolved. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Reads the station shown in a delivery method option's station picker.
+   * Matches the option row by a substring of its queue name, so a trailing "(Default)" suffix
+   * does not have to be spelled out by the caller.
+   * @param {string} queueName - Delivery method queue name, e.g. "Atriis - Ticket on Departure (Collect at Station)"
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<string>} The station label currently selected in that option
+   */
+  async getDeliveryMethodOptionStation(queueName, { timeout = 15000 } = {}) {
+    if (typeof queueName !== 'string' || queueName.trim() === '') {
+      throw new Error(
+        `[CartPage.getDeliveryMethodOptionStation] "queueName" must be a non-empty string, got: ${JSON.stringify(queueName)}`,
+      );
+    }
+
+    const stationValue = this.page
+      .locator(SELECTORS.DELIVERY_METHOD_OPTION)
+      .filter({ hasText: queueName })
+      .first()
+      .locator(SELECTORS.DELIVERY_METHOD_OPTION_STATION_VALUE)
+      .first();
+
+    try {
+      await stationValue.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getDeliveryMethodOptionStation] No station picker became visible for the delivery method option ` +
+        `containing "${queueName}" within ${timeout}ms. Either that queue is not offered for this quote, or it is ` +
+        `not a Ticket on Departure queue (only TOD queues render a station picker). Original: ${err.message}`,
+      );
+    }
+
+    return (await stationValue.textContent() ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Reads the origin and destination stations of a UK rail (Evolvi) quote leg in the cart.
+   * @param {number} legIndex - Zero-based leg index; 0 is the outbound leg
+   * @param {number} timeout - Maximum wait time in milliseconds
+   * @returns {Promise<{origin: string, destination: string}>} The leg's route stations
+   */
+  async getUkRailRoute({ legIndex = 0, timeout = 30000 } = {}) {
+    const routeRow = this.page.locator(SELECTORS.UK_RAIL_SEGMENT_ROUTE).nth(legIndex);
+
+    try {
+      await routeRow.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getUkRailRoute] The route row of UK rail quote leg ${legIndex} was not visible within ${timeout}ms. ` +
+        `The rail quote most likely never rendered in the cart, or the quote has fewer legs than that. ` +
+        `Original: ${err.message}`,
+      );
+    }
+
+    const stations = routeRow.locator(SELECTORS.UK_RAIL_SEGMENT_ROUTE_STATION);
+    const stationCount = await stations.count();
+    if (stationCount < 2) {
+      throw new Error(
+        `[CartPage.getUkRailRoute] Expected the route row of UK rail quote leg ${legIndex} to hold an origin and a ` +
+        `destination station, but found ${stationCount} station node(s). The uk-rail-segment-info markup has ` +
+        `most likely changed.`,
+      );
+    }
+
+    const readStation = async (index) => ((await stations.nth(index).textContent()) ?? '').replace(/\s+/g, ' ').trim();
+    return { origin: await readStation(0), destination: await readStation(1) };
   }
 
   /**

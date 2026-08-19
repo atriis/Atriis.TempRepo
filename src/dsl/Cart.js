@@ -3177,6 +3177,124 @@ const Cart = {
   },
 
   /**
+   * Expands the UK Rail "Delivery Method" row in the cart extras section, without selecting or
+   * saving anything. Opening the panel is what makes the app load its queues and pre-select the
+   * TOD station, so this is the prerequisite for reading either back.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async expandDeliveryMethod(page) {
+    if (!page) throw new Error('[Cart.expandDeliveryMethod] "page" is required, got: ' + typeof page);
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('Expanding the UK Rail delivery method row in the cart extras section');
+
+    try {
+      await cartPage.waitForDeliveryMethodSection();
+      await cartPage.clickDeliveryMethodClickable();
+      await cartPage.waitForDeliveryMethodTitle();
+      await cartPage.waitForDeliveryMethodLoaded();
+    } catch (err) {
+      throw new Error(
+        `[Cart.expandDeliveryMethod] Could not open the delivery method extras row for the rail quote in the cart. ` +
+        `Either the quote is not a UK Rail quote, or it is past the pending stage where extras are still editable. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
+   * Asserts the station pre-selected in a delivery method option's station picker. The app fills
+   * this with the quote's origin station when the quote has no station saved yet, so it is how the
+   * departure city is verified in the Ticket on Departure (TOD) section.
+   *
+   * Polled rather than read once: expanding the row triggers loadDeliveryMethods, and the picker's
+   * value only settles once initSelectedField has run against the loaded station list.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedStation - Station text expected in the picker, matched as a substring
+   * @param {string} queueName - Delivery method queue name owning the picker
+   * @returns {Promise<void>}
+   */
+  async verifyDeliveryMethodStation(page, expectedStation, queueName) {
+    if (!page) throw new Error('[Cart.verifyDeliveryMethodStation] "page" is required, got: ' + typeof page);
+    if (!expectedStation) {
+      throw new Error(
+        `[Cart.verifyDeliveryMethodStation] "expectedStation" must be a non-empty string, got: ${JSON.stringify(expectedStation)}`,
+      );
+    }
+    if (!queueName) {
+      throw new Error(
+        `[Cart.verifyDeliveryMethodStation] "queueName" must be a non-empty string, got: ${JSON.stringify(queueName)}`,
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('Verifying the delivery method station', { expectedStation, queueName });
+
+    await expect
+      .poll(async () => cartPage.getDeliveryMethodOptionStation(queueName), {
+        message:
+          `Expected the "${queueName}" delivery method option to show "${expectedStation}" as its station — ` +
+          `the app pre-selects the quote's departure station there`,
+        timeout: 30000,
+      })
+      .toContain(expectedStation);
+  },
+
+  /**
+   * Asserts the origin and destination of a UK Rail (Evolvi) quote leg shown in the cart. Both are
+   * matched as substrings, because the app renders the supplier's "Station Name (CRS)" label.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedOrigin - Text expected in the origin station
+   * @param {string} expectedDestination - Text expected in the destination station
+   * @param {number} legIndex - Zero-based leg index; 0 is the outbound leg
+   * @returns {Promise<{origin: string, destination: string}>} The route read from the cart
+   */
+  async verifyRailRouteInCart(page, expectedOrigin, expectedDestination, { legIndex = 0 } = {}) {
+    if (!page) throw new Error('[Cart.verifyRailRouteInCart] "page" is required, got: ' + typeof page);
+    if (!expectedOrigin) {
+      throw new Error(
+        `[Cart.verifyRailRouteInCart] "expectedOrigin" must be a non-empty string, got: ${JSON.stringify(expectedOrigin)}`,
+      );
+    }
+    if (!expectedDestination) {
+      throw new Error(
+        `[Cart.verifyRailRouteInCart] "expectedDestination" must be a non-empty string, got: ${JSON.stringify(expectedDestination)}`,
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('Verifying the rail route in the cart', { expectedOrigin, expectedDestination, legIndex });
+
+    let route;
+    try {
+      route = await cartPage.getUkRailRoute({ legIndex });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyRailRouteInCart] Could not read the route of the rail quote in the cart, so "${expectedOrigin}" ` +
+        `to "${expectedDestination}" could not be verified. Original: ${err.message}`,
+      );
+    }
+
+    expect(
+      route.origin,
+      `Expected the rail quote in the cart to depart from "${expectedOrigin}", but its route reads ` +
+      `"${route.origin}" to "${route.destination}"`,
+    ).toContain(expectedOrigin);
+    expect(
+      route.destination,
+      `Expected the rail quote in the cart to arrive at "${expectedDestination}", but its route reads ` +
+      `"${route.origin}" to "${route.destination}"`,
+    ).toContain(expectedDestination);
+
+    logger.info('Rail route verified in the cart', route);
+    return route;
+  },
+
+  /**
    * Asserts that the cart shows a badge indicating 2 rooms for a hotel booking.
    * Waits for the rooms badge text (e.g. "2 Rooms") to be visible in the trip summary.
    *

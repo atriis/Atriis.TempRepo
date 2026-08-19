@@ -644,6 +644,24 @@ When("I select default delivery method and save", async function () {
   await Cart.selectDefaultDeliveryMethod(this.page);
 });
 
+When("I expand delivery method in extras section", async function () {
+  logger.info("Expanding the delivery method row in the cart extras section");
+  await Cart.expandDeliveryMethod(this.page);
+});
+
+// It reads the station picker of one UK Rail delivery method option, so any future feature binding to this phrase must mean that
+// field -- if a second, unrelated "field" assertion ever needs it, narrow both call sites then.
+Then("{string} is displayed in {string} field", async function (expectedStation, queueName) {
+  logger.info("Verifying the station shown in a delivery method option", { expectedStation, queueName });
+  await Cart.verifyDeliveryMethodStation(this.page, expectedStation, queueName);
+});
+
+// The route is read from the UK Rail quote card in the cart; other products render their own route/itinerary rows.
+Then("I should see route that contains {string} to {string}", async function (expectedOrigin, expectedDestination) {
+  logger.info("Verifying the rail route in the cart", { expectedOrigin, expectedDestination });
+  await Cart.verifyRailRouteInCart(this.page, expectedOrigin, expectedDestination);
+});
+
 When("I extract cancellation policy from cart", async function () {
   logger.info("Extracting cancellation policy from cart");
   this.cartCancellationPolicy = await Cart.getCancellationPolicyFromCart(this.page);
