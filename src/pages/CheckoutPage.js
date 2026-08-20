@@ -11,6 +11,13 @@ const { parseAmountText } = require("@utils/dom");
 // Approval" (successType 'preBooking') — but it is the same element, so both keys share one source.
 const BOOKING_SUCCESS_TITLE_SELECTOR = ".booking-success .success-message__title";
 
+// The checkout page double-fires its init, so the SCA iframe can be superseded mid-flow. Three
+// submits is enough to outlast one supersession without letting a genuinely stuck dialog hang the
+// step: each attempt then waits this long for the dialog to close, the only signal the bank
+// callback actually fired. 3 x 15s stays well inside the 180s checkout step budget.
+const YPSILON_3DS_SUBMIT_ATTEMPTS = 3;
+const YPSILON_3DS_SUBMIT_CONFIRM_TIMEOUT = 15000;
+
 const SELECTORS = {
   BOOKING_DETAILS_HEADING: "h1.mb-5",
   // The app label is backend-driven i18n and ships in both US and UK spelling ("Finalize"/"Finalise"),
@@ -35,6 +42,9 @@ const SELECTORS = {
   // Some Ypsilon 3DS dialogs are a simple accept screen with no challenge form;
   // clicking the in-dialog accept button completes verification without iframe interaction.
   YPSILON_3DS_ACCEPT_BUTTON: "#submit_accept",
+  // Placeholder of the code field on the bank challenge page (inside the SCA iframe, so it is
+  // only reachable through a frame locator — never through a page-level selector).
+  YPSILON_3DS_CODE_INPUT_PLACEHOLDER: "Enter Code here",
   // "Send for approval" = standard approval flow; "Submit for Approval" = OOP/justification flow
   SEND_FOR_APPROVAL_BUTTON: "button:has-text('Send for approval'), button:has-text('Submit for Approval')",
   // Booking-success screen root (booking-success.vue). The approval confirmation lines render
@@ -580,6 +590,80 @@ class CheckoutPage {
   }
 
   /**
+   * Waits until the set of SCA iframes inside #yps_sca_frame stops changing.
+   *
+   * The checkout page fires its whole init twice (the network log shows every
+   * checkout call, verificationInfo included, sent twice), so ypsilon-3ds runs
+   * `injectExternalScript()` twice for the same quote. Each run appends an SCA
+   * client script plus an inline `setTimeout(..., 2000)` that calls
+   * `scaClient.init({ wrapId: 'yps_sca_frame' })` — so a second iframe/session
+   * can land in the wrap element ~2s after the first, and only the newest
+   * session owns the `onFinishedCallback` that closes the dialog. Filling and
+   * submitting the first iframe the moment it attaches can submit into the dead
+   * session: the bank page takes the code but no callback ever fires, so the
+   * dialog stays open forever. A human types slowly enough to always land on the
+   * settled iframe; this wait gives the automation the same footing.
+   *
+   * @param {number} quietPeriod - How long the iframe count must hold steady
+   * @param {number} timeout - Max total wait
+   * @returns {Promise<number>} The settled iframe count
+   */
+  async waitForYpsilon3dsFramesToSettle(quietPeriod = 3000, timeout = 25000) {
+    const frames = this.page.locator(`${SELECTORS.YPSILON_3DS_CONTAINER} iframe`);
+    const deadline = Date.now() + timeout;
+    let lastCount = -1;
+    let stableSince = Date.now();
+
+    while (Date.now() < deadline) {
+      const count = await frames.count().catch(() => lastCount);
+      if (count !== lastCount) {
+        lastCount = count;
+        stableSince = Date.now();
+      } else if (count > 0 && Date.now() - stableSince >= quietPeriod) {
+        return count;
+      }
+      await this.page.waitForTimeout(250);
+    }
+
+    return lastCount;
+  }
+
+  /**
+   * Resolves the SCA iframe that currently owns the live challenge.
+   *
+   * Newest first: when the double init leaves more than one iframe in the wrap
+   * element, the last one is the live session. A plain
+   * `frameLocator('#yps_sca_frame iframe')` would be a strict-mode violation in
+   * that state, so each candidate is probed for a visible code input instead.
+   *
+   * @param {number} timeout - Max wait for a challenge input to become visible
+   * @returns {Promise<{frame: import('@playwright/test').FrameLocator, index: number, total: number}>}
+   */
+  async getYpsilon3dsChallengeFrame(timeout = 30000) {
+    const frames = this.page.locator(`${SELECTORS.YPSILON_3DS_CONTAINER} iframe`);
+    const deadline = Date.now() + timeout;
+    let total = 0;
+
+    while (Date.now() < deadline) {
+      total = await frames.count().catch(() => 0);
+      for (let index = total - 1; index >= 0; index--) {
+        try {
+          const frame = frames.nth(index).contentFrame();
+          const input = frame.getByPlaceholder(SELECTORS.YPSILON_3DS_CODE_INPUT_PLACEHOLDER);
+          if (await input.isVisible()) return { frame, index, total };
+        } catch {
+          // Iframe detached mid-probe — try the next candidate.
+        }
+      }
+      await this.page.waitForTimeout(250);
+    }
+
+    throw new Error(
+      `Ypsilon 3DS challenge input never became visible in any of the ${total} SCA iframe(s) within ${timeout}ms.`
+    );
+  }
+
+  /**
    * Completes the Ypsilon 3DS SCA challenge. The Atriis page auto-opens the
    * Card verification dialog on checkout mount and an external SCA script
    * injects an iframe (Poseidon Bank / Verified by Visa) into #yps_sca_frame.
@@ -588,6 +672,7 @@ class CheckoutPage {
    * @param {string} verificationCode - The 3DS test code (e.g. '555')
    * @param {number} timeout - Max wait time for the dialog title to appear
    * @param {number} variantTimeout - Max wait time for the variant (accept button / iframe / auto-close) to resolve
+   * @returns {Promise<{variant: string, attempts: number, frameCount: number, frameIndex: number}>}
    */
   async completeYpsilon3dsVerification(verificationCode = '555', timeout = 90000, variantTimeout = 60000) {
     if (!verificationCode || typeof verificationCode !== 'string') {
@@ -605,42 +690,71 @@ class CheckoutPage {
 
     // The Ypsilon dialog renders in one of three possible flows and we don't know which
     // upfront. Race all three — whichever resolves first determines the outcome:
-    //   - Variant A (e.g. test 58320): a simple in-dialog accept button to click.
-    //   - Variant B (e.g. test 29424): an iframe SCA challenge inside #yps_sca_frame.
-    //   - Variant C: the dialog auto-closes on its own (silent SCA verification by the supplier).
+    //   - Variant A: a simple accept button rendered in the dialog itself, no challenge form.
+    //   - Variant B (test 29424): an iframe SCA challenge inside #yps_sca_frame.
+    //   - Variant C: the title goes hidden with no interaction at all. Tests 57930 and 58320 both
+    //     resolve this way and book successfully, but WHY is not established: trip-reference-form
+    //     renders two separate el-dialogs whose title is the same `cardverification.cardVerification`
+    //     string (the card-verification one and the ypsilon-3ds one), so this locator cannot tell
+    //     which of them it just watched close. Under investigation — do not treat variant C as
+    //     proof that no SCA challenge was required.
     const acceptButton = this.page.locator(SELECTORS.YPSILON_3DS_ACCEPT_BUTTON);
     const iframeElement = this.page.locator(`${SELECTORS.YPSILON_3DS_CONTAINER} iframe`);
 
     const variant = await Promise.race([
       acceptButton.waitFor({ state: 'visible', timeout: variantTimeout }).then(() => 'accept').catch(() => null),
-      iframeElement.waitFor({ state: 'attached', timeout: variantTimeout }).then(() => 'iframe').catch(() => null),
+      iframeElement.first().waitFor({ state: 'attached', timeout: variantTimeout }).then(() => 'iframe').catch(() => null),
       dialogTitle.waitFor({ state: 'hidden', timeout: variantTimeout }).then(() => 'auto-closed').catch(() => null),
     ]);
 
     if (variant === 'accept') {
       await acceptButton.click();
-      return variant;
+      return { variant, attempts: 1, frameCount: 0, frameIndex: -1 };
     }
 
     if (variant === 'auto-closed') {
-      // Supplier completed SCA silently — nothing further to do.
-      return variant;
+      // Nothing left to interact with — see the variant C note above for what is
+      // still unverified about this outcome.
+      return { variant, attempts: 0, frameCount: 0, frameIndex: -1 };
     }
 
     if (variant !== 'iframe') {
       throw new Error('Ypsilon 3DS dialog appeared but neither the accept button, the SCA iframe, nor a silent auto-close was observed within the timeout.');
     }
 
-    // Variant B — iframe SCA challenge.
-    const frame = this.page.frameLocator(`${SELECTORS.YPSILON_3DS_CONTAINER} iframe`);
-    const challengeInput = frame.getByPlaceholder('Enter Code here');
-    await challengeInput.waitFor({ state: 'visible', timeout: 30000 });
-    await challengeInput.fill(verificationCode);
+    // Variant B — iframe SCA challenge. Let the double init settle first, then
+    // submit into the surviving session and confirm the dialog actually closes:
+    // a submit that lands in a superseded session is accepted by the bank page
+    // but never calls back, so the dialog going away is the only proof the code
+    // took. If it does not, re-read the live iframe and submit again.
+    const frameCount = await this.waitForYpsilon3dsFramesToSettle();
 
-    const submitButton = frame.getByRole('button', { name: 'Submit', exact: true });
-    await submitButton.waitFor({ state: 'visible', timeout: 10000 });
-    await submitButton.click();
-    return variant;
+    let lastFrameIndex = -1;
+    for (let attempt = 1; attempt <= YPSILON_3DS_SUBMIT_ATTEMPTS; attempt++) {
+      const { frame, index } = await this.getYpsilon3dsChallengeFrame();
+      lastFrameIndex = index;
+
+      const challengeInput = frame.getByPlaceholder(SELECTORS.YPSILON_3DS_CODE_INPUT_PLACEHOLDER);
+      await challengeInput.fill(verificationCode);
+
+      const submitButton = frame.getByRole('button', { name: 'Submit', exact: true });
+      await submitButton.waitFor({ state: 'visible', timeout: 10000 });
+      await submitButton.click();
+
+      const closed = await dialogTitle
+        .waitFor({ state: 'hidden', timeout: YPSILON_3DS_SUBMIT_CONFIRM_TIMEOUT })
+        .then(() => true)
+        .catch(() => false);
+
+      if (closed) {
+        return { variant, attempts: attempt, frameCount, frameIndex: index };
+      }
+    }
+
+    throw new Error(
+      `Ypsilon 3DS code was submitted ${YPSILON_3DS_SUBMIT_ATTEMPTS} times (last iframe ${lastFrameIndex + 1} of ${frameCount}) ` +
+      `but the Card verification dialog never closed — the SCA callback that closes it never fired.`
+    );
   }
 
   /**
