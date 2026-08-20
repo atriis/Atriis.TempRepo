@@ -455,6 +455,104 @@ const EvolviResults = {
 
     return { selected: true, addedToTrip: true };
   },
+
+  // ===== Greenest (lowest carbon) suggested fare (test 59032) =====
+
+  /**
+   * Hovers the greenest suggested fare in the Evolvi results header, opening its tooltip.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{hovered: boolean}>}
+   */
+  async hoverGreenestSuggestedFare(page) {
+    if (!page) throw new Error('[EvolviResults.hoverGreenestSuggestedFare] "page" is required.');
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.info("[EvolviResults.hoverGreenestSuggestedFare] Hovering the greenest suggested Evolvi fare");
+    // The suggested-fare buttons only render once the fares have finished loading, so gate on the
+    // "Suggested fares" caption before reaching for the green one.
+    await resultsPage.waitForSuggestedFaresText();
+    await resultsPage.hoverGreenestSuggestedFare();
+
+    return { hovered: true };
+  },
+
+  /**
+   * Asserts the greenest suggested fare's tooltip contains the expected carbon-efficiency message
+   * ($t('ukRail.greenFareMsg')). Re-hovers when the popper has already dismissed itself, because
+   * the hover happens in the preceding Cucumber step.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText
+   * @returns {Promise<string>} The tooltip text that was read
+   */
+  async expectGreenestFareTooltipContains(page, expectedText) {
+    if (!page) throw new Error('[EvolviResults.expectGreenestFareTooltipContains] "page" is required.');
+    if (!expectedText || typeof expectedText !== "string") {
+      throw new Error(
+        `[EvolviResults.expectGreenestFareTooltipContains] "expectedText" must be a non-empty string, got: ${expectedText}`,
+      );
+    }
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    const tooltipText = await resultsPage.getGreenestSuggestedFareTooltipText();
+    logger.info(
+      "[EvolviResults.expectGreenestFareTooltipContains] Read the greenest suggested-fare tooltip",
+      { tooltipText },
+    );
+
+    expect(
+      tooltipText,
+      "The tooltip of the greenest suggested Evolvi fare should describe it as the lowest carbon-efficient " +
+        "fare available.",
+    ).toContain(expectedText);
+
+    return tooltipText;
+  },
+
+  /**
+   * Selects the greenest suggested fare in the Evolvi results header.
+   *
+   * Deliberately stops at the selection: the scenario adds the fare to the trip through its own
+   * later "I click Evolvi add to trip" step, so adding here would double-submit.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{selected: boolean}>}
+   */
+  async selectGreenestFare(page) {
+    if (!page) throw new Error('[EvolviResults.selectGreenestFare] "page" is required.');
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.info("[EvolviResults.selectGreenestFare] Selecting the greenest suggested Evolvi fare");
+    await resultsPage.waitForSuggestedFaresText();
+    await resultsPage.clickGreenestSuggestedFareOption();
+
+    return { selected: true };
+  },
+
+  /**
+   * Reads the total price the Evolvi results header shows for the fare currently selected.
+   *
+   * The results-side twin of Cart.extractCartTotalPrice: it returns the raw number, and the step
+   * definition owns where that number is parked on the Cucumber World.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>}
+   */
+  async extractSelectedFareTotalPrice(page) {
+    if (!page) throw new Error('[EvolviResults.extractSelectedFareTotalPrice] "page" is required.');
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.debug(
+      "[EvolviResults.extractSelectedFareTotalPrice] Reading the selected-fare total from the Evolvi results header",
+    );
+    const totalPrice = await resultsPage.getSelectedFareTotalPriceValue();
+    logger.info("[EvolviResults.extractSelectedFareTotalPrice] Read the selected Evolvi fare total", {
+      totalPrice,
+    });
+
+    return totalPrice;
+  },
 };
 
 module.exports = EvolviResults;

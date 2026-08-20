@@ -173,6 +173,35 @@ When("I click Evolvi add to trip", async function () {
   await EvolviResults.addSelectedFaresToTrip(this.page);
 });
 
+// ===== Greenest (lowest carbon) suggested fare (test 59032) =====
+
+When("I hover over the greenest Evolvi fare in results", async function () {
+  logger.info("Hovering the greenest suggested Evolvi fare in results");
+  await EvolviResults.hoverGreenestSuggestedFare(this.page);
+});
+
+Then("the greenest fare tooltip should show {string}", async function (expectedMessage) {
+  logger.info("Verifying the greenest Evolvi fare tooltip message", { expectedMessage });
+  await EvolviResults.expectGreenestFareTooltipContains(this.page, expectedMessage);
+});
+
+When("I select the greenest Evolvi fare", async function () {
+  logger.info("Selecting the greenest suggested Evolvi fare");
+  await EvolviResults.selectGreenestFare(this.page);
+});
+
+// Parked on the shared World array the generic "the cart total price should match the last
+// extracted price" assertion reads (cart.steps.js), so no rail-specific comparison step is needed.
+When("I extract the selected fare total price from the Evolvi results header", async function () {
+  logger.info("Extracting the selected fare total price from the Evolvi results header");
+  const price = await EvolviResults.extractSelectedFareTotalPrice(this.page);
+
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(price);
+
+  logger.info("Extracted selected Evolvi fare total price", { price });
+});
+
 // ===== TODO STUBS — need DSL/Page implementation =====
 
 Then("I should see outbound text in Evolvi results page", async function () {

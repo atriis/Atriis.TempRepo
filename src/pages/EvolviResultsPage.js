@@ -1,5 +1,6 @@
 const { waitForText } = require("@utils/wait");
 const { normalizeText } = require("@utils/text");
+const { parseAmountText } = require("@utils/dom");
 
 /**
  * Page Object for evolvi results page.
@@ -130,6 +131,39 @@ const SELECTORS = {
   // body-level popper, OUTSIDE the cell that carries the select-on-click handler, so opening the
   // rules from here does NOT select the fare.
   FARE_TOOLTIP_FULL_INFORMATION_BUTTON: ".uk-rail-tooltip:visible .more-info-btn",
+
+  // ===== Greenest (lowest carbon) suggested fare =====
+  //
+  // The results header's .suggested-container holds exactly two suggested-fare buttons
+  // (uk-rail-results.vue): the cheapest one — app-btn "blue-bgd blue suggested-btn" @click
+  // selectCheapestFare — and the greenest one — app-btn "green-bgd green suggested-btn" @click
+  // selectGreenFare. So .green-bgd is what separates "lowest carbon" from "lowest price"; the
+  // existing CHEAPEST_SUGGESTED_FARE above deliberately resolves the blue twin instead.
+  //
+  // NOTE: the green button is v-if'd on `displayGreenPrice > 0`, so a route that comes back with no
+  // carbon-efficient fare renders no button at all — hence the named error in
+  // _requireGreenestSuggestedFare rather than a bare Playwright timeout.
+  GREENEST_SUGGESTED_FARE: ".results-header .suggested-container .suggested-btn.green-bgd",
+  // Its tooltip is a bare <el-tooltip effect="light"> with no popper-class of its own, so it lands
+  // at body level as `.el-popper.is-light` and can only be told apart from the other poppers in
+  // this view by excluding the ones that DO carry a class — the price-grid cell tooltips
+  // (popper-class "uk-rail-tooltip") and app-tooltip's popper ("app-tooltip"). Same idiom as
+  // EvolviSearchPage.SPLIT_TICKET_TYPE_TOOLTIP.
+  GREENEST_SUGGESTED_FARE_TOOLTIP: ".el-popper.is-light:visible:not(.uk-rail-tooltip):not(.app-tooltip)",
+
+  // ===== Selected-fare total (results header) =====
+  //
+  // Once a fare is picked, uk-rail-results.vue's header prints "Total: <app-price>" — in
+  // .one-way-total for a one-way search (v-if selectedOutboundTicket) and in its round-trip twin
+  // .total-container (v-if both legs). Both live inside .selected-prices-container, so one selector
+  // covers either trip type.
+  //
+  // NOT reusing SELECTED_SUMMARY (".selected-prices > .selected-price"): that block only exists in
+  // the round-trip branch of the header, so gating a one-way test on it would hang.
+  SELECTED_FARE_TOTAL: ".selected-prices-container :is(.one-way-total, .total-container)",
+  // app-price renders its non-plain format into <h4 class="amount">, currency symbol included and
+  // the cents in a nested <span class="price-decimal"> — innerText concatenates both.
+  SELECTED_FARE_TOTAL_AMOUNT: ".app-price .amount",
 };
 
 /**
@@ -197,6 +231,82 @@ class EvolviResultsPage {
       .locator(SELECTORS.CHEAPEST_SUGGESTED_FARE)
       .first()
       .click();
+  }
+
+  // ===== Greenest (lowest carbon) suggested fare =====
+
+  /**
+   * Hovers the greenest suggested fare in the results header and waits for its tooltip to open.
+   *
+   * @param {number} [timeout=15000]
+   */
+  async hoverGreenestSuggestedFare(timeout = 15000) {
+    const fare = await this._requireGreenestSuggestedFare(timeout);
+    await fare.scrollIntoViewIfNeeded().catch(() => {});
+    await fare.hover();
+
+    const tooltip = this.page.locator(SELECTORS.GREENEST_SUGGESTED_FARE_TOOLTIP).first();
+    try {
+      await tooltip.waitFor({ state: "visible", timeout });
+    } catch {
+      // Element Plus mounts the popper on the first pointer-enter, which can lose the race while
+      // the results grid is still settling. Re-arm the pointer from a neutral position and retry.
+      await this.page.mouse.move(0, 0);
+      await this.page.waitForTimeout(300);
+      await fare.hover();
+      try {
+        await tooltip.waitFor({ state: "visible", timeout });
+      } catch (err) {
+        throw new Error(
+          "[EvolviResultsPage.hoverGreenestSuggestedFare] Hovered the greenest suggested-fare button in the " +
+            "Evolvi results header, but its tooltip never opened (selector: " +
+            `${SELECTORS.GREENEST_SUGGESTED_FARE_TOOLTIP}). The el-tooltip may not have mounted its popper, ` +
+            `or another light popper is masking it. Original: ${err.message}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Reads the greenest suggested fare's tooltip text. Re-hovers first when the popper is absent or
+   * hidden, so the assertion step can read it even though the hover happened in a previous
+   * Cucumber step and Element Plus may have dismissed it in between.
+   *
+   * @param {number} [timeout=15000]
+   * @returns {Promise<string>}
+   */
+  async getGreenestSuggestedFareTooltipText(timeout = 15000) {
+    const tooltip = this.page.locator(SELECTORS.GREENEST_SUGGESTED_FARE_TOOLTIP).first();
+
+    if ((await tooltip.count()) === 0 || !(await tooltip.isVisible().catch(() => false))) {
+      await this.hoverGreenestSuggestedFare(timeout);
+    }
+
+    try {
+      await tooltip.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        "[EvolviResultsPage.getGreenestSuggestedFareTooltipText] The greenest suggested-fare tooltip is not " +
+          `open (selector: ${SELECTORS.GREENEST_SUGGESTED_FARE_TOOLTIP}). The re-hover did not raise it, so ` +
+          "the popper may have been dismissed by a pointer move between the hover and this read. " +
+          `Original: ${err.message}`,
+      );
+    }
+    return ((await tooltip.innerText()) ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Clicks the greenest suggested fare in the results header, selecting it.
+   *
+   * uk-rail-results.ts's selectGreenFare ASSIGNS selectedOutboundTicket from greenOutboundIdx (and
+   * expands the owning fare-group row) rather than toggling it, so a single click is safe.
+   *
+   * @param {number} [timeout=30000]
+   */
+  async clickGreenestSuggestedFareOption(timeout = 30000) {
+    const fare = await this._requireGreenestSuggestedFare(timeout);
+    await fare.scrollIntoViewIfNeeded().catch(() => {});
+    await fare.click();
   }
 
   /**
@@ -395,6 +505,54 @@ class EvolviResultsPage {
     const summary = this.page.locator(SELECTORS.SELECTED_SUMMARY).nth(summaryIndex);
     await summary.waitFor({ state: "visible", timeout });
     return ((await summary.innerText()) ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Reads the "Total:" amount the results header shows for the fare currently selected, as a
+   * number — e.g. "£54.20" -> 54.2. Works for either trip type: the one-way header renders
+   * .one-way-total and the round-trip header its .total-container twin.
+   *
+   * Waiting on that total is also the post-selection gate: it only renders once a fare has been
+   * picked, so a visible total proves the click registered.
+   *
+   * @param {number} [timeout=30000]
+   * @returns {Promise<number>}
+   */
+  async getSelectedFareTotalPriceValue(timeout = 30000) {
+    const total = this.page.locator(SELECTORS.SELECTED_FARE_TOTAL).first();
+    try {
+      await total.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        "[EvolviResultsPage.getSelectedFareTotalPriceValue] The selected-fare total is not displayed in the " +
+          `Evolvi results header (selector: ${SELECTORS.SELECTED_FARE_TOTAL}). uk-rail-results.vue only ` +
+          "renders it once a fare is selected — selectedOutboundTicket for a one way, both legs for a round " +
+          `trip — so the fare selection may not have registered. Original: ${err.message}`,
+      );
+    }
+
+    const amount = total.locator(SELECTORS.SELECTED_FARE_TOTAL_AMOUNT).first();
+    try {
+      await amount.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        "[EvolviResultsPage.getSelectedFareTotalPriceValue] The selected-fare total block is displayed but " +
+          `carries no price amount (selector: ${SELECTORS.SELECTED_FARE_TOTAL} ` +
+          `${SELECTORS.SELECTED_FARE_TOTAL_AMOUNT}). app-price may have rendered its plain format instead of ` +
+          `the h4.amount this reads. Original: ${err.message}`,
+      );
+    }
+
+    const totalText = ((await amount.innerText()) ?? "").replace(/\s+/g, " ").trim();
+    try {
+      return parseAmountText(totalText, "the selected Evolvi fare total");
+    } catch (err) {
+      throw new Error(
+        "[EvolviResultsPage.getSelectedFareTotalPriceValue] Could not read a number out of the selected-fare " +
+          `total shown in the Evolvi results header (read: "${totalText}"). The amount may be rendered in an ` +
+          `unexpected currency/number format. Original: ${err.message}`,
+      );
+    }
   }
 
   // ===== SplitTix (split ticket) =====
@@ -615,6 +773,28 @@ class EvolviResultsPage {
           "none of its fares is highlighted in blue — uk-rail-results.vue only adds .blue-bgd/.blue to a " +
           "cell whose priceDetails.isCheapest is true, so no split-ticket fare came back as the cheapest. " +
           `Original: ${err.message}`,
+      );
+    }
+    return fare;
+  }
+
+  /**
+   * Resolves the results header's greenest suggested-fare button, failing with why it is missing
+   * instead of letting the hover/click that follows time out on an empty locator.
+   *
+   * The button is v-if'd on `displayGreenPrice > 0` (uk-rail-results.vue), so "not there" means the
+   * search came back without a carbon-efficient fare — not that the selector drifted.
+   */
+  async _requireGreenestSuggestedFare(timeout = 15000) {
+    const fare = this.page.locator(SELECTORS.GREENEST_SUGGESTED_FARE).first();
+    try {
+      await fare.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        "[EvolviResultsPage._requireGreenestSuggestedFare] No greenest (lowest carbon) suggested fare is " +
+          `displayed in the Evolvi results header (selector: ${SELECTORS.GREENEST_SUGGESTED_FARE}). ` +
+          "uk-rail-results.vue only renders that green button when displayGreenPrice > 0, so this route came " +
+          `back without a green fare. Original: ${err.message}`,
       );
     }
     return fare;
