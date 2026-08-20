@@ -104,6 +104,16 @@ const config = {
     get domain() {
       return getOptionalEnv("MAILBOX_DOMAIN", "");
     },
+    // A reserved (private) Mailsac address every share is delivered to. Prefer this over the
+    // per-scenario public addresses it replaces: public mailsac.com inboxes are readable by
+    // anyone who guesses the name, and an account with "allow public domains" off cannot read
+    // them at all — the API answers 200 with an empty list, so the mail looks undelivered.
+    // Because one inbox is now shared by every scenario (and by parallel workers), the run
+    // discriminator moves from the address to the subject — see tests/steps/email.steps.js.
+    // Empty keeps the old behaviour: a unique public address per scenario.
+    get address() {
+      return getOptionalEnv("MAILBOX_ADDRESS", "");
+    },
     // How long to wait for a sent email to land before failing.
     get timeoutMs() {
       return Number(getOptionalEnv("MAILBOX_TIMEOUT_MS", "120000"));

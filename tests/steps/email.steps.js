@@ -20,14 +20,72 @@
 const { Then } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const Email = require("@dsl/Email");
+const config = require("@config/config");
 const logger = require("@utils/logger").child("Email-Steps");
 
-// No subject filter by default. The recipient address is generated fresh per scenario, so any mail
-// in that inbox is by construction the one this run sent — the address is the discriminator, not
-// the subject. Filtering on wording would also be fragile: the app titles these "Travel plan
-// for <traveller> trip <id> …", and the share dialog's Language selector localises it. Callers that
-// genuinely need to pin the subject can pass one.
-const ITINERARY_SUBJECT_HINT = undefined;
+// What tells this run's mail apart from another's.
+//
+// With a per-scenario generated address the inbox itself was the discriminator, so no subject
+// filter was needed. A reserved MAILBOX_ADDRESS is shared by every scenario and by every parallel
+// worker, so the address no longer discriminates and something else must: two scenarios sending
+// within the same window would otherwise each match the other's message.
+//
+// The trip number does the job. The app titles these "Travel plan for <traveller> trip <id> …",
+// and while the share dialog's Language selector localises the wording, a bare number survives
+// it — which is exactly why the number is matched and not the phrasing.
+const TRIP_NUMBER_IN_URL = /\/trips\/(\d+)(?:[/?#]|$)/i;
+
+/**
+ * Resolves the trip number whose itinerary was shared, to narrow the mailbox read to this run.
+ *
+ * Prefers the open page's URL — the share dialog is opened on the trip being shared, so that is
+ * the trip, not merely a trip the scenario touched — then falls back to the well-known World
+ * fields, mirroring how tests/support/hooks.js gathers trip ids for reporting.
+ *
+ * @param {object} world - The cucumber World (`this` in a step)
+ * @returns {string|undefined}
+ */
+function resolveSharedTripNumber(world) {
+  try {
+    const match = String(world.page?.url() || "").match(TRIP_NUMBER_IN_URL);
+    if (match) return match[1];
+  } catch {
+    // Page may be closed or navigating — fall through to the world fields.
+  }
+
+  for (const id of [world.tripId, world.currentTripId, world.createdTripId]) {
+    if (id !== null && id !== undefined && String(id).trim()) return String(id).trim();
+  }
+
+  const recorded = Array.isArray(world.tripIds) ? world.tripIds.filter(Boolean) : [];
+  return recorded.length ? String(recorded[recorded.length - 1]) : undefined;
+}
+
+/**
+ * The subject substring the mailbox read is narrowed to.
+ *
+ * Throws rather than reading an unfiltered shared inbox: matching another scenario's mail is a
+ * pass for the wrong reason, which is worse than the failure this raises.
+ *
+ * @param {object} world - The cucumber World (`this` in a step)
+ * @returns {string|undefined}
+ */
+function itinerarySubjectHint(world) {
+  const tripNumber = resolveSharedTripNumber(world);
+  if (tripNumber) return tripNumber;
+
+  if (config.mailbox.address) {
+    throw new Error(
+      "[email.steps] Could not work out which trip was shared, and MAILBOX_ADDRESS is a single " +
+        "inbox shared by every scenario — reading it unfiltered could match another run's mail. " +
+        "Record the trip number on the world (this.recordTripId) before sharing, or open the " +
+        "trip page so its URL carries the number."
+    );
+  }
+
+  // Per-scenario generated address: the inbox is already this run's, so no filter is needed.
+  return undefined;
+}
 
 /**
  * Resolves the address the itinerary was shared to, failing with the fix rather than a
@@ -55,14 +113,14 @@ function requireItineraryRecipient(world) {
  * @param {string} [subjectContains]
  * @returns {Promise<object>} The received message
  */
-async function receivedItineraryEmail(world, subjectContains = ITINERARY_SUBJECT_HINT) {
+async function receivedItineraryEmail(world, subjectContains) {
   if (world.receivedItineraryEmail) {
     return world.receivedItineraryEmail;
   }
 
   const message = await Email.waitForSharedEmail({
     to: requireItineraryRecipient(world),
-    subjectContains,
+    subjectContains: subjectContains ?? itinerarySubjectHint(world),
     sentAfter: world.itineraryShareSentAfter,
   });
 

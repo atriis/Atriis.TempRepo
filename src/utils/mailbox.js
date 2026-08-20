@@ -78,15 +78,32 @@ function assertConfigured() {
 }
 
 /**
- * Builds a unique address in the Mailsac account, so each run reads only its own mail.
+ * Resolves the address a share should be delivered to.
  *
- * Mailsac inboxes exist implicitly — nothing has to be created up front.
+ * With MAILBOX_ADDRESS set this is a single reserved (private) inbox, returned unchanged for
+ * every scenario. That is the intended configuration: a reserved address is private to the
+ * account and readable, whereas public mailsac.com inboxes are world-readable and are not
+ * readable at all by an account with "allow public domains" off — that combination answers 200
+ * with an empty list, which is indistinguishable from mail that never arrived.
  *
- * @param {string} [tag] - Short label folded into the local part, e.g. a test id
+ * The cost is that the address stops identifying the run, so callers MUST narrow by subject
+ * (waitForEmail's subjectContains) and by receivedAfter. Two scenarios sharing the inbox — or
+ * two parallel workers — otherwise match each other's mail.
+ *
+ * With no MAILBOX_ADDRESS it falls back to a unique public address per call; Mailsac inboxes
+ * exist implicitly, so nothing has to be created up front.
+ *
+ * @param {string} [tag] - Short label folded into the local part, e.g. a test id. Ignored when
+ *   a reserved address is configured.
  * @returns {string} An address the configured account receives
  */
 function generateAddress(tag = "test") {
   assertConfigured();
+
+  const reserved = (config.mailbox.address || "").trim();
+  if (reserved) {
+    return reserved;
+  }
 
   const slug =
     String(tag)
@@ -208,6 +225,36 @@ async function fetchMessage(id, to, subject) {
 }
 
 /**
+ * Deletes one message, by id, once it has been read.
+ *
+ * Only ever the message this run consumed — never the whole inbox. A reserved address is shared
+ * by every scenario and by parallel workers, so purging an inbox would delete mail another
+ * worker is still waiting on.
+ *
+ * Best-effort: a scenario that has already read its message must not fail because the cleanup
+ * call did. The message is fully materialised in memory by the time this runs.
+ *
+ * @param {string} to
+ * @param {string} id
+ * @returns {Promise<boolean>} Whether the message was deleted
+ */
+async function deleteMessage(to, id) {
+  try {
+    const response = await fetch(
+      `${BASE_URL}/addresses/${encodeURIComponent(to)}/messages/${encodeURIComponent(id)}`,
+      { method: "DELETE", headers: headers() }
+    );
+    if (!response.ok) {
+      throw await httpError(`deleting message ${id}`, response);
+    }
+    return true;
+  } catch (err) {
+    logger.warn("Could not delete the message after reading it", { to, id, error: err.message });
+    return false;
+  }
+}
+
+/**
  * Polls the inbox until a matching message arrives, then returns it fully fetched.
  *
  * Each poll is one metered API call, so pollIntervalMs is the lever for cost on a metered plan.
@@ -259,7 +306,11 @@ async function waitForEmail({
 
       if (hit) {
         logger.info("Email arrived", { to, subject: hit.subject, attempts });
-        return await fetchMessage(hit.id, to, hit.subject);
+        const message = await fetchMessage(hit.id, to, hit.subject);
+        // Read it, then take it out of the inbox: a reserved address is reused by every
+        // scenario, and the account meters stored messages.
+        await deleteMessage(to, hit.id);
+        return message;
       }
     } catch (err) {
       // A single failed poll is not a failed wait: the API rate-limits and blips. Keep the error
@@ -287,6 +338,7 @@ module.exports = {
   assertConfigured,
   generateAddress,
   waitForEmail,
+  deleteMessage,
   // Exported for tests of this helper only.
   toMessage,
 };
