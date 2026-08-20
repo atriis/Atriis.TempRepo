@@ -687,19 +687,21 @@ const Cart = {
   },
 
   /**
-   * Opens the hotel Terms & Conditions dialog in the cart and asserts it contains the
-   * expected text (case-insensitive). Used to confirm notices such as the shared-bathroom
-   * note that render below the cancellation policy.
+   * Opens the cart quote card Terms & Conditions dialog and asserts it contains the expected text
+   * (case-insensitive). Serves hotel quotes (the shared-bathroom style notices below the
+   * cancellation policy) and rail quotes (the ticket rules Evolvi shows as its terms) alike.
    * @param {import('playwright').Page} page
    * @param {string} expectedText - Text expected to appear in the cart T&C dialog
    */
   async verifyTextInCartTermsAndConditions(page, expectedText) {
-    if (!page) throw new Error('page is required');
+    if (!page) throw new Error('[Cart.verifyTextInCartTermsAndConditions] "page" is required.');
     if (typeof expectedText !== 'string' || expectedText.trim().length === 0) {
-      throw new Error(`expectedText must be a non-empty string, got: ${typeof expectedText}`);
+      throw new Error(
+        `[Cart.verifyTextInCartTermsAndConditions] "expectedText" must be a non-empty string, got: ${typeof expectedText}`,
+      );
     }
     const cartPage = getPageObject(page, CartPage);
-    const dialogText = await cartPage.getHotelTermsAndConditionsText();
+    const dialogText = await cartPage.getCartTermsAndConditionsText();
     // The T&C rule title and its description render as adjacent DOM nodes whose text content
     // concatenates with no separator (e.g. "shared bathroom" + "this room includes...") — so strip
     // all whitespace on both sides before matching (case-insensitive) rather than just collapsing it.
@@ -5264,23 +5266,53 @@ const Cart = {
 
   /**
    * Verifies the currently open drawer (any product type) contains the expected text.
+   *
+   * The read is polled, not single-shot: general-quote-more-details.vue mounts every product's
+   * More Details body through defineAsyncComponent, so the drawer opens with its title and an EMPTY
+   * body until that chunk is fetched (blank body, no el-skeleton to wait on — hence the wait cannot
+   * live in getAnyVisibleDrawerText's skeleton check). Re-reading until the deadline still fails
+   * honestly when the text never arrives; it only stops the assertion from landing in the gap.
+   *
    * @param {import('playwright').Page} page
    * @param {string} expectedText - Text to find in the open drawer
+   * @param {number} [timeout=20000] - How long to keep re-reading the drawer before failing
    */
-  async verifyOpenDrawerContainsText(page, expectedText) {
+  async verifyOpenDrawerContainsText(page, expectedText, timeout = 20000) {
     if (!page) throw new Error('[Cart.verifyOpenDrawerContainsText] "page" is required.');
     if (typeof expectedText !== 'string' || !expectedText) {
       throw new Error(`[Cart.verifyOpenDrawerContainsText] "expectedText" must be a non-empty string, got: ${typeof expectedText}`);
     }
-    const cartPage = getPageObject(page, CartPage);
-    const drawerText = await cartPage.getAnyVisibleDrawerText();
-    const normalize = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
-    if (!normalize(drawerText).includes(normalize(expectedText))) {
-      throw new Error(
-        `[Cart.verifyOpenDrawerContainsText] Expected the open drawer to contain "${expectedText}" but it was not found. ` +
-        `Drawer text (first 500 chars): "${drawerText.substring(0, 500)}"`
-      );
+    if (!Number.isInteger(timeout) || timeout <= 0) {
+      throw new Error(`[Cart.verifyOpenDrawerContainsText] "timeout" must be a positive integer, got: ${timeout}`);
     }
+    const cartPage = getPageObject(page, CartPage);
+    const normalize = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+    const deadline = Date.now() + timeout;
+
+    let drawerText = '';
+    for (;;) {
+      drawerText = await cartPage.getAnyVisibleDrawerText();
+      if (normalize(drawerText).includes(normalize(expectedText))) {
+        return;
+      }
+      if (Date.now() >= deadline) {
+        break;
+      }
+      logger.debug('[Cart.verifyOpenDrawerContainsText] Drawer body does not carry the text yet, re-reading', {
+        expectedText,
+        drawerTextLength: drawerText.length,
+      });
+      // Fixed pause between reads: the async chunk mounts on a network round trip, with no DOM
+      // state to wait on while the body is still empty (getAnyVisibleDrawerText already covers the
+      // skeleton case), so there is nothing to poll but the text itself.
+      await page.waitForTimeout(500);
+    }
+
+    throw new Error(
+      `[Cart.verifyOpenDrawerContainsText] Expected the open drawer to contain "${expectedText}" but it was ` +
+      `not found within ${timeout}ms. The async More Details body may have failed to mount. ` +
+      `Drawer text (first 500 chars): "${drawerText.substring(0, 500)}"`
+    );
   },
 
   /**
@@ -5570,6 +5602,49 @@ const Cart = {
 
     await cartPage.closeRailFareRulesDialog();
     return { text };
+  },
+
+  /**
+   * Opens a UK rail (Evolvi) quote-card "Fare rules" drawer — in the cart or in the trip overview
+   * after booking, which render the same uk-rail-quote-card — verifies its rules contain the
+   * expected text, then closes it. See test 59698.
+   *
+   * The drawer itself is read and closed through the generic open-drawer helpers, which already
+   * handle every product's drawer; only the trigger is rail-specific. Separate from
+   * verifyRailFareRulesDialogContainsText because the Benerail card opens its rules in an el-dialog
+   * with its own close control, while the Evolvi card uses a drawer.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Text expected inside the fare rules (case-insensitive)
+   * @param {number} [segmentIndex=0] - Zero-based journey/segment index on the quote card
+   * @returns {Promise<{verified: boolean, segmentIndex: number}>}
+   */
+  async verifyUkRailFareRulesDrawerContainsText(page, expectedText, segmentIndex = 0) {
+    if (!page) {
+      throw new Error('[Cart.verifyUkRailFareRulesDrawerContainsText] "page" is required.');
+    }
+    if (typeof expectedText !== 'string' || !expectedText) {
+      throw new Error(
+        `[Cart.verifyUkRailFareRulesDrawerContainsText] "expectedText" must be a non-empty string, got: ${typeof expectedText}`,
+      );
+    }
+    if (!Number.isInteger(segmentIndex) || segmentIndex < 0) {
+      throw new Error(
+        `[Cart.verifyUkRailFareRulesDrawerContainsText] "segmentIndex" must be a non-negative integer, got: ${segmentIndex}`,
+      );
+    }
+
+    logger.debug('[Cart.verifyUkRailFareRulesDrawerContainsText] Checking the UK rail Fare rules drawer', {
+      expectedText,
+      segmentIndex,
+    });
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickUkRailFareRulesButton(segmentIndex);
+    await Cart.verifyOpenDrawerContainsText(page, expectedText);
+    await Cart.closeOpenDrawer(page);
+
+    return { verified: true, segmentIndex };
   },
 
   /**

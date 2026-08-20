@@ -2,6 +2,9 @@ const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const EvolviResultsPage = require("@pages/EvolviResultsPage");
 const Results = require("./Results");
+// Only for the generic open-drawer read/close (ANY_VISIBLE_DRAWER) — the fare-rules drawer the
+// results grid opens is the very same drawer the quote card opens, so there is one implementation.
+const Cart = require("./Cart");
 const logger = require("@utils/logger").child("EvolviResults");
 
 /**
@@ -327,6 +330,40 @@ const EvolviResults = {
     ).toContain(expectedText);
 
     return tooltipText;
+  },
+
+  /**
+   * Opens the fare rules of the first Evolvi fare in results WITHOUT selecting it, asserts the
+   * rules contain the expected wording, then closes the drawer so the results grid stays usable for
+   * the selection that follows. See test 59698.
+   *
+   * The rules open from the fare tooltip's "Full information" button, which lives in the body-level
+   * popper rather than in the clickable cell — so reading the rules here leaves the fare unselected.
+   * Only that trigger is results-specific: the drawer it opens is the same one the quote card uses,
+   * so it is read and closed through the generic open-drawer helpers.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Text expected inside the fare rules (case-insensitive)
+   * @returns {Promise<{verified: boolean}>}
+   */
+  async verifyFareRulesFromFirstResultContainsText(page, expectedText) {
+    if (!page) throw new Error('[EvolviResults.verifyFareRulesFromFirstResultContainsText] "page" is required.');
+    if (!expectedText || typeof expectedText !== "string") {
+      throw new Error(
+        `[EvolviResults.verifyFareRulesFromFirstResultContainsText] "expectedText" must be a non-empty string, got: ${expectedText}`,
+      );
+    }
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.debug(
+      "[EvolviResults.verifyFareRulesFromFirstResultContainsText] Opening the fare rules of the first results fare",
+      { expectedText },
+    );
+    await resultsPage.openFareRulesFromFirstFare();
+    await Cart.verifyOpenDrawerContainsText(page, expectedText);
+    await Cart.closeOpenDrawer(page);
+
+    return { verified: true };
   },
 
   /**

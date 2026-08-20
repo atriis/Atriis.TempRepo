@@ -1,7 +1,7 @@
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
-const { EvolviResults } = require("@dsl");
+const { Cart, EvolviResults } = require("@dsl");
 const logger = require("@utils/logger").child("EvolviResults");
 
 setDefaultTimeout(120000);
@@ -131,6 +131,23 @@ Then("I should see that first split ticket fare highlighted in blue message cont
 When("I select and add to cart the first split ticket fare highlighted in blue", async function () {
   logger.info("Selecting the first blue-highlighted SplitTix fare and adding it to the trip");
   await EvolviResults.selectAndAddFirstBlueSplitTicketFareToTrip(this.page);
+});
+
+// ===== FARE RULES =====
+//
+// Evolvi opens its fare rules in the same "Full information" drawer everywhere, but the trigger
+// differs: from results it is the fare tooltip's own button (EvolviResults), while the cart renders
+// uk-rail-quote-card's "Fare rules" link (Cart) — hence the two different DSLs. The cart phrase also
+// covers the post-booking check: the trip overview renders that very same quote card.
+
+Then("the fare rules should be accessible in Evolvi results and contain {string}", async function (expectedText) {
+  logger.info("Verifying Evolvi fare rules are accessible from results", { expectedText });
+  await EvolviResults.verifyFareRulesFromFirstResultContainsText(this.page, expectedText);
+});
+
+Then("the fare rules should be accessible in the Evolvi cart and contain {string}", async function (expectedText) {
+  logger.info("Verifying Evolvi fare rules are accessible in cart", { expectedText });
+  await Cart.verifyUkRailFareRulesDrawerContainsText(this.page, expectedText);
 });
 
 // ===== TODO STUBS — need DSL/Page implementation =====

@@ -92,6 +92,15 @@ const SELECTORS = {
   // "SplitTix fare selected …" line and the "Saving of <amount>" sub-title.
   SPLIT_TICKET_FARE_TOOLTIP: ".uk-rail-tooltip:visible",
   SPLIT_TICKET_FARE_TOOLTIP_INFO: ".info-container",
+
+  // ===== Fare rules ("Full information") =====
+  //
+  // Every price cell shares one el-tooltip whose popper-class is "uk-rail-tooltip"
+  // (uk-rail-results.vue), and its content — uk-rail-cell-tooltip-content.vue — ends with the
+  // "Full information" app-btn (.more-info-btn) that opens the fare rules. The button lives in the
+  // body-level popper, OUTSIDE the cell that carries the select-on-click handler, so opening the
+  // rules from here does NOT select the fare.
+  FARE_TOOLTIP_FULL_INFORMATION_BUTTON: ".uk-rail-tooltip:visible .more-info-btn",
 };
 
 /**
@@ -405,6 +414,54 @@ class EvolviResultsPage {
     await fare.click();
   }
 
+  /**
+   * Opens the fare rules ("Full information") of the first selectable fare in the results grid without
+   * selecting it: hovers the fare to raise its tooltip, then clicks the tooltip's "Full information"
+   * button. The button sits in the body-level popper, outside the cell's select-on-click handler,
+   * so the fare stays unselected.
+   *
+   * @param {number} [timeout=30000]
+   */
+  async openFareRulesFromFirstFare(timeout = 30000) {
+    const fare = this._selectableFaresInColumn().first();
+    try {
+      await fare.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        "[EvolviResultsPage.openFareRulesFromFirstFare] No selectable fare is on screen in the " +
+          `results grid (selector: ${SELECTORS.FIRST_PRICE_ROW} > ${SELECTORS.PRICE_CELL} ` +
+          `${SELECTORS.SELECTABLE_FARE_OPTION}). Either no fares came back for this route or every ` +
+          `fare is cancelled/company-disabled. Original: ${err.message}`,
+      );
+    }
+    await fare.scrollIntoViewIfNeeded().catch(() => {});
+    await fare.hover();
+
+    const fullInformationButton = this.page
+      .locator(SELECTORS.FARE_TOOLTIP_FULL_INFORMATION_BUTTON)
+      .first();
+    try {
+      await fullInformationButton.waitFor({ state: "visible", timeout });
+    } catch {
+      // Element Plus mounts the popper on the first pointer-enter, which can lose the race while
+      // the results grid is still settling. Re-arm the pointer from a neutral position and retry.
+      await this.page.mouse.move(0, 0);
+      await this.page.waitForTimeout(300);
+      await fare.hover();
+      try {
+        await fullInformationButton.waitFor({ state: "visible", timeout });
+      } catch (err) {
+        throw new Error(
+          "[EvolviResultsPage.openFareRulesFromFirstFare] The fare tooltip never showed its " +
+            `"Full information" button (selector: ${SELECTORS.FARE_TOOLTIP_FULL_INFORMATION_BUTTON}) ` +
+            "after hovering the first selectable fare — the el-tooltip popper did not open, or the " +
+            `hovered cell renders no tooltip content. Original: ${err.message}`,
+        );
+      }
+    }
+    await fullInformationButton.click();
+  }
+
   /** Every blue-highlighted split-ticket fare in the SplitTix group's first price row. */
   _blueSplitTicketFares() {
     return this.page.locator(
@@ -433,10 +490,16 @@ class EvolviResultsPage {
     return fare;
   }
 
-  /** Every selectable fare sitting in one grid column, top group first. */
+  /**
+   * Every selectable fare sitting in one grid column, top group first — or, with no cellIndex,
+   * every selectable fare in the grid (used when any bookable fare will do, e.g. to open fare
+   * rules from the first one).
+   */
   _selectableFaresInColumn(cellIndex) {
+    const cell =
+      cellIndex === undefined ? SELECTORS.PRICE_CELL : `${SELECTORS.PRICE_CELL}:nth-child(${cellIndex + 1})`;
     return this.page.locator(
-      `${SELECTORS.FIRST_PRICE_ROW} > ${SELECTORS.PRICE_CELL}:nth-child(${cellIndex + 1}) ${SELECTORS.SELECTABLE_FARE_OPTION}`,
+      `${SELECTORS.FIRST_PRICE_ROW} > ${cell} ${SELECTORS.SELECTABLE_FARE_OPTION}`,
     );
   }
 }

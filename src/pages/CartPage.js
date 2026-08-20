@@ -1215,6 +1215,12 @@ const SELECTORS = {
   // hotel-quote-card el-dialog in the cart; holds the rule lines (cancellation policy, room notices
   // such as the shared-bathroom note). :visible skips the closed duplicate el-dialog leaves attached.
   HOTEL_TERMS_DIALOG_CONTENT: '.app-terms-conditions:visible',
+  // Whichever cart T&C dialog is open, regardless of product: the hotel card's
+  // app-terms-conditions.vue, or uk-rail-quote-card.vue's own .terms-dialog el-dialog, which hosts
+  // uk-rail-result-fare-rules.vue instead (so .app-terms-conditions never appears for an Evolvi
+  // quote). Both halves carry :visible because el-dialog leaves closed instances attached.
+  CART_TERMS_DIALOG_CONTENT:
+    '.app-terms-conditions:visible, .app-dialog.terms-dialog:visible .uk-rail-result-fare-rules',
 
   // Rail (EU Rail / Benerail) quote-card Fare Rules dialog — same `.app-dialog` el-dialog used for
   // Terms & Conditions/Journey Details on the quote card, scoped to the body for content text.
@@ -1223,6 +1229,18 @@ const SELECTORS = {
   // is unscoped and can resolve to an unrelated dialog's close button elsewhere in the DOM, leaving
   // this dialog open.
   RAIL_FARE_RULES_DIALOG_CLOSE_BUTTON: '.el-dialog.app-dialog [aria-label="Close this dialog"], .el-dialog.app-dialog .el-dialog__close, .el-dialog.app-dialog .el-dialog__headerbtn',
+
+  // UK rail (Evolvi) quote-card fare rules. Unlike the Benerail card above, uk-rail-quote-card.vue
+  // opens them in an el-drawer.app-drawer titled "Full information" (hosting
+  // uk-rail-result-fare-rules.vue), so the RAIL_FARE_RULES_DIALOG_* selectors do not match here —
+  // and the drawer itself needs no locator of its own: ANY_VISIBLE_DRAWER already covers reading
+  // and closing whichever drawer is open (see Cart.verifyOpenDrawerContainsText / closeOpenDrawer).
+  //
+  // The link is uk-rail-segment-info.vue's "Fare rules" app-btn, one per journey segment in segment
+  // order. Scoped to .uk-rail-quote-card because the More Details drawer renders the same
+  // segment-info component (there with withoutRules, so no button), and :visible skips the hidden
+  // responsive duplicates the cart keeps mounted.
+  UK_RAIL_QUOTE_FARE_RULES_BUTTON: '.uk-rail-quote-card .fare-rules-btn:visible',
 
   // Quote Extras - Attach Files (per-diem-quote-card → extras-collapse → attach-files-extra)
   ATTACH_FILES_VIEW_BTN: '.attach-file-extra .extra__btns .is-clickable',
@@ -1276,18 +1294,34 @@ class CartPage {
   }
 
   /**
-   * Opens the hotel Terms & Conditions dialog from the cart quote card and returns its full text.
-   * The rule lines load asynchronously (skeleton -> content), so this waits for the rendered
-   * terms container before reading. Closes the dialog before returning so subsequent steps are
-   * not blocked by the overlay.
+   * Opens the Terms & Conditions dialog from a cart quote card and returns its full text, then
+   * closes it so the overlay does not block the next step.
+   *
+   * Product-agnostic on purpose — the step it serves ("the cart terms and conditions should
+   * include …") is used by hotel and rail quotes alike, and the two render different dialogs:
+   * a hotel card mounts app-terms-conditions.vue, while uk-rail-quote-card.vue mounts
+   * uk-rail-result-fare-rules.vue inside its own .terms-dialog. CART_TERMS_DIALOG_CONTENT covers
+   * both, so whichever card the cart holds is the one read.
+   *
    * @param {number} timeout - Maximum wait time in ms
    * @returns {Promise<string>} Full text content of the T&C dialog
    */
-  async getHotelTermsAndConditionsText({ timeout = 20000 } = {}) {
+  async getCartTermsAndConditionsText({ timeout = 20000 } = {}) {
     await this.clickPaymentTermsLink();
-    const dialog = this.page.locator(SELECTORS.HOTEL_TERMS_DIALOG_CONTENT).first();
-    await dialog.waitFor({ state: 'visible', timeout });
-    // Wait for the async-loaded rule lines to render past the loading skeleton.
+    const dialog = this.page.locator(SELECTORS.CART_TERMS_DIALOG_CONTENT).first();
+    try {
+      await dialog.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getCartTermsAndConditionsText] No Terms & Conditions dialog became visible within ` +
+        `${timeout}ms after clicking the T&C link (selector: ${SELECTORS.CART_TERMS_DIALOG_CONTENT}). ` +
+        `The link may have opened a different dialog, or this quote type renders its terms in a ` +
+        `container neither branch of the selector covers. Original: ${err.message}`,
+      );
+    }
+    // Hotel terms only: wait for the async-loaded rule lines to render past the loading skeleton.
+    // The rail dialog has no such stage — its rules are already fetched when the dialog mounts —
+    // so this is best-effort and never gates the read.
     await this.page
       .locator(`${SELECTORS.HOTEL_TERMS_DIALOG_CONTENT} .terms-container`)
       .first()
@@ -7304,6 +7338,37 @@ class CartPage {
           `Original: ${error.message}`,
       );
     }
+  }
+
+  /**
+   * Clicks the "Fare rules" link of a UK rail (Evolvi) quote-card segment (0 = first journey), in
+   * the cart or in the trip overview after booking — uk-rail-quote-card.vue renders the same card
+   * in both.
+   * @param {number} segmentIndex - Zero-based segment/journey index.
+   * @param {number} [timeout=30000]
+   */
+  async clickUkRailFareRulesButton(segmentIndex = 0, timeout = 30000) {
+    if (!Number.isInteger(segmentIndex) || segmentIndex < 0) {
+      throw new Error(
+        `[CartPage.clickUkRailFareRulesButton] "segmentIndex" must be a non-negative integer, got: ${segmentIndex}`,
+      );
+    }
+    const button = this.page.locator(SELECTORS.UK_RAIL_QUOTE_FARE_RULES_BUTTON).nth(segmentIndex);
+    try {
+      await button.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      const buttonCount = await this.page
+        .locator(SELECTORS.UK_RAIL_QUOTE_FARE_RULES_BUTTON)
+        .count()
+        .catch(() => -1);
+      throw new Error(
+        `[CartPage.clickUkRailFareRulesButton] No "Fare rules" link at segment index ${segmentIndex} ` +
+          `on the UK rail quote card (selector: ${SELECTORS.UK_RAIL_QUOTE_FARE_RULES_BUTTON}, links ` +
+          `found: ${buttonCount}). The quote may not be an Evolvi rail quote, or its card is not on ` +
+          `screen yet. Original: ${err.message}`,
+      );
+    }
+    await button.click();
   }
 
   /**
