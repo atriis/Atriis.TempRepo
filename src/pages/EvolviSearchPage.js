@@ -22,9 +22,27 @@ const SEARCH_FORM = ".uk-rail-search:visible";
 const SPLIT_TICKET_TYPE_RADIO_GROUP =
   `${SEARCH_FORM} .checkbox-container .el-radio-group:has(.radio-info)`;
 
+/**
+ * The `data-track` attribute of each UK Rail search checkbox a test addresses by label.
+ *
+ * The indirection is what lets a step take the checkbox label as a parameter while the selector
+ * still resolves through the stable attribute instead of the rendered text. Matching the text would
+ * be a locale trap: these labels all come from $t(), and test 49309 deliberately runs Evolvi with
+ * the app in another language, where a text match finds nothing.
+ *
+ * Add an entry when a test needs another one — the siblings in the same row are
+ * `evolvi-search-via` and `evolvi-search-avoid`.
+ */
+const SEARCH_CHECKBOX_TRACK_IDS = {
+  "Request Split Ticket": "evolvi-search-split-ticket",
+};
+
+/** el-checkbox renders `data-track` on its label element; `.el-checkbox__inner` is the node inside
+ * it that isChecked() answers correctly for. */
+const searchCheckbox = (trackId) => `label[data-track='${trackId}'] .el-checkbox__inner`;
+
 const SELECTORS = {
-  SPLIT_TICKET_CHECKBOX:
-    "label[data-track='evolvi-search-split-ticket'] .el-checkbox__inner",
+  SPLIT_TICKET_CHECKBOX: searchCheckbox(SEARCH_CHECKBOX_TRACK_IDS["Request Split Ticket"]),
   // evolvi-search-inputs.vue's trip-type radio group. UK Rail's three options are Return / One Way
   // / Open Return — there is no "Round Trip" here, and matching on the rendered label could not
   // separate "Return" from "Open Return" anyway (both are localized via $t('ukRail.*')), so this
@@ -171,6 +189,44 @@ class EvolviSearchPage {
     const checkbox = this.page.locator(SELECTORS.SPLIT_TICKET_CHECKBOX).first();
     await checkbox.waitFor({ state: "visible", timeout });
     return checkbox.isChecked();
+  }
+
+  /**
+   * Reads whether a checkbox in the UK Rail search form is on screen and already ticked, addressed
+   * by its rendered label.
+   *
+   * Answers with a `visible` flag instead of throwing when the checkbox never appears, so the
+   * calling assertion can report "not displayed" as the failure rather than surfacing a raw locator
+   * timeout that says nothing about which checkbox was missing.
+   *
+   * @param {string} label - The checkbox label as rendered, e.g. "Request Split Ticket"
+   * @param {number} [timeout=30000]
+   * @returns {Promise<{visible: boolean, checked: boolean}>}
+   */
+  async readSearchCheckboxState(label, timeout = 30000) {
+    if (!label || typeof label !== "string") {
+      throw new Error(
+        `[EvolviSearchPage.readSearchCheckboxState] "label" must be a non-empty string, got: ${label}`,
+      );
+    }
+
+    const trackId = SEARCH_CHECKBOX_TRACK_IDS[label];
+    if (!trackId) {
+      throw new Error(
+        `[EvolviSearchPage.readSearchCheckboxState] "${label}" is not a known UK Rail search ` +
+          `checkbox. Known labels: ${Object.keys(SEARCH_CHECKBOX_TRACK_IDS).join(", ")}. Add its ` +
+          `data-track attribute to SEARCH_CHECKBOX_TRACK_IDS rather than matching on label text, ` +
+          `which is localized.`,
+      );
+    }
+
+    const checkbox = this.page.locator(searchCheckbox(trackId)).first();
+    const visible = await checkbox
+      .waitFor({ state: "visible", timeout })
+      .then(() => true)
+      .catch(() => false);
+
+    return { visible, checked: visible ? await checkbox.isChecked() : false };
   }
 
   /**

@@ -26,6 +26,23 @@ When("I search for a round trip Evolvi train from {string}", async function (rou
   await EvolviSearch.searchEvolviRoundTrip(this.page, routeKey);
 });
 
+// Fills the round-trip form and stops there, for the scenarios that assert on the search form
+// itself. Expects "I select UK Rail in the search form" to have run first, and leaves the split
+// ticket checkbox at its app default rather than forcing it either way.
+When("I fill in a round trip Evolvi train from {string} without clicking search button", async function (routeKey) {
+  logger.info("Filling the round trip Evolvi search form without submitting it", { routeKey });
+  await EvolviSearch.fillEvolviRoundTripWithoutSearching(this.page, routeKey);
+});
+
+// Not the generic "I click the search button": that clicks once, and a UK Rail round-trip Search
+// click is silently swallowed while the form is still revalidating, leaving the run on a filled-in
+// form that never submitted. This one confirms the form actually left the screen.
+When("I click the UK Rail search button", async function () {
+  logger.info("Submitting the UK Rail search form");
+  const { attempts } = await EvolviSearch.submitEvolviSearch(this.page);
+  logger.info("The UK Rail search was submitted", { attempts });
+});
+
 // ===== SPLIT TICKET (SplitTix) =====
 
 // The counterpart of "I search for a one way Evolvi train from {string}", which unchecks
@@ -72,6 +89,11 @@ When("I search Evolvi with NCL location", async function () {
 });
 
 // ===== THEN STEPS =====
+
+Then("the {string} checkbox should be displayed and checked", async function (label) {
+  logger.info("Verifying a UK Rail search checkbox is displayed and pre-checked", { label });
+  await EvolviSearch.expectSearchCheckboxIsDisplayedAndChecked(this.page, label);
+});
 
 Then("the single traveler-only option should not be displayed in Evolvi search", async function () {
   logger.info("Verifying the Evolvi traveller-count select offers no single-traveller option");

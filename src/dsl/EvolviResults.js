@@ -194,6 +194,40 @@ const EvolviResults = {
     return { raw, label, departureHour: match[1] };
   },
 
+  /**
+   * Verifies the results page shows a direction's heading — the "Outbound" / "Inbound" title over
+   * that leg's journey columns, which is the text that says the leg's results actually rendered.
+   *
+   * Asserts on the heading rather than on the section merely existing: `.data-section` for the
+   * inbound leg is v-show'n rather than v-if'd, so a presence-only check would pass on a page whose
+   * headings never painted. The expected wording comes from the DIRECTIONS map above, so this and
+   * the leg-summary readers cannot disagree about what a direction is called.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} direction - "outbound" or "inbound"
+   * @returns {Promise<{direction: string, heading: string}>} The heading that was read
+   */
+  async expectDirectionHeadingDisplayed(page, direction) {
+    if (!page) throw new Error("[EvolviResults.expectDirectionHeadingDisplayed] page is required");
+    const { label, sectionIndex } = resolveDirection("expectDirectionHeadingDisplayed", direction);
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    const heading = await resultsPage.getResultsSectionHeadingText(sectionIndex);
+
+    logger.info("[EvolviResults.expectDirectionHeadingDisplayed] Read the direction heading", {
+      direction,
+      heading,
+    });
+
+    expect(
+      heading,
+      `The Evolvi results page should show the "${label}" heading over the ${direction} journeys, ` +
+      `but the heading read: "${heading}"`,
+    ).toBe(label);
+
+    return { direction, heading };
+  },
+
   // ===== SplitTix (split ticket) — test 44341 =====
 
   /**

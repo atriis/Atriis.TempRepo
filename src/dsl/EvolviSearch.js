@@ -49,6 +49,42 @@ async function clickSearchUntilSubmitted(searchPage, evolviSearchPage, { attempt
   );
 }
 
+/**
+ * Fills the UK Rail round-trip stations and dates, in the one order the form accepts them.
+ *
+ * Shared by searchEvolviRoundTrip and fillEvolviRoundTripWithoutSearching so the two cannot drift:
+ * the origin's date popper has to be dealt with before the destination is typed, and the return
+ * calendar only opens once the destination is set — reordering any of it leaves the form half filled
+ * with no error to say so. Deliberately does NOT touch the product select, the trip type or the
+ * split-ticket checkbox: what each of those should be differs per caller.
+ *
+ * @param {import('playwright').Page} page - Playwright page instance
+ * @param {object} route
+ * @param {string} route.from - Origin station
+ * @param {string} route.to - Destination station
+ * @param {number} route.departureIndex - Nth available date to pick for the departure
+ * @param {number} route.returnIndex - Nth available date to pick for the return
+ */
+async function fillRoundTripStationsAndDates(page, { from, to, departureIndex, returnIndex }) {
+  const searchPage = getPageObject(page, SearchPage);
+
+  // Departure flow: select Nth available date for departure. One month ahead, not the shared
+  // 3-month default — Evolvi inventory is not published that far out.
+  await searchPage.fillInOrField(from, 1);
+  await searchPage.clickCalendarNextArrow(1);
+  await selectDatesByNthAvailable(page, {
+    startIndex: departureIndex,
+    endIndex: null,
+  });
+
+  // Return flow: select Nth available date for return
+  await searchPage.fillInOrField(to, 2);
+  await selectDatesByNthAvailable(page, {
+    startIndex: returnIndex,
+    endIndex: null,
+  });
+}
+
 const EvolviSearch = {
   /**
    * Selects the UK Rail provider in the search UI.
@@ -178,6 +214,46 @@ const EvolviSearch = {
     ).toBe(true);
 
     return { iconVisible, checked };
+  },
+
+  /**
+   * Verifies a checkbox in the UK Rail search form is both on screen and already ticked, addressed
+   * by the label the manual test names.
+   *
+   * Kept apart from expectSplitTicketCheckboxIsChecked, which is split-ticket-specific and also
+   * asserts the SplitTix glyph beside the label. This one takes the label as a parameter so the
+   * scenario names in its own words which checkbox it means.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} label - The checkbox label as rendered, e.g. "Request Split Ticket"
+   * @returns {Promise<{visible: boolean, checked: boolean}>}
+   */
+  async expectSearchCheckboxIsDisplayedAndChecked(page, label) {
+    if (!page) throw new Error('[EvolviSearch.expectSearchCheckboxIsDisplayedAndChecked] "page" is required.');
+    if (!label || typeof label !== "string") {
+      throw new Error(
+        `[EvolviSearch.expectSearchCheckboxIsDisplayedAndChecked] "label" must be a non-empty string, got: ${label}`,
+      );
+    }
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
+
+    const { visible, checked } = await evolviSearchPage.readSearchCheckboxState(label);
+
+    logger.info(
+      "[EvolviSearch.expectSearchCheckboxIsDisplayedAndChecked] Read a UK Rail search checkbox",
+      { label, visible, checked },
+    );
+
+    expect(
+      visible,
+      `The "${label}" checkbox should be displayed in the UK Rail search form.`,
+    ).toBe(true);
+    expect(
+      checked,
+      `The "${label}" checkbox should already be ticked in the UK Rail search form.`,
+    ).toBe(true);
+
+    return { visible, checked };
   },
 
   /**
@@ -381,21 +457,7 @@ const EvolviSearch = {
     await evolviSearchPage.selectReturnTripType();
     await EvolviSearch.ensureSplitTicketIsUnchecked(page);
 
-    // Departure flow: select Nth available date for departure. One month ahead,
-    // not the shared 3-month default — Evolvi inventory is not published that far out.
-    await searchPage.fillInOrField(from, 1);
-    await searchPage.clickCalendarNextArrow(1);
-    await selectDatesByNthAvailable(page, {
-      startIndex: departureIndex,
-      endIndex: null,
-    });
-
-    // Return flow: select Nth available date for return
-    await searchPage.fillInOrField(to, 2);
-    await selectDatesByNthAvailable(page, {
-      startIndex: returnIndex,
-      endIndex: null,
-    });
+    await fillRoundTripStationsAndDates(page, { from, to, departureIndex, returnIndex });
 
     // A "return" search adds returnDate/returnTime to evolvi-search-inputs.ts's vuelidate rules, and
     // the button stays .is-disabled until that revalidation settles. Waiting for it to be enabled is
@@ -410,6 +472,66 @@ const EvolviSearch = {
       departureIndex,
       returnIndex,
     };
+  },
+
+  /**
+   * Submits an already-filled UK Rail search form, confirming it actually went and clicking again
+   * when it did not.
+   *
+   * The step-level counterpart of what searchEvolviRoundTrip does internally, for the scenarios that
+   * fill the form and submit it as two separate steps. The generic "I click the search button" step
+   * cannot serve here: it clicks exactly once, and a UK Rail round-trip Search click lands inside the
+   * window where vuelidate is still re-running the returnDate/returnTime rules, so it is silently
+   * swallowed — the run then carries on against a form that never submitted, and the failure surfaces
+   * on whatever step reads the results page next. See clickSearchUntilSubmitted.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{attempts: number}>} How many clicks it took
+   */
+  async submitEvolviSearch(page) {
+    if (!page) throw new Error('[EvolviSearch.submitEvolviSearch] "page" is required.');
+
+    const searchPage = getPageObject(page, SearchPage);
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
+
+    return clickSearchUntilSubmitted(searchPage, evolviSearchPage);
+  },
+
+  /**
+   * Fills in a complete round-trip UK Rail search but does NOT submit it, so a scenario can assert
+   * on the filled-in search form itself.
+   *
+   * Two deliberate differences from searchEvolviRoundTrip. It does not re-select the UK Rail
+   * product: the scenarios that fill without searching have already done that via "I select UK Rail
+   * in the search form", and re-opening the product select throws the form's state away. And it
+   * leaves the "Request Split Ticket" checkbox at whatever the app defaults it to — that default is
+   * exactly what these scenarios assert on, so setting it here would make the assertion vacuous.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string|object} routeInput - Route key from evolvi.json, or an inline {from, to}
+   * @param {object} [options]
+   * @param {number} [options.departureIndex] - Nth available date to pick for the departure
+   * @param {number} [options.returnIndex] - Nth available date to pick for the return
+   * @returns {Promise<object>} Search-form metadata
+   */
+  async fillEvolviRoundTripWithoutSearching(
+    page,
+    routeInput = evolviRoutes.defaultRoute,
+    {
+      departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX,
+      returnIndex = SEARCH_DEFAULTS.RAIL.RETURN_INDEX,
+    } = {},
+  ) {
+    if (!page) throw new Error('[EvolviSearch.fillEvolviRoundTripWithoutSearching] "page" is required.');
+
+    const { from, to } = resolveRoute(routeInput, evolviRoutes.routes, "evolvi");
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
+
+    // UK Rail calls a round trip "Return", so this cannot go through SearchPage.selectRoundTrip.
+    await evolviSearchPage.selectReturnTripType();
+    await fillRoundTripStationsAndDates(page, { from, to, departureIndex, returnIndex });
+
+    return { searched: false, routeInput, from, to, departureIndex, returnIndex };
   },
 };
 

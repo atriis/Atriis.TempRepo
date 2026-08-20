@@ -135,12 +135,9 @@ When("I select and add to cart the first split ticket fare highlighted in blue",
 
 // ===== TODO STUBS — need DSL/Page implementation =====
 
-When("I close mandatory notifications if displayed", async function () {
-  throw new Error("TODO: implement 'I close mandatory notifications if displayed' — close mandatory notification modal when it appears on search/results");
-});
-
-Then("the Select outbound prompt should be displayed", async function () {
-  throw new Error("TODO: implement 'the Select outbound prompt should be displayed' — assert outbound prompt text is shown before selecting first leg");
+Then("I should see outbound text in Evolvi results page", async function () {
+  logger.info("Verifying the outbound heading is displayed on the Evolvi results page");
+  await EvolviResults.expectDirectionHeadingDisplayed(this.page, "outbound");
 });
 
 When("I select an outbound Evolvi fare", async function () {

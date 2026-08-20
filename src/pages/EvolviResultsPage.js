@@ -1,4 +1,5 @@
 const { waitForText } = require("@utils/wait");
+const { normalizeText } = require("@utils/text");
 
 /**
  * Page Object for evolvi results page.
@@ -14,6 +15,11 @@ const SELECTORS = {
   // round trip). The leading .suggested-container is a sibling, not a .data-section, so these
   // indexes stay stable.
   RESULTS_DATA_SECTION: ".results-header .data-section",
+  // Inside a direction's .data-section, `.stations-container` holds that direction's heading —
+  // <h3>{{ $t('ukRail.outbound') }}</h3>. Scoped to .stations-container because the journey columns
+  // in the same section also render h3s (JOURNEY_TIME below), so a bare "h3" would match a
+  // departure time instead.
+  RESULTS_SECTION_HEADING: ".stations-container h3",
   // One column per journey inside a direction's .trains-info-container. The grid always reserves
   // 5 columns and pads the missing ones with .is-invisible placeholders (paddedOutboundJourneys /
   // paddedInboundJourneys), which Playwright's :visible correctly rejects (visibility: hidden).
@@ -216,6 +222,27 @@ class EvolviResultsPage {
     await this.page
       .locator(`${SELECTORS.SELECTED_SUMMARY}:nth-child(${summaryIndex + 1})${SELECTORS.SELECTED_SUMMARY_PICKED}`)
       .waitFor({ state: "visible", timeout });
+  }
+
+  /**
+   * Reads one direction's heading from the results header, e.g. "Outbound".
+   *
+   * The default timeout is generous because this is typically the first read after a search is
+   * submitted, so it is waiting on the Evolvi results to come back rather than on a re-render.
+   *
+   * @param {number} sectionIndex - 0 for outbound, 1 for inbound
+   * @param {number} [timeout=90000]
+   * @returns {Promise<string>} The heading text as rendered
+   */
+  async getResultsSectionHeadingText(sectionIndex, timeout = 90000) {
+    assertIndex("getResultsSectionHeadingText", "sectionIndex", sectionIndex);
+    const heading = this.page
+      .locator(SELECTORS.RESULTS_DATA_SECTION)
+      .nth(sectionIndex)
+      .locator(SELECTORS.RESULTS_SECTION_HEADING)
+      .first();
+    await heading.waitFor({ state: "visible", timeout });
+    return normalizeText((await heading.innerText()) ?? "");
   }
 
   /**
