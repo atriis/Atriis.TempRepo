@@ -3350,6 +3350,61 @@ const Cart = {
   },
 
   /**
+   * Asserts that every leg of the UK rail (Evolvi) quote in the cart shows the same ticket type.
+   *
+   * Reads each leg's own footer rather than the card's whole text: a round trip built from a single
+   * return fare prints the fare name once per segment, so a card-wide `toContain` would pass on a
+   * quote where only the outbound kept the fare the scenario selected.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedTicketType - The fare name both legs must show, e.g. "Anytime Return"
+   * @param {object} [options]
+   * @param {number[]} [options.legIndexes] - Zero-based legs to check; defaults to the two legs of a round trip
+   * @returns {Promise<{legIndex: number, ticketType: string}[]>} What each leg actually showed
+   */
+  async verifyRailTicketTypeInCart(page, expectedTicketType, { legIndexes = [0, 1] } = {}) {
+    if (!page) throw new Error('[Cart.verifyRailTicketTypeInCart] "page" is required, got: ' + typeof page);
+    if (typeof expectedTicketType !== 'string' || expectedTicketType.trim() === '') {
+      throw new Error(
+        `[Cart.verifyRailTicketTypeInCart] "expectedTicketType" must be a non-empty string, got: ${JSON.stringify(expectedTicketType)}`,
+      );
+    }
+    if (!Array.isArray(legIndexes) || legIndexes.length === 0) {
+      throw new Error(
+        `[Cart.verifyRailTicketTypeInCart] "legIndexes" must be a non-empty array, got: ${JSON.stringify(legIndexes)}`,
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('Verifying the rail ticket type in the cart', { expectedTicketType, legIndexes });
+
+    const readTicketTypes = [];
+    for (const legIndex of legIndexes) {
+      let ticketType;
+      try {
+        ticketType = await cartPage.getUkRailTicketType({ legIndex });
+      } catch (err) {
+        throw new Error(
+          `[Cart.verifyRailTicketTypeInCart] Could not read the ticket type of rail quote leg ${legIndex} in the ` +
+          `cart, so "${expectedTicketType}" could not be verified. Original: ${err.message}`,
+        );
+      }
+      readTicketTypes.push({ legIndex, ticketType });
+    }
+
+    for (const { legIndex, ticketType } of readTicketTypes) {
+      expect(
+        ticketType,
+        `Expected leg ${legIndex} of the rail quote in the cart to show the ticket type "${expectedTicketType}", ` +
+        `but its footer reads "${ticketType}". All legs read: ${JSON.stringify(readTicketTypes)}`,
+      ).toBe(expectedTicketType);
+    }
+
+    logger.info('Rail ticket type verified in the cart', { expectedTicketType, readTicketTypes });
+    return readTicketTypes;
+  },
+
+  /**
    * Asserts that the cart shows a badge indicating 2 rooms for a hotel booking.
    * Waits for the rooms badge text (e.g. "2 Rooms") to be visible in the trip summary.
    *

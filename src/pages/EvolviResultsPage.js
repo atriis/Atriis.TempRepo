@@ -53,6 +53,35 @@ const SELECTORS = {
   SELECTED_SUMMARY: ".selected-prices > .selected-price",
   SELECTED_SUMMARY_PICKED: ".has-price",
 
+  // ===== Named fare groups (a fare type addressed by its title, e.g. "Anytime Return") =====
+  //
+  // uk-rail-results.vue renders one .main-rows group per entry of formattedTickets, keyed by the
+  // supplier's ticket description, and prints that key as <p class="title"> inside the group's
+  // .title-cell (the SplitTix groups take the other branch of that v-if, so .title is exactly the
+  // set of plainly-titled fare types). Addressing a group by its title is what lets a scenario name
+  // the fare it is testing instead of settling for "the cheapest one".
+  FARE_GROUP_TITLE: ".results .main-rows > .title-cell .title",
+  FARE_GROUP_BY_TITLE: (title) => `.results .main-rows:has(> .title-cell .title:text-is("${title}"))`,
+  // A group's first price row, for the reason FIRST_PRICE_ROW gives: a collapsed
+  // .price-row-container is `max-height: 72px; overflow: hidden`, so only that row is genuinely
+  // clickable without expanding the group. Resolved RELATIVE to a FARE_GROUP_BY_TITLE locator.
+  FARE_GROUP_FIRST_PRICE_ROW: ".price-row-container > .price-row:first-child",
+  // The row's outbound and inbound halves. The grid is always 10 .price-cell children in DOM order
+  // (uk-rail-results.ts's isOutboundCell: 0-4 outbound, 5-9 inbound), so the split is positional —
+  // :nth-child is 1-based, hence cells 1-5 and 6-10.
+  OUTBOUND_PRICE_CELLS: ".price-cell:nth-child(-n+5)",
+  INBOUND_PRICE_CELLS: ".price-cell:nth-child(n+6)",
+  // The "Select Time" cell of an Anytime Return group. Its fare carries no separate inbound price,
+  // so uk-rail-results.vue renders <p class="select-time"> in place of the app-price — and clicking
+  // it is the ONLY way to pick the inbound leg of such a fare (uk-rail-results.ts's
+  // selectReturnTicket). Same is-clickable/disabled pair as a priced cell.
+  SELECT_TIME_OPTION: "p.select-time.is-clickable:not(.disabled)",
+  // The priced-cell shape only, for the outbound half of a named group — SELECTABLE_FARE_OPTION
+  // above deliberately matches either shape, which is wrong here: an outbound Anytime Return cell
+  // always carries a real price, and accepting a select-time cell instead would silently pick the
+  // inbound leg first.
+  SELECTABLE_PRICE_OPTION: ".app-price.price.is-clickable:not(.disabled)",
+
   // ===== SplitTix (split ticket) =====
   //
   // uk-rail-results.vue renders one .main-rows group per fare type, and only the SplitTix group's
@@ -111,6 +140,18 @@ function assertIndex(methodName, argumentName, value) {
   if (!Number.isInteger(value) || value < 0) {
     throw new Error(
       `[EvolviResultsPage.${methodName}] "${argumentName}" must be a non-negative integer, got: ${value}`,
+    );
+  }
+}
+
+/**
+ * Guards a text argument a locator is built from, so an empty title fails with the caller's name
+ * rather than silently widening the selector to every fare group in the grid.
+ */
+function assertNonEmptyString(methodName, argumentName, value) {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(
+      `[EvolviResultsPage.${methodName}] "${argumentName}" must be a non-empty string, got: ${JSON.stringify(value)}`,
     );
   }
 }
@@ -217,6 +258,95 @@ class EvolviResultsPage {
     await fareOption.waitFor({ state: "visible", timeout });
     await fareOption.scrollIntoViewIfNeeded();
     await fareOption.click();
+  }
+
+  /**
+   * Reads every plainly-titled fare group heading currently in the price grid, e.g.
+   * ["Off-Peak Return", "Anytime Return"]. Used to say what the grid actually offered when a
+   * scenario asked for a group title that is not there, instead of failing on an empty locator.
+   * @returns {Promise<string[]>} The group titles, in grid order
+   */
+  async listFareGroupTitles() {
+    const titles = await this.page.locator(SELECTORS.FARE_GROUP_TITLE).allInnerTexts();
+    return titles.map((title) => title.replace(/\s+/g, " ").trim()).filter(Boolean);
+  }
+
+  /**
+   * Clicks the first selectable OUTBOUND price of one named fare group.
+   *
+   * The outbound half of a group's first price row is scanned rather than a caller-chosen column:
+   * a named fare is only offered on the journeys that carry it, so the first priced, clickable
+   * outbound cell of that group is the journey the fare can actually be booked on.
+   *
+   * @param {string} groupTitle - The fare group's title, e.g. "Anytime Return"
+   * @param {number} [timeout=30000]
+   */
+  async clickFirstOutboundPriceInFareGroup(groupTitle, timeout = 30000) {
+    assertNonEmptyString("clickFirstOutboundPriceInFareGroup", "groupTitle", groupTitle);
+    const option = this._fareGroupRow(groupTitle)
+      .locator(SELECTORS.OUTBOUND_PRICE_CELLS)
+      .locator(SELECTORS.SELECTABLE_PRICE_OPTION)
+      .first();
+
+    try {
+      await option.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[EvolviResultsPage.clickFirstOutboundPriceInFareGroup] No selectable outbound price is on screen in the ` +
+        `"${groupTitle}" fare group within ${timeout}ms. The grid offers these groups: ` +
+        `${JSON.stringify(await this.listFareGroupTitles())}. Either that fare type was not returned for this ` +
+        `route, or every one of its outbound fares is cancelled/company-disabled. Original: ${err.message}`,
+      );
+    }
+
+    await option.scrollIntoViewIfNeeded();
+    await option.click();
+  }
+
+  /**
+   * Clicks the "Select Time" cell in the INBOUND half of one named fare group.
+   *
+   * An Anytime Return fare prices no separate inbound leg, so its inbound cells render
+   * <p class="select-time"> instead of a price and clicking one builds the return ticket inline —
+   * it is the only way to pick the inbound leg of such a fare. The cell only becomes clickable once
+   * the matching outbound fare is selected, which is why this waits rather than reads.
+   *
+   * @param {string} groupTitle - The fare group's title, e.g. "Anytime Return"
+   * @param {number} [timeout=30000]
+   */
+  async clickInboundSelectTimeInFareGroup(groupTitle, timeout = 30000) {
+    assertNonEmptyString("clickInboundSelectTimeInFareGroup", "groupTitle", groupTitle);
+    const option = this._fareGroupRow(groupTitle)
+      .locator(SELECTORS.INBOUND_PRICE_CELLS)
+      .locator(SELECTORS.SELECT_TIME_OPTION)
+      .first();
+
+    try {
+      await option.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[EvolviResultsPage.clickInboundSelectTimeInFareGroup] No clickable "Select Time" cell appeared in the ` +
+        `inbound half of the "${groupTitle}" fare group within ${timeout}ms. The grid offers these groups: ` +
+        `${JSON.stringify(await this.listFareGroupTitles())}. Either that group is not an Anytime Return fare ` +
+        `(only those render "Select Time"), or its matching outbound fare was never selected — the inbound ` +
+        `cells stay disabled until it is. Original: ${err.message}`,
+      );
+    }
+
+    await option.scrollIntoViewIfNeeded();
+    await option.click();
+  }
+
+  /**
+   * The first price row of one named fare group — the shared anchor of the two clicks above.
+   * @param {string} groupTitle - The fare group's title
+   * @returns {import('playwright').Locator}
+   */
+  _fareGroupRow(groupTitle) {
+    return this.page
+      .locator(SELECTORS.FARE_GROUP_BY_TITLE(groupTitle))
+      .locator(SELECTORS.FARE_GROUP_FIRST_PRICE_ROW)
+      .first();
   }
 
   /**

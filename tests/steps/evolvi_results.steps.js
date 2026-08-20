@@ -150,6 +150,29 @@ Then("the fare rules should be accessible in the Evolvi cart and contain {string
   await Cart.verifyUkRailFareRulesDrawerContainsText(this.page, expectedText);
 });
 
+// ===== Named fare groups (test 67004) =====
+//
+// Two phrases over one direction-parameterised DSL method, because the manual test names the leg in
+// the step itself. The differing UI shapes behind them — a priced outbound cell vs an Anytime
+// Return's "Select Time" inbound cell — are resolved inside that method.
+
+When("I select the outbound {string} Evolvi fare", async function (groupTitle) {
+  logger.info("Selecting the outbound Evolvi fare of a named fare group", { groupTitle });
+  await EvolviResults.selectFareByGroupTitle(this.page, "outbound", groupTitle);
+});
+
+When("I select the inbound {string} Evolvi fare", async function (groupTitle) {
+  logger.info("Selecting the inbound Evolvi fare of a named fare group", { groupTitle });
+  await EvolviResults.selectFareByGroupTitle(this.page, "inbound", groupTitle);
+});
+
+// Adds what is already selected — it must not pick a fare of its own, or it would toggle one of the
+// legs the two steps above chose back off.
+When("I click Evolvi add to trip", async function () {
+  logger.info("Adding the selected Evolvi fares to the trip");
+  await EvolviResults.addSelectedFaresToTrip(this.page);
+});
+
 // ===== TODO STUBS — need DSL/Page implementation =====
 
 Then("I should see outbound text in Evolvi results page", async function () {

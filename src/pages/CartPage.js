@@ -430,6 +430,21 @@ const SELECTORS = {
   UK_RAIL_SPLIT_TICKET_SEGMENT: '.uk-rail-quote-card .uk-rail-segment-info',
   UK_RAIL_SPLIT_TICKET_ICON: '.evolvi-splittix-icon',
 
+  // The footer line under one UK rail segment's route, which prints "Travel dates: <date>" then
+  // "Ticket type: <description>" then the "Fare rules" link (uk-rail-segment-info.vue's
+  // .segment-info-footer). One row per quote segment in journey order, so index 0 is the outbound
+  // leg and index 1 the inbound leg of a round trip — the same ordering UK_RAIL_SEGMENT_ROUTE uses.
+  UK_RAIL_SEGMENT_FOOTER: '.uk-rail-quote-card .uk-rail-segment-info .segment-info-footer',
+  // The ticket type VALUE inside that footer, e.g. "Anytime Return". Anchored on its own
+  // "Ticket type:" label rather than on a position, because the footer holds two label/value pairs
+  // whose value nodes share the same `.muliBold` class — reading the wrong one would return the
+  // travel date and quietly compare it against a fare name. The following sibling is picked without
+  // a class filter so the split-ticket variant (`.has-text-weight-bold` + SplitTix glyph) is read
+  // by the same locator instead of coming back empty. Resolved RELATIVE to
+  // UK_RAIL_SEGMENT_FOOTER — see getUkRailTicketType.
+  UK_RAIL_SEGMENT_TICKET_TYPE:
+    'xpath=./p[contains(@class,"info-title")][normalize-space()="Ticket type:"]/following-sibling::p[1]',
+
   // Eticket reference on a BOOKED UK rail (Evolvi) quote in the trip overview. The quote card's
   // #booking-confirm-info slot (uk-rail-quote-card.vue, rendered only once quote.orderItemNumber
   // exists) lays out two sibling `.confirmation-number` divs — the order reference first, the
@@ -5449,6 +5464,45 @@ class CartPage {
 
     const readStation = async (index) => ((await stations.nth(index).textContent()) ?? '').replace(/\s+/g, ' ').trim();
     return { origin: await readStation(0), destination: await readStation(1) };
+  }
+
+  /**
+   * Reads the ticket type printed in the footer of one UK rail (Evolvi) quote leg in the cart.
+   * @param {object} [options] - Read options
+   * @param {number} [options.legIndex] - Zero-based leg index; 0 is the outbound leg
+   * @param {number} [options.timeout] - Maximum wait time in milliseconds
+   * @returns {Promise<string>} The ticket type as rendered, whitespace-normalised
+   */
+  async getUkRailTicketType({ legIndex = 0, timeout = 30000 } = {}) {
+    if (!Number.isInteger(legIndex) || legIndex < 0) {
+      throw new Error(
+        `[CartPage.getUkRailTicketType] "legIndex" must be a non-negative integer, got: ${legIndex}`,
+      );
+    }
+
+    const footer = this.page.locator(SELECTORS.UK_RAIL_SEGMENT_FOOTER).nth(legIndex);
+    try {
+      await footer.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getUkRailTicketType] The footer row of UK rail quote leg ${legIndex} was not visible within ` +
+        `${timeout}ms. The rail quote most likely never rendered in the cart, or the quote has fewer legs than ` +
+        `that. Original: ${err.message}`,
+      );
+    }
+
+    const value = footer.locator(SELECTORS.UK_RAIL_SEGMENT_TICKET_TYPE).first();
+    try {
+      await value.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getUkRailTicketType] The footer of UK rail quote leg ${legIndex} shows no "Ticket type:" value. ` +
+        `The footer reads: "${(await footer.innerText()).replace(/\s+/g, ' ').trim()}". The label wording or the ` +
+        `uk-rail-segment-info footer markup has most likely changed. Original: ${err.message}`,
+      );
+    }
+
+    return ((await value.textContent()) ?? '').replace(/\s+/g, ' ').trim();
   }
 
   /**

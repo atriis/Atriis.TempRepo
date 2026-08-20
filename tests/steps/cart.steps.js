@@ -686,6 +686,13 @@ Then("the cart should show {string} to {string} for the Evolvi inbound leg", asy
   await Cart.verifyRailRouteInCart(this.page, expectedOrigin, expectedDestination, { legIndex: 1 });
 });
 
+// "Both" is the two legs of a round-trip rail quote — leg 0 outbound, leg 1 inbound — each read from
+// its own segment footer, so a return fare that only survived on one leg still fails here.
+Then("both rail segments in cart should show the ticket type {string}", async function (expectedTicketType) {
+  logger.info("Verifying the ticket type on both rail segments in the cart", { expectedTicketType });
+  await Cart.verifyRailTicketTypeInCart(this.page, expectedTicketType);
+});
+
 When("I extract cancellation policy from cart", async function () {
   logger.info("Extracting cancellation policy from cart");
   this.cartCancellationPolicy = await Cart.getCancellationPolicyFromCart(this.page);

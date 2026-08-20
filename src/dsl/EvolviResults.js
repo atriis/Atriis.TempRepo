@@ -172,6 +172,78 @@ const EvolviResults = {
   },
 
   /**
+   * Selects one leg from a fare group the scenario names, e.g. "Anytime Return".
+   *
+   * The two legs of such a fare are picked from different cell shapes — the outbound half of the
+   * group carries a real price, while an Anytime Return's inbound half renders "Select Time"
+   * because the fare prices no separate return — so the click is routed per direction while
+   * everything around it (validation, the section gate, the failure story) stays shared.
+   *
+   * The direction heading is asserted rather than merely waited on: it is what says that leg's
+   * results came back at all, so a search that returned nothing fails naming the missing section
+   * instead of letting the grid click time out against a screen that never rendered.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} direction - "outbound" or "inbound"
+   * @param {string} groupTitle - The fare group's title as printed in the price grid
+   * @returns {Promise<{selected: true, direction: string, groupTitle: string}>}
+   */
+  async selectFareByGroupTitle(page, direction, groupTitle) {
+    if (!page) throw new Error("[EvolviResults.selectFareByGroupTitle] page is required");
+    const { label } = resolveDirection("selectFareByGroupTitle", direction);
+    if (typeof groupTitle !== "string" || groupTitle.trim() === "") {
+      throw new Error(
+        `[EvolviResults.selectFareByGroupTitle] "groupTitle" must be a non-empty string, got: ${JSON.stringify(groupTitle)}`,
+      );
+    }
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    await EvolviResults.expectDirectionHeadingDisplayed(page, direction);
+
+    logger.debug("[EvolviResults.selectFareByGroupTitle] Selecting a named fare group's leg", { direction, groupTitle });
+    try {
+      if (direction === "outbound") {
+        await resultsPage.clickFirstOutboundPriceInFareGroup(groupTitle);
+      } else {
+        await resultsPage.clickInboundSelectTimeInFareGroup(groupTitle);
+      }
+    } catch (err) {
+      throw new Error(
+        `[EvolviResults.selectFareByGroupTitle] Could not select the ${label} leg of the "${groupTitle}" fare, so the ` +
+        `quote this scenario books would not be the journey it asked for. Original: ${err.message}`,
+      );
+    }
+
+    return { selected: true, direction, groupTitle };
+  },
+
+  /**
+   * Adds the fares already selected in the price grid to the trip.
+   *
+   * Deliberately selects nothing itself — the suggested-fare entry points above pick a fare and add
+   * it in one move, which is wrong for a scenario that chose both legs by hand: clicking any fare
+   * here would toggle one of those selections off.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{addedToTrip: true}>}
+   */
+  async addSelectedFaresToTrip(page) {
+    if (!page) throw new Error("[EvolviResults.addSelectedFaresToTrip] page is required");
+
+    logger.debug("[EvolviResults.addSelectedFaresToTrip] Adding the selected Evolvi fares to the trip");
+    try {
+      await Results.waitAndClickAddToTripButton(page);
+    } catch (err) {
+      throw new Error(
+        "[EvolviResults.addSelectedFaresToTrip] Could not add the selected Evolvi fares to the trip. The " +
+        `"Add to trip" button only enables once every leg of the search has a fare selected. Original: ${err.message}`,
+      );
+    }
+
+    return { addedToTrip: true };
+  },
+
+  /**
    * Reads one leg's summary from the top of the results page, once that leg has been picked.
    *
    * @param {import('playwright').Page} page
