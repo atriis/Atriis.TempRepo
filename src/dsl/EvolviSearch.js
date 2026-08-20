@@ -17,8 +17,9 @@ const logger = require("@utils/logger").child("EvolviSearch");
 /**
  * Clicks Search and confirms the form actually submitted, clicking again when it did not.
  *
- * Picking the return date leaves Element Plus's date popper closing while vuelidate re-runs over the
- * returnDate/returnTime rules a "return" search adds. A Search click that lands inside that window is
+ * Picking the last date leaves Element Plus's date popper closing while vuelidate re-runs over the
+ * form's rules — a window a "return" search widens further with its returnDate/returnTime rules, but
+ * one way lands in it too. A Search click inside that window is
  * swallowed: the button reports itself enabled, the click does nothing, and the run sits on a
  * filled-in but never-submitted form until some later step times out against a page that never
  * changed — which reads as that step's bug, not as a search that never ran. The form leaving the
@@ -359,6 +360,7 @@ const EvolviSearch = {
 
     const { from, to } = resolveRoute(routeInput, evolviRoutes.routes, "evolvi");
     const searchPage = getPageObject(page, SearchPage);
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
 
     await searchPage.selectOneWayTrip();
     await EvolviSearch.ensureSplitTicketIsChecked(page);
@@ -374,7 +376,11 @@ const EvolviSearch = {
       endIndex: null,
     });
 
-    await searchPage.waitAndClickSearchButton();
+    // Not a bare waitAndClickSearchButton — same swallowed-click window as searchEvolviOneWay: the
+    // click lands while the date popper is still closing over the form's revalidation, the button
+    // reports itself enabled, nothing submits, and the failure surfaces later on whatever step
+    // reads the results page. See clickSearchUntilSubmitted.
+    await clickSearchUntilSubmitted(searchPage, evolviSearchPage);
 
     return { searched: true, splitTicket: true, routeInput, from, to, departureIndex };
   },
@@ -401,6 +407,7 @@ const EvolviSearch = {
     );
 
     const searchPage = getPageObject(page, SearchPage);
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
 
     // Provider + trip type
     await EvolviSearch.selectEvolviSearch(page);
@@ -419,7 +426,14 @@ const EvolviSearch = {
       endIndex: null,
     });
 
-    await searchPage.waitAndClickSearchButton();
+    // Not a bare waitAndClickSearchButton: that clicks once and trusts the button's enabled state,
+    // and a UK Rail Search click is silently swallowed while the date popper is still closing over
+    // the form's revalidation. The run then carries on against a form that never submitted, and the
+    // failure surfaces on whatever step reads the results page next — which reads as that step's
+    // bug. Confirming the form left the screen is the only reliable proof the click took. Round
+    // trips already went through this; one way needs it for the same reason. See
+    // clickSearchUntilSubmitted.
+    await clickSearchUntilSubmitted(searchPage, evolviSearchPage);
 
     return { searched: true, routeInput, from, to, departureIndex };
   },
