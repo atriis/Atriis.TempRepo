@@ -164,6 +164,33 @@ const SELECTORS = {
   // app-price renders its non-plain format into <h4 class="amount">, currency symbol included and
   // the cents in a nested <span class="price-decimal"> — innerText concatenates both.
   SELECTED_FARE_TOTAL_AMOUNT: ".app-price .amount",
+
+  // ===== Journey "More Details" (test 66963) =====
+  //
+  // Every journey column closes with a .route-desc block — the stops label plus an info glyph —
+  // and it is that whole div, not the glyph, that carries @click="openJourneyDetails(journey)"
+  // (uk-rail-results.vue). So the manual test's "information icon" and the stops label below
+  // address the same clickable element.
+  JOURNEY_ROUTE_DESC: ".route-desc",
+  // The label inside it: "Direct" when stopQuantity is "0", otherwise "<n> stops". Scoped by
+  // .blue because the column prints its duration in a plain .time-summary right above the block,
+  // which a bare .time-summary would match first.
+  JOURNEY_STOPS_LABEL: ".time-summary.blue",
+  // The el-dialog openJourneyDetails() shows. Three dialogs in this view share
+  // .uk-rail-results-dialog (journey details, SplitTix, flexible policy), so this pins the journey
+  // one by the component only it renders — uk-rail-journey-details.vue's root <section>.
+  JOURNEY_DETAILS_DIALOG: ".uk-rail-results-dialog:visible:has(.uk-rail-journey-details)",
+  // One row per stop, in travel order: the departure station first and the final arrival last
+  // (v-for over journeyDetails.stations). Desktop shape only — uk-rail-journey-details.vue swaps
+  // the table for a .stations-container card list when the store reports isMobile.
+  JOURNEY_DETAILS_ROW: "table.table tbody tr",
+  // Leading cell of a row. It prints the station name as its own text node, and may append a
+  // change-station seats <p> underneath — hence the first-line read in the getter below.
+  JOURNEY_DETAILS_STATION_CELL: "td.station-cell",
+  // Last cell of a row — the <th>Transport</th> column, printing station.trainServiceType
+  // (e.g. "TRAIN"). Only rendered for a change station that is not the final row
+  // (shouldShowTrainServiceType), so a trailing row is legitimately blank.
+  JOURNEY_DETAILS_TRANSPORT_CELL: "td:last-child",
 };
 
 /**
@@ -343,6 +370,141 @@ class EvolviResultsPage {
       .first();
     await departureTime.waitFor({ state: "visible", timeout });
     return ((await departureTime.innerText()) ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Reads the stops label of one direction's journey column — "Direct", or "<n> stops".
+   * @param {number} directionIndex - 0 for outbound, 1 for inbound
+   * @param {number} columnIndex - 0-based position of the column within that direction
+   * @param {number} [timeout=60000]
+   * @returns {Promise<string>} The raw displayed label text
+   */
+  async getJourneyStopsLabel(directionIndex, columnIndex, timeout = 60000) {
+    assertIndex("getJourneyStopsLabel", "directionIndex", directionIndex);
+    assertIndex("getJourneyStopsLabel", "columnIndex", columnIndex);
+    const label = this.page
+      .locator(SELECTORS.RESULTS_DATA_SECTION)
+      .nth(directionIndex)
+      .locator(SELECTORS.JOURNEY_COLUMN)
+      .nth(columnIndex)
+      .locator(`${SELECTORS.JOURNEY_ROUTE_DESC} ${SELECTORS.JOURNEY_STOPS_LABEL}`)
+      .first();
+    try {
+      await label.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[EvolviResultsPage.getJourneyStopsLabel] Journey column ${columnIndex} of direction ` +
+          `${directionIndex} shows no stops label (selector: ${SELECTORS.JOURNEY_ROUTE_DESC} ` +
+          `${SELECTORS.JOURNEY_STOPS_LABEL}) — either that column is not on screen or the results ` +
+          `grid rendered fewer journeys than the scenario expects. Original: ${err.message}`,
+      );
+    }
+    return normalizeText((await label.innerText()) ?? "");
+  }
+
+  /**
+   * Opens the journey "More Details" dialog of one direction's journey column, by clicking the
+   * column's route description — the div that carries openJourneyDetails(journey) — and waits for
+   * the details table to replace the loading skeleton.
+   *
+   * @param {number} directionIndex - 0 for outbound, 1 for inbound
+   * @param {number} columnIndex - 0-based position of the column within that direction
+   * @param {number} [timeout=30000]
+   */
+  async openJourneyDetailsForJourney(directionIndex, columnIndex, timeout = 30000) {
+    assertIndex("openJourneyDetailsForJourney", "directionIndex", directionIndex);
+    assertIndex("openJourneyDetailsForJourney", "columnIndex", columnIndex);
+    const routeDescription = this.page
+      .locator(SELECTORS.RESULTS_DATA_SECTION)
+      .nth(directionIndex)
+      .locator(SELECTORS.JOURNEY_COLUMN)
+      .nth(columnIndex)
+      .locator(SELECTORS.JOURNEY_ROUTE_DESC)
+      .first();
+    try {
+      await routeDescription.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[EvolviResultsPage.openJourneyDetailsForJourney] Journey column ${columnIndex} of direction ` +
+          `${directionIndex} renders no route description (selector: ${SELECTORS.JOURNEY_ROUTE_DESC}), ` +
+          "so there is nothing to open the journey details from — that column is most likely not on " +
+          `screen. Original: ${err.message}`,
+      );
+    }
+    await routeDescription.scrollIntoViewIfNeeded().catch(() => {});
+    await routeDescription.click();
+
+    // The dialog opens immediately but fills from a getJourneyDetails() call, showing an
+    // el-skeleton until it resolves — so gate on the first station row, not on the dialog itself.
+    const firstRow = this.page
+      .locator(SELECTORS.JOURNEY_DETAILS_DIALOG)
+      .locator(SELECTORS.JOURNEY_DETAILS_ROW)
+      .first();
+    try {
+      await firstRow.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        "[EvolviResultsPage.openJourneyDetailsForJourney] The journey details dialog never showed its " +
+          `station table (selector: ${SELECTORS.JOURNEY_DETAILS_DIALOG} ${SELECTORS.JOURNEY_DETAILS_ROW}) ` +
+          "— the click did not open the dialog, or the journey-details request came back empty. " +
+          `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Reads the station name of every row of the open journey details table, in travel order.
+   *
+   * Takes the first line of each station cell: a change-station row appends its seat information
+   * as a <p> under the name, which innerText would otherwise fold into the returned value.
+   *
+   * @param {number} [timeout=30000]
+   * @returns {Promise<string[]>}
+   */
+  async getJourneyDetailsStationNames(timeout = 30000) {
+    const stationCells = this.page
+      .locator(SELECTORS.JOURNEY_DETAILS_DIALOG)
+      .locator(`${SELECTORS.JOURNEY_DETAILS_ROW} ${SELECTORS.JOURNEY_DETAILS_STATION_CELL}`);
+    try {
+      await stationCells.first().waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        "[EvolviResultsPage.getJourneyDetailsStationNames] The journey details table has no station " +
+          `cells (selector: ${SELECTORS.JOURNEY_DETAILS_DIALOG} ${SELECTORS.JOURNEY_DETAILS_ROW} ` +
+          `${SELECTORS.JOURNEY_DETAILS_STATION_CELL}) — the dialog is not open, or it rendered the ` +
+          `mobile card list instead of the desktop table. Original: ${err.message}`,
+      );
+    }
+    const cellTexts = await stationCells.allInnerTexts();
+    return cellTexts.map((text) => normalizeText((text ?? "").split("\n")[0]));
+  }
+
+  /**
+   * Reads the travel mode ("Transport" column) of one row of the open journey details table.
+   *
+   * @param {number} [rowIndex=0] - 0-based row of the table
+   * @param {number} [timeout=30000]
+   * @returns {Promise<string>}
+   */
+  async getJourneyDetailsTravelMode(rowIndex = 0, timeout = 30000) {
+    assertIndex("getJourneyDetailsTravelMode", "rowIndex", rowIndex);
+    const transportCell = this.page
+      .locator(SELECTORS.JOURNEY_DETAILS_DIALOG)
+      .locator(SELECTORS.JOURNEY_DETAILS_ROW)
+      .nth(rowIndex)
+      .locator(SELECTORS.JOURNEY_DETAILS_TRANSPORT_CELL)
+      .first();
+    try {
+      await transportCell.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[EvolviResultsPage.getJourneyDetailsTravelMode] Row ${rowIndex} of the journey details table ` +
+          `has no transport cell (selector: ${SELECTORS.JOURNEY_DETAILS_DIALOG} ` +
+          `${SELECTORS.JOURNEY_DETAILS_ROW} ${SELECTORS.JOURNEY_DETAILS_TRANSPORT_CELL}) — the dialog ` +
+          `is not open, or the journey has fewer rows than that. Original: ${err.message}`,
+      );
+    }
+    return normalizeText((await transportCell.innerText()) ?? "");
   }
 
   /**

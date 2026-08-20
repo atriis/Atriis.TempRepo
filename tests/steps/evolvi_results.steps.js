@@ -202,6 +202,38 @@ When("I extract the selected fare total price from the Evolvi results header", a
   logger.info("Extracted selected Evolvi fare total price", { price });
 });
 
+// ===== Journey "More Details" (test 66963) =====
+//
+// The phrase says "hover", which is how the manual test describes reaching for the glyph, but the
+// results grid opens the dialog from the @click on the whole .route-desc block — so the DSL clicks
+// it. Kept verbatim because that is how the test case spells the step.
+
+Then("the first Evolvi outbound time should be marked as {string}", async function (expectedLabel) {
+  logger.info("Verifying the first Evolvi outbound journey's stops label", { expectedLabel });
+  await EvolviResults.expectJourneyStopsLabel(this.page, "outbound", 0, expectedLabel);
+});
+
+When("I hover over first Evolvi outbound time information icon", async function () {
+  logger.info("Opening the More Details dialog of the first Evolvi outbound journey");
+  await EvolviResults.openJourneyDetails(this.page, "outbound", 0);
+});
+
+Then(
+  "the journey details should show the departure station {string} and the arrival station {string}",
+  async function (departureStation, arrivalStation) {
+    logger.info("Verifying the journey details departure and arrival stations", {
+      departureStation,
+      arrivalStation,
+    });
+    await EvolviResults.expectJourneyDetailsStations(this.page, departureStation, arrivalStation);
+  },
+);
+
+Then("the journey details travel mode should be {string}", async function (expectedMode) {
+  logger.info("Verifying the journey details travel mode", { expectedMode });
+  await EvolviResults.expectJourneyDetailsTravelMode(this.page, expectedMode);
+});
+
 // ===== TODO STUBS — need DSL/Page implementation =====
 
 Then("I should see outbound text in Evolvi results page", async function () {

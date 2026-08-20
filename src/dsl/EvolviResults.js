@@ -553,6 +553,187 @@ const EvolviResults = {
 
     return totalPrice;
   },
+
+  // ===== Journey "More Details" (test 66963) =====
+  //
+  // The stops label and the info glyph the manual test hovers live in the same clickable
+  // .route-desc block, and it is a @click — not a hover — that opens the details dialog
+  // (uk-rail-results.vue). So the label assertion and the open action are two methods over one
+  // element, and the open below clicks rather than hovers.
+
+  /**
+   * Asserts one journey column of a direction is labelled with the expected number of changes,
+   * e.g. "Direct".
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} direction - "outbound" or "inbound"
+   * @param {number} columnIndex - 0-based journey column within that direction
+   * @param {string} expectedLabel - e.g. "Direct"
+   * @returns {Promise<string>} The label that was read
+   */
+  async expectJourneyStopsLabel(page, direction, columnIndex, expectedLabel) {
+    if (!page) throw new Error('[EvolviResults.expectJourneyStopsLabel] "page" is required.');
+    if (!Number.isInteger(columnIndex) || columnIndex < 0) {
+      throw new Error(
+        `[EvolviResults.expectJourneyStopsLabel] "columnIndex" must be a non-negative integer, got: ${columnIndex}`,
+      );
+    }
+    if (!expectedLabel || typeof expectedLabel !== "string") {
+      throw new Error(
+        `[EvolviResults.expectJourneyStopsLabel] "expectedLabel" must be a non-empty string, got: ${expectedLabel}`,
+      );
+    }
+    const { label: directionLabel, sectionIndex } = resolveDirection("expectJourneyStopsLabel", direction);
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.debug("[EvolviResults.expectJourneyStopsLabel] Reading a journey column's stops label", {
+      direction,
+      columnIndex,
+      expectedLabel,
+    });
+    const actualLabel = await resultsPage.getJourneyStopsLabel(sectionIndex, columnIndex);
+    logger.info("[EvolviResults.expectJourneyStopsLabel] Read the stops label", { actualLabel });
+
+    if (actualLabel !== expectedLabel) {
+      throw new Error(
+        `[EvolviResults.expectJourneyStopsLabel] Expected journey ${columnIndex + 1} of the ${directionLabel} ` +
+          `results to be labelled "${expectedLabel}", but it reads "${actualLabel}" — this scenario checks the ` +
+          "journey details of a journey with that exact number of changes.",
+      );
+    }
+
+    return actualLabel;
+  },
+
+  /**
+   * Opens the "More Details" dialog of one journey column of a direction.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} direction - "outbound" or "inbound"
+   * @param {number} columnIndex - 0-based journey column within that direction
+   * @returns {Promise<{opened: true}>}
+   */
+  async openJourneyDetails(page, direction, columnIndex) {
+    if (!page) throw new Error('[EvolviResults.openJourneyDetails] "page" is required.');
+    if (!Number.isInteger(columnIndex) || columnIndex < 0) {
+      throw new Error(
+        `[EvolviResults.openJourneyDetails] "columnIndex" must be a non-negative integer, got: ${columnIndex}`,
+      );
+    }
+    const { label: directionLabel, sectionIndex } = resolveDirection("openJourneyDetails", direction);
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.debug("[EvolviResults.openJourneyDetails] Opening a journey's More Details dialog", {
+      direction,
+      columnIndex,
+    });
+    try {
+      await resultsPage.openJourneyDetailsForJourney(sectionIndex, columnIndex);
+    } catch (err) {
+      throw new Error(
+        `[EvolviResults.openJourneyDetails] Could not open the journey details of journey ${columnIndex + 1} ` +
+          `of the ${directionLabel} results, so the stations and travel mode this scenario verifies never ` +
+          `came on screen. Original: ${err.message}`,
+      );
+    }
+
+    return { opened: true };
+  },
+
+  /**
+   * Asserts the open journey details table starts at the expected departure station and ends at the
+   * expected arrival station — the table lists every stop in travel order, so the journey's own
+   * endpoints are its first and last rows.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedDeparture
+   * @param {string} expectedArrival
+   * @returns {Promise<string[]>} The station names that were read, in travel order
+   */
+  async expectJourneyDetailsStations(page, expectedDeparture, expectedArrival) {
+    if (!page) throw new Error('[EvolviResults.expectJourneyDetailsStations] "page" is required.');
+    if (!expectedDeparture || typeof expectedDeparture !== "string") {
+      throw new Error(
+        `[EvolviResults.expectJourneyDetailsStations] "expectedDeparture" must be a non-empty string, got: ${expectedDeparture}`,
+      );
+    }
+    if (!expectedArrival || typeof expectedArrival !== "string") {
+      throw new Error(
+        `[EvolviResults.expectJourneyDetailsStations] "expectedArrival" must be a non-empty string, got: ${expectedArrival}`,
+      );
+    }
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.debug("[EvolviResults.expectJourneyDetailsStations] Reading the journey details stations", {
+      expectedDeparture,
+      expectedArrival,
+    });
+    const stations = await resultsPage.getJourneyDetailsStationNames();
+    logger.info("[EvolviResults.expectJourneyDetailsStations] Read the journey details stations", { stations });
+
+    if (stations.length === 0) {
+      throw new Error(
+        "[EvolviResults.expectJourneyDetailsStations] The journey details table listed no stations at all, so " +
+          `the departure ("${expectedDeparture}") and arrival ("${expectedArrival}") stations cannot be verified.`,
+      );
+    }
+
+    const departure = stations[0];
+    const arrival = stations[stations.length - 1];
+
+    // Contains, not equals: the supplier prints the full station name, which for these routes is
+    // the searched city plus its station qualifier (e.g. "Leeds", "Doncaster Rail Station").
+    if (!departure.includes(expectedDeparture)) {
+      throw new Error(
+        `[EvolviResults.expectJourneyDetailsStations] Expected the first row of the journey details to be the ` +
+          `departure station "${expectedDeparture}", but it reads "${departure}" (full list: ${stations.join(" -> ")}).`,
+      );
+    }
+    if (!arrival.includes(expectedArrival)) {
+      throw new Error(
+        `[EvolviResults.expectJourneyDetailsStations] Expected the last row of the journey details to be the ` +
+          `arrival station "${expectedArrival}", but it reads "${arrival}" (full list: ${stations.join(" -> ")}).`,
+      );
+    }
+
+    return stations;
+  },
+
+  /**
+   * Asserts the travel mode column of the first row of the open journey details table shows the
+   * expected mode, e.g. "TRAIN".
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMode
+   * @returns {Promise<string>} The travel mode that was read
+   */
+  async expectJourneyDetailsTravelMode(page, expectedMode) {
+    if (!page) throw new Error('[EvolviResults.expectJourneyDetailsTravelMode] "page" is required.');
+    if (!expectedMode || typeof expectedMode !== "string") {
+      throw new Error(
+        `[EvolviResults.expectJourneyDetailsTravelMode] "expectedMode" must be a non-empty string, got: ${expectedMode}`,
+      );
+    }
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.debug("[EvolviResults.expectJourneyDetailsTravelMode] Reading the journey details travel mode", {
+      expectedMode,
+    });
+    const actualMode = await resultsPage.getJourneyDetailsTravelMode(0);
+    logger.info("[EvolviResults.expectJourneyDetailsTravelMode] Read the journey details travel mode", {
+      actualMode,
+    });
+
+    if (actualMode.toUpperCase() !== expectedMode.toUpperCase()) {
+      throw new Error(
+        `[EvolviResults.expectJourneyDetailsTravelMode] Expected the travel mode of the first journey details row ` +
+          `to be "${expectedMode}", but it reads "${actualMode}" — the Transport column is the supplier's ` +
+          "trainServiceType, so an empty value means this row is not a change station.",
+      );
+    }
+
+    return actualMode;
+  },
 };
 
 module.exports = EvolviResults;

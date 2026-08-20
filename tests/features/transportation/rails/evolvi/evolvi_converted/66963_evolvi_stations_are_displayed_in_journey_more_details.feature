@@ -15,14 +15,9 @@ Feature: 66963 Evolvi - Stations are displayed in journey 'More Details'
     Given I am logged in as "elisabete@testim.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Evolvi train from "ldsToDon"
-    And I dismiss the mandatory notifications popup if displayed
-    # TODO: assert the outbound journey header is displayed on the Evolvi results page
-    Then the outbound journey header should be displayed in the Evolvi results
-    # TODO: assert the first outbound Evolvi result is labelled with the given number of changes, e.g. "Direct"
-    And the first Evolvi outbound result should be marked as "Direct"
-    # TODO: open the journey 'More Details' panel of the first outbound Evolvi result
-    When I open more details for the first Evolvi outbound result
-    # TODO: assert the journey details table lists the given departure station in its first row and the given arrival station in its last row
+    And I acknowledge the push notification
+    And I should see outbound text in Evolvi results page
+    And the first Evolvi outbound time should be marked as "Direct"
+    When I hover over first Evolvi outbound time information icon
     Then the journey details should show the departure station "Leeds" and the arrival station "Doncaster"
-    # TODO: assert the travel mode column of the first journey details row shows the given mode
     And the journey details travel mode should be "TRAIN"
