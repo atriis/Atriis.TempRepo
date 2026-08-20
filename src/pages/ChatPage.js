@@ -1,5 +1,10 @@
 const SELECTORS = {
-  OPEN_CHAT_BTN: ".chat-btn .material-symbols-outlined",
+  // Pin the chat button by its icon rather than relying on DOM order: cart-info-bar.vue
+  // renders TWO .chat-btn elements and the FIRST is the notifications toggle
+  // (assignment_turned_in), so .first() opened the Notification centre instead of the
+  // chat drawer on Trip-overview pages. trip-bar.vue renders only the chat button.
+  // Mirrors CommonPage.NOTIFICATION_BELL_BUTTON, which disambiguates the same pair.
+  OPEN_CHAT_BTN: ".chat-btn:has(.material-symbols-outlined:text-is('question_answer'))",
   NEW_CONVERSATION_BTN: ".chat-main .btn-container span",
   ADD_AGENT_BTN: ".agent-btn",
   MESSAGE_INPUT: "[placeholder='Enter your message']",
