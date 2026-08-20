@@ -956,7 +956,13 @@ const SELECTORS = {
   // so an address matching no corporate user is offered back as a single synthetic suggestion
   // in its own popper, which has to be clicked before it becomes a recipient.
   SHARE_RECIPIENT_INPUT: '.app-share-quotes .user-autocomplete input',
-  SHARE_RECIPIENT_SUGGESTION: '.user-autocomplete-popper li',
+  // Scoped to real option rows, not a bare `li`: el-autocomplete renders a handler-less
+  // `<li v-if="suggestionLoading">` spinner inside the very same `<ul>`, and user-autocomplete
+  // always hits the server (shouldUseServerSearch is true unless isForProfile), so that spinner
+  // is guaranteed to appear. A bare `li` matches it first, the click silently does nothing, and
+  // the popper is left open with no recipient added. Only real options carry the `-item-N` id —
+  // the same idiom ChatPage/HotelSearchPage/SearchPage already use on this component.
+  SHARE_RECIPIENT_SUGGESTION: ".user-autocomplete-popper .el-autocomplete-suggestion__list li[id*='item-']",
   // Recipient chips (trip-traveler-tag). app-share-quotes renders a mobile and a desktop
   // recipients-list, so callers filter this to the visible one.
   SHARE_RECIPIENT_CHIPS: '.app-share-quotes .recipients-list > *',
@@ -7001,9 +7007,15 @@ class CartPage {
     // is typed out instead.
     await input.pressSequentially(email, { delay: 30 });
 
+    // Held to the typed address, not just to "an option": every keystroke re-queries the server,
+    // so the popper spends most of the typing showing corporate users that partially match the
+    // prefix. Clicking whichever option happens to be first would add the wrong recipient and
+    // still grow the chip count — a pass for the wrong reason. hasText is a case-insensitive
+    // substring match, which is what the option's own sub-line renders.
     const suggestion = this.page
       .locator(SELECTORS.SHARE_RECIPIENT_SUGGESTION)
       .filter({ visible: true })
+      .filter({ hasText: email })
       .first();
     try {
       await suggestion.waitFor({ state: 'visible', timeout: 20_000 });
