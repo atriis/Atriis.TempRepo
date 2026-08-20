@@ -12,7 +12,7 @@ Feature: 58320 HYBRID Ypsilon - Correct seat price is passed in booking request
   I want the correct seat price to be included when booking
   So that the seat selection cost is accurately reflected in the booking
 
-  Scenario: Seat price is correctly passed during booking with Ypsilon 3DS verification
+  Scenario: Seat price is correctly passed during booking
     Given I am logged in as "gabitom@ypsilondisplaycurrency.com" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "LON" to "DUB"

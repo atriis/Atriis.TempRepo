@@ -179,14 +179,17 @@ const Checkout = {
     const checkoutPage = getPageObject(page, CheckoutPage);
     const cartPage = getPageObject(page, CartPage);
 
-    // Two known Ypsilon flows trigger the Card verification dialog at different times:
-    //   - Auto-open on checkout mount (tests 29424, 57930, 58320) → complete SCA first, then Book and Finalize.
-    //   - Open only after the Book and Finalize click → click Book and Finalize first, then SCA.
-    // 30s probe: the auto-open variant can take up to ~25s to render the SCA dialog after
-    // checkout mount; the post-click variant pays this as fixed latency. Trade-off is accepted
-    // because reliability of the auto-open flow outweighs the ~30s it costs the other one.
-    // The dialog itself has three render outcomes (iframe SCA challenge, simple accept button,
-    // or silent auto-close) — all handled inside completeYpsilon3dsVerification.
+    // The Card verification dialog is opened by trip-reference-form.vue when a Ypsilon flight
+    // quote is in Selected status. Every test measured so far (29424, 57930, 58320) sees it
+    // auto-open on checkout mount, so SCA is completed before Book and Finalize. The
+    // post-click branch below is kept as a safety net for flows where it has not rendered yet.
+    // 30s probe: the dialog can take up to ~25s to render after checkout mount; a flow that
+    // never auto-opens pays this as fixed latency.
+    // The dialog has three render outcomes — iframe SCA challenge (29424), a simple accept
+    // button, or a silent auto-close — all handled inside completeYpsilon3dsVerification.
+    // Auto-close is the designed path when the card needs no challenge: ypsilon-3ds.ts emits
+    // ypsilon3dsCompleted immediately when /verificationInfo returns authenticationLink
+    // 'virtual' (e.g. the VCC in 57930), which closes the dialog with nothing to enter.
     const dialogAlreadyOpen = await checkoutPage.isYpsilon3dsDialogVisible(30000);
 
     let scaResult;

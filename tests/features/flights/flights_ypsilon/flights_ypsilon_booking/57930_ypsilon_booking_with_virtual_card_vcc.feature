@@ -12,7 +12,7 @@ Feature: 57930 Ypsilon - Booking with virtual card (VCC)
   I want to book a flight using a virtual card payment method
   So that the booking is completed with the correct form of payment
 
-  Scenario: Book a flight using virtual card (VCC) with 3DS verification
+  Scenario: Book a flight using virtual card (VCC)
     Given I am logged in as "renatarosa@ypsilonspecifictestclub.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LHR" to "DUB"
