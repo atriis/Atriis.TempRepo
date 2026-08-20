@@ -24,6 +24,12 @@ const HOTEL_SUPPLIER_ID_MAP = {
 // Heading rendered above the certification list in the hotel eco tooltip (hotel-info.vue).
 const CERTIFICATIONS_TOOLTIP_TITLE = 'Certifications';
 
+// How the scroll position of the hotel list is confirmed to have settled before a hotel is
+// clicked: two readings this far apart, no more than this many pixels of drift between them.
+const SCROLL_SETTLE_ATTEMPTS = 5;
+const SCROLL_SETTLE_INTERVAL_MS = 500;
+const SCROLL_STABLE_TOLERANCE_PX = 5;
+
 /**
  * Returns the values that occur more than once, compared case-insensitively.
  * @param {string[]} values
@@ -739,14 +745,47 @@ const HotelLevelResults = {
 
   /**
    * Scrolls to the last hotel in search results and clicks its View rates button.
+   *
+   * Reports the scroll offset the list was sitting at when the click landed, so a caller
+   * verifying the next page's scroll position can tell whether the navigation started
+   * from the bottom of the list at all.
    * @param {import('playwright').Page} page
+   * @returns {Promise<number>} Distance from the top of the hotel results page at click time
    */
   async clickLastHotelOption(page) {
     if (!page) throw new Error('page is required');
 
     const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
     await hotelLevelResultsPage.waitForViewRatesText();
-    await hotelLevelResultsPage.scrollToAndClickLastHotelViewRates();
+
+    // The hotel list scrolls itself back to the top every time an arriving supplier changes
+    // the hotel set (hotel-list.vue watches `hotels`), so a single scroll to the bottom can
+    // be undone a moment later. Re-scroll until the offset holds still, so the click really
+    // is made from the bottom of the list and the offset reported back is what happened.
+    let scrollOffset = 0;
+    for (let attempt = 1; attempt <= SCROLL_SETTLE_ATTEMPTS; attempt++) {
+      await hotelLevelResultsPage.scrollLastHotelViewRatesIntoView();
+
+      const beforeWait = await hotelLevelResultsPage.getDistanceFromPageTop();
+      await page.waitForTimeout(SCROLL_SETTLE_INTERVAL_MS);
+      const afterWait = await hotelLevelResultsPage.getDistanceFromPageTop();
+
+      // The lower of the two readings is the honest one: it is the offset that survived
+      // whatever the page did during the wait.
+      scrollOffset = Math.min(beforeWait.offset, afterWait.offset);
+      if (Math.abs(beforeWait.offset - afterWait.offset) <= SCROLL_STABLE_TOLERANCE_PX) break;
+
+      logger.info('Hotel list scroll position still moving, scrolling to the last hotel again', {
+        attempt,
+        beforeWait: beforeWait.offset,
+        afterWait: afterWait.offset,
+      });
+    }
+
+    await hotelLevelResultsPage.clickLastHotelViewRates();
+    logger.info('Selected the last hotel result', { scrollOffsetAtClick: scrollOffset });
+
+    return scrollOffset;
   },
   /**
    * Enters hotel share mode by clicking the share toggle in the hotel-level results

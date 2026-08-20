@@ -299,6 +299,90 @@ function extractHtmlLinks(html) {
     };
   });
 }
+
+/**
+ * Reads how far a page is currently scrolled away from its top, and how far it could
+ * scroll at all.
+ *
+ * Why this exists:
+ * - "The page is displayed at the top" can only be proven by measuring the real
+ *   scroll offset, and the element that owns the scroll is not always the document
+ * - A layout that scrolls an inner container leaves window.scrollY at 0, so a
+ *   window-only reading would report "at top" wherever the list actually sits,
+ *   and the assertion could never fail
+ * - A page too short to scroll has its offset pinned to 0, so "at the top" is true by
+ *   construction there. The reported range lets a caller notice that and say so,
+ *   instead of counting it as a pass
+ *
+ * How it works:
+ * - Reads the document scroll offset from window, documentElement and body,
+ *   because which of the three owns the scroll depends on the page CSS
+ * - Walks up from the anchor element over every genuinely scrollable ancestor
+ *   (overflow auto/scroll/overlay, and taller than its own box), keeping the largest
+ *   scrollTop and the largest scrollable range found, so an inner scroll container is
+ *   measured too
+ * - Reports the largest offset and the largest range, plus a description of the
+ *   container the offset came from so a failure says what was scrolled
+ *
+ * @param {Object} page - Playwright page instance
+ * @param {string|null} anchorSelector - Element whose scrollable ancestors are inspected
+ * @returns {Promise<{offset: number, range: number, document: number, container: number, containerDescription: string}>}
+ * @throws {Error} If page is invalid, or anchorSelector is provided but not a non-empty string
+ */
+async function getScrollOffsetFromTop(page, anchorSelector = null) {
+  if (!page) {
+    throw new Error('page is required');
+  }
+
+  if (anchorSelector !== null && (typeof anchorSelector !== 'string' || anchorSelector.trim() === '')) {
+    throw new Error('anchorSelector must be a non-empty string when provided');
+  }
+
+  return page.evaluate((selector) => {
+    const root = document.scrollingElement || document.documentElement;
+
+    const documentOffset = Math.round(
+      Math.max(
+        window.scrollY || 0,
+        document.documentElement ? document.documentElement.scrollTop : 0,
+        document.body ? document.body.scrollTop : 0,
+      ),
+    );
+    const documentRange = Math.round(Math.max(root ? root.scrollHeight - root.clientHeight : 0, 0));
+
+    let container = 0;
+    let containerRange = 0;
+    let containerDescription = '';
+
+    const anchor = selector ? document.querySelector(selector) : null;
+    for (let element = anchor && anchor.parentElement; element; element = element.parentElement) {
+      const overflowY = window.getComputedStyle(element).overflowY;
+      const isScrollable =
+        /(auto|scroll|overlay)/.test(overflowY) && element.scrollHeight > element.clientHeight + 1;
+      if (!isScrollable) continue;
+
+      containerRange = Math.max(containerRange, Math.round(element.scrollHeight - element.clientHeight));
+
+      if (element.scrollTop > container) {
+        container = Math.round(element.scrollTop);
+        const classes =
+          typeof element.className === 'string' && element.className.trim()
+            ? '.' + element.className.trim().split(/\s+/).join('.')
+            : '';
+        containerDescription = element.tagName.toLowerCase() + classes;
+      }
+    }
+
+    return {
+      offset: Math.max(documentOffset, container),
+      range: Math.max(documentRange, containerRange),
+      document: documentOffset,
+      container,
+      containerDescription,
+    };
+  }, anchorSelector);
+}
+
 module.exports = {
   extractNumber,
   parseAmountText,
@@ -306,4 +390,5 @@ module.exports = {
   pressTab,
   extractHtmlLinks,
   normalizeHtmlText,
+  getScrollOffsetFromTop,
 };

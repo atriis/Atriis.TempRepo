@@ -44,8 +44,16 @@ function getGsaAllowance(world) {
   return allowance;
 }
 
+// Optional on purpose: this offset is context for a scroll assertion, never the thing being
+// asserted, so a scenario that never captured it gets null rather than a failure.
+function getHotelListScrollOffsetAtSelection(world) {
+  const offset = world.hotelListScrollOffsetAtSelection;
+  return typeof offset === "number" && !Number.isNaN(offset) ? offset : null;
+}
+
 module.exports = {
   getTravelerCount,
   getStoredFlightNumbers,
   getGsaAllowance,
+  getHotelListScrollOffsetAtSelection,
 };

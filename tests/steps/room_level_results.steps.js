@@ -7,7 +7,7 @@ const Cart = require("../../src/dsl/Cart");
 const RoomLevelResultsPage = require("../../src/pages/RoomLevelResultsPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const logger = require("@utils/logger").child("RoomResults");
-const { getGsaAllowance } = require("../support/scenarioState");
+const { getGsaAllowance, getHotelListScrollOffsetAtSelection } = require("../support/scenarioState");
 
 setDefaultTimeout(120000);
 
@@ -352,7 +352,9 @@ Then("the {string} filter tag should be visible in room level results", async fu
 
 Then("the room level page should be displayed at the top", async function () {
   logger.info("Verifying room level page is displayed at the top");
-  await RoomLevelResults.verifyRoomLevelPageAtTop(this.page);
+  await RoomLevelResults.verifyRoomLevelPageAtTop(this.page, {
+    scrollOffsetBeforeNavigation: getHotelListScrollOffsetAtSelection(this),
+  });
 });
 
 When("I add the room marked as check cancellation policy", async function () {

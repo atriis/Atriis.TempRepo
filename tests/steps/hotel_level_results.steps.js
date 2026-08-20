@@ -232,7 +232,9 @@ Then("agreement badge should be visible on all hotels in hotel level results", a
 
 When("I select the last hotel result", async function () {
   logger.info("Scrolling to and selecting the last hotel in results");
-  await HotelLevelResults.clickLastHotelOption(this.page);
+  // Kept for the next page's scroll assertion: it can only mean something if the hotel
+  // list really was scrolled away from its top when the hotel was selected.
+  this.hotelListScrollOffsetAtSelection = await HotelLevelResults.clickLastHotelOption(this.page);
 });
 
 Then("the sort filter has {string} selected", async function (expectedLabel) {

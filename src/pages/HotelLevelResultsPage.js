@@ -1,6 +1,7 @@
 ﻿const { SELECTORS: RESULTS_SELECTORS } = require("@pages/ResultsPage");
 const { toNumber } = require("@utils/numbers");
 const { normalizeText } = require("@utils/text");
+const { getScrollOffsetFromTop } = require("@utils/dom");
 
 /**
  * Page Object for hotel level results page.
@@ -73,6 +74,8 @@ const SELECTORS = {
   AGREEMENT_ICON_IN_CARD: '.ticket-agreement .agreement-img',
   // Last hotel item in hotel list (lazy-loaded sentinel element)
   LAST_HOTEL_VIEW_RATES_BUTTON: "[id='last-item'] .btn--primary",
+  // Hotel list section wrapping the hotel cards, used to find the element that scrolls
+  HOTEL_LIST: '.hotel-list',
   // Selected sort value in the hotel-list-sort dropdown
   SORT_SELECTED_ITEM: '.hotel-list-sort .sort .el-select .el-select__placeholder',
   // Share mode button in hotel-list-sort bar
@@ -903,12 +906,40 @@ class HotelLevelResultsPage {
     }
   }
 
-  async scrollToAndClickLastHotelViewRates() {
-    const lastHotelButton = this.page.locator(SELECTORS.LAST_HOTEL_VIEW_RATES_BUTTON);
+  /**
+   * Gets the View rates button of the last hotel in the results list.
+   * @returns {Locator} Playwright locator for the last hotel's View rates button
+   */
+  getLastHotelViewRatesButton() {
+    return this.page.locator(SELECTORS.LAST_HOTEL_VIEW_RATES_BUTTON);
+  }
+
+  /**
+   * Scrolls the last hotel's View rates button into view, without clicking it.
+   * Waits for it to be attached first, since the hotel list is still growing while
+   * suppliers respond, and for it to be visible afterwards.
+   */
+  async scrollLastHotelViewRatesIntoView() {
+    const lastHotelButton = this.getLastHotelViewRatesButton();
     await lastHotelButton.waitFor({ state: 'attached', timeout: 60000 });
     await lastHotelButton.scrollIntoViewIfNeeded();
     await lastHotelButton.waitFor({ state: 'visible', timeout: 30000 });
-    await lastHotelButton.click();
+  }
+
+  /**
+   * Clicks the last hotel's View rates button. Assumes it has been scrolled into view.
+   */
+  async clickLastHotelViewRates() {
+    await this.getLastHotelViewRatesButton().click();
+  }
+
+  /**
+   * Reads how far the hotel results page is scrolled from its top, covering both the
+   * document scroll and any scrollable container wrapping the hotel list.
+   * @returns {Promise<{offset: number, range: number, document: number, container: number, containerDescription: string}>}
+   */
+  async getDistanceFromPageTop() {
+    return getScrollOffsetFromTop(this.page, SELECTORS.HOTEL_LIST);
   }
 
   /**

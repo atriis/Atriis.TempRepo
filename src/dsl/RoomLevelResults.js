@@ -12,6 +12,22 @@ const {
   splitByGsaLimit,
 } = require("@utils/gsaPerDiem.helper");
 
+// A page this close to its top reads as being at the top: it absorbs the sticky
+// header offset and sub-pixel rounding, while staying far below one screen of scroll.
+const PAGE_TOP_TOLERANCE_PX = 50;
+// How long the scroll position is watched before it is accepted as settled. Rooms
+// stream in per supplier, so a scroll jump can land seconds after the page appears.
+const SCROLL_SETTLE_SAMPLES = 6;
+const SCROLL_SETTLE_INTERVAL_MS = 500;
+// Below this, the hotel list had so little scroll position to carry over that a pass says
+// less than usual. Roughly half a screen at the viewport the suite runs at. It is logged,
+// never failed on.
+const MIN_SCROLL_BEFORE_NAVIGATION_PX = 500;
+// How long the room list is given to stop growing before the scroll position is read.
+// Exceeding it is logged, not failed: a supplier that never answers is not what this
+// verification is about.
+const ROOMS_LOADED_TIMEOUT_MS = 30000;
+
 /**
  * RoomLevelResults DSL
  *
@@ -508,20 +524,100 @@ const RoomLevelResults = {
   },
 
   /**
-   * Verifies that the room level page is displayed starting at the top.
-   * Used after navigating from hotel level to confirm the scroll position resets.
+   * Verifies that the room level page is displayed starting at the top after arriving
+   * from the hotel list, so the scroll position of the list is not carried over.
+   *
+   * Fails on one thing only: the room level page not starting at the top. Everything else
+   * here exists to make that verdict trustworthy rather than to add verdicts of its own -
+   * it confirms the URL is a room level URL, waits for the real content to replace the
+   * skeletons and for the room list to stop growing, watches the scroll offset across a
+   * settle window instead of reading it once, and checks the first content of the page is
+   * inside the viewport. Conditions that merely make a pass weaker - a hotel list that
+   * barely scrolled, a room list too short to scroll, suppliers still streaming - are
+   * logged and do not fail the step.
    * @param {import('playwright').Page} page
-   * @throws {Error} If the page is not scrolled to the top
+   * @param {object} [options]
+   * @param {number|null} [options.scrollOffsetBeforeNavigation] - How far the previous page
+   *   was scrolled from its top when the hotel was selected, for context in the log
+   * @throws {Error} If the room level page is not displayed at its top
    */
-  async verifyRoomLevelPageAtTop(page) {
+  async verifyRoomLevelPageAtTop(page, { scrollOffsetBeforeNavigation = null } = {}) {
     if (!page) throw new Error('page parameter is required');
 
-    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
-    await roomLevelResultsPage.waitForRoomResultsHeader();
+    // How far the hotel list was scrolled is context, not a verdict: this step fails only
+    // when the room level page does not start at the top. A hotel list that barely scrolled
+    // makes the pass a weaker one, so it is recorded and the run continues.
+    if (typeof scrollOffsetBeforeNavigation === 'number' && scrollOffsetBeforeNavigation < MIN_SCROLL_BEFORE_NAVIGATION_PX) {
+      logger.warn('Hotel list was barely scrolled when the hotel was selected, so there was little scroll position to reset', {
+        scrollOffsetBeforeNavigation,
+        expectedAtLeast: MIN_SCROLL_BEFORE_NAVIGATION_PX,
+      });
+    }
 
-    const isAtTop = await roomLevelResultsPage.isPageScrolledToTop();
-    if (!isAtTop) {
-      throw new Error('Expected room level page to be displayed at the top, but page is scrolled down');
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+
+    // Prove we are on the room level page before measuring anything, otherwise the
+    // scroll reading could belong to the hotel list we just left.
+    await roomLevelResultsPage.waitForRoomLevelUrl();
+    await roomLevelResultsPage.waitForRoomLevelContentLoaded();
+
+    // The first room card appearing does not mean the page has stopped growing: rooms
+    // stream in per supplier and the list keeps getting taller behind them. Wait that out,
+    // so the scroll offset is measured against the page the user ends up looking at.
+    const roomsFinishedLoading = await roomLevelResultsPage.waitForRoomsFinishedLoading(ROOMS_LOADED_TIMEOUT_MS);
+    if (!roomsFinishedLoading) {
+      logger.warn('Rooms were still loading when the scroll position was measured', {
+        timeoutMs: ROOMS_LOADED_TIMEOUT_MS,
+      });
+    }
+
+    // A scroll restore can still land after the last supplier, so one reading is not
+    // enough - taken right after navigation it is always 0 and would pass whatever the
+    // page does next. Sample across a settle window and keep the worst offset seen.
+    const samples = [];
+    for (let i = 0; i < SCROLL_SETTLE_SAMPLES; i++) {
+      if (i > 0) await page.waitForTimeout(SCROLL_SETTLE_INTERVAL_MS);
+      samples.push(await roomLevelResultsPage.getDistanceFromPageTop());
+    }
+
+    const worstSample = samples.reduce((worst, sample) => (sample.offset > worst.offset ? sample : worst));
+    logger.info('Room level scroll offsets sampled', {
+      offsets: samples.map((sample) => sample.offset),
+      worstOffset: worstSample.offset,
+      scrollRange: worstSample.range,
+    });
+
+    // A hotel with few rooms can leave the page too short to scroll, which pins the offset
+    // to the top on its own. That is still a pass - the app was asked to reset the scroll
+    // position and the user does see the top of the page - but it is a weaker one, so it is
+    // recorded rather than either failed or hidden.
+    if (worstSample.range <= PAGE_TOP_TOLERANCE_PX) {
+      logger.warn('Room level page is too short to scroll, so its offset could not have been anything but the top', {
+        scrollRange: worstSample.range,
+      });
+    }
+
+    if (worstSample.offset > PAGE_TOP_TOLERANCE_PX) {
+      const scrolledElement = worstSample.container > worstSample.document
+        ? `container ${worstSample.containerDescription}`
+        : 'document';
+      throw new Error(
+        `Expected room level page to be displayed at the top, but it was scrolled ${worstSample.offset}px down ` +
+          `(${scrolledElement}; tolerance ${PAGE_TOP_TOLERANCE_PX}px). ` +
+          `Offsets sampled over ${(SCROLL_SETTLE_SAMPLES - 1) * SCROLL_SETTLE_INTERVAL_MS}ms: ` +
+          `${samples.map((sample) => sample.offset).join(', ')}`,
+      );
+    }
+
+    // Scroll numbers alone cannot tell us the user sees the top of the page: a layout
+    // that scrolls something we did not measure would still read 0. The first content
+    // of the page being on screen is the check that holds either way.
+    const heading = await roomLevelResultsPage.getHotelNameHeadingPosition();
+    if (!heading.isInViewport) {
+      throw new Error(
+        `Expected room level page to be displayed at the top, but the hotel name heading is outside the viewport ` +
+          `(heading top ${heading.top}px, viewport height ${heading.viewportHeight}px)`,
+      );
     }
   },
 

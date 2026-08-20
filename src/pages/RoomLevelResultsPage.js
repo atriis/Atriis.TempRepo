@@ -1,4 +1,5 @@
 ﻿const { toNumber } = require("@utils/numbers");
+const { getScrollOffsetFromTop } = require("@utils/dom");
 
 /**
  * Page Object for room level results page.
@@ -55,8 +56,15 @@ const SELECTORS = {
   ROOM_CARD: '.room-list__cards .room-preview',
   // "Provided by" label inside room-preview (hotel-provided-by.vue)
   PROVIDER_LABEL: '.room-list .provider-label',
-  // Room level results header ("Showing X rooms" text)
-  ROOM_RESULTS_HEADER: '.is-6',
+  // Hotel name heading (h1) at the top of the room level page - the first piece of
+  // real content below the breadcrumb, used as the "top of page" anchor
+  HOTEL_NAME_HEADING: 'h1.hotel-name',
+  // Room list section wrapping the room cards, used to find the element that scrolls
+  ROOM_LIST: '.room-list',
+  // Room card loading skeleton (card-img-skeleton.vue). Rendered while the rooms load and
+  // again below the list for every supplier that has not answered yet, so its absence is
+  // what says the room list has stopped growing.
+  ROOM_LOADING_SKELETON: '.card-img-skeleton',
   // Room card with "Check cancelation policy" text (note: single 'l' in source)
   // Uses .check-cancellation class which Vue adds when refundableStatus == None
   CHECK_CANCELLATION_POLICY_ROOM: '.room-preview:has(.check-cancellation)',
@@ -776,20 +784,84 @@ class RoomLevelResultsPage {
   }
 
   /**
-   * Checks if the page is scrolled to the top (scrollY close to 0).
-   * @returns {Promise<boolean>} True if the page is at the top
+   * Waits until the browser is actually on a room level URL.
+   *
+   * The room level route ends in /rooms, so this is what proves the hotel click
+   * navigated instead of leaving us on the hotel list. Without it, a scroll
+   * assertion could be measuring the previous page.
    */
-  async isPageScrolledToTop() {
-    const scrollY = await this.page.evaluate(() => window.scrollY);
-    return scrollY < 50;
+  async waitForRoomLevelUrl() {
+    await this.page.waitForURL(/\/rooms(?:[/?#]|$)/, { timeout: 60000 });
   }
 
   /**
-   * Waits for the room level results header ("Showing" text) to be visible.
-   * Used to confirm the room level page has loaded.
+   * Waits until the room level page has rendered its real content: the hotel name
+   * heading and at least one room card, in place of the loading skeletons.
+   *
+   * This matters for a scroll assertion, because the page grows as the hotel
+   * details and each supplier's rooms arrive. Measuring the scroll offset while
+   * skeletons are still on screen would read the offset of a page that does not
+   * exist yet, and any later scroll jump would go unnoticed.
    */
-  async waitForRoomResultsHeader() {
-    await this.page.locator(SELECTORS.ROOM_RESULTS_HEADER).first().waitFor({ state: 'visible', timeout: 60000 });
+  async waitForRoomLevelContentLoaded() {
+    await this.page.locator(SELECTORS.HOTEL_NAME_HEADING).first().waitFor({ state: 'visible', timeout: 60000 });
+    await this.page.locator(SELECTORS.ROOM_CARD).first().waitFor({ state: 'visible', timeout: 60000 });
+  }
+  /**
+   * Waits for the room list to stop growing: every supplier has answered, so no
+   * room-loading skeleton is left on the page.
+   *
+   * Best effort by design - it reports failure instead of throwing. How complete the
+   * room list is is not what a scroll assertion is about; it only needs the page to
+   * have stopped changing height underneath it, and one supplier that never answers
+   * must not turn into a failure of the thing being asserted.
+   * @param {number} [timeout=30000]
+   * @returns {Promise<boolean>} True if every skeleton went away within the timeout
+   */
+  async waitForRoomsFinishedLoading(timeout = 30000) {
+    try {
+      await this.page.waitForFunction(
+        (selector) => document.querySelectorAll(selector).length === 0,
+        SELECTORS.ROOM_LOADING_SKELETON,
+        { timeout },
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+
+  /**
+   * Reads how far the room level page is scrolled from its top, covering both the
+   * document scroll and any scrollable container wrapping the room list.
+   * @returns {Promise<{offset: number, range: number, document: number, container: number, containerDescription: string}>}
+   */
+  async getDistanceFromPageTop() {
+    return getScrollOffsetFromTop(this.page, SELECTORS.ROOM_LIST);
+  }
+
+  /**
+   * Checks whether the hotel name heading - the first content on the room level
+   * page - is inside the viewport.
+   *
+   * This is the visible-to-a-user half of "displayed at the top": it holds even if
+   * the page later scrolls something other than the document, so the assertion
+   * cannot pass on a page whose top content is off screen.
+   * @returns {Promise<{isInViewport: boolean, top: number|null, viewportHeight: number}>}
+   */
+  async getHotelNameHeadingPosition() {
+    const heading = this.page.locator(SELECTORS.HOTEL_NAME_HEADING).first();
+    await heading.waitFor({ state: 'visible', timeout: 30000 });
+
+    const box = await heading.boundingBox();
+    const viewportHeight = await this.page.evaluate(() => window.innerHeight);
+
+    return {
+      isInViewport: box !== null && box.y >= 0 && box.y < viewportHeight,
+      top: box === null ? null : Math.round(box.y),
+      viewportHeight,
+    };
   }
 
   /**
