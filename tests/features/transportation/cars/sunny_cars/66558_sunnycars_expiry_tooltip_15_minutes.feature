@@ -19,5 +19,6 @@ Feature: 66558 SunnyCars - Expiry tooltip 15 minutes validation
     And I select the trip purpose as "BILLABLE" and proceed
     And I add the first car to cart
     And the booking status should be "Pending booking"
+    Then the countdown clock is between 13 and 15 minutes
     When I hover the countdown clock
     Then the countdown tooltip shows the message "Your session is valid for 15:00 minutes from the time of selection. We recommend completing your booking within this time to avoid changes in fare or availability."

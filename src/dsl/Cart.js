@@ -3393,6 +3393,74 @@ const Cart = {
   },
 
   /**
+   * Asserts the countdown clock on the timed quote is still ticking, and that the whole minutes it
+   * shows fall inside the supplier's hold window.
+   *
+   * This is the expiry half of an expiry test, and it has to read the BADGE: the tooltip states the
+   * static hold window (`countdownDuration`, 60 for UK rail), so its wording is identical on an
+   * expired quote. The badge is where the live `M:SS` lives — and where app-timed-quote.vue swaps in
+   * "Expired" once `quote.expires` passes, through the very same span. Anything that is not a
+   * parsable `M:SS` is therefore treated as a failure rather than ignored, which is what stops this
+   * from going green on a quote that already ran out.
+   *
+   * The value is range-checked, not pinned: the countdown is derived from the server's expiry, so it
+   * has already ticked down a few seconds by the time the cart is reached.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} [options]
+   * @param {number} [options.minMinutes] - Lowest acceptable whole minute remaining (inclusive)
+   * @param {number} [options.maxMinutes] - Highest acceptable whole minute remaining (inclusive)
+   * @returns {Promise<{countdown: string, minutes: number}>}
+   * @throws {Error} If the clock reads "Expired", is unparsable, or is outside the window
+   */
+  async verifyCountdownClockWithinWindow(page, { minMinutes, maxMinutes } = {}) {
+    if (!page) {
+      throw new Error('[Cart.verifyCountdownClockWithinWindow] "page" is required.');
+    }
+    if (!Number.isFinite(minMinutes) || !Number.isFinite(maxMinutes)) {
+      throw new Error(
+        '[Cart.verifyCountdownClockWithinWindow] "minMinutes" and "maxMinutes" are both required.',
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    let countdownText;
+    try {
+      countdownText = await cartPage.getTimedQuoteBadgeCountdownText();
+    }
+    catch (err) {
+      throw new Error(
+        `[Cart.verifyCountdownClockWithinWindow] No countdown clock was rendered on the timed quote. ` +
+        `The badge only appears while the quote is pending with an expiry. Original: ${err.message}`,
+      );
+    }
+
+    const match = countdownText.match(/^(\d{1,3}):([0-5]\d)$/);
+    if (!match) {
+      throw new Error(
+        `[Cart.verifyCountdownClockWithinWindow] Expected the countdown clock to show a live M:SS ` +
+        `countdown, but it read: "${countdownText}". "Expired" here means the quote ran out before the ` +
+        `clock was read — the badge renders the countdown and the expired state through the same span. ` +
+        `Text carrying the "schedule" ligature instead means the badge's icon span is no longer being ` +
+        `excluded by TIMED_QUOTE_BADGE_COUNTDOWN.`,
+      );
+    }
+
+    const minutes = Number(match[1]);
+    if (minutes < minMinutes || minutes > maxMinutes) {
+      throw new Error(
+        `[Cart.verifyCountdownClockWithinWindow] The countdown clock showed ${countdownText} ` +
+        `(${minutes} min), outside the expected ${minMinutes}-${maxMinutes} minute window. The window ` +
+        `comes from the supplier's hold time, so a lower value means the quote was already ageing when ` +
+        `it was read.`,
+      );
+    }
+
+    logger.info('Countdown clock is within the expected window', { countdown: countdownText, minutes });
+    return { countdown: countdownText, minutes };
+  },
+
+  /**
    * Verifies the "time left to book" countdown is visible on the checkout page AND is still
    * counting down within the expected booking window.
    *

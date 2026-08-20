@@ -17,6 +17,7 @@ Feature: 65020 Benerail - Validate expired trip behaviour when expiry counter re
     When I search for a one way Benerail train from "bebmiToNlabk"
     When I add a Benerail one way to the trip
     And the booking status should be "Pending booking"
+    Then the countdown clock is between 17 and 20 minutes
     When I hover the countdown clock
     # MM:SS is the live countdown, not the 20-minute TTL — it already reads 19:5x by the time the
     # clock is hovered, so the minutes are range-checked while the wording is matched verbatim.

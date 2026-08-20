@@ -1416,6 +1416,14 @@ Then("the timed quote badge should be visible in cart", async function () {
   await Cart.verifyTimedQuoteBadgeVisible(this.page);
 });
 
+// The countdown clock is the badge itself, so this needs no hover and is asserted before one.
+// Separate from the tooltip steps below on purpose: the badge carries the LIVE countdown while the
+// tooltip states the supplier's static hold window, so only this step can catch an expired quote.
+Then("the countdown clock is between {int} and {int} minutes", async function (minMinutes, maxMinutes) {
+  logger.info("Verifying the countdown clock is within the expected window", { minMinutes, maxMinutes });
+  await Cart.verifyCountdownClockWithinWindow(this.page, { minMinutes, maxMinutes });
+});
+
 When("I hover the countdown clock", async function () {
   logger.info("Hovering the countdown clock on the timed quote to reveal its tooltip");
   this.countdownTooltipMessage = await Cart.hoverCountdownClockAndGetTooltipMessage(this.page);

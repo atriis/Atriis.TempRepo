@@ -648,6 +648,12 @@ const SELECTORS = {
   // Timed quote badge — appears on quotes with a limited time window
   // (flight-timed-quote.vue / app-timed-quote.vue both render `.timed-quote-badge`)
   TIMED_QUOTE_BADGE: '.timed-quote-badge',
+  // The live countdown INSIDE the badge. app-timed-quote.vue (and the flights variant) render the
+  // badge as an icon span carrying the "schedule" ligature plus a plain span holding the ticking
+  // `M:SS` derived from the server's `quote.expires` — and when the quote runs out that same plain
+  // span is replaced by "Expired". Excluding the icon span keeps the ligature text out of the read.
+  // :visible skips the hidden responsive duplicates the cart renders.
+  TIMED_QUOTE_BADGE_COUNTDOWN: '.timed-quote-badge:visible span:not(.material-symbols-outlined)',
   // Tooltip revealed by hovering the badge above. app-timed-quote.vue wraps the badge in an
   // el-tooltip whose content is teleported to a body-level popper, so it is not a descendant of
   // the quote card — hence the unscoped class. The message lives in the inner <p>; the sibling
@@ -5179,6 +5185,25 @@ class CartPage {
    */
   async hoverTimedQuoteBadge() {
     await this.page.locator(SELECTORS.TIMED_QUOTE_BADGE).first().hover();
+  }
+
+  /**
+   * Reads the live countdown rendered inside the timed quote badge — the countdown clock itself,
+   * which needs no hover (the tooltip states the static hold window instead).
+   *
+   * The raw text is returned rather than a parsed time so the caller can tell a running countdown
+   * ("59:47") from the expired state ("Expired"): app-timed-quote.vue renders both through the
+   * same span, so their text is the only thing that distinguishes them.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000] - Max wait time in ms for the badge to appear
+   * @returns {Promise<string>} The badge countdown text with whitespace normalized
+   */
+  async getTimedQuoteBadgeCountdownText({ timeout = 30000 } = {}) {
+    const countdown = this.page.locator(SELECTORS.TIMED_QUOTE_BADGE_COUNTDOWN).first();
+    await countdown.waitFor({ state: 'visible', timeout });
+    const text = await countdown.textContent();
+    return (text ?? '').replace(/\s+/g, ' ').trim();
   }
 
   /**

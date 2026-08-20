@@ -5,7 +5,7 @@
 # Owner: Pedro Carneiro
 # Created: 2025-05-06T10:04:42Z
 # Updated: 2025-09-14T10:53:01Z
-@transportation @rails @evolvi @regression @wip
+@transportation @rails @evolvi @regression
 Feature: 61640 Evolvi - Expiry validate counter and tooltip
   As a corporate traveler
   I want the expiry counter and its tooltip to show the time left on an Evolvi quote
@@ -17,11 +17,11 @@ Feature: 61640 Evolvi - Expiry validate counter and tooltip
     When I search for a one way Evolvi train from "182To115"
     And I acknowledge the push notification
     And I add an Evolvi one way to the trip
-    Then the booking status should be "Pending booking"
+    And the booking status should be "Pending booking"
+    Then the countdown clock is between 57 and 60 minutes
     When I hover the countdown clock
-    # TODO: read the live countdown text from the timed quote badge in the cart, parse it as MM:SS,
-    # fail when it reads "Expired"/"Cart expired" or is unparsable, and assert the minutes left fall
-    # inside the given window - a presence-only check passes on an already expired quote because the
-    # live countdown and the expired state share the same container
-    Then the timed quote badge counter should show between 1 and 20 minutes remaining
-    Then the countdown tooltip shows the message "Your session is valid for MM:SS minutes from the time of selection. We recommend completing your booking within this time to avoid changes in fare or availability." with between 1 and 20 minutes remaining
+    # The tooltip states the supplier's STATIC hold window, not a live countdown: app-timed-quote.vue
+    # renders `countdownDuration` whenever it is truthy, and uk-rail-quote-card always passes
+    # UKRailCountdownDurationMinutes = 60 - so the sentence always reads "60 minutes" here, exactly as
+    # Sunny Cars reads "15:00 minutes" (66558). The live MM:SS only ever appears in the badge itself.
+    Then the countdown tooltip shows the message "Your session is valid for 60 minutes from the time of selection. We recommend completing your booking within this time to avoid changes in fare or availability."
