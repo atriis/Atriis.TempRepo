@@ -3666,6 +3666,51 @@ Then("the wallet link {string} should be visible in itinerary", async function (
   this.recordEmailPreviewLink(link);
 });
 
+// ===== E-TICKET ON THE SHARED ITINERARY (test 64936) =====
+//
+// The Eticket reference is read once from the booked quote in the trip overview and kept on the
+// World, because the assertion at the end of the scenario measures the share itinerary against it:
+// the itinerary email has to quote the same reference the booked quote shows.
+function readExtractedEticketNumber(world) {
+  if (!world.eticketNumber) {
+    throw new Error(
+      "[cart.steps] Missing the extracted Eticket reference — expected " +
+      "'I extract the e-ticket number from the trip overview' to have run first",
+    );
+  }
+  return world.eticketNumber;
+}
+
+When("I extract the e-ticket number from the trip overview", async function () {
+  logger.info("Reading the Eticket reference from the booked UK Rail quote in the trip overview");
+  this.eticketNumber = await Cart.extractUkRailEticketNumber(this.page);
+});
+
+When("I click the e-ticket link in the share itinerary preview", async function () {
+  logger.info("Clicking the e-ticket link in the share itinerary email preview");
+  this.eticketDownload = await Cart.clickEticketLinkInSharePreview(this.page);
+});
+
+Then("the e-ticket file should be downloaded", async function () {
+  if (!this.eticketDownload) {
+    throw new Error(
+      "[cart.steps] Missing the e-ticket download — expected " +
+      "'I click the e-ticket link in the share itinerary preview' to have run first",
+    );
+  }
+  logger.info("Verifying the e-ticket file served by the itinerary link reached disk with content");
+  await Cart.verifyEticketFileDownloaded(this.page, this.eticketDownload);
+});
+
+// The email is the backend-generated HTML the mail server sends, so the reference is looked for in
+// the preview's text rather than at a fixed position in the template's table layout: the itinerary
+// has to quote the same Eticket reference the booked quote shows.
+Then("the e-ticket number in the share itinerary should match the trip overview", async function () {
+  const eticketNumber = readExtractedEticketNumber(this);
+  logger.info("Verifying the share itinerary email preview quotes the trip overview Eticket reference", { eticketNumber });
+  await Cart.verifySharePreviewContainsText(this.page, eticketNumber);
+});
+
 // Replaces Testim's hosted "Generate email address" step. The generated address is external to
 // the corporation, so the share dialog offers it as a recipient to click; when a test mailbox is
 // configured it is an address inside that mailbox, which is what lets a later step read the mail

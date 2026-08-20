@@ -5,11 +5,11 @@
 # Owner: Pedro Carneiro
 # Created: 2025-07-29T10:23:17Z
 # Updated: 2025-09-14T12:56:04Z
-# The e-ticket number is read twice: from the booked quote in the trip overview and from the
-# share itinerary preview (the same backend-generated HTML the mail server sends), then the two
-# are compared. Share-preview content uses a label+content two-row pattern, so a reader must fall
-# through to the next sibling row when the label's own row is empty.
-@transportation @rails @evolvi @regression @wip
+# The Eticket reference is read off the booked quote in the trip overview, then the share itinerary
+# preview (the same backend-generated HTML the mail server sends) has to both serve that ticket as a
+# downloadable file and quote the same reference. The email's wording is not in this repo's source,
+# so the e-ticket link is found by what it points at — the wallet links ruled out first.
+@transportation @rails @evolvi @regression
 Feature: 64936 Evolvi - e-ticket link exist on share itinerary
   As a corporate traveler
   I want an e-ticket link on the itinerary I share after booking a UK Rail journey
@@ -26,20 +26,15 @@ Feature: 64936 Evolvi - e-ticket link exist on share itinerary
     And I fill mandatory Evolvi fields in cart
     And I proceed to checkout
     And I wait for booking details in checkout
-    # TODO: fill the three mandatory general preference question fields on the checkout page
-    And I fill in the general preference questions in checkout
+    And I fill in the "Cost Code" reference field with "1234"
+    And I fill in the "Legal Entity" reference field with "4321"
+    And I fill in the "Business Area" reference field with "2565"
     And I complete the booking
-    # TODO: read and store the e-ticket number shown on the booked UK Rail quote in the trip overview
     And I extract the e-ticket number from the trip overview
     When I click the share itinerary button
     And I wait to see "Subject" field in share dialog
-    # TODO: assert the share itinerary preview contains the e-ticket download link
-    Then the e-ticket link should be displayed in the share itinerary preview
-    # TODO: read and store the e-ticket number shown in the share itinerary preview
-    When I extract the e-ticket number from the share itinerary preview
-    # TODO: click the e-ticket link in the share itinerary preview and capture the resulting download
+    And the wallet link "Get your PKPASS (Apple Wallet)" should be visible in itinerary
+    And the wallet link "Get your Ticket (Google Wallet)" should be visible in itinerary
     And I click the e-ticket link in the share itinerary preview
-    # TODO: assert the file downloaded from the e-ticket link is received and is not empty
     Then the e-ticket file should be downloaded
-    # TODO: compare the e-ticket number read from the share itinerary against the trip overview one
     And the e-ticket number in the share itinerary should match the trip overview
