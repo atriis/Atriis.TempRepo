@@ -160,6 +160,10 @@ const SELECTORS = {
   // The profile forms only render Save when editable (v-if="!disableEdit" in
   // contact-info-form.vue), so its absence is how a read-only profile popup is detected.
   PROFILE_DIALOG_SAVE_BTN: 'button:has-text("Save")',
+  // Read-only profile forms disable every input, so an editable input is the second
+  // editability signal alongside the Save button
+  PROFILE_DIALOG_ANY_INPUT: 'input:visible',
+  PROFILE_DIALOG_EDITABLE_INPUT: 'input:visible:not([disabled])',
 };
 
 class ProfilePage {
@@ -1582,11 +1586,13 @@ class ProfilePage {
     }
   }
 
-  async expectDialogByTitleHidden(title, timeoutMs = 10000) {
-    await expect(
-      this.dialogByTitle(title).first(),
-      `A user profile dialog titled "${title}" is visible, but this privilege combination must not raise it`
-    ).toBeHidden({ timeout: timeoutMs });
+  /**
+   * Resolves once no dialog with this title is showing. A missing dialog counts as hidden, so
+   * this returns immediately in the normal case instead of burning the timeout. The assertion
+   * itself belongs to the DSL — Page Objects never assert.
+   */
+  async waitForDialogByTitleHidden(title, timeoutMs = 10000) {
+    await this.dialogByTitle(title).first().waitFor({ state: 'hidden', timeout: timeoutMs });
   }
 
   async getDialogBodyText(title) {
@@ -1630,12 +1636,12 @@ class ProfilePage {
     // Same race as countVisibleMandatoryLabels: wait for the form to mount inside the dialog,
     // otherwise both counts below read zero and a perfectly editable popup looks read-only.
     try {
-      await dialog.locator('input:visible').first().waitFor({ state: 'visible', timeout: timeoutMs });
+      await dialog.locator(SELECTORS.PROFILE_DIALOG_ANY_INPUT).first().waitFor({ state: 'visible', timeout: timeoutMs });
     } catch {
       // Deliberately swallowed: the counts below describe the failure.
     }
     const saveButtons = await dialog.locator(SELECTORS.PROFILE_DIALOG_SAVE_BTN + ':visible').count();
-    const editableInputs = await dialog.locator('input:visible:not([disabled])').count();
+    const editableInputs = await dialog.locator(SELECTORS.PROFILE_DIALOG_EDITABLE_INPUT).count();
     return { saveButtons, editableInputs };
   }
 }

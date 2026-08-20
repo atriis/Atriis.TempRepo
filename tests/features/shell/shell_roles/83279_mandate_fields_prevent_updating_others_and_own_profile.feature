@@ -17,17 +17,18 @@ Feature: 83279 Mandate Fields - "Prevent updating others and own profile" cannot
   I want the warning popup for both myself and another traveller with missing mandate fields
   So that nobody is edited by me and the incomplete profile has to be completed by someone else
 
-  @priority:high
-  Scenario: Booking for myself shows the mandatory details warning instead of my profile
+  Background:
     Given I am logged in as "Prevent@update.otr" booking a new trip
+
+  @priority:high
+  Scenario: Prevent-update privilege - booking for myself shows the mandatory details warning instead of my profile
     When I click to add myself as the traveler
     Then the mandatory details are missing popup is displayed
     And the mandatory details are missing popup states "This traveller's profile has missing details and cannot be added to the reservation."
     And the user profile popup is not displayed
 
   @priority:high
-  Scenario: Booking for another traveller shows the mandatory details warning
-    Given I am logged in as "Prevent@update.otr" booking a new trip
+  Scenario: Prevent-update privilege - booking for another traveller shows the mandatory details warning
     When I add a traveler by name "Shili@koko.com" from the search autocomplete
     Then the mandatory details are missing popup is displayed
     And the mandatory details are missing popup states "This traveller's profile has missing details and cannot be added to the reservation."

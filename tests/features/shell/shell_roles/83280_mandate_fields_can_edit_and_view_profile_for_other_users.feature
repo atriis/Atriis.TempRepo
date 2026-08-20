@@ -17,9 +17,11 @@ Feature: 83280 Mandate Fields - "Can edit and view profile for other users" can 
   I want the editable profile popup for my own profile and for another traveller
   So that the privilege keeps behaving exactly as it did before the mandate-fields fix
 
-  @priority:high
-  Scenario: Booking for myself opens my own profile for editing
+  Background:
     Given I am logged in as "Can@edit.profiles" booking a new trip
+
+  @priority:high
+  Scenario: Edit privilege - booking for myself opens my own profile for editing
     When I click to add myself as the traveler
     Then the user profile popup is displayed
     And the missing mandatory fields are marked with a red star
@@ -27,8 +29,7 @@ Feature: 83280 Mandate Fields - "Can edit and view profile for other users" can 
     And the mandatory details are missing popup is not displayed
 
   @priority:high
-  Scenario: Booking for another traveller opens the traveller profile for editing
-    Given I am logged in as "Can@edit.profiles" booking a new trip
+  Scenario: Edit privilege - booking for another traveller opens the traveller profile for editing
     When I add a traveler by name "Shili@koko.com" from the search autocomplete
     Then the user profile popup is displayed
     And the missing mandatory fields are marked with a red star

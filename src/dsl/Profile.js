@@ -2003,7 +2003,17 @@ const Profile = {
     }
 
     const profilePage = getPageObject(page, ProfilePage);
-    await profilePage.expectDialogByTitleHidden('User profile');
+
+    try {
+      await profilePage.waitForDialogByTitleHidden('User profile');
+    } catch (err) {
+      throw new Error(
+        '[Profile.verifyUserProfilePopupNotOpen] The editable "User profile" popup is open, but this privilege ' +
+        'combination must send the user to the "Mandatory Details Are Missing" warning instead — the traveller ' +
+        `must not become editable. Original: ${err.message}`
+      );
+    }
+
     logger.info('[Profile.verifyUserProfilePopupNotOpen] Editable "User profile" popup did not open, as expected');
   },
 
@@ -2026,7 +2036,17 @@ const Profile = {
     }
 
     const profilePage = getPageObject(page, ProfilePage);
-    await profilePage.expectDialogByTitleHidden('Mandatory Details Are Missing');
+
+    try {
+      await profilePage.waitForDialogByTitleHidden('Mandatory Details Are Missing');
+    } catch (err) {
+      throw new Error(
+        '[Profile.verifyMandatoryDetailsWarningNotOpen] The "Mandatory Details Are Missing" popup is open, but ' +
+        'this privilege combination must open the editable profile popup instead — the traveller is being ' +
+        `blocked when they should be fillable. Original: ${err.message}`
+      );
+    }
+
     logger.info('[Profile.verifyMandatoryDetailsWarningNotOpen] Warning popup did not open, as expected');
   },
 
