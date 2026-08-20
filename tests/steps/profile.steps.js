@@ -355,3 +355,44 @@ When("I enter a mobile number in the profile popup with country code {string} ar
   logger.info("Entering mobile number in profile popup", { countryCode, areaCode, number });
   await Profile.enterMobileInPopup(this.page, { countryCode, areaCode, number });
 });
+
+// --- Mandate fields per profile privilege (ADO US 60526) ---
+// The editable profile dialog and the "Mandatory Details Are Missing" warning are the two
+// mutually exclusive outcomes of selecting a traveller with missing mandate fields. Which one
+// appears depends on the booker's profile privileges and on whether the traveller is themself,
+// so every scenario asserts the expected popup AND the absence of the other one.
+
+Then("the user profile popup is displayed", async function () {
+  logger.info("Verifying the editable User profile popup opened");
+  await Profile.verifyUserProfilePopupOpen(this.page);
+});
+
+Then("the user profile popup is not displayed", async function () {
+  logger.info("Verifying the editable User profile popup did not open");
+  await Profile.verifyUserProfilePopupNotOpen(this.page);
+});
+
+Then("the mandatory details are missing popup is displayed", async function () {
+  logger.info("Verifying the Mandatory Details Are Missing popup opened");
+  await Profile.verifyMandatoryDetailsWarningOpen(this.page);
+});
+
+Then("the mandatory details are missing popup is not displayed", async function () {
+  logger.info("Verifying the Mandatory Details Are Missing popup did not open");
+  await Profile.verifyMandatoryDetailsWarningNotOpen(this.page);
+});
+
+Then("the mandatory details are missing popup states {string}", async function (expectedText) {
+  logger.info("Verifying the warning popup wording", { expectedText });
+  await Profile.verifyMandatoryDetailsWarningText(this.page, expectedText);
+});
+
+Then("the missing mandatory fields are marked with a red star", async function () {
+  logger.info("Verifying missing mandatory fields are marked in the profile popup");
+  await Profile.verifyMandatoryFieldsMarkedWithRedStar(this.page);
+});
+
+Then("the user profile popup is editable", async function () {
+  logger.info("Verifying the profile popup can be edited and saved");
+  await Profile.verifyUserProfilePopupEditable(this.page);
+});

@@ -143,6 +143,23 @@ const SELECTORS = {
   PHONE_INPUT_POPOVER_OPTION: '.app-phone-input-popover:visible .app-phone-input__option',
   // Save button inside the popup contact info form
   PROFILE_POPUP_SAVE_BTN: '.user-profile-dialog button:has-text("Save")',
+  // --- Mandate-fields dialogs (ADO US 60526) ---
+  // trip-app.vue renders BOTH the editable profile dialog and the read-only
+  // "Mandatory Details Are Missing" warning with the same class
+  // (.app-dialog.user-profile-dialog) — only the el-dialog title tells them apart, so every
+  // check below is title-scoped. Which one opens is decided by the profile response:
+  // showWarningPopup -> warning dialog, otherwise mandateFields.length -> editable profile.
+  DIALOG_TITLE: '.el-dialog__title',
+  USER_PROFILE_DIALOG_TITLE_TEXT: 'User profile',
+  MANDATORY_DETAILS_DIALOG_TITLE_TEXT: 'Mandatory Details Are Missing',
+  // Body of whichever user-profile dialog is open
+  USER_PROFILE_DIALOG_BODY: '.el-dialog__body',
+  // Red star beside a mandatory field label — `mandatory` is the class that paints it.
+  // Deliberately not scoped to one tab: the popup opens on whichever tab holds the missing field.
+  PROFILE_DIALOG_MANDATORY_LABEL: 'label.mandatory',
+  // The profile forms only render Save when editable (v-if="!disableEdit" in
+  // contact-info-form.vue), so its absence is how a read-only profile popup is detected.
+  PROFILE_DIALOG_SAVE_BTN: 'button:has-text("Save")',
 };
 
 class ProfilePage {
@@ -1530,6 +1547,97 @@ class ProfilePage {
     }
   }
 
+  /**
+   * Both mandate-fields dialogs share `.app-dialog.user-profile-dialog`, so the el-dialog
+   * title is the only reliable discriminator. Returns the dialog locator for one title.
+   */
+  dialogByTitle(title) {
+    return this.page
+      .locator(SELECTORS.USER_PROFILE_DIALOG)
+      .filter({ has: this.page.locator(SELECTORS.DIALOG_TITLE, { hasText: title }) });
+  }
+
+  /**
+   * Titles of every user-profile dialog currently visible. Used to build a useful failure
+   * message when the wrong one of the two opened.
+   */
+  async getOpenUserProfileDialogTitles() {
+    const titles = await this.page
+      .locator(SELECTORS.USER_PROFILE_DIALOG + ':visible ' + SELECTORS.DIALOG_TITLE)
+      .allTextContents();
+    return titles.map((t) => t.trim()).filter(Boolean);
+  }
+
+  async waitForDialogByTitle(title, timeoutMs = 25000) {
+    try {
+      await this.dialogByTitle(title).first().waitFor({ state: 'visible', timeout: timeoutMs });
+    } catch (err) {
+      const open = await this.getOpenUserProfileDialogTitles();
+      throw new Error(
+        `[ProfilePage.waitForDialogByTitle] No user profile dialog titled "${title}" appeared within ` +
+        `${timeoutMs}ms. Dialogs open instead: ${open.length ? open.map((t) => `"${t}"`).join(', ') : 'none'}. ` +
+        `Which dialog opens is driven by the traveller's profile privileges and their missing ` +
+        `mandate fields — verify both before treating this as a locator problem. Original: ${err.message}`
+      );
+    }
+  }
+
+  async expectDialogByTitleHidden(title, timeoutMs = 10000) {
+    await expect(
+      this.dialogByTitle(title).first(),
+      `A user profile dialog titled "${title}" is visible, but this privilege combination must not raise it`
+    ).toBeHidden({ timeout: timeoutMs });
+  }
+
+  async getDialogBodyText(title) {
+    const body = this.dialogByTitle(title).first().locator(SELECTORS.USER_PROFILE_DIALOG_BODY);
+    try {
+      await body.waitFor({ state: 'visible', timeout: 15000 });
+      return (await body.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getDialogBodyText] Could not read the body of the dialog titled "${title}" ` +
+        `(selector: ${SELECTORS.USER_PROFILE_DIALOG_BODY}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Number of visible mandatory labels (red stars) inside the dialog. Counting only visible
+   * ones keeps inactive tab panes out of the total.
+   */
+  async countVisibleMandatoryLabels(title, timeoutMs = 20000) {
+    const dialog = this.dialogByTitle(title).first();
+    await dialog.waitFor({ state: 'visible', timeout: 15000 });
+    const labels = dialog.locator(SELECTORS.PROFILE_DIALOG_MANDATORY_LABEL + ':visible');
+    // el-dialog paints its header as soon as it opens, but the profile form is fetched and
+    // mounted a moment later — counting straight away reads an empty dialog body.
+    try {
+      await labels.first().waitFor({ state: 'visible', timeout: timeoutMs });
+    } catch {
+      // Deliberately swallowed: the caller turns a zero count into a descriptive failure.
+    }
+    return await labels.count();
+  }
+
+  /**
+   * Editability signals for an open profile dialog: the Save button only renders when the
+   * form is not read-only, and read-only forms disable every input.
+   */
+  async getDialogEditability(title, timeoutMs = 20000) {
+    const dialog = this.dialogByTitle(title).first();
+    await dialog.waitFor({ state: 'visible', timeout: 15000 });
+    // Same race as countVisibleMandatoryLabels: wait for the form to mount inside the dialog,
+    // otherwise both counts below read zero and a perfectly editable popup looks read-only.
+    try {
+      await dialog.locator('input:visible').first().waitFor({ state: 'visible', timeout: timeoutMs });
+    } catch {
+      // Deliberately swallowed: the counts below describe the failure.
+    }
+    const saveButtons = await dialog.locator(SELECTORS.PROFILE_DIALOG_SAVE_BTN + ':visible').count();
+    const editableInputs = await dialog.locator('input:visible:not([disabled])').count();
+    return { saveButtons, editableInputs };
+  }
 }
 
 module.exports = ProfilePage;

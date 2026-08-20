@@ -1979,6 +1979,131 @@ const Profile = {
 
     logger.info(`[Profile.enterMobileInPopup] Mobile entered and saved in popup: ${countryCode}-${areaCode}-${number}`);
   },
+  /**
+   * Waits for the editable "User profile" dialog — raised when the selected traveller has
+   * missing mandate fields that the logged-in user is allowed to fill in.
+   */
+  async verifyUserProfilePopupOpen(page) {
+    if (!page) {
+      throw new Error('[Profile.verifyUserProfilePopupOpen] "page" is required.');
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.waitForDialogByTitle('User profile');
+    logger.info('[Profile.verifyUserProfilePopupOpen] Editable "User profile" popup is open');
+  },
+
+  /**
+   * Asserts the editable "User profile" dialog stays closed — the expected outcome whenever the
+   * privilege combination sends the user to the warning popup instead.
+   */
+  async verifyUserProfilePopupNotOpen(page) {
+    if (!page) {
+      throw new Error('[Profile.verifyUserProfilePopupNotOpen] "page" is required.');
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.expectDialogByTitleHidden('User profile');
+    logger.info('[Profile.verifyUserProfilePopupNotOpen] Editable "User profile" popup did not open, as expected');
+  },
+
+  /**
+   * Waits for the read-only "Mandatory Details Are Missing" warning dialog.
+   */
+  async verifyMandatoryDetailsWarningOpen(page) {
+    if (!page) {
+      throw new Error('[Profile.verifyMandatoryDetailsWarningOpen] "page" is required.');
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.waitForDialogByTitle('Mandatory Details Are Missing');
+    logger.info('[Profile.verifyMandatoryDetailsWarningOpen] "Mandatory Details Are Missing" popup is open');
+  },
+
+  async verifyMandatoryDetailsWarningNotOpen(page) {
+    if (!page) {
+      throw new Error('[Profile.verifyMandatoryDetailsWarningNotOpen] "page" is required.');
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.expectDialogByTitleHidden('Mandatory Details Are Missing');
+    logger.info('[Profile.verifyMandatoryDetailsWarningNotOpen] Warning popup did not open, as expected');
+  },
+
+  /**
+   * Asserts the warning dialog body contains the given sentence.
+   */
+  async verifyMandatoryDetailsWarningText(page, expectedText) {
+    if (!page) {
+      throw new Error('[Profile.verifyMandatoryDetailsWarningText] "page" is required.');
+    }
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Profile.verifyMandatoryDetailsWarningText] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const actual = await profilePage.getDialogBodyText('Mandatory Details Are Missing');
+    const normalise = (value) => value.replace(/\s+/g, ' ').trim().toLowerCase();
+
+    if (!normalise(actual).includes(normalise(expectedText))) {
+      throw new Error(
+        `[Profile.verifyMandatoryDetailsWarningText] The warning popup does not mention "${expectedText}". ` +
+        `Actual popup text: "${actual}"`
+      );
+    }
+
+    logger.info(`[Profile.verifyMandatoryDetailsWarningText] Warning popup mentions "${expectedText}"`);
+  },
+
+  /**
+   * Asserts at least one field in the open profile popup carries the mandatory marker (red star).
+   */
+  async verifyMandatoryFieldsMarkedWithRedStar(page) {
+    if (!page) {
+      throw new Error('[Profile.verifyMandatoryFieldsMarkedWithRedStar] "page" is required.');
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const count = await profilePage.countVisibleMandatoryLabels('User profile');
+
+    if (count < 1) {
+      throw new Error(
+        '[Profile.verifyMandatoryFieldsMarkedWithRedStar] No mandatory field label (red star) is visible in the ' +
+        'open "User profile" popup. The popup should open on the tab holding the missing mandate field, with that ' +
+        'field label carrying the CSS class "mandatory".'
+      );
+    }
+
+    logger.info(`[Profile.verifyMandatoryFieldsMarkedWithRedStar] ${count} mandatory field label(s) marked in the popup`);
+  },
+
+  /**
+   * Asserts the open profile popup is editable: the profile forms only render Save when the
+   * form is not read-only, and a read-only profile disables every input.
+   */
+  async verifyUserProfilePopupEditable(page) {
+    if (!page) {
+      throw new Error('[Profile.verifyUserProfilePopupEditable] "page" is required.');
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const { saveButtons, editableInputs } = await profilePage.getDialogEditability('User profile');
+
+    if (saveButtons < 1 || editableInputs < 1) {
+      throw new Error(
+        `[Profile.verifyUserProfilePopupEditable] The "User profile" popup is read-only ` +
+        `(visible Save buttons: ${saveButtons}, editable inputs: ${editableInputs}). ` +
+        `A user who may edit this profile must be able to fill in and save the missing mandate fields, ` +
+        `otherwise they are stuck and cannot book.`
+      );
+    }
+
+    logger.info(
+      `[Profile.verifyUserProfilePopupEditable] Popup is editable (Save buttons: ${saveButtons}, editable inputs: ${editableInputs})`
+    );
+  },
 };
 
 module.exports = Profile;
