@@ -76,12 +76,6 @@ When("I extract the price from room level results", async function () {
   logger.info("Stored room level price", { roomLevelPrice: this.roomLevelPrice });
 });
 
-When("I extract the booking fee from the first room result", async function () {
-  logger.info("Extracting booking fee from first room result");
-  this.roomBookingFee = await RoomLevelResults.extractBookingFeeRoomLevel(this.page);
-  logger.info("Stored room booking fee", { roomBookingFee: this.roomBookingFee });
-});
-
 When("I check terms and conditions in room level", async function () {
   logger.info("Clicking terms and conditions on first room");
   this.termsDialogVisible = await RoomLevelResults.checkTermsAndConditions(this.page);
@@ -128,14 +122,14 @@ Then("the room level terms and conditions should include {string}", async functi
 });
 
 Then("the booking fee from hotel level should match the booking fee from room level", async function () {
-  if (this.hotelBookingFee === undefined) {
-    throw new Error("No hotel booking fee stored. Run 'I extract the booking fee from the first hotel result' before this step.");
+  if (this.hotelLevelPrice === undefined) {
+    throw new Error("No hotel level price stored. Run 'I extract the price from hotel level results' before this step.");
   }
-  if (this.roomBookingFee === undefined) {
-    throw new Error("No room booking fee stored. Run 'I extract the booking fee from the first room result' before this step.");
+  if (this.roomLevelPrice === undefined) {
+    throw new Error("No room level price stored. Run 'I extract the price from room level results' before this step.");
   }
-  logger.info("Comparing booking fees", { hotelBookingFee: this.hotelBookingFee, roomBookingFee: this.roomBookingFee });
-  await RoomLevelResults.compareBookingFees(this.page, this.hotelBookingFee, this.roomBookingFee);
+  logger.info("Comparing booking fees", { hotelLevelPrice: this.hotelLevelPrice, roomLevelPrice: this.roomLevelPrice });
+  await RoomLevelResults.compareBookingFees(this.page, this.hotelLevelPrice, this.roomLevelPrice);
 });
 
 // ========================================

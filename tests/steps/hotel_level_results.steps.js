@@ -55,12 +55,6 @@ When("I extract the price from hotel level results", async function () {
   logger.info("Stored hotel level price", { hotelLevelPrice: this.hotelLevelPrice });
 });
 
-When("I extract the booking fee from the first hotel result", async function () {
-  logger.info("Extracting booking fee from first hotel result");
-  this.hotelBookingFee = await HotelLevelResults.extractBookingFeeHotelLevel(this.page);
-  logger.info("Stored hotel booking fee", { hotelBookingFee: this.hotelBookingFee });
-});
-
 When("I wait for the hotel results page to load", async function () {
   logger.info("Waiting for hotel results page to load");
   const hotelLevelResultsPage = getPageObject(this.page, HotelLevelResultsPage);

@@ -98,21 +98,6 @@ const RoomLevelResults = {
   },
 
   /**
-   * Extracts the booking fee displayed at room level (first room card).
-   * Premier Inn shows the booking fee on the first room option; the difference
-   * between the first room price and the hotel-level price should be ~10 GBP.
-   * @param {import('playwright').Page} page
-   * @returns {Promise<number>} The booking fee as a number
-   */
-  async extractBookingFeeRoomLevel(page) {
-    if (!page) throw new Error('page parameter is required');
-
-    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
-    await roomLevelResultsPage.waitForViewHotelOnMapText();
-    return roomLevelResultsPage.getFirstRoomLevelPrice();
-  },
-
-  /**
    * Compares booking fees from hotel level and room level within a tolerance.
    * @param {import('playwright').Page} page
    * @param {number} hotelFee - Booking fee extracted at hotel level
