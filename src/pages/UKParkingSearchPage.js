@@ -243,6 +243,61 @@ class UKParkingSearchPage {
   }
 
   /**
+   * Waits for a date input to actually hold a value, and returns it.
+   *
+   * Clicking a day cell is fire-and-forget: Element Plus commits the value only when the click
+   * reaches the panel that belongs to THIS input, so a click that landed on a foreign or closing
+   * popper leaves the field silently empty. The input's own value is the only signal that the
+   * pick stuck — the day cell reporting itself as clicked is not.
+   *
+   * @param {string} inputSelector - Placeholder selector for the date input
+   * @param {number} [timeout=5000] - How long to wait for a non-empty value
+   * @returns {Promise<string>} The committed value
+   */
+  async waitForDateInputFilled(inputSelector, timeout = 5000) {
+    await this.page.waitForFunction(
+      (selector) => {
+        const input = document.querySelector(selector);
+        return !!input && input.value.trim().length > 0;
+      },
+      inputSelector,
+      { timeout },
+    );
+
+    return this.getDateInputValue(inputSelector);
+  }
+
+  /**
+   * Reads a date input's current value without waiting for it to be set.
+   * @param {string} inputSelector - Placeholder selector for the date input
+   * @returns {Promise<string>} The current value, empty string when unset
+   */
+  async getDateInputValue(inputSelector) {
+    return (await this.page.locator(inputSelector).first().inputValue()).trim();
+  }
+
+  /**
+   * Waits for the parking start date to hold a value. @returns {Promise<string>}
+   */
+  async waitForParkingFromDateFilled(timeout = 5000) {
+    return this.waitForDateInputFilled(SELECTORS.PARKING_FROM_DATE_INPUT, timeout);
+  }
+
+  /**
+   * Waits for the return date to hold a value. @returns {Promise<string>}
+   */
+  async waitForReturnDateFilled(timeout = 5000) {
+    return this.waitForDateInputFilled(SELECTORS.RETURN_DATE_INPUT, timeout);
+  }
+
+  /**
+   * Reads the parking start date's current value. @returns {Promise<string>}
+   */
+  async getParkingFromDateValue() {
+    return this.getDateInputValue(SELECTORS.PARKING_FROM_DATE_INPUT);
+  }
+
+  /**
    * Ensures a time field holds a value, priming it only when it is empty.
    *
    * Both times are required. Which path applies depends on context, so neither can be assumed:
