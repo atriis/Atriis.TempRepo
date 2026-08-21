@@ -250,16 +250,6 @@ const FlightSearch = {
    *
    * @param {import('playwright').Page} page - Playwright page instance
    */
-  async clickSearchButton(page) {
-    if (!page) throw new Error('page is required');
-
-    logger.info('Clicking the trip search button');
-    const searchPage = getPageObject(page, SearchPage);
-    await searchPage.waitAndClickSearchButton();
-
-    return { searched: true };
-  },
-
   /**
    * Clicks the flight search button when navigating from the cart to add a second flight.
    * Uses a primary-class-specific selector to avoid strict-mode failures caused by multiple
@@ -2142,7 +2132,10 @@ const FlightSearch = {
     logger.info('Setting the time frame for both legs, then submitting the search', { timeFrame });
 
     await this.selectTimeFrameForBothLegs(page, timeFrame);
-    await this.clickSearchButton(page);
+    // The generic search-button click now lives in the Search DSL; call the shared search form's
+    // page method directly rather than importing another DSL module for one line.
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.waitAndClickSearchButton();
 
     return { searched: true, timeFrame };
   },

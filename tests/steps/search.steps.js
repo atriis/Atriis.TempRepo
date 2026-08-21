@@ -19,6 +19,13 @@ Given("I have added myself as the traveler", async function () {
 // Product-agnostic: expands any collapsible section of the visible search form by its rendered
 // title, e.g. "Advanced search" — which UK Rail hides its class/priority/split-ticket options
 // behind. Already-expanded sections are left open rather than toggled shut.
+// Submits the shared trip search form. Product-agnostic: flight, shell and parking scenarios
+// all use it, which is why it lives here and not in flight_search.steps.js.
+When("I click the search button", async function () {
+  logger.info('Clicking the trip search button');
+  await Search.clickSearchButton(this.page);
+});
+
 When("I click {string} in search page", async function (sectionTitle) {
   logger.info("Expanding a section of the search form", { sectionTitle });
   await Search.clickSearchFormSection(this.page, sectionTitle);
@@ -62,6 +69,25 @@ Given("I have added a random guest traveler with phone type {string}", async fun
   logger.info("Adding random guest traveler with phone type", { phoneType });
   const result = await Search.addRandomGuest(this.page, phoneType);
   expect(result.starIconVisible, "Star icon should be visible after adding guest").toBe(true);
+  this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
+  this.selectedTravelerCount = result.selectedTravelerCount;
+});
+
+// Distinct from "I have added a random guest traveler": that one prefers the round add-traveler
+// button, which appends a new slot. This one goes through the empty slot's own placeholder, so
+// the guest fills the slot that was just emptied and becomes the trip's PRIMARY traveller --
+// asserted below rather than left implicit, since that is the whole point of the step.
+Given("I have added a random guest traveler as the primary traveller clicking {string} button copying settings from the user group {string}", async function (label, userGroupName) {
+  logger.info("Adding random guest traveler via the empty traveler slot", { label, userGroupName });
+  const result = await Search.addRandomGuestViaSelectTravelerSlot(this.page, label, userGroupName);
+  const guestName = `${result.guestData.firstName} ${result.guestData.lastName}`;
+  expect(result.starIconVisible, "Star icon should be visible after adding guest").toBe(true);
+  expect(
+    result.isPrimary,
+    `Guest "${guestName}" should be the trip's PRIMARY traveller (its own tag must carry the star) — ` +
+    `the searched content is resolved against the primary traveller, so a non-primary guest would ` +
+    `silently leave the booker's own entitlements in play`
+  ).toBe(true);
   this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
   this.selectedTravelerCount = result.selectedTravelerCount;
 });

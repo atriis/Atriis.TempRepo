@@ -54,11 +54,6 @@ When("I search for a round trip flight from {string} to {string} with outbound o
   await FlightSearch.searchRoundTripOnNthWeekday(this.page, from, to, dayOfWeek, 1);
 });
 
-When("I click the search button", async function () {
-  logger.info('Clicking the trip search button');
-  await FlightSearch.clickSearchButton(this.page);
-});
-
 When("I click the search button from the cart", async function () {
   logger.info('Clicking the flight search button from cart context');
   await FlightSearch.clickSearchButtonFromCart(this.page);

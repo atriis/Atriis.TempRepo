@@ -17,6 +17,14 @@ const SELECTORS = {
   // (e.g. cart page after removing a traveler) — same click handler opens the same edit-traveler
   // dialog either way (confirmed against Atriis.App source, trip-traveler-tag.vue).
   EMPTY_TRAVELER_SLOT: ".traveler-name.has-text-weight-semibold.is-clickable",
+  // The empty traveler slot's placeholder <p> (trip-traveler-tag.vue), used when a test must open
+  // the edit dialog for the ALREADY-EMPTY slot rather than appending a new one. Same class combo
+  // as EMPTY_TRAVELER_SLOT above on purpose: trip-traveler-tag.vue in Atriis.App gives this <p> a
+  // dedicated .select-traveler class, but the staging build does not carry it yet, so keying on it
+  // matches nothing. Callers therefore MUST discriminate by the placeholder's label text -- the
+  // class combo alone also matches a FILLED traveler name whenever the booker may view that
+  // profile. Switch to "p.traveler-name.select-traveler" once staging ships that class.
+  SELECT_TRAVELER_SLOT: "p.traveler-name.has-text-weight-semibold.is-clickable",
   ADD_ME_BUTTON: ".imt-btn",
   STAR_ICON: ".star-icon",
   REMOVE_TRAVELER_BUTTON: ".btn--default .material-symbols-outlined",
@@ -106,6 +114,10 @@ const SELECTORS = {
   FIRST_TRAVELER_OPTION: "[id*='item-0']",
   TRIP_TRAVELER_TAG: ".trip-traveler-tag",
   SELECTED_TRAVELER_NAME: '.trip-traveler-tag .traveler-name.black',
+  // trip-traveler-tag.vue renders this star ONLY under v-if="primary", so its presence inside a
+  // specific traveller's tag is the one reliable proof that THAT traveller is the primary one.
+  // STAR_ICON above is unscoped and only proves *some* traveller on the trip is primary.
+  TRAVELER_TAG_PRIMARY_STAR: '.star-icon',
   // Scope to the VISIBLE app-dialog: the reference-fields popup (trip-app.vue, append-to-body
   // `.el-dialog.app-dialog`) lingers HIDDEN in the DOM after being dismissed, and being appended
   // last it would otherwise win `.last()` over the actually-open add-traveller dialog.
@@ -352,6 +364,71 @@ class SearchPage {
         await this.page.waitForTimeout(300);
       }
     }
+  }
+
+  /**
+   * Reports whether the named traveller's own tag carries the primary star.
+   *
+   * Scoped to that traveller's tag on purpose: with more than one traveller on the trip an
+   * unscoped star check passes as soon as ANY of them is primary, which is not the same claim.
+   *
+   * @param {string} travelerName - Text identifying the tag, e.g. "Wilma Hart" or just a surname.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>} True if that traveller's tag shows the primary star.
+   */
+  async isTravelerPrimaryByName(travelerName, { timeout = 15000 } = {}) {
+    const tag = this.page
+      .locator(SELECTORS.TRIP_TRAVELER_TAG)
+      .filter({ hasText: travelerName })
+      .first();
+
+    try {
+      await tag.waitFor({ state: 'visible', timeout });
+    } catch {
+      return false;
+    }
+
+    return tag.locator(SELECTORS.TRAVELER_TAG_PRIMARY_STAR).first().isVisible();
+  }
+
+  /**
+   * Opens the edit-traveler dialog through the empty traveler slot's own placeholder button
+   * ("Select traveller"), verifying the placeholder shows the expected label first.
+   *
+   * Deliberately NOT clickAddTravelerButton(): that prefers the round add-btn, which appends a
+   * NEW traveler slot. This targets the already-empty slot, so the traveler added afterwards
+   * lands in that slot (the primary one, when it was the primary traveler who was removed).
+   *
+   * @param {string} label - The placeholder's expected visible text, e.g. "Select traveller".
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   */
+  async clickSelectTravelerSlot(label, { timeout = 15000 } = {}) {
+    await this.closeVisibleEditTravelerModal();
+
+    const slot = this.page
+      .locator(`${SELECTORS.SELECT_TRAVELER_SLOT}:visible`)
+      .filter({ hasText: label })
+      .first();
+
+    try {
+      await slot.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      const anySlots = await this.page
+        .locator(`${SELECTORS.SELECT_TRAVELER_SLOT}:visible`)
+        .allTextContents()
+        .catch(() => []);
+      throw new Error(
+        `[SearchPage.clickSelectTravelerSlot] No visible empty traveler slot labelled "${label}" ` +
+        `(selector: "${SELECTORS.SELECT_TRAVELER_SLOT}"). Visible empty slots: ` +
+        `${anySlots.length ? JSON.stringify(anySlots.map((t) => normalizeText(t))) : 'none'}. ` +
+        `Likely causes: every traveler slot is still filled (remove a traveler first), or the ` +
+        `label differs by locale (en renders "Select traveller", en-US "Select traveler"). ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    await slot.click();
+    await this.assertEditTravelerDialogVisible();
   }
 
   // Waits until the UI is ready to confirm traveler identity

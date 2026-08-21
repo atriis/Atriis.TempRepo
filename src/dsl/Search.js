@@ -266,6 +266,79 @@ const Search = {
   },
 
   /**
+   * Adds a random guest through the empty traveler slot's own "Select traveller" placeholder
+   * instead of the round add-traveler button.
+   *
+   * Use after removeTraveler(): the round add-btn appends a NEW slot, leaving the emptied
+   * primary slot unfilled, whereas this fills the emptied slot so the guest becomes the trip's
+   * primary traveler -- which is what content-driven-by-traveller tests need.
+   *
+   * Pass `userGroupName` to copy the guest's settings from a named user group. That is what
+   * decides which content the guest is entitled to see, so entitlement tests must set it --
+   * a guest with no user group inherits the booker's own (fully entitled) content instead.
+   *
+   * Note there is no primary-traveler checkbox to handle here: filling the only empty slot
+   * makes the guest the trip's primary traveler by construction.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string} [label='Select traveller'] - The placeholder's visible label.
+   * @param {string|null} [userGroupName=null] - User group to copy settings from, e.g. "evolvi".
+   * @returns {Promise<Object>} added / starIconVisible / isPrimary / selectedTravelerCount / guestData
+   */
+  async addRandomGuestViaSelectTravelerSlot(page, label = 'Select traveller', userGroupName = null) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!label || typeof label !== 'string') {
+      throw new Error('label must be a non-empty string, got: ' + typeof label);
+    }
+    if (userGroupName !== null && (typeof userGroupName !== 'string' || userGroupName.length === 0)) {
+      throw new Error('userGroupName, when provided, must be a non-empty string');
+    }
+
+    logger.debug(`[Search.addRandomGuestViaSelectTravelerSlot] Adding guest via the "${label}" slot`, { userGroupName });
+
+    const searchPage = getPageObject(page, SearchPage);
+    const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
+
+    try {
+      await searchPage.clickSelectTravelerSlot(label);
+      await searchPage.clickAddGuestTravelerButton();
+      if (userGroupName) {
+        await searchPage.selectCopySettingsFromUsersGroup();
+        await searchPage.selectUserGroupByName(userGroupName);
+      }
+      await searchPage.fillInRandomFirstName(firstName);
+      await searchPage.fillInRandomLastName(lastName);
+      await searchPage.selectGenderMale();
+      await searchPage.fillInRandomDateOfBirth(dateOfBirth);
+      await searchPage.fillInRandomEmail(email);
+      await searchPage.fillInRandomPhone(phone);
+      await searchPage.clickAddGuestButton();
+    } catch (err) {
+      throw new Error(
+        `[Search.addRandomGuestViaSelectTravelerSlot] Failed to add a random guest via the "${label}" ` +
+        `traveler slot${userGroupName ? ` copying settings from user group "${userGroupName}"` : ''}: ` +
+        `${err.message}`
+      );
+    }
+
+    const starIconVisible = await searchPage.isStarIconVisible();
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
+    // Filling the only empty slot should make this guest the primary traveller, but read it back
+    // from the guest's OWN tag rather than assuming it -- see isTravelerPrimaryByName.
+    const isPrimary = await searchPage.isTravelerPrimaryByName(`${firstName} ${lastName}`);
+
+    return {
+      added: true,
+      starIconVisible,
+      isPrimary,
+      selectedTravelerCount,
+      guestData: { firstName, lastName, dateOfBirth, email, phone, userGroupName },
+    };
+  },
+
+  /**
    * Waits for at least `minCount` traveller names to be displayed on the search form. Use before
    * re-running a search after adding a traveller: the Search button stays enabled from the prior
    * search, so clicking it too early searches without the new (randomly named) traveller. Pass the
@@ -1329,6 +1402,26 @@ const Search = {
     } catch (err) {
       throw new Error(`[Search.verifyOnlyEmptyTravelerSlotIsRed] ${err.message}`);
     }
+  },
+
+  /**
+   * Submits the visible trip search form by clicking its Search button, waiting for the button
+   * to be enabled first (search forms disable it until the required fields are filled).
+   *
+   * Product-agnostic and lives here rather than in FlightSearch: the button belongs to the shared
+   * trip search form (SearchPage), and flight, shell and parking scenarios all submit through it.
+   *
+   * @param {Object} page - Playwright page instance
+   * @returns {Promise<{searched: boolean}>}
+   */
+  async clickSearchButton(page) {
+    if (!page) throw new Error('[Search.clickSearchButton] "page" is required.');
+
+    logger.info('[Search.clickSearchButton] Submitting the trip search form');
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true };
   },
 
   /**

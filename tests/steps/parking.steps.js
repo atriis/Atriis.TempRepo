@@ -70,19 +70,9 @@ When("I select the first parking filter option", async function () {
   await UKParkingResults.selectFirstFilterOption(this.page);
 });
 
-When("I add a guest with user group as primary traveler", async function () {
-  logger.info("Adding a guest with user group settings as primary traveler");
-  // TODO: implement UKParkingSearch.addGuestWithUserGroupAsPrimary(page) in src/dsl/UKParkingSearch.js
-  // Follows add_guest_as_prime_with_UG() from Testim:
-  //   1. Click .add-btn .material-symbols-outlined
-  //   2. Click .has-text-weight-semibold
-  //   3. Wait for checkbox label /Use as primary/ then check .el-checkbox__inner
-  //   4. Click .add-guest-btn, fill in guest first name, last name, email
-  //   5. Select gender radio, copy settings, fill user group
-  //   6. Select from dropdowns and confirm
-  //   7. Wait for traveler list (.travelers-list > :nth-child(1) .traveler-name contains 'Lll Vvv')
-  //   8. Click .btn--primary
-  throw new Error("TODO: implement UKParkingSearch.addGuestWithUserGroupAsPrimary DSL method");
+When("I navigate back to parking search via breadcrumb", async function () {
+  logger.info("Navigating back to parking search via breadcrumb");
+  await UKParkingResults.navigateBackToSearchViaBreadcrumb(this.page);
 });
 
 // ===== THEN STEPS =====
@@ -102,8 +92,3 @@ Then("the parking search should be pre-populated with airport {string}", async f
   expect(text).toContain(airport);
 });
 
-Then("no results should be found for UK parking", async function () {
-  logger.info("Verifying no UK parking results are found");
-  const noResults = this.page.locator("h3", { hasText: "No results found" });
-  await noResults.waitFor({ state: "visible", timeout: 15000 });
-});

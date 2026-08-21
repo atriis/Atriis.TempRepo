@@ -22,6 +22,25 @@ const UKParkingResults = {
     const ukParkingResultsPage = getPageObject(page, UKParkingResultsPage);
     await ukParkingResultsPage.selectFirstFilterOption();
   },
+
+  /**
+   * Navigates back from the UK parking results page to the trip search page by clicking the
+   * "Search" link in the results breadcrumb. The search form keeps the criteria that were
+   * already submitted, so the caller can change the travelers and re-submit the same search.
+   *
+   * @param {Object} page - Playwright page instance
+   * @throws {Error} If page is not provided
+   */
+  async navigateBackToSearchViaBreadcrumb(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const ukParkingResultsPage = getPageObject(page, UKParkingResultsPage);
+    await ukParkingResultsPage.clickBreadcrumbSearchLink();
+
+    return { navigated: true };
+  },
 };
 
 module.exports = UKParkingResults;
