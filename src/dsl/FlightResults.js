@@ -1908,6 +1908,56 @@ const FlightResults = {
   },
 
   /**
+   * Verifies the results seat drawer rendered an actual seat map, not the
+   * "Seating map is not available at the moment" empty state.
+   *
+   * ADO 80198: a by-schedule round trip runs one search per leg and each leg gets its own
+   * search cache key. The return-leg seat map request was sent with the outbound leg's key,
+   * so the lookup missed and the drawer fell back to the empty state. Opening the drawer is
+   * not enough to catch that — both outcomes open a drawer — so the state must be asserted.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{displayed: boolean}>}
+   */
+  async verifySeatMapDisplayedInResults(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const state = await flightResultsPage.waitForSeatMapOrUnavailableState();
+    const unavailable = await flightResultsPage.isSeatMapUnavailableStateVisible();
+    const displayed = await flightResultsPage.isSeatMapDisplayed();
+
+    logger.info('Results seat drawer state resolved', { state, displayed, unavailable });
+
+    expect(
+      unavailable,
+      'Results seat drawer shows the "Seating map is not available at the moment" empty state',
+    ).toBe(false);
+    expect(displayed, 'Results seat drawer did not render a seat map').toBe(true);
+
+    return { displayed: true };
+  },
+
+  /**
+   * Closes the results seat preview drawer.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{closed: boolean}>}
+   */
+  async closeSeatMapDrawerInResults(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.closeSeatMapDrawer();
+
+    return { closed: true };
+  },
+
+  /**
    * Verifies the preview-only message in the results seat drawer.
    *
    * @param {import('playwright').Page} page - Playwright page instance

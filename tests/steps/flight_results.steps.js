@@ -549,6 +549,16 @@ When("I open seat map from results and verify it loads", async function () {
   logger.info("Seat map from results opened", result);
 });
 
+Then("the seat map should be displayed in results", async function () {
+  logger.info("Verifying the results seat drawer rendered a seat map");
+  await FlightResults.verifySeatMapDisplayedInResults(this.page);
+});
+
+When("I close the seat map drawer in results", async function () {
+  logger.info("Closing the results seat map drawer");
+  await FlightResults.closeSeatMapDrawerInResults(this.page);
+});
+
 When("I click to open fare rules from modal", async function () {
   logger.info("Clicking to open fare rules from flight details");
   await FlightResults.clickToOpenFareRulesFromResultsModal(this.page);

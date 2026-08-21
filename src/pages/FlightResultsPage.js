@@ -127,6 +127,9 @@ const SELECTORS = {
   SEAT_MAP_CONTAINER: '.deck-wrapper',
   SEAT_MAP_UNAVAILABLE_STATE: '.flight-deck .no-results',
   SEAT_PREVIEW_ONLY_MESSAGE: 'text=Preview only. Seat selection available at checkout.',
+  // Results-page seat preview drawer host — same el-drawer component the cart uses
+  // (flight-quote-card.vue: el-drawer.app-drawer.flight-details-drawer.seats).
+  SEAT_MAP_DRAWER: '.app-drawer.flight-details-drawer.seats',
 
   // Pricing options modal
   PRICING_OPTIONS_BUTTON: '.btn.pricing-options',
@@ -1820,6 +1823,46 @@ class FlightResultsPage {
     ]);
 
     return state;
+  }
+
+  /**
+   * Reports whether the results seat drawer is showing a rendered seat map.
+   * `waitForSeatMapOrUnavailableState` must have settled first — this is a
+   * point-in-time read, not a wait.
+   * @returns {Promise<boolean>}
+   */
+  async isSeatMapDisplayed() {
+    return await this.page.locator(SELECTORS.SEAT_MAP_CONTAINER).first().isVisible();
+  }
+
+  /**
+   * Reports whether the results seat drawer is showing the "Seating map is not
+   * available at the moment" empty state instead of a seat map.
+   * @returns {Promise<boolean>}
+   */
+  async isSeatMapUnavailableStateVisible() {
+    return await this.page.locator(SELECTORS.SEAT_MAP_UNAVAILABLE_STATE).first().isVisible();
+  }
+
+  /**
+   * Closes the results seat preview drawer via Escape and waits for it to detach.
+   * The drawer is destroy-on-close, so the next open renders fresh content for
+   * whichever leg is active rather than reusing the previous leg's map.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   */
+  async closeSeatMapDrawer(timeout = 10000) {
+    const drawer = this.page.locator(SELECTORS.SEAT_MAP_DRAWER).first();
+    try {
+      await drawer.waitFor({ state: 'visible', timeout: 5000 });
+      await this.page.keyboard.press('Escape');
+      await drawer.waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.closeSeatMapDrawer] Failed to close the results seat drawer ` +
+        `(selector: ${SELECTORS.SEAT_MAP_DRAWER}). It may not have been open, or Escape did ` +
+        `not dismiss it. Original: ${err.message}`,
+      );
+    }
   }
 
   /**

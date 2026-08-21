@@ -5,7 +5,7 @@
 # Owner: Noam Miller
 # Created: 2026-06-01T00:00:00Z
 
-@regression @flights @ua @ndc @seating @price @booking @multi-pax
+@regression @flights @united @ndc @seating @price @booking @multi-pax
 Feature: 78409 UA NDC - Seat price in "Other" matches before and after booking
   As a corporate traveler
   I want to verify that the seat price shown in the "Other" element of the price breakdown before booking
