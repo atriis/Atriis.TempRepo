@@ -15,7 +15,7 @@ Feature: 74210 Fusion By Schedule - Pricing options display fares for both segme
   So that I can successfully select and add a Vueling round-trip by-schedule flight to my trip
 
   Scenario: Vueling round-trip by-schedule search returns pricing options for outbound and return segments
-    Given I am logged in as "veuling@web.com" booking a new trip
+    Given I am logged in as "veulingWeb@TFreg.club" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "OVD" to "AMS"
     And I filter results by carrier "Vueling"
@@ -27,4 +27,6 @@ Feature: 74210 Fusion By Schedule - Pricing options display fares for both segme
     And I click to open first pricing options
     And I select the first option from pricing options
     And I add to trip from pricing options
+    And I wait for "Your Selection" text to be visible
+    And I add "Your Selection" fare to trip
     Then the booking status should be "Pending booking"
