@@ -224,6 +224,15 @@ Then("the backup approver field should show {string}", async function (text) {
   await Profile.verifyBackupApproverPlaceholder(this.page, text);
 });
 
+// --- Display preference steps ---
+
+// Selects only — the Personal Details form persists on Save, so scenarios pair this with
+// "I save the personal details".
+When("I set the time format to {string} in my profile", async function (timeFormat) {
+  logger.info("Setting the time format in the user profile", { timeFormat });
+  await Profile.setTimeFormat(this.page, timeFormat);
+});
+
 When("I save the personal details", async function () {
   logger.info("Saving Personal Details form");
   await Profile.savePersonalDetails(this.page);

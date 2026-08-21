@@ -1108,6 +1108,43 @@ const Profile = {
     logger.info('[Profile.savePassportsAndVisasChanges] Passports & Visas changes saved');
   },
 
+  /**
+   * Sets the Time format on the Personal Details form of the user profile.
+   *
+   * Only selects the option — the caller still has to save the form (savePersonalDetails), because
+   * the radio group is part of a form that persists on Save, not on change.
+   *
+   * Verifies the option came out checked before returning: an Element Plus radio whose group is
+   * disabled (personal-details-form.vue binds :disabled="disableEdit") swallows the click without
+   * complaining, which would otherwise surface much later as a Save that changed nothing.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} timeFormat - The option as rendered, e.g. "12 Hours" / "24 Hours"
+   * @returns {Promise<{timeFormat: string}>}
+   */
+  async setTimeFormat(page, timeFormat) {
+    if (!page) throw new Error('[Profile.setTimeFormat] "page" is required.');
+    if (!timeFormat || typeof timeFormat !== 'string') {
+      throw new Error(
+        `[Profile.setTimeFormat] "timeFormat" must be a non-empty string, got: ${JSON.stringify(timeFormat)}`
+      );
+    }
+
+    logger.debug('[Profile.setTimeFormat] Selecting a Time format option', { timeFormat });
+
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.clickTimeFormatOption(timeFormat);
+
+    if (!(await profilePage.isTimeFormatOptionChecked(timeFormat))) {
+      throw new Error(
+        `[Profile.setTimeFormat] The "${timeFormat}" Time format option did not become selected after ` +
+        `being clicked. The radio group is most likely read-only for this user.`
+      );
+    }
+
+    logger.info('[Profile.setTimeFormat] Time format selected', { timeFormat });
+    return { timeFormat };
+  },
   async savePersonalDetails(page) {
     if (!page) throw new Error('[Profile.savePersonalDetails] "page" is required.');
 

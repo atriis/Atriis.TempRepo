@@ -33,6 +33,14 @@ const DIRECTIONS = {
 const DEPARTURE_HOUR_PATTERN = /\b(\d{1,2}:\d{2})\b/;
 
 /**
+ * The two time-navigation controls each direction's results header carries, in DOM order — the
+ * "Earlier"/"Later" buttons that page the search window backwards and forwards
+ * (uk-rail-results.ts's earlierSearch / laterSearch). Asserted by label rather than by count so a
+ * results block that rendered some other pair of buttons fails with what it actually showed.
+ */
+const TIME_NAVIGATION_LABELS = ["Earlier", "Later"];
+
+/**
  * @param {string} methodName - Calling DSL method, for error context
  * @param {string} direction - "outbound" or "inbound"
  * @returns {{label: string, sectionIndex: number, firstCellIndex: number, summaryIndex: number}}
@@ -369,6 +377,65 @@ const EvolviResults = {
     const { label } = resolveDirection("expectDirectionHeadingDisplayed", direction);
 
     return EvolviResults.expectDirectionHeadingText(page, direction, label);
+  },
+
+
+  /**
+   * Verifies a direction returned journeys, reading it off the "Earlier"/"Later" navigation
+   * controls in that direction's results header.
+   *
+   * Those controls are the honest signal that results came back: uk-rail-results.vue renders them
+   * inside the same .data-section block as the direction's journey columns, so an empty answer
+   * leaves the header with a heading and no way to page through anything. Asserting the pair also
+   * rules out the half-rendered grid a bare presence check would accept.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} direction - "outbound" or "inbound"
+   * @returns {Promise<{direction: string, controls: string[]}>} The control labels that were read
+   */
+  async expectDirectionResultsNavigationDisplayed(page, direction) {
+    if (!page) throw new Error("[EvolviResults.expectDirectionResultsNavigationDisplayed] page is required");
+    const { sectionIndex } = resolveDirection("expectDirectionResultsNavigationDisplayed", direction);
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.debug(
+      "[EvolviResults.expectDirectionResultsNavigationDisplayed] Reading a direction's time-navigation controls",
+      { direction },
+    );
+    const controls = await resultsPage.getDirectionTimeNavigationLabels(sectionIndex);
+
+    logger.info(
+      "[EvolviResults.expectDirectionResultsNavigationDisplayed] Read the time-navigation controls",
+      { direction, controls },
+    );
+
+    expect(
+      controls,
+      `The Evolvi results header should offer the ${TIME_NAVIGATION_LABELS.join(" and ")} controls over the ` +
+      `${direction} journeys — which is what says the search returned train results — but it showed: ` +
+      `${JSON.stringify(controls)}`,
+    ).toEqual(TIME_NAVIGATION_LABELS);
+
+    return { direction, controls };
+  },
+
+  /**
+   * Verifies a round-trip search returned train results for BOTH legs, by way of each direction's
+   * "Earlier"/"Later" navigation controls.
+   *
+   * Checks the outbound first so a search that came back with nothing at all fails naming the leg
+   * that is missing, rather than on whichever direction Playwright happened to read first.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{outbound: string[], inbound: string[]}>} The control labels read per leg
+   */
+  async expectRoundTripResultsReturned(page) {
+    if (!page) throw new Error("[EvolviResults.expectRoundTripResultsReturned] page is required");
+
+    const outbound = await EvolviResults.expectDirectionResultsNavigationDisplayed(page, "outbound");
+    const inbound = await EvolviResults.expectDirectionResultsNavigationDisplayed(page, "inbound");
+
+    return { outbound: outbound.controls, inbound: inbound.controls };
   },
 
   // ===== SplitTix (split ticket) — test 44341 =====

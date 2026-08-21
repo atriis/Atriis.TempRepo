@@ -244,6 +244,18 @@ Then("the Evolvi outbound results heading should read {string}", async function 
   await EvolviResults.expectDirectionHeadingText(this.page, "outbound", expectedHeading);
 });
 
+// ===== Results-returned check (test 66082) =====
+//
+// "Results were returned" is read off the "Earlier"/"Later" controls in each direction's results
+// header rather than off a card count: uk-rail-results.vue renders that pair inside the same
+// .data-section as the direction's journeys, so they are present exactly when there is a window of
+// trains to page through. One phrase covers both legs because a round trip that returned only one
+// of them has not returned results.
+Then("I should see the Evolvi round trip results page returned train results", async function () {
+  logger.info("Verifying the Evolvi round trip results page returned train results for both legs");
+  await EvolviResults.expectRoundTripResultsReturned(this.page);
+});
+
 // ===== Search-criteria check on the results grid (test 49309) =====
 //
 // One phrase covers both legs because the manual test states them together, and because the check

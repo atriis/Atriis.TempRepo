@@ -52,6 +52,12 @@ const SELECTORS = {
   DOB_INPUT: '.personal-details-form-content .birth-date-date-picker input',
   SAVE_PERSONAL_DETAILS_BUTTON: '.personal-details-form-content button:has-text("Save")',
   BACKUP_APPROVER_LABEL: 'Backup approver',
+  // Personal Details — Time format radio group. personal-details-form.vue renders two adjacent
+  // el-radio-groups (Time format, then First day) inside sibling .field.app-column blocks, so the
+  // group has to be reached through its own label or a positional selector would flip between
+  // them. Held as label text for the same reason SEAT_TYPE_LABEL is: the .field.app-column +
+  // label.label:text-is() pattern below is what scopes it.
+  TIME_FORMAT_LABEL: 'Time format',
 
   // Personal Details — name inputs (Title is the first label in the first field)
   // TODO: replace with data-testid once added to personal-details-form.vue — :nth-child(1) is fragile if field order changes
@@ -811,6 +817,71 @@ class ProfilePage {
     }
   }
 
+  /**
+   * Resolves the Time format radio group's .field.app-column inside the Personal Details form.
+   * Scoped by its label because the First day group next to it is structurally identical.
+   */
+  _timeFormatField() {
+    return this.page.locator(SELECTORS.PERSONAL_DETAILS_FORM)
+      .locator('.field.app-column')
+      .filter({ has: this.page.locator(`label.label:text-is("${SELECTORS.TIME_FORMAT_LABEL}")`) });
+  }
+
+  /**
+   * Resolves one Time format option by its rendered label, e.g. "12 Hours" / "24 Hours".
+   * @param {string} optionLabel
+   */
+  _timeFormatOption(optionLabel) {
+    return this._timeFormatField()
+      .locator(`.el-radio:has(.el-radio__label:text-is("${optionLabel}"))`);
+  }
+
+  /**
+   * Selects a Time format option on the Personal Details form.
+   *
+   * Clicks .el-radio__inner rather than the label: Element Plus paints the selected state on that
+   * inner span, and it is the only part of the control that is not covered by the label text node.
+   *
+   * @param {string} optionLabel - The option as rendered, e.g. "12 Hours"
+   */
+  async clickTimeFormatOption(optionLabel) {
+    try {
+      await this.waitForPersonalDetailsForm();
+      const radio = this._timeFormatOption(optionLabel);
+      await radio.waitFor({ state: 'visible', timeout: 10000 });
+      await radio.locator('.el-radio__inner').click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickTimeFormatOption] Could not select the "${optionLabel}" Time format option ` +
+        `(field label: "${SELECTORS.TIME_FORMAT_LABEL}"). The Personal Details form may not be loaded, ` +
+        `the radio group may be disabled for this user, or no option carries that label. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Whether a Time format option is currently the selected one.
+   *
+   * Element Plus marks the chosen radio with `is-checked` on the el-radio root, so this reads the
+   * state the form will actually submit — not merely that the click landed somewhere.
+   *
+   * @param {string} optionLabel - The option as rendered, e.g. "12 Hours"
+   * @returns {Promise<boolean>}
+   */
+  async isTimeFormatOptionChecked(optionLabel) {
+    try {
+      const radio = this._timeFormatOption(optionLabel).first();
+      await radio.waitFor({ state: 'visible', timeout: 10000 });
+      const className = (await radio.getAttribute('class')) ?? '';
+      return className.split(/\s+/).includes('is-checked');
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.isTimeFormatOptionChecked] Could not read the "${optionLabel}" Time format option ` +
+        `(field label: "${SELECTORS.TIME_FORMAT_LABEL}"). The Personal Details form may not be loaded ` +
+        `or no option carries that label. Original: ${err.message}`
+      );
+    }
+  }
   async clickSavePersonalDetails() {
     try {
       const saveBtn = this.page.locator(SELECTORS.SAVE_PERSONAL_DETAILS_BUTTON).first();

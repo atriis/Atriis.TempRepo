@@ -21,6 +21,13 @@ const SELECTORS = {
   // in the same section also render h3s (JOURNEY_TIME below), so a bare "h3" would match a
   // departure time instead.
   RESULTS_SECTION_HEADING: ".stations-container h3",
+  // Inside a direction's .data-section, the .btn-container above the journey columns holds exactly
+  // two .change-time-btn buttons — "Earlier" (uk-rail-results.ts's earlierSearch) then "Later"
+  // (laterSearch), in DOM order. They are rendered by the same v-if that renders that direction's
+  // journeys, so their presence is what says the search came back with results to page through
+  // rather than with an empty grid. Each button prints its label in a <p>, next to a chevron
+  // <app-img>, hence the text is read off the button itself.
+  DIRECTION_TIME_NAV_BUTTON: ".btn-container .change-time-btn",
   // One column per journey inside a direction's .trains-info-container. The grid always reserves
   // 5 columns and pads the missing ones with .is-invisible placeholders (paddedOutboundJourneys /
   // paddedInboundJourneys), which Playwright's :visible correctly rejects (visibility: hidden).
@@ -686,6 +693,34 @@ class EvolviResultsPage {
       .first();
     await heading.waitFor({ state: "visible", timeout });
     return normalizeText((await heading.innerText()) ?? "");
+  }
+
+  /**
+   * Reads the labels of a direction's two time-navigation buttons in the results header, in DOM
+   * order — "Earlier" then "Later".
+   *
+   * Waits on the SECOND button as well as the first: the pair renders together with the direction's
+   * journeys, so waiting on both is what distinguishes a painted results block from a half-rendered
+   * one. The default timeout matches getResultsSectionHeadingText because this is typically the
+   * first read after a search is submitted, so it is waiting on Evolvi to answer rather than on a
+   * re-render.
+   *
+   * @param {number} sectionIndex - 0 for outbound, 1 for inbound
+   * @param {number} [timeout=90000]
+   * @returns {Promise<string[]>} The two button labels as rendered
+   */
+  async getDirectionTimeNavigationLabels(sectionIndex, timeout = 90000) {
+    assertIndex("getDirectionTimeNavigationLabels", "sectionIndex", sectionIndex);
+    const buttons = this.page
+      .locator(SELECTORS.RESULTS_DATA_SECTION)
+      .nth(sectionIndex)
+      .locator(SELECTORS.DIRECTION_TIME_NAV_BUTTON);
+
+    await buttons.first().waitFor({ state: "visible", timeout });
+    await buttons.nth(1).waitFor({ state: "visible", timeout });
+
+    const labels = await buttons.allInnerTexts();
+    return labels.map((label) => normalizeText(label));
   }
 
   /**
