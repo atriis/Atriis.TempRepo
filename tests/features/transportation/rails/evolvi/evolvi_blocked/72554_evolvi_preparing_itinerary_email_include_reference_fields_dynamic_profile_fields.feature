@@ -24,7 +24,13 @@ Feature: 72554 Evolvi - Preparing itinerary email includes reference fields and 
     And the booking status should be "Pending booking"
     When I fill mandatory Evolvi fields in cart
     And I proceed to checkout
+    Then the reference fields should have the following values:
+      | field           | value |
+      | Default Field 4 | LALAL |
     And I complete the booking
+    And I click the share itinerary button
+    And I wait to see "Subject" field in share dialog
+    When I add a generated email address as the itinerary recipient
+    And I send the email and see success notification
     And I successfully cancel the trip
-    #TODO Then the received itinerary email should contain subject "Preparing Itinerary notification for Elisabete Ferreira on trip"
-    And the received itinerary email should contain "Default field 4: LALAL"
+    Then the received itinerary email should contain "Default field 4: LALAL"
