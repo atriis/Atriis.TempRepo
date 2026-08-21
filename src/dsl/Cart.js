@@ -3981,6 +3981,339 @@ const Cart = {
     return { continueWithoutSeats: true, saveEnabled: true };
   },
 
+  // ===== UK RAIL (EVOLVI) SEAT RESERVATION (test 62143) =====
+  //
+  // Separate from the openRailSeatingExtras family above: that drives Benerail's eu-rail-seats.vue
+  // (a checkbox list of priced seats), this drives Evolvi's uk-rail-seats.vue (per-leg seat-TYPE
+  // radios, and a Coach/Seat/Direction form once "Specific Seat" is the chosen type).
+
+  /**
+   * Opens the UK Rail quote's Seating extras row and waits for the seat panel to be readable.
+   * The same trigger reads "Add" before any seat is reserved and "Edit" afterwards, so this one
+   * method serves every pass over the panel.
+   *
+   * Also arms the capture of the seat-save POST and hands it back, because the coach that is
+   * actually sent can only be read off that request and it has to be armed before the Save click.
+   * Arming it HERE rather than in a step of its own keeps the ordering impossible to get wrong: no
+   * scenario can reach Save without having opened the panel first.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{openButtonLabel: string, seatOptions: string[], saveCapture: object}>}
+   */
+  async openUkRailSeatReservationExtras(page) {
+    if (!page) {
+      throw new Error('[Cart.openUkRailSeatReservationExtras] "page" is required.');
+    }
+
+    logger.debug('Opening the UK Rail seat reservation extras section');
+    const cartPage = getPageObject(page, CartPage);
+
+    // Armed before the row is even expanded — the panel's own load must not race the arming.
+    const saveCapture = this.startCapturingUkRailSeatsSaveRequest(page);
+
+    try {
+      const openButtonLabel = await cartPage.clickUkRailSeatsExtrasOpenButton();
+      await cartPage.waitForUkRailSeatsExtrasCard();
+      const seatOptions = await cartPage.getUkRailSeatOptionLabels();
+
+      logger.info('UK Rail seat reservation panel is open', { openButtonLabel, seatOptions });
+      return { openButtonLabel, seatOptions, saveCapture };
+    } catch (error) {
+      throw new Error(
+        `[Cart.openUkRailSeatReservationExtras] Could not open the UK Rail quote's Seating extras ` +
+        `section in the cart. Original: ${error.message}`,
+      );
+    }
+  },
+
+  /**
+   * Selects one seat type in the open UK Rail seat panel and proves it took. The radio group is
+   * bound per leg and re-renders the form below it on change, so a click that did not land leaves
+   * the wrong (or no) form on screen — asserted here rather than surfacing as a missing Coach field.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} optionLabel - Radio label as rendered, e.g. "Specific Seat"
+   * @returns {Promise<{optionLabel: string}>}
+   */
+  async selectUkRailSeatOption(page, optionLabel) {
+    if (!page) throw new Error('[Cart.selectUkRailSeatOption] "page" is required.');
+    if (!optionLabel || typeof optionLabel !== 'string') {
+      throw new Error(
+        `[Cart.selectUkRailSeatOption] "optionLabel" must be a non-empty string, got: ${JSON.stringify(optionLabel)}`,
+      );
+    }
+
+    logger.debug('Selecting a UK Rail seat type', { optionLabel });
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickUkRailSeatOption(optionLabel);
+
+    const isChecked = await cartPage.isUkRailSeatOptionChecked(optionLabel);
+    expect(
+      isChecked,
+      `[Cart.selectUkRailSeatOption] Clicked the "${optionLabel}" seat-type radio but it is not selected ` +
+      `afterwards, so the panel is still showing a different seat type's form. The el-radio-group is ` +
+      `bound per leg in uk-rail-seats.vue — the click may have landed on a hidden responsive duplicate.`,
+    ).toBe(true);
+
+    logger.info('UK Rail seat type selected', { optionLabel });
+    return { optionLabel };
+  },
+
+  /**
+   * Picks the first coach the supplier offered in the open Specific Seat form.
+   *
+   * The panel cannot name a coach up front — uk-rail-seats.ts builds coachOptions from the
+   * seat-map response, which differs per service — so the first option is the only stable choice.
+   * The value is returned for logging only: what the app SENDS is asserted from the save request,
+   * because coachOptions labels every option with the coach letter regardless of the value it binds
+   * (test 62143).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{coach: string}>}
+   */
+  async selectFirstUkRailSeatCoach(page) {
+    if (!page) throw new Error('[Cart.selectFirstUkRailSeatCoach] "page" is required.');
+
+    logger.debug('Picking the first offered coach in the UK Rail Specific Seat form');
+    const cartPage = getPageObject(page, CartPage);
+
+    let coach;
+    try {
+      coach = await cartPage.selectFirstUkRailSeatFieldOption('Coach');
+    } catch (error) {
+      throw new Error(
+        `[Cart.selectFirstUkRailSeatCoach] Could not pick a coach for the UK Rail specific seat ` +
+        `reservation. Either the Specific Seat radio is not the selected seat type (the Coach field ` +
+        `only renders for it) or the supplier returned an empty coach list. Original: ${error.message}`,
+      );
+    }
+
+    logger.info('UK Rail coach selected', { coach });
+    return { coach };
+  },
+
+  /**
+   * Fills the Leading Traveller telephone number required by the UK Rail seat reservation, and
+   * reads it back. The field is an el-input type="number" that only pushes its value up on blur,
+   * so a silently-empty model would otherwise surface as a save that does nothing.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} phoneNumber - Digits only
+   * @returns {Promise<{phoneNumber: string}>}
+   */
+  async fillUkRailSeatReservationTelephone(page, phoneNumber) {
+    if (!page) throw new Error('[Cart.fillUkRailSeatReservationTelephone] "page" is required.');
+    if (!phoneNumber || typeof phoneNumber !== 'string') {
+      throw new Error(
+        `[Cart.fillUkRailSeatReservationTelephone] "phoneNumber" must be a non-empty string, got: ${JSON.stringify(phoneNumber)}`,
+      );
+    }
+
+    logger.debug('Filling the UK Rail seat reservation telephone number', { phoneNumber });
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.fillUkRailSeatsTelephone(phoneNumber);
+
+    const actual = await cartPage.getUkRailSeatsTelephoneValue();
+    expect(
+      actual,
+      `[Cart.fillUkRailSeatReservationTelephone] Expected the UK Rail seat reservation telephone field ` +
+      `to hold "${phoneNumber}" after filling it, but it reads "${actual}". The field is type="number", ` +
+      `so any non-digit character in the value is silently dropped by the browser.`,
+    ).toBe(phoneNumber);
+
+    logger.info('UK Rail seat reservation telephone filled', { phoneNumber });
+    return { phoneNumber };
+  },
+
+  /**
+   * Arms a one-shot capture of the POST that saves the UK Rail seat reservation, WITHOUT waiting
+   * for it. Call this before the Save click and hand the returned handle to
+   * verifyUkRailSeatsRequestCoachIsSingleUppercaseLetter afterwards.
+   *
+   * The rejection is folded into the resolved value on purpose: if the Save click itself fails, the
+   * scenario aborts before anything awaits this handle, and a bare rejected promise would surface
+   * minutes later as an unhandled rejection that masks the real failure.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {{settled: Promise<{request?: import('@playwright/test').Request, error?: Error}>}}
+   */
+  startCapturingUkRailSeatsSaveRequest(page) {
+    if (!page) throw new Error('[Cart.startCapturingUkRailSeatsSaveRequest] "page" is required.');
+
+    logger.debug('Arming the capture of the UK Rail seat reservation save request');
+    const cartPage = getPageObject(page, CartPage);
+
+    const settled = cartPage
+      .waitForUkRailSeatsSaveRequest()
+      .then((request) => ({ request }))
+      .catch((error) => ({ error }));
+
+    return { settled };
+  },
+
+  /**
+   * Asserts that every coach in the captured UK Rail seat-save request body is a single uppercase
+   * letter — i.e. the coach the traveller picked, not the index of its dropdown entry.
+   *
+   * This reads the REQUEST rather than the panel deliberately. uk-rail-seats.ts builds coachOptions
+   * with `{ value: startCase(v), label: startCase(v) }`, so the dropdown shows the coach letter
+   * whichever of the two it binds — only the wire tells the two apart (test 62143).
+   *
+   * @param {import('playwright').Page} page
+   * @param {{settled: Promise<{request?: import('@playwright/test').Request, error?: Error}>}} capture
+   *   The handle returned by startCapturingUkRailSeatsSaveRequest.
+   * @returns {Promise<{coaches: string[]}>}
+   */
+  async verifyUkRailSeatsRequestCoachIsSingleUppercaseLetter(page, capture) {
+    if (!page) throw new Error('[Cart.verifyUkRailSeatsRequestCoachIsSingleUppercaseLetter] "page" is required.');
+    if (!capture || typeof capture.settled?.then !== 'function') {
+      throw new Error(
+        `[Cart.verifyUkRailSeatsRequestCoachIsSingleUppercaseLetter] "capture" must be the handle ` +
+        `returned by startCapturingUkRailSeatsSaveRequest, got: ${JSON.stringify(capture)}. The ` +
+        `capture has to be armed BEFORE the Save click — a request already in flight cannot be caught.`,
+      );
+    }
+
+    const { request, error } = await capture.settled;
+    if (error) {
+      // The panel closes only on a successful save, so whether it is still open tells the two
+      // failure modes apart — and they need opposite fixes.
+      const cartPage = getPageObject(page, CartPage);
+      const panelStillOpen = await cartPage.isUkRailSeatsPanelOpen().catch(() => false);
+
+      throw new Error(
+        `[Cart.verifyUkRailSeatsRequestCoachIsSingleUppercaseLetter] No POST to the UK Rail seat-save ` +
+        `endpoint was observed after the Save click. ` +
+        (panelStillOpen
+          ? `The seat panel is STILL OPEN, so the save was rejected before it left the browser — ` +
+            `uk-rail-seats.ts returns early when the Leading Traveller first/last name is empty.`
+          : `The seat panel is closed, so either Save was never clicked or the endpoint path changed.`) +
+        ` Original: ${error.message}`,
+      );
+    }
+
+    let body;
+    try {
+      body = request.postDataJSON();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyUkRailSeatsRequestCoachIsSingleUppercaseLetter] The captured seat-save request ` +
+        `body is not valid JSON, so the coach it carries cannot be read. Original: ${err.message}`,
+      );
+    }
+
+    const selectedSeats = body?.seats?.flatMap((seat) => seat?.selectedSeats ?? []) ?? [];
+    expect(
+      selectedSeats.length,
+      `[Cart.verifyUkRailSeatsRequestCoachIsSingleUppercaseLetter] The seat-save request carried no ` +
+      `seats[].selectedSeats entries at all, so no coach was sent. Body: ${JSON.stringify(body)}`,
+    ).toBeGreaterThan(0);
+
+    const coaches = selectedSeats.map((seat) => seat?.coach);
+    const invalid = coaches.filter((coach) => !/^[A-Z]$/.test(String(coach)));
+
+    expect(
+      invalid,
+      `[Cart.verifyUkRailSeatsRequestCoachIsSingleUppercaseLetter] Expected every coach in the seat-save ` +
+      `request to be a single uppercase letter, but these were not: ${JSON.stringify(invalid)}. ` +
+      `Sent coaches: ${JSON.stringify(coaches)}. A numeric value here is the regression this test ` +
+      `guards: uk-rail-seats.ts must build coachOptions with originalValues=true so the coach letter is ` +
+      `bound, not the dropdown index.`,
+    ).toEqual([]);
+
+    logger.info('UK Rail seat-save request carries a valid coach on every seat', { coaches });
+    return { coaches };
+  },
+
+  /**
+   * Asserts that the coach shown against the reserved seat in the booked quote's More details
+   * drawer is a single uppercase letter.
+   *
+   * This is the DISPLAY side of the same guarantee the seat-save request check makes: the coach
+   * held with the supplier and the coach shown to the traveller have to agree, and an index
+   * leaking through would render here as a digit. The value arrives inside the supplier-built
+   * `station.seatsString` that uk-rail-journey-details renders with `v-html`, so there is no
+   * element to target — the coach is matched out of the drawer's text.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{coach: string, matched: string}>}
+   */
+  async verifyUkRailMoreDetailsCoachIsSingleUppercaseLetter(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyUkRailMoreDetailsCoachIsSingleUppercaseLetter] "page" is required.');
+    }
+
+    logger.debug('Reading the reserved coach from the UK Rail More details drawer');
+    const cartPage = getPageObject(page, CartPage);
+    const drawerText = await cartPage.getUkRailMoreDetailsText();
+
+    // "Coach A", "Coach: A", "COACH A" — the supplier controls the separator and the casing of the
+    // label, so only the token after it is pinned.
+    const match = drawerText.match(/coach\s*:?\s*(\S+?)\b/i);
+    if (!match) {
+      throw new Error(
+        `[Cart.verifyUkRailMoreDetailsCoachIsSingleUppercaseLetter] No "Coach" text was found in the ` +
+        `More details drawer, so there is no coach to validate. The reserved coach/seat arrives in ` +
+        `the supplier's station.seatsString, which uk-rail-journey-details renders only when the ` +
+        `station is a change station — a direct journey, or a quote saved without a specific seat, ` +
+        `shows nothing here. Drawer text was: "${drawerText.slice(0, 600)}"`,
+      );
+    }
+
+    const coach = match[1];
+    expect(
+      coach,
+      `[Cart.verifyUkRailMoreDetailsCoachIsSingleUppercaseLetter] Expected the coach shown next to the ` +
+      `reserved seat in More details to be a single uppercase letter, got "${coach}". A digit here means ` +
+      `the dropdown index leaked through instead of the coach letter — the regression test 62143 guards. ` +
+      `Matched from: "${match[0]}"`,
+    ).toMatch(/^[A-Z]$/);
+
+    logger.info('UK Rail More details shows a valid reserved coach', { coach });
+    return { coach, matched: match[0] };
+  },
+
+  /**
+   * Fills and saves the named UK Rail extras rows, in the order given, leaving each with the app's
+   * green check.
+   *
+   * Differs from fillMandatoryEvolviCartFields, which fills whatever is still outstanding: that
+   * would also fill Seating, overwriting a seat reservation the scenario set up by hand. Naming the
+   * rows is what keeps the reservation intact (test 62143).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string[]} sectionNames - Row headings as rendered, e.g. ["Delivery Method", "Client Reference"]
+   * @returns {Promise<{filled: string[]}>}
+   */
+  async fillNamedEvolviExtrasRows(page, sectionNames) {
+    if (!page) throw new Error('[Cart.fillNamedEvolviExtrasRows] "page" is required.');
+    if (!Array.isArray(sectionNames) || sectionNames.length === 0) {
+      throw new Error(
+        `[Cart.fillNamedEvolviExtrasRows] "sectionNames" must be a non-empty array, got: ${JSON.stringify(sectionNames)}`,
+      );
+    }
+
+    logger.debug('Filling the named UK Rail extras rows', { sectionNames });
+    const filled = [];
+
+    for (const sectionName of sectionNames) {
+      try {
+        await this.fillExtrasSectionByName(page, sectionName);
+      } catch (error) {
+        throw new Error(
+          `[Cart.fillNamedEvolviExtrasRows] Filled ${filled.length} of ${sectionNames.length} rows ` +
+          `(${filled.map((name) => `"${name}"`).join(', ') || 'none'}) before "${sectionName}" failed. ` +
+          `Which rows a UK Rail quote renders depends on the fare selected upstream, so this row may ` +
+          `not exist for this fare. Original: ${error.message}`,
+        );
+      }
+      filled.push(sectionName);
+    }
+
+    logger.info('Named UK Rail extras rows filled', { filled });
+    return { filled };
+  },
+
   /**
    * Fills in and saves a special request on the hotel cart card.
    *

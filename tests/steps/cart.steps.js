@@ -3673,6 +3673,79 @@ When("I fill mandatory Evolvi fields in cart", async function () {
   await Cart.fillMandatoryEvolviCartFields(this.page);
 });
 
+// Names its rows, unlike "I fill mandatory Evolvi fields in cart" — which fills whatever is still
+// outstanding and would overwrite a Seating row the scenario reserved by hand. Same generous budget
+// as "I fill in {string} section": each row saves against the supplier.
+//
+// A regex rather than a cucumber expression on purpose: which rows a UK Rail quote renders depends
+// on the fare selected upstream (an Advance Single has no "Reason for Non Lowest" row at all), so
+// the list length changes per scenario and a fixed {string} count would go Undefined on every edit.
+When(
+  /^I fill in only the following Evolvi extras: (.+)$/,
+  { timeout: CHECKOUT_STEP_TIMEOUT_MS },
+  async function (rowList) {
+    const sectionNames = [...rowList.matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+    if (sectionNames.length === 0) {
+      throw new Error(
+        `[cart.steps] No quoted extras row names found in "${rowList}". Each row has to be named in ` +
+        `double quotes, e.g. 'I fill in only the following Evolvi extras: "Delivery Method" and ` +
+        `"Client Reference"'.`,
+      );
+    }
+    logger.info("Filling only the named Evolvi extras rows", { sectionNames });
+    await Cart.fillNamedEvolviExtrasRows(this.page, sectionNames);
+  },
+);
+
+// ===== UK RAIL (EVOLVI) SEAT RESERVATION =====
+
+// Opening the panel loads the supplier's seat map, so it gets the checkout-sized budget.
+// This also arms the capture of the seat-save POST — the coach that is actually sent can only be
+// read off that request, and it has to be armed before Save is clicked.
+When("I open the UK Rail seat reservation in the cart extras", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
+  logger.info("Opening the UK Rail seat reservation extras section in the cart");
+  const { saveCapture, ...result } = await Cart.openUkRailSeatReservationExtras(this.page);
+  this.ukRailSeatsSaveCapture = saveCapture;
+  logger.info("UK Rail seat reservation panel opened", result);
+});
+
+When("I select the {string} UK Rail seat option", async function (optionLabel) {
+  logger.info("Selecting the UK Rail seat type", { optionLabel });
+  await Cart.selectUkRailSeatOption(this.page, optionLabel);
+});
+
+When("I select the first available UK Rail coach", async function () {
+  const result = await Cart.selectFirstUkRailSeatCoach(this.page);
+  logger.info("UK Rail coach selected for the specific seat reservation", result);
+});
+
+When("I fill in the UK Rail seat reservation telephone number {string}", async function (phoneNumber) {
+  logger.info("Filling the UK Rail seat reservation telephone number", { phoneNumber });
+  await Cart.fillUkRailSeatReservationTelephone(this.page, phoneNumber);
+});
+
+Then("the coach sent in the UK Rail seat reservation should be a single uppercase letter", async function () {
+  if (!this.ukRailSeatsSaveCapture) {
+    throw new Error(
+      "[cart.steps] No UK Rail seat-save capture is armed — 'I open the UK Rail seat reservation in " +
+      "the cart extras' arms it, so this assertion has to sit downstream of that step in the same " +
+      "scenario. Without it the request is already gone by the time this runs.",
+    );
+  }
+
+  logger.info("Verifying the coach sent in the UK Rail seat reservation request");
+  const result = await Cart.verifyUkRailSeatsRequestCoachIsSingleUppercaseLetter(this.page, this.ukRailSeatsSaveCapture);
+  logger.info("UK Rail seat reservation request carried a valid coach", result);
+});
+
+// The display side of the same guarantee: read the coach shown against the reserved seat on the
+// booked quote. Requires the More details drawer to be open.
+Then("the coach reserved seat in the UK Rail more details should be a single uppercase letter", async function () {
+  logger.info("Verifying the reserved coach shown in the UK Rail More details drawer");
+  const result = await Cart.verifyUkRailMoreDetailsCoachIsSingleUppercaseLetter(this.page);
+  logger.info("UK Rail More details shows a valid reserved coach", result);
+});
+
 // ===== UK RAIL (EVOLVI) SPLIT TICKET =====
 //
 // Read the same way before and after checkout — "I complete the booking" navigates back to the trip

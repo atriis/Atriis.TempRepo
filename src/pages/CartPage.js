@@ -18,6 +18,12 @@ const CANCELLATION_CONFIRMED_TEXT = "Cancellation confirmed!";
 // fillAllMandatoryEvolviExtras. Sized for the slowest row, the seat reservation.
 const EVOLVI_EXTRAS_SAVE_TIMEOUT_MS = 45000;
 
+// UK Rail (Evolvi) seat reservation save endpoint (uk-rail.service.ts POSTs the whole
+// IUkRailSeatsSaveReq here). The request body is the only place the coach actually sent to the
+// supplier can be read — the panel's Coach dropdown labels every option with the coach letter
+// whether or not it is the bound value (test 62143).
+const UK_RAIL_SEATS_API_PATH = '/EvolviSeats';
+
 const SELECTORS = {
 
   // Cart general selectors
@@ -711,6 +717,32 @@ const SELECTORS = {
   // clicks Save through the shared cart step; this exists to report the button's enabled state,
   // which is the difference between "save did nothing" and "save failed".
   RAIL_SEATING_SAVE_BUTTON: '.seats:visible .extras-card .btns .no-border',
+
+  // ===== UK RAIL (EVOLVI) SEAT RESERVATION EXTRAS (uk-rail-seats.vue) =====
+  // Deliberately NOT the RAIL_SEATING_* selectors above: those are rooted on eu-rail-seats.vue's
+  // `<section class="seats">` (Benerail). Evolvi renders its own `<section class="uk-rail-seats">`
+  // with a completely different body — per-leg seat-TYPE radios instead of a seat checkbox list.
+  // :visible throughout, because responsive layouts render hidden duplicates of extras rows.
+  // Add / Edit / View trigger on the collapsed "Seating" row (extras-layout.vue renders exactly one
+  // of the three). Matched by class, never by label, so the same method opens the row before and
+  // after a seat has been reserved.
+  UK_RAIL_SEATS_EXTRAS_OPEN_BUTTON: '.uk-rail-seats:visible .extras-layout .extra .extra__btns .is-clickable',
+  // The expanded panel (uk-rail-seats.vue el-card.extras-card)
+  UK_RAIL_SEATS_EXTRAS_CARD: '.uk-rail-seats:visible .extras-card',
+  // Shown in place of the panel body while ukRailStore loads the seat map (the `v-if="isLoading"`
+  // branch) — must be gone before any radio or dropdown is read.
+  UK_RAIL_SEATS_LOADING_SKELETON: '.uk-rail-seats:visible .el-skeleton',
+  // One radio per offered seat type: "Seat", "Specific Seat", "Berth", "No Seat". Which of them
+  // render is conditional — "Specific Seat" needs !isBerthAvail && !isBerthMandatory AND a
+  // single-passenger trip (uk-rail-seats.vue), so a missing option is a data condition, not a bug.
+  UK_RAIL_SEATS_TYPE_RADIO: '.uk-rail-seats:visible .extras-card .el-radio-group .el-radio',
+  // The Coach / Seat / Direction app-selects only exist while the Specific Seat radio is the
+  // selected type. Scoped by their own label so the three are never confused with each other.
+  UK_RAIL_SEATS_FIELD_SELECT: (label) =>
+    `.uk-rail-seats:visible .extras-card .app-column:has(label.label:text-is("${label}")) .el-select`,
+  // Leading Traveller telephone (`common.telephone`, el-input type="number"). It is the only
+  // number input in the panel — every other field is an app-select or a plain text el-input.
+  UK_RAIL_SEATS_TELEPHONE_INPUT: '.uk-rail-seats:visible .extras-card input[type="number"]',
 
   // Timed quote badge — appears on quotes with a limited time window
   // (flight-timed-quote.vue / app-timed-quote.vue both render `.timed-quote-badge`)
@@ -9737,6 +9769,254 @@ class CartPage {
     }
 
     return saveButton.isEnabled();
+  }
+
+  // ===== UK RAIL (EVOLVI) SEAT RESERVATION EXTRAS (uk-rail-seats.vue) =====
+
+  /**
+   * Clicks the UK Rail "Seating" extras row's Add/Edit/View trigger to expand the seat panel.
+   * @param {number} [timeout=10000] - Max wait for the trigger to render
+   * @returns {Promise<string>} The trigger's label, so callers can report which state it was in
+   */
+  async clickUkRailSeatsExtrasOpenButton(timeout = 10000) {
+    const openButton = this.page.locator(SELECTORS.UK_RAIL_SEATS_EXTRAS_OPEN_BUTTON).first();
+
+    try {
+      await openButton.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.clickUkRailSeatsExtrasOpenButton] The UK Rail Seating extras row's Add/Edit/View ` +
+        `trigger did not appear within ${timeout}ms. uk-rail-seats.vue only renders for an Evolvi ` +
+        `quote, and only while the quote is still pending, so either the cart holds no UK Rail quote ` +
+        `or it is already past the stage where extras can be edited. Original: ${error.message}`,
+      );
+    }
+
+    const label = (await openButton.innerText()).replace(/\s+/g, ' ').trim();
+    await openButton.scrollIntoViewIfNeeded();
+    await openButton.click();
+    return label;
+  }
+
+  /**
+   * Waits for the expanded UK Rail seat panel to be ready to read — the card visible and the
+   * loading skeleton gone, so a seat-type radio that has not loaded yet is never mistaken for
+   * an option the supplier did not offer.
+   * @param {number} [timeout=30000] - Max wait for the panel and its seat data
+   * @returns {Promise<void>}
+   */
+  async waitForUkRailSeatsExtrasCard(timeout = 30000) {
+    try {
+      await this.page
+        .locator(SELECTORS.UK_RAIL_SEATS_EXTRAS_CARD)
+        .first()
+        .waitFor({ state: 'visible', timeout });
+      await this.page
+        .locator(SELECTORS.UK_RAIL_SEATS_LOADING_SKELETON)
+        .first()
+        .waitFor({ state: 'hidden', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.waitForUkRailSeatsExtrasCard] The UK Rail seat panel did not finish opening within ` +
+        `${timeout}ms. Either the click did not expand the Seating section or the seat-map load never ` +
+        `resolved, leaving the el-skeleton in place. Original: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Reads the labels of every seat-type radio the UK Rail seat panel is offering.
+   * Used to report what WAS available when a requested option is missing — which for
+   * "Specific Seat" is a data condition (berth-only leg, or more than one passenger), not a bug.
+   * @returns {Promise<string[]>}
+   */
+  async getUkRailSeatOptionLabels() {
+    const radios = this.page.locator(SELECTORS.UK_RAIL_SEATS_TYPE_RADIO);
+    const labels = await radios.allInnerTexts();
+    return labels.map((label) => label.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  }
+
+  /**
+   * Clicks one seat-type radio in the UK Rail seat panel by its rendered label.
+   * @param {string} optionLabel - e.g. "Specific Seat", "Seat", "Berth", "No Seat"
+   * @param {number} [timeout=10000]
+   * @returns {Promise<void>}
+   */
+  async clickUkRailSeatOption(optionLabel, timeout = 10000) {
+    const radio = this.page
+      .locator(SELECTORS.UK_RAIL_SEATS_TYPE_RADIO)
+      .filter({ hasText: optionLabel })
+      .first();
+
+    try {
+      await radio.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      const offered = await this.getUkRailSeatOptionLabels();
+      throw new Error(
+        `[CartPage.clickUkRailSeatOption] No "${optionLabel}" seat-type radio appeared in the UK Rail ` +
+        `seat panel within ${timeout}ms. Offered instead: ${offered.length ? offered.map((l) => `"${l}"`).join(', ') : 'none'}. ` +
+        `uk-rail-seats.vue renders "Specific Seat" only when the leg has no berth and the trip has a ` +
+        `single passenger, so an extra traveler on the trip removes it. Original: ${error.message}`,
+      );
+    }
+
+    await radio.scrollIntoViewIfNeeded();
+    await radio.click();
+  }
+
+  /**
+   * Reports whether a seat-type radio is currently selected.
+   * @param {string} optionLabel - Radio label, as rendered
+   * @returns {Promise<boolean>}
+   */
+  async isUkRailSeatOptionChecked(optionLabel) {
+    const radio = this.page
+      .locator(SELECTORS.UK_RAIL_SEATS_TYPE_RADIO)
+      .filter({ hasText: optionLabel })
+      .first();
+    const classes = (await radio.getAttribute('class')) || '';
+    return classes.includes('is-checked');
+  }
+
+  /**
+   * Opens one of the Specific Seat app-selects (Coach / Seat / Direction) and picks its first
+   * offered option, returning the label that was chosen.
+   *
+   * Picking the FIRST option is deliberate: which coach the supplier offers varies per service,
+   * so the test cannot name one — what matters is that a real option gets bound (test 62143).
+   *
+   * @param {string} fieldLabel - The field's rendered label, e.g. "Coach"
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>} The selected option's label
+   */
+  async selectFirstUkRailSeatFieldOption(fieldLabel, timeout = 10000) {
+    const select = this.page.locator(SELECTORS.UK_RAIL_SEATS_FIELD_SELECT(fieldLabel)).first();
+
+    try {
+      await select.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.selectFirstUkRailSeatFieldOption] The "${fieldLabel}" dropdown is not visible in the ` +
+        `UK Rail seat panel within ${timeout}ms. The Coach/Seat/Direction fields only render while the ` +
+        `Specific Seat radio is the selected seat type, so that radio was probably never clicked. ` +
+        `Original: ${error.message}`,
+      );
+    }
+
+    await select.scrollIntoViewIfNeeded();
+    await select.click();
+
+    const option = this.page.locator(SELECTORS.EL_SELECT_VISIBLE_DROPDOWN_ITEM).first();
+    try {
+      await option.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.selectFirstUkRailSeatFieldOption] The "${fieldLabel}" dropdown opened but offered no ` +
+        `options within ${timeout}ms. uk-rail-seats.ts builds these from the seat-map response's ` +
+        `dropDowns, so the supplier returned an empty list for this field. Original: ${error.message}`,
+      );
+    }
+
+    const optionLabel = (await option.innerText()).replace(/\s+/g, ' ').trim();
+    await option.click();
+    await option.waitFor({ state: 'hidden', timeout });
+    return optionLabel;
+  }
+
+  /**
+   * Fills the Leading Traveller telephone field in the UK Rail seat panel.
+   * @param {string} phoneNumber - Digits only; the field is an el-input type="number"
+   * @param {number} [timeout=10000]
+   * @returns {Promise<void>}
+   */
+  async fillUkRailSeatsTelephone(phoneNumber, timeout = 10000) {
+    const input = this.page.locator(SELECTORS.UK_RAIL_SEATS_TELEPHONE_INPUT).first();
+
+    try {
+      await input.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.fillUkRailSeatsTelephone] The Leading Traveller telephone field is not visible in the ` +
+        `UK Rail seat panel within ${timeout}ms. uk-rail-seats.vue renders that whole block only when the ` +
+        `seat-map response carries a leadTraveler, so the panel may still be loading. ` +
+        `Original: ${error.message}`,
+      );
+    }
+
+    await input.scrollIntoViewIfNeeded();
+    await input.fill(phoneNumber);
+    // el-input commits on input, but the number field only pushes its value up on blur —
+    // without this the model can still be empty when Save builds the request body.
+    await input.blur();
+  }
+
+  /**
+   * Reads back the Leading Traveller telephone field's value.
+   * @returns {Promise<string>}
+   */
+  async getUkRailSeatsTelephoneValue() {
+    return this.page.locator(SELECTORS.UK_RAIL_SEATS_TELEPHONE_INPUT).first().inputValue();
+  }
+
+  /**
+   * Reads the whole UK Rail block inside the open More details drawer as plain text.
+   *
+   * The reserved coach/seat arrives as a supplier-built HTML string that uk-rail-journey-details
+   * renders with `v-html` (`station.seatsString`), so there is no element or class of its own to
+   * target — the text has to be read and matched. Returns the drawer's text with whitespace
+   * collapsed so a multi-line `v-html` block matches as one string.
+   *
+   * @param {number} [timeout=15000]
+   * @returns {Promise<string>}
+   */
+  async getUkRailMoreDetailsText(timeout = 15000) {
+    const drawer = this.page.locator(SELECTORS.MORE_DETAILS_DRAWER_CONTAINER).first();
+
+    try {
+      await drawer.waitFor({ state: 'visible', timeout });
+      await this.page
+        .locator(SELECTORS.MORE_DETAILS_DRAWER_SKELETON)
+        .first()
+        .waitFor({ state: 'hidden', timeout })
+        .catch(() => {});
+    } catch (error) {
+      throw new Error(
+        `[CartPage.getUkRailMoreDetailsText] The More details drawer was not visible within ` +
+        `${timeout}ms, so the reserved seat details cannot be read. Expected ` +
+        `"I click more details in cart" to have opened it first. Original: ${error.message}`,
+      );
+    }
+
+    return (await drawer.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Reports whether the UK Rail seat panel is still expanded. uk-rail-seats.ts closes the panel
+   * only on a successful save and returns early (leaving it open) when its validation rejects, so
+   * this separates "Save was blocked" from "Save was never clicked".
+   * @returns {Promise<boolean>}
+   */
+  async isUkRailSeatsPanelOpen() {
+    return this.page.locator(SELECTORS.UK_RAIL_SEATS_EXTRAS_CARD).first().isVisible();
+  }
+
+  /**
+   * Arms a one-shot wait for the POST that saves the UK Rail seat reservation. Call this BEFORE
+   * clicking Save, then await the returned promise — the request body is the only place the coach
+   * actually sent to the supplier can be read (test 62143).
+   *
+   * The default budget spans opening the panel through to the Save click, because it is armed when
+   * the panel opens: everything in between (picking a coach, filling the telephone) happens while
+   * this is already waiting.
+   *
+   * @param {number} [timeout=120000]
+   * @returns {Promise<import('@playwright/test').Request>}
+   */
+  waitForUkRailSeatsSaveRequest(timeout = 120000) {
+    return getNetworkInterceptor(this.page).waitForRequest(
+      { urlIncludes: UK_RAIL_SEATS_API_PATH, method: 'POST' },
+      { timeout },
+    );
   }
 
   // ===== SEATING ICON =====
