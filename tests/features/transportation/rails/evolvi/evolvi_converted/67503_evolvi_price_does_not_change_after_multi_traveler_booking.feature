@@ -5,7 +5,7 @@
 # Owner: Bruna Santos
 # Created: 2025-09-23T01:37:49Z
 # Updated: 2025-09-23T02:11:35Z
-@transportation @rails @evolvi @regression @wip
+@transportation @rails @evolvi @regression
 Feature: 67503 Evolvi - Price does not change after Multi Traveler booking
   As a travel booker
   I want to book an Evolvi UK Rail fare for three travelers

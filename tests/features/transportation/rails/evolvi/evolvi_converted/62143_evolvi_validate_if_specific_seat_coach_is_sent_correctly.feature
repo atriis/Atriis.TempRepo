@@ -5,7 +5,7 @@
 # Owner: Pedro Carneiro
 # Created: 2025-05-16T06:00:16Z
 # Updated: 2025-09-14T11:57:07Z
-@transportation @rails @evolvi @regression @wip
+@transportation @rails @evolvi @regression
 Feature: 62143 Evolvi - Validate if specific seat coach is sent correctly
   As a corporate traveler booking a UK Rail journey with a reserved seat
   I want the coach returned for my specific seat reservation to be a valid single coach letter

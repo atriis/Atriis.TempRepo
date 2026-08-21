@@ -5,7 +5,7 @@
 # Owner: Bruna Santos
 # Created: 2025-09-10T02:23:47Z
 # Updated: 2025-09-11T09:34:34Z
-@transportation @rails @evolvi @regression @wip
+@transportation @rails @evolvi @regression
 Feature: 66963 Evolvi - Stations are displayed in journey 'More Details'
   As a traveler booking UK rail
   I want to open the journey 'More Details' of an Evolvi result

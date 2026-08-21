@@ -5,7 +5,7 @@
 # Owner: Pedro Carneiro
 # Created: 2025-09-12T10:21:52Z
 # Updated: 2026-01-06T12:25:48Z
-@transportation @rails @evolvi @regression @hybrid @wip
+@transportation @rails @evolvi @regression @hybrid
 Feature: 67014 HYBRID Evolvi - Search again on an expired quote
   As a corporate traveler
   I want an expired Evolvi quote to offer a Search again action
