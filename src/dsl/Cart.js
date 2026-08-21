@@ -2351,6 +2351,135 @@ const Cart = {
     return cartPage.fillAllMandatoryEvolviExtras(extrasOptionName);
   },
 
+  // ===== ONE NAMED UK RAIL (EVOLVI) EXTRAS ROW (test 62132) =====
+  //
+  // fillMandatoryEvolviCartFields above answers "get this quote checkout-ready" and does not care
+  // which rows it filled. 62132 is the opposite test: it names each mandatory row and proves the
+  // app's per-row states — asterisk + red highlight while unfilled, green check once saved — so
+  // every method below addresses ONE row by its heading.
+
+  /**
+   * Verifies that a named UK Rail extras row is showing BOTH mandatory-and-unfilled markers: the
+   * red asterisk in its heading and the red highlight (`error-border`) on its summary line.
+   *
+   * The highlight only exists once a checkout has been attempted (extras-layout.ts gates it on
+   * isCheckoutActivated), so this must run AFTER a proceed-to-checkout click. That is called out in
+   * the failure message, because "no highlight" reads identically whether the row is valid or the
+   * checkout click never happened — and those need opposite fixes.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} sectionName - Row heading as rendered, e.g. "Reason for Non Lowest"
+   * @returns {Promise<void>}
+   */
+  async verifyExtrasSectionHighlightedAndRequired(page, sectionName) {
+    if (!page) throw new Error('[Cart.verifyExtrasSectionHighlightedAndRequired] "page" is required.');
+    if (!sectionName || typeof sectionName !== 'string') {
+      throw new Error(
+        `[Cart.verifyExtrasSectionHighlightedAndRequired] "sectionName" must be a non-empty string, got: ${JSON.stringify(sectionName)}`,
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const { isHighlighted, hasAsterisk, asteriskText } = await cartPage.getEvolviExtrasRowRequiredState(sectionName);
+
+    expect(
+      hasAsterisk,
+      `[Cart.verifyExtrasSectionHighlightedAndRequired] Expected the "${sectionName}" extras row to show its ` +
+      `mandatory red asterisk, but no .has-text-danger marker was visible in its heading.`,
+    ).toBe(true);
+
+    expect(
+      asteriskText,
+      `[Cart.verifyExtrasSectionHighlightedAndRequired] Expected the "${sectionName}" mandatory marker to be "*", got "${asteriskText}".`,
+    ).toBe('*');
+
+    expect(
+      isHighlighted,
+      `[Cart.verifyExtrasSectionHighlightedAndRequired] Expected the "${sectionName}" extras row to be highlighted ` +
+      `in red (.extra.error-border), but it was not. That class needs BOTH an invalid row and a prior ` +
+      `proceed-to-checkout click (extras-layout.ts isShowRedBorder), so either the row is already valid or the ` +
+      `scenario reached this assertion without clicking proceed to checkout first.`,
+    ).toBe(true);
+
+    logger.info('[Cart.verifyExtrasSectionHighlightedAndRequired] Extras row is highlighted and marked mandatory', {
+      sectionName,
+    });
+  },
+
+  /**
+   * Fills and saves one named UK Rail extras row, leaving it with the app's green check.
+   *
+   * Which value the row ends up holding is not asserted — see
+   * CartPage.fillEvolviExtrasRowByName for why the first offered option is the right choice for a
+   * mandatory-field test — but the row named here is the row that gets filled, which is the whole
+   * reason this exists alongside fillMandatoryEvolviCartFields.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} sectionName - Row heading as rendered, e.g. "Seating"
+   * @returns {Promise<{alreadyFilled: boolean, widget: 'radio'|'dropdown'|'none'}>}
+   */
+  async fillExtrasSectionByName(page, sectionName) {
+    if (!page) throw new Error('[Cart.fillExtrasSectionByName] "page" is required.');
+    if (!sectionName || typeof sectionName !== 'string') {
+      throw new Error(
+        `[Cart.fillExtrasSectionByName] "sectionName" must be a non-empty string, got: ${JSON.stringify(sectionName)}`,
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    let result;
+    try {
+      result = await cartPage.fillEvolviExtrasRowByName(sectionName);
+    } catch (err) {
+      throw new Error(
+        `[Cart.fillExtrasSectionByName] Could not fill and save the "${sectionName}" extras row on the rail quote ` +
+        `in the cart. Either the row is not present for this fare, it is past the pending stage where extras are ` +
+        `still editable, or its save never produced the green check. Original: ${err.message}`,
+      );
+    }
+
+    logger.info('[Cart.fillExtrasSectionByName] Extras row filled', { sectionName, ...result });
+    return result;
+  },
+
+  /**
+   * Verifies that every named UK Rail extras row shows its green check — the app's own "saved and
+   * valid" marker.
+   *
+   * All rows are read before asserting so a failure names every row still missing its check, rather
+   * than stopping at the first one and hiding the rest.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string[]} sectionNames - Row headings, e.g. ["Delivery Method", "Seating"]
+   * @returns {Promise<void>}
+   */
+  async verifyExtrasSectionsHaveGreenCheckMarks(page, sectionNames) {
+    if (!page) throw new Error('[Cart.verifyExtrasSectionsHaveGreenCheckMarks] "page" is required.');
+    if (!Array.isArray(sectionNames) || sectionNames.length === 0) {
+      throw new Error(
+        `[Cart.verifyExtrasSectionsHaveGreenCheckMarks] "sectionNames" must be a non-empty array, got: ${JSON.stringify(sectionNames)}`,
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const missing = [];
+
+    for (const sectionName of sectionNames) {
+      const hasGreenCheck = await cartPage.hasEvolviExtrasRowGreenCheck(sectionName);
+      if (!hasGreenCheck) missing.push(sectionName);
+    }
+
+    expect(
+      missing,
+      `[Cart.verifyExtrasSectionsHaveGreenCheckMarks] Expected every extras row to show its green check ` +
+      `(.extra .success-icon.green), but these did not: ${missing.map((name) => `"${name}"`).join(', ')}. ` +
+      `Checked: ${sectionNames.map((name) => `"${name}"`).join(', ')}.`,
+    ).toEqual([]);
+
+    logger.info('[Cart.verifyExtrasSectionsHaveGreenCheckMarks] All extras rows show a green check', { sectionNames });
+  },
+
   /**
    * Verifies that specific options are present in the open OOP justification dropdown.
    * The dropdown must already be open before calling this method.

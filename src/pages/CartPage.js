@@ -614,6 +614,42 @@ const SELECTORS = {
   EVOLVI_EXTRAS_ROW_TITLE: '.card-title',
   EVOLVI_EXTRAS_VISIBLE_RADIO_OPTION: '.el-radio-group .el-radio:visible',
 
+  // ===== ONE NAMED UK RAIL (EVOLVI) EXTRAS ROW (test 62132) =====
+  // The generic EVOLVI_MANDATORY_EXTRAS_ROW above finds "whichever mandatory row is outstanding".
+  // 62132 instead names each row ("Delivery Method", "Seating", "Reason for Non Lowest") and
+  // asserts/fills THAT one, so a row has to be addressable by its own heading.
+  //
+  // Every row below is anchored on its `.card-title` text rather than on position, and that anchor
+  // survives expanding the row: extras-layout.vue swaps the collapsed `div.extra` (which owns the
+  // `#extra-title` slot) for a `div.padding` holding `#extra-content`, and all four uk-rail extras
+  // components repeat the same heading as a `.card-title` inside that content
+  // (uk-rail-delivery-method / uk-rail-non-lowest-reason / uk-rail-client-reference reuse their
+  // own i18n key, uk-rail-seats hardcodes "Seating"). Scoping to the row instead of to the whole
+  // panel — as fillAllMandatoryEvolviExtras has to — is what makes "fill the row I was asked for"
+  // provable rather than "fill whichever row happened to open".
+  EVOLVI_EXTRAS_ROW: '.extras-container .extras-layout',
+  // The collapsed summary line of a row. Carries `error-border` while the row is invalid AND a
+  // checkout has been attempted (extras-layout.ts: isShowRedBorder = isShowInvalid &&
+  // isCheckoutActivated), which is exactly the "highlighted" state 62132 asserts — so that
+  // assertion only means anything AFTER a proceed-to-checkout click.
+  EVOLVI_EXTRAS_ROW_SUMMARY: '.extra',
+  EVOLVI_EXTRAS_ROW_SUMMARY_HIGHLIGHTED: '.extra.error-border',
+  // The mandatory marker inside a row heading: `<span class="has-text-danger">*</span>`. Rendered
+  // unconditionally by Delivery Method / Seating / Reason for Non Lowest, and only while invalid by
+  // Client Reference (`v-if="!isValid"`), where it therefore doubles as the "still unfilled" signal.
+  EVOLVI_EXTRAS_ROW_ASTERISK: '.extra .card-title .has-text-danger',
+  // The filled/valid marker on a row: the `check_circle` icon extras-layout.vue renders under
+  // `v-if="isValid && hasValue"`. `.green` is what separates it from the red `info` (isError) and the
+  // yellow `schedule`/`info` (isWaitingApproval / isWarning) icons, which share `.success-icon`.
+  EVOLVI_EXTRAS_ROW_GREEN_CHECK: '.extra .success-icon.green',
+  // Add / Edit / View trigger on the collapsed row. Matched by class, never by label: the same
+  // trigger reads "Add" before the row is filled and "Edit" afterwards.
+  EVOLVI_EXTRAS_ROW_OPEN_BUTTON: '.extra .extra__btns .is-clickable',
+  // Row-scoped variants of the two widgets fillAllMandatoryEvolviExtras has to search panel-wide.
+  // `.padding` is the expanded-content wrapper, so neither can match the collapsed summary line.
+  EVOLVI_EXTRAS_ROW_RADIO_OPTION: '.padding .el-radio-group .el-radio:visible',
+  EVOLVI_EXTRAS_ROW_DROPDOWN: '.padding .el-select:visible',
+
   // "Provided by" label in cart hotel preview (hotel-provided-by.vue)
   PROVIDER_LABEL: 'section.hotel-preview .provider-label',
   HOTEL_PREVIEW_NAME: 'section.hotel-preview .quote-names-container h4',
@@ -4493,6 +4529,180 @@ class CartPage {
       .innerText()
       .catch(() => "");
     return title.replace(/\s+/g, " ").replace(/^\*\s*/, "").trim();
+  }
+
+  // ===== ONE NAMED UK RAIL (EVOLVI) EXTRAS ROW (test 62132) =====
+
+  /**
+   * The single UK Rail extras row whose heading is `sectionName`, e.g. "Delivery Method".
+   *
+   * Anchored on the row's own `.card-title`, which is why it keeps resolving to the same row after
+   * the row is expanded (see the EVOLVI_EXTRAS_ROW comment). Matching is a substring, so a feature
+   * can name a row the way the UI labels it without repeating any surrounding markup.
+   *
+   * @param {string} sectionName - Row heading as rendered, e.g. "Seating"
+   * @returns {import('playwright').Locator}
+   */
+  evolviExtrasRowByName(sectionName) {
+    if (!sectionName || typeof sectionName !== 'string') {
+      throw new Error(
+        `[CartPage.evolviExtrasRowByName] "sectionName" must be a non-empty string, got: ${JSON.stringify(sectionName)}`
+      );
+    }
+    return this.page
+      .locator(SELECTORS.EVOLVI_EXTRAS_ROW)
+      .filter({ has: this.page.locator(SELECTORS.EVOLVI_EXTRAS_ROW_TITLE, { hasText: sectionName }) })
+      .first();
+  }
+
+  /**
+   * Waits for the UK Rail extras panel, then for the named row inside it to render.
+   *
+   * The panel is fetched after the quote card itself (it asks the server which fields are mandatory
+   * for the selected fare) and extras-collapse.ts only opens the accordion for a Selected quote or
+   * on an `extrasValidationsError` event, so a row read before that lands is a false negative —
+   * the same reason fillAllMandatoryEvolviExtras waits on the panel first.
+   *
+   * @param {string} sectionName
+   * @param {number} [timeout=20000]
+   * @returns {Promise<import('playwright').Locator>} The row locator, once visible
+   */
+  async waitForEvolviExtrasRow(sectionName, timeout = 20000) {
+    await this.page.locator(SELECTORS.EVOLVI_EXTRAS_PANEL).first().waitFor({ state: 'visible', timeout });
+    const row = this.evolviExtrasRowByName(sectionName);
+    await row.waitFor({ state: 'visible', timeout });
+    return row;
+  }
+
+  /**
+   * Reads whether the named extras row is drawn in its invalid-and-checkout-attempted state: the red
+   * `error-border` on its summary line, and the mandatory asterisk in its heading.
+   *
+   * Both halves are returned so the caller can say WHICH one is missing — the border is gated on
+   * isCheckoutActivated, so its absence usually means checkout was never clicked rather than that
+   * the row is valid.
+   *
+   * @param {string} sectionName
+   * @param {number} [timeout=15000]
+   * @returns {Promise<{isHighlighted: boolean, hasAsterisk: boolean, asteriskText: string}>}
+   */
+  async getEvolviExtrasRowRequiredState(sectionName, timeout = 15000) {
+    const row = await this.waitForEvolviExtrasRow(sectionName, timeout);
+
+    // Polled rather than read once: the border is painted by the render pass that follows the
+    // checkout click. The asterisk is there from first paint, so it needs no wait of its own.
+    const isHighlighted = await row
+      .locator(SELECTORS.EVOLVI_EXTRAS_ROW_SUMMARY_HIGHLIGHTED)
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false);
+
+    const asterisk = row.locator(SELECTORS.EVOLVI_EXTRAS_ROW_ASTERISK).first();
+    const hasAsterisk = await asterisk.isVisible().catch(() => false);
+    const asteriskText = hasAsterisk ? (await asterisk.innerText().catch(() => '')).trim() : '';
+
+    return { isHighlighted, hasAsterisk, asteriskText };
+  }
+
+  /**
+   * Whether the named extras row shows its green `check_circle` — the app's own "saved and valid"
+   * marker (`isValid && hasValue` in extras-layout.vue).
+   *
+   * @param {string} sectionName
+   * @param {number} [timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async hasEvolviExtrasRowGreenCheck(sectionName, timeout = 15000) {
+    const row = await this.waitForEvolviExtrasRow(sectionName, timeout);
+    return row
+      .locator(SELECTORS.EVOLVI_EXTRAS_ROW_GREEN_CHECK)
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false);
+  }
+
+  /**
+   * Fills and saves ONE named UK Rail extras row, then waits for the app to confirm it.
+   *
+   * The filling rule is deliberately the same as fillAllMandatoryEvolviExtras' — the first radio
+   * option if the row renders a radio group, else the requested dropdown option or the first one
+   * offered — because 62132 only needs each mandatory row to hold A valid value before checkout;
+   * which value it holds is not what the test is about. The difference is scope: every locator here
+   * is rooted on the row that was asked for, so being handed "Seating" and filling "Delivery
+   * Method" instead is not a thing that can happen.
+   *
+   * A row already showing its green check is left untouched and reported as such — re-opening and
+   * re-saving a saved row is how the generic filler used to burn two iterations per field.
+   *
+   * @param {string} sectionName - Row heading, e.g. "Reason for Non Lowest"
+   * @param {{dropdownOptionName?: string}} [options]
+   * @returns {Promise<{alreadyFilled: boolean, widget: 'radio'|'dropdown'|'none'}>}
+   */
+  async fillEvolviExtrasRowByName(sectionName, { dropdownOptionName } = {}) {
+    const row = await this.waitForEvolviExtrasRow(sectionName);
+
+    const greenCheck = row.locator(SELECTORS.EVOLVI_EXTRAS_ROW_GREEN_CHECK).first();
+    if (await greenCheck.isVisible().catch(() => false)) {
+      return { alreadyFilled: true, widget: 'none' };
+    }
+
+    await row.locator(SELECTORS.EVOLVI_EXTRAS_ROW_OPEN_BUTTON).first().click();
+
+    // The widget renders asynchronously after the row expands (each component fetches its own
+    // options), so this has to be a polling waitFor and not a one-shot isVisible().
+    const radioOption = row.locator(SELECTORS.EVOLVI_EXTRAS_ROW_RADIO_OPTION).first();
+    const hasRadio = await radioOption
+      .waitFor({ state: 'visible', timeout: 15000 })
+      .then(() => true)
+      .catch(() => false);
+
+    let widget;
+    if (hasRadio) {
+      widget = 'radio';
+      await radioOption.click();
+    } else {
+      widget = 'dropdown';
+      const dropdown = row.locator(SELECTORS.EVOLVI_EXTRAS_ROW_DROPDOWN).first();
+      await dropdown.waitFor({ state: 'visible', timeout: 15000 });
+      await dropdown.click();
+
+      // The options render in an el-select-dropdown teleported to <body>, so they are NOT inside
+      // `row` and have to be read off the page. Only one dropdown is ever open at a time here.
+      let option = null;
+      if (dropdownOptionName) {
+        const named = this.page.getByRole('option', { name: dropdownOptionName }).first();
+        const hasNamed = await named
+          .waitFor({ state: 'visible', timeout: 5000 })
+          .then(() => true)
+          .catch(() => false);
+        if (hasNamed) option = named;
+      }
+      if (!option) option = this.page.getByRole('option').first();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click();
+    }
+
+    const saveButton = row.getByRole('button', { name: 'Save' }).first();
+    await saveButton.waitFor({ state: 'visible', timeout: 10000 });
+    await saveButton.click();
+
+    // Save hides only once the row has actually persisted server-side — the same signal, and the
+    // same generous ceiling, as fillAllMandatoryEvolviExtras: Delivery Method persists a local
+    // choice, but Seating reserves the seat with the supplier and was observed still spinning past
+    // 10s on a one-way Evolvi quote (test 64936).
+    await saveButton.waitFor({ state: 'hidden', timeout: EVOLVI_EXTRAS_SAVE_TIMEOUT_MS });
+
+    // Save hiding is not the same as the row being accepted: the green check lands one cart
+    // re-validation later. Waiting for it here is what lets the caller treat a returned value as
+    // "the row is filled" — and it is the exact marker 62132 asserts afterwards.
+    await row
+      .locator(SELECTORS.EVOLVI_EXTRAS_ROW_GREEN_CHECK)
+      .first()
+      .waitFor({ state: 'visible', timeout: EVOLVI_EXTRAS_SAVE_TIMEOUT_MS });
+
+    return { alreadyFilled: false, widget };
   }
 
   /**

@@ -1797,6 +1797,15 @@ When("I dismiss the mandatory notifications popup if displayed", async function 
   await Cart.dismissMandatoryNotificationsPopupIfVisible(this.page);
 });
 
+// Same soft dismissal as above, under the wording the Evolvi features use for it (62132). Kept as
+// its own phrase rather than rewriting those features: the manual test cases are the source of
+// truth for step wording, and both phrases drive the identical DSL call, so there is no second
+// implementation to drift.
+When("I close mandatory notifications if displayed", async function () {
+  logger.info("Closing the mandatory notifications popup if it is displayed");
+  await Cart.dismissMandatoryNotificationsPopupIfVisible(this.page);
+});
+
 // ===== HYPERLINKS IN PUSH NOTIFICATIONS (test 73097) =====
 
 // Non-dismissing assertion that the mandatory-notifications popup is displayed. Unlike "a push
@@ -2526,6 +2535,31 @@ Then("the passenger info section should not be visible in the extras", async fun
 Then("the {string} section should be visible in the extras", async function (sectionName) {
   logger.info("Verifying extras section is visible", { sectionName });
   await Cart.verifyExtrasSectionVisibleByName(this.page, sectionName);
+});
+
+// ===== UK RAIL (EVOLVI) MANDATORY EXTRAS ROWS, ONE AT A TIME (test 62132) =====
+
+// Stricter sibling of the step above: the row must be there AND be drawn as mandatory-and-unfilled
+// (red asterisk + the `error-border` highlight). The highlight only exists after a proceed-to-checkout
+// click, so this belongs AFTER one — the DSL says so in its failure message.
+Then("the {string} section should be visible in the extras highlighted and with red asterisk", async function (sectionName) {
+  logger.info("Verifying extras section is visible, highlighted and marked mandatory", { sectionName });
+  await Cart.verifyExtrasSectionHighlightedAndRequired(this.page, sectionName);
+});
+
+// Fills the one named row. Unlike "I fill mandatory Evolvi fields in cart" (which fills whatever is
+// outstanding), this names its row, so a scenario can prove checkout stays blocked between fills.
+// A generous budget because Seating reserves the seat with the supplier — see
+// EVOLVI_EXTRAS_SAVE_TIMEOUT_MS in CartPage.
+When("I fill in {string} section", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function (sectionName) {
+  logger.info("Filling the named extras section in the cart", { sectionName });
+  await Cart.fillExtrasSectionByName(this.page, sectionName);
+});
+
+Then("{string}, {string} and {string} have green check marks", async function (firstSection, secondSection, thirdSection) {
+  const sectionNames = [firstSection, secondSection, thirdSection];
+  logger.info("Verifying extras sections show green check marks", { sectionNames });
+  await Cart.verifyExtrasSectionsHaveGreenCheckMarks(this.page, sectionNames);
 });
 
 Then("the age association mandatory field should not be displayed in the Benerail extras", async function () {
