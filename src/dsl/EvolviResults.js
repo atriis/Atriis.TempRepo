@@ -48,6 +48,44 @@ function resolveDirection(methodName, direction) {
 }
 
 /**
+ * How far after the searched time the first returned journey may sit before the results are treated
+ * as belonging to a different search window.
+ *
+ * Evolvi answers an OTA_RailAvail with the first services from the requested DepartureDateTime
+ * onwards, so the earliest journey on screen is the next train after the time searched — minutes
+ * away on a frequent route, never hours. A gap larger than this means the grid is showing a window
+ * the scenario did not ask for (a re-search that dropped the time, or one that defaulted it), which
+ * is exactly the mismatch this assertion exists to catch. Kept generous enough to absorb a genuine
+ * service gap on a quiet route.
+ */
+const JOURNEY_START_TOLERANCE_MINUTES = 90;
+
+/**
+ * Turns a displayed or expected "HH:MM" into minutes past midnight, so two times can be compared
+ * without depending on how either was formatted.
+ *
+ * @param {string} methodName - Calling DSL method, for error context
+ * @param {string} argumentName - What was being read, for error context
+ * @param {string} value - The raw time text
+ * @returns {number} Minutes past midnight
+ */
+function toMinutesOfDay(methodName, argumentName, value) {
+  const match = DEPARTURE_HOUR_PATTERN.exec(String(value ?? ""));
+  if (!match) {
+    throw new Error(
+      `[EvolviResults.${methodName}] "${argumentName}" must carry a 24-hour HH:MM time, got: ${JSON.stringify(value)}`,
+    );
+  }
+  const [hours, minutes] = match[1].split(":").map(Number);
+  if (hours > 23 || minutes > 59) {
+    throw new Error(
+      `[EvolviResults.${methodName}] "${argumentName}" is not a valid 24-hour time, got: ${JSON.stringify(value)}`,
+    );
+  }
+  return hours * 60 + minutes;
+}
+
+/**
  * Waits for the Evolvi results and adds the cheapest suggested fare to the trip.
  *
  * Shared by the one-way and round-trip entry points below, which differ only in what was searched:
@@ -270,6 +308,50 @@ const EvolviResults = {
   },
 
   /**
+   * Verifies a direction's results heading reads exactly the given text.
+   *
+   * The language-independent form of expectDirectionHeadingDisplayed, for the scenarios that switch
+   * the application language and then assert the translated heading ("Hinreise" for the German
+   * outbound). It is also what those scenarios wait on: getResultsSectionHeadingText allows the 90s
+   * an Evolvi round-trip search actually needs, where the generic "I should see the heading" step
+   * gives up after 30s while the results grid is still on its "Removing duplicates" skeleton.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} direction - "outbound" or "inbound"
+   * @param {string} expectedHeading - The heading text as it should be rendered in the current language
+   * @returns {Promise<{direction: string, heading: string}>} The heading that was read
+   */
+  async expectDirectionHeadingText(page, direction, expectedHeading) {
+    if (!page) throw new Error("[EvolviResults.expectDirectionHeadingText] page is required");
+    const { sectionIndex } = resolveDirection("expectDirectionHeadingText", direction);
+    if (typeof expectedHeading !== "string" || expectedHeading.trim() === "") {
+      throw new Error(
+        `[EvolviResults.expectDirectionHeadingText] "expectedHeading" must be a non-empty string, got: ${JSON.stringify(expectedHeading)}`,
+      );
+    }
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.debug("[EvolviResults.expectDirectionHeadingText] Reading a direction heading", {
+      direction,
+      expectedHeading,
+    });
+    const heading = await resultsPage.getResultsSectionHeadingText(sectionIndex);
+
+    logger.info("[EvolviResults.expectDirectionHeadingText] Read the direction heading", {
+      direction,
+      heading,
+    });
+
+    expect(
+      heading,
+      `The Evolvi results page should show the "${expectedHeading}" heading over the ${direction} journeys, ` +
+      `but the heading read: "${heading}"`,
+    ).toBe(expectedHeading);
+
+    return { direction, heading };
+  },
+
+  /**
    * Verifies the results page shows a direction's heading — the "Outbound" / "Inbound" title over
    * that leg's journey columns, which is the text that says the leg's results actually rendered.
    *
@@ -284,23 +366,9 @@ const EvolviResults = {
    */
   async expectDirectionHeadingDisplayed(page, direction) {
     if (!page) throw new Error("[EvolviResults.expectDirectionHeadingDisplayed] page is required");
-    const { label, sectionIndex } = resolveDirection("expectDirectionHeadingDisplayed", direction);
-    const resultsPage = getPageObject(page, EvolviResultsPage);
+    const { label } = resolveDirection("expectDirectionHeadingDisplayed", direction);
 
-    const heading = await resultsPage.getResultsSectionHeadingText(sectionIndex);
-
-    logger.info("[EvolviResults.expectDirectionHeadingDisplayed] Read the direction heading", {
-      direction,
-      heading,
-    });
-
-    expect(
-      heading,
-      `The Evolvi results page should show the "${label}" heading over the ${direction} journeys, ` +
-      `but the heading read: "${heading}"`,
-    ).toBe(label);
-
-    return { direction, heading };
+    return EvolviResults.expectDirectionHeadingText(page, direction, label);
   },
 
   // ===== SplitTix (split ticket) — test 44341 =====
@@ -603,6 +671,96 @@ const EvolviResults = {
     }
 
     return actualLabel;
+  },
+
+  /**
+   * Asserts one direction's journey grid starts at the time that direction was searched for.
+   *
+   * This is the results-side half of a search-criteria check: the payload assertions prove the app
+   * ASKED for 07:00 outbound / 16:00 inbound, this proves the grid on screen is the answer to that
+   * question. Both bounds matter and neither alone is enough — a journey earlier than the searched
+   * time is a straight criteria violation, while a first journey hours later means the results
+   * belong to some other time window (a re-search that silently defaulted or dropped the time).
+   *
+   * Deliberately reads nothing translated: it waits on the journey columns rather than the English
+   * "Outbound"/"Suggested fares" texts, and the desktop grid prints the raw 24-hour departureDateTime
+   * slice (uk-rail-results.vue), so this holds with the application in any language.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} direction - "outbound" or "inbound"
+   * @param {string} expectedTime - The time that direction was searched for, 24-hour "HH:MM"
+   * @param {object} [options]
+   * @param {number} [options.toleranceMinutes=JOURNEY_START_TOLERANCE_MINUTES] - How long after
+   *   expectedTime the earliest journey may depart
+   * @returns {Promise<{direction: string, expectedTime: string, firstDepartureTime: string, times: string[]}>}
+   */
+  async expectJourneyTimesStartAt(
+    page,
+    direction,
+    expectedTime,
+    { toleranceMinutes = JOURNEY_START_TOLERANCE_MINUTES } = {},
+  ) {
+    if (!page) throw new Error('[EvolviResults.expectJourneyTimesStartAt] "page" is required.');
+    const { label, sectionIndex } = resolveDirection("expectJourneyTimesStartAt", direction);
+    const expectedMinutes = toMinutesOfDay("expectJourneyTimesStartAt", "expectedTime", expectedTime);
+    if (!Number.isInteger(toleranceMinutes) || toleranceMinutes <= 0) {
+      throw new Error(
+        `[EvolviResults.expectJourneyTimesStartAt] "toleranceMinutes" must be a positive integer, got: ${toleranceMinutes}`,
+      );
+    }
+
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.debug("[EvolviResults.expectJourneyTimesStartAt] Reading a direction's journey departure times", {
+      direction,
+      expectedTime,
+      toleranceMinutes,
+    });
+    await resultsPage.waitForFirstJourneyColumn(sectionIndex);
+
+    const columnCount = await resultsPage.getJourneyColumnCount(sectionIndex);
+    if (columnCount === 0) {
+      throw new Error(
+        `[EvolviResults.expectJourneyTimesStartAt] No ${label} journey columns are displayed in the Evolvi ` +
+          `results, so there is nothing to compare against the ${expectedTime} searched for that leg.`,
+      );
+    }
+
+    const times = [];
+    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+      times.push(await resultsPage.getJourneyDepartureTimeText(sectionIndex, columnIndex));
+    }
+    const minutes = times.map((time, columnIndex) =>
+      toMinutesOfDay("expectJourneyTimesStartAt", `${label} journey ${columnIndex + 1} departure time`, time),
+    );
+
+    const earliestMinutes = Math.min(...minutes);
+    const firstDepartureTime = times[minutes.indexOf(earliestMinutes)];
+    logger.info("[EvolviResults.expectJourneyTimesStartAt] Read the journey departure times", {
+      direction,
+      expectedTime,
+      firstDepartureTime,
+      times,
+    });
+
+    if (earliestMinutes < expectedMinutes) {
+      throw new Error(
+        `[EvolviResults.expectJourneyTimesStartAt] The ${label} results should start no earlier than the ` +
+          `${expectedTime} searched, but the earliest journey on screen departs at ${firstDepartureTime} — the ` +
+          `results do not match the search criteria. Journey times read: ${times.join(", ")}.`,
+      );
+    }
+
+    if (earliestMinutes - expectedMinutes > toleranceMinutes) {
+      throw new Error(
+        `[EvolviResults.expectJourneyTimesStartAt] The ${label} results should start at the ${expectedTime} ` +
+          `searched, but the earliest journey on screen departs at ${firstDepartureTime}, ` +
+          `${earliestMinutes - expectedMinutes} minutes later (tolerance: ${toleranceMinutes} minutes) — the grid ` +
+          `is showing a different time window than the one searched. Journey times read: ${times.join(", ")}.`,
+      );
+    }
+
+    return { direction, expectedTime, firstDepartureTime, times };
   },
 
   /**

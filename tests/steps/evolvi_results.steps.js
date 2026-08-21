@@ -234,6 +234,34 @@ Then("the journey details travel mode should be {string}", async function (expec
   await EvolviResults.expectJourneyDetailsTravelMode(this.page, expectedMode);
 });
 
+// The Evolvi-scoped counterpart of the generic "I should see the heading {string}": it takes the
+// expected wording so it works with the application in any language, reads only the outbound
+// .stations-container heading (a bare h3 in that section is a departure time), and allows the time
+// an Evolvi round-trip search really takes — the generic step gives up at 30s, while the results
+// grid is still on its "Removing duplicates" skeleton.
+Then("the Evolvi outbound results heading should read {string}", async function (expectedHeading) {
+  logger.info("Verifying the Evolvi outbound results heading", { expectedHeading });
+  await EvolviResults.expectDirectionHeadingText(this.page, "outbound", expectedHeading);
+});
+
+// ===== Search-criteria check on the results grid (test 49309) =====
+//
+// One phrase covers both legs because the manual test states them together, and because the check
+// only means anything as a pair: each direction is searched for its own time (the UK Rail form
+// defaults to 07:00 out / 16:00 back), so a grid that honours one and not the other is still wrong.
+
+Then(
+  "outbound times start at {string} and inbound times start at {string}",
+  async function (outboundTime, inboundTime) {
+    logger.info("Verifying the Evolvi journey grid starts at the times searched", {
+      outboundTime,
+      inboundTime,
+    });
+    await EvolviResults.expectJourneyTimesStartAt(this.page, "outbound", outboundTime);
+    await EvolviResults.expectJourneyTimesStartAt(this.page, "inbound", inboundTime);
+  },
+);
+
 // ===== TODO STUBS — need DSL/Page implementation =====
 
 Then("I should see outbound text in Evolvi results page", async function () {

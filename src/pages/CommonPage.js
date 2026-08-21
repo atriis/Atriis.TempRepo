@@ -84,10 +84,23 @@ const SELECTORS = {
   // messages render truncated (item.ShortText), so callers must substring-match, never compare exact.
   NOTIFICATION_MESSAGE_TEXT: '.notification-message .notification-text',
 
-  // Title of the mandatory-notifications reminder popup (app-reminder-popup.vue → $t('common.mandatoryNotification')).
+  // Titles of the mandatory-notifications reminder popup (app-reminder-popup.vue → $t('common.mandatoryNotification')).
   // Both the reference-fields popup and this reminder popup render as `.el-dialog.app-dialog`, so the
   // reminder popup MUST be identified by its title — never by the generic dialog class.
-  MANDATORY_NOTIFICATIONS_TITLE: 'Mandatory Notifications',
+  //
+  // That title is translated, so one English string cannot find the popup in a scenario that switches
+  // the application language (49309). These are every value the app ships for that key
+  // (Atriis.OBT/src/assets/locale/*.json); matching any of them keeps the discrimination against the
+  // reference-fields popup while staying language-independent.
+  MANDATORY_NOTIFICATIONS_TITLES: [
+    'Mandatory Notifications',
+    'Obligatorische Benachrichtigungen',
+    'Notificaciones obligatorias',
+    'Notifications obligatoires',
+    'Notifiche obbligatorie',
+    'Verplichte meldingen',
+    'Notificações Obrigatórias',
+  ],
 
   // One reminder message inside the mandatory-notifications popup: app-reminder-popup.vue renders
   // `<p class="mt5" v-html="injectHyperlinks(reminder.text)">` per UNREAD reminder, so a popup can
@@ -102,6 +115,12 @@ const SELECTORS = {
   OPTIONAL_NOTIFICATION_TOAST: '.el-notification',
   OPTIONAL_NOTIFICATION_TOAST_TEXT: '.el-notification .el-notification__content',
 };
+
+// One comma-separated `.el-dialog__title` selector covering every translation above, built once
+// rather than per call, so getMandatoryNotificationsDialog composes no selector of its own.
+const MANDATORY_NOTIFICATIONS_TITLE_SELECTOR = SELECTORS.MANDATORY_NOTIFICATIONS_TITLES
+  .map((title) => `.el-dialog__title:has-text("${title}")`)
+  .join(', ');
 
 /**
  * Parses the primary (account-currency) amount from a shared email offer's
@@ -691,7 +710,7 @@ class CommonPage {
   getMandatoryNotificationsDialog() {
     return this.page
       .locator('.el-dialog')
-      .filter({ has: this.page.locator('.el-dialog__title', { hasText: SELECTORS.MANDATORY_NOTIFICATIONS_TITLE }) })
+      .filter({ has: this.page.locator(MANDATORY_NOTIFICATIONS_TITLE_SELECTOR) })
       // The app renders hidden responsive duplicates of the dialog; a bare .first() can resolve to a
       // hidden copy and make waitFor({ state: 'visible' }) time out even though the popup IS on screen.
       // Scope to the visible instance so every caller (visibility check, hyperlink, acknowledge) targets it.

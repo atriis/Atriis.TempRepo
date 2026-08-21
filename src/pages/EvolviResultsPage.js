@@ -337,6 +337,38 @@ class EvolviResultsPage {
   }
 
   /**
+   * Waits until one direction's journey grid has rendered at least one real journey column.
+   *
+   * The locale-independent counterpart of waitForOutboundText/waitForSuggestedFaresText: both of
+   * those match English literals ("Outbound", "Suggested fares"), so neither can gate a read once
+   * the application language has been switched away from English. The journey columns carry no
+   * translated text at all, which makes their presence the one signal that survives a language
+   * switch.
+   *
+   * @param {number} directionIndex - 0 for outbound, 1 for inbound
+   * @param {number} [timeout=60000]
+   */
+  async waitForFirstJourneyColumn(directionIndex, timeout = 60000) {
+    assertIndex("waitForFirstJourneyColumn", "directionIndex", directionIndex);
+    const firstColumn = this.page
+      .locator(SELECTORS.RESULTS_DATA_SECTION)
+      .nth(directionIndex)
+      .locator(SELECTORS.JOURNEY_COLUMN)
+      .first();
+    try {
+      await firstColumn.waitFor({ state: "visible", timeout });
+    } catch (error) {
+      throw new Error(
+        `[EvolviResultsPage.waitForFirstJourneyColumn] No journey column rendered for direction ` +
+          `index ${directionIndex} within ${timeout}ms. The Evolvi results grid is either still ` +
+          `loading, came back with no journeys for that leg, or — for an inbound read — the search ` +
+          `was not a round trip, so the inbound .data-section is never shown. ` +
+          `Original: ${error.message}`,
+      );
+    }
+  }
+
+  /**
    * Counts the journey columns actually rendered for one direction, i.e. excluding the
    * .is-invisible placeholders the grid pads every direction up to 5 columns with.
    * @param {number} directionIndex - 0 for outbound, 1 for inbound

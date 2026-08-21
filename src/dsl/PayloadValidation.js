@@ -296,6 +296,106 @@ function escapeRegex(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// The Storage client throws instead of returning an empty set when a request type was never
+// logged. For an "exactly N" assertion that is a legitimate reading of zero, not a failure.
+function isNoPayloadFoundError(error) {
+  return /No (?:request|response) payload found/i.test(error?.message || "");
+}
+
+/**
+ * Looks for a named parameter in a payload, whatever shape the supplier uses for it: the same
+ * name arrives as an XML attribute (OfferID="..."), an XML tag (<OfferID>...</OfferID>) or a
+ * JSON key ("OfferID": ...) depending on the request type. Anything that is not a plain
+ * identifier (e.g. a whole fragment like 'AccountCode="ABC"') is matched as raw text instead.
+ *
+ * @returns {{form: string, value: string|null}|null} null when the parameter is absent.
+ */
+function findParameterInPayload(payload, parameterName) {
+  return collectParameterValues(payload, parameterName)[0] || null;
+}
+
+// A parameter that is not a plain identifier cannot have its value read out - the caller passed a
+// whole fragment, so there is nothing left to compare against.
+function isPlainParameterName(parameterName) {
+  return /^[\w.:-]+$/.test(parameterName);
+}
+
+/**
+ * Every occurrence of a named parameter in one payload, in document order.
+ *
+ * A request routinely carries the same parameter more than once - one DepartureDateTime per leg,
+ * one OfferID per offer - so presence and value checks both need the full list rather than the
+ * first hit. Same three shapes as findParameterInPayload().
+ *
+ * @returns {Array<{form: string, value: string|null}>} empty when the parameter is absent.
+ */
+function collectParameterValues(payload, parameterName) {
+  if (!isPlainParameterName(parameterName)) {
+    return payload.toLowerCase().includes(parameterName.toLowerCase())
+      ? [{ form: "text", value: null }]
+      : [];
+  }
+
+  const safeName = escapeRegex(parameterName);
+  const forms = [
+    { form: "xml attribute", regex: new RegExp(`\\b${safeName}\\s*=\\s*"([^"]*)"`, "gi") },
+    { form: "xml tag", regex: new RegExp(`<(?:[\\w.-]+:)?${safeName}\\b[^>]*>\\s*([^<]*)`, "gi") },
+    { form: "json key", regex: new RegExp(`"${safeName}"\\s*:\\s*("(?:[^"\\\\]|\\\\.)*"|[^,}\\]\\s]+)`, "gi") },
+  ];
+
+  const occurrences = [];
+
+  for (const { form, regex } of forms) {
+    for (const match of payload.matchAll(regex)) {
+      const raw = (match[1] ?? "").trim();
+      // The JSON branch captures the quotes with the value; they only clutter the log line.
+      const value = form === "json key" && raw.startsWith('"') && raw.endsWith('"')
+        ? raw.slice(1, -1)
+        : raw;
+      occurrences.push({ form, value });
+    }
+  }
+
+  return occurrences;
+}
+
+/**
+ * Downloads every request of a type logged for the current trip, for assertions that must look
+ * at the whole set rather than the latest payload. A truncated set is fatal: the request that
+ * breaks the rule could be the one that was dropped, so a partial read would silently pass.
+ *
+ * @param {string} purpose Completes the sentence "Cannot <purpose>: ..." in the truncation error.
+ */
+async function fetchAllRequestsForTrip(world, requestType, purpose) {
+  const identifiers = getScenarioIdentifiers(world);
+  if (!identifiers.tripId) {
+    throw new Error(
+      `Cannot inspect "${requestType}" requests: no trip id is available on the world context.`
+    );
+  }
+
+  const result = await fetchPayloadFromStorage({
+    source: "request",
+    requestType,
+    tripId: identifiers.tripId,
+    transactionId: identifiers.transactionId,
+    sid: identifiers.sid,
+    returnAllMatches: true,
+    maxMatches: MAX_REQUESTS_TO_INSPECT,
+    timeoutMs: INSPECT_ALL_TIMEOUT_MS,
+  });
+
+  if (result.metadata.totalMatches > result.metadata.returnedMatches) {
+    throw new Error(
+      `Cannot ${purpose}: only ${result.metadata.returnedMatches} of ` +
+      `${result.metadata.totalMatches} "${requestType}" requests were downloaded. ` +
+      `Raise MAX_REQUESTS_TO_INSPECT so every request is inspected.`
+    );
+  }
+
+  return result;
+}
+
 function globToRegexPattern(globPattern) {
   return `^${String(globPattern || "")
     .split("*")
@@ -1997,6 +2097,225 @@ const PayloadValidation = {
       `${duplicates.length} value(s) were requested more than once across ${result.matches.length} request(s):\n` +
       duplicates
         .map(([value, timestamps]) => `  ${attributeName}="${value}" sent ${timestamps.length}x at ${timestamps.join(", ")}`)
+        .join("\n")
+    ).toBe(0);
+  },
+
+  /**
+   * Asserts the trip sent exactly `expectedCount` requests of the given type.
+   *
+   * Unlike expectRequestCountUnchanged() this is an absolute check and needs no baseline, so use
+   * it when the flow prescribes how many calls the supplier should receive - one OfferPrice per
+   * selected offer, for example. Run it once the stage under test has finished: the count is
+   * settled before it is compared, but settling only proves the number stopped moving, not that
+   * every request has been published yet.
+   *
+   * An expected count of 0 is allowed - "the type was never logged" reads as zero rather than an
+   * error. That case cannot distinguish "never sent" from "not published yet", so pair it with a
+   * step that proves the flow reached the supplier.
+   */
+  async expectRequestCountEquals(page, world, requestType, expectedCount) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    const expected = Number(expectedCount);
+    if (!Number.isInteger(expected) || expected < 0) {
+      throw new Error(`expectedCount must be a non-negative integer, got: ${expectedCount}`);
+    }
+
+    const readCount = async () => {
+      try {
+        return await this.getRequestCount(world, normalizedRequestType);
+      } catch (error) {
+        if (isNoPayloadFoundError(error)) {
+          return 0;
+        }
+        throw error;
+      }
+    };
+
+    const actualCount = await settleRequestCount(readCount, { requestType: normalizedRequestType });
+
+    logger.info(`Comparing "${normalizedRequestType}" request count against the expected total`, {
+      expected,
+      actualCount,
+    });
+
+    expect(
+      actualCount,
+      `Expected exactly ${expected} "${normalizedRequestType}" request(s) to have been sent for this trip, ` +
+      `but ${actualCount} were logged.`
+    ).toBe(expected);
+  },
+
+  /**
+   * Asserts that every request of the given type carries the named parameter.
+   *
+   * The uniqueness check only warns when a request is missing the attribute, so this is the step
+   * that fails when one request in a set was built without it. The parameter is matched as an XML
+   * attribute, an XML tag or a JSON key (see findParameterInPayload), so the same phrase works
+   * whatever shape the supplier's payload takes.
+   *
+   * Run it once every request of that type has been sent - it looks at the whole trip.
+   */
+  async expectEveryRequestContainsParameter(page, world, requestType, parameterName) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    if (!parameterName || typeof parameterName !== "string") {
+      throw new Error("parameterName must be a non-empty string");
+    }
+
+    const result = await fetchAllRequestsForTrip(
+      world,
+      normalizedRequestType,
+      `verify every request carries "${parameterName}"`
+    );
+
+    const missing = [];
+    const found = [];
+
+    result.matches.forEach((match, index) => {
+      const hit = findParameterInPayload(match.payload, parameterName);
+      if (hit) {
+        found.push({ index, form: hit.form, value: hit.value, timestamp: match.metadata.timestamp });
+      } else {
+        missing.push({ index, timestamp: match.metadata.timestamp, rowKey: match.metadata.rowKey });
+      }
+    });
+
+    logger.info(`Checked "${parameterName}" presence across "${normalizedRequestType}" requests`, {
+      requests: result.matches.length,
+      withParameter: found.length,
+      missing: missing.length,
+      values: found.map((entry) => entry.value).filter(Boolean),
+    });
+
+    expect(
+      missing.length,
+      `Every "${normalizedRequestType}" request must carry "${parameterName}", but ` +
+      `${missing.length} of ${result.matches.length} request(s) did not:\n` +
+      missing
+        .map((entry) => `  request #${entry.index + 1} sent at ${entry.timestamp} (rowKey ${entry.rowKey})`)
+        .join("\n")
+    ).toBe(0);
+  },
+
+  /**
+   * Asserts that every request of the given type carries the named parameter with a value that
+   * contains `expectedValue`.
+   *
+   * Substring, not equality, so a scenario can pin the part it actually cares about - the 07:00:00
+   * inside <DepartureDateTime>2026-10-08T07:00:00</DepartureDateTime> - without hard-coding a date
+   * that moves with the test data.
+   *
+   * A request may carry the parameter several times (one per leg, one per offer); the request
+   * passes when *any* occurrence matches, since the others legitimately hold different values.
+   * That also means an unscoped check cannot tell the legs apart: pass `withinBlock` to confine
+   * the search to one XML block, so <ReturnDateTime><DepartureDateTime> is asserted separately
+   * from the outbound one and a swap between them fails.
+   *
+   * Run it once every request of that type has been sent - it looks at the whole trip.
+   *
+   * @param {string|null} [withinBlock] XML tag whose block(s) the parameter must be found inside.
+   */
+  async expectEveryRequestParameterContains(page, world, requestType, parameterName, expectedValue, withinBlock = null) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    if (!parameterName || typeof parameterName !== "string") {
+      throw new Error("parameterName must be a non-empty string");
+    }
+
+    if (!isPlainParameterName(parameterName)) {
+      throw new Error(
+        `parameterName must be a bare tag, attribute or key name (e.g. "DepartureDateTime"), got: ` +
+        `"${parameterName}". Pass the value to look for as the expected value instead.`
+      );
+    }
+
+    if (withinBlock !== null && !isPlainParameterName(String(withinBlock))) {
+      throw new Error(
+        `withinBlock must be a bare XML tag name (e.g. "ReturnDateTime"), got: "${withinBlock}".`
+      );
+    }
+
+    if (!expectedValue || typeof expectedValue !== "string") {
+      throw new Error("expectedValue must be a non-empty string");
+    }
+
+    const scopeLabel = withinBlock ? `"${parameterName}" within <${withinBlock}>` : `"${parameterName}"`;
+
+    const result = await fetchAllRequestsForTrip(
+      world,
+      normalizedRequestType,
+      `verify every request carries ${scopeLabel} containing "${expectedValue}"`
+    );
+
+    const failures = [];
+    let matchedRequests = 0;
+
+    result.matches.forEach((match, index) => {
+      // Without a block the whole payload is one scope; with one, each occurrence of that block is
+      // searched separately so a value sitting in a sibling leg cannot satisfy the assertion.
+      const scopes = withinBlock ? extractXmlBlocksByTag(match.payload, withinBlock) : [match.payload];
+      const occurrences = scopes.flatMap((scope) => collectParameterValues(scope, parameterName));
+      const hit = occurrences.some((occurrence) => (occurrence.value || "").includes(expectedValue));
+
+      if (hit) {
+        matchedRequests += 1;
+        return;
+      }
+
+      failures.push({
+        index,
+        timestamp: match.metadata.timestamp,
+        rowKey: match.metadata.rowKey,
+        blockCount: withinBlock ? scopes.length : null,
+        found: occurrences.map((occurrence) => occurrence.value),
+      });
+    });
+
+    logger.info(`Checked ${scopeLabel} values across "${normalizedRequestType}" requests`, {
+      requests: result.matches.length,
+      expectedValue,
+      matchedRequests,
+      failures: failures.length,
+    });
+
+    const describeFailure = (entry) => {
+      if (withinBlock && entry.blockCount === 0) {
+        return `no <${withinBlock}> block in the payload at all`;
+      }
+      if (entry.found.length === 0) {
+        return withinBlock
+          ? `no "${parameterName}" inside the ${entry.blockCount} <${withinBlock}> block(s)`
+          : `no "${parameterName}" in the payload at all`;
+      }
+      return `found ${parameterName}: ${entry.found.map((value) => `"${value}"`).join(", ")}`;
+    };
+
+    expect(
+      failures.length,
+      `Every "${normalizedRequestType}" request must carry ${scopeLabel} containing ` +
+      `"${expectedValue}", but ${failures.length} of ${result.matches.length} request(s) did not:\n` +
+      failures
+        .map((entry) =>
+          `  request #${entry.index + 1} sent at ${entry.timestamp} (rowKey ${entry.rowKey}) - ` +
+          describeFailure(entry)
+        )
         .join("\n")
     ).toBe(0);
   },

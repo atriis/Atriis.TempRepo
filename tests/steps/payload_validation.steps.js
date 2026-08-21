@@ -580,6 +580,88 @@ Then(
 );
 
 Then(
+  "exactly {int} {string} requests should have been sent",
+  async function (expectedCount, requestType) {
+    await runPayloadValidationStep(this, "expectRequestCountEquals", {
+      requestType,
+      expectedCount,
+    }, async () => {
+      logger.info("Validating the total request count", { requestType, expectedCount });
+      await PayloadValidation.expectRequestCountEquals(this.page, this, requestType, expectedCount);
+    });
+  }
+);
+
+Then(
+  "every {string} request should contain {string}",
+  async function (requestType, parameterName) {
+    await runPayloadValidationStep(this, "expectEveryRequestContainsParameter", {
+      requestType,
+      parameterName,
+    }, async () => {
+      logger.info("Validating every request carries the parameter", { requestType, parameterName });
+      await PayloadValidation.expectEveryRequestContainsParameter(
+        this.page,
+        this,
+        requestType,
+        parameterName
+      );
+    });
+  }
+);
+
+Then(
+  "every {string} request should have {string} containing {string}",
+  async function (requestType, parameterName, expectedValue) {
+    await runPayloadValidationStep(this, "expectEveryRequestParameterContains", {
+      requestType,
+      parameterName,
+    }, async () => {
+      const resolvedValue = resolveWorldPlaceholders(expectedValue, this);
+      logger.info("Validating the parameter value on every request", {
+        requestType,
+        parameterName,
+        expectedValue: resolvedValue,
+      });
+      await PayloadValidation.expectEveryRequestParameterContains(
+        this.page,
+        this,
+        requestType,
+        parameterName,
+        resolvedValue
+      );
+    });
+  }
+);
+
+Then(
+  "every {string} request should have {string} within {string} containing {string}",
+  async function (requestType, parameterName, withinBlock, expectedValue) {
+    await runPayloadValidationStep(this, "expectEveryRequestParameterContains", {
+      requestType,
+      parameterName,
+      withinBlock,
+    }, async () => {
+      const resolvedValue = resolveWorldPlaceholders(expectedValue, this);
+      logger.info("Validating the parameter value inside a block on every request", {
+        requestType,
+        parameterName,
+        withinBlock,
+        expectedValue: resolvedValue,
+      });
+      await PayloadValidation.expectEveryRequestParameterContains(
+        this.page,
+        this,
+        requestType,
+        parameterName,
+        resolvedValue,
+        withinBlock
+      );
+    });
+  }
+);
+
+Then(
   "every {string} request should reference a different {string}",
   async function (requestType, attributeName) {
     await runPayloadValidationStep(this, "expectRequestAttributeValuesAreUnique", {

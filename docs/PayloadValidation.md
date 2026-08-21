@@ -283,9 +283,9 @@ Then the captured "response" payload for request type "TravelItineraryAddInfoRQ"
 
 ### 2.10. Request-count methods
 
-`getRequestCount(...)` · `waitForRequestType(...)` · `captureRequestCount(...)` · `expectRequestCountUnchanged(...)`
+`getRequestCount(...)` · `waitForRequestType(...)` · `captureRequestCount(...)` · `expectRequestCountUnchanged(...)` · `expectRequestCountEquals(...)` · `expectEveryRequestContainsParameter(...)` · `expectEveryRequestParameterContains(...)`
 
-These four methods do not assert on payload **content**. They count how many requests of a given type were logged for the current trip, so a scenario can prove that a supplier call was **not** repeated — for example, that pricing already retrieved is reused instead of re-requested when flights are added to the cart.
+These methods do not assert on payload **content**. They count how many requests of a given type were logged for the current trip, so a scenario can prove that a supplier call was **not** repeated — for example, that pricing already retrieved is reused instead of re-requested when flights are added to the cart.
 
 #### Why the counts are polled
 
@@ -349,7 +349,69 @@ Distributor logs are published asynchronously, so a single read can land mid-bur
   - Count grew → failure message reports baseline, capture timestamp, current count and the number of extra requests, plus the interpretation: *"the previously retrieved pricing data was not reused"*.
 - **Usage:** Step: `Then no additional "{requestType}" requests should have been sent after "{anchorRequestType}"`
 
-#### 2.10.5. `expectRequestAttributeValuesAreUnique(page, world, requestType, attributeName)`
+#### 2.10.5. `expectRequestCountEquals(page, world, requestType, expectedCount)`
+
+- **Purpose:** Assert an **absolute** number of requests of a given type was sent for the trip — e.g. exactly one `OfferPrice` per selected offer. No baseline needed.
+- **Parameters:**
+  - `page`: Playwright page object (required)
+  - `world`: Test context object (required)
+  - `requestType`: The request type to count (e.g. `"OfferPrice"`)
+  - `expectedCount`: Non-negative integer; anything else throws
+- **Key Logic:** Settles the count (see table above), then asserts it equals `expectedCount`. A request type that was never logged reads as `0` instead of erroring, so `exactly 0` is a valid assertion.
+- **Difference from §2.10.4:** `expectRequestCountUnchanged()` only proves the total did not *grow* after a chosen point; this one pins the total itself, so an extra call sent *before* the baseline was captured is still caught.
+- **Returns:** void (assertion passes or throws)
+- **Usage:** Step: `Then exactly {int} "{requestType}" requests should have been sent`
+- **When to run it:** after the stage that sends those requests has finished — settling proves the number stopped moving, not that publication is complete.
+- **Caveat on `exactly 0`:** it cannot tell "never sent" from "not published yet". Pair it with a step that proves the flow reached the supplier.
+
+#### 2.10.6. `expectEveryRequestContainsParameter(page, world, requestType, parameterName)`
+
+- **Purpose:** Assert that **every** request of a type carries a named parameter — not just the latest captured payload, which is all the `should contain` steps look at.
+- **Parameters:**
+  - `page`: Playwright page object (required)
+  - `world`: Test context object (required)
+  - `requestType`: The request type to inspect (e.g. `"OfferPrice"`)
+  - `parameterName`: The parameter that must be present in each request (e.g. `"OfferID"`)
+- **Key Logic:**
+  1. Downloads **every** matching request (`maxMatches: MAX_REQUESTS_TO_INSPECT`, raised `timeoutMs`), throwing if the set was truncated
+  2. Looks for the parameter in each payload as an XML attribute (`Name="…"`), an XML tag (`<Name>`, namespace-agnostic) or a JSON key (`"Name":`) — whichever the supplier uses
+  3. A `parameterName` that is not a plain identifier (e.g. `AccountCode="ABC"`) is matched as raw text instead
+  4. Asserts nothing is missing; the values that were found are logged for debugging
+- **Why this is not covered by §2.10.8:** the uniqueness check only *warns* when a request has no such attribute. This step is what fails the scenario.
+- **Returns:** void (assertion passes or throws)
+- **Error Handling:**
+  - Truncated result set → explicit error naming `MAX_REQUESTS_TO_INSPECT`
+  - Missing parameter → failure lists each offending request by position, timestamp and `rowKey`
+- **Usage:** Step: `Then every "{requestType}" request should contain "{parameterName}"`
+- **When to run it:** after every request of that type has been sent, since it inspects the whole trip.
+
+#### 2.10.7. `expectEveryRequestParameterContains(page, world, requestType, parameterName, expectedValue, withinBlock)`
+
+- **Purpose:** Assert that every request of a type carries the named parameter with a value **containing** `expectedValue` — the part of the value the scenario actually cares about, not the whole thing.
+- **Parameters:**
+  - `page`: Playwright page object (required)
+  - `world`: Test context object (required)
+  - `requestType`: The request type to inspect (e.g. `"otaRailAvail"`)
+  - `parameterName`: A **bare** tag/attribute/key name (e.g. `"DepartureDateTime"`); a whole fragment throws with an explicit message
+  - `expectedValue`: Substring the value must contain (e.g. `"07:00:00"`)
+- **Key Logic:**
+  1. Downloads **every** matching request, throwing if the set was truncated
+  2. Collects **all** occurrences of the parameter in each payload (`collectParameterValues`) — a request routinely carries one per leg or per offer
+  3. A request passes when **any** occurrence contains the expected value; the other legs legitimately hold different values
+  4. Failures list each request with the values that *were* found, so a wrong time is visible in the error itself
+- **Scoping to one XML block (`withinBlock`):** an unscoped check passes when *any* occurrence matches, so with a round trip it cannot tell the legs apart — `07:00:00` would still be found if outbound and inbound were swapped. Passing a block tag confines the search to that block (via `extractXmlBlocksByTag()`, namespace-agnostic), and each occurrence of the block is searched separately:
+  ```gherkin
+  And every "otaRailAvail" request should have "DepartureDateTime" within "OriginDestinationInformation" containing "07:00:00"
+  And every "otaRailAvail" request should have "DepartureDateTime" within "ReturnDateTime" containing "16:00:00"
+  ```
+  A payload with no such block fails with `no <ReturnDateTime> block in the payload at all`, never a silent pass.
+- **Why substring:** pinning `"07:00:00"` survives test data whose date moves; asserting the full `2026-10-08T07:00:00` would break every time the booking window shifts.
+- **Returns:** void (assertion passes or throws)
+- **Usage:** Step: `Then every "{requestType}" request should have "{parameterName}" containing "{expectedValue}"`
+- **Usage (scoped):** Step: `Then every "{requestType}" request should have "{parameterName}" within "{blockTag}" containing "{expectedValue}"`
+- **When to run it:** after every request of that type has been sent, since it inspects the whole trip.
+
+#### 2.10.8. `expectRequestAttributeValuesAreUnique(page, world, requestType, attributeName)`
 
 - **Purpose:** Assert that no two requests of the given type carry the same value for an XML attribute — e.g. that every `OfferPrice` prices a *different* offer.
 - **Parameters:**
@@ -427,7 +489,11 @@ All step definitions are in `tests/steps/payload_validation.steps.js`. Here is t
 | `Then in the captured "{source}" payload for request type "{requestType}", path "{path}" should not contain "{expectedValue}"` | `expectCapturedPayloadPathNotContains()` | Assert JSON path does not contain substring |
 | `When I capture the number of "{requestType}" requests sent for the trip` | `captureRequestCount()` | Store the current request count as the baseline (§2.10.3) |
 | `Then no additional "{requestType}" requests should have been sent after "{anchorRequestType}"` | `expectRequestCountUnchanged()` | Assert the count did not grow since the baseline (§2.10.4) |
-| `Then every "{requestType}" request should reference a different "{attributeName}"` | `expectRequestAttributeValuesAreUnique()` | Assert no two requests share the same attribute value (§2.10.5) |
+| `Then exactly {int} "{requestType}" requests should have been sent` | `expectRequestCountEquals()` | Assert the absolute number of requests sent for the trip (§2.10.5) |
+| `Then every "{requestType}" request should contain "{parameterName}"` | `expectEveryRequestContainsParameter()` | Assert every request of that type carries the parameter (§2.10.6) |
+| `Then every "{requestType}" request should have "{parameterName}" containing "{expectedValue}"` | `expectEveryRequestParameterContains()` | Assert the parameter value on every request of that type (§2.10.7) |
+| `Then every "{requestType}" request should have "{parameterName}" within "{blockTag}" containing "{expectedValue}"` | `expectEveryRequestParameterContains()` | Same, but only inside the named XML block — tells round-trip legs apart (§2.10.7) |
+| `Then every "{requestType}" request should reference a different "{attributeName}"` | `expectRequestAttributeValuesAreUnique()` | Assert no two requests share the same attribute value (§2.10.8) |
 
 ---
 

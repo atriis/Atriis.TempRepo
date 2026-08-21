@@ -28,6 +28,7 @@ applyTo: '**/*.feature, **/payload_validation.steps.js, **/PayloadValidation.js'
 | | Multi-line JSON assertions (deep subset match) |
 | | JSON path exists/contains/not contains |
 | | Assert no additional requests were sent since the baseline |
+| | Assert an exact number of requests was sent, and that each carries a parameter |
 
 > **Priority rules:** Always run a capture step before assertions. Use existing step definitions; do not invent new expression types.
 
@@ -141,6 +142,51 @@ And every "OfferPrice" request should reference a different "OfferID"
 - **A count alone can be fooled.** It only proves the total did not *grow* after a point — if the same entity were requested twice from the very start, the baseline would just begin higher and the assertion would still pass. Pair it with `every "..." request should reference a different "..."`, which inspects every request in the trip and fails on any repeated attribute value. Run that one last, once all such requests have been sent.
 
 Canonical example: `tests/features/flights/flights_ib_ndc/flights_ib_ndc_non_booking/83094_ib_ndc_no_offerprice_resent_on_add_to_cart.feature`
+
+### 6. Exact Request Count and Per-Request Parameters
+
+Use when the requirement fixes *how many* calls the supplier should receive and *what every one of them must carry* — e.g. one `OfferPrice` per selected offer, each naming its own offer. Like §5 these steps query the trip's request log directly and need **no** capture-payload step.
+
+```gherkin
+# Once the stage that sends those requests has finished
+Then exactly 2 "OfferPrice" requests should have been sent
+And every "OfferPrice" request should contain "OfferID"
+And every "OfferPrice" request should reference a different "OfferID"
+```
+
+- **`exactly {int}` is absolute** — no baseline needed. It catches an extra call sent *before* the point a baseline would have been taken, which §5's unchanged-count check cannot.
+- **`should contain` here means the whole set**, not the latest payload. It is matched as an XML attribute (`OfferID="…"`), an XML tag (`<OfferID>`) or a JSON key (`"OfferID":`) — pass the bare parameter name and let the DSL find its shape. A value that is not a plain identifier is matched as raw text.
+- **Presence and uniqueness are different assertions.** `reference a different` only *warns* on a request that lacks the attribute; `should contain` is the one that fails.
+- **Run both last**, once every request of that type has been sent — they inspect the whole trip.
+- **`exactly 0` cannot tell "never sent" from "not published yet".** Pair it with a step proving the flow reached the supplier.
+
+Pin a **value** rather than mere presence with the `containing` variant — it reads one named parameter out of every request and substring-matches it:
+
+```gherkin
+# Right: pins the part that matters, survives a moving test date
+Then every "otaRailAvail" request should have "DepartureDateTime" containing "07:00:00"
+
+# Wrong: `should contain` with a whole fragment is an exact raw-text match,
+# so it also hard-codes the date and breaks when the booking window shifts
+Then every "otaRailAvail" request should contain "<DepartureDateTime>2026-10-08T07:00:00</DepartureDateTime>"
+```
+
+- **Pass the bare name** (`DepartureDateTime`), not a fragment — a non-identifier parameter name throws with an explicit message.
+- **Repeated parameters are expected.** One `DepartureDateTime` per leg, one `OfferID` per offer; the request passes when **any** occurrence matches, because the other legs hold different values by design.
+- **The failure message lists the values that were found**, so a wrong time is readable straight from the report.
+- **Scope to a block when the same parameter appears on more than one leg.** Unscoped, the request passes if *any* occurrence matches, so a round trip cannot tell outbound from inbound — a swap would still pass both lines. `within "<tag>"` confines the search:
+
+```gherkin
+# Round trip: one request, one DepartureDateTime per leg
+Then exactly 2 "otaRailAvail" requests should have been sent
+And every "otaRailAvail" request should have "DepartureDateTime" within "OriginDestinationInformation" containing "07:00:00"
+And every "otaRailAvail" request should have "DepartureDateTime" within "ReturnDateTime" containing "16:00:00"
+```
+
+  A missing block fails with `no <ReturnDateTime> block in the payload at all`. Block tags are matched namespace-agnostically by `extractXmlBlocksByTag()`, the same helper behind the `.block()` expressions.
+
+
+
 
 ## Scenario Identifiers (world context)
 
