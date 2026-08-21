@@ -13,13 +13,11 @@ Feature: 45020 Parking - Airport parking search is pre-populated with flight dep
   I want the parking search to be pre-populated with my booked flight's departure airport
   So that I do not need to re-enter airport details when adding parking to my trip
 
-  Scenario: Parking search is pre-populated with Heathrow after booking a LHR departing flight
-    Given I am logged in as "anamaria@ukparking.com" booking a new trip
+  Scenario: Parking search is pre-populated with the departure airport of the flight in the cart
+    Given I am logged in as "anamaria@ukparkingamadeus.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LHR" to "MAD"
     And I add the first flight to cart
-    Then the booking status should be "Pending booking"
-    When I click the parking tab in the cart trip bar
-    Then the parking search should be pre-populated with airport "Heathrow"
-    When I close the parking search panel
-    Then I successfully cancel the trip
+    And the booking status should be "Pending booking"
+    When I click to add parking to my trip from cart
+    Then the parking search should be pre-populated with the departure airport of the flight in the cart

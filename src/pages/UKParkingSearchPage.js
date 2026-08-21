@@ -160,6 +160,39 @@ class UKParkingSearchPage {
   }
 
   /**
+   * Reads the UK airport field's current value without waiting for it to be set.
+   * @returns {Promise<string>} The current value, empty string when unset
+   */
+  async getUKAirportValue() {
+    return (await this.page.locator(SELECTORS.SEARCH_FIELD_UK_PARKING).first().inputValue()).trim();
+  }
+
+  /**
+   * Waits for the UK airport field to hold a value, and returns it.
+   *
+   * When the parking form is opened from the cart it is pre-populated from the trip's existing
+   * search suggestion (getTripSearchSuggestions), which lands on the field asynchronously after
+   * the drawer has already rendered. Waiting on the value rather than reading it once is what
+   * separates "not populated yet" from "not populated at all".
+   *
+   * @param {number} [timeout=10000] - How long to wait for a non-empty value
+   * @returns {Promise<string>} The committed value
+   * @throws {Error} If the field is still empty when the timeout elapses
+   */
+  async waitForUKAirportFilled(timeout = 10000) {
+    await this.page.waitForFunction(
+      (selector) => {
+        const input = document.querySelector(selector);
+        return !!input && input.value.trim().length > 0;
+      },
+      SELECTORS.SEARCH_FIELD_UK_PARKING,
+      { timeout },
+    );
+
+    return this.getUKAirportValue();
+  }
+
+  /**
    * Waits until no date-picker popper is open.
    *
    * Arrival and return are two independent single-date pickers, and callers select days from the

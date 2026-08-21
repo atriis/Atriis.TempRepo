@@ -6,6 +6,38 @@ const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const logger = require("@utils/logger").child("UKParkingSearch-DSL");
 
 /**
+ * Airport names the parking search form uses, keyed by the IATA code the cart's flight quote card
+ * renders. The two surfaces never agree on a format - the flight card shows "LGW", the parking
+ * form is seeded with "Gatwick" - so a comparison between them needs this bridge.
+ *
+ * Deliberately limited to UK airports: UK Parking is a UK-only product, so a code outside this map
+ * means either the trip does not depart from the UK or the map needs one more row - both worth an
+ * explicit error rather than a silent mismatch.
+ */
+const UK_PARKING_AIRPORT_NAMES_BY_CODE = {
+  LHR: 'Heathrow',
+  LGW: 'Gatwick',
+  STN: 'Stansted',
+  LTN: 'Luton',
+  LCY: 'London City',
+  SEN: 'Southend',
+  MAN: 'Manchester',
+  BHX: 'Birmingham',
+  EDI: 'Edinburgh',
+  GLA: 'Glasgow',
+  BRS: 'Bristol',
+  NCL: 'Newcastle',
+  LPL: 'Liverpool',
+  EMA: 'East Midlands',
+  LBA: 'Leeds Bradford',
+  ABZ: 'Aberdeen',
+  BFS: 'Belfast',
+  CWL: 'Cardiff',
+  SOU: 'Southampton',
+  NWI: 'Norwich',
+};
+
+/**
  * Picks the nth available day for one date field and proves the field took it.
  *
  * Selecting a day is fire-and-forget, and the two parking dates are independent single-date
@@ -194,6 +226,100 @@ const UKParkingSearch = {
     }
 
     return { searched: true, airport, parkingFromDate, returnDate };
+  },
+
+  /**
+   * Checks the pre-populated parking location against the departure airport of the trip's flight.
+   *
+   * The two sides speak different languages: the cart's flight quote card renders an IATA code
+   * ("LGW") while the parking form is seeded with an airport name ("Gatwick"), so the code is
+   * translated through UK_PARKING_AIRPORT_NAMES_BY_CODE rather than compared raw. An unmapped code
+   * throws naming itself, because a silent non-match would read as an app defect rather than as
+   * missing test data.
+   *
+   * Returns rather than asserts: the caller reports the mismatch, so both sides of it (what the
+   * flight departs from, what the form was seeded with) appear in the failure.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} departureAirportCode - IATA code of the flight's departure airport
+   * @returns {Promise<{matches: boolean, prePopulatedLocation: string, departureAirportCode: string, expectedAirportName: string}>}
+   * @throws {Error} If the code is missing or not a UK airport this map knows
+   */
+  async verifyLocationMatchesFlightOrigin(page, departureAirportCode) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!departureAirportCode || typeof departureAirportCode !== 'string') {
+      throw new Error(
+        `departureAirportCode must be a non-empty string, got: ${typeof departureAirportCode}`
+      );
+    }
+
+    const code = departureAirportCode.trim().toUpperCase();
+    const expectedAirportName = UK_PARKING_AIRPORT_NAMES_BY_CODE[code];
+
+    if (!expectedAirportName) {
+      throw new Error(
+        `[UKParkingSearch.verifyLocationMatchesFlightOrigin] No UK airport name is mapped for the ` +
+        `flight's departure code "${code}", so the pre-populated parking location cannot be ` +
+        `checked against it. Add it to UK_PARKING_AIRPORT_NAMES_BY_CODE if UK Parking serves it.`
+      );
+    }
+
+    const prePopulatedLocation = await UKParkingSearch.getPrePopulatedAirport(page);
+    const matches = prePopulatedLocation.toLowerCase().includes(expectedAirportName.toLowerCase());
+
+    logger.info('Compared the pre-populated parking location with the flight origin', {
+      departureAirportCode: code,
+      expectedAirportName,
+      prePopulatedLocation,
+      matches,
+    });
+
+    return { matches, prePopulatedLocation, departureAirportCode: code, expectedAirportName };
+  },
+
+  /**
+   * Reads the location the parking search form arrived pre-populated with.
+   *
+   * Opened from the cart, parking-search-inputs.vue seeds its origin from the trip's existing
+   * search suggestion, so the value is the app's own carry-over of the flight's departure
+   * airport - not something this flow typed. The field is therefore read, never filled.
+   *
+   * An empty field is returned as an empty string rather than thrown on: "pre-populated with the
+   * wrong airport" and "not pre-populated at all" are both failures of the same caller assertion,
+   * and reporting them there names the expected airport alongside what was actually carried over.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000] - How long to wait for the value to land
+   * @returns {Promise<string>} The pre-populated location, empty string when none arrived
+   */
+  async getPrePopulatedAirport(page, { timeout = 10000 } = {}) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (typeof timeout !== 'number' || timeout < 0) {
+      throw new Error(`timeout must be a number >= 0, got: ${timeout}`);
+    }
+
+    const ukParkingSearchPage = getPageObject(page, UKParkingSearchPage);
+
+    // The form is inside the cart's edit-search drawer, which slides in around lazily loaded
+    // inputs - reading before it settles would report an airport field that is not on screen yet.
+    await ukParkingSearchPage.waitForSearchFormReady();
+
+    try {
+      return await ukParkingSearchPage.waitForUKAirportFilled(timeout);
+    } catch (error) {
+      logger.warn('The parking location field never received a pre-populated value', {
+        timeout,
+        reason: error.message,
+      });
+      return ukParkingSearchPage.getUKAirportValue();
+    }
   },
 };
 

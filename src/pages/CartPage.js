@@ -858,6 +858,13 @@ const SELECTORS = {
   // Safe from collisions: compensation-related-quotes.vue also renders app-label--quote per row,
   // but that lives in an append-to-body dialog, outside .compensation-quote-card.
   FLIGHT_QUOTE_STATUS_LABEL: '.flight-quote-card .app-label--quote',
+
+  // Airport codes on a flight quote card, rendered by flight-preview-segment.vue as `p.loc-code`
+  // (origin then destination, per segment). A round trip therefore renders four in DOM order:
+  // outbound origin, outbound destination, inbound origin, inbound destination - so the FIRST one
+  // is the trip's departure airport. Read as a code rather than through the el-tooltip that wraps
+  // it: the tooltip holds `origin.cityName ?? originName` and only materialises on hover.
+  FLIGHT_QUOTE_AIRPORT_CODE: '.flight-quote-card .flight-info p.loc-code',
   COMPENSATION_QUOTE_STATUS_LABEL: '.compensation-quote-card .app-label--quote',
 
   // Quote names listed in the trip-cancellation confirmation dialog (cancel-trip-modal.vue →
@@ -11725,6 +11732,19 @@ class CartPage {
    */
   getTripCancellationQuoteNames() {
     return this.page.locator(SELECTORS.TRIP_CANCELLATION_QUOTE_NAME);
+  }
+
+  /**
+   * Reads the departure airport code from the first flight quote card in the cart.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>} The IATA code, upper-cased (e.g. "LGW")
+   */
+  async getFlightQuoteDepartureAirportCode({ timeout = 15000 } = {}) {
+    const code = this.page.locator(SELECTORS.FLIGHT_QUOTE_AIRPORT_CODE).first();
+    await code.waitFor({ state: 'visible', timeout });
+    return (await code.textContent() || '').trim().toUpperCase();
   }
 
   /**

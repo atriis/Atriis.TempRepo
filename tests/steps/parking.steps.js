@@ -1,8 +1,7 @@
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
-const { UKParkingSearch, UKParkingResults, UKParkingCart } = require("../../src/dsl");
-const { expect } = require("@playwright/test");
+const { UKParkingSearch, UKParkingResults, UKParkingCart, Cart } = require("../../src/dsl");
 const logger = require("@utils/logger").child("Parking");
 
 setDefaultTimeout(120000);
@@ -51,18 +50,6 @@ When("I open and validate the UK parking more details drawer", async function ()
   throw new Error("TODO: implement UKParkingCart.openAndValidateMoreDetails DSL method");
 });
 
-When("I click the parking tab in the cart trip bar", async function () {
-  logger.info("Clicking parking tab in the cart trip bar");
-  const parkingTab = this.page.locator(".flicking-camera .icon-text", { hasText: "Parking" });
-  await parkingTab.waitFor({ state: "visible", timeout: 15000 });
-  await parkingTab.click();
-});
-
-When("I close the parking search panel", async function () {
-  logger.info("Closing parking search panel");
-  await this.page.click(".close-btn");
-});
-
 When("I select the first parking filter option", async function () {
   logger.info("Selecting first parking filter option");
   await UKParkingResults.selectFirstFilterOption(this.page);
@@ -75,11 +62,20 @@ When("I navigate back to parking search via breadcrumb", async function () {
 
 // ===== THEN STEPS =====
 
-Then("the parking search should be pre-populated with airport {string}", async function (airport) {
-  logger.info("Verifying parking search is pre-populated with airport", { airport });
-  const element = this.page.locator("[valuekey='value']");
-  await element.waitFor({ state: "visible", timeout: 15000 });
-  const text = await element.textContent();
-  expect(text).toContain(airport);
+Then("the parking search should be pre-populated with the departure airport of the flight in the cart", async function () {
+  logger.info("Verifying the parking search inherited the flight's departure airport");
+  const { departureAirportCode } = await Cart.getFlightDepartureAirport(this.page);
+  const result = await UKParkingSearch.verifyLocationMatchesFlightOrigin(this.page, departureAirportCode);
+
+  // Thrown rather than asserted through expect(): both sides of the comparison are the diagnostic
+  // (bug 53809 is about the carried-over location being INCOMPLETE, not absent), and a custom
+  // expect() message never reaches the report.
+  if (!result.matches) {
+    throw new Error(
+      `Expected the parking search location to be pre-populated with "${result.expectedAirportName}" ` +
+      `- the departure airport of the flight in the cart (${result.departureAirportCode}) - but the ` +
+      `field holds "${result.prePopulatedLocation}".`
+    );
+  }
 });
 

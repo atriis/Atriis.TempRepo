@@ -5336,6 +5336,33 @@ const Cart = {
   },
 
   /**
+   * Reads the departure airport of the flight already in the cart.
+   *
+   * Used by flows that assert another product inherits the trip's departure airport (parking,
+   * hotels), where hard-coding the airport would tie the test to whichever flight the supplier
+   * happened to return first.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{departureAirportCode: string}>}
+   * @throws {Error} If no airport code is rendered on the flight quote card
+   */
+  async getFlightDepartureAirport(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const departureAirportCode = await cartPage.getFlightQuoteDepartureAirportCode();
+
+    if (!departureAirportCode) {
+      throw new Error(
+        '[Cart.getFlightDepartureAirport] The flight quote card rendered an empty departure airport ' +
+        'code, so the departure airport of the trip cannot be established.'
+      );
+    }
+
+    return { departureAirportCode };
+  },
+
+  /**
    * Clicks the Parking button from the "Add more services" product carousel in the cart.
    * Navigates to the parking search page.
    *
