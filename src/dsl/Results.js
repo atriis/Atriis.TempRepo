@@ -462,6 +462,29 @@ const Results = {
   },
 
   /**
+   * Validates that the Reset Filters button offered by the no-results state is visible,
+   * i.e. filters were applied that left nothing to show and the user is given a way back.
+   *
+   * Deliberately scoped to the no-results container rather than the page-wide Reset Filters
+   * locator: the filter bar keeps its own Reset Filters button visible (and enabled) whenever
+   * any filter is applied, so an unscoped assertion would also pass on a populated result
+   * list — a false green on the very affordance this checks for.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{isVisible: boolean}>}
+   */
+  async validateResetFiltersButtonIsVisible(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    await resultsPage.waitForNoResults();
+    await expect(resultsPage.getNoResultsResetFiltersButton()).toBeVisible();
+
+    return { isVisible: true };
+  },
+
+  /**
    * Validates that the Reset Filters button is visible and disabled.
    * Used to verify initial state before any filters are applied.
    * @param {import('playwright').Page} page - Playwright page instance

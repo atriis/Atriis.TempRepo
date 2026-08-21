@@ -2,8 +2,6 @@ require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { UKParkingSearch, UKParkingResults, UKParkingCart } = require("../../src/dsl");
-const { getPageObject } = require("@utils/pageObjectCache");
-const { ResultsPage } = require("@pages/ResultsPage");
 const { expect } = require("@playwright/test");
 const logger = require("@utils/logger").child("Parking");
 
@@ -76,13 +74,6 @@ When("I navigate back to parking search via breadcrumb", async function () {
 });
 
 // ===== THEN STEPS =====
-
-Then("the reset filters button should be visible", async function () {
-  logger.info("Verifying reset filters button is visible");
-  const resultsPage = getPageObject(this.page, ResultsPage);
-  const button = resultsPage.getResetFiltersButton();
-  await button.waitFor({ state: "visible", timeout: 15000 });
-});
 
 Then("the parking search should be pre-populated with airport {string}", async function (airport) {
   logger.info("Verifying parking search is pre-populated with airport", { airport });

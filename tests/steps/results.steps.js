@@ -196,6 +196,11 @@ When("I remove the filter {string}", async function (optionLabel) {
 
 // ===== THEN STEPS - FILTERS =====
 
+Then("the reset filters button should be visible", async function () {
+  logger.info("Verifying reset filters button is visible");
+  await Results.validateResetFiltersButtonIsVisible(this.page);
+});
+
 Then("the reset filters button should be visible and disabled", async function () {
   logger.info("Verifying reset filters button is visible and disabled");
   await Results.validateResetFiltersButtonIsVisibleAndDisabled(this.page);
