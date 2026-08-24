@@ -6199,55 +6199,49 @@ class CartPage {
   }
 
   /**
-   * Counts the number of visible PNR code elements across all quotes.
-   * @param {number} [timeout=10000]
-   * @returns {Promise<number>}
-   */
-  async countVisiblePnrCodes({ timeout = 10000 } = {}) {
-    await this.page.locator(SELECTORS.PNR_CODE).first().waitFor({ state: 'visible', timeout });
-    return await this.page.locator(SELECTORS.PNR_CODE).count();
-  }
-
-  /**
-   * Gets all visible PNR codes rendered inside quote cards in the cart, regardless of
-   * product type (flight, car, etc.) — `.quote-payment-card` is the shared wrapper class
-   * every quote-card variant renders (car-quote-card.vue, flight-quote-card.vue, ...).
+   * Gets the visible quote cards in the cart and the PNR code each one renders, regardless
+   * of product type (flight, car, parking, ...) - `.quote-payment-card` is the shared
+   * wrapper class every quote-card variant renders (car-quote-card.vue,
+   * flight-quote-card.vue, ...).
    *
-   * @param {{ timeout?: number }} options
-   * @returns {Promise<string[]>}
+   * `quotes` is returned alongside the codes because the two counts together are what
+   * distinguishes "every quote booked" from "only some quotes booked" - a bare list of
+   * codes cannot tell a 1-quote cart from a 2-quote cart where one quote has no PNR.
+   *
+   * @param {{ timeout?: number, perQuoteTimeout?: number }} options
+   * @returns {Promise<{ quotes: number, pnrCodes: string[] }>}
    */
-  async getVisibleQuotePnrCodes({ timeout = 15000 } = {}) {
+  async getVisibleQuotesWithPnrCodes({ timeout = 15000, perQuoteTimeout = 5000 } = {}) {
     // `:visible` excludes hidden responsive-layout duplicates of the same quote card
     // (the app renders both a mobile and desktop copy; only one is ever displayed).
     const quoteCards = this.page.locator(`${SELECTORS.QUOTE_PAYMENT_CARD}:visible`);
     await quoteCards.first().waitFor({ state: 'visible', timeout });
 
-    const count = await quoteCards.count();
-    const values = [];
+    const quotes = await quoteCards.count();
+    const pnrCodes = [];
 
-    for (let index = 0; index < count; index += 1) {
+    for (let index = 0; index < quotes; index += 1) {
       const quoteCard = quoteCards.nth(index);
       await quoteCard.scrollIntoViewIfNeeded();
 
       const pnrCode = quoteCard.locator(SELECTORS.PNR_CODE).first();
-      const isVisible = await pnrCode.isVisible().catch(() => false);
-
-      if (!isVisible) {
+      // The first card carries the full timeout - it doubles as the settle gate for a cart
+      // read straight after booking. Later cards get a shorter bound so a quote that
+      // legitimately has no PNR does not cost the full timeout each.
+      const waitFor = index === 0 ? timeout : perQuoteTimeout;
+      try {
+        await pnrCode.waitFor({ state: 'visible', timeout: waitFor });
+      } catch {
         continue;
       }
 
       const value = ((await pnrCode.innerText()) ?? '').replace(/\s+/g, ' ').trim();
-
       if (value) {
-        values.push(value);
+        pnrCodes.push(value);
       }
     }
 
-    if (!values.length) {
-      throw new Error('Could not extract any PNR codes from flight quotes in the cart');
-    }
-
-    return values;
+    return { quotes, pnrCodes };
   }
 
   /**

@@ -5180,7 +5180,13 @@ const Cart = {
     if (!page) throw new Error('page is required');
 
     const cartPage = getPageObject(page, CartPage);
-    return await cartPage.getVisibleQuotePnrCodes();
+    const { pnrCodes } = await cartPage.getVisibleQuotesWithPnrCodes();
+
+    if (!pnrCodes.length) {
+      throw new Error('Could not extract any PNR codes from the quotes in the cart.');
+    }
+
+    return pnrCodes;
   },
 
   /**
@@ -5294,15 +5300,29 @@ const Cart = {
   },
 
   /**
-   * Verifies that all quotes in the cart have visible PNR codes.
-   * Expects at least 2 PNR code elements to be visible (one per held quote).
+   * Verifies that every quote in the cart displays a PNR code - one per visible quote
+   * card, so the assertion scales with the cart instead of assuming a fixed quote count
+   * (a single-product cart such as UK parking holds exactly one quote).
    * @param {import('playwright').Page} page
    */
   async verifyAllQuotesHavePnrCodes(page) {
     if (!page) throw new Error('page is required');
     const cartPage = getPageObject(page, CartPage);
-    const count = await cartPage.countVisiblePnrCodes();
-    expect(count, `Expected at least 2 PNR codes to be visible, found ${count}`).toBeGreaterThanOrEqual(2);
+    const { quotes, pnrCodes } = await cartPage.getVisibleQuotesWithPnrCodes();
+    const withPnr = pnrCodes.length;
+
+    // Thrown rather than asserted through expect(): both numbers are the diagnostic, and a
+    // custom expect() message never reaches the report.
+    if (quotes < 1) {
+      throw new Error('Expected at least one quote in the cart after booking, but found none.');
+    }
+    if (withPnr !== quotes) {
+      throw new Error(
+        `Expected every quote in the cart to display a PNR code, but only ${withPnr} of ` +
+        `${quotes} quote(s) did (found: ${pnrCodes.join(', ') || 'none'}). Likely causes: the ` +
+        `booking call has not completed for every quote, or a quote failed to book.`
+      );
+    }
   },
 
   async verifyLastQuoteDestination(page, city) {
