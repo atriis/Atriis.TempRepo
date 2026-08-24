@@ -54,8 +54,10 @@ const AmtrakSearch = {
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
 
-    // Calendar flow: select the Nth available date for departure. One month ahead,
-    // not the shared 3-month default — Amtrak inventory is not published that far out.
+    // Calendar flow: open the departure calendar explicitly — the Amtrak form does not focus its
+    // date field when a station commits — then select the Nth available date. One month ahead, not
+    // the shared 3-month default — Amtrak inventory is not published that far out.
+    await searchPage.clickAmtrakDateField(0);
     await searchPage.clickCalendarNextArrow(1);
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
@@ -98,17 +100,21 @@ const AmtrakSearch = {
     await AmtrakSearch.selectAmtrakSearch(page);
     await searchPage.selectRoundTrip();
 
-    // Departure flow: select Nth available date for departure. One month ahead,
-    // not the shared 3-month default — Amtrak inventory is not published that far out.
+    // Departure flow: open the departure calendar explicitly (the Amtrak form does not focus its
+    // date field when a station commits), then select the Nth available date. One month ahead, not
+    // the shared 3-month default — Amtrak inventory is not published that far out.
     await searchPage.fillInFromField(from);
+    await searchPage.clickAmtrakDateField(0);
     await searchPage.clickCalendarNextArrow(1);
     await selectDatesByNthAvailable(page, {
       startIndex: departureIndex,
       endIndex: null,
     });
 
-    // Return flow: select Nth available date for return
+    // Return flow: round trip renders a second date field for the return segment, so open that one
+    // and select the Nth available date in it.
     await searchPage.fillInToField(to);
+    await searchPage.clickAmtrakDateField(1);
     await selectDatesByNthAvailable(page, {
       startIndex: returnIndex,
       endIndex: null,

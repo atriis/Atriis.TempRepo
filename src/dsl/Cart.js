@@ -10904,6 +10904,89 @@ const Cart = {
   },
 
   /**
+   * Verifies the Amtrak Contact Information extras row is rendered as mandatory — the heading reads
+   * "Contact Information" and carries the red asterisk amtrak-contact-information.vue prefixes it
+   * with. Expands the outer extras accordion first, since the row is only reachable inside it.
+   * Must run BEFORE the row is opened: extras-layout.vue drops the whole collapsed heading (and
+   * with it the asterisk) once the row expands.
+   * @param {import('playwright').Page} page
+   */
+  async verifyAmtrakContactInfoRequiredInCart(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.ensureExtrasExpanded();
+
+    const titleText = await cartPage.getAmtrakContactInfoTitleText();
+    expect(
+      titleText,
+      `Expected the Amtrak extras row heading to read "${CART_SELECTORS.AMTRAK_CONTACT_INFO_TITLE_TEXT}", got "${titleText}"`,
+    ).toContain(CART_SELECTORS.AMTRAK_CONTACT_INFO_TITLE_TEXT);
+
+    const isRequired = await cartPage.isAmtrakContactInfoMarkedAsRequired();
+    expect(
+      isRequired,
+      'Expected the Amtrak Contact Information extras row to be marked mandatory with a red asterisk',
+    ).toBe(true);
+    logger.info('Amtrak Contact Information row is marked mandatory', { titleText });
+  },
+
+  /**
+   * Expands the Amtrak Contact Information extras row in the cart, opening the outer extras
+   * accordion first when it is still collapsed.
+   * @param {import('playwright').Page} page
+   */
+  async expandAmtrakContactInfoInCart(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.ensureExtrasExpanded();
+    await cartPage.openAmtrakContactInfoPanel();
+    logger.info('Amtrak Contact Information row expanded in the cart');
+  },
+
+  /**
+   * Verifies the three Amtrak phone number inputs (country code, prefix, number) are all empty —
+   * the precondition that makes the blocked checkout later in the scenario meaningful.
+   * @param {import('playwright').Page} page
+   */
+  async verifyAmtrakContactInfoPhoneFieldsEmpty(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const values = await cartPage.getAmtrakContactInfoPhoneValues();
+
+    expect(
+      values.length,
+      `Expected 3 Amtrak phone number inputs (country code, prefix, number), found ${values.length}`,
+    ).toBe(3);
+    expect(
+      values.filter((value) => value !== ''),
+      `Expected every Amtrak phone number field to be empty, got ${JSON.stringify(values)}`,
+    ).toEqual([]);
+    logger.info('Amtrak Contact Information phone number fields are empty');
+  },
+
+  /**
+   * Verifies the Amtrak Contact Information extras row is highlighted with the red error border the
+   * cart shows after a checkout attempt was blocked by the missing mandatory phone number. The
+   * border only renders once Proceed to Checkout has been clicked, so call this after that click.
+   * @param {import('playwright').Page} page
+   */
+  async verifyAmtrakContactInfoHighlightedInRed(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const isHighlighted = await cartPage.isAmtrakContactInfoHighlightedInRed();
+    expect(
+      isHighlighted,
+      'Expected the Amtrak Contact Information row to be highlighted in red (error border) after the blocked ' +
+      'checkout attempt. That class needs BOTH an invalid row and a prior Proceed to Checkout click',
+    ).toBe(true);
+    logger.info('Amtrak Contact Information row is highlighted in red (error border visible)');
+  },
+
+  /**
    * Opens the passenger info panel in extras (expanding collapse if needed).
    * @param {import('playwright').Page} page
    */

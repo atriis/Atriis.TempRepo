@@ -3,11 +3,17 @@ require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { getPageObject } = require("@utils/pageObjectCache");
 const AmtrakResultsPage = require("@pages/AmtrakResultsPage");
+const { AmtrakResults } = require("@dsl");
 const logger = require("@utils/logger").child("AmtrakResults");
 
 setDefaultTimeout(120000);
 
 // ===== WHEN STEPS =====
+
+When("I add an Amtrak one way to the trip", async function () {
+  logger.info("Adding an Amtrak one-way result to the trip");
+  await AmtrakResults.addAmtrakOneWayToTrip(this.page);
+});
 
 When("I click more details for the first Amtrak result", async function () {
   logger.info("Clicking more details for first Amtrak result");

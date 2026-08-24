@@ -8,6 +8,7 @@
 module.exports = {
   Administration: require("./Administration"),
   Chat: require("./Chat"),
+  AmtrakResults: require("./AmtrakResults"),
   AmtrakSearch: require("./AmtrakSearch"),
   App: require("./App"),
   BenerailResults: require("./BenerailResults"),

@@ -198,6 +198,12 @@ const SELECTORS = {
   DEPARTURE_PLACEHOLDER: "input[placeholder*='Depart']",
   RETURN_PLACEHOLDER: "input[placeholder*='Return']",
   PICK_UP_DATE_INPUT: "[placeholder='Pick-up Date']", //Same locator used for Cars and GroundScope/Transferz
+  // Amtrak (amtrak-search-inputs.vue) date field. It is an <app-datepicker class="rail-date-picker">
+  // whose placeholder is euRail.date ("Date"), so neither DEPARTURE_PLACEHOLDER nor
+  // RETURN_PLACEHOLDER matches it. Scoped to the Amtrak form's own root class for the same reason
+  // BenerailSearchPage scopes its rail date fields: other mounted-but-hidden product forms carry
+  // date inputs too. Round trip renders one per segment — index 0 is departure, 1 is the return.
+  AMTRAK_DATE_INPUT: ".amtrak-search-inputs .rail-date-picker input",
 
   // Traveler slot validation state (.is-danger applied when search is attempted with an empty slot)
   TRAVELER_SLOT_DANGER: '.trip-traveler-tag.is-danger',
@@ -1089,6 +1095,21 @@ class SearchPage {
  * panel is visible, ensuring the calendar is fully open and ready
  * for interaction.
  */
+  /**
+   * Opens an Amtrak date calendar and waits for the picker panel.
+   *
+   * The Amtrak search form does not focus its date field when a station is committed, so the
+   * calendar has to be opened explicitly before clickCalendarNextArrow / selectDatesByNthAvailable
+   * can drive it — the same explicit open BenerailSearchPage.clickRailDepartureDateField does.
+   * @param {number} index - 0 for the departure date, 1 for the return date on a round trip
+   */
+  async clickAmtrakDateField(index = 0) {
+    const field = this.page.locator(SELECTORS.AMTRAK_DATE_INPUT).nth(index);
+    await field.waitFor({ state: "visible", timeout: 10000 });
+    await field.click();
+    await this.getDatePickerPanel().first().waitFor({ state: "visible" });
+  }
+
   async clickDepartureDateField() {
     await this.page
       .locator(SELECTORS.DEPARTURE_PLACEHOLDER)

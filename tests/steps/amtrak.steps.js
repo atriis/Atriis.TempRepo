@@ -1,7 +1,7 @@
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
-const { AmtrakSearch } = require("../../src/dsl");
+const { AmtrakSearch, Cart } = require("../../src/dsl");
 const logger = require("@utils/logger").child("AmtrakSearch");
 
 setDefaultTimeout(120000);
@@ -94,12 +94,31 @@ Then("the fare rules cancellations section should be visible", async function ()
   throw new Error("TODO: Implement verifying '.rules > :nth-child(1)' contains 'Cancellations' after opening fare rules in cart.");
 });
 
+// ===== AMTRAK CONTACT INFORMATION (mandatory phone number — test 62852) =====
+
+// Reads the collapsed heading, so it must come before the row is expanded: extras-layout.vue
+// removes the whole summary (asterisk included) once the row opens.
 Then("the contact information section should be required in cart", async function () {
-  throw new Error("TODO: Implement verifying '* Contact Information' label is visible (asterisk = mandatory) in the Amtrak cart extras.");
+  logger.info("Verifying the Amtrak Contact Information extras row is marked mandatory");
+  await Cart.verifyAmtrakContactInfoRequiredInCart(this.page);
+});
+
+// Phrase kept as the feature spells it ("informations").
+When("I expand the contact informations section in cart", async function () {
+  logger.info("Expanding the Amtrak Contact Information extras row in the cart");
+  await Cart.expandAmtrakContactInfoInCart(this.page);
 });
 
 Then("the phone number fields should be empty in cart", async function () {
-  throw new Error("TODO: Implement verifying the three phone number input fields (country code, area code, number) are empty in the Amtrak cart extras.");
+  logger.info("Verifying the Amtrak phone number fields are empty in the cart");
+  await Cart.verifyAmtrakContactInfoPhoneFieldsEmpty(this.page);
+});
+
+// The red border needs BOTH an invalid row and a prior Proceed to Checkout click (extras-layout.vue
+// only sets isCheckoutActivated from the event trip-cart.ts emits there), so this belongs after one.
+Then("the contact information should have red border because it is mandatory", async function () {
+  logger.info("Verifying the Amtrak Contact Information row is highlighted in red");
+  await Cart.verifyAmtrakContactInfoHighlightedInRed(this.page);
 });
 
 Then("the mandatory information validation error should be displayed", async function () {

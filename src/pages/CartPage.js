@@ -483,7 +483,6 @@ const SELECTORS = {
   EDIT_EXTRAS_BUTTON: ".extra__btns", //All edit buttons in extras section have the same class, so we will use nth(index) to click the right one when needed
   EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span', // The field that shows selected extra option
   EXTRAS_ARROW_BUTTON: '.px-4.ticket-bottom.py-4 .el-icon.el-collapse-item__arrow', // Arrow button to expand/collapse extras information
-  EXTRAS_COLLAPSE_HEADER: '.px-4.ticket-bottom.py-4 .el-collapse-item__header', // Clickable header row for the extras collapse; aria-expanded reflects true open/closed state
   EXTRAS_SAVE_BUTTON_SAVING: 'button.btn.is-loading', // app-btn renders "button is-loading" while its :is-loading prop is true (app-btn.vue) — Bulma hides the label (transparent) but "Save" stays in the DOM, so filter by text to pick the extras Save button
   FLIGHT_OPTIONAL_SERVICES_TITLE: '.flight-optional-services .card-title', // "Optional Services" title in the extras section (flight-optional-services.vue)
   FLIGHT_OPTIONAL_SERVICES_EDIT_BUTTON: '.flight-optional-services .extra__btns', // Edit/Add button in the optional services extras row (flight-optional-services.vue)
@@ -1316,6 +1315,7 @@ const SELECTORS = {
   PASSENGER_INFO_DOB_FIELD: '.flight-passenger-info .field:has(label:text-is("Date of birth"))',
   PASSENGER_INFO_DOB_DATEPICKER: '.flight-passenger-info .field:has(label:text-is("Date of birth")) .app-datepicker',
   PASSENGER_INFO_DOB_INPUT: '.flight-passenger-info .field:has(label:text-is("Date of birth")) input',
+  // Clickable header row for the extras collapse; aria-expanded reflects true open/closed state.
   EXTRAS_COLLAPSE_HEADER: '.extras-collapse-container .el-collapse-item__header',
   EXTRAS_COLLAPSE_ACTIVE: '.extras-collapse-container .el-collapse-item__header.is-active',
   PASSENGER_INFO_EDIT_NOT_ALLOWED_MSG: '.flight-passenger-info .app-msg-text',
@@ -1329,6 +1329,29 @@ const SELECTORS = {
   PASSENGER_INFO_NATIONALITY_SELECT: '.flight-passenger-info .field:has(label:text-is("Nationality")) .el-select',
   PASSENGER_INFO_NATIONALITY_INPUT: '.flight-passenger-info .field:has(label:text-is("Nationality")) input.el-select__input',
   PASSENGER_INFO_EDITABLE_FIELD: '.flight-passenger-info .extras-card .field', // Each form field wrapper in the passenger info panel (flight-passenger-info.vue)
+
+  // Amtrak contact information extras row (amtrak-contact-information.vue). The Amtrak quote card
+  // renders Frequent Flyer BEFORE Contact Information in the same extras slot, so every selector
+  // below is scoped to `.amtrak-contact-information` — an unscoped `.is-clickable` inside the
+  // ticket layout would land on the Frequent Flyer row instead.
+  AMTRAK_CONTACT_INFO_SECTION: '.amtrak-contact-information',
+  // Collapsed summary heading: `<h5 class="card-title"><span class="has-text-danger">*</span> Contact Information</h5>`.
+  // Only rendered while the row is closed — extras-layout swaps the whole summary div out on open,
+  // which is why the "required" assertion has to run before the row is expanded.
+  AMTRAK_CONTACT_INFO_TITLE: '.amtrak-contact-information .extra .card-title',
+  AMTRAK_CONTACT_INFO_REQUIRED_ASTERISK: '.amtrak-contact-information .extra .card-title .has-text-danger',
+  AMTRAK_CONTACT_INFO_EXPAND_BUTTON: '.amtrak-contact-information .extra__btns .is-clickable',
+  // The three el-input boxes of the phone number (country code / prefix / number) inside the open
+  // card's `.control.phone-details` row.
+  AMTRAK_CONTACT_INFO_PHONE_ROW: '.amtrak-contact-information .phone-details',
+  AMTRAK_CONTACT_INFO_PHONE_INPUTS: '.amtrak-contact-information .phone-details input',
+  // Red border extras-layout.vue paints once a checkout attempt was blocked: it adds `error-border`
+  // only when isShowRedBorder = !isValid && isCheckoutActivated, and isCheckoutActivated is set
+  // solely by the `checkoutActivated` event trip-cart.ts emits from beforeProceedToPayment() — so
+  // this is absent until Proceed to Checkout is actually clicked. The class sits on the collapsed
+  // `.extra` row or on the expanded `.padding` wrapper, so match on the class alone.
+  AMTRAK_CONTACT_INFO_ERROR_BORDER: '.amtrak-contact-information .error-border',
+  AMTRAK_CONTACT_INFO_TITLE_TEXT: 'Contact Information',
 
   // Extras sections visibility (generic — used to verify which sections are rendered)
   EXTRAS_SECTION_CARD_TITLE: '.extras-collapse-container .card-title',
@@ -4829,6 +4852,83 @@ class CartPage {
    */
   async isPassengerInfoHighlightedInRed(timeout = 15000) {
     const border = this.page.locator(SELECTORS.PASSENGER_INFO_ERROR_BORDER).first();
+    return border.isVisible({ timeout }).catch(() => false);
+  }
+
+  /**
+   * Checks whether the Amtrak Contact Information extras row is marked mandatory — the
+   * `<span class="has-text-danger">*</span>` that amtrak-contact-information.vue renders inside its
+   * collapsed heading.
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isAmtrakContactInfoMarkedAsRequired(timeout = 15000) {
+    const asterisk = this.page.locator(SELECTORS.AMTRAK_CONTACT_INFO_REQUIRED_ASTERISK).first();
+    return asterisk.isVisible({ timeout }).catch(() => false);
+  }
+
+  /**
+   * Reads the Amtrak Contact Information collapsed heading text (asterisk included, e.g.
+   * "* Contact Information").
+   * @param {number} timeout
+   * @returns {Promise<string>}
+   */
+  async getAmtrakContactInfoTitleText(timeout = 15000) {
+    const title = this.page.locator(SELECTORS.AMTRAK_CONTACT_INFO_TITLE).first();
+    await title.waitFor({ state: 'visible', timeout });
+    return (await title.innerText()).trim();
+  }
+
+  /**
+   * Expands the Amtrak Contact Information extras row and waits for the phone number inputs to
+   * render. The row loads its saved contact info over the network on first open (an el-skeleton is
+   * shown meanwhile), so waiting on the phone row — not just on the click — is what makes a
+   * following "fields are empty" read trustworthy.
+   * @param {number} timeout
+   */
+  async openAmtrakContactInfoPanel(timeout = 30000) {
+    const expandButton = this.page.locator(SELECTORS.AMTRAK_CONTACT_INFO_EXPAND_BUTTON).first();
+    try {
+      await expandButton.waitFor({ state: 'visible', timeout });
+      await expandButton.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.openAmtrakContactInfoPanel] Could not open the Amtrak Contact Information extras row ` +
+        `(selector: ${SELECTORS.AMTRAK_CONTACT_INFO_EXPAND_BUTTON}). Ensure the Amtrak quote is in the cart and ` +
+        `the outer extras accordion is expanded. Original: ${err.message}`,
+      );
+    }
+    await this.page
+      .locator(SELECTORS.AMTRAK_CONTACT_INFO_PHONE_ROW)
+      .first()
+      .waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Reads the values of the three Amtrak phone number inputs (country code, prefix, number) in the
+   * open Contact Information row.
+   * @param {number} timeout
+   * @returns {Promise<string[]>}
+   */
+  async getAmtrakContactInfoPhoneValues(timeout = 15000) {
+    const inputs = this.page.locator(SELECTORS.AMTRAK_CONTACT_INFO_PHONE_INPUTS);
+    await inputs.first().waitFor({ state: 'visible', timeout });
+    const count = await inputs.count();
+    const values = [];
+    for (let index = 0; index < count; index++) {
+      values.push(((await inputs.nth(index).inputValue()) || '').trim());
+    }
+    return values;
+  }
+
+  /**
+   * Checks whether the Amtrak Contact Information extras row carries the red error border the cart
+   * paints after a checkout attempt was blocked.
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isAmtrakContactInfoHighlightedInRed(timeout = 15000) {
+    const border = this.page.locator(SELECTORS.AMTRAK_CONTACT_INFO_ERROR_BORDER).first();
     return border.isVisible({ timeout }).catch(() => false);
   }
 
