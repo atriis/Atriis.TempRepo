@@ -6,7 +6,7 @@
 # Owner: pini harush
 # Created: 2025-09-15T01:39:01Z
 # Updated: 2025-09-15T02:01:30Z
-@wip @transportation @rails @deutschebahn @regression
+@transportation @rails @deutschebahn @regression
 Feature: 67281 DB - Continue from overview and validate not completed order error
   As a corporate traveler
   I want to continue a DB order from trip overview
