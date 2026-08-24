@@ -5465,6 +5465,49 @@ const Cart = {
   },
 
   /**
+   * Verifies how many quote cards the cart holds, across every product type.
+   *
+   * Backs de-duplication checks: re-running a search (e.g. after editing its dates from the
+   * results page) and adding a result again must replace the trip's existing quote, not append a
+   * second one. Counting all products rather than one is the point — a duplicate that lands as a
+   * differently-typed card still has to fail.
+   *
+   * Thrown rather than asserted through expect(): the actual count is the whole diagnostic and a
+   * custom expect() message never reaches the report.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount - Expected number of quote cards in the cart
+   * @returns {Promise<void>}
+   */
+  async verifyQuoteCount(page, expectedCount) {
+    if (!page) throw new Error('[Cart.verifyQuoteCount] "page" is required.');
+    if (!Number.isInteger(expectedCount) || expectedCount < 0) {
+      throw new Error(`[Cart.verifyQuoteCount] "expectedCount" must be a non-negative integer, got: ${expectedCount}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('[Cart.verifyQuoteCount] Counting quote cards in cart', { expectedCount });
+
+    let actualCount;
+    try {
+      actualCount = await cartPage.getQuoteCardCount();
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyQuoteCount] Could not read quote cards from the cart. The cart may not have ` +
+        `loaded, or nothing was ever added to the trip. Original: ${err.message}`,
+      );
+    }
+
+    if (actualCount !== expectedCount) {
+      throw new Error(
+        `[Cart.verifyQuoteCount] Expected the cart to contain ${expectedCount} quote(s), but found ` +
+        `${actualCount}. More than expected means adding the result to the trip appended a ` +
+        `duplicate instead of replacing the existing quote.`,
+      );
+    }
+  },
+
+  /**
    * Verifies the outbound departure airport code of the flight in the cart.
    *
    * @param {import('playwright').Page} page

@@ -1,6 +1,8 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const UKParkingSearchPage = require("@pages/UKParkingSearchPage");
+const UKParkingResultsPage = require("@pages/UKParkingResultsPage");
 const { SearchPage } = require("@pages/SearchPage");
+const { ResultsPage } = require("@pages/ResultsPage");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const logger = require("@utils/logger").child("UKParkingSearch-DSL");
@@ -130,8 +132,8 @@ const UKParkingSearch = {
   async searchUKParking(
     page,
     airport = "LHR",
-    parkingFromIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-    returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    parkingFromIndex = SEARCH_DEFAULTS.PARKING.PARKING_FROM_INDEX,
+    returnIndex = SEARCH_DEFAULTS.PARKING.RETURN_INDEX,
   ) {
     if (!page) {
       throw new Error('page is required');
@@ -226,6 +228,120 @@ const UKParkingSearch = {
     }
 
     return { searched: true, airport, parkingFromDate, returnDate };
+  },
+
+  /**
+   * Re-runs the trip's parking search with different dates, without leaving the results page.
+   *
+   * The "Edit" control belongs to the trip bar (trip-bar.vue `.edit-search-btn`), not to
+   * parking-results.vue, and it opens the shared edit-search drawer (trip-edit-search.vue) with
+   * the parking form pre-filled from the search that produced the results behind it — so only the
+   * dates are touched here, and the location is deliberately left alone.
+   *
+   * Every date is required to CHANGE rather than merely to hold a value, which is the difference
+   * that matters in this context: the fields open pre-filled, so a day-cell click that missed its
+   * panel leaves a perfectly valid form that silently re-submits the ORIGINAL search. A
+   * de-duplication check downstream ("one parking quote in the cart after adding a result again")
+   * would then pass without an edit ever having happened.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {Object} [options]
+   * @param {number} [options.parkingFromIndex] - Day index for the new parking start date, within
+   *   the month the picker opens on. Defaults to SEARCH_DEFAULTS.PARKING.EDIT_PARKING_FROM_INDEX —
+   *   one day past the initial search's pick, so the edit lands on a different, equally valid date.
+   * @param {number} [options.returnIndex] - Day index for the new return date, same convention.
+   * @returns {Promise<{edited: boolean, parkingFromDate: string, returnDate: string, previousParkingFromDate: string, previousReturnDate: string, loaderSeen: boolean}>}
+   * @throws {Error} If page is missing, an index is negative, or a date never changed
+   */
+  async editSearchDatesFromResultsPage(
+    page,
+    {
+      parkingFromIndex = SEARCH_DEFAULTS.PARKING.EDIT_PARKING_FROM_INDEX,
+      returnIndex = SEARCH_DEFAULTS.PARKING.EDIT_RETURN_INDEX,
+    } = {},
+  ) {
+    if (!page) {
+      throw new Error('[UKParkingSearch.editSearchDatesFromResultsPage] "page" is required.');
+    }
+    if (parkingFromIndex < 0) {
+      throw new Error(`[UKParkingSearch.editSearchDatesFromResultsPage] "parkingFromIndex" must be >= 0, got ${parkingFromIndex}`);
+    }
+    if (returnIndex < 0) {
+      throw new Error(`[UKParkingSearch.editSearchDatesFromResultsPage] "returnIndex" must be >= 0, got ${returnIndex}`);
+    }
+
+    const ukParkingSearchPage = getPageObject(page, UKParkingSearchPage);
+    const ukParkingResultsPage = getPageObject(page, UKParkingResultsPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    // 1. Open the edit-search drawer from the trip bar.
+    await resultsPage.clickEditButton();
+
+    // 2. The drawer slides in around a lazily loaded parking form — act only once it has settled,
+    //    or the date poppers open against a form that is still moving.
+    await ukParkingSearchPage.waitForSearchFormReady();
+
+    // 3. Capture what the form arrived with, so each new pick can be required to differ from it.
+    const previousParkingFromDate = await ukParkingSearchPage.waitForParkingFromDateFilled(10000);
+    const previousReturnDate = await ukParkingSearchPage.waitForReturnDateFilled(10000);
+
+    // 4. New parking-from date. No month advance here (unlike the initial search): the picker opens
+    //    on the month the existing value sits in — already three months out — so the next index
+    //    within that same month is a different day of an equally valid month.
+    const parkingFromDate = await pickDateAndConfirm(page, {
+      label: 'parking-from (edit)',
+      openPicker: () => ukParkingSearchPage.clickParkingFromDateField(),
+      confirmFilled: () => ukParkingSearchPage.waitForParkingFromDateChanged(previousParkingFromDate),
+      nthAvailable: parkingFromIndex,
+    });
+
+    // 5. New return date, kept later than the new arrival by the same index gap the initial search
+    //    used.
+    const returnDate = await pickDateAndConfirm(page, {
+      label: 'return (edit)',
+      openPicker: () => ukParkingSearchPage.clickReturnDateField(),
+      confirmFilled: () => ukParkingSearchPage.waitForReturnDateChanged(previousReturnDate),
+      nthAvailable: returnIndex,
+    });
+
+    // Same swallowed-click guard the initial search carries: return clicks that land on the
+    // parking-from calendar REWRITE the arrival date rather than leaving it untouched, which the
+    // app then reports as a bare "Invalid date" on a field this flow set correctly.
+    const parkingFromDateAfterReturn = await ukParkingSearchPage.getParkingFromDateValue();
+    if (parkingFromDateAfterReturn !== parkingFromDate) {
+      throw new Error(
+        `[UKParkingSearch.editSearchDatesFromResultsPage] Picking the new return date moved the ` +
+        `parking-from date from "${parkingFromDate}" to "${parkingFromDateAfterReturn}": the return ` +
+        `clicks landed on the parking-from calendar, so neither edited date can be trusted.`
+      );
+    }
+
+    logger.info('Parking search dates edited from the results page', {
+      previousParkingFromDate,
+      parkingFromDate,
+      previousReturnDate,
+      returnDate,
+    });
+
+    // 6. Re-submit through the drawer's own Search button, then wait for the results behind it to
+    //    be REPLACED rather than merely present — the previous set stays on screen until the new
+    //    one arrives.
+    await searchPage.waitAndClickEditSearchButton();
+    const { loaderSeen } = await ukParkingResultsPage.waitForResultsReloaded();
+    await resultsPage.waitForAddToTripText();
+
+    return {
+      edited: true,
+      parkingFromDate,
+      returnDate,
+      previousParkingFromDate,
+      previousReturnDate,
+      // false means the re-search came back before the loader painted, so these results were
+      // never observed to be re-fetched — worth having in the step log when a stale-results
+      // failure is being diagnosed downstream.
+      loaderSeen,
+    };
   },
 
   /**

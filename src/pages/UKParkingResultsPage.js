@@ -12,6 +12,9 @@ const SELECTORS = {
   // .parking-results-container so the trip bar's own breadcrumb cannot match.
   RESULTS_BREADCRUMB_SEARCH_LINK: '.parking-results-container nav.breadcrumb li:first-child a',
   PARKING_RESULTS_CONTAINER: '.parking-results-container',
+  // parking-results.vue's app-product-loader, rendered while isLoading — the only element that
+  // distinguishes results being re-fetched from the previous result set still on screen.
+  PARKING_RESULTS_LOADER: '.parking-results .app-product-loader',
 };
 
 class UKParkingResultsPage {
@@ -50,6 +53,44 @@ class UKParkingResultsPage {
         `Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Waits out a results re-fetch: the loader appearing, then going away again.
+   *
+   * Used after re-submitting the search from the edit drawer. The previous result set stays on
+   * screen until the new one arrives, so waiting straight for an "Add to trip" button would be
+   * satisfied by the OLD results and hand the next step a list that is about to be replaced. The
+   * loader's appearance is tolerated as optional rather than required — a cached re-search can
+   * come back before it paints, and that is a pass, not a failure.
+   *
+   * @param {number} [appearTimeout=10000] - How long to watch for the loader to appear
+   * @param {number} [finishTimeout=90000] - How long to wait for it to go away again
+   */
+  async waitForResultsReloaded(appearTimeout = 10000, finishTimeout = 90000) {
+    const loader = this.page.locator(SELECTORS.PARKING_RESULTS_LOADER).first();
+
+    const appeared = await loader
+      .waitFor({ state: 'visible', timeout: appearTimeout })
+      .then(() => true)
+      .catch(() => false);
+
+    if (!appeared) {
+      return { reloaded: true, loaderSeen: false };
+    }
+
+    try {
+      await loader.waitFor({ state: 'hidden', timeout: finishTimeout });
+    } catch (err) {
+      throw new Error(
+        `[UKParkingResultsPage.waitForResultsReloaded] The parking results loader was still on ` +
+        `screen ${finishTimeout}ms after the search was re-submitted (selector: ` +
+        `"${SELECTORS.PARKING_RESULTS_LOADER}"), so the re-search never returned. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    return { reloaded: true, loaderSeen: true };
   }
 
   /**

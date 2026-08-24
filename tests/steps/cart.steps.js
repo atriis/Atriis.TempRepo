@@ -1701,6 +1701,14 @@ Then("the cart should contain {int} flight quote(s)", async function (expectedCo
   await Cart.verifyFlightQuoteCount(this.page, expectedCount);
 });
 
+// Product-agnostic counterpart of the flight-scoped step above: counts every quote card in the
+// cart. Backs "the quote was not duplicated" checks, where a duplicate landing as any product's
+// card still has to fail.
+Then("the cart should contain {int} quote(s)", async function (expectedCount) {
+  logger.info("Verifying cart quote count", { expectedCount });
+  await Cart.verifyQuoteCount(this.page, expectedCount);
+});
+
 Then("the cart flight should depart from {string}", async function (departureCode) {
   logger.info("Verifying cart flight departure code", { departureCode });
   await Cart.verifyCartFlightDepartureCode(this.page, departureCode);

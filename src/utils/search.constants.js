@@ -69,6 +69,21 @@ const SEARCH_DEFAULTS = {
   GROUND_TRANSPORT: {
     PICKUP_INDEX: 2,     // Selects the 3rd available date
   },
+
+  /**
+   * UK Parking defaults
+   *
+   * Same indices the flight search uses — parking inventory is reliable at those dates. The EDIT_*
+   * pair is for re-running an existing search from the results page: one day past the original
+   * pick, which is the smallest change that provably moved the date (the edit drawer opens
+   * pre-filled, so an unchanged value cannot be told apart from a swallowed click).
+   */
+  PARKING: {
+    PARKING_FROM_INDEX: 4,       // Selects the 5th available date
+    RETURN_INDEX: 11,            // Selects the 12th available date
+    EDIT_PARKING_FROM_INDEX: 5,  // One day past PARKING_FROM_INDEX
+    EDIT_RETURN_INDEX: 12,       // One day past RETURN_INDEX
+  },
 };
 
 module.exports = {

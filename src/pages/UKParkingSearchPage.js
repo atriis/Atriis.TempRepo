@@ -301,6 +301,51 @@ class UKParkingSearchPage {
   }
 
   /**
+   * Waits for a date input's value to become something other than `previousValue`, and returns it.
+   *
+   * The counterpart to waitForDateInputFilled, for the edit-search drawer: there both dates open
+   * pre-filled from the search that produced the results behind the drawer, so "holds a value"
+   * proves nothing about the pick. Only a CHANGED value proves the day-cell click reached this
+   * field's own panel rather than a foreign or closing one — without it a swallowed click leaves a
+   * perfectly valid form that silently re-runs the original search.
+   *
+   * @param {string} inputSelector - Placeholder selector for the date input
+   * @param {string} previousValue - The value the field held before the pick
+   * @param {number} [timeout=5000] - How long to wait for the value to change
+   * @returns {Promise<string>} The newly committed value
+   */
+  async waitForDateInputChanged(inputSelector, previousValue, timeout = 5000) {
+    await this.page.waitForFunction(
+      ({ selector, previous }) => {
+        const input = document.querySelector(selector);
+        if (!input) return false;
+        const value = input.value.trim();
+        return value.length > 0 && value !== previous;
+      },
+      { selector: inputSelector, previous: previousValue },
+      { timeout },
+    );
+
+    return this.getDateInputValue(inputSelector);
+  }
+
+  /**
+   * Waits for the parking start date to hold a value other than `previousValue`.
+   * @returns {Promise<string>}
+   */
+  async waitForParkingFromDateChanged(previousValue, timeout = 5000) {
+    return this.waitForDateInputChanged(SELECTORS.PARKING_FROM_DATE_INPUT, previousValue, timeout);
+  }
+
+  /**
+   * Waits for the return date to hold a value other than `previousValue`.
+   * @returns {Promise<string>}
+   */
+  async waitForReturnDateChanged(previousValue, timeout = 5000) {
+    return this.waitForDateInputChanged(SELECTORS.RETURN_DATE_INPUT, previousValue, timeout);
+  }
+
+  /**
    * Reads a date input's current value without waiting for it to be set.
    * @param {string} inputSelector - Placeholder selector for the date input
    * @returns {Promise<string>} The current value, empty string when unset

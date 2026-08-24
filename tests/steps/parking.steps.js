@@ -20,34 +20,10 @@ When("I fill in UK parking trip details with mobile {string}, car make {string},
   });
 });
 
-When("I edit the UK parking search from the results page", async function () {
-  logger.info("Editing UK parking search from results page");
-  // TODO: implement UKParkingSearch.editSearchFromResultsPage(page) in src/dsl/UKParkingSearch.js
-  // Needs to:
-  //   1. Click .edit-search-btn
-  //   2. Click [placeholder='Parking from'] to open calendar
-  //   3. Navigate calendar and select new dates
-  //   4. Click .btn--size-large to re-search
-  //   5. Wait for 'Add to trip' text to appear in results
-  throw new Error("TODO: implement UKParkingSearch.editSearchFromResultsPage DSL method");
-});
-
-When("I verify there is only one parking quote in the cart", async function () {
-  logger.info("Verifying there is only one parking quote in the cart");
-  // TODO: implement UKParkingCart.verifyOnlyOneParkingQuoteInCart(page) in src/dsl/UKParkingCart.js
-  // Should compare the cart summary item price against the cart total price to confirm no duplication
-  // Note: the original Testim k() function had incomplete TODOs and used undefined variables
-  throw new Error("TODO: implement UKParkingCart.verifyOnlyOneParkingQuoteInCart DSL method");
-});
-
-When("I open and validate the UK parking more details drawer", async function () {
-  logger.info("Opening and validating UK parking more details drawer");
-  // TODO: implement UKParkingCart.openAndValidateMoreDetails(page) in src/dsl/UKParkingCart.js
-  // Should:
-  //   1. Click .ticket-top-section a (the 'More details' link)
-  //   2. Wait for .info-container > :nth-child(1) .section-title to contain 'Why book:'
-  //   3. Close the drawer via #el-drawer__title > button > i
-  throw new Error("TODO: implement UKParkingCart.openAndValidateMoreDetails DSL method");
+When("I edit the UK parking search by changing the dates from the results page", async function () {
+  logger.info("Editing the UK parking search dates from the results page");
+  const result = await UKParkingSearch.editSearchDatesFromResultsPage(this.page);
+  logger.info("UK parking search re-submitted with new dates", result);
 });
 
 When("I select the first parking filter option", async function () {

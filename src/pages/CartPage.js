@@ -46,6 +46,10 @@ const SELECTORS = {
   QUOTE_STATUS_LABEL: ".app-label--quote",
   QUOTE_CARD_STATUS_LABEL: '.quote-payment-card .app-label--quote',
   QUOTE_PAYMENT_CARD: '.quote-payment-card',
+  // The same wrapper, filtered to what is actually on screen. `:visible` is not optional when
+  // COUNTING quotes: the app renders a mobile and a desktop copy of every quote card and only one
+  // of them is ever displayed, so a raw count reads a single quote as two.
+  QUOTE_PAYMENT_CARD_VISIBLE: '.quote-payment-card:visible',
 
   // Per-Diem quote card (trip overview) — per-diem-quote-card.vue wraps base-quote-card/header.
   // The card root carries both `.quote-payment-card` and `.per-diem-quote-card` classes; the
@@ -6208,13 +6212,14 @@ class CartPage {
    * distinguishes "every quote booked" from "only some quotes booked" - a bare list of
    * codes cannot tell a 1-quote cart from a 2-quote cart where one quote has no PNR.
    *
+   * Only for POST-booking reads: every card is expected to carry a PNR, so before a booking each
+   * one costs perQuoteTimeout to learn nothing. Use getQuoteCardCount() to count quotes alone.
+   *
    * @param {{ timeout?: number, perQuoteTimeout?: number }} options
    * @returns {Promise<{ quotes: number, pnrCodes: string[] }>}
    */
   async getVisibleQuotesWithPnrCodes({ timeout = 15000, perQuoteTimeout = 5000 } = {}) {
-    // `:visible` excludes hidden responsive-layout duplicates of the same quote card
-    // (the app renders both a mobile and desktop copy; only one is ever displayed).
-    const quoteCards = this.page.locator(`${SELECTORS.QUOTE_PAYMENT_CARD}:visible`);
+    const quoteCards = this.page.locator(SELECTORS.QUOTE_PAYMENT_CARD_VISIBLE);
     await quoteCards.first().waitFor({ state: 'visible', timeout });
 
     const quotes = await quoteCards.count();
@@ -6446,6 +6451,42 @@ class CartPage {
     await quoteCards.first().waitFor({ state: 'visible', timeout });
 
     return quoteCards.count();
+  }
+
+  /**
+   * Counts the quote cards currently rendered in the cart, regardless of product type —
+   * `.quote-payment-card` is the wrapper class every quote-card variant renders
+   * (parking-quote-card.vue, car-quote-card.vue, flight-quote-card.vue, ...).
+   *
+   * Returns only once two consecutive reads agree, rather than the first number seen. This backs
+   * "the quote was not duplicated" assertions, and a second card that renders a beat after the
+   * first would otherwise be read as one quote — passing the very check it should fail.
+   *
+   * Deliberately separate from getVisibleQuotesWithPnrCodes(), which counts the same cards: that
+   * one also reads a PNR per quote, which only exists after booking, so using it before a booking
+   * spends perQuoteTimeout on every card to learn nothing. Count here, count with PNRs there —
+   * there is no third counter to add.
+   *
+   * @param {{ timeout?: number, settleTimeout?: number }} options
+   * @returns {Promise<number>}
+   */
+  async getQuoteCardCount({ timeout = 15000, settleTimeout = 3000 } = {}) {
+    const quoteCards = this.page.locator(SELECTORS.QUOTE_PAYMENT_CARD_VISIBLE);
+    await quoteCards.first().waitFor({ state: 'visible', timeout });
+
+    let previousCount = await quoteCards.count();
+    const deadline = Date.now() + settleTimeout;
+
+    while (Date.now() < deadline) {
+      await this.page.waitForTimeout(500);
+      const currentCount = await quoteCards.count();
+      if (currentCount === previousCount) {
+        return currentCount;
+      }
+      previousCount = currentCount;
+    }
+
+    return previousCount;
   }
 
   /**
@@ -6805,12 +6846,29 @@ class CartPage {
   }
 
   /**
-   * Closes the More Details drawer.
+   * Closes the More Details drawer, whichever of the two variants is open.
+   *
+   * Flights and hotels render the `[aria-label='More details']` dialog whose close icon
+   * MORE_DETAILS_DRAWER_CLOSE targets. Parking, cars and ground transport render an el-drawer
+   * instead (`.parking-details-drawer`), and on those pages the dialog's own markup is still
+   * MOUNTED BUT HIDDEN — so the close icon resolves to an invisible element and the wait burns its
+   * full timeout rather than failing fast. Probing for the icon and falling through to the
+   * drawer's own Escape close (el-drawer's close-on-press-escape) is what makes one step work for
+   * both, with the dialog path unchanged for the products that already used it.
    */
   async closeMoreDetailsDrawer() {
     const closeBtn = this.page.locator(SELECTORS.MORE_DETAILS_DRAWER_CLOSE).first();
-    await closeBtn.waitFor({ state: 'visible', timeout: 10000 });
-    await closeBtn.click();
+    const hasDialogCloseIcon = await closeBtn
+      .waitFor({ state: 'visible', timeout: 5000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (hasDialogCloseIcon) {
+      await closeBtn.click();
+      return;
+    }
+
+    await this.closeAnyVisibleDrawer();
   }
 
   /**
