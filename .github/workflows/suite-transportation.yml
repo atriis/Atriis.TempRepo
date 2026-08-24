@@ -43,18 +43,22 @@ jobs:
       #
       # The whole cars/ and rails/ trees then moved under
       # tests/features/transportation/, and rails/daily_rails/ dissolved into
-      # the per-supplier amtrak/, benerail/ and evolvi/ folders. The nightly runs
-      # benerail as a whole folder plus evolvi/evolvi_converted/ (the 8 converted
-      # Evolvi tests); amtrak is still dropped.
+      # the per-supplier amtrak/, benerail/ and evolvi/ folders. evolvi_converted/
+      # was later flattened into the evolvi/ root, so the nightly now runs both
+      # benerail and evolvi as whole supplier folders; amtrak is still dropped.
       #
       # Deliberately NOT run: cars/cars_blocked/, cars/payload_test/,
-      # rails/benerail/benerail_blocked/ and the rails/evolvi/ ROOT (only its
-      # evolvi_converted/ subfolder runs). benerail therefore globs *.feature at
-      # the folder root rather than passing the folder, which would recurse into
-      # benerail_blocked/; evolvi conversely names the subfolder directly, both to
-      # leave the two root features (37290, 44341) out and because 37290's
-      # filename contains `[merge]` — a *.feature glob would read that as a
-      # char-class and silently match nothing.
+      # rails/benerail/benerail_blocked/ and rails/evolvi/evolvi_blocked/. Both
+      # rail suites therefore glob *.feature at the folder root rather than
+      # passing the folder, which would recurse into the _blocked/ subfolder —
+      # for evolvi that would pull in 4 extra features carrying 2 undefined
+      # steps, which fails the run outright rather than skipping them.
+      #
+      # The older warning about 37290's filename no longer applies: it was
+      # renamed from `[merge]` to `_merge_`, so nothing in either folder is read
+      # as a glob char-class. Parentheses in 37290/46290 are matched literally.
+      # Re-verify with a --dry-run after ANY rename here: a glob that silently
+      # matches nothing reports success with 0 scenarios.
       expected-suites: >-
         cars-amadeus cars-galileo cars-general
         cars-sabre cars-sunny-cars rails-benerail rails-evolvi
@@ -67,6 +71,6 @@ jobs:
             { "suite_id": "cars-sabre",      "suite_name": "Cars Sabre",      "test_path": "tests/features/transportation/cars/sabre/",                                                               "parallel": 2, "retry": 3, "job_timeout_minutes": 120, "step_timeout_minutes": 115 },
             { "suite_id": "cars-sunny-cars", "suite_name": "Cars Sunny Cars", "test_path": "tests/features/transportation/cars/sunny_cars/",                                                          "parallel": 2, "retry": 3, "job_timeout_minutes": 75,  "step_timeout_minutes": 70 },
             { "suite_id": "rails-benerail",  "suite_name": "Rails Benerail",  "test_path": "tests/features/transportation/rails/benerail/*.feature",                                                  "parallel": 3, "retry": 3, "job_timeout_minutes": 180, "step_timeout_minutes": 175 },
-            { "suite_id": "rails-evolvi",    "suite_name": "Rails Evolvi",    "test_path": "tests/features/transportation/rails/evolvi/evolvi_converted/",                                            "parallel": 2, "retry": 3, "job_timeout_minutes": 75,  "step_timeout_minutes": 70 }
+            { "suite_id": "rails-evolvi",    "suite_name": "Rails Evolvi",    "test_path": "tests/features/transportation/rails/evolvi/*.feature",                                                    "parallel": 2, "retry": 3, "job_timeout_minutes": 180, "step_timeout_minutes": 175 }
           ]
         }
